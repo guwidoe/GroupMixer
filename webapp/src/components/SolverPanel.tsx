@@ -1027,7 +1027,7 @@ export function SolverPanel() {
                 onBlur={() => {
                   const inputValue = solverFormInputs.maxIterations || (solverSettings.stop_conditions.max_iterations || 10000).toString();
                   const numValue = parseInt(inputValue);
-                  if (!isNaN(numValue) && numValue >= 1000) {
+                  if (!isNaN(numValue) && numValue >= 1) {
                     handleSettingsChange({
                       ...solverSettings,
                       stop_conditions: {
@@ -1038,7 +1038,7 @@ export function SolverPanel() {
                     setSolverFormInputs(prev => ({ ...prev, maxIterations: undefined }));
                   }
                 }}
-                min="1000"
+                min="1"
                 max="100000"
               />
             </div>
@@ -1059,7 +1059,7 @@ export function SolverPanel() {
                 onBlur={() => {
                   const inputValue = solverFormInputs.timeLimit || (solverSettings.stop_conditions.time_limit_seconds || 30).toString();
                   const numValue = parseInt(inputValue);
-                  if (!isNaN(numValue) && numValue >= 10) {
+                  if (!isNaN(numValue) && numValue >= 1) {
                     handleSettingsChange({
                       ...solverSettings,
                       stop_conditions: {
@@ -1070,7 +1070,7 @@ export function SolverPanel() {
                     setSolverFormInputs(prev => ({ ...prev, timeLimit: undefined }));
                   }
                 }}
-                min="10"
+                min="1"
                 max="300"
               />
             </div>
@@ -1091,7 +1091,7 @@ export function SolverPanel() {
                 onBlur={() => {
                   const inputValue = solverFormInputs.noImprovement || (solverSettings.stop_conditions.no_improvement_iterations || 5000).toString();
                   const numValue = parseInt(inputValue);
-                  if (!isNaN(numValue) && numValue >= 100) {
+                  if (!isNaN(numValue) && numValue >= 1) {
                     handleSettingsChange({
                       ...solverSettings,
                       stop_conditions: {
@@ -1102,7 +1102,7 @@ export function SolverPanel() {
                     setSolverFormInputs(prev => ({ ...prev, noImprovement: undefined }));
                   }
                 }}
-                min="100"
+                min="1"
                 max="50000"
                 placeholder="Iterations without improvement before stopping"
               />
