@@ -1,0 +1,100 @@
+{
+  "name": "Social Golfer Problem",
+  "demo_metadata": {
+    "id": "social-golfer",
+    "display_name": "Social Golfer Problem",
+    "description": "Classic optimization: 32 golfers, 8 groups of 4, 10 rounds, no repeat encounters",
+    "category": "Benchmark"
+  },
+  "input": {
+    "problem": {
+      "people": [
+        {"id": "golfer_01", "attributes": {"name": "Alex Thompson"}},
+        {"id": "golfer_02", "attributes": {"name": "Beth Williams"}},
+        {"id": "golfer_03", "attributes": {"name": "Charlie Davis"}},
+        {"id": "golfer_04", "attributes": {"name": "Diana Miller"}},
+        {"id": "golfer_05", "attributes": {"name": "Edward Johnson"}},
+        {"id": "golfer_06", "attributes": {"name": "Fiona Brown"}},
+        {"id": "golfer_07", "attributes": {"name": "George Wilson"}},
+        {"id": "golfer_08", "attributes": {"name": "Helen Garcia"}},
+        {"id": "golfer_09", "attributes": {"name": "Ian Martinez"}},
+        {"id": "golfer_10", "attributes": {"name": "Julia Anderson"}},
+        {"id": "golfer_11", "attributes": {"name": "Kevin Taylor"}},
+        {"id": "golfer_12", "attributes": {"name": "Laura Thomas"}},
+        {"id": "golfer_13", "attributes": {"name": "Michael Jackson"}},
+        {"id": "golfer_14", "attributes": {"name": "Nancy White"}},
+        {"id": "golfer_15", "attributes": {"name": "Oliver Harris"}},
+        {"id": "golfer_16", "attributes": {"name": "Patricia Martin"}},
+        {"id": "golfer_17", "attributes": {"name": "Quinn Rodriguez"}},
+        {"id": "golfer_18", "attributes": {"name": "Rachel Lewis"}},
+        {"id": "golfer_19", "attributes": {"name": "Samuel Lee"}},
+        {"id": "golfer_20", "attributes": {"name": "Teresa Walker"}},
+        {"id": "golfer_21", "attributes": {"name": "Ulrich Hall"}},
+        {"id": "golfer_22", "attributes": {"name": "Victoria Allen"}},
+        {"id": "golfer_23", "attributes": {"name": "William Young"}},
+        {"id": "golfer_24", "attributes": {"name": "Ximena Hernandez"}},
+        {"id": "golfer_25", "attributes": {"name": "Yolanda King"}},
+        {"id": "golfer_26", "attributes": {"name": "Zachary Wright"}},
+        {"id": "golfer_27", "attributes": {"name": "Amanda Lopez"}},
+        {"id": "golfer_28", "attributes": {"name": "Benjamin Hill"}},
+        {"id": "golfer_29", "attributes": {"name": "Catherine Scott"}},
+        {"id": "golfer_30", "attributes": {"name": "Daniel Green"}},
+        {"id": "golfer_31", "attributes": {"name": "Elizabeth Adams"}},
+        {"id": "golfer_32", "attributes": {"name": "Franklin Baker"}}
+      ],
+      "groups": [
+        {"id": "foursome_1", "size": 4},
+        {"id": "foursome_2", "size": 4},
+        {"id": "foursome_3", "size": 4},
+        {"id": "foursome_4", "size": 4},
+        {"id": "foursome_5", "size": 4},
+        {"id": "foursome_6", "size": 4},
+        {"id": "foursome_7", "size": 4},
+        {"id": "foursome_8", "size": 4}
+      ],
+      "num_sessions": 10
+    },
+    "objectives": [
+      {"type": "maximize_unique_contacts", "weight": 1.0}
+    ],
+    "constraints": [
+      {
+        "type": "RepeatEncounter",
+        "max_allowed_encounters": 0,
+        "penalty_function": "squared",
+        "penalty_weight": 10000.0
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 2000000,
+        "time_limit_seconds": 120,
+        "no_improvement_iterations": 1000000
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 50.0,
+        "final_temperature": 0.001,
+        "cooling_schedule": "geometric"
+      },
+      "logging": {
+        "log_frequency": 10000,
+        "log_initial_state": false,
+        "log_duration_and_score": true,
+        "display_final_schedule": true,
+        "log_initial_score_breakdown": true,
+        "log_final_score_breakdown": true,
+        "log_stop_condition": true
+      }
+    }
+  },
+  "expected": {
+    "max_constraint_penalty": 0,
+    "unique_encounters_maximized": true,
+    "social_golfer_solution": true
+  },
+  "test_options": {
+    "description": "The Social Golfer Problem is a famous combinatorial optimization challenge. The goal is to arrange 32 golfers into 8 groups of 4 for 10 rounds such that no two golfers play together more than once. This is an extremely difficult constraint satisfaction problem."
+  }
+} 
