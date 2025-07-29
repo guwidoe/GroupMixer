@@ -7,7 +7,7 @@
       "dest": "/test_cases/$1"
     },
     {
-      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|wasm|d\\.ts|json))$",
+      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|wasm|d\\.ts|json|html))$",
       "dest": "/$1"
     },
     {
