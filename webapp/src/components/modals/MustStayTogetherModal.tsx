@@ -38,6 +38,7 @@ const MustStayTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onCanc
   const [selectedPeople, setSelectedPeople] = useState<string[]>(initialState.selectedPeople);
   const [selectedSessions, setSelectedSessions] = useState<number[]>(initialState.selectedSessions);
   const [validationError, setValidationError] = useState<string>(initialState.validationError);
+  const [personSearch, setPersonSearch] = useState<string>('');
   
   // Don't render until loading is complete to avoid creating new problems
   if (ui.isLoading) {
@@ -115,9 +116,24 @@ const MustStayTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onCanc
                 return per ? <PersonCard key={pid} person={per} /> : <span key={pid} className="text-xs px-2 py-0.5 rounded-full" style={{backgroundColor:'var(--bg-tertiary)', color:'var(--color-accent)'}}>{pid}</span>;
               })}
             </div>
+            <input
+              type="text"
+              placeholder="Search people..."
+              value={personSearch}
+              onChange={(e) => setPersonSearch(e.target.value)}
+              className="input w-full text-base py-3 mb-3"
+            />
             <div className="border rounded p-3 max-h-48 overflow-y-auto" style={{ borderColor:'var(--border-secondary)' }}>
               {problem.people && problem.people.length > 0 ? (
-                problem.people.map(p => (
+                problem.people
+                  .filter(p => {
+                    const q = personSearch.trim().toLowerCase();
+                    if (!q) return true;
+                    const name = (p.attributes?.name || '').toString().toLowerCase();
+                    const id = p.id.toLowerCase();
+                    return name.includes(q) || id.includes(q);
+                  })
+                  .map(p => (
                   <label key={p.id} className="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800 mb-1" style={{ color:'var(--text-secondary)' }}>
                     <input 
                       type="checkbox" 

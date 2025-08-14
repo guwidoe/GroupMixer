@@ -125,6 +125,7 @@ export function ProblemEditor() {
   const [peopleViewMode, setPeopleViewMode] = useState<'grid' | 'list'>('grid');
   const [peopleSortBy, setPeopleSortBy] = useState<'name' | 'sessions'>('name');
   const [peopleSortOrder, setPeopleSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [peopleSearch, setPeopleSearch] = useState('');
 
   // Auto-expand attributes section when there are no attributes defined
   useEffect(() => {
@@ -1010,11 +1011,40 @@ export function ProblemEditor() {
       );
     }
 
-    const sortedPeople = sortPeople(problem.people);
+    const searchValue = peopleSearch.trim().toLowerCase();
+    const basePeople = problem.people;
+    const filteredPeople = searchValue
+      ? basePeople.filter(p => {
+          const name = (p.attributes?.name || '').toString().toLowerCase();
+          const id = p.id.toLowerCase();
+          return name.includes(searchValue) || id.includes(searchValue);
+        })
+      : basePeople;
+
+    const sortedPeople = sortPeople(filteredPeople);
+
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sortedPeople.map(renderPersonCard)}
-      </div>
+      <>
+        {searchValue && (
+          <div className="mb-3 text-xs px-3 py-2 rounded border" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-secondary)', color: 'var(--text-secondary)' }}>
+            Showing {sortedPeople.length} of {basePeople.length} people for "{peopleSearch}".
+            <button onClick={() => setPeopleSearch('')} className="ml-2 underline">Clear filter</button>
+          </div>
+        )}
+        {sortedPeople.length === 0 ? (
+          <div className="text-center py-12" style={{ color: 'var(--text-secondary)' }}>
+            <Users className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--text-tertiary)' }} />
+            <p>No matching people</p>
+            {searchValue && (
+              <p className="text-sm">Try a different search or <button onClick={() => setPeopleSearch('')} className="underline">clear the filter</button>.</p>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {sortedPeople.map(renderPersonCard)}
+          </div>
+        )}
+      </>
     );
   };
 
@@ -1034,10 +1064,25 @@ export function ProblemEditor() {
       );
     }
 
-    const sortedPeople = sortPeople(problem.people);
+    const searchValue = peopleSearch.trim().toLowerCase();
+    const basePeople = problem.people;
+    const filteredPeople = searchValue
+      ? basePeople.filter(p => {
+          const name = (p.attributes?.name || '').toString().toLowerCase();
+          const id = p.id.toLowerCase();
+          return name.includes(searchValue) || id.includes(searchValue);
+        })
+      : basePeople;
+
+    const sortedPeople = sortPeople(filteredPeople);
     
     return (
       <div className="rounded-lg border overflow-hidden transition-colors" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
+        {searchValue && (
+          <div className="px-6 pt-4 text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Showing {sortedPeople.length} of {basePeople.length} people for "{peopleSearch}". <button onClick={() => setPeopleSearch('')} className="underline">Clear filter</button>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y" style={{ borderColor: 'var(--border-secondary)' }}>
             <thead style={{ backgroundColor: 'var(--bg-tertiary)' }}>
@@ -1083,7 +1128,14 @@ export function ProblemEditor() {
               </tr>
             </thead>
             <tbody className="divide-y" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-secondary)' }}>
-              {sortedPeople.map(person => {
+              {sortedPeople.length === 0 ? (
+                <tr>
+                  <td className="px-6 py-6 text-center" colSpan={2 + attributeDefinitions.length + 1} style={{ color: 'var(--text-secondary)' }}>
+                    No matching people{searchValue ? ' for your search' : ''}.
+                  </td>
+                </tr>
+              ) : (
+              sortedPeople.map(person => {
                 const displayName = person.attributes.name || person.id;
                 const sessionText = person.sessions 
                   ? `${person.sessions.length}/${sessionsCount} (${person.sessions.map(s => s + 1).join(', ')})`
@@ -1140,7 +1192,8 @@ export function ProblemEditor() {
                     </td>
                   </tr>
                 );
-              })}
+              }))
+              }
             </tbody>
           </table>
         </div>
@@ -2594,6 +2647,16 @@ export function ProblemEditor() {
                     People ({problem?.people.length || 0})
                   </h3>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    {/* Search */}
+                    <div className="w-full sm:w-64">
+                      <input
+                        type="text"
+                        className="input w-full"
+                        placeholder="Search people by name or ID..."
+                        value={peopleSearch}
+                        onChange={(e) => setPeopleSearch(e.target.value)}
+                      />
+                    </div>
                     {/* View Toggle */}
                     <div className="flex items-center gap-2">
                       <button
