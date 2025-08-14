@@ -135,11 +135,12 @@ const MustStayTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onCanc
                   })
                   .map(p => (
                   <label key={p.id} className="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800 mb-1" style={{ color:'var(--text-secondary)' }}>
-                    <input 
-                      type="checkbox" 
+                  <input 
+                    type="checkbox" 
                       checked={selectedPeople.includes(p.id)} 
                       onChange={() => togglePerson(p.id)} 
-                      className="w-4 h-4"
+                    className="w-4 h-4"
+                    style={{ accentColor: 'var(--color-accent)' }}
                     />
                     <span className="text-sm">{p.attributes.name || p.id}</span>
                   </label>

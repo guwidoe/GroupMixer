@@ -132,6 +132,17 @@
     transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
+  /* Restore native checkbox/radio appearance (overrides generic input reset) */
+  input[type="checkbox"],
+  input[type="radio"] {
+    appearance: auto;
+    -webkit-appearance: auto;
+    -moz-appearance: auto;
+    accent-color: var(--color-accent);
+    border: initial !important; /* undo global input border */
+    background-color: initial;
+  }
+
   .input, .textarea, .select {
     background-color: var(--bg-primary);
     color: var(--text-primary);

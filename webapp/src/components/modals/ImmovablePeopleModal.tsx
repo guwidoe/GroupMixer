@@ -154,6 +154,7 @@ const ImmovablePeopleModal: React.FC<Props> = ({ sessionsCount, initial, onCance
                       checked={selectedPeople.includes(p.id)} 
                       onChange={() => togglePerson(p.id)} 
                       className="w-4 h-4"
+                      style={{ accentColor: 'var(--color-accent)' }}
                     />
                     <span className="text-sm">{p.attributes.name || p.id}</span>
                   </label>

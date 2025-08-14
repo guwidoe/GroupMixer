@@ -138,6 +138,7 @@ const ShouldNotBeTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onC
                       }
                     }}
                     className="w-4 h-4"
+                    style={{ accentColor: 'var(--color-accent)' }}
                   />
                   <PersonCard person={person} />
                 </label>
