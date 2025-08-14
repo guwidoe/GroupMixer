@@ -199,8 +199,7 @@ pub struct State {
     pub w_contacts: f64,
     /// Weight for repeat encounter penalties (from constraints)
     pub w_repetition: f64,
-    /// Penalty weight for each clique violation
-    pub clique_weights: Vec<f64>,
+    // MustStayTogether is a hard constraint; no weights are tracked
     /// Penalty weight for each forbidden pair violation
     pub forbidden_pair_weights: Vec<f64>,
     /// Penalty weight for each should-together pair violation
@@ -474,7 +473,7 @@ impl State {
             immovable_violations: 0,
             w_contacts,
             w_repetition,
-            clique_weights: Vec::new(),
+
             forbidden_pair_weights: Vec::new(),
             should_together_weights: Vec::new(),
             baseline_score,
@@ -642,7 +641,6 @@ impl State {
 
         self.cliques.clear();
         self.clique_sessions.clear();
-        self.clique_weights.clear();
 
         // Map from member list -> global clique id
         let mut members_to_id: HashMap<Vec<usize>, usize> = HashMap::new();
@@ -697,7 +695,6 @@ impl State {
                         v.insert(id);
                         self.cliques.push(key);
                         self.clique_sessions.push(Some(Vec::new()));
-                        self.clique_weights.push(1000.0); // hard
                         id
                     }
                 };
@@ -1262,8 +1259,7 @@ impl State {
                 let max_in_one_group = *group_counts.iter().max().unwrap_or(&0);
                 let separated_members = participating_members.len() as i32 - max_in_one_group;
                 if separated_members > 0 {
-                    self.weighted_constraint_penalty +=
-                        separated_members as f64 * self.clique_weights[clique_idx];
+                    // MustStayTogether is treated as hard: count unweighted violations only
                     violation_count += separated_members;
                 }
             }
@@ -1840,19 +1836,7 @@ impl State {
         }
 
         // Hard Constraint Delta - Cliques
-        if let Some(c_id) = self.person_to_clique_id[day][p1_idx] {
-            let clique = &self.cliques[c_id];
-            // If p2 is not in the same clique, this swap would break the clique
-            if self.person_to_clique_id[day][p2_idx] != Some(c_id) {
-                delta_cost += self.clique_weights[c_id] * clique.len() as f64;
-            }
-        } else if let Some(c_id) = self.person_to_clique_id[day][p2_idx] {
-            // Same logic if p2 is in a clique and p1 is not
-            let clique = &self.cliques[c_id];
-            if self.person_to_clique_id[day][p1_idx] != Some(c_id) {
-                delta_cost += self.clique_weights[c_id] * clique.len() as f64;
-            }
-        }
+        // No clique weight based delta; cliques are enforced by move feasibility
 
         // Constraint Delta - Forbidden Pairs
         for (pair_idx, &(p1, p2)) in self.forbidden_pairs.iter().enumerate() {
@@ -2713,10 +2697,9 @@ impl State {
         // Clique violations
         for (clique_idx, &violation_count) in self.clique_violations.iter().enumerate() {
             if violation_count > 0 {
-                let weight = self.clique_weights[clique_idx];
                 breakdown.push_str(&format!(
-                    "\n  MustStayTogether[{}]: {} (weight: {:.1})",
-                    clique_idx, violation_count, weight
+                    "\n  MustStayTogether[{}]: {} (hard)",
+                    clique_idx, violation_count
                 ));
                 has_constraints = true;
             }
@@ -3722,12 +3705,10 @@ mod tests {
         input.constraints = vec![
             Constraint::MustStayTogether {
                 people: vec!["p0".into(), "p1".into()],
-                penalty_weight: 1000.0,
                 sessions: Some(vec![0, 1]),
             },
             Constraint::MustStayTogether {
                 people: vec!["p1".into(), "p2".into()],
-                penalty_weight: 1000.0,
                 sessions: Some(vec![1, 2]),
             },
         ];
@@ -3770,7 +3751,6 @@ mod tests {
         let mut input = create_test_input(5, vec![(1, 3)], 1);
         input.constraints = vec![Constraint::MustStayTogether {
             people: vec!["p0".into(), "p1".into(), "p2".into(), "p3".into()],
-            penalty_weight: 1000.0,
             sessions: None,
         }];
 
@@ -3801,7 +3781,6 @@ mod tests {
         input.constraints = vec![
             Constraint::MustStayTogether {
                 people: vec!["p0".into(), "p1".into()],
-                penalty_weight: 1000.0,
                 sessions: None,
             },
             Constraint::ShouldNotBeTogether {
@@ -3834,12 +3813,10 @@ mod tests {
         input_with_cliques.constraints = vec![
             Constraint::MustStayTogether {
                 people: vec!["p0".into(), "p1".into()],
-                penalty_weight: 1000.0,
                 sessions: None,
             },
             Constraint::MustStayTogether {
                 people: vec!["p2".into(), "p3".into()],
-                penalty_weight: 1000.0,
                 sessions: None,
             },
         ];
@@ -3856,7 +3833,6 @@ mod tests {
         input.constraints = vec![
             Constraint::MustStayTogether {
                 people: vec!["p0".into(), "p1".into()],
-                penalty_weight: 1000.0,
                 sessions: None,
             },
             Constraint::ImmovablePerson(crate::models::ImmovablePersonParams {
@@ -3887,7 +3863,6 @@ mod tests {
         let mut input = create_test_input(10, vec![(2, 5)], 1);
         input.constraints = vec![Constraint::MustStayTogether {
             people: vec!["p0".into(), "p1".into(), "p2".into()],
-            penalty_weight: 1000.0,
             sessions: None,
         }];
         let state = State::new(&input).unwrap();
@@ -3914,7 +3889,6 @@ mod tests {
         let mut input = create_test_input(8, vec![(2, 4)], 1);
         input.constraints = vec![Constraint::MustStayTogether {
             people: vec!["p0".into(), "p1".into()],
-            penalty_weight: 1000.0,
             sessions: None,
         }];
         let mut state = State::new(&input).unwrap();
@@ -3964,7 +3938,6 @@ mod tests {
         let mut input = create_test_input(10, vec![(2, 5)], 1);
         input.constraints = vec![Constraint::MustStayTogether {
             people: vec!["p0".into(), "p1".into(), "p2".into()],
-            penalty_weight: 1000.0,
             sessions: None,
         }];
         let mut state = State::new(&input).unwrap();
@@ -4038,7 +4011,7 @@ mod tests {
         ],
         "constraints": [
             {"type": "RepeatEncounter", "max_allowed_encounters": 1, "penalty_function": "squared", "penalty_weight": 100},
-            {"type": "MustStayTogether", "people": ["alice", "bob"], "penalty_weight": 1000, "sessions": [0, 1]},
+            {"type": "MustStayTogether", "people": ["alice", "bob"], "sessions": [0, 1]},
             {"type": "ShouldNotBeTogether", "people": ["charlie", "diana"], "penalty_weight": 500},
             {"type": "AttributeBalance", "group_id": "team-alpha", "attribute_key": "gender", "desired_values": {"male": 2, "female": 2}, "penalty_weight": 50}
         ],
@@ -4104,7 +4077,8 @@ mod tests {
         );
 
         // Test MustStayTogether parsing
-        let must_stay_json = r#"{"type": "MustStayTogether", "people": ["alice", "bob"], "penalty_weight": 1000, "sessions": [0, 1]}"#;
+        let must_stay_json =
+            r#"{"type": "MustStayTogether", "people": ["alice", "bob"], "sessions": [0, 1]}"#;
         let must_stay_constraint: Result<Constraint, _> = serde_json::from_str(must_stay_json);
         assert!(
             must_stay_constraint.is_ok(),
@@ -4278,7 +4252,6 @@ mod tests {
         input.constraints = vec![
             Constraint::MustStayTogether {
                 people: vec!["p0".into(), "p1".into()],
-                penalty_weight: 1000.0,
                 sessions: None, // all sessions initially
             },
             Constraint::ImmovablePerson(ImmovablePersonParams {

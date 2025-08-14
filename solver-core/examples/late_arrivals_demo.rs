@@ -75,7 +75,6 @@ fn main() {
             // Alice and Bob must work together when both are present
             Constraint::MustStayTogether {
                 people: vec!["Alice".to_string(), "Bob".to_string()],
-                penalty_weight: 1000.0,
                 sessions: None, // Apply when both are present
             },
         ],

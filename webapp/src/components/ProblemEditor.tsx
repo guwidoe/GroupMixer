@@ -716,12 +716,19 @@ export function ProblemEditor() {
           if (!constraintForm.people?.length || constraintForm.people.length < 2) {
             throw new Error('Please select at least 2 people');
           }
-          newConstraint = {
-            type: constraintForm.type,
-            people: constraintForm.people,
-            penalty_weight: constraintForm.penalty_weight || 1000,
-            sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined
-          };
+          newConstraint =
+            constraintForm.type === 'MustStayTogether'
+              ? {
+                  type: 'MustStayTogether',
+                  people: constraintForm.people,
+                  sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined,
+                }
+              : {
+                  type: 'ShouldNotBeTogether',
+                  people: constraintForm.people,
+                  penalty_weight: constraintForm.penalty_weight || 1000,
+                  sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined,
+                };
           break;
 
         default:
@@ -784,12 +791,19 @@ export function ProblemEditor() {
         });
         break;
       case 'MustStayTogether':
-      case 'ShouldNotBeTogether':
         setConstraintForm({
-          type: constraint.type,
+          type: 'MustStayTogether',
           people: constraint.people,
           sessions: constraint.sessions,
-          penalty_weight: constraint.penalty_weight
+          penalty_weight: undefined,
+        });
+        break;
+      case 'ShouldNotBeTogether':
+        setConstraintForm({
+          type: 'ShouldNotBeTogether',
+          people: constraint.people,
+          sessions: constraint.sessions,
+          penalty_weight: constraint.penalty_weight,
         });
         break;
     }
@@ -851,12 +865,19 @@ export function ProblemEditor() {
           if (!constraintForm.people?.length || constraintForm.people.length < 2) {
             throw new Error('Please select at least 2 people');
           }
-          updatedConstraint = {
-            type: constraintForm.type,
-            people: constraintForm.people,
-            penalty_weight: constraintForm.penalty_weight || 1000,
-            sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined
-          };
+          updatedConstraint =
+            constraintForm.type === 'MustStayTogether'
+              ? {
+                  type: 'MustStayTogether',
+                  people: constraintForm.people,
+                  sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined,
+                }
+              : {
+                  type: 'ShouldNotBeTogether',
+                  people: constraintForm.people,
+                  penalty_weight: constraintForm.penalty_weight || 1000,
+                  sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined,
+                };
           break;
 
         default:

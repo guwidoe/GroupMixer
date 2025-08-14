@@ -1161,7 +1161,6 @@ export const useAppStore = create<AppStore>()(
               {
                 type: "MustStayTogether",
                 people: ["alice", "bob"],
-                penalty_weight: 1000.0,
                 sessions: [0, 1], // Only for first two sessions
               },
               // Charlie and Diana can't be together (personality conflict)

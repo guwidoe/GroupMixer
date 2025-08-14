@@ -78,7 +78,6 @@ const MustStayTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onCanc
     const newConstraint: Constraint = {
       type: 'MustStayTogether',
       people: selectedPeople,
-      penalty_weight: 1000.0, // Hard constraint
       sessions,
     };
     

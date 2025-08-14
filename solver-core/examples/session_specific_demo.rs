@@ -59,7 +59,6 @@ fn main() {
             // Alice and Bob must stay together in sessions 0 and 1 only
             Constraint::MustStayTogether {
                 people: vec!["Alice".to_string(), "Bob".to_string()],
-                penalty_weight: 1000.0,
                 sessions: Some(vec![0, 1]),
             },
             // Charlie and Diana cannot be together in sessions 1 and 2 only

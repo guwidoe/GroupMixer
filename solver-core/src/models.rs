@@ -230,7 +230,6 @@ pub struct Objective {
 /// // Keep two people together (only in sessions 0 and 1)
 /// let together_constraint = Constraint::MustStayTogether {
 ///     people: vec!["Alice".to_string(), "Bob".to_string()],
-///     penalty_weight: 1000.0,
 ///     sessions: Some(vec![0, 1]),
 /// };
 ///
@@ -254,9 +253,6 @@ pub enum Constraint {
     MustStayTogether {
         /// List of person IDs that must stay together
         people: Vec<String>,
-        /// Penalty weight for violations (higher = more important)
-        #[serde(default = "default_constraint_weight")]
-        penalty_weight: f64,
         /// Optional list of session indices where this constraint applies.
         /// If `None`, applies to all sessions.
         #[serde(default)]

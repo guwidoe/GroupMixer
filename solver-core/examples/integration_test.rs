@@ -59,7 +59,6 @@ fn main() {
         constraints: vec![
             Constraint::MustStayTogether {
                 people: vec!["Alice".to_string(), "Bob".to_string()],
-                penalty_weight: 1000.0,
                 sessions: None,
             },
             Constraint::ShouldNotBeTogether {

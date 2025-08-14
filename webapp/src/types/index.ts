@@ -47,7 +47,6 @@ export type Constraint =
   | {
       type: "MustStayTogether";
       people: string[];
-      penalty_weight: number;
       sessions?: number[]; // Optional: if undefined, applies to all sessions
     }
   | {
