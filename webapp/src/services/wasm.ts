@@ -348,7 +348,7 @@ class WasmService {
       }
     }
 
-    // Clean constraints: remove undefined/null penalty_weight to satisfy Rust deserialization
+    // Clean constraints and inject sensible defaults to satisfy Rust deserialization
     const cleanedConstraints = (problem.constraints || []).map(
       (c: Constraint) => {
         if (
@@ -373,6 +373,35 @@ class WasmService {
       }
     );
 
+    // Ensure immovable constraints always include sessions (Rust requires it)
+    const allSessions = Array.from(
+      { length: problem.num_sessions },
+      (_, i) => i
+    );
+    const normalizedConstraints = cleanedConstraints.map((c: Constraint) => {
+      if (c.type === "ImmovablePeople") {
+        const sessions = (c as unknown as { sessions?: number[] }).sessions;
+        return {
+          ...c,
+          sessions:
+            Array.isArray(sessions) && sessions.length > 0
+              ? sessions
+              : allSessions,
+        } as Constraint;
+      }
+      if (c.type === "ImmovablePerson") {
+        const sessions = (c as unknown as { sessions?: number[] }).sessions;
+        return {
+          ...c,
+          sessions:
+            Array.isArray(sessions) && sessions.length > 0
+              ? sessions
+              : allSessions,
+        } as Constraint;
+      }
+      return c;
+    });
+
     return {
       problem: {
         people: problem.people,
@@ -385,7 +414,7 @@ class WasmService {
           weight: 1.0,
         },
       ],
-      constraints: cleanedConstraints,
+      constraints: normalizedConstraints,
       solver: solverSettings,
     };
   }

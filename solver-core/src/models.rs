@@ -362,11 +362,11 @@ pub struct AttributeBalanceParams {
 /// ```no_run
 /// use solver_core::models::ImmovablePersonParams;
 ///
-/// // Fix "TeamLeader" to "Team1" for all sessions
+/// // Fix "TeamLeader" to "Team1" for specific sessions
 /// let params = ImmovablePersonParams {
 ///     person_id: "TeamLeader".to_string(),
 ///     group_id: "Team1".to_string(),
-///     sessions: vec![0, 1, 2], // Sessions 0, 1, and 2
+///     sessions: Some(vec![0, 1, 2]), // Sessions 0, 1, and 2
 /// };
 /// ```
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -375,8 +375,10 @@ pub struct ImmovablePersonParams {
     pub person_id: String,
     /// ID of the group where this person must be placed
     pub group_id: String,
-    /// List of session indices where this person must be in the specified group
-    pub sessions: Vec<u32>,
+    /// List of session indices where this person must be in the specified group.
+    /// If `None`, applies to all sessions.
+    #[serde(default)]
+    pub sessions: Option<Vec<u32>>,
 }
 
 /// Fixes multiple people to a specific group in specific sessions (hard constraint).
@@ -390,8 +392,10 @@ pub struct ImmovablePeopleParams {
     pub people: Vec<String>,
     /// ID of the group where these people must be placed
     pub group_id: String,
-    /// List of session indices where these people must be in the specified group
-    pub sessions: Vec<u32>,
+    /// List of session indices where these people must be in the specified group.
+    /// If `None`, applies to all sessions.
+    #[serde(default)]
+    pub sessions: Option<Vec<u32>>,
 }
 
 /// Complete configuration for the optimization solver.

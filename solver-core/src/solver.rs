@@ -816,8 +816,13 @@ impl State {
                             params.group_id
                         ))
                     })?;
+                    // Default to all sessions when not provided
+                    let sessions_iter: Vec<u32> = params
+                        .sessions
+                        .clone()
+                        .unwrap_or_else(|| (0..self.num_sessions).collect());
 
-                    for &session in &params.sessions {
+                    for &session in &sessions_iter {
                         let s_idx = session as usize;
                         if s_idx >= self.num_sessions as usize {
                             return Err(SolverError::ValidationError(format!(
@@ -837,6 +842,12 @@ impl State {
                         ))
                     })?;
 
+                    // Default to all sessions when not provided
+                    let sessions_iter: Vec<u32> = params
+                        .sessions
+                        .clone()
+                        .unwrap_or_else(|| (0..self.num_sessions).collect());
+
                     for person_id in &params.people {
                         let p_idx = self.person_id_to_idx.get(person_id).ok_or_else(|| {
                             SolverError::ValidationError(format!(
@@ -845,7 +856,7 @@ impl State {
                             ))
                         })?;
 
-                        for &session in &params.sessions {
+                        for &session in &sessions_iter {
                             let s_idx = session as usize;
                             if s_idx >= self.num_sessions as usize {
                                 return Err(SolverError::ValidationError(format!(
@@ -3602,7 +3613,7 @@ mod tests {
             Constraint::ImmovablePerson(crate::models::ImmovablePersonParams {
                 person_id: "p2".into(),
                 group_id: "g0_0".into(),
-                sessions: vec![0, 1],
+                sessions: Some(vec![0, 1]),
             }),
         ];
         let state = State::new(&input).unwrap();
@@ -4024,7 +4035,7 @@ mod tests {
             Constraint::ImmovablePerson(ImmovablePersonParams {
                 person_id: "p0".into(),
                 group_id: "g0_0".into(),
-                sessions: vec![0],
+                sessions: Some(vec![0]),
             }),
         ];
 

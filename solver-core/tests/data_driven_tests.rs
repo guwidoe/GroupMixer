@@ -297,7 +297,12 @@ fn assert_immovable_person_respected(input: &ApiInput, result: &SolverResult) {
         .collect();
 
     for constraint in immovable_constraints {
-        for &session in &constraint.sessions {
+        // Determine applicable sessions; default to all when not specified
+        let sessions: Vec<u32> = constraint
+            .sessions
+            .clone()
+            .unwrap_or_else(|| (0..input.problem.num_sessions).collect());
+        for &session in &sessions {
             let session_key = format!("session_{}", session);
             let session_schedule = result.schedule.get(&session_key).unwrap_or_else(|| {
                 panic!(

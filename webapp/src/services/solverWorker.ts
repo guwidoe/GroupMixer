@@ -437,6 +437,35 @@ export class SolverWorkerService {
       }
     );
 
+    // Ensure immovable constraints always include sessions (Rust requires them)
+    const allSessions = Array.from(
+      { length: problem.num_sessions },
+      (_, i) => i
+    );
+    const normalizedConstraints = cleanedConstraints.map((c: Constraint) => {
+      if (c.type === "ImmovablePeople") {
+        const sessions = (c as unknown as { sessions?: number[] }).sessions;
+        return {
+          ...c,
+          sessions:
+            Array.isArray(sessions) && sessions.length > 0
+              ? sessions
+              : allSessions,
+        } as Constraint;
+      }
+      if (c.type === "ImmovablePerson") {
+        const sessions = (c as unknown as { sessions?: number[] }).sessions;
+        return {
+          ...c,
+          sessions:
+            Array.isArray(sessions) && sessions.length > 0
+              ? sessions
+              : allSessions,
+        } as Constraint;
+      }
+      return c;
+    });
+
     return {
       problem: {
         people: problem.people,
@@ -444,7 +473,7 @@ export class SolverWorkerService {
         num_sessions: problem.num_sessions,
       },
       objectives,
-      constraints: cleanedConstraints,
+      constraints: normalizedConstraints,
       solver: solverSettings,
     };
   }

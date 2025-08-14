@@ -70,7 +70,7 @@ fn main() {
             Constraint::ImmovablePerson(ImmovablePersonParams {
                 person_id: "Henry".to_string(),
                 group_id: "Team1".to_string(),
-                sessions: vec![0, 1, 2],
+                sessions: Some(vec![0, 1, 2]),
             }),
         ],
         solver: SolverConfiguration {
