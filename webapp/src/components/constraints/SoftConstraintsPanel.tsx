@@ -16,16 +16,17 @@ interface AttributeBalanceConstraint {
 }
 
 interface Props {
-  onAddConstraint: (type: 'RepeatEncounter' | 'ShouldNotBeTogether' | 'AttributeBalance') => void;
+  onAddConstraint: (type: 'RepeatEncounter' | 'ShouldNotBeTogether' | 'ShouldStayTogether' | 'AttributeBalance') => void;
   onEditConstraint: (constraint: Constraint, index: number) => void;
   onDeleteConstraint: (index: number) => void;
 }
 
-const SOFT_TABS = ['RepeatEncounter', 'ShouldNotBeTogether', 'AttributeBalance'] as const;
+const SOFT_TABS = ['RepeatEncounter', 'ShouldNotBeTogether', 'ShouldStayTogether', 'AttributeBalance'] as const;
 
 const constraintTypeLabels: Record<typeof SOFT_TABS[number], string> = {
   RepeatEncounter: 'Repeat Encounter',
   ShouldNotBeTogether: 'Should Not Be Together',
+  ShouldStayTogether: 'Should Stay Together',
   AttributeBalance: 'Attribute Balance',
 };
 
@@ -104,7 +105,13 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
           className="btn-primary flex items-center gap-2 px-3 py-2 text-sm"
         >
           <Plus className="w-4 h-4" />
-          {activeTab === 'RepeatEncounter' ? 'Add Repeat Limit' : activeTab === 'AttributeBalance' ? 'Add Attribute Balance' : 'Add Should Not Be Together'}
+          {activeTab === 'RepeatEncounter'
+            ? 'Add Repeat Limit'
+            : activeTab === 'AttributeBalance'
+            ? 'Add Attribute Balance'
+            : activeTab === 'ShouldNotBeTogether'
+            ? 'Add Should Not Be Together'
+            : 'Add Should Stay Together'}
         </button>
       </div>
       {activeTab === 'AttributeBalance' && selectedItems.length > 0 && (
@@ -154,16 +161,16 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
                     </>
                   )}
 
-                  {constraint.type === 'ShouldNotBeTogether' && (
+                  {(constraint.type === 'ShouldNotBeTogether' || constraint.type === 'ShouldStayTogether') && (
                     <>
                       <div className="flex flex-wrap items-center gap-1">
                         <span>People:</span>
-                        {(constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' }>).people.map((pid: string, idx: number) => {
+                        {(constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>).people.map((pid: string, idx: number) => {
                           const per = problem.people.find((p: Person) => p.id === pid);
                           return (
                             <React.Fragment key={pid}>
                               {per ? <PersonCard person={per} /> : <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{pid}</span>}
-                              {idx < (constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' }>).people.length - 1 && <span></span>}
+                              {idx < (constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>).people.length - 1 && <span></span>}
                             </React.Fragment>
                           );
                         })}
@@ -171,7 +178,7 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
                       <div className="flex items-center gap-1 text-xs" style={{color:'var(--color-accent)'}}>
                         <Clock className="w-3 h-3" />
                         <span>Sessions:</span>
-                        {(constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' }>).sessions && (constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' }>).sessions!.length > 0 ? (constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' }>).sessions!.map((s:number)=>s+1).join(', ') : 'All Sessions'}
+                        {(constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>).sessions && (constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>).sessions!.length > 0 ? (constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>).sessions!.map((s:number)=>s+1).join(', ') : 'All Sessions'}
                       </div>
                     </>
                   )}

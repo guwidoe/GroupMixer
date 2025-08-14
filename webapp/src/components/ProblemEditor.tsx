@@ -22,6 +22,7 @@ import ImmovablePeopleModal from './modals/ImmovablePeopleModal';
 import RepeatEncounterModal from './modals/RepeatEncounterModal';
 import AttributeBalanceModal from './modals/AttributeBalanceModal';
 import ShouldNotBeTogetherModal from './modals/ShouldNotBeTogetherModal';
+import ShouldStayTogetherModal from './modals/ShouldStayTogetherModal';
 import MustStayTogetherModal from './modals/MustStayTogetherModal';
 import AttributeBalanceDashboard from './AttributeBalanceDashboard';
 import { DemoDataWarningModal } from './modals/DemoDataWarningModal';
@@ -275,6 +276,7 @@ export function ProblemEditor() {
   const [showRepeatEncounterModal, setShowRepeatEncounterModal] = useState(false);
   const [showAttributeBalanceModal, setShowAttributeBalanceModal] = useState(false);
   const [showShouldNotBeTogetherModal, setShowShouldNotBeTogetherModal] = useState(false);
+  const [showShouldStayTogetherModal, setShowShouldStayTogetherModal] = useState(false);
   const [showMustStayTogetherModal, setShowMustStayTogetherModal] = useState(false);
   const [editingConstraintIndex, setEditingConstraintIndex] = useState<number | null>(null);
 
@@ -3040,6 +3042,9 @@ export function ProblemEditor() {
                 case 'ShouldNotBeTogether':
                   setShowShouldNotBeTogetherModal(true);
                   break;
+                case 'ShouldStayTogether':
+                  setShowShouldStayTogetherModal(true);
+                  break;
                 default:
                   // Fallback to legacy modal for any other types
                   setConstraintForm((prev) => ({ ...prev, type }));
@@ -3057,6 +3062,9 @@ export function ProblemEditor() {
                   break;
                 case 'ShouldNotBeTogether':
                   setShowShouldNotBeTogetherModal(true);
+                  break;
+                case 'ShouldStayTogether':
+                  setShowShouldStayTogetherModal(true);
                   break;
                 default:
                   // Fallback to legacy modal for any other types
@@ -3545,6 +3553,32 @@ export function ProblemEditor() {
             });
             
             setShowShouldNotBeTogetherModal(false);
+            setEditingConstraintIndex(null);
+          }}
+        />
+      )}
+
+      {showShouldStayTogetherModal && (
+        <ShouldStayTogetherModal
+          sessionsCount={sessionsCount}
+          initial={editingConstraintIndex !== null ? (GetProblem().constraints[editingConstraintIndex] || null) : null}
+          onCancel={() => {
+            setShowShouldStayTogetherModal(false);
+            setEditingConstraintIndex(null);
+          }}
+          onSave={(constraint) => {
+            const currentProblem = GetProblem();
+            const updatedConstraints = [...currentProblem.constraints];
+            if (editingConstraintIndex !== null) {
+              updatedConstraints[editingConstraintIndex] = constraint;
+            } else {
+              updatedConstraints.push(constraint);
+            }
+            setProblem({
+              ...currentProblem,
+              constraints: updatedConstraints,
+            });
+            setShowShouldStayTogetherModal(false);
             setEditingConstraintIndex(null);
           }}
         />
