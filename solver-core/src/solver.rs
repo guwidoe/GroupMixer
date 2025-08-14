@@ -152,12 +152,16 @@ pub struct State {
     pub person_to_clique_id: Vec<Vec<Option<usize>>>,
     /// Pairs of people who cannot be together
     pub forbidden_pairs: Vec<(usize, usize)>,
+    /// Pairs of people who should be together (soft)
+    pub should_together_pairs: Vec<(usize, usize)>,
     /// Immovable person assignments: `(person_index, session_index) -> group_index`
     pub immovable_people: HashMap<(usize, usize), usize>,
     /// Which sessions each clique constraint applies to (None = all sessions)
     pub clique_sessions: Vec<Option<Vec<usize>>>,
     /// Which sessions each forbidden pair constraint applies to (None = all sessions)
     pub forbidden_pair_sessions: Vec<Option<Vec<usize>>>,
+    /// Which sessions each should-together pair applies to (None = all sessions)
+    pub should_together_sessions: Vec<Option<Vec<usize>>>,
     /// Person participation matrix: `person_participation[person][session] = is_participating`
     pub person_participation: Vec<Vec<bool>>,
     /// Total number of sessions in the problem
@@ -184,6 +188,8 @@ pub struct State {
     pub clique_violations: Vec<i32>,
     /// Number of violations for each forbidden pair (people forced together)
     pub forbidden_pair_violations: Vec<i32>,
+    /// Number of violations for each should-together pair (people separated)
+    pub should_together_violations: Vec<i32>,
     /// Total violations of immovable person constraints
     pub immovable_violations: i32,
 
@@ -197,6 +203,8 @@ pub struct State {
     pub clique_weights: Vec<f64>,
     /// Penalty weight for each forbidden pair violation
     pub forbidden_pair_weights: Vec<f64>,
+    /// Penalty weight for each should-together pair violation
+    pub should_together_weights: Vec<f64>,
 
     /// Baseline score to prevent negative scores from unique contacts metric
     pub baseline_score: f64,
@@ -447,9 +455,11 @@ impl State {
                 input.problem.num_sessions as usize
             ], // To be populated
             forbidden_pairs: vec![], // To be populated
+            should_together_pairs: vec![], // To be populated
             immovable_people: HashMap::new(), // To be populated
             clique_sessions: vec![], // To be populated by preprocessing
             forbidden_pair_sessions: vec![], // To be populated by preprocessing
+            should_together_sessions: vec![], // To be populated by preprocessing
             person_participation: vec![], // To be populated by preprocessing
             num_sessions: input.problem.num_sessions,
             contact_matrix: vec![vec![0; people_count]; people_count],
@@ -460,11 +470,13 @@ impl State {
             weighted_constraint_penalty: 0.0,
             clique_violations: Vec::new(), // Will be resized after constraint preprocessing
             forbidden_pair_violations: Vec::new(), // Will be resized after constraint preprocessing
+            should_together_violations: Vec::new(), // Will be resized after constraint preprocessing
             immovable_violations: 0,
             w_contacts,
             w_repetition,
             clique_weights: Vec::new(),
             forbidden_pair_weights: Vec::new(),
+            should_together_weights: Vec::new(),
             baseline_score,
             current_cost: 0.0,
         };
@@ -624,7 +636,7 @@ impl State {
             }
         }
 
-        // --- Process `MustStayTogether` (Cliques) and `ShouldNotBeTogether` (Forbidden Pairs) ---
+        // --- Process `MustStayTogether` (Cliques) and `ShouldNotBeTogether`/`ShouldStayTogether` (Pairs) ---
         // New session-aware preprocessing using per-session DSU ----------------------
         use std::collections::hash_map::{Entry, HashMap};
 
@@ -797,6 +809,63 @@ impl State {
             }
         }
 
+        // --- Process `ShouldStayTogether` (Soft Together Pairs) ---
+        for constraint in &input.constraints {
+            if let Constraint::ShouldStayTogether {
+                people,
+                penalty_weight,
+                sessions: constraint_sessions,
+            } = constraint
+            {
+                for i in 0..people.len() {
+                    for j in (i + 1)..people.len() {
+                        let p1_idx = *self.person_id_to_idx.get(&people[i]).unwrap();
+                        let p2_idx = *self.person_id_to_idx.get(&people[j]).unwrap();
+
+                        // Conflict check with existing ShouldNotBeTogether pairs
+                        if let Some((fp_idx, _)) =
+                            self.forbidden_pairs
+                                .iter()
+                                .enumerate()
+                                .find(|(_, &(a, b))| {
+                                    (a == p1_idx && b == p2_idx) || (a == p2_idx && b == p1_idx)
+                                })
+                        {
+                            // Sessions overlap?
+                            let f_sessions = &self.forbidden_pair_sessions[fp_idx];
+                            let s_sessions: Option<Vec<usize>> = constraint_sessions
+                                .as_ref()
+                                .map(|v| v.iter().map(|&s| s as usize).collect());
+                            let overlap = match (f_sessions, &s_sessions) {
+                                (None, _) | (_, None) => true,
+                                (Some(f), Some(s)) => f.iter().any(|x| s.contains(x)),
+                            };
+                            if overlap {
+                                return Err(SolverError::ValidationError(
+                                    "ShouldStayTogether constraint conflicts with existing ShouldNotBeTogether for the same pair in overlapping sessions".to_string(),
+                                ));
+                            }
+                        }
+
+                        // If these two are in a hard clique together anywhere applicable, it's redundant but not invalid
+                        // We still allow it; scoring will naturally give zero penalty when together.
+
+                        self.should_together_pairs.push((p1_idx, p2_idx));
+                        self.should_together_weights.push(*penalty_weight);
+
+                        // Convert sessions to indices if provided
+                        if let Some(sessions) = constraint_sessions {
+                            let session_indices: Vec<usize> =
+                                sessions.iter().map(|&s| s as usize).collect();
+                            self.should_together_sessions.push(Some(session_indices));
+                        } else {
+                            self.should_together_sessions.push(None); // Apply to all sessions
+                        }
+                    }
+                }
+            }
+        }
+
         // --- Process `ImmovablePerson` ---
         for constraint in &input.constraints {
             match constraint {
@@ -875,6 +944,7 @@ impl State {
         // Initialize constraint violation vectors with correct sizes
         self.clique_violations = vec![0; self.cliques.len()];
         self.forbidden_pair_violations = vec![0; self.forbidden_pairs.len()];
+        self.should_together_violations = vec![0; self.should_together_pairs.len()];
 
         // === Propagate immovable constraints to clique members ===
         // If a person in a clique is immovable on a session, all members of that clique
@@ -1132,6 +1202,31 @@ impl State {
             }
         }
 
+        // === SHOULD-TOGETHER PAIR VIOLATIONS ===
+        for (day_idx, _day_schedule) in self.schedule.iter().enumerate() {
+            for (pair_idx, &(p1, p2)) in self.should_together_pairs.iter().enumerate() {
+                // Check if this should-together pair applies to this session
+                if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
+                    if !sessions.contains(&day_idx) {
+                        continue; // Skip this constraint for this session
+                    }
+                }
+                // Only count when both participate
+                if !self.person_participation[p1][day_idx]
+                    || !self.person_participation[p2][day_idx]
+                {
+                    continue;
+                }
+
+                let (g1, _) = self.locations[day_idx][p1];
+                let (g2, _) = self.locations[day_idx][p2];
+                if g1 != g2 {
+                    self.weighted_constraint_penalty += self.should_together_weights[pair_idx];
+                    violation_count += 1;
+                }
+            }
+        }
+
         // === CLIQUE VIOLATIONS ===
         for (clique_idx, clique) in self.cliques.iter().enumerate() {
             for (day_idx, day_schedule) in self.schedule.iter().enumerate() {
@@ -1305,6 +1400,9 @@ impl State {
         for violation in &mut self.forbidden_pair_violations {
             *violation = 0;
         }
+        for violation in &mut self.should_together_violations {
+            *violation = 0;
+        }
         self.immovable_violations = 0;
 
         // Calculate forbidden pair violations
@@ -1381,6 +1479,29 @@ impl State {
             }
         }
 
+        // Calculate should-together pair violations (when separated)
+        for (day_idx, _day_schedule) in self.schedule.iter().enumerate() {
+            for (pair_idx, &(p1, p2)) in self.should_together_pairs.iter().enumerate() {
+                // Check if this should-together pair applies to this session
+                if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
+                    if !sessions.contains(&day_idx) {
+                        continue; // Skip this constraint for this session
+                    }
+                }
+                if !self.person_participation[p1][day_idx]
+                    || !self.person_participation[p2][day_idx]
+                {
+                    continue;
+                }
+
+                let (g1, _) = self.locations[day_idx][p1];
+                let (g2, _) = self.locations[day_idx][p2];
+                if g1 != g2 {
+                    self.should_together_violations[pair_idx] += 1;
+                }
+            }
+        }
+
         // Calculate immovable person violations
         for ((person_idx, session_idx), required_group_idx) in &self.immovable_people {
             // Only check immovable constraints for people who are participating
@@ -1395,6 +1516,7 @@ impl State {
         // Update the legacy constraint_penalty field for backward compatibility
         self.constraint_penalty = self.forbidden_pair_violations.iter().sum::<i32>()
             + self.clique_violations.iter().sum::<i32>()
+            + self.should_together_violations.iter().sum::<i32>()
             + self.immovable_violations;
     }
 
@@ -1732,7 +1854,7 @@ impl State {
             }
         }
 
-        // Hard Constraint Delta - Forbidden Pairs
+        // Constraint Delta - Forbidden Pairs
         for (pair_idx, &(p1, p2)) in self.forbidden_pairs.iter().enumerate() {
             // Check if this forbidden pair applies to this session
             if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
@@ -1783,6 +1905,61 @@ impl State {
             if next_g2_members.contains(&p1) && next_g2_members.contains(&p2) {
                 delta_cost += pair_weight;
             }
+        }
+
+        // Constraint Delta - ShouldStayTogether pairs
+        for (pair_idx, &(person1, person2)) in self.should_together_pairs.iter().enumerate() {
+            // Check if this should-together pair applies to this session
+            if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
+                if !sessions.contains(&day) {
+                    continue; // Skip this constraint for this session
+                }
+            }
+
+            // Check if both people are participating in this session
+            if !self.person_participation[person1][day] || !self.person_participation[person2][day]
+            {
+                continue; // Skip if either person is not participating
+            }
+
+            let pair_weight = self.should_together_weights[pair_idx];
+
+            // Old penalty: separated across g1 and g2
+            let p1_in_g1 = g1_members.contains(&person1);
+            let p1_in_g2 = g2_members.contains(&person1);
+            let p2_in_g1 = g1_members.contains(&person2);
+            let p2_in_g2 = g2_members.contains(&person2);
+            let old_penalty = if (p1_in_g1 && p2_in_g2) || (p1_in_g2 && p2_in_g1) {
+                pair_weight
+            } else {
+                0.0
+            };
+
+            // New penalty after swap
+            let mut next_g1_members: Vec<usize> = g1_members
+                .iter()
+                .filter(|&&p| p != p1_idx)
+                .cloned()
+                .collect();
+            next_g1_members.push(p2_idx);
+            let mut next_g2_members: Vec<usize> = g2_members
+                .iter()
+                .filter(|&&p| p != p2_idx)
+                .cloned()
+                .collect();
+            next_g2_members.push(p1_idx);
+
+            let new_p1_in_g1 = next_g1_members.contains(&person1);
+            let new_p1_in_g2 = next_g2_members.contains(&person1);
+            let new_p2_in_g1 = next_g1_members.contains(&person2);
+            let new_p2_in_g2 = next_g2_members.contains(&person2);
+            let new_penalty = if (new_p1_in_g1 && new_p2_in_g2) || (new_p1_in_g2 && new_p2_in_g1) {
+                pair_weight
+            } else {
+                0.0
+            };
+
+            delta_cost += new_penalty - old_penalty;
         }
 
         delta_cost
@@ -2521,6 +2698,18 @@ impl State {
             }
         }
 
+        // Should stay together violations
+        for (pair_idx, &violation_count) in self.should_together_violations.iter().enumerate() {
+            if violation_count > 0 {
+                let weight = self.should_together_weights[pair_idx];
+                breakdown.push_str(&format!(
+                    "\n  ShouldStayTogether[{}]: {} (weight: {:.1})",
+                    pair_idx, violation_count, weight
+                ));
+                has_constraints = true;
+            }
+        }
+
         // Clique violations
         for (clique_idx, &violation_count) in self.clique_violations.iter().enumerate() {
             if violation_count > 0 {
@@ -2772,6 +2961,38 @@ impl State {
             } else {
                 0.0 // Constraint satisfied in new state
             };
+
+            delta += new_penalty - old_penalty;
+        }
+
+        // Check ShouldStayTogether pairs
+        for (pair_idx, &(person1, person2)) in self.should_together_pairs.iter().enumerate() {
+            let pair_weight = self.should_together_weights[pair_idx];
+
+            // Old penalty: they are separated if each group contains exactly one of them
+            let old_penalty = if (from_group_members.contains(&person1)
+                && !from_group_members.contains(&person2)
+                && to_group_members.contains(&person2))
+                || (from_group_members.contains(&person2)
+                    && !from_group_members.contains(&person1)
+                    && to_group_members.contains(&person1))
+            {
+                pair_weight
+            } else {
+                0.0
+            };
+
+            // New penalty after swap-like move
+            let new_from_has_p1 = new_from_members.contains(&person1);
+            let new_from_has_p2 = new_from_members.contains(&person2);
+            let new_to_has_p1 = new_to_members.contains(&person1);
+            let new_to_has_p2 = new_to_members.contains(&person2);
+            let new_penalty =
+                if (new_from_has_p1 && new_to_has_p2) || (new_from_has_p2 && new_to_has_p1) {
+                    pair_weight
+                } else {
+                    0.0
+                };
 
             delta += new_penalty - old_penalty;
         }
@@ -3157,6 +3378,34 @@ impl State {
             let old_penalty = if currently_together { pair_weight } else { 0.0 };
             let new_penalty = if will_be_together { pair_weight } else { 0.0 };
 
+            delta_cost += new_penalty - old_penalty;
+        }
+
+        // Check should-stay-together pairs
+        for (pair_idx, &(other1, other2)) in self.should_together_pairs.iter().enumerate() {
+            // Check if this constraint applies to this session
+            if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
+                if !sessions.contains(&day) {
+                    continue;
+                }
+            }
+
+            let weight = self.should_together_weights[pair_idx];
+
+            // Only consider if moving person is part of this pair
+            if person_idx != other1 && person_idx != other2 {
+                continue;
+            }
+
+            let other_person = if person_idx == other1 { other2 } else { other1 };
+
+            // Check current separation state
+            let currently_together = from_group_members.contains(&other_person);
+            // After transfer, person moves to `to_group`
+            let will_be_together = to_group_members.contains(&other_person);
+
+            let old_penalty = if currently_together { 0.0 } else { weight };
+            let new_penalty = if will_be_together { 0.0 } else { weight };
             delta_cost += new_penalty - old_penalty;
         }
 

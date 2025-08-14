@@ -197,6 +197,7 @@ pub struct Objective {
 /// - **AttributeBalance**: Maintains desired attribute distributions within groups
 /// - **ImmovablePerson**: Fixes specific people to specific groups in specific sessions
 /// - **MustStayTogether**: Keeps certain people in the same group
+/// - **ShouldStayTogether**: Prefers certain people to be in the same group (soft)
 /// - **ShouldNotBeTogether**: Prevents certain people from being in the same group
 ///
 /// # Examples
@@ -254,6 +255,18 @@ pub enum Constraint {
         /// List of person IDs that must stay together
         people: Vec<String>,
         /// Penalty weight for violations (higher = more important)
+        #[serde(default = "default_constraint_weight")]
+        penalty_weight: f64,
+        /// Optional list of session indices where this constraint applies.
+        /// If `None`, applies to all sessions.
+        #[serde(default)]
+        sessions: Option<Vec<u32>>,
+    },
+    /// Prefers specified people to be in the same group (soft constraint)
+    ShouldStayTogether {
+        /// List of person IDs that should be together
+        people: Vec<String>,
+        /// Penalty weight when the people are not together
         #[serde(default = "default_constraint_weight")]
         penalty_weight: f64,
         /// Optional list of session indices where this constraint applies.

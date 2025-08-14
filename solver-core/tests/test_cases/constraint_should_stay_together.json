@@ -1,0 +1,47 @@
+{
+  "name": "ShouldStayTogether basic",
+  "input": {
+    "problem": {
+      "people": [
+        { "id": "A", "attributes": {} },
+        { "id": "B", "attributes": {} },
+        { "id": "C", "attributes": {} },
+        { "id": "D", "attributes": {} }
+      ],
+      "groups": [
+        { "id": "G1", "size": 2 },
+        { "id": "G2", "size": 2 }
+      ],
+      "num_sessions": 1
+    },
+    "objectives": [
+      { "type": "maximize_unique_contacts", "weight": 1.0 }
+    ],
+    "constraints": [
+      { "type": "ShouldStayTogether", "people": ["A", "B"], "penalty_weight": 500.0 }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": { "max_iterations": 3000 },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 50.0,
+        "final_temperature": 0.1,
+        "cooling_schedule": "geometric"
+      },
+      "logging": {
+        "log_frequency": 0,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false,
+        "log_initial_state": false
+      }
+    }
+  },
+  "expected": {
+    "should_stay_together_respected": true
+  }
+}
+
+
