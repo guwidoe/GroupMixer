@@ -81,6 +81,8 @@ export function SolverPanel() {
       log_initial_score_breakdown: true,
       log_final_score_breakdown: true,
       log_stop_condition: true,
+      debug_validate_invariants: false,
+      debug_dump_invariant_context: false,
     },
   });
 
@@ -1215,6 +1217,55 @@ export function SolverPanel() {
                 placeholder="0 = disabled"
               />
             </div>
+            {/* Debug options */}
+            <div>
+              <div className="flex items-center space-x-2 mb-1">
+                <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  Debug: Validate Invariants
+                </label>
+                <Tooltip content="Check for duplicate assignments after each accepted move. Expensive – for debugging only.">
+                  <Info className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
+                </Tooltip>
+              </div>
+              <label className="inline-flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <input
+                  type="checkbox"
+                  checked={!!solverSettings.logging?.debug_validate_invariants}
+                  onChange={(e) => handleSettingsChange({
+                    logging: {
+                      ...solverSettings.logging,
+                      debug_validate_invariants: e.target.checked,
+                    },
+                  })}
+                  disabled={solverState.isRunning}
+                />
+                Enable invariant validation
+              </label>
+            </div>
+            <div>
+              <div className="flex items-center space-x-2 mb-1">
+                <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  Debug: Dump Invariant Context
+                </label>
+                <Tooltip content="If an invariant fails, include move details and partial schedule in error output.">
+                  <Info className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
+                </Tooltip>
+              </div>
+              <label className="inline-flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <input
+                  type="checkbox"
+                  checked={!!solverSettings.logging?.debug_dump_invariant_context}
+                  onChange={(e) => handleSettingsChange({
+                    logging: {
+                      ...solverSettings.logging,
+                      debug_dump_invariant_context: e.target.checked,
+                    },
+                  })}
+                  disabled={solverState.isRunning}
+                />
+                Include detailed context on violation
+              </label>
+            </div>
           </div>
 
           {/* --- Custom Settings Start Button (inside settings panel) --- */}
@@ -1253,30 +1304,30 @@ export function SolverPanel() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-secondary)' }}>Initial Temperature:</span>
-                <span className="font-medium">{solverSettings.solver_params.SimulatedAnnealing?.initial_temperature || 1.0}</span>
+                <span className="font-medium">{displaySettings.solver_params.SimulatedAnnealing?.initial_temperature || 1.0}</span>
               </div>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-secondary)' }}>Final Temperature:</span>
-                <span className="font-medium">{solverSettings.solver_params.SimulatedAnnealing?.final_temperature || 0.01}</span>
+                <span className="font-medium">{displaySettings.solver_params.SimulatedAnnealing?.final_temperature || 0.01}</span>
               </div>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-secondary)' }}>Max Iterations:</span>
-                <span className="font-medium">{(solverSettings.stop_conditions.max_iterations || 0).toLocaleString()}</span>
+                <span className="font-medium">{(displaySettings.stop_conditions.max_iterations || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-secondary)' }}>Time Limit:</span>
-                <span className="font-medium">{solverSettings.stop_conditions.time_limit_seconds || 0}s</span>
+                <span className="font-medium">{displaySettings.stop_conditions.time_limit_seconds || 0}s</span>
               </div>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-secondary)' }}>No Improvement Limit:</span>
-                <span className="font-medium">{(solverSettings.stop_conditions.no_improvement_iterations || 0).toLocaleString()}</span>
+                <span className="font-medium">{(displaySettings.stop_conditions.no_improvement_iterations || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-secondary)' }}>Reheat After:</span>
                 <span className="font-medium">
-                  {(solverSettings.solver_params.SimulatedAnnealing?.reheat_after_no_improvement || 0) === 0 
+                  {(displaySettings.solver_params.SimulatedAnnealing?.reheat_after_no_improvement || 0) === 0 
                     ? 'Disabled' 
-                    : (solverSettings.solver_params.SimulatedAnnealing?.reheat_after_no_improvement || 0).toLocaleString()
+                    : (displaySettings.solver_params.SimulatedAnnealing?.reheat_after_no_improvement || 0).toLocaleString()
                   }
                 </span>
               </div>

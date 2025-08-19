@@ -882,8 +882,39 @@ impl Solver for SimulatedAnnealing {
                 let clique_idx = rng.random_range(0..current_state.cliques.len());
                 let clique = &current_state.cliques[clique_idx];
 
-                // Find which group the clique is currently in
-                let current_group = current_state.locations[day][clique[0]].0;
+                // Determine a source group containing the majority of active (participating) members
+                // of this clique for the selected day
+                let mut group_counts: std::collections::HashMap<usize, usize> =
+                    std::collections::HashMap::new();
+                let mut first_participating_group: Option<usize> = None;
+                for &m in clique.iter() {
+                    if current_state.person_participation[m][day] {
+                        let g = current_state.locations[day][m].0;
+                        *group_counts.entry(g).or_insert(0) += 1;
+                        if first_participating_group.is_none() {
+                            first_participating_group = Some(g);
+                        }
+                    }
+                }
+
+                let current_group =
+                    if let Some((&g, _)) = group_counts.iter().max_by_key(|(_, &cnt)| cnt) {
+                        g
+                    } else if let Some(g) = first_participating_group {
+                        g
+                    } else {
+                        continue; // No active members this day
+                    };
+
+                // Count active members actually in current_group
+                let active_count = clique
+                    .iter()
+                    .filter(|&&m| current_state.person_participation[m][day])
+                    .filter(|&&m| current_state.locations[day][m].0 == current_group)
+                    .count();
+                if active_count == 0 {
+                    continue;
+                }
 
                 // Find a different group to swap with
                 let num_groups = current_state.group_idx_to_id.len();
@@ -900,11 +931,11 @@ impl Solver for SimulatedAnnealing {
                     let mut non_clique_people =
                         current_state.find_non_clique_movable_people(day, target_group);
 
-                    if non_clique_people.len() >= clique.len() {
-                        // Randomly select exactly clique.len() people to swap
+                    if non_clique_people.len() >= active_count {
+                        // Randomly select exactly active_count people to swap
                         non_clique_people.shuffle(&mut rng);
                         let target_people: Vec<usize> =
-                            non_clique_people.into_iter().take(clique.len()).collect();
+                            non_clique_people.into_iter().take(active_count).collect();
 
                         // Calculate delta cost for clique swap
                         let delta_cost = current_state.calculate_clique_swap_cost_delta(
@@ -933,6 +964,40 @@ impl Solver for SimulatedAnnealing {
 
                             // Since apply_clique_swap does a full recalculation, we need to get the actual cost
                             let actual_current_cost = current_state.current_cost;
+
+                            // Optional invariant check after applying move
+                            if state.logging.debug_validate_invariants {
+                                if let Err(e) = current_state.validate_no_duplicate_assignments() {
+                                    if state.logging.debug_dump_invariant_context {
+                                        println!("INVARIANT VIOLATION CONTEXT:");
+                                        println!("  Iteration: {}", i);
+                                        println!("  Move: CLIQUE_SWAP day={} clique_idx={} from_group={} to_group={} swapped_out={}",
+                                            day,
+                                            clique_idx,
+                                            state.group_idx_to_id[current_group].clone(),
+                                            state.group_idx_to_id[target_group].clone(),
+                                            target_people.len()
+                                        );
+                                        for (g_idx, g) in
+                                            current_state.schedule[day].iter().enumerate().take(4)
+                                        {
+                                            let names: Vec<String> = g
+                                                .iter()
+                                                .map(|&pid| {
+                                                    current_state.display_person_by_idx(pid)
+                                                })
+                                                .collect();
+                                            println!(
+                                                "    group {} ({}): {:?}",
+                                                g_idx,
+                                                current_state.group_idx_to_id[g_idx].clone(),
+                                                names
+                                            );
+                                        }
+                                    }
+                                    return Err(e);
+                                }
+                            }
 
                             if actual_current_cost < best_cost {
                                 best_cost = actual_current_cost;
@@ -987,6 +1052,40 @@ impl Solver for SimulatedAnnealing {
 
                             current_state.current_cost = next_cost;
 
+                            // Optional invariant check after applying move
+                            if state.logging.debug_validate_invariants {
+                                if let Err(e) = current_state.validate_no_duplicate_assignments() {
+                                    if state.logging.debug_dump_invariant_context {
+                                        println!("INVARIANT VIOLATION CONTEXT:");
+                                        println!("  Iteration: {}", i);
+                                        println!(
+                                            "  Move: TRANSFER day={} person={} from={} to={}",
+                                            day,
+                                            current_state.display_person_by_idx(person_idx),
+                                            state.group_idx_to_id[from_group].clone(),
+                                            state.group_idx_to_id[to_group].clone()
+                                        );
+                                        for (g_idx, g) in
+                                            current_state.schedule[day].iter().enumerate().take(4)
+                                        {
+                                            let names: Vec<String> = g
+                                                .iter()
+                                                .map(|&pid| {
+                                                    current_state.display_person_by_idx(pid)
+                                                })
+                                                .collect();
+                                            println!(
+                                                "    group {} ({}): {:?}",
+                                                g_idx,
+                                                current_state.group_idx_to_id[g_idx].clone(),
+                                                names
+                                            );
+                                        }
+                                    }
+                                    return Err(e);
+                                }
+                            }
+
                             if next_cost < best_cost {
                                 best_cost = next_cost;
                                 best_state = current_state.clone();
@@ -1036,6 +1135,38 @@ impl Solver for SimulatedAnnealing {
 
                     current_state.apply_swap(day, p1_idx, p2_idx);
                     current_state.current_cost = next_cost;
+
+                    // Optional invariant check after applying move
+                    if state.logging.debug_validate_invariants {
+                        if let Err(e) = current_state.validate_no_duplicate_assignments() {
+                            if state.logging.debug_dump_invariant_context {
+                                println!("INVARIANT VIOLATION CONTEXT:");
+                                println!("  Iteration: {}", i);
+                                println!(
+                                    "  Move: SWAP day={} p1={} p2={}",
+                                    day,
+                                    current_state.display_person_by_idx(p1_idx),
+                                    current_state.display_person_by_idx(p2_idx)
+                                );
+                                println!("  After move (first 3 groups of day):");
+                                for (g_idx, g) in
+                                    current_state.schedule[day].iter().enumerate().take(3)
+                                {
+                                    let names: Vec<String> = g
+                                        .iter()
+                                        .map(|&pid| current_state.display_person_by_idx(pid))
+                                        .collect();
+                                    println!(
+                                        "    group {} ({}): {:?}",
+                                        g_idx,
+                                        current_state.group_idx_to_id[g_idx].clone(),
+                                        names
+                                    );
+                                }
+                            }
+                            return Err(e);
+                        }
+                    }
 
                     if next_cost < best_cost {
                         best_cost = next_cost;

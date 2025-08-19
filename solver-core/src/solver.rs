@@ -214,7 +214,7 @@ pub struct State {
 impl State {
     /// Returns a human-friendly identifier for a person index.
     /// If the person has a `name` attribute, this returns "{name} ({id})"; otherwise just the ID.
-    fn display_person_by_idx(&self, person_idx: usize) -> String {
+    pub fn display_person_by_idx(&self, person_idx: usize) -> String {
         let id_str = &self.person_idx_to_id[person_idx];
         if let Some(&name_attr_idx) = self.attr_key_to_idx.get("name") {
             let name_val_idx = self.person_attributes[person_idx][name_attr_idx];
@@ -233,7 +233,7 @@ impl State {
 
     /// Returns a human-friendly identifier for a person by ID string.
     /// If the person exists and has a `name` attribute, returns "{name} ({id})"; otherwise returns the ID.
-    fn display_person_id(&self, person_id: &str) -> String {
+    pub fn display_person_id(&self, person_id: &str) -> String {
         if let Some(&p_idx) = self.person_id_to_idx.get(person_id) {
             return self.display_person_by_idx(p_idx);
         }
@@ -2568,6 +2568,62 @@ impl State {
         }
     }
 
+    /// Validates that no person is assigned more than once per session.
+    /// Returns `Ok(())` if valid, otherwise returns a `ValidationError` with details.
+    pub fn validate_no_duplicate_assignments(&self) -> Result<(), SolverError> {
+        use std::collections::HashMap;
+        for session_idx in 0..self.num_sessions as usize {
+            let mut occurrences: HashMap<usize, Vec<(usize, usize)>> = HashMap::new();
+            for (g_idx, group_people) in self.schedule[session_idx].iter().enumerate() {
+                for (pos, &p_idx) in group_people.iter().enumerate() {
+                    occurrences.entry(p_idx).or_default().push((g_idx, pos));
+                }
+            }
+            for (&p_idx, slots) in &occurrences {
+                if slots.len() > 1 {
+                    let mut msg = format!(
+                        "Duplicate assignment detected: person {} appears multiple times in session {}",
+                        self.display_person_by_idx(p_idx),
+                        session_idx
+                    );
+                    if self.logging.debug_dump_invariant_context {
+                        use std::fmt::Write as _;
+                        // slots
+                        let _ = write!(&mut msg, "\nSlots:");
+                        for (g_idx, pos) in slots {
+                            let _ = write!(
+                                &mut msg,
+                                "\n  - group {} (idx {}) pos {}",
+                                self.group_idx_to_id[*g_idx], g_idx, pos
+                            );
+                        }
+                        // locations
+                        let loc = self.locations[session_idx][p_idx];
+                        let _ = write!(
+                            &mut msg,
+                            "\nlocations says: (group_idx={} pos={})",
+                            loc.0, loc.1
+                        );
+                        // dump session groups
+                        for (g_idx, group_people) in self.schedule[session_idx].iter().enumerate() {
+                            let names: Vec<String> = group_people
+                                .iter()
+                                .map(|&pid| self.display_person_by_idx(pid))
+                                .collect();
+                            let _ = write!(
+                                &mut msg,
+                                "\n  group {} ({}): {:?}",
+                                g_idx, self.group_idx_to_id[g_idx], names
+                            );
+                        }
+                    }
+                    return Err(SolverError::ValidationError(msg));
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Formats a detailed breakdown of the current solution's scoring components.
     ///
     /// This method generates a human-readable string that shows how the current
@@ -2821,14 +2877,33 @@ impl State {
         &self,
         day: usize,
         clique_idx: usize,
-        _from_group: usize,
+        from_group: usize,
         to_group: usize,
     ) -> bool {
         let clique = &self.cliques[clique_idx];
-        let non_clique_people_in_to_group = self.find_non_clique_movable_people(day, to_group);
+        // Active members are those participating this day and currently in from_group
+        let active_members: Vec<usize> = clique
+            .iter()
+            .cloned()
+            .filter(|&m| self.person_participation[m][day])
+            .filter(|&m| self.locations[day][m].0 == from_group)
+            .collect();
 
-        // Need at least as many non-clique people in target group as clique size
-        non_clique_people_in_to_group.len() >= clique.len()
+        if active_members.is_empty() {
+            return false;
+        }
+
+        // Ensure all active members are actually co-located in from_group
+        if !active_members
+            .iter()
+            .all(|&m| self.locations[day][m].0 == from_group)
+        {
+            return false;
+        }
+
+        // Need at least as many non-clique movable people in target group as active clique size
+        let non_clique_people_in_to_group = self.find_non_clique_movable_people(day, to_group);
+        non_clique_people_in_to_group.len() >= active_members.len()
     }
 
     /// Calculate the cost delta for swapping a clique with non-clique people
@@ -2841,16 +2916,15 @@ impl State {
         target_people: &[usize],
     ) -> f64 {
         let clique = &self.cliques[clique_idx];
-
-        // Filter clique to only participating members for this session
-        let participating_clique: Vec<usize> = clique
+        // Active members are participating and currently in from_group
+        let active_members: Vec<usize> = clique
             .iter()
-            .filter(|&&member| self.person_participation[member][day])
             .cloned()
+            .filter(|&member| self.person_participation[member][day])
+            .filter(|&member| self.locations[day][member].0 == from_group)
             .collect();
 
-        // Check if enough participating clique members to make swap meaningful
-        if participating_clique.is_empty() {
+        if active_members.is_empty() {
             return f64::INFINITY; // No participating clique members
         }
 
@@ -2864,8 +2938,8 @@ impl State {
 
         let mut delta_cost = 0.0;
 
-        // Calculate contact/repetition delta for participating clique members only
-        for &clique_member in &participating_clique {
+        // Calculate contact/repetition delta for active members only
+        for &clique_member in &active_members {
             for &target_person in target_people {
                 // Current contacts between clique member and target person
                 let current_contacts = self.contact_matrix[clique_member][target_person];
@@ -2893,9 +2967,7 @@ impl State {
             // Lost contacts with people remaining in from_group
             let from_group_members = &self.schedule[day][from_group];
             for &remaining_member in from_group_members {
-                if remaining_member == clique_member
-                    || participating_clique.contains(&remaining_member)
-                {
+                if remaining_member == clique_member || active_members.contains(&remaining_member) {
                     continue;
                 }
                 // Only consider participating members
@@ -2925,14 +2997,14 @@ impl State {
             day,
             from_group,
             to_group,
-            &participating_clique,
+            &active_members,
             target_people,
         );
 
-        // Add constraint penalty delta for participating members only
+        // Add constraint penalty delta for active members only
         delta_cost += self.calculate_clique_swap_constraint_penalty_delta(
             day,
-            &participating_clique,
+            &active_members,
             target_people,
             from_group,
             to_group,
@@ -3125,28 +3197,104 @@ impl State {
         to_group: usize,
         target_people: &[usize],
     ) {
-        let clique = self.cliques[clique_idx].clone(); // Clone to avoid borrow checker issues
+        let clique_all = self.cliques[clique_idx].clone();
+        // Determine active clique members for this day located in from_group
+        let active_members: Vec<usize> = clique_all
+            .iter()
+            .cloned()
+            .filter(|&m| self.person_participation[m][day])
+            .filter(|&m| self.locations[day][m].0 == from_group)
+            .collect();
 
-        if clique.len() != target_people.len() {
-            return; // Invalid swap, should not happen if prechecked
+        if active_members.is_empty() {
+            return;
         }
 
-        // Update the schedule by removing and adding people to groups
-        // Remove clique members from from_group
-        self.schedule[day][from_group].retain(|&p| !clique.contains(&p));
-        // Remove target people from to_group
-        self.schedule[day][to_group].retain(|&p| !target_people.contains(&p));
+        if active_members.len() != target_people.len() {
+            return; // sizes must match
+        }
 
-        // Add target people to from_group
-        self.schedule[day][from_group].extend_from_slice(target_people);
-        // Add clique members to to_group
-        self.schedule[day][to_group].extend_from_slice(&clique);
+        // Rebuild groups deterministically to avoid duplicates
+        let old_from = self.schedule[day][from_group].clone();
+        let old_to = self.schedule[day][to_group].clone();
 
-        // Update locations lookup
-        self._recalculate_locations_from_schedule();
+        let mut new_from: Vec<usize> = old_from
+            .into_iter()
+            .filter(|p| !active_members.contains(p))
+            .collect();
+        new_from.extend_from_slice(target_people);
 
-        // Recalculate all scores for accuracy (clique swaps are complex, so we use full recalc)
+        let mut new_to: Vec<usize> = old_to
+            .into_iter()
+            .filter(|p| !target_people.contains(p))
+            .collect();
+        new_to.extend_from_slice(&active_members);
+
+        // In debug mode, assert sizes preserved and no duplicates within each group
+        if self.logging.debug_validate_invariants {
+            if self.logging.debug_dump_invariant_context {
+                // Check for duplicates within groups
+                let mut seen = std::collections::HashSet::new();
+                for &p in &new_from {
+                    if !seen.insert(p) {
+                        eprintln!(
+                            "[DEBUG] Duplicate in new_from: {}",
+                            self.display_person_by_idx(p)
+                        );
+                    }
+                }
+                seen.clear();
+                for &p in &new_to {
+                    if !seen.insert(p) {
+                        eprintln!(
+                            "[DEBUG] Duplicate in new_to: {}",
+                            self.display_person_by_idx(p)
+                        );
+                    }
+                }
+            }
+            // Expect cardinality preserved
+            debug_assert_eq!(
+                new_from.len(),
+                self.schedule[day][from_group].len() - active_members.len() + target_people.len()
+            );
+            debug_assert_eq!(
+                new_to.len(),
+                self.schedule[day][to_group].len() - target_people.len() + active_members.len()
+            );
+        }
+
+        self.schedule[day][from_group] = new_from;
+        self.schedule[day][to_group] = new_to;
+
+        // Update locations for all people in these two groups
+        for (pos, &pid) in self.schedule[day][from_group].iter().enumerate() {
+            self.locations[day][pid] = (from_group, pos);
+        }
+        for (pos, &pid) in self.schedule[day][to_group].iter().enumerate() {
+            self.locations[day][pid] = (to_group, pos);
+        }
+
+        // Recalculate scores (clique swap touches many structures)
         self._recalculate_scores();
+
+        // Session-wide invariant check (debug only)
+        if self.logging.debug_validate_invariants {
+            if let Err(e) = self.validate_no_duplicate_assignments() {
+                if self.logging.debug_dump_invariant_context {
+                    eprintln!(
+                        "[DEBUG] Invariant failed after clique swap day={} from={} to={} moved_clique_size={} target_size={}",
+                        day,
+                        self.group_idx_to_id[from_group],
+                        self.group_idx_to_id[to_group],
+                        active_members.len(),
+                        target_people.len()
+                    );
+                }
+                // Surface error up-stack on next algorithm-side check
+                let _ = e; // no-op here; algorithm already checks after call
+            }
+        }
     }
 
     // === SINGLE PERSON TRANSFER FUNCTIONALITY ===
@@ -3528,19 +3676,43 @@ impl State {
         }
 
         // === UPDATE SCHEDULE AND LOCATIONS ===
-        // Remove person from from_group
-        self.schedule[day][from_group].retain(|&p| p != person_idx);
+        // Deterministic rebuild to avoid duplicates
+        let old_from = std::mem::take(&mut self.schedule[day][from_group]);
+        let old_to = std::mem::take(&mut self.schedule[day][to_group]);
+        let new_from: Vec<usize> = old_from.into_iter().filter(|&p| p != person_idx).collect();
+        let mut new_to = old_to;
+        new_to.push(person_idx);
 
-        // Add person to to_group
-        self.schedule[day][to_group].push(person_idx);
+        if self.logging.debug_validate_invariants && self.logging.debug_dump_invariant_context {
+            let mut seen = std::collections::HashSet::new();
+            for &p in &new_from {
+                if !seen.insert(p) {
+                    eprintln!(
+                        "[DEBUG] Duplicate in transfer new_from: {}",
+                        self.display_person_by_idx(p)
+                    );
+                }
+            }
+            seen.clear();
+            for &p in &new_to {
+                if !seen.insert(p) {
+                    eprintln!(
+                        "[DEBUG] Duplicate in transfer new_to: {}",
+                        self.display_person_by_idx(p)
+                    );
+                }
+            }
+        }
 
-        // Update locations lookup
-        let new_position = self.schedule[day][to_group].len() - 1;
-        self.locations[day][person_idx] = (to_group, new_position);
+        self.schedule[day][from_group] = new_from;
+        self.schedule[day][to_group] = new_to;
 
-        // Update positions for remaining people in from_group
-        for (pos, &person) in self.schedule[day][from_group].iter().enumerate() {
-            self.locations[day][person] = (from_group, pos);
+        // Update locations lookup for both groups
+        for (pos, &pid) in self.schedule[day][from_group].iter().enumerate() {
+            self.locations[day][pid] = (from_group, pos);
+        }
+        for (pos, &pid) in self.schedule[day][to_group].iter().enumerate() {
+            self.locations[day][pid] = (to_group, pos);
         }
 
         // === UPDATE ATTRIBUTE BALANCE PENALTY ===
@@ -3576,6 +3748,22 @@ impl State {
 
         // === UPDATE CONSTRAINT PENALTIES ===
         self._recalculate_constraint_penalty();
+
+        // Debug-only final invariant check for the whole session
+        if self.logging.debug_validate_invariants {
+            if let Err(e) = self.validate_no_duplicate_assignments() {
+                if self.logging.debug_dump_invariant_context {
+                    eprintln!(
+                        "[DEBUG] Invariant failed after transfer day={} person={} from={} to={}",
+                        day,
+                        self.display_person_by_idx(person_idx),
+                        self.group_idx_to_id[from_group],
+                        self.group_idx_to_id[to_group]
+                    );
+                }
+                let _ = e;
+            }
+        }
     }
 }
 

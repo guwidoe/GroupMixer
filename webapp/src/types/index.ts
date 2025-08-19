@@ -112,6 +112,9 @@ export interface LoggingOptions {
   log_initial_score_breakdown?: boolean;
   log_final_score_breakdown?: boolean;
   log_stop_condition?: boolean;
+  // Debug options (expensive – use only when diagnosing issues)
+  debug_validate_invariants?: boolean;
+  debug_dump_invariant_context?: boolean;
 }
 
 export interface Solution {

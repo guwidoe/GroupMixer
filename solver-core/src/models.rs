@@ -579,6 +579,17 @@ pub struct LoggingOptions {
     /// Whether to log the reason why optimization stopped
     #[serde(default)]
     pub log_stop_condition: bool,
+
+    /// When enabled, the solver performs invariant checks after each applied move.
+    /// This is expensive and intended only for debugging.
+    #[serde(default)]
+    pub debug_validate_invariants: bool,
+
+    /// When enabled alongside `debug_validate_invariants`, the solver will include
+    /// detailed context (attempted move description and before/after schedules)
+    /// in any invariant violation error.
+    #[serde(default)]
+    pub debug_dump_invariant_context: bool,
 }
 
 /// Progress update sent during solver execution.
