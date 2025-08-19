@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Plus, Edit, Trash2, Clock } from 'lucide-react';
 import type { Constraint, Person } from '../../types';
-import PersonCard from '../PersonCard';
+// PersonCard removed in favor of ConstraintPersonChip
+import ConstraintPersonChip from '../ConstraintPersonChip';
 import { useAppStore } from '../../store';
 
 interface Props {
@@ -229,10 +230,25 @@ function HardConstraintsPanel({ onAddConstraint, onEditConstraint, onDeleteConst
                       <div className="flex flex-wrap items-center gap-1">
                         <span>People:</span>
                         {constraint.people.map((pid: string, idx: number) => {
-                          const per = problem.people.find((p: Person) => p.id === pid);
                           return (
                             <React.Fragment key={pid}>
-                              {per ? <PersonCard person={per} /> : <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{pid}</span>}
+                              <ConstraintPersonChip
+                                personId={pid}
+                                people={problem.people}
+                                onRemove={(removeId) => {
+                                  const newPeople = constraint.people.filter(p => p !== removeId);
+                                  // ImmovablePeople requires at least 1 person to remain; if none, remove entire constraint
+                                  const willBeInvalid = newPeople.length === 0;
+                                  if (willBeInvalid) {
+                                    if (!window.confirm('Removing this person will leave the constraint empty. Remove the entire constraint?')) return;
+                                    const nextConstraints = problem.constraints.filter((_, i2) => i2 !== index);
+                                    useAppStore.getState().setProblem({ ...problem, constraints: nextConstraints });
+                                    return;
+                                  }
+                                  const updated = problem.constraints.map((cst, i2) => i2 === index ? ({ ...cst, people: newPeople } as Constraint) : cst);
+                                  useAppStore.getState().setProblem({ ...problem, constraints: updated });
+                                }}
+                              />
                               {idx < constraint.people.length - 1 && <span></span>}
                             </React.Fragment>
                           );
@@ -252,10 +268,25 @@ function HardConstraintsPanel({ onAddConstraint, onEditConstraint, onDeleteConst
                       <div className="flex flex-wrap items-center gap-1">
                         <span>People:</span>
                         {constraint.people.map((pid: string, idx: number) => {
-                          const per = problem.people.find((p: Person) => p.id === pid);
                           return (
                             <React.Fragment key={pid}>
-                              {per ? <PersonCard person={per} /> : <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{pid}</span>}
+                              <ConstraintPersonChip
+                                personId={pid}
+                                people={problem.people}
+                                onRemove={(removeId) => {
+                                  const newPeople = constraint.people.filter(p => p !== removeId);
+                                  // MustStayTogether requires at least 2 people; if <2, confirm deletion of entire constraint
+                                  const willBeInvalid = newPeople.length < 2;
+                                  if (willBeInvalid) {
+                                    if (!window.confirm('Removing this person will leave the clique invalid (needs at least two people). Remove the entire constraint?')) return;
+                                    const nextConstraints = problem.constraints.filter((_, i2) => i2 !== index);
+                                    useAppStore.getState().setProblem({ ...problem, constraints: nextConstraints });
+                                    return;
+                                  }
+                                  const updated = problem.constraints.map((cst, i2) => i2 === index ? ({ ...cst, people: newPeople } as Constraint) : cst);
+                                  useAppStore.getState().setProblem({ ...problem, constraints: updated });
+                                }}
+                              />
                               {idx < constraint.people.length - 1 && <span></span>}
                             </React.Fragment>
                           );

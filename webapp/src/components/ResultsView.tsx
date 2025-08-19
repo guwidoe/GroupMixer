@@ -180,6 +180,29 @@ export function ResultsView() {
           });
           return { constraint: c, adheres: violations === 0, violations };
         }
+        case 'ShouldStayTogether': {
+          const sessions = c.sessions ?? Array.from({ length: problemConfig.num_sessions }, (_, i) => i);
+          let violations = 0;
+          sessions.forEach(session => {
+            const groupIdSet = new Set<string>();
+            c.people.forEach(pid => {
+              let assignedGroup: string | undefined;
+              const groups = schedule[session];
+              if (groups) {
+                for (const [gid, ids] of Object.entries(groups)) {
+                  if (ids.includes(pid)) {
+                    assignedGroup = gid;
+                    break;
+                  }
+                }
+              }
+              if (assignedGroup) groupIdSet.add(assignedGroup);
+              else violations += 1; // person not assigned in this session
+            });
+            if (groupIdSet.size > 1) violations += groupIdSet.size - 1;
+          });
+          return { constraint: c, adheres: violations === 0, violations };
+        }
         case 'AttributeBalance': {
           let violations = 0;
           const sessionsToCheck = c.sessions ?? Array.from({ length: problemConfig.num_sessions }, (_, i) => i);
@@ -435,6 +458,23 @@ export function ResultsView() {
         return (
           <>
             Should Not Be Together (
+            {constraint.people.map((pid: string, idx: number) => {
+              const person = getPersonById(pid);
+              return (
+                <React.Fragment key={pid}>
+                  {idx > 0 && ''}
+                  {person ? <PersonCard person={person} /> : pid}
+                </React.Fragment>
+              );
+            })}
+            )
+          </>
+        );
+      }
+      case 'ShouldStayTogether': {
+        return (
+          <>
+            Should Stay Together (
             {constraint.people.map((pid: string, idx: number) => {
               const person = getPersonById(pid);
               return (

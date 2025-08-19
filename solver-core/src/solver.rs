@@ -212,6 +212,33 @@ pub struct State {
 }
 
 impl State {
+    /// Returns a human-friendly identifier for a person index.
+    /// If the person has a `name` attribute, this returns "{name} ({id})"; otherwise just the ID.
+    fn display_person_by_idx(&self, person_idx: usize) -> String {
+        let id_str = &self.person_idx_to_id[person_idx];
+        if let Some(&name_attr_idx) = self.attr_key_to_idx.get("name") {
+            let name_val_idx = self.person_attributes[person_idx][name_attr_idx];
+            if name_val_idx != usize::MAX {
+                if let Some(name_str) = self
+                    .attr_idx_to_val
+                    .get(name_attr_idx)
+                    .and_then(|v| v.get(name_val_idx))
+                {
+                    return format!("{} ({})", name_str, id_str);
+                }
+            }
+        }
+        id_str.clone()
+    }
+
+    /// Returns a human-friendly identifier for a person by ID string.
+    /// If the person exists and has a `name` attribute, returns "{name} ({id})"; otherwise returns the ID.
+    fn display_person_id(&self, person_id: &str) -> String {
+        if let Some(&p_idx) = self.person_id_to_idx.get(person_id) {
+            return self.display_person_by_idx(p_idx);
+        }
+        person_id.to_string()
+    }
     /// Creates a new solver state from the API input configuration.
     ///
     /// This constructor performs several important tasks:
@@ -708,8 +735,9 @@ impl State {
                 for &m in members {
                     if self.person_to_clique_id[session_idx][m].is_some() {
                         return Err(SolverError::ValidationError(format!(
-                            "Person '{}' is part of multiple cliques in session {}.",
-                            self.person_idx_to_id[m], session_idx
+                            "Person {} is part of multiple cliques in session {}.",
+                            self.display_person_by_idx(m),
+                            session_idx
                         )));
                     }
                     self.person_to_clique_id[session_idx][m] = Some(cid);
@@ -744,8 +772,18 @@ impl State {
             {
                 for i in 0..people.len() {
                     for j in (i + 1)..people.len() {
-                        let p1_idx = *self.person_id_to_idx.get(&people[i]).unwrap();
-                        let p2_idx = *self.person_id_to_idx.get(&people[j]).unwrap();
+                        let p1_idx = *self.person_id_to_idx.get(&people[i]).ok_or_else(|| {
+                            SolverError::ValidationError(format!(
+                                "ShouldNotBeTogether references unknown person {}",
+                                self.display_person_id(&people[i])
+                            ))
+                        })?;
+                        let p2_idx = *self.person_id_to_idx.get(&people[j]).ok_or_else(|| {
+                            SolverError::ValidationError(format!(
+                                "ShouldNotBeTogether references unknown person {}",
+                                self.display_person_id(&people[j])
+                            ))
+                        })?;
 
                         // Check for conflict with cliques
                         if let (Some(c1), Some(c2)) = (
@@ -755,7 +793,7 @@ impl State {
                             if c1 == c2 {
                                 let clique_member_ids: Vec<String> = self.cliques[c1]
                                     .iter()
-                                    .map(|id| self.person_idx_to_id[*id].clone())
+                                    .map(|&idx| self.display_person_by_idx(idx))
                                     .collect();
                                 return Err(SolverError::ValidationError(format!(
                                     "ShouldNotBeTogether constraint conflicts with MustStayTogether: people {:?} are in the same clique {:?}",
@@ -780,7 +818,7 @@ impl State {
                                 if c1 == c2 {
                                     let clique_member_ids: Vec<String> = self.cliques[c1]
                                         .iter()
-                                        .map(|id| self.person_idx_to_id[*id].clone())
+                                        .map(|&idx| self.display_person_by_idx(idx))
                                         .collect();
                                     return Err(SolverError::ValidationError(format!(
                                         "ShouldNotBeTogether constraint conflicts with MustStayTogether in session {}: people {:?} are in the same clique {:?}",
@@ -816,8 +854,18 @@ impl State {
             {
                 for i in 0..people.len() {
                     for j in (i + 1)..people.len() {
-                        let p1_idx = *self.person_id_to_idx.get(&people[i]).unwrap();
-                        let p2_idx = *self.person_id_to_idx.get(&people[j]).unwrap();
+                        let p1_idx = *self.person_id_to_idx.get(&people[i]).ok_or_else(|| {
+                            SolverError::ValidationError(format!(
+                                "ShouldStayTogether references unknown person {}",
+                                self.display_person_id(&people[i])
+                            ))
+                        })?;
+                        let p2_idx = *self.person_id_to_idx.get(&people[j]).ok_or_else(|| {
+                            SolverError::ValidationError(format!(
+                                "ShouldStayTogether references unknown person {}",
+                                self.display_person_id(&people[j])
+                            ))
+                        })?;
 
                         // Conflict check with existing ShouldNotBeTogether pairs
                         if let Some((fp_idx, _)) =
@@ -872,8 +920,8 @@ impl State {
                         .get(&params.person_id)
                         .ok_or_else(|| {
                             SolverError::ValidationError(format!(
-                                "Person '{}' not found.",
-                                params.person_id
+                                "Person {} not found.",
+                                self.display_person_id(&params.person_id)
                             ))
                         })?;
                     let g_idx = self.group_id_to_idx.get(&params.group_id).ok_or_else(|| {
@@ -893,7 +941,8 @@ impl State {
                         if s_idx >= self.num_sessions as usize {
                             return Err(SolverError::ValidationError(format!(
                                 "Session index {} out of bounds for immovable person {}.",
-                                s_idx, params.person_id
+                                s_idx,
+                                self.display_person_id(&params.person_id)
                             )));
                         }
                         self.immovable_people.insert((*p_idx, s_idx), *g_idx);
@@ -917,8 +966,8 @@ impl State {
                     for person_id in &params.people {
                         let p_idx = self.person_id_to_idx.get(person_id).ok_or_else(|| {
                             SolverError::ValidationError(format!(
-                                "Person '{}' not found.",
-                                person_id
+                                "Person {} not found.",
+                                self.display_person_id(person_id)
                             ))
                         })?;
 
@@ -927,7 +976,8 @@ impl State {
                             if s_idx >= self.num_sessions as usize {
                                 return Err(SolverError::ValidationError(format!(
                                     "Session index {} out of bounds for immovable person {}.",
-                                    s_idx, person_id
+                                    s_idx,
+                                    self.display_person_id(person_id)
                                 )));
                             }
                             self.immovable_people.insert((*p_idx, s_idx), *g_idx);
@@ -959,8 +1009,8 @@ impl State {
                     if let Some(prev_grp) = expanded_immovable.insert(key, required_group) {
                         if prev_grp != required_group {
                             return Err(SolverError::ValidationError(format!(
-                                "Person '{}' has conflicting immovable assignments in session {} (groups '{}' vs '{}')",
-                                self.person_idx_to_id[member],
+                                "Person {} has conflicting immovable assignments in session {} (groups '{}' vs '{}')",
+                                self.display_person_by_idx(member),
                                 session_idx,
                                 self.group_idx_to_id[prev_grp],
                                 self.group_idx_to_id[required_group]

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Plus, Edit, Trash2, Clock } from 'lucide-react';
-import type { Constraint, Person } from '../../types';
+import type { Constraint } from '../../types';
 import { useAppStore } from '../../store';
 import AttributeBalanceDashboard from '../AttributeBalanceDashboard';
-import PersonCard from '../PersonCard';
+// PersonCard removed in favor of ConstraintPersonChip
+import ConstraintPersonChip from '../ConstraintPersonChip';
 
 // Import the specific constraint type for the dashboard
 interface AttributeBalanceConstraint {
@@ -165,15 +166,30 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
                     <>
                       <div className="flex flex-wrap items-center gap-1">
                         <span>People:</span>
-                        {(constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>).people.map((pid: string, idx: number) => {
-                          const per = problem.people.find((p: Person) => p.id === pid);
-                          return (
-                            <React.Fragment key={pid}>
-                              {per ? <PersonCard person={per} /> : <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{pid}</span>}
-                              {idx < (constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>).people.length - 1 && <span></span>}
-                            </React.Fragment>
-                          );
-                        })}
+                        {(constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>).people.map((pid: string, idx: number) => (
+                          <React.Fragment key={pid}>
+                            <ConstraintPersonChip
+                              personId={pid}
+                              people={problem.people}
+                              onRemove={(removeId) => {
+                                const c = constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>;
+                                const newPeople = c.people.filter(p => p !== removeId);
+                                const willBeInvalid = newPeople.length < 2;
+                                if (willBeInvalid) {
+                                  if (!window.confirm('Removing this person will leave the constraint invalid. Remove the entire constraint?')) return;
+                                  const nextConstraints = GetProblem().constraints.filter((_, i2) => i2 !== index);
+                                  useAppStore.getState().setProblem({ ...GetProblem(), constraints: nextConstraints });
+                                  return;
+                                }
+                                const updated = GetProblem().constraints.map((cst, i2) =>
+                                  i2 === index ? { ...cst, people: newPeople } as Constraint : cst
+                                );
+                                useAppStore.getState().setProblem({ ...GetProblem(), constraints: updated });
+                              }}
+                            />
+                            {idx < (constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>).people.length - 1 && <span></span>}
+                          </React.Fragment>
+                        ))}
                       </div>
                       <div className="flex items-center gap-1 text-xs" style={{color:'var(--color-accent)'}}>
                         <Clock className="w-3 h-3" />
