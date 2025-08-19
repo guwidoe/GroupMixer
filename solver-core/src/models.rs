@@ -508,7 +508,7 @@ pub enum SolverParams {
 ///     initial_temperature: 100.0,   // Start with high exploration
 ///     final_temperature: 0.1,       // End with focused local search
 ///     cooling_schedule: "geometric".to_string(), // Exponential temperature decay
-///     reheat_after_no_improvement: 1000, // Reheat after 1000 iterations without improvement (0 = no reheat)
+///     reheat_after_no_improvement: Some(1000), // Reheat after 1000 iterations without improvement (0 = no reheat)
 /// };
 /// ```
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -519,12 +519,16 @@ pub struct SimulatedAnnealingParams {
     pub final_temperature: f64,
     /// Temperature reduction schedule: "geometric" for exponential decay, "linear" for linear decay
     pub cooling_schedule: String, // "geometric", "linear", etc
-    /// Optional reheat threshold: number of iterations without improvement before reheating
-    /// When reached, temperature is reset to initial_temperature and cooling schedule is recalculated
-    /// for remaining iterations. If 0 (default), no reheating occurs. If not specified, defaults to
-    /// the smaller of: max_iterations/10 or no_improvement_iterations/2 (if no_improvement_iterations is set).
+    /// Optional reheat threshold: number of iterations without improvement before reheating.
+    /// When reached, temperature is reset to initial_temperature and the cooling schedule is recalculated
+    /// for the remaining iterations.
+    ///
+    /// Semantics:
+    /// - `Some(0)`: disable reheating explicitly
+    /// - `Some(N>0)`: reheat after N iterations without improvement
+    /// - `None` (unspecified): default to the smaller of `max_iterations/10` or `no_improvement_iterations/2` (if set)
     #[serde(default)]
-    pub reheat_after_no_improvement: u64,
+    pub reheat_after_no_improvement: Option<u64>,
 }
 
 /// Configuration options for logging and output during optimization.
@@ -547,6 +551,8 @@ pub struct SimulatedAnnealingParams {
 ///     log_initial_score_breakdown: true,   // Detailed initial scoring
 ///     log_final_score_breakdown: true,     // Detailed final scoring
 ///     log_stop_condition: true,            // Show why optimization stopped
+///     debug_validate_invariants: true,     // Validate invariants after each move
+///     debug_dump_invariant_context: true,  // Include detailed context in invariant violation errors
 /// };
 ///
 /// // Minimal logging for production

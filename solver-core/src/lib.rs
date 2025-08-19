@@ -43,7 +43,7 @@
 //!                 initial_temperature: 10.0,
 //!                 final_temperature: 0.1,
 //!                 cooling_schedule: "geometric".to_string(),
-//!                 reheat_after_no_improvement: 0,
+//!                 reheat_after_no_improvement: Some(0),
 //!             }
 //!         ),
 //!         logging: LoggingOptions::default(),
@@ -159,7 +159,7 @@ pub mod solver;
 ///                 initial_temperature: 100.0,
 ///                 final_temperature: 0.1,
 ///                 cooling_schedule: "geometric".to_string(),
-///                 reheat_after_no_improvement: 0,
+///                 reheat_after_no_improvement: Some(0),
 ///             }
 ///         ),
 ///         logging: LoggingOptions {
@@ -229,7 +229,7 @@ pub fn run_solver(input: &ApiInput) -> Result<SolverResult, SolverError> {
 /// #     solver: SolverConfiguration {
 /// #         solver_type: "SimulatedAnnealing".to_string(),
 /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-/// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0 }),
+/// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0) }),
 /// #         logging: LoggingOptions::default(),
 /// #     },
 /// # };
@@ -302,7 +302,7 @@ pub fn calculate_recommended_settings(
             initial_temperature: 1_000_000.0,
             final_temperature: 1_000_000.0,
             cooling_schedule: "geometric".into(),
-            reheat_after_no_improvement: 0,
+            reheat_after_no_improvement: Some(0),
         }),
         logging: Default::default(),
     };
@@ -424,7 +424,7 @@ pub fn calculate_recommended_settings(
             initial_temperature: init_temp,
             final_temperature: final_temp,
             cooling_schedule: "geometric".into(),
-            reheat_after_no_improvement: total_iters / 3,
+            reheat_after_no_improvement: Some(total_iters / 3),
         }),
         logging: Default::default(),
     })
@@ -717,7 +717,7 @@ mod callback_tests {
                     initial_temperature: 10.0,
                     final_temperature: 0.01,
                     cooling_schedule: "geometric".to_string(),
-                    reheat_after_no_improvement: 0, // No reheat
+                    reheat_after_no_improvement: Some(0), // No reheat
                 }),
                 logging: LoggingOptions {
                     log_frequency: Some(100),
@@ -810,7 +810,7 @@ mod callback_tests {
                     initial_temperature: 50.0,
                     final_temperature: 0.01,
                     cooling_schedule: "geometric".to_string(),
-                    reheat_after_no_improvement: 0, // No reheat
+                    reheat_after_no_improvement: Some(0), // No reheat
                 }),
                 logging: LoggingOptions {
                     log_frequency: Some(200),

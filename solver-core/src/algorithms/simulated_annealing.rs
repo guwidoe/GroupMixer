@@ -491,18 +491,21 @@ impl SimulatedAnnealing {
         let max_iterations = params.stop_conditions.max_iterations.unwrap_or(100_000);
         let no_improvement_iterations = params.stop_conditions.no_improvement_iterations;
 
-        // Calculate default reheat threshold if not explicitly provided (0 means no reheat)
-        let reheat_after_no_improvement = if sa_params.reheat_after_no_improvement == 0 {
-            // Auto-calculate default if not specified
-            let default_reheat = max_iterations / 10;
-            if let Some(no_improvement) = no_improvement_iterations {
-                let half_no_improvement = no_improvement / 2;
-                default_reheat.min(half_no_improvement)
-            } else {
-                default_reheat
+        // Calculate reheat threshold:
+        // - None => auto-calc default
+        // - Some(0) => disabled
+        // - Some(N>0) => use N
+        let reheat_after_no_improvement = match sa_params.reheat_after_no_improvement {
+            None => {
+                let default_reheat = max_iterations / 10;
+                if let Some(no_improvement) = no_improvement_iterations {
+                    let half_no_improvement = no_improvement / 2;
+                    default_reheat.min(half_no_improvement)
+                } else {
+                    default_reheat
+                }
             }
-        } else {
-            sa_params.reheat_after_no_improvement
+            Some(v) => v,
         };
 
         Self {
@@ -1087,7 +1090,11 @@ impl Solver for SimulatedAnnealing {
                             }
 
                             if next_cost < best_cost {
-                                best_cost = next_cost;
+                                // Recalculate to eliminate any incremental drift before
+                                // recording a new best and to keep telemetry consistent.
+                                current_state._recalculate_scores();
+                                let verified_cost = current_state.calculate_cost();
+                                best_cost = verified_cost;
                                 best_state = current_state.clone();
                                 no_improvement_counter = 0;
                                 improvement_found = true;
@@ -1169,7 +1176,11 @@ impl Solver for SimulatedAnnealing {
                     }
 
                     if next_cost < best_cost {
-                        best_cost = next_cost;
+                        // Recalculate to eliminate any incremental drift before
+                        // recording a new best and to keep telemetry consistent.
+                        current_state._recalculate_scores();
+                        let verified_cost = current_state.calculate_cost();
+                        best_cost = verified_cost;
                         best_state = current_state.clone();
                         no_improvement_counter = 0;
                         improvement_found = true;
@@ -1235,6 +1246,10 @@ impl Solver for SimulatedAnnealing {
             println!("  tracked best_cost: {}", best_cost);
             println!("  recalculated cost: {}", recalculated_cost);
             println!("  difference: {}", (recalculated_cost - best_cost).abs());
+            // Keep telemetry consistent in the final callback by reporting the
+            // recalculated value. We avoid mutating best_cost here to prevent
+            // an unused assignment warning and because subsequent logic uses
+            // final_cost derived from best_state.
         }
 
         // Recalculate scores to ensure accuracy
@@ -1287,9 +1302,11 @@ impl Solver for SimulatedAnnealing {
                 max_iterations: self.max_iterations,
                 temperature: final_temperature,
                 current_score: final_cost, // Use the recalculated final_cost
-                best_score: best_cost,     // Use the tracked best_cost (the actual best found)
+                // Report best_score equal to the final best state's cost to avoid
+                // divergence between tracked best and recalculated values.
+                best_score: final_cost,
                 current_contacts: best_state.unique_contacts, // These are now recalculated
-                best_contacts: best_state.unique_contacts, // These are now recalculated
+                best_contacts: best_state.unique_contacts,    // These are now recalculated
                 repetition_penalty: best_state.repetition_penalty, // This is now recalculated
                 elapsed_seconds: elapsed,
                 no_improvement_count: no_improvement_counter,

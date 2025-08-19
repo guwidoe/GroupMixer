@@ -37,6 +37,7 @@ export function SolverPanel() {
 
   const cancelledRef = useRef(false);
   const solverCompletedRef = useRef(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   // Runtime input used for the quick-start (automatic) button
   const [desiredRuntimeMain, setDesiredRuntimeMain] = useState<number | null>(3);
   // Runtime input used inside the settings panel for the Auto-set feature
@@ -232,6 +233,7 @@ export function SolverPanel() {
           // Preserve initial constraint penalty for baseline coloring
           ...(progress.iteration === 0 && { initialConstraintPenalty: progress.current_constraint_penalty }),
           currentIteration: progress.iteration,
+          currentScore: progress.current_score,
           bestScore: progress.best_score,
           elapsedTime: progress.elapsed_seconds * 1000, // Convert to milliseconds
           noImprovementCount: progress.no_improvement_count,
@@ -391,24 +393,36 @@ export function SolverPanel() {
     }
   };
 
-  const handleStopSolver = async () => {
-    // Set the cancellation flag to stop the solver
+  // Discard progress: hard-cancel the worker and do not save a solution
+  const handleCancelDiscard = async () => {
+    setShowCancelConfirm(false);
+    if (!solverState.isRunning) return;
     cancelledRef.current = true;
     stopSolver();
-    
+
     addNotification({
-      type: 'info',
-      title: 'Cancelling',
-      message: 'Stopping solver...',
+      type: 'warning',
+      title: 'Solver Cancelled',
+      message: 'Progress discarded.',
     });
-    
+
     try {
       await solverWorkerService.cancel();
-      // Success notification will be handled by the main solve error handler
     } catch (error) {
       console.error('Cancellation error:', error);
-      // Don't show error notification - cancellation usually succeeds even if there are errors
     }
+  };
+
+  // Save progress: request a graceful stop so the solver returns the best-so-far solution
+  const handleCancelSave = () => {
+    setShowCancelConfirm(false);
+    if (!solverState.isRunning) return;
+    cancelledRef.current = true; // progress callback will stop the solver and return a result
+    addNotification({
+      type: 'info',
+      title: 'Stopping Solver',
+      message: 'Saving best-so-far solution...',
+    });
   };
 
   const handleResetSolver = () => {
@@ -568,7 +582,7 @@ export function SolverPanel() {
             </button>
           ) : (
             <button
-              onClick={handleStopSolver}
+              onClick={() => setShowCancelConfirm(true)}
               className="btn-warning flex-1 flex items-center justify-center space-x-2"
             >
               <Pause className="h-4 w-4" />
@@ -663,6 +677,18 @@ export function SolverPanel() {
             <div className="text-xs sm:text-sm flex items-center justify-center gap-1" style={{ color: 'var(--text-secondary)' }}>
               <span className="truncate">Best Cost Score</span>
               <Tooltip content={<span>Cost Score = (Weighted max possible contacts − weighted current contacts) + weighted constraint penalties. The solver is trying to minimize this score. <b>Lower is better.</b></span>}>
+                <Info className="h-3 w-3 flex-shrink-0" />
+              </Tooltip>
+            </div>
+          </div>
+          <div className="text-center p-3 sm:p-4 rounded-lg flex-shrink-0 min-w-0 flex-1" style={{ backgroundColor: 'var(--background-secondary)' }}>
+            <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2" style={{ color: 'var(--text-accent-blue)' }} />
+            <div className="text-lg sm:text-2xl font-bold" style={{ color: 'var(--text-accent-blue)' }}>
+              {(solverState.currentScore ?? 0).toFixed(2)}
+            </div>
+            <div className="text-xs sm:text-sm flex items-center justify-center gap-1" style={{ color: 'var(--text-secondary)' }}>
+              <span className="truncate">Current Cost Score</span>
+              <Tooltip content={<span>The current overall cost score of the working solution at this iteration. <b>Lower is better.</b></span>}>
                 <Info className="h-3 w-3 flex-shrink-0" />
               </Tooltip>
             </div>
@@ -1278,6 +1304,24 @@ export function SolverPanel() {
               <Play className="h-4 w-4" />
               <span>Start Solver with Custom Settings</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} onClick={() => setShowCancelConfirm(false)}></div>
+          <div className="relative bg-white dark:bg-gray-900 rounded-lg shadow-lg p-5 w-full max-w-md" style={{ border: '1px solid var(--border-secondary)' }}>
+            <h4 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Cancel Solver?</h4>
+            <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+              Do you want to save the current progress as a solution or discard it?
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button className="btn-secondary" onClick={() => setShowCancelConfirm(false)}>Back</button>
+              <button className="btn-warning" onClick={handleCancelDiscard}>Discard Progress</button>
+              <button className="btn-success" onClick={handleCancelSave}>Save Progress</button>
+            </div>
           </div>
         </div>
       )}

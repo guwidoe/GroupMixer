@@ -1935,6 +1935,13 @@ export function ProblemEditor() {
   const [bulkHeaders, setBulkHeaders] = useState<string[]>([]);
   const [bulkRows, setBulkRows] = useState<Record<string, string>[]>([]);
 
+  // Bulk update modal state
+  const [showBulkUpdateForm, setShowBulkUpdateForm] = useState(false);
+  const [bulkUpdateTextMode, setBulkUpdateTextMode] = useState<'text' | 'grid'>('grid');
+  const [bulkUpdateCsvInput, setBulkUpdateCsvInput] = useState('');
+  const [bulkUpdateHeaders, setBulkUpdateHeaders] = useState<string[]>([]);
+  const [bulkUpdateRows, setBulkUpdateRows] = useState<Record<string, string>[]>([]);
+
   // Close bulk dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -2139,6 +2146,271 @@ export function ProblemEditor() {
               className="btn-primary flex-1 px-4 py-2"
             >
               Add People
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // === Bulk Update Helpers & Modal ===
+  const buildPeopleCsvFromCurrent = (): { headers: string[]; rows: Record<string, string>[] } => {
+    const people = problem?.people || [];
+    const headerSet = new Set<string>(['id', 'name']);
+    people.forEach(p => {
+      Object.keys(p.attributes || {}).forEach(k => {
+        if (k !== 'name') headerSet.add(k);
+      });
+    });
+    attributeDefinitions.forEach(def => {
+      if (def.key !== 'name') headerSet.add(def.key);
+    });
+    const headers = Array.from(headerSet);
+    const rows: Record<string, string>[] = people.map(p => {
+      const row: Record<string, string> = {};
+      headers.forEach(h => {
+        if (h === 'id') row[h] = p.id;
+        else if (h === 'name') row[h] = (p.attributes && p.attributes['name']) || '';
+        else row[h] = (p.attributes && (p.attributes[h] ?? '')) as string;
+      });
+      return row;
+    });
+    return { headers, rows };
+  };
+
+  const openBulkUpdateForm = () => {
+    const { headers, rows } = buildPeopleCsvFromCurrent();
+    setBulkUpdateHeaders(headers);
+    setBulkUpdateRows(rows);
+    setBulkUpdateCsvInput(rowsToCsv(headers, rows));
+    setBulkUpdateTextMode('grid');
+    setShowBulkUpdateForm(true);
+  };
+
+  const handleApplyBulkUpdate = () => {
+    let headers: string[] = bulkUpdateHeaders;
+    let rows: Record<string, string>[] = bulkUpdateRows;
+    if (bulkUpdateTextMode === 'text') {
+      const parsed = parseCsv(bulkUpdateCsvInput);
+      headers = parsed.headers;
+      rows = parsed.rows;
+    }
+
+    if (!headers.includes('id')) {
+      addNotification({ type: 'error', title: 'Missing Column', message: 'CSV must include an "id" column.' });
+      return;
+    }
+    if (!headers.includes('name')) {
+      addNotification({ type: 'error', title: 'Missing Column', message: 'CSV must include a "name" column.' });
+      return;
+    }
+
+    const existingPeople = problem?.people || [];
+    const existingById = new Map<string, Person>(existingPeople.map(p => [p.id, p]));
+    const usedIds = new Set<string>(existingPeople.map(p => p.id));
+    const updatedById = new Map<string, Person>();
+    existingPeople.forEach(p => updatedById.set(p.id, { ...p, attributes: { ...p.attributes } }));
+
+    const newPeopleToAdd: Person[] = [];
+    rows.forEach((row) => {
+      const rawId = (row['id'] || '').trim();
+      const isExisting = rawId && existingById.has(rawId);
+      if (isExisting) {
+        const person = updatedById.get(rawId)!;
+        headers.forEach(h => {
+          if (h === 'id') return;
+          const val = (row[h] ?? '').trim();
+          if (val === '__DELETE__') {
+            if (h in person.attributes) delete person.attributes[h];
+          } else if (val.length > 0) {
+            person.attributes[h] = val;
+          }
+        });
+        updatedById.set(rawId, person);
+      } else {
+        const hasAnyData = headers.some(h => h !== 'id' && (row[h] ?? '').trim().length > 0);
+        if (!hasAnyData) return;
+        let newId = rawId;
+        if (!newId || usedIds.has(newId)) {
+          newId = generateUniquePersonId();
+        }
+        usedIds.add(newId);
+        const attributes: Record<string, string> = {};
+        headers.forEach(h => {
+          if (h === 'id') return;
+          const val = (row[h] ?? '').trim();
+          if (val.length > 0) attributes[h] = val;
+        });
+        newPeopleToAdd.push({ id: newId, attributes, sessions: undefined });
+      }
+    });
+
+    const updatedPeople = Array.from(updatedById.values());
+    const finalPeople: Person[] = [...updatedPeople, ...newPeopleToAdd];
+
+    const attrValueMap: Record<string, Set<string>> = {};
+    const allKeys = new Set<string>();
+    finalPeople.forEach(p => {
+      Object.entries(p.attributes || {}).forEach(([k, v]) => {
+        if (k === 'name') return;
+        if (!attrValueMap[k]) attrValueMap[k] = new Set<string>();
+        if (typeof v === 'string' && v.length > 0) attrValueMap[k].add(v);
+        allKeys.add(k);
+      });
+    });
+    headers.forEach(h => { if (h !== 'id' && h !== 'name') allKeys.add(h); });
+
+    allKeys.forEach(key => {
+      const existing = attributeDefinitions.find(def => def.key === key);
+      const newValues = Array.from(attrValueMap[key] || new Set<string>());
+      if (!existing) {
+        addAttributeDefinition({ key, values: newValues });
+      } else {
+        const merged = Array.from(new Set([...(existing.values || []), ...newValues]));
+        if (merged.length !== existing.values.length) {
+          removeAttributeDefinition(existing.key);
+          addAttributeDefinition({ key: existing.key, values: merged });
+        }
+      }
+    });
+
+    const updatedProblem: Problem = {
+      people: finalPeople,
+      groups: problem?.groups || [],
+      num_sessions: problem?.num_sessions || 3,
+      constraints: problem?.constraints || [],
+      settings: problem?.settings || getDefaultSolverSettings()
+    };
+    setProblem(updatedProblem);
+    setShowBulkUpdateForm(false);
+    addNotification({ type: 'success', title: 'Bulk Update Applied', message: `Updated ${rows.length} row(s).` });
+  };
+
+  const renderBulkUpdateForm = () => {
+    return (
+      <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50">
+        <div className="rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto modal-content">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Bulk Update People</h3>
+            <button
+              onClick={() => setShowBulkUpdateForm(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>
+            <p>
+              Use this to update existing people by <b>id</b>, add new columns (attributes), or add new people (leave id empty or use a new unique id).
+              Leave cells blank to keep current values. Use <code>__DELETE__</code> to remove an attribute from a person.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 mb-4">
+            <button
+              onClick={() => {
+                if (bulkUpdateTextMode === 'grid') {
+                  setBulkUpdateCsvInput(rowsToCsv(bulkUpdateHeaders, bulkUpdateRows));
+                }
+                setBulkUpdateTextMode('text');
+              }}
+              className={`px-3 py-1 rounded text-sm ${bulkUpdateTextMode === 'text' ? 'font-bold' : ''}`}
+              style={{ color: 'var(--text-primary)', backgroundColor: bulkUpdateTextMode === 'text' ? 'var(--bg-tertiary)' : 'transparent' }}
+            >
+              CSV Text
+            </button>
+            <button
+              onClick={() => {
+                if (bulkUpdateTextMode === 'text') {
+                  const { headers, rows } = parseCsv(bulkUpdateCsvInput);
+                  setBulkUpdateHeaders(headers);
+                  setBulkUpdateRows(rows);
+                }
+                setBulkUpdateTextMode('grid');
+              }}
+              className={`px-3 py-1 rounded text-sm ${bulkUpdateTextMode === 'grid' ? 'font-bold' : ''}`}
+              style={{ color: 'var(--text-primary)', backgroundColor: bulkUpdateTextMode === 'grid' ? 'var(--bg-tertiary)' : 'transparent' }}
+            >
+              Data Grid
+            </button>
+            <button
+              onClick={() => {
+                const { headers, rows } = buildPeopleCsvFromCurrent();
+                setBulkUpdateHeaders(headers);
+                setBulkUpdateRows(rows);
+                setBulkUpdateCsvInput(rowsToCsv(headers, rows));
+              }}
+              className="ml-auto btn-secondary px-3 py-1 text-sm"
+            >
+              Refresh from Current
+            </button>
+          </div>
+
+          {bulkUpdateTextMode === 'text' ? (
+            <textarea
+              value={bulkUpdateCsvInput}
+              onChange={(e) => setBulkUpdateCsvInput(e.target.value)}
+              className="w-full h-64 p-2 border rounded"
+              placeholder="Edit CSV here. First row contains headers (e.g., id,name,attribute1,attribute2)"
+            ></textarea>
+          ) : (
+            <div className="overflow-x-auto max-h-64 mb-4">
+              {bulkUpdateHeaders.length === 0 ? (
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No data parsed yet.</p>
+              ) : (
+                <table className="min-w-full divide-y" style={{ borderColor: 'var(--border-secondary)' }}>
+                  <thead style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                    <tr>
+                      {bulkUpdateHeaders.map(h => (
+                        <th key={h} className="px-2 py-1 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-secondary)' }}>
+                    {bulkUpdateRows.map((row, rowIdx) => (
+                      <tr key={rowIdx}>
+                        {bulkUpdateHeaders.map(h => (
+                          <td key={h} className="px-2 py-1">
+                            <input
+                              type="text"
+                              value={row[h] || ''}
+                              onChange={(e) => {
+                                const newRows = [...bulkUpdateRows];
+                                newRows[rowIdx][h] = e.target.value;
+                                setBulkUpdateRows(newRows);
+                              }}
+                              className="w-full text-sm border rounded p-1"
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+
+          <div className="flex gap-2 mt-4">
+            {bulkUpdateTextMode === 'text' && (
+              <button
+                onClick={() => {
+                  const { headers, rows } = parseCsv(bulkUpdateCsvInput);
+                  setBulkUpdateHeaders(headers);
+                  setBulkUpdateRows(rows);
+                  setBulkUpdateTextMode('grid');
+                }}
+                className="btn-secondary"
+              >
+                Preview Grid
+              </button>
+            )}
+            <button
+              onClick={handleApplyBulkUpdate}
+              className="btn-primary flex-1 px-4 py-2"
+            >
+              Apply Changes
             </button>
           </div>
         </div>
@@ -2796,6 +3068,14 @@ export function ProblemEditor() {
                         <Plus className="w-4 h-4" />
                         Add Person
                       </button>
+                      {/* Bulk Update Button */}
+                      <button
+                        onClick={openBulkUpdateForm}
+                        className="btn-secondary flex items-center gap-2 px-4 py-2"
+                      >
+                        <Edit className="w-4 h-4" />
+                        Bulk Update
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -3445,6 +3725,7 @@ export function ProblemEditor() {
         </div>
       )}
       {showBulkForm && renderBulkAddForm()}
+      {showBulkUpdateForm && renderBulkUpdateForm()}
       {showGroupBulkForm && renderGroupBulkAddForm()}
 
       <input type="file" accept=".csv,text/csv" ref={csvFileInputRef} className="hidden" onChange={handleCsvFileSelected} />

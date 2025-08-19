@@ -3854,7 +3854,7 @@ mod tests {
                     initial_temperature: 1.0,
                     final_temperature: 0.1,
                     cooling_schedule: "linear".to_string(),
-                    reheat_after_no_improvement: 0, // No reheat
+                    reheat_after_no_improvement: Some(0), // No reheat
                 }),
                 logging: Default::default(),
             },
@@ -4878,7 +4878,7 @@ mod attribute_balance_tests {
                     initial_temperature: 1.0,
                     final_temperature: 0.1,
                     cooling_schedule: "geometric".to_string(),
-                    reheat_after_no_improvement: 0, // No reheat
+                    reheat_after_no_improvement: Some(0), // No reheat
                 }),
                 logging: LoggingOptions::default(),
             },

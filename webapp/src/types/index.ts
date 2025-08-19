@@ -143,6 +143,7 @@ export interface SolverState {
   isComplete: boolean;
   currentIteration: number;
   bestScore: number;
+  currentScore?: number;
   elapsedTime: number;
   noImprovementCount: number;
   error?: string;
