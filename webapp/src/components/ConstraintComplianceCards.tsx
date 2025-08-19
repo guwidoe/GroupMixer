@@ -297,6 +297,21 @@ const ConstraintComplianceCards: React.FC<Props> = ({ problem, solution }) => {
 
   const toggle = (id: number) => setExpanded((s) => ({ ...s, [id]: !s[id] }));
 
+  const getConstraintPeople = (constraint: Constraint): string[] | null => {
+    switch (constraint.type) {
+      case 'ImmovablePerson':
+        return [constraint.person_id];
+      case 'ImmovablePeople':
+        return constraint.people;
+      case 'MustStayTogether':
+      case 'ShouldStayTogether':
+      case 'ShouldNotBeTogether':
+        return constraint.people;
+      default:
+        return null;
+    }
+  };
+
   const renderHeader = (card: CardData) => (
     <div className="flex items-start justify-between">
       <div className="min-w-0">
@@ -311,6 +326,17 @@ const ConstraintComplianceCards: React.FC<Props> = ({ problem, solution }) => {
           )}
         </div>
         <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{card.title}</div>
+        {(() => {
+          const people = getConstraintPeople(card.constraint);
+          if (!people || people.length === 0) return null;
+          return (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {people.map((pid) => (
+                <ConstraintPersonChip key={pid} personId={pid} people={problem.people} />
+              ))}
+            </div>
+          );
+        })()}
       </div>
       <div className="flex items-center gap-2">
         {card.adheres ? (
