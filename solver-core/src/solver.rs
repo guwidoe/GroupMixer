@@ -82,7 +82,7 @@ pub enum SolverError {
 /// #         },
 /// #         solver_params: solver_core::models::SolverParams::SimulatedAnnealing(
 /// #             solver_core::models::SimulatedAnnealingParams {
-/// #                 initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0
+/// #                 initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0)
 /// #             }
 /// #         ),
 /// #         logging: solver_core::models::LoggingOptions::default(),
@@ -313,7 +313,7 @@ impl State {
     ///                 initial_temperature: 10.0,
     ///                 final_temperature: 0.1,
     ///                 cooling_schedule: "geometric".to_string(),
-    ///                 reheat_after_no_improvement: 0,
+    ///                 reheat_after_no_improvement: Some(0),
     ///             }
     ///         ),
     ///         logging: LoggingOptions::default(),
@@ -1152,7 +1152,7 @@ impl State {
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0 }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0) }),
     /// #         logging: LoggingOptions::default(),
     /// #     },
     /// # };
@@ -1641,7 +1641,7 @@ impl State {
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0 }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0) }),
     /// #         logging: LoggingOptions::default(),
     /// #     },
     /// # };
@@ -2059,7 +2059,7 @@ impl State {
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0 }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0) }),
     /// #         logging: LoggingOptions::default(),
     /// #     },
     /// # };
@@ -2106,7 +2106,7 @@ impl State {
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0 }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0) }),
     /// #         logging: LoggingOptions::default(),
     /// #     },
     /// # };
@@ -2676,7 +2676,7 @@ impl State {
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0 }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0) }),
     /// #         logging: LoggingOptions::default(),
     /// #     },
     /// # };
@@ -2743,7 +2743,7 @@ impl State {
     /// #             max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None
     /// #         },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
-    /// #             initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0
+    /// #             initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0)
     /// #         }),
     /// #         logging: LoggingOptions { log_initial_score_breakdown: true, log_final_score_breakdown: true, ..Default::default() },
     /// #     },

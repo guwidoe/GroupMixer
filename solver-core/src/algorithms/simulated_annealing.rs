@@ -375,7 +375,7 @@ impl AlgorithmMetrics {
 ///             initial_temperature: 100.0,  // High exploration
 ///             final_temperature: 0.01,     // Low exploitation
 ///             cooling_schedule: "geometric".to_string(),
-///             reheat_after_no_improvement: 0,
+///             reheat_after_no_improvement: Some(0),
 ///         }
 ///     ),
 ///     logging: LoggingOptions {
@@ -476,7 +476,7 @@ impl SimulatedAnnealing {
     ///             initial_temperature: 50.0,
     ///             final_temperature: 0.1,
     ///             cooling_schedule: "geometric".to_string(),
-    ///             reheat_after_no_improvement: 0,
+    ///             reheat_after_no_improvement: Some(0),
     ///         }
     ///     ),
     ///     logging: LoggingOptions::default(),
@@ -615,7 +615,7 @@ impl Solver for SimulatedAnnealing {
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0 }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0) }),
     /// #         logging: LoggingOptions::default(),
     /// #     },
     /// # };
@@ -1094,10 +1094,12 @@ impl Solver for SimulatedAnnealing {
                                 // recording a new best and to keep telemetry consistent.
                                 current_state._recalculate_scores();
                                 let verified_cost = current_state.calculate_cost();
-                                best_cost = verified_cost;
-                                best_state = current_state.clone();
-                                no_improvement_counter = 0;
-                                improvement_found = true;
+                                if verified_cost < best_cost {
+                                    best_cost = verified_cost;
+                                    best_state = current_state.clone();
+                                    no_improvement_counter = 0;
+                                    improvement_found = true;
+                                }
                             }
                         }
 
@@ -1180,10 +1182,12 @@ impl Solver for SimulatedAnnealing {
                         // recording a new best and to keep telemetry consistent.
                         current_state._recalculate_scores();
                         let verified_cost = current_state.calculate_cost();
-                        best_cost = verified_cost;
-                        best_state = current_state.clone();
-                        no_improvement_counter = 0;
-                        improvement_found = true;
+                        if verified_cost < best_cost {
+                            best_cost = verified_cost;
+                            best_state = current_state.clone();
+                            no_improvement_counter = 0;
+                            improvement_found = true;
+                        }
                     }
                 }
 
@@ -1302,9 +1306,8 @@ impl Solver for SimulatedAnnealing {
                 max_iterations: self.max_iterations,
                 temperature: final_temperature,
                 current_score: final_cost, // Use the recalculated final_cost
-                // Report best_score equal to the final best state's cost to avoid
-                // divergence between tracked best and recalculated values.
-                best_score: final_cost,
+                // Report the tracked best_cost (kept consistent when recording bests)
+                best_score: best_cost,
                 current_contacts: best_state.unique_contacts, // These are now recalculated
                 best_contacts: best_state.unique_contacts,    // These are now recalculated
                 repetition_penalty: best_state.repetition_penalty, // This is now recalculated

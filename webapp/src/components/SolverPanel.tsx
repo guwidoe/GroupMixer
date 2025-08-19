@@ -335,14 +335,16 @@ export function SolverPanel() {
       // Add a small delay to ensure any late progress messages are ignored
       await new Promise(resolve => setTimeout(resolve, 50));
       
-      // Update final solver state with actual final values from solution
-      console.log('[SolverPanel] Setting final solver state with bestScore:', solution.final_score);
+      // Update final solver state with actual final values from the last progress callback
+      // Prefer lastProgress (which is emitted after a full recalculation) to avoid any drift.
+      console.log('[SolverPanel] Setting final solver state with bestScore/currentScore from lastProgress');
       setSolverState({ 
         isRunning: false, 
         isComplete: true,
         currentIteration: solution.iteration_count,
         elapsedTime: solution.elapsed_time_ms,
-        bestScore: solution.final_score,
+        currentScore: lastProgress?.current_score ?? (solverState.currentScore ?? 0),
+        bestScore: lastProgress?.best_score ?? solution.final_score,
         noImprovementCount: finalNoImprovementCount,
       });
 

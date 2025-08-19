@@ -52,7 +52,7 @@ use std::collections::HashMap;
 ///                 initial_temperature: 100.0,
 ///                 final_temperature: 0.1,
 ///                 cooling_schedule: "geometric".to_string(),
-///                 reheat_after_no_improvement: 0,
+///                 reheat_after_no_improvement: Some(0),
 ///             }
 ///         ),
 ///         logging: LoggingOptions::default(),
@@ -429,7 +429,7 @@ pub struct ImmovablePeopleParams {
 ///             initial_temperature: 100.0,
 ///             final_temperature: 0.1,
 ///             cooling_schedule: "geometric".to_string(),
-///             reheat_after_no_improvement: 0,
+///             reheat_after_no_improvement: Some(0),
 ///         }
 ///     ),
 ///     logging: LoggingOptions {
@@ -508,7 +508,7 @@ pub enum SolverParams {
 ///     initial_temperature: 100.0,   // Start with high exploration
 ///     final_temperature: 0.1,       // End with focused local search
 ///     cooling_schedule: "geometric".to_string(), // Exponential temperature decay
-///     reheat_after_no_improvement: Some(1000), // Reheat after 1000 iterations without improvement (0 = no reheat)
+///     reheat_after_no_improvement: Some(0), // Reheat after 1000 iterations without improvement (0 = no reheat)
 /// };
 /// ```
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -744,7 +744,7 @@ pub type ProgressCallback = Box<dyn Fn(&ProgressUpdate) -> bool + Send>;
 /// #     solver: SolverConfiguration {
 /// #         solver_type: "SimulatedAnnealing".to_string(),
 /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-/// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0 }),
+/// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0) }),
 /// #         logging: LoggingOptions::default(),
 /// #     },
 /// # };
@@ -825,7 +825,7 @@ impl SolverResult {
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0 }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0) }),
     /// #         logging: LoggingOptions::default(),
     /// #     },
     /// # };
