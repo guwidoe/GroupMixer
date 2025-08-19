@@ -354,7 +354,6 @@ function createFallbackDemo(): Problem {
       {
         type: "MustStayTogether",
         people: ["alice", "bob"],
-        penalty_weight: 1000.0,
         sessions: [0, 1], // Only for first two sessions
       },
       // Charlie and Diana can't be together (personality conflict)
@@ -370,6 +369,7 @@ function createFallbackDemo(): Problem {
         attribute_key: "gender",
         desired_values: { male: 2, female: 2 },
         penalty_weight: 50.0,
+        mode: "exact",
       },
     ],
     settings: {

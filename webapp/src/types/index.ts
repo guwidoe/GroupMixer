@@ -22,6 +22,12 @@ export interface AttributeBalanceParams {
   attribute_key: string;
   desired_values: Record<string, number>; // e.g., {"male": 2, "female": 2}
   penalty_weight: number;
+  /**
+   * How to interpret desired counts. If omitted, defaults to "exact" to match backend default.
+   * - "exact": penalize deviation in either direction
+   * - "at_least": penalize only shortfalls
+   */
+  mode?: "exact" | "at_least";
   sessions?: number[]; // Optional: if undefined, applies to all sessions
 }
 

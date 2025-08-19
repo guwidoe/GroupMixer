@@ -791,6 +791,7 @@ mod callback_tests {
                         values
                     },
                     penalty_weight: 50.0,
+                    mode: crate::models::AttributeBalanceMode::Exact,
                     sessions: None,
                 }),
                 Constraint::ShouldNotBeTogether {

@@ -355,9 +355,29 @@ pub struct AttributeBalanceParams {
     pub desired_values: HashMap<String, u32>,
     /// Weight of the penalty applied for balance violations
     pub penalty_weight: f64,
+    /// How to interpret desired counts. `Exact` penalizes deviation in either direction,
+    /// `AtLeast` penalizes only shortfalls (overshoot is not penalized).
+    #[serde(default)]
+    pub mode: AttributeBalanceMode,
     /// Optional list of session indices in which this constraint is active. If `None`, the constraint applies to all sessions.
     #[serde(default)]
     pub sessions: Option<Vec<u32>>,
+}
+
+/// Mode for evaluating attribute balance targets.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AttributeBalanceMode {
+    /// Penalize absolute deviation from the desired count (current behavior)
+    Exact,
+    /// Penalize only when actual < desired; overshooting is allowed without penalty
+    AtLeast,
+}
+
+impl Default for AttributeBalanceMode {
+    fn default() -> Self {
+        AttributeBalanceMode::Exact
+    }
 }
 
 /// Parameters for the ImmovablePerson constraint.

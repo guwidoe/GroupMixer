@@ -112,6 +112,7 @@ function useCompliance(problem: Problem, solution: Solution): CardData[] {
           const sessions = c.sessions ?? Array.from({ length: problem.num_sessions }, (_, i) => i);
           const details: ViolationDetail[] = [];
           let violations = 0;
+          const mode = (c as any).mode as ('exact' | 'at_least' | undefined);
           sessions.forEach((session) => {
             const peopleIds = schedule[session]?.[c.group_id] || [];
             const counts: Record<string, number> = {};
@@ -122,9 +123,16 @@ function useCompliance(problem: Problem, solution: Solution): CardData[] {
             });
             Object.entries(c.desired_values).forEach(([val, desired]) => {
               const actual = counts[val] || 0;
-              if (actual !== desired) {
-                violations += Math.abs(actual - desired);
-                details.push({ kind: 'AttributeBalance', session, groupId: c.group_id, attribute: val, desired, actual });
+              if (mode === 'at_least') {
+                if (actual < desired) {
+                  violations += (desired - actual);
+                  details.push({ kind: 'AttributeBalance', session, groupId: c.group_id, attribute: val, desired, actual });
+                }
+              } else {
+                if (actual !== desired) {
+                  violations += Math.abs(actual - desired);
+                  details.push({ kind: 'AttributeBalance', session, groupId: c.group_id, attribute: val, desired, actual });
+                }
               }
             });
           });
@@ -133,7 +141,7 @@ function useCompliance(problem: Problem, solution: Solution): CardData[] {
             constraint: c,
             type: c.type,
             title: `Attribute Balance – ${c.group_id} (${c.attribute_key})`,
-            subtitle: `${formatSessions(c.sessions, problem.num_sessions)} • Weight: ${c.penalty_weight}`,
+            subtitle: `${formatSessions(c.sessions, problem.num_sessions)} • Weight: ${c.penalty_weight}` + (mode === 'at_least' ? ' • Mode: At least' : ''),
             adheres: violations === 0,
             violationsCount: violations,
             details,

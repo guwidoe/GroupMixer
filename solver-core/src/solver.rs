@@ -1355,14 +1355,23 @@ impl State {
     }
 
     fn calculate_penalty_from_counts(&self, counts: &[u32], ac: &AttributeBalanceParams) -> f64 {
+        use crate::models::AttributeBalanceMode;
         let mut penalty = 0.0;
         for (val_str, desired_count) in &ac.desired_values {
             if let Some(&val_idx) =
                 self.attr_val_to_idx[self.attr_key_to_idx[&ac.attribute_key]].get(val_str)
             {
                 let actual_count = counts[val_idx];
-                let diff = (actual_count as i32 - *desired_count as i32).abs();
-                penalty += diff.pow(2) as f64 * ac.penalty_weight;
+                let diff = match ac.mode {
+                    AttributeBalanceMode::Exact => {
+                        (actual_count as i32 - *desired_count as i32).abs()
+                    }
+                    AttributeBalanceMode::AtLeast => {
+                        let shortfall = (*desired_count as i32) - (actual_count as i32);
+                        shortfall.max(0)
+                    }
+                };
+                penalty += (diff.pow(2) as f64) * ac.penalty_weight;
             }
         }
         penalty
@@ -1397,30 +1406,15 @@ impl State {
                             }
                         }
 
-                        // Calculate the penalty for this specific constraint
-                        let mut penalty_for_this_constraint = 0.0;
-                        for (desired_val_str, desired_count) in &ac.desired_values {
-                            if let Some(&val_idx) =
-                                self.attr_val_to_idx[attr_idx].get(desired_val_str)
-                            {
-                                let actual_count = value_counts[val_idx];
-                                let diff = (actual_count as i32 - *desired_count as i32).abs();
-                                penalty_for_this_constraint += diff.pow(2) as f64;
-                            }
-                        }
-
-                        // Add the weighted penalty to the total
-                        let weighted_penalty = penalty_for_this_constraint * ac.penalty_weight;
+                        // Calculate the weighted penalty for this specific constraint using the shared helper
+                        let weighted_penalty =
+                            self.calculate_penalty_from_counts(&value_counts, ac);
 
                         if std::env::var("DEBUG_ATTR_BALANCE").is_ok() && weighted_penalty > 0.001 {
                             println!("DEBUG: _recalculate - day {}, group {} ({}), constraint '{}' on '{}':", 
                                     day_idx, group_idx, group_id, ac.attribute_key, ac.group_id);
                             println!("  group_people: {:?}", group_people);
                             println!("  value_counts: {:?}", value_counts);
-                            println!(
-                                "  penalty_for_this_constraint: {}",
-                                penalty_for_this_constraint
-                            );
                             println!("  weighted_penalty: {}", weighted_penalty);
                         }
 
@@ -4857,6 +4851,7 @@ mod attribute_balance_tests {
                     attribute_key: "gender".to_string(),
                     desired_values: [("male".to_string(), 2), ("female".to_string(), 1)].into(),
                     penalty_weight: 100.0,
+                    mode: crate::models::AttributeBalanceMode::Exact,
                     sessions: Some(vec![0, 1]),
                 }),
                 Constraint::AttributeBalance(AttributeBalanceParams {
@@ -4864,6 +4859,7 @@ mod attribute_balance_tests {
                     attribute_key: "gender".to_string(),
                     desired_values: [("male".to_string(), 1), ("female".to_string(), 2)].into(),
                     penalty_weight: 100.0,
+                    mode: crate::models::AttributeBalanceMode::Exact,
                     sessions: Some(vec![0, 1]),
                 }),
             ],
@@ -4883,6 +4879,110 @@ mod attribute_balance_tests {
                 logging: LoggingOptions::default(),
             },
         }
+    }
+
+    #[test]
+    fn test_attribute_balance_mode_at_least() {
+        // People: 4 females, 2 males
+        let people = vec![
+            Person {
+                id: "f1".to_string(),
+                attributes: [("gender".to_string(), "female".to_string())].into(),
+                sessions: None,
+            },
+            Person {
+                id: "f2".to_string(),
+                attributes: [("gender".to_string(), "female".to_string())].into(),
+                sessions: None,
+            },
+            Person {
+                id: "f3".to_string(),
+                attributes: [("gender".to_string(), "female".to_string())].into(),
+                sessions: None,
+            },
+            Person {
+                id: "f4".to_string(),
+                attributes: [("gender".to_string(), "female".to_string())].into(),
+                sessions: None,
+            },
+            Person {
+                id: "m1".to_string(),
+                attributes: [("gender".to_string(), "male".to_string())].into(),
+                sessions: None,
+            },
+            Person {
+                id: "m2".to_string(),
+                attributes: [("gender".to_string(), "male".to_string())].into(),
+                sessions: None,
+            },
+        ];
+
+        let input = ApiInput {
+            problem: ProblemDefinition {
+                people,
+                groups: vec![
+                    Group {
+                        id: "g1".to_string(),
+                        size: 3,
+                    },
+                    Group {
+                        id: "g2".to_string(),
+                        size: 3,
+                    },
+                ],
+                num_sessions: 1,
+            },
+            objectives: vec![Objective {
+                r#type: "maximize_unique_contacts".to_string(),
+                weight: 1.0,
+            }],
+            constraints: vec![Constraint::AttributeBalance(AttributeBalanceParams {
+                group_id: "g1".to_string(),
+                attribute_key: "gender".to_string(),
+                desired_values: [("female".to_string(), 2)].into(),
+                penalty_weight: 10.0,
+                mode: crate::models::AttributeBalanceMode::AtLeast,
+                sessions: None,
+            })],
+            solver: SolverConfiguration {
+                solver_type: "SimulatedAnnealing".to_string(),
+                stop_conditions: StopConditions {
+                    max_iterations: Some(1),
+                    time_limit_seconds: None,
+                    no_improvement_iterations: None,
+                },
+                solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
+                    initial_temperature: 1.0,
+                    final_temperature: 1.0,
+                    cooling_schedule: "geometric".to_string(),
+                    reheat_after_no_improvement: Some(0),
+                }),
+                logging: LoggingOptions::default(),
+            },
+        };
+
+        let mut state = State::new(&input).expect("state should build");
+
+        // Case 1: Shortfall (only 1 female in g1) -> penalty = (2-1)^2 * 10 = 10
+        // Indices: f1=0, f2=1, f3=2, f4=3, m1=4, m2=5
+        state.schedule = vec![vec![vec![0, 4, 5], vec![1, 2, 3]]]; // g1: f1,m1,m2 (1 female); g2: f2,f3,f4
+        state._recalculate_scores();
+        let p_shortfall = state.attribute_balance_penalty;
+        assert!(
+            (p_shortfall - 10.0).abs() < 0.001,
+            "Expected shortfall penalty 10, got {}",
+            p_shortfall
+        );
+
+        // Case 2: Overshoot (3 females in g1) -> penalty = 0 in AtLeast mode
+        state.schedule = vec![vec![vec![0, 1, 2], vec![3, 4, 5]]]; // g1: f1,f2,f3 (3 females)
+        state._recalculate_scores();
+        let p_overshoot = state.attribute_balance_penalty;
+        assert!(
+            p_overshoot.abs() < 0.001,
+            "Expected zero penalty for overshoot in AtLeast mode, got {}",
+            p_overshoot
+        );
     }
 
     #[test]

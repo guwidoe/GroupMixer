@@ -1176,6 +1176,7 @@ export const useAppStore = create<AppStore>()(
                 attribute_key: "gender",
                 desired_values: { male: 2, female: 2 },
                 penalty_weight: 50.0,
+                mode: "exact",
               },
             ],
             settings: {

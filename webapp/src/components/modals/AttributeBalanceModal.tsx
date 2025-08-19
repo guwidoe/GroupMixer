@@ -15,6 +15,7 @@ interface FormState {
   desired_values: Record<string, number | null>;
   penalty_weight: number | null;
   sessions: number[];
+  mode: "exact" | "at_least";
 }
 
 const AttributeBalanceModal: React.FC<Props> = ({ initial, onCancel, onSave }) => {
@@ -28,6 +29,7 @@ const AttributeBalanceModal: React.FC<Props> = ({ initial, onCancel, onSave }) =
         desired_values: {},
         penalty_weight: 10,
         sessions: [],
+        mode: 'exact',
       };
     }
     
@@ -41,6 +43,7 @@ const AttributeBalanceModal: React.FC<Props> = ({ initial, onCancel, onSave }) =
         desired_values: initial.desired_values || {},
         penalty_weight: initial.penalty_weight || 10,
         sessions: initial.sessions || [],
+        mode: (initial as any).mode ?? 'exact',
       };
     }
     return {
@@ -49,6 +52,7 @@ const AttributeBalanceModal: React.FC<Props> = ({ initial, onCancel, onSave }) =
       desired_values: {},
       penalty_weight: 10,
       sessions: [],
+      mode: 'exact',
     };
   };
 
@@ -111,6 +115,7 @@ const AttributeBalanceModal: React.FC<Props> = ({ initial, onCancel, onSave }) =
       attribute_key: formState.attribute_key,
       desired_values: validDesiredValues,
       penalty_weight: formState.penalty_weight!,
+      mode: formState.mode,
       sessions: formState.sessions.length > 0 ? formState.sessions : undefined,
     };
 
@@ -190,6 +195,20 @@ const AttributeBalanceModal: React.FC<Props> = ({ initial, onCancel, onSave }) =
                     />
                   </div>
                 ))}
+              </div>
+              <div className="mt-3">
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Mode</label>
+                <select
+                  value={formState.mode}
+                  onChange={e => setFormState(p => ({ ...p, mode: e.target.value as 'exact' | 'at_least' }))}
+                  className="select w-full text-base py-3"
+                >
+                  <option value="exact">Exact (penalize deviation both ways)</option>
+                  <option value="at_least">At least (penalize only shortfalls)</option>
+                </select>
+                <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>
+                  Choose "At least" to enforce minimum counts without penalizing overshoot.
+                </p>
               </div>
             </div>
           )}
