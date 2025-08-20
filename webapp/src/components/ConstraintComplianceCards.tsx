@@ -266,11 +266,12 @@ function useCompliance(problem: Problem, solution: Solution): CardData[] {
           break;
         }
         default: {
+          const anyConstraint = c as Constraint;
           cards.push({
             id: index,
-            constraint: c,
-            type: c.type,
-            title: c.type,
+            constraint: anyConstraint,
+            type: anyConstraint.type,
+            title: anyConstraint.type,
             adheres: true,
             violationsCount: 0,
             details: [],

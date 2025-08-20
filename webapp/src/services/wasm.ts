@@ -94,7 +94,7 @@ class WasmService {
     this.loading = true;
 
     try {
-      // Load the WASM module via the virtual alias
+      // Load the WASM module via the virtual alias (vite alias → public/solver_wasm.js)
       const wasmModule = await import("virtual:wasm-solver").catch((error) => {
         console.warn(
           "WASM module not found. This might be a build issue:",
@@ -106,7 +106,33 @@ class WasmService {
       });
 
       // Initialize the WASM module
-      await wasmModule.default();
+      if (
+        typeof (wasmModule as unknown as { default?: () => Promise<void> })
+          .default === "function"
+      ) {
+        await (
+          wasmModule as unknown as { default: () => Promise<void> }
+        ).default();
+      } else if (
+        typeof (wasmModule as unknown as { wasm_bindgen?: () => Promise<void> })
+          .wasm_bindgen === "function"
+      ) {
+        await (
+          wasmModule as unknown as { wasm_bindgen: () => Promise<void> }
+        ).wasm_bindgen();
+      } else if (
+        typeof (
+          wasmModule as unknown as { initSync?: (m?: unknown) => unknown }
+        ).initSync === "function"
+      ) {
+        (
+          wasmModule as unknown as { initSync: (m?: unknown) => unknown }
+        ).initSync();
+      } else {
+        console.warn(
+          "WASM module has no default/wasm_bindgen/initSync initializer; proceeding without explicit init"
+        );
+      }
 
       this.module = wasmModule as unknown as WasmModule;
       console.log("WASM module loaded successfully");
@@ -305,6 +331,50 @@ class WasmService {
 
   hasInitializationFailed(): boolean {
     return this.initializationFailed;
+  }
+
+  async evaluateSolution(
+    problem: Problem,
+    assignments: Assignment[]
+  ): Promise<Solution> {
+    if (!this.module && !this.initializationFailed) {
+      await this.initialize();
+    }
+    if (!this.module) {
+      throw new Error(
+        "WASM module not available. Please check the build configuration."
+      );
+    }
+    // Build ApiInput with initial_schedule populated from assignments
+    const payload = this.convertProblemToRustFormat(problem) as Record<
+      string,
+      unknown
+    > & {
+      initial_schedule?: Record<string, Record<string, string[]>>;
+    };
+
+    // Convert assignments → schedule map
+    const schedule: Record<string, Record<string, string[]>> = {};
+    for (const a of assignments) {
+      const sessionKey = `session_${a.session_id}`;
+      schedule[sessionKey] = schedule[sessionKey] || {};
+      schedule[sessionKey][a.group_id] = schedule[sessionKey][a.group_id] || [];
+      schedule[sessionKey][a.group_id].push(a.person_id);
+    }
+    payload.initial_schedule = schedule;
+
+    try {
+      const resultJson = this.module.evaluate_input!(JSON.stringify(payload));
+      const rustResult = JSON.parse(resultJson);
+      return this.convertRustResultToSolution(rustResult);
+    } catch (error) {
+      console.error("WASM evaluateSolution error:", error);
+      throw new Error(
+        `Failed to evaluate solution: ${
+          error instanceof Error ? error.stack || error.message : String(error)
+        }`
+      );
+    }
   }
 
   // Convert Problem to the format expected by the Rust solver

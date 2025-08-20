@@ -1,4 +1,4 @@
-import React from 'react';
+// React import is not required in React 17+ with JSX runtime
 import { AlertTriangle, X } from 'lucide-react';
 
 interface DemoDataWarningModalProps {

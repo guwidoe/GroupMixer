@@ -515,7 +515,9 @@ export function SolverPanel() {
         weighted_repetition_penalty: 0,
         weighted_constraint_penalty: 0,
       } as unknown as import('../types').Solution;
-      addResult(snapshotSolution, problemWithSettings.settings);
+      // Use the most recent run settings if available; fall back to solverSettings
+      const settingsForSave = (runSettings || solverSettings);
+      addResult(snapshotSolution, settingsForSave);
       addNotification({
         type: 'success',
         title: 'Saved Best-So-Far',

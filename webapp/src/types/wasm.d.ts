@@ -6,6 +6,7 @@ declare module "virtual:wasm-solver" {
   ): string;
   export function validate_problem(problem_json: string): string;
   export function get_default_settings(): string;
+  export function evaluate_input(input_json: string): string;
   export function init_panic_hook(): void;
   export default function init(
     module_or_path?: string | URL | Request
@@ -20,6 +21,7 @@ export type WasmModule = {
   ) => string;
   validate_problem: (problem_json: string) => string;
   get_default_settings: () => string;
+  evaluate_input?: (input_json: string) => string;
   init_panic_hook: () => void;
   default: () => Promise<void>;
 };

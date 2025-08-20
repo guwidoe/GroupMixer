@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Settings, Play, BarChart3, History } from 'lucide-react';
+import { Settings, Play, BarChart3, History, Edit3 } from 'lucide-react';
 
 export function Navigation() {
 
@@ -32,6 +32,13 @@ export function Navigation() {
       label: 'Result Details',
       icon: BarChart3,
       description: 'Inspect a single result in depth',
+    },
+    {
+      id: 'editor',
+      path: '/app/editor',
+      label: 'Manual Editor',
+      icon: Edit3,
+      description: 'Manually adjust assignments with live feedback',
     },
   ];
 

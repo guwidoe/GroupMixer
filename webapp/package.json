@@ -9,7 +9,7 @@
     "vercel-build": "chmod +x ./vercel-build.sh && ./vercel-build.sh",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "build-wasm": "wasm-pack build ../solver-wasm --target no-modules --out-dir $(pwd)/public"
+    "build-wasm": "wasm-pack build ../solver-wasm --target web --out-dir $(pwd)/public"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.11",

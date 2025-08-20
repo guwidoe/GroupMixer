@@ -5,6 +5,7 @@ export const solve: (a: number, b: number, c: number) => void;
 export const solve_with_progress: (a: number, b: number, c: number, d: number) => void;
 export const validate_problem: (a: number, b: number, c: number) => void;
 export const get_default_settings: (a: number) => void;
+export const evaluate_input: (a: number, b: number, c: number) => void;
 export const test_callback_consistency: (a: number, b: number, c: number) => void;
 export const get_recommended_settings: (a: number, b: number, c: number, d: bigint) => void;
 export const greet: () => void;
