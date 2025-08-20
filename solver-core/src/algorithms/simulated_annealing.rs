@@ -907,6 +907,12 @@ impl Solver for SimulatedAnnealing {
                         // Advanced analytics
                         score_variance,
                         search_efficiency,
+                        // Include a lightweight snapshot of best schedule for UI to save without stopping
+                        best_schedule: Some(
+                            best_state
+                                .to_solver_result(best_cost, no_improvement_counter)
+                                .schedule,
+                        ),
                     };
 
                     // If callback returns false, stop early
@@ -1000,6 +1006,8 @@ impl Solver for SimulatedAnnealing {
                             target_group,
                             &target_people,
                         );
+                        // By default, record the estimated delta; if accepted, override with actual delta
+                        let mut recorded_delta = delta_cost;
 
                         //let current_cost = current_state.current_cost;
                         //let next_cost = current_cost + delta_cost;
@@ -1009,6 +1017,7 @@ impl Solver for SimulatedAnnealing {
                             || rng.random::<f64>() < (-delta_cost / temperature).exp();
 
                         if move_accepted {
+                            let prev_cost = current_state.current_cost;
                             current_state.apply_clique_swap(
                                 day,
                                 clique_idx,
@@ -1019,6 +1028,7 @@ impl Solver for SimulatedAnnealing {
 
                             // Since apply_clique_swap does a full recalculation, we need to get the actual cost
                             let actual_current_cost = current_state.current_cost;
+                            recorded_delta = actual_current_cost - prev_cost;
 
                             // Optional invariant check after applying move
                             if state.logging.debug_validate_invariants {
@@ -1062,8 +1072,8 @@ impl Solver for SimulatedAnnealing {
                             }
                         }
 
-                        // Record the move attempt
-                        metrics.record_clique_swap(delta_cost, move_accepted);
+                        // Record using chosen delta (actual if accepted, estimated otherwise)
+                        metrics.record_clique_swap(recorded_delta, move_accepted);
                     }
                 }
             } else if move_selector < clique_swap_probability + transfer_probability {
@@ -1419,6 +1429,11 @@ impl Solver for SimulatedAnnealing {
                 // Advanced analytics
                 score_variance,
                 search_efficiency,
+                best_schedule: Some(
+                    best_state
+                        .to_solver_result(best_cost, no_improvement_counter)
+                        .schedule,
+                ),
             };
 
             // Call the callback one final time (ignore return value since we're done)

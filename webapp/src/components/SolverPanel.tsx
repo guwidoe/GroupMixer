@@ -37,6 +37,8 @@ export function SolverPanel() {
 
   const cancelledRef = useRef(false);
   const solverCompletedRef = useRef(false);
+  const restartAfterSaveRef = useRef(false);
+  const saveInProgressRef = useRef(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   // Runtime input used for the quick-start (automatic) button
   const [desiredRuntimeMain, setDesiredRuntimeMain] = useState<number | null>(3);
@@ -227,6 +229,10 @@ export function SolverPanel() {
         if (solverCompletedRef.current) {
           return false;
         }
+        // Respect cancel immediately so we stop at the nearest callback tick
+        if (cancelledRef.current) {
+          return false;
+        }
         
         // Debug logging for progress updates
         if (progress.iteration % 1000 === 0 || progress.iteration < 10) {
@@ -294,11 +300,6 @@ export function SolverPanel() {
           (window as { lastLoggedBestScore?: number }).lastLoggedBestScore = progress.best_score;
         }
         
-        // Check if solver was cancelled
-        if (cancelledRef.current) {
-          return false; // Stop the solver
-        }
-        
         return true; // Continue solving
       };
 
@@ -314,21 +315,7 @@ export function SolverPanel() {
       // Mark solver as completed to prevent late progress updates
       solverCompletedRef.current = true;
       
-      // Check if the solver was cancelled
-      if (cancelledRef.current) {
-        setSolverState({ 
-          isRunning: false, 
-          isComplete: false,
-        });
-        addNotification({
-          type: 'warning',
-          title: 'Solver Cancelled',
-          message: 'Optimization was cancelled by user',
-        });
-        return;
-      }
-      
-      // Update the solution and mark as complete
+      // Always capture the solution that came back (best-so-far when cancelled)
       setSolution(solution);
       
       // Determine the final no improvement count
@@ -342,21 +329,33 @@ export function SolverPanel() {
       // Update final solver state with actual final values from the last progress callback
       // Prefer lastProgress (which is emitted after a full recalculation) to avoid any drift.
       console.log('[SolverPanel] Setting final solver state with bestScore/currentScore from lastProgress');
-      setSolverState({ 
-        isRunning: false, 
-        isComplete: true,
-        currentIteration: solution.iteration_count,
-        elapsedTime: solution.elapsed_time_ms,
-        currentScore: lastProgress?.current_score ?? (solverState.currentScore ?? 0),
-        bestScore: lastProgress?.best_score ?? solution.final_score,
-        noImprovementCount: finalNoImprovementCount,
-      });
 
-      addNotification({
-        type: 'success',
-        title: 'Optimization Complete',
-        message: `Found solution with score ${solution.final_score.toFixed(2)}`,
-      });
+      if (cancelledRef.current) {
+        setSolverState({ 
+          isRunning: false, 
+          isComplete: false,
+          currentIteration: solution.iteration_count,
+          elapsedTime: solution.elapsed_time_ms,
+          currentScore: lastProgress?.current_score ?? (solverState.currentScore ?? 0),
+          bestScore: lastProgress?.best_score ?? solution.final_score,
+          noImprovementCount: finalNoImprovementCount,
+        });
+      } else {
+        setSolverState({ 
+          isRunning: false, 
+          isComplete: true,
+          currentIteration: solution.iteration_count,
+          elapsedTime: solution.elapsed_time_ms,
+          currentScore: lastProgress?.current_score ?? (solverState.currentScore ?? 0),
+          bestScore: lastProgress?.best_score ?? solution.final_score,
+          noImprovementCount: finalNoImprovementCount,
+        });
+        addNotification({
+          type: 'success',
+          title: 'Optimization Complete',
+          message: `Found solution with score ${solution.final_score.toFixed(2)}`,
+        });
+      }
 
       // Automatically save result if there's a current problem
       console.log('[SolverPanel] About to save result, currentProblemId:', currentProblemId);
@@ -374,6 +373,52 @@ export function SolverPanel() {
           // Update the store by calling the store's set method
           useAppStore.setState({ currentProblemId: newSaved.id });
           addResult(solution, selectedSettings);
+        }
+      }
+
+      // Post-save notifications and optional resume when cancelled
+      if (cancelledRef.current) {
+        if (restartAfterSaveRef.current) {
+          addNotification({
+            type: 'success',
+            title: 'Saved Best-So-Far',
+            message: 'Resuming solver with the same settings...',
+          });
+          restartAfterSaveRef.current = false;
+          cancelledRef.current = false;
+          saveInProgressRef.current = false;
+          const resumeProblem = problemWithSettings; // reuse same settings
+          const initialSchedule = solution.assignments.reduce<Record<string, Record<string, string[]>>>((acc, a) => {
+            const sessionKey = `session_${a.session_id}`;
+            if (!acc[sessionKey]) acc[sessionKey] = {};
+            if (!acc[sessionKey][a.group_id]) acc[sessionKey][a.group_id] = [];
+            acc[sessionKey][a.group_id].push(a.person_id);
+            return acc;
+          }, {});
+          // Reset completion flag so progress updates are accepted
+          solverCompletedRef.current = false;
+          // Mark running before starting the worker again
+          startSolver();
+          setTimeout(async () => {
+            try {
+              await solverWorkerService.solveWithProgressWarmStart(resumeProblem, initialSchedule, progressCallback);
+            } catch (e) {
+              console.error('[SolverPanel] Warm-start resume failed:', e);
+              // Fallback to normal start
+              // eslint-disable-next-line @typescript-eslint/no-floating-promises
+              handleStartSolver(false);
+            }
+          }, 0);
+          return;
+        } else {
+          addNotification({
+            type: 'success',
+            title: 'Saved Best-So-Far',
+            message: 'Solver stopped and best-so-far solution saved.',
+          });
+          cancelledRef.current = false;
+          saveInProgressRef.current = false;
+          return;
         }
       }
 
@@ -428,6 +473,66 @@ export function SolverPanel() {
       type: 'info',
       title: 'Stopping Solver',
       message: 'Saving best-so-far solution...',
+    });
+  };
+
+  // Save best-so-far snapshot and resume solving
+  const handleSaveBestSoFar = () => {
+    if (!solverState.isRunning) {
+      addNotification({
+        type: 'warning',
+        title: 'Solver Not Running',
+        message: 'Start the solver to save a best-so-far snapshot.',
+      });
+      return;
+    }
+    if (saveInProgressRef.current) {
+      return; // ignore duplicate clicks while saving
+    }
+
+    // If the latest progress update included a best_schedule snapshot, save immediately without stopping
+    const lastProgress = (solverWorkerService as unknown as { lastProgressUpdate?: ProgressUpdate }).lastProgressUpdate as ProgressUpdate | undefined;
+    if (lastProgress && lastProgress.best_schedule) {
+      saveInProgressRef.current = true;
+      // Build a minimal solution from the progress (use best_score for final_score proxy)
+      const bestSchedule = lastProgress.best_schedule;
+      const assignments: { person_id: string; group_id: string; session_id: number }[] = [];
+      Object.entries(bestSchedule).forEach(([sessionKey, groups]) => {
+        const sId = parseInt(sessionKey.replace('session_', ''));
+        Object.entries(groups).forEach(([groupId, people]) => {
+          people.forEach((pid) => assignments.push({ person_id: pid, group_id: groupId, session_id: sId }));
+        });
+      });
+      const snapshotSolution = {
+        assignments,
+        final_score: lastProgress.best_score,
+        unique_contacts: solverState.bestScore ? 0 : 0,
+        repetition_penalty: 0,
+        attribute_balance_penalty: 0,
+        constraint_penalty: 0,
+        iteration_count: lastProgress.iteration,
+        elapsed_time_ms: lastProgress.elapsed_seconds * 1000,
+        weighted_repetition_penalty: 0,
+        weighted_constraint_penalty: 0,
+      } as unknown as import('../types').Solution;
+      addResult(snapshotSolution, problemWithSettings.settings);
+      addNotification({
+        type: 'success',
+        title: 'Saved Best-So-Far',
+        message: 'Snapshot saved without interrupting the solver.',
+      });
+      saveInProgressRef.current = false;
+      return;
+    }
+
+    // Fallback: no snapshot available from progress; perform graceful stop+resume
+    saveInProgressRef.current = true;
+    restartAfterSaveRef.current = true;
+    cancelledRef.current = true;
+    addNotification({
+      type: 'info',
+      title: 'Saving Best-So-Far',
+      message: 'Snapshotting best result and resuming...',
     });
   };
 
@@ -590,13 +695,23 @@ export function SolverPanel() {
               <span>Start Solver with Automatic Settings</span>
             </button>
           ) : (
-            <button
-              onClick={() => setShowCancelConfirm(true)}
-              className="btn-warning flex-1 flex items-center justify-center space-x-2"
-            >
-              <Pause className="h-4 w-4" />
-              <span>Cancel Solver</span>
-            </button>
+            <div className="flex flex-1 gap-2">
+              <button
+                onClick={() => setShowCancelConfirm(true)}
+                className="btn-warning flex-1 flex items-center justify-center space-x-2"
+              >
+                <Pause className="h-4 w-4" />
+                <span>Cancel Solver</span>
+              </button>
+              <button
+                onClick={handleSaveBestSoFar}
+                className="btn-secondary flex-1 flex items-center justify-center space-x-2"
+                title="Save best-so-far and continue solving"
+              >
+                <TrendingUp className="h-4 w-4" />
+                <span>Save Best So Far</span>
+              </button>
+            </div>
           )}
           
           <button

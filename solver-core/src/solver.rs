@@ -509,12 +509,68 @@ impl State {
 
         state._preprocess_and_validate_constraints(input)?;
 
-        // --- Initialize with a random assignment (clique-aware) ---
+        // If an initial schedule is supplied, warm-start from it; otherwise random initialize
+        if let Some(ref initial_schedule) = input.initial_schedule {
+            // Build mapping of group id -> index for quick lookup
+            let mut day_idx = 0usize;
+            // Expect keys like "session_0", iterate in sorted order by session index
+            let mut sessions: Vec<(usize, &std::collections::HashMap<String, Vec<String>>)> =
+                initial_schedule
+                    .iter()
+                    .filter_map(|(k, v)| {
+                        if let Some(s_idx_str) = k.split('_').last() {
+                            if let Ok(s_idx) = s_idx_str.parse::<usize>() {
+                                return Some((s_idx, v));
+                            }
+                        }
+                        None
+                    })
+                    .collect();
+            sessions.sort_by_key(|(s_idx, _)| *s_idx);
+
+            for (s_idx, group_map) in sessions {
+                if s_idx >= state.schedule.len() {
+                    continue;
+                }
+                let day_schedule = &mut state.schedule[s_idx];
+                let mut placed: Vec<bool> = vec![false; people_count];
+                for (group_id, people_ids) in group_map.iter() {
+                    if let Some(&g_idx) = state.group_id_to_idx.get(group_id) {
+                        for pid in people_ids {
+                            if let Some(&p_idx) = state.person_id_to_idx.get(pid) {
+                                // Only place if participating this day and group has capacity
+                                let group_size = input.problem.groups[g_idx].size as usize;
+                                if state.person_participation[p_idx][s_idx]
+                                    && day_schedule[g_idx].len() < group_size
+                                {
+                                    day_schedule[g_idx].push(p_idx);
+                                    placed[p_idx] = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                // Any unplaced participating people will be filled in by random initializer below
+                day_idx += 1;
+            }
+        }
+
+        // --- Initialize remaining slots with a random assignment (clique-aware) ---
         let mut rng = rand::rng();
 
         for (day, day_schedule) in state.schedule.iter_mut().enumerate() {
             let mut group_cursors = vec![0; group_count];
             let mut assigned_in_day = vec![false; people_count];
+
+            // Warm-start aware: mark already placed people and count existing occupants
+            for (g_idx, members) in day_schedule.iter().enumerate() {
+                group_cursors[g_idx] = members.len();
+                for &p in members {
+                    if p < people_count {
+                        assigned_in_day[p] = true;
+                    }
+                }
+            }
 
             // Get list of people participating in this session
             let participating_people: Vec<usize> = (0..people_count)
@@ -3830,6 +3886,7 @@ mod tests {
             .collect();
 
         ApiInput {
+            initial_schedule: None,
             problem: ProblemDefinition {
                 people,
                 groups,
@@ -4797,6 +4854,7 @@ mod attribute_balance_tests {
 
     fn create_attribute_balance_test_input() -> ApiInput {
         ApiInput {
+            initial_schedule: None,
             problem: ProblemDefinition {
                 people: vec![
                     Person {
@@ -4920,6 +4978,7 @@ mod attribute_balance_tests {
         ];
 
         let input = ApiInput {
+            initial_schedule: None,
             problem: ProblemDefinition {
                 people,
                 groups: vec![

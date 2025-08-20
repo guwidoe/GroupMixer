@@ -63,6 +63,12 @@ use std::collections::HashMap;
 pub struct ApiInput {
     /// The core problem definition: people, groups, and sessions
     pub problem: ProblemDefinition,
+    /// Optional initial schedule to warm-start the solver. If provided, the solver
+    /// initializes the internal state from this schedule instead of a random one.
+    /// Format: schedule["session_{i}"][group_id] = [person_ids]
+    #[serde(default)]
+    pub initial_schedule:
+        Option<std::collections::HashMap<String, std::collections::HashMap<String, Vec<String>>>>,
     /// Optimization objectives (defaults to empty list if not specified)
     #[serde(default)]
     pub objectives: Vec<Objective>,
@@ -729,6 +735,12 @@ pub struct ProgressUpdate {
     pub score_variance: f64,
     /// Search efficiency (improvement per unit time)
     pub search_efficiency: f64,
+
+    // === Optional snapshot of the current best schedule ===
+    /// Best-known schedule at the time of the update (if included)
+    #[serde(default)]
+    pub best_schedule:
+        Option<std::collections::HashMap<String, std::collections::HashMap<String, Vec<String>>>>,
 }
 
 /// Callback function type for receiving progress updates during solver execution.

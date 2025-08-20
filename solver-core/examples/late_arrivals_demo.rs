@@ -7,6 +7,7 @@ fn main() {
 
     // Create a problem with people who have different participation patterns
     let input = ApiInput {
+        initial_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 // Core team - participates in all sessions

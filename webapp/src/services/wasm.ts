@@ -63,6 +63,8 @@ export interface ProgressUpdate {
   // === Advanced Analytics ===
   score_variance: number;
   search_efficiency: number;
+  // Optional snapshot of best schedule to allow UI-side saves without stopping
+  best_schedule?: Record<string, Record<string, string[]>>;
 }
 
 // Progress callback type

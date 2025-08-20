@@ -334,6 +334,42 @@ export class SolverWorkerService {
     return { solution, lastProgress: lastProgress || null };
   }
 
+  async solveWithProgressWarmStart(
+    problem: Problem,
+    initialSchedule: Record<string, Record<string, string[]>>,
+    progressCallback?: ProgressCallback
+  ): Promise<{ solution: Solution; lastProgress: ProgressUpdate | null }> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    // Inject initial_schedule into the payload expected by Rust ApiInput
+    const payload = this.convertProblemToRustFormat(problem) as Record<
+      string,
+      unknown
+    > & {
+      initial_schedule?: Record<string, Record<string, string[]>>;
+    };
+    payload.initial_schedule = initialSchedule;
+
+    const problemJson = JSON.stringify(payload);
+
+    console.debug(
+      "[SolverWorkerService] Problem JSON (warm-start) sent to worker:",
+      problemJson
+    );
+
+    const { result, lastProgress } = await this.sendMessageWithProgress(
+      "SOLVE",
+      { problemJson, useProgress: true },
+      progressCallback
+    );
+
+    const rustResult = JSON.parse(result);
+    const solution = this.convertRustResultToSolution(rustResult, lastProgress);
+    return { solution, lastProgress: lastProgress || null };
+  }
+
   async cancel(): Promise<void> {
     if (!this.worker) return;
 

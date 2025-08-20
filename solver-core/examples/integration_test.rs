@@ -7,6 +7,7 @@ fn main() {
     println!("Session-Specific Constraints + Late Arrivals/Departures + All Constraint Types\n");
 
     let input = ApiInput {
+        initial_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 Person {

@@ -318,6 +318,7 @@ pub fn calculate_recommended_settings(
     };
 
     let trial_input = ApiInput {
+        initial_schedule: None,
         problem: problem.clone(),
         objectives: trial_objectives,
         constraints: constraints.to_vec(),
@@ -694,6 +695,7 @@ mod callback_tests {
         ];
 
         ApiInput {
+            initial_schedule: None,
             problem: ProblemDefinition {
                 people,
                 groups,
@@ -769,6 +771,7 @@ mod callback_tests {
         ];
 
         ApiInput {
+            initial_schedule: None,
             problem: ProblemDefinition {
                 people,
                 groups,
