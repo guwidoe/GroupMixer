@@ -32,6 +32,7 @@ interface WorkerMessageData {
 interface RustSolverParams {
   initial_temperature: number;
   final_temperature: number;
+  reheat_cycles?: number;
   reheat_after_no_improvement: number;
 }
 
@@ -387,6 +388,9 @@ export class SolverWorkerService {
           params.final_temperature,
           0.01
         );
+        if (params.reheat_cycles !== undefined) {
+          params.reheat_cycles = sanitizeNumber(params.reheat_cycles, 0);
+        }
         params.reheat_after_no_improvement = sanitizeNumber(
           params.reheat_after_no_improvement,
           0

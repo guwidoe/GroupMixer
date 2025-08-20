@@ -50,6 +50,7 @@ export function SolverPanel() {
     noImprovement?: string;
     initialTemp?: string;
     finalTemp?: string;
+    reheatCycles?: string;
     reheat?: string;
     desiredRuntimeSettings?: string;
     desiredRuntimeMain?: string;
@@ -71,6 +72,7 @@ export function SolverPanel() {
         initial_temperature: 1.0,
         final_temperature: 0.01,
         cooling_schedule: "geometric",
+        reheat_cycles: 0,
         reheat_after_no_improvement: 0, // 0 = disabled
       },
     },
@@ -181,10 +183,11 @@ export function SolverPanel() {
           // 2️⃣ Convert the flattened `solver_params` coming from Rust into the nested UI shape
           const sp = (rawSettings as SolverSettings & { solver_params: Record<string, unknown> }).solver_params;
           if (sp && !("SimulatedAnnealing" in sp) && sp.solver_type === "SimulatedAnnealing") {
-            const { initial_temperature, final_temperature, cooling_schedule, reheat_after_no_improvement } = sp as {
+            const { initial_temperature, final_temperature, cooling_schedule, reheat_cycles, reheat_after_no_improvement } = sp as {
               initial_temperature: number;
               final_temperature: number;
               cooling_schedule: string;
+              reheat_cycles?: number;
               reheat_after_no_improvement: number;
             };
             selectedSettings = {
@@ -194,6 +197,7 @@ export function SolverPanel() {
                   initial_temperature,
                   final_temperature,
                   cooling_schedule,
+                  reheat_cycles,
                   reheat_after_no_improvement,
                 },
               },
@@ -479,11 +483,13 @@ export function SolverPanel() {
           initial_temperature,
           final_temperature,
           cooling_schedule,
+          reheat_cycles,
           reheat_after_no_improvement,
         } = sp as {
           initial_temperature: number;
           final_temperature: number;
           cooling_schedule: string;
+          reheat_cycles?: number;
           reheat_after_no_improvement: number;
         };
 
@@ -494,6 +500,7 @@ export function SolverPanel() {
               initial_temperature,
               final_temperature,
               cooling_schedule,
+              reheat_cycles,
               reheat_after_no_improvement,
             },
           },
@@ -1211,6 +1218,43 @@ export function SolverPanel() {
             </div>
             <div>
               <div className="flex items-center space-x-2 mb-1">
+                <label htmlFor="reheatCycles" className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  Reheat Cycles
+                </label>
+                <Tooltip content="Number of cycles to cool from initial to final temperature, then reheat and repeat. 0 = disabled.">
+                  <Info className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
+                </Tooltip>
+              </div>
+              <input
+                id="reheatCycles"
+                type="number"
+                className="input"
+                value={solverFormInputs.reheatCycles ?? (solverSettings.solver_params.SimulatedAnnealing?.reheat_cycles || 0).toString()}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSolverFormInputs(prev => ({ ...prev, reheatCycles: e.target.value }))}
+                onBlur={() => {
+                  const inputValue = solverFormInputs.reheatCycles || (solverSettings.solver_params.SimulatedAnnealing?.reheat_cycles || 0).toString();
+                  const numValue = parseInt(inputValue);
+                  if (!isNaN(numValue) && numValue >= 0) {
+                    handleSettingsChange({
+                      ...solverSettings,
+                      solver_params: {
+                        ...solverSettings.solver_params,
+                        SimulatedAnnealing: {
+                          ...solverSettings.solver_params.SimulatedAnnealing!,
+                          reheat_cycles: numValue,
+                        }
+                      }
+                    });
+                    setSolverFormInputs(prev => ({ ...prev, reheatCycles: undefined }));
+                  }
+                }}
+                min="0"
+                max="100000"
+                placeholder="0 = disabled"
+              />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2 mb-1">
                 <label htmlFor="reheatAfterNoImprovement" className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                   Reheat After No Improvement
                 </label>
@@ -1374,6 +1418,15 @@ export function SolverPanel() {
                   {(displaySettings.solver_params.SimulatedAnnealing?.reheat_after_no_improvement || 0) === 0 
                     ? 'Disabled' 
                     : (displaySettings.solver_params.SimulatedAnnealing?.reheat_after_no_improvement || 0).toLocaleString()
+                  }
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-secondary)' }}>Reheat Cycles:</span>
+                <span className="font-medium">
+                  {(displaySettings.solver_params.SimulatedAnnealing?.reheat_cycles || 0) === 0
+                    ? 'Disabled'
+                    : (displaySettings.solver_params.SimulatedAnnealing?.reheat_cycles || 0).toLocaleString()
                   }
                 </span>
               </div>

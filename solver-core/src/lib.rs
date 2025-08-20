@@ -302,6 +302,7 @@ pub fn calculate_recommended_settings(
             initial_temperature: 1_000_000.0,
             final_temperature: 1_000_000.0,
             cooling_schedule: "geometric".into(),
+            reheat_cycles: Some(0),
             reheat_after_no_improvement: Some(0),
         }),
         logging: Default::default(),
@@ -424,6 +425,7 @@ pub fn calculate_recommended_settings(
             initial_temperature: init_temp,
             final_temperature: final_temp,
             cooling_schedule: "geometric".into(),
+            reheat_cycles: Some(0),
             reheat_after_no_improvement: Some(total_iters / 3),
         }),
         logging: Default::default(),
@@ -717,6 +719,7 @@ mod callback_tests {
                     initial_temperature: 10.0,
                     final_temperature: 0.01,
                     cooling_schedule: "geometric".to_string(),
+                    reheat_cycles: Some(0),
                     reheat_after_no_improvement: Some(0), // No reheat
                 }),
                 logging: LoggingOptions {
@@ -811,6 +814,7 @@ mod callback_tests {
                     initial_temperature: 50.0,
                     final_temperature: 0.01,
                     cooling_schedule: "geometric".to_string(),
+                    reheat_cycles: Some(0),
                     reheat_after_no_improvement: Some(0), // No reheat
                 }),
                 logging: LoggingOptions {

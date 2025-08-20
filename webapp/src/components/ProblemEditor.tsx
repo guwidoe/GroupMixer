@@ -39,6 +39,7 @@ const getDefaultSolverSettings = (): SolverSettings => ({
       initial_temperature: 1.0,
       final_temperature: 0.01,
       cooling_schedule: "geometric",
+      reheat_cycles: 0,
       reheat_after_no_improvement: 0,
     },
   },

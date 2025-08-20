@@ -107,6 +107,7 @@ export interface SimulatedAnnealingParams {
   initial_temperature: number;
   final_temperature: number;
   cooling_schedule: "geometric" | "linear";
+  reheat_cycles?: number; // Optional: number of fixed cycles across total iterations (0/undefined = disabled)
   reheat_after_no_improvement?: number; // Optional: number of iterations without improvement before reheating (0 = disabled)
 }
 

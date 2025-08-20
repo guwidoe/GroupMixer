@@ -440,6 +440,9 @@ pub struct SimulatedAnnealing {
     pub time_limit_seconds: Option<u64>,
     /// Optional early stopping after this many iterations without improvement
     pub no_improvement_iterations: Option<u64>,
+    /// When > 0, split the total iterations into this many cycles; each cycle cools from
+    /// initial_temperature to final_temperature, then reheats at the boundary
+    pub reheat_cycles: u64,
     /// Optional reheat threshold: number of iterations without improvement before reheating (0 = disabled)
     pub reheat_after_no_improvement: u64,
 }
@@ -476,6 +479,7 @@ impl SimulatedAnnealing {
     ///             initial_temperature: 50.0,
     ///             final_temperature: 0.1,
     ///             cooling_schedule: "geometric".to_string(),
+    ///             reheat_cycles: Some(0),
     ///             reheat_after_no_improvement: Some(0),
     ///         }
     ///     ),
@@ -490,6 +494,9 @@ impl SimulatedAnnealing {
         let SolverParams::SimulatedAnnealing(sa_params) = &params.solver_params;
         let max_iterations = params.stop_conditions.max_iterations.unwrap_or(100_000);
         let no_improvement_iterations = params.stop_conditions.no_improvement_iterations;
+
+        // Determine cycle-based reheating
+        let reheat_cycles = sa_params.reheat_cycles.unwrap_or(0);
 
         // Calculate reheat threshold:
         // - None => auto-calc default
@@ -514,6 +521,7 @@ impl SimulatedAnnealing {
             final_temperature: sa_params.final_temperature,
             time_limit_seconds: params.stop_conditions.time_limit_seconds,
             no_improvement_iterations,
+            reheat_cycles,
             reheat_after_no_improvement,
         }
     }
@@ -712,6 +720,13 @@ impl Solver for SimulatedAnnealing {
         // Track reheating state
         let mut reheat_count = 0;
         let mut last_reheat_iteration = 0u64;
+        let cycle_length = if self.reheat_cycles > 0 {
+            // Avoid division by zero; ensure at least length 1
+            (self.max_iterations / self.reheat_cycles).max(1)
+        } else {
+            0
+        };
+        let mut prev_cycle_index: Option<u64> = None;
 
         // Initialize algorithm metrics (convert start_time to f64 for cross-platform compatibility)
         let initial_score = state.calculate_cost();
@@ -721,8 +736,30 @@ impl Solver for SimulatedAnnealing {
         for i in 0..self.max_iterations {
             final_iteration = i;
 
-            // Check if we should reheat (only if reheat is enabled)
-            if self.reheat_after_no_improvement > 0 {
+            // Two reheating modes:
+            // 1) Fixed cycle-based reheats if reheat_cycles > 0
+            // 2) Fallback: no-improvement-based reheats if enabled
+            if self.reheat_cycles > 0 && cycle_length > 0 {
+                let cycle_index = i / cycle_length;
+                if let Some(prev) = prev_cycle_index {
+                    if cycle_index > prev {
+                        // We crossed a cycle boundary: perform a reheat
+                        reheat_count += 1;
+                        last_reheat_iteration = cycle_index * cycle_length;
+                        no_improvement_counter = 0;
+                        if state.logging.log_stop_condition {
+                            println!(
+                                "Reheating (cycle) #{} at iteration {} (cycle {} of {})",
+                                reheat_count,
+                                i,
+                                cycle_index + 1,
+                                self.reheat_cycles
+                            );
+                        }
+                    }
+                }
+                prev_cycle_index = Some(cycle_index);
+            } else if self.reheat_after_no_improvement > 0 {
                 if no_improvement_counter >= self.reheat_after_no_improvement
                     && no_improvement_counter > 0
                 {
@@ -743,13 +780,21 @@ impl Solver for SimulatedAnnealing {
             }
 
             // Calculate temperature with potential reheat adjustment
-            let iterations_since_last_reheat = i - last_reheat_iteration;
-            let remaining_iterations = self.max_iterations - last_reheat_iteration;
+            let (iterations_since_last_reheat, remaining_for_cooling) =
+                if self.reheat_cycles > 0 && cycle_length > 0 {
+                    let cycle_index = i / cycle_length;
+                    let cycle_start = cycle_index * cycle_length;
+                    (i - cycle_start, cycle_length)
+                } else {
+                    let iterations_since_last_reheat = i - last_reheat_iteration;
+                    let remaining_iterations = self.max_iterations - last_reheat_iteration;
+                    (iterations_since_last_reheat, remaining_iterations)
+                };
 
-            let temperature = if remaining_iterations > 0 {
+            let temperature = if remaining_for_cooling > 0 {
                 self.initial_temperature
                     * (self.final_temperature / self.initial_temperature)
-                        .powf(iterations_since_last_reheat as f64 / remaining_iterations as f64)
+                        .powf(iterations_since_last_reheat as f64 / remaining_for_cooling as f64)
             } else {
                 self.final_temperature
             };
@@ -768,7 +813,12 @@ impl Solver for SimulatedAnnealing {
                 if i == 0 || elapsed_since_last_callback >= 0.1 {
                     let current_cost = current_state.current_cost;
                     let elapsed = get_elapsed_seconds(start_time);
-                    let iterations_since_last_reheat = i - last_reheat_iteration;
+                    let iterations_since_last_reheat = if self.reheat_cycles > 0 && cycle_length > 0
+                    {
+                        i - ((i / cycle_length) * cycle_length)
+                    } else {
+                        i - last_reheat_iteration
+                    };
 
                     // Calculate dynamic metrics
                     let (
@@ -784,7 +834,9 @@ impl Solver for SimulatedAnnealing {
                     ) = metrics.calculate_metrics(elapsed);
 
                     // Calculate cooling progress
-                    let cooling_progress = if self.max_iterations > 0 {
+                    let cooling_progress = if self.reheat_cycles > 0 && cycle_length > 0 {
+                        (iterations_since_last_reheat as f64) / (cycle_length as f64)
+                    } else if self.max_iterations > 0 {
                         iterations_since_last_reheat as f64
                             / (self.max_iterations - last_reheat_iteration) as f64
                     } else {
@@ -1263,13 +1315,21 @@ impl Solver for SimulatedAnnealing {
         // Send final progress update if callback is provided
         // IMPORTANT: This must happen AFTER _recalculate_scores() to ensure accurate scores
         if let Some(callback) = &progress_callback {
-            let iterations_since_last_reheat = final_iteration - last_reheat_iteration;
-            let remaining_iterations = self.max_iterations - last_reheat_iteration;
+            let (iterations_since_last_reheat, remaining_for_cooling) =
+                if self.reheat_cycles > 0 && cycle_length > 0 {
+                    let cycle_index = final_iteration / cycle_length;
+                    let cycle_start = cycle_index * cycle_length;
+                    (final_iteration - cycle_start, cycle_length)
+                } else {
+                    let iterations_since_last_reheat = final_iteration - last_reheat_iteration;
+                    let remaining_iterations = self.max_iterations - last_reheat_iteration;
+                    (iterations_since_last_reheat, remaining_iterations)
+                };
 
-            let final_temperature = if remaining_iterations > 0 {
+            let final_temperature = if remaining_for_cooling > 0 {
                 self.initial_temperature
                     * (self.final_temperature / self.initial_temperature)
-                        .powf(iterations_since_last_reheat as f64 / remaining_iterations as f64)
+                        .powf(iterations_since_last_reheat as f64 / remaining_for_cooling as f64)
             } else {
                 self.final_temperature
             };
@@ -1287,7 +1347,9 @@ impl Solver for SimulatedAnnealing {
                 search_efficiency,
             ) = metrics.calculate_metrics(elapsed);
 
-            let cooling_progress = if self.max_iterations > 0 {
+            let cooling_progress = if self.reheat_cycles > 0 && cycle_length > 0 {
+                (iterations_since_last_reheat as f64) / (cycle_length as f64)
+            } else if self.max_iterations > 0 {
                 iterations_since_last_reheat as f64
                     / (self.max_iterations - last_reheat_iteration) as f64
             } else {

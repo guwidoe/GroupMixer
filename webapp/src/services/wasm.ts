@@ -336,6 +336,7 @@ class WasmService {
           params.final_temperature,
           0.01
         );
+        params.reheat_cycles = sanitizeNumber(params.reheat_cycles, 0);
         params.reheat_after_no_improvement = sanitizeNumber(
           params.reheat_after_no_improvement,
           0

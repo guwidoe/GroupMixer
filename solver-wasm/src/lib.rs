@@ -207,6 +207,7 @@ pub fn get_default_settings() -> Result<String, JsValue> {
             initial_temperature: 1.0,
             final_temperature: 0.01,
             cooling_schedule: "geometric".to_string(),
+            reheat_cycles: Some(0),
             reheat_after_no_improvement: Some(0), // No reheat
         }),
         logging: LoggingOptions {

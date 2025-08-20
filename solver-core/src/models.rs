@@ -539,6 +539,15 @@ pub struct SimulatedAnnealingParams {
     pub final_temperature: f64,
     /// Temperature reduction schedule: "geometric" for exponential decay, "linear" for linear decay
     pub cooling_schedule: String, // "geometric", "linear", etc
+    /// Fixed reheat cycles: split the total iterations into this many cycles.
+    /// For each cycle, temperature cools from `initial_temperature` down to `final_temperature`,
+    /// then reheats to `initial_temperature` at the cycle boundary.
+    ///
+    /// Semantics:
+    /// - `Some(0)` or `None`: disabled (use default behavior)
+    /// - `Some(N>0)`: enable cycle-based reheating with N cycles across `max_iterations`
+    #[serde(default)]
+    pub reheat_cycles: Option<u64>,
     /// Optional reheat threshold: number of iterations without improvement before reheating.
     /// When reached, temperature is reset to initial_temperature and the cooling schedule is recalculated
     /// for the remaining iterations.
