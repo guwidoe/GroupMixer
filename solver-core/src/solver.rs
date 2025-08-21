@@ -621,6 +621,13 @@ impl State {
                     continue;
                 }
 
+                // Check if this clique applies to this session (session-aware initialization)
+                if let Some(ref sessions) = state.clique_sessions[clique_idx] {
+                    if !sessions.contains(&day) {
+                        continue;
+                    }
+                }
+
                 // Find a group with enough space for the entire clique
                 let mut placed = false;
                 let mut potential_groups: Vec<usize> = (0..group_count).collect();
