@@ -26,7 +26,9 @@ export interface ChangeReportData {
 
 interface Props {
   open: boolean;
-  onClose: () => void;
+  onClose: () => void; // Treat close as accept by default (X/overlay)
+  onAccept?: () => void;
+  onCancel?: () => void;
   data: ChangeReportData | null;
 }
 
@@ -36,7 +38,7 @@ function formatDelta(v: number, invertGood = false): { text: string; className: 
   return { text: `${sign}${v.toFixed(2)}`, className: cls };
 }
 
-const ChangeReportModal: React.FC<Props> = ({ open, onClose, data }) => {
+const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel, data }) => {
   if (!open || !data) return null;
 
   const b = data.before.score;
@@ -238,7 +240,7 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, data }) => {
             <Target className="w-5 h-5" style={{ color: 'var(--color-accent)' }} />
             <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Change Report</h3>
           </div>
-          <button onClick={onClose} className="p-1 rounded hover:opacity-80" aria-label="Close" style={{ color: 'var(--text-secondary)' }}>
+          <button onClick={onAccept || onClose} className="p-1 rounded hover:opacity-80" aria-label="Close" style={{ color: 'var(--text-secondary)' }}>
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -256,7 +258,7 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, data }) => {
                 <div key={idx} className="rounded px-3 py-2 border" style={{ borderColor: 'var(--border-primary)' }}>
                   <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-secondary)' }}>
                     <span className="inline-flex items-center gap-1">{kpi.icon}{kpi.label}</span>
-                    <span className={`${formatDelta(kpi.delta, kpi.invert).className}`}>{formatDelta(kpi.delta, kpi.invert).text}</span>
+                    <span className={`${formatDelta(Number(kpi.delta) || 0, !!kpi.invert).className}`}>{formatDelta(Number(kpi.delta) || 0, !!kpi.invert).text}</span>
                   </div>
                   <div className="mt-1 text-sm font-medium text-right" style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{kpi.value}</div>
                 </div>
@@ -285,15 +287,35 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, data }) => {
                               {items.map((item) => {
                                 const from = item.before?.violationsCount ?? 0;
                                 const to = item.after?.violationsCount ?? 0;
-                                const dv = to - from;
+                                const rawDelta = to - from;
+                                // Pull optional penalty weight from the constraint definition (soft constraints)
+                                const weight = (item.after?.constraint as any)?.penalty_weight ?? (item.before?.constraint as any)?.penalty_weight ?? 1;
+                                const dv = rawDelta * (typeof weight === 'number' ? weight : 1);
                                 const dvFmt = formatDelta(dv, true);
                                 const borderStyle = dv > 0 ? 'var(--color-error-600)' : dv < 0 ? 'var(--color-success-600)' : 'var(--border-primary)';
                                 return (
                                   <div key={item.key} className="rounded border p-2" style={{ borderColor: borderStyle }}>
                                     <div className="flex items-center justify-between text-sm">
                                       <div className="min-w-0">
-                                        <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{(item.after?.title || item.before?.title) ?? type}</div>
-                                        <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{type}{hard ? ' • Hard' : ''}</div>
+                                        <div className="text-sm font-medium flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                                          <span>{(item.after?.title || item.before?.title) ?? type}</span>
+                                          {/* Show weight for soft constraints */}
+                                          {!(HARD_TYPES.has(type)) && (typeof weight === 'number') && (
+                                            <span className="px-1.5 py-0.5 text-[10px] rounded border" style={{ borderColor: 'var(--border-primary)', color: 'var(--text-secondary)' }}>w {weight}</span>
+                                          )}
+                                        </div>
+                                        <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                          {type}{hard ? ' • Hard' : ''}
+                                          {/* RepeatEncounter penalty function */}
+                                          {type === 'RepeatEncounter' && (
+                                            <>
+                                              {(() => {
+                                                const pf = (item.after?.constraint as any)?.penalty_function || (item.before?.constraint as any)?.penalty_function;
+                                                return pf ? <span> • {pf}</span> : null;
+                                              })()}
+                                            </>
+                                          )}
+                                        </div>
                                       </div>
                                       <div className={`text-sm ${dvFmt.className}`}>{dvFmt.text}</div>
                                     </div>
@@ -310,6 +332,25 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, data }) => {
                 ))}
               </>
             )}
+          </div>
+          {/* Footer actions */}
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <button
+              onClick={onCancel}
+              className="px-3 py-1.5 rounded border text-sm"
+              style={{ borderColor: 'var(--border-primary)', color: 'var(--text-secondary)' }}
+            >
+              Cancel move
+            </button>
+            <button
+              onClick={onAccept || onClose}
+              className="px-3 py-1.5 rounded text-sm"
+              style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+            >
+              Accept
+            </button>
           </div>
         </div>
       </div>

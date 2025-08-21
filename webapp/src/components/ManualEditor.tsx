@@ -137,6 +137,13 @@ function ManualEditor() {
   // === Change report modal ===
   const [showReport, setShowReport] = useState(false);
   const [reportData, setReportData] = useState<ChangeReportData | null>(null);
+  const [pendingMove, setPendingMove] = useState<{
+    personId: string;
+    fromGroupId?: string;
+    toGroupId: string;
+    sessionId: number;
+    prevAssignments: Assignment[];
+  } | null>(null);
   const [elaborateReportsEnabled, setElaborateReportsEnabled] = useState(false);
 
   const compliance = useMemo(() => (effectiveProblem ? evaluateCompliance(effectiveProblem, { assignments: draftAssignments } as Solution) : []), [effectiveProblem, draftAssignments]);
@@ -397,12 +404,15 @@ function ManualEditor() {
         } catch {}
       }
 
-      movePerson(personId, fromGroupId, group.id, activeSession);
+      // Stage the move but do not commit yet
+      const prevAssignments = cloneAssignments(draft.assignments);
+      const staged = cloneAssignments(draft.assignments).filter(a => !(a.person_id === personId && a.session_id === activeSession));
+      staged.push({ person_id: personId, group_id: group.id, session_id: activeSession });
 
       if (elaborateReportsEnabled && effectiveProblem) {
         try {
           // After state has been pushed, evaluate with new assignments
-          const afterEval = await wasmService.evaluateSolution(effectiveProblem, [...draftAssignments.filter(a => !(a.person_id === personId && a.session_id === activeSession)), { person_id: personId, group_id: group.id, session_id: activeSession }]);
+          const afterEval = await wasmService.evaluateSolution(effectiveProblem, staged);
           const afterScore = {
             final_score: afterEval.final_score,
             unique_contacts: afterEval.unique_contacts,
@@ -412,6 +422,7 @@ function ManualEditor() {
           };
           const afterCompliance = evaluateCompliance(effectiveProblem, afterEval as unknown as Solution);
           setReportData({ before: { score: beforeScore, compliance: beforeCompliance }, after: { score: afterScore, compliance: afterCompliance }, people: effectiveProblem.people });
+          setPendingMove({ personId, fromGroupId, toGroupId: group.id, sessionId: activeSession, prevAssignments });
           setShowReport(true);
         } catch (e) {
           console.warn('Failed to build change report:', e);
@@ -598,7 +609,33 @@ function ManualEditor() {
           {renderStatusBar()}
         </div>
       </div>
-      <ChangeReportModal open={showReport} onClose={() => setShowReport(false)} data={reportData} />
+      <ChangeReportModal
+        open={showReport}
+        data={reportData}
+        onAccept={() => {
+          if (pendingMove) {
+            movePerson(pendingMove.personId, pendingMove.fromGroupId, pendingMove.toGroupId, pendingMove.sessionId);
+          }
+          setShowReport(false);
+          setPendingMove(null);
+        }}
+        onCancel={() => {
+          if (pendingMove) {
+            // Revert to previous assignments
+            setDraft({ assignments: cloneAssignments(pendingMove.prevAssignments) });
+          }
+          setShowReport(false);
+          setPendingMove(null);
+        }}
+        onClose={() => {
+          // Default close acts like accept
+          if (pendingMove) {
+            movePerson(pendingMove.personId, pendingMove.fromGroupId, pendingMove.toGroupId, pendingMove.sessionId);
+          }
+          setShowReport(false);
+          setPendingMove(null);
+        }}
+      />
     </div>
   );
 }
