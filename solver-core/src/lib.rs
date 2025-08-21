@@ -11,6 +11,7 @@
 //! use std::collections::HashMap;
 //!
 //! let input = ApiInput {
+//!     initial_schedule: None,
 //!     problem: ProblemDefinition {
 //!         people: vec![
 //!             Person {
@@ -39,11 +40,12 @@
 //!             no_improvement_iterations: None,
 //!         },
 //!         solver_params: SolverParams::SimulatedAnnealing(
-//!             SimulatedAnnealingParams {
+//!                SimulatedAnnealingParams {
 //!                 initial_temperature: 10.0,
 //!                 final_temperature: 0.1,
 //!                 cooling_schedule: "geometric".to_string(),
 //!                 reheat_after_no_improvement: Some(0),
+//!                 reheat_cycles: Some(0),
 //!             }
 //!         ),
 //!         logging: LoggingOptions::default(),
@@ -108,6 +110,7 @@ pub mod solver;
 /// use std::collections::HashMap;
 ///
 /// let input = ApiInput {
+///     initial_schedule: None,
 ///     problem: ProblemDefinition {
 ///         people: vec![
 ///             Person {
@@ -160,6 +163,7 @@ pub mod solver;
 ///                 final_temperature: 0.1,
 ///                 cooling_schedule: "geometric".to_string(),
 ///                 reheat_after_no_improvement: Some(0),
+///                 reheat_cycles: Some(0),
 ///             }
 ///         ),
 ///         logging: LoggingOptions {
@@ -224,12 +228,13 @@ pub fn run_solver(input: &ApiInput) -> Result<SolverResult, SolverError> {
 /// use std::collections::HashMap;
 ///
 /// # let input = ApiInput {
+/// #     initial_schedule: None,
 /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
 /// #     objectives: vec![], constraints: vec![],
 /// #     solver: SolverConfiguration {
 /// #         solver_type: "SimulatedAnnealing".to_string(),
 /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-/// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0) }),
+/// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
 /// #         logging: LoggingOptions::default(),
 /// #     },
 /// # };

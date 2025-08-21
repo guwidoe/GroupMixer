@@ -120,6 +120,12 @@ interface AppStore extends AppState {
   setAttributeDefinitions: (definitions: AttributeDefinition[]) => void;
   addAttributeDefinition: (definition: AttributeDefinition) => void;
   removeAttributeDefinition: (key: string) => void;
+
+  // Manual Editor unsaved/leave handling
+  manualEditorUnsaved: boolean;
+  setManualEditorUnsaved: (unsaved: boolean) => void;
+  manualEditorLeaveHook: ((nextPath: string) => void) | null;
+  setManualEditorLeaveHook: (hook: ((nextPath: string) => void) | null) => void;
 }
 
 const initialState: AppState = {
@@ -151,6 +157,8 @@ export const useAppStore = create<AppStore>()(
   devtools(
     (set, get) => ({
       ...initialState,
+      manualEditorUnsaved: false,
+      manualEditorLeaveHook: null,
 
       // Problem management
       setProblem: (problem) => set({ problem }),
@@ -1023,6 +1031,11 @@ export const useAppStore = create<AppStore>()(
             problem: updatedProblem,
           };
         }),
+
+      // Manual Editor unsaved/leave handling
+      setManualEditorUnsaved: (unsaved) =>
+        set({ manualEditorUnsaved: unsaved }),
+      setManualEditorLeaveHook: (hook) => set({ manualEditorLeaveHook: hook }),
 
       generateDemoData: async () => {
         try {

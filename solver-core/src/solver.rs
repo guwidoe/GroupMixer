@@ -71,6 +71,7 @@ pub enum SolverError {
 ///
 /// // Create state from API input (normally done by run_solver)
 /// # let input = ApiInput {
+/// #     initial_schedule: None,
 /// #     problem: solver_core::models::ProblemDefinition {
 /// #         people: vec![], groups: vec![], num_sessions: 1
 /// #     },
@@ -82,7 +83,7 @@ pub enum SolverError {
 /// #         },
 /// #         solver_params: solver_core::models::SolverParams::SimulatedAnnealing(
 /// #             solver_core::models::SimulatedAnnealingParams {
-/// #                 initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0)
+/// #                 initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0)
 /// #             }
 /// #         ),
 /// #         logging: solver_core::models::LoggingOptions::default(),
@@ -281,6 +282,7 @@ impl State {
     /// use std::collections::HashMap;
     ///
     /// let input = ApiInput {
+    ///     initial_schedule: None,
     ///     problem: ProblemDefinition {
     ///         people: vec![
     ///             Person {
@@ -314,6 +316,7 @@ impl State {
     ///                 final_temperature: 0.1,
     ///                 cooling_schedule: "geometric".to_string(),
     ///                 reheat_after_no_improvement: Some(0),
+    ///                 reheat_cycles: Some(0),
     ///             }
     ///         ),
     ///         logging: LoggingOptions::default(),
@@ -1203,12 +1206,13 @@ impl State {
     /// # use solver_core::models::*;
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
+    /// #     initial_schedule: None,
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0) }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0)}),
     /// #         logging: LoggingOptions::default(),
     /// #     },
     /// # };
@@ -1686,12 +1690,13 @@ impl State {
     /// # use solver_core::models::*;
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
+    /// #     initial_schedule: None,
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0) }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
     /// #     },
     /// # };
@@ -2104,12 +2109,13 @@ impl State {
     /// # use solver_core::models::*;
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
+    /// #     initial_schedule: None,   
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0) }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
     /// #     },
     /// # };
@@ -2151,12 +2157,13 @@ impl State {
     /// # use solver_core::models::*;
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
+    /// #     initial_schedule: None,
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0) }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
     /// #     },
     /// # };
@@ -2721,12 +2728,13 @@ impl State {
     /// # use solver_core::models::*;
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
+    /// #     initial_schedule: None,
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0) }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
     /// #     },
     /// # };
@@ -2785,15 +2793,16 @@ impl State {
     /// # use solver_core::models::*;
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
+    /// #     initial_schedule: None,
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions {
-    /// #             max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None
+    /// #             max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None,
     /// #         },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
-    /// #             initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0)
+    /// #             initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0)
     /// #         }),
     /// #         logging: LoggingOptions { log_initial_score_breakdown: true, log_final_score_breakdown: true, ..Default::default() },
     /// #     },
@@ -2930,6 +2939,14 @@ impl State {
         from_group: usize,
         to_group: usize,
     ) -> bool {
+        // If this clique is not active for this session (e.g., deactivated by immovable propagation),
+        // do not attempt a clique swap in this session.
+        if let Some(ref sessions) = self.clique_sessions[clique_idx] {
+            if !sessions.contains(&day) {
+                return false;
+            }
+        }
+
         let clique = &self.cliques[clique_idx];
         // Active members are those participating this day and currently in from_group
         let active_members: Vec<usize> = clique
@@ -2951,6 +2968,15 @@ impl State {
             return false;
         }
 
+        // Hard guard: do not allow moving a clique if any active member is immovable to a different group
+        for &member in &active_members {
+            if let Some(&required_group) = self.immovable_people.get(&(member, day)) {
+                if required_group != to_group {
+                    return false;
+                }
+            }
+        }
+
         // Need at least as many non-clique movable people in target group as active clique size
         let non_clique_people_in_to_group = self.find_non_clique_movable_people(day, to_group);
         non_clique_people_in_to_group.len() >= active_members.len()
@@ -2965,6 +2991,13 @@ impl State {
         to_group: usize,
         target_people: &[usize],
     ) -> f64 {
+        // If this clique is not active for this session, disallow by returning +inf
+        if let Some(ref sessions) = self.clique_sessions[clique_idx] {
+            if !sessions.contains(&day) {
+                return f64::INFINITY;
+            }
+        }
+
         let clique = &self.cliques[clique_idx];
         // Active members are participating and currently in from_group
         let active_members: Vec<usize> = clique
@@ -2984,6 +3017,24 @@ impl State {
             .all(|&person| self.person_participation[person][day])
         {
             return f64::INFINITY; // Some target people not participating
+        }
+
+        // Hard guard: do not allow moving a clique if any active member is immovable to a different group
+        for &member in &active_members {
+            if let Some(&required_group) = self.immovable_people.get(&(member, day)) {
+                if required_group != to_group {
+                    return f64::INFINITY;
+                }
+            }
+        }
+
+        // Hard guard: do not allow swapping in any target person who is immovable to a different group
+        for &person in target_people {
+            if let Some(&required_group) = self.immovable_people.get(&(person, day)) {
+                if required_group != from_group {
+                    return f64::INFINITY;
+                }
+            }
         }
 
         let mut delta_cost = 0.0;
@@ -3247,6 +3298,13 @@ impl State {
         to_group: usize,
         target_people: &[usize],
     ) {
+        // If this clique is not active for this session, do nothing
+        if let Some(ref sessions) = self.clique_sessions[clique_idx] {
+            if !sessions.contains(&day) {
+                return;
+            }
+        }
+
         let clique_all = self.cliques[clique_idx].clone();
         // Determine active clique members for this day located in from_group
         let active_members: Vec<usize> = clique_all
@@ -3262,6 +3320,24 @@ impl State {
 
         if active_members.len() != target_people.len() {
             return; // sizes must match
+        }
+
+        // Hard guard: do not move if any active member is immovable to a different group
+        for &member in &active_members {
+            if let Some(&required_group) = self.immovable_people.get(&(member, day)) {
+                if required_group != to_group {
+                    return;
+                }
+            }
+        }
+
+        // Hard guard: do not move if any target person is immovable to a different group
+        for &person in target_people {
+            if let Some(&required_group) = self.immovable_people.get(&(person, day)) {
+                if required_group != from_group {
+                    return;
+                }
+            }
         }
 
         // Rebuild groups deterministically to avoid duplicates

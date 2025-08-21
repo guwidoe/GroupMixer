@@ -20,6 +20,7 @@ use std::collections::HashMap;
 /// use std::collections::HashMap;
 ///
 /// let input = ApiInput {
+///     initial_schedule: None,
 ///     problem: ProblemDefinition {
 ///         people: vec![
 ///             Person {
@@ -53,6 +54,7 @@ use std::collections::HashMap;
 ///                 final_temperature: 0.1,
 ///                 cooling_schedule: "geometric".to_string(),
 ///                 reheat_after_no_improvement: Some(0),
+///                 reheat_cycles: Some(0),
 ///             }
 ///         ),
 ///         logging: LoggingOptions::default(),
@@ -231,6 +233,7 @@ pub struct Objective {
 ///     },
 ///     penalty_weight: 50.0,
 ///     sessions: None,
+///     mode: AttributeBalanceMode::Exact,
 /// });
 ///
 /// // Keep two people together (only in sessions 0 and 1)
@@ -335,6 +338,7 @@ pub struct RepeatEncounterParams {
 ///
 /// ```no_run
 /// use solver_core::models::AttributeBalanceParams;
+/// use solver_core::models::AttributeBalanceMode;
 /// use std::collections::HashMap;
 ///
 /// // Maintain 2 males and 2 females in "Team1"
@@ -349,6 +353,7 @@ pub struct RepeatEncounterParams {
 ///     },
 ///     penalty_weight: 50.0,
 ///     sessions: None,
+///     mode: AttributeBalanceMode::Exact,
 /// };
 /// ```
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -456,6 +461,7 @@ pub struct ImmovablePeopleParams {
 ///             final_temperature: 0.1,
 ///             cooling_schedule: "geometric".to_string(),
 ///             reheat_after_no_improvement: Some(0),
+///             reheat_cycles: Some(0),
 ///         }
 ///     ),
 ///     logging: LoggingOptions {
@@ -535,6 +541,7 @@ pub enum SolverParams {
 ///     final_temperature: 0.1,       // End with focused local search
 ///     cooling_schedule: "geometric".to_string(), // Exponential temperature decay
 ///     reheat_after_no_improvement: Some(0), // Reheat after 1000 iterations without improvement (0 = no reheat)
+///     reheat_cycles: Some(0), // Reheat after 1000 iterations without improvement (0 = no reheat)
 /// };
 /// ```
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -780,12 +787,13 @@ pub type ProgressCallback = Box<dyn Fn(&ProgressUpdate) -> bool + Send>;
 ///
 /// // ... create input configuration ...
 /// # let input = ApiInput {
+/// #     initial_schedule: None,
 /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
 /// #     objectives: vec![], constraints: vec![],
 /// #     solver: SolverConfiguration {
 /// #         solver_type: "SimulatedAnnealing".to_string(),
 /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-/// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0) }),
+/// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
 /// #         logging: LoggingOptions::default(),
 /// #     },
 /// # };
@@ -861,12 +869,13 @@ impl SolverResult {
     /// use solver_core::{run_solver, models::*};
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
+    /// #     initial_schedule: None,
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0) }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
     /// #     },
     /// # };

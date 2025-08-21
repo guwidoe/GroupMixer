@@ -167,36 +167,60 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
     if (type === 'RepeatEncounter') {
       return (
         <div className="mt-2 space-y-1">
-          {added.slice(0, 5).map((d) => renderDetailRow(<PlusCircle className="w-3 h-3" />, (
-            <span>New pair {renderPerson(d.pair[0])} ↔ {renderPerson(d.pair[1])} ({d.count}×)</span>
-          ), 'add'))}
-          {removed.slice(0, 5).map((d) => renderDetailRow(<MinusCircle className="w-3 h-3" />, (
-            <span>Resolved pair {renderPerson(d.pair[0])} ↔ {renderPerson(d.pair[1])}</span>
-          ), 'remove'))}
+          {added.slice(0, 5).map((d, i) => (
+            <div key={`re-add-${d.pair?.[0]}-${d.pair?.[1]}-${d.count}-${i}`}>
+              {renderDetailRow(<PlusCircle className="w-3 h-3" />, (
+                <span>New pair {renderPerson(d.pair[0])} ↔ {renderPerson(d.pair[1])} ({d.count}×)</span>
+              ), 'add')}
+            </div>
+          ))}
+          {removed.slice(0, 5).map((d, i) => (
+            <div key={`re-rem-${d.pair?.[0]}-${d.pair?.[1]}-${i}`}>
+              {renderDetailRow(<MinusCircle className="w-3 h-3" />, (
+                <span>Resolved pair {renderPerson(d.pair[0])} ↔ {renderPerson(d.pair[1])}</span>
+              ), 'remove')}
+            </div>
+          ))}
         </div>
       );
     }
     if (type === 'AttributeBalance') {
       return (
         <div className="mt-2 space-y-1">
-          {added.slice(0, 5).map((d) => renderDetailRow(<PlusCircle className="w-3 h-3" />, (
-            <span>Session {d.session + 1}, group <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{d.groupId}</span>, value "{d.attribute}" shortfall</span>
-          ), 'add'))}
-          {removed.slice(0, 5).map((d) => renderDetailRow(<MinusCircle className="w-3 h-3" />, (
-            <span>Session {d.session + 1}, group <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{d.groupId}</span>, value "{d.attribute}" fixed</span>
-          ), 'remove'))}
+          {added.slice(0, 5).map((d, i) => (
+            <div key={`ab-add-${d.session}-${d.groupId}-${d.attribute}-${i}`}>
+              {renderDetailRow(<PlusCircle className="w-3 h-3" />, (
+                <span>Session {d.session + 1}, group <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{d.groupId}</span>, value "{d.attribute}" shortfall</span>
+              ), 'add')}
+            </div>
+          ))}
+          {removed.slice(0, 5).map((d, i) => (
+            <div key={`ab-rem-${d.session}-${d.groupId}-${d.attribute}-${i}`}>
+              {renderDetailRow(<MinusCircle className="w-3 h-3" />, (
+                <span>Session {d.session + 1}, group <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{d.groupId}</span>, value "{d.attribute}" fixed</span>
+              ), 'remove')}
+            </div>
+          ))}
         </div>
       );
     }
     if (type === 'ImmovablePerson' || type === 'ImmovablePeople') {
       return (
         <div className="mt-2 space-y-1">
-          {added.slice(0, 5).map((d) => renderDetailRow(<LinkIcon className="w-3 h-3" />, (
-            <span>Session {d.session + 1}: {renderPerson(d.personId)} not in required <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{d.requiredGroup}</span></span>
-          ), 'add'))}
-          {removed.slice(0, 5).map((d) => renderDetailRow(<MinusCircle className="w-3 h-3" />, (
-            <span>Session {d.session + 1}: Requirement satisfied for {renderPerson(d.personId)}</span>
-          ), 'remove'))}
+          {added.slice(0, 5).map((d, i) => (
+            <div key={`imm-add-${d.session}-${d.personId}-${d.requiredGroup}-${i}`}>
+              {renderDetailRow(<LinkIcon className="w-3 h-3" />, (
+                <span>Session {d.session + 1}: {renderPerson(d.personId)} not in required <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{d.requiredGroup}</span></span>
+              ), 'add')}
+            </div>
+          ))}
+          {removed.slice(0, 5).map((d, i) => (
+            <div key={`imm-rem-${d.session}-${d.personId}-${i}`}>
+              {renderDetailRow(<MinusCircle className="w-3 h-3" />, (
+                <span>Session {d.session + 1}: Requirement satisfied for {renderPerson(d.personId)}</span>
+              ), 'remove')}
+            </div>
+          ))}
         </div>
       );
     }

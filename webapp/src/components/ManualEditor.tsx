@@ -8,6 +8,7 @@ import { evaluateCompliance, buildScheduleMap, computeUniqueContacts } from '../
 import { wasmService } from '../services/wasm';
 import ChangeReportModal, { ChangeReportData } from './ChangeReportModal';
 import ConstraintComplianceCards from './ConstraintComplianceCards';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 type Mode = 'strict' | 'warn' | 'free';
 
@@ -24,6 +25,8 @@ function groupBySessionAndGroup(assignments: Assignment[]): Record<number, Recor
 }
 
 function ManualEditor() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const problem = useAppStore((s) => s.problem);
   const solution = useAppStore((s) => s.solution);
   const addNotification = useAppStore((s) => s.addNotification);
@@ -144,7 +147,102 @@ function ManualEditor() {
     sessionId: number;
     prevAssignments: Assignment[];
   } | null>(null);
-  const [elaborateReportsEnabled, setElaborateReportsEnabled] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const setGlobalUnsaved = useAppStore((s) => s.setManualEditorUnsaved);
+  const setLeaveHook = useAppStore((s) => s.setManualEditorLeaveHook);
+  const [pendingNextPath, setPendingNextPath] = useState<string | null>(null);
+  const proceedingRef = React.useRef(false);
+
+  // Register a route-leave hook so Navigation can trigger our modal
+  useEffect(() => {
+    setLeaveHook((nextPath: string) => {
+      if (hasUnsavedChanges) {
+        setShowLeaveConfirm(true);
+        // Remember intended destination
+        navigate(location.pathname, { replace: true, state: { nextPath } });
+      } else {
+        navigate(nextPath);
+      }
+    });
+    return () => {
+      setLeaveHook(null);
+      setGlobalUnsaved(false);
+    };
+  }, [hasUnsavedChanges, setLeaveHook, setGlobalUnsaved, navigate, location.pathname]);
+
+  // Global route blocking for in-app navigations (pushState/replaceState, back/forward, anchor clicks)
+  useEffect(() => {
+    const originalPush = window.history.pushState;
+    const originalReplace = window.history.replaceState;
+
+    function shouldBlock(nextUrl: string) {
+      if (!hasUnsavedChanges) return false;
+      try {
+        const next = new URL(nextUrl, window.location.origin);
+        const curr = new URL(window.location.href);
+        return next.pathname !== curr.pathname || next.search !== curr.search || next.hash !== curr.hash;
+      } catch {
+        return hasUnsavedChanges;
+      }
+    }
+
+    // Patch history methods
+    (window.history as any).pushState = function pushStatePatched(this: History, ...args: any[]) {
+      const url = args[2];
+      if (!proceedingRef.current && typeof url === 'string' && shouldBlock(url)) {
+        setPendingNextPath(url);
+        setShowLeaveConfirm(true);
+        return;
+      }
+      return originalPush.apply(this, args as any);
+    } as typeof window.history.pushState;
+
+    (window.history as any).replaceState = function replaceStatePatched(this: History, ...args: any[]) {
+      const url = args[2];
+      if (!proceedingRef.current && typeof url === 'string' && shouldBlock(url)) {
+        setPendingNextPath(url);
+        setShowLeaveConfirm(true);
+        return;
+      }
+      return originalReplace.apply(this, args as any);
+    } as typeof window.history.replaceState;
+
+    // Intercept anchor clicks (capturing phase)
+    const onClickCapture = (e: Event) => {
+      if (!hasUnsavedChanges) return;
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const anchor = target.closest('a') as HTMLAnchorElement | null;
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (!href || href.startsWith('#') || anchor.target === '_blank') return;
+      // Only handle same-origin relative navigations
+      if (anchor.origin !== window.location.origin) return;
+      e.preventDefault();
+      setPendingNextPath(anchor.pathname + anchor.search + anchor.hash);
+      setShowLeaveConfirm(true);
+    };
+    document.addEventListener('click', onClickCapture, true);
+
+    // Intercept back/forward
+    const onPopState = () => {
+      if (!hasUnsavedChanges || proceedingRef.current) return;
+      setPendingNextPath(null);
+      setShowLeaveConfirm(true);
+      // revert navigation immediately
+      window.history.pushState(null, '', location.pathname + location.search + location.hash);
+    };
+    window.addEventListener('popstate', onPopState);
+
+    return () => {
+      // restore originals
+      window.history.pushState = originalPush;
+      window.history.replaceState = originalReplace;
+      document.removeEventListener('click', onClickCapture, true);
+      window.removeEventListener('popstate', onPopState);
+    };
+  }, [hasUnsavedChanges, location.pathname, location.search, location.hash]);
 
   const compliance = useMemo(() => (effectiveProblem ? evaluateCompliance(effectiveProblem, { assignments: draftAssignments } as Solution) : []), [effectiveProblem, draftAssignments]);
 
@@ -169,18 +267,7 @@ function ManualEditor() {
     return count;
   }, [compliance, draftSchedule, effectiveProblem]);
 
-  if (!effectiveProblem || !solution || !draft) {
-    return (
-      <div className="p-6">
-        <div className="rounded-lg border p-6" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
-          <div className="flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-            <AlertTriangle className="w-5 h-5" />
-            <span>Select a result first. The Manual Editor activates when a solution is available.</span>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const notReady = !effectiveProblem || !solution || !draft;
 
   // Helpers
   const saveDraft = () => {
@@ -210,17 +297,22 @@ function ManualEditor() {
   };
 
   const pushHistory = (nextAssignments: Assignment[]) => {
+    if (!draft) return;
     setHistory((h) => [...h, { assignments: cloneAssignments(draft.assignments) }]);
     setFuture([]);
     setDraft({ assignments: nextAssignments });
+    setHasUnsavedChanges(true);
+    setGlobalUnsaved(true);
   };
 
   const undo = () => {
     setHistory((h) => {
       if (h.length === 0) return h;
       const prev = h[h.length - 1];
-      setFuture((f) => [{ assignments: cloneAssignments(draft.assignments) }, ...f]);
-      setDraft({ assignments: cloneAssignments(prev.assignments) });
+      if (draft) {
+        setFuture((f) => [{ assignments: cloneAssignments(draft.assignments) }, ...f]);
+        setDraft({ assignments: cloneAssignments(prev.assignments) });
+      }
       return h.slice(0, -1);
     });
   };
@@ -229,8 +321,10 @@ function ManualEditor() {
     setFuture((f) => {
       if (f.length === 0) return f;
       const next = f[0];
-      setHistory((h) => [...h, { assignments: cloneAssignments(draft.assignments) }]);
-      setDraft({ assignments: cloneAssignments(next.assignments) });
+      if (draft) {
+        setHistory((h) => [...h, { assignments: cloneAssignments(draft.assignments) }]);
+        setDraft({ assignments: cloneAssignments(next.assignments) });
+      }
       return f.slice(1);
     });
   };
@@ -257,6 +351,7 @@ function ManualEditor() {
   const capacityOf = (group: Group) => group.size;
 
   const canDrop = (personId: string, targetGroupId: string, sessionId: number): { ok: boolean; reason?: string } => {
+    if (!effectiveProblem) return { ok: false, reason: 'No problem loaded' };
     if (isPersonLocked(personId)) return { ok: false, reason: 'Person is locked' };
     if (isGroupLocked(targetGroupId)) return { ok: false, reason: 'Group is locked' };
 
@@ -367,7 +462,7 @@ function ManualEditor() {
         <div className="rounded-lg border p-3" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
           <div className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Session</div>
           <div className="flex flex-wrap gap-1">
-            {Array.from({ length: effectiveProblem.num_sessions }, (_, s) => (
+            {Array.from({ length: effectiveProblem ? effectiveProblem.num_sessions : 0 }, (_, s) => (
               <button key={s} onClick={() => setActiveSession(s)} className="px-2 py-1 rounded text-xs border" style={{ color: activeSession===s ? 'var(--color-accent)' : 'var(--text-secondary)', borderColor: activeSession===s ? 'var(--color-accent)' : 'var(--border-primary)', backgroundColor: activeSession===s ? 'var(--bg-tertiary)' : 'transparent' }}>{s+1}</button>
             ))}
           </div>
@@ -405,11 +500,16 @@ function ManualEditor() {
       }
 
       // Stage the move but do not commit yet
-      const prevAssignments = cloneAssignments(draft.assignments);
-      const staged = cloneAssignments(draft.assignments).filter(a => !(a.person_id === personId && a.session_id === activeSession));
+      const prevAssignments = draft ? cloneAssignments(draft.assignments) : [];
+      const staged = draft ? cloneAssignments(draft.assignments).filter(a => !(a.person_id === personId && a.session_id === activeSession)) : [];
       staged.push({ person_id: personId, group_id: group.id, session_id: activeSession });
 
-      if (elaborateReportsEnabled && effectiveProblem) {
+      // Mode behavior:
+      // - free: commit immediately
+      // - warn: show detailed change report
+      // - strict: currently same as warn; stricter validation can be added later
+      const shouldShowReport = (mode === 'warn' || mode === 'strict');
+      if (shouldShowReport && effectiveProblem) {
         try {
           // After state has been pushed, evaluate with new assignments
           const afterEval = await wasmService.evaluateSolution(effectiveProblem, staged);
@@ -422,8 +522,8 @@ function ManualEditor() {
           };
           const afterCompliance = evaluateCompliance(effectiveProblem, afterEval as unknown as Solution);
           setReportData({ before: { score: beforeScore, compliance: beforeCompliance }, after: { score: afterScore, compliance: afterCompliance }, people: effectiveProblem.people });
-          // If elaborate reports are on, show modal; otherwise commit immediately
-          if (elaborateReportsEnabled) {
+          // Show modal for warn/strict
+          if (shouldShowReport) {
             setPendingMove({ personId, fromGroupId, toGroupId: group.id, sessionId: activeSession, prevAssignments });
             setShowReport(true);
           } else {
@@ -433,10 +533,13 @@ function ManualEditor() {
         } catch (e) {
           console.warn('Failed to build change report:', e);
           // If evaluation fails, still perform the move to keep editor usable
-          if (!elaborateReportsEnabled) {
+          if (!shouldShowReport) {
             movePerson(personId, fromGroupId, group.id, activeSession);
           }
         }
+      } else {
+        // free mode: commit immediately
+        movePerson(personId, fromGroupId, group.id, activeSession);
       }
       setDraggingPerson(null);
       setPreviewDelta(null);
@@ -499,7 +602,7 @@ function ManualEditor() {
         >
           <div className="space-y-2 select-none">
           {peopleIds.map((pid) => {
-            const person = effectiveProblem.people.find((p) => p.id === pid);
+            const person = effectiveProblem ? effectiveProblem.people.find((p) => p.id === pid) : null;
             if (!person) return null;
             const dragStart = (e: React.DragEvent) => {
               if (isPersonLocked(pid) || isGroupLocked(group.id)) {
@@ -534,7 +637,7 @@ function ManualEditor() {
     return (
       <div className="flex-1">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {effectiveProblem.groups.map((g) => renderGroupColumn(g))}
+          {(effectiveProblem ? effectiveProblem.groups : []).map((g) => renderGroupColumn(g))}
         </div>
       </div>
     );
@@ -556,20 +659,21 @@ function ManualEditor() {
 
   const renderStatusBar = () => {
     const draftUnique = evaluated?.unique_contacts ?? (() => {
+      if (!effectiveProblem) return 0;
       const pc = effectiveProblem.people.length || 1;
       return computeUniqueContacts(draftAssignments, pc).uniqueContacts;
     })();
-    const baseUnique = solution.unique_contacts || 0;
+    const baseUnique = solution?.unique_contacts || 0;
 
     const draftConstraint = evaluated?.constraint_penalty ?? compliance.reduce((acc, c) => acc + c.violationsCount, 0);
-    const baseConstraint = solution.constraint_penalty ?? baselineCompliance.reduce((acc, c) => acc + c.violationsCount, 0);
+    const baseConstraint = (solution?.constraint_penalty ?? 0) || baselineCompliance.reduce((acc, c) => acc + c.violationsCount, 0);
 
     const deltaUnique = draftUnique - baseUnique;
     const deltaViolations = draftConstraint - baseConstraint;
     const deltaUniqueSign = deltaUnique === 0 ? '' : deltaUnique > 0 ? '+' : '';
     const deltaViolationsSign = deltaViolations === 0 ? '' : deltaViolations > 0 ? '+' : '';
 
-    const baseScore = solution.final_score;
+    const baseScore = solution?.final_score ?? 0;
     const draftScore = evaluated?.final_score ?? baseScore;
     const deltaScore = draftScore - baseScore;
     const deltaScoreSign = deltaScore === 0 ? '' : deltaScore > 0 ? '+' : '';
@@ -605,20 +709,33 @@ function ManualEditor() {
       <div className="flex items-center gap-2">
         <Target className="w-5 h-5" style={{ color: 'var(--color-accent)' }} />
         <h2 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>Manual Editor</h2>
-        <label className="ml-4 inline-flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-          <input type="checkbox" checked={elaborateReportsEnabled} onChange={(e) => setElaborateReportsEnabled(e.target.checked)} />
-          Enable detailed change report
-        </label>
+        {/* Detailed change report is controlled by mode: Warn/Strict show the modal; Free commits immediately */}
+        {hasUnsavedChanges && (
+          <span className="ml-3 px-2 py-0.5 rounded text-xs border" style={{ borderColor: 'var(--color-accent)', color: 'var(--color-accent)' }}>Unsaved changes</span>
+        )}
       </div>
-      {renderTopBar()}
-      <div className="flex flex-col lg:flex-row gap-4">
-        {renderSidebar()}
-        <div className="flex-1 space-y-4">
-          {renderCanvas()}
-          <ConstraintComplianceCards problem={effectiveProblem} solution={complianceSolution} />
-          {renderStatusBar()}
+      {notReady ? (
+        <div>
+          <div className="rounded-lg border p-6" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
+            <div className="flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+              <AlertTriangle className="w-5 h-5" />
+              <span>Select a result first. The Manual Editor activates when a solution is available.</span>
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <>
+          {renderTopBar()}
+          <div className="flex flex-col lg:flex-row gap-4">
+            {renderSidebar()}
+            <div className="flex-1 space-y-4">
+              {renderCanvas()}
+              <ConstraintComplianceCards problem={effectiveProblem} solution={complianceSolution} />
+              {renderStatusBar()}
+            </div>
+          </div>
+        </>
+      )}
       <ChangeReportModal
         open={showReport}
         data={reportData}
@@ -646,6 +763,52 @@ function ManualEditor() {
           setPendingMove(null);
         }}
       />
+
+      {/* Leave confirmation modal */}
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
+          <div className="rounded-lg border w-full max-w-md" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
+            <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border-primary)' }}>
+              <div className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Unsaved changes</div>
+              <div className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                You have unsaved changes. Save as a new result before leaving?
+              </div>
+            </div>
+            <div className="p-4 flex items-center justify-end gap-2">
+              <button className="px-3 py-1.5 rounded border text-sm" style={{ borderColor: 'var(--border-primary)', color: 'var(--text-secondary)' }} onClick={() => { setShowLeaveConfirm(false); }}>Cancel</button>
+              <button className="px-3 py-1.5 rounded border text-sm" style={{ borderColor: 'var(--border-primary)', color: 'var(--text-secondary)' }} onClick={() => { setShowLeaveConfirm(false); setHasUnsavedChanges(false); useAppStore.getState().setManualEditorUnsaved(false); proceedingRef.current = true; const next = (location.state as any)?.nextPath || pendingNextPath || '/app/results'; if (next) { window.history.pushState(null, '', next); navigate(next); } proceedingRef.current = false; }}>Discard and continue</button>
+              <button className="px-3 py-1.5 rounded text-sm" style={{ backgroundColor: 'var(--color-accent)', color: 'white' }} onClick={() => {
+                // Save draft as new result then continue
+                const peopleCount = effectiveProblem?.people.length || 1;
+                const { uniqueContacts } = computeUniqueContacts(draftAssignments, peopleCount);
+                const draftSolution = {
+                  assignments: cloneAssignments(draftAssignments),
+                  final_score: evaluated?.final_score ?? 0,
+                  unique_contacts: evaluated?.unique_contacts ?? uniqueContacts,
+                  repetition_penalty: evaluated?.repetition_penalty ?? 0,
+                  attribute_balance_penalty: evaluated?.attribute_balance_penalty ?? 0,
+                  constraint_penalty: evaluated?.constraint_penalty ?? 0,
+                  iteration_count: 0,
+                  elapsed_time_ms: 0,
+                  weighted_repetition_penalty: evaluated?.weighted_repetition_penalty ?? 0,
+                  weighted_constraint_penalty: evaluated?.weighted_constraint_penalty ?? 0,
+                } as unknown as import('../types').Solution;
+                if (effectiveProblem) {
+                  useAppStore.getState().addResult(draftSolution, effectiveProblem.settings, 'Manual Draft');
+                }
+                setShowLeaveConfirm(false);
+                setHasUnsavedChanges(false);
+                useAppStore.getState().setManualEditorUnsaved(false);
+                proceedingRef.current = true;
+                const next = (location.state as any)?.nextPath || pendingNextPath || '/app/results';
+                window.history.pushState(null, '', next);
+                navigate(next);
+                proceedingRef.current = false;
+              }}>Save as new result</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

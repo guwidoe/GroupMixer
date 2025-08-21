@@ -1,8 +1,12 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useAppStore } from '../store';
 import { Settings, Play, BarChart3, History, Edit3 } from 'lucide-react';
 
 export function Navigation() {
-
+  const navigate = useNavigate();
+  const location = useLocation();
+  const unsaved = useAppStore((s) => s.manualEditorUnsaved);
+  const leaveHook = useAppStore((s) => s.manualEditorLeaveHook);
 
   const tabs = [
     {
@@ -56,6 +60,16 @@ export function Navigation() {
               <NavLink
                 key={tab.id}
                 to={tab.path}
+                onClick={(e) => {
+                  if (unsaved && location.pathname.startsWith('/app/editor') && tab.path !== '/app/editor') {
+                    e.preventDefault();
+                    if (leaveHook) {
+                      leaveHook(tab.path);
+                    } else {
+                      navigate(tab.path);
+                    }
+                  }
+                }}
                 className={({ isActive }) =>
                   `flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-1 sm:px-2 md:px-4 py-3 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 border min-w-0 ${
                     isActive
