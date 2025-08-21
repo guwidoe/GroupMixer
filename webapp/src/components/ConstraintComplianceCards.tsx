@@ -27,7 +27,10 @@ type ViolationDetail =
   | { kind: 'AttributeBalance'; session: number; groupId: string; attribute: string; desired: number; actual: number }
   | { kind: 'Immovable'; session: number; personId: string; requiredGroup: string; assignedGroup?: string }
   | { kind: 'TogetherSplit'; session: number; people: { personId: string; groupId?: string }[] }
-  | { kind: 'NotTogether'; session: number; groupId: string; people: string[] };
+  | { kind: 'NotTogether'; session: number; groupId: string; people: string[] }
+  | { kind: 'PairMeetingCountSummary'; people: [string, string]; target: number; actual: number; mode: 'at_least' | 'exact' | 'at_most'; sessions: number[] }
+  | { kind: 'PairMeetingTogether'; session: number; groupId?: string; people: [string, string] }
+  | { kind: 'PairMeetingApart'; session: number; groupId?: string; people: [string, string] };
 
 interface CardData extends BaseCardData {
   details: ViolationDetail[];
@@ -60,6 +63,68 @@ function useCompliance(problem: Problem, solution: Solution): CardData[] {
 
     problem.constraints.forEach((c, index) => {
       switch (c.type) {
+        case 'PairMeetingCount': {
+          const sessions = (c as any).sessions as number[] | undefined;
+          const [idA, idB] = (c as any).people as [string, string];
+          const subset = (sessions && sessions.length > 0)
+            ? sessions
+            : Array.from({ length: problem.num_sessions }, (_, i) => i);
+
+          let count = 0;
+          const perSession: Array<{ session: number; together: boolean; groupId?: string }> = [];
+          subset.forEach((session) => {
+            const groups = schedule[session] || {};
+            let inSame = false;
+            let groupId: string | undefined = undefined;
+            for (const [gid, ids] of Object.entries(groups)) {
+              const arr = ids as string[];
+              if (arr.includes(idA) && arr.includes(idB)) {
+                inSame = true;
+                groupId = gid;
+                break;
+              }
+            }
+            if (inSame) count += 1;
+            perSession.push({ session, together: inSame, groupId });
+          });
+
+          const target = (c as any).target_meetings as number;
+          const mode = ((c as any).mode as ('at_least' | 'exact' | 'at_most')) || 'at_least';
+          let deviations = 0;
+          if (mode === 'at_least') deviations = Math.max(0, target - count);
+          else if (mode === 'exact') deviations = Math.abs(target - count);
+          else deviations = Math.max(0, count - target);
+
+          const details: ViolationDetail[] = [];
+          details.push({
+            kind: 'PairMeetingCountSummary',
+            people: [idA, idB],
+            target,
+            actual: count,
+            mode,
+            sessions: subset,
+          });
+          perSession.forEach(ps => {
+            details.push({
+              kind: ps.together ? 'PairMeetingTogether' : 'PairMeetingApart',
+              session: ps.session,
+              groupId: ps.groupId,
+              people: [idA, idB],
+            });
+          });
+
+          cards.push({
+            id: index,
+            constraint: c,
+            type: c.type,
+            title: `Pair Meeting Count (${mode.replace('_',' ')})`,
+            subtitle: `${formatSessions(sessions, problem.num_sessions)} • Target: ${target}`,
+            adheres: deviations === 0,
+            violationsCount: deviations,
+            details,
+          });
+          break;
+        }
         case 'RepeatEncounter': {
           const pairCounts = new Map<string, { count: number; sessions: Set<number> }>();
           Object.entries(schedule).forEach(([sessionStr, groups]) => {
@@ -316,6 +381,8 @@ const ConstraintComplianceCards: React.FC<Props> = ({ problem, solution }) => {
       case 'ShouldStayTogether':
       case 'ShouldNotBeTogether':
         return constraint.people;
+      case 'PairMeetingCount':
+        return (constraint as any).people as [string, string];
       default:
         return null;
     }
@@ -372,6 +439,35 @@ const ConstraintComplianceCards: React.FC<Props> = ({ problem, solution }) => {
   );
 
   const renderDetail = (detail: ViolationDetail, key: number) => {
+    if (detail.kind === 'PairMeetingCountSummary') {
+      const [a, b] = detail.people;
+      return (
+        <div key={key} className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          <div className="flex flex-wrap items-center gap-2">
+            <ConstraintPersonChip personId={a} people={problem.people} />
+            <span>&</span>
+            <ConstraintPersonChip personId={b} people={problem.people} />
+            <span>
+              Target {detail.target} ({detail.mode.replace('_',' ')}) • Actual {detail.actual} • {formatSessions(detail.sessions, problem.num_sessions)}
+            </span>
+          </div>
+        </div>
+      );
+    }
+    if (detail.kind === 'PairMeetingTogether') {
+      return (
+        <div key={key} className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          Session {detail.session + 1}: Together{detail.groupId ? ` in ${detail.groupId}` : ''}
+        </div>
+      );
+    }
+    if (detail.kind === 'PairMeetingApart') {
+      return (
+        <div key={key} className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          Session {detail.session + 1}: Apart
+        </div>
+      );
+    }
     switch (detail.kind) {
       case 'RepeatEncounter': {
         const [a, b] = detail.pair;

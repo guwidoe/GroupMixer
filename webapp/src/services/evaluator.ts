@@ -87,13 +87,25 @@ export function evaluateCompliance(
           sessions && sessions.length > 0
             ? sessions
             : Array.from({ length: problem.num_sessions }, (_, i) => i);
+        const perSession: Array<{
+          session: number;
+          together: boolean;
+          groupId?: string;
+        }> = [];
         subset.forEach((session) => {
           const groups = schedule[session] || {};
-          const inSame = Object.values(groups).some((ids) => {
+          let inSame = false;
+          let groupId: string | undefined = undefined;
+          for (const [gid, ids] of Object.entries(groups)) {
             const arr = ids as string[];
-            return arr.includes(idA) && arr.includes(idB);
-          });
+            if (arr.includes(idA) && arr.includes(idB)) {
+              inSame = true;
+              groupId = gid;
+              break;
+            }
+          }
           if (inSame) count += 1;
+          perSession.push({ session, together: inSame, groupId });
         });
 
         const target = c.target_meetings;
@@ -104,16 +116,24 @@ export function evaluateCompliance(
         else deviation = Math.max(0, count - target);
 
         const details: ViolationDetail[] = [];
-        if (deviation > 0) {
+        // Always provide rich details for this constraint
+        details.push({
+          kind: "PairMeetingCountSummary",
+          people: [idA, idB],
+          target,
+          actual: count,
+          mode,
+          sessions: subset,
+        });
+        // Add per-session info, highlighting where they did/did not meet
+        perSession.forEach((ps) => {
           details.push({
-            kind: "PairMeetingCount",
+            kind: ps.together ? "PairMeetingTogether" : "PairMeetingApart",
+            session: ps.session,
+            groupId: ps.groupId,
             people: [idA, idB],
-            target,
-            actual: count,
-            mode,
-            sessions: subset,
           });
-        }
+        });
 
         cards.push({
           id: index,
