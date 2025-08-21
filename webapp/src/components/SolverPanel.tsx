@@ -3,6 +3,7 @@ import { useAppStore } from '../store';
 import { Play, Pause, RotateCcw, Settings, TrendingUp, Clock, Activity, ChevronDown, ChevronRight, Info, BarChart3 } from 'lucide-react';
 import type { SolverSettings } from '../types';
 import { solverWorkerService } from '../services/solverWorker';
+import { wasmService } from '../services/wasm';
 import type { ProgressUpdate } from '../services/wasm';
 import { Tooltip } from './Tooltip';
 import { problemStorage } from '../services/problemStorage';
@@ -477,7 +478,7 @@ export function SolverPanel() {
   };
 
   // Save best-so-far snapshot and resume solving
-  const handleSaveBestSoFar = () => {
+  const handleSaveBestSoFar = async () => {
     if (!solverState.isRunning) {
       addNotification({
         type: 'warning',
@@ -494,7 +495,6 @@ export function SolverPanel() {
     const lastProgress = (solverWorkerService as unknown as { lastProgressUpdate?: ProgressUpdate }).lastProgressUpdate as ProgressUpdate | undefined;
     if (lastProgress && lastProgress.best_schedule) {
       saveInProgressRef.current = true;
-      // Build a minimal solution from the progress (use best_score for final_score proxy)
       const bestSchedule = lastProgress.best_schedule;
       const assignments: { person_id: string; group_id: string; session_id: number }[] = [];
       Object.entries(bestSchedule).forEach(([sessionKey, groups]) => {
@@ -503,27 +503,53 @@ export function SolverPanel() {
           people.forEach((pid) => assignments.push({ person_id: pid, group_id: groupId, session_id: sId }));
         });
       });
-      const snapshotSolution = {
-        assignments,
-        final_score: lastProgress.best_score,
-        unique_contacts: solverState.bestScore ? 0 : 0,
-        repetition_penalty: 0,
-        attribute_balance_penalty: 0,
-        constraint_penalty: 0,
-        iteration_count: lastProgress.iteration,
-        elapsed_time_ms: lastProgress.elapsed_seconds * 1000,
-        weighted_repetition_penalty: 0,
-        weighted_constraint_penalty: 0,
-      } as unknown as import('../types').Solution;
-      // Use the most recent run settings if available; fall back to solverSettings
-      const settingsForSave = (runSettings || solverSettings);
-      addResult(snapshotSolution, settingsForSave);
-      addNotification({
-        type: 'success',
-        title: 'Saved Best-So-Far',
-        message: 'Snapshot saved without interrupting the solver.',
-      });
-      saveInProgressRef.current = false;
+
+      try {
+        // Evaluate metrics for the snapshot using WASM on the main thread
+        const problemForEval = problem
+          ? { ...problem, settings: (runSettings || solverSettings) }
+          : undefined;
+        if (!problemForEval) throw new Error('No problem available for evaluation');
+
+        const evaluated = await wasmService.evaluateSolution(problemForEval, assignments);
+        // Preserve iteration/time from the moment of snapshot
+        const evaluatedWithRunMeta = {
+          ...evaluated,
+          iteration_count: lastProgress.iteration,
+          elapsed_time_ms: lastProgress.elapsed_seconds * 1000,
+        } as typeof evaluated;
+        const settingsForSave = (runSettings || solverSettings);
+        addResult(evaluatedWithRunMeta, settingsForSave);
+        addNotification({
+          type: 'success',
+          title: 'Saved Best-So-Far',
+          message: 'Snapshot saved without interrupting the solver.',
+        });
+      } catch (e) {
+        console.error('[SolverPanel] Failed to evaluate snapshot metrics:', e);
+        addNotification({
+          type: 'warning',
+          title: 'Saved Snapshot (Partial Metrics)',
+          message: 'Saved assignments; metrics could not be evaluated.',
+        });
+        // Fallback to saving without evaluated metrics, but keep best_score as final_score
+        const fallbackSolution = {
+          assignments,
+          final_score: lastProgress.best_score,
+          unique_contacts: 0,
+          repetition_penalty: 0,
+          attribute_balance_penalty: 0,
+          constraint_penalty: 0,
+          iteration_count: lastProgress.iteration,
+          elapsed_time_ms: lastProgress.elapsed_seconds * 1000,
+          weighted_repetition_penalty: 0,
+          weighted_constraint_penalty: 0,
+        } as unknown as import('../types').Solution;
+        const settingsForSave = (runSettings || solverSettings);
+        addResult(fallbackSolution, settingsForSave);
+      } finally {
+        saveInProgressRef.current = false;
+      }
       return;
     }
 
