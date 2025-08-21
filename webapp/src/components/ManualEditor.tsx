@@ -6,6 +6,8 @@ import PersonCard from './PersonCard';
 import { calculateMetrics } from '../utils/metricCalculations';
 import { evaluateCompliance, buildScheduleMap, computeUniqueContacts } from '../services/evaluator';
 import { wasmService } from '../services/wasm';
+import ChangeReportModal, { ChangeReportData } from './ChangeReportModal';
+import ConstraintComplianceCards from './ConstraintComplianceCards';
 
 type Mode = 'strict' | 'warn' | 'free';
 
@@ -131,6 +133,11 @@ function ManualEditor() {
       setPreviewLoading(false);
     }
   };
+
+  // === Change report modal ===
+  const [showReport, setShowReport] = useState(false);
+  const [reportData, setReportData] = useState<ChangeReportData | null>(null);
+  const [elaborateReportsEnabled, setElaborateReportsEnabled] = useState(false);
 
   const compliance = useMemo(() => (effectiveProblem ? evaluateCompliance(effectiveProblem, { assignments: draftAssignments } as Solution) : []), [effectiveProblem, draftAssignments]);
 
@@ -367,13 +374,49 @@ function ManualEditor() {
     const overBy = Math.max(0, peopleIds.length - group.size);
     const headerColor = overBy > 0 ? 'text-red-600' : 'var(--text-primary)';
 
-    const onDropHandler = (e: React.DragEvent<HTMLDivElement>) => {
+    const onDropHandler = async (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
       try { console.debug('[ManualEditor] drop on', group.id, 'session', activeSession); } catch {}
       const personId = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('text');
       if (!personId) return;
       const fromGroupId = Object.entries(draftSchedule[activeSession] || {}).find(([_, list]) => list.includes(personId))?.[0];
+      // Prepare before snapshot for report
+      let beforeScore = { final_score: 0, unique_contacts: 0, repetition_penalty: 0, attribute_balance_penalty: 0, constraint_penalty: 0 };
+      let beforeCompliance = compliance;
+      if (effectiveProblem) {
+        try {
+          const beforeEval = await wasmService.evaluateSolution(effectiveProblem, draftAssignments);
+          beforeScore = {
+            final_score: beforeEval.final_score,
+            unique_contacts: beforeEval.unique_contacts,
+            repetition_penalty: beforeEval.repetition_penalty,
+            attribute_balance_penalty: beforeEval.attribute_balance_penalty,
+            constraint_penalty: beforeEval.constraint_penalty,
+          };
+          beforeCompliance = evaluateCompliance(effectiveProblem, beforeEval as unknown as Solution);
+        } catch {}
+      }
+
       movePerson(personId, fromGroupId, group.id, activeSession);
+
+      if (elaborateReportsEnabled && effectiveProblem) {
+        try {
+          // After state has been pushed, evaluate with new assignments
+          const afterEval = await wasmService.evaluateSolution(effectiveProblem, [...draftAssignments.filter(a => !(a.person_id === personId && a.session_id === activeSession)), { person_id: personId, group_id: group.id, session_id: activeSession }]);
+          const afterScore = {
+            final_score: afterEval.final_score,
+            unique_contacts: afterEval.unique_contacts,
+            repetition_penalty: afterEval.repetition_penalty,
+            attribute_balance_penalty: afterEval.attribute_balance_penalty,
+            constraint_penalty: afterEval.constraint_penalty,
+          };
+          const afterCompliance = evaluateCompliance(effectiveProblem, afterEval as unknown as Solution);
+          setReportData({ before: { score: beforeScore, compliance: beforeCompliance }, after: { score: afterScore, compliance: afterCompliance }, people: effectiveProblem.people });
+          setShowReport(true);
+        } catch (e) {
+          console.warn('Failed to build change report:', e);
+        }
+      }
       setDraggingPerson(null);
       setPreviewDelta(null);
       setPreviewKey(null);
@@ -476,28 +519,19 @@ function ManualEditor() {
     );
   };
 
-  const renderComplianceSummary = () => {
-    return (
-      <div className="rounded-lg border p-3" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
-        <div className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Constraint Compliance</div>
-        <div className="space-y-2">
-          {compliance.map((c) => (
-            <div key={c.id} className="flex items-center justify-between text-xs">
-              <span className="inline-flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-                <span className="px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>{c.type}</span>
-                <span style={{ color: 'var(--text-primary)' }}>{c.title}</span>
-              </span>
-              {c.violationsCount === 0 ? (
-                <span className="inline-flex items-center gap-1 text-green-600"><CheckCircle2 className="w-3 h-3" />0</span>
-              ) : (
-                <span className="inline-flex items-center gap-1 text-red-600"><AlertTriangle className="w-3 h-3" />{c.violationsCount}</span>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
+  // Prepare a Solution object for the reusable compliance component
+  const complianceSolution: Solution = evaluated ?? {
+    assignments: draftAssignments,
+    final_score: 0,
+    unique_contacts: 0,
+    repetition_penalty: 0,
+    attribute_balance_penalty: 0,
+    constraint_penalty: 0,
+    iteration_count: 0,
+    elapsed_time_ms: 0,
+    weighted_repetition_penalty: 0,
+    weighted_constraint_penalty: 0,
+  } as Solution;
 
   const renderStatusBar = () => {
     const draftUnique = evaluated?.unique_contacts ?? (() => {
@@ -550,16 +584,21 @@ function ManualEditor() {
       <div className="flex items-center gap-2">
         <Target className="w-5 h-5" style={{ color: 'var(--color-accent)' }} />
         <h2 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>Manual Editor</h2>
+        <label className="ml-4 inline-flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+          <input type="checkbox" checked={elaborateReportsEnabled} onChange={(e) => setElaborateReportsEnabled(e.target.checked)} />
+          Enable detailed change report
+        </label>
       </div>
       {renderTopBar()}
       <div className="flex flex-col lg:flex-row gap-4">
         {renderSidebar()}
         <div className="flex-1 space-y-4">
           {renderCanvas()}
-          {renderComplianceSummary()}
+          <ConstraintComplianceCards problem={effectiveProblem} solution={complianceSolution} />
           {renderStatusBar()}
         </div>
       </div>
+      <ChangeReportModal open={showReport} onClose={() => setShowReport(false)} data={reportData} />
     </div>
   );
 }

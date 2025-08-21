@@ -239,14 +239,23 @@ export function evaluateCompliance(
         let violations = 0;
         sessions.forEach((session) => {
           const peopleIds = schedule[session]?.[c.group_id] || [];
+          const groups = schedule[session] || {};
           c.people.forEach((pid) => {
             if (!peopleIds.includes(pid)) {
+              let assignedGroup: string | undefined;
+              for (const [gid, ids] of Object.entries(groups)) {
+                if ((ids as string[]).includes(pid)) {
+                  assignedGroup = gid;
+                  break;
+                }
+              }
               violations += 1;
               details.push({
                 kind: "Immovable",
                 session,
                 personId: pid,
                 requiredGroup: c.group_id,
+                assignedGroup,
               });
             }
           });
