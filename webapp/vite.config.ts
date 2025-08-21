@@ -12,6 +12,10 @@ export default defineConfig({
       "virtual:wasm-solver": path.resolve(__dirname, "./public/solver_wasm.js"),
     },
   },
+  worker: {
+    // Ensure the worker uses ESM format
+    format: "es",
+  },
   server: {
     fs: {
       // Allow serving files from the solver-wasm/pkg directory

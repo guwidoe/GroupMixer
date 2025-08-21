@@ -73,7 +73,23 @@ export class SolverWorkerService {
     }
 
     try {
-      this.worker = new Worker("/solver-worker.js");
+      // Prefer module worker that imports ESM wasm glue
+      try {
+        this.worker = new Worker(
+          new URL("../workers/solverWorker.ts", import.meta.url),
+          {
+            type: "module",
+          }
+        );
+      } catch (e) {
+        // Fallback to legacy script worker in /public for older environments
+        // eslint-disable-next-line no-console
+        console.warn(
+          "Falling back to legacy script worker due to module worker init error:",
+          (e as Error).message
+        );
+        this.worker = new Worker("/solver-worker.js");
+      }
       this.setupMessageHandler();
 
       // Initialize the worker
