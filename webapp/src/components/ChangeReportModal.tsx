@@ -26,9 +26,9 @@ export interface ChangeReportData {
 
 interface Props {
   open: boolean;
-  onClose: () => void; // Treat close as accept by default (X/overlay)
-  onAccept?: () => void;
-  onCancel?: () => void;
+  onClose: () => void; // Generic close callback
+  onAccept?: () => void; // Explicit accept
+  onCancel?: () => void; // Explicit cancel
   data: ChangeReportData | null;
 }
 
@@ -63,14 +63,47 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
   const beforeMap = new Map<string, ComplianceCardData>();
   data.before.compliance.forEach((c) => beforeMap.set(`${c.type}#${c.id}`, c));
   const seenKeys = new Set<string>();
+  // Normalize detail keys for robust comparisons (order-insensitive)
+  const detailKeyFor = (d: any) => {
+    switch (d.kind) {
+      case 'RepeatEncounter':
+        return `${d.kind}|${[d.pair[0], d.pair[1]].sort().join('|')}`;
+      case 'AttributeBalance':
+        return `${d.kind}|${d.session}|${d.groupId}|${d.attribute}`;
+      case 'Immovable':
+        return `${d.kind}|${d.session}|${d.personId}|${d.requiredGroup}|${d.assignedGroup ?? ''}`;
+      case 'TogetherSplit':
+        // include people identities, order-insensitive
+        return `${d.kind}|${d.session}|${(d.people || []).map((p: any) => p.personId).sort().join(',')}`;
+      case 'NotTogether':
+        return `${d.kind}|${d.session}|${d.groupId}|${(d.people || []).slice().sort().join(',')}`;
+      default:
+        return `${d.kind}|${JSON.stringify(d)}`;
+    }
+  };
+
   data.after.compliance.forEach((c) => {
     const key = `${c.type}#${c.id}`;
     seenKeys.add(key);
     const prev = beforeMap.get(key);
-    if (!prev || prev.violationsCount !== c.violationsCount || JSON.stringify(prev.details) !== JSON.stringify(c.details)) {
+    if (!prev) {
       const arr = changedByType.get(c.type) || [];
       arr.push({ before: prev, after: c, key });
       changedByType.set(c.type, arr);
+    } else {
+      const beforeSet = new Set<string>((prev.details || []).map(detailKeyFor));
+      const afterSet = new Set<string>((c.details || []).map(detailKeyFor));
+      const countsDiffer = prev.violationsCount !== c.violationsCount;
+      let setsDiffer = false;
+      if (beforeSet.size !== afterSet.size) setsDiffer = true;
+      if (!setsDiffer) {
+        for (const k of beforeSet) { if (!afterSet.has(k)) { setsDiffer = true; break; } }
+      }
+      if (countsDiffer || setsDiffer) {
+        const arr = changedByType.get(c.type) || [];
+        arr.push({ before: prev, after: c, key });
+        changedByType.set(c.type, arr);
+      }
     }
   });
   beforeMap.forEach((prev, key) => {
@@ -168,34 +201,77 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
       );
     }
     if (type === 'MustStayTogether' || type === 'ShouldStayTogether') {
+      // Show person-level diffs rather than record-level
+      const beforeBySession = new Map<number, any>();
+      beforeDetails.filter(d => d.kind === 'TogetherSplit').forEach((d) => beforeBySession.set(d.session, d));
+      const afterBySession = new Map<number, any>();
+      afterDetails.filter(d => d.kind === 'TogetherSplit').forEach((d) => afterBySession.set(d.session, d));
+
+      const sessionKeys = Array.from(new Set([...beforeBySession.keys(), ...afterBySession.keys()])).sort((a, b) => a - b);
+
       return (
-        <div className="mt-2 space-y-1">
-          {added.slice(0, 5).map((d) => (
-            <div key={`${d.session}-add`} className="space-y-1">
-              {renderDetailRow(<Split className="w-3 h-3" />, (<span>Session {d.session + 1}: group split remains</span>), 'add')}
-              <div className="pl-5 text-xs space-y-1">
-                {d.people?.map((p: any, i: number) => (
-                  <div key={i} className="inline-flex items-center gap-2">
-                    {renderPerson(p.personId)}
-                    <span style={{ color: 'var(--text-secondary)' }}>{p.groupId ? `in ${p.groupId}` : '(not assigned)'}</span>
+        <div className="mt-2 space-y-2">
+          {sessionKeys.map((s) => {
+            const b = beforeBySession.get(s);
+            const aDet = afterBySession.get(s);
+            const beforeSet = new Set<string>((b?.people || []).map((p: any) => p.personId));
+            const afterSet = new Set<string>((aDet?.people || []).map((p: any) => p.personId));
+            const addedPeople = Array.from(afterSet).filter(pid => !beforeSet.has(pid));
+            const removedPeople = Array.from(beforeSet).filter(pid => !afterSet.has(pid));
+            const hasDiff = addedPeople.length > 0 || removedPeople.length > 0;
+            return (
+              <div key={`mst-${s}`} className="space-y-1">
+                {hasDiff && addedPeople.length > 0 && renderDetailRow(<Split className="w-3 h-3" />, (<span>Session {s + 1}: new split</span>), 'add')}
+                {hasDiff && addedPeople.length > 0 && (
+                  <div className="pl-5 flex flex-wrap gap-1">
+                    {addedPeople.map((pid) => {
+                      const g = (aDet?.people || []).find((p: any) => p.personId === pid)?.groupId;
+                      return (
+                        <span key={`add-${pid}`} className="inline-flex items-center gap-2">
+                          {renderPerson(pid)}
+                          <span style={{ color: 'var(--text-secondary)' }}>{g ? `in ${g}` : '(not assigned)'}</span>
+                        </span>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-            </div>
-          ))}
-          {removed.slice(0, 5).map((d) => (
-            <div key={`${d.session}-rem`} className="space-y-1">
-              {renderDetailRow(<MinusCircle className="w-3 h-3" />, (<span>Session {d.session + 1}: group co-located</span>), 'remove')}
-              <div className="pl-5 text-xs space-y-1">
-                {d.people?.map((p: any, i: number) => (
-                  <div key={i} className="inline-flex items-center gap-2">
-                    {renderPerson(p.personId)}
-                    <span style={{ color: 'var(--text-secondary)' }}>{p.groupId ? `in ${p.groupId}` : '(not assigned)'}</span>
+                )}
+                {hasDiff && removedPeople.length > 0 && renderDetailRow(<MinusCircle className="w-3 h-3" />, (<span>Session {s + 1}: split resolved</span>), 'remove')}
+                {hasDiff && removedPeople.length > 0 && (
+                  <div className="pl-5 flex flex-wrap gap-1">
+                    {removedPeople.map((pid) => {
+                      const g = (b?.people || []).find((p: any) => p.personId === pid)?.groupId;
+                      return (
+                        <span key={`rem-${pid}`} className="inline-flex items-center gap-2">
+                          {renderPerson(pid)}
+                          <span style={{ color: 'var(--text-secondary)' }}>{g ? `was in ${g}` : '(not assigned)'}</span>
+                        </span>
+                      );
+                    })}
                   </div>
-                ))}
+                )}
+                {!hasDiff && aDet && (
+                  <div className="pl-5 flex flex-wrap gap-2">
+                    {(aDet.people || []).map((p: any, idx: number) => (
+                      <span key={`all-${p.personId}-${idx}`} className="inline-flex items-center gap-2">
+                        {renderPerson(p.personId)}
+                        <span style={{ color: 'var(--text-secondary)' }}>{p.groupId ? `in ${p.groupId}` : '(not assigned)'}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {!hasDiff && !aDet && b && (
+                  <div className="pl-5 flex flex-wrap gap-2">
+                    {(b.people || []).map((p: any, idx: number) => (
+                      <span key={`b-all-${p.personId}-${idx}`} className="inline-flex items-center gap-2">
+                        {renderPerson(p.personId)}
+                        <span style={{ color: 'var(--text-secondary)' }}>{p.groupId ? `was in ${p.groupId}` : '(not assigned)'}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       );
     }
@@ -240,7 +316,7 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
             <Target className="w-5 h-5" style={{ color: 'var(--color-accent)' }} />
             <h3 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>Change Report</h3>
           </div>
-          <button onClick={onAccept || onClose} className="p-1 rounded hover:opacity-80" aria-label="Close" style={{ color: 'var(--text-secondary)' }}>
+          <button onClick={onCancel || onClose} className="p-1 rounded hover:opacity-80" aria-label="Close" style={{ color: 'var(--text-secondary)' }}>
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -336,7 +412,7 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
           {/* Footer actions */}
           <div className="mt-2 flex items-center justify-end gap-2">
             <button
-              onClick={onCancel}
+              onClick={onCancel || onClose}
               className="px-3 py-1.5 rounded border text-sm"
               style={{ borderColor: 'var(--border-primary)', color: 'var(--text-secondary)' }}
             >

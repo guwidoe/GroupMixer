@@ -422,10 +422,20 @@ function ManualEditor() {
           };
           const afterCompliance = evaluateCompliance(effectiveProblem, afterEval as unknown as Solution);
           setReportData({ before: { score: beforeScore, compliance: beforeCompliance }, after: { score: afterScore, compliance: afterCompliance }, people: effectiveProblem.people });
-          setPendingMove({ personId, fromGroupId, toGroupId: group.id, sessionId: activeSession, prevAssignments });
-          setShowReport(true);
+          // If elaborate reports are on, show modal; otherwise commit immediately
+          if (elaborateReportsEnabled) {
+            setPendingMove({ personId, fromGroupId, toGroupId: group.id, sessionId: activeSession, prevAssignments });
+            setShowReport(true);
+          } else {
+            // Commit immediately
+            movePerson(personId, fromGroupId, group.id, activeSession);
+          }
         } catch (e) {
           console.warn('Failed to build change report:', e);
+          // If evaluation fails, still perform the move to keep editor usable
+          if (!elaborateReportsEnabled) {
+            movePerson(personId, fromGroupId, group.id, activeSession);
+          }
         }
       }
       setDraggingPerson(null);
@@ -628,9 +638,9 @@ function ManualEditor() {
           setPendingMove(null);
         }}
         onClose={() => {
-          // Default close acts like accept
+          // Treat close like cancel per request
           if (pendingMove) {
-            movePerson(pendingMove.personId, pendingMove.fromGroupId, pendingMove.toGroupId, pendingMove.sessionId);
+            setDraft({ assignments: cloneAssignments(pendingMove.prevAssignments) });
           }
           setShowReport(false);
           setPendingMove(null);
