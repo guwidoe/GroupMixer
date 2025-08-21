@@ -140,6 +140,11 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
           return `${d.kind}|${d.session}`;
         case 'NotTogether':
           return `${d.kind}|${d.session}|${d.groupId}`;
+        case 'PairMeetingCountSummary':
+          return `${d.kind}|${[d.people?.[0], d.people?.[1]].sort().join('|')}|${d.mode}|${d.target}|${d.actual}`;
+        case 'PairMeetingTogether':
+        case 'PairMeetingApart':
+          return `${d.kind}|${d.session}|${[d.people?.[0], d.people?.[1]].sort().join('|')}`;
         default:
           return `${d.kind}|${JSON.stringify(d)}`;
       }
@@ -324,6 +329,45 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
                   <span key={pid + i}>{renderPerson(pid)}</span>
                 ))}
               </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    if (type === 'PairMeetingCount') {
+      // Show summary delta and per-session changes
+      const addedSummaries = added.filter(d => d.kind === 'PairMeetingCountSummary');
+      const removedSummaries = removed.filter(d => d.kind === 'PairMeetingCountSummary');
+      const addedSessions = added.filter(d => d.kind === 'PairMeetingTogether' || d.kind === 'PairMeetingApart');
+      const removedSessions = removed.filter(d => d.kind === 'PairMeetingTogether' || d.kind === 'PairMeetingApart');
+      return (
+        <div className="mt-2 space-y-1">
+          {addedSummaries.map((d, i) => (
+            <div key={`pmc-sum-add-${i}`}>
+              {renderDetailRow(<PlusCircle className="w-3 h-3" />, (
+                <span>Pair {renderPerson(d.people[0])} & {renderPerson(d.people[1])}: now {d.actual} (target {d.target}, {d.mode})</span>
+              ), 'add')}
+            </div>
+          ))}
+          {removedSummaries.map((d, i) => (
+            <div key={`pmc-sum-rem-${i}`}>
+              {renderDetailRow(<MinusCircle className="w-3 h-3" />, (
+                <span>Pair {renderPerson(d.people[0])} & {renderPerson(d.people[1])}: was {d.actual} (target {d.target}, {d.mode})</span>
+              ), 'remove')}
+            </div>
+          ))}
+          {addedSessions.slice(0, 5).map((d, i) => (
+            <div key={`pmc-add-${d.kind}-${d.session}-${i}`}>
+              {renderDetailRow(<PlusCircle className="w-3 h-3" />, (
+                <span>Session {d.session + 1}: now {d.kind === 'PairMeetingTogether' ? 'together' : 'apart'}</span>
+              ), 'add')}
+            </div>
+          ))}
+          {removedSessions.slice(0, 5).map((d, i) => (
+            <div key={`pmc-rem-${d.kind}-${d.session}-${i}`}>
+              {renderDetailRow(<MinusCircle className="w-3 h-3" />, (
+                <span>Session {d.session + 1}: no longer {d.kind === 'PairMeetingTogether' ? 'together' : 'apart'}</span>
+              ), 'remove')}
             </div>
           ))}
         </div>
