@@ -1031,23 +1031,23 @@ impl State {
                             params.people[1]
                         ))
                     })?;
-                if params.sessions.is_empty() {
-                    return Err(SolverError::ValidationError(
-                        "PairMeetingCount sessions must be non-empty".to_string(),
-                    ));
-                }
-                // Map and validate sessions
-                let mut sess: Vec<usize> = Vec::with_capacity(params.sessions.len());
-                for &s in &params.sessions {
-                    let si = s as usize;
-                    if si >= num_sessions {
-                        return Err(SolverError::ValidationError(format!(
-                            "PairMeetingCount references invalid session {}",
-                            s
-                        )));
+                // Map and validate sessions (empty => all sessions)
+                let mut sess: Vec<usize> = if params.sessions.is_empty() {
+                    (0..num_sessions).collect()
+                } else {
+                    let mut tmp: Vec<usize> = Vec::with_capacity(params.sessions.len());
+                    for &s in &params.sessions {
+                        let si = s as usize;
+                        if si >= num_sessions {
+                            return Err(SolverError::ValidationError(format!(
+                                "PairMeetingCount references invalid session {}",
+                                s
+                            )));
+                        }
+                        tmp.push(si);
                     }
-                    sess.push(si);
-                }
+                    tmp
+                };
                 sess.sort_unstable();
                 sess.dedup();
                 let n = sess.len() as u32;

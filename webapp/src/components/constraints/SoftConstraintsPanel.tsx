@@ -5,6 +5,7 @@ import { useAppStore } from '../../store';
 import AttributeBalanceDashboard from '../AttributeBalanceDashboard';
 // PersonCard removed in favor of ConstraintPersonChip
 import ConstraintPersonChip from '../ConstraintPersonChip';
+import PairMeetingCountBulkConvertModal from '../modals/PairMeetingCountBulkConvertModal';
 
 // Import the specific constraint type for the dashboard
 interface AttributeBalanceConstraint {
@@ -36,6 +37,9 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
   const [activeTab, setActiveTab] = useState<typeof SOFT_TABS[number]>('RepeatEncounter');
   const [showInfo, setShowInfo] = useState(false);
   const { GetProblem, ui } = useAppStore();
+  const [filterText, setFilterText] = useState('');
+  const [selectedShouldIndices, setSelectedShouldIndices] = useState<number[]>([]);
+  const [showPairConvert, setShowPairConvert] = useState(false);
 
   // Don't render until loading is complete to avoid creating new problems
   if (ui.isLoading) {
@@ -51,6 +55,21 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
   }, {});
 
   const selectedItems = constraintsByType[activeTab] || [];
+
+  const shouldItems = (constraintsByType['ShouldStayTogether'] || []) as Array<{ constraint: Constraint; index: number }>;
+  const filteredShouldItems = shouldItems.filter(({ constraint }) => {
+    if (constraint.type !== 'ShouldStayTogether') return false;
+    const ft = filterText.trim().toLowerCase();
+    if (!ft) return true;
+    const textPool: string[] = [];
+    for (const pid of constraint.people) {
+      textPool.push(pid.toLowerCase());
+    }
+    if (Array.isArray(constraint.sessions)) {
+      textPool.push(...constraint.sessions.map((s) => String(s + 1)));
+    }
+    return textPool.some((t) => t.includes(ft));
+  });
 
   return (
     <div className="space-y-4 pt-0 pl-0">
@@ -113,9 +132,44 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
             ? 'Add Attribute Balance'
             : activeTab === 'ShouldNotBeTogether'
             ? 'Add Should Not Be Together'
-            : 'Add Should Stay Together'}
+            : activeTab === 'ShouldStayTogether'
+            ? 'Add Should Stay Together'
+            : activeTab === 'PairMeetingCount'
+            ? 'Add Pair Meeting Count'
+            : 'Add Constraint'}
         </button>
+        {activeTab === 'ShouldStayTogether' && selectedShouldIndices.length > 0 && (
+          <button className="btn-secondary ml-2 px-3 py-2 text-sm" onClick={() => setShowPairConvert(true)}>
+            Convert Selected to Pair Meeting Count
+          </button>
+        )}
       </div>
+      {activeTab === 'ShouldStayTogether' && (
+        <div className="flex flex-wrap items-end gap-2 mt-3">
+          <div className="flex-1 min-w-[220px]">
+            <label className="block text-xs mb-1" style={{ color: 'var(--text-tertiary)' }}>Filter by person or session</label>
+            <input type="text" value={filterText} onChange={(e) => setFilterText(e.target.value)} placeholder="Type person id/name or session number" className="input w-full text-sm py-2" />
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <button className="btn-secondary px-3 py-2 text-sm" onClick={() => setSelectedShouldIndices(filteredShouldItems.map(i => i.index))}>Select All Filtered</button>
+            <button className="btn-secondary px-3 py-2 text-sm" onClick={() => setSelectedShouldIndices(prev => prev.filter(i => !filteredShouldItems.some(fi => fi.index === i)))}>Deselect Filtered</button>
+            <button className="btn-secondary px-3 py-2 text-sm" onClick={() => {
+              const filteredIndices = filteredShouldItems.map(i => i.index);
+              setSelectedShouldIndices(prev => {
+                const setPrev = new Set(prev);
+                const result = new Set(prev);
+                for (const idx of filteredIndices) {
+                  if (setPrev.has(idx)) result.delete(idx); else result.add(idx);
+                }
+                return Array.from(result);
+              });
+            }}>Invert Filtered</button>
+          </div>
+          <div className="w-full text-xs" style={{ color: 'var(--text-tertiary)' }}>
+            Showing {filteredShouldItems.length} of {(constraintsByType['ShouldStayTogether'] || []).length}. Selected {selectedShouldIndices.length}.
+          </div>
+        </div>
+      )}
       {activeTab === 'AttributeBalance' && selectedItems.length > 0 && (
         <div>
           <AttributeBalanceDashboard 
@@ -128,11 +182,17 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
         <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No {constraintTypeLabels[activeTab]} constraints defined.</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {selectedItems.map(({ constraint, index }) => (
+          {(activeTab === 'ShouldStayTogether' ? filteredShouldItems : selectedItems).map(({ constraint, index }) => (
             <div key={index} className="rounded-lg border p-4 transition-colors hover:shadow-md flex items-start justify-between" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>{constraint.type}</span>
+                  {activeTab === 'ShouldStayTogether' && (
+                    <label className="ml-2 text-xs inline-flex items-center gap-1 cursor-pointer">
+                      <input type="checkbox" checked={selectedShouldIndices.includes(index)} onChange={() => setSelectedShouldIndices(prev => prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index])} />
+                      <span>Select</span>
+                    </label>
+                  )}
                   {(constraint as Constraint & { penalty_weight?: number }).penalty_weight !== undefined && (
                     <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}>Weight: {(constraint as Constraint & { penalty_weight: number }).penalty_weight}</span>
                   )}
@@ -199,6 +259,28 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
                       </div>
                     </>
                   )}
+
+                  {constraint.type === 'PairMeetingCount' && (
+                    <>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <span>Pair:</span>
+                        <ConstraintPersonChip personId={(constraint as any).people[0]} people={problem.people} />
+                        <span>&</span>
+                        <ConstraintPersonChip personId={(constraint as any).people[1]} people={problem.people} />
+                      </div>
+                      <div>
+                        Target meetings: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{(constraint as any).target_meetings}</span>
+                      </div>
+                      <div>
+                        Mode: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{(constraint as any).mode || 'at_least'}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs" style={{color:'var(--color-accent)'}}>
+                        <Clock className="w-3 h-3" />
+                        <span>Sessions:</span>
+                        {(constraint as any).sessions && (constraint as any).sessions.length > 0 ? (constraint as any).sessions.map((s:number)=>s+1).join(', ') : 'All Sessions'}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="flex gap-1 ml-2">
@@ -224,6 +306,48 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
             </div>
           ))}
         </div>
+      )}
+
+      {showPairConvert && (
+        <PairMeetingCountBulkConvertModal
+          selectedCount={selectedShouldIndices.length}
+          totalSessions={GetProblem().num_sessions}
+          people={GetProblem().people}
+          selectedConstraints={filteredShouldItems
+            .filter(({ index }) => selectedShouldIndices.includes(index))
+            .map(({ index, constraint }) => ({ index, people: (constraint as any).people as string[] }))}
+          onCancel={() => setShowPairConvert(false)}
+          onConvert={({ retainOriginal, sessions, target, mode, useSourceWeight, overrideWeight, anchorsByIndex }) => {
+            const current = GetProblem();
+            const newConstraints: Constraint[] = [];
+            current.constraints.forEach((c, i) => {
+              if (c.type === 'ShouldStayTogether' && selectedShouldIndices.includes(i)) {
+                const baseWeight = (c as any).penalty_weight;
+                const weight = useSourceWeight && typeof baseWeight === 'number' ? baseWeight : (overrideWeight as number);
+                const people = (c as any).people as string[];
+                const perConstraintAnchor = anchorsByIndex && anchorsByIndex[i];
+                const anchor = perConstraintAnchor && people.includes(perConstraintAnchor) ? perConstraintAnchor : people[0];
+                people.forEach((p) => {
+                  if (p === anchor) return;
+                  newConstraints.push({
+                    type: 'PairMeetingCount',
+                    people: [anchor, p] as any,
+                    sessions,
+                    target_meetings: target,
+                    mode,
+                    penalty_weight: weight,
+                  } as any);
+                });
+                if (retainOriginal) newConstraints.push(c);
+              } else {
+                newConstraints.push(c);
+              }
+            });
+            useAppStore.getState().setProblem({ ...current, constraints: newConstraints });
+            setSelectedShouldIndices([]);
+            setShowPairConvert(false);
+          }}
+        />
       )}
     </div>
   );

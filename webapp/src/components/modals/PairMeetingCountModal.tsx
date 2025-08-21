@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import type { Constraint, Person } from '../../types';
+import ConstraintPersonChip from '../ConstraintPersonChip';
+import PersonCard from '../PersonCard';
 
 interface Props {
   people: Person[];
@@ -36,8 +38,18 @@ const PairMeetingCountModal: React.FC<Props> = ({ people, totalSessions, initial
 
   const [form, setForm] = useState(initialState);
   const [error, setError] = useState<string>('');
+  const [personSearch, setPersonSearch] = useState<string>('');
 
   const allSessions = useMemo(() => Array.from({ length: totalSessions }, (_, i) => i), [totalSessions]);
+  const filteredPeople = useMemo(() => {
+    const q = personSearch.trim().toLowerCase();
+    if (!q) return people;
+    return people.filter((p) => {
+      const id = p.id.toLowerCase();
+      const name = (p.attributes?.name || '').toString().toLowerCase();
+      return id.includes(q) || name.includes(q);
+    });
+  }, [people, personSearch]);
 
   const handleSave = () => {
     setError('');
@@ -82,23 +94,38 @@ const PairMeetingCountModal: React.FC<Props> = ({ people, totalSessions, initial
         )}
 
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Person A</label>
-              <select className="select w-full" value={form.a} onChange={(e) => setForm({ ...form, a: e.target.value })}>
-                {people.map((p) => (
-                  <option key={p.id} value={p.id}>{p.id}</option>
-                ))}
-              </select>
+          {/* People selection - align with ShouldStayTogether */}
+          <div>
+            <label className="text-sm font-medium mb-3 block" style={{ color: 'var(--text-secondary)' }}>People</label>
+            <div className="grid grid-cols-1 gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Person A</span>
+                <ConstraintPersonChip personId={form.a} people={people} />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Person B</span>
+                <ConstraintPersonChip personId={form.b} people={people} />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Person B</label>
-              <select className="select w-full" value={form.b} onChange={(e) => setForm({ ...form, b: e.target.value })}>
-                {people.map((p) => (
-                  <option key={p.id} value={p.id}>{p.id}</option>
-                ))}
-              </select>
+            <input
+              type="text"
+              placeholder="Search people..."
+              value={personSearch}
+              onChange={(e) => setPersonSearch(e.target.value)}
+              className="input w-full text-base py-3 mt-3 mb-2"
+            />
+            <div className="border rounded p-3 max-h-48 overflow-y-auto" style={{ borderColor: 'var(--border-secondary)' }}>
+              {filteredPeople.map((person) => (
+                <div key={person.id} className="flex items-center justify-between gap-3 p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <PersonCard person={person} />
+                  <div className="flex items-center gap-2 text-xs">
+                    <button className="btn-secondary px-2 py-1" onClick={() => setForm(prev => ({ ...prev, a: person.id }))}>Set as A</button>
+                    <button className="btn-secondary px-2 py-1" onClick={() => setForm(prev => ({ ...prev, b: person.id }))}>Set as B</button>
+                  </div>
+                </div>
+              ))}
             </div>
+            <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>Pick two people (A and B) to form the pair.</p>
           </div>
 
           <div>
@@ -124,7 +151,16 @@ const PairMeetingCountModal: React.FC<Props> = ({ people, totalSessions, initial
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Target meetings</label>
-              <input type="number" className="input w-full" min={0} value={form.target} onChange={(e) => setForm({ ...form, target: parseInt(e.target.value || '0', 10) })} />
+              <input
+                type="number"
+                className="input w-full"
+                min={0}
+                value={(form as any).target === '' ? '' : form.target}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setForm({ ...form, target: v === '' ? ('' as any) : parseInt(v, 10) });
+                }}
+              />
             </div>
             <div>
               <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Mode</label>
@@ -138,7 +174,17 @@ const PairMeetingCountModal: React.FC<Props> = ({ people, totalSessions, initial
 
           <div>
             <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Penalty weight</label>
-            <input type="number" className="input w-full" min={0} step={0.1} value={form.weight} onChange={(e) => setForm({ ...form, weight: parseFloat(e.target.value || '0') })} />
+            <input
+              type="number"
+              className="input w-full"
+              min={0}
+              step={0.1}
+              value={(form as any).weight === null ? '' : form.weight}
+              onChange={(e) => {
+                const v = e.target.value;
+                setForm({ ...form, weight: v === '' ? (null as any) : parseFloat(v) });
+              }}
+            />
           </div>
         </div>
 
