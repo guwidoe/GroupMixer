@@ -7,7 +7,9 @@
 //! The `State` is designed for performance, converting string-based API inputs into
 //! integer indices for fast array operations during optimization.
 
-use crate::models::{ApiInput, AttributeBalanceParams, Constraint, LoggingOptions, SolverResult};
+use crate::models::{
+    ApiInput, AttributeBalanceParams, Constraint, LoggingOptions, PairMeetingMode, SolverResult,
+};
 use rand::seq::SliceRandom;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -205,6 +207,20 @@ pub struct State {
     pub forbidden_pair_weights: Vec<f64>,
     /// Penalty weight for each should-together pair violation
     pub should_together_weights: Vec<f64>,
+
+    // === PairMinMeetings (soft, cross-session for fixed subset) ===
+    /// Pairs of people constrained to meet at least a minimum number within a subset of sessions
+    pub pairmin_pairs: Vec<(usize, usize)>,
+    /// Session subsets per constraint (always non-empty, sorted unique session indices)
+    pub pairmin_sessions: Vec<Vec<usize>>,
+    /// Required minimum meetings per constraint (m <= |sessions|)
+    pub pairmin_required: Vec<u32>,
+    /// Linear penalty weight per missing meeting
+    pub pairmin_weights: Vec<f64>,
+    /// Current counts of meetings for each constraint within its session subset
+    pub pairmin_counts: Vec<u32>,
+    /// Penalty modes per constraint
+    pub pairmin_modes: Vec<PairMeetingMode>,
 
     /// Baseline score to prevent negative scores from unique contacts metric
     pub baseline_score: f64,
@@ -506,6 +522,12 @@ impl State {
 
             forbidden_pair_weights: Vec::new(),
             should_together_weights: Vec::new(),
+            pairmin_pairs: Vec::new(),
+            pairmin_sessions: Vec::new(),
+            pairmin_required: Vec::new(),
+            pairmin_weights: Vec::new(),
+            pairmin_counts: Vec::new(),
+            pairmin_modes: Vec::new(),
             baseline_score,
             current_cost: 0.0,
         };
@@ -977,6 +999,89 @@ impl State {
             }
         }
 
+        // --- Process PairMeetingCount (soft cross-session subset for pairs) ---
+        self.pairmin_pairs.clear();
+        self.pairmin_sessions.clear();
+        self.pairmin_required.clear();
+        self.pairmin_weights.clear();
+        self.pairmin_counts.clear();
+        for constraint in &input.constraints {
+            if let Constraint::PairMeetingCount(params) = constraint {
+                // Validate exactly two people
+                if params.people.len() != 2 {
+                    return Err(SolverError::ValidationError(
+                        "PairMeetingCount requires exactly two people".to_string(),
+                    ));
+                }
+                let p1_idx = *self
+                    .person_id_to_idx
+                    .get(&params.people[0])
+                    .ok_or_else(|| {
+                        SolverError::ValidationError(format!(
+                            "Unknown person '{}' in PairMeetingCount",
+                            params.people[0]
+                        ))
+                    })?;
+                let p2_idx = *self
+                    .person_id_to_idx
+                    .get(&params.people[1])
+                    .ok_or_else(|| {
+                        SolverError::ValidationError(format!(
+                            "Unknown person '{}' in PairMeetingCount",
+                            params.people[1]
+                        ))
+                    })?;
+                if params.sessions.is_empty() {
+                    return Err(SolverError::ValidationError(
+                        "PairMeetingCount sessions must be non-empty".to_string(),
+                    ));
+                }
+                // Map and validate sessions
+                let mut sess: Vec<usize> = Vec::with_capacity(params.sessions.len());
+                for &s in &params.sessions {
+                    let si = s as usize;
+                    if si >= num_sessions {
+                        return Err(SolverError::ValidationError(format!(
+                            "PairMeetingCount references invalid session {}",
+                            s
+                        )));
+                    }
+                    sess.push(si);
+                }
+                sess.sort_unstable();
+                sess.dedup();
+                let n = sess.len() as u32;
+                if params.target_meetings > n {
+                    return Err(SolverError::ValidationError(format!(
+                        "PairMeetingCount target_meetings={} exceeds number of sessions in subset {}",
+                        params.target_meetings, n
+                    )));
+                }
+                // Feasibility: both must co-participate in at least min_meetings among subset
+                let feasible_sessions = sess
+                    .iter()
+                    .filter(|&&s| {
+                        self.person_participation[p1_idx][s] && self.person_participation[p2_idx][s]
+                    })
+                    .count() as u32;
+                if params.mode == PairMeetingMode::AtLeast
+                    && params.target_meetings > feasible_sessions
+                {
+                    return Err(SolverError::ValidationError(format!(
+                        "PairMeetingCount target_meetings={} exceeds feasible co-participation {} for the pair",
+                        params.target_meetings, feasible_sessions
+                    )));
+                }
+
+                self.pairmin_pairs.push((p1_idx, p2_idx));
+                self.pairmin_sessions.push(sess);
+                self.pairmin_required.push(params.target_meetings);
+                self.pairmin_weights.push(params.penalty_weight);
+                self.pairmin_counts.push(0);
+                self.pairmin_modes.push(params.mode);
+            }
+        }
+
         // --- Process `ImmovablePerson` ---
         for constraint in &input.constraints {
             match constraint {
@@ -1175,6 +1280,25 @@ impl State {
         // Recalculate constraint penalties
         self._recalculate_constraint_penalty();
 
+        // Initialize PairMinMeetings counts from current schedule
+        for count in &mut self.pairmin_counts {
+            *count = 0;
+        }
+        for (idx, &(a, b)) in self.pairmin_pairs.iter().enumerate() {
+            let sessions = &self.pairmin_sessions[idx];
+            let mut cnt = 0u32;
+            for &day in sessions {
+                if self.person_participation[a][day] && self.person_participation[b][day] {
+                    let (ga, _) = self.locations[day][a];
+                    let (gb, _) = self.locations[day][b];
+                    if ga == gb {
+                        cnt += 1;
+                    }
+                }
+            }
+            self.pairmin_counts[idx] = cnt;
+        }
+
         self.current_cost = self.calculate_cost();
     }
 
@@ -1338,6 +1462,22 @@ impl State {
                     self.weighted_constraint_penalty += self.should_together_weights[pair_idx];
                     violation_count += 1;
                 }
+            }
+        }
+
+        // === PAIR MEETING COUNT (mode: at_least, exact, at_most) ===
+        for idx in 0..self.pairmin_pairs.len() {
+            let target = self.pairmin_required[idx] as i32;
+            let have = self.pairmin_counts[idx] as i32;
+            let (missing, over) = ((target - have).max(0) as f64, (have - target).max(0) as f64);
+            let penalty = match self.pairmin_modes[idx] {
+                PairMeetingMode::AtLeast => missing,
+                PairMeetingMode::Exact => (have - target).abs() as f64,
+                PairMeetingMode::AtMost => over,
+            } * self.pairmin_weights[idx];
+            if penalty > 0.0 {
+                self.weighted_constraint_penalty += penalty;
+                violation_count += 1;
             }
         }
 
@@ -2058,6 +2198,68 @@ impl State {
             delta_cost += new_penalty - old_penalty;
         }
 
+        // Constraint Delta - PairMeetingCount
+        for (cidx, &(a, b)) in self.pairmin_pairs.iter().enumerate() {
+            if !self.pairmin_sessions[cidx].contains(&day) {
+                continue;
+            }
+            // Only if swap involves either endpoint at this day
+            if a != p1_idx && a != p2_idx && b != p1_idx && b != p2_idx {
+                continue;
+            }
+            // Determine before-after sameness for the pair on this day
+            let (a_g_before, _) = self.locations[day][a];
+            let (b_g_before, _) = self.locations[day][b];
+            let before_same = a_g_before == b_g_before;
+
+            let (g1_idx, _) = self.locations[day][p1_idx];
+            let (g2_idx, _) = self.locations[day][p2_idx];
+
+            let a_g_after = if a == p1_idx {
+                g2_idx
+            } else if a == p2_idx {
+                g1_idx
+            } else {
+                a_g_before
+            };
+            let b_g_after = if b == p1_idx {
+                g2_idx
+            } else if b == p2_idx {
+                g1_idx
+            } else {
+                b_g_before
+            };
+            let after_same = a_g_after == b_g_after;
+            if before_same == after_same {
+                continue;
+            }
+
+            let have_before = self.pairmin_counts[cidx] as i32;
+            let have_after = if after_same {
+                have_before + 1
+            } else {
+                have_before - 1
+            };
+            let target = self.pairmin_required[cidx] as i32;
+            let mode = self.pairmin_modes[cidx];
+            let (before_pen, after_pen) = match mode {
+                PairMeetingMode::AtLeast => (
+                    (target - have_before).max(0) as f64,
+                    (target - have_after).max(0) as f64,
+                ),
+                PairMeetingMode::Exact => (
+                    (have_before - target).abs() as f64,
+                    (have_after - target).abs() as f64,
+                ),
+                PairMeetingMode::AtMost => (
+                    (have_before - target).max(0) as f64,
+                    (have_after - target).max(0) as f64,
+                ),
+            };
+            let delta = (after_pen - before_pen) * self.pairmin_weights[cidx];
+            delta_cost += delta;
+        }
+
         delta_cost
     }
 
@@ -2561,6 +2763,49 @@ impl State {
                         self.immovable_violations += 1; // New violation
                     }
                 }
+            }
+        }
+
+        // Update PairMinMeetings counts for this day if relevant
+        for (cidx, &(a, b)) in self.pairmin_pairs.iter().enumerate() {
+            if !self.pairmin_sessions[cidx].contains(&day) {
+                continue;
+            }
+            // Check if either endpoint moved
+            if a != p1_idx && a != p2_idx && b != p1_idx && b != p2_idx {
+                continue;
+            }
+            // Before swap groups for a and b
+            let (g1_idx, _) = self.locations[day][p2_idx]; // after swap, p2 in g1
+            let (g2_idx, _) = self.locations[day][p1_idx]; // after swap, p1 in g2
+            let a_before = if a == p1_idx {
+                g1_idx
+            } else if a == p2_idx {
+                g2_idx
+            } else {
+                self.locations[day][a].0
+            };
+            let b_before = if b == p1_idx {
+                g1_idx
+            } else if b == p2_idx {
+                g2_idx
+            } else {
+                self.locations[day][b].0
+            };
+            let were_same = a_before == b_before;
+
+            // After swap groups for a and b (use updated locations which already reflect swap)
+            let a_after = self.locations[day][a].0;
+            let b_after = self.locations[day][b].0;
+            let are_same = a_after == b_after;
+
+            if were_same == are_same {
+                continue;
+            }
+            if are_same {
+                self.pairmin_counts[cidx] += 1;
+            } else {
+                self.pairmin_counts[cidx] -= 1;
             }
         }
 
@@ -3723,6 +3968,58 @@ impl State {
             delta_cost += new_penalty - old_penalty;
         }
 
+        // Check PairMeetingCount constraints (only those including this day and where moving person is one endpoint)
+        for (cidx, &(a, b)) in self.pairmin_pairs.iter().enumerate() {
+            if !self.pairmin_sessions[cidx].contains(&day) {
+                continue;
+            }
+            // Moving person must be one endpoint
+            if person_idx != a && person_idx != b {
+                continue;
+            }
+            // Identify the other endpoint
+            let other = if person_idx == a { b } else { a };
+
+            // Only meaningful if other participates in this session
+            if !self.person_participation[other][day] {
+                continue;
+            }
+
+            // Before: together if other is in from_group
+            let before_same = from_group_members.contains(&other);
+            // After: together if other is in to_group
+            let after_same = to_group_members.contains(&other);
+
+            if before_same == after_same {
+                continue;
+            }
+
+            let have_before = self.pairmin_counts[cidx] as i32;
+            let have_after = if after_same {
+                have_before + 1
+            } else {
+                have_before - 1
+            };
+            let target = self.pairmin_required[cidx] as i32;
+            let mode = self.pairmin_modes[cidx];
+            let (before_pen, after_pen) = match mode {
+                PairMeetingMode::AtLeast => (
+                    (target - have_before).max(0) as f64,
+                    (target - have_after).max(0) as f64,
+                ),
+                PairMeetingMode::Exact => (
+                    (have_before - target).abs() as f64,
+                    (have_after - target).abs() as f64,
+                ),
+                PairMeetingMode::AtMost => (
+                    (have_before - target).max(0) as f64,
+                    (have_after - target).max(0) as f64,
+                ),
+            };
+            let delta = (after_pen - before_pen) * self.pairmin_weights[cidx];
+            delta_cost += delta;
+        }
+
         delta_cost
     }
 
@@ -3882,6 +4179,33 @@ impl State {
         // === UPDATE CONSTRAINT PENALTIES ===
         self._recalculate_constraint_penalty();
 
+        // === UPDATE PairMeetingCount counts incrementally ===
+        for (cidx, &(a, b)) in self.pairmin_pairs.clone().iter().enumerate() {
+            if !self.pairmin_sessions[cidx].contains(&day) {
+                continue;
+            }
+            // Only if moving person is one endpoint
+            if person_idx != a && person_idx != b {
+                continue;
+            }
+            let other = if person_idx == a { b } else { a };
+            if !self.person_participation[other][day] {
+                continue;
+            }
+            // Before: together if other was in from_group
+            let were_same = from_group_members.contains(&other);
+            // After: together if other is now in to_group (person moved there)
+            let are_same = self.schedule[day][to_group].contains(&other);
+            if were_same == are_same {
+                continue;
+            }
+            if are_same {
+                self.pairmin_counts[cidx] += 1;
+            } else {
+                self.pairmin_counts[cidx] -= 1;
+            }
+        }
+
         // Debug-only final invariant check for the whole session
         if self.logging.debug_validate_invariants {
             if let Err(e) = self.validate_no_duplicate_assignments() {
@@ -3994,6 +4318,72 @@ mod tests {
                 logging: Default::default(),
             },
         }
+    }
+
+    #[test]
+    fn test_pair_meeting_count_modes() {
+        use crate::models::{Constraint, PairMeetingCountParams, PairMeetingMode};
+        // People p0..p3; 2 groups of 2; 3 sessions
+        let mut input = create_test_input(4, vec![(2, 2)], 3);
+
+        // Add PairMeetingCount constraints for pair (p0,p1) across sessions [0,1,2]
+        input
+            .constraints
+            .push(Constraint::PairMeetingCount(PairMeetingCountParams {
+                people: vec!["p0".into(), "p1".into()],
+                sessions: vec![0, 1, 2],
+                target_meetings: 2,
+                mode: PairMeetingMode::AtLeast,
+                penalty_weight: 10.0,
+            }));
+        input
+            .constraints
+            .push(Constraint::PairMeetingCount(PairMeetingCountParams {
+                people: vec!["p0".into(), "p1".into()],
+                sessions: vec![0, 1, 2],
+                target_meetings: 2,
+                mode: PairMeetingMode::Exact,
+                penalty_weight: 10.0,
+            }));
+        input
+            .constraints
+            .push(Constraint::PairMeetingCount(PairMeetingCountParams {
+                people: vec!["p0".into(), "p1".into()],
+                sessions: vec![0, 1, 2],
+                target_meetings: 2,
+                mode: PairMeetingMode::AtMost,
+                penalty_weight: 10.0,
+            }));
+
+        let mut state = State::new(&input).unwrap();
+        // Construct schedule where p0 and p1 are together exactly once
+        // Session 0: (p0,p2) | (p1,p3)
+        // Session 1: (p0,p1) | (p2,p3)
+        // Session 2: (p0,p3) | (p1,p2)
+        state.schedule = vec![
+            vec![vec![0, 2], vec![1, 3]],
+            vec![vec![0, 1], vec![2, 3]],
+            vec![vec![0, 3], vec![1, 2]],
+        ];
+        state._recalculate_locations_from_schedule();
+        state._recalculate_scores();
+
+        assert_eq!(state.pairmin_counts.len(), 3);
+        assert_eq!(state.pairmin_counts[0], 1);
+        assert_eq!(state.pairmin_counts[1], 1);
+        assert_eq!(state.pairmin_counts[2], 1);
+
+        // Perform a swap in session 0 to bring p0 and p1 together again → now 2 in subset
+        let _ = state.calculate_swap_cost_delta(0, 1, 2);
+        state.apply_swap(0, 1, 2);
+        state._recalculate_scores();
+
+        // After swap, session 0 also has (p0,p1) together; counts should be >=2 for first constraint
+        // Our counts are stored per-constraint over their subsets, so they should now be 2
+        assert_eq!(state.pairmin_counts[0], 2);
+        // Other entries correspond to the other two constraints on the same pair/subset; they share counts
+        assert_eq!(state.pairmin_counts[1], 2);
+        assert_eq!(state.pairmin_counts[2], 2);
     }
 
     #[test]

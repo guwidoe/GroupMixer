@@ -17,18 +17,19 @@ interface AttributeBalanceConstraint {
 }
 
 interface Props {
-  onAddConstraint: (type: 'RepeatEncounter' | 'ShouldNotBeTogether' | 'ShouldStayTogether' | 'AttributeBalance') => void;
+  onAddConstraint: (type: 'RepeatEncounter' | 'ShouldNotBeTogether' | 'ShouldStayTogether' | 'AttributeBalance' | 'PairMeetingCount') => void;
   onEditConstraint: (constraint: Constraint, index: number) => void;
   onDeleteConstraint: (index: number) => void;
 }
 
-const SOFT_TABS = ['RepeatEncounter', 'ShouldNotBeTogether', 'ShouldStayTogether', 'AttributeBalance'] as const;
+const SOFT_TABS = ['RepeatEncounter', 'ShouldNotBeTogether', 'ShouldStayTogether', 'AttributeBalance', 'PairMeetingCount'] as const;
 
 const constraintTypeLabels: Record<typeof SOFT_TABS[number], string> = {
   RepeatEncounter: 'Repeat Encounter',
   ShouldNotBeTogether: 'Should Not Be Together',
   ShouldStayTogether: 'Should Stay Together',
   AttributeBalance: 'Attribute Balance',
+  PairMeetingCount: 'Pair Meeting Count',
 };
 
 const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstraint, onDeleteConstraint }) => {

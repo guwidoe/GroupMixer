@@ -24,6 +24,7 @@ import AttributeBalanceModal from './modals/AttributeBalanceModal';
 import ShouldNotBeTogetherModal from './modals/ShouldNotBeTogetherModal';
 import ShouldStayTogetherModal from './modals/ShouldStayTogetherModal';
 import MustStayTogetherModal from './modals/MustStayTogetherModal';
+import PairMeetingCountModal from './modals/PairMeetingCountModal';
 import AttributeBalanceDashboard from './AttributeBalanceDashboard';
 import { DemoDataWarningModal } from './modals/DemoDataWarningModal';
 
@@ -279,6 +280,7 @@ export function ProblemEditor() {
   const [showShouldNotBeTogetherModal, setShowShouldNotBeTogetherModal] = useState(false);
   const [showShouldStayTogetherModal, setShowShouldStayTogetherModal] = useState(false);
   const [showMustStayTogetherModal, setShowMustStayTogetherModal] = useState(false);
+  const [showPairMeetingCountModal, setShowPairMeetingCountModal] = useState(false);
   const [editingConstraintIndex, setEditingConstraintIndex] = useState<number | null>(null);
 
   // Demo data warning modal state
@@ -286,7 +288,7 @@ export function ProblemEditor() {
   const [pendingDemoCaseId, setPendingDemoCaseId] = useState<string | null>(null);
 
   // New UI state for Constraints tab
-  const SOFT_TYPES = useMemo(() => ['RepeatEncounter', 'AttributeBalance', 'ShouldNotBeTogether'] as const, []);
+  const SOFT_TYPES = useMemo(() => ['RepeatEncounter', 'AttributeBalance', 'ShouldNotBeTogether', 'ShouldStayTogether', 'PairMeetingCount'] as const, []);
   const HARD_TYPES = useMemo(() => ['ImmovablePeople', 'MustStayTogether'] as const, []);
 
   type ConstraintCategory = 'soft' | 'hard';
@@ -3326,6 +3328,9 @@ export function ProblemEditor() {
                 case 'ShouldStayTogether':
                   setShowShouldStayTogetherModal(true);
                   break;
+                case 'PairMeetingCount':
+                  setShowPairMeetingCountModal(true);
+                  break;
                 default:
                   // Fallback to legacy modal for any other types
                   setConstraintForm((prev) => ({ ...prev, type }));
@@ -3862,6 +3867,26 @@ export function ProblemEditor() {
             });
             setShowShouldStayTogetherModal(false);
             setEditingConstraintIndex(null);
+          }}
+        />
+      )}
+
+      {showPairMeetingCountModal && (
+        <PairMeetingCountModal
+          people={problem?.people ?? []}
+          totalSessions={problem?.num_sessions ?? 0}
+          initial={editingConstraintIndex !== null && problem ? problem.constraints[editingConstraintIndex] : null}
+          onCancel={() => setShowPairMeetingCountModal(false)}
+          onSave={(constraint) => {
+            if (!problem) {
+              setShowPairMeetingCountModal(false);
+              return;
+            }
+            const next = [...problem.constraints];
+            if (editingConstraintIndex !== null) next[editingConstraintIndex] = constraint;
+            else next.push(constraint);
+            setProblem({ ...problem, constraints: next });
+            setShowPairMeetingCountModal(false);
           }}
         />
       )}

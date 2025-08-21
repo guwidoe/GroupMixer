@@ -293,11 +293,49 @@ pub enum Constraint {
     },
     /// Fixes a *set* of people to a specific group in specific sessions (hard constraint)
     ImmovablePeople(ImmovablePeopleParams),
+    /// Constrains a pair's meeting count across a fixed subset of sessions
+    PairMeetingCount(PairMeetingCountParams),
 }
 
 /// Default penalty weight for constraints that don't specify one
 fn default_constraint_weight() -> f64 {
     1000.0
+}
+
+/// Modes for how to penalize deviations from the target meeting count.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PairMeetingMode {
+    /// Penalize only shortfalls: weight * max(0, target - actual)
+    AtLeast,
+    /// Penalize absolute deviation: weight * |target - actual|
+    Exact,
+    /// Penalize only excess: weight * max(0, actual - target)
+    AtMost,
+}
+
+impl Default for PairMeetingMode {
+    fn default() -> Self {
+        PairMeetingMode::AtLeast
+    }
+}
+
+/// Soft constraint on how often a pair should meet within a subset of sessions.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PairMeetingCountParams {
+    /// Exactly two person IDs involved in the constraint
+    pub people: Vec<String>,
+    /// Sessions to consider for counting meetings (must be within problem.sessions)
+    pub sessions: Vec<u32>,
+    /// Target number of meetings within the provided sessions (0..=sessions.len())
+    #[serde(alias = "min_meetings")]
+    pub target_meetings: u32,
+    /// Penalty mode: at_least (default), exact, or at_most
+    #[serde(default)]
+    pub mode: PairMeetingMode,
+    /// Linear penalty weight
+    #[serde(default = "default_constraint_weight")]
+    pub penalty_weight: f64,
 }
 
 /// Parameters for the RepeatEncounter constraint.

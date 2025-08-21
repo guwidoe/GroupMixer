@@ -79,6 +79,57 @@ export function evaluateCompliance(
 
   problem.constraints.forEach((c, index) => {
     switch (c.type) {
+      case "PairMeetingCount": {
+        const sessions = c.sessions;
+        const [idA, idB] = c.people;
+        let count = 0;
+        const subset =
+          sessions && sessions.length > 0
+            ? sessions
+            : Array.from({ length: problem.num_sessions }, (_, i) => i);
+        subset.forEach((session) => {
+          const groups = schedule[session] || {};
+          const inSame = Object.values(groups).some((ids) => {
+            const arr = ids as string[];
+            return arr.includes(idA) && arr.includes(idB);
+          });
+          if (inSame) count += 1;
+        });
+
+        const target = c.target_meetings;
+        const mode: "at_least" | "exact" | "at_most" = c.mode || "at_least";
+        let deviation = 0;
+        if (mode === "at_least") deviation = Math.max(0, target - count);
+        else if (mode === "exact") deviation = Math.abs(target - count);
+        else deviation = Math.max(0, count - target);
+
+        const details: ViolationDetail[] = [];
+        if (deviation > 0) {
+          details.push({
+            kind: "PairMeetingCount",
+            people: [idA, idB],
+            target,
+            actual: count,
+            mode,
+            sessions: subset,
+          });
+        }
+
+        cards.push({
+          id: index,
+          constraint: c,
+          type: c.type,
+          title: `Pair Meeting Count (${mode.replace("_", " ")})`,
+          subtitle: `${formatSessions(
+            sessions,
+            problem.num_sessions
+          )} • Target: ${target} • Weight: ${c.penalty_weight}`,
+          adheres: deviation === 0,
+          violationsCount: deviation,
+          details,
+        });
+        break;
+      }
       case "RepeatEncounter": {
         const pairCounts = new Map<
           string,
