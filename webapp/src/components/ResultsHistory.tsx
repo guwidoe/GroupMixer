@@ -26,6 +26,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import type { ProblemResult, Problem, ProblemSnapshot, SolverSettings } from '../types';
+import { generateAssignmentsCsv } from '../utils/csvExport';
 import { compareProblemConfigurations } from '../services/problemStorage';
 import { calculateMetrics, getColorClass } from '../utils/metricCalculations';
 
@@ -205,55 +206,16 @@ export function ResultsHistory() {
   };
 
   const generateCSV = (result: ProblemResult) => {
-    const headers = [
-      'Person ID',
-      'Group ID', 
-      'Session',
-      'Person Name',
-      'Person Attributes'
-    ];
+    const problemForAttributes: Problem | null = result.problemSnapshot
+      ? snapshotToProblem(result.problemSnapshot, result.solverSettings)
+      : (currentProblem?.problem ?? null);
+    if (!problemForAttributes) return '';
 
-    const rows = result.solution.assignments.map(assignment => {
-      const person = currentProblem?.problem.people.find(p => p.id === assignment.person_id);
-      const personName = person?.attributes.name || assignment.person_id;
-      const personAttrs = person ? Object.entries(person.attributes)
-        .filter(([key]) => key !== 'name')
-        .map(([key, value]) => `${key}:${value}`)
-        .join('; ') : '';
-
-      return [
-        assignment.person_id,
-        assignment.group_id,
-        assignment.session_id + 1, // Convert to 1-based for user display
-        personName,
-        personAttrs
-      ];
+    return generateAssignmentsCsv(problemForAttributes, result.solution, {
+      resultName: result.name || 'Unnamed Result',
+      exportedAt: Date.now(),
+      extraMetadata: [['Duration', formatDuration(result.duration)]],
     });
-
-    // Add metadata at the top
-    const metadata = [
-      ['Result Name', result.name || 'Unnamed Result'],
-      ['Export Date', new Date().toISOString()],
-      ['Final Score', result.solution.final_score.toFixed(2)],
-      ['Unique Contacts', result.solution.unique_contacts.toString()],
-      ['Duration', formatDuration(result.duration)],
-      ['Iterations', result.solution.iteration_count.toLocaleString()],
-      ['Repetition Penalty', (result.solution.weighted_repetition_penalty ?? result.solution.repetition_penalty).toFixed(2)],
-      ['Balance Penalty', result.solution.attribute_balance_penalty.toFixed(2)],
-      ['Constraint Penalty', (result.solution.weighted_constraint_penalty ?? result.solution.constraint_penalty).toFixed(2)],
-      [], // Empty row
-      headers
-    ];
-
-    const allRows = [...metadata, ...rows];
-    
-    return allRows.map(row => 
-      row.map(cell => 
-        typeof cell === 'string' && (cell.includes(',') || cell.includes('"')) 
-          ? `"${cell.replace(/"/g, '""')}"` 
-          : cell
-      ).join(',')
-    ).join('\n');
   };
 
   const formatDate = (timestamp: number) => {

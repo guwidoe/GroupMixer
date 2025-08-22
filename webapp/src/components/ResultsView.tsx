@@ -15,6 +15,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import type { Problem, ProblemSnapshot, SolverSettings, Person } from '../types';
+import { generateAssignmentsCsv } from '../utils/csvExport';
 import { Tooltip } from './Tooltip';
 import ConstraintComplianceCards from './ConstraintComplianceCards';
 import PersonCard from './PersonCard';
@@ -163,55 +164,10 @@ export function ResultsView() {
 
   const generateCSV = () => {
     if (!effectiveProblem || !solution) return '';
-    
-    const headers = [
-      'Person ID',
-      'Group ID', 
-      'Session',
-      'Person Name',
-      'Person Attributes'
-    ];
-
-    const rows = solution.assignments.map(assignment => {
-      const person = effectiveProblem.people.find(p => p.id === assignment.person_id);
-      const personName = person?.attributes.name || assignment.person_id;
-      const personAttrs = person ? Object.entries(person.attributes)
-        .filter(([key]) => key !== 'name')
-        .map(([key, value]) => `${key}:${value}`)
-        .join('; ') : '';
-
-      return [
-        assignment.person_id,
-        assignment.group_id,
-        assignment.session_id + 1, // Convert to 1-based for user display
-        personName,
-        personAttrs
-      ];
+    return generateAssignmentsCsv(effectiveProblem, solution, {
+      resultName: resultName || 'Current Result',
+      exportedAt: Date.now(),
     });
-
-    // Add metadata at the top
-    const metadata = [
-      ['Result Name', resultName || 'Current Result'],
-      ['Export Date', new Date().toISOString()],
-      ['Final Score', solution.final_score.toFixed(2)],
-      ['Unique Contacts', solution.unique_contacts.toString()],
-      ['Iterations', solution.iteration_count.toLocaleString()],
-      ['Repetition Penalty', (solution.weighted_repetition_penalty ?? solution.repetition_penalty).toFixed(2)],
-      ['Balance Penalty', solution.attribute_balance_penalty.toFixed(2)],
-      ['Constraint Penalty', (solution.weighted_constraint_penalty ?? solution.constraint_penalty).toFixed(2)],
-      [], // Empty row
-      headers
-    ];
-
-    const allRows = [...metadata, ...rows];
-    
-    return allRows.map(row => 
-      row.map(cell => 
-        typeof cell === 'string' && (cell.includes(',') || cell.includes('"')) 
-          ? `"${cell.replace(/"/g, '""')}"` 
-          : cell
-      ).join(',')
-    ).join('\n');
   };
 
   const handleExportResult = (format: 'json' | 'csv' | 'excel') => {
