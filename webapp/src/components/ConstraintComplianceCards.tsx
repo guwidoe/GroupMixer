@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { CheckCircle, ChevronDown, XCircle } from 'lucide-react';
+import { CheckCircle, ChevronDown, ChevronUp, XCircle, Info } from 'lucide-react';
 import type { Constraint, Person, Problem, Solution } from '../types';
 import ConstraintPersonChip from './ConstraintPersonChip';
 
@@ -362,6 +362,7 @@ const typeLabels: Partial<Record<ConstraintType, string>> = {
 const ConstraintComplianceCards: React.FC<Props> = ({ problem, solution }) => {
   const cards = useCompliance(problem, solution);
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+  const [collapsed, setCollapsed] = useState<boolean>(true);
 
   const grouped = useMemo(() =>
     cards.reduce((acc: Record<ConstraintType, CardData[]>, card) => {
@@ -543,9 +544,52 @@ const ConstraintComplianceCards: React.FC<Props> = ({ problem, solution }) => {
 
   return (
     <div className="rounded-lg border p-6 transition-colors" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
-      <h3 className="text-lg font-medium mb-4" style={{ color: 'var(--text-primary)' }}>Constraint Compliance</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>Constraint Compliance</h3>
+        <button
+          onClick={() => setCollapsed((c) => !c)}
+          className="px-3 py-1 rounded text-sm border"
+          style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)', borderColor: 'var(--border-primary)' }}
+          aria-expanded={!collapsed}
+        >
+          {collapsed ? (
+            <span className="inline-flex items-center gap-1"><ChevronDown className="w-4 h-4" /> Expand</span>
+          ) : (
+            <span className="inline-flex items-center gap-1"><ChevronUp className="w-4 h-4" /> Collapse</span>
+          )}
+        </button>
+      </div>
+
       {cards.length === 0 ? (
         <p className="text-sm italic" style={{ color: 'var(--text-tertiary)' }}>No constraints defined for this problem.</p>
+      ) : collapsed ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          {Object.entries(grouped).map(([type, list]) => {
+            const total = list.length;
+            const ok = list.filter((c) => c.adheres).length;
+            const violations = list.reduce((sum, c) => sum + (c.adheres ? 0 : c.violationsCount), 0);
+            return (
+              <div key={type} className="rounded-lg border p-4" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}>
+                <div className="text-sm font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  {typeLabels[type as ConstraintType] || type}
+                </div>
+                <div className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1"><CheckCircle className="w-4 h-4 text-green-600" /> OK</span>
+                    <span className="font-medium">{ok} / {total}</span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1"><XCircle className="w-4 h-4 text-red-600" /> Violations</span>
+                    <span className="font-medium">{violations}</span>
+                  </div>
+                </div>
+                <div className="mt-3 text-xs flex items-center gap-1" style={{ color: 'var(--text-tertiary)' }}>
+                  <Info className="w-3 h-3" /> Expand to see details
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <div className="space-y-6">
           {Object.entries(grouped).map(([type, list]) => (
