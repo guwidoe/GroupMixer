@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../store';
-import type { Assignment, Group, Problem, Solution } from '../types';
-import { AlertTriangle, CheckCircle2, Lock, LockOpen, Save, Undo2, Redo2, Users, Target } from 'lucide-react';
+import type { Assignment, Group, Problem, Solution, Constraint } from '../types';
+import { AlertTriangle, CheckCircle2, Lock, LockOpen, Save, Undo2, Redo2, Users, Target, Archive, UserPlus, Gavel } from 'lucide-react';
 import PersonCard from './PersonCard';
 import { calculateMetrics } from '../utils/metricCalculations';
 import { evaluateCompliance, buildScheduleMap, computeUniqueContacts } from '../services/evaluator';
@@ -31,6 +31,8 @@ function ManualEditor() {
   const solution = useAppStore((s) => s.solution);
   const addNotification = useAppStore((s) => s.addNotification);
   const addResult = useAppStore((s) => s.addResult);
+  const currentProblemId = useAppStore((s) => s.currentProblemId);
+  const savedProblems = useAppStore((s) => s.savedProblems);
 
   const [activeSession, setActiveSession] = useState(0);
   const [mode, setMode] = useState<Mode>('warn');
@@ -44,6 +46,31 @@ function ManualEditor() {
   const [_future, setFuture] = useState<DraftState[]>([]);
   const [draft, setDraft] = useState<DraftState | null>(null);
 
+  // Storage board state: explicit per-session membership of temporarily removed people
+  const [storage, setStorage] = useState<Record<number, Set<string>>>({});
+  const getStorageSet = (sessionId: number) => storage[sessionId] ?? new Set<string>();
+  const addToStorage = (sessionId: number, personId: string) => {
+    setStorage((prev) => {
+      const next = { ...prev };
+      const setForSession = new Set(next[sessionId] ?? []);
+      setForSession.add(personId);
+      next[sessionId] = setForSession;
+      return next;
+    });
+  };
+  const removeFromStorage = (sessionId: number, personId: string) => {
+    setStorage((prev) => {
+      const next = { ...prev };
+      const setForSession = new Set(next[sessionId] ?? []);
+      setForSession.delete(personId);
+      next[sessionId] = setForSession;
+      return next;
+    });
+  };
+
+  // Newly detected constraints pulled from current problem compared to the active result's snapshot
+  const [pulledConstraints, setPulledConstraints] = useState<Constraint[]>([]);
+
   // Initialize draft from existing solution
   useEffect(() => {
     if (solution) {
@@ -51,6 +78,8 @@ function ManualEditor() {
       setHistory([]);
       setFuture([]);
       setActiveSession(0);
+      setStorage({});
+      setPulledConstraints([]);
     }
   }, [solution]);
 
@@ -408,11 +437,59 @@ function ManualEditor() {
     }
     next.push({ person_id: personId, group_id: toGroupId, session_id: sessionId });
     pushHistory(next);
+    // Remove from storage if present
+    removeFromStorage(sessionId, personId);
   };
 
   // UI builders
   const renderTopBar = () => {
     // Reserved for objective deltas in a future iteration
+
+    const handlePullNewPeople = () => {
+      if (!effectiveProblem) return;
+      const allSessions = Array.from({ length: effectiveProblem.num_sessions }, (_, i) => i);
+      const assignedBySession = new Map<number, Set<string>>();
+      draftAssignments.forEach((a) => {
+        if (!assignedBySession.has(a.session_id)) assignedBySession.set(a.session_id, new Set());
+        assignedBySession.get(a.session_id)!.add(a.person_id);
+      });
+
+      const assignedAny = new Set(draftAssignments.map((a) => a.person_id));
+      const newPeople = effectiveProblem.people.filter((p) => !assignedAny.has(p.id));
+
+      let addedCount = 0;
+      newPeople.forEach((p) => {
+        const sessions = p.sessions && p.sessions.length > 0 ? p.sessions : allSessions;
+        sessions.forEach((s) => {
+          const setForSession = assignedBySession.get(s) ?? new Set<string>();
+          // Only add to storage for sessions where they are not yet assigned
+          if (!setForSession.has(p.id)) {
+            addToStorage(s, p.id);
+            addedCount++;
+          }
+        });
+      });
+
+      if (newPeople.length === 0) {
+        addNotification({ type: 'info', title: 'No New People', message: 'All people already exist in this result.' });
+      } else {
+        addNotification({ type: 'success', title: 'Pulled People', message: `Added ${newPeople.length} people into storage across sessions (${addedCount} entries).` });
+      }
+    };
+
+    const handlePullNewConstraints = () => {
+      if (!effectiveProblem || !solution || !currentProblemId) return;
+      const currentSaved = savedProblems[currentProblemId];
+      if (!currentSaved) return;
+      const result = currentSaved.results.find(r => r.solution === solution);
+      const snapshotConstraints = result?.problemSnapshot?.constraints ?? [];
+      const currentConstraints = effectiveProblem.constraints ?? [];
+      const key = (c: Constraint) => JSON.stringify(c);
+      const snapshotSet = new Set(snapshotConstraints.map(key));
+      const newOnes = currentConstraints.filter(c => !snapshotSet.has(key(c)));
+      setPulledConstraints(newOnes);
+      addNotification({ type: 'info', title: 'Pulled Constraints', message: newOnes.length === 0 ? 'No new constraints.' : `Found ${newOnes.length} new constraints.` });
+    };
 
     return (
       <div className="rounded-lg border p-3 mb-4 flex flex-wrap gap-2 items-center justify-between" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
@@ -423,6 +500,12 @@ function ManualEditor() {
           <button onClick={() => setMode('free')} className="px-2 py-1 rounded text-xs border" style={{ color: mode==='free' ? 'var(--color-accent)' : 'var(--text-secondary)', borderColor: mode==='free' ? 'var(--color-accent)' : 'var(--border-primary)', backgroundColor: mode==='free' ? 'var(--bg-tertiary)' : 'transparent' }}>Free</button>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={handlePullNewPeople} className="px-2 py-1 rounded text-xs border inline-flex items-center gap-1" title="Pull new people from current problem into storage for all relevant sessions" style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-primary)' }}>
+            <UserPlus className="w-4 h-4" /> Pull new people
+          </button>
+          <button onClick={handlePullNewConstraints} className="px-2 py-1 rounded text-xs border inline-flex items-center gap-1" title="Pull new constraints from current problem" style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-primary)' }}>
+            <Gavel className="w-4 h-4" /> Pull constraints
+          </button>
           <button onClick={undo} className="px-2 py-1 rounded text-xs border" title="Undo" style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-primary)' }}>
             <Undo2 className="w-4 h-4" />
           </button>
@@ -643,6 +726,102 @@ function ManualEditor() {
     );
   };
 
+  const renderStoragePanel = () => {
+    const storedIds = Array.from(getStorageSet(activeSession));
+
+    const onDropToStorage = (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const personId = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('text');
+      if (!personId) return;
+      if (isPersonLocked(personId)) return;
+
+      // Remove assignment for active session and add to storage
+      if (draft) {
+        const next = cloneAssignments(draft.assignments).filter(a => !(a.person_id === personId && a.session_id === activeSession));
+        pushHistory(next);
+      }
+      addToStorage(activeSession, personId);
+      setDraggingPerson(null);
+      setPreviewDelta(null);
+      setPreviewKey(null);
+    };
+
+    const onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    };
+
+    // Note: pull buttons moved to top bar to act across all sessions
+
+    return (
+      <div className="w-full lg:w-64 flex-shrink-0 space-y-3">
+        <div className="rounded-lg border p-3" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+              Storage · Session {activeSession + 1}
+            </div>
+            <Archive className="w-4 h-4" style={{ color: 'var(--text-tertiary)' }} />
+          </div>
+          {/* Pull buttons moved to top bar (global), not per-session */}
+          <div
+            className="p-2 rounded border min-h-[120px]"
+            style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}
+            onDragOver={onDragOver}
+            onDrop={onDropToStorage}
+          >
+            {storedIds.length === 0 ? (
+              <div className="text-xs italic" style={{ color: 'var(--text-tertiary)' }}>Drag people here to temporarily remove from this session</div>
+            ) : (
+              <div className="space-y-2">
+                {storedIds.map((pid) => {
+                  const person = effectiveProblem ? effectiveProblem.people.find((p) => p.id === pid) : null;
+                  if (!person) return null;
+                  const dragStart = (e: React.DragEvent) => {
+                    if (isPersonLocked(pid)) { e.preventDefault(); return; }
+                    e.dataTransfer.setData('text/plain', pid);
+                    e.dataTransfer.setData('text', pid);
+                    try { e.dataTransfer.effectAllowed = 'move'; } catch {}
+                    setDraggingPerson(pid);
+                  };
+                  const dragEnd = () => { setDraggingPerson(null); };
+                  return (
+                    <div key={pid} draggable onDragStart={dragStart} onDragEnd={dragEnd} className="flex items-center justify-between pointer-events-auto">
+                      <PersonCard person={person} />
+                      <button onClick={() => removeFromStorage(activeSession, pid)} className="ml-2 px-2 py-1 rounded text-xs border" title="Remove from storage" style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-primary)' }}>
+                        <LockOpen className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {pulledConstraints && (
+          <div className="rounded-lg border p-3" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
+            <div className="text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>New Constraints</div>
+            {pulledConstraints.length === 0 ? (
+              <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>None</div>
+            ) : (
+              <div className="space-y-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                {pulledConstraints.map((c, idx) => (
+                  <div key={idx} className="px-2 py-1 rounded border" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
+                    <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{c.type}</span>
+                    <span className="ml-1" style={{ color: 'var(--text-tertiary)' }}>{/* lightweight summary */}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-2 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+              Pulled from current problem configuration compared to the result's snapshot.
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Prepare a Solution object for the reusable compliance component
   const complianceSolution: Solution = evaluated ?? {
     assignments: draftAssignments,
@@ -728,10 +907,13 @@ function ManualEditor() {
           {renderTopBar()}
           <div className="flex flex-col lg:flex-row gap-4">
             {renderSidebar()}
-            <div className="flex-1 space-y-4">
-              {renderCanvas()}
-              <ConstraintComplianceCards problem={effectiveProblem} solution={complianceSolution} />
-              {renderStatusBar()}
+            <div className="flex-1 lg:flex lg:flex-row lg:items-start gap-4">
+              <div className="flex-1 space-y-4">
+                {renderCanvas()}
+                <ConstraintComplianceCards problem={effectiveProblem} solution={complianceSolution} />
+                {renderStatusBar()}
+              </div>
+              {renderStoragePanel()}
             </div>
           </div>
         </>
