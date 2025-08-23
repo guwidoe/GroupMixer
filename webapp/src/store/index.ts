@@ -88,6 +88,7 @@ interface AppStore extends AppState {
   ) => void;
   renameProblem: (id: string, newName: string) => void;
   toggleTemplate: (id: string) => void;
+  restoreResultAsNewProblem: (resultId: string, newName?: string) => void;
   addResult: (
     solution: Solution,
     solverSettings: SolverSettings,
@@ -730,6 +731,50 @@ export const useAppStore = create<AppStore>()(
               error instanceof Error
                 ? error.message
                 : "Failed to update template status",
+          });
+        }
+      },
+
+      restoreResultAsNewProblem: (resultId, newName) => {
+        const { currentProblemId } = get();
+        if (!currentProblemId) {
+          get().addNotification({
+            type: "error",
+            title: "No Current Problem",
+            message:
+              "Select a problem first to restore a result's configuration.",
+          });
+          return;
+        }
+
+        try {
+          const created = problemStorage.restoreResultAsNewProblem(
+            currentProblemId,
+            resultId,
+            newName
+          );
+
+          // Update store cache
+          set((state) => ({
+            savedProblems: {
+              ...state.savedProblems,
+              [created.id]: created,
+            },
+          }));
+
+          get().addNotification({
+            type: "success",
+            title: "Restored as New Problem",
+            message: `Created problem "${created.name}" from the result's configuration.`,
+          });
+        } catch (error) {
+          get().addNotification({
+            type: "error",
+            title: "Restore Failed",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Could not restore result as new problem",
           });
         }
       },

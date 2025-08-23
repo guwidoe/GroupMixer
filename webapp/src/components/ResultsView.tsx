@@ -31,7 +31,7 @@ function snapshotToProblem(snapshot: ProblemSnapshot, settings: SolverSettings):
 }
 
 export function ResultsView() {
-  const { problem, solution, solverState, currentProblemId, savedProblems } = useAppStore();
+  const { problem, solution, solverState, currentProblemId, savedProblems, restoreResultAsNewProblem } = useAppStore();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [configDetailsOpen, setConfigDetailsOpen] = useState(false);
@@ -404,6 +404,19 @@ export function ResultsView() {
                             </div>
                           )
                         ))}
+                      </div>
+                      <div className="pt-2">
+                        <button
+                          className="btn-primary w-full text-xs"
+                          onClick={() => {
+                            if (!currentResult) return;
+                            const sourceName = savedProblems[currentProblemId!]?.name || 'Problem';
+                            const suggested = `${sourceName} – ${currentResult.name || 'Result'} (restored)`;
+                            restoreResultAsNewProblem(currentResult.id, suggested);
+                          }}
+                        >
+                          Restore this result's configuration as new problem
+                        </button>
                       </div>
                     </div>
                   </div>

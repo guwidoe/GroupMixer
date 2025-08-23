@@ -48,6 +48,7 @@ export function ResultsHistory() {
     deleteResult,
     setShowResultComparison,
     setSolution,
+    restoreResultAsNewProblem,
   } = useAppStore();
   const navigate = useNavigate();
 
@@ -595,6 +596,18 @@ export function ResultsHistory() {
                                               </div>
                                             )
                                           ))}
+                                        </div>
+                                        <div className="pt-2">
+                                          <button
+                                            className="btn-primary w-full text-xs"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const suggested = `${currentProblem?.name || 'Problem'} – ${result.name || 'Result'} (restored)`;
+                                              restoreResultAsNewProblem(result.id, suggested);
+                                            }}
+                                          >
+                                            Restore this result's configuration as new problem
+                                          </button>
                                         </div>
                                       </div>
                                     </div>

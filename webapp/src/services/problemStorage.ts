@@ -329,6 +329,58 @@ export class ProblemStorageService {
     return duplicatedProblem;
   }
 
+  // Create a new problem from a specific result's saved configuration
+  // and include only that result in the new problem's history.
+  restoreResultAsNewProblem(
+    sourceProblemId: string,
+    resultId: string,
+    newName?: string
+  ): SavedProblem {
+    const source = this.getProblem(sourceProblemId);
+    if (!source) {
+      throw new Error(`Problem with ID ${sourceProblemId} not found`);
+    }
+
+    const result = source.results.find((r) => r.id === resultId);
+    if (!result) {
+      throw new Error(`Result with ID ${resultId} not found`);
+    }
+
+    const snapshot = result.problemSnapshot;
+    if (!snapshot) {
+      throw new Error(
+        "This result does not have a saved problem configuration (snapshot)"
+      );
+    }
+
+    // Build a full Problem from the snapshot and the solver settings used for this result
+    const restoredProblem: Problem = {
+      people: snapshot.people,
+      groups: snapshot.groups,
+      num_sessions: snapshot.num_sessions,
+      objectives: snapshot.objectives,
+      constraints: snapshot.constraints,
+      settings: result.solverSettings,
+    } as Problem;
+
+    const defaultName = `${source.name} – ${
+      result.name || "Result"
+    } (restored)`;
+    const created = this.createProblem(newName || defaultName, restoredProblem);
+
+    // Clone the specific result into the new problem, generating a fresh local ID
+    const newResultId = this.generateGloballyUniqueId(new Set<string>());
+    const clonedResult: ProblemResult = {
+      ...result,
+      id: newResultId,
+    };
+
+    created.results.push(clonedResult);
+    this.saveProblem(created);
+
+    return created;
+  }
+
   // Rename a problem
   renameProblem(id: string, newName: string): void {
     const savedProblem = this.getProblem(id);
