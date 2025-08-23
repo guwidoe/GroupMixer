@@ -91,7 +91,8 @@ interface AppStore extends AppState {
   addResult: (
     solution: Solution,
     solverSettings: SolverSettings,
-    customName?: string
+    customName?: string,
+    snapshotProblemOverride?: Problem
   ) => void;
   updateResultName: (resultId: string, newName: string) => void;
   deleteResult: (resultId: string) => void;
@@ -733,7 +734,12 @@ export const useAppStore = create<AppStore>()(
         }
       },
 
-      addResult: (solution, solverSettings, customName) => {
+      addResult: (
+        solution,
+        solverSettings,
+        customName,
+        snapshotProblemOverride
+      ) => {
         const { currentProblemId, savedProblems, problem } = get();
         console.log(
           "[Store] addResult called with currentProblemId:",
@@ -773,13 +779,18 @@ export const useAppStore = create<AppStore>()(
         }
 
         try {
-          // Pass the current problem state to ensure we capture the latest configuration
+          // Capture the intended problem configuration for this result snapshot
+          // Prefer the explicit override (e.g., solver-run snapshot),
+          // otherwise fall back to the current problem in the store.
+          const problemForSnapshot =
+            snapshotProblemOverride || problem || undefined;
+
           const result = problemStorage.addResult(
             currentProblemId,
             solution,
             solverSettings,
             customName,
-            problem || undefined // Pass current problem state to avoid stale data
+            problemForSnapshot // Use provided snapshot problem (decouples from live UI changes)
           );
 
           // Update the store with the new result and ensure problem state is synced
@@ -796,7 +807,7 @@ export const useAppStore = create<AppStore>()(
                 ...state.savedProblems,
                 [currentProblemId]: {
                   ...currentProblem,
-                  problem: problem || currentProblem.problem, // Ensure problem state is current
+                  problem: problem || currentProblem.problem, // Keep problem state synced in store
                   results: [...(currentProblem?.results || []), result],
                 },
               },

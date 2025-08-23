@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAppStore } from '../store';
 import { Play, Pause, RotateCcw, Settings, TrendingUp, Clock, Activity, ChevronDown, ChevronRight, Info, BarChart3 } from 'lucide-react';
-import type { SolverSettings } from '../types';
+import type { SolverSettings, Problem } from '../types';
 import { solverWorkerService } from '../services/solverWorker';
 import { wasmService } from '../services/wasm';
 import type { ProgressUpdate } from '../services/wasm';
@@ -40,6 +40,8 @@ export function SolverPanel() {
   const solverCompletedRef = useRef(false);
   const restartAfterSaveRef = useRef(false);
   const saveInProgressRef = useRef(false);
+  // Snapshot of the problem configuration at the moment the solver starts
+  const runProblemSnapshotRef = useRef<Problem | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   // Runtime input used for the quick-start (automatic) button
   const [desiredRuntimeMain, setDesiredRuntimeMain] = useState<number | null>(3);
@@ -224,6 +226,15 @@ export function SolverPanel() {
         settings: selectedSettings,
       };
 
+      // Capture a deep snapshot of the problem configuration at solver start,
+      // decoupling any subsequent UI edits from this solver run's saved results.
+      try {
+        runProblemSnapshotRef.current = JSON.parse(JSON.stringify(currentProblem));
+      } catch {
+        // Fallback to a shallow copy if deep clone fails for any reason
+        runProblemSnapshotRef.current = { ...currentProblem } as Problem;
+      }
+
       // Progress callback to update the UI in real-time
       const progressCallback = (progress: ProgressUpdate): boolean => {
         // Ignore progress updates if solver has already completed
@@ -363,7 +374,7 @@ export function SolverPanel() {
       console.log('[SolverPanel] Problem exists:', !!problem);
       if (currentProblemId) {
         console.log('[SolverPanel] Saving result to problem:', currentProblemId);
-        addResult(solution, selectedSettings);
+        addResult(solution, selectedSettings, undefined, runProblemSnapshotRef.current || undefined);
       } else {
         console.log('[SolverPanel] No currentProblemId, result not saved');
         // If we have a problem but no currentProblemId, we should save it
@@ -373,7 +384,7 @@ export function SolverPanel() {
           problemStorage.setCurrentProblemId(newSaved.id);
           // Update the store by calling the store's set method
           useAppStore.setState({ currentProblemId: newSaved.id });
-          addResult(solution, selectedSettings);
+          addResult(solution, selectedSettings, undefined, runProblemSnapshotRef.current || undefined);
         }
       }
 
@@ -519,7 +530,7 @@ export function SolverPanel() {
           elapsed_time_ms: lastProgress.elapsed_seconds * 1000,
         } as typeof evaluated;
         const settingsForSave = (runSettings || solverSettings);
-        addResult(evaluatedWithRunMeta, settingsForSave);
+        addResult(evaluatedWithRunMeta, settingsForSave, undefined, runProblemSnapshotRef.current || undefined);
         addNotification({
           type: 'success',
           title: 'Saved Best-So-Far',
@@ -546,7 +557,7 @@ export function SolverPanel() {
           weighted_constraint_penalty: 0,
         } as unknown as import('../types').Solution;
         const settingsForSave = (runSettings || solverSettings);
-        addResult(fallbackSolution, settingsForSave);
+        addResult(fallbackSolution, settingsForSave, undefined, runProblemSnapshotRef.current || undefined);
       } finally {
         saveInProgressRef.current = false;
       }

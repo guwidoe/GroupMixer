@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../store';
-import type { Assignment, Group, Problem, Solution, Constraint } from '../types';
+import type { Assignment, Group, Problem, Solution, Constraint, ProblemSnapshot, SolverSettings } from '../types';
 import { AlertTriangle, CheckCircle2, Lock, LockOpen, Save, Undo2, Redo2, Users, Target, Archive, UserPlus, Gavel } from 'lucide-react';
 import PersonCard from './PersonCard';
 import { calculateMetrics } from '../utils/metricCalculations';
@@ -22,6 +22,13 @@ function cloneAssignments(assignments: Assignment[]): Assignment[] {
 
 function groupBySessionAndGroup(assignments: Assignment[]): Record<number, Record<string, string[]>> {
   return buildScheduleMap(assignments);
+}
+
+function snapshotToProblem(snapshot: ProblemSnapshot, settings: SolverSettings): Problem {
+  return {
+    ...snapshot,
+    settings,
+  };
 }
 
 function ManualEditor() {
@@ -89,7 +96,20 @@ function ManualEditor() {
   const draftAssignments = draft?.assignments ?? [];
   const draftSchedule = useMemo(() => groupBySessionAndGroup(draftAssignments), [draftAssignments]);
 
-  const effectiveProblem: Problem | null = problem;
+  // Determine the active result (by matching the current solution object) and derive the effective problem
+  const currentResult = useMemo(() => {
+    if (!currentProblemId || !solution) return undefined;
+    const saved = savedProblems[currentProblemId];
+    if (!saved) return undefined;
+    return saved.results.find(r => r.solution === solution);
+  }, [currentProblemId, savedProblems, solution]);
+
+  const effectiveProblem: Problem | null = useMemo(() => {
+    if (currentResult?.problemSnapshot) {
+      return snapshotToProblem(currentResult.problemSnapshot, currentResult.solverSettings);
+    }
+    return problem;
+  }, [currentResult, problem]);
 
   const baselineMetrics = useMemo(() => (effectiveProblem && solution ? calculateMetrics(effectiveProblem, solution) : null), [effectiveProblem, solution]);
   const baselineCompliance = useMemo(() => (effectiveProblem && solution ? evaluateCompliance(effectiveProblem, solution) : []), [effectiveProblem, solution]);
@@ -318,7 +338,7 @@ function ManualEditor() {
     } as unknown as Solution;
 
     try {
-      addResult(draftSolution, effectiveProblem.settings, 'Manual Draft');
+      addResult(draftSolution, effectiveProblem.settings, 'Manual Draft', effectiveProblem);
       addNotification({ type: 'success', title: 'Draft Saved', message: 'Saved as a new result.' });
     } catch (e) {
       addNotification({ type: 'error', title: 'Save Failed', message: e instanceof Error ? e.message : 'Unknown error' });
@@ -976,7 +996,7 @@ function ManualEditor() {
                   weighted_constraint_penalty: evaluated?.weighted_constraint_penalty ?? 0,
                 } as unknown as import('../types').Solution;
                 if (effectiveProblem) {
-                  useAppStore.getState().addResult(draftSolution, effectiveProblem.settings, 'Manual Draft');
+                  useAppStore.getState().addResult(draftSolution, effectiveProblem.settings, 'Manual Draft', effectiveProblem);
                 }
                 setShowLeaveConfirm(false);
                 setHasUnsavedChanges(false);
