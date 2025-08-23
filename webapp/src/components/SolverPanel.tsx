@@ -1,12 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { useAppStore } from '../store';
-import { Play, Pause, RotateCcw, Settings, TrendingUp, Clock, Activity, ChevronDown, ChevronRight, Info, BarChart3 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Settings, TrendingUp, Clock, Activity, ChevronDown, ChevronRight, Info, BarChart3, Zap } from 'lucide-react';
 import type { SolverSettings, Problem } from '../types';
 import { solverWorkerService } from '../services/solverWorker';
 import { wasmService } from '../services/wasm';
 import type { ProgressUpdate } from '../services/wasm';
 import { Tooltip } from './Tooltip';
 import { problemStorage } from '../services/problemStorage';
+import { reconcileResultToInitialSchedule } from '../utils/warmStart';
 
 export function SolverPanel() {
   const { solverState, startSolver, stopSolver, resetSolver, setSolverState, setSolution, addNotification, addResult, updateProblem, ensureProblemExists } = useAppStore();
@@ -14,6 +15,30 @@ export function SolverPanel() {
   // Get the current problem and currentProblemId from the store reactively
   const problem = useAppStore((state) => state.problem);
   const currentProblemId = useAppStore((state) => state.currentProblemId);
+  const savedProblems = useAppStore((state) => state.savedProblems);
+  const warmStartResultId = useAppStore((state) => state.ui.warmStartResultId);
+  const setWarmStartFromResult = useAppStore((state) => (state as unknown as { setWarmStartFromResult: (id: string | null) => void }).setWarmStartFromResult);
+  const [warmStartSelection, setWarmStartSelection] = useState<string | null>(null);
+  const [warmDropdownOpen, setWarmDropdownOpen] = useState(false);
+  const warmDropdownRef = useRef<HTMLDivElement>(null);
+  const warmDropdownMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close warm-start dropdown on outside click
+  React.useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (
+        warmDropdownOpen &&
+        target &&
+        warmDropdownRef.current &&
+        !warmDropdownRef.current.contains(target)
+      ) {
+        setWarmDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [warmDropdownOpen]);
   const [showSettings, setShowSettings] = useState(false);
   // Metrics pane expanded state, persisted in localStorage for better UX
   const [showMetrics, setShowMetrics] = useState<boolean>(() => {
@@ -315,8 +340,35 @@ export function SolverPanel() {
         return true; // Continue solving
       };
 
-      // Run the solver with progress updates using Web Worker
-      const { solution, lastProgress } = await solverWorkerService.solveWithProgress(problemWithSettings, progressCallback);
+      // Determine whether to warm-start from a selected result
+      let solution;
+      let lastProgress;
+      if (warmStartResultId) {
+        try {
+          const sourceProblem = currentProblemId ? savedProblems[currentProblemId] : null;
+          const result = sourceProblem?.results.find(r => r.id === warmStartResultId);
+          if (!result) {
+            throw new Error('Selected warm-start result not found');
+          }
+          const initialSchedule = reconcileResultToInitialSchedule(currentProblem, result);
+          // clear the intent before starting
+          setWarmStartFromResult(null);
+          const out = await solverWorkerService.solveWithProgressWarmStart(problemWithSettings, initialSchedule, progressCallback);
+          solution = out.solution;
+          lastProgress = out.lastProgress;
+        } catch (e) {
+          console.error('[SolverPanel] Warm-start failed, falling back to normal start:', e);
+          addNotification({ type: 'warning', title: 'Warm Start Failed', message: e instanceof Error ? e.message : 'Falling back to default start' });
+          setWarmStartFromResult(null);
+          const out = await solverWorkerService.solveWithProgress(problemWithSettings, progressCallback);
+          solution = out.solution;
+          lastProgress = out.lastProgress;
+        }
+      } else {
+        const out = await solverWorkerService.solveWithProgress(problemWithSettings, progressCallback);
+        solution = out.solution;
+        lastProgress = out.lastProgress;
+      }
       
       // Debug logging
       console.log('[SolverPanel] Solver completed');
@@ -1198,6 +1250,105 @@ export function SolverPanel() {
                   Auto-set
                 </button>
               </Tooltip>
+            </div>
+          </div>
+          {/* Warm start selector (styled like demo data dropdown) */}
+          <div className="mb-4">
+            <div className="p-3 rounded-lg" style={{ border: '1px solid var(--border-secondary)', backgroundColor: 'var(--background-secondary)' }}>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                Start from existing result (optional)
+              </label>
+              <div className="relative" ref={warmDropdownRef}>
+                <button
+                  onClick={() => setWarmDropdownOpen(!warmDropdownOpen)}
+                  className="btn-secondary flex items-center justify-between gap-2 w-full px-3 py-2 text-sm"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Zap className="w-4 h-4 flex-shrink-0" />
+                    <span className="truncate">
+                      {(() => {
+                        if (!warmStartSelection) return 'Start from random (default)';
+                        const r = currentProblemId ? savedProblems[currentProblemId]?.results.find(x => x.id === warmStartSelection) : undefined;
+                        return r ? `${r.name || 'Result'} • score ${r.solution.final_score.toFixed(2)}` : 'Start from random (default)';
+                      })()}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-3 h-3" />
+                </button>
+
+                {warmDropdownOpen && (
+                  <div
+                    ref={warmDropdownMenuRef}
+                    className="absolute left-0 mt-1 w-full rounded-md shadow-lg z-10 border overflow-hidden max-h-72 overflow-y-auto"
+                    style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+                  >
+                    <button
+                      onClick={() => {
+                        setWarmStartSelection(null);
+                        setWarmStartFromResult(null);
+                        setWarmDropdownOpen(false);
+                      }}
+                      className="flex w-full items-center justify-between px-3 py-2 text-sm text-left transition-colors border-b"
+                      style={{ borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-secondary)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    >
+                      <span>Start from random (default)</span>
+                    </button>
+
+                    {(() => {
+                      const list = currentProblemId ? (savedProblems[currentProblemId]?.results || []) : [];
+                      if (!list.length) return (
+                        <div className="px-3 py-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>No results available</div>
+                      );
+
+                      const scores = list.map(r => r.solution.final_score);
+                      const min = Math.min(...scores);
+                      const max = Math.max(...scores);
+                      const colorFor = (score: number) => {
+                        if (min === max) return 'text-green-600';
+                        const ratio = (score - min) / (max - min);
+                        if (ratio <= 0.15) return 'text-green-600';
+                        if (ratio <= 0.35) return 'text-lime-600';
+                        if (ratio <= 0.6) return 'text-yellow-600';
+                        if (ratio <= 0.85) return 'text-orange-600';
+                        return 'text-red-600';
+                      };
+
+                      return list
+                        .slice()
+                        .sort((a, b) => b.timestamp - a.timestamp)
+                        .map((r) => (
+                          <button
+                            key={r.id}
+                            onClick={() => {
+                              setWarmStartSelection(r.id);
+                              setWarmStartFromResult(r.id);
+                              setWarmDropdownOpen(false);
+                            }}
+                            className="flex w-full items-center justify-between px-3 py-2 text-sm text-left transition-colors border-b last:border-b-0"
+                            style={{ borderColor: 'var(--border-primary)', color: 'var(--text-primary)', backgroundColor: 'transparent' }}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-secondary)')}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium truncate">{r.name || 'Result'}</span>
+                                <span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>{new Date(r.timestamp).toLocaleString()}</span>
+                              </div>
+                              <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                                iter {r.solution.iteration_count.toLocaleString()} • duration {(r.duration / 1000).toFixed(1)}s
+                              </div>
+                            </div>
+                            <div className={`ml-3 font-semibold ${colorFor(r.solution.final_score)}`}>
+                              {r.solution.final_score.toFixed(2)}
+                            </div>
+                          </button>
+                        ));
+                    })()}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

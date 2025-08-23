@@ -276,6 +276,7 @@ export interface AppState {
     notifications: Notification[];
     showProblemManager: boolean;
     showResultComparison: boolean;
+    warmStartResultId?: string | null;
   };
 }
 

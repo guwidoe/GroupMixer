@@ -67,6 +67,8 @@ interface AppStore extends AppState {
   startSolver: () => void;
   stopSolver: () => void;
   resetSolver: () => void;
+  // Warm start intent
+  setWarmStartFromResult: (resultId: string | null) => void;
 
   // UI management
   setActiveTab: (tab: "problem" | "solver" | "results" | "manage") => void;
@@ -150,6 +152,7 @@ const initialState: AppState = {
     notifications: [],
     showProblemManager: false,
     showResultComparison: false,
+    warmStartResultId: null,
   },
   attributeDefinitions: loadAttributeDefinitions(),
   demoDropdownOpen: false,
@@ -421,6 +424,12 @@ export const useAppStore = create<AppStore>()(
             noImprovementCount: 0,
             error: undefined,
           },
+        })),
+
+      // Warm start intent (persist ephemeral selection)
+      setWarmStartFromResult: (resultId) =>
+        set((state) => ({
+          ui: { ...state.ui, warmStartResultId: resultId as unknown as never },
         })),
 
       // UI management
