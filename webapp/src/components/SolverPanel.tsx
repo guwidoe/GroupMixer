@@ -120,6 +120,7 @@ export function SolverPanel() {
   });
 
   const solverSettings = problem?.settings || getDefaultSolverSettings();
+  const [allowedSessionsLocal, setAllowedSessionsLocal] = useState<number[] | null>(null);
 
   const handleSettingsChange = (newSettings: Partial<SolverSettings>) => {
     if (problem && currentProblemId) {
@@ -1348,6 +1349,60 @@ export function SolverPanel() {
                     })()}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* Allowed sessions selector */}
+          <div className="mb-4">
+            <div className="p-3 rounded-lg" style={{ border: '1px solid var(--border-secondary)', backgroundColor: 'var(--background-secondary)' }}>
+              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                Sessions to iterate (leave empty = all sessions)
+              </label>
+              <div className="flex flex-wrap gap-2 items-center">
+                {Array.from({ length: problem?.num_sessions || 0 }, (_, i) => i).map((s) => {
+                  const selected = (allowedSessionsLocal ?? solverSettings.allowed_sessions ?? []).includes(s);
+                  return (
+                    <button
+                      key={s}
+                      className={`px-2 py-1 rounded text-xs border ${selected ? 'bg-[var(--bg-tertiary)] text-[var(--color-accent)]' : ''}`}
+                      style={{ borderColor: 'var(--border-primary)', color: selected ? 'var(--color-accent)' : 'var(--text-secondary)' }}
+                      onClick={() => {
+                        const current = new Set(allowedSessionsLocal ?? solverSettings.allowed_sessions ?? []);
+                        if (current.has(s)) current.delete(s); else current.add(s);
+                        const next = Array.from(current).sort((a, b) => a - b);
+                        setAllowedSessionsLocal(next);
+                        handleSettingsChange({ allowed_sessions: next.length ? next : undefined });
+                      }}
+                      disabled={solverState.isRunning}
+                    >
+                      Session {s + 1}
+                    </button>
+                  );
+                })}
+                <div className="flex items-center gap-2 ml-auto">
+                  <button
+                    className="btn-secondary text-xs"
+                    onClick={() => {
+                      const all = Array.from({ length: problem?.num_sessions || 0 }, (_, i) => i);
+                      setAllowedSessionsLocal(all);
+                      handleSettingsChange({ allowed_sessions: all });
+                    }}
+                    disabled={solverState.isRunning}
+                  >
+                    All
+                  </button>
+                  <button
+                    className="btn-secondary text-xs"
+                    onClick={() => {
+                      setAllowedSessionsLocal([]);
+                      handleSettingsChange({ allowed_sessions: undefined });
+                    }}
+                    disabled={solverState.isRunning}
+                  >
+                    None
+                  </button>
+                </div>
               </div>
             </div>
           </div>

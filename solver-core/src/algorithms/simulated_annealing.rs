@@ -931,8 +931,16 @@ impl Solver for SimulatedAnnealing {
                 }
             }
 
-            // --- Choose a random move ---
-            let day = rng.random_range(0..current_state.num_sessions as usize);
+            // --- Choose a random move (respect allowed sessions if configured) ---
+            let day = if let Some(ref allowed) = state.allowed_sessions {
+                if allowed.is_empty() {
+                    continue;
+                }
+                let idx = rng.random_range(0..allowed.len());
+                allowed[idx] as usize
+            } else {
+                rng.random_range(0..current_state.num_sessions as usize)
+            };
 
             // Use pre-calculated move probabilities for performance
             let transfer_probability = transfer_probabilities[day];

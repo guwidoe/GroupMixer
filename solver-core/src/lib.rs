@@ -311,6 +311,7 @@ pub fn calculate_recommended_settings(
             reheat_after_no_improvement: Some(0),
         }),
         logging: Default::default(),
+        allowed_sessions: None,
     };
 
     let trial_objectives: Vec<Objective> = if objectives.is_empty() {
@@ -435,6 +436,7 @@ pub fn calculate_recommended_settings(
             reheat_after_no_improvement: Some(total_iters / 3),
         }),
         logging: Default::default(),
+        allowed_sessions: None,
     })
 }
 
@@ -735,6 +737,7 @@ mod callback_tests {
                     log_final_score_breakdown: true,
                     ..Default::default()
                 },
+                allowed_sessions: None,
             },
         }
     }
@@ -831,6 +834,7 @@ mod callback_tests {
                     log_final_score_breakdown: true,
                     ..Default::default()
                 },
+                allowed_sessions: None,
             },
         }
     }

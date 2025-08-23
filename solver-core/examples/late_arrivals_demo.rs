@@ -98,6 +98,7 @@ fn main() {
                 log_final_score_breakdown: true,
                 ..Default::default()
             },
+            allowed_sessions: None,
         },
     };
 

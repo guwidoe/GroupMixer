@@ -1,8 +1,5 @@
 use serde::Serialize;
-use solver_core::models::{
-    ApiInput, ProblemDefinition, ProgressCallback, ProgressUpdate, SolverResult,
-};
-use solver_core::run_solver_with_progress;
+use solver_core::models::{ApiInput, ProblemDefinition, ProgressUpdate};
 use wasm_bindgen::prelude::*;
 
 // When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
@@ -220,6 +217,7 @@ pub fn get_default_settings() -> Result<String, JsValue> {
             log_stop_condition: true,
             ..Default::default()
         },
+        allowed_sessions: None,
     };
 
     let settings_json = serde_json::to_string(&settings).map_err(|e| {

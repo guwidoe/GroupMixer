@@ -170,6 +170,10 @@ pub struct State {
     /// Total number of sessions in the problem
     pub num_sessions: u32,
 
+    /// Optional allow-list of sessions the solver may modify.
+    /// If present, the solver will only propose moves for these sessions.
+    pub allowed_sessions: Option<Vec<u32>>,
+
     // === SCORING DATA ===
     // Current optimization scores, updated incrementally for performance
     /// Contact matrix: `contact_matrix[person1][person2] = number_of_encounters`
@@ -507,6 +511,7 @@ impl State {
             should_together_sessions: vec![], // To be populated by preprocessing
             person_participation: vec![], // To be populated by preprocessing
             num_sessions: input.problem.num_sessions,
+            allowed_sessions: input.solver.allowed_sessions.clone(),
             contact_matrix: vec![vec![0; people_count]; people_count],
             unique_contacts: 0,
             repetition_penalty: 0,
@@ -537,7 +542,7 @@ impl State {
         // If an initial schedule is supplied, warm-start from it; otherwise random initialize
         if let Some(ref initial_schedule) = input.initial_schedule {
             // Build mapping of group id -> index for quick lookup
-            let mut day_idx = 0usize;
+            let mut _day_idx = 0usize;
             // Expect keys like "session_0", iterate in sorted order by session index
             let mut sessions: Vec<(usize, &std::collections::HashMap<String, Vec<String>>)> =
                 initial_schedule
@@ -576,7 +581,6 @@ impl State {
                     }
                 }
                 // Any unplaced participating people will be filled in by random initializer below
-                day_idx += 1;
             }
         }
 
@@ -4316,6 +4320,7 @@ mod tests {
                     reheat_cycles: Some(0),
                 }),
                 logging: Default::default(),
+                allowed_sessions: None,
             },
         }
     }
@@ -5410,6 +5415,7 @@ mod attribute_balance_tests {
                     reheat_cycles: Some(0),
                 }),
                 logging: LoggingOptions::default(),
+                allowed_sessions: None,
             },
         }
     }
@@ -5493,6 +5499,7 @@ mod attribute_balance_tests {
                     reheat_cycles: Some(0),
                 }),
                 logging: LoggingOptions::default(),
+                allowed_sessions: None,
             },
         };
 

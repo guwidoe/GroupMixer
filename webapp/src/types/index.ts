@@ -99,6 +99,9 @@ export interface SolverSettings {
   stop_conditions: StopConditions;
   solver_params: SolverParams;
   logging?: LoggingOptions;
+  // Optional list of 0-based session indices the solver may modify.
+  // If omitted, all sessions are eligible for moves.
+  allowed_sessions?: number[];
 }
 
 export interface StopConditions {

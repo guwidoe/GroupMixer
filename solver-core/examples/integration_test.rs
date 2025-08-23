@@ -88,6 +88,7 @@ fn main() {
                 reheat_after_no_improvement: Some(0), // No reheat
             }),
             logging: LoggingOptions::default(),
+            allowed_sessions: None,
         },
     };
 

@@ -521,6 +521,11 @@ pub struct SolverConfiguration {
     /// Logging and output preferences (defaults to minimal logging)
     #[serde(default)]
     pub logging: LoggingOptions,
+    /// Optional allow-list of session indices that the solver is allowed to modify during iterations.
+    /// If present, the solver will only generate moves within these sessions, leaving others unchanged.
+    /// Session indices are 0-based.
+    #[serde(default)]
+    pub allowed_sessions: Option<Vec<u32>>,
 }
 
 /// Defines when the optimization process should stop.
