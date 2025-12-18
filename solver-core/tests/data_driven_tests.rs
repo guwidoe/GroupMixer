@@ -175,7 +175,7 @@ fn run_test_case(test_case: &TestCase, path: &Path) {
 
 fn run_assertions(
     test_case: &TestCase,
-    path: &Path,
+    _path: &Path,
     result: SolverResult,
     last_progress: &Arc<Mutex<Option<solver_core::models::ProgressUpdate>>>,
     loop_count: u32,

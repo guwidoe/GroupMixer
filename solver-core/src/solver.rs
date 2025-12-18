@@ -89,6 +89,7 @@ pub enum SolverError {
 /// #             }
 /// #         ),
 /// #         logging: solver_core::models::LoggingOptions::default(),
+/// #         allowed_sessions: None,
 /// #     },
 /// # };
 /// let mut state = State::new(&input)?;
@@ -340,6 +341,7 @@ impl State {
     ///             }
     ///         ),
     ///         logging: LoggingOptions::default(),
+    ///         allowed_sessions: None,
     ///     },
     /// };
     ///
@@ -1303,6 +1305,9 @@ impl State {
             self.pairmin_counts[idx] = cnt;
         }
 
+        // Keep the legacy unweighted constraint counter consistent with calculate_cost()
+        self._update_constraint_penalty_total();
+
         self.current_cost = self.calculate_cost();
     }
 
@@ -1349,6 +1354,7 @@ impl State {
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0)}),
     /// #         logging: LoggingOptions::default(),
+    /// #         allowed_sessions: None,
     /// #     },
     /// # };
     /// # let state = State::new(&input)?;
@@ -1765,10 +1771,37 @@ impl State {
         }
 
         // Update the legacy constraint_penalty field for backward compatibility
+        // (kept consistent with calculate_cost()'s unweighted violation_count)
+        self._update_constraint_penalty_total();
+    }
+
+    #[inline]
+    fn _pairmin_violation_count(&self) -> i32 {
+        use crate::models::PairMeetingMode;
+        let mut cnt = 0;
+        for idx in 0..self.pairmin_pairs.len() {
+            let target = self.pairmin_required[idx] as i32;
+            let have = self.pairmin_counts[idx] as i32;
+            let raw_violation = match self.pairmin_modes[idx] {
+                PairMeetingMode::AtLeast => (target - have).max(0),
+                PairMeetingMode::Exact => (have - target).abs(),
+                PairMeetingMode::AtMost => (have - target).max(0),
+            };
+            // calculate_cost() only counts this as a "violation" if the weighted penalty is > 0
+            if raw_violation > 0 && self.pairmin_weights[idx] > 0.0 {
+                cnt += 1;
+            }
+        }
+        cnt
+    }
+
+    #[inline]
+    fn _update_constraint_penalty_total(&mut self) {
         self.constraint_penalty = self.forbidden_pair_violations.iter().sum::<i32>()
             + self.clique_violations.iter().sum::<i32>()
             + self.should_together_violations.iter().sum::<i32>()
-            + self.immovable_violations;
+            + self.immovable_violations
+            + self._pairmin_violation_count();
     }
 
     fn calculate_group_attribute_penalty_for_members(
@@ -1849,6 +1882,7 @@ impl State {
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
+    /// #         allowed_sessions: None,
     /// #     },
     /// # };
     /// # let mut state = State::new(&input)?;
@@ -2330,6 +2364,7 @@ impl State {
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
+    /// #         allowed_sessions: None,
     /// #     },
     /// # };
     /// # let mut state = State::new(&input)?;
@@ -2378,6 +2413,7 @@ impl State {
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
+    /// #         allowed_sessions: None,
     /// #     },
     /// # };
     /// # let mut state = State::new(&input)?;
@@ -2686,6 +2722,65 @@ impl State {
             }
         }
 
+        // Update should-together violations
+        for (pair_idx, &(person_a, person_b)) in self.should_together_pairs.iter().enumerate() {
+            // Check if this should-together pair applies to this session
+            if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
+                if !sessions.contains(&day) {
+                    continue;
+                }
+            }
+            // Only count when both participate
+            if !self.person_participation[person_a][day]
+                || !self.person_participation[person_b][day]
+            {
+                continue;
+            }
+            // Only if one endpoint moved
+            if person_a != p1_idx && person_a != p2_idx && person_b != p1_idx && person_b != p2_idx
+            {
+                continue;
+            }
+
+            let a_group_before = if person_a == p1_idx {
+                g1_idx
+            } else if person_a == p2_idx {
+                g2_idx
+            } else {
+                self.locations[day][person_a].0
+            };
+            let b_group_before = if person_b == p1_idx {
+                g1_idx
+            } else if person_b == p2_idx {
+                g2_idx
+            } else {
+                self.locations[day][person_b].0
+            };
+            let was_violation_before = a_group_before != b_group_before;
+
+            let a_group_after = if person_a == p1_idx {
+                g2_idx
+            } else if person_a == p2_idx {
+                g1_idx
+            } else {
+                self.locations[day][person_a].0
+            };
+            let b_group_after = if person_b == p1_idx {
+                g2_idx
+            } else if person_b == p2_idx {
+                g1_idx
+            } else {
+                self.locations[day][person_b].0
+            };
+            let is_violation_after = a_group_after != b_group_after;
+
+            if was_violation_before && !is_violation_after {
+                self.should_together_violations[pair_idx] -= 1;
+            } else if !was_violation_before && is_violation_after {
+                self.should_together_violations[pair_idx] += 1;
+            }
+        }
+
         // Update clique violations
         for (clique_idx, clique) in self.cliques.iter().enumerate() {
             // Check if this clique applies to this session
@@ -2775,33 +2870,46 @@ impl State {
             if !self.pairmin_sessions[cidx].contains(&day) {
                 continue;
             }
+            if !self.person_participation[a][day] || !self.person_participation[b][day] {
+                continue;
+            }
             // Check if either endpoint moved
             if a != p1_idx && a != p2_idx && b != p1_idx && b != p2_idx {
                 continue;
             }
-            // Before swap groups for a and b
-            let (g1_idx, _) = self.locations[day][p2_idx]; // after swap, p2 in g1
-            let (g2_idx, _) = self.locations[day][p1_idx]; // after swap, p1 in g2
-            let a_before = if a == p1_idx {
+            // Before swap groups for a and b (use original group assignments for swapped people)
+            let a_group_before = if a == p1_idx {
                 g1_idx
             } else if a == p2_idx {
                 g2_idx
             } else {
                 self.locations[day][a].0
             };
-            let b_before = if b == p1_idx {
+            let b_group_before = if b == p1_idx {
                 g1_idx
             } else if b == p2_idx {
                 g2_idx
             } else {
                 self.locations[day][b].0
             };
-            let were_same = a_before == b_before;
+            let were_same = a_group_before == b_group_before;
 
-            // After swap groups for a and b (use updated locations which already reflect swap)
-            let a_after = self.locations[day][a].0;
-            let b_after = self.locations[day][b].0;
-            let are_same = a_after == b_after;
+            // After swap groups for a and b
+            let a_group_after = if a == p1_idx {
+                g2_idx
+            } else if a == p2_idx {
+                g1_idx
+            } else {
+                self.locations[day][a].0
+            };
+            let b_group_after = if b == p1_idx {
+                g2_idx
+            } else if b == p2_idx {
+                g1_idx
+            } else {
+                self.locations[day][b].0
+            };
+            let are_same = a_group_after == b_group_after;
 
             if were_same == are_same {
                 continue;
@@ -2814,9 +2922,7 @@ impl State {
         }
 
         // Update the legacy constraint_penalty field for backward compatibility
-        self.constraint_penalty = self.forbidden_pair_violations.iter().sum::<i32>()
-            + self.clique_violations.iter().sum::<i32>()
-            + self.immovable_violations;
+        self._update_constraint_penalty_total();
     }
 
     pub fn validate_scores(&mut self) {
@@ -2992,6 +3098,7 @@ impl State {
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
+    /// #         allowed_sessions: None,
     /// #     },
     /// # };
     /// # let state = State::new(&input)?;
@@ -3061,6 +3168,7 @@ impl State {
     /// #             initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0)
     /// #         }),
     /// #         logging: LoggingOptions { log_initial_score_breakdown: true, log_final_score_breakdown: true, ..Default::default() },
+    /// #         allowed_sessions: None,
     /// #     },
     /// # };
     /// # let mut state = State::new(&input)?;
@@ -4209,6 +4317,9 @@ impl State {
                 self.pairmin_counts[cidx] -= 1;
             }
         }
+
+        // Keep legacy constraint_penalty consistent with calculate_cost()
+        self._update_constraint_penalty_total();
 
         // Debug-only final invariant check for the whole session
         if self.logging.debug_validate_invariants {
