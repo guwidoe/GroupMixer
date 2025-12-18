@@ -67,6 +67,22 @@ function Character({
   const lastAnimStateRef = useRef<string>("");
   const targetRotationRef = useRef<number>(0);
   
+  // Start idle animation immediately when component mounts
+  useEffect(() => {
+    const animNames = Object.keys(actions);
+    const idleAnim = animNames.find(n => 
+      n.toLowerCase() === "idle"
+    ) || animNames.find(n => 
+      n.toLowerCase().includes("idle") || n.toLowerCase().includes("stand")
+    ) || animNames[0];
+    
+    if (idleAnim && actions[idleAnim]) {
+      actions[idleAnim]?.reset().fadeIn(0.1).play();
+      currentActionRef.current = actions[idleAnim] || null;
+      lastAnimStateRef.current = "idle";
+    }
+  }, [actions]);
+  
   // Apply color tint
   useEffect(() => {
     clone.traverse((child) => {
@@ -174,7 +190,8 @@ function Character({
     if (isActuallyMoving) {
       const dir = targetPosition.clone().sub(currentPosition);
       if (dir.lengthSq() > 0.1) {
-        targetRotationRef.current = Math.atan2(dir.x, dir.z);
+        // Add PI to flip 180 degrees - model faces -Z by default
+        targetRotationRef.current = Math.atan2(dir.x, dir.z) + Math.PI;
       }
     }
     
