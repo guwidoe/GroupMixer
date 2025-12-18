@@ -20,6 +20,7 @@ interface GLTFHumanoidsProps {
   sessionCount: number;
   onUIUpdate: (state: PlaybackState) => void;
   coordination: AnimationCoordination;
+  showLabels: boolean;
 }
 
 // Individual character component
@@ -280,6 +281,7 @@ export function GLTFHumanoids({
   sessionCount,
   onUIUpdate,
   coordination,
+  showLabels,
 }: GLTFHumanoidsProps) {
   const [modelError, setModelError] = useState(false);
   const [modelLoaded, setModelLoaded] = useState(false);
@@ -463,7 +465,7 @@ export function GLTFHumanoids({
             isEaten={isEaten}
             isDelivered={isDelivered}
             isBeingDelivered={charState.isBeingDelivered}
-            showLabel={index < 30}
+            showLabel={showLabels && index < 30}
           />
         );
       })}

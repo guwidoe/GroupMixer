@@ -6,7 +6,7 @@ import { useAnimationState } from "./hooks/useAnimationState";
 import { useAudio } from "./hooks/useAudio";
 import { Scene } from "./components/Scene";
 import { PlaybackControls } from "./components/PlaybackControls";
-import { Loader2 } from "lucide-react";
+import { Loader2, Tag, EyeOff } from "lucide-react";
 import type { PlaybackState } from "./types";
 
 function LoadingFallback() {
@@ -48,6 +48,9 @@ export function Animated3DVisualization({ data }: VisualizationComponentProps) {
 
   // UI state for playback (throttled updates from animation loop)
   const [uiPlayback, setUIPlayback] = useState<PlaybackState>(playbackState);
+  
+  // Toggle for people labels
+  const [showPeopleLabels, setShowPeopleLabels] = useState(true);
 
   // Callback for animation loop to update UI
   const handleUIUpdate = useCallback((state: PlaybackState) => {
@@ -145,7 +148,7 @@ export function Animated3DVisualization({ data }: VisualizationComponentProps) {
         </div>
       </div>
 
-      {/* Legend */}
+      {/* Legend and Controls */}
       <div
         className="absolute top-4 right-4 z-10 px-3 py-2 rounded-lg"
         style={{
@@ -166,6 +169,21 @@ export function Animated3DVisualization({ data }: VisualizationComponentProps) {
             <span>🚶</span>
             <span className="text-white/70">Person moves</span>
           </div>
+          <div className="border-t border-white/20 my-2" />
+          <button
+            onClick={() => setShowPeopleLabels(!showPeopleLabels)}
+            className="flex items-center gap-2 w-full hover:bg-white/10 rounded px-1 py-0.5 transition-colors"
+            title={showPeopleLabels ? "Hide people names" : "Show people names"}
+          >
+            {showPeopleLabels ? (
+              <Tag size={14} className="text-green-400" />
+            ) : (
+              <EyeOff size={14} className="text-gray-400" />
+            )}
+            <span className={showPeopleLabels ? "text-white" : "text-white/50"}>
+              People labels
+            </span>
+          </button>
         </div>
       </div>
 
@@ -205,6 +223,7 @@ export function Animated3DVisualization({ data }: VisualizationComponentProps) {
             schedule={schedule}
             playbackRef={playbackRef}
             sceneScale={sceneScale}
+            showPeopleLabels={showPeopleLabels}
             onPlayDinoSound={handleDinoSound}
             onPlayStorkSound={handleStorkSound}
             onUIUpdate={handleUIUpdate}

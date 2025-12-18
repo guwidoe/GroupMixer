@@ -20,6 +20,7 @@ interface SceneProps {
   schedule: NormalizedSchedule;
   playbackRef: React.MutableRefObject<PlaybackState>;
   sceneScale: number;
+  showPeopleLabels: boolean;
   onPlayDinoSound?: (sound: "roar" | "chomp" | "dig") => void;
   onPlayStorkSound?: (sound: "flap") => void;
   onUIUpdate: (state: PlaybackState) => void;
@@ -54,6 +55,7 @@ export function Scene({
   schedule,
   playbackRef,
   sceneScale,
+  showPeopleLabels,
   onPlayDinoSound,
   onPlayStorkSound,
   onUIUpdate,
@@ -278,6 +280,7 @@ export function Scene({
         sessionCount={schedule.sessionCount}
         onUIUpdate={onUIUpdate}
         coordination={coordination}
+        showLabels={showPeopleLabels}
       />
 
       {activeDinos.map((dino) => (

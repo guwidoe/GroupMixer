@@ -20,6 +20,20 @@ export function GroupPlatform({ layout, peopleCount }: GroupPlatformProps) {
 
   const ringColor = useMemo(() => color.clone().multiplyScalar(0.7), [color]);
 
+  // Calculate label scale to fit within the circle
+  const labelScale = useMemo(() => {
+    // Estimate text width: group name + " (X/Y)" suffix
+    const fullText = `${layout.groupId} (${peopleCount}/${layout.capacity})`;
+    const estimatedCharWidth = 0.6; // Approximate width per character at 100px font in 3D units
+    const estimatedTextWidth = fullText.length * estimatedCharWidth;
+    
+    // Target width is about 80% of circle diameter
+    const targetWidth = layout.radius * 1.6;
+    
+    // Scale to fit
+    return Math.min(targetWidth / estimatedTextWidth, 0.5); // Cap at 0.5 to prevent oversized text
+  }, [layout.groupId, layout.radius, peopleCount, layout.capacity]);
+
   return (
     <group position={layout.position}>
       {/* Main platform */}
@@ -57,35 +71,29 @@ export function GroupPlatform({ layout, peopleCount }: GroupPlatformProps) {
         );
       })}
 
-      {/* Group label floating above */}
+      {/* Group label flat on the floor using Html with transform */}
       <Html
-        position={[0, 0.8, 0]}
-        center
-        distanceFactor={15}
+        position={[0, 0.05, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        transform
+        occlude={false}
+        scale={labelScale}
         style={{ pointerEvents: "none", userSelect: "none" }}
       >
         <div
           style={{
-            background: "rgba(0, 0, 0, 0.8)",
-            color: "white",
-            padding: "4px 12px",
-            borderRadius: "8px",
-            fontSize: "14px",
-            fontFamily: "sans-serif",
+            color: "#ffdd00",
+            fontSize: "100px",
+            fontFamily: "system-ui, sans-serif",
             fontWeight: "bold",
+            textShadow: "3px 3px 6px rgba(0,0,0,0.9)",
             whiteSpace: "nowrap",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+            transform: "translateX(-50%)",
           }}
         >
           {layout.groupId}
-          <span
-            style={{
-              marginLeft: "8px",
-              opacity: 0.7,
-              fontWeight: "normal",
-            }}
-          >
-            {peopleCount}/{layout.capacity}
+          <span style={{ opacity: 0.7, marginLeft: "10px", fontSize: "0.7em" }}>
+            ({peopleCount}/{layout.capacity})
           </span>
         </div>
       </Html>
