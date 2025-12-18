@@ -1,0 +1,5308 @@
+{
+  "name": "Demo - Sailing_Trip_Final (Imported) (anonymized)",
+  "demo_metadata": {
+    "id": "sailing-trip",
+    "display_name": "Sailing Trip",
+    "description": "Large sailing-trip scenario (anonymized export; results removed)",
+    "category": "Advanced"
+  },
+  "input": {
+    "problem": {
+      "people": [
+        {
+          "id": "person_aphix38e",
+          "attributes": {
+            "name": "Gray Scott",
+            "Role": "Organiser",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "yes",
+            "Has VHF License": "Yes"
+          }
+        },
+        {
+          "id": "person_k6896t8m",
+          "attributes": {
+            "name": "Cameron Patel",
+            "Role": "Organiser",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "yes",
+            "Has VHF License": "Yes"
+          }
+        },
+        {
+          "id": "person_epqigqvk",
+          "attributes": {
+            "name": "Taylor Nolan",
+            "Role": "Organiser",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "yes",
+            "Has VHF License": "Yes"
+          }
+        },
+        {
+          "id": "person_m2kaj648",
+          "attributes": {
+            "name": "Shawn Hale",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_5e3t3dui",
+          "attributes": {
+            "name": "Kendall Lane",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_sfvtj0gp",
+          "attributes": {
+            "name": "Sage Usman",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_lknh631c",
+          "attributes": {
+            "name": "Reese Quincy",
+            "Role": "Skipper",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_q41p2hyz",
+          "attributes": {
+            "name": "Lane Vaughn",
+            "Role": "Skipper",
+            "First Language": "Polish",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_uc10ubkg",
+          "attributes": {
+            "name": "Winter Yamada",
+            "Role": "Guest",
+            "First Language": "Spanish",
+            "Gender": "male",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_0wd3l70n",
+          "attributes": {
+            "name": "Kiran Hughes",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_ywfp8avz",
+          "attributes": {
+            "name": "Casey Ortega",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_xf66mzvc",
+          "attributes": {
+            "name": "Taylor Keller",
+            "Role": "Co-Skipper",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_u9hb2rwd",
+          "attributes": {
+            "name": "Finley Lane",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_la1a2kx5",
+          "attributes": {
+            "name": "Lane Kim",
+            "Role": "Skipper",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_tyt98xbj",
+          "attributes": {
+            "name": "Indigo Sawyer",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_uksidonh",
+          "attributes": {
+            "name": "Robin Young",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_t4mxdht1",
+          "attributes": {
+            "name": "Taylor Dawson",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_nhjr3mzo",
+          "attributes": {
+            "name": "Oakley Scott",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_jbekvapv",
+          "attributes": {
+            "name": "Jamie Ellis",
+            "Role": "Guest",
+            "First Language": "Italian",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_e6pjrzbl",
+          "attributes": {
+            "name": "Cameron Campbell",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_e7eyno7f",
+          "attributes": {
+            "name": "Jamie Vaughn",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_z0yv6rld",
+          "attributes": {
+            "name": "Casey Griffin",
+            "Role": "Videographer",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_9cu1c173",
+          "attributes": {
+            "name": "Val Carter",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_r100cwye",
+          "attributes": {
+            "name": "Jules Wong",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "1",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_5obulv0w",
+          "attributes": {
+            "name": "Sky Keller",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_4j31536m",
+          "attributes": {
+            "name": "Dana Meyer",
+            "Role": "Guest",
+            "First Language": "English",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_yrcfxd7s",
+          "attributes": {
+            "name": "Harper Patel",
+            "Role": "Co-Skipper",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "no",
+            "Has VHF License": "Yes"
+          }
+        },
+        {
+          "id": "person_s7qtd8ul",
+          "attributes": {
+            "name": "Yael Patel",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "no",
+            "Has VHF License": "Yes"
+          }
+        },
+        {
+          "id": "person_teyeox23",
+          "attributes": {
+            "name": "Jamie Zimmer",
+            "Role": "Guest",
+            "First Language": "Polish",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_gbo7i42y",
+          "attributes": {
+            "name": "Gale Clark",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_c4lbda57",
+          "attributes": {
+            "name": "Morgan Clark",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_swcjhs7t",
+          "attributes": {
+            "name": "Charlie Xu",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_l2hpx5h9",
+          "attributes": {
+            "name": "Winter Clark",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_i1h9bxf2",
+          "attributes": {
+            "name": "Kendall Thompson",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_kp6o5w7j",
+          "attributes": {
+            "name": "Noel Fischer",
+            "Role": "Guest",
+            "First Language": "Spanish",
+            "Gender": "male",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_gnh7ybqo",
+          "attributes": {
+            "name": "Indigo Zimmer",
+            "Role": "Guest",
+            "First Language": "Spanish",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_lunze2nn",
+          "attributes": {
+            "name": "Cameron Lane",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_jbte68im",
+          "attributes": {
+            "name": "Robin Xu",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_dc9l2u61",
+          "attributes": {
+            "name": "Uma Diaz",
+            "Role": "Guest",
+            "First Language": "Italian",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_84p3tw8a",
+          "attributes": {
+            "name": "Reese Xu",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_1dobwddu",
+          "attributes": {
+            "name": "Wren Zimmer",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "1",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_w4lb6tce",
+          "attributes": {
+            "name": "Dana Foster",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_ax3eq0lo",
+          "attributes": {
+            "name": "Jules Rossi",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_9eldps1v",
+          "attributes": {
+            "name": "Kai Carter",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "#N/A",
+            "Arrives on Time for Shopping": "#N/A"
+          }
+        },
+        {
+          "id": "person_7p9ibvex",
+          "attributes": {
+            "name": "Blake Underwood",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_1ofsufbs",
+          "attributes": {
+            "name": "Quinn Thompson",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_yc9nn8i7",
+          "attributes": {
+            "name": "Micah Zimmer",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_8twb13h9",
+          "attributes": {
+            "name": "Taylor Wong",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_65pdncbk",
+          "attributes": {
+            "name": "Finley Singh",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_kewfj185",
+          "attributes": {
+            "name": "Toby Yamada",
+            "Role": "Skipper",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_agoq79kr",
+          "attributes": {
+            "name": "Reese Ellis",
+            "Role": "Organiser",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "yes",
+            "Has VHF License": "Yes"
+          }
+        },
+        {
+          "id": "person_sccdohpg",
+          "attributes": {
+            "name": "Harper Olsen",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "1",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_yddj78eq",
+          "attributes": {
+            "name": "Parker Quincy",
+            "Role": "Skipper",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "yes",
+            "Has VHF License": "Yes"
+          }
+        },
+        {
+          "id": "person_wx7zya9b",
+          "attributes": {
+            "name": "Sky Quincy",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_tlm3396p",
+          "attributes": {
+            "name": "Blake Kim",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_wd8una2d",
+          "attributes": {
+            "name": "Gale Fischer",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_m278frhl",
+          "attributes": {
+            "name": "Avery Nolan",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "female",
+            "Sailing Experience": "1",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_tuveia3l",
+          "attributes": {
+            "name": "Shawn Reynolds",
+            "Role": "Guest",
+            "First Language": "Italian",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_p529cnp4",
+          "attributes": {
+            "name": "Toby Hughes",
+            "Role": "Guest",
+            "First Language": "Polish",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_ynvgsdyg",
+          "attributes": {
+            "name": "Hayden Wong",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_mt7gquug",
+          "attributes": {
+            "name": "Elliot Thompson",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_v2k7jfi9",
+          "attributes": {
+            "name": "Sage Iverson",
+            "Role": "Guest",
+            "First Language": "Italian",
+            "Gender": "female",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_ydpf3jop",
+          "attributes": {
+            "name": "Nico Evans",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_h0exui26",
+          "attributes": {
+            "name": "Zion Nolan",
+            "Role": "Guest",
+            "First Language": "Spanish",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_zzal9avu",
+          "attributes": {
+            "name": "Gale Lopez",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_jbnv64ht",
+          "attributes": {
+            "name": "Frankie Carter",
+            "Role": "Guest",
+            "First Language": "Polish",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_lz417o3u",
+          "attributes": {
+            "name": "Oakley Rossi",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_34rj8fkd",
+          "attributes": {
+            "name": "Robin Ortega",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_0p5rot5g",
+          "attributes": {
+            "name": "Lane Xu",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_erkcatba",
+          "attributes": {
+            "name": "Robin Tanaka",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_75yscmu0",
+          "attributes": {
+            "name": "Hayden Yamada",
+            "Role": "Guest",
+            "First Language": "Spanish",
+            "Gender": "female",
+            "Sailing Experience": "1",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_z289rib6",
+          "attributes": {
+            "name": "Indigo Wong",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_8wgceovl",
+          "attributes": {
+            "name": "Logan Ortega",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "female",
+            "Sailing Experience": "1",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_jv3v5ght",
+          "attributes": {
+            "name": "Marin Brooks",
+            "Role": "Guest",
+            "First Language": "Italian",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_1kqqabqm",
+          "attributes": {
+            "name": "Emerson Iverson",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "1",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_xs5ve4s9",
+          "attributes": {
+            "name": "Noel Meyer",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_s63hrvv1",
+          "attributes": {
+            "name": "Marin Wong",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_rzuhlj2u",
+          "attributes": {
+            "name": "Kiran Scott",
+            "Role": "Guest",
+            "First Language": "Spanish",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_us78utlw",
+          "attributes": {
+            "name": "Toby Xu",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "1",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_zteqxzsj",
+          "attributes": {
+            "name": "Elliot Sawyer",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_o3kjgpq6",
+          "attributes": {
+            "name": "Sage Adler",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "1",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_addwt7s0",
+          "attributes": {
+            "name": "Winter Ellis",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_yru8o0nm",
+          "attributes": {
+            "name": "Devin Hughes",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "no",
+            "Has VHF License": "Yes"
+          }
+        },
+        {
+          "id": "person_9pva0co9",
+          "attributes": {
+            "name": "Quinn Young",
+            "Role": "Guest",
+            "First Language": "Spanish",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_nsjr29jj",
+          "attributes": {
+            "name": "Shawn Fischer",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_h8lbgdml",
+          "attributes": {
+            "name": "Gray Reynolds",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_tlejqdt5",
+          "attributes": {
+            "name": "Rowan Zhang",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_1366e882",
+          "attributes": {
+            "name": "Oakley Novak",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_6cabvyr4",
+          "attributes": {
+            "name": "Dana Reynolds",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_160run93",
+          "attributes": {
+            "name": "Drew Young",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_6pu73zt8",
+          "attributes": {
+            "name": "Logan Fischer",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_t223mvfm",
+          "attributes": {
+            "name": "Toby Ellis",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_q6huqsqw",
+          "attributes": {
+            "name": "Blake Hughes",
+            "Role": "Guest",
+            "First Language": "English",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_0dukjar2",
+          "attributes": {
+            "name": "Oakley Fischer",
+            "Role": "Guest",
+            "First Language": "Spanish",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_v2k2i7ck",
+          "attributes": {
+            "name": "Bailey Zimmer",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_yejkg4cz",
+          "attributes": {
+            "name": "Winter Tanaka",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "female",
+            "Sailing Experience": "1",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_5ynhd54c",
+          "attributes": {
+            "name": "Leslie Ito",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "female",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "no",
+            "Has VHF License": "Yes"
+          }
+        },
+        {
+          "id": "person_l9sxgcrh",
+          "attributes": {
+            "name": "Uma Meyer",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_469pdmus",
+          "attributes": {
+            "name": "Sage Jordan",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_qke10vac",
+          "attributes": {
+            "name": "Kiran Underwood",
+            "Role": "Guest",
+            "First Language": "Dutch",
+            "Gender": "female",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_9qlg95am",
+          "attributes": {
+            "name": "Gray Sawyer",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "1",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_aq0ulqiu",
+          "attributes": {
+            "name": "Gray Zhang",
+            "Role": "Guest",
+            "First Language": "Spanish",
+            "Gender": "female",
+            "Sailing Experience": "1",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_a4166f5d",
+          "attributes": {
+            "name": "Sky Tanaka",
+            "Role": "Guest",
+            "First Language": "English",
+            "Gender": "female",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_yfr5dsr9",
+          "attributes": {
+            "name": "Kiran Ellis",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_4up6h5zb",
+          "attributes": {
+            "name": "Val Young",
+            "Role": "Guest",
+            "First Language": "Spanish",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_fulisf1o",
+          "attributes": {
+            "name": "Indigo Garcia",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_l5dmhcj0",
+          "attributes": {
+            "name": "Oakley Young",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_1ixlzvga",
+          "attributes": {
+            "name": "Bailey Hughes",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_ka7egiod",
+          "attributes": {
+            "name": "Jordan Scott",
+            "Role": "Guest",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_l8nuxufw",
+          "attributes": {
+            "name": "Oakley Zhang",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_z758mcd2",
+          "attributes": {
+            "name": "Winter Nolan",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_ku2d6qo4",
+          "attributes": {
+            "name": "Leslie Brooks",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_ys0bm79e",
+          "attributes": {
+            "name": "Uma Tanaka",
+            "Role": "Skipper",
+            "First Language": "German",
+            "Gender": "female",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "no",
+            "Has VHF License": "Yes"
+          }
+        },
+        {
+          "id": "person_5wqnmjf3",
+          "attributes": {
+            "name": "Alex Tanaka",
+            "Role": "Guest",
+            "First Language": "English",
+            "Gender": "female",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          },
+          "sessions": [
+            0,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_r95i7qcu",
+          "attributes": {
+            "name": "Val Zimmer",
+            "Role": "Skipper",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Has VHF License": "Yes"
+          }
+        }
+      ],
+      "groups": [
+        {
+          "id": "Flambuoyant",
+          "size": 11
+        },
+        {
+          "id": "Funsinkable",
+          "size": 11
+        },
+        {
+          "id": "Foamidable",
+          "size": 11
+        },
+        {
+          "id": "Failboat",
+          "size": 11
+        },
+        {
+          "id": "Freakwentsea",
+          "size": 11
+        },
+        {
+          "id": "Funderstorm",
+          "size": 11
+        },
+        {
+          "id": "Flawsome",
+          "size": 11
+        },
+        {
+          "id": "Ferrytale",
+          "size": 11
+        },
+        {
+          "id": "Fishosofical",
+          "size": 11
+        },
+        {
+          "id": "Fantasea",
+          "size": 11
+        },
+        {
+          "id": "Fenderella",
+          "size": 11
+        }
+      ],
+      "num_sessions": 5
+    },
+    "constraints": [
+      {
+        "type": "RepeatEncounter",
+        "max_allowed_encounters": 1,
+        "penalty_function": "squared",
+        "penalty_weight": 1
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_aphix38e"
+        ],
+        "group_id": "Failboat"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_k6896t8m"
+        ],
+        "group_id": "Fishosofical"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_epqigqvk"
+        ],
+        "group_id": "Foamidable"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_yddj78eq"
+        ],
+        "group_id": "Ferrytale"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_agoq79kr"
+        ],
+        "group_id": "Funsinkable"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_r95i7qcu"
+        ],
+        "group_id": "Freakwentsea"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_lknh631c"
+        ],
+        "group_id": "Funderstorm"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_q41p2hyz"
+        ],
+        "group_id": "Flawsome"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_ys0bm79e"
+        ],
+        "group_id": "Fenderella"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_kewfj185"
+        ],
+        "group_id": "Fantasea"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_la1a2kx5"
+        ],
+        "group_id": "Flambuoyant"
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_yddj78eq",
+          "person_c4lbda57"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_yddj78eq",
+          "person_yru8o0nm"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_yddj78eq",
+          "person_c4lbda57",
+          "person_yru8o0nm"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_p529cnp4",
+          "person_teyeox23"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_p529cnp4",
+          "person_teyeox23"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_r95i7qcu",
+          "person_xf66mzvc"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_r95i7qcu",
+          "person_xf66mzvc"
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_aphix38e",
+          "person_jbte68im"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_aphix38e",
+          "person_jbte68im"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_lknh631c",
+          "person_q6huqsqw"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_lknh631c",
+          "person_yrcfxd7s"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_lknh631c",
+          "person_5e3t3dui"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_lknh631c",
+          "person_sccdohpg"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_lknh631c",
+          "person_q6huqsqw",
+          "person_yrcfxd7s",
+          "person_5e3t3dui",
+          "person_sccdohpg"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_z289rib6",
+          "person_tlm3396p"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_z289rib6",
+          "person_jbnv64ht"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_z289rib6",
+          "person_tlm3396p",
+          "person_jbnv64ht"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_uc10ubkg",
+          "person_gnh7ybqo"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_uc10ubkg",
+          "person_sfvtj0gp"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_uc10ubkg",
+          "person_kp6o5w7j"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_uc10ubkg",
+          "person_gnh7ybqo",
+          "person_sfvtj0gp",
+          "person_kp6o5w7j"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_t4mxdht1",
+          "person_wd8una2d"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_t4mxdht1",
+          "person_wd8una2d"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_swcjhs7t",
+          "person_nhjr3mzo"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_swcjhs7t",
+          "person_nhjr3mzo"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_tyt98xbj",
+          "person_epqigqvk"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_tyt98xbj",
+          "person_epqigqvk"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_xs5ve4s9",
+          "person_nhjr3mzo"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_xs5ve4s9",
+          "person_nhjr3mzo"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_lunze2nn",
+          "person_4j31536m"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_lunze2nn",
+          "person_4j31536m"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_yfr5dsr9",
+          "person_wd8una2d"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_yfr5dsr9",
+          "person_6pu73zt8"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_yfr5dsr9",
+          "person_wd8una2d",
+          "person_6pu73zt8"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_0wd3l70n",
+          "person_z289rib6"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_0wd3l70n",
+          "person_i1h9bxf2"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_0wd3l70n",
+          "person_z289rib6",
+          "person_i1h9bxf2"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_yru8o0nm",
+          "person_s63hrvv1"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_yru8o0nm",
+          "person_s63hrvv1"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_34rj8fkd",
+          "person_wx7zya9b"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_34rj8fkd",
+          "person_wx7zya9b"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_i1h9bxf2",
+          "person_m278frhl"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_i1h9bxf2",
+          "person_m278frhl"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_l2hpx5h9",
+          "person_e7eyno7f"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_l2hpx5h9",
+          "person_e7eyno7f"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_5ynhd54c",
+          "person_jv3v5ght"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_5ynhd54c",
+          "person_la1a2kx5"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_5ynhd54c",
+          "person_addwt7s0"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_5ynhd54c",
+          "person_jv3v5ght",
+          "person_la1a2kx5",
+          "person_addwt7s0"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_0p5rot5g",
+          "person_lz417o3u"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_0p5rot5g",
+          "person_lz417o3u"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_nhjr3mzo",
+          "person_xs5ve4s9"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_nhjr3mzo",
+          "person_swcjhs7t"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_nhjr3mzo",
+          "person_xs5ve4s9",
+          "person_swcjhs7t"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_160run93",
+          "person_jv3v5ght"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_160run93",
+          "person_v2k7jfi9"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_160run93",
+          "person_jv3v5ght",
+          "person_v2k7jfi9"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_qke10vac",
+          "person_ynvgsdyg"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_qke10vac",
+          "person_ywfp8avz"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_qke10vac",
+          "person_mt7gquug"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_qke10vac",
+          "person_75yscmu0"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_qke10vac",
+          "person_e6pjrzbl"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_qke10vac",
+          "person_m2kaj648"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_qke10vac",
+          "person_jv3v5ght"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_qke10vac",
+          "person_c4lbda57"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_qke10vac",
+          "person_yddj78eq"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_qke10vac",
+          "person_h8lbgdml"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_qke10vac",
+          "person_ynvgsdyg",
+          "person_ywfp8avz",
+          "person_mt7gquug",
+          "person_75yscmu0",
+          "person_e6pjrzbl",
+          "person_m2kaj648",
+          "person_jv3v5ght",
+          "person_c4lbda57",
+          "person_yddj78eq",
+          "person_h8lbgdml"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_6pu73zt8",
+          "person_nsjr29jj"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_6pu73zt8",
+          "person_nsjr29jj"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_tlm3396p",
+          "person_ynvgsdyg"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_tlm3396p",
+          "person_jbnv64ht"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_tlm3396p",
+          "person_ynvgsdyg",
+          "person_jbnv64ht"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_h0exui26",
+          "person_wd8una2d"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_h0exui26",
+          "person_yfr5dsr9"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_h0exui26",
+          "person_rzuhlj2u"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_h0exui26",
+          "person_nsjr29jj"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_h0exui26",
+          "person_9pva0co9"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_h0exui26",
+          "person_wd8una2d",
+          "person_yfr5dsr9",
+          "person_rzuhlj2u",
+          "person_nsjr29jj",
+          "person_9pva0co9"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_wd8una2d",
+          "person_t4mxdht1"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_wd8una2d",
+          "person_t4mxdht1"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_e6pjrzbl",
+          "person_us78utlw"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_e6pjrzbl",
+          "person_lz417o3u"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_e6pjrzbl",
+          "person_m2kaj648"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_e6pjrzbl",
+          "person_us78utlw",
+          "person_lz417o3u",
+          "person_m2kaj648"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_xf66mzvc",
+          "person_yfr5dsr9"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_xf66mzvc",
+          "person_yddj78eq"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_xf66mzvc",
+          "person_c4lbda57"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_xf66mzvc",
+          "person_yfr5dsr9",
+          "person_yddj78eq",
+          "person_c4lbda57"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_1dobwddu",
+          "person_9cu1c173"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_1dobwddu",
+          "person_9cu1c173"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_7p9ibvex",
+          "person_yc9nn8i7"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_7p9ibvex",
+          "person_yc9nn8i7"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_epqigqvk",
+          "person_tyt98xbj"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_epqigqvk",
+          "person_l9sxgcrh"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_epqigqvk",
+          "person_469pdmus"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_epqigqvk",
+          "person_8twb13h9"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_epqigqvk",
+          "person_1ixlzvga"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_epqigqvk",
+          "person_tyt98xbj",
+          "person_l9sxgcrh",
+          "person_469pdmus",
+          "person_8twb13h9",
+          "person_1ixlzvga"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_nsjr29jj",
+          "person_wd8una2d"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_nsjr29jj",
+          "person_yfr5dsr9"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_nsjr29jj",
+          "person_rzuhlj2u"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_nsjr29jj",
+          "person_9pva0co9"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_nsjr29jj",
+          "person_wd8una2d",
+          "person_yfr5dsr9",
+          "person_rzuhlj2u",
+          "person_9pva0co9"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_k6896t8m",
+          "person_sfvtj0gp"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_k6896t8m",
+          "person_l9sxgcrh"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_k6896t8m",
+          "person_sfvtj0gp",
+          "person_l9sxgcrh"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_yc9nn8i7",
+          "person_la1a2kx5"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_yc9nn8i7",
+          "person_uksidonh"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_yc9nn8i7",
+          "person_u9hb2rwd"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_yc9nn8i7",
+          "person_la1a2kx5",
+          "person_uksidonh",
+          "person_u9hb2rwd"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_z758mcd2",
+          "person_yddj78eq"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_z758mcd2",
+          "person_yddj78eq"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_o3kjgpq6",
+          "person_tlm3396p"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_o3kjgpq6",
+          "person_ydpf3jop"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_o3kjgpq6",
+          "person_sccdohpg"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_o3kjgpq6",
+          "person_tlm3396p",
+          "person_ydpf3jop",
+          "person_sccdohpg"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_h8lbgdml",
+          "person_addwt7s0"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_h8lbgdml",
+          "person_mt7gquug"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_h8lbgdml",
+          "person_xs5ve4s9"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_h8lbgdml",
+          "person_nhjr3mzo"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_h8lbgdml",
+          "person_1366e882"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_h8lbgdml",
+          "person_addwt7s0",
+          "person_mt7gquug",
+          "person_xs5ve4s9",
+          "person_nhjr3mzo",
+          "person_1366e882"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_w4lb6tce",
+          "person_5e3t3dui"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_w4lb6tce",
+          "person_5e3t3dui"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_u9hb2rwd",
+          "person_agoq79kr"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_u9hb2rwd",
+          "person_zzal9avu"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_u9hb2rwd",
+          "person_agoq79kr",
+          "person_zzal9avu"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_1366e882",
+          "person_addwt7s0"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_1366e882",
+          "person_wx7zya9b"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_1366e882",
+          "person_mt7gquug"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_1366e882",
+          "person_6cabvyr4"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_1366e882",
+          "person_yc9nn8i7"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_1366e882",
+          "person_7p9ibvex"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_1366e882",
+          "person_addwt7s0",
+          "person_wx7zya9b",
+          "person_mt7gquug",
+          "person_6cabvyr4",
+          "person_yc9nn8i7",
+          "person_7p9ibvex"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_aq0ulqiu",
+          "person_tuveia3l"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_aq0ulqiu",
+          "person_0dukjar2"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_aq0ulqiu",
+          "person_h0exui26"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_aq0ulqiu",
+          "person_yfr5dsr9"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_aq0ulqiu",
+          "person_wd8una2d"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_aq0ulqiu",
+          "person_gnh7ybqo"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_aq0ulqiu",
+          "person_kp6o5w7j"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_aq0ulqiu",
+          "person_uc10ubkg"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_aq0ulqiu",
+          "person_sfvtj0gp"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_aq0ulqiu",
+          "person_tlejqdt5"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_aq0ulqiu",
+          "person_tuveia3l",
+          "person_0dukjar2",
+          "person_h0exui26",
+          "person_yfr5dsr9",
+          "person_wd8una2d",
+          "person_gnh7ybqo",
+          "person_kp6o5w7j",
+          "person_uc10ubkg",
+          "person_sfvtj0gp",
+          "person_tlejqdt5"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_e7eyno7f",
+          "person_yejkg4cz"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_e7eyno7f",
+          "person_ywfp8avz"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_e7eyno7f",
+          "person_l2hpx5h9"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_e7eyno7f",
+          "person_mt7gquug"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_e7eyno7f",
+          "person_wx7zya9b"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_e7eyno7f",
+          "person_yejkg4cz",
+          "person_ywfp8avz",
+          "person_l2hpx5h9",
+          "person_mt7gquug",
+          "person_wx7zya9b"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_yrcfxd7s",
+          "person_lknh631c"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_yrcfxd7s",
+          "person_5e3t3dui"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_yrcfxd7s",
+          "person_lknh631c",
+          "person_5e3t3dui"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_yddj78eq",
+          "person_s63hrvv1"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_yddj78eq",
+          "person_s63hrvv1"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_ynvgsdyg",
+          "person_qke10vac"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_ynvgsdyg",
+          "person_yfr5dsr9"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_ynvgsdyg",
+          "person_tlm3396p"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_ynvgsdyg",
+          "person_xs5ve4s9"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_ynvgsdyg",
+          "person_qke10vac",
+          "person_yfr5dsr9",
+          "person_tlm3396p",
+          "person_xs5ve4s9"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_la1a2kx5",
+          "person_uksidonh"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_la1a2kx5",
+          "person_uksidonh"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_us78utlw",
+          "person_1kqqabqm"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_us78utlw",
+          "person_yddj78eq"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_us78utlw",
+          "person_c4lbda57"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_us78utlw",
+          "person_l5dmhcj0"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_us78utlw",
+          "person_kewfj185"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_us78utlw",
+          "person_0p5rot5g"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_us78utlw",
+          "person_1kqqabqm",
+          "person_yddj78eq",
+          "person_c4lbda57",
+          "person_l5dmhcj0",
+          "person_kewfj185",
+          "person_0p5rot5g"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_6cabvyr4",
+          "person_yddj78eq"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_6cabvyr4",
+          "person_8wgceovl"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_6cabvyr4",
+          "person_yddj78eq",
+          "person_8wgceovl"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_t223mvfm",
+          "person_yddj78eq"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_t223mvfm",
+          "person_6cabvyr4"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_t223mvfm",
+          "person_yddj78eq",
+          "person_6cabvyr4"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_uksidonh",
+          "person_la1a2kx5"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_uksidonh",
+          "person_yc9nn8i7"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_uksidonh",
+          "person_l2hpx5h9"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_uksidonh",
+          "person_la1a2kx5",
+          "person_yc9nn8i7",
+          "person_l2hpx5h9"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_ywfp8avz",
+          "person_8wgceovl"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_ywfp8avz",
+          "person_8wgceovl"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_8wgceovl",
+          "person_jv3v5ght"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_8wgceovl",
+          "person_6cabvyr4"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_8wgceovl",
+          "person_jv3v5ght",
+          "person_6cabvyr4"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_ydpf3jop",
+          "person_ynvgsdyg"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_ydpf3jop",
+          "person_xs5ve4s9"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_ydpf3jop",
+          "person_tlm3396p"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_ydpf3jop",
+          "person_ynvgsdyg",
+          "person_xs5ve4s9",
+          "person_tlm3396p"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_addwt7s0",
+          "person_5ynhd54c"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_addwt7s0",
+          "person_1366e882"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_addwt7s0",
+          "person_5ynhd54c",
+          "person_1366e882"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_sccdohpg",
+          "person_5e3t3dui"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_sccdohpg",
+          "person_s63hrvv1"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_sccdohpg",
+          "person_e6pjrzbl"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_sccdohpg",
+          "person_o3kjgpq6"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_sccdohpg",
+          "person_w4lb6tce"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_sccdohpg",
+          "person_yrcfxd7s"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_sccdohpg",
+          "person_5e3t3dui",
+          "person_s63hrvv1",
+          "person_e6pjrzbl",
+          "person_o3kjgpq6",
+          "person_w4lb6tce",
+          "person_yrcfxd7s"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_a4166f5d",
+          "person_sfvtj0gp"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_a4166f5d",
+          "person_k6896t8m"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_a4166f5d",
+          "person_ydpf3jop"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_a4166f5d",
+          "person_jbnv64ht"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_a4166f5d",
+          "person_lunze2nn"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_a4166f5d",
+          "person_aphix38e"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_a4166f5d",
+          "person_epqigqvk"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_a4166f5d",
+          "person_tlm3396p"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_a4166f5d",
+          "person_sfvtj0gp",
+          "person_k6896t8m",
+          "person_ydpf3jop",
+          "person_jbnv64ht",
+          "person_lunze2nn",
+          "person_aphix38e",
+          "person_epqigqvk",
+          "person_tlm3396p"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_jbekvapv",
+          "person_m2kaj648"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_jbekvapv",
+          "person_9cu1c173"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_jbekvapv",
+          "person_m2kaj648",
+          "person_9cu1c173"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_4up6h5zb",
+          "person_sfvtj0gp"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_4up6h5zb",
+          "person_yfr5dsr9"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_4up6h5zb",
+          "person_kp6o5w7j"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_4up6h5zb",
+          "person_sfvtj0gp",
+          "person_yfr5dsr9",
+          "person_kp6o5w7j"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_1ofsufbs",
+          "person_aphix38e"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_1ofsufbs",
+          "person_aphix38e"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_9qlg95am",
+          "person_z758mcd2"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_9qlg95am",
+          "person_tlm3396p"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_9qlg95am",
+          "person_o3kjgpq6"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_9qlg95am",
+          "person_ydpf3jop"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_9qlg95am",
+          "person_z758mcd2",
+          "person_tlm3396p",
+          "person_o3kjgpq6",
+          "person_ydpf3jop"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_fulisf1o",
+          "person_yrcfxd7s"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_fulisf1o",
+          "person_w4lb6tce"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_fulisf1o",
+          "person_yrcfxd7s",
+          "person_w4lb6tce"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_l5dmhcj0",
+          "person_yddj78eq"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_l5dmhcj0",
+          "person_sccdohpg"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_l5dmhcj0",
+          "person_t223mvfm"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_l5dmhcj0",
+          "person_agoq79kr"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_l5dmhcj0",
+          "person_1kqqabqm"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_l5dmhcj0",
+          "person_yddj78eq",
+          "person_sccdohpg",
+          "person_t223mvfm",
+          "person_agoq79kr",
+          "person_1kqqabqm"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_8twb13h9",
+          "person_1ixlzvga"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_8twb13h9",
+          "person_5e3t3dui"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_8twb13h9",
+          "person_w4lb6tce"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_8twb13h9",
+          "person_1ixlzvga",
+          "person_5e3t3dui",
+          "person_w4lb6tce"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_1ixlzvga",
+          "person_8twb13h9"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_1ixlzvga",
+          "person_l9sxgcrh"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_1ixlzvga",
+          "person_sccdohpg"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_1ixlzvga",
+          "person_5e3t3dui"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_1ixlzvga",
+          "person_w4lb6tce"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_1ixlzvga",
+          "person_8twb13h9",
+          "person_l9sxgcrh",
+          "person_sccdohpg",
+          "person_5e3t3dui",
+          "person_w4lb6tce"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_65pdncbk",
+          "person_z0yv6rld"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_65pdncbk",
+          "person_z0yv6rld"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_v2k2i7ck",
+          "person_agoq79kr"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_v2k2i7ck",
+          "person_gbo7i42y"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_v2k2i7ck",
+          "person_ax3eq0lo"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_v2k2i7ck",
+          "person_agoq79kr",
+          "person_gbo7i42y",
+          "person_ax3eq0lo"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_l8nuxufw",
+          "person_8twb13h9"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_l8nuxufw",
+          "person_1ixlzvga"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_l8nuxufw",
+          "person_l5dmhcj0"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_l8nuxufw",
+          "person_8twb13h9",
+          "person_1ixlzvga",
+          "person_l5dmhcj0"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_5wqnmjf3",
+          "person_k6896t8m"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_5wqnmjf3",
+          "person_k6896t8m"
+        ],
+        "sessions": [
+          2,
+          3,
+          4
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_yfr5dsr9",
+          "person_6pu73zt8"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_5wqnmjf3",
+          "person_k6896t8m"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_l5dmhcj0",
+          "person_1kqqabqm"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_yddj78eq",
+          "person_c4lbda57"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_p529cnp4",
+          "person_teyeox23"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_r95i7qcu",
+          "person_xf66mzvc"
+        ],
+        "sessions": [
+          0,
+          2,
+          4,
+          1,
+          3
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_lknh631c",
+          "person_q6huqsqw"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_wx7zya9b",
+          "person_34rj8fkd"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_lunze2nn",
+          "person_4j31536m"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_yru8o0nm",
+          "person_s63hrvv1"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_m278frhl",
+          "person_i1h9bxf2"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_l2hpx5h9",
+          "person_e7eyno7f"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_5ynhd54c",
+          "person_jv3v5ght"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_nhjr3mzo",
+          "person_xs5ve4s9"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_469pdmus",
+          "person_l9sxgcrh"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_160run93",
+          "person_v2k7jfi9"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_nsjr29jj",
+          "person_zteqxzsj"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_tlm3396p",
+          "person_jbnv64ht"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_9pva0co9",
+          "person_wd8una2d",
+          "person_rzuhlj2u"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_7p9ibvex",
+          "person_yc9nn8i7"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_9cu1c173",
+          "person_1dobwddu"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_u9hb2rwd",
+          "person_zzal9avu"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_1366e882",
+          "person_addwt7s0"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_lz417o3u",
+          "person_0p5rot5g"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_5e3t3dui",
+          "person_w4lb6tce"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_aq0ulqiu",
+          "person_0dukjar2"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_tuveia3l",
+          "person_tlejqdt5"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_yejkg4cz",
+          "person_mt7gquug"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_v2k2i7ck",
+          "person_agoq79kr"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_ynvgsdyg",
+          "person_ydpf3jop"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_t223mvfm",
+          "person_6cabvyr4"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_uksidonh",
+          "person_la1a2kx5"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_ywfp8avz",
+          "person_8wgceovl"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_9qlg95am",
+          "person_o3kjgpq6"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_8twb13h9",
+          "person_1ixlzvga"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_65pdncbk",
+          "person_z0yv6rld"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_gnh7ybqo",
+          "person_kp6o5w7j"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_epqigqvk",
+          "person_tyt98xbj"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_sfvtj0gp",
+          "person_uc10ubkg"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_ku2d6qo4",
+          "person_ys0bm79e"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_erkcatba",
+          "person_q41p2hyz"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_ax3eq0lo",
+          "person_84p3tw8a"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_tyt98xbj",
+          "person_uc10ubkg"
+        ],
+        "penalty_weight": 10
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_0wd3l70n",
+          "person_qke10vac"
+        ],
+        "penalty_weight": 10
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_tlm3396p",
+          "person_dc9l2u61"
+        ],
+        "penalty_weight": 10
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_sfvtj0gp",
+          "person_xf66mzvc"
+        ],
+        "penalty_weight": 10
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_nsjr29jj",
+          "person_s7qtd8ul"
+        ],
+        "penalty_weight": 10
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_zzal9avu",
+          "person_r95i7qcu"
+        ],
+        "penalty_weight": 10
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_65pdncbk",
+          "person_75yscmu0"
+        ],
+        "penalty_weight": 10
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_l8nuxufw",
+          "person_tyt98xbj"
+        ],
+        "penalty_weight": 10
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_m2kaj648",
+          "person_wx7zya9b"
+        ],
+        "penalty_weight": 10
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_0wd3l70n",
+          "person_i1h9bxf2"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_swcjhs7t",
+          "person_nhjr3mzo"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_sccdohpg",
+          "person_s63hrvv1"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_h8lbgdml",
+          "person_xs5ve4s9"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_5e3t3dui",
+          "person_sccdohpg"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_jbekvapv",
+          "person_9cu1c173"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Failboat",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 6,
+          "male": 5
+        },
+        "penalty_weight": 3
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Fishosofical",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 5,
+          "female": 6
+        },
+        "penalty_weight": 3
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Foamidable",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 5,
+          "female": 6
+        },
+        "penalty_weight": 3
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Freakwentsea",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 5,
+          "female": 6
+        },
+        "penalty_weight": 3
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Funderstorm",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 5,
+          "female": 6
+        },
+        "penalty_weight": 3
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Flawsome",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 5,
+          "female": 6
+        },
+        "penalty_weight": 3
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Ferrytale",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 5,
+          "female": 5
+        },
+        "penalty_weight": 3
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Fenderella",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 5,
+          "female": 5
+        },
+        "penalty_weight": 3
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Fantasea",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 5,
+          "female": 6
+        },
+        "penalty_weight": 3
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Funsinkable",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 5,
+          "female": 6
+        },
+        "penalty_weight": 3
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Flambuoyant",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 5,
+          "female": 6
+        },
+        "penalty_weight": 3
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Ferrytale",
+        "attribute_key": "Sailing Experience",
+        "desired_values": {
+          "5": 2
+        },
+        "penalty_weight": 100
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Fenderella",
+        "attribute_key": "Sailing Experience",
+        "desired_values": {
+          "4": 3,
+          "5": 2
+        },
+        "penalty_weight": 100
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Flawsome",
+        "attribute_key": "Sailing Experience",
+        "desired_values": {
+          "4": 3,
+          "5": 2
+        },
+        "penalty_weight": 100
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Flambuoyant",
+        "attribute_key": "Sailing Experience",
+        "desired_values": {
+          "4": 3,
+          "5": 2
+        },
+        "penalty_weight": 100
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_lknh631c",
+          "person_yrcfxd7s"
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Flambuoyant",
+        "attribute_key": "Arrives on Time for Shopping",
+        "desired_values": {
+          "yes": 3
+        },
+        "penalty_weight": 10,
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Flambuoyant",
+        "attribute_key": "Arrives on Time for Shopping",
+        "desired_values": {
+          "yes": 3
+        },
+        "penalty_weight": 10,
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Foamidable",
+        "attribute_key": "Arrives on Time for Shopping",
+        "desired_values": {
+          "yes": 3
+        },
+        "penalty_weight": 10,
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Failboat",
+        "attribute_key": "Arrives on Time for Shopping",
+        "desired_values": {
+          "yes": 3
+        },
+        "penalty_weight": 10,
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Freakwentsea",
+        "attribute_key": "Arrives on Time for Shopping",
+        "desired_values": {
+          "yes": 3
+        },
+        "penalty_weight": 10,
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Funderstorm",
+        "attribute_key": "Arrives on Time for Shopping",
+        "desired_values": {
+          "yes": 3
+        },
+        "penalty_weight": 10,
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Flawsome",
+        "attribute_key": "Arrives on Time for Shopping",
+        "desired_values": {
+          "yes": 3
+        },
+        "penalty_weight": 10,
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Ferrytale",
+        "attribute_key": "Arrives on Time for Shopping",
+        "desired_values": {
+          "yes": 3
+        },
+        "penalty_weight": 10,
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Fishosofical",
+        "attribute_key": "Arrives on Time for Shopping",
+        "desired_values": {
+          "yes": 3
+        },
+        "penalty_weight": 10,
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Fantasea",
+        "attribute_key": "Arrives on Time for Shopping",
+        "desired_values": {
+          "yes": 3
+        },
+        "penalty_weight": 10,
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Fenderella",
+        "attribute_key": "Arrives on Time for Shopping",
+        "desired_values": {
+          "yes": 3
+        },
+        "penalty_weight": 10,
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Funderstorm",
+        "attribute_key": "Has VHF License",
+        "desired_values": {
+          "Yes": 1
+        },
+        "penalty_weight": 1000
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Flambuoyant",
+        "attribute_key": "Has VHF License",
+        "desired_values": {
+          "Yes": 1
+        },
+        "penalty_weight": 1000
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Funsinkable",
+        "attribute_key": "Has VHF License",
+        "desired_values": {
+          "Yes": 1
+        },
+        "penalty_weight": 1000
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Foamidable",
+        "attribute_key": "Has VHF License",
+        "desired_values": {
+          "Yes": 1
+        },
+        "penalty_weight": 1000
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Failboat",
+        "attribute_key": "Has VHF License",
+        "desired_values": {
+          "Yes": 1
+        },
+        "penalty_weight": 1000
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Freakwentsea",
+        "attribute_key": "Has VHF License",
+        "desired_values": {
+          "Yes": 1
+        },
+        "penalty_weight": 1000
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Flawsome",
+        "attribute_key": "Has VHF License",
+        "desired_values": {
+          "Yes": 1
+        },
+        "penalty_weight": 1000
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Ferrytale",
+        "attribute_key": "Has VHF License",
+        "desired_values": {
+          "Yes": 1
+        },
+        "penalty_weight": 1000
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Fishosofical",
+        "attribute_key": "Has VHF License",
+        "desired_values": {
+          "Yes": 1
+        },
+        "penalty_weight": 1000
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Fantasea",
+        "attribute_key": "Has VHF License",
+        "desired_values": {
+          "Yes": 1
+        },
+        "penalty_weight": 1000
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Fenderella",
+        "attribute_key": "Has VHF License",
+        "desired_values": {
+          "Yes": 1
+        },
+        "penalty_weight": 1000
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 1000000,
+        "time_limit_seconds": 3000,
+        "no_improvement_iterations": 500000
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 1,
+        "final_temperature": 0.01,
+        "cooling_schedule": "geometric",
+        "reheat_after_no_improvement": 0,
+        "reheat_cycles": 0
+      },
+      "logging": {
+        "log_frequency": 1000,
+        "log_initial_state": true,
+        "log_duration_and_score": true,
+        "display_final_schedule": true,
+        "log_initial_score_breakdown": true,
+        "log_final_score_breakdown": true,
+        "log_stop_condition": true,
+        "debug_validate_invariants": false,
+        "debug_dump_invariant_context": false
+      }
+    }
+  },
+  "expected": {},
+  "test_options": {}
+}

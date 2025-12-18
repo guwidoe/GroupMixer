@@ -58,6 +58,7 @@ use std::collections::HashMap;
 ///             }
 ///         ),
 ///         logging: LoggingOptions::default(),
+///         telemetry: Default::default(),
 ///         allowed_sessions: None,
 ///     },
 /// };
@@ -509,6 +510,7 @@ pub struct ImmovablePeopleParams {
 ///         log_final_score_breakdown: true,
 ///         ..Default::default()
 ///     },
+///     telemetry: Default::default(),
 ///     allowed_sessions: None,
 /// };
 /// ```
@@ -523,11 +525,47 @@ pub struct SolverConfiguration {
     /// Logging and output preferences (defaults to minimal logging)
     #[serde(default)]
     pub logging: LoggingOptions,
+    /// Telemetry options controlling what is emitted via progress updates.
+    ///
+    /// Defaults to disabled to avoid any performance overhead unless explicitly requested.
+    #[serde(default)]
+    pub telemetry: TelemetryOptions,
     /// Optional allow-list of session indices that the solver is allowed to modify during iterations.
     /// If present, the solver will only generate moves within these sessions, leaving others unchanged.
     /// Session indices are 0-based.
     #[serde(default)]
     pub allowed_sessions: Option<Vec<u32>>,
+}
+
+/// Controls optional telemetry emitted during solver execution.
+///
+/// This is intentionally separate from `LoggingOptions` so that progress/visualization features
+/// can be enabled independently of stdout logging.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TelemetryOptions {
+    /// When true, include a `best_schedule` snapshot in some progress updates.
+    ///
+    /// This can be expensive for large problems (it clones and serializes schedules), so it is
+    /// disabled by default.
+    #[serde(default)]
+    pub emit_best_schedule: bool,
+
+    /// Include a schedule snapshot every N progress callbacks (when enabled).
+    ///
+    /// Values <= 1 mean \"every callback\".
+    #[serde(default)]
+    pub best_schedule_every_n_callbacks: u64,
+}
+
+impl Default for TelemetryOptions {
+    fn default() -> Self {
+        Self {
+            emit_best_schedule: false,
+            // A safe default in case someone enables telemetry without tuning.
+            // (Progress callbacks are time-based; snapshots can be large.)
+            best_schedule_every_n_callbacks: 5,
+        }
+    }
 }
 
 /// Defines when the optimization process should stop.
@@ -840,6 +878,7 @@ pub type ProgressCallback = Box<dyn Fn(&ProgressUpdate) -> bool + Send>;
 /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
 /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
 /// #         logging: LoggingOptions::default(),
+/// #         telemetry: Default::default(),
 /// #         allowed_sessions: None,
 /// #     },
 /// # };
@@ -923,6 +962,7 @@ impl SolverResult {
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
+    /// #         telemetry: Default::default(),
     /// #         allowed_sessions: None,
     /// #     },
     /// # };

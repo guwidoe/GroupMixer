@@ -217,6 +217,7 @@ pub fn get_default_settings() -> Result<String, JsValue> {
             log_stop_condition: true,
             ..Default::default()
         },
+        telemetry: Default::default(),
         allowed_sessions: None,
     };
 

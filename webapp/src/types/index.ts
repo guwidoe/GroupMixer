@@ -99,6 +99,10 @@ export interface SolverSettings {
   stop_conditions: StopConditions;
   solver_params: SolverParams;
   logging?: LoggingOptions;
+  telemetry?: {
+    emit_best_schedule?: boolean;
+    best_schedule_every_n_callbacks?: number;
+  };
   // Optional list of 0-based session indices the solver may modify.
   // If omitted, all sessions are eligible for moves.
   allowed_sessions?: number[];

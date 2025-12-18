@@ -6,6 +6,7 @@ import {
   Target, 
   AlertTriangle, 
   Hash,
+  LayoutGrid,
   Download,
   RefreshCw,
   PieChart,
@@ -21,6 +22,7 @@ import ConstraintComplianceCards from './ConstraintComplianceCards';
 import PersonCard from './PersonCard';
 import { compareProblemConfigurations } from '../services/problemStorage';
 import { calculateMetrics, getColorClass } from '../utils/metricCalculations';
+import { VisualizationPanel } from '../visualizations/VisualizationPanel';
 
 function snapshotToProblem(snapshot: ProblemSnapshot, settings: SolverSettings): Problem {
   // Use the settings that were saved with the result, not current settings
@@ -32,10 +34,18 @@ function snapshotToProblem(snapshot: ProblemSnapshot, settings: SolverSettings):
 
 export function ResultsView() {
   const { problem, solution, solverState, currentProblemId, savedProblems, restoreResultAsNewProblem } = useAppStore();
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'visualize'>('grid');
+  const [vizPluginId, setVizPluginId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('resultsVisualizationPlugin') || 'scheduleMatrix';
+    } catch {
+      return 'scheduleMatrix';
+    }
+  });
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [configDetailsOpen, setConfigDetailsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const vizExportRef = useRef<HTMLDivElement>(null);
 
 
 
@@ -139,18 +149,6 @@ export function ResultsView() {
 
   // Constraint compliance UI moved to dedicated component
 
-  if (!solution) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12" style={{ color: 'var(--text-secondary)' }}>
-        <Target className="w-16 h-16 mb-4" style={{ color: 'var(--text-tertiary)' }} />
-        <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>No Results Yet</h3>
-        <p className="text-center max-w-md" style={{ color: 'var(--text-secondary)' }}>
-          Run the solver or select one of the results from the Results tab to see optimization results and group assignments.
-        </p>
-      </div>
-    );
-  }
-
   const downloadFile = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -197,6 +195,34 @@ export function ResultsView() {
     }
     
     setExportDropdownOpen(false);
+  };
+
+  const handleExportVisualizationPng = async () => {
+    if (!effectiveProblem || !solution) return;
+    if (viewMode !== 'visualize') return;
+    if (!vizExportRef.current) return;
+
+    const fileName = (resultName || 'result')
+      .replace(/[^a-z0-9]/gi, '_')
+      .toLowerCase();
+
+    try {
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(vizExportRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+      });
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `${fileName}_visualization.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (e) {
+      console.error('Failed to export visualization PNG:', e);
+    } finally {
+      setExportDropdownOpen(false);
+    }
   };
 
   // Group assignments by session for display
@@ -305,7 +331,7 @@ export function ResultsView() {
             </tr>
           </thead>
           <tbody className="divide-y" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-secondary)' }}>
-                          {effectiveProblem?.people.map((person, _index) => {
+                          {effectiveProblem?.people.map((person) => {
                 const personAssignments = solution.assignments.filter(a => a.person_id === person.id);
                 const displayName = person.attributes?.name || person.id;
               
@@ -340,7 +366,36 @@ export function ResultsView() {
     </div>
   );
 
-  if (!solution || !effectiveProblem) {
+  const renderScheduleVisualization = () => (
+    <div ref={vizExportRef}>
+      <VisualizationPanel
+        pluginId={vizPluginId}
+        onPluginChange={(id) => {
+          setVizPluginId(id);
+          try {
+            localStorage.setItem('resultsVisualizationPlugin', id);
+          } catch {
+            /* ignore */
+          }
+        }}
+        data={{ kind: 'final', problem: effectiveProblem, solution }}
+      />
+    </div>
+  );
+
+  if (!solution) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12" style={{ color: 'var(--text-secondary)' }}>
+        <Target className="w-16 h-16 mb-4" style={{ color: 'var(--text-tertiary)' }} />
+        <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>No Results Yet</h3>
+        <p className="text-center max-w-md" style={{ color: 'var(--text-secondary)' }}>
+          Run the solver or select one of the results from the Results tab to see optimization results and group assignments.
+        </p>
+      </div>
+    );
+  }
+
+  if (!effectiveProblem) {
     return (
       <div className="text-center py-12">
         <BarChart3 className="mx-auto h-12 w-12 text-gray-400" />
@@ -456,6 +511,21 @@ export function ResultsView() {
                      backgroundColor: 'var(--bg-primary)', 
                      borderColor: 'var(--border-primary)' 
                    }}>
+                {viewMode === 'visualize' && (
+                  <button
+                    onClick={handleExportVisualizationPng}
+                    className="flex items-center w-full px-3 py-2 text-sm text-left transition-colors"
+                    style={{
+                      color: 'var(--text-primary)',
+                      backgroundColor: 'transparent'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <LayoutGrid className="h-4 w-4 mr-2 flex-shrink-0" />
+                    <span>Export viz as PNG</span>
+                  </button>
+                )}
                 <button
                   onClick={() => handleExportResult('json')}
                   className="flex items-center w-full px-3 py-2 text-sm text-left transition-colors"
@@ -563,12 +633,38 @@ export function ResultsView() {
                 <BarChart3 className="w-4 h-4 inline mr-1" />
                 List
               </button>
+              <button
+                onClick={() => setViewMode('visualize')}
+                className="px-3 py-1 rounded text-sm transition-colors"
+                style={{
+                  backgroundColor: viewMode === 'visualize' ? 'var(--bg-tertiary)' : 'transparent',
+                  color: viewMode === 'visualize' ? 'var(--color-accent)' : 'var(--text-secondary)',
+                  border: viewMode === 'visualize' ? '1px solid var(--color-accent)' : '1px solid transparent'
+                }}
+                onMouseEnter={(e) => {
+                  if (viewMode !== 'visualize') {
+                    e.currentTarget.style.color = 'var(--text-primary)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (viewMode !== 'visualize') {
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                  }
+                }}
+              >
+                <LayoutGrid className="w-4 h-4 inline mr-1" />
+                Visualize
+              </button>
             </div>
           </div>
         </div>
         
         <div className="p-6">
-          {viewMode === 'grid' ? renderScheduleGrid() : renderScheduleList()}
+          {viewMode === 'grid'
+            ? renderScheduleGrid()
+            : viewMode === 'list'
+              ? renderScheduleList()
+              : renderScheduleVisualization()}
         </div>
       </div>
     </div>

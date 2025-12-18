@@ -9,6 +9,7 @@
 
 use crate::models::{
     ApiInput, AttributeBalanceParams, Constraint, LoggingOptions, PairMeetingMode, SolverResult,
+    TelemetryOptions,
 };
 use rand::seq::SliceRandom;
 use serde::Serialize;
@@ -89,6 +90,7 @@ pub enum SolverError {
 /// #             }
 /// #         ),
 /// #         logging: solver_core::models::LoggingOptions::default(),
+/// #         telemetry: Default::default(),
 /// #         allowed_sessions: None,
 /// #     },
 /// # };
@@ -133,6 +135,9 @@ pub struct State {
     // === CONFIGURATION ===
     /// Logging and output configuration options
     pub logging: LoggingOptions,
+
+    /// Optional telemetry controls (used by progress updates / visualizations)
+    pub telemetry: TelemetryOptions,
 
     // === CORE SCHEDULE DATA ===
     // The main optimization variables - who is assigned where and when
@@ -341,6 +346,7 @@ impl State {
     ///             }
     ///         ),
     ///         logging: LoggingOptions::default(),
+    ///         telemetry: Default::default(),
     ///         allowed_sessions: None,
     ///     },
     /// };
@@ -496,6 +502,7 @@ impl State {
             attr_val_to_idx,
             attr_idx_to_val,
             logging: input.solver.logging.clone(),
+            telemetry: input.solver.telemetry.clone(),
             schedule,
             locations,
             person_attributes,
@@ -1354,6 +1361,7 @@ impl State {
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0)}),
     /// #         logging: LoggingOptions::default(),
+    /// #         telemetry: Default::default(),
     /// #         allowed_sessions: None,
     /// #     },
     /// # };
@@ -1882,6 +1890,7 @@ impl State {
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
+    /// #         telemetry: Default::default(),
     /// #         allowed_sessions: None,
     /// #     },
     /// # };
@@ -2364,6 +2373,7 @@ impl State {
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
+    /// #         telemetry: Default::default(),
     /// #         allowed_sessions: None,
     /// #     },
     /// # };
@@ -2413,6 +2423,7 @@ impl State {
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
+    /// #         telemetry: Default::default(),
     /// #         allowed_sessions: None,
     /// #     },
     /// # };
@@ -3098,6 +3109,7 @@ impl State {
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
+    /// #         telemetry: Default::default(),
     /// #         allowed_sessions: None,
     /// #     },
     /// # };
@@ -3168,6 +3180,7 @@ impl State {
     /// #             initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0)
     /// #         }),
     /// #         logging: LoggingOptions { log_initial_score_breakdown: true, log_final_score_breakdown: true, ..Default::default() },
+    /// #         telemetry: Default::default(),
     /// #         allowed_sessions: None,
     /// #     },
     /// # };
@@ -4431,6 +4444,7 @@ mod tests {
                     reheat_cycles: Some(0),
                 }),
                 logging: Default::default(),
+                telemetry: Default::default(),
                 allowed_sessions: None,
             },
         }
@@ -5526,6 +5540,7 @@ mod attribute_balance_tests {
                     reheat_cycles: Some(0),
                 }),
                 logging: LoggingOptions::default(),
+                telemetry: Default::default(),
                 allowed_sessions: None,
             },
         }
@@ -5610,6 +5625,7 @@ mod attribute_balance_tests {
                     reheat_cycles: Some(0),
                 }),
                 logging: LoggingOptions::default(),
+                telemetry: Default::default(),
                 allowed_sessions: None,
             },
         };

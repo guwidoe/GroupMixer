@@ -385,6 +385,7 @@ impl AlgorithmMetrics {
 ///         log_final_score_breakdown: true,
 ///         ..Default::default()
 ///     },
+///     telemetry: Default::default(),
 ///     allowed_sessions: None,
 /// };
 ///
@@ -487,7 +488,8 @@ impl SimulatedAnnealing {
     ///         }
     ///     ),
     ///     logging: LoggingOptions::default(),
-///     allowed_sessions: None,
+    ///     telemetry: Default::default(),
+    ///     allowed_sessions: None,
     /// };
     ///
     /// let solver = SimulatedAnnealing::new(&config);
@@ -630,6 +632,7 @@ impl Solver for SimulatedAnnealing {
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
+    /// #         telemetry: Default::default(),
     /// #         allowed_sessions: None,
     /// #     },
     /// # };
@@ -707,6 +710,7 @@ impl Solver for SimulatedAnnealing {
         let mut best_cost = state.calculate_cost();
         let mut no_improvement_counter = 0;
         let mut last_callback_time = get_start_time();
+        let mut progress_callback_count: u64 = 0;
         let mut final_iteration = 0;
 
         if state.logging.log_initial_score_breakdown {
@@ -817,6 +821,7 @@ impl Solver for SimulatedAnnealing {
                 // Add minimum 50ms gap to prevent excessive callbacks
                 // NOTE: We don't call on last iteration here because we send a final callback after recalculation
                 if i == 0 || elapsed_since_last_callback >= 0.1 {
+                    progress_callback_count += 1;
                     let current_cost = current_state.current_cost;
                     let elapsed = get_elapsed_seconds(start_time);
                     let iterations_since_last_reheat = if self.reheat_cycles > 0 && cycle_length > 0
@@ -854,6 +859,13 @@ impl Solver for SimulatedAnnealing {
                         (elapsed * 1000.0) / i as f64
                     } else {
                         0.0
+                    };
+
+                    let include_best_schedule = if state.telemetry.emit_best_schedule {
+                        let every = state.telemetry.best_schedule_every_n_callbacks.max(1);
+                        progress_callback_count % every == 0
+                    } else {
+                        false
                     };
 
                     let progress = ProgressUpdate {
@@ -913,12 +925,16 @@ impl Solver for SimulatedAnnealing {
                         // Advanced analytics
                         score_variance,
                         search_efficiency,
-                        // Include a lightweight snapshot of best schedule for UI to save without stopping
-                        best_schedule: Some(
-                            best_state
-                                .to_solver_result(best_cost, no_improvement_counter)
-                                .schedule,
-                        ),
+                        // Optional best schedule snapshot (expensive; gated by telemetry settings)
+                        best_schedule: if include_best_schedule {
+                            Some(
+                                best_state
+                                    .to_solver_result(best_cost, no_improvement_counter)
+                                    .schedule,
+                            )
+                        } else {
+                            None
+                        },
                     };
 
                     // If callback returns false, stop early
@@ -1443,11 +1459,15 @@ impl Solver for SimulatedAnnealing {
                 // Advanced analytics
                 score_variance,
                 search_efficiency,
-                best_schedule: Some(
-                    best_state
-                        .to_solver_result(best_cost, no_improvement_counter)
-                        .schedule,
-                ),
+                best_schedule: if state.telemetry.emit_best_schedule {
+                    Some(
+                        best_state
+                            .to_solver_result(best_cost, no_improvement_counter)
+                            .schedule,
+                    )
+                } else {
+                    None
+                },
             };
 
             // Call the callback one final time (ignore return value since we're done)

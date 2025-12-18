@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useAppStore } from '../store';
-import { Play, Pause, RotateCcw, Settings, TrendingUp, Clock, Activity, ChevronDown, ChevronRight, Info, BarChart3, Zap } from 'lucide-react';
+import { Play, Pause, RotateCcw, Settings, TrendingUp, Clock, Activity, ChevronDown, ChevronRight, Info, BarChart3, Zap, LayoutGrid } from 'lucide-react';
 import type { SolverSettings, Problem } from '../types';
 import { solverWorkerService } from '../services/solverWorker';
 import { wasmService } from '../services/wasm';
@@ -8,6 +8,8 @@ import type { ProgressUpdate } from '../services/wasm';
 import { Tooltip } from './Tooltip';
 import { problemStorage } from '../services/problemStorage';
 import { reconcileResultToInitialSchedule } from '../utils/warmStart';
+import { VisualizationPanel } from '../visualizations/VisualizationPanel';
+import type { ScheduleSnapshot } from '../visualizations/types';
 
 export function SolverPanel() {
   const { solverState, startSolver, stopSolver, resetSolver, setSolverState, setSolution, addNotification, addResult, updateProblem, ensureProblemExists } = useAppStore();
@@ -60,6 +62,33 @@ export function SolverPanel() {
       return next;
     });
   };
+
+  // === Live visualization (optional) ===
+  const [showLiveViz, setShowLiveViz] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('solverLiveVizEnabled') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const showLiveVizRef = useRef(showLiveViz);
+  React.useEffect(() => {
+    showLiveVizRef.current = showLiveViz;
+  }, [showLiveViz]);
+
+  const [liveVizPluginId, setLiveVizPluginId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('solverLiveVizPlugin') || 'scheduleMatrix';
+    } catch {
+      return 'scheduleMatrix';
+    }
+  });
+
+  const [liveVizState, setLiveVizState] = useState<{
+    schedule: ScheduleSnapshot;
+    progress: ProgressUpdate | null;
+  } | null>(null);
+  const liveVizLastUiUpdateRef = useRef<number>(0);
 
   const cancelledRef = useRef(false);
   const solverCompletedRef = useRef(false);
@@ -121,6 +150,14 @@ export function SolverPanel() {
 
   const solverSettings = problem?.settings || getDefaultSolverSettings();
   const [allowedSessionsLocal, setAllowedSessionsLocal] = useState<number[] | null>(null);
+  const getLiveVizProblem = (): Problem | null => {
+    const base = runProblemSnapshotRef.current || problem;
+    if (!base) return null;
+    return {
+      ...base,
+      settings: runSettings || solverSettings,
+    };
+  };
 
   const handleSettingsChange = (newSettings: Partial<SolverSettings>) => {
     if (problem && currentProblemId) {
@@ -243,13 +280,31 @@ export function SolverPanel() {
         }
       }
 
+      // If live visualization is enabled, request periodic best_schedule snapshots from the solver.
+      // This remains opt-in to avoid impacting default solver performance.
+      const runSelectedSettings: SolverSettings = showLiveVizRef.current
+        ? {
+            ...selectedSettings,
+            telemetry: {
+              ...(selectedSettings.telemetry || {}),
+              emit_best_schedule: true,
+              // Progress callbacks are time-based; this keeps snapshots reasonable.
+              best_schedule_every_n_callbacks:
+                selectedSettings.telemetry?.best_schedule_every_n_callbacks ?? 3,
+            },
+          }
+        : selectedSettings;
+
       // Record these settings as the active run settings so progress bars use correct limits
-      setRunSettings(selectedSettings);
+      setRunSettings(runSelectedSettings);
+      // Reset live visualization state for this run
+      setLiveVizState(null);
+      liveVizLastUiUpdateRef.current = 0;
 
       // Create the problem with the chosen solver settings
       const problemWithSettings = {
         ...currentProblem,
-        settings: selectedSettings,
+        settings: runSelectedSettings,
       };
 
       // Capture a deep snapshot of the problem configuration at solver start,
@@ -331,6 +386,18 @@ export function SolverPanel() {
           scoreVariance: progress.score_variance,
           searchEfficiency: progress.search_efficiency,
         });
+
+        // Optional live visualization feed (throttled to avoid excessive React renders)
+        if (showLiveVizRef.current && progress.best_schedule) {
+          const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+          if (now - liveVizLastUiUpdateRef.current > 200) {
+            liveVizLastUiUpdateRef.current = now;
+            setLiveVizState({
+              schedule: progress.best_schedule,
+              progress,
+            });
+          }
+        }
         
         // Log significant score improvements
         if (progress.best_score < ((window as { lastLoggedBestScore?: number }).lastLoggedBestScore ?? 0) - 50 || !(window as { lastLoggedBestScore?: number }).lastLoggedBestScore) {
@@ -470,8 +537,7 @@ export function SolverPanel() {
             } catch (e) {
               console.error('[SolverPanel] Warm-start resume failed:', e);
               // Fallback to normal start
-              // eslint-disable-next-line @typescript-eslint/no-floating-promises
-              handleStartSolver(false);
+              await handleStartSolver(false);
             }
           }, 0);
           return;
@@ -916,6 +982,87 @@ export function SolverPanel() {
             </div>
             <div className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>Elapsed Time</div>
           </div>
+        </div>
+
+        {/* Live Visualization (optional) */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <LayoutGrid className="h-5 w-5" style={{ color: 'var(--color-accent)' }} />
+              <h4 className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                Live visualization
+              </h4>
+            </div>
+
+            <button
+              type="button"
+              className="px-3 py-1 rounded text-sm transition-colors border"
+              style={{
+                backgroundColor: showLiveViz ? 'var(--bg-tertiary)' : 'transparent',
+                color: showLiveViz ? 'var(--color-accent)' : 'var(--text-secondary)',
+                borderColor: showLiveViz ? 'var(--color-accent)' : 'var(--border-primary)',
+              }}
+              onClick={() => {
+                setShowLiveViz((prev) => {
+                  const next = !prev;
+                  try {
+                    localStorage.setItem('solverLiveVizEnabled', String(next));
+                  } catch {
+                    /* ignore */
+                  }
+                  return next;
+                });
+              }}
+            >
+              {showLiveViz ? 'Enabled' : 'Disabled'}
+            </button>
+          </div>
+
+          {showLiveViz ? (
+            solverState.isRunning ? (
+              liveVizState ? (
+                (() => {
+                  const liveProblem = getLiveVizProblem();
+                  if (!liveProblem) return null;
+                  return (
+                    <div
+                      className="rounded-lg border p-4"
+                      style={{
+                        backgroundColor: 'var(--bg-primary)',
+                        borderColor: 'var(--border-primary)',
+                      }}
+                    >
+                      <VisualizationPanel
+                        pluginId={liveVizPluginId}
+                        onPluginChange={(id) => {
+                          setLiveVizPluginId(id);
+                          try {
+                            localStorage.setItem('solverLiveVizPlugin', id);
+                          } catch {
+                            /* ignore */
+                          }
+                        }}
+                        data={{
+                          kind: 'live',
+                          problem: liveProblem,
+                          progress: liveVizState.progress,
+                          schedule: liveVizState.schedule,
+                        }}
+                      />
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                  Waiting for best-schedule snapshots…
+                </div>
+              )
+            ) : (
+              <div className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                Start the solver to see the schedule evolve over time.
+              </div>
+            )
+          ) : null}
         </div>
 
         {/* Live Algorithm Metrics */}
