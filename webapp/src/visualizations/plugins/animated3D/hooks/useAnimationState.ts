@@ -18,20 +18,50 @@ function calculateGroupLayouts(
   const count = groups.length;
   if (count === 0) return layouts;
 
-  // Scale the scene based on total people and groups
-  // More people = larger scene
-  const scaleFactor = Math.sqrt(totalPeople / 20); // Normalized to ~20 people baseline
-  const baseRadius = Math.max(15, 8 * count); // Base radius depends on group count
-  const sceneRadius = baseRadius * Math.max(1, scaleFactor * 0.7);
+  // Calculate average people per group for sizing
+  const avgPeoplePerGroup = totalPeople / Math.max(1, count);
+
+  // Group radius based on how many people need to fit
+  const baseGroupRadius = Math.max(1.5, Math.sqrt(avgPeoplePerGroup) * 0.8);
+
+  // Scene radius - groups should be spaced so they don't overlap
+  // For 2 groups: place them closer together
+  // For many groups: arrange in a circle with appropriate spacing
+  let sceneRadius: number;
+  if (count <= 2) {
+    // For 1-2 groups, place them close together
+    sceneRadius = baseGroupRadius * 2 + 3; // Just enough to not overlap
+  } else {
+    // For more groups, arrange in circle
+    // Circumference needs to fit all groups with spacing
+    const minSpacing = baseGroupRadius * 2.5; // Space between group centers
+    const circumference = count * minSpacing;
+    sceneRadius = Math.max(
+      circumference / (2 * Math.PI),
+      baseGroupRadius * 2 + 2
+    );
+  }
 
   groups.forEach((group, index) => {
-    const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
-    const x = Math.cos(angle) * sceneRadius;
-    const z = Math.sin(angle) * sceneRadius;
+    let x: number, z: number;
 
-    // Group radius based on capacity - scale with scene
-    const baseGroupRadius = Math.max(2, Math.sqrt(group.size) * 1.2);
-    const groupRadius = baseGroupRadius * Math.max(1, scaleFactor * 0.5);
+    if (count === 1) {
+      // Single group at center
+      x = 0;
+      z = 0;
+    } else if (count === 2) {
+      // Two groups side by side
+      x = index === 0 ? -sceneRadius / 2 : sceneRadius / 2;
+      z = 0;
+    } else {
+      // Circular arrangement for 3+ groups
+      const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
+      x = Math.cos(angle) * sceneRadius;
+      z = Math.sin(angle) * sceneRadius;
+    }
+
+    // Scale group radius based on its actual capacity
+    const groupRadius = Math.max(1.5, Math.sqrt(group.size) * 0.7);
 
     layouts.set(group.id, {
       groupId: group.id,
@@ -209,9 +239,16 @@ function buildPersonSessionData(
 
 // Calculate scene scale factor for camera positioning
 export function getSceneScale(totalPeople: number, groupCount: number): number {
-  const scaleFactor = Math.sqrt(totalPeople / 20);
-  const baseRadius = Math.max(15, 8 * groupCount);
-  return baseRadius * Math.max(1, scaleFactor * 0.7);
+  const avgPeoplePerGroup = totalPeople / Math.max(1, groupCount);
+  const baseGroupRadius = Math.max(1.5, Math.sqrt(avgPeoplePerGroup) * 0.8);
+
+  if (groupCount <= 2) {
+    return baseGroupRadius * 2 + 3;
+  }
+
+  const minSpacing = baseGroupRadius * 2.5;
+  const circumference = groupCount * minSpacing;
+  return Math.max(circumference / (2 * Math.PI), baseGroupRadius * 2 + 2);
 }
 
 export interface AnimationStateResult {
