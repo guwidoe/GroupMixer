@@ -1,7 +1,8 @@
-import { LayoutGrid, Share2 } from "lucide-react";
+import { LayoutGrid, Share2, Box } from "lucide-react";
 import type { VisualizationPlugin } from "./types";
 import { ScheduleMatrixVisualization } from "./plugins/scheduleMatrix/ScheduleMatrixVisualization";
 import { ContactGraphVisualization } from "./plugins/contactGraph/ContactGraphVisualization";
+import { Animated3DVisualization } from "./plugins/animated3D/Animated3DVisualization";
 
 export const visualizationPlugins: VisualizationPlugin[] = [
   {
@@ -25,6 +26,17 @@ export const visualizationPlugins: VisualizationPlugin[] = [
       supportsExportPng: false,
     },
     Component: ContactGraphVisualization,
+  },
+  {
+    id: "animated3D",
+    label: "3D Animation",
+    icon: Box,
+    capabilities: {
+      needsProblem: true,
+      supportsLive: false, // 3D animation works best with final results
+      supportsExportPng: false,
+    },
+    Component: Animated3DVisualization,
   },
 ];
 
