@@ -9,21 +9,29 @@ import type {
   PlaybackState,
 } from "../types";
 
-// Calculate group positions in a circle layout
+// Calculate group positions in a circle layout - SCALED based on problem size
 function calculateGroupLayouts(
   groups: Array<{ id: string; size: number }>,
-  radius: number = 20
+  totalPeople: number
 ): Map<string, GroupLayout> {
   const layouts = new Map<string, GroupLayout>();
   const count = groups.length;
+  if (count === 0) return layouts;
+
+  // Scale the scene based on total people and groups
+  // More people = larger scene
+  const scaleFactor = Math.sqrt(totalPeople / 20); // Normalized to ~20 people baseline
+  const baseRadius = Math.max(15, 8 * count); // Base radius depends on group count
+  const sceneRadius = baseRadius * Math.max(1, scaleFactor * 0.7);
 
   groups.forEach((group, index) => {
     const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
-    const x = Math.cos(angle) * radius;
-    const z = Math.sin(angle) * radius;
+    const x = Math.cos(angle) * sceneRadius;
+    const z = Math.sin(angle) * sceneRadius;
 
-    // Group radius based on capacity (min 3, scale with sqrt of size)
-    const groupRadius = Math.max(3, Math.sqrt(group.size) * 1.5);
+    // Group radius based on capacity - scale with scene
+    const baseGroupRadius = Math.max(2, Math.sqrt(group.size) * 1.2);
+    const groupRadius = baseGroupRadius * Math.max(1, scaleFactor * 0.5);
 
     layouts.set(group.id, {
       groupId: group.id,
@@ -44,19 +52,21 @@ export function getPersonPositionInGroup(
 ): THREE.Vector3 {
   if (totalPeople === 0) return groupLayout.position.clone();
 
-  // Arrange people in concentric circles
-  const maxPerRing = 8;
+  // Arrange people in concentric circles with better spacing
+  const maxPerRing = Math.max(6, Math.floor(groupLayout.radius * 2));
   let ring = 0;
   let indexInRing = personIndex;
+  let accumulated = 0;
 
-  while (indexInRing >= maxPerRing * (ring + 1)) {
-    indexInRing -= maxPerRing * (ring + 1);
+  while (accumulated + maxPerRing * (ring + 1) <= personIndex) {
+    accumulated += maxPerRing * (ring + 1);
     ring++;
   }
+  indexInRing = personIndex - accumulated;
 
   const ringCapacity = maxPerRing * (ring + 1);
-  const angle = (indexInRing / ringCapacity) * Math.PI * 2;
-  const ringRadius = (ring + 1) * 1.2;
+  const angle = (indexInRing / ringCapacity) * Math.PI * 2 + ring * 0.3; // Offset each ring
+  const ringRadius = Math.min((ring + 1) * 0.8, groupLayout.radius * 0.8);
 
   return new THREE.Vector3(
     groupLayout.position.x + Math.cos(angle) * ringRadius,
@@ -78,10 +88,7 @@ export function getPersonColor(personId: string): THREE.Color {
 }
 
 // Build session transition events
-function buildTransitions(
-  schedule: NormalizedSchedule,
-  groupLayouts: Map<string, GroupLayout>
-): SessionTransition[] {
+function buildTransitions(schedule: NormalizedSchedule): SessionTransition[] {
   const transitions: SessionTransition[] = [];
 
   for (let i = 0; i < schedule.sessionCount - 1; i++) {
@@ -200,11 +207,19 @@ function buildPersonSessionData(
   return Array.from(peopleMap.values());
 }
 
+// Calculate scene scale factor for camera positioning
+export function getSceneScale(totalPeople: number, groupCount: number): number {
+  const scaleFactor = Math.sqrt(totalPeople / 20);
+  const baseRadius = Math.max(15, 8 * groupCount);
+  return baseRadius * Math.max(1, scaleFactor * 0.7);
+}
+
 export interface AnimationStateResult {
   groupLayouts: Map<string, GroupLayout>;
   personSessionData: PersonSessionData[];
   transitions: SessionTransition[];
   playbackRef: React.MutableRefObject<PlaybackState>;
+  sceneScale: number;
   play: () => void;
   pause: () => void;
   setSpeed: (speed: number) => void;
@@ -218,17 +233,22 @@ export function useAnimationState(
   problem: Problem,
   schedule: NormalizedSchedule
 ): AnimationStateResult {
-  // Memoize group layouts
+  const totalPeople = problem.people.length;
+
+  // Memoize group layouts - now scaled
   const groupLayouts = useMemo(
-    () => calculateGroupLayouts(problem.groups),
-    [problem.groups]
+    () => calculateGroupLayouts(problem.groups, totalPeople),
+    [problem.groups, totalPeople]
+  );
+
+  // Calculate scene scale for camera
+  const sceneScale = useMemo(
+    () => getSceneScale(totalPeople, problem.groups.length),
+    [totalPeople, problem.groups.length]
   );
 
   // Build transitions
-  const transitions = useMemo(
-    () => buildTransitions(schedule, groupLayouts),
-    [schedule, groupLayouts]
-  );
+  const transitions = useMemo(() => buildTransitions(schedule), [schedule]);
 
   // Precompute all person positions for all sessions
   const personSessionData = useMemo(
@@ -299,6 +319,7 @@ export function useAnimationState(
     personSessionData,
     transitions,
     playbackRef,
+    sceneScale,
     play,
     pause,
     setSpeed,

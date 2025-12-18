@@ -1,5 +1,5 @@
-import { useMemo, useState, useCallback, useEffect, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { InstancedHumanoids, PersonLabels } from "./InstancedHumanoids";
@@ -8,7 +8,7 @@ import { Stork, type StorkState } from "./Stork";
 import { GroupPlatform } from "./GroupPlatform";
 import { Ground } from "./Ground";
 import { Sky } from "./Sky";
-import type { GroupLayout, AnimationEvent, PlaybackState, SessionTransition } from "../types";
+import type { GroupLayout, PlaybackState, SessionTransition } from "../types";
 import type { NormalizedSchedule } from "../../../models/normalize";
 import type { PersonSessionData } from "../hooks/useAnimationState";
 
@@ -18,6 +18,7 @@ interface SceneProps {
   transitions: SessionTransition[];
   schedule: NormalizedSchedule;
   playbackRef: React.MutableRefObject<PlaybackState>;
+  sceneScale: number;
   onPlayDinoSound?: (sound: "roar" | "chomp" | "dig") => void;
   onPlayStorkSound?: (sound: "flap") => void;
   onUIUpdate: (state: PlaybackState) => void;
@@ -27,7 +28,9 @@ interface SceneProps {
 interface ActiveDino {
   id: string;
   targetPosition: THREE.Vector3;
+  personName: string;
   state: DinoState;
+  startTime: number;
 }
 
 interface ActiveStork {
@@ -35,6 +38,7 @@ interface ActiveStork {
   targetPosition: THREE.Vector3;
   personName: string;
   state: StorkState;
+  startTime: number;
 }
 
 export function Scene({
@@ -43,6 +47,7 @@ export function Scene({
   transitions,
   schedule,
   playbackRef,
+  sceneScale,
   onPlayDinoSound,
   onPlayStorkSound,
   onUIUpdate,
@@ -51,56 +56,114 @@ export function Scene({
   const [activeDinos, setActiveDinos] = useState<ActiveDino[]>([]);
   const [activeStorks, setActiveStorks] = useState<ActiveStork[]>([]);
 
-  // Track which events have been triggered
+  // Track which events have been triggered GLOBALLY (persists across sessions)
   const triggeredEventsRef = useRef<Set<string>>(new Set());
-  const lastSessionRef = useRef(-1);
+
+  // Track last checked session to avoid re-checking same transition
+  const lastCheckedSessionRef = useRef<number>(-1);
+  const lastProgressRef = useRef<number>(0);
+
+  // Current time for synchronization
+  const timeRef = useRef<number>(0);
+
+  // Clear triggered events when problem changes
+  useEffect(() => {
+    triggeredEventsRef.current = new Set();
+    lastCheckedSessionRef.current = -1;
+    setActiveDinos([]);
+    setActiveStorks([]);
+  }, [personSessionData]);
 
   // Check for special events (dinos/storks) in the animation loop
-  useFrame(() => {
+  useFrame((state) => {
     const playback = playbackRef.current;
     const currentSession = playback.currentSession;
     const progress = playback.transitionProgress;
+    timeRef.current = state.clock.elapsedTime;
 
-    // Reset triggered events when session changes
-    if (lastSessionRef.current !== currentSession) {
-      lastSessionRef.current = currentSession;
-      triggeredEventsRef.current = new Set();
+    // Only check when progress crosses the threshold (0.15 - 0.25) for the first time
+    const progressThreshold = 0.2;
+    const wasBeforeThreshold = lastProgressRef.current < progressThreshold;
+    const isAfterThreshold = progress >= progressThreshold;
+    const sessionChanged = lastCheckedSessionRef.current !== currentSession;
+
+    lastProgressRef.current = progress;
+
+    // Only trigger events when:
+    // 1. We just crossed the threshold for this session, OR
+    // 2. Session changed and we're already past threshold
+    if (
+      !(
+        (sessionChanged && isAfterThreshold) ||
+        (wasBeforeThreshold && isAfterThreshold && !sessionChanged)
+      )
+    ) {
+      if (sessionChanged) {
+        lastCheckedSessionRef.current = currentSession;
+      }
+      return;
     }
 
-    // Only trigger events after progress threshold
-    if (progress < 0.15 || currentSession >= transitions.length) return;
+    lastCheckedSessionRef.current = currentSession;
 
+    // Get transition for current session
+    if (currentSession >= transitions.length) return;
     const transition = transitions[currentSession];
     if (!transition) return;
 
-    // Check for eaten and delivered events
+    // Process events
     for (const event of transition.events) {
-      const eventId = `${event.type}-${event.personId}-${currentSession}`;
+      // Create a globally unique event ID
+      const eventId = `${event.type}-${event.personId}-t${currentSession}`;
+
+      // Skip if already triggered
       if (triggeredEventsRef.current.has(eventId)) continue;
 
       if (event.type === "eaten") {
-        const personData = personSessionData.find(p => p.personId === event.personId);
-        if (personData) {
+        const personData = personSessionData.find(
+          (p) => p.personId === event.personId
+        );
+        if (personData && personData.presentInSession[currentSession]) {
           const pos = personData.sessionPositions[currentSession];
+
+          // Mark as triggered
           triggeredEventsRef.current.add(eventId);
-          setActiveDinos(prev => [...prev, {
-            id: eventId,
-            targetPosition: pos.clone(),
-            state: "emerging" as DinoState,
-          }]);
+
+          setActiveDinos((prev) => [
+            ...prev,
+            {
+              id: eventId,
+              targetPosition: pos.clone(),
+              personName: personData.name,
+              state: "emerging" as DinoState,
+              startTime: timeRef.current,
+            },
+          ]);
         }
       } else if (event.type === "delivered") {
-        const groupLayout = groupLayouts.get(event.toGroup);
-        if (groupLayout) {
-          const personData = personSessionData.find(p => p.personId === event.personId);
-          const personName = personData?.name || event.personId;
+        const nextSession = currentSession + 1;
+        if (nextSession >= schedule.sessionCount) continue;
+
+        const personData = personSessionData.find(
+          (p) => p.personId === event.personId
+        );
+        if (personData && personData.presentInSession[nextSession]) {
+          const pos = personData.sessionPositions[nextSession];
+          const personName = personData.name;
+
+          // Mark as triggered
           triggeredEventsRef.current.add(eventId);
-          setActiveStorks(prev => [...prev, {
-            id: eventId,
-            targetPosition: groupLayout.position.clone(),
-            personName,
-            state: "flying_in" as StorkState,
-          }]);
+
+          setActiveStorks((prev) => [
+            ...prev,
+            {
+              id: eventId,
+              targetPosition: pos.clone(),
+              personName,
+              state: "flying_in" as StorkState,
+              startTime: timeRef.current,
+            },
+          ]);
         }
       }
     }
@@ -108,17 +171,17 @@ export function Scene({
 
   // Handle dino animation complete
   const handleDinoComplete = useCallback((dinoId: string) => {
-    setActiveDinos(prev => prev.filter(d => d.id !== dinoId));
+    setActiveDinos((prev) => prev.filter((d) => d.id !== dinoId));
   }, []);
 
   // Handle stork animation complete
   const handleStorkComplete = useCallback((storkId: string) => {
-    setActiveStorks(prev => prev.filter(s => s.id !== storkId));
+    setActiveStorks((prev) => prev.filter((s) => s.id !== storkId));
   }, []);
 
   // Calculate people count per group for current session (for platform display)
   const [currentSession, setCurrentSession] = useState(0);
-  
+
   useFrame(() => {
     if (playbackRef.current.currentSession !== currentSession) {
       setCurrentSession(playbackRef.current.currentSession);
@@ -137,12 +200,15 @@ export function Scene({
     return counts;
   }, [schedule, currentSession]);
 
+  // Calculate ground size based on scene scale
+  const groundSize = Math.max(100, sceneScale * 3);
+
   return (
     <>
       {/* Lighting */}
       <ambientLight intensity={0.6} />
       <directionalLight
-        position={[30, 50, 30]}
+        position={[sceneScale, sceneScale * 1.5, sceneScale]}
         intensity={1}
         castShadow
         shadow-mapSize-width={1024}
@@ -155,18 +221,18 @@ export function Scene({
         makeDefault
         enableDamping
         dampingFactor={0.1}
-        minDistance={10}
-        maxDistance={150}
+        minDistance={5}
+        maxDistance={sceneScale * 5}
         maxPolarAngle={Math.PI / 2 - 0.1}
         target={[0, 0, 0]}
       />
 
       {/* Environment */}
       <Sky />
-      <Ground size={100} />
+      <Ground size={groundSize} />
 
       {/* Group platforms */}
-      {Array.from(groupLayouts.values()).map(layout => (
+      {Array.from(groupLayouts.values()).map((layout) => (
         <GroupPlatform
           key={layout.groupId}
           layout={layout}
@@ -184,29 +250,29 @@ export function Scene({
       />
 
       {/* Person labels (limited for performance) */}
-      <PersonLabels
-        personData={personSessionData}
-        playbackRef={playbackRef}
-      />
+      <PersonLabels personData={personSessionData} playbackRef={playbackRef} />
 
       {/* Dinosaurs */}
-      {activeDinos.map(dino => (
+      {activeDinos.map((dino) => (
         <Dinosaur
           key={dino.id}
           targetPosition={dino.targetPosition}
+          personName={dino.personName}
           state={dino.state}
+          sceneScale={sceneScale}
           onAnimationComplete={() => handleDinoComplete(dino.id)}
           onPlaySound={onPlayDinoSound}
         />
       ))}
 
       {/* Storks */}
-      {activeStorks.map(stork => (
+      {activeStorks.map((stork) => (
         <Stork
           key={stork.id}
           targetPosition={stork.targetPosition}
           personName={stork.personName}
           state={stork.state}
+          sceneScale={sceneScale}
           onAnimationComplete={() => handleStorkComplete(stork.id)}
           onPlaySound={onPlayStorkSound}
         />

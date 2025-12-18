@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
+import { Html } from "@react-three/drei";
 import * as THREE from "three";
 
 export type StorkState = "hidden" | "flying_in" | "descending" | "flying_out";
@@ -8,6 +9,7 @@ interface StorkProps {
   targetPosition: THREE.Vector3;
   personName: string;
   state: StorkState;
+  sceneScale: number;
   onAnimationComplete?: () => void;
   onPlaySound?: (sound: "flap") => void;
 }
@@ -16,6 +18,7 @@ export function Stork({
   targetPosition,
   personName,
   state,
+  sceneScale,
   onAnimationComplete,
   onPlaySound,
 }: StorkProps) {
@@ -24,17 +27,14 @@ export function Stork({
   const rightWingRef = useRef<THREE.Group>(null);
   const legsRef = useRef<THREE.Group>(null);
 
-  const [internalState, setInternalState] = useState<{
-    phase: StorkState;
-    progress: number;
-    startPos: THREE.Vector3;
-    targetPos: THREE.Vector3;
-  }>({
-    phase: "hidden",
-    progress: 0,
-    startPos: new THREE.Vector3(),
-    targetPos: targetPosition.clone(),
-  });
+  // Use refs for animation state to avoid React re-renders during animation
+  const phaseRef = useRef<StorkState>("hidden");
+  const progressRef = useRef(0);
+  const startPosRef = useRef(new THREE.Vector3());
+  const targetPosRef = useRef(new THREE.Vector3());
+  const dropPosRef = useRef(new THREE.Vector3());
+  const exitPosRef = useRef(new THREE.Vector3());
+  const isInitializedRef = useRef(false);
 
   // Stork colors
   const bodyColor = useMemo(() => new THREE.Color("#ffffff"), []);
@@ -43,37 +43,69 @@ export function Stork({
   const legColor = useMemo(() => new THREE.Color("#ff8888"), []);
   const bagColor = useMemo(() => new THREE.Color("#c9a87c"), []);
 
-  // Reset internal state when external state changes
+  // Scale distances with scene
+  const flyDistance = Math.max(25, sceneScale * 1.5);
+  const flyHeight = Math.max(15, sceneScale * 0.8);
+  const storkScale = Math.max(0.8, sceneScale / 25);
+
+  // Initialize animation when state changes to "flying_in"
   useEffect(() => {
-    if (state === "flying_in") {
+    if (state === "flying_in" && !isInitializedRef.current) {
+      isInitializedRef.current = true;
+
+      // Calculate start position (far away in the sky)
       const angle = Math.random() * Math.PI * 2;
-      const startPos = new THREE.Vector3(
-        targetPosition.x + Math.cos(angle) * 30,
-        20,
-        targetPosition.z + Math.sin(angle) * 30
+      startPosRef.current.set(
+        targetPosition.x + Math.cos(angle) * flyDistance,
+        flyHeight,
+        targetPosition.z + Math.sin(angle) * flyDistance
       );
 
-      setInternalState({
-        phase: "flying_in",
-        progress: 0,
-        startPos,
-        targetPos: new THREE.Vector3(targetPosition.x, 8, targetPosition.z),
-      });
+      // Hover position above target
+      targetPosRef.current.set(targetPosition.x, flyHeight * 0.6, targetPosition.z);
+
+      // Drop position
+      dropPosRef.current.set(targetPosition.x, 2, targetPosition.z);
+
+      // Exit position (fly away in opposite direction)
+      const exitAngle = angle + Math.PI + (Math.random() - 0.5);
+      exitPosRef.current.set(
+        targetPosition.x + Math.cos(exitAngle) * flyDistance * 1.5,
+        flyHeight * 1.2,
+        targetPosition.z + Math.sin(exitAngle) * flyDistance * 1.5
+      );
+
+      phaseRef.current = "flying_in";
+      progressRef.current = 0;
 
       onPlaySound?.("flap");
-    } else if (state === "hidden") {
-      setInternalState((prev) => ({ ...prev, phase: "hidden", progress: 0 }));
     }
-  }, [state, targetPosition, onPlaySound]);
+  }, [state, targetPosition, flyDistance, flyHeight, onPlaySound]);
+
+  // Reset when hidden
+  useEffect(() => {
+    if (state === "hidden") {
+      phaseRef.current = "hidden";
+      progressRef.current = 0;
+      isInitializedRef.current = false;
+    }
+  }, [state]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
     const stork = groupRef.current;
+    const phase = phaseRef.current;
+
+    if (phase === "hidden") {
+      stork.visible = false;
+      return;
+    }
+    stork.visible = true;
 
     // Wing flapping animation
-    if (leftWingRef.current && rightWingRef.current && internalState.phase !== "hidden") {
-      const flapSpeed = internalState.phase === "flying_in" ? 8 : 5;
-      const flapAmount = internalState.phase === "flying_in" ? 0.6 : 0.4;
+    if (leftWingRef.current && rightWingRef.current) {
+      const flapSpeed = phase === "flying_in" || phase === "flying_out" ? 6 : 4;
+      const flapAmount = phase === "flying_in" || phase === "flying_out" ? 0.6 : 0.4;
       const flap = Math.sin(Date.now() * 0.001 * flapSpeed) * flapAmount;
 
       leftWingRef.current.rotation.z = Math.PI / 6 + flap;
@@ -81,224 +113,216 @@ export function Stork({
     }
 
     // Legs dangle while flying
-    if (legsRef.current && internalState.phase !== "hidden") {
+    if (legsRef.current) {
       legsRef.current.rotation.x = Math.sin(Date.now() * 0.002) * 0.1 + 0.3;
     }
 
-    // State machine for animation
-    if (internalState.phase === "flying_in") {
-      const newProgress = Math.min(1, internalState.progress + delta * 0.5);
+    const startPos = startPosRef.current;
+    const targetPos = targetPosRef.current;
+    const dropPos = dropPosRef.current;
+    const exitPos = exitPosRef.current;
 
-      // Fly towards drop point
-      const pos = new THREE.Vector3().lerpVectors(
-        internalState.startPos,
-        internalState.targetPos,
-        easeInOutQuad(newProgress)
-      );
-      stork.position.copy(pos);
+    // State machine for animation
+    if (phase === "flying_in") {
+      progressRef.current = Math.min(1, progressRef.current + delta * 0.35);
+      const p = progressRef.current;
+
+      // Fly towards hover point
+      const easedP = easeInOutQuad(p);
+      stork.position.lerpVectors(startPos, targetPos, easedP);
 
       // Face flying direction
-      const direction = internalState.targetPos.clone().sub(internalState.startPos);
+      const direction = targetPos.clone().sub(startPos);
       const angle = Math.atan2(direction.x, direction.z);
       stork.rotation.y = angle;
-
-      // Slight pitch during flight
       stork.rotation.x = -0.1;
 
-      if (newProgress >= 1) {
-        setInternalState((prev) => ({
-          ...prev,
-          phase: "descending",
-          progress: 0,
-          startPos: prev.targetPos.clone(),
-          targetPos: new THREE.Vector3(targetPosition.x, 2, targetPosition.z),
-        }));
-      } else {
-        setInternalState((prev) => ({ ...prev, progress: newProgress }));
+      if (p >= 1) {
+        phaseRef.current = "descending";
+        progressRef.current = 0;
       }
-    } else if (internalState.phase === "descending") {
-      const newProgress = Math.min(1, internalState.progress + delta * 0.8);
+    } else if (phase === "descending") {
+      progressRef.current = Math.min(1, progressRef.current + delta * 0.5);
+      const p = progressRef.current;
 
       // Descend to drop off
-      const pos = new THREE.Vector3().lerpVectors(
-        internalState.startPos,
-        internalState.targetPos,
-        easeOutQuad(newProgress)
-      );
-      stork.position.copy(pos);
+      const easedP = easeOutQuad(p);
+      stork.position.lerpVectors(targetPos, dropPos, easedP);
 
       // Hover at the end
-      if (newProgress > 0.8) {
-        stork.position.y += Math.sin(Date.now() * 0.005) * 0.2;
+      if (p > 0.7) {
+        stork.position.y += Math.sin(Date.now() * 0.004) * 0.15;
       }
 
-      if (newProgress >= 1) {
-        // Start flying out
-        const exitAngle = Math.random() * Math.PI * 2;
-        setInternalState((prev) => ({
-          ...prev,
-          phase: "flying_out",
-          progress: 0,
-          startPos: prev.targetPos.clone(),
-          targetPos: new THREE.Vector3(
-            targetPosition.x + Math.cos(exitAngle) * 40,
-            25,
-            targetPosition.z + Math.sin(exitAngle) * 40
-          ),
-        }));
-      } else {
-        setInternalState((prev) => ({ ...prev, progress: newProgress }));
+      stork.rotation.x = 0;
+
+      if (p >= 1) {
+        phaseRef.current = "flying_out";
+        progressRef.current = 0;
       }
-    } else if (internalState.phase === "flying_out") {
-      const newProgress = Math.min(1, internalState.progress + delta * 0.6);
+    } else if (phase === "flying_out") {
+      progressRef.current = Math.min(1, progressRef.current + delta * 0.4);
+      const p = progressRef.current;
 
       // Fly away
-      const pos = new THREE.Vector3().lerpVectors(
-        internalState.startPos,
-        internalState.targetPos,
-        easeInQuad(newProgress)
-      );
-      stork.position.copy(pos);
+      const easedP = easeInQuad(p);
+      stork.position.lerpVectors(dropPos, exitPos, easedP);
 
       // Face flying direction
-      const direction = internalState.targetPos.clone().sub(internalState.startPos);
+      const direction = exitPos.clone().sub(dropPos);
       const angle = Math.atan2(direction.x, direction.z);
       stork.rotation.y = angle;
+      stork.rotation.x = -0.12;
 
-      // Pitch up as flying away
-      stork.rotation.x = -0.15;
-
-      if (newProgress >= 1) {
-        setInternalState((prev) => ({ ...prev, phase: "hidden", progress: 0 }));
+      if (p >= 1) {
+        phaseRef.current = "hidden";
+        progressRef.current = 0;
+        isInitializedRef.current = false;
         onAnimationComplete?.();
-      } else {
-        setInternalState((prev) => ({ ...prev, progress: newProgress }));
       }
     }
   });
 
-  if (internalState.phase === "hidden") {
+  // Don't render if hidden
+  if (phaseRef.current === "hidden" && state === "hidden") {
     return null;
   }
 
   // Show bag only during flying_in and descending
-  const showBag = internalState.phase === "flying_in" || internalState.phase === "descending";
+  const showBag = phaseRef.current === "flying_in" || phaseRef.current === "descending";
 
   return (
-    <group ref={groupRef} scale={[0.8, 0.8, 0.8]}>
+    <group ref={groupRef} scale={[storkScale, storkScale, storkScale]}>
+      {/* Person name label */}
+      <Html
+        position={[0, 2.5, 0]}
+        center
+        distanceFactor={10}
+        style={{ pointerEvents: "none", userSelect: "none" }}
+      >
+        <div
+          style={{
+            background: "rgba(0, 100, 180, 0.9)",
+            color: "white",
+            padding: "4px 10px",
+            borderRadius: "6px",
+            fontSize: "12px",
+            fontFamily: "sans-serif",
+            fontWeight: "bold",
+            whiteSpace: "nowrap",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+            border: "2px solid #00aaff",
+          }}
+        >
+          🦩 Delivering: {personName}
+        </div>
+      </Html>
+
       {/* Body */}
       <mesh position={[0, 0, 0]} rotation={[0.1, 0, 0]}>
-        <capsuleGeometry args={[0.3, 0.8, 8, 16]} />
+        <capsuleGeometry args={[0.35, 0.9, 8, 16]} />
         <meshStandardMaterial color={bodyColor} />
       </mesh>
 
       {/* Neck */}
-      <group position={[0, 0.5, 0.4]}>
+      <group position={[0, 0.55, 0.45]}>
         <mesh rotation={[-0.3, 0, 0]}>
-          <cylinderGeometry args={[0.08, 0.12, 0.6, 8]} />
+          <cylinderGeometry args={[0.1, 0.14, 0.7, 8]} />
           <meshStandardMaterial color={bodyColor} />
         </mesh>
       </group>
 
       {/* Head */}
-      <group position={[0, 0.8, 0.6]}>
+      <group position={[0, 0.9, 0.7]}>
         <mesh>
-          <sphereGeometry args={[0.15, 16, 16]} />
+          <sphereGeometry args={[0.18, 16, 16]} />
           <meshStandardMaterial color={bodyColor} />
         </mesh>
 
         {/* Beak */}
-        <mesh position={[0, -0.05, 0.2]} rotation={[0.1, 0, 0]}>
-          <coneGeometry args={[0.05, 0.4, 8]} />
+        <mesh position={[0, -0.05, 0.25]} rotation={[0.1, 0, 0]}>
+          <coneGeometry args={[0.06, 0.45, 8]} />
           <meshStandardMaterial color={beakColor} />
         </mesh>
 
         {/* Eyes */}
-        <mesh position={[0.08, 0.05, 0.08]}>
-          <sphereGeometry args={[0.03, 8, 8]} />
+        <mesh position={[0.1, 0.06, 0.1]}>
+          <sphereGeometry args={[0.04, 8, 8]} />
           <meshStandardMaterial color="black" />
         </mesh>
-        <mesh position={[-0.08, 0.05, 0.08]}>
-          <sphereGeometry args={[0.03, 8, 8]} />
+        <mesh position={[-0.1, 0.06, 0.1]}>
+          <sphereGeometry args={[0.04, 8, 8]} />
           <meshStandardMaterial color="black" />
         </mesh>
       </group>
 
       {/* Left Wing */}
-      <group ref={leftWingRef} position={[0.3, 0.2, 0]}>
+      <group ref={leftWingRef} position={[0.35, 0.25, 0]}>
         <mesh rotation={[0, 0, Math.PI / 6]}>
-          <boxGeometry args={[0.8, 0.05, 0.4]} />
+          <boxGeometry args={[1.1, 0.06, 0.55]} />
           <meshStandardMaterial color={bodyColor} />
         </mesh>
-        {/* Wing tip (black) */}
-        <mesh position={[0.5, 0, 0]} rotation={[0, 0, Math.PI / 6]}>
-          <boxGeometry args={[0.3, 0.04, 0.35]} />
+        <mesh position={[0.65, 0, 0]} rotation={[0, 0, Math.PI / 6]}>
+          <boxGeometry args={[0.45, 0.05, 0.5]} />
           <meshStandardMaterial color={wingTipColor} />
         </mesh>
       </group>
 
       {/* Right Wing */}
-      <group ref={rightWingRef} position={[-0.3, 0.2, 0]}>
+      <group ref={rightWingRef} position={[-0.35, 0.25, 0]}>
         <mesh rotation={[0, 0, -Math.PI / 6]}>
-          <boxGeometry args={[0.8, 0.05, 0.4]} />
+          <boxGeometry args={[1.1, 0.06, 0.55]} />
           <meshStandardMaterial color={bodyColor} />
         </mesh>
-        {/* Wing tip (black) */}
-        <mesh position={[-0.5, 0, 0]} rotation={[0, 0, -Math.PI / 6]}>
-          <boxGeometry args={[0.3, 0.04, 0.35]} />
+        <mesh position={[-0.65, 0, 0]} rotation={[0, 0, -Math.PI / 6]}>
+          <boxGeometry args={[0.45, 0.05, 0.5]} />
           <meshStandardMaterial color={wingTipColor} />
         </mesh>
       </group>
 
       {/* Tail */}
-      <mesh position={[0, 0.1, -0.6]} rotation={[0.3, 0, 0]}>
-        <boxGeometry args={[0.15, 0.02, 0.3]} />
+      <mesh position={[0, 0.12, -0.7]} rotation={[0.3, 0, 0]}>
+        <boxGeometry args={[0.18, 0.03, 0.35]} />
         <meshStandardMaterial color={bodyColor} />
       </mesh>
-      <mesh position={[0.08, 0.1, -0.65]} rotation={[0.3, 0.1, 0]}>
-        <boxGeometry args={[0.1, 0.02, 0.25]} />
+      <mesh position={[0.1, 0.12, -0.75]} rotation={[0.3, 0.1, 0]}>
+        <boxGeometry args={[0.12, 0.03, 0.3]} />
         <meshStandardMaterial color={wingTipColor} />
       </mesh>
-      <mesh position={[-0.08, 0.1, -0.65]} rotation={[0.3, -0.1, 0]}>
-        <boxGeometry args={[0.1, 0.02, 0.25]} />
+      <mesh position={[-0.1, 0.12, -0.75]} rotation={[0.3, -0.1, 0]}>
+        <boxGeometry args={[0.12, 0.03, 0.3]} />
         <meshStandardMaterial color={wingTipColor} />
       </mesh>
 
       {/* Legs */}
-      <group ref={legsRef} position={[0, -0.4, 0]}>
-        {/* Left leg */}
-        <mesh position={[0.1, 0, 0.1]}>
-          <cylinderGeometry args={[0.02, 0.02, 0.4, 8]} />
+      <group ref={legsRef} position={[0, -0.45, 0]}>
+        <mesh position={[0.12, 0, 0.12]}>
+          <cylinderGeometry args={[0.025, 0.025, 0.45, 8]} />
           <meshStandardMaterial color={legColor} />
         </mesh>
-        {/* Right leg */}
-        <mesh position={[-0.1, 0, 0.1]}>
-          <cylinderGeometry args={[0.02, 0.02, 0.4, 8]} />
+        <mesh position={[-0.12, 0, 0.12]}>
+          <cylinderGeometry args={[0.025, 0.025, 0.45, 8]} />
           <meshStandardMaterial color={legColor} />
         </mesh>
       </group>
 
       {/* Delivery bag with baby */}
       {showBag && (
-        <group position={[0, -0.7, 0.3]}>
-          {/* Bag */}
+        <group position={[0, -0.9, 0.35]}>
           <mesh>
-            <sphereGeometry args={[0.25, 16, 16]} />
+            <sphereGeometry args={[0.35, 16, 16]} />
             <meshStandardMaterial color={bagColor} />
           </mesh>
-          {/* Bag tie/knot */}
-          <mesh position={[0, 0.2, 0]}>
-            <sphereGeometry args={[0.08, 8, 8]} />
+          <mesh position={[0, 0.3, 0]}>
+            <sphereGeometry args={[0.12, 8, 8]} />
             <meshStandardMaterial color={bagColor} />
           </mesh>
-          {/* String to beak */}
-          <mesh position={[0, 0.5, 0.15]} rotation={[0.2, 0, 0]}>
-            <cylinderGeometry args={[0.01, 0.01, 0.5, 4]} />
+          <mesh position={[0, 0.7, 0.18]} rotation={[0.2, 0, 0]}>
+            <cylinderGeometry args={[0.018, 0.018, 0.65, 4]} />
             <meshStandardMaterial color="#8b7355" />
           </mesh>
-          {/* Little person head peeking out */}
-          <mesh position={[0, 0.15, 0.15]}>
-            <sphereGeometry args={[0.1, 16, 16]} />
+          <mesh position={[0, 0.22, 0.2]}>
+            <sphereGeometry args={[0.14, 16, 16]} />
             <meshStandardMaterial color="#e0b89e" />
           </mesh>
         </group>

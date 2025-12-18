@@ -37,6 +37,7 @@ export function Animated3DVisualization({ data }: VisualizationComponentProps) {
     personSessionData,
     transitions,
     playbackRef,
+    sceneScale,
     play,
     pause,
     setSpeed,
@@ -98,20 +99,32 @@ export function Animated3DVisualization({ data }: VisualizationComponentProps) {
     setUIPlayback(playbackRef.current);
   }, [pause, playbackRef]);
 
-  const handleSetSpeed = useCallback((speed: number) => {
-    setSpeed(speed);
-    setUIPlayback(playbackRef.current);
-  }, [setSpeed, playbackRef]);
+  const handleSetSpeed = useCallback(
+    (speed: number) => {
+      setSpeed(speed);
+      setUIPlayback(playbackRef.current);
+    },
+    [setSpeed, playbackRef]
+  );
 
-  const handleGoToSession = useCallback((session: number) => {
-    goToSession(session);
-    setUIPlayback(playbackRef.current);
-  }, [goToSession, playbackRef]);
+  const handleGoToSession = useCallback(
+    (session: number) => {
+      goToSession(session);
+      setUIPlayback(playbackRef.current);
+    },
+    [goToSession, playbackRef]
+  );
 
   const handleReset = useCallback(() => {
     reset();
     setUIPlayback(playbackRef.current);
   }, [reset, playbackRef]);
+
+  // Calculate camera position based on scene scale
+  const cameraPosition: [number, number, number] = useMemo(() => {
+    const distance = Math.max(30, sceneScale * 1.5);
+    return [distance, distance * 0.8, distance];
+  }, [sceneScale]);
 
   return (
     <div className="relative w-full h-[600px] rounded-lg overflow-hidden border border-[var(--border-primary)]">
@@ -172,13 +185,13 @@ export function Animated3DVisualization({ data }: VisualizationComponentProps) {
       {/* 3D Canvas */}
       <Canvas
         camera={{
-          position: [30, 25, 30],
+          position: cameraPosition,
           fov: 50,
           near: 0.1,
-          far: 500,
+          far: sceneScale * 10,
         }}
         shadows
-        gl={{ 
+        gl={{
           antialias: true,
           powerPreference: "high-performance",
         }}
@@ -191,6 +204,7 @@ export function Animated3DVisualization({ data }: VisualizationComponentProps) {
             transitions={transitions}
             schedule={schedule}
             playbackRef={playbackRef}
+            sceneScale={sceneScale}
             onPlayDinoSound={handleDinoSound}
             onPlayStorkSound={handleStorkSound}
             onUIUpdate={handleUIUpdate}
