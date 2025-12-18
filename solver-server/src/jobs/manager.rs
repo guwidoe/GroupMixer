@@ -42,7 +42,6 @@ impl JobManager {
         }));
         self.jobs.insert(job_id, job.clone());
 
-        let manager_clone = self.clone();
         task::spawn(async move {
             {
                 let mut j = job.lock().unwrap();
@@ -51,11 +50,17 @@ impl JobManager {
 
             let solver_result = run_solver(&input);
 
-            {
-                let mut j = job.lock().unwrap();
-                j.status = JobStatus::Completed;
-                j.result = serde_json::to_string(&solver_result).ok();
-            }
+            let mut j = job.lock().unwrap();
+            match &solver_result {
+                Ok(_) => {
+                    j.status = JobStatus::Completed;
+                    j.result = serde_json::to_string(&solver_result).ok();
+                }
+                Err(e) => {
+                    j.status = JobStatus::Failed;
+                    j.result = Some(format!("{e:?}"));
+                }
+            };
         });
 
         job_id
