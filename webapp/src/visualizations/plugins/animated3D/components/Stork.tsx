@@ -1,9 +1,13 @@
-import { useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect, useMemo, Suspense } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Html } from "@react-three/drei";
+import { useGLTF, useAnimations, Html } from "@react-three/drei";
 import * as THREE from "three";
+import { SkeletonUtils } from "three-stdlib";
 
 export type StorkState = "hidden" | "flying_in" | "hovering" | "dropping" | "flying_out";
+
+// Use flamingo model which has wing flapping animation
+const STORK_MODEL_URL = "/models/flamingo.glb?v=2";
 
 interface StorkProps {
   targetPosition: THREE.Vector3;
@@ -16,7 +20,7 @@ interface StorkProps {
   onPlaySound?: (sound: "flap") => void;
 }
 
-export function Stork({
+function StorkModel({
   targetPosition,
   personName,
   personId,
@@ -27,12 +31,13 @@ export function Stork({
   onPlaySound,
 }: StorkProps) {
   const groupRef = useRef<THREE.Group>(null);
-  const leftWingRef = useRef<THREE.Group>(null);
-  const rightWingRef = useRef<THREE.Group>(null);
-  const legsRef = useRef<THREE.Group>(null);
-  const bagRef = useRef<THREE.Group>(null);
+  
+  // Load GLTF model
+  const { scene, animations } = useGLTF(STORK_MODEL_URL);
+  const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
+  const { actions, mixer } = useAnimations(animations, clone);
 
-  // Animation state
+  // Animation state refs
   const phaseRef = useRef<StorkState>("hidden");
   const progressRef = useRef(0);
   const startPosRef = useRef(new THREE.Vector3());
@@ -40,18 +45,32 @@ export function Stork({
   const dropPosRef = useRef(new THREE.Vector3());
   const exitPosRef = useRef(new THREE.Vector3());
   const isInitializedRef = useRef(false);
+  const currentActionRef = useRef<THREE.AnimationAction | null>(null);
 
-  // Colors
-  const bodyColor = useMemo(() => new THREE.Color("#ffffff"), []);
-  const wingTipColor = useMemo(() => new THREE.Color("#1a1a1a"), []);
-  const beakColor = useMemo(() => new THREE.Color("#ff6b35"), []);
-  const legColor = useMemo(() => new THREE.Color("#ff8888"), []);
-  const bagColor = useMemo(() => new THREE.Color("#c9a87c"), []);
-
-  // Scale
+  // Scale - flamingo model from three.js examples
   const flyDistance = Math.max(20, sceneScale * 1.2);
   const flyHeight = Math.max(12, sceneScale * 0.7);
-  const storkScale = Math.max(1, sceneScale / 20);
+  const storkScale = Math.max(0.01, sceneScale / 1500); // Smaller scale
+
+  // Start animation immediately when model loads
+  useEffect(() => {
+    const animNames = Object.keys(actions);
+    console.log("Stork animations available:", animNames);
+    
+    // Play the first available animation (flamingo_flyA_)
+    const flyAnim = animNames.find(a => 
+      a.toLowerCase().includes("fly")
+    ) || animNames[0];
+    
+    if (flyAnim && actions[flyAnim]) {
+      const action = actions[flyAnim];
+      action.reset();
+      action.setLoop(THREE.LoopRepeat, Infinity);
+      action.setEffectiveTimeScale(1.5); // Faster flapping
+      action.play();
+      currentActionRef.current = action;
+    }
+  }, [actions]);
 
   // Initialize
   useEffect(() => {
@@ -76,10 +95,11 @@ export function Stork({
 
       phaseRef.current = "flying_in";
       progressRef.current = 0;
+      // Animation already playing from useEffect
       onPhaseChange?.("flying_in", personId);
       onPlaySound?.("flap");
     }
-  }, [state, targetPosition, flyDistance, flyHeight, onPlaySound, onPhaseChange, personId]);
+  }, [state, targetPosition, flyDistance, flyHeight, onPlaySound, onPhaseChange, personId, actions]);
 
   useEffect(() => {
     if (state === "hidden") {
@@ -94,25 +114,13 @@ export function Stork({
     const stork = groupRef.current;
     const phase = phaseRef.current;
 
+    mixer.update(delta);
+
     if (phase === "hidden") {
       stork.visible = false;
       return;
     }
     stork.visible = true;
-
-    // Wing flapping
-    if (leftWingRef.current && rightWingRef.current) {
-      const flapSpeed = phase === "flying_in" || phase === "flying_out" ? 8 : 5;
-      const flapAmount = phase === "flying_in" || phase === "flying_out" ? 0.7 : 0.4;
-      const flap = Math.sin(Date.now() * 0.001 * flapSpeed) * flapAmount;
-      leftWingRef.current.rotation.z = Math.PI / 6 + flap;
-      rightWingRef.current.rotation.z = -(Math.PI / 6 + flap);
-    }
-
-    // Legs dangle
-    if (legsRef.current) {
-      legsRef.current.rotation.x = Math.sin(Date.now() * 0.002) * 0.1 + 0.3;
-    }
 
     const startPos = startPosRef.current;
     const hoverPos = hoverPosRef.current;
@@ -129,6 +137,7 @@ export function Stork({
       const direction = hoverPos.clone().sub(startPos);
       stork.rotation.y = Math.atan2(direction.x, direction.z);
       stork.rotation.x = -0.1;
+      stork.rotation.z = Math.sin(Date.now() * 0.003) * 0.1; // Banking
 
       if (p >= 1) {
         phaseRef.current = "hovering";
@@ -143,26 +152,19 @@ export function Stork({
       stork.position.lerpVectors(hoverPos, dropPos, easedP);
       stork.position.y += Math.sin(Date.now() * 0.005) * 0.1;
       stork.rotation.x = 0;
+      stork.rotation.z = 0;
 
       if (p >= 1) {
         phaseRef.current = "dropping";
         progressRef.current = 0;
-        onPhaseChange?.("dropping", personId); // Person should appear NOW
+        onPhaseChange?.("dropping", personId);
       }
     } else if (phase === "dropping") {
       progressRef.current = Math.min(1, progressRef.current + delta * 1.5);
       const p = progressRef.current;
 
-      // Stork hovers while "dropping" the bag
       stork.position.copy(dropPos);
       stork.position.y += Math.sin(Date.now() * 0.006) * 0.08;
-
-      // Bag drops down
-      if (bagRef.current) {
-        const bagDrop = easeInQuad(p) * 3;
-        bagRef.current.position.y = -0.9 - bagDrop;
-        bagRef.current.visible = p < 0.8; // Bag disappears as person "emerges"
-      }
 
       if (p >= 1) {
         phaseRef.current = "flying_out";
@@ -179,6 +181,7 @@ export function Stork({
       const direction = exitPos.clone().sub(dropPos);
       stork.rotation.y = Math.atan2(direction.x, direction.z);
       stork.rotation.x = -0.12;
+      stork.rotation.z = Math.sin(Date.now() * 0.003) * 0.1;
 
       if (p >= 1) {
         phaseRef.current = "hidden";
@@ -193,11 +196,13 @@ export function Stork({
     return null;
   }
 
-  const showBag = phaseRef.current === "flying_in" || phaseRef.current === "hovering" || phaseRef.current === "dropping";
+  const showBag = phaseRef.current === "flying_in" || phaseRef.current === "hovering";
 
   return (
     <group ref={groupRef} scale={[storkScale, storkScale, storkScale]}>
-      {/* Label */}
+      <primitive object={clone} />
+      
+      {/* Label - positioned above model */}
       <Html
         position={[0, 3, 0]}
         center
@@ -222,102 +227,103 @@ export function Stork({
         </div>
       </Html>
 
-      {/* Body */}
-      <mesh position={[0, 0, 0]} rotation={[0.1, 0, 0]}>
-        <capsuleGeometry args={[0.35, 0.9, 8, 16]} />
-        <meshStandardMaterial color={bodyColor} />
-      </mesh>
-
-      {/* Neck */}
-      <group position={[0, 0.55, 0.45]}>
-        <mesh rotation={[-0.3, 0, 0]}>
-          <cylinderGeometry args={[0.1, 0.14, 0.7, 8]} />
-          <meshStandardMaterial color={bodyColor} />
-        </mesh>
-      </group>
-
-      {/* Head */}
-      <group position={[0, 0.9, 0.7]}>
-        <mesh>
-          <sphereGeometry args={[0.18, 16, 16]} />
-          <meshStandardMaterial color={bodyColor} />
-        </mesh>
-        <mesh position={[0, -0.05, 0.25]} rotation={[0.1, 0, 0]}>
-          <coneGeometry args={[0.06, 0.45, 8]} />
-          <meshStandardMaterial color={beakColor} />
-        </mesh>
-        <mesh position={[0.1, 0.06, 0.1]}>
-          <sphereGeometry args={[0.04, 8, 8]} />
-          <meshStandardMaterial color="black" />
-        </mesh>
-        <mesh position={[-0.1, 0.06, 0.1]}>
-          <sphereGeometry args={[0.04, 8, 8]} />
-          <meshStandardMaterial color="black" />
-        </mesh>
-      </group>
-
-      {/* Wings */}
-      <group ref={leftWingRef} position={[0.35, 0.25, 0]}>
-        <mesh rotation={[0, 0, Math.PI / 6]}>
-          <boxGeometry args={[1.1, 0.06, 0.55]} />
-          <meshStandardMaterial color={bodyColor} />
-        </mesh>
-        <mesh position={[0.65, 0, 0]} rotation={[0, 0, Math.PI / 6]}>
-          <boxGeometry args={[0.45, 0.05, 0.5]} />
-          <meshStandardMaterial color={wingTipColor} />
-        </mesh>
-      </group>
-      <group ref={rightWingRef} position={[-0.35, 0.25, 0]}>
-        <mesh rotation={[0, 0, -Math.PI / 6]}>
-          <boxGeometry args={[1.1, 0.06, 0.55]} />
-          <meshStandardMaterial color={bodyColor} />
-        </mesh>
-        <mesh position={[-0.65, 0, 0]} rotation={[0, 0, -Math.PI / 6]}>
-          <boxGeometry args={[0.45, 0.05, 0.5]} />
-          <meshStandardMaterial color={wingTipColor} />
-        </mesh>
-      </group>
-
-      {/* Tail */}
-      <mesh position={[0, 0.12, -0.7]} rotation={[0.3, 0, 0]}>
-        <boxGeometry args={[0.18, 0.03, 0.35]} />
-        <meshStandardMaterial color={bodyColor} />
-      </mesh>
-
-      {/* Legs */}
-      <group ref={legsRef} position={[0, -0.45, 0]}>
-        <mesh position={[0.12, 0, 0.12]}>
-          <cylinderGeometry args={[0.025, 0.025, 0.45, 8]} />
-          <meshStandardMaterial color={legColor} />
-        </mesh>
-        <mesh position={[-0.12, 0, 0.12]}>
-          <cylinderGeometry args={[0.025, 0.025, 0.45, 8]} />
-          <meshStandardMaterial color={legColor} />
-        </mesh>
-      </group>
-
       {/* Delivery bag */}
-      {showBag && (
-        <group ref={bagRef} position={[0, -0.9, 0.35]}>
-          <mesh>
-            <sphereGeometry args={[0.35, 16, 16]} />
-            <meshStandardMaterial color={bagColor} />
-          </mesh>
-          <mesh position={[0, 0.3, 0]}>
-            <sphereGeometry args={[0.12, 8, 8]} />
-            <meshStandardMaterial color={bagColor} />
-          </mesh>
-          <mesh position={[0, 0.7, 0.18]} rotation={[0.2, 0, 0]}>
-            <cylinderGeometry args={[0.018, 0.018, 0.65, 4]} />
-            <meshStandardMaterial color="#8b7355" />
-          </mesh>
-          {/* Baby head poking out */}
-          <mesh position={[0, 0.22, 0.2]}>
-            <sphereGeometry args={[0.14, 16, 16]} />
-            <meshStandardMaterial color="#e0b89e" />
-          </mesh>
-        </group>
-      )}
+      {showBag && <DeliveryBag />}
+    </group>
+  );
+}
+
+// Delivery bag (procedural, attached to stork)
+function DeliveryBag() {
+  const bagColor = useMemo(() => new THREE.Color("#c9a87c"), []);
+  const skinColor = useMemo(() => new THREE.Color("#e0b89e"), []);
+  
+  return (
+    <group position={[0, -1.5, 0.5]}>
+      {/* Bag */}
+      <mesh>
+        <sphereGeometry args={[0.8, 16, 16]} />
+        <meshStandardMaterial color={bagColor} />
+      </mesh>
+      {/* Knot */}
+      <mesh position={[0, 0.6, 0]}>
+        <sphereGeometry args={[0.25, 8, 8]} />
+        <meshStandardMaterial color={bagColor} />
+      </mesh>
+      {/* Baby head */}
+      <mesh position={[0, 0.4, 0.4]}>
+        <sphereGeometry args={[0.3, 16, 16]} />
+        <meshStandardMaterial color={skinColor} />
+      </mesh>
+    </group>
+  );
+}
+
+// Main component with Suspense fallback
+export function Stork(props: StorkProps) {
+  return (
+    <Suspense fallback={<ProceduralStork {...props} />}>
+      <StorkModel {...props} />
+    </Suspense>
+  );
+}
+
+// Fallback procedural stork (simplified)
+function ProceduralStork({
+  targetPosition,
+  personName,
+  personId,
+  state,
+  sceneScale,
+  onAnimationComplete,
+  onPhaseChange,
+  onPlaySound,
+}: StorkProps) {
+  const groupRef = useRef<THREE.Group>(null);
+  const phaseRef = useRef<StorkState>("hidden");
+  const progressRef = useRef(0);
+  const isInitializedRef = useRef(false);
+
+  const bodyColor = useMemo(() => new THREE.Color("#ffffff"), []);
+  const storkScale = Math.max(1, sceneScale / 20);
+
+  useEffect(() => {
+    if (state === "flying_in" && !isInitializedRef.current) {
+      isInitializedRef.current = true;
+      phaseRef.current = "flying_in";
+      progressRef.current = 0;
+      onPhaseChange?.("flying_in", personId);
+      onPlaySound?.("flap");
+    }
+  }, [state, onPlaySound, onPhaseChange, personId]);
+
+  useEffect(() => {
+    if (state === "hidden") {
+      phaseRef.current = "hidden";
+      progressRef.current = 0;
+      isInitializedRef.current = false;
+    }
+  }, [state]);
+
+  useFrame((_, delta) => {
+    if (!groupRef.current) return;
+    const stork = groupRef.current;
+    if (phaseRef.current === "hidden") {
+      stork.visible = false;
+      return;
+    }
+    stork.visible = true;
+    progressRef.current = Math.min(1, progressRef.current + delta * 0.3);
+  });
+
+  if (phaseRef.current === "hidden" && state === "hidden") return null;
+
+  return (
+    <group ref={groupRef} scale={[storkScale, storkScale, storkScale]} position={[targetPosition.x, 10, targetPosition.z]}>
+      <mesh>
+        <capsuleGeometry args={[0.3, 0.8, 8, 16]} />
+        <meshStandardMaterial color={bodyColor} />
+      </mesh>
     </group>
   );
 }
@@ -333,3 +339,6 @@ function easeOutQuad(x: number): number {
 function easeInQuad(x: number): number {
   return x * x;
 }
+
+// Preload
+useGLTF.preload("/models/flamingo.glb");

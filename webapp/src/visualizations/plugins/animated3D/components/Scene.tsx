@@ -2,7 +2,8 @@ import { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
-import { InstancedHumanoids, PersonLabels } from "./InstancedHumanoids";
+import { GLTFHumanoids } from "./GLTFHumanoids";
+import { PersonLabels } from "./InstancedHumanoids";
 import { Dinosaur, type DinoState } from "./Dinosaur";
 import { Stork, type StorkState } from "./Stork";
 import { GroupPlatform } from "./GroupPlatform";
@@ -270,7 +271,7 @@ export function Scene({
         />
       ))}
 
-      <InstancedHumanoids
+      <GLTFHumanoids
         personData={personSessionData}
         playbackRef={playbackRef}
         transitions={transitions}
@@ -278,8 +279,6 @@ export function Scene({
         onUIUpdate={onUIUpdate}
         coordination={coordination}
       />
-
-      <PersonLabels personData={personSessionData} playbackRef={playbackRef} />
 
       {activeDinos.map((dino) => (
         <Dinosaur
