@@ -1,6 +1,7 @@
-import { LayoutGrid } from "lucide-react";
+import { LayoutGrid, Share2 } from "lucide-react";
 import type { VisualizationPlugin } from "./types";
 import { ScheduleMatrixVisualization } from "./plugins/scheduleMatrix/ScheduleMatrixVisualization";
+import { ContactGraphVisualization } from "./plugins/contactGraph/ContactGraphVisualization";
 
 export const visualizationPlugins: VisualizationPlugin[] = [
   {
@@ -13,6 +14,17 @@ export const visualizationPlugins: VisualizationPlugin[] = [
       supportsExportPng: true,
     },
     Component: ScheduleMatrixVisualization,
+  },
+  {
+    id: "contactGraph",
+    label: "Contact network",
+    icon: Share2,
+    capabilities: {
+      needsProblem: true,
+      supportsLive: true,
+      supportsExportPng: false,
+    },
+    Component: ContactGraphVisualization,
   },
 ];
 

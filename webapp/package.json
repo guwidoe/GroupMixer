@@ -12,9 +12,12 @@
     "build-wasm": "wasm-pack build ../solver-wasm --target web --out-dir $(pwd)/public"
   },
   "dependencies": {
+    "@react-sigma/core": "^5.0.6",
     "@tailwindcss/postcss": "^4.1.11",
     "@types/node": "24.0.13",
     "@vercel/analytics": "^1.5.0",
+    "graphology": "^0.26.0",
+    "graphology-layout-forceatlas2": "^0.10.1",
     "html-to-image": "^1.11.13",
     "lucide-react": "^0.525.0",
     "react": "^19.1.0",

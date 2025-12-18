@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import type { VisualizationData } from "./types";
 import { getVisualizationPlugin, visualizationPlugins } from "./registry";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 export function VisualizationPanel({
   pluginId,
@@ -50,7 +51,9 @@ export function VisualizationPanel({
         </div>
       </div>
 
-      <plugin.Component data={data} />
+      <ErrorBoundary label={plugin.label}>
+        <plugin.Component data={data} />
+      </ErrorBoundary>
     </div>
   );
 }
