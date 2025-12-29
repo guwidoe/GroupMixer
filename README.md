@@ -4,13 +4,13 @@
 
 # GroupMixer
 
-A sophisticated Rust-based solution for optimally distributing people into groups across multiple sessions to maximize social interactions while respecting various constraints. Now featuring **Group Mixer**, a modern web application that makes group optimization accessible to everyone.
+A sophisticated Rust-based solution for optimally distributing people into groups across multiple sessions to maximize social interactions while respecting various constraints. Now featuring **GroupMixer**, a modern web application that makes group optimization accessible to everyone.
 
-## 🌟 Try Group Mixer
+## 🌟 Try GroupMixer
 
-**Group Mixer** is a user-friendly web application built on top of the GroupMixer engine. Perfect for conferences, workshops, team building, and any event where you need to create optimal group assignments.
+**GroupMixer** is a user-friendly web application built on top of the GroupMixer engine. Perfect for conferences, workshops, team building, and any event where you need to create optimal group assignments.
 
-🚀 **[Try Group Mixer Now](https://groupmixer.app)** - No installation required, runs entirely in your browser!
+🚀 **[Try GroupMixer Now](https://groupmixer.app)** - No installation required, runs entirely in your browser!
 
 ## Overview
 
@@ -35,7 +35,7 @@ The heart of the system, providing:
 - **Configurable stop conditions** (time limits, iteration limits, improvement thresholds)
 - **Extensive test suite** with data-driven tests
 
-### 🌐 `webapp` - Group Mixer Web Application
+### 🌐 `webapp` - GroupMixer Web Application
 
 A modern, full-featured React application that provides:
 
@@ -113,11 +113,11 @@ WebAssembly compilation of the core solver for:
 
 ## Quick Start
 
-### 🎯 Using Group Mixer (Recommended)
+### 🎯 Using GroupMixer (Recommended)
 
 The easiest way to get started is with the web application:
 
-1. **Visit the deployed app** at [Group Mixer](https://groupmixer.app)
+1. **Visit the deployed app** at [GroupMixer](https://groupmixer.app)
 2. **Try a demo case** from the dropdown to see the tool in action
 3. **Create your own problem** by defining people, groups, and constraints
 4. **Run the solver** and view optimized results
@@ -205,7 +205,7 @@ match run_solver(&input) {
 
 ## Use Cases
 
-Group Mixer is perfect for:
+GroupMixer is perfect for:
 
 ### 📚 Conferences & Workshops
 
