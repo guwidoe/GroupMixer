@@ -14,7 +14,18 @@ interface AttributeBalanceConstraint {
   penalty_weight: number;
   sessions?: number[];
 }
-import { loadDemoCasesWithMetrics, type DemoCaseWithMetrics } from '../services/demoDataService';
+// Type for demo case with metrics - matches export from demoDataService
+// Imported dynamically to enable code splitting
+interface DemoCaseWithMetrics {
+  id: string;
+  name: string;
+  description: string;
+  category: "Simple" | "Intermediate" | "Advanced" | "Benchmark";
+  filename: string;
+  peopleCount: number;
+  groupCount: number;
+  sessionCount: number;
+}
 import PersonCard from './PersonCard';
 import HardConstraintsPanel from './constraints/HardConstraintsPanel';
 import SoftConstraintsPanel from './constraints/SoftConstraintsPanel';
@@ -190,7 +201,9 @@ export function ProblemEditor() {
   useEffect(() => {
     if (demoDropdownOpen && demoCasesWithMetrics.length === 0 && !loadingDemoMetrics) {
       setLoadingDemoMetrics(true);
-      loadDemoCasesWithMetrics()
+      // Dynamic import to enable code splitting (avoids static + dynamic import warning)
+      import('../services/demoDataService')
+        .then(module => module.loadDemoCasesWithMetrics())
         .then(cases => {
           setDemoCasesWithMetrics(cases);
         })
