@@ -8,11 +8,13 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "virtual:wasm-solver": path.resolve(
-        __dirname,
-        "./public/pkg/solver_wasm.js"
-      ),
+      // Map our virtual import to the wasm-pack output placed in /public
+      "virtual:wasm-solver": path.resolve(__dirname, "./public/solver_wasm.js"),
     },
+  },
+  worker: {
+    // Ensure the worker uses ESM format
+    format: "es",
   },
   server: {
     fs: {

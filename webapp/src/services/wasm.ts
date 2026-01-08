@@ -63,6 +63,8 @@ export interface ProgressUpdate {
   // === Advanced Analytics ===
   score_variance: number;
   search_efficiency: number;
+  // Optional snapshot of best schedule to allow UI-side saves without stopping
+  best_schedule?: Record<string, Record<string, string[]>>;
 }
 
 // Progress callback type
@@ -92,7 +94,7 @@ class WasmService {
     this.loading = true;
 
     try {
-      // Load the WASM module via the virtual alias
+      // Load the WASM module via the virtual alias (vite alias → public/solver_wasm.js)
       const wasmModule = await import("virtual:wasm-solver").catch((error) => {
         console.warn(
           "WASM module not found. This might be a build issue:",
@@ -104,7 +106,33 @@ class WasmService {
       });
 
       // Initialize the WASM module
-      await wasmModule.default();
+      if (
+        typeof (wasmModule as unknown as { default?: () => Promise<void> })
+          .default === "function"
+      ) {
+        await (
+          wasmModule as unknown as { default: () => Promise<void> }
+        ).default();
+      } else if (
+        typeof (wasmModule as unknown as { wasm_bindgen?: () => Promise<void> })
+          .wasm_bindgen === "function"
+      ) {
+        await (
+          wasmModule as unknown as { wasm_bindgen: () => Promise<void> }
+        ).wasm_bindgen();
+      } else if (
+        typeof (
+          wasmModule as unknown as { initSync?: (m?: unknown) => unknown }
+        ).initSync === "function"
+      ) {
+        (
+          wasmModule as unknown as { initSync: (m?: unknown) => unknown }
+        ).initSync();
+      } else {
+        console.warn(
+          "WASM module has no default/wasm_bindgen/initSync initializer; proceeding without explicit init"
+        );
+      }
 
       this.module = wasmModule as unknown as WasmModule;
       console.log("WASM module loaded successfully");
@@ -305,6 +333,50 @@ class WasmService {
     return this.initializationFailed;
   }
 
+  async evaluateSolution(
+    problem: Problem,
+    assignments: Assignment[]
+  ): Promise<Solution> {
+    if (!this.module && !this.initializationFailed) {
+      await this.initialize();
+    }
+    if (!this.module) {
+      throw new Error(
+        "WASM module not available. Please check the build configuration."
+      );
+    }
+    // Build ApiInput with initial_schedule populated from assignments
+    const payload = this.convertProblemToRustFormat(problem) as Record<
+      string,
+      unknown
+    > & {
+      initial_schedule?: Record<string, Record<string, string[]>>;
+    };
+
+    // Convert assignments → schedule map
+    const schedule: Record<string, Record<string, string[]>> = {};
+    for (const a of assignments) {
+      const sessionKey = `session_${a.session_id}`;
+      schedule[sessionKey] = schedule[sessionKey] || {};
+      schedule[sessionKey][a.group_id] = schedule[sessionKey][a.group_id] || [];
+      schedule[sessionKey][a.group_id].push(a.person_id);
+    }
+    payload.initial_schedule = schedule;
+
+    try {
+      const resultJson = this.module.evaluate_input!(JSON.stringify(payload));
+      const rustResult = JSON.parse(resultJson);
+      return this.convertRustResultToSolution(rustResult);
+    } catch (error) {
+      console.error("WASM evaluateSolution error:", error);
+      throw new Error(
+        `Failed to evaluate solution: ${
+          error instanceof Error ? error.stack || error.message : String(error)
+        }`
+      );
+    }
+  }
+
   // Convert Problem to the format expected by the Rust solver
   private convertProblemToRustFormat(
     problem: Problem
@@ -336,6 +408,7 @@ class WasmService {
           params.final_temperature,
           0.01
         );
+        params.reheat_cycles = sanitizeNumber(params.reheat_cycles, 0);
         params.reheat_after_no_improvement = sanitizeNumber(
           params.reheat_after_no_improvement,
           0
@@ -348,11 +421,12 @@ class WasmService {
       }
     }
 
-    // Clean constraints: remove undefined/null penalty_weight to satisfy Rust deserialization
+    // Clean constraints and inject sensible defaults to satisfy Rust deserialization
     const cleanedConstraints = (problem.constraints || []).map(
       (c: Constraint) => {
         if (
-          (c.type === "MustStayTogether" || c.type === "ShouldNotBeTogether") &&
+          (c.type === "ShouldStayTogether" ||
+            c.type === "ShouldNotBeTogether") &&
           (c.penalty_weight === undefined || c.penalty_weight === null)
         ) {
           return { ...c, penalty_weight: 1000 };
@@ -373,6 +447,35 @@ class WasmService {
       }
     );
 
+    // Ensure immovable constraints always include sessions (Rust requires it)
+    const allSessions = Array.from(
+      { length: problem.num_sessions },
+      (_, i) => i
+    );
+    const normalizedConstraints = cleanedConstraints.map((c: Constraint) => {
+      if (c.type === "ImmovablePeople") {
+        const sessions = (c as unknown as { sessions?: number[] }).sessions;
+        return {
+          ...c,
+          sessions:
+            Array.isArray(sessions) && sessions.length > 0
+              ? sessions
+              : allSessions,
+        } as Constraint;
+      }
+      if (c.type === "ImmovablePerson") {
+        const sessions = (c as unknown as { sessions?: number[] }).sessions;
+        return {
+          ...c,
+          sessions:
+            Array.isArray(sessions) && sessions.length > 0
+              ? sessions
+              : allSessions,
+        } as Constraint;
+      }
+      return c;
+    });
+
     return {
       problem: {
         people: problem.people,
@@ -385,7 +488,7 @@ class WasmService {
           weight: 1.0,
         },
       ],
-      constraints: cleanedConstraints,
+      constraints: normalizedConstraints,
       solver: solverSettings,
     };
   }

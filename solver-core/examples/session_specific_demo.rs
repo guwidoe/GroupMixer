@@ -6,6 +6,7 @@ fn main() {
 
     // Create a simple problem with 6 people, 2 groups, 3 sessions
     let input = ApiInput {
+        initial_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 Person {
@@ -59,7 +60,6 @@ fn main() {
             // Alice and Bob must stay together in sessions 0 and 1 only
             Constraint::MustStayTogether {
                 people: vec!["Alice".to_string(), "Bob".to_string()],
-                penalty_weight: 1000.0,
                 sessions: Some(vec![0, 1]),
             },
             // Charlie and Diana cannot be together in sessions 1 and 2 only
@@ -80,13 +80,16 @@ fn main() {
                 initial_temperature: 1.0,
                 final_temperature: 0.001,
                 cooling_schedule: "geometric".to_string(),
-                reheat_after_no_improvement: 0, // No reheat
+                reheat_cycles: Some(0),
+                reheat_after_no_improvement: Some(0), // No reheat
             }),
             logging: LoggingOptions {
                 display_final_schedule: true,
                 log_final_score_breakdown: true,
                 ..Default::default()
             },
+            telemetry: Default::default(),
+            allowed_sessions: None,
         },
     };
 

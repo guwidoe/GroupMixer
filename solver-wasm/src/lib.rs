@@ -1,20 +1,10 @@
 use serde::Serialize;
-use solver_core::models::{
-    ApiInput, ProblemDefinition, ProgressCallback, ProgressUpdate, SolverResult,
-};
-use solver_core::run_solver_with_progress;
+use solver_core::models::{ApiInput, ProblemDefinition, ProgressUpdate};
 use wasm_bindgen::prelude::*;
-
-// When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
-// allocator.
-#[cfg(feature = "wee_alloc")]
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 #[wasm_bindgen]
 extern "C" {
     fn alert(s: &str);
-
 }
 
 #[wasm_bindgen]
@@ -207,7 +197,8 @@ pub fn get_default_settings() -> Result<String, JsValue> {
             initial_temperature: 1.0,
             final_temperature: 0.01,
             cooling_schedule: "geometric".to_string(),
-            reheat_after_no_improvement: 0, // No reheat
+            reheat_cycles: Some(0),
+            reheat_after_no_improvement: Some(0), // No reheat
         }),
         logging: LoggingOptions {
             log_frequency: Some(1000),
@@ -219,6 +210,8 @@ pub fn get_default_settings() -> Result<String, JsValue> {
             log_stop_condition: true,
             ..Default::default()
         },
+        telemetry: Default::default(),
+        allowed_sessions: None,
     };
 
     let settings_json = serde_json::to_string(&settings).map_err(|e| {
@@ -229,6 +222,41 @@ pub fn get_default_settings() -> Result<String, JsValue> {
     })?;
 
     Ok(settings_json)
+}
+
+/// Evaluate a provided input (including an optional initial schedule) without running the solver.
+///
+/// Expects the same JSON shape as `models::ApiInput` (problem, objectives, constraints, solver),
+/// and optionally `initial_schedule` in the `{"session_0": {"group_id": ["person_id", ...]}, ...}` format.
+/// Returns a `SolverResult` JSON with score breakdown computed from the provided schedule.
+#[wasm_bindgen]
+pub fn evaluate_input(input_json: &str) -> Result<String, JsValue> {
+    init_panic_hook();
+
+    let api_input: ApiInput = serde_json::from_str(input_json).map_err(|e| {
+        JsValue::from(js_sys::Error::new(&format!(
+            "Failed to parse input for evaluation: {}",
+            e
+        )))
+    })?;
+
+    // Construct internal state and force full score recomputation from the provided schedule
+    let mut state = solver_core::solver::State::new(&api_input)
+        .map_err(|e| JsValue::from(js_sys::Error::new(&format!("State init error: {}", e))))?;
+
+    // Ensure derived structures and scores match the schedule
+    state._recalculate_locations_from_schedule();
+    state._recalculate_scores();
+
+    let result = state.to_solver_result(state.current_cost, 0);
+    let result_json = serde_json::to_string(&result).map_err(|e| {
+        JsValue::from(js_sys::Error::new(&format!(
+            "Failed to serialize evaluation result: {}",
+            e
+        )))
+    })?;
+
+    Ok(result_json)
 }
 
 #[wasm_bindgen]

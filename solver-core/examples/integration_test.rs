@@ -7,6 +7,7 @@ fn main() {
     println!("Session-Specific Constraints + Late Arrivals/Departures + All Constraint Types\n");
 
     let input = ApiInput {
+        initial_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 Person {
@@ -59,7 +60,6 @@ fn main() {
         constraints: vec![
             Constraint::MustStayTogether {
                 people: vec!["Alice".to_string(), "Bob".to_string()],
-                penalty_weight: 1000.0,
                 sessions: None,
             },
             Constraint::ShouldNotBeTogether {
@@ -70,7 +70,7 @@ fn main() {
             Constraint::ImmovablePerson(ImmovablePersonParams {
                 person_id: "Henry".to_string(),
                 group_id: "Team1".to_string(),
-                sessions: vec![0, 1, 2],
+                sessions: Some(vec![0, 1, 2]),
             }),
         ],
         solver: SolverConfiguration {
@@ -84,9 +84,12 @@ fn main() {
                 initial_temperature: 1.0,
                 final_temperature: 0.001,
                 cooling_schedule: "geometric".to_string(),
-                reheat_after_no_improvement: 0, // No reheat
+                reheat_cycles: Some(0),
+                reheat_after_no_improvement: Some(0), // No reheat
             }),
             logging: LoggingOptions::default(),
+            telemetry: Default::default(),
+            allowed_sessions: None,
         },
     };
 

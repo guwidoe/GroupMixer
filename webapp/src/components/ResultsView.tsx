@@ -6,21 +6,23 @@ import {
   Target, 
   AlertTriangle, 
   Hash,
+  LayoutGrid,
   Download,
   RefreshCw,
   PieChart,
-  CheckCircle,
-  XCircle,
   Info,
   ChevronDown,
   FileText,
   FileSpreadsheet
 } from 'lucide-react';
-import type { Problem, ProblemSnapshot, SolverSettings, Constraint, Person } from '../types';
+import type { Problem, ProblemSnapshot, SolverSettings, Person } from '../types';
+import { generateAssignmentsCsv } from '../utils/csvExport';
 import { Tooltip } from './Tooltip';
+import ConstraintComplianceCards from './ConstraintComplianceCards';
 import PersonCard from './PersonCard';
 import { compareProblemConfigurations } from '../services/problemStorage';
 import { calculateMetrics, getColorClass } from '../utils/metricCalculations';
+import { VisualizationPanel } from '../visualizations/VisualizationPanel';
 
 function snapshotToProblem(snapshot: ProblemSnapshot, settings: SolverSettings): Problem {
   // Use the settings that were saved with the result, not current settings
@@ -31,11 +33,19 @@ function snapshotToProblem(snapshot: ProblemSnapshot, settings: SolverSettings):
 }
 
 export function ResultsView() {
-  const { problem, solution, solverState, currentProblemId, savedProblems } = useAppStore();
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const { problem, solution, solverState, currentProblemId, savedProblems, restoreResultAsNewProblem } = useAppStore();
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'visualize'>('grid');
+  const [vizPluginId, setVizPluginId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('resultsVisualizationPlugin') || 'scheduleMatrix';
+    } catch {
+      return 'scheduleMatrix';
+    }
+  });
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const [configDetailsOpen, setConfigDetailsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const vizExportRef = useRef<HTMLDivElement>(null);
 
 
 
@@ -137,131 +147,7 @@ export function ResultsView() {
   const constraintRatio = Math.min(finalConstraintPenalty / baselineConstraintPenalty, 1);
   const constraintColorClass = getColorClass(constraintRatio, true);
 
-  // === Constraint Compliance Evaluation ===
-  type ConstraintCompliance = { constraint: Constraint; adheres: boolean; violations: number };
-
-  const constraintResults: ConstraintCompliance[] = useMemo(() => {
-    if (!solution) return [];
-
-    // Use the result's problemSnapshot for constraint evaluation, fallback to current problem
-    const problemConfig = currentResult?.problemSnapshot || problem;
-    if (!problemConfig) return [];
-
-    // Build schedule map: session -> group -> people array
-    const schedule: Record<number, Record<string, string[]>> = {};
-    solution.assignments.forEach(a => {
-      if (!schedule[a.session_id]) schedule[a.session_id] = {};
-      if (!schedule[a.session_id][a.group_id]) schedule[a.session_id][a.group_id] = [];
-      schedule[a.session_id][a.group_id].push(a.person_id);
-    });
-
-    const personMap = new Map<string, Person>(problemConfig.people.map(p => [p.id, p]));
-
-    const results: ConstraintCompliance[] = problemConfig.constraints.map((c): ConstraintCompliance => {
-      switch (c.type) {
-        case 'RepeatEncounter': {
-          const pairCounts = new Map<string, number>();
-          Object.values(schedule).forEach(groups => {
-            Object.values(groups).forEach(peopleIds => {
-              for (let i = 0; i < peopleIds.length; i++) {
-                for (let j = i + 1; j < peopleIds.length; j++) {
-                  const pairKey = [peopleIds[i], peopleIds[j]].sort().join('|');
-                  pairCounts.set(pairKey, (pairCounts.get(pairKey) || 0) + 1);
-                }
-              }
-            });
-          });
-          let violations = 0;
-          pairCounts.forEach(count => {
-            if (count > c.max_allowed_encounters) {
-              // Encounters exceed allowed total count
-              violations += count - c.max_allowed_encounters;
-            }
-          });
-          return { constraint: c, adheres: violations === 0, violations };
-        }
-        case 'AttributeBalance': {
-          let violations = 0;
-          const sessionsToCheck = c.sessions ?? Array.from({ length: problemConfig.num_sessions }, (_, i) => i);
-          sessionsToCheck.forEach(session => {
-            const peopleIds = schedule[session]?.[c.group_id] || [];
-            const counts: Record<string, number> = {};
-            peopleIds.forEach(pid => {
-              const person = personMap.get(pid);
-              const val = person?.attributes?.[c.attribute_key] ?? '__UNKNOWN__';
-              counts[val] = (counts[val] || 0) + 1;
-            });
-            Object.entries(c.desired_values).forEach(([val, desired]) => {
-              if ((counts[val] || 0) !== desired) violations += Math.abs((counts[val] || 0) - desired);
-            });
-          });
-          return { constraint: c, adheres: violations === 0, violations };
-        }
-        case 'ImmovablePeople': {
-          let violations = 0;
-          const sessions = c.sessions ?? Array.from({ length: problemConfig.num_sessions }, (_, i) => i);
-          sessions.forEach(session => {
-            const peopleIds = schedule[session]?.[c.group_id] || [];
-            c.people.forEach(pid => {
-              if (!peopleIds.includes(pid)) violations += 1;
-            });
-          });
-          return { constraint: c, adheres: violations === 0, violations };
-        }
-        case 'MustStayTogether': {
-          const sessions = c.sessions ?? Array.from({ length: problemConfig.num_sessions }, (_, i) => i);
-          let violations = 0;
-          sessions.forEach(session => {
-            const groupIdSet = new Set<string>();
-            c.people.forEach(pid => {
-              let assignedGroup: string | undefined;
-              const groups = schedule[session];
-              if (groups) {
-                for (const [gid, ids] of Object.entries(groups)) {
-                  if (ids.includes(pid)) {
-                    assignedGroup = gid;
-                    break;
-                  }
-                }
-              }
-              if (assignedGroup) groupIdSet.add(assignedGroup);
-              else violations += 1; // person not assigned
-            });
-            if (groupIdSet.size > 1) violations += groupIdSet.size - 1;
-          });
-          return { constraint: c, adheres: violations === 0, violations };
-        }
-        case 'ShouldNotBeTogether': {
-          const sessions = c.sessions ?? Array.from({ length: problemConfig.num_sessions }, (_, i) => i);
-          let violations = 0;
-          sessions.forEach(session => {
-            const groups = schedule[session] || {};
-            Object.values(groups).forEach(ids => {
-              const overlap = ids.filter(id => c.people.includes(id));
-              if (overlap.length > 1) violations += overlap.length - 1;
-            });
-          });
-          return { constraint: c, adheres: violations === 0, violations };
-        }
-        default:
-          return { constraint: c as Constraint, adheres: true, violations: 0 };
-      }
-    });
-
-    return results;
-  }, [problem, solution, currentResult]);
-
-  if (!solution) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12" style={{ color: 'var(--text-secondary)' }}>
-        <Target className="w-16 h-16 mb-4" style={{ color: 'var(--text-tertiary)' }} />
-        <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>No Results Yet</h3>
-        <p className="text-center max-w-md" style={{ color: 'var(--text-secondary)' }}>
-          Run the solver or select one of the results from the Results tab to see optimization results and group assignments.
-        </p>
-      </div>
-    );
-  }
+  // Constraint compliance UI moved to dedicated component
 
   const downloadFile = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
@@ -276,55 +162,10 @@ export function ResultsView() {
 
   const generateCSV = () => {
     if (!effectiveProblem || !solution) return '';
-    
-    const headers = [
-      'Person ID',
-      'Group ID', 
-      'Session',
-      'Person Name',
-      'Person Attributes'
-    ];
-
-    const rows = solution.assignments.map(assignment => {
-      const person = effectiveProblem.people.find(p => p.id === assignment.person_id);
-      const personName = person?.attributes.name || assignment.person_id;
-      const personAttrs = person ? Object.entries(person.attributes)
-        .filter(([key]) => key !== 'name')
-        .map(([key, value]) => `${key}:${value}`)
-        .join('; ') : '';
-
-      return [
-        assignment.person_id,
-        assignment.group_id,
-        assignment.session_id + 1, // Convert to 1-based for user display
-        personName,
-        personAttrs
-      ];
+    return generateAssignmentsCsv(effectiveProblem, solution, {
+      resultName: resultName || 'Current Result',
+      exportedAt: Date.now(),
     });
-
-    // Add metadata at the top
-    const metadata = [
-      ['Result Name', resultName || 'Current Result'],
-      ['Export Date', new Date().toISOString()],
-      ['Final Score', solution.final_score.toFixed(2)],
-      ['Unique Contacts', solution.unique_contacts.toString()],
-      ['Iterations', solution.iteration_count.toLocaleString()],
-      ['Repetition Penalty', (solution.weighted_repetition_penalty ?? solution.repetition_penalty).toFixed(2)],
-      ['Balance Penalty', solution.attribute_balance_penalty.toFixed(2)],
-      ['Constraint Penalty', (solution.weighted_constraint_penalty ?? solution.constraint_penalty).toFixed(2)],
-      [], // Empty row
-      headers
-    ];
-
-    const allRows = [...metadata, ...rows];
-    
-    return allRows.map(row => 
-      row.map(cell => 
-        typeof cell === 'string' && (cell.includes(',') || cell.includes('"')) 
-          ? `"${cell.replace(/"/g, '""')}"` 
-          : cell
-      ).join(',')
-    ).join('\n');
   };
 
   const handleExportResult = (format: 'json' | 'csv' | 'excel') => {
@@ -356,6 +197,34 @@ export function ResultsView() {
     setExportDropdownOpen(false);
   };
 
+  const handleExportVisualizationPng = async () => {
+    if (!effectiveProblem || !solution) return;
+    if (viewMode !== 'visualize') return;
+    if (!vizExportRef.current) return;
+
+    const fileName = (resultName || 'result')
+      .replace(/[^a-z0-9]/gi, '_')
+      .toLowerCase();
+
+    try {
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(vizExportRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+      });
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `${fileName}_visualization.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (e) {
+      console.error('Failed to export visualization PNG:', e);
+    } finally {
+      setExportDropdownOpen(false);
+    }
+  };
+
   // Group assignments by session for display
   const sessionData = useMemo(() => {
     if (!solution || !effectiveProblem) {
@@ -385,73 +254,9 @@ export function ResultsView() {
     });
   }, [solution, effectiveProblem]);
 
-  const getPersonById = (id: string) => effectiveProblem?.people.find(p => p.id === id);
+  // helper removed with new cards UI
 
-  const formatConstraintLabel = (constraint: Constraint): React.ReactNode => {
-    switch (constraint.type) {
-      case 'RepeatEncounter':
-        return `Repeat Encounter (max ${constraint.max_allowed_encounters})`;
-      case 'AttributeBalance':
-        return (
-          <>
-            Attribute Balance – <span className="font-medium">{constraint.group_id}</span> ({constraint.attribute_key})
-          </>
-        );
-      case 'ImmovablePeople': {
-        return (
-          <>
-            Immovable – (
-            {constraint.people.map((pid: string, idx: number) => {
-              const person = getPersonById(pid);
-              return (
-                <React.Fragment key={pid}>
-                  {idx > 0 && ''}
-                  {person ? <PersonCard person={person} /> : pid}
-                </React.Fragment>
-              );
-            })}
-            ) in <span className="font-medium">{constraint.group_id}</span>
-          </>
-        );
-      }
-      case 'MustStayTogether': {
-        return (
-          <>
-            Must Stay Together (
-            {constraint.people.map((pid: string, idx: number) => {
-              const person = getPersonById(pid);
-              return (
-                <React.Fragment key={pid}>
-                  {idx > 0 && ''}
-                  {person ? <PersonCard person={person} /> : pid}
-                </React.Fragment>
-              );
-            })}
-            )
-          </>
-        );
-      }
-      case 'ShouldNotBeTogether': {
-        return (
-          <>
-            Should Not Be Together (
-            {constraint.people.map((pid: string, idx: number) => {
-              const person = getPersonById(pid);
-              return (
-                <React.Fragment key={pid}>
-                  {idx > 0 && ''}
-                  {person ? <PersonCard person={person} /> : pid}
-                </React.Fragment>
-              );
-            })}
-            )
-          </>
-        );
-      }
-      default:
-        return 'Unknown Constraint';
-    }
-  };
+  // Removed old inline constraint label renderer (migrated to cards UI)
 
   const renderMetricCard = (title: string, value: string | number, icon: React.ComponentType<{ className?: string }>, color: string) => (
     <div className="rounded-lg border p-6 transition-colors" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
@@ -526,7 +331,7 @@ export function ResultsView() {
             </tr>
           </thead>
           <tbody className="divide-y" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-secondary)' }}>
-                          {effectiveProblem?.people.map((person, _index) => {
+                          {effectiveProblem?.people.map((person) => {
                 const personAssignments = solution.assignments.filter(a => a.person_id === person.id);
                 const displayName = person.attributes?.name || person.id;
               
@@ -561,7 +366,36 @@ export function ResultsView() {
     </div>
   );
 
-  if (!solution || !effectiveProblem) {
+  const renderScheduleVisualization = () => (
+    <div ref={vizExportRef}>
+      <VisualizationPanel
+        pluginId={vizPluginId}
+        onPluginChange={(id) => {
+          setVizPluginId(id);
+          try {
+            localStorage.setItem('resultsVisualizationPlugin', id);
+          } catch {
+            /* ignore */
+          }
+        }}
+        data={{ kind: 'final', problem: effectiveProblem, solution }}
+      />
+    </div>
+  );
+
+  if (!solution) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12" style={{ color: 'var(--text-secondary)' }}>
+        <Target className="w-16 h-16 mb-4" style={{ color: 'var(--text-tertiary)' }} />
+        <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>No Results Yet</h3>
+        <p className="text-center max-w-md" style={{ color: 'var(--text-secondary)' }}>
+          Run the solver or select one of the results from the Results tab to see optimization results and group assignments.
+        </p>
+      </div>
+    );
+  }
+
+  if (!effectiveProblem) {
     return (
       <div className="text-center py-12">
         <BarChart3 className="mx-auto h-12 w-12 text-gray-400" />
@@ -626,6 +460,19 @@ export function ResultsView() {
                           )
                         ))}
                       </div>
+                      <div className="pt-2">
+                        <button
+                          className="btn-primary w-full text-xs"
+                          onClick={() => {
+                            if (!currentResult) return;
+                            const sourceName = savedProblems[currentProblemId!]?.name || 'Problem';
+                            const suggested = `${sourceName} – ${currentResult.name || 'Result'} (restored)`;
+                            restoreResultAsNewProblem(currentResult.id, suggested);
+                          }}
+                        >
+                          Restore this result's configuration as new problem
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -664,6 +511,21 @@ export function ResultsView() {
                      backgroundColor: 'var(--bg-primary)', 
                      borderColor: 'var(--border-primary)' 
                    }}>
+                {viewMode === 'visualize' && (
+                  <button
+                    onClick={handleExportVisualizationPng}
+                    className="flex items-center w-full px-3 py-2 text-sm text-left transition-colors"
+                    style={{
+                      color: 'var(--text-primary)',
+                      backgroundColor: 'transparent'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <LayoutGrid className="h-4 w-4 mr-2 flex-shrink-0" />
+                    <span>Export viz as PNG</span>
+                  </button>
+                )}
                 <button
                   onClick={() => handleExportResult('json')}
                   className="flex items-center w-full px-3 py-2 text-sm text-left transition-colors"
@@ -719,28 +581,7 @@ export function ResultsView() {
       </div>
 
       {/* Constraint Compliance */}
-      <div className="rounded-lg border p-6 transition-colors" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
-        <h3 className="text-lg font-medium mb-4" style={{ color: 'var(--text-primary)' }}>Constraint Compliance</h3>
-        <div className="space-y-2">
-          {constraintResults.length > 0 ? constraintResults.map((res, idx) => (
-            <div key={idx} className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                {res.adheres ? (
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                ) : (
-                  <XCircle className="w-4 h-4 text-red-600" />
-                )}
-                {formatConstraintLabel(res.constraint)}
-              </div>
-              {!res.adheres && (
-                <span className="text-sm font-medium text-red-600">{res.violations} violation{res.violations !== 1 ? 's' : ''}</span>
-              )}
-            </div>
-          )) : (
-            <p className="text-sm italic" style={{ color: 'var(--text-tertiary)' }}>No constraints defined for this problem.</p>
-          )}
-        </div>
-      </div>
+      <ConstraintComplianceCards problem={effectiveProblem} solution={solution} />
 
       {/* Schedule View */}
       <div className="rounded-lg border transition-colors" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
@@ -792,12 +633,38 @@ export function ResultsView() {
                 <BarChart3 className="w-4 h-4 inline mr-1" />
                 List
               </button>
+              <button
+                onClick={() => setViewMode('visualize')}
+                className="px-3 py-1 rounded text-sm transition-colors"
+                style={{
+                  backgroundColor: viewMode === 'visualize' ? 'var(--bg-tertiary)' : 'transparent',
+                  color: viewMode === 'visualize' ? 'var(--color-accent)' : 'var(--text-secondary)',
+                  border: viewMode === 'visualize' ? '1px solid var(--color-accent)' : '1px solid transparent'
+                }}
+                onMouseEnter={(e) => {
+                  if (viewMode !== 'visualize') {
+                    e.currentTarget.style.color = 'var(--text-primary)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (viewMode !== 'visualize') {
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                  }
+                }}
+              >
+                <LayoutGrid className="w-4 h-4 inline mr-1" />
+                Visualize
+              </button>
             </div>
           </div>
         </div>
         
         <div className="p-6">
-          {viewMode === 'grid' ? renderScheduleGrid() : renderScheduleList()}
+          {viewMode === 'grid'
+            ? renderScheduleGrid()
+            : viewMode === 'list'
+              ? renderScheduleList()
+              : renderScheduleVisualization()}
         </div>
       </div>
     </div>

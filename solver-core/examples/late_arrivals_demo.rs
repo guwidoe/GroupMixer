@@ -7,6 +7,7 @@ fn main() {
 
     // Create a problem with people who have different participation patterns
     let input = ApiInput {
+        initial_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 // Core team - participates in all sessions
@@ -75,7 +76,6 @@ fn main() {
             // Alice and Bob must work together when both are present
             Constraint::MustStayTogether {
                 people: vec!["Alice".to_string(), "Bob".to_string()],
-                penalty_weight: 1000.0,
                 sessions: None, // Apply when both are present
             },
         ],
@@ -90,13 +90,16 @@ fn main() {
                 initial_temperature: 1.0,
                 final_temperature: 0.001,
                 cooling_schedule: "geometric".to_string(),
-                reheat_after_no_improvement: 0, // No reheat
+                reheat_cycles: Some(0),
+                reheat_after_no_improvement: Some(0), // No reheat
             }),
             logging: LoggingOptions {
                 display_final_schedule: true,
                 log_final_score_breakdown: true,
                 ..Default::default()
             },
+            telemetry: Default::default(),
+            allowed_sessions: None,
         },
     };
 

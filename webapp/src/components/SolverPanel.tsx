@@ -1,11 +1,15 @@
 import React, { useState, useRef } from 'react';
 import { useAppStore } from '../store';
-import { Play, Pause, RotateCcw, Settings, TrendingUp, Clock, Activity, ChevronDown, ChevronRight, Info, BarChart3 } from 'lucide-react';
-import type { SolverSettings } from '../types';
+import { Play, Pause, RotateCcw, Settings, TrendingUp, Clock, Activity, ChevronDown, ChevronRight, Info, BarChart3, Zap, LayoutGrid } from 'lucide-react';
+import type { SolverSettings, Problem } from '../types';
 import { solverWorkerService } from '../services/solverWorker';
+import { wasmService } from '../services/wasm';
 import type { ProgressUpdate } from '../services/wasm';
 import { Tooltip } from './Tooltip';
 import { problemStorage } from '../services/problemStorage';
+import { reconcileResultToInitialSchedule } from '../utils/warmStart';
+import { VisualizationPanel } from '../visualizations/VisualizationPanel';
+import type { ScheduleSnapshot } from '../visualizations/types';
 
 export function SolverPanel() {
   const { solverState, startSolver, stopSolver, resetSolver, setSolverState, setSolution, addNotification, addResult, updateProblem, ensureProblemExists } = useAppStore();
@@ -13,6 +17,30 @@ export function SolverPanel() {
   // Get the current problem and currentProblemId from the store reactively
   const problem = useAppStore((state) => state.problem);
   const currentProblemId = useAppStore((state) => state.currentProblemId);
+  const savedProblems = useAppStore((state) => state.savedProblems);
+  const warmStartResultId = useAppStore((state) => state.ui.warmStartResultId);
+  const setWarmStartFromResult = useAppStore((state) => (state as unknown as { setWarmStartFromResult: (id: string | null) => void }).setWarmStartFromResult);
+  const [warmStartSelection, setWarmStartSelection] = useState<string | null>(null);
+  const [warmDropdownOpen, setWarmDropdownOpen] = useState(false);
+  const warmDropdownRef = useRef<HTMLDivElement>(null);
+  const warmDropdownMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close warm-start dropdown on outside click
+  React.useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (
+        warmDropdownOpen &&
+        target &&
+        warmDropdownRef.current &&
+        !warmDropdownRef.current.contains(target)
+      ) {
+        setWarmDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [warmDropdownOpen]);
   const [showSettings, setShowSettings] = useState(false);
   // Metrics pane expanded state, persisted in localStorage for better UX
   const [showMetrics, setShowMetrics] = useState<boolean>(() => {
@@ -35,8 +63,40 @@ export function SolverPanel() {
     });
   };
 
+  // === Live visualization (optional) ===
+  const [showLiveViz, setShowLiveViz] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('solverLiveVizEnabled') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const showLiveVizRef = useRef(showLiveViz);
+  React.useEffect(() => {
+    showLiveVizRef.current = showLiveViz;
+  }, [showLiveViz]);
+
+  const [liveVizPluginId, setLiveVizPluginId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('solverLiveVizPlugin') || 'scheduleMatrix';
+    } catch {
+      return 'scheduleMatrix';
+    }
+  });
+
+  const [liveVizState, setLiveVizState] = useState<{
+    schedule: ScheduleSnapshot;
+    progress: ProgressUpdate | null;
+  } | null>(null);
+  const liveVizLastUiUpdateRef = useRef<number>(0);
+
   const cancelledRef = useRef(false);
   const solverCompletedRef = useRef(false);
+  const restartAfterSaveRef = useRef(false);
+  const saveInProgressRef = useRef(false);
+  // Snapshot of the problem configuration at the moment the solver starts
+  const runProblemSnapshotRef = useRef<Problem | null>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   // Runtime input used for the quick-start (automatic) button
   const [desiredRuntimeMain, setDesiredRuntimeMain] = useState<number | null>(3);
   // Runtime input used inside the settings panel for the Auto-set feature
@@ -49,6 +109,7 @@ export function SolverPanel() {
     noImprovement?: string;
     initialTemp?: string;
     finalTemp?: string;
+    reheatCycles?: string;
     reheat?: string;
     desiredRuntimeSettings?: string;
     desiredRuntimeMain?: string;
@@ -70,6 +131,7 @@ export function SolverPanel() {
         initial_temperature: 1.0,
         final_temperature: 0.01,
         cooling_schedule: "geometric",
+        reheat_cycles: 0,
         reheat_after_no_improvement: 0, // 0 = disabled
       },
     },
@@ -81,10 +143,21 @@ export function SolverPanel() {
       log_initial_score_breakdown: true,
       log_final_score_breakdown: true,
       log_stop_condition: true,
+      debug_validate_invariants: false,
+      debug_dump_invariant_context: false,
     },
   });
 
   const solverSettings = problem?.settings || getDefaultSolverSettings();
+  const [allowedSessionsLocal, setAllowedSessionsLocal] = useState<number[] | null>(null);
+  const getLiveVizProblem = (): Problem | null => {
+    const base = runProblemSnapshotRef.current || problem;
+    if (!base) return null;
+    return {
+      ...base,
+      settings: runSettings || solverSettings,
+    };
+  };
 
   const handleSettingsChange = (newSettings: Partial<SolverSettings>) => {
     if (problem && currentProblemId) {
@@ -178,10 +251,11 @@ export function SolverPanel() {
           // 2️⃣ Convert the flattened `solver_params` coming from Rust into the nested UI shape
           const sp = (rawSettings as SolverSettings & { solver_params: Record<string, unknown> }).solver_params;
           if (sp && !("SimulatedAnnealing" in sp) && sp.solver_type === "SimulatedAnnealing") {
-            const { initial_temperature, final_temperature, cooling_schedule, reheat_after_no_improvement } = sp as {
+            const { initial_temperature, final_temperature, cooling_schedule, reheat_cycles, reheat_after_no_improvement } = sp as {
               initial_temperature: number;
               final_temperature: number;
               cooling_schedule: string;
+              reheat_cycles?: number;
               reheat_after_no_improvement: number;
             };
             selectedSettings = {
@@ -191,6 +265,7 @@ export function SolverPanel() {
                   initial_temperature,
                   final_temperature,
                   cooling_schedule,
+                  reheat_cycles,
                   reheat_after_no_improvement,
                 },
               },
@@ -205,19 +280,50 @@ export function SolverPanel() {
         }
       }
 
+      // If live visualization is enabled, request periodic best_schedule snapshots from the solver.
+      // This remains opt-in to avoid impacting default solver performance.
+      const runSelectedSettings: SolverSettings = showLiveVizRef.current
+        ? {
+            ...selectedSettings,
+            telemetry: {
+              ...(selectedSettings.telemetry || {}),
+              emit_best_schedule: true,
+              // Progress callbacks are time-based; this keeps snapshots reasonable.
+              best_schedule_every_n_callbacks:
+                selectedSettings.telemetry?.best_schedule_every_n_callbacks ?? 3,
+            },
+          }
+        : selectedSettings;
+
       // Record these settings as the active run settings so progress bars use correct limits
-      setRunSettings(selectedSettings);
+      setRunSettings(runSelectedSettings);
+      // Reset live visualization state for this run
+      setLiveVizState(null);
+      liveVizLastUiUpdateRef.current = 0;
 
       // Create the problem with the chosen solver settings
       const problemWithSettings = {
         ...currentProblem,
-        settings: selectedSettings,
+        settings: runSelectedSettings,
       };
+
+      // Capture a deep snapshot of the problem configuration at solver start,
+      // decoupling any subsequent UI edits from this solver run's saved results.
+      try {
+        runProblemSnapshotRef.current = JSON.parse(JSON.stringify(currentProblem));
+      } catch {
+        // Fallback to a shallow copy if deep clone fails for any reason
+        runProblemSnapshotRef.current = { ...currentProblem } as Problem;
+      }
 
       // Progress callback to update the UI in real-time
       const progressCallback = (progress: ProgressUpdate): boolean => {
         // Ignore progress updates if solver has already completed
         if (solverCompletedRef.current) {
+          return false;
+        }
+        // Respect cancel immediately so we stop at the nearest callback tick
+        if (cancelledRef.current) {
           return false;
         }
         
@@ -230,6 +336,7 @@ export function SolverPanel() {
           // Preserve initial constraint penalty for baseline coloring
           ...(progress.iteration === 0 && { initialConstraintPenalty: progress.current_constraint_penalty }),
           currentIteration: progress.iteration,
+          currentScore: progress.current_score,
           bestScore: progress.best_score,
           elapsedTime: progress.elapsed_seconds * 1000, // Convert to milliseconds
           noImprovementCount: progress.no_improvement_count,
@@ -279,6 +386,18 @@ export function SolverPanel() {
           scoreVariance: progress.score_variance,
           searchEfficiency: progress.search_efficiency,
         });
+
+        // Optional live visualization feed (throttled to avoid excessive React renders)
+        if (showLiveVizRef.current && progress.best_schedule) {
+          const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+          if (now - liveVizLastUiUpdateRef.current > 200) {
+            liveVizLastUiUpdateRef.current = now;
+            setLiveVizState({
+              schedule: progress.best_schedule,
+              progress,
+            });
+          }
+        }
         
         // Log significant score improvements
         if (progress.best_score < ((window as { lastLoggedBestScore?: number }).lastLoggedBestScore ?? 0) - 50 || !(window as { lastLoggedBestScore?: number }).lastLoggedBestScore) {
@@ -286,16 +405,38 @@ export function SolverPanel() {
           (window as { lastLoggedBestScore?: number }).lastLoggedBestScore = progress.best_score;
         }
         
-        // Check if solver was cancelled
-        if (cancelledRef.current) {
-          return false; // Stop the solver
-        }
-        
         return true; // Continue solving
       };
 
-      // Run the solver with progress updates using Web Worker
-      const { solution, lastProgress } = await solverWorkerService.solveWithProgress(problemWithSettings, progressCallback);
+      // Determine whether to warm-start from a selected result
+      let solution;
+      let lastProgress;
+      if (warmStartResultId) {
+        try {
+          const sourceProblem = currentProblemId ? savedProblems[currentProblemId] : null;
+          const result = sourceProblem?.results.find(r => r.id === warmStartResultId);
+          if (!result) {
+            throw new Error('Selected warm-start result not found');
+          }
+          const initialSchedule = reconcileResultToInitialSchedule(currentProblem, result);
+          // clear the intent before starting
+          setWarmStartFromResult(null);
+          const out = await solverWorkerService.solveWithProgressWarmStart(problemWithSettings, initialSchedule, progressCallback);
+          solution = out.solution;
+          lastProgress = out.lastProgress;
+        } catch (e) {
+          console.error('[SolverPanel] Warm-start failed, falling back to normal start:', e);
+          addNotification({ type: 'warning', title: 'Warm Start Failed', message: e instanceof Error ? e.message : 'Falling back to default start' });
+          setWarmStartFromResult(null);
+          const out = await solverWorkerService.solveWithProgress(problemWithSettings, progressCallback);
+          solution = out.solution;
+          lastProgress = out.lastProgress;
+        }
+      } else {
+        const out = await solverWorkerService.solveWithProgress(problemWithSettings, progressCallback);
+        solution = out.solution;
+        lastProgress = out.lastProgress;
+      }
       
       // Debug logging
       console.log('[SolverPanel] Solver completed');
@@ -306,21 +447,7 @@ export function SolverPanel() {
       // Mark solver as completed to prevent late progress updates
       solverCompletedRef.current = true;
       
-      // Check if the solver was cancelled
-      if (cancelledRef.current) {
-        setSolverState({ 
-          isRunning: false, 
-          isComplete: false,
-        });
-        addNotification({
-          type: 'warning',
-          title: 'Solver Cancelled',
-          message: 'Optimization was cancelled by user',
-        });
-        return;
-      }
-      
-      // Update the solution and mark as complete
+      // Always capture the solution that came back (best-so-far when cancelled)
       setSolution(solution);
       
       // Determine the final no improvement count
@@ -331,29 +458,43 @@ export function SolverPanel() {
       // Add a small delay to ensure any late progress messages are ignored
       await new Promise(resolve => setTimeout(resolve, 50));
       
-      // Update final solver state with actual final values from solution
-      console.log('[SolverPanel] Setting final solver state with bestScore:', solution.final_score);
-      setSolverState({ 
-        isRunning: false, 
-        isComplete: true,
-        currentIteration: solution.iteration_count,
-        elapsedTime: solution.elapsed_time_ms,
-        bestScore: solution.final_score,
-        noImprovementCount: finalNoImprovementCount,
-      });
+      // Update final solver state with actual final values from the last progress callback
+      // Prefer lastProgress (which is emitted after a full recalculation) to avoid any drift.
+      console.log('[SolverPanel] Setting final solver state with bestScore/currentScore from lastProgress');
 
-      addNotification({
-        type: 'success',
-        title: 'Optimization Complete',
-        message: `Found solution with score ${solution.final_score.toFixed(2)}`,
-      });
+      if (cancelledRef.current) {
+        setSolverState({ 
+          isRunning: false, 
+          isComplete: false,
+          currentIteration: solution.iteration_count,
+          elapsedTime: solution.elapsed_time_ms,
+          currentScore: lastProgress?.current_score ?? (solverState.currentScore ?? 0),
+          bestScore: lastProgress?.best_score ?? solution.final_score,
+          noImprovementCount: finalNoImprovementCount,
+        });
+      } else {
+        setSolverState({ 
+          isRunning: false, 
+          isComplete: true,
+          currentIteration: solution.iteration_count,
+          elapsedTime: solution.elapsed_time_ms,
+          currentScore: lastProgress?.current_score ?? (solverState.currentScore ?? 0),
+          bestScore: lastProgress?.best_score ?? solution.final_score,
+          noImprovementCount: finalNoImprovementCount,
+        });
+        addNotification({
+          type: 'success',
+          title: 'Optimization Complete',
+          message: `Found solution with score ${solution.final_score.toFixed(2)}`,
+        });
+      }
 
       // Automatically save result if there's a current problem
       console.log('[SolverPanel] About to save result, currentProblemId:', currentProblemId);
       console.log('[SolverPanel] Problem exists:', !!problem);
       if (currentProblemId) {
         console.log('[SolverPanel] Saving result to problem:', currentProblemId);
-        addResult(solution, selectedSettings);
+        addResult(solution, selectedSettings, undefined, runProblemSnapshotRef.current || undefined);
       } else {
         console.log('[SolverPanel] No currentProblemId, result not saved');
         // If we have a problem but no currentProblemId, we should save it
@@ -363,7 +504,52 @@ export function SolverPanel() {
           problemStorage.setCurrentProblemId(newSaved.id);
           // Update the store by calling the store's set method
           useAppStore.setState({ currentProblemId: newSaved.id });
-          addResult(solution, selectedSettings);
+          addResult(solution, selectedSettings, undefined, runProblemSnapshotRef.current || undefined);
+        }
+      }
+
+      // Post-save notifications and optional resume when cancelled
+      if (cancelledRef.current) {
+        if (restartAfterSaveRef.current) {
+          addNotification({
+            type: 'success',
+            title: 'Saved Best-So-Far',
+            message: 'Resuming solver with the same settings...',
+          });
+          restartAfterSaveRef.current = false;
+          cancelledRef.current = false;
+          saveInProgressRef.current = false;
+          const resumeProblem = problemWithSettings; // reuse same settings
+          const initialSchedule = solution.assignments.reduce<Record<string, Record<string, string[]>>>((acc, a) => {
+            const sessionKey = `session_${a.session_id}`;
+            if (!acc[sessionKey]) acc[sessionKey] = {};
+            if (!acc[sessionKey][a.group_id]) acc[sessionKey][a.group_id] = [];
+            acc[sessionKey][a.group_id].push(a.person_id);
+            return acc;
+          }, {});
+          // Reset completion flag so progress updates are accepted
+          solverCompletedRef.current = false;
+          // Mark running before starting the worker again
+          startSolver();
+          setTimeout(async () => {
+            try {
+              await solverWorkerService.solveWithProgressWarmStart(resumeProblem, initialSchedule, progressCallback);
+            } catch (e) {
+              console.error('[SolverPanel] Warm-start resume failed:', e);
+              // Fallback to normal start
+              await handleStartSolver(false);
+            }
+          }, 0);
+          return;
+        } else {
+          addNotification({
+            type: 'success',
+            title: 'Saved Best-So-Far',
+            message: 'Solver stopped and best-so-far solution saved.',
+          });
+          cancelledRef.current = false;
+          saveInProgressRef.current = false;
+          return;
         }
       }
 
@@ -389,24 +575,123 @@ export function SolverPanel() {
     }
   };
 
-  const handleStopSolver = async () => {
-    // Set the cancellation flag to stop the solver
+  // Discard progress: hard-cancel the worker and do not save a solution
+  const handleCancelDiscard = async () => {
+    setShowCancelConfirm(false);
+    if (!solverState.isRunning) return;
     cancelledRef.current = true;
     stopSolver();
-    
+
     addNotification({
-      type: 'info',
-      title: 'Cancelling',
-      message: 'Stopping solver...',
+      type: 'warning',
+      title: 'Solver Cancelled',
+      message: 'Progress discarded.',
     });
-    
+
     try {
       await solverWorkerService.cancel();
-      // Success notification will be handled by the main solve error handler
     } catch (error) {
       console.error('Cancellation error:', error);
-      // Don't show error notification - cancellation usually succeeds even if there are errors
     }
+  };
+
+  // Save progress: request a graceful stop so the solver returns the best-so-far solution
+  const handleCancelSave = () => {
+    setShowCancelConfirm(false);
+    if (!solverState.isRunning) return;
+    cancelledRef.current = true; // progress callback will stop the solver and return a result
+    addNotification({
+      type: 'info',
+      title: 'Stopping Solver',
+      message: 'Saving best-so-far solution...',
+    });
+  };
+
+  // Save best-so-far snapshot and resume solving
+  const handleSaveBestSoFar = async () => {
+    if (!solverState.isRunning) {
+      addNotification({
+        type: 'warning',
+        title: 'Solver Not Running',
+        message: 'Start the solver to save a best-so-far snapshot.',
+      });
+      return;
+    }
+    if (saveInProgressRef.current) {
+      return; // ignore duplicate clicks while saving
+    }
+
+    // If the latest progress update included a best_schedule snapshot, save immediately without stopping
+    const lastProgress = (solverWorkerService as unknown as { lastProgressUpdate?: ProgressUpdate }).lastProgressUpdate as ProgressUpdate | undefined;
+    if (lastProgress && lastProgress.best_schedule) {
+      saveInProgressRef.current = true;
+      const bestSchedule = lastProgress.best_schedule;
+      const assignments: { person_id: string; group_id: string; session_id: number }[] = [];
+      Object.entries(bestSchedule).forEach(([sessionKey, groups]) => {
+        const sId = parseInt(sessionKey.replace('session_', ''));
+        Object.entries(groups).forEach(([groupId, people]) => {
+          people.forEach((pid) => assignments.push({ person_id: pid, group_id: groupId, session_id: sId }));
+        });
+      });
+
+      try {
+        // Evaluate metrics for the snapshot using WASM on the main thread
+        const problemForEval = problem
+          ? { ...problem, settings: (runSettings || solverSettings) }
+          : undefined;
+        if (!problemForEval) throw new Error('No problem available for evaluation');
+
+        const evaluated = await wasmService.evaluateSolution(problemForEval, assignments);
+        // Preserve iteration/time from the moment of snapshot
+        const evaluatedWithRunMeta = {
+          ...evaluated,
+          iteration_count: lastProgress.iteration,
+          elapsed_time_ms: lastProgress.elapsed_seconds * 1000,
+        } as typeof evaluated;
+        const settingsForSave = (runSettings || solverSettings);
+        addResult(evaluatedWithRunMeta, settingsForSave, undefined, runProblemSnapshotRef.current || undefined);
+        addNotification({
+          type: 'success',
+          title: 'Saved Best-So-Far',
+          message: 'Snapshot saved without interrupting the solver.',
+        });
+      } catch (e) {
+        console.error('[SolverPanel] Failed to evaluate snapshot metrics:', e);
+        addNotification({
+          type: 'warning',
+          title: 'Saved Snapshot (Partial Metrics)',
+          message: 'Saved assignments; metrics could not be evaluated.',
+        });
+        // Fallback to saving without evaluated metrics, but keep best_score as final_score
+        const fallbackSolution = {
+          assignments,
+          final_score: lastProgress.best_score,
+          unique_contacts: 0,
+          repetition_penalty: 0,
+          attribute_balance_penalty: 0,
+          constraint_penalty: 0,
+          iteration_count: lastProgress.iteration,
+          elapsed_time_ms: lastProgress.elapsed_seconds * 1000,
+          weighted_repetition_penalty: 0,
+          weighted_constraint_penalty: 0,
+        } as unknown as import('../types').Solution;
+        const settingsForSave = (runSettings || solverSettings);
+        addResult(fallbackSolution, settingsForSave, undefined, runProblemSnapshotRef.current || undefined);
+      } finally {
+        saveInProgressRef.current = false;
+      }
+      return;
+    }
+
+    // Fallback: no snapshot available from progress; perform graceful stop+resume
+    saveInProgressRef.current = true;
+    restartAfterSaveRef.current = true;
+    cancelledRef.current = true;
+    addNotification({
+      type: 'info',
+      title: 'Saving Best-So-Far',
+      message: 'Snapshotting best result and resuming...',
+    });
   };
 
   const handleResetSolver = () => {
@@ -461,11 +746,13 @@ export function SolverPanel() {
           initial_temperature,
           final_temperature,
           cooling_schedule,
+          reheat_cycles,
           reheat_after_no_improvement,
         } = sp as {
           initial_temperature: number;
           final_temperature: number;
           cooling_schedule: string;
+          reheat_cycles?: number;
           reheat_after_no_improvement: number;
         };
 
@@ -476,6 +763,7 @@ export function SolverPanel() {
               initial_temperature,
               final_temperature,
               cooling_schedule,
+              reheat_cycles,
               reheat_after_no_improvement,
             },
           },
@@ -565,13 +853,23 @@ export function SolverPanel() {
               <span>Start Solver with Automatic Settings</span>
             </button>
           ) : (
-            <button
-              onClick={handleStopSolver}
-              className="btn-warning flex-1 flex items-center justify-center space-x-2"
-            >
-              <Pause className="h-4 w-4" />
-              <span>Cancel Solver</span>
-            </button>
+            <div className="flex flex-1 gap-2">
+              <button
+                onClick={() => setShowCancelConfirm(true)}
+                className="btn-warning flex-1 flex items-center justify-center space-x-2"
+              >
+                <Pause className="h-4 w-4" />
+                <span>Cancel Solver</span>
+              </button>
+              <button
+                onClick={handleSaveBestSoFar}
+                className="btn-secondary flex-1 flex items-center justify-center space-x-2"
+                title="Save best-so-far and continue solving"
+              >
+                <TrendingUp className="h-4 w-4" />
+                <span>Save Best So Far</span>
+              </button>
+            </div>
           )}
           
           <button
@@ -665,6 +963,18 @@ export function SolverPanel() {
               </Tooltip>
             </div>
           </div>
+          <div className="text-center p-3 sm:p-4 rounded-lg flex-shrink-0 min-w-0 flex-1" style={{ backgroundColor: 'var(--background-secondary)' }}>
+            <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2" style={{ color: 'var(--text-accent-blue)' }} />
+            <div className="text-lg sm:text-2xl font-bold" style={{ color: 'var(--text-accent-blue)' }}>
+              {(solverState.currentScore ?? 0).toFixed(2)}
+            </div>
+            <div className="text-xs sm:text-sm flex items-center justify-center gap-1" style={{ color: 'var(--text-secondary)' }}>
+              <span className="truncate">Current Cost Score</span>
+              <Tooltip content={<span>The current overall cost score of the working solution at this iteration. <b>Lower is better.</b></span>}>
+                <Info className="h-3 w-3 flex-shrink-0" />
+              </Tooltip>
+            </div>
+          </div>
           <div className="text-center p-3 sm:p-4 bg-warning-50 rounded-lg flex-shrink-0 min-w-0 flex-1">
             <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-warning-600 mx-auto mb-2" />
             <div className="text-lg sm:text-2xl font-bold text-warning-600">
@@ -672,6 +982,87 @@ export function SolverPanel() {
             </div>
             <div className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>Elapsed Time</div>
           </div>
+        </div>
+
+        {/* Live Visualization (optional) */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <LayoutGrid className="h-5 w-5" style={{ color: 'var(--color-accent)' }} />
+              <h4 className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                Live visualization
+              </h4>
+            </div>
+
+            <button
+              type="button"
+              className="px-3 py-1 rounded text-sm transition-colors border"
+              style={{
+                backgroundColor: showLiveViz ? 'var(--bg-tertiary)' : 'transparent',
+                color: showLiveViz ? 'var(--color-accent)' : 'var(--text-secondary)',
+                borderColor: showLiveViz ? 'var(--color-accent)' : 'var(--border-primary)',
+              }}
+              onClick={() => {
+                setShowLiveViz((prev) => {
+                  const next = !prev;
+                  try {
+                    localStorage.setItem('solverLiveVizEnabled', String(next));
+                  } catch {
+                    /* ignore */
+                  }
+                  return next;
+                });
+              }}
+            >
+              {showLiveViz ? 'Enabled' : 'Disabled'}
+            </button>
+          </div>
+
+          {showLiveViz ? (
+            solverState.isRunning ? (
+              liveVizState ? (
+                (() => {
+                  const liveProblem = getLiveVizProblem();
+                  if (!liveProblem) return null;
+                  return (
+                    <div
+                      className="rounded-lg border p-4"
+                      style={{
+                        backgroundColor: 'var(--bg-primary)',
+                        borderColor: 'var(--border-primary)',
+                      }}
+                    >
+                      <VisualizationPanel
+                        pluginId={liveVizPluginId}
+                        onPluginChange={(id) => {
+                          setLiveVizPluginId(id);
+                          try {
+                            localStorage.setItem('solverLiveVizPlugin', id);
+                          } catch {
+                            /* ignore */
+                          }
+                        }}
+                        data={{
+                          kind: 'live',
+                          problem: liveProblem,
+                          progress: liveVizState.progress,
+                          schedule: liveVizState.schedule,
+                        }}
+                      />
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                  Waiting for best-schedule snapshots…
+                </div>
+              )
+            ) : (
+              <div className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                Start the solver to see the schedule evolve over time.
+              </div>
+            )
+          ) : null}
         </div>
 
         {/* Live Algorithm Metrics */}
@@ -1009,6 +1400,159 @@ export function SolverPanel() {
               </Tooltip>
             </div>
           </div>
+          {/* Warm start selector (styled like demo data dropdown) */}
+          <div className="mb-4">
+            <div className="p-3 rounded-lg" style={{ border: '1px solid var(--border-secondary)', backgroundColor: 'var(--background-secondary)' }}>
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                Start from existing result (optional)
+              </label>
+              <div className="relative" ref={warmDropdownRef}>
+                <button
+                  onClick={() => setWarmDropdownOpen(!warmDropdownOpen)}
+                  className="btn-secondary flex items-center justify-between gap-2 w-full px-3 py-2 text-sm"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Zap className="w-4 h-4 flex-shrink-0" />
+                    <span className="truncate">
+                      {(() => {
+                        if (!warmStartSelection) return 'Start from random (default)';
+                        const r = currentProblemId ? savedProblems[currentProblemId]?.results.find(x => x.id === warmStartSelection) : undefined;
+                        return r ? `${r.name || 'Result'} • score ${r.solution.final_score.toFixed(2)}` : 'Start from random (default)';
+                      })()}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-3 h-3" />
+                </button>
+
+                {warmDropdownOpen && (
+                  <div
+                    ref={warmDropdownMenuRef}
+                    className="absolute left-0 mt-1 w-full rounded-md shadow-lg z-10 border overflow-hidden max-h-72 overflow-y-auto"
+                    style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+                  >
+                    <button
+                      onClick={() => {
+                        setWarmStartSelection(null);
+                        setWarmStartFromResult(null);
+                        setWarmDropdownOpen(false);
+                      }}
+                      className="flex w-full items-center justify-between px-3 py-2 text-sm text-left transition-colors border-b"
+                      style={{ borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-secondary)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    >
+                      <span>Start from random (default)</span>
+                    </button>
+
+                    {(() => {
+                      const list = currentProblemId ? (savedProblems[currentProblemId]?.results || []) : [];
+                      if (!list.length) return (
+                        <div className="px-3 py-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>No results available</div>
+                      );
+
+                      const scores = list.map(r => r.solution.final_score);
+                      const min = Math.min(...scores);
+                      const max = Math.max(...scores);
+                      const colorFor = (score: number) => {
+                        if (min === max) return 'text-green-600';
+                        const ratio = (score - min) / (max - min);
+                        if (ratio <= 0.15) return 'text-green-600';
+                        if (ratio <= 0.35) return 'text-lime-600';
+                        if (ratio <= 0.6) return 'text-yellow-600';
+                        if (ratio <= 0.85) return 'text-orange-600';
+                        return 'text-red-600';
+                      };
+
+                      return list
+                        .slice()
+                        .sort((a, b) => b.timestamp - a.timestamp)
+                        .map((r) => (
+                          <button
+                            key={r.id}
+                            onClick={() => {
+                              setWarmStartSelection(r.id);
+                              setWarmStartFromResult(r.id);
+                              setWarmDropdownOpen(false);
+                            }}
+                            className="flex w-full items-center justify-between px-3 py-2 text-sm text-left transition-colors border-b last:border-b-0"
+                            style={{ borderColor: 'var(--border-primary)', color: 'var(--text-primary)', backgroundColor: 'transparent' }}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-secondary)')}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium truncate">{r.name || 'Result'}</span>
+                                <span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>{new Date(r.timestamp).toLocaleString()}</span>
+                              </div>
+                              <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                                iter {r.solution.iteration_count.toLocaleString()} • duration {(r.duration / 1000).toFixed(1)}s
+                              </div>
+                            </div>
+                            <div className={`ml-3 font-semibold ${colorFor(r.solution.final_score)}`}>
+                              {r.solution.final_score.toFixed(2)}
+                            </div>
+                          </button>
+                        ));
+                    })()}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Allowed sessions selector */}
+          <div className="mb-4">
+            <div className="p-3 rounded-lg" style={{ border: '1px solid var(--border-secondary)', backgroundColor: 'var(--background-secondary)' }}>
+              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                Sessions to iterate (leave empty = all sessions)
+              </label>
+              <div className="flex flex-wrap gap-2 items-center">
+                {Array.from({ length: problem?.num_sessions || 0 }, (_, i) => i).map((s) => {
+                  const selected = (allowedSessionsLocal ?? solverSettings.allowed_sessions ?? []).includes(s);
+                  return (
+                    <button
+                      key={s}
+                      className={`px-2 py-1 rounded text-xs border ${selected ? 'bg-[var(--bg-tertiary)] text-[var(--color-accent)]' : ''}`}
+                      style={{ borderColor: 'var(--border-primary)', color: selected ? 'var(--color-accent)' : 'var(--text-secondary)' }}
+                      onClick={() => {
+                        const current = new Set(allowedSessionsLocal ?? solverSettings.allowed_sessions ?? []);
+                        if (current.has(s)) current.delete(s); else current.add(s);
+                        const next = Array.from(current).sort((a, b) => a - b);
+                        setAllowedSessionsLocal(next);
+                        handleSettingsChange({ allowed_sessions: next.length ? next : undefined });
+                      }}
+                      disabled={solverState.isRunning}
+                    >
+                      Session {s + 1}
+                    </button>
+                  );
+                })}
+                <div className="flex items-center gap-2 ml-auto">
+                  <button
+                    className="btn-secondary text-xs"
+                    onClick={() => {
+                      const all = Array.from({ length: problem?.num_sessions || 0 }, (_, i) => i);
+                      setAllowedSessionsLocal(all);
+                      handleSettingsChange({ allowed_sessions: all });
+                    }}
+                    disabled={solverState.isRunning}
+                  >
+                    All
+                  </button>
+                  <button
+                    className="btn-secondary text-xs"
+                    onClick={() => {
+                      setAllowedSessionsLocal([]);
+                      handleSettingsChange({ allowed_sessions: undefined });
+                    }}
+                    disabled={solverState.isRunning}
+                  >
+                    None
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <div className="flex items-center space-x-2 mb-1">
@@ -1027,7 +1571,7 @@ export function SolverPanel() {
                 onBlur={() => {
                   const inputValue = solverFormInputs.maxIterations || (solverSettings.stop_conditions.max_iterations || 10000).toString();
                   const numValue = parseInt(inputValue);
-                  if (!isNaN(numValue) && numValue >= 1000) {
+                  if (!isNaN(numValue) && numValue >= 1) {
                     handleSettingsChange({
                       ...solverSettings,
                       stop_conditions: {
@@ -1038,7 +1582,7 @@ export function SolverPanel() {
                     setSolverFormInputs(prev => ({ ...prev, maxIterations: undefined }));
                   }
                 }}
-                min="1000"
+                min="1"
                 max="100000"
               />
             </div>
@@ -1059,7 +1603,7 @@ export function SolverPanel() {
                 onBlur={() => {
                   const inputValue = solverFormInputs.timeLimit || (solverSettings.stop_conditions.time_limit_seconds || 30).toString();
                   const numValue = parseInt(inputValue);
-                  if (!isNaN(numValue) && numValue >= 10) {
+                  if (!isNaN(numValue) && numValue >= 1) {
                     handleSettingsChange({
                       ...solverSettings,
                       stop_conditions: {
@@ -1070,7 +1614,7 @@ export function SolverPanel() {
                     setSolverFormInputs(prev => ({ ...prev, timeLimit: undefined }));
                   }
                 }}
-                min="10"
+                min="1"
                 max="300"
               />
             </div>
@@ -1091,7 +1635,7 @@ export function SolverPanel() {
                 onBlur={() => {
                   const inputValue = solverFormInputs.noImprovement || (solverSettings.stop_conditions.no_improvement_iterations || 5000).toString();
                   const numValue = parseInt(inputValue);
-                  if (!isNaN(numValue) && numValue >= 100) {
+                  if (!isNaN(numValue) && numValue >= 1) {
                     handleSettingsChange({
                       ...solverSettings,
                       stop_conditions: {
@@ -1102,7 +1646,7 @@ export function SolverPanel() {
                     setSolverFormInputs(prev => ({ ...prev, noImprovement: undefined }));
                   }
                 }}
-                min="100"
+                min="1"
                 max="50000"
                 placeholder="Iterations without improvement before stopping"
               />
@@ -1181,6 +1725,43 @@ export function SolverPanel() {
             </div>
             <div>
               <div className="flex items-center space-x-2 mb-1">
+                <label htmlFor="reheatCycles" className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  Reheat Cycles
+                </label>
+                <Tooltip content="Number of cycles to cool from initial to final temperature, then reheat and repeat. 0 = disabled.">
+                  <Info className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
+                </Tooltip>
+              </div>
+              <input
+                id="reheatCycles"
+                type="number"
+                className="input"
+                value={solverFormInputs.reheatCycles ?? (solverSettings.solver_params.SimulatedAnnealing?.reheat_cycles || 0).toString()}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSolverFormInputs(prev => ({ ...prev, reheatCycles: e.target.value }))}
+                onBlur={() => {
+                  const inputValue = solverFormInputs.reheatCycles || (solverSettings.solver_params.SimulatedAnnealing?.reheat_cycles || 0).toString();
+                  const numValue = parseInt(inputValue);
+                  if (!isNaN(numValue) && numValue >= 0) {
+                    handleSettingsChange({
+                      ...solverSettings,
+                      solver_params: {
+                        ...solverSettings.solver_params,
+                        SimulatedAnnealing: {
+                          ...solverSettings.solver_params.SimulatedAnnealing!,
+                          reheat_cycles: numValue,
+                        }
+                      }
+                    });
+                    setSolverFormInputs(prev => ({ ...prev, reheatCycles: undefined }));
+                  }
+                }}
+                min="0"
+                max="100000"
+                placeholder="0 = disabled"
+              />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2 mb-1">
                 <label htmlFor="reheatAfterNoImprovement" className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                   Reheat After No Improvement
                 </label>
@@ -1215,6 +1796,55 @@ export function SolverPanel() {
                 placeholder="0 = disabled"
               />
             </div>
+            {/* Debug options */}
+            <div>
+              <div className="flex items-center space-x-2 mb-1">
+                <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  Debug: Validate Invariants
+                </label>
+                <Tooltip content="Check for duplicate assignments after each accepted move. Expensive – for debugging only.">
+                  <Info className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
+                </Tooltip>
+              </div>
+              <label className="inline-flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <input
+                  type="checkbox"
+                  checked={!!solverSettings.logging?.debug_validate_invariants}
+                  onChange={(e) => handleSettingsChange({
+                    logging: {
+                      ...solverSettings.logging,
+                      debug_validate_invariants: e.target.checked,
+                    },
+                  })}
+                  disabled={solverState.isRunning}
+                />
+                Enable invariant validation
+              </label>
+            </div>
+            <div>
+              <div className="flex items-center space-x-2 mb-1">
+                <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  Debug: Dump Invariant Context
+                </label>
+                <Tooltip content="If an invariant fails, include move details and partial schedule in error output.">
+                  <Info className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
+                </Tooltip>
+              </div>
+              <label className="inline-flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <input
+                  type="checkbox"
+                  checked={!!solverSettings.logging?.debug_dump_invariant_context}
+                  onChange={(e) => handleSettingsChange({
+                    logging: {
+                      ...solverSettings.logging,
+                      debug_dump_invariant_context: e.target.checked,
+                    },
+                  })}
+                  disabled={solverState.isRunning}
+                />
+                Include detailed context on violation
+              </label>
+            </div>
           </div>
 
           {/* --- Custom Settings Start Button (inside settings panel) --- */}
@@ -1227,6 +1857,24 @@ export function SolverPanel() {
               <Play className="h-4 w-4" />
               <span>Start Solver with Custom Settings</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }} onClick={() => setShowCancelConfirm(false)}></div>
+          <div className="relative bg-white dark:bg-gray-900 rounded-lg shadow-lg p-5 w-full max-w-md" style={{ border: '1px solid var(--border-secondary)' }}>
+            <h4 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Cancel Solver?</h4>
+            <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+              Do you want to save the current progress as a solution or discard it?
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <button className="btn-secondary" onClick={() => setShowCancelConfirm(false)}>Back</button>
+              <button className="btn-warning" onClick={handleCancelDiscard}>Discard Progress</button>
+              <button className="btn-success" onClick={handleCancelSave}>Save Progress</button>
+            </div>
           </div>
         </div>
       )}
@@ -1253,30 +1901,39 @@ export function SolverPanel() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-secondary)' }}>Initial Temperature:</span>
-                <span className="font-medium">{solverSettings.solver_params.SimulatedAnnealing?.initial_temperature || 1.0}</span>
+                <span className="font-medium">{displaySettings.solver_params.SimulatedAnnealing?.initial_temperature || 1.0}</span>
               </div>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-secondary)' }}>Final Temperature:</span>
-                <span className="font-medium">{solverSettings.solver_params.SimulatedAnnealing?.final_temperature || 0.01}</span>
+                <span className="font-medium">{displaySettings.solver_params.SimulatedAnnealing?.final_temperature || 0.01}</span>
               </div>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-secondary)' }}>Max Iterations:</span>
-                <span className="font-medium">{(solverSettings.stop_conditions.max_iterations || 0).toLocaleString()}</span>
+                <span className="font-medium">{(displaySettings.stop_conditions.max_iterations || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-secondary)' }}>Time Limit:</span>
-                <span className="font-medium">{solverSettings.stop_conditions.time_limit_seconds || 0}s</span>
+                <span className="font-medium">{displaySettings.stop_conditions.time_limit_seconds || 0}s</span>
               </div>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-secondary)' }}>No Improvement Limit:</span>
-                <span className="font-medium">{(solverSettings.stop_conditions.no_improvement_iterations || 0).toLocaleString()}</span>
+                <span className="font-medium">{(displaySettings.stop_conditions.no_improvement_iterations || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span style={{ color: 'var(--text-secondary)' }}>Reheat After:</span>
                 <span className="font-medium">
-                  {(solverSettings.solver_params.SimulatedAnnealing?.reheat_after_no_improvement || 0) === 0 
+                  {(displaySettings.solver_params.SimulatedAnnealing?.reheat_after_no_improvement || 0) === 0 
                     ? 'Disabled' 
-                    : (solverSettings.solver_params.SimulatedAnnealing?.reheat_after_no_improvement || 0).toLocaleString()
+                    : (displaySettings.solver_params.SimulatedAnnealing?.reheat_after_no_improvement || 0).toLocaleString()
+                  }
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span style={{ color: 'var(--text-secondary)' }}>Reheat Cycles:</span>
+                <span className="font-medium">
+                  {(displaySettings.solver_params.SimulatedAnnealing?.reheat_cycles || 0) === 0
+                    ? 'Disabled'
+                    : (displaySettings.solver_params.SimulatedAnnealing?.reheat_cycles || 0).toLocaleString()
                   }
                 </span>
               </div>

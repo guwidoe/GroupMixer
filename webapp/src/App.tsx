@@ -6,6 +6,7 @@ import { ProblemEditor } from './components/ProblemEditor';
 import { SolverPanel } from './components/SolverPanel';
 import { ResultsView } from './components/ResultsView';
 import { ResultsHistory } from './components/ResultsHistory';
+import { ManualEditor } from './components/ManualEditor';
 
 function App() {
   const { theme } = useThemeStore();
@@ -21,6 +22,7 @@ function App() {
           <Route path="problem/:section" element={<ProblemEditor />} />
           <Route path="solver" element={<SolverPanel />} />
           <Route path="results" element={<ResultsView />} />
+          <Route path="editor" element={<ManualEditor />} />
           <Route path="history" element={<ResultsHistory />} />
         </Route>
       </Routes>

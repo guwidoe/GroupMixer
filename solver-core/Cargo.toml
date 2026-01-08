@@ -15,7 +15,7 @@ indicatif = "0.17.8"
 getrandom = { version = "0.3", features = ["wasm_js"] }
 log = "0.4"
 serde_json = "1.0.108"
-thiserror = "2.0.12"
+thiserror = "2.0.17"
 serde_yaml = "0.9.34-deprecated"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies.getrandom]

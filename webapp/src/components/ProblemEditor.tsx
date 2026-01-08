@@ -14,7 +14,18 @@ interface AttributeBalanceConstraint {
   penalty_weight: number;
   sessions?: number[];
 }
-import { loadDemoCasesWithMetrics, type DemoCaseWithMetrics } from '../services/demoDataService';
+// Type for demo case with metrics - matches export from demoDataService
+// Imported dynamically to enable code splitting
+interface DemoCaseWithMetrics {
+  id: string;
+  name: string;
+  description: string;
+  category: "Simple" | "Intermediate" | "Advanced" | "Benchmark";
+  filename: string;
+  peopleCount: number;
+  groupCount: number;
+  sessionCount: number;
+}
 import PersonCard from './PersonCard';
 import HardConstraintsPanel from './constraints/HardConstraintsPanel';
 import SoftConstraintsPanel from './constraints/SoftConstraintsPanel';
@@ -22,7 +33,9 @@ import ImmovablePeopleModal from './modals/ImmovablePeopleModal';
 import RepeatEncounterModal from './modals/RepeatEncounterModal';
 import AttributeBalanceModal from './modals/AttributeBalanceModal';
 import ShouldNotBeTogetherModal from './modals/ShouldNotBeTogetherModal';
+import ShouldStayTogetherModal from './modals/ShouldStayTogetherModal';
 import MustStayTogetherModal from './modals/MustStayTogetherModal';
+import PairMeetingCountModal from './modals/PairMeetingCountModal';
 import AttributeBalanceDashboard from './AttributeBalanceDashboard';
 import { DemoDataWarningModal } from './modals/DemoDataWarningModal';
 
@@ -38,6 +51,7 @@ const getDefaultSolverSettings = (): SolverSettings => ({
       initial_temperature: 1.0,
       final_temperature: 0.01,
       cooling_schedule: "geometric",
+      reheat_cycles: 0,
       reheat_after_no_improvement: 0,
     },
   },
@@ -125,6 +139,7 @@ export function ProblemEditor() {
   const [peopleViewMode, setPeopleViewMode] = useState<'grid' | 'list'>('grid');
   const [peopleSortBy, setPeopleSortBy] = useState<'name' | 'sessions'>('name');
   const [peopleSortOrder, setPeopleSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [peopleSearch, setPeopleSearch] = useState('');
 
   // Auto-expand attributes section when there are no attributes defined
   useEffect(() => {
@@ -186,7 +201,9 @@ export function ProblemEditor() {
   useEffect(() => {
     if (demoDropdownOpen && demoCasesWithMetrics.length === 0 && !loadingDemoMetrics) {
       setLoadingDemoMetrics(true);
-      loadDemoCasesWithMetrics()
+      // Dynamic import to enable code splitting (avoids static + dynamic import warning)
+      import('../services/demoDataService')
+        .then(module => module.loadDemoCasesWithMetrics())
         .then(cases => {
           setDemoCasesWithMetrics(cases);
         })
@@ -274,7 +291,9 @@ export function ProblemEditor() {
   const [showRepeatEncounterModal, setShowRepeatEncounterModal] = useState(false);
   const [showAttributeBalanceModal, setShowAttributeBalanceModal] = useState(false);
   const [showShouldNotBeTogetherModal, setShowShouldNotBeTogetherModal] = useState(false);
+  const [showShouldStayTogetherModal, setShowShouldStayTogetherModal] = useState(false);
   const [showMustStayTogetherModal, setShowMustStayTogetherModal] = useState(false);
+  const [showPairMeetingCountModal, setShowPairMeetingCountModal] = useState(false);
   const [editingConstraintIndex, setEditingConstraintIndex] = useState<number | null>(null);
 
   // Demo data warning modal state
@@ -282,7 +301,7 @@ export function ProblemEditor() {
   const [pendingDemoCaseId, setPendingDemoCaseId] = useState<string | null>(null);
 
   // New UI state for Constraints tab
-  const SOFT_TYPES = useMemo(() => ['RepeatEncounter', 'AttributeBalance', 'ShouldNotBeTogether'] as const, []);
+  const SOFT_TYPES = useMemo(() => ['RepeatEncounter', 'AttributeBalance', 'ShouldNotBeTogether', 'ShouldStayTogether', 'PairMeetingCount'] as const, []);
   const HARD_TYPES = useMemo(() => ['ImmovablePeople', 'MustStayTogether'] as const, []);
 
   type ConstraintCategory = 'soft' | 'hard';
@@ -715,12 +734,19 @@ export function ProblemEditor() {
           if (!constraintForm.people?.length || constraintForm.people.length < 2) {
             throw new Error('Please select at least 2 people');
           }
-          newConstraint = {
-            type: constraintForm.type,
-            people: constraintForm.people,
-            penalty_weight: constraintForm.penalty_weight || 1000,
-            sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined
-          };
+          newConstraint =
+            constraintForm.type === 'MustStayTogether'
+              ? {
+                  type: 'MustStayTogether',
+                  people: constraintForm.people,
+                  sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined,
+                }
+              : {
+                  type: 'ShouldNotBeTogether',
+                  people: constraintForm.people,
+                  penalty_weight: constraintForm.penalty_weight || 1000,
+                  sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined,
+                };
           break;
 
         default:
@@ -783,12 +809,19 @@ export function ProblemEditor() {
         });
         break;
       case 'MustStayTogether':
-      case 'ShouldNotBeTogether':
         setConstraintForm({
-          type: constraint.type,
+          type: 'MustStayTogether',
           people: constraint.people,
           sessions: constraint.sessions,
-          penalty_weight: constraint.penalty_weight
+          penalty_weight: undefined,
+        });
+        break;
+      case 'ShouldNotBeTogether':
+        setConstraintForm({
+          type: 'ShouldNotBeTogether',
+          people: constraint.people,
+          sessions: constraint.sessions,
+          penalty_weight: constraint.penalty_weight,
         });
         break;
     }
@@ -850,12 +883,19 @@ export function ProblemEditor() {
           if (!constraintForm.people?.length || constraintForm.people.length < 2) {
             throw new Error('Please select at least 2 people');
           }
-          updatedConstraint = {
-            type: constraintForm.type,
-            people: constraintForm.people,
-            penalty_weight: constraintForm.penalty_weight || 1000,
-            sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined
-          };
+          updatedConstraint =
+            constraintForm.type === 'MustStayTogether'
+              ? {
+                  type: 'MustStayTogether',
+                  people: constraintForm.people,
+                  sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined,
+                }
+              : {
+                  type: 'ShouldNotBeTogether',
+                  people: constraintForm.people,
+                  penalty_weight: constraintForm.penalty_weight || 1000,
+                  sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined,
+                };
           break;
 
         default:
@@ -1010,11 +1050,40 @@ export function ProblemEditor() {
       );
     }
 
-    const sortedPeople = sortPeople(problem.people);
+    const searchValue = peopleSearch.trim().toLowerCase();
+    const basePeople = problem.people;
+    const filteredPeople = searchValue
+      ? basePeople.filter(p => {
+          const name = (p.attributes?.name || '').toString().toLowerCase();
+          const id = p.id.toLowerCase();
+          return name.includes(searchValue) || id.includes(searchValue);
+        })
+      : basePeople;
+
+    const sortedPeople = sortPeople(filteredPeople);
+
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sortedPeople.map(renderPersonCard)}
-      </div>
+      <>
+        {searchValue && (
+          <div className="mb-3 text-xs px-3 py-2 rounded border" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-secondary)', color: 'var(--text-secondary)' }}>
+            Showing {sortedPeople.length} of {basePeople.length} people for "{peopleSearch}".
+            <button onClick={() => setPeopleSearch('')} className="ml-2 underline">Clear filter</button>
+          </div>
+        )}
+        {sortedPeople.length === 0 ? (
+          <div className="text-center py-12" style={{ color: 'var(--text-secondary)' }}>
+            <Users className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--text-tertiary)' }} />
+            <p>No matching people</p>
+            {searchValue && (
+              <p className="text-sm">Try a different search or <button onClick={() => setPeopleSearch('')} className="underline">clear the filter</button>.</p>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {sortedPeople.map(renderPersonCard)}
+          </div>
+        )}
+      </>
     );
   };
 
@@ -1034,10 +1103,25 @@ export function ProblemEditor() {
       );
     }
 
-    const sortedPeople = sortPeople(problem.people);
+    const searchValue = peopleSearch.trim().toLowerCase();
+    const basePeople = problem.people;
+    const filteredPeople = searchValue
+      ? basePeople.filter(p => {
+          const name = (p.attributes?.name || '').toString().toLowerCase();
+          const id = p.id.toLowerCase();
+          return name.includes(searchValue) || id.includes(searchValue);
+        })
+      : basePeople;
+
+    const sortedPeople = sortPeople(filteredPeople);
     
     return (
       <div className="rounded-lg border overflow-hidden transition-colors" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
+        {searchValue && (
+          <div className="px-6 pt-4 text-xs" style={{ color: 'var(--text-secondary)' }}>
+            Showing {sortedPeople.length} of {basePeople.length} people for "{peopleSearch}". <button onClick={() => setPeopleSearch('')} className="underline">Clear filter</button>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y" style={{ borderColor: 'var(--border-secondary)' }}>
             <thead style={{ backgroundColor: 'var(--bg-tertiary)' }}>
@@ -1083,7 +1167,14 @@ export function ProblemEditor() {
               </tr>
             </thead>
             <tbody className="divide-y" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-secondary)' }}>
-              {sortedPeople.map(person => {
+              {sortedPeople.length === 0 ? (
+                <tr>
+                  <td className="px-6 py-6 text-center" colSpan={2 + attributeDefinitions.length + 1} style={{ color: 'var(--text-secondary)' }}>
+                    No matching people{searchValue ? ' for your search' : ''}.
+                  </td>
+                </tr>
+              ) : (
+              sortedPeople.map(person => {
                 const displayName = person.attributes.name || person.id;
                 const sessionText = person.sessions 
                   ? `${person.sessions.length}/${sessionsCount} (${person.sessions.map(s => s + 1).join(', ')})`
@@ -1140,7 +1231,8 @@ export function ProblemEditor() {
                     </td>
                   </tr>
                 );
-              })}
+              }))
+              }
             </tbody>
           </table>
         </div>
@@ -1859,6 +1951,13 @@ export function ProblemEditor() {
   const [bulkHeaders, setBulkHeaders] = useState<string[]>([]);
   const [bulkRows, setBulkRows] = useState<Record<string, string>[]>([]);
 
+  // Bulk update modal state
+  const [showBulkUpdateForm, setShowBulkUpdateForm] = useState(false);
+  const [bulkUpdateTextMode, setBulkUpdateTextMode] = useState<'text' | 'grid'>('grid');
+  const [bulkUpdateCsvInput, setBulkUpdateCsvInput] = useState('');
+  const [bulkUpdateHeaders, setBulkUpdateHeaders] = useState<string[]>([]);
+  const [bulkUpdateRows, setBulkUpdateRows] = useState<Record<string, string>[]>([]);
+
   // Close bulk dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -2063,6 +2162,271 @@ export function ProblemEditor() {
               className="btn-primary flex-1 px-4 py-2"
             >
               Add People
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // === Bulk Update Helpers & Modal ===
+  const buildPeopleCsvFromCurrent = (): { headers: string[]; rows: Record<string, string>[] } => {
+    const people = problem?.people || [];
+    const headerSet = new Set<string>(['id', 'name']);
+    people.forEach(p => {
+      Object.keys(p.attributes || {}).forEach(k => {
+        if (k !== 'name') headerSet.add(k);
+      });
+    });
+    attributeDefinitions.forEach(def => {
+      if (def.key !== 'name') headerSet.add(def.key);
+    });
+    const headers = Array.from(headerSet);
+    const rows: Record<string, string>[] = people.map(p => {
+      const row: Record<string, string> = {};
+      headers.forEach(h => {
+        if (h === 'id') row[h] = p.id;
+        else if (h === 'name') row[h] = (p.attributes && p.attributes['name']) || '';
+        else row[h] = (p.attributes && (p.attributes[h] ?? '')) as string;
+      });
+      return row;
+    });
+    return { headers, rows };
+  };
+
+  const openBulkUpdateForm = () => {
+    const { headers, rows } = buildPeopleCsvFromCurrent();
+    setBulkUpdateHeaders(headers);
+    setBulkUpdateRows(rows);
+    setBulkUpdateCsvInput(rowsToCsv(headers, rows));
+    setBulkUpdateTextMode('grid');
+    setShowBulkUpdateForm(true);
+  };
+
+  const handleApplyBulkUpdate = () => {
+    let headers: string[] = bulkUpdateHeaders;
+    let rows: Record<string, string>[] = bulkUpdateRows;
+    if (bulkUpdateTextMode === 'text') {
+      const parsed = parseCsv(bulkUpdateCsvInput);
+      headers = parsed.headers;
+      rows = parsed.rows;
+    }
+
+    if (!headers.includes('id')) {
+      addNotification({ type: 'error', title: 'Missing Column', message: 'CSV must include an "id" column.' });
+      return;
+    }
+    if (!headers.includes('name')) {
+      addNotification({ type: 'error', title: 'Missing Column', message: 'CSV must include a "name" column.' });
+      return;
+    }
+
+    const existingPeople = problem?.people || [];
+    const existingById = new Map<string, Person>(existingPeople.map(p => [p.id, p]));
+    const usedIds = new Set<string>(existingPeople.map(p => p.id));
+    const updatedById = new Map<string, Person>();
+    existingPeople.forEach(p => updatedById.set(p.id, { ...p, attributes: { ...p.attributes } }));
+
+    const newPeopleToAdd: Person[] = [];
+    rows.forEach((row) => {
+      const rawId = (row['id'] || '').trim();
+      const isExisting = rawId && existingById.has(rawId);
+      if (isExisting) {
+        const person = updatedById.get(rawId)!;
+        headers.forEach(h => {
+          if (h === 'id') return;
+          const val = (row[h] ?? '').trim();
+          if (val === '__DELETE__') {
+            if (h in person.attributes) delete person.attributes[h];
+          } else if (val.length > 0) {
+            person.attributes[h] = val;
+          }
+        });
+        updatedById.set(rawId, person);
+      } else {
+        const hasAnyData = headers.some(h => h !== 'id' && (row[h] ?? '').trim().length > 0);
+        if (!hasAnyData) return;
+        let newId = rawId;
+        if (!newId || usedIds.has(newId)) {
+          newId = generateUniquePersonId();
+        }
+        usedIds.add(newId);
+        const attributes: Record<string, string> = {};
+        headers.forEach(h => {
+          if (h === 'id') return;
+          const val = (row[h] ?? '').trim();
+          if (val.length > 0) attributes[h] = val;
+        });
+        newPeopleToAdd.push({ id: newId, attributes, sessions: undefined });
+      }
+    });
+
+    const updatedPeople = Array.from(updatedById.values());
+    const finalPeople: Person[] = [...updatedPeople, ...newPeopleToAdd];
+
+    const attrValueMap: Record<string, Set<string>> = {};
+    const allKeys = new Set<string>();
+    finalPeople.forEach(p => {
+      Object.entries(p.attributes || {}).forEach(([k, v]) => {
+        if (k === 'name') return;
+        if (!attrValueMap[k]) attrValueMap[k] = new Set<string>();
+        if (typeof v === 'string' && v.length > 0) attrValueMap[k].add(v);
+        allKeys.add(k);
+      });
+    });
+    headers.forEach(h => { if (h !== 'id' && h !== 'name') allKeys.add(h); });
+
+    allKeys.forEach(key => {
+      const existing = attributeDefinitions.find(def => def.key === key);
+      const newValues = Array.from(attrValueMap[key] || new Set<string>());
+      if (!existing) {
+        addAttributeDefinition({ key, values: newValues });
+      } else {
+        const merged = Array.from(new Set([...(existing.values || []), ...newValues]));
+        if (merged.length !== existing.values.length) {
+          removeAttributeDefinition(existing.key);
+          addAttributeDefinition({ key: existing.key, values: merged });
+        }
+      }
+    });
+
+    const updatedProblem: Problem = {
+      people: finalPeople,
+      groups: problem?.groups || [],
+      num_sessions: problem?.num_sessions || 3,
+      constraints: problem?.constraints || [],
+      settings: problem?.settings || getDefaultSolverSettings()
+    };
+    setProblem(updatedProblem);
+    setShowBulkUpdateForm(false);
+    addNotification({ type: 'success', title: 'Bulk Update Applied', message: `Updated ${rows.length} row(s).` });
+  };
+
+  const renderBulkUpdateForm = () => {
+    return (
+      <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50">
+        <div className="rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto modal-content">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Bulk Update People</h3>
+            <button
+              onClick={() => setShowBulkUpdateForm(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>
+            <p>
+              Use this to update existing people by <b>id</b>, add new columns (attributes), or add new people (leave id empty or use a new unique id).
+              Leave cells blank to keep current values. Use <code>__DELETE__</code> to remove an attribute from a person.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 mb-4">
+            <button
+              onClick={() => {
+                if (bulkUpdateTextMode === 'grid') {
+                  setBulkUpdateCsvInput(rowsToCsv(bulkUpdateHeaders, bulkUpdateRows));
+                }
+                setBulkUpdateTextMode('text');
+              }}
+              className={`px-3 py-1 rounded text-sm ${bulkUpdateTextMode === 'text' ? 'font-bold' : ''}`}
+              style={{ color: 'var(--text-primary)', backgroundColor: bulkUpdateTextMode === 'text' ? 'var(--bg-tertiary)' : 'transparent' }}
+            >
+              CSV Text
+            </button>
+            <button
+              onClick={() => {
+                if (bulkUpdateTextMode === 'text') {
+                  const { headers, rows } = parseCsv(bulkUpdateCsvInput);
+                  setBulkUpdateHeaders(headers);
+                  setBulkUpdateRows(rows);
+                }
+                setBulkUpdateTextMode('grid');
+              }}
+              className={`px-3 py-1 rounded text-sm ${bulkUpdateTextMode === 'grid' ? 'font-bold' : ''}`}
+              style={{ color: 'var(--text-primary)', backgroundColor: bulkUpdateTextMode === 'grid' ? 'var(--bg-tertiary)' : 'transparent' }}
+            >
+              Data Grid
+            </button>
+            <button
+              onClick={() => {
+                const { headers, rows } = buildPeopleCsvFromCurrent();
+                setBulkUpdateHeaders(headers);
+                setBulkUpdateRows(rows);
+                setBulkUpdateCsvInput(rowsToCsv(headers, rows));
+              }}
+              className="ml-auto btn-secondary px-3 py-1 text-sm"
+            >
+              Refresh from Current
+            </button>
+          </div>
+
+          {bulkUpdateTextMode === 'text' ? (
+            <textarea
+              value={bulkUpdateCsvInput}
+              onChange={(e) => setBulkUpdateCsvInput(e.target.value)}
+              className="w-full h-64 p-2 border rounded"
+              placeholder="Edit CSV here. First row contains headers (e.g., id,name,attribute1,attribute2)"
+            ></textarea>
+          ) : (
+            <div className="overflow-x-auto max-h-64 mb-4">
+              {bulkUpdateHeaders.length === 0 ? (
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No data parsed yet.</p>
+              ) : (
+                <table className="min-w-full divide-y" style={{ borderColor: 'var(--border-secondary)' }}>
+                  <thead style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                    <tr>
+                      {bulkUpdateHeaders.map(h => (
+                        <th key={h} className="px-2 py-1 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-secondary)' }}>
+                    {bulkUpdateRows.map((row, rowIdx) => (
+                      <tr key={rowIdx}>
+                        {bulkUpdateHeaders.map(h => (
+                          <td key={h} className="px-2 py-1">
+                            <input
+                              type="text"
+                              value={row[h] || ''}
+                              onChange={(e) => {
+                                const newRows = [...bulkUpdateRows];
+                                newRows[rowIdx][h] = e.target.value;
+                                setBulkUpdateRows(newRows);
+                              }}
+                              className="w-full text-sm border rounded p-1"
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+
+          <div className="flex gap-2 mt-4">
+            {bulkUpdateTextMode === 'text' && (
+              <button
+                onClick={() => {
+                  const { headers, rows } = parseCsv(bulkUpdateCsvInput);
+                  setBulkUpdateHeaders(headers);
+                  setBulkUpdateRows(rows);
+                  setBulkUpdateTextMode('grid');
+                }}
+                className="btn-secondary"
+              >
+                Preview Grid
+              </button>
+            )}
+            <button
+              onClick={handleApplyBulkUpdate}
+              className="btn-primary flex-1 px-4 py-2"
+            >
+              Apply Changes
             </button>
           </div>
         </div>
@@ -2485,7 +2849,7 @@ export function ProblemEditor() {
             { id: 'sessions', label: 'Sessions', icon: Calendar, count: problem?.num_sessions ?? 0 },
             { id: 'objectives', label: 'Objectives', icon: BarChart3, count: objectiveCount > 0 ? objectiveCount : undefined },
             { id: 'hard', label: 'Hard Constraints', icon: Lock, count: problem?.constraints ? problem.constraints.filter(c=>['ImmovablePeople','MustStayTogether'].includes(c.type as string)).length : 0 },
-            { id: 'soft', label: 'Soft Constraints', icon: Zap, count: problem?.constraints ? problem.constraints.filter(c=>['RepeatEncounter','AttributeBalance','ShouldNotBeTogether'].includes(c.type as string)).length : 0 },
+            { id: 'soft', label: 'Soft Constraints', icon: Zap, count: problem?.constraints ? problem.constraints.filter(c=>['RepeatEncounter','AttributeBalance','ShouldNotBeTogether','ShouldStayTogether','PairMeetingCount'].includes(c.type as string)).length : 0 },
           ].map(tab => (
             <button
               className={`flex-1 flex flex-row items-center justify-center min-w-[140px] gap-1 px-3 py-1.5 rounded-md font-medium transition-colors ${activeSection === tab.id ? 'bg-[var(--bg-tertiary)] text-[var(--color-accent)]' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--color-accent)]'}`}
@@ -2594,6 +2958,16 @@ export function ProblemEditor() {
                     People ({problem?.people.length || 0})
                   </h3>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    {/* Search */}
+                    <div className="w-full sm:w-64">
+                      <input
+                        type="text"
+                        className="input w-full"
+                        placeholder="Search people by name or ID..."
+                        value={peopleSearch}
+                        onChange={(e) => setPeopleSearch(e.target.value)}
+                      />
+                    </div>
                     {/* View Toggle */}
                     <div className="flex items-center gap-2">
                       <button
@@ -2709,6 +3083,14 @@ export function ProblemEditor() {
                       >
                         <Plus className="w-4 h-4" />
                         Add Person
+                      </button>
+                      {/* Bulk Update Button */}
+                      <button
+                        onClick={openBulkUpdateForm}
+                        className="btn-secondary flex items-center gap-2 px-4 py-2"
+                      >
+                        <Edit className="w-4 h-4" />
+                        Bulk Update
                       </button>
                     </div>
                   </div>
@@ -2956,6 +3338,12 @@ export function ProblemEditor() {
                 case 'ShouldNotBeTogether':
                   setShowShouldNotBeTogetherModal(true);
                   break;
+                case 'ShouldStayTogether':
+                  setShowShouldStayTogetherModal(true);
+                  break;
+                case 'PairMeetingCount':
+                  setShowPairMeetingCountModal(true);
+                  break;
                 default:
                   // Fallback to legacy modal for any other types
                   setConstraintForm((prev) => ({ ...prev, type }));
@@ -2973,6 +3361,12 @@ export function ProblemEditor() {
                   break;
                 case 'ShouldNotBeTogether':
                   setShowShouldNotBeTogetherModal(true);
+                  break;
+                case 'ShouldStayTogether':
+                  setShowShouldStayTogetherModal(true);
+                  break;
+                case 'PairMeetingCount':
+                  setShowPairMeetingCountModal(true);
                   break;
                 default:
                   // Fallback to legacy modal for any other types
@@ -3353,6 +3747,7 @@ export function ProblemEditor() {
         </div>
       )}
       {showBulkForm && renderBulkAddForm()}
+      {showBulkUpdateForm && renderBulkUpdateForm()}
       {showGroupBulkForm && renderGroupBulkAddForm()}
 
       <input type="file" accept=".csv,text/csv" ref={csvFileInputRef} className="hidden" onChange={handleCsvFileSelected} />
@@ -3462,6 +3857,52 @@ export function ProblemEditor() {
             
             setShowShouldNotBeTogetherModal(false);
             setEditingConstraintIndex(null);
+          }}
+        />
+      )}
+
+      {showShouldStayTogetherModal && (
+        <ShouldStayTogetherModal
+          sessionsCount={sessionsCount}
+          initial={editingConstraintIndex !== null ? (GetProblem().constraints[editingConstraintIndex] || null) : null}
+          onCancel={() => {
+            setShowShouldStayTogetherModal(false);
+            setEditingConstraintIndex(null);
+          }}
+          onSave={(constraint) => {
+            const currentProblem = GetProblem();
+            const updatedConstraints = [...currentProblem.constraints];
+            if (editingConstraintIndex !== null) {
+              updatedConstraints[editingConstraintIndex] = constraint;
+            } else {
+              updatedConstraints.push(constraint);
+            }
+            setProblem({
+              ...currentProblem,
+              constraints: updatedConstraints,
+            });
+            setShowShouldStayTogetherModal(false);
+            setEditingConstraintIndex(null);
+          }}
+        />
+      )}
+
+      {showPairMeetingCountModal && (
+        <PairMeetingCountModal
+          people={problem?.people ?? []}
+          totalSessions={problem?.num_sessions ?? 0}
+          initial={editingConstraintIndex !== null && problem ? problem.constraints[editingConstraintIndex] : null}
+          onCancel={() => setShowPairMeetingCountModal(false)}
+          onSave={(constraint) => {
+            if (!problem) {
+              setShowPairMeetingCountModal(false);
+              return;
+            }
+            const next = [...problem.constraints];
+            if (editingConstraintIndex !== null) next[editingConstraintIndex] = constraint;
+            else next.push(constraint);
+            setProblem({ ...problem, constraints: next });
+            setShowPairMeetingCountModal(false);
           }}
         />
       )}

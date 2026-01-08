@@ -67,6 +67,7 @@ function convertTestCaseToProblem(testCase: any): Problem {
         initial_temperature: solverParams.initial_temperature,
         final_temperature: solverParams.final_temperature,
         cooling_schedule: solverParams.cooling_schedule,
+        reheat_cycles: solverParams.reheat_cycles ?? 0,
       },
     },
     logging: input.solver.logging,
@@ -354,7 +355,6 @@ function createFallbackDemo(): Problem {
       {
         type: "MustStayTogether",
         people: ["alice", "bob"],
-        penalty_weight: 1000.0,
         sessions: [0, 1], // Only for first two sessions
       },
       // Charlie and Diana can't be together (personality conflict)
@@ -370,6 +370,7 @@ function createFallbackDemo(): Problem {
         attribute_key: "gender",
         desired_values: { male: 2, female: 2 },
         penalty_weight: 50.0,
+        mode: "exact",
       },
     ],
     settings: {
@@ -384,6 +385,7 @@ function createFallbackDemo(): Problem {
           initial_temperature: 1.0,
           final_temperature: 0.01,
           cooling_schedule: "geometric",
+          reheat_cycles: 0,
           reheat_after_no_improvement: 0,
         },
       },

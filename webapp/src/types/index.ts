@@ -22,6 +22,12 @@ export interface AttributeBalanceParams {
   attribute_key: string;
   desired_values: Record<string, number>; // e.g., {"male": 2, "female": 2}
   penalty_weight: number;
+  /**
+   * How to interpret desired counts. If omitted, defaults to "exact" to match backend default.
+   * - "exact": penalize deviation in either direction
+   * - "at_least": penalize only shortfalls
+   */
+  mode?: "exact" | "at_least";
   sessions?: number[]; // Optional: if undefined, applies to all sessions
 }
 
@@ -47,6 +53,11 @@ export type Constraint =
   | {
       type: "MustStayTogether";
       people: string[];
+      sessions?: number[]; // Optional: if undefined, applies to all sessions
+    }
+  | {
+      type: "ShouldStayTogether";
+      people: string[];
       penalty_weight: number;
       sessions?: number[]; // Optional: if undefined, applies to all sessions
     }
@@ -55,6 +66,14 @@ export type Constraint =
       people: string[];
       penalty_weight: number;
       sessions?: number[]; // Optional: if undefined, applies to all sessions
+    }
+  | {
+      type: "PairMeetingCount";
+      people: [string, string];
+      sessions: number[]; // fixed subset to consider
+      target_meetings: number; // 0..sessions.length
+      mode?: "at_least" | "exact" | "at_most"; // default at_least
+      penalty_weight: number; // linear per unit deviation based on mode
     };
 
 export interface Objective {
@@ -80,6 +99,13 @@ export interface SolverSettings {
   stop_conditions: StopConditions;
   solver_params: SolverParams;
   logging?: LoggingOptions;
+  telemetry?: {
+    emit_best_schedule?: boolean;
+    best_schedule_every_n_callbacks?: number;
+  };
+  // Optional list of 0-based session indices the solver may modify.
+  // If omitted, all sessions are eligible for moves.
+  allowed_sessions?: number[];
 }
 
 export interface StopConditions {
@@ -96,6 +122,7 @@ export interface SimulatedAnnealingParams {
   initial_temperature: number;
   final_temperature: number;
   cooling_schedule: "geometric" | "linear";
+  reheat_cycles?: number; // Optional: number of fixed cycles across total iterations (0/undefined = disabled)
   reheat_after_no_improvement?: number; // Optional: number of iterations without improvement before reheating (0 = disabled)
 }
 
@@ -107,6 +134,9 @@ export interface LoggingOptions {
   log_initial_score_breakdown?: boolean;
   log_final_score_breakdown?: boolean;
   log_stop_condition?: boolean;
+  // Debug options (expensive – use only when diagnosing issues)
+  debug_validate_invariants?: boolean;
+  debug_dump_invariant_context?: boolean;
 }
 
 export interface Solution {
@@ -135,6 +165,7 @@ export interface SolverState {
   isComplete: boolean;
   currentIteration: number;
   bestScore: number;
+  currentScore?: number;
   elapsedTime: number;
   noImprovementCount: number;
   error?: string;
@@ -252,6 +283,7 @@ export interface AppState {
     notifications: Notification[];
     showProblemManager: boolean;
     showResultComparison: boolean;
+    warmStartResultId?: string | null;
   };
 }
 

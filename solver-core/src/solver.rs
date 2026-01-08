@@ -7,7 +7,10 @@
 //! The `State` is designed for performance, converting string-based API inputs into
 //! integer indices for fast array operations during optimization.
 
-use crate::models::{ApiInput, AttributeBalanceParams, Constraint, LoggingOptions, SolverResult};
+use crate::models::{
+    ApiInput, AttributeBalanceParams, Constraint, LoggingOptions, PairMeetingMode, SolverResult,
+    TelemetryOptions,
+};
 use rand::seq::SliceRandom;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -71,6 +74,7 @@ pub enum SolverError {
 ///
 /// // Create state from API input (normally done by run_solver)
 /// # let input = ApiInput {
+/// #     initial_schedule: None,
 /// #     problem: solver_core::models::ProblemDefinition {
 /// #         people: vec![], groups: vec![], num_sessions: 1
 /// #     },
@@ -82,10 +86,12 @@ pub enum SolverError {
 /// #         },
 /// #         solver_params: solver_core::models::SolverParams::SimulatedAnnealing(
 /// #             solver_core::models::SimulatedAnnealingParams {
-/// #                 initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0
+/// #                 initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0)
 /// #             }
 /// #         ),
 /// #         logging: solver_core::models::LoggingOptions::default(),
+/// #         telemetry: Default::default(),
+/// #         allowed_sessions: None,
 /// #     },
 /// # };
 /// let mut state = State::new(&input)?;
@@ -130,6 +136,9 @@ pub struct State {
     /// Logging and output configuration options
     pub logging: LoggingOptions,
 
+    /// Optional telemetry controls (used by progress updates / visualizations)
+    pub telemetry: TelemetryOptions,
+
     // === CORE SCHEDULE DATA ===
     // The main optimization variables - who is assigned where and when
     /// The main schedule: `schedule[session][group] = [person_indices]`
@@ -152,16 +161,24 @@ pub struct State {
     pub person_to_clique_id: Vec<Vec<Option<usize>>>,
     /// Pairs of people who cannot be together
     pub forbidden_pairs: Vec<(usize, usize)>,
+    /// Pairs of people who should be together (soft)
+    pub should_together_pairs: Vec<(usize, usize)>,
     /// Immovable person assignments: `(person_index, session_index) -> group_index`
     pub immovable_people: HashMap<(usize, usize), usize>,
     /// Which sessions each clique constraint applies to (None = all sessions)
     pub clique_sessions: Vec<Option<Vec<usize>>>,
     /// Which sessions each forbidden pair constraint applies to (None = all sessions)
     pub forbidden_pair_sessions: Vec<Option<Vec<usize>>>,
+    /// Which sessions each should-together pair applies to (None = all sessions)
+    pub should_together_sessions: Vec<Option<Vec<usize>>>,
     /// Person participation matrix: `person_participation[person][session] = is_participating`
     pub person_participation: Vec<Vec<bool>>,
     /// Total number of sessions in the problem
     pub num_sessions: u32,
+
+    /// Optional allow-list of sessions the solver may modify.
+    /// If present, the solver will only propose moves for these sessions.
+    pub allowed_sessions: Option<Vec<u32>>,
 
     // === SCORING DATA ===
     // Current optimization scores, updated incrementally for performance
@@ -184,6 +201,8 @@ pub struct State {
     pub clique_violations: Vec<i32>,
     /// Number of violations for each forbidden pair (people forced together)
     pub forbidden_pair_violations: Vec<i32>,
+    /// Number of violations for each should-together pair (people separated)
+    pub should_together_violations: Vec<i32>,
     /// Total violations of immovable person constraints
     pub immovable_violations: i32,
 
@@ -193,10 +212,25 @@ pub struct State {
     pub w_contacts: f64,
     /// Weight for repeat encounter penalties (from constraints)
     pub w_repetition: f64,
-    /// Penalty weight for each clique violation
-    pub clique_weights: Vec<f64>,
+    // MustStayTogether is a hard constraint; no weights are tracked
     /// Penalty weight for each forbidden pair violation
     pub forbidden_pair_weights: Vec<f64>,
+    /// Penalty weight for each should-together pair violation
+    pub should_together_weights: Vec<f64>,
+
+    // === PairMinMeetings (soft, cross-session for fixed subset) ===
+    /// Pairs of people constrained to meet at least a minimum number within a subset of sessions
+    pub pairmin_pairs: Vec<(usize, usize)>,
+    /// Session subsets per constraint (always non-empty, sorted unique session indices)
+    pub pairmin_sessions: Vec<Vec<usize>>,
+    /// Required minimum meetings per constraint (m <= |sessions|)
+    pub pairmin_required: Vec<u32>,
+    /// Linear penalty weight per missing meeting
+    pub pairmin_weights: Vec<f64>,
+    /// Current counts of meetings for each constraint within its session subset
+    pub pairmin_counts: Vec<u32>,
+    /// Penalty modes per constraint
+    pub pairmin_modes: Vec<PairMeetingMode>,
 
     /// Baseline score to prevent negative scores from unique contacts metric
     pub baseline_score: f64,
@@ -205,6 +239,33 @@ pub struct State {
 }
 
 impl State {
+    /// Returns a human-friendly identifier for a person index.
+    /// If the person has a `name` attribute, this returns "{name} ({id})"; otherwise just the ID.
+    pub fn display_person_by_idx(&self, person_idx: usize) -> String {
+        let id_str = &self.person_idx_to_id[person_idx];
+        if let Some(&name_attr_idx) = self.attr_key_to_idx.get("name") {
+            let name_val_idx = self.person_attributes[person_idx][name_attr_idx];
+            if name_val_idx != usize::MAX {
+                if let Some(name_str) = self
+                    .attr_idx_to_val
+                    .get(name_attr_idx)
+                    .and_then(|v| v.get(name_val_idx))
+                {
+                    return format!("{} ({})", name_str, id_str);
+                }
+            }
+        }
+        id_str.clone()
+    }
+
+    /// Returns a human-friendly identifier for a person by ID string.
+    /// If the person exists and has a `name` attribute, returns "{name} ({id})"; otherwise returns the ID.
+    pub fn display_person_id(&self, person_id: &str) -> String {
+        if let Some(&p_idx) = self.person_id_to_idx.get(person_id) {
+            return self.display_person_by_idx(p_idx);
+        }
+        person_id.to_string()
+    }
     /// Creates a new solver state from the API input configuration.
     ///
     /// This constructor performs several important tasks:
@@ -247,6 +308,7 @@ impl State {
     /// use std::collections::HashMap;
     ///
     /// let input = ApiInput {
+    ///     initial_schedule: None,
     ///     problem: ProblemDefinition {
     ///         people: vec![
     ///             Person {
@@ -279,10 +341,13 @@ impl State {
     ///                 initial_temperature: 10.0,
     ///                 final_temperature: 0.1,
     ///                 cooling_schedule: "geometric".to_string(),
-    ///                 reheat_after_no_improvement: 0,
+    ///                 reheat_after_no_improvement: Some(0),
+    ///                 reheat_cycles: Some(0),
     ///             }
     ///         ),
     ///         logging: LoggingOptions::default(),
+    ///         telemetry: Default::default(),
+    ///         allowed_sessions: None,
     ///     },
     /// };
     ///
@@ -437,6 +502,7 @@ impl State {
             attr_val_to_idx,
             attr_idx_to_val,
             logging: input.solver.logging.clone(),
+            telemetry: input.solver.telemetry.clone(),
             schedule,
             locations,
             person_attributes,
@@ -447,11 +513,14 @@ impl State {
                 input.problem.num_sessions as usize
             ], // To be populated
             forbidden_pairs: vec![], // To be populated
+            should_together_pairs: vec![], // To be populated
             immovable_people: HashMap::new(), // To be populated
             clique_sessions: vec![], // To be populated by preprocessing
             forbidden_pair_sessions: vec![], // To be populated by preprocessing
+            should_together_sessions: vec![], // To be populated by preprocessing
             person_participation: vec![], // To be populated by preprocessing
             num_sessions: input.problem.num_sessions,
+            allowed_sessions: input.solver.allowed_sessions.clone(),
             contact_matrix: vec![vec![0; people_count]; people_count],
             unique_contacts: 0,
             repetition_penalty: 0,
@@ -460,23 +529,86 @@ impl State {
             weighted_constraint_penalty: 0.0,
             clique_violations: Vec::new(), // Will be resized after constraint preprocessing
             forbidden_pair_violations: Vec::new(), // Will be resized after constraint preprocessing
+            should_together_violations: Vec::new(), // Will be resized after constraint preprocessing
             immovable_violations: 0,
             w_contacts,
             w_repetition,
-            clique_weights: Vec::new(),
+
             forbidden_pair_weights: Vec::new(),
+            should_together_weights: Vec::new(),
+            pairmin_pairs: Vec::new(),
+            pairmin_sessions: Vec::new(),
+            pairmin_required: Vec::new(),
+            pairmin_weights: Vec::new(),
+            pairmin_counts: Vec::new(),
+            pairmin_modes: Vec::new(),
             baseline_score,
             current_cost: 0.0,
         };
 
         state._preprocess_and_validate_constraints(input)?;
 
-        // --- Initialize with a random assignment (clique-aware) ---
+        // If an initial schedule is supplied, warm-start from it; otherwise random initialize
+        if let Some(ref initial_schedule) = input.initial_schedule {
+            // Build mapping of group id -> index for quick lookup
+            let mut _day_idx = 0usize;
+            // Expect keys like "session_0", iterate in sorted order by session index
+            let mut sessions: Vec<(usize, &std::collections::HashMap<String, Vec<String>>)> =
+                initial_schedule
+                    .iter()
+                    .filter_map(|(k, v)| {
+                        if let Some(s_idx_str) = k.split('_').last() {
+                            if let Ok(s_idx) = s_idx_str.parse::<usize>() {
+                                return Some((s_idx, v));
+                            }
+                        }
+                        None
+                    })
+                    .collect();
+            sessions.sort_by_key(|(s_idx, _)| *s_idx);
+
+            for (s_idx, group_map) in sessions {
+                if s_idx >= state.schedule.len() {
+                    continue;
+                }
+                let day_schedule = &mut state.schedule[s_idx];
+                let mut placed: Vec<bool> = vec![false; people_count];
+                for (group_id, people_ids) in group_map.iter() {
+                    if let Some(&g_idx) = state.group_id_to_idx.get(group_id) {
+                        for pid in people_ids {
+                            if let Some(&p_idx) = state.person_id_to_idx.get(pid) {
+                                // Only place if participating this day and group has capacity
+                                let group_size = input.problem.groups[g_idx].size as usize;
+                                if state.person_participation[p_idx][s_idx]
+                                    && day_schedule[g_idx].len() < group_size
+                                {
+                                    day_schedule[g_idx].push(p_idx);
+                                    placed[p_idx] = true;
+                                }
+                            }
+                        }
+                    }
+                }
+                // Any unplaced participating people will be filled in by random initializer below
+            }
+        }
+
+        // --- Initialize remaining slots with a random assignment (clique-aware) ---
         let mut rng = rand::rng();
 
         for (day, day_schedule) in state.schedule.iter_mut().enumerate() {
             let mut group_cursors = vec![0; group_count];
             let mut assigned_in_day = vec![false; people_count];
+
+            // Warm-start aware: mark already placed people and count existing occupants
+            for (g_idx, members) in day_schedule.iter().enumerate() {
+                group_cursors[g_idx] = members.len();
+                for &p in members {
+                    if p < people_count {
+                        assigned_in_day[p] = true;
+                    }
+                }
+            }
 
             // Get list of people participating in this session
             let participating_people: Vec<usize> = (0..people_count)
@@ -522,6 +654,13 @@ impl State {
                 if !all_participating {
                     // Some clique members not participating - handle individual placement
                     continue;
+                }
+
+                // Check if this clique applies to this session (session-aware initialization)
+                if let Some(ref sessions) = state.clique_sessions[clique_idx] {
+                    if !sessions.contains(&day) {
+                        continue;
+                    }
                 }
 
                 // Find a group with enough space for the entire clique
@@ -624,13 +763,12 @@ impl State {
             }
         }
 
-        // --- Process `MustStayTogether` (Cliques) and `ShouldNotBeTogether` (Forbidden Pairs) ---
+        // --- Process `MustStayTogether` (Cliques) and `ShouldNotBeTogether`/`ShouldStayTogether` (Pairs) ---
         // New session-aware preprocessing using per-session DSU ----------------------
         use std::collections::hash_map::{Entry, HashMap};
 
         self.cliques.clear();
         self.clique_sessions.clear();
-        self.clique_weights.clear();
 
         // Map from member list -> global clique id
         let mut members_to_id: HashMap<Vec<usize>, usize> = HashMap::new();
@@ -685,7 +823,6 @@ impl State {
                         v.insert(id);
                         self.cliques.push(key);
                         self.clique_sessions.push(Some(Vec::new()));
-                        self.clique_weights.push(1000.0); // hard
                         id
                     }
                 };
@@ -699,8 +836,9 @@ impl State {
                 for &m in members {
                     if self.person_to_clique_id[session_idx][m].is_some() {
                         return Err(SolverError::ValidationError(format!(
-                            "Person '{}' is part of multiple cliques in session {}.",
-                            self.person_idx_to_id[m], session_idx
+                            "Person {} is part of multiple cliques in session {}.",
+                            self.display_person_by_idx(m),
+                            session_idx
                         )));
                     }
                     self.person_to_clique_id[session_idx][m] = Some(cid);
@@ -735,8 +873,18 @@ impl State {
             {
                 for i in 0..people.len() {
                     for j in (i + 1)..people.len() {
-                        let p1_idx = *self.person_id_to_idx.get(&people[i]).unwrap();
-                        let p2_idx = *self.person_id_to_idx.get(&people[j]).unwrap();
+                        let p1_idx = *self.person_id_to_idx.get(&people[i]).ok_or_else(|| {
+                            SolverError::ValidationError(format!(
+                                "ShouldNotBeTogether references unknown person {}",
+                                self.display_person_id(&people[i])
+                            ))
+                        })?;
+                        let p2_idx = *self.person_id_to_idx.get(&people[j]).ok_or_else(|| {
+                            SolverError::ValidationError(format!(
+                                "ShouldNotBeTogether references unknown person {}",
+                                self.display_person_id(&people[j])
+                            ))
+                        })?;
 
                         // Check for conflict with cliques
                         if let (Some(c1), Some(c2)) = (
@@ -746,7 +894,7 @@ impl State {
                             if c1 == c2 {
                                 let clique_member_ids: Vec<String> = self.cliques[c1]
                                     .iter()
-                                    .map(|id| self.person_idx_to_id[*id].clone())
+                                    .map(|&idx| self.display_person_by_idx(idx))
                                     .collect();
                                 return Err(SolverError::ValidationError(format!(
                                     "ShouldNotBeTogether constraint conflicts with MustStayTogether: people {:?} are in the same clique {:?}",
@@ -771,7 +919,7 @@ impl State {
                                 if c1 == c2 {
                                     let clique_member_ids: Vec<String> = self.cliques[c1]
                                         .iter()
-                                        .map(|id| self.person_idx_to_id[*id].clone())
+                                        .map(|&idx| self.display_person_by_idx(idx))
                                         .collect();
                                     return Err(SolverError::ValidationError(format!(
                                         "ShouldNotBeTogether constraint conflicts with MustStayTogether in session {}: people {:?} are in the same clique {:?}",
@@ -797,6 +945,156 @@ impl State {
             }
         }
 
+        // --- Process `ShouldStayTogether` (Soft Together Pairs) ---
+        for constraint in &input.constraints {
+            if let Constraint::ShouldStayTogether {
+                people,
+                penalty_weight,
+                sessions: constraint_sessions,
+            } = constraint
+            {
+                for i in 0..people.len() {
+                    for j in (i + 1)..people.len() {
+                        let p1_idx = *self.person_id_to_idx.get(&people[i]).ok_or_else(|| {
+                            SolverError::ValidationError(format!(
+                                "ShouldStayTogether references unknown person {}",
+                                self.display_person_id(&people[i])
+                            ))
+                        })?;
+                        let p2_idx = *self.person_id_to_idx.get(&people[j]).ok_or_else(|| {
+                            SolverError::ValidationError(format!(
+                                "ShouldStayTogether references unknown person {}",
+                                self.display_person_id(&people[j])
+                            ))
+                        })?;
+
+                        // Conflict check with existing ShouldNotBeTogether pairs
+                        if let Some((fp_idx, _)) =
+                            self.forbidden_pairs
+                                .iter()
+                                .enumerate()
+                                .find(|(_, &(a, b))| {
+                                    (a == p1_idx && b == p2_idx) || (a == p2_idx && b == p1_idx)
+                                })
+                        {
+                            // Sessions overlap?
+                            let f_sessions = &self.forbidden_pair_sessions[fp_idx];
+                            let s_sessions: Option<Vec<usize>> = constraint_sessions
+                                .as_ref()
+                                .map(|v| v.iter().map(|&s| s as usize).collect());
+                            let overlap = match (f_sessions, &s_sessions) {
+                                (None, _) | (_, None) => true,
+                                (Some(f), Some(s)) => f.iter().any(|x| s.contains(x)),
+                            };
+                            if overlap {
+                                return Err(SolverError::ValidationError(
+                                    "ShouldStayTogether constraint conflicts with existing ShouldNotBeTogether for the same pair in overlapping sessions".to_string(),
+                                ));
+                            }
+                        }
+
+                        // If these two are in a hard clique together anywhere applicable, it's redundant but not invalid
+                        // We still allow it; scoring will naturally give zero penalty when together.
+
+                        self.should_together_pairs.push((p1_idx, p2_idx));
+                        self.should_together_weights.push(*penalty_weight);
+
+                        // Convert sessions to indices if provided
+                        if let Some(sessions) = constraint_sessions {
+                            let session_indices: Vec<usize> =
+                                sessions.iter().map(|&s| s as usize).collect();
+                            self.should_together_sessions.push(Some(session_indices));
+                        } else {
+                            self.should_together_sessions.push(None); // Apply to all sessions
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- Process PairMeetingCount (soft cross-session subset for pairs) ---
+        self.pairmin_pairs.clear();
+        self.pairmin_sessions.clear();
+        self.pairmin_required.clear();
+        self.pairmin_weights.clear();
+        self.pairmin_counts.clear();
+        for constraint in &input.constraints {
+            if let Constraint::PairMeetingCount(params) = constraint {
+                // Validate exactly two people
+                if params.people.len() != 2 {
+                    return Err(SolverError::ValidationError(
+                        "PairMeetingCount requires exactly two people".to_string(),
+                    ));
+                }
+                let p1_idx = *self
+                    .person_id_to_idx
+                    .get(&params.people[0])
+                    .ok_or_else(|| {
+                        SolverError::ValidationError(format!(
+                            "Unknown person '{}' in PairMeetingCount",
+                            params.people[0]
+                        ))
+                    })?;
+                let p2_idx = *self
+                    .person_id_to_idx
+                    .get(&params.people[1])
+                    .ok_or_else(|| {
+                        SolverError::ValidationError(format!(
+                            "Unknown person '{}' in PairMeetingCount",
+                            params.people[1]
+                        ))
+                    })?;
+                // Map and validate sessions (empty => all sessions)
+                let mut sess: Vec<usize> = if params.sessions.is_empty() {
+                    (0..num_sessions).collect()
+                } else {
+                    let mut tmp: Vec<usize> = Vec::with_capacity(params.sessions.len());
+                    for &s in &params.sessions {
+                        let si = s as usize;
+                        if si >= num_sessions {
+                            return Err(SolverError::ValidationError(format!(
+                                "PairMeetingCount references invalid session {}",
+                                s
+                            )));
+                        }
+                        tmp.push(si);
+                    }
+                    tmp
+                };
+                sess.sort_unstable();
+                sess.dedup();
+                let n = sess.len() as u32;
+                if params.target_meetings > n {
+                    return Err(SolverError::ValidationError(format!(
+                        "PairMeetingCount target_meetings={} exceeds number of sessions in subset {}",
+                        params.target_meetings, n
+                    )));
+                }
+                // Feasibility: both must co-participate in at least min_meetings among subset
+                let feasible_sessions = sess
+                    .iter()
+                    .filter(|&&s| {
+                        self.person_participation[p1_idx][s] && self.person_participation[p2_idx][s]
+                    })
+                    .count() as u32;
+                if params.mode == PairMeetingMode::AtLeast
+                    && params.target_meetings > feasible_sessions
+                {
+                    return Err(SolverError::ValidationError(format!(
+                        "PairMeetingCount target_meetings={} exceeds feasible co-participation {} for the pair",
+                        params.target_meetings, feasible_sessions
+                    )));
+                }
+
+                self.pairmin_pairs.push((p1_idx, p2_idx));
+                self.pairmin_sessions.push(sess);
+                self.pairmin_required.push(params.target_meetings);
+                self.pairmin_weights.push(params.penalty_weight);
+                self.pairmin_counts.push(0);
+                self.pairmin_modes.push(params.mode);
+            }
+        }
+
         // --- Process `ImmovablePerson` ---
         for constraint in &input.constraints {
             match constraint {
@@ -806,8 +1104,8 @@ impl State {
                         .get(&params.person_id)
                         .ok_or_else(|| {
                             SolverError::ValidationError(format!(
-                                "Person '{}' not found.",
-                                params.person_id
+                                "Person {} not found.",
+                                self.display_person_id(&params.person_id)
                             ))
                         })?;
                     let g_idx = self.group_id_to_idx.get(&params.group_id).ok_or_else(|| {
@@ -816,13 +1114,19 @@ impl State {
                             params.group_id
                         ))
                     })?;
+                    // Default to all sessions when not provided
+                    let sessions_iter: Vec<u32> = params
+                        .sessions
+                        .clone()
+                        .unwrap_or_else(|| (0..self.num_sessions).collect());
 
-                    for &session in &params.sessions {
+                    for &session in &sessions_iter {
                         let s_idx = session as usize;
                         if s_idx >= self.num_sessions as usize {
                             return Err(SolverError::ValidationError(format!(
                                 "Session index {} out of bounds for immovable person {}.",
-                                s_idx, params.person_id
+                                s_idx,
+                                self.display_person_id(&params.person_id)
                             )));
                         }
                         self.immovable_people.insert((*p_idx, s_idx), *g_idx);
@@ -837,20 +1141,27 @@ impl State {
                         ))
                     })?;
 
+                    // Default to all sessions when not provided
+                    let sessions_iter: Vec<u32> = params
+                        .sessions
+                        .clone()
+                        .unwrap_or_else(|| (0..self.num_sessions).collect());
+
                     for person_id in &params.people {
                         let p_idx = self.person_id_to_idx.get(person_id).ok_or_else(|| {
                             SolverError::ValidationError(format!(
-                                "Person '{}' not found.",
-                                person_id
+                                "Person {} not found.",
+                                self.display_person_id(person_id)
                             ))
                         })?;
 
-                        for &session in &params.sessions {
+                        for &session in &sessions_iter {
                             let s_idx = session as usize;
                             if s_idx >= self.num_sessions as usize {
                                 return Err(SolverError::ValidationError(format!(
                                     "Session index {} out of bounds for immovable person {}.",
-                                    s_idx, person_id
+                                    s_idx,
+                                    self.display_person_id(person_id)
                                 )));
                             }
                             self.immovable_people.insert((*p_idx, s_idx), *g_idx);
@@ -864,6 +1175,7 @@ impl State {
         // Initialize constraint violation vectors with correct sizes
         self.clique_violations = vec![0; self.cliques.len()];
         self.forbidden_pair_violations = vec![0; self.forbidden_pairs.len()];
+        self.should_together_violations = vec![0; self.should_together_pairs.len()];
 
         // === Propagate immovable constraints to clique members ===
         // If a person in a clique is immovable on a session, all members of that clique
@@ -881,8 +1193,8 @@ impl State {
                     if let Some(prev_grp) = expanded_immovable.insert(key, required_group) {
                         if prev_grp != required_group {
                             return Err(SolverError::ValidationError(format!(
-                                "Person '{}' has conflicting immovable assignments in session {} (groups '{}' vs '{}')",
-                                self.person_idx_to_id[member],
+                                "Person {} has conflicting immovable assignments in session {} (groups '{}' vs '{}')",
+                                self.display_person_by_idx(member),
                                 session_idx,
                                 self.group_idx_to_id[prev_grp],
                                 self.group_idx_to_id[required_group]
@@ -981,6 +1293,28 @@ impl State {
         // Recalculate constraint penalties
         self._recalculate_constraint_penalty();
 
+        // Initialize PairMinMeetings counts from current schedule
+        for count in &mut self.pairmin_counts {
+            *count = 0;
+        }
+        for (idx, &(a, b)) in self.pairmin_pairs.iter().enumerate() {
+            let sessions = &self.pairmin_sessions[idx];
+            let mut cnt = 0u32;
+            for &day in sessions {
+                if self.person_participation[a][day] && self.person_participation[b][day] {
+                    let (ga, _) = self.locations[day][a];
+                    let (gb, _) = self.locations[day][b];
+                    if ga == gb {
+                        cnt += 1;
+                    }
+                }
+            }
+            self.pairmin_counts[idx] = cnt;
+        }
+
+        // Keep the legacy unweighted constraint counter consistent with calculate_cost()
+        self._update_constraint_penalty_total();
+
         self.current_cost = self.calculate_cost();
     }
 
@@ -1019,13 +1353,16 @@ impl State {
     /// # use solver_core::models::*;
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
+    /// #     initial_schedule: None,
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0 }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0)}),
     /// #         logging: LoggingOptions::default(),
+    /// #         telemetry: Default::default(),
+    /// #         allowed_sessions: None,
     /// #     },
     /// # };
     /// # let state = State::new(&input)?;
@@ -1121,6 +1458,47 @@ impl State {
             }
         }
 
+        // === SHOULD-TOGETHER PAIR VIOLATIONS ===
+        for (day_idx, _day_schedule) in self.schedule.iter().enumerate() {
+            for (pair_idx, &(p1, p2)) in self.should_together_pairs.iter().enumerate() {
+                // Check if this should-together pair applies to this session
+                if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
+                    if !sessions.contains(&day_idx) {
+                        continue; // Skip this constraint for this session
+                    }
+                }
+                // Only count when both participate
+                if !self.person_participation[p1][day_idx]
+                    || !self.person_participation[p2][day_idx]
+                {
+                    continue;
+                }
+
+                let (g1, _) = self.locations[day_idx][p1];
+                let (g2, _) = self.locations[day_idx][p2];
+                if g1 != g2 {
+                    self.weighted_constraint_penalty += self.should_together_weights[pair_idx];
+                    violation_count += 1;
+                }
+            }
+        }
+
+        // === PAIR MEETING COUNT (mode: at_least, exact, at_most) ===
+        for idx in 0..self.pairmin_pairs.len() {
+            let target = self.pairmin_required[idx] as i32;
+            let have = self.pairmin_counts[idx] as i32;
+            let (missing, over) = ((target - have).max(0) as f64, (have - target).max(0) as f64);
+            let penalty = match self.pairmin_modes[idx] {
+                PairMeetingMode::AtLeast => missing,
+                PairMeetingMode::Exact => (have - target).abs() as f64,
+                PairMeetingMode::AtMost => over,
+            } * self.pairmin_weights[idx];
+            if penalty > 0.0 {
+                self.weighted_constraint_penalty += penalty;
+                violation_count += 1;
+            }
+        }
+
         // === CLIQUE VIOLATIONS ===
         for (clique_idx, clique) in self.cliques.iter().enumerate() {
             for (day_idx, day_schedule) in self.schedule.iter().enumerate() {
@@ -1156,8 +1534,7 @@ impl State {
                 let max_in_one_group = *group_counts.iter().max().unwrap_or(&0);
                 let separated_members = participating_members.len() as i32 - max_in_one_group;
                 if separated_members > 0 {
-                    self.weighted_constraint_penalty +=
-                        separated_members as f64 * self.clique_weights[clique_idx];
+                    // MustStayTogether is treated as hard: count unweighted violations only
                     violation_count += separated_members;
                 }
             }
@@ -1203,14 +1580,23 @@ impl State {
     }
 
     fn calculate_penalty_from_counts(&self, counts: &[u32], ac: &AttributeBalanceParams) -> f64 {
+        use crate::models::AttributeBalanceMode;
         let mut penalty = 0.0;
         for (val_str, desired_count) in &ac.desired_values {
             if let Some(&val_idx) =
                 self.attr_val_to_idx[self.attr_key_to_idx[&ac.attribute_key]].get(val_str)
             {
                 let actual_count = counts[val_idx];
-                let diff = (actual_count as i32 - *desired_count as i32).abs();
-                penalty += diff.pow(2) as f64 * ac.penalty_weight;
+                let diff = match ac.mode {
+                    AttributeBalanceMode::Exact => {
+                        (actual_count as i32 - *desired_count as i32).abs()
+                    }
+                    AttributeBalanceMode::AtLeast => {
+                        let shortfall = (*desired_count as i32) - (actual_count as i32);
+                        shortfall.max(0)
+                    }
+                };
+                penalty += (diff.pow(2) as f64) * ac.penalty_weight;
             }
         }
         penalty
@@ -1245,30 +1631,15 @@ impl State {
                             }
                         }
 
-                        // Calculate the penalty for this specific constraint
-                        let mut penalty_for_this_constraint = 0.0;
-                        for (desired_val_str, desired_count) in &ac.desired_values {
-                            if let Some(&val_idx) =
-                                self.attr_val_to_idx[attr_idx].get(desired_val_str)
-                            {
-                                let actual_count = value_counts[val_idx];
-                                let diff = (actual_count as i32 - *desired_count as i32).abs();
-                                penalty_for_this_constraint += diff.pow(2) as f64;
-                            }
-                        }
-
-                        // Add the weighted penalty to the total
-                        let weighted_penalty = penalty_for_this_constraint * ac.penalty_weight;
+                        // Calculate the weighted penalty for this specific constraint using the shared helper
+                        let weighted_penalty =
+                            self.calculate_penalty_from_counts(&value_counts, ac);
 
                         if std::env::var("DEBUG_ATTR_BALANCE").is_ok() && weighted_penalty > 0.001 {
                             println!("DEBUG: _recalculate - day {}, group {} ({}), constraint '{}' on '{}':", 
                                     day_idx, group_idx, group_id, ac.attribute_key, ac.group_id);
                             println!("  group_people: {:?}", group_people);
                             println!("  value_counts: {:?}", value_counts);
-                            println!(
-                                "  penalty_for_this_constraint: {}",
-                                penalty_for_this_constraint
-                            );
                             println!("  weighted_penalty: {}", weighted_penalty);
                         }
 
@@ -1292,6 +1663,9 @@ impl State {
             *violation = 0;
         }
         for violation in &mut self.forbidden_pair_violations {
+            *violation = 0;
+        }
+        for violation in &mut self.should_together_violations {
             *violation = 0;
         }
         self.immovable_violations = 0;
@@ -1370,6 +1744,29 @@ impl State {
             }
         }
 
+        // Calculate should-together pair violations (when separated)
+        for (day_idx, _day_schedule) in self.schedule.iter().enumerate() {
+            for (pair_idx, &(p1, p2)) in self.should_together_pairs.iter().enumerate() {
+                // Check if this should-together pair applies to this session
+                if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
+                    if !sessions.contains(&day_idx) {
+                        continue; // Skip this constraint for this session
+                    }
+                }
+                if !self.person_participation[p1][day_idx]
+                    || !self.person_participation[p2][day_idx]
+                {
+                    continue;
+                }
+
+                let (g1, _) = self.locations[day_idx][p1];
+                let (g2, _) = self.locations[day_idx][p2];
+                if g1 != g2 {
+                    self.should_together_violations[pair_idx] += 1;
+                }
+            }
+        }
+
         // Calculate immovable person violations
         for ((person_idx, session_idx), required_group_idx) in &self.immovable_people {
             // Only check immovable constraints for people who are participating
@@ -1382,9 +1779,37 @@ impl State {
         }
 
         // Update the legacy constraint_penalty field for backward compatibility
+        // (kept consistent with calculate_cost()'s unweighted violation_count)
+        self._update_constraint_penalty_total();
+    }
+
+    #[inline]
+    fn _pairmin_violation_count(&self) -> i32 {
+        use crate::models::PairMeetingMode;
+        let mut cnt = 0;
+        for idx in 0..self.pairmin_pairs.len() {
+            let target = self.pairmin_required[idx] as i32;
+            let have = self.pairmin_counts[idx] as i32;
+            let raw_violation = match self.pairmin_modes[idx] {
+                PairMeetingMode::AtLeast => (target - have).max(0),
+                PairMeetingMode::Exact => (have - target).abs(),
+                PairMeetingMode::AtMost => (have - target).max(0),
+            };
+            // calculate_cost() only counts this as a "violation" if the weighted penalty is > 0
+            if raw_violation > 0 && self.pairmin_weights[idx] > 0.0 {
+                cnt += 1;
+            }
+        }
+        cnt
+    }
+
+    #[inline]
+    fn _update_constraint_penalty_total(&mut self) {
         self.constraint_penalty = self.forbidden_pair_violations.iter().sum::<i32>()
             + self.clique_violations.iter().sum::<i32>()
-            + self.immovable_violations;
+            + self.should_together_violations.iter().sum::<i32>()
+            + self.immovable_violations
+            + self._pairmin_violation_count();
     }
 
     fn calculate_group_attribute_penalty_for_members(
@@ -1457,13 +1882,16 @@ impl State {
     /// # use solver_core::models::*;
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
+    /// #     initial_schedule: None,
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0 }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
+    /// #         telemetry: Default::default(),
+    /// #         allowed_sessions: None,
     /// #     },
     /// # };
     /// # let mut state = State::new(&input)?;
@@ -1707,21 +2135,9 @@ impl State {
         }
 
         // Hard Constraint Delta - Cliques
-        if let Some(c_id) = self.person_to_clique_id[day][p1_idx] {
-            let clique = &self.cliques[c_id];
-            // If p2 is not in the same clique, this swap would break the clique
-            if self.person_to_clique_id[day][p2_idx] != Some(c_id) {
-                delta_cost += self.clique_weights[c_id] * clique.len() as f64;
-            }
-        } else if let Some(c_id) = self.person_to_clique_id[day][p2_idx] {
-            // Same logic if p2 is in a clique and p1 is not
-            let clique = &self.cliques[c_id];
-            if self.person_to_clique_id[day][p1_idx] != Some(c_id) {
-                delta_cost += self.clique_weights[c_id] * clique.len() as f64;
-            }
-        }
+        // No clique weight based delta; cliques are enforced by move feasibility
 
-        // Hard Constraint Delta - Forbidden Pairs
+        // Constraint Delta - Forbidden Pairs
         for (pair_idx, &(p1, p2)) in self.forbidden_pairs.iter().enumerate() {
             // Check if this forbidden pair applies to this session
             if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
@@ -1772,6 +2188,123 @@ impl State {
             if next_g2_members.contains(&p1) && next_g2_members.contains(&p2) {
                 delta_cost += pair_weight;
             }
+        }
+
+        // Constraint Delta - ShouldStayTogether pairs
+        for (pair_idx, &(person1, person2)) in self.should_together_pairs.iter().enumerate() {
+            // Check if this should-together pair applies to this session
+            if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
+                if !sessions.contains(&day) {
+                    continue; // Skip this constraint for this session
+                }
+            }
+
+            // Check if both people are participating in this session
+            if !self.person_participation[person1][day] || !self.person_participation[person2][day]
+            {
+                continue; // Skip if either person is not participating
+            }
+
+            let pair_weight = self.should_together_weights[pair_idx];
+
+            // Old penalty: separated across g1 and g2
+            let p1_in_g1 = g1_members.contains(&person1);
+            let p1_in_g2 = g2_members.contains(&person1);
+            let p2_in_g1 = g1_members.contains(&person2);
+            let p2_in_g2 = g2_members.contains(&person2);
+            let old_penalty = if (p1_in_g1 && p2_in_g2) || (p1_in_g2 && p2_in_g1) {
+                pair_weight
+            } else {
+                0.0
+            };
+
+            // New penalty after swap
+            let mut next_g1_members: Vec<usize> = g1_members
+                .iter()
+                .filter(|&&p| p != p1_idx)
+                .cloned()
+                .collect();
+            next_g1_members.push(p2_idx);
+            let mut next_g2_members: Vec<usize> = g2_members
+                .iter()
+                .filter(|&&p| p != p2_idx)
+                .cloned()
+                .collect();
+            next_g2_members.push(p1_idx);
+
+            let new_p1_in_g1 = next_g1_members.contains(&person1);
+            let new_p1_in_g2 = next_g2_members.contains(&person1);
+            let new_p2_in_g1 = next_g1_members.contains(&person2);
+            let new_p2_in_g2 = next_g2_members.contains(&person2);
+            let new_penalty = if (new_p1_in_g1 && new_p2_in_g2) || (new_p1_in_g2 && new_p2_in_g1) {
+                pair_weight
+            } else {
+                0.0
+            };
+
+            delta_cost += new_penalty - old_penalty;
+        }
+
+        // Constraint Delta - PairMeetingCount
+        for (cidx, &(a, b)) in self.pairmin_pairs.iter().enumerate() {
+            if !self.pairmin_sessions[cidx].contains(&day) {
+                continue;
+            }
+            // Only if swap involves either endpoint at this day
+            if a != p1_idx && a != p2_idx && b != p1_idx && b != p2_idx {
+                continue;
+            }
+            // Determine before-after sameness for the pair on this day
+            let (a_g_before, _) = self.locations[day][a];
+            let (b_g_before, _) = self.locations[day][b];
+            let before_same = a_g_before == b_g_before;
+
+            let (g1_idx, _) = self.locations[day][p1_idx];
+            let (g2_idx, _) = self.locations[day][p2_idx];
+
+            let a_g_after = if a == p1_idx {
+                g2_idx
+            } else if a == p2_idx {
+                g1_idx
+            } else {
+                a_g_before
+            };
+            let b_g_after = if b == p1_idx {
+                g2_idx
+            } else if b == p2_idx {
+                g1_idx
+            } else {
+                b_g_before
+            };
+            let after_same = a_g_after == b_g_after;
+            if before_same == after_same {
+                continue;
+            }
+
+            let have_before = self.pairmin_counts[cidx] as i32;
+            let have_after = if after_same {
+                have_before + 1
+            } else {
+                have_before - 1
+            };
+            let target = self.pairmin_required[cidx] as i32;
+            let mode = self.pairmin_modes[cidx];
+            let (before_pen, after_pen) = match mode {
+                PairMeetingMode::AtLeast => (
+                    (target - have_before).max(0) as f64,
+                    (target - have_after).max(0) as f64,
+                ),
+                PairMeetingMode::Exact => (
+                    (have_before - target).abs() as f64,
+                    (have_after - target).abs() as f64,
+                ),
+                PairMeetingMode::AtMost => (
+                    (have_before - target).max(0) as f64,
+                    (have_after - target).max(0) as f64,
+                ),
+            };
+            let delta = (after_pen - before_pen) * self.pairmin_weights[cidx];
+            delta_cost += delta;
         }
 
         delta_cost
@@ -1832,13 +2365,16 @@ impl State {
     /// # use solver_core::models::*;
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
+    /// #     initial_schedule: None,   
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0 }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
+    /// #         telemetry: Default::default(),
+    /// #         allowed_sessions: None,
     /// #     },
     /// # };
     /// # let mut state = State::new(&input)?;
@@ -1879,13 +2415,16 @@ impl State {
     /// # use solver_core::models::*;
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
+    /// #     initial_schedule: None,
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0 }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
+    /// #         telemetry: Default::default(),
+    /// #         allowed_sessions: None,
     /// #     },
     /// # };
     /// # let mut state = State::new(&input)?;
@@ -2194,6 +2733,65 @@ impl State {
             }
         }
 
+        // Update should-together violations
+        for (pair_idx, &(person_a, person_b)) in self.should_together_pairs.iter().enumerate() {
+            // Check if this should-together pair applies to this session
+            if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
+                if !sessions.contains(&day) {
+                    continue;
+                }
+            }
+            // Only count when both participate
+            if !self.person_participation[person_a][day]
+                || !self.person_participation[person_b][day]
+            {
+                continue;
+            }
+            // Only if one endpoint moved
+            if person_a != p1_idx && person_a != p2_idx && person_b != p1_idx && person_b != p2_idx
+            {
+                continue;
+            }
+
+            let a_group_before = if person_a == p1_idx {
+                g1_idx
+            } else if person_a == p2_idx {
+                g2_idx
+            } else {
+                self.locations[day][person_a].0
+            };
+            let b_group_before = if person_b == p1_idx {
+                g1_idx
+            } else if person_b == p2_idx {
+                g2_idx
+            } else {
+                self.locations[day][person_b].0
+            };
+            let was_violation_before = a_group_before != b_group_before;
+
+            let a_group_after = if person_a == p1_idx {
+                g2_idx
+            } else if person_a == p2_idx {
+                g1_idx
+            } else {
+                self.locations[day][person_a].0
+            };
+            let b_group_after = if person_b == p1_idx {
+                g2_idx
+            } else if person_b == p2_idx {
+                g1_idx
+            } else {
+                self.locations[day][person_b].0
+            };
+            let is_violation_after = a_group_after != b_group_after;
+
+            if was_violation_before && !is_violation_after {
+                self.should_together_violations[pair_idx] -= 1;
+            } else if !was_violation_before && is_violation_after {
+                self.should_together_violations[pair_idx] += 1;
+            }
+        }
+
         // Update clique violations
         for (clique_idx, clique) in self.cliques.iter().enumerate() {
             // Check if this clique applies to this session
@@ -2278,10 +2876,64 @@ impl State {
             }
         }
 
+        // Update PairMinMeetings counts for this day if relevant
+        for (cidx, &(a, b)) in self.pairmin_pairs.iter().enumerate() {
+            if !self.pairmin_sessions[cidx].contains(&day) {
+                continue;
+            }
+            if !self.person_participation[a][day] || !self.person_participation[b][day] {
+                continue;
+            }
+            // Check if either endpoint moved
+            if a != p1_idx && a != p2_idx && b != p1_idx && b != p2_idx {
+                continue;
+            }
+            // Before swap groups for a and b (use original group assignments for swapped people)
+            let a_group_before = if a == p1_idx {
+                g1_idx
+            } else if a == p2_idx {
+                g2_idx
+            } else {
+                self.locations[day][a].0
+            };
+            let b_group_before = if b == p1_idx {
+                g1_idx
+            } else if b == p2_idx {
+                g2_idx
+            } else {
+                self.locations[day][b].0
+            };
+            let were_same = a_group_before == b_group_before;
+
+            // After swap groups for a and b
+            let a_group_after = if a == p1_idx {
+                g2_idx
+            } else if a == p2_idx {
+                g1_idx
+            } else {
+                self.locations[day][a].0
+            };
+            let b_group_after = if b == p1_idx {
+                g2_idx
+            } else if b == p2_idx {
+                g1_idx
+            } else {
+                self.locations[day][b].0
+            };
+            let are_same = a_group_after == b_group_after;
+
+            if were_same == are_same {
+                continue;
+            }
+            if are_same {
+                self.pairmin_counts[cidx] += 1;
+            } else {
+                self.pairmin_counts[cidx] -= 1;
+            }
+        }
+
         // Update the legacy constraint_penalty field for backward compatibility
-        self.constraint_penalty = self.forbidden_pair_violations.iter().sum::<i32>()
-            + self.clique_violations.iter().sum::<i32>()
-            + self.immovable_violations;
+        self._update_constraint_penalty_total();
     }
 
     pub fn validate_scores(&mut self) {
@@ -2346,6 +2998,62 @@ impl State {
         }
     }
 
+    /// Validates that no person is assigned more than once per session.
+    /// Returns `Ok(())` if valid, otherwise returns a `ValidationError` with details.
+    pub fn validate_no_duplicate_assignments(&self) -> Result<(), SolverError> {
+        use std::collections::HashMap;
+        for session_idx in 0..self.num_sessions as usize {
+            let mut occurrences: HashMap<usize, Vec<(usize, usize)>> = HashMap::new();
+            for (g_idx, group_people) in self.schedule[session_idx].iter().enumerate() {
+                for (pos, &p_idx) in group_people.iter().enumerate() {
+                    occurrences.entry(p_idx).or_default().push((g_idx, pos));
+                }
+            }
+            for (&p_idx, slots) in &occurrences {
+                if slots.len() > 1 {
+                    let mut msg = format!(
+                        "Duplicate assignment detected: person {} appears multiple times in session {}",
+                        self.display_person_by_idx(p_idx),
+                        session_idx
+                    );
+                    if self.logging.debug_dump_invariant_context {
+                        use std::fmt::Write as _;
+                        // slots
+                        let _ = write!(&mut msg, "\nSlots:");
+                        for (g_idx, pos) in slots {
+                            let _ = write!(
+                                &mut msg,
+                                "\n  - group {} (idx {}) pos {}",
+                                self.group_idx_to_id[*g_idx], g_idx, pos
+                            );
+                        }
+                        // locations
+                        let loc = self.locations[session_idx][p_idx];
+                        let _ = write!(
+                            &mut msg,
+                            "\nlocations says: (group_idx={} pos={})",
+                            loc.0, loc.1
+                        );
+                        // dump session groups
+                        for (g_idx, group_people) in self.schedule[session_idx].iter().enumerate() {
+                            let names: Vec<String> = group_people
+                                .iter()
+                                .map(|&pid| self.display_person_by_idx(pid))
+                                .collect();
+                            let _ = write!(
+                                &mut msg,
+                                "\n  group {} ({}): {:?}",
+                                g_idx, self.group_idx_to_id[g_idx], names
+                            );
+                        }
+                    }
+                    return Err(SolverError::ValidationError(msg));
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Formats a detailed breakdown of the current solution's scoring components.
     ///
     /// This method generates a human-readable string that shows how the current
@@ -2393,13 +3101,16 @@ impl State {
     /// # use solver_core::models::*;
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
+    /// #     initial_schedule: None,
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0 }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
+    /// #         telemetry: Default::default(),
+    /// #         allowed_sessions: None,
     /// #     },
     /// # };
     /// # let state = State::new(&input)?;
@@ -2457,17 +3168,20 @@ impl State {
     /// # use solver_core::models::*;
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
+    /// #     initial_schedule: None,
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions {
-    /// #             max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None
+    /// #             max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None,
     /// #         },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
-    /// #             initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0
+    /// #             initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0)
     /// #         }),
     /// #         logging: LoggingOptions { log_initial_score_breakdown: true, log_final_score_breakdown: true, ..Default::default() },
+    /// #         telemetry: Default::default(),
+    /// #         allowed_sessions: None,
     /// #     },
     /// # };
     /// # let mut state = State::new(&input)?;
@@ -2510,13 +3224,24 @@ impl State {
             }
         }
 
+        // Should stay together violations
+        for (pair_idx, &violation_count) in self.should_together_violations.iter().enumerate() {
+            if violation_count > 0 {
+                let weight = self.should_together_weights[pair_idx];
+                breakdown.push_str(&format!(
+                    "\n  ShouldStayTogether[{}]: {} (weight: {:.1})",
+                    pair_idx, violation_count, weight
+                ));
+                has_constraints = true;
+            }
+        }
+
         // Clique violations
         for (clique_idx, &violation_count) in self.clique_violations.iter().enumerate() {
             if violation_count > 0 {
-                let weight = self.clique_weights[clique_idx];
                 breakdown.push_str(&format!(
-                    "\n  MustStayTogether[{}]: {} (weight: {:.1})",
-                    clique_idx, violation_count, weight
+                    "\n  MustStayTogether[{}]: {} (hard)",
+                    clique_idx, violation_count
                 ));
                 has_constraints = true;
             }
@@ -2588,14 +3313,50 @@ impl State {
         &self,
         day: usize,
         clique_idx: usize,
-        _from_group: usize,
+        from_group: usize,
         to_group: usize,
     ) -> bool {
-        let clique = &self.cliques[clique_idx];
-        let non_clique_people_in_to_group = self.find_non_clique_movable_people(day, to_group);
+        // If this clique is not active for this session (e.g., deactivated by immovable propagation),
+        // do not attempt a clique swap in this session.
+        if let Some(ref sessions) = self.clique_sessions[clique_idx] {
+            if !sessions.contains(&day) {
+                return false;
+            }
+        }
 
-        // Need at least as many non-clique people in target group as clique size
-        non_clique_people_in_to_group.len() >= clique.len()
+        let clique = &self.cliques[clique_idx];
+        // Active members are those participating this day and currently in from_group
+        let active_members: Vec<usize> = clique
+            .iter()
+            .cloned()
+            .filter(|&m| self.person_participation[m][day])
+            .filter(|&m| self.locations[day][m].0 == from_group)
+            .collect();
+
+        if active_members.is_empty() {
+            return false;
+        }
+
+        // Ensure all active members are actually co-located in from_group
+        if !active_members
+            .iter()
+            .all(|&m| self.locations[day][m].0 == from_group)
+        {
+            return false;
+        }
+
+        // Hard guard: do not allow moving a clique if any active member is immovable to a different group
+        for &member in &active_members {
+            if let Some(&required_group) = self.immovable_people.get(&(member, day)) {
+                if required_group != to_group {
+                    return false;
+                }
+            }
+        }
+
+        // Need at least as many non-clique movable people in target group as active clique size
+        let non_clique_people_in_to_group = self.find_non_clique_movable_people(day, to_group);
+        non_clique_people_in_to_group.len() >= active_members.len()
     }
 
     /// Calculate the cost delta for swapping a clique with non-clique people
@@ -2607,17 +3368,23 @@ impl State {
         to_group: usize,
         target_people: &[usize],
     ) -> f64 {
-        let clique = &self.cliques[clique_idx];
+        // If this clique is not active for this session, disallow by returning +inf
+        if let Some(ref sessions) = self.clique_sessions[clique_idx] {
+            if !sessions.contains(&day) {
+                return f64::INFINITY;
+            }
+        }
 
-        // Filter clique to only participating members for this session
-        let participating_clique: Vec<usize> = clique
+        let clique = &self.cliques[clique_idx];
+        // Active members are participating and currently in from_group
+        let active_members: Vec<usize> = clique
             .iter()
-            .filter(|&&member| self.person_participation[member][day])
             .cloned()
+            .filter(|&member| self.person_participation[member][day])
+            .filter(|&member| self.locations[day][member].0 == from_group)
             .collect();
 
-        // Check if enough participating clique members to make swap meaningful
-        if participating_clique.is_empty() {
+        if active_members.is_empty() {
             return f64::INFINITY; // No participating clique members
         }
 
@@ -2629,10 +3396,28 @@ impl State {
             return f64::INFINITY; // Some target people not participating
         }
 
+        // Hard guard: do not allow moving a clique if any active member is immovable to a different group
+        for &member in &active_members {
+            if let Some(&required_group) = self.immovable_people.get(&(member, day)) {
+                if required_group != to_group {
+                    return f64::INFINITY;
+                }
+            }
+        }
+
+        // Hard guard: do not allow swapping in any target person who is immovable to a different group
+        for &person in target_people {
+            if let Some(&required_group) = self.immovable_people.get(&(person, day)) {
+                if required_group != from_group {
+                    return f64::INFINITY;
+                }
+            }
+        }
+
         let mut delta_cost = 0.0;
 
-        // Calculate contact/repetition delta for participating clique members only
-        for &clique_member in &participating_clique {
+        // Calculate contact/repetition delta for active members only
+        for &clique_member in &active_members {
             for &target_person in target_people {
                 // Current contacts between clique member and target person
                 let current_contacts = self.contact_matrix[clique_member][target_person];
@@ -2660,9 +3445,7 @@ impl State {
             // Lost contacts with people remaining in from_group
             let from_group_members = &self.schedule[day][from_group];
             for &remaining_member in from_group_members {
-                if remaining_member == clique_member
-                    || participating_clique.contains(&remaining_member)
-                {
+                if remaining_member == clique_member || active_members.contains(&remaining_member) {
                     continue;
                 }
                 // Only consider participating members
@@ -2692,14 +3475,14 @@ impl State {
             day,
             from_group,
             to_group,
-            &participating_clique,
+            &active_members,
             target_people,
         );
 
-        // Add constraint penalty delta for participating members only
+        // Add constraint penalty delta for active members only
         delta_cost += self.calculate_clique_swap_constraint_penalty_delta(
             day,
-            &participating_clique,
+            &active_members,
             target_people,
             from_group,
             to_group,
@@ -2761,6 +3544,38 @@ impl State {
             } else {
                 0.0 // Constraint satisfied in new state
             };
+
+            delta += new_penalty - old_penalty;
+        }
+
+        // Check ShouldStayTogether pairs
+        for (pair_idx, &(person1, person2)) in self.should_together_pairs.iter().enumerate() {
+            let pair_weight = self.should_together_weights[pair_idx];
+
+            // Old penalty: they are separated if each group contains exactly one of them
+            let old_penalty = if (from_group_members.contains(&person1)
+                && !from_group_members.contains(&person2)
+                && to_group_members.contains(&person2))
+                || (from_group_members.contains(&person2)
+                    && !from_group_members.contains(&person1)
+                    && to_group_members.contains(&person1))
+            {
+                pair_weight
+            } else {
+                0.0
+            };
+
+            // New penalty after swap-like move
+            let new_from_has_p1 = new_from_members.contains(&person1);
+            let new_from_has_p2 = new_from_members.contains(&person2);
+            let new_to_has_p1 = new_to_members.contains(&person1);
+            let new_to_has_p2 = new_to_members.contains(&person2);
+            let new_penalty =
+                if (new_from_has_p1 && new_to_has_p2) || (new_from_has_p2 && new_to_has_p1) {
+                    pair_weight
+                } else {
+                    0.0
+                };
 
             delta += new_penalty - old_penalty;
         }
@@ -2860,28 +3675,129 @@ impl State {
         to_group: usize,
         target_people: &[usize],
     ) {
-        let clique = self.cliques[clique_idx].clone(); // Clone to avoid borrow checker issues
-
-        if clique.len() != target_people.len() {
-            return; // Invalid swap, should not happen if prechecked
+        // If this clique is not active for this session, do nothing
+        if let Some(ref sessions) = self.clique_sessions[clique_idx] {
+            if !sessions.contains(&day) {
+                return;
+            }
         }
 
-        // Update the schedule by removing and adding people to groups
-        // Remove clique members from from_group
-        self.schedule[day][from_group].retain(|&p| !clique.contains(&p));
-        // Remove target people from to_group
-        self.schedule[day][to_group].retain(|&p| !target_people.contains(&p));
+        let clique_all = self.cliques[clique_idx].clone();
+        // Determine active clique members for this day located in from_group
+        let active_members: Vec<usize> = clique_all
+            .iter()
+            .cloned()
+            .filter(|&m| self.person_participation[m][day])
+            .filter(|&m| self.locations[day][m].0 == from_group)
+            .collect();
 
-        // Add target people to from_group
-        self.schedule[day][from_group].extend_from_slice(target_people);
-        // Add clique members to to_group
-        self.schedule[day][to_group].extend_from_slice(&clique);
+        if active_members.is_empty() {
+            return;
+        }
 
-        // Update locations lookup
-        self._recalculate_locations_from_schedule();
+        if active_members.len() != target_people.len() {
+            return; // sizes must match
+        }
 
-        // Recalculate all scores for accuracy (clique swaps are complex, so we use full recalc)
+        // Hard guard: do not move if any active member is immovable to a different group
+        for &member in &active_members {
+            if let Some(&required_group) = self.immovable_people.get(&(member, day)) {
+                if required_group != to_group {
+                    return;
+                }
+            }
+        }
+
+        // Hard guard: do not move if any target person is immovable to a different group
+        for &person in target_people {
+            if let Some(&required_group) = self.immovable_people.get(&(person, day)) {
+                if required_group != from_group {
+                    return;
+                }
+            }
+        }
+
+        // Rebuild groups deterministically to avoid duplicates
+        let old_from = self.schedule[day][from_group].clone();
+        let old_to = self.schedule[day][to_group].clone();
+
+        let mut new_from: Vec<usize> = old_from
+            .into_iter()
+            .filter(|p| !active_members.contains(p))
+            .collect();
+        new_from.extend_from_slice(target_people);
+
+        let mut new_to: Vec<usize> = old_to
+            .into_iter()
+            .filter(|p| !target_people.contains(p))
+            .collect();
+        new_to.extend_from_slice(&active_members);
+
+        // In debug mode, assert sizes preserved and no duplicates within each group
+        if self.logging.debug_validate_invariants {
+            if self.logging.debug_dump_invariant_context {
+                // Check for duplicates within groups
+                let mut seen = std::collections::HashSet::new();
+                for &p in &new_from {
+                    if !seen.insert(p) {
+                        eprintln!(
+                            "[DEBUG] Duplicate in new_from: {}",
+                            self.display_person_by_idx(p)
+                        );
+                    }
+                }
+                seen.clear();
+                for &p in &new_to {
+                    if !seen.insert(p) {
+                        eprintln!(
+                            "[DEBUG] Duplicate in new_to: {}",
+                            self.display_person_by_idx(p)
+                        );
+                    }
+                }
+            }
+            // Expect cardinality preserved
+            debug_assert_eq!(
+                new_from.len(),
+                self.schedule[day][from_group].len() - active_members.len() + target_people.len()
+            );
+            debug_assert_eq!(
+                new_to.len(),
+                self.schedule[day][to_group].len() - target_people.len() + active_members.len()
+            );
+        }
+
+        self.schedule[day][from_group] = new_from;
+        self.schedule[day][to_group] = new_to;
+
+        // Update locations for all people in these two groups
+        for (pos, &pid) in self.schedule[day][from_group].iter().enumerate() {
+            self.locations[day][pid] = (from_group, pos);
+        }
+        for (pos, &pid) in self.schedule[day][to_group].iter().enumerate() {
+            self.locations[day][pid] = (to_group, pos);
+        }
+
+        // Recalculate scores (clique swap touches many structures)
         self._recalculate_scores();
+
+        // Session-wide invariant check (debug only)
+        if self.logging.debug_validate_invariants {
+            if let Err(e) = self.validate_no_duplicate_assignments() {
+                if self.logging.debug_dump_invariant_context {
+                    eprintln!(
+                        "[DEBUG] Invariant failed after clique swap day={} from={} to={} moved_clique_size={} target_size={}",
+                        day,
+                        self.group_idx_to_id[from_group],
+                        self.group_idx_to_id[to_group],
+                        active_members.len(),
+                        target_people.len()
+                    );
+                }
+                // Surface error up-stack on next algorithm-side check
+                let _ = e; // no-op here; algorithm already checks after call
+            }
+        }
     }
 
     // === SINGLE PERSON TRANSFER FUNCTIONALITY ===
@@ -3149,6 +4065,86 @@ impl State {
             delta_cost += new_penalty - old_penalty;
         }
 
+        // Check should-stay-together pairs
+        for (pair_idx, &(other1, other2)) in self.should_together_pairs.iter().enumerate() {
+            // Check if this constraint applies to this session
+            if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
+                if !sessions.contains(&day) {
+                    continue;
+                }
+            }
+
+            let weight = self.should_together_weights[pair_idx];
+
+            // Only consider if moving person is part of this pair
+            if person_idx != other1 && person_idx != other2 {
+                continue;
+            }
+
+            let other_person = if person_idx == other1 { other2 } else { other1 };
+
+            // Check current separation state
+            let currently_together = from_group_members.contains(&other_person);
+            // After transfer, person moves to `to_group`
+            let will_be_together = to_group_members.contains(&other_person);
+
+            let old_penalty = if currently_together { 0.0 } else { weight };
+            let new_penalty = if will_be_together { 0.0 } else { weight };
+            delta_cost += new_penalty - old_penalty;
+        }
+
+        // Check PairMeetingCount constraints (only those including this day and where moving person is one endpoint)
+        for (cidx, &(a, b)) in self.pairmin_pairs.iter().enumerate() {
+            if !self.pairmin_sessions[cidx].contains(&day) {
+                continue;
+            }
+            // Moving person must be one endpoint
+            if person_idx != a && person_idx != b {
+                continue;
+            }
+            // Identify the other endpoint
+            let other = if person_idx == a { b } else { a };
+
+            // Only meaningful if other participates in this session
+            if !self.person_participation[other][day] {
+                continue;
+            }
+
+            // Before: together if other is in from_group
+            let before_same = from_group_members.contains(&other);
+            // After: together if other is in to_group
+            let after_same = to_group_members.contains(&other);
+
+            if before_same == after_same {
+                continue;
+            }
+
+            let have_before = self.pairmin_counts[cidx] as i32;
+            let have_after = if after_same {
+                have_before + 1
+            } else {
+                have_before - 1
+            };
+            let target = self.pairmin_required[cidx] as i32;
+            let mode = self.pairmin_modes[cidx];
+            let (before_pen, after_pen) = match mode {
+                PairMeetingMode::AtLeast => (
+                    (target - have_before).max(0) as f64,
+                    (target - have_after).max(0) as f64,
+                ),
+                PairMeetingMode::Exact => (
+                    (have_before - target).abs() as f64,
+                    (have_after - target).abs() as f64,
+                ),
+                PairMeetingMode::AtMost => (
+                    (have_before - target).max(0) as f64,
+                    (have_after - target).max(0) as f64,
+                ),
+            };
+            let delta = (after_pen - before_pen) * self.pairmin_weights[cidx];
+            delta_cost += delta;
+        }
+
         delta_cost
     }
 
@@ -3235,19 +4231,43 @@ impl State {
         }
 
         // === UPDATE SCHEDULE AND LOCATIONS ===
-        // Remove person from from_group
-        self.schedule[day][from_group].retain(|&p| p != person_idx);
+        // Deterministic rebuild to avoid duplicates
+        let old_from = std::mem::take(&mut self.schedule[day][from_group]);
+        let old_to = std::mem::take(&mut self.schedule[day][to_group]);
+        let new_from: Vec<usize> = old_from.into_iter().filter(|&p| p != person_idx).collect();
+        let mut new_to = old_to;
+        new_to.push(person_idx);
 
-        // Add person to to_group
-        self.schedule[day][to_group].push(person_idx);
+        if self.logging.debug_validate_invariants && self.logging.debug_dump_invariant_context {
+            let mut seen = std::collections::HashSet::new();
+            for &p in &new_from {
+                if !seen.insert(p) {
+                    eprintln!(
+                        "[DEBUG] Duplicate in transfer new_from: {}",
+                        self.display_person_by_idx(p)
+                    );
+                }
+            }
+            seen.clear();
+            for &p in &new_to {
+                if !seen.insert(p) {
+                    eprintln!(
+                        "[DEBUG] Duplicate in transfer new_to: {}",
+                        self.display_person_by_idx(p)
+                    );
+                }
+            }
+        }
 
-        // Update locations lookup
-        let new_position = self.schedule[day][to_group].len() - 1;
-        self.locations[day][person_idx] = (to_group, new_position);
+        self.schedule[day][from_group] = new_from;
+        self.schedule[day][to_group] = new_to;
 
-        // Update positions for remaining people in from_group
-        for (pos, &person) in self.schedule[day][from_group].iter().enumerate() {
-            self.locations[day][person] = (from_group, pos);
+        // Update locations lookup for both groups
+        for (pos, &pid) in self.schedule[day][from_group].iter().enumerate() {
+            self.locations[day][pid] = (from_group, pos);
+        }
+        for (pos, &pid) in self.schedule[day][to_group].iter().enumerate() {
+            self.locations[day][pid] = (to_group, pos);
         }
 
         // === UPDATE ATTRIBUTE BALANCE PENALTY ===
@@ -3283,6 +4303,52 @@ impl State {
 
         // === UPDATE CONSTRAINT PENALTIES ===
         self._recalculate_constraint_penalty();
+
+        // === UPDATE PairMeetingCount counts incrementally ===
+        for (cidx, &(a, b)) in self.pairmin_pairs.clone().iter().enumerate() {
+            if !self.pairmin_sessions[cidx].contains(&day) {
+                continue;
+            }
+            // Only if moving person is one endpoint
+            if person_idx != a && person_idx != b {
+                continue;
+            }
+            let other = if person_idx == a { b } else { a };
+            if !self.person_participation[other][day] {
+                continue;
+            }
+            // Before: together if other was in from_group
+            let were_same = from_group_members.contains(&other);
+            // After: together if other is now in to_group (person moved there)
+            let are_same = self.schedule[day][to_group].contains(&other);
+            if were_same == are_same {
+                continue;
+            }
+            if are_same {
+                self.pairmin_counts[cidx] += 1;
+            } else {
+                self.pairmin_counts[cidx] -= 1;
+            }
+        }
+
+        // Keep legacy constraint_penalty consistent with calculate_cost()
+        self._update_constraint_penalty_total();
+
+        // Debug-only final invariant check for the whole session
+        if self.logging.debug_validate_invariants {
+            if let Err(e) = self.validate_no_duplicate_assignments() {
+                if self.logging.debug_dump_invariant_context {
+                    eprintln!(
+                        "[DEBUG] Invariant failed after transfer day={} person={} from={} to={}",
+                        day,
+                        self.display_person_by_idx(person_idx),
+                        self.group_idx_to_id[from_group],
+                        self.group_idx_to_id[to_group]
+                    );
+                }
+                let _ = e;
+            }
+        }
     }
 }
 
@@ -3355,6 +4421,7 @@ mod tests {
             .collect();
 
         ApiInput {
+            initial_schedule: None,
             problem: ProblemDefinition {
                 people,
                 groups,
@@ -3373,11 +4440,80 @@ mod tests {
                     initial_temperature: 1.0,
                     final_temperature: 0.1,
                     cooling_schedule: "linear".to_string(),
-                    reheat_after_no_improvement: 0, // No reheat
+                    reheat_after_no_improvement: Some(0), // No reheat
+                    reheat_cycles: Some(0),
                 }),
                 logging: Default::default(),
+                telemetry: Default::default(),
+                allowed_sessions: None,
             },
         }
+    }
+
+    #[test]
+    fn test_pair_meeting_count_modes() {
+        use crate::models::{Constraint, PairMeetingCountParams, PairMeetingMode};
+        // People p0..p3; 2 groups of 2; 3 sessions
+        let mut input = create_test_input(4, vec![(2, 2)], 3);
+
+        // Add PairMeetingCount constraints for pair (p0,p1) across sessions [0,1,2]
+        input
+            .constraints
+            .push(Constraint::PairMeetingCount(PairMeetingCountParams {
+                people: vec!["p0".into(), "p1".into()],
+                sessions: vec![0, 1, 2],
+                target_meetings: 2,
+                mode: PairMeetingMode::AtLeast,
+                penalty_weight: 10.0,
+            }));
+        input
+            .constraints
+            .push(Constraint::PairMeetingCount(PairMeetingCountParams {
+                people: vec!["p0".into(), "p1".into()],
+                sessions: vec![0, 1, 2],
+                target_meetings: 2,
+                mode: PairMeetingMode::Exact,
+                penalty_weight: 10.0,
+            }));
+        input
+            .constraints
+            .push(Constraint::PairMeetingCount(PairMeetingCountParams {
+                people: vec!["p0".into(), "p1".into()],
+                sessions: vec![0, 1, 2],
+                target_meetings: 2,
+                mode: PairMeetingMode::AtMost,
+                penalty_weight: 10.0,
+            }));
+
+        let mut state = State::new(&input).unwrap();
+        // Construct schedule where p0 and p1 are together exactly once
+        // Session 0: (p0,p2) | (p1,p3)
+        // Session 1: (p0,p1) | (p2,p3)
+        // Session 2: (p0,p3) | (p1,p2)
+        state.schedule = vec![
+            vec![vec![0, 2], vec![1, 3]],
+            vec![vec![0, 1], vec![2, 3]],
+            vec![vec![0, 3], vec![1, 2]],
+        ];
+        state._recalculate_locations_from_schedule();
+        state._recalculate_scores();
+
+        assert_eq!(state.pairmin_counts.len(), 3);
+        assert_eq!(state.pairmin_counts[0], 1);
+        assert_eq!(state.pairmin_counts[1], 1);
+        assert_eq!(state.pairmin_counts[2], 1);
+
+        // Perform a swap in session 0 to bring p0 and p1 together again → now 2 in subset
+        let _ = state.calculate_swap_cost_delta(0, 1, 2);
+        state.apply_swap(0, 1, 2);
+        state._recalculate_scores();
+
+        // After swap, session 0 also has (p0,p1) together; counts should be >=2 for first constraint
+        // Our counts are stored per-constraint over their subsets, so they should now be 2
+        assert_eq!(state.pairmin_counts[0], 2);
+        // Other entries correspond to the other two constraints on the same pair/subset; they share counts
+        assert_eq!(state.pairmin_counts[1], 2);
+        assert_eq!(state.pairmin_counts[2], 2);
     }
 
     #[test]
@@ -3462,12 +4598,10 @@ mod tests {
         input.constraints = vec![
             Constraint::MustStayTogether {
                 people: vec!["p0".into(), "p1".into()],
-                penalty_weight: 1000.0,
                 sessions: Some(vec![0, 1]),
             },
             Constraint::MustStayTogether {
                 people: vec!["p1".into(), "p2".into()],
-                penalty_weight: 1000.0,
                 sessions: Some(vec![1, 2]),
             },
         ];
@@ -3510,7 +4644,6 @@ mod tests {
         let mut input = create_test_input(5, vec![(1, 3)], 1);
         input.constraints = vec![Constraint::MustStayTogether {
             people: vec!["p0".into(), "p1".into(), "p2".into(), "p3".into()],
-            penalty_weight: 1000.0,
             sessions: None,
         }];
 
@@ -3541,7 +4674,6 @@ mod tests {
         input.constraints = vec![
             Constraint::MustStayTogether {
                 people: vec!["p0".into(), "p1".into()],
-                penalty_weight: 1000.0,
                 sessions: None,
             },
             Constraint::ShouldNotBeTogether {
@@ -3574,12 +4706,10 @@ mod tests {
         input_with_cliques.constraints = vec![
             Constraint::MustStayTogether {
                 people: vec!["p0".into(), "p1".into()],
-                penalty_weight: 1000.0,
                 sessions: None,
             },
             Constraint::MustStayTogether {
                 people: vec!["p2".into(), "p3".into()],
-                penalty_weight: 1000.0,
                 sessions: None,
             },
         ];
@@ -3596,13 +4726,12 @@ mod tests {
         input.constraints = vec![
             Constraint::MustStayTogether {
                 people: vec!["p0".into(), "p1".into()],
-                penalty_weight: 1000.0,
                 sessions: None,
             },
             Constraint::ImmovablePerson(crate::models::ImmovablePersonParams {
                 person_id: "p2".into(),
                 group_id: "g0_0".into(),
-                sessions: vec![0, 1],
+                sessions: Some(vec![0, 1]),
             }),
         ];
         let state = State::new(&input).unwrap();
@@ -3627,7 +4756,6 @@ mod tests {
         let mut input = create_test_input(10, vec![(2, 5)], 1);
         input.constraints = vec![Constraint::MustStayTogether {
             people: vec!["p0".into(), "p1".into(), "p2".into()],
-            penalty_weight: 1000.0,
             sessions: None,
         }];
         let state = State::new(&input).unwrap();
@@ -3654,7 +4782,6 @@ mod tests {
         let mut input = create_test_input(8, vec![(2, 4)], 1);
         input.constraints = vec![Constraint::MustStayTogether {
             people: vec!["p0".into(), "p1".into()],
-            penalty_weight: 1000.0,
             sessions: None,
         }];
         let mut state = State::new(&input).unwrap();
@@ -3704,7 +4831,6 @@ mod tests {
         let mut input = create_test_input(10, vec![(2, 5)], 1);
         input.constraints = vec![Constraint::MustStayTogether {
             people: vec!["p0".into(), "p1".into(), "p2".into()],
-            penalty_weight: 1000.0,
             sessions: None,
         }];
         let mut state = State::new(&input).unwrap();
@@ -3778,7 +4904,7 @@ mod tests {
         ],
         "constraints": [
             {"type": "RepeatEncounter", "max_allowed_encounters": 1, "penalty_function": "squared", "penalty_weight": 100},
-            {"type": "MustStayTogether", "people": ["alice", "bob"], "penalty_weight": 1000, "sessions": [0, 1]},
+            {"type": "MustStayTogether", "people": ["alice", "bob"], "sessions": [0, 1]},
             {"type": "ShouldNotBeTogether", "people": ["charlie", "diana"], "penalty_weight": 500},
             {"type": "AttributeBalance", "group_id": "team-alpha", "attribute_key": "gender", "desired_values": {"male": 2, "female": 2}, "penalty_weight": 50}
         ],
@@ -3844,7 +4970,8 @@ mod tests {
         );
 
         // Test MustStayTogether parsing
-        let must_stay_json = r#"{"type": "MustStayTogether", "people": ["alice", "bob"], "penalty_weight": 1000, "sessions": [0, 1]}"#;
+        let must_stay_json =
+            r#"{"type": "MustStayTogether", "people": ["alice", "bob"], "sessions": [0, 1]}"#;
         let must_stay_constraint: Result<Constraint, _> = serde_json::from_str(must_stay_json);
         assert!(
             must_stay_constraint.is_ok(),
@@ -4018,13 +5145,12 @@ mod tests {
         input.constraints = vec![
             Constraint::MustStayTogether {
                 people: vec!["p0".into(), "p1".into()],
-                penalty_weight: 1000.0,
                 sessions: None, // all sessions initially
             },
             Constraint::ImmovablePerson(ImmovablePersonParams {
                 person_id: "p0".into(),
                 group_id: "g0_0".into(),
-                sessions: vec![0],
+                sessions: Some(vec![0]),
             }),
         ];
 
@@ -4331,6 +5457,7 @@ mod attribute_balance_tests {
 
     fn create_attribute_balance_test_input() -> ApiInput {
         ApiInput {
+            initial_schedule: None,
             problem: ProblemDefinition {
                 people: vec![
                     Person {
@@ -4386,6 +5513,7 @@ mod attribute_balance_tests {
                     attribute_key: "gender".to_string(),
                     desired_values: [("male".to_string(), 2), ("female".to_string(), 1)].into(),
                     penalty_weight: 100.0,
+                    mode: crate::models::AttributeBalanceMode::Exact,
                     sessions: Some(vec![0, 1]),
                 }),
                 Constraint::AttributeBalance(AttributeBalanceParams {
@@ -4393,6 +5521,7 @@ mod attribute_balance_tests {
                     attribute_key: "gender".to_string(),
                     desired_values: [("male".to_string(), 1), ("female".to_string(), 2)].into(),
                     penalty_weight: 100.0,
+                    mode: crate::models::AttributeBalanceMode::Exact,
                     sessions: Some(vec![0, 1]),
                 }),
             ],
@@ -4407,11 +5536,122 @@ mod attribute_balance_tests {
                     initial_temperature: 1.0,
                     final_temperature: 0.1,
                     cooling_schedule: "geometric".to_string(),
-                    reheat_after_no_improvement: 0, // No reheat
+                    reheat_after_no_improvement: Some(0), // No reheat
+                    reheat_cycles: Some(0),
                 }),
                 logging: LoggingOptions::default(),
+                telemetry: Default::default(),
+                allowed_sessions: None,
             },
         }
+    }
+
+    #[test]
+    fn test_attribute_balance_mode_at_least() {
+        // People: 4 females, 2 males
+        let people = vec![
+            Person {
+                id: "f1".to_string(),
+                attributes: [("gender".to_string(), "female".to_string())].into(),
+                sessions: None,
+            },
+            Person {
+                id: "f2".to_string(),
+                attributes: [("gender".to_string(), "female".to_string())].into(),
+                sessions: None,
+            },
+            Person {
+                id: "f3".to_string(),
+                attributes: [("gender".to_string(), "female".to_string())].into(),
+                sessions: None,
+            },
+            Person {
+                id: "f4".to_string(),
+                attributes: [("gender".to_string(), "female".to_string())].into(),
+                sessions: None,
+            },
+            Person {
+                id: "m1".to_string(),
+                attributes: [("gender".to_string(), "male".to_string())].into(),
+                sessions: None,
+            },
+            Person {
+                id: "m2".to_string(),
+                attributes: [("gender".to_string(), "male".to_string())].into(),
+                sessions: None,
+            },
+        ];
+
+        let input = ApiInput {
+            initial_schedule: None,
+            problem: ProblemDefinition {
+                people,
+                groups: vec![
+                    Group {
+                        id: "g1".to_string(),
+                        size: 3,
+                    },
+                    Group {
+                        id: "g2".to_string(),
+                        size: 3,
+                    },
+                ],
+                num_sessions: 1,
+            },
+            objectives: vec![Objective {
+                r#type: "maximize_unique_contacts".to_string(),
+                weight: 1.0,
+            }],
+            constraints: vec![Constraint::AttributeBalance(AttributeBalanceParams {
+                group_id: "g1".to_string(),
+                attribute_key: "gender".to_string(),
+                desired_values: [("female".to_string(), 2)].into(),
+                penalty_weight: 10.0,
+                mode: crate::models::AttributeBalanceMode::AtLeast,
+                sessions: None,
+            })],
+            solver: SolverConfiguration {
+                solver_type: "SimulatedAnnealing".to_string(),
+                stop_conditions: StopConditions {
+                    max_iterations: Some(1),
+                    time_limit_seconds: None,
+                    no_improvement_iterations: None,
+                },
+                solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
+                    initial_temperature: 1.0,
+                    final_temperature: 1.0,
+                    cooling_schedule: "geometric".to_string(),
+                    reheat_after_no_improvement: Some(0),
+                    reheat_cycles: Some(0),
+                }),
+                logging: LoggingOptions::default(),
+                telemetry: Default::default(),
+                allowed_sessions: None,
+            },
+        };
+
+        let mut state = State::new(&input).expect("state should build");
+
+        // Case 1: Shortfall (only 1 female in g1) -> penalty = (2-1)^2 * 10 = 10
+        // Indices: f1=0, f2=1, f3=2, f4=3, m1=4, m2=5
+        state.schedule = vec![vec![vec![0, 4, 5], vec![1, 2, 3]]]; // g1: f1,m1,m2 (1 female); g2: f2,f3,f4
+        state._recalculate_scores();
+        let p_shortfall = state.attribute_balance_penalty;
+        assert!(
+            (p_shortfall - 10.0).abs() < 0.001,
+            "Expected shortfall penalty 10, got {}",
+            p_shortfall
+        );
+
+        // Case 2: Overshoot (3 females in g1) -> penalty = 0 in AtLeast mode
+        state.schedule = vec![vec![vec![0, 1, 2], vec![3, 4, 5]]]; // g1: f1,f2,f3 (3 females)
+        state._recalculate_scores();
+        let p_overshoot = state.attribute_balance_penalty;
+        assert!(
+            p_overshoot.abs() < 0.001,
+            "Expected zero penalty for overshoot in AtLeast mode, got {}",
+            p_overshoot
+        );
     }
 
     #[test]

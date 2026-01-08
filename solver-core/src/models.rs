@@ -20,6 +20,7 @@ use std::collections::HashMap;
 /// use std::collections::HashMap;
 ///
 /// let input = ApiInput {
+///     initial_schedule: None,
 ///     problem: ProblemDefinition {
 ///         people: vec![
 ///             Person {
@@ -52,10 +53,13 @@ use std::collections::HashMap;
 ///                 initial_temperature: 100.0,
 ///                 final_temperature: 0.1,
 ///                 cooling_schedule: "geometric".to_string(),
-///                 reheat_after_no_improvement: 0,
+///                 reheat_after_no_improvement: Some(0),
+///                 reheat_cycles: Some(0),
 ///             }
 ///         ),
 ///         logging: LoggingOptions::default(),
+///         telemetry: Default::default(),
+///         allowed_sessions: None,
 ///     },
 /// };
 /// ```
@@ -63,6 +67,12 @@ use std::collections::HashMap;
 pub struct ApiInput {
     /// The core problem definition: people, groups, and sessions
     pub problem: ProblemDefinition,
+    /// Optional initial schedule to warm-start the solver. If provided, the solver
+    /// initializes the internal state from this schedule instead of a random one.
+    /// Format: schedule["session_{i}"][group_id] = [person_ids]
+    #[serde(default)]
+    pub initial_schedule:
+        Option<std::collections::HashMap<String, std::collections::HashMap<String, Vec<String>>>>,
     /// Optimization objectives (defaults to empty list if not specified)
     #[serde(default)]
     pub objectives: Vec<Objective>,
@@ -197,6 +207,7 @@ pub struct Objective {
 /// - **AttributeBalance**: Maintains desired attribute distributions within groups
 /// - **ImmovablePerson**: Fixes specific people to specific groups in specific sessions
 /// - **MustStayTogether**: Keeps certain people in the same group
+/// - **ShouldStayTogether**: Prefers certain people to be in the same group (soft)
 /// - **ShouldNotBeTogether**: Prevents certain people from being in the same group
 ///
 /// # Examples
@@ -224,12 +235,12 @@ pub struct Objective {
 ///     },
 ///     penalty_weight: 50.0,
 ///     sessions: None,
+///     mode: AttributeBalanceMode::Exact,
 /// });
 ///
 /// // Keep two people together (only in sessions 0 and 1)
 /// let together_constraint = Constraint::MustStayTogether {
 ///     people: vec!["Alice".to_string(), "Bob".to_string()],
-///     penalty_weight: 1000.0,
 ///     sessions: Some(vec![0, 1]),
 /// };
 ///
@@ -253,7 +264,16 @@ pub enum Constraint {
     MustStayTogether {
         /// List of person IDs that must stay together
         people: Vec<String>,
-        /// Penalty weight for violations (higher = more important)
+        /// Optional list of session indices where this constraint applies.
+        /// If `None`, applies to all sessions.
+        #[serde(default)]
+        sessions: Option<Vec<u32>>,
+    },
+    /// Prefers specified people to be in the same group (soft constraint)
+    ShouldStayTogether {
+        /// List of person IDs that should be together
+        people: Vec<String>,
+        /// Penalty weight when the people are not together
         #[serde(default = "default_constraint_weight")]
         penalty_weight: f64,
         /// Optional list of session indices where this constraint applies.
@@ -275,11 +295,49 @@ pub enum Constraint {
     },
     /// Fixes a *set* of people to a specific group in specific sessions (hard constraint)
     ImmovablePeople(ImmovablePeopleParams),
+    /// Constrains a pair's meeting count across a fixed subset of sessions
+    PairMeetingCount(PairMeetingCountParams),
 }
 
 /// Default penalty weight for constraints that don't specify one
 fn default_constraint_weight() -> f64 {
     1000.0
+}
+
+/// Modes for how to penalize deviations from the target meeting count.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PairMeetingMode {
+    /// Penalize only shortfalls: weight * max(0, target - actual)
+    AtLeast,
+    /// Penalize absolute deviation: weight * |target - actual|
+    Exact,
+    /// Penalize only excess: weight * max(0, actual - target)
+    AtMost,
+}
+
+impl Default for PairMeetingMode {
+    fn default() -> Self {
+        PairMeetingMode::AtLeast
+    }
+}
+
+/// Soft constraint on how often a pair should meet within a subset of sessions.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PairMeetingCountParams {
+    /// Exactly two person IDs involved in the constraint
+    pub people: Vec<String>,
+    /// Sessions to consider for counting meetings (must be within problem.sessions)
+    pub sessions: Vec<u32>,
+    /// Target number of meetings within the provided sessions (0..=sessions.len())
+    #[serde(alias = "min_meetings")]
+    pub target_meetings: u32,
+    /// Penalty mode: at_least (default), exact, or at_most
+    #[serde(default)]
+    pub mode: PairMeetingMode,
+    /// Linear penalty weight
+    #[serde(default = "default_constraint_weight")]
+    pub penalty_weight: f64,
 }
 
 /// Parameters for the RepeatEncounter constraint.
@@ -320,6 +378,7 @@ pub struct RepeatEncounterParams {
 ///
 /// ```no_run
 /// use solver_core::models::AttributeBalanceParams;
+/// use solver_core::models::AttributeBalanceMode;
 /// use std::collections::HashMap;
 ///
 /// // Maintain 2 males and 2 females in "Team1"
@@ -334,6 +393,7 @@ pub struct RepeatEncounterParams {
 ///     },
 ///     penalty_weight: 50.0,
 ///     sessions: None,
+///     mode: AttributeBalanceMode::Exact,
 /// };
 /// ```
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -346,9 +406,29 @@ pub struct AttributeBalanceParams {
     pub desired_values: HashMap<String, u32>,
     /// Weight of the penalty applied for balance violations
     pub penalty_weight: f64,
+    /// How to interpret desired counts. `Exact` penalizes deviation in either direction,
+    /// `AtLeast` penalizes only shortfalls (overshoot is not penalized).
+    #[serde(default)]
+    pub mode: AttributeBalanceMode,
     /// Optional list of session indices in which this constraint is active. If `None`, the constraint applies to all sessions.
     #[serde(default)]
     pub sessions: Option<Vec<u32>>,
+}
+
+/// Mode for evaluating attribute balance targets.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AttributeBalanceMode {
+    /// Penalize absolute deviation from the desired count (current behavior)
+    Exact,
+    /// Penalize only when actual < desired; overshooting is allowed without penalty
+    AtLeast,
+}
+
+impl Default for AttributeBalanceMode {
+    fn default() -> Self {
+        AttributeBalanceMode::Exact
+    }
 }
 
 /// Parameters for the ImmovablePerson constraint.
@@ -362,11 +442,11 @@ pub struct AttributeBalanceParams {
 /// ```no_run
 /// use solver_core::models::ImmovablePersonParams;
 ///
-/// // Fix "TeamLeader" to "Team1" for all sessions
+/// // Fix "TeamLeader" to "Team1" for specific sessions
 /// let params = ImmovablePersonParams {
 ///     person_id: "TeamLeader".to_string(),
 ///     group_id: "Team1".to_string(),
-///     sessions: vec![0, 1, 2], // Sessions 0, 1, and 2
+///     sessions: Some(vec![0, 1, 2]), // Sessions 0, 1, and 2
 /// };
 /// ```
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -375,8 +455,10 @@ pub struct ImmovablePersonParams {
     pub person_id: String,
     /// ID of the group where this person must be placed
     pub group_id: String,
-    /// List of session indices where this person must be in the specified group
-    pub sessions: Vec<u32>,
+    /// List of session indices where this person must be in the specified group.
+    /// If `None`, applies to all sessions.
+    #[serde(default)]
+    pub sessions: Option<Vec<u32>>,
 }
 
 /// Fixes multiple people to a specific group in specific sessions (hard constraint).
@@ -390,8 +472,10 @@ pub struct ImmovablePeopleParams {
     pub people: Vec<String>,
     /// ID of the group where these people must be placed
     pub group_id: String,
-    /// List of session indices where these people must be in the specified group
-    pub sessions: Vec<u32>,
+    /// List of session indices where these people must be in the specified group.
+    /// If `None`, applies to all sessions.
+    #[serde(default)]
+    pub sessions: Option<Vec<u32>>,
 }
 
 /// Complete configuration for the optimization solver.
@@ -416,7 +500,8 @@ pub struct ImmovablePeopleParams {
 ///             initial_temperature: 100.0,
 ///             final_temperature: 0.1,
 ///             cooling_schedule: "geometric".to_string(),
-///             reheat_after_no_improvement: 0,
+///             reheat_after_no_improvement: Some(0),
+///             reheat_cycles: Some(0),
 ///         }
 ///     ),
 ///     logging: LoggingOptions {
@@ -425,6 +510,8 @@ pub struct ImmovablePeopleParams {
 ///         log_final_score_breakdown: true,
 ///         ..Default::default()
 ///     },
+///     telemetry: Default::default(),
+///     allowed_sessions: None,
 /// };
 /// ```
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -438,6 +525,47 @@ pub struct SolverConfiguration {
     /// Logging and output preferences (defaults to minimal logging)
     #[serde(default)]
     pub logging: LoggingOptions,
+    /// Telemetry options controlling what is emitted via progress updates.
+    ///
+    /// Defaults to disabled to avoid any performance overhead unless explicitly requested.
+    #[serde(default)]
+    pub telemetry: TelemetryOptions,
+    /// Optional allow-list of session indices that the solver is allowed to modify during iterations.
+    /// If present, the solver will only generate moves within these sessions, leaving others unchanged.
+    /// Session indices are 0-based.
+    #[serde(default)]
+    pub allowed_sessions: Option<Vec<u32>>,
+}
+
+/// Controls optional telemetry emitted during solver execution.
+///
+/// This is intentionally separate from `LoggingOptions` so that progress/visualization features
+/// can be enabled independently of stdout logging.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TelemetryOptions {
+    /// When true, include a `best_schedule` snapshot in some progress updates.
+    ///
+    /// This can be expensive for large problems (it clones and serializes schedules), so it is
+    /// disabled by default.
+    #[serde(default)]
+    pub emit_best_schedule: bool,
+
+    /// Include a schedule snapshot every N progress callbacks (when enabled).
+    ///
+    /// Values <= 1 mean \"every callback\".
+    #[serde(default)]
+    pub best_schedule_every_n_callbacks: u64,
+}
+
+impl Default for TelemetryOptions {
+    fn default() -> Self {
+        Self {
+            emit_best_schedule: false,
+            // A safe default in case someone enables telemetry without tuning.
+            // (Progress callbacks are time-based; snapshots can be large.)
+            best_schedule_every_n_callbacks: 5,
+        }
+    }
 }
 
 /// Defines when the optimization process should stop.
@@ -495,7 +623,8 @@ pub enum SolverParams {
 ///     initial_temperature: 100.0,   // Start with high exploration
 ///     final_temperature: 0.1,       // End with focused local search
 ///     cooling_schedule: "geometric".to_string(), // Exponential temperature decay
-///     reheat_after_no_improvement: 1000, // Reheat after 1000 iterations without improvement (0 = no reheat)
+///     reheat_after_no_improvement: Some(0), // Reheat after 1000 iterations without improvement (0 = no reheat)
+///     reheat_cycles: Some(0), // Reheat after 1000 iterations without improvement (0 = no reheat)
 /// };
 /// ```
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -506,12 +635,25 @@ pub struct SimulatedAnnealingParams {
     pub final_temperature: f64,
     /// Temperature reduction schedule: "geometric" for exponential decay, "linear" for linear decay
     pub cooling_schedule: String, // "geometric", "linear", etc
-    /// Optional reheat threshold: number of iterations without improvement before reheating
-    /// When reached, temperature is reset to initial_temperature and cooling schedule is recalculated
-    /// for remaining iterations. If 0 (default), no reheating occurs. If not specified, defaults to
-    /// the smaller of: max_iterations/10 or no_improvement_iterations/2 (if no_improvement_iterations is set).
+    /// Fixed reheat cycles: split the total iterations into this many cycles.
+    /// For each cycle, temperature cools from `initial_temperature` down to `final_temperature`,
+    /// then reheats to `initial_temperature` at the cycle boundary.
+    ///
+    /// Semantics:
+    /// - `Some(0)` or `None`: disabled (use default behavior)
+    /// - `Some(N>0)`: enable cycle-based reheating with N cycles across `max_iterations`
     #[serde(default)]
-    pub reheat_after_no_improvement: u64,
+    pub reheat_cycles: Option<u64>,
+    /// Optional reheat threshold: number of iterations without improvement before reheating.
+    /// When reached, temperature is reset to initial_temperature and the cooling schedule is recalculated
+    /// for the remaining iterations.
+    ///
+    /// Semantics:
+    /// - `Some(0)`: disable reheating explicitly
+    /// - `Some(N>0)`: reheat after N iterations without improvement
+    /// - `None` (unspecified): default to the smaller of `max_iterations/10` or `no_improvement_iterations/2` (if set)
+    #[serde(default)]
+    pub reheat_after_no_improvement: Option<u64>,
 }
 
 /// Configuration options for logging and output during optimization.
@@ -534,6 +676,8 @@ pub struct SimulatedAnnealingParams {
 ///     log_initial_score_breakdown: true,   // Detailed initial scoring
 ///     log_final_score_breakdown: true,     // Detailed final scoring
 ///     log_stop_condition: true,            // Show why optimization stopped
+///     debug_validate_invariants: true,     // Validate invariants after each move
+///     debug_dump_invariant_context: true,  // Include detailed context in invariant violation errors
 /// };
 ///
 /// // Minimal logging for production
@@ -566,6 +710,17 @@ pub struct LoggingOptions {
     /// Whether to log the reason why optimization stopped
     #[serde(default)]
     pub log_stop_condition: bool,
+
+    /// When enabled, the solver performs invariant checks after each applied move.
+    /// This is expensive and intended only for debugging.
+    #[serde(default)]
+    pub debug_validate_invariants: bool,
+
+    /// When enabled alongside `debug_validate_invariants`, the solver will include
+    /// detailed context (attempted move description and before/after schedules)
+    /// in any invariant violation error.
+    #[serde(default)]
+    pub debug_dump_invariant_context: bool,
 }
 
 /// Progress update sent during solver execution.
@@ -670,6 +825,12 @@ pub struct ProgressUpdate {
     pub score_variance: f64,
     /// Search efficiency (improvement per unit time)
     pub search_efficiency: f64,
+
+    // === Optional snapshot of the current best schedule ===
+    /// Best-known schedule at the time of the update (if included)
+    #[serde(default)]
+    pub best_schedule:
+        Option<std::collections::HashMap<String, std::collections::HashMap<String, Vec<String>>>>,
 }
 
 /// Callback function type for receiving progress updates during solver execution.
@@ -709,13 +870,16 @@ pub type ProgressCallback = Box<dyn Fn(&ProgressUpdate) -> bool + Send>;
 ///
 /// // ... create input configuration ...
 /// # let input = ApiInput {
+/// #     initial_schedule: None,
 /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
 /// #     objectives: vec![], constraints: vec![],
 /// #     solver: SolverConfiguration {
 /// #         solver_type: "SimulatedAnnealing".to_string(),
 /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-/// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0 }),
+/// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
 /// #         logging: LoggingOptions::default(),
+/// #         telemetry: Default::default(),
+/// #         allowed_sessions: None,
 /// #     },
 /// # };
 ///
@@ -790,13 +954,16 @@ impl SolverResult {
     /// use solver_core::{run_solver, models::*};
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
+    /// #     initial_schedule: None,
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0 }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
+    /// #         telemetry: Default::default(),
+    /// #         allowed_sessions: None,
     /// #     },
     /// # };
     ///

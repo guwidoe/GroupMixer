@@ -67,6 +67,8 @@ interface AppStore extends AppState {
   startSolver: () => void;
   stopSolver: () => void;
   resetSolver: () => void;
+  // Warm start intent
+  setWarmStartFromResult: (resultId: string | null) => void;
 
   // UI management
   setActiveTab: (tab: "problem" | "solver" | "results" | "manage") => void;
@@ -88,10 +90,12 @@ interface AppStore extends AppState {
   ) => void;
   renameProblem: (id: string, newName: string) => void;
   toggleTemplate: (id: string) => void;
+  restoreResultAsNewProblem: (resultId: string, newName?: string) => void;
   addResult: (
     solution: Solution,
     solverSettings: SolverSettings,
-    customName?: string
+    customName?: string,
+    snapshotProblemOverride?: Problem
   ) => void;
   updateResultName: (resultId: string, newName: string) => void;
   deleteResult: (resultId: string) => void;
@@ -120,6 +124,12 @@ interface AppStore extends AppState {
   setAttributeDefinitions: (definitions: AttributeDefinition[]) => void;
   addAttributeDefinition: (definition: AttributeDefinition) => void;
   removeAttributeDefinition: (key: string) => void;
+
+  // Manual Editor unsaved/leave handling
+  manualEditorUnsaved: boolean;
+  setManualEditorUnsaved: (unsaved: boolean) => void;
+  manualEditorLeaveHook: ((nextPath: string) => void) | null;
+  setManualEditorLeaveHook: (hook: ((nextPath: string) => void) | null) => void;
 }
 
 const initialState: AppState = {
@@ -142,6 +152,7 @@ const initialState: AppState = {
     notifications: [],
     showProblemManager: false,
     showResultComparison: false,
+    warmStartResultId: null,
   },
   attributeDefinitions: loadAttributeDefinitions(),
   demoDropdownOpen: false,
@@ -151,6 +162,8 @@ export const useAppStore = create<AppStore>()(
   devtools(
     (set, get) => ({
       ...initialState,
+      manualEditorUnsaved: false,
+      manualEditorLeaveHook: null,
 
       // Problem management
       setProblem: (problem) => set({ problem }),
@@ -219,6 +232,7 @@ export const useAppStore = create<AppStore>()(
                   initial_temperature: 1.0,
                   final_temperature: 0.01,
                   cooling_schedule: "geometric",
+                  reheat_cycles: 0,
                   reheat_after_no_improvement: 0,
                 },
               },
@@ -239,6 +253,7 @@ export const useAppStore = create<AppStore>()(
               initial_temperature: 1.0,
               final_temperature: 0.01,
               cooling_schedule: "geometric",
+              reheat_cycles: 0,
               reheat_after_no_improvement: 0,
             },
           },
@@ -316,6 +331,7 @@ export const useAppStore = create<AppStore>()(
               initial_temperature: 1.0,
               final_temperature: 0.01,
               cooling_schedule: "geometric",
+              reheat_cycles: 0,
               reheat_after_no_improvement: 0,
             },
           },
@@ -408,6 +424,12 @@ export const useAppStore = create<AppStore>()(
             noImprovementCount: 0,
             error: undefined,
           },
+        })),
+
+      // Warm start intent (persist ephemeral selection)
+      setWarmStartFromResult: (resultId) =>
+        set((state) => ({
+          ui: { ...state.ui, warmStartResultId: resultId as unknown as never },
         })),
 
       // UI management
@@ -722,7 +744,56 @@ export const useAppStore = create<AppStore>()(
         }
       },
 
-      addResult: (solution, solverSettings, customName) => {
+      restoreResultAsNewProblem: (resultId, newName) => {
+        const { currentProblemId } = get();
+        if (!currentProblemId) {
+          get().addNotification({
+            type: "error",
+            title: "No Current Problem",
+            message:
+              "Select a problem first to restore a result's configuration.",
+          });
+          return;
+        }
+
+        try {
+          const created = problemStorage.restoreResultAsNewProblem(
+            currentProblemId,
+            resultId,
+            newName
+          );
+
+          // Update store cache
+          set((state) => ({
+            savedProblems: {
+              ...state.savedProblems,
+              [created.id]: created,
+            },
+          }));
+
+          get().addNotification({
+            type: "success",
+            title: "Restored as New Problem",
+            message: `Created problem "${created.name}" from the result's configuration.`,
+          });
+        } catch (error) {
+          get().addNotification({
+            type: "error",
+            title: "Restore Failed",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Could not restore result as new problem",
+          });
+        }
+      },
+
+      addResult: (
+        solution,
+        solverSettings,
+        customName,
+        snapshotProblemOverride
+      ) => {
         const { currentProblemId, savedProblems, problem } = get();
         console.log(
           "[Store] addResult called with currentProblemId:",
@@ -762,13 +833,18 @@ export const useAppStore = create<AppStore>()(
         }
 
         try {
-          // Pass the current problem state to ensure we capture the latest configuration
+          // Capture the intended problem configuration for this result snapshot
+          // Prefer the explicit override (e.g., solver-run snapshot),
+          // otherwise fall back to the current problem in the store.
+          const problemForSnapshot =
+            snapshotProblemOverride || problem || undefined;
+
           const result = problemStorage.addResult(
             currentProblemId,
             solution,
             solverSettings,
             customName,
-            problem || undefined // Pass current problem state to avoid stale data
+            problemForSnapshot // Use provided snapshot problem (decouples from live UI changes)
           );
 
           // Update the store with the new result and ensure problem state is synced
@@ -785,7 +861,7 @@ export const useAppStore = create<AppStore>()(
                 ...state.savedProblems,
                 [currentProblemId]: {
                   ...currentProblem,
-                  problem: problem || currentProblem.problem, // Ensure problem state is current
+                  problem: problem || currentProblem.problem, // Keep problem state synced in store
                   results: [...(currentProblem?.results || []), result],
                 },
               },
@@ -1021,6 +1097,11 @@ export const useAppStore = create<AppStore>()(
           };
         }),
 
+      // Manual Editor unsaved/leave handling
+      setManualEditorUnsaved: (unsaved) =>
+        set({ manualEditorUnsaved: unsaved }),
+      setManualEditorLeaveHook: (hook) => set({ manualEditorLeaveHook: hook }),
+
       generateDemoData: async () => {
         try {
           const { extractAttributesFromProblem, mergeAttributeDefinitions } =
@@ -1161,7 +1242,6 @@ export const useAppStore = create<AppStore>()(
               {
                 type: "MustStayTogether",
                 people: ["alice", "bob"],
-                penalty_weight: 1000.0,
                 sessions: [0, 1], // Only for first two sessions
               },
               // Charlie and Diana can't be together (personality conflict)
@@ -1177,6 +1257,7 @@ export const useAppStore = create<AppStore>()(
                 attribute_key: "gender",
                 desired_values: { male: 2, female: 2 },
                 penalty_weight: 50.0,
+                mode: "exact",
               },
             ],
             settings: {

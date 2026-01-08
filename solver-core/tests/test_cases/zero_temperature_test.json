@@ -28,7 +28,7 @@
         ],
         "constraints": [
             {"type": "RepeatEncounter", "max_allowed_encounters": 1, "penalty_function": "squared", "penalty_weight": 100},
-            {"type": "MustStayTogether", "people": ["alice", "bob"], "penalty_weight": 1000, "sessions": [0, 1]},
+            {"type": "MustStayTogether", "people": ["alice", "bob"], "sessions": [0, 1]},
             {"type": "ShouldNotBeTogether", "people": ["charlie", "diana"], "penalty_weight": 500},
             {"type": "AttributeBalance", "group_id": "team-alpha", "attribute_key": "gender", "desired_values": {"male": 2, "female": 2}, "penalty_weight": 50}
         ],

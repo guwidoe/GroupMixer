@@ -375,7 +375,8 @@ impl AlgorithmMetrics {
 ///             initial_temperature: 100.0,  // High exploration
 ///             final_temperature: 0.01,     // Low exploitation
 ///             cooling_schedule: "geometric".to_string(),
-///             reheat_after_no_improvement: 0,
+///             reheat_after_no_improvement: Some(0),
+///             reheat_cycles: Some(0),
 ///         }
 ///     ),
 ///     logging: LoggingOptions {
@@ -384,11 +385,14 @@ impl AlgorithmMetrics {
 ///         log_final_score_breakdown: true,
 ///         ..Default::default()
 ///     },
+///     telemetry: Default::default(),
+///     allowed_sessions: None,
 /// };
 ///
 /// // Create and run the solver
 /// let solver = SimulatedAnnealing::new(&config);
 /// # let input = ApiInput {
+/// #     initial_schedule: None,
 /// #     problem: ProblemDefinition {
 /// #         people: vec![],
 /// #         groups: vec![],
@@ -440,6 +444,9 @@ pub struct SimulatedAnnealing {
     pub time_limit_seconds: Option<u64>,
     /// Optional early stopping after this many iterations without improvement
     pub no_improvement_iterations: Option<u64>,
+    /// When > 0, split the total iterations into this many cycles; each cycle cools from
+    /// initial_temperature to final_temperature, then reheats at the boundary
+    pub reheat_cycles: u64,
     /// Optional reheat threshold: number of iterations without improvement before reheating (0 = disabled)
     pub reheat_after_no_improvement: u64,
 }
@@ -476,10 +483,13 @@ impl SimulatedAnnealing {
     ///             initial_temperature: 50.0,
     ///             final_temperature: 0.1,
     ///             cooling_schedule: "geometric".to_string(),
-    ///             reheat_after_no_improvement: 0,
+    ///             reheat_cycles: Some(0),
+    ///             reheat_after_no_improvement: Some(0),
     ///         }
     ///     ),
     ///     logging: LoggingOptions::default(),
+    ///     telemetry: Default::default(),
+    ///     allowed_sessions: None,
     /// };
     ///
     /// let solver = SimulatedAnnealing::new(&config);
@@ -491,18 +501,24 @@ impl SimulatedAnnealing {
         let max_iterations = params.stop_conditions.max_iterations.unwrap_or(100_000);
         let no_improvement_iterations = params.stop_conditions.no_improvement_iterations;
 
-        // Calculate default reheat threshold if not explicitly provided (0 means no reheat)
-        let reheat_after_no_improvement = if sa_params.reheat_after_no_improvement == 0 {
-            // Auto-calculate default if not specified
-            let default_reheat = max_iterations / 10;
-            if let Some(no_improvement) = no_improvement_iterations {
-                let half_no_improvement = no_improvement / 2;
-                default_reheat.min(half_no_improvement)
-            } else {
-                default_reheat
+        // Determine cycle-based reheating
+        let reheat_cycles = sa_params.reheat_cycles.unwrap_or(0);
+
+        // Calculate reheat threshold:
+        // - None => auto-calc default
+        // - Some(0) => disabled
+        // - Some(N>0) => use N
+        let reheat_after_no_improvement = match sa_params.reheat_after_no_improvement {
+            None => {
+                let default_reheat = max_iterations / 10;
+                if let Some(no_improvement) = no_improvement_iterations {
+                    let half_no_improvement = no_improvement / 2;
+                    default_reheat.min(half_no_improvement)
+                } else {
+                    default_reheat
+                }
             }
-        } else {
-            sa_params.reheat_after_no_improvement
+            Some(v) => v,
         };
 
         Self {
@@ -511,6 +527,7 @@ impl SimulatedAnnealing {
             final_temperature: sa_params.final_temperature,
             time_limit_seconds: params.stop_conditions.time_limit_seconds,
             no_improvement_iterations,
+            reheat_cycles,
             reheat_after_no_improvement,
         }
     }
@@ -607,13 +624,16 @@ impl Solver for SimulatedAnnealing {
     /// use std::collections::HashMap;
     ///
     /// # let input = ApiInput {
+    /// #     initial_schedule: None,
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
-    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: 0 }),
+    /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
+    /// #         telemetry: Default::default(),
+    /// #         allowed_sessions: None,
     /// #     },
     /// # };
     /// // Set up the problem and solver
@@ -690,6 +710,7 @@ impl Solver for SimulatedAnnealing {
         let mut best_cost = state.calculate_cost();
         let mut no_improvement_counter = 0;
         let mut last_callback_time = get_start_time();
+        let mut progress_callback_count: u64 = 0;
         let mut final_iteration = 0;
 
         if state.logging.log_initial_score_breakdown {
@@ -709,6 +730,13 @@ impl Solver for SimulatedAnnealing {
         // Track reheating state
         let mut reheat_count = 0;
         let mut last_reheat_iteration = 0u64;
+        let cycle_length = if self.reheat_cycles > 0 {
+            // Avoid division by zero; ensure at least length 1
+            (self.max_iterations / self.reheat_cycles).max(1)
+        } else {
+            0
+        };
+        let mut prev_cycle_index: Option<u64> = None;
 
         // Initialize algorithm metrics (convert start_time to f64 for cross-platform compatibility)
         let initial_score = state.calculate_cost();
@@ -718,8 +746,30 @@ impl Solver for SimulatedAnnealing {
         for i in 0..self.max_iterations {
             final_iteration = i;
 
-            // Check if we should reheat (only if reheat is enabled)
-            if self.reheat_after_no_improvement > 0 {
+            // Two reheating modes:
+            // 1) Fixed cycle-based reheats if reheat_cycles > 0
+            // 2) Fallback: no-improvement-based reheats if enabled
+            if self.reheat_cycles > 0 && cycle_length > 0 {
+                let cycle_index = i / cycle_length;
+                if let Some(prev) = prev_cycle_index {
+                    if cycle_index > prev {
+                        // We crossed a cycle boundary: perform a reheat
+                        reheat_count += 1;
+                        last_reheat_iteration = cycle_index * cycle_length;
+                        no_improvement_counter = 0;
+                        if state.logging.log_stop_condition {
+                            println!(
+                                "Reheating (cycle) #{} at iteration {} (cycle {} of {})",
+                                reheat_count,
+                                i,
+                                cycle_index + 1,
+                                self.reheat_cycles
+                            );
+                        }
+                    }
+                }
+                prev_cycle_index = Some(cycle_index);
+            } else if self.reheat_after_no_improvement > 0 {
                 if no_improvement_counter >= self.reheat_after_no_improvement
                     && no_improvement_counter > 0
                 {
@@ -740,13 +790,21 @@ impl Solver for SimulatedAnnealing {
             }
 
             // Calculate temperature with potential reheat adjustment
-            let iterations_since_last_reheat = i - last_reheat_iteration;
-            let remaining_iterations = self.max_iterations - last_reheat_iteration;
+            let (iterations_since_last_reheat, remaining_for_cooling) =
+                if self.reheat_cycles > 0 && cycle_length > 0 {
+                    let cycle_index = i / cycle_length;
+                    let cycle_start = cycle_index * cycle_length;
+                    (i - cycle_start, cycle_length)
+                } else {
+                    let iterations_since_last_reheat = i - last_reheat_iteration;
+                    let remaining_iterations = self.max_iterations - last_reheat_iteration;
+                    (iterations_since_last_reheat, remaining_iterations)
+                };
 
-            let temperature = if remaining_iterations > 0 {
+            let temperature = if remaining_for_cooling > 0 {
                 self.initial_temperature
                     * (self.final_temperature / self.initial_temperature)
-                        .powf(iterations_since_last_reheat as f64 / remaining_iterations as f64)
+                        .powf(iterations_since_last_reheat as f64 / remaining_for_cooling as f64)
             } else {
                 self.final_temperature
             };
@@ -763,9 +821,15 @@ impl Solver for SimulatedAnnealing {
                 // Add minimum 50ms gap to prevent excessive callbacks
                 // NOTE: We don't call on last iteration here because we send a final callback after recalculation
                 if i == 0 || elapsed_since_last_callback >= 0.1 {
+                    progress_callback_count += 1;
                     let current_cost = current_state.current_cost;
                     let elapsed = get_elapsed_seconds(start_time);
-                    let iterations_since_last_reheat = i - last_reheat_iteration;
+                    let iterations_since_last_reheat = if self.reheat_cycles > 0 && cycle_length > 0
+                    {
+                        i - ((i / cycle_length) * cycle_length)
+                    } else {
+                        i - last_reheat_iteration
+                    };
 
                     // Calculate dynamic metrics
                     let (
@@ -781,7 +845,9 @@ impl Solver for SimulatedAnnealing {
                     ) = metrics.calculate_metrics(elapsed);
 
                     // Calculate cooling progress
-                    let cooling_progress = if self.max_iterations > 0 {
+                    let cooling_progress = if self.reheat_cycles > 0 && cycle_length > 0 {
+                        (iterations_since_last_reheat as f64) / (cycle_length as f64)
+                    } else if self.max_iterations > 0 {
                         iterations_since_last_reheat as f64
                             / (self.max_iterations - last_reheat_iteration) as f64
                     } else {
@@ -793,6 +859,13 @@ impl Solver for SimulatedAnnealing {
                         (elapsed * 1000.0) / i as f64
                     } else {
                         0.0
+                    };
+
+                    let include_best_schedule = if state.telemetry.emit_best_schedule {
+                        let every = state.telemetry.best_schedule_every_n_callbacks.max(1);
+                        progress_callback_count % every == 0
+                    } else {
+                        false
                     };
 
                     let progress = ProgressUpdate {
@@ -852,6 +925,16 @@ impl Solver for SimulatedAnnealing {
                         // Advanced analytics
                         score_variance,
                         search_efficiency,
+                        // Optional best schedule snapshot (expensive; gated by telemetry settings)
+                        best_schedule: if include_best_schedule {
+                            Some(
+                                best_state
+                                    .to_solver_result(best_cost, no_improvement_counter)
+                                    .schedule,
+                            )
+                        } else {
+                            None
+                        },
                     };
 
                     // If callback returns false, stop early
@@ -867,8 +950,16 @@ impl Solver for SimulatedAnnealing {
                 }
             }
 
-            // --- Choose a random move ---
-            let day = rng.random_range(0..current_state.num_sessions as usize);
+            // --- Choose a random move (respect allowed sessions if configured) ---
+            let day = if let Some(ref allowed) = state.allowed_sessions {
+                if allowed.is_empty() {
+                    continue;
+                }
+                let idx = rng.random_range(0..allowed.len());
+                allowed[idx] as usize
+            } else {
+                rng.random_range(0..current_state.num_sessions as usize)
+            };
 
             // Use pre-calculated move probabilities for performance
             let transfer_probability = transfer_probabilities[day];
@@ -882,8 +973,39 @@ impl Solver for SimulatedAnnealing {
                 let clique_idx = rng.random_range(0..current_state.cliques.len());
                 let clique = &current_state.cliques[clique_idx];
 
-                // Find which group the clique is currently in
-                let current_group = current_state.locations[day][clique[0]].0;
+                // Determine a source group containing the majority of active (participating) members
+                // of this clique for the selected day
+                let mut group_counts: std::collections::HashMap<usize, usize> =
+                    std::collections::HashMap::new();
+                let mut first_participating_group: Option<usize> = None;
+                for &m in clique.iter() {
+                    if current_state.person_participation[m][day] {
+                        let g = current_state.locations[day][m].0;
+                        *group_counts.entry(g).or_insert(0) += 1;
+                        if first_participating_group.is_none() {
+                            first_participating_group = Some(g);
+                        }
+                    }
+                }
+
+                let current_group =
+                    if let Some((&g, _)) = group_counts.iter().max_by_key(|(_, &cnt)| cnt) {
+                        g
+                    } else if let Some(g) = first_participating_group {
+                        g
+                    } else {
+                        continue; // No active members this day
+                    };
+
+                // Count active members actually in current_group
+                let active_count = clique
+                    .iter()
+                    .filter(|&&m| current_state.person_participation[m][day])
+                    .filter(|&&m| current_state.locations[day][m].0 == current_group)
+                    .count();
+                if active_count == 0 {
+                    continue;
+                }
 
                 // Find a different group to swap with
                 let num_groups = current_state.group_idx_to_id.len();
@@ -900,11 +1022,11 @@ impl Solver for SimulatedAnnealing {
                     let mut non_clique_people =
                         current_state.find_non_clique_movable_people(day, target_group);
 
-                    if non_clique_people.len() >= clique.len() {
-                        // Randomly select exactly clique.len() people to swap
+                    if non_clique_people.len() >= active_count {
+                        // Randomly select exactly active_count people to swap
                         non_clique_people.shuffle(&mut rng);
                         let target_people: Vec<usize> =
-                            non_clique_people.into_iter().take(clique.len()).collect();
+                            non_clique_people.into_iter().take(active_count).collect();
 
                         // Calculate delta cost for clique swap
                         let delta_cost = current_state.calculate_clique_swap_cost_delta(
@@ -914,6 +1036,8 @@ impl Solver for SimulatedAnnealing {
                             target_group,
                             &target_people,
                         );
+                        // By default, record the estimated delta; if accepted, override with actual delta
+                        let mut recorded_delta = delta_cost;
 
                         //let current_cost = current_state.current_cost;
                         //let next_cost = current_cost + delta_cost;
@@ -923,6 +1047,7 @@ impl Solver for SimulatedAnnealing {
                             || rng.random::<f64>() < (-delta_cost / temperature).exp();
 
                         if move_accepted {
+                            let prev_cost = current_state.current_cost;
                             current_state.apply_clique_swap(
                                 day,
                                 clique_idx,
@@ -933,6 +1058,41 @@ impl Solver for SimulatedAnnealing {
 
                             // Since apply_clique_swap does a full recalculation, we need to get the actual cost
                             let actual_current_cost = current_state.current_cost;
+                            recorded_delta = actual_current_cost - prev_cost;
+
+                            // Optional invariant check after applying move
+                            if state.logging.debug_validate_invariants {
+                                if let Err(e) = current_state.validate_no_duplicate_assignments() {
+                                    if state.logging.debug_dump_invariant_context {
+                                        println!("INVARIANT VIOLATION CONTEXT:");
+                                        println!("  Iteration: {}", i);
+                                        println!("  Move: CLIQUE_SWAP day={} clique_idx={} from_group={} to_group={} swapped_out={}",
+                                            day,
+                                            clique_idx,
+                                            state.group_idx_to_id[current_group].clone(),
+                                            state.group_idx_to_id[target_group].clone(),
+                                            target_people.len()
+                                        );
+                                        for (g_idx, g) in
+                                            current_state.schedule[day].iter().enumerate().take(4)
+                                        {
+                                            let names: Vec<String> = g
+                                                .iter()
+                                                .map(|&pid| {
+                                                    current_state.display_person_by_idx(pid)
+                                                })
+                                                .collect();
+                                            println!(
+                                                "    group {} ({}): {:?}",
+                                                g_idx,
+                                                current_state.group_idx_to_id[g_idx].clone(),
+                                                names
+                                            );
+                                        }
+                                    }
+                                    return Err(e);
+                                }
+                            }
 
                             if actual_current_cost < best_cost {
                                 best_cost = actual_current_cost;
@@ -942,8 +1102,8 @@ impl Solver for SimulatedAnnealing {
                             }
                         }
 
-                        // Record the move attempt
-                        metrics.record_clique_swap(delta_cost, move_accepted);
+                        // Record using chosen delta (actual if accepted, estimated otherwise)
+                        metrics.record_clique_swap(recorded_delta, move_accepted);
                     }
                 }
             } else if move_selector < clique_swap_probability + transfer_probability {
@@ -987,11 +1147,51 @@ impl Solver for SimulatedAnnealing {
 
                             current_state.current_cost = next_cost;
 
+                            // Optional invariant check after applying move
+                            if state.logging.debug_validate_invariants {
+                                if let Err(e) = current_state.validate_no_duplicate_assignments() {
+                                    if state.logging.debug_dump_invariant_context {
+                                        println!("INVARIANT VIOLATION CONTEXT:");
+                                        println!("  Iteration: {}", i);
+                                        println!(
+                                            "  Move: TRANSFER day={} person={} from={} to={}",
+                                            day,
+                                            current_state.display_person_by_idx(person_idx),
+                                            state.group_idx_to_id[from_group].clone(),
+                                            state.group_idx_to_id[to_group].clone()
+                                        );
+                                        for (g_idx, g) in
+                                            current_state.schedule[day].iter().enumerate().take(4)
+                                        {
+                                            let names: Vec<String> = g
+                                                .iter()
+                                                .map(|&pid| {
+                                                    current_state.display_person_by_idx(pid)
+                                                })
+                                                .collect();
+                                            println!(
+                                                "    group {} ({}): {:?}",
+                                                g_idx,
+                                                current_state.group_idx_to_id[g_idx].clone(),
+                                                names
+                                            );
+                                        }
+                                    }
+                                    return Err(e);
+                                }
+                            }
+
                             if next_cost < best_cost {
-                                best_cost = next_cost;
-                                best_state = current_state.clone();
-                                no_improvement_counter = 0;
-                                improvement_found = true;
+                                // Recalculate to eliminate any incremental drift before
+                                // recording a new best and to keep telemetry consistent.
+                                current_state._recalculate_scores();
+                                let verified_cost = current_state.calculate_cost();
+                                if verified_cost < best_cost {
+                                    best_cost = verified_cost;
+                                    best_state = current_state.clone();
+                                    no_improvement_counter = 0;
+                                    improvement_found = true;
+                                }
                             }
                         }
 
@@ -1037,11 +1237,49 @@ impl Solver for SimulatedAnnealing {
                     current_state.apply_swap(day, p1_idx, p2_idx);
                     current_state.current_cost = next_cost;
 
+                    // Optional invariant check after applying move
+                    if state.logging.debug_validate_invariants {
+                        if let Err(e) = current_state.validate_no_duplicate_assignments() {
+                            if state.logging.debug_dump_invariant_context {
+                                println!("INVARIANT VIOLATION CONTEXT:");
+                                println!("  Iteration: {}", i);
+                                println!(
+                                    "  Move: SWAP day={} p1={} p2={}",
+                                    day,
+                                    current_state.display_person_by_idx(p1_idx),
+                                    current_state.display_person_by_idx(p2_idx)
+                                );
+                                println!("  After move (first 3 groups of day):");
+                                for (g_idx, g) in
+                                    current_state.schedule[day].iter().enumerate().take(3)
+                                {
+                                    let names: Vec<String> = g
+                                        .iter()
+                                        .map(|&pid| current_state.display_person_by_idx(pid))
+                                        .collect();
+                                    println!(
+                                        "    group {} ({}): {:?}",
+                                        g_idx,
+                                        current_state.group_idx_to_id[g_idx].clone(),
+                                        names
+                                    );
+                                }
+                            }
+                            return Err(e);
+                        }
+                    }
+
                     if next_cost < best_cost {
-                        best_cost = next_cost;
-                        best_state = current_state.clone();
-                        no_improvement_counter = 0;
-                        improvement_found = true;
+                        // Recalculate to eliminate any incremental drift before
+                        // recording a new best and to keep telemetry consistent.
+                        current_state._recalculate_scores();
+                        let verified_cost = current_state.calculate_cost();
+                        if verified_cost < best_cost {
+                            best_cost = verified_cost;
+                            best_state = current_state.clone();
+                            no_improvement_counter = 0;
+                            improvement_found = true;
+                        }
                     }
                 }
 
@@ -1104,6 +1342,10 @@ impl Solver for SimulatedAnnealing {
             println!("  tracked best_cost: {}", best_cost);
             println!("  recalculated cost: {}", recalculated_cost);
             println!("  difference: {}", (recalculated_cost - best_cost).abs());
+            // Keep telemetry consistent in the final callback by reporting the
+            // recalculated value. We avoid mutating best_cost here to prevent
+            // an unused assignment warning and because subsequent logic uses
+            // final_cost derived from best_state.
         }
 
         // Recalculate scores to ensure accuracy
@@ -1113,13 +1355,21 @@ impl Solver for SimulatedAnnealing {
         // Send final progress update if callback is provided
         // IMPORTANT: This must happen AFTER _recalculate_scores() to ensure accurate scores
         if let Some(callback) = &progress_callback {
-            let iterations_since_last_reheat = final_iteration - last_reheat_iteration;
-            let remaining_iterations = self.max_iterations - last_reheat_iteration;
+            let (iterations_since_last_reheat, remaining_for_cooling) =
+                if self.reheat_cycles > 0 && cycle_length > 0 {
+                    let cycle_index = final_iteration / cycle_length;
+                    let cycle_start = cycle_index * cycle_length;
+                    (final_iteration - cycle_start, cycle_length)
+                } else {
+                    let iterations_since_last_reheat = final_iteration - last_reheat_iteration;
+                    let remaining_iterations = self.max_iterations - last_reheat_iteration;
+                    (iterations_since_last_reheat, remaining_iterations)
+                };
 
-            let final_temperature = if remaining_iterations > 0 {
+            let final_temperature = if remaining_for_cooling > 0 {
                 self.initial_temperature
                     * (self.final_temperature / self.initial_temperature)
-                        .powf(iterations_since_last_reheat as f64 / remaining_iterations as f64)
+                        .powf(iterations_since_last_reheat as f64 / remaining_for_cooling as f64)
             } else {
                 self.final_temperature
             };
@@ -1137,7 +1387,9 @@ impl Solver for SimulatedAnnealing {
                 search_efficiency,
             ) = metrics.calculate_metrics(elapsed);
 
-            let cooling_progress = if self.max_iterations > 0 {
+            let cooling_progress = if self.reheat_cycles > 0 && cycle_length > 0 {
+                (iterations_since_last_reheat as f64) / (cycle_length as f64)
+            } else if self.max_iterations > 0 {
                 iterations_since_last_reheat as f64
                     / (self.max_iterations - last_reheat_iteration) as f64
             } else {
@@ -1156,9 +1408,10 @@ impl Solver for SimulatedAnnealing {
                 max_iterations: self.max_iterations,
                 temperature: final_temperature,
                 current_score: final_cost, // Use the recalculated final_cost
-                best_score: best_cost,     // Use the tracked best_cost (the actual best found)
+                // Report the tracked best_cost (kept consistent when recording bests)
+                best_score: best_cost,
                 current_contacts: best_state.unique_contacts, // These are now recalculated
-                best_contacts: best_state.unique_contacts, // These are now recalculated
+                best_contacts: best_state.unique_contacts,    // These are now recalculated
                 repetition_penalty: best_state.repetition_penalty, // This is now recalculated
                 elapsed_seconds: elapsed,
                 no_improvement_count: no_improvement_counter,
@@ -1206,6 +1459,15 @@ impl Solver for SimulatedAnnealing {
                 // Advanced analytics
                 score_variance,
                 search_efficiency,
+                best_schedule: if state.telemetry.emit_best_schedule {
+                    Some(
+                        best_state
+                            .to_solver_result(best_cost, no_improvement_counter)
+                            .schedule,
+                    )
+                } else {
+                    None
+                },
             };
 
             // Call the callback one final time (ignore return value since we're done)

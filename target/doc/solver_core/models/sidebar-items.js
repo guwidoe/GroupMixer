@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["Constraint","SolverParams"],"struct":["ApiInput","AttributeBalanceParams","Group","ImmovablePersonParams","LoggingOptions","Objective","Person","ProblemDefinition","RepeatEncounterParams","SimulatedAnnealingParams","SolverConfiguration","SolverResult","StopConditions"]};

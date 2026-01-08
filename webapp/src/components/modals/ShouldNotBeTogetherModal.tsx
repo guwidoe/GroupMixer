@@ -54,7 +54,12 @@ const ShouldNotBeTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onC
   const problem = GetProblem();
   const editing = !!initial;
   
-  const filteredPeople = problem.people.filter(p => p.id.toLowerCase().includes(personSearch.toLowerCase()));
+  const filteredPeople = problem.people.filter(p => {
+    const q = personSearch.toLowerCase();
+    const id = p.id.toLowerCase();
+    const name = (p.attributes?.name || '').toString().toLowerCase();
+    return id.includes(q) || name.includes(q);
+  });
 
   // Validation function
   const isPenaltyWeightValid = (value: number | null) => {
@@ -133,6 +138,7 @@ const ShouldNotBeTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onC
                       }
                     }}
                     className="w-4 h-4"
+                    style={{ accentColor: 'var(--color-accent)' }}
                   />
                   <PersonCard person={person} />
                 </label>

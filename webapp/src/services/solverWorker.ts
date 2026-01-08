@@ -32,6 +32,7 @@ interface WorkerMessageData {
 interface RustSolverParams {
   initial_temperature: number;
   final_temperature: number;
+  reheat_cycles?: number;
   reheat_after_no_improvement: number;
 }
 
@@ -72,7 +73,23 @@ export class SolverWorkerService {
     }
 
     try {
-      this.worker = new Worker("/solver-worker.js");
+      // Prefer module worker that imports ESM wasm glue
+      try {
+        this.worker = new Worker(
+          new URL("../workers/solverWorker.ts", import.meta.url),
+          {
+            type: "module",
+          }
+        );
+      } catch (e) {
+        // Fallback to legacy script worker in /public for older environments
+        // eslint-disable-next-line no-console
+        console.warn(
+          "Falling back to legacy script worker due to module worker init error:",
+          (e as Error).message
+        );
+        this.worker = new Worker("/solver-worker.js");
+      }
       this.setupMessageHandler();
 
       // Initialize the worker
@@ -333,6 +350,42 @@ export class SolverWorkerService {
     return { solution, lastProgress: lastProgress || null };
   }
 
+  async solveWithProgressWarmStart(
+    problem: Problem,
+    initialSchedule: Record<string, Record<string, string[]>>,
+    progressCallback?: ProgressCallback
+  ): Promise<{ solution: Solution; lastProgress: ProgressUpdate | null }> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    // Inject initial_schedule into the payload expected by Rust ApiInput
+    const payload = this.convertProblemToRustFormat(problem) as Record<
+      string,
+      unknown
+    > & {
+      initial_schedule?: Record<string, Record<string, string[]>>;
+    };
+    payload.initial_schedule = initialSchedule;
+
+    const problemJson = JSON.stringify(payload);
+
+    console.debug(
+      "[SolverWorkerService] Problem JSON (warm-start) sent to worker:",
+      problemJson
+    );
+
+    const { result, lastProgress } = await this.sendMessageWithProgress(
+      "SOLVE",
+      { problemJson, useProgress: true },
+      progressCallback
+    );
+
+    const rustResult = JSON.parse(result);
+    const solution = this.convertRustResultToSolution(rustResult, lastProgress);
+    return { solution, lastProgress: lastProgress || null };
+  }
+
   async cancel(): Promise<void> {
     if (!this.worker) return;
 
@@ -387,6 +440,9 @@ export class SolverWorkerService {
           params.final_temperature,
           0.01
         );
+        if (params.reheat_cycles !== undefined) {
+          params.reheat_cycles = sanitizeNumber(params.reheat_cycles, 0);
+        }
         params.reheat_after_no_improvement = sanitizeNumber(
           params.reheat_after_no_improvement,
           0
@@ -416,7 +472,8 @@ export class SolverWorkerService {
     const cleanedConstraints = (problem.constraints || []).map(
       (c: Constraint) => {
         if (
-          (c.type === "MustStayTogether" || c.type === "ShouldNotBeTogether") &&
+          (c.type === "ShouldStayTogether" ||
+            c.type === "ShouldNotBeTogether") &&
           (c.penalty_weight === undefined || c.penalty_weight === null)
         ) {
           return { ...c, penalty_weight: 1000 };
@@ -437,6 +494,35 @@ export class SolverWorkerService {
       }
     );
 
+    // Ensure immovable constraints always include sessions (Rust requires them)
+    const allSessions = Array.from(
+      { length: problem.num_sessions },
+      (_, i) => i
+    );
+    const normalizedConstraints = cleanedConstraints.map((c: Constraint) => {
+      if (c.type === "ImmovablePeople") {
+        const sessions = (c as unknown as { sessions?: number[] }).sessions;
+        return {
+          ...c,
+          sessions:
+            Array.isArray(sessions) && sessions.length > 0
+              ? sessions
+              : allSessions,
+        } as Constraint;
+      }
+      if (c.type === "ImmovablePerson") {
+        const sessions = (c as unknown as { sessions?: number[] }).sessions;
+        return {
+          ...c,
+          sessions:
+            Array.isArray(sessions) && sessions.length > 0
+              ? sessions
+              : allSessions,
+        } as Constraint;
+      }
+      return c;
+    });
+
     return {
       problem: {
         people: problem.people,
@@ -444,7 +530,7 @@ export class SolverWorkerService {
         num_sessions: problem.num_sessions,
       },
       objectives,
-      constraints: cleanedConstraints,
+      constraints: normalizedConstraints,
       solver: solverSettings,
     };
   }

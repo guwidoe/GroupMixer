@@ -1,8 +1,5 @@
 use serde::Deserialize;
-use solver_core::{
-    models::{ApiInput, SolverResult},
-    run_solver,
-};
+use solver_core::models::{ApiInput, SolverResult};
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -58,6 +55,8 @@ struct ExpectedMetrics {
     must_stay_together_respected: bool,
     #[serde(default)]
     cannot_be_together_respected: bool,
+    #[serde(default)]
+    should_stay_together_respected: bool,
     max_constraint_penalty: Option<u32>,
     #[serde(default)]
     immovable_person_respected: bool,
@@ -67,6 +66,10 @@ struct ExpectedMetrics {
     participation_patterns_respected: bool,
     #[serde(default)]
     min_transfers_accepted: Option<u64>,
+    #[serde(default)]
+    expect_solver_error: bool,
+    #[serde(default)]
+    expected_error_contains: Option<String>,
 }
 
 #[test]
@@ -132,15 +135,51 @@ fn run_test_case(test_case: &TestCase, path: &Path) {
 
     let result = solver_core::run_solver_with_progress(&test_case.input, Some(&progress_cb));
 
-    assert!(
-        result.is_ok(),
-        "Solver failed for test case {} ({:?}): {:?}",
-        test_case.name,
-        path,
-        result.err()
-    );
-    let result = result.unwrap();
+    // Handle expected error cases
+    match result {
+        Ok(result) => {
+            if test_case.expected.expect_solver_error {
+                panic!(
+                    "Expected solver to error for test case {} ({:?}), but it succeeded",
+                    test_case.name, path
+                );
+            }
 
+            // Proceed with normal assertions below using `result`
+            run_assertions(test_case, path, result, &last_progress, loop_count);
+        }
+        Err(e) => {
+            if test_case.expected.expect_solver_error {
+                if let Some(substr) = &test_case.expected.expected_error_contains {
+                    let msg = format!("{:?}", e);
+                    assert!(
+                        msg.contains(substr),
+                        "Expected error to contain '{}', but got {:?}",
+                        substr,
+                        e
+                    );
+                }
+                // Count as pass
+                return;
+            }
+
+            panic!(
+                "Solver failed for test case {} ({:?}): {:?}",
+                test_case.name,
+                path,
+                Some(e)
+            );
+        }
+    }
+}
+
+fn run_assertions(
+    test_case: &TestCase,
+    _path: &Path,
+    result: SolverResult,
+    last_progress: &Arc<Mutex<Option<solver_core::models::ProgressUpdate>>>,
+    loop_count: u32,
+) {
     // Retrieve the final progress update (should be set by the solver)
     let final_progress = last_progress
         .lock()
@@ -154,6 +193,10 @@ fn run_test_case(test_case: &TestCase, path: &Path) {
 
     if test_case.expected.cannot_be_together_respected {
         assert_forbidden_pairs_respected(&test_case.input, &result);
+    }
+
+    if test_case.expected.should_stay_together_respected {
+        assert_should_together_respected(&test_case.input, &result);
     }
 
     if test_case.expected.immovable_person_respected {
@@ -286,6 +329,58 @@ fn assert_forbidden_pairs_respected(input: &ApiInput, result: &SolverResult) {
     }
 }
 
+fn assert_should_together_respected(input: &ApiInput, result: &SolverResult) {
+    for constraint in &input.constraints {
+        if let solver_core::models::Constraint::ShouldStayTogether {
+            people, sessions, ..
+        } = constraint
+        {
+            // Determine which sessions this constraint applies to
+            let applicable_sessions: Vec<u32> = match sessions {
+                Some(session_list) => session_list.clone(),
+                None => (0..input.problem.num_sessions).collect(),
+            };
+
+            for session in applicable_sessions {
+                let session_key = format!("session_{}", session);
+                let session_schedule = result.schedule.get(&session_key).unwrap_or_else(|| {
+                    panic!(
+                        "Session {} not found in schedule for should-together check",
+                        session_key
+                    )
+                });
+
+                // Find the group of the first person (people[0])
+                let mut group_id_opt: Option<&String> = None;
+                for (group_id, members) in session_schedule {
+                    if members.contains(&people[0]) {
+                        group_id_opt = Some(group_id);
+                        break;
+                    }
+                }
+                if let Some(group_id) = group_id_opt {
+                    let members = session_schedule.get(group_id).unwrap();
+                    for p in people {
+                        assert!(
+                            members.contains(p),
+                            "ShouldStayTogether violated: {:?} not all in group {} for session {}",
+                            people,
+                            group_id,
+                            session
+                        );
+                    }
+                } else {
+                    panic!(
+                        "ShouldStayTogether: anchor person {} not found in any group for session {}",
+                        people[0],
+                        session
+                    );
+                }
+            }
+        }
+    }
+}
+
 fn assert_immovable_person_respected(input: &ApiInput, result: &SolverResult) {
     let immovable_constraints: Vec<_> = input
         .constraints
@@ -297,7 +392,12 @@ fn assert_immovable_person_respected(input: &ApiInput, result: &SolverResult) {
         .collect();
 
     for constraint in immovable_constraints {
-        for &session in &constraint.sessions {
+        // Determine applicable sessions; default to all when not specified
+        let sessions: Vec<u32> = constraint
+            .sessions
+            .clone()
+            .unwrap_or_else(|| (0..input.problem.num_sessions).collect());
+        for &session in &sessions {
             let session_key = format!("session_{}", session);
             let session_schedule = result.schedule.get(&session_key).unwrap_or_else(|| {
                 panic!(

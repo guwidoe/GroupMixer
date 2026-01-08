@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["run_solver"],"mod":["algorithms","models","solver"]};
