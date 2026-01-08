@@ -69,6 +69,103 @@ const LandingPage: React.FC = () => {
     return () => window.removeEventListener('resize', drawLines);
   }, []);
 
+  useEffect(() => {
+    const drawLines = () => {
+      const svg = lineSvgRef.current;
+      const mainCircle = document.querySelector('.main-usecase-circle');
+      const usecaseCircles = Array.from(document.querySelectorAll('.usecase-circle'));
+      if (!svg || !mainCircle || usecaseCircles.length !== 4) return;
+
+      // Clear SVG
+      svg.innerHTML = '';
+
+      // Get bounding rects
+      const svgRect = svg.getBoundingClientRect();
+      const mainRect = mainCircle.getBoundingClientRect();
+      const mainCx = mainRect.left + mainRect.width / 2 - svgRect.left;
+      const mainCy = mainRect.top + mainRect.height / 2 - svgRect.top;
+      const mainR = mainRect.width / 2;
+
+      usecaseCircles.forEach((circle) => {
+        const rect = circle.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2 - svgRect.left;
+        const cy = rect.top + rect.height / 2 - svgRect.top;
+        const r = rect.width / 2;
+        // Vector from main to usecase
+        const dx = cx - mainCx;
+        const dy = cy - mainCy;
+        const dist = Math.hypot(dx, dy);
+        if (dist === 0) return;
+        // Start at edge of main, end at edge of usecase
+        const startX = mainCx + (dx / dist) * mainR;
+        const startY = mainCy + (dy / dist) * mainR;
+        const endX = cx - (dx / dist) * r;
+        const endY = cy - (dy / dist) * r;
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', startX.toString());
+        line.setAttribute('y1', startY.toString());
+        line.setAttribute('x2', endX.toString());
+        line.setAttribute('y2', endY.toString());
+        line.setAttribute('stroke', 'white');
+        line.setAttribute('stroke-width', '2.5');
+        line.setAttribute('stroke-linecap', 'round');
+        svg.appendChild(line);
+      });
+    };
+    drawLines();
+    window.addEventListener('resize', drawLines);
+    return () => window.removeEventListener('resize', drawLines);
+  }, []);
+
+  const featureLineSvgRef = useRef<SVGSVGElement | null>(null);
+  const featureBigCircleRef = useRef<HTMLDivElement | null>(null);
+
+  // Draw connector lines for Features section
+  useEffect(() => {
+    const drawLines = () => {
+      const svg = featureLineSvgRef.current;
+      const circleDiv = featureBigCircleRef.current;
+      if (!svg || !circleDiv) return;
+
+      const iconEls = Array.from(document.querySelectorAll('.feature-icon')) as HTMLElement[];
+      if (!iconEls.length) return;
+
+      // Get bounding boxes
+      const circleRect = circleDiv.getBoundingClientRect();
+      const svgRect = svg.getBoundingClientRect();
+
+      const cx = circleRect.left + circleRect.width / 2 - svgRect.left;
+      const cy = circleRect.top + circleRect.height / 2 - svgRect.top;
+      const r = circleRect.width / 2;
+
+      const lines: string[] = [];
+
+      iconEls.forEach((iconEl) => {
+        const iconRect = iconEl.getBoundingClientRect();
+        const ix = iconRect.left + iconRect.width / 2 - svgRect.left;
+        const iy = iconRect.top + iconRect.height / 2 - svgRect.top;
+
+        const dx = ix - cx;
+        const dy = iy - cy;
+        const len = Math.hypot(dx, dy) || 1;
+        const sx = cx + (dx / len) * r; // start point on big circle edge
+        const sy = cy + (dy / len) * r;
+
+        const rs = iconRect.width / 2; // small circle radius
+        const ex = ix - (dx / len) * rs; // end point on small circle edge
+        const ey = iy - (dy / len) * rs;
+
+        lines.push(`<line x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}" stroke="var(--text-primary)" stroke-width="2.5" stroke-linecap="round" />`);
+      });
+
+      svg.innerHTML = lines.join('');
+    };
+
+    drawLines();
+    window.addEventListener('resize', drawLines);
+    return () => window.removeEventListener('resize', drawLines);
+  }, []);
+
   return (
     <div className="min-h-screen bg-secondary">
       {/* Header */}
@@ -403,141 +500,76 @@ const LandingPage: React.FC = () => {
 
       {/* Use Cases Section */}
       <section className="py-16 px-4 sm:px-6 md:px-8 bg-secondary">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-bold text-center text-primary mb-4">
-            Perfect for Any Group-Based Event
-          </h2>
-          <p className="text-xl text-secondary text-center mb-12 max-w-3xl mx-auto">
-            Whether you're organizing a small workshop or a large conference,
-            GroupMixer adapts to your needs.
-          </p>
+        <div className="relative flex items-center justify-center min-h-[900px]">
+          {/* SVG Connector Lines (dynamic) */}
+          <svg
+            ref={lineSvgRef}
+            className="absolute inset-0 w-full h-full pointer-events-none z-0"
+            width="100%"
+            height="100%"
+            style={{ minWidth: '100%', minHeight: '100%' }}
+          />
 
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="card p-8">
-              <h3 className="text-2xl font-semibold text-primary mb-4">
-                Conferences & Workshops
-              </h3>
-              <ul className="space-y-3 text-secondary">
-                <li className="flex items-start">
-                  <Star
-                    className="w-5 h-5 text-accent mr-2 mt-0.5 flex-shrink-0"
-                  />
-                  <span>Breakout sessions with rotating groups</span>
-                </li>
-                <li className="flex items-start">
-                  <Star
-                    className="w-5 h-5 text-accent mr-2 mt-0.5 flex-shrink-0"
-                  />
-                  <span>Networking mixers and speed networking</span>
-                </li>
-                <li className="flex items-start">
-                  <Star
-                    className="w-5 h-5 text-accent mr-2 mt-0.5 flex-shrink-0"
-                  />
-                  <span>Workshop rotations with skill-based grouping</span>
-                </li>
-                <li className="flex items-start">
-                  <Star
-                    className="w-5 h-5 text-accent mr-2 mt-0.5 flex-shrink-0"
-                  />
-                  <span>Panel discussions with diverse representation</span>
-                </li>
+          {/* Central Title Circle */}
+          <div
+            ref={bigCircleRef}
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center justify-center border-[2.5px] border-white shadow-lg bg-transparent main-usecase-circle"
+            style={{ width: 420, height: 420, borderRadius: '50%' }}
+          >
+            <h2 className="text-2xl sm:text-3xl font-bold text-center text-primary mb-4 px-4">
+              Handles Any Group Scheduling Scenario
+            </h2>
+            <p className="text-lg text-secondary text-center px-6">
+              From small workshops to large conferences, GroupMixer works across all event sizes and formats.
+            </p>
+          </div>
+
+          {/* Use Case Circles - Diagonal Placement, Transparent Fill, White Border */}
+          {/* Top-Left */}
+          <div className="absolute usecase-circle" data-key="tl" style={{ left: '8%', top: '8%' }}>
+            <div className="border-[2.5px] border-white shadow-md flex flex-col items-center justify-center bg-transparent" style={{ width: 303, height: 303, borderRadius: '50%' }}>
+              <h3 className="text-xl font-semibold text-primary mb-2 text-center px-2">Conferences & Workshops</h3>
+              <ul className="space-y-2 text-secondary text-center text-base px-4">
+                <li>– Rotating breakout sessions</li>
+                <li>– Networking mixers</li>
+                <li>– Skill-based workshop groupings</li>
+                <li>– Panels with balanced representation</li>
               </ul>
             </div>
-
-            <div className="card p-8">
-              <h3 className="text-2xl font-semibold text-primary mb-4">
-                Team Building & Training
-              </h3>
-              <ul className="space-y-3 text-secondary">
-                <li className="flex items-start">
-                  <Star
-                    className="w-5 h-5 text-accent mr-2 mt-0.5 flex-shrink-0"
-                  />
-                  <span>Cross-departmental collaboration sessions</span>
-                </li>
-                <li className="flex items-start">
-                  <Star
-                    className="w-5 h-5 text-accent mr-2 mt-0.5 flex-shrink-0"
-                  />
-                  <span>Training groups with balanced skill levels</span>
-                </li>
-                <li className="flex items-start">
-                  <Star
-                    className="w-5 h-5 text-accent mr-2 mt-0.5 flex-shrink-0"
-                  />
-                  <span>Mentorship program pairings</span>
-                </li>
-                <li className="flex items-start">
-                  <Star
-                    className="w-5 h-5 text-accent mr-2 mt-0.5 flex-shrink-0"
-                  />
-                  <span>Project team formations</span>
-                </li>
+          </div>
+          {/* Top-Right */}
+          <div className="absolute usecase-circle" data-key="tr" style={{ right: '8%', top: '8%' }}>
+            <div className="border-[2.5px] border-white shadow-md flex flex-col items-center justify-center bg-transparent" style={{ width: 303, height: 303, borderRadius: '50%' }}>
+              <h3 className="text-xl font-semibold text-primary mb-2 text-center px-2">Team Building & Training</h3>
+              <ul className="space-y-2 text-secondary text-center text-base px-4">
+                <li>– Cross-department collaboration</li>
+                <li>– Skill-balanced training groups</li>
+                <li>– Mentorship pairings</li>
+                <li>– Project team assignments</li>
               </ul>
             </div>
-
-            <div className="card p-8">
-              <h3 className="text-2xl font-semibold text-primary mb-4">
-                Educational Settings
-              </h3>
-              <ul className="space-y-3 text-secondary">
-                <li className="flex items-start">
-                  <Star
-                    className="w-5 h-5 text-accent mr-2 mt-0.5 flex-shrink-0"
-                  />
-                  <span>Student group projects and rotations</span>
-                </li>
-                <li className="flex items-start">
-                  <Star
-                    className="w-5 h-5 text-accent mr-2 mt-0.5 flex-shrink-0"
-                  />
-                  <span>Peer learning circles</span>
-                </li>
-                <li className="flex items-start">
-                  <Star
-                    className="w-5 h-5 text-accent mr-2 mt-0.5 flex-shrink-0"
-                  />
-                  <span>Lab partnerships and study groups</span>
-                </li>
-                <li className="flex items-start">
-                  <Star
-                    className="w-5 h-5 text-accent mr-2 mt-0.5 flex-shrink-0"
-                  />
-                  <span>Classroom discussion groups</span>
-                </li>
+          </div>
+          {/* Bottom-Right */}
+          <div className="absolute usecase-circle" data-key="br" style={{ right: '8%', bottom: '8%' }}>
+            <div className="border-[2.5px] border-white shadow-md flex flex-col items-center justify-center bg-transparent" style={{ width: 303, height: 303, borderRadius: '50%' }}>
+              <h3 className="text-xl font-semibold text-primary mb-2 text-center px-2">Education</h3>
+              <ul className="space-y-2 text-secondary text-center text-base px-4">
+                <li>– Student project rotations</li>
+                <li>– Peer learning circles</li>
+                <li>– Lab partners and study groups</li>
+                <li>– Classroom discussion groups</li>
               </ul>
             </div>
-
-            <div className="card p-8">
-              <h3 className="text-2xl font-semibold text-primary mb-4">
-                Social & Community Events
-              </h3>
-              <ul className="space-y-3 text-secondary">
-                <li className="flex items-start">
-                  <Star
-                    className="w-5 h-5 text-accent mr-2 mt-0.5 flex-shrink-0"
-                  />
-                  <span>Speed dating and social mixers</span>
-                </li>
-                <li className="flex items-start">
-                  <Star
-                    className="w-5 h-5 text-accent mr-2 mt-0.5 flex-shrink-0"
-                  />
-                  <span>Tournament brackets and game groups</span>
-                </li>
-                <li className="flex items-start">
-                  <Star
-                    className="w-5 h-5 text-accent mr-2 mt-0.5 flex-shrink-0"
-                  />
-                  <span>Community volunteer assignments</span>
-                </li>
-                <li className="flex items-start">
-                  <Star
-                    className="w-5 h-5 text-accent mr-2 mt-0.5 flex-shrink-0"
-                  />
-                  <span>Interest-based meetup groups</span>
-                </li>
+          </div>
+          {/* Bottom-Left */}
+          <div className="absolute usecase-circle" data-key="bl" style={{ left: '8%', bottom: '8%' }}>
+            <div className="border-[2.5px] border-white shadow-md flex flex-col items-center justify-center bg-transparent" style={{ width: 303, height: 303, borderRadius: '50%' }}>
+              <h3 className="text-xl font-semibold text-primary mb-2 text-center px-2">Social & Community Events</h3>
+              <ul className="space-y-2 text-secondary text-center text-base px-4">
+                <li>– Speed dating and social mixers</li>
+                <li>– Game groups and tournament brackets</li>
+                <li>– Volunteer team assignments</li>
+                <li>– Interest-based meetup groups</li>
               </ul>
             </div>
           </div>
