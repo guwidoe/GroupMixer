@@ -11,6 +11,26 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     open-pull-requests-limit: 10
+    groups:
+      # Keep React packages in sync to avoid version mismatches
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+          - "@types/react"
+          - "@types/react-dom"
+      # Group Three.js packages together
+      three:
+        patterns:
+          - "three"
+          - "@types/three"
+          - "@react-three/*"
+      # Group ESLint packages
+      eslint:
+        patterns:
+          - "eslint*"
+          - "@eslint/*"
+          - "typescript-eslint"
 
   # Rust/Cargo dependencies
   - package-ecosystem: "cargo"
