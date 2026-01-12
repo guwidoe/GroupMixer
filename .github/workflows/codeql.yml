@@ -1,3 +1,18 @@
+# CodeQL Advanced Security Scanning
+#
+# This workflow performs CodeQL security analysis on the codebase.
+# For more information, see:
+# https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning
+#
+# Scanned languages:
+#   - javascript-typescript: webapp frontend code
+#   - rust: solver-core, solver-wasm, solver-server
+#   - actions: GitHub workflow files
+#
+# Not scanned (legacy/non-production code):
+#   - c-cpp (legacy_cpp/)
+#   - python (python/)
+
 name: "CodeQL"
 
 on:
@@ -14,8 +29,11 @@ jobs:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     permissions:
+      # Required for all workflows
       security-events: write
+      # Required to fetch internal or private CodeQL packs
       packages: read
+      # Required for workflows in private repositories
       actions: read
       contents: read
 
@@ -23,33 +41,31 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # GitHub Actions workflow files
+          - language: actions
+            build-mode: none
+          # TypeScript/JavaScript frontend (webapp/)
           - language: javascript-typescript
             build-mode: none
-          - language: python
-            build-mode: none
-          # Rust requires compilation
+          # Rust solver code (solver-core/, solver-wasm/, solver-server/)
+          # Note: Rust only supports 'none' build mode in CodeQL
           - language: rust
-            build-mode: manual
+            build-mode: none
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-
-      # Manual build step for Rust
-      - name: Build Rust (if needed)
-        if: matrix.language == 'rust'
-        run: |
-          rustup update stable
-          cargo build --release
-        working-directory: .
+          # For custom queries, see:
+          # https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
+          # queries: security-extended,security-and-quality
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
