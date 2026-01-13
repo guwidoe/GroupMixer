@@ -14,7 +14,7 @@ uuid = { version = "1.19.0", features = ["v4", "serde", "js"] }
 indicatif = "0.17.8"
 getrandom = { version = "0.3", features = ["wasm_js"] }
 log = "0.4"
-serde_json = "1.0.108"
+serde_json = "1.0.149"
 thiserror = "2.0.17"
 serde_yaml = "0.9.34-deprecated"
 
