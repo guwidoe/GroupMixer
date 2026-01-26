@@ -1,0 +1,12 @@
+# Clippy configuration for GroupMixer
+# Sets cognitive complexity threshold for the cognitive_complexity lint
+
+# Maximum cognitive complexity allowed for functions (default is 25)
+# Lower values encourage smaller, more readable functions
+cognitive-complexity-threshold = 30
+
+# Maximum number of lines in a function body (default is 100)
+too-many-lines-threshold = 100
+
+# Maximum number of arguments to a function (default is 7)
+too-many-arguments-threshold = 8

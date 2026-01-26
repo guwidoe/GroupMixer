@@ -1,0 +1,25 @@
+# Rustfmt configuration for GroupMixer
+
+# Use the 2021 edition style
+edition = "2021"
+
+# Maximum line width (default is 100)
+max_width = 100
+
+# Use block style for function parameters when they don't fit on one line
+fn_params_layout = "Tall"
+
+# Use Unix line endings
+newline_style = "Unix"
+
+# Reorder imports alphabetically
+reorder_imports = true
+
+# Reorder module declarations alphabetically
+reorder_modules = true
+
+# Use field init shorthand when possible
+use_field_init_shorthand = true
+
+# Use try shorthand when possible
+use_try_shorthand = true

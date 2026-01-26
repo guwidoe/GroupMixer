@@ -52,4 +52,4 @@ pub async fn get_job_result_handler(
     } else {
         Err(StatusCode::NOT_FOUND)
     }
-} 
+}
