@@ -1,3 +1,5 @@
+@~/ralph-repos/vibe-setup/AGENTS.md
+
 # GroupMixer
 
 A group assignment optimization tool that distributes people into groups across multiple sessions while maximizing social interactions and respecting constraints.
