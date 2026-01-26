@@ -1,0 +1,43 @@
+{
+  "problem": {
+    "people": [
+      {"id": "alice", "attributes": {"department": "eng"}},
+      {"id": "bob", "attributes": {"department": "sales"}},
+      {"id": "charlie", "attributes": {"department": "eng"}},
+      {"id": "diana", "attributes": {"department": "sales"}},
+      {"id": "eve", "attributes": {"department": "eng"}},
+      {"id": "frank", "attributes": {"department": "sales"}}
+    ],
+    "groups": [
+      {"id": "team-1", "size": 3},
+      {"id": "team-2", "size": 3}
+    ],
+    "num_sessions": 2
+  },
+  "objectives": [
+    {"type": "maximize_unique_contacts", "weight": 1.0}
+  ],
+  "constraints": [
+    {"type": "RepeatEncounter", "max_allowed_encounters": 1, "penalty_function": "squared", "penalty_weight": 100.0}
+  ],
+  "solver": {
+    "solver_type": "SimulatedAnnealing",
+    "stop_conditions": {
+      "max_iterations": 1000,
+      "time_limit_seconds": 5
+    },
+    "solver_params": {
+      "solver_type": "SimulatedAnnealing",
+      "initial_temperature": 10.0,
+      "final_temperature": 0.01,
+      "cooling_schedule": "geometric",
+      "reheat_after_no_improvement": 0,
+      "reheat_cycles": 0
+    },
+    "logging": {
+      "log_frequency": 100,
+      "display_final_schedule": true,
+      "log_final_score_breakdown": true
+    }
+  }
+}
