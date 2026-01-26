@@ -369,3 +369,8 @@ FodyWeavers.xsd
 
 # Wasm build output
 /webapp/public/pkg/
+
+# Playwright
+/webapp/playwright-report/
+/webapp/test-results/
+/webapp/playwright/.cache/

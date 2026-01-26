@@ -9,7 +9,10 @@
     "vercel-build": "chmod +x ./vercel-build.sh && ./vercel-build.sh",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "build-wasm": "wasm-pack build ../solver-wasm --target web --out-dir $(pwd)/public"
+    "build-wasm": "wasm-pack build ../solver-wasm --target web --out-dir $(pwd)/public",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
     "@react-sigma/core": "^5.0.6",
@@ -31,6 +34,7 @@
   },
   "devDependencies": {
     "@eslint/js": "9.39.2",
+    "@playwright/test": "^1.58.0",
     "@types/react": "^19.2.9",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.1.2",
