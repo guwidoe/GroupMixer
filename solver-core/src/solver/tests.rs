@@ -1,8 +1,9 @@
 use super::*;
 use crate::{
     models::{
-        ApiInput, Group, Person, ProblemDefinition, SimulatedAnnealingParams,
-        SolverConfiguration, SolverParams, StopConditions,
+        ApiInput, Constraint, Group, ImmovablePersonParams, Objective, PairMeetingCountParams,
+        PairMeetingMode, Person, ProblemDefinition, SimulatedAnnealingParams, SolverConfiguration,
+        SolverParams, StopConditions,
     },
     run_solver,
 };
