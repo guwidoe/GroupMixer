@@ -59,7 +59,9 @@
   },
   "expected": {
     "max_constraint_penalty": 0,
-    "immovable_person_respected": true
+    "immovable_person_respected": true,
+    "max_runtime_ms": 500,
+    "min_iterations_per_second": 10000
   },
   "test_options": {}
 } 

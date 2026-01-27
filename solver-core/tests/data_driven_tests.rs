@@ -4,6 +4,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 #[derive(Debug, Deserialize)]
 enum TestMode {
@@ -70,6 +71,15 @@ struct ExpectedMetrics {
     expect_solver_error: bool,
     #[serde(default)]
     expected_error_contains: Option<String>,
+    /// Maximum allowed runtime in milliseconds (for performance regression detection).
+    /// Use generous thresholds (2-3x expected) to account for CI variance while
+    /// still catching major regressions.
+    #[serde(default)]
+    max_runtime_ms: Option<u64>,
+    /// Minimum iterations per second (alternative performance metric).
+    /// Useful for benchmarks where iteration count is known.
+    #[serde(default)]
+    min_iterations_per_second: Option<u64>,
 }
 
 #[test]
@@ -133,7 +143,9 @@ fn run_test_case(test_case: &TestCase, path: &Path) {
             true // Continue solving
         });
 
+    let start_time = Instant::now();
     let result = solver_core::run_solver_with_progress(&test_case.input, Some(&progress_cb));
+    let elapsed_ms = start_time.elapsed().as_millis() as u64;
 
     // Handle expected error cases
     match result {
@@ -146,7 +158,7 @@ fn run_test_case(test_case: &TestCase, path: &Path) {
             }
 
             // Proceed with normal assertions below using `result`
-            run_assertions(test_case, path, result, &last_progress, loop_count);
+            run_assertions(test_case, path, result, &last_progress, loop_count, elapsed_ms);
         }
         Err(e) => {
             if test_case.expected.expect_solver_error {
@@ -179,6 +191,7 @@ fn run_assertions(
     result: SolverResult,
     last_progress: &Arc<Mutex<Option<solver_core::models::ProgressUpdate>>>,
     loop_count: u32,
+    elapsed_ms: u64,
 ) {
     // Retrieve the final progress update (should be set by the solver)
     let final_progress = last_progress
@@ -226,6 +239,38 @@ fn run_assertions(
             "Expected at least {} accepted transfers, but solver reported {}",
             min_transfers,
             final_progress.transfers_accepted
+        );
+    }
+
+    // Performance regression checks
+    if let Some(max_ms) = test_case.expected.max_runtime_ms {
+        assert!(
+            elapsed_ms <= max_ms,
+            "PERFORMANCE REGRESSION: Test '{}' took {}ms, exceeds max of {}ms",
+            test_case.name,
+            elapsed_ms,
+            max_ms
+        );
+        println!("  Performance: {}ms (max: {}ms) ✓", elapsed_ms, max_ms);
+    }
+
+    if let Some(min_ips) = test_case.expected.min_iterations_per_second {
+        let iterations = test_case.input.solver.stop_conditions.max_iterations.unwrap_or(0);
+        let actual_ips = if elapsed_ms > 0 {
+            (iterations as u64 * 1000) / elapsed_ms
+        } else {
+            u64::MAX
+        };
+        assert!(
+            actual_ips >= min_ips,
+            "PERFORMANCE REGRESSION: Test '{}' achieved {} iter/s, below minimum of {} iter/s",
+            test_case.name,
+            actual_ips,
+            min_ips
+        );
+        println!(
+            "  Throughput: {} iter/s (min: {} iter/s) ✓",
+            actual_ips, min_ips
         );
     }
 
