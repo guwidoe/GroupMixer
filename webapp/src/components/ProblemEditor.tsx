@@ -1193,238 +1193,6 @@ export function ProblemEditor() {
     );
   };
 
-  const renderPersonForm = () => {
-    const isEditing = editingPerson !== null;
-    const sessions = Array.from({ length: sessionsCount }, (_, i) => i);
-
-    return (
-      <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4">
-                  <div className="rounded-lg p-4 sm:p-6 w-full max-w-md mx-auto max-h-[90vh] overflow-y-auto modal-content">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">
-              {isEditing ? 'Edit Person' : 'Add Person'}
-            </h3>
-            <button
-              onClick={() => {
-                setShowPersonForm(false);
-                setEditingPerson(null);
-                setPersonForm({ attributes: {}, sessions: [] });
-              }}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {/* Name (required) */}
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                Name *
-              </label>
-              <input
-                type="text"
-                value={personForm.attributes.name || ''}
-                onChange={(e) => setPersonForm(prev => ({
-                  ...prev,
-                  attributes: { ...prev.attributes, name: e.target.value }
-                }))}
-                className="input"
-                placeholder="Enter person's name"
-              />
-            </div>
-
-            {/* Attributes */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-                  Attributes
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowAttributeForm(true)}
-                  className="flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-colors"
-                  style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--color-accent)' }}
-                >
-                  <Plus className="w-3 h-3" />
-                  Add
-                </button>
-              </div>
-              <div className="space-y-2">
-                {attributeDefinitions.map(def => (
-                  <div key={def.key}>
-                    <label className="block text-xs mb-1 capitalize" style={{ color: 'var(--text-tertiary)' }}>
-                      {def.key}
-                    </label>
-                    <select
-                      value={personForm.attributes[def.key] || ''}
-                      onChange={(e) => setPersonForm(prev => ({
-                        ...prev,
-                        attributes: { ...prev.attributes, [def.key]: e.target.value }
-                      }))}
-                      className="select text-sm"
-                    >
-                      <option value="">Select {def.key}</option>
-                      {def.values.map(value => (
-                        <option key={value} value={value}>{value}</option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Sessions */}
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                Session Participation
-              </label>
-              <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>
-                Leave empty for all sessions. Select specific sessions for late arrivals/early departures.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {sessions.map(sessionIdx => (
-                  <label key={sessionIdx} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={personForm.sessions.includes(sessionIdx)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setPersonForm(prev => ({
-                            ...prev,
-                            sessions: [...prev.sessions, sessionIdx].sort()
-                          }));
-                        } else {
-                          setPersonForm(prev => ({
-                            ...prev,
-                            sessions: prev.sessions.filter(s => s !== sessionIdx)
-                          }));
-                        }
-                      }}
-                      className="rounded border-gray-300 focus:ring-2"
-                      style={{ color: 'var(--color-accent)', accentColor: 'var(--color-accent)' }}
-                    />
-                    Session {sessionIdx + 1}
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-2 mt-6">
-            <button
-              onClick={isEditing ? handleUpdatePerson : handleAddPerson}
-              className="btn-primary flex-1 px-4 py-2"
-            >
-              {isEditing ? 'Update' : 'Add'} Person
-            </button>
-            <button
-              onClick={() => {
-                setShowPersonForm(false);
-                setEditingPerson(null);
-                setPersonForm({ attributes: {}, sessions: [] });
-              }}
-              className="btn-secondary px-4 py-2 rounded-md"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderGroupForm = () => {
-    const isEditing = editingGroup !== null;
-
-    return (
-      <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4">
-                  <div className="rounded-lg p-4 sm:p-6 w-full max-w-md mx-auto modal-content max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">
-              {isEditing ? 'Edit Group' : 'Add Group'}
-            </h3>
-            <button
-              onClick={() => {
-                setShowGroupForm(false);
-                setEditingGroup(null);
-                setGroupForm({ size: 4 });
-                setGroupFormInputs({});
-              }}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                Group ID *
-              </label>
-              <input
-                type="text"
-                value={groupForm.id || ''}
-                onChange={(e) => setGroupForm(prev => ({ ...prev, id: e.target.value }))}
-                className="input"
-                placeholder="e.g., team-alpha, group-1"
-                disabled={isEditing}
-              />
-              {isEditing && (
-                <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>Group ID cannot be changed when editing</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                Capacity (people per session) *
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="20"
-                value={groupFormInputs.size ?? groupForm.size?.toString() ?? ''}
-                onChange={(e) => {
-                  setGroupFormInputs(prev => ({ ...prev, size: e.target.value }));
-                }}
-                className={`input ${(() => {
-                  const inputValue = groupFormInputs.size;
-                  if (inputValue !== undefined) {
-                    return inputValue === '' || isNaN(parseInt(inputValue)) || parseInt(inputValue) < 1;
-                  }
-                  return groupForm.size < 1;
-                })() ? 'border-red-500 focus:border-red-500' : ''}`}
-              />
-              <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-                Maximum number of people that can be assigned to this group in any single session
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-2 mt-6">
-            <button
-              onClick={isEditing ? handleUpdateGroup : handleAddGroup}
-              className="btn-primary flex-1 px-4 py-2"
-            >
-              {isEditing ? 'Update' : 'Add'} Group
-            </button>
-            <button
-              onClick={() => {
-                setShowGroupForm(false);
-                setEditingGroup(null);
-                setGroupForm({ size: 4 });
-                setGroupFormInputs({});
-              }}
-              className="btn-secondary px-4 py-2 rounded-md"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   const renderConstraintForm = () => {
     const isEditing = editingConstraint !== null;
     const sessions = Array.from({ length: sessionsCount }, (_, i) => i);
@@ -1974,121 +1742,6 @@ export function ProblemEditor() {
     addNotification({ type: 'success', title: 'People Added', message: `${newPeople.length} people added.` });
   };
 
-  const renderBulkAddForm = () => {
-    return (
-      <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50">
-        <div className="rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto modal-content">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Bulk Add People</h3>
-            <button
-              onClick={() => setShowBulkForm(false)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Mode Toggle */}
-          <div className="flex items-center gap-2 mb-4">
-            <button
-              onClick={() => {
-                if (bulkTextMode === 'grid') {
-                  setBulkCsvInput(rowsToCsv(bulkHeaders, bulkRows));
-                }
-                setBulkTextMode('text');
-              }}
-              className={`px-3 py-1 rounded text-sm ${bulkTextMode === 'text' ? 'font-bold' : ''}`}
-              style={{ color: 'var(--text-primary)', backgroundColor: bulkTextMode === 'text' ? 'var(--bg-tertiary)' : 'transparent' }}
-            >
-              CSV Text
-            </button>
-            <button
-              onClick={() => {
-                if (bulkTextMode === 'text') {
-                  const { headers, rows } = parseCsv(bulkCsvInput);
-                  setBulkHeaders(headers);
-                  setBulkRows(rows);
-                }
-                setBulkTextMode('grid');
-              }}
-              className={`px-3 py-1 rounded text-sm ${bulkTextMode === 'grid' ? 'font-bold' : ''}`}
-              style={{ color: 'var(--text-primary)', backgroundColor: bulkTextMode === 'grid' ? 'var(--bg-tertiary)' : 'transparent' }}
-            >
-              Data Grid
-            </button>
-          </div>
-
-          {bulkTextMode === 'text' ? (
-            <textarea
-              value={bulkCsvInput}
-              onChange={(e) => setBulkCsvInput(e.target.value)}
-              className="w-full h-64 p-2 border rounded"
-              placeholder="Paste CSV here. First row should contain column headers (e.g., name, attribute1, attribute2)"
-            ></textarea>
-          ) : (
-            <div className="overflow-x-auto max-h-64 mb-4">
-              {bulkHeaders.length === 0 ? (
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No data parsed yet.</p>
-              ) : (
-                <table className="min-w-full divide-y" style={{ borderColor: 'var(--border-secondary)' }}>
-                  <thead style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                    <tr>
-                      {bulkHeaders.map(h => (
-                        <th key={h} className="px-2 py-1 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-secondary)' }}>
-                    {bulkRows.map((row, rowIdx) => (
-                      <tr key={rowIdx}>
-                        {bulkHeaders.map(h => (
-                          <td key={h} className="px-2 py-1">
-                            <input
-                              type="text"
-                              value={row[h] || ''}
-                              onChange={(e) => {
-                                const newRows = [...bulkRows];
-                                newRows[rowIdx][h] = e.target.value;
-                                setBulkRows(newRows);
-                              }}
-                              className="w-full text-sm border rounded p-1"
-                            />
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          )}
-
-          <div className="flex gap-2 mt-4">
-            {bulkTextMode === 'text' && (
-              <button
-                onClick={() => {
-                  const { headers, rows } = parseCsv(bulkCsvInput);
-                  setBulkHeaders(headers);
-                  setBulkRows(rows);
-                  setBulkTextMode('grid');
-                }}
-                className="btn-secondary"
-              >
-                Preview Grid
-              </button>
-            )}
-            <button
-              onClick={handleAddBulkPeople}
-              className="btn-primary flex-1 px-4 py-2"
-            >
-              Add People
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   // === Bulk Update Helpers & Modal ===
   const buildPeopleCsvFromCurrent = (): { headers: string[]; rows: Record<string, string>[] } => {
     const people = problem?.people || [];
@@ -2222,138 +1875,6 @@ export function ProblemEditor() {
     addNotification({ type: 'success', title: 'Bulk Update Applied', message: `Updated ${rows.length} row(s).` });
   };
 
-  const renderBulkUpdateForm = () => {
-    return (
-      <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50">
-        <div className="rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto modal-content">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Bulk Update People</h3>
-            <button
-              onClick={() => setShowBulkUpdateForm(false)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>
-            <p>
-              Use this to update existing people by <b>id</b>, add new columns (attributes), or add new people (leave id empty or use a new unique id).
-              Leave cells blank to keep current values. Use <code>__DELETE__</code> to remove an attribute from a person.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 mb-4">
-            <button
-              onClick={() => {
-                if (bulkUpdateTextMode === 'grid') {
-                  setBulkUpdateCsvInput(rowsToCsv(bulkUpdateHeaders, bulkUpdateRows));
-                }
-                setBulkUpdateTextMode('text');
-              }}
-              className={`px-3 py-1 rounded text-sm ${bulkUpdateTextMode === 'text' ? 'font-bold' : ''}`}
-              style={{ color: 'var(--text-primary)', backgroundColor: bulkUpdateTextMode === 'text' ? 'var(--bg-tertiary)' : 'transparent' }}
-            >
-              CSV Text
-            </button>
-            <button
-              onClick={() => {
-                if (bulkUpdateTextMode === 'text') {
-                  const { headers, rows } = parseCsv(bulkUpdateCsvInput);
-                  setBulkUpdateHeaders(headers);
-                  setBulkUpdateRows(rows);
-                }
-                setBulkUpdateTextMode('grid');
-              }}
-              className={`px-3 py-1 rounded text-sm ${bulkUpdateTextMode === 'grid' ? 'font-bold' : ''}`}
-              style={{ color: 'var(--text-primary)', backgroundColor: bulkUpdateTextMode === 'grid' ? 'var(--bg-tertiary)' : 'transparent' }}
-            >
-              Data Grid
-            </button>
-            <button
-              onClick={() => {
-                const { headers, rows } = buildPeopleCsvFromCurrent();
-                setBulkUpdateHeaders(headers);
-                setBulkUpdateRows(rows);
-                setBulkUpdateCsvInput(rowsToCsv(headers, rows));
-              }}
-              className="ml-auto btn-secondary px-3 py-1 text-sm"
-            >
-              Refresh from Current
-            </button>
-          </div>
-
-          {bulkUpdateTextMode === 'text' ? (
-            <textarea
-              value={bulkUpdateCsvInput}
-              onChange={(e) => setBulkUpdateCsvInput(e.target.value)}
-              className="w-full h-64 p-2 border rounded"
-              placeholder="Edit CSV here. First row contains headers (e.g., id,name,attribute1,attribute2)"
-            ></textarea>
-          ) : (
-            <div className="overflow-x-auto max-h-64 mb-4">
-              {bulkUpdateHeaders.length === 0 ? (
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No data parsed yet.</p>
-              ) : (
-                <table className="min-w-full divide-y" style={{ borderColor: 'var(--border-secondary)' }}>
-                  <thead style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                    <tr>
-                      {bulkUpdateHeaders.map(h => (
-                        <th key={h} className="px-2 py-1 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-secondary)' }}>
-                    {bulkUpdateRows.map((row, rowIdx) => (
-                      <tr key={rowIdx}>
-                        {bulkUpdateHeaders.map(h => (
-                          <td key={h} className="px-2 py-1">
-                            <input
-                              type="text"
-                              value={row[h] || ''}
-                              onChange={(e) => {
-                                const newRows = [...bulkUpdateRows];
-                                newRows[rowIdx][h] = e.target.value;
-                                setBulkUpdateRows(newRows);
-                              }}
-                              className="w-full text-sm border rounded p-1"
-                            />
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          )}
-
-          <div className="flex gap-2 mt-4">
-            {bulkUpdateTextMode === 'text' && (
-              <button
-                onClick={() => {
-                  const { headers, rows } = parseCsv(bulkUpdateCsvInput);
-                  setBulkUpdateHeaders(headers);
-                  setBulkUpdateRows(rows);
-                  setBulkUpdateTextMode('grid');
-                }}
-                className="btn-secondary"
-              >
-                Preview Grid
-              </button>
-            )}
-            <button
-              onClick={handleApplyBulkUpdate}
-              className="btn-primary flex-1 px-4 py-2"
-            >
-              Apply Changes
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   const groupBulkDropdownRef = useRef<HTMLDivElement>(null);
   const groupCsvFileInputRef = useRef<HTMLInputElement>(null);
   const [groupBulkDropdownOpen, setGroupBulkDropdownOpen] = useState(false);
@@ -2470,160 +1991,6 @@ export function ProblemEditor() {
     setGroupBulkRows([]);
 
     addNotification({ type: 'success', title: 'Groups Added', message: `${newGroups.length} groups added.` });
-  };
-
-  const renderGroupBulkAddForm = () => {
-    return (
-      <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50">
-        <div className="rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto modal-content">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Bulk Add Groups</h3>
-            <button
-              onClick={() => setShowGroupBulkForm(false)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Mode Toggle */}
-          <div className="flex items-center gap-2 mb-4">
-            <button
-              onClick={() => {
-                if (groupBulkTextMode === 'grid') {
-                  setGroupBulkCsvInput(rowsToCsv(groupBulkHeaders, groupBulkRows));
-                }
-                setGroupBulkTextMode('text');
-              }}
-              className={`px-3 py-1 rounded text-sm ${groupBulkTextMode === 'text' ? 'font-bold' : ''}`}
-              style={{ color: 'var(--text-primary)', backgroundColor: groupBulkTextMode === 'text' ? 'var(--bg-tertiary)' : 'transparent' }}
-            >
-              CSV Text
-            </button>
-            <button
-              onClick={() => {
-                if (groupBulkTextMode === 'text') {
-                  const { headers, rows } = parseCsv(groupBulkCsvInput);
-                  setGroupBulkHeaders(headers);
-                  setGroupBulkRows(rows);
-                }
-                setGroupBulkTextMode('grid');
-              }}
-              className={`px-3 py-1 rounded text-sm ${groupBulkTextMode === 'grid' ? 'font-bold' : ''}`}
-              style={{ color: 'var(--text-primary)', backgroundColor: groupBulkTextMode === 'grid' ? 'var(--bg-tertiary)' : 'transparent' }}
-            >
-              Data Grid
-            </button>
-          </div>
-
-          {groupBulkTextMode === 'text' ? (
-            <textarea
-              value={groupBulkCsvInput}
-              onChange={(e) => setGroupBulkCsvInput(e.target.value)}
-              className="w-full h-64 p-2 border rounded"
-              placeholder="Paste CSV here. First row should contain column headers (e.g., id, size)"
-            ></textarea>
-          ) : (
-            <div className="overflow-x-auto max-h-64 mb-4">
-              {groupBulkHeaders.length === 0 ? (
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>No data parsed yet.</p>
-              ) : (
-                <table className="min-w-full divide-y" style={{ borderColor: 'var(--border-secondary)' }}>
-                  <thead style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                    <tr>
-                      {groupBulkHeaders.map(h => (
-                        <th key={h} className="px-2 py-1 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-secondary)' }}>
-                    {groupBulkRows.map((row, rowIdx) => (
-                      <tr key={rowIdx}>
-                        {groupBulkHeaders.map(h => (
-                          <td key={h} className="px-2 py-1">
-                            <input
-                              type="text"
-                              value={row[h] || ''}
-                              onChange={(e) => {
-                                const newRows = [...groupBulkRows];
-                                newRows[rowIdx][h] = e.target.value;
-                                setGroupBulkRows(newRows);
-                              }}
-                              className="w-full text-sm border rounded p-1"
-                            />
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          )}
-
-          <div className="flex gap-2 mt-4">
-            {groupBulkTextMode === 'text' && (
-              <button
-                onClick={() => {
-                  const { headers, rows } = parseCsv(groupBulkCsvInput);
-                  setGroupBulkHeaders(headers);
-                  setGroupBulkRows(rows);
-                  setGroupBulkTextMode('grid');
-                }}
-                className="btn-secondary"
-              >
-                Preview Grid
-              </button>
-            )}
-            <button
-              onClick={handleAddGroupBulkPeople}
-              className="btn-primary flex-1 px-4 py-2"
-            >
-              Add Groups
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // === Shared CSV helpers ===
-  const parseCsv = (text: string): { headers: string[]; rows: Record<string, string>[] } => {
-    const lines = text.trim().split(/\r?\n/).filter(l => l.trim().length > 0);
-    if (lines.length === 0) return { headers: [], rows: [] };
-    const headers = lines[0].split(',').map(h => h.trim());
-    const rows = lines.slice(1).map(line => {
-      const cells = line.split(',');
-      const row: Record<string, string> = {};
-      headers.forEach((h, idx) => {
-        row[h] = (cells[idx] || '').trim();
-      });
-      return row;
-    });
-    return { headers, rows };
-  };
-
-  const rowsToCsv = (headers: string[], rows: Record<string, string>[]) => {
-    const headerLine = headers.join(',');
-    const dataLines = rows.map(r => headers.map(h => r[h] ?? '').join(','));
-    return [headerLine, ...dataLines].join('\n');
-  };
-
-  // === Helper: Generate a unique person ID across all existing people in all problems ===
-  const generateUniquePersonId = (): string => {
-    // Get all person IDs across all problems
-    const allProblems = useAppStore.getState().savedProblems;
-    const allPersonIds = new Set<string>();
-    Object.values(allProblems).forEach(p => p.problem.people.forEach(person => allPersonIds.add(person.id)));
-    // Also include people in the current unsaved problem
-    if (problem?.people) {
-      problem.people.forEach(person => allPersonIds.add(person.id));
-    }
-    let newId: string;
-    do {
-      newId = `person_${Math.random().toString(36).slice(2, 10)}`;
-    } while (allPersonIds.has(newId));
-    return newId;
   };
 
   // Don't render until loading is complete to avoid creating new problems
@@ -3557,118 +2924,106 @@ export function ProblemEditor() {
       )}
 
       {/* Forms */}
-      {showPersonForm && renderPersonForm()}
-      {showGroupForm && renderGroupForm()}
-      {showConstraintForm && renderConstraintForm()}
-      
-      {showAttributeForm && (
-        <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50">
-          <div className="rounded-lg p-6 w-full max-w-md mx-4 modal-content max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {editingAttribute ? 'Edit Attribute Definition' : 'Add Attribute Definition'}
-                </h3>
-              <button
-                onClick={() => {
-                  setShowAttributeForm(false);
-                  setNewAttribute({ key: '', values: [''] });
-                  setEditingAttribute(null);
-                }}
-                className="transition-colors"
-                style={{ color: 'var(--text-tertiary)' }}
-                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
-                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                  Attribute Name *
-                </label>
-                <input
-                  type="text"
-                  value={newAttribute.key}
-                  onChange={(e) => setNewAttribute(prev => ({ ...prev, key: e.target.value }))}
-                  className="input"
-                  placeholder="e.g., department, experience, location"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  Possible Values *
-                </label>
-                <div className="max-h-48 overflow-y-auto space-y-2 border rounded p-3" style={{ borderColor: 'var(--border-secondary)' }}>
-                  {newAttribute.values.map((value, index) => (
-                    <div key={index} className="flex gap-2">
-                      <input
-                        type="text"
-                        value={value}
-                        onChange={(e) => {
-                          const newValues = [...newAttribute.values];
-                          newValues[index] = e.target.value;
-                          setNewAttribute(prev => ({ ...prev, values: newValues }));
-                        }}
-                        className="input flex-1"
-                        placeholder={`Value ${index + 1}`}
-                      />
-                      {newAttribute.values.length > 1 && (
-                        <button
-                          onClick={() => {
-                            const newValues = newAttribute.values.filter((_, i) => i !== index);
-                            setNewAttribute(prev => ({ ...prev, values: newValues }));
-                          }}
-                          className="px-3 py-2 rounded-md transition-colors"
-                          style={{ 
-                            backgroundColor: 'var(--color-error-100)', 
-                            color: 'var(--color-error-700)' 
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--color-error-200)'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--color-error-100)'}
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <button
-                  onClick={() => setNewAttribute(prev => ({ ...prev, values: [...prev.values, ''] }))}
-                  className="btn-secondary text-sm mt-2"
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  Add Value
-                </button>
-              </div>
-            </div>
-
-            <div className="flex gap-2 mt-6">
-              <button
-                onClick={editingAttribute ? handleUpdateAttribute : handleAddAttribute}
-                className="btn-primary flex-1 px-4 py-2"
-              >
-                {editingAttribute ? 'Update Attribute' : 'Add Attribute'}
-              </button>
-              <button
-                onClick={() => {
-                  setShowAttributeForm(false);
-                  setNewAttribute({ key: '', values: [''] });
-                  setEditingAttribute(null);
-                }}
-                className="btn-secondary px-4 py-2 rounded-md"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
+      {showPersonForm && (
+        <PersonForm
+          isEditing={editingPerson !== null}
+          editingPerson={editingPerson}
+          personForm={personForm}
+          setPersonForm={setPersonForm}
+          attributeDefinitions={attributeDefinitions}
+          sessionsCount={sessionsCount}
+          onSave={handleAddPerson}
+          onUpdate={handleUpdatePerson}
+          onCancel={() => {
+            setShowPersonForm(false);
+            setEditingPerson(null);
+            setPersonForm({ attributes: {}, sessions: [] });
+          }}
+          onShowAttributeForm={() => setShowAttributeForm(true)}
+        />
       )}
-      {showBulkForm && renderBulkAddForm()}
-      {showBulkUpdateForm && renderBulkUpdateForm()}
-      {showGroupBulkForm && renderGroupBulkAddForm()}
+      {showGroupForm && (
+        <GroupForm
+          isEditing={editingGroup !== null}
+          editingGroup={editingGroup}
+          groupForm={groupForm}
+          setGroupForm={setGroupForm}
+          groupFormInputs={groupFormInputs}
+          setGroupFormInputs={setGroupFormInputs}
+          onSave={handleAddGroup}
+          onUpdate={handleUpdateGroup}
+          onCancel={() => {
+            setShowGroupForm(false);
+            setEditingGroup(null);
+            setGroupForm({ size: 4 });
+            setGroupFormInputs({});
+          }}
+        />
+      )}
+      {showConstraintForm && renderConstraintForm()}
+
+      {showAttributeForm && (
+        <AttributeForm
+          isEditing={editingAttribute !== null}
+          newAttribute={newAttribute}
+          setNewAttribute={setNewAttribute}
+          onSave={handleAddAttribute}
+          onUpdate={handleUpdateAttribute}
+          onCancel={() => {
+            setShowAttributeForm(false);
+            setNewAttribute({ key: '', values: [''] });
+            setEditingAttribute(null);
+          }}
+        />
+      )}
+      {showBulkForm && (
+        <BulkAddPeopleForm
+          bulkTextMode={bulkTextMode}
+          setBulkTextMode={setBulkTextMode}
+          bulkCsvInput={bulkCsvInput}
+          setBulkCsvInput={setBulkCsvInput}
+          bulkHeaders={bulkHeaders}
+          setBulkHeaders={setBulkHeaders}
+          bulkRows={bulkRows}
+          setBulkRows={setBulkRows}
+          onSave={handleAddBulkPeople}
+          onClose={() => setShowBulkForm(false)}
+        />
+      )}
+      {showBulkUpdateForm && (
+        <BulkUpdatePeopleForm
+          bulkUpdateTextMode={bulkUpdateTextMode}
+          setBulkUpdateTextMode={setBulkUpdateTextMode}
+          bulkUpdateCsvInput={bulkUpdateCsvInput}
+          setBulkUpdateCsvInput={setBulkUpdateCsvInput}
+          bulkUpdateHeaders={bulkUpdateHeaders}
+          setBulkUpdateHeaders={setBulkUpdateHeaders}
+          bulkUpdateRows={bulkUpdateRows}
+          setBulkUpdateRows={setBulkUpdateRows}
+          onRefreshFromCurrent={() => {
+            const { headers, rows } = buildPeopleCsvFromCurrent();
+            setBulkUpdateHeaders(headers);
+            setBulkUpdateRows(rows);
+            setBulkUpdateCsvInput(rowsToCsv(headers, rows));
+          }}
+          onApply={handleApplyBulkUpdate}
+          onClose={() => setShowBulkUpdateForm(false)}
+        />
+      )}
+      {showGroupBulkForm && (
+        <BulkAddGroupsForm
+          groupBulkTextMode={groupBulkTextMode}
+          setGroupBulkTextMode={setGroupBulkTextMode}
+          groupBulkCsvInput={groupBulkCsvInput}
+          setGroupBulkCsvInput={setGroupBulkCsvInput}
+          groupBulkHeaders={groupBulkHeaders}
+          setGroupBulkHeaders={setGroupBulkHeaders}
+          groupBulkRows={groupBulkRows}
+          setGroupBulkRows={setGroupBulkRows}
+          onSave={handleAddGroupBulkPeople}
+          onClose={() => setShowGroupBulkForm(false)}
+        />
+      )}
 
       <input type="file" accept=".csv,text/csv" ref={csvFileInputRef} className="hidden" onChange={handleCsvFileSelected} />
       <input type="file" accept=".csv,text/csv" ref={groupCsvFileInputRef} className="hidden" onChange={handleGroupCsvFileSelected} />
