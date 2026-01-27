@@ -5,27 +5,17 @@ import { useAppStore } from '../store';
 import { Users, Calendar, Settings, Plus, Save, Upload, Trash2, Edit, X, Zap, Hash, Clock, ChevronDown, ChevronRight, Tag, BarChart3, ArrowUpDown, Table, Lock } from 'lucide-react';
 import type { Person, Group, Constraint, Problem, PersonFormData, GroupFormData, AttributeDefinition, SolverSettings } from '../types';
 
-// Import the specific constraint type for the dashboard
-interface AttributeBalanceConstraint {
-  type: 'AttributeBalance';
-  group_id: string;
-  attribute_key: string;
-  desired_values: Record<string, number>;
-  penalty_weight: number;
-  sessions?: number[];
-}
-// Type for demo case with metrics - matches export from demoDataService
-// Imported dynamically to enable code splitting
-interface DemoCaseWithMetrics {
-  id: string;
-  name: string;
-  description: string;
-  category: "Simple" | "Intermediate" | "Advanced" | "Benchmark";
-  filename: string;
-  peopleCount: number;
-  groupCount: number;
-  sessionCount: number;
-}
+// Extracted components from ProblemEditor directory
+import {
+  getDefaultSolverSettings,
+  parseCsv,
+  rowsToCsv,
+  generateUniquePersonId,
+} from './ProblemEditor/helpers';
+import type { DemoCaseWithMetrics, AttributeBalanceConstraint } from './ProblemEditor/types';
+import { PersonForm, GroupForm, AttributeForm } from './ProblemEditor/forms';
+import { BulkAddPeopleForm, BulkUpdatePeopleForm, BulkAddGroupsForm } from './ProblemEditor/bulk';
+import ObjectiveWeightEditor from './ProblemEditor/ObjectiveWeightEditor';
 import PersonCard from './PersonCard';
 import HardConstraintsPanel from './constraints/HardConstraintsPanel';
 import SoftConstraintsPanel from './constraints/SoftConstraintsPanel';
@@ -38,76 +28,6 @@ import MustStayTogetherModal from './modals/MustStayTogetherModal';
 import PairMeetingCountModal from './modals/PairMeetingCountModal';
 import AttributeBalanceDashboard from './AttributeBalanceDashboard';
 import { DemoDataWarningModal } from './modals/DemoDataWarningModal';
-
-const getDefaultSolverSettings = (): SolverSettings => ({
-  solver_type: "SimulatedAnnealing",
-  stop_conditions: {
-    max_iterations: 10000,
-    time_limit_seconds: 30,
-    no_improvement_iterations: 5000,
-  },
-  solver_params: {
-    SimulatedAnnealing: {
-      initial_temperature: 1.0,
-      final_temperature: 0.01,
-      cooling_schedule: "geometric",
-      reheat_cycles: 0,
-      reheat_after_no_improvement: 0,
-    },
-  },
-  logging: {
-    log_frequency: 1000,
-    log_initial_state: true,
-    log_duration_and_score: true,
-    display_final_schedule: true,
-    log_initial_score_breakdown: true,
-    log_final_score_breakdown: true,
-    log_stop_condition: true,
-  },
-});
-
-// === Child component: Objective Weight Editor ===
-interface ObjectiveWeightEditorProps {
-  currentWeight: number;
-  onCommit: (weight: number) => void;
-}
-
-const ObjectiveWeightEditor: React.FC<ObjectiveWeightEditorProps> = ({ currentWeight, onCommit }) => {
-  const [weightInput, setWeightInput] = React.useState<string>(String(currentWeight));
-
-  // Keep local field in sync when external weight changes (e.g., when problem loads)
-  React.useEffect(() => {
-    setWeightInput(String(currentWeight));
-  }, [currentWeight]);
-
-  const handleBlur = () => {
-    const parsed = parseFloat(weightInput);
-    const newWeight = isNaN(parsed) ? 0 : Math.max(0, parsed);
-    onCommit(newWeight);
-  };
-
-  return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-        Weight for "Maximize Unique Contacts"
-      </label>
-      <input
-        type="number"
-        min="0"
-        step="0.1"
-        value={weightInput}
-        onChange={(e) => setWeightInput(e.target.value)}
-        onBlur={handleBlur}
-        className="input w-32"
-      />
-      <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-        Set to 0 to deactivate this objective. Higher values increase its importance relative to constraint penalties.
-      </p>
-    </div>
-  );
-};
-
-
 
 export function ProblemEditor() {
   const { 
