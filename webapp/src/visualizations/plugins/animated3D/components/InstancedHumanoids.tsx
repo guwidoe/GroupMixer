@@ -1,11 +1,13 @@
-import { useRef, useMemo, useEffect } from "react";
+import { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { PersonSessionData } from "../hooks/useAnimationState";
 import type { PlaybackState, SessionTransition } from "../types";
 import type { AnimationCoordination } from "./Scene";
-
+import { usePersonBuffers } from "./InstancedHumanoids/buffers";
+import { useHumanoidColors } from "./InstancedHumanoids/coloring";
+import { hideInstancedPerson } from "./InstancedHumanoids/utils";
 interface InstancedHumanoidsProps {
   personData: PersonSessionData[];
   playbackRef: React.MutableRefObject<PlaybackState>;
@@ -20,25 +22,7 @@ const tempMatrix = new THREE.Matrix4();
 const tempPosition = new THREE.Vector3();
 const tempQuaternion = new THREE.Quaternion();
 const tempScale = new THREE.Vector3(1, 1, 1);
-const tempColor = new THREE.Color();
 const tempEuler = new THREE.Euler();
-
-const SKIN_TONES = [
-  "#ffe0bd", "#ffcd94", "#eac086", "#d4a574",
-  "#c68642", "#a57939", "#8d5524", "#6b4423",
-];
-
-const HAIR_COLORS = [
-  "#1a1a1a", "#3d2314", "#5a3825", "#8b4513",
-  "#d4a574", "#f0e68c", "#cd853f", "#2f1e0e",
-];
-
-const SHIRT_COLORS = [
-  "#e74c3c", "#3498db", "#2ecc71", "#9b59b6",
-  "#f39c12", "#1abc9c", "#e91e63", "#607d8b",
-  "#ff5722", "#795548", "#009688", "#673ab7",
-];
-
 export function InstancedHumanoids({
   personData,
   playbackRef,
@@ -62,123 +46,45 @@ export function InstancedHumanoids({
   const rightFootRef = useRef<THREE.InstancedMesh>(null);
   const leftHandRef = useRef<THREE.InstancedMesh>(null);
   const rightHandRef = useRef<THREE.InstancedMesh>(null);
-
+  const meshRefs = useMemo(
+    () => ({
+      torsoRef,
+      headRef,
+      hairRef,
+      leftUpperArmRef,
+      rightUpperArmRef,
+      leftLowerArmRef,
+      rightLowerArmRef,
+      leftUpperLegRef,
+      rightUpperLegRef,
+      leftLowerLegRef,
+      rightLowerLegRef,
+      leftFootRef,
+      rightFootRef,
+      leftHandRef,
+      rightHandRef,
+    }),
+    []
+  );
   const count = personData.length;
 
-  // Track previous session to detect resets
-  const prevSessionRef = useRef<number>(-1);
-  
-  // Recreate typed arrays when count changes
-  const positionsRef = useRef<Float32Array>(new Float32Array(count * 3));
-  const targetPositionsRef = useRef<Float32Array>(new Float32Array(count * 3));
-  const statesRef = useRef<Uint8Array>(new Uint8Array(count));
-  
-  // Resize arrays if count changed
-  useEffect(() => {
-    if (positionsRef.current.length !== count * 3) {
-      positionsRef.current = new Float32Array(count * 3);
-      targetPositionsRef.current = new Float32Array(count * 3);
-      statesRef.current = new Uint8Array(count);
-    }
-  }, [count]);
-
-  const { skinColors, hairColors, shirtColors } = useMemo(() => {
-    const skins = new Float32Array(count * 3);
-    const hairs = new Float32Array(count * 3);
-    const shirts = new Float32Array(count * 3);
-
-    personData.forEach((p, i) => {
-      let hash = 0;
-      for (let j = 0; j < p.personId.length; j++) {
-        hash = p.personId.charCodeAt(j) + ((hash << 5) - hash);
-      }
-
-      const skinIdx = Math.abs(hash) % SKIN_TONES.length;
-      const hairIdx = Math.abs(hash >> 4) % HAIR_COLORS.length;
-      const shirtIdx = Math.abs(hash >> 8) % SHIRT_COLORS.length;
-
-      const skinColor = new THREE.Color(SKIN_TONES[skinIdx]);
-      const hairColor = new THREE.Color(HAIR_COLORS[hairIdx]);
-      const shirtColor = new THREE.Color(SHIRT_COLORS[shirtIdx]);
-
-      skins[i * 3] = skinColor.r;
-      skins[i * 3 + 1] = skinColor.g;
-      skins[i * 3 + 2] = skinColor.b;
-
-      hairs[i * 3] = hairColor.r;
-      hairs[i * 3 + 1] = hairColor.g;
-      hairs[i * 3 + 2] = hairColor.b;
-
-      shirts[i * 3] = shirtColor.r;
-      shirts[i * 3 + 1] = shirtColor.g;
-      shirts[i * 3 + 2] = shirtColor.b;
-    });
-
-    return { skinColors: skins, hairColors: hairs, shirtColors: shirts };
-  }, [personData, count]);
-
-  useEffect(() => {
-    const setColors = (mesh: THREE.InstancedMesh | null, colors: Float32Array) => {
-      if (!mesh) return;
-      for (let i = 0; i < count; i++) {
-        tempColor.setRGB(colors[i * 3], colors[i * 3 + 1], colors[i * 3 + 2]);
-        mesh.setColorAt(i, tempColor);
-      }
-      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-    };
-
-    setColors(headRef.current, skinColors);
-    setColors(leftLowerArmRef.current, skinColors);
-    setColors(rightLowerArmRef.current, skinColors);
-    setColors(leftHandRef.current, skinColors);
-    setColors(rightHandRef.current, skinColors);
-    setColors(hairRef.current, hairColors);
-    setColors(torsoRef.current, shirtColors);
-    setColors(leftUpperArmRef.current, shirtColors);
-    setColors(rightUpperArmRef.current, shirtColors);
-  }, [skinColors, hairColors, shirtColors, count]);
-
-  // Initialize positions when personData changes
-  useEffect(() => {
-    personData.forEach((p, i) => {
-      const pos = p.sessionPositions[0];
-      positionsRef.current[i * 3] = pos.x;
-      positionsRef.current[i * 3 + 1] = p.presentInSession[0] ? 0 : -10;
-      positionsRef.current[i * 3 + 2] = pos.z;
-      targetPositionsRef.current[i * 3] = pos.x;
-      targetPositionsRef.current[i * 3 + 1] = p.presentInSession[0] ? 0 : -10;
-      targetPositionsRef.current[i * 3 + 2] = pos.z;
-      statesRef.current[i] = p.presentInSession[0] ? 0 : 2;
-    });
-    // Reset session tracking so positions get recalculated
-    lastSessionRef.current = -1;
-    prevSessionRef.current = -1;
-  }, [personData]);
+  const { positionsRef, targetPositionsRef, statesRef, lastSessionRef, prevSessionRef } =
+    usePersonBuffers(personData);
+  useHumanoidColors(personData, count, {
+    headRef,
+    hairRef,
+    torsoRef,
+    leftLowerArmRef,
+    rightLowerArmRef,
+    leftHandRef,
+    rightHandRef,
+    leftUpperArmRef,
+    rightUpperArmRef,
+  });
 
   // Use -1 as sentinel so first frame always triggers position setup
-  const lastSessionRef = useRef(-1);
   const uiUpdateCounterRef = useRef(0);
 
-  // Helper to hide a person
-  function hidePerson(index: number) {
-    const hiddenMatrix = new THREE.Matrix4().makeScale(0.001, 0.001, 0.001);
-    hiddenMatrix.setPosition(0, -100, 0);
-    torsoRef.current?.setMatrixAt(index, hiddenMatrix);
-    headRef.current?.setMatrixAt(index, hiddenMatrix);
-    hairRef.current?.setMatrixAt(index, hiddenMatrix);
-    leftUpperArmRef.current?.setMatrixAt(index, hiddenMatrix);
-    rightUpperArmRef.current?.setMatrixAt(index, hiddenMatrix);
-    leftLowerArmRef.current?.setMatrixAt(index, hiddenMatrix);
-    rightLowerArmRef.current?.setMatrixAt(index, hiddenMatrix);
-    leftHandRef.current?.setMatrixAt(index, hiddenMatrix);
-    rightHandRef.current?.setMatrixAt(index, hiddenMatrix);
-    leftUpperLegRef.current?.setMatrixAt(index, hiddenMatrix);
-    rightUpperLegRef.current?.setMatrixAt(index, hiddenMatrix);
-    leftLowerLegRef.current?.setMatrixAt(index, hiddenMatrix);
-    rightLowerLegRef.current?.setMatrixAt(index, hiddenMatrix);
-    leftFootRef.current?.setMatrixAt(index, hiddenMatrix);
-    rightFootRef.current?.setMatrixAt(index, hiddenMatrix);
-  }
 
   useFrame((state, delta) => {
     if (!torsoRef.current || !headRef.current) return;
@@ -266,20 +172,20 @@ export function InstancedHumanoids({
       // Check coordination for eaten people
       const eatenInfo = coordination.eatenPeople.get(personId);
       if (eatenInfo?.hidden) {
-        hidePerson(i);
+        hideInstancedPerson(meshRefs, i);
         continue;
       }
 
       // Check coordination for delivered people - hide until stork drops
       const deliveredInfo = coordination.deliveredPeople.get(personId);
       if (personState === 3 && deliveredInfo && !deliveredInfo.visible) {
-        hidePerson(i);
+        hideInstancedPerson(meshRefs, i);
         continue;
       }
 
       // Normal hidden state
       if (personState === 2 && t > 0.5) {
-        hidePerson(i);
+        hideInstancedPerson(meshRefs, i);
         continue;
       }
 
