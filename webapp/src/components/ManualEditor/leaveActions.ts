@@ -19,8 +19,10 @@ interface SaveAndContinueArgs extends LeaveActionArgs {
   evaluated: Solution | null;
 }
 
-const resolveNextPath = (location: Location, pendingNextPath: string | null) =>
-  (location.state as any)?.nextPath || pendingNextPath || '/app/results';
+const resolveNextPath = (location: Location, pendingNextPath: string | null) => {
+  const state = location.state as { nextPath?: string } | null;
+  return state?.nextPath || pendingNextPath || '/app/results';
+};
 
 export function discardAndContinue({
   setShowLeaveConfirm,

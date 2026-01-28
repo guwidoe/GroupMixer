@@ -43,8 +43,6 @@ export function useManualEditorEvaluation({
   }, [effectiveProblem, draftAssignments]);
 
   const [previewKey, setPreviewKey] = useState<string | null>(null);
-  const [_previewLoading, setPreviewLoading] = useState(false);
-  const [_previewError, setPreviewError] = useState<string | null>(null);
   const [previewDelta, setPreviewDelta] = useState<PreviewDelta | null>(null);
 
   const computePreview = async (personId: string, toGroupId: string, sessionId: number) => {
@@ -61,8 +59,6 @@ export function useManualEditorEvaluation({
     const key = `${personId}|${sessionId}|${toGroupId}|${draftAssignments.length}`;
     if (previewKey === key && previewDelta) return;
     setPreviewKey(key);
-    setPreviewLoading(true);
-    setPreviewError(null);
     try {
       const res = await wasmService.evaluateSolution(effectiveProblem, hypothetic);
       setPreviewDelta({
@@ -72,11 +68,8 @@ export function useManualEditorEvaluation({
         uniqueDelta: res.unique_contacts - baseUnique,
         constraintDelta: res.constraint_penalty - baseConstraint,
       });
-    } catch (e) {
-      setPreviewError(e instanceof Error ? e.message : String(e));
+    } catch {
       setPreviewDelta(null);
-    } finally {
-      setPreviewLoading(false);
     }
   };
 

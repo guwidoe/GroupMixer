@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { Assignment, Solution } from '../../../types';
 import { cloneAssignments } from '../utils';
 
@@ -12,12 +12,14 @@ interface UseManualEditorDraftArgs {
 }
 
 export function useManualEditorDraft({ solution, setGlobalUnsaved }: UseManualEditorDraftArgs) {
-  const [_history, setHistory] = useState<DraftState[]>([]);
-  const [_future, setFuture] = useState<DraftState[]>([]);
-  const [draft, setDraft] = useState<DraftState | null>(null);
+  const [, setHistory] = useState<DraftState[]>([]);
+  const [, setFuture] = useState<DraftState[]>([]);
+  const [draft, setDraft] = useState<DraftState | null>(() =>
+    solution ? { assignments: cloneAssignments(solution.assignments) } : null,
+  );
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  const [storage, setStorage] = useState<Record<number, Set<string>>>({});
+  const [storage, setStorage] = useState<Record<number, Set<string>>>(() => ({}));
   const getStorageSet = (sessionId: number) => storage[sessionId] ?? new Set<string>();
 
   const addToStorage = (sessionId: number, personId: string) => {
@@ -39,15 +41,6 @@ export function useManualEditorDraft({ solution, setGlobalUnsaved }: UseManualEd
       return next;
     });
   };
-
-  useEffect(() => {
-    if (solution) {
-      setDraft({ assignments: cloneAssignments(solution.assignments) });
-      setHistory([]);
-      setFuture([]);
-      setStorage({});
-    }
-  }, [solution]);
 
   const pushHistory = (nextAssignments: Assignment[]) => {
     if (!draft) return;

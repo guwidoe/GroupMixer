@@ -40,20 +40,18 @@ export function canDrop({
   const personConstraints = effectiveProblem.constraints.filter((c) => {
     const allSessions = Array.from({ length: effectiveProblem.num_sessions }, (_, i) => i);
     if (c.type === 'ImmovablePerson') {
-      const sessions = (c as unknown as { sessions?: number[] }).sessions ?? allSessions;
-      const person_id = (c as unknown as { person_id: string }).person_id;
-      return person_id === personId && sessions.includes(sessionId);
+      const sessions = c.sessions ?? allSessions;
+      return c.person_id === personId && sessions.includes(sessionId);
     }
     if (c.type === 'ImmovablePeople') {
-      const sessions = (c as unknown as { sessions?: number[] }).sessions ?? allSessions;
-      const people = (c as unknown as { people: string[] }).people || [];
+      const sessions = c.sessions ?? allSessions;
+      const people = c.people || [];
       return sessions.includes(sessionId) && people.includes(personId);
     }
     return false;
   });
   for (const c of personConstraints) {
-    const requiredGroup = (c as any).group_id as string;
-    if (requiredGroup && requiredGroup !== targetGroupId) {
+    if ((c.type === 'ImmovablePerson' || c.type === 'ImmovablePeople') && c.group_id !== targetGroupId) {
       if (mode === 'strict') return { ok: false, reason: 'Immovable constraint' };
     }
   }

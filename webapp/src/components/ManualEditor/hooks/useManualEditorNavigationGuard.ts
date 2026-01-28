@@ -35,7 +35,7 @@ export function useManualEditorNavigationGuard({
       setLeaveHook(null);
       setGlobalUnsaved(false);
     };
-  }, [hasUnsavedChanges, setLeaveHook, setGlobalUnsaved, navigate, location.pathname]);
+  }, [hasUnsavedChanges, setLeaveHook, setGlobalUnsaved, setShowLeaveConfirm, navigate, location.pathname]);
 
   useEffect(() => {
     const originalPush = window.history.pushState;
@@ -52,25 +52,31 @@ export function useManualEditorNavigationGuard({
       }
     }
 
-    (window.history as any).pushState = function pushStatePatched(this: History, ...args: any[]) {
-      const url = args[2];
-      if (!proceedingRef.current && typeof url === 'string' && shouldBlock(url)) {
-        setPendingNextPath(url);
-        setShowLeaveConfirm(true);
-        return;
-      }
-      return originalPush.apply(this, args as any);
-    } as typeof window.history.pushState;
+    type HistoryPushArgs = Parameters<History['pushState']>;
+    type HistoryReplaceArgs = Parameters<History['replaceState']>;
 
-    (window.history as any).replaceState = function replaceStatePatched(this: History, ...args: any[]) {
+    const patchedPushState: History['pushState'] = (...args: HistoryPushArgs) => {
       const url = args[2];
       if (!proceedingRef.current && typeof url === 'string' && shouldBlock(url)) {
         setPendingNextPath(url);
         setShowLeaveConfirm(true);
         return;
       }
-      return originalReplace.apply(this, args as any);
-    } as typeof window.history.replaceState;
+      return originalPush.apply(window.history, args);
+    };
+
+    const patchedReplaceState: History['replaceState'] = (...args: HistoryReplaceArgs) => {
+      const url = args[2];
+      if (!proceedingRef.current && typeof url === 'string' && shouldBlock(url)) {
+        setPendingNextPath(url);
+        setShowLeaveConfirm(true);
+        return;
+      }
+      return originalReplace.apply(window.history, args);
+    };
+
+    window.history.pushState = patchedPushState;
+    window.history.replaceState = patchedReplaceState;
 
     const onClickCapture = (e: Event) => {
       if (!hasUnsavedChanges) return;

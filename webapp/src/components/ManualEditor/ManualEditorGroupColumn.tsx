@@ -42,9 +42,6 @@ export function ManualEditorGroupColumn({
 
   const onDropHandler = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    try {
-      console.debug('[ManualEditor] drop on', group.id, 'session', activeSession);
-    } catch {}
     const personId = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('text');
     if (!personId) return;
     onDropPerson(personId, group.id, activeSession);
@@ -53,9 +50,6 @@ export function ManualEditorGroupColumn({
   const onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    try {
-      console.debug('[ManualEditor] dragover on', group.id);
-    } catch {}
     if (draggingPerson) {
       onPreview(draggingPerson, group.id, activeSession);
     }
@@ -64,17 +58,11 @@ export function ManualEditorGroupColumn({
   const onDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (draggingPerson) {
-      try {
-        console.debug('[ManualEditor] dragenter on', group.id);
-      } catch {}
       onPreview(draggingPerson, group.id, activeSession);
     }
   };
 
   const onDragLeave = () => {
-    try {
-      console.debug('[ManualEditor] dragleave on', group.id);
-    } catch {}
     onClearPreview();
   };
 
@@ -148,12 +136,7 @@ export function ManualEditorGroupColumn({
               }
               e.dataTransfer.setData('text/plain', pid);
               e.dataTransfer.setData('text', pid);
-              try {
-                e.dataTransfer.effectAllowed = 'move';
-              } catch {}
-              try {
-                console.debug('[ManualEditor] dragstart person', pid, 'from group', group.id, 'session', activeSession);
-              } catch {}
+              e.dataTransfer.effectAllowed = 'move';
               setDraggingPerson(pid);
             };
             const dragEnd = () => {

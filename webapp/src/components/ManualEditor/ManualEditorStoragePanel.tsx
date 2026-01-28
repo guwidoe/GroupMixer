@@ -71,9 +71,7 @@ export function ManualEditorStoragePanel({
                   }
                   e.dataTransfer.setData('text/plain', pid);
                   e.dataTransfer.setData('text', pid);
-                  try {
-                    e.dataTransfer.effectAllowed = 'move';
-                  } catch {}
+                  e.dataTransfer.effectAllowed = 'move';
                   setDraggingPerson(pid);
                 };
                 const dragEnd = () => {
