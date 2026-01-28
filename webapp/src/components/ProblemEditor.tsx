@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store';
 import type { Person, Group, Constraint, Problem, PersonFormData, GroupFormData, AttributeDefinition, SolverSettings } from '../types';
@@ -6,11 +6,10 @@ import type { Person, Group, Constraint, Problem, PersonFormData, GroupFormData,
 // Extracted components from ProblemEditor directory
 import {
   getDefaultSolverSettings,
-  parseCsv,
-  rowsToCsv,
   generateUniquePersonId,
 } from './ProblemEditor/helpers';
 import { ProblemEditorForms } from './ProblemEditor/ProblemEditorForms';
+import { useProblemEditorBulk } from './ProblemEditor/hooks/useProblemEditorBulk';
 import { PeopleSection } from './ProblemEditor/sections/PeopleSection';
 import { GroupsSection } from './ProblemEditor/sections/GroupsSection';
 import { SessionsSection } from './ProblemEditor/sections/SessionsSection';
@@ -769,353 +768,14 @@ export function ProblemEditor() {
   };
 
 
-  // Bulk add dropdown & modal states
-  const csvFileInputRef = useRef<HTMLInputElement>(null);
-  const [showBulkForm, setShowBulkForm] = useState(false);
-  const [bulkTextMode, setBulkTextMode] = useState<'text' | 'grid'>('text');
-  const [bulkCsvInput, setBulkCsvInput] = useState('');
-  const [bulkHeaders, setBulkHeaders] = useState<string[]>([]);
-  const [bulkRows, setBulkRows] = useState<Record<string, string>[]>([]);
-
-  // Bulk update modal state
-  const [showBulkUpdateForm, setShowBulkUpdateForm] = useState(false);
-  const [bulkUpdateTextMode, setBulkUpdateTextMode] = useState<'text' | 'grid'>('grid');
-  const [bulkUpdateCsvInput, setBulkUpdateCsvInput] = useState('');
-  const [bulkUpdateHeaders, setBulkUpdateHeaders] = useState<string[]>([]);
-  const [bulkUpdateRows, setBulkUpdateRows] = useState<Record<string, string>[]>([]);
-
-  const openBulkFormFromCsv = (csvText: string) => {
-    setBulkCsvInput(csvText);
-    const { headers, rows } = parseCsv(csvText);
-    setBulkHeaders(headers);
-    setBulkRows(rows);
-    setBulkTextMode('text');
-    setShowBulkForm(true);
-  };
-
-  const handleCsvFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = reader.result as string;
-      openBulkFormFromCsv(text);
-    };
-    reader.readAsText(file);
-    // reset value so same file can be selected again
-    e.target.value = '';
-  };
-
-  const handleAddBulkPeople = () => {
-    if (!bulkHeaders.includes('name')) {
-      addNotification({ type: 'error', title: 'Missing Column', message: 'CSV must include a "name" column.' });
-      return;
-    }
-
-    const newPeople: Person[] = bulkRows.map((row) => {
-      const personAttrs: Record<string, string> = {};
-      bulkHeaders.forEach(h => {
-        if (row[h]) personAttrs[h] = row[h];
-      });
-      if (!personAttrs.name) personAttrs.name = `Person ${Date.now()}`;
-      return {
-        id: generateUniquePersonId(),
-        attributes: personAttrs,
-        sessions: undefined,
-      };
-    });
-
-    // Collect new attribute definitions
-    const attrValueMap: Record<string, Set<string>> = {};
-    bulkHeaders.forEach(h => {
-      if (h === 'name') return;
-      attrValueMap[h] = new Set();
-    });
-    newPeople.forEach(p => {
-      Object.entries(p.attributes).forEach(([k, v]) => {
-        if (k !== 'name') attrValueMap[k]?.add(v);
-      });
-    });
-    Object.entries(attrValueMap).forEach(([key, valSet]) => {
-      const existing = attributeDefinitions.find(def => def.key === key);
-      const newValues = Array.from(valSet);
-      if (!existing) {
-        addAttributeDefinition({ key, values: newValues });
-      } else {
-        const merged = Array.from(new Set([...existing.values, ...newValues]));
-        // Replace definition only if new values were added
-        if (merged.length !== existing.values.length) {
-          removeAttributeDefinition(existing.key);
-          addAttributeDefinition({ key: existing.key, values: merged });
-        }
-      }
-    });
-
-    const updatedProblem: Problem = {
-      people: [...(problem?.people || []), ...newPeople],
-      groups: problem?.groups || [],
-      num_sessions: problem?.num_sessions || 3,
-      constraints: problem?.constraints || [],
-      settings: problem?.settings || getDefaultSolverSettings()
-    };
-    setProblem(updatedProblem);
-    setShowBulkForm(false);
-    setBulkCsvInput('');
-    setBulkHeaders([]);
-    setBulkRows([]);
-
-    addNotification({ type: 'success', title: 'People Added', message: `${newPeople.length} people added.` });
-  };
-
-  // === Bulk Update Helpers & Modal ===
-  const buildPeopleCsvFromCurrent = (): { headers: string[]; rows: Record<string, string>[] } => {
-    const people = problem?.people || [];
-    const headerSet = new Set<string>(['id', 'name']);
-    people.forEach(p => {
-      Object.keys(p.attributes || {}).forEach(k => {
-        if (k !== 'name') headerSet.add(k);
-      });
-    });
-    attributeDefinitions.forEach(def => {
-      if (def.key !== 'name') headerSet.add(def.key);
-    });
-    const headers = Array.from(headerSet);
-    const rows: Record<string, string>[] = people.map(p => {
-      const row: Record<string, string> = {};
-      headers.forEach(h => {
-        if (h === 'id') row[h] = p.id;
-        else if (h === 'name') row[h] = (p.attributes && p.attributes['name']) || '';
-        else row[h] = (p.attributes && (p.attributes[h] ?? '')) as string;
-      });
-      return row;
-    });
-    return { headers, rows };
-  };
-
-  const openBulkUpdateForm = () => {
-    const { headers, rows } = buildPeopleCsvFromCurrent();
-    setBulkUpdateHeaders(headers);
-    setBulkUpdateRows(rows);
-    setBulkUpdateCsvInput(rowsToCsv(headers, rows));
-    setBulkUpdateTextMode('grid');
-    setShowBulkUpdateForm(true);
-  };
-
-  const openBulkAddForm = () => {
-    setBulkCsvInput('');
-    setBulkHeaders([]);
-    setBulkRows([]);
-    setBulkTextMode('text');
-    setShowBulkForm(true);
-  };
-
-  const handleApplyBulkUpdate = () => {
-    let headers: string[] = bulkUpdateHeaders;
-    let rows: Record<string, string>[] = bulkUpdateRows;
-    if (bulkUpdateTextMode === 'text') {
-      const parsed = parseCsv(bulkUpdateCsvInput);
-      headers = parsed.headers;
-      rows = parsed.rows;
-    }
-
-    if (!headers.includes('id')) {
-      addNotification({ type: 'error', title: 'Missing Column', message: 'CSV must include an "id" column.' });
-      return;
-    }
-    if (!headers.includes('name')) {
-      addNotification({ type: 'error', title: 'Missing Column', message: 'CSV must include a "name" column.' });
-      return;
-    }
-
-    const existingPeople = problem?.people || [];
-    const existingById = new Map<string, Person>(existingPeople.map(p => [p.id, p]));
-    const usedIds = new Set<string>(existingPeople.map(p => p.id));
-    const updatedById = new Map<string, Person>();
-    existingPeople.forEach(p => updatedById.set(p.id, { ...p, attributes: { ...p.attributes } }));
-
-    const newPeopleToAdd: Person[] = [];
-    rows.forEach((row) => {
-      const rawId = (row['id'] || '').trim();
-      const isExisting = rawId && existingById.has(rawId);
-      if (isExisting) {
-        const person = updatedById.get(rawId)!;
-        headers.forEach(h => {
-          if (h === 'id') return;
-          const val = (row[h] ?? '').trim();
-          if (val === '__DELETE__') {
-            if (h in person.attributes) delete person.attributes[h];
-          } else if (val.length > 0) {
-            person.attributes[h] = val;
-          }
-        });
-        updatedById.set(rawId, person);
-      } else {
-        const hasAnyData = headers.some(h => h !== 'id' && (row[h] ?? '').trim().length > 0);
-        if (!hasAnyData) return;
-        let newId = rawId;
-        if (!newId || usedIds.has(newId)) {
-          newId = generateUniquePersonId();
-        }
-        usedIds.add(newId);
-        const attributes: Record<string, string> = {};
-        headers.forEach(h => {
-          if (h === 'id') return;
-          const val = (row[h] ?? '').trim();
-          if (val.length > 0) attributes[h] = val;
-        });
-        newPeopleToAdd.push({ id: newId, attributes, sessions: undefined });
-      }
-    });
-
-    const updatedPeople = Array.from(updatedById.values());
-    const finalPeople: Person[] = [...updatedPeople, ...newPeopleToAdd];
-
-    const attrValueMap: Record<string, Set<string>> = {};
-    const allKeys = new Set<string>();
-    finalPeople.forEach(p => {
-      Object.entries(p.attributes || {}).forEach(([k, v]) => {
-        if (k === 'name') return;
-        if (!attrValueMap[k]) attrValueMap[k] = new Set<string>();
-        if (typeof v === 'string' && v.length > 0) attrValueMap[k].add(v);
-        allKeys.add(k);
-      });
-    });
-    headers.forEach(h => { if (h !== 'id' && h !== 'name') allKeys.add(h); });
-
-    allKeys.forEach(key => {
-      const existing = attributeDefinitions.find(def => def.key === key);
-      const newValues = Array.from(attrValueMap[key] || new Set<string>());
-      if (!existing) {
-        addAttributeDefinition({ key, values: newValues });
-      } else {
-        const merged = Array.from(new Set([...(existing.values || []), ...newValues]));
-        if (merged.length !== existing.values.length) {
-          removeAttributeDefinition(existing.key);
-          addAttributeDefinition({ key: existing.key, values: merged });
-        }
-      }
-    });
-
-    const updatedProblem: Problem = {
-      people: finalPeople,
-      groups: problem?.groups || [],
-      num_sessions: problem?.num_sessions || 3,
-      constraints: problem?.constraints || [],
-      settings: problem?.settings || getDefaultSolverSettings()
-    };
-    setProblem(updatedProblem);
-    setShowBulkUpdateForm(false);
-    addNotification({ type: 'success', title: 'Bulk Update Applied', message: `Updated ${rows.length} row(s).` });
-  };
-
-  const groupCsvFileInputRef = useRef<HTMLInputElement>(null);
-  const [showGroupBulkForm, setShowGroupBulkForm] = useState(false);
-  const [groupBulkTextMode, setGroupBulkTextMode] = useState<'text' | 'grid'>('text');
-  const [groupBulkCsvInput, setGroupBulkCsvInput] = useState('');
-  const [groupBulkHeaders, setGroupBulkHeaders] = useState<string[]>([]);
-  const [groupBulkRows, setGroupBulkRows] = useState<Record<string, string>[]>([]);
-  const openGroupBulkFormFromCsv = (csvText: string) => {
-    setGroupBulkCsvInput(csvText);
-    const { headers, rows } = parseCsv(csvText);
-    setGroupBulkHeaders(headers);
-    setGroupBulkRows(rows);
-    setGroupBulkTextMode('text');
-    setShowGroupBulkForm(true);
-  };
-
-  const openGroupBulkForm = () => {
-    setGroupBulkCsvInput('');
-    setGroupBulkHeaders([]);
-    setGroupBulkRows([]);
-    setGroupBulkTextMode('text');
-    setShowGroupBulkForm(true);
-  };
-
-  const handleGroupCsvFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = reader.result as string;
-      openGroupBulkFormFromCsv(text);
-    };
-    reader.readAsText(file);
-    // reset value so same file can be selected again
-    e.target.value = '';
-  };
-
-  const handleAddGroupBulkPeople = () => {
-    if (!groupBulkHeaders.includes('id')) {
-      addNotification({ type: 'error', title: 'Missing Column', message: 'CSV must include an "id" column.' });
-      return;
-    }
-
-    // Validate and build groups, collecting duplicates
-    const existingIds = new Set((problem?.groups || []).map(g => g.id));
-    const newGroups: Group[] = [];
-    const duplicateIds: string[] = [];
-    groupBulkRows.forEach((row, idx) => {
-      const rawId = row['id'] ?? row['group'] ?? `Group_${Date.now()}_${idx}`;
-      const id = rawId.trim();
-      const sizeVal = (row['size'] ?? row['capacity'] ?? '').trim();
-      const size = parseInt(sizeVal) || 4;
-      if (existingIds.has(id) || newGroups.some(g => g.id === id)) {
-        duplicateIds.push(id);
-      } else {
-        newGroups.push({ id, size });
-      }
-    });
-
-    if (duplicateIds.length > 0) {
-      addNotification({
-        type: 'error',
-        title: 'Duplicate Group IDs',
-        message: `The following group IDs already exist or are duplicated: ${duplicateIds.join(', ')}`,
-      });
-      return;
-    }
-
-    // Collect new attribute definitions
-    const attrValueMap: Record<string, Set<string>> = {};
-    groupBulkHeaders.forEach(h => {
-      if (h === 'id') return;
-      attrValueMap[h] = new Set();
-    });
-    newGroups.forEach(g => {
-      Object.entries(g).forEach(([k, v]) => {
-        if (k !== 'id') attrValueMap[k]?.add(v);
-      });
-    });
-    Object.entries(attrValueMap).forEach(([key, valSet]) => {
-      const existing = attributeDefinitions.find(def => def.key === key);
-      const newValues = Array.from(valSet);
-      if (!existing) {
-        addAttributeDefinition({ key, values: newValues });
-      } else {
-        const merged = Array.from(new Set([...existing.values, ...newValues]));
-        // Replace definition only if new values were added
-        if (merged.length !== existing.values.length) {
-          removeAttributeDefinition(existing.key);
-          addAttributeDefinition({ key: existing.key, values: merged });
-        }
-      }
-    });
-
-    const updatedProblem: Problem = {
-      people: problem?.people || [],
-      groups: [...(problem?.groups || []), ...newGroups],
-      num_sessions: problem?.num_sessions || 3,
-      constraints: problem?.constraints || [],
-      settings: problem?.settings || getDefaultSolverSettings()
-    };
-    setProblem(updatedProblem);
-    setShowGroupBulkForm(false);
-    setGroupBulkCsvInput('');
-    setGroupBulkHeaders([]);
-    setGroupBulkRows([]);
-
-    addNotification({ type: 'success', title: 'Groups Added', message: `${newGroups.length} groups added.` });
-  };
+  const bulk = useProblemEditorBulk({
+    problem,
+    attributeDefinitions,
+    addAttributeDefinition,
+    removeAttributeDefinition,
+    addNotification,
+    setProblem,
+  });
 
   // Don't render until loading is complete to avoid creating new problems
   if (ui.isLoading) {
@@ -1150,9 +810,9 @@ export function ProblemEditor() {
           onAddPerson={() => setShowPersonForm(true)}
           onEditPerson={handleEditPerson}
           onDeletePerson={handleDeletePerson}
-          onOpenBulkAddForm={openBulkAddForm}
-          onOpenBulkUpdateForm={openBulkUpdateForm}
-          onTriggerCsvUpload={() => csvFileInputRef.current?.click()}
+          onOpenBulkAddForm={bulk.openBulkAddForm}
+          onOpenBulkUpdateForm={bulk.openBulkUpdateForm}
+          onTriggerCsvUpload={() => bulk.csvFileInputRef.current?.click()}
           onTriggerExcelImport={() => addNotification({ type: 'info', title: 'Coming Soon', message: 'Excel import is not yet implemented.' })}
         />
       )}
@@ -1163,8 +823,8 @@ export function ProblemEditor() {
           onAddGroup={() => setShowGroupForm(true)}
           onEditGroup={handleEditGroup}
           onDeleteGroup={handleDeleteGroup}
-          onOpenBulkAddForm={openGroupBulkForm}
-          onTriggerCsvUpload={() => groupCsvFileInputRef.current?.click()}
+          onOpenBulkAddForm={bulk.openGroupBulkForm}
+          onTriggerCsvUpload={() => bulk.groupCsvFileInputRef.current?.click()}
         />
       )}
 
@@ -1327,49 +987,44 @@ export function ProblemEditor() {
           setNewAttribute({ key: '', values: [''] });
           setEditingAttribute(null);
         }}
-        showBulkForm={showBulkForm}
-        bulkTextMode={bulkTextMode}
-        setBulkTextMode={setBulkTextMode}
-        bulkCsvInput={bulkCsvInput}
-        setBulkCsvInput={setBulkCsvInput}
-        bulkHeaders={bulkHeaders}
-        setBulkHeaders={setBulkHeaders}
-        bulkRows={bulkRows}
-        setBulkRows={setBulkRows}
-        onSaveBulkPeople={handleAddBulkPeople}
-        onCloseBulkPeople={() => setShowBulkForm(false)}
-        showBulkUpdateForm={showBulkUpdateForm}
-        bulkUpdateTextMode={bulkUpdateTextMode}
-        setBulkUpdateTextMode={setBulkUpdateTextMode}
-        bulkUpdateCsvInput={bulkUpdateCsvInput}
-        setBulkUpdateCsvInput={setBulkUpdateCsvInput}
-        bulkUpdateHeaders={bulkUpdateHeaders}
-        setBulkUpdateHeaders={setBulkUpdateHeaders}
-        bulkUpdateRows={bulkUpdateRows}
-        setBulkUpdateRows={setBulkUpdateRows}
-        onRefreshBulkUpdate={() => {
-          const { headers, rows } = buildPeopleCsvFromCurrent();
-          setBulkUpdateHeaders(headers);
-          setBulkUpdateRows(rows);
-          setBulkUpdateCsvInput(rowsToCsv(headers, rows));
-        }}
-        onApplyBulkUpdate={handleApplyBulkUpdate}
-        onCloseBulkUpdate={() => setShowBulkUpdateForm(false)}
-        showGroupBulkForm={showGroupBulkForm}
-        groupBulkTextMode={groupBulkTextMode}
-        setGroupBulkTextMode={setGroupBulkTextMode}
-        groupBulkCsvInput={groupBulkCsvInput}
-        setGroupBulkCsvInput={setGroupBulkCsvInput}
-        groupBulkHeaders={groupBulkHeaders}
-        setGroupBulkHeaders={setGroupBulkHeaders}
-        groupBulkRows={groupBulkRows}
-        setGroupBulkRows={setGroupBulkRows}
-        onSaveGroupBulk={handleAddGroupBulkPeople}
-        onCloseGroupBulk={() => setShowGroupBulkForm(false)}
-        csvFileInputRef={csvFileInputRef}
-        onCsvFileSelected={handleCsvFileSelected}
-        groupCsvFileInputRef={groupCsvFileInputRef}
-        onGroupCsvFileSelected={handleGroupCsvFileSelected}
+        showBulkForm={bulk.showBulkForm}
+        bulkTextMode={bulk.bulkTextMode}
+        setBulkTextMode={bulk.setBulkTextMode}
+        bulkCsvInput={bulk.bulkCsvInput}
+        setBulkCsvInput={bulk.setBulkCsvInput}
+        bulkHeaders={bulk.bulkHeaders}
+        setBulkHeaders={bulk.setBulkHeaders}
+        bulkRows={bulk.bulkRows}
+        setBulkRows={bulk.setBulkRows}
+        onSaveBulkPeople={bulk.handleAddBulkPeople}
+        onCloseBulkPeople={() => bulk.setShowBulkForm(false)}
+        showBulkUpdateForm={bulk.showBulkUpdateForm}
+        bulkUpdateTextMode={bulk.bulkUpdateTextMode}
+        setBulkUpdateTextMode={bulk.setBulkUpdateTextMode}
+        bulkUpdateCsvInput={bulk.bulkUpdateCsvInput}
+        setBulkUpdateCsvInput={bulk.setBulkUpdateCsvInput}
+        bulkUpdateHeaders={bulk.bulkUpdateHeaders}
+        setBulkUpdateHeaders={bulk.setBulkUpdateHeaders}
+        bulkUpdateRows={bulk.bulkUpdateRows}
+        setBulkUpdateRows={bulk.setBulkUpdateRows}
+        onRefreshBulkUpdate={bulk.refreshBulkUpdateFromCurrent}
+        onApplyBulkUpdate={bulk.handleApplyBulkUpdate}
+        onCloseBulkUpdate={() => bulk.setShowBulkUpdateForm(false)}
+        showGroupBulkForm={bulk.showGroupBulkForm}
+        groupBulkTextMode={bulk.groupBulkTextMode}
+        setGroupBulkTextMode={bulk.setGroupBulkTextMode}
+        groupBulkCsvInput={bulk.groupBulkCsvInput}
+        setGroupBulkCsvInput={bulk.setGroupBulkCsvInput}
+        groupBulkHeaders={bulk.groupBulkHeaders}
+        setGroupBulkHeaders={bulk.setGroupBulkHeaders}
+        groupBulkRows={bulk.groupBulkRows}
+        setGroupBulkRows={bulk.setGroupBulkRows}
+        onSaveGroupBulk={bulk.handleAddGroupBulkPeople}
+        onCloseGroupBulk={() => bulk.setShowGroupBulkForm(false)}
+        csvFileInputRef={bulk.csvFileInputRef}
+        onCsvFileSelected={bulk.handleCsvFileSelected}
+        groupCsvFileInputRef={bulk.groupCsvFileInputRef}
+        onGroupCsvFileSelected={bulk.handleGroupCsvFileSelected}
       />
       <ConstraintFormModal
         isOpen={showConstraintForm}
