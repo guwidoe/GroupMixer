@@ -9,92 +9,11 @@ import type {
   Solution,
 } from "../types";
 
+export { compareProblemConfigurations, type ProblemConfigDifference } from "./problemStorage/compare";
+
 const STORAGE_KEY = "people-distributor-problems";
 const CURRENT_PROBLEM_KEY = "people-distributor-current-problem";
 const VERSION = "1.0.0";
-
-// Utility function to compare problem configurations
-export interface ProblemConfigDifference {
-  isDifferent: boolean;
-  changes: {
-    people?: boolean;
-    groups?: boolean;
-    num_sessions?: boolean;
-    objectives?: boolean;
-    constraints?: boolean;
-  };
-  details: {
-    people?: string;
-    groups?: string;
-    num_sessions?: string;
-    objectives?: string;
-    constraints?: string;
-  };
-}
-
-export function compareProblemConfigurations(
-  current: Problem,
-  snapshot: ProblemSnapshot | undefined
-): ProblemConfigDifference {
-  if (!snapshot) {
-    return {
-      isDifferent: true,
-      changes: {},
-      details: {
-        people: "No configuration saved with this result",
-        groups: "No configuration saved with this result",
-        num_sessions: "No configuration saved with this result",
-        objectives: "No configuration saved with this result",
-        constraints: "No configuration saved with this result",
-      },
-    };
-  }
-
-  const changes: ProblemConfigDifference["changes"] = {};
-  const details: ProblemConfigDifference["details"] = {};
-
-  // Compare people
-  if (JSON.stringify(current.people) !== JSON.stringify(snapshot.people)) {
-    changes.people = true;
-    details.people = `People configuration changed (${current.people.length} now vs ${snapshot.people.length} when result was created)`;
-  }
-
-  // Compare groups
-  if (JSON.stringify(current.groups) !== JSON.stringify(snapshot.groups)) {
-    changes.groups = true;
-    details.groups = `Groups configuration changed (${current.groups.length} now vs ${snapshot.groups.length} when result was created)`;
-  }
-
-  // Compare num_sessions
-  if (current.num_sessions !== snapshot.num_sessions) {
-    changes.num_sessions = true;
-    details.num_sessions = `Number of sessions changed (${current.num_sessions} now vs ${snapshot.num_sessions} when result was created)`;
-  }
-
-  // Compare objectives
-  if (
-    JSON.stringify(current.objectives) !== JSON.stringify(snapshot.objectives)
-  ) {
-    changes.objectives = true;
-    details.objectives = "Objectives configuration changed";
-  }
-
-  // Compare constraints
-  if (
-    JSON.stringify(current.constraints) !== JSON.stringify(snapshot.constraints)
-  ) {
-    changes.constraints = true;
-    details.constraints = `Constraints changed (${current.constraints.length} now vs ${snapshot.constraints.length} when result was created)`;
-  }
-
-  const isDifferent = Object.keys(changes).length > 0;
-
-  return {
-    isDifferent,
-    changes,
-    details,
-  };
-}
 
 export class ProblemStorageService {
   private autoSaveTimeout: number | null = null;
