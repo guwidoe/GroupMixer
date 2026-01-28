@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import type { VisualizationComponentProps } from "../../types";
 import { computeContactsFromSnapshot, computeContactsFromSolution } from "./buildContactGraph";
 
@@ -70,9 +70,9 @@ export function ContactGraphVisualization({ data }: VisualizationComponentProps)
     return Math.max(1, max);
   }, [edgeStats, sessionFilter]);
 
-  useEffect(() => {
-    setMinMeetingCount((prev) => Math.min(Math.max(1, prev), maxEdgeCountForUi));
-  }, [maxEdgeCountForUi]);
+  const clampedMinMeetingCount = useMemo(() => {
+    return Math.min(Math.max(1, minMeetingCount), maxEdgeCountForUi);
+  }, [minMeetingCount, maxEdgeCountForUi]);
 
   const graph = useMemo(() => {
     return buildGraphData({
@@ -85,7 +85,7 @@ export function ContactGraphVisualization({ data }: VisualizationComponentProps)
       layoutMode,
       circleOrder,
       circleOrderAttributeKey: circleOrderAttr,
-      minMeetingCount,
+      minMeetingCount: clampedMinMeetingCount,
     });
   }, [
     people,
@@ -97,7 +97,7 @@ export function ContactGraphVisualization({ data }: VisualizationComponentProps)
     layoutMode,
     circleOrder,
     circleOrderAttr,
-    minMeetingCount,
+    clampedMinMeetingCount,
   ]);
 
   const selectedNodeEdges = useMemo((): EdgeInfo[] => {
@@ -299,11 +299,11 @@ export function ContactGraphVisualization({ data }: VisualizationComponentProps)
           type="range"
           min={1}
           max={maxEdgeCountForUi}
-          value={minMeetingCount}
+          value={clampedMinMeetingCount}
           onChange={(e) => setMinMeetingCount(Number(e.target.value))}
         />
         <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-          ≥ {minMeetingCount}
+          ≥ {clampedMinMeetingCount}
         </span>
 
         {selectedNodeId && (
@@ -347,7 +347,7 @@ export function ContactGraphVisualization({ data }: VisualizationComponentProps)
         <Legend
           nodeColorAttr={nodeColorAttr}
           edgeColorMode={edgeColorMode}
-          minMeetingCount={minMeetingCount}
+          minMeetingCount={clampedMinMeetingCount}
           maxEdgeCountForUi={maxEdgeCountForUi}
           sessionCount={sessionCount}
         />
