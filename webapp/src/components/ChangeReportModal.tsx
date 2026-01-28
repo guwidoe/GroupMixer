@@ -3,6 +3,7 @@ import { X, AlertTriangle, Target, Users, Link as LinkIcon, Split, MinusCircle, 
 import type { ComplianceCardData } from '../services/evaluator';
 import type { Person } from '../types';
 import PersonChip from './PersonCard';
+import { buildChangedByType, formatDelta, type ChangeItem } from './ChangeReportModal/utils';
 
 interface ScoreSummary {
   final_score: number;
@@ -32,12 +33,6 @@ interface Props {
   data: ChangeReportData | null;
 }
 
-function formatDelta(v: number, invertGood = false): { text: string; className: string } {
-  const sign = v > 0 ? '+' : '';
-  const cls = invertGood ? (v <= 0 ? 'text-green-600' : 'text-red-600') : (v >= 0 ? 'text-green-600' : 'text-red-600');
-  return { text: `${sign}${v.toFixed(2)}`, className: cls };
-}
-
 const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel, data }) => {
   if (!open || !data) return null;
 
@@ -57,62 +52,7 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
     return <PersonChip person={p} />;
   };
 
-  // Build typed change items grouped by constraint type
-  type ChangeItem = { before?: ComplianceCardData; after?: ComplianceCardData; key: string };
-  const changedByType = new Map<string, ChangeItem[]>();
-  const beforeMap = new Map<string, ComplianceCardData>();
-  data.before.compliance.forEach((c) => beforeMap.set(`${c.type}#${c.id}`, c));
-  const seenKeys = new Set<string>();
-  // Normalize detail keys for robust comparisons (order-insensitive)
-  const detailKeyFor = (d: any) => {
-    switch (d.kind) {
-      case 'RepeatEncounter':
-        return `${d.kind}|${[d.pair[0], d.pair[1]].sort().join('|')}`;
-      case 'AttributeBalance':
-        return `${d.kind}|${d.session}|${d.groupId}|${d.attribute}`;
-      case 'Immovable':
-        return `${d.kind}|${d.session}|${d.personId}|${d.requiredGroup}|${d.assignedGroup ?? ''}`;
-      case 'TogetherSplit':
-        // include people identities, order-insensitive
-        return `${d.kind}|${d.session}|${(d.people || []).map((p: any) => p.personId).sort().join(',')}`;
-      case 'NotTogether':
-        return `${d.kind}|${d.session}|${d.groupId}|${(d.people || []).slice().sort().join(',')}`;
-      default:
-        return `${d.kind}|${JSON.stringify(d)}`;
-    }
-  };
-
-  data.after.compliance.forEach((c) => {
-    const key = `${c.type}#${c.id}`;
-    seenKeys.add(key);
-    const prev = beforeMap.get(key);
-    if (!prev) {
-      const arr = changedByType.get(c.type) || [];
-      arr.push({ before: prev, after: c, key });
-      changedByType.set(c.type, arr);
-    } else {
-      const beforeSet = new Set<string>((prev.details || []).map(detailKeyFor));
-      const afterSet = new Set<string>((c.details || []).map(detailKeyFor));
-      const countsDiffer = prev.violationsCount !== c.violationsCount;
-      let setsDiffer = false;
-      if (beforeSet.size !== afterSet.size) setsDiffer = true;
-      if (!setsDiffer) {
-        for (const k of beforeSet) { if (!afterSet.has(k)) { setsDiffer = true; break; } }
-      }
-      if (countsDiffer || setsDiffer) {
-        const arr = changedByType.get(c.type) || [];
-        arr.push({ before: prev, after: c, key });
-        changedByType.set(c.type, arr);
-      }
-    }
-  });
-  beforeMap.forEach((prev, key) => {
-    if (!seenKeys.has(key)) {
-      const arr = changedByType.get(prev.type) || [];
-      arr.push({ before: prev, after: undefined, key });
-      changedByType.set(prev.type, arr);
-    }
-  });
+  const changedByType = buildChangedByType(data.before.compliance, data.after.compliance);
 
   // Hard constraint type set
   const HARD_TYPES = new Set<string>(['MustStayTogether', 'ImmovablePerson', 'ImmovablePeople']);
