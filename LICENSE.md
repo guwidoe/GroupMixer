@@ -11,6 +11,6 @@ You may NOT:
 The source code is made available for transparency and review purposes only.
 
 To use this software, visit the official hosted service at:
-[your-service-url]
+[groupmixer.app]
 
-For licensing inquiries, contact: [your-email]
+For licensing inquiries, contact: [guwidoe@gmail.com]
