@@ -22,13 +22,7 @@ import { ProblemEditorHeader } from './ProblemEditor/ProblemEditorHeader';
 import { ProblemEditorTabs } from './ProblemEditor/ProblemEditorTabs';
 import { ConstraintFormModal } from './ProblemEditor/ConstraintFormModal';
 import type { ConstraintFormState } from './ProblemEditor/ConstraintFormModal';
-import ImmovablePeopleModal from './modals/ImmovablePeopleModal';
-import RepeatEncounterModal from './modals/RepeatEncounterModal';
-import AttributeBalanceModal from './modals/AttributeBalanceModal';
-import ShouldNotBeTogetherModal from './modals/ShouldNotBeTogetherModal';
-import ShouldStayTogetherModal from './modals/ShouldStayTogetherModal';
-import MustStayTogetherModal from './modals/MustStayTogetherModal';
-import PairMeetingCountModal from './modals/PairMeetingCountModal';
+import { ProblemEditorConstraintModals } from './ProblemEditor/ProblemEditorConstraintModals';
 import { DemoDataWarningModal } from './modals/DemoDataWarningModal';
 
 export function ProblemEditor() {
@@ -1393,188 +1387,30 @@ export function ProblemEditor() {
           setConstraintForm({ type: 'RepeatEncounter', penalty_weight: 1 });
         }}
       />
-      {showImmovableModal && (
-        <ImmovablePeopleModal
-           sessionsCount={sessionsCount}
-           initial={editingImmovableIndex!==null ? (GetProblem().constraints[editingImmovableIndex] || null) : null}
-           onCancel={()=>{setShowImmovableModal(false); setEditingImmovableIndex(null);} }
-           onSave={(con)=>{
-              const currentProblem = GetProblem();
-              const updatedConstraints=[...currentProblem.constraints];
-              if(editingImmovableIndex!==null){ 
-                updatedConstraints[editingImmovableIndex]=con; 
-              }
-              else{ 
-                updatedConstraints.push(con);
-              } 
-              
-              setProblem({ 
-                ...currentProblem, 
-                constraints: updatedConstraints 
-              });
-              
-              setShowImmovableModal(false);
-              setEditingImmovableIndex(null);
-           }}
-        />
-      )}
-
-      {/* New individual constraint modals */}
-      {showRepeatEncounterModal && (
-        <RepeatEncounterModal
-          initial={editingConstraintIndex !== null ? (GetProblem().constraints[editingConstraintIndex] || null) : null}
-          onCancel={() => {
-            setShowRepeatEncounterModal(false);
-            setEditingConstraintIndex(null);
-          }}
-          onSave={(constraint) => {
-            const currentProblem = GetProblem();
-            const updatedConstraints = [...currentProblem.constraints];
-            if (editingConstraintIndex !== null) {
-              updatedConstraints[editingConstraintIndex] = constraint;
-            } else {
-              updatedConstraints.push(constraint);
-            }
-            
-            setProblem({
-              ...currentProblem,
-              constraints: updatedConstraints
-            });
-            
-            setShowRepeatEncounterModal(false);
-            setEditingConstraintIndex(null);
-          }}
-        />
-      )}
-
-      {showAttributeBalanceModal && (
-        <AttributeBalanceModal
-          initial={editingConstraintIndex !== null ? (GetProblem().constraints[editingConstraintIndex] || null) : null}
-          onCancel={() => {
-            setShowAttributeBalanceModal(false);
-            setEditingConstraintIndex(null);
-          }}
-          onSave={(constraint) => {
-            const currentProblem = GetProblem();
-            const updatedConstraints = [...currentProblem.constraints];
-            if (editingConstraintIndex !== null) {
-              updatedConstraints[editingConstraintIndex] = constraint;
-            } else {
-              updatedConstraints.push(constraint);
-            }
-            
-            setProblem({
-              ...currentProblem,
-              constraints: updatedConstraints
-            });
-            
-            setShowAttributeBalanceModal(false);
-            setEditingConstraintIndex(null);
-          }}
-        />
-      )}
-
-      {showShouldNotBeTogetherModal && (
-        <ShouldNotBeTogetherModal
-          sessionsCount={sessionsCount}
-          initial={editingConstraintIndex !== null ? (GetProblem().constraints[editingConstraintIndex] || null) : null}
-          onCancel={() => {
-            setShowShouldNotBeTogetherModal(false);
-            setEditingConstraintIndex(null);
-          }}
-          onSave={(constraint) => {
-            const currentProblem = GetProblem();
-            const updatedConstraints = [...currentProblem.constraints];
-            if (editingConstraintIndex !== null) {
-              updatedConstraints[editingConstraintIndex] = constraint;
-            } else {
-              updatedConstraints.push(constraint);
-            }
-            
-            setProblem({
-              ...currentProblem,
-              constraints: updatedConstraints
-            });
-            
-            setShowShouldNotBeTogetherModal(false);
-            setEditingConstraintIndex(null);
-          }}
-        />
-      )}
-
-      {showShouldStayTogetherModal && (
-        <ShouldStayTogetherModal
-          sessionsCount={sessionsCount}
-          initial={editingConstraintIndex !== null ? (GetProblem().constraints[editingConstraintIndex] || null) : null}
-          onCancel={() => {
-            setShowShouldStayTogetherModal(false);
-            setEditingConstraintIndex(null);
-          }}
-          onSave={(constraint) => {
-            const currentProblem = GetProblem();
-            const updatedConstraints = [...currentProblem.constraints];
-            if (editingConstraintIndex !== null) {
-              updatedConstraints[editingConstraintIndex] = constraint;
-            } else {
-              updatedConstraints.push(constraint);
-            }
-            setProblem({
-              ...currentProblem,
-              constraints: updatedConstraints,
-            });
-            setShowShouldStayTogetherModal(false);
-            setEditingConstraintIndex(null);
-          }}
-        />
-      )}
-
-      {showPairMeetingCountModal && (
-        <PairMeetingCountModal
-          people={problem?.people ?? []}
-          totalSessions={problem?.num_sessions ?? 0}
-          initial={editingConstraintIndex !== null && problem ? problem.constraints[editingConstraintIndex] : null}
-          onCancel={() => setShowPairMeetingCountModal(false)}
-          onSave={(constraint) => {
-            if (!problem) {
-              setShowPairMeetingCountModal(false);
-              return;
-            }
-            const next = [...problem.constraints];
-            if (editingConstraintIndex !== null) next[editingConstraintIndex] = constraint;
-            else next.push(constraint);
-            setProblem({ ...problem, constraints: next });
-            setShowPairMeetingCountModal(false);
-          }}
-        />
-      )}
-
-      {showMustStayTogetherModal && (
-        <MustStayTogetherModal
-          sessionsCount={sessionsCount}
-          initial={editingConstraintIndex !== null ? (GetProblem().constraints[editingConstraintIndex] || null) : null}
-          onCancel={() => {
-            setShowMustStayTogetherModal(false);
-            setEditingConstraintIndex(null);
-          }}
-          onSave={(constraint) => {
-            const currentProblem = GetProblem();
-            const updatedConstraints = [...currentProblem.constraints];
-            if (editingConstraintIndex !== null) {
-              updatedConstraints[editingConstraintIndex] = constraint;
-            } else {
-              updatedConstraints.push(constraint);
-            }
-            
-            setProblem({
-              ...currentProblem,
-              constraints: updatedConstraints
-            });
-            
-            setShowMustStayTogetherModal(false);
-            setEditingConstraintIndex(null);
-          }}
-        />
-      )}
+      <ProblemEditorConstraintModals
+        problem={problem ?? null}
+        sessionsCount={sessionsCount}
+        getProblem={GetProblem}
+        setProblem={setProblem}
+        showImmovableModal={showImmovableModal}
+        setShowImmovableModal={setShowImmovableModal}
+        editingImmovableIndex={editingImmovableIndex}
+        setEditingImmovableIndex={setEditingImmovableIndex}
+        showRepeatEncounterModal={showRepeatEncounterModal}
+        setShowRepeatEncounterModal={setShowRepeatEncounterModal}
+        showAttributeBalanceModal={showAttributeBalanceModal}
+        setShowAttributeBalanceModal={setShowAttributeBalanceModal}
+        showShouldNotBeTogetherModal={showShouldNotBeTogetherModal}
+        setShowShouldNotBeTogetherModal={setShowShouldNotBeTogetherModal}
+        showShouldStayTogetherModal={showShouldStayTogetherModal}
+        setShowShouldStayTogetherModal={setShowShouldStayTogetherModal}
+        showMustStayTogetherModal={showMustStayTogetherModal}
+        setShowMustStayTogetherModal={setShowMustStayTogetherModal}
+        showPairMeetingCountModal={showPairMeetingCountModal}
+        setShowPairMeetingCountModal={setShowPairMeetingCountModal}
+        editingConstraintIndex={editingConstraintIndex}
+        setEditingConstraintIndex={setEditingConstraintIndex}
+      />
 
       {/* Demo Data Warning Modal */}
       <DemoDataWarningModal
