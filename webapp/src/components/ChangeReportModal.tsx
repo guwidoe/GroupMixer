@@ -33,6 +33,9 @@ interface Props {
   data: ChangeReportData | null;
 }
 
+type ChangeDetail = ComplianceCardData['details'][number];
+type TogetherSplitPerson = { personId: string; groupId?: string };
+
 const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel, data }) => {
   if (!open || !data) return null;
 
@@ -66,9 +69,9 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
     const after = item.after;
     const type = after?.type || before?.type || 'Constraint';
     // Diff helpers keyed by detail kind
-    const beforeDetails = before?.details || [];
-    const afterDetails = after?.details || [];
-    const keyFor = (d: any) => {
+    const beforeDetails: ChangeDetail[] = before?.details || [];
+    const afterDetails: ChangeDetail[] = after?.details || [];
+    const keyFor = (d: ChangeDetail) => {
       switch (d.kind) {
         case 'RepeatEncounter':
           return `${d.kind}|${d.pair[0]}|${d.pair[1]}`;
@@ -89,10 +92,10 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
           return `${d.kind}|${JSON.stringify(d)}`;
       }
     };
-    const beforeMapD = new Map<string, any>();
+    const beforeMapD = new Map<string, ChangeDetail>();
     beforeDetails.forEach((d) => beforeMapD.set(keyFor(d), d));
-    const added: any[] = [];
-    const removed: any[] = [];
+    const added: ChangeDetail[] = [];
+    const removed: ChangeDetail[] = [];
     const seenD = new Set<string>();
     afterDetails.forEach((d) => {
       const k = keyFor(d);
@@ -171,20 +174,25 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
     }
     if (type === 'MustStayTogether' || type === 'ShouldStayTogether') {
       // Show person-level diffs rather than record-level
-      const beforeBySession = new Map<number, any>();
+      const beforeBySession = new Map<number, ChangeDetail>();
       beforeDetails.filter(d => d.kind === 'TogetherSplit').forEach((d) => beforeBySession.set(d.session, d));
-      const afterBySession = new Map<number, any>();
+      const afterBySession = new Map<number, ChangeDetail>();
       afterDetails.filter(d => d.kind === 'TogetherSplit').forEach((d) => afterBySession.set(d.session, d));
 
       const sessionKeys = Array.from(new Set([...beforeBySession.keys(), ...afterBySession.keys()])).sort((a, b) => a - b);
+
+      const getPeople = (detail?: ChangeDetail): TogetherSplitPerson[] => {
+        const people = detail?.people as TogetherSplitPerson[] | undefined;
+        return Array.isArray(people) ? people : [];
+      };
 
       return (
         <div className="mt-2 space-y-2">
           {sessionKeys.map((s) => {
             const b = beforeBySession.get(s);
             const aDet = afterBySession.get(s);
-            const beforeSet = new Set<string>((b?.people || []).map((p: any) => p.personId));
-            const afterSet = new Set<string>((aDet?.people || []).map((p: any) => p.personId));
+            const beforeSet = new Set<string>(getPeople(b).map((p) => p.personId));
+            const afterSet = new Set<string>(getPeople(aDet).map((p) => p.personId));
             const addedPeople = Array.from(afterSet).filter(pid => !beforeSet.has(pid));
             const removedPeople = Array.from(beforeSet).filter(pid => !afterSet.has(pid));
             const hasDiff = addedPeople.length > 0 || removedPeople.length > 0;
@@ -194,7 +202,7 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
                 {hasDiff && addedPeople.length > 0 && (
                   <div className="pl-5 flex flex-wrap gap-1">
                     {addedPeople.map((pid) => {
-                      const g = (aDet?.people || []).find((p: any) => p.personId === pid)?.groupId;
+                      const g = getPeople(aDet).find((p) => p.personId === pid)?.groupId;
                       return (
                         <span key={`add-${pid}`} className="inline-flex items-center gap-2">
                           {renderPerson(pid)}
@@ -208,7 +216,7 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
                 {hasDiff && removedPeople.length > 0 && (
                   <div className="pl-5 flex flex-wrap gap-1">
                     {removedPeople.map((pid) => {
-                      const g = (b?.people || []).find((p: any) => p.personId === pid)?.groupId;
+                      const g = getPeople(b).find((p) => p.personId === pid)?.groupId;
                       return (
                         <span key={`rem-${pid}`} className="inline-flex items-center gap-2">
                           {renderPerson(pid)}
@@ -220,7 +228,7 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
                 )}
                 {!hasDiff && aDet && (
                   <div className="pl-5 flex flex-wrap gap-2">
-                    {(aDet.people || []).map((p: any, idx: number) => (
+                    {getPeople(aDet).map((p, idx) => (
                       <span key={`all-${p.personId}-${idx}`} className="inline-flex items-center gap-2">
                         {renderPerson(p.personId)}
                         <span style={{ color: 'var(--text-secondary)' }}>{p.groupId ? `in ${p.groupId}` : '(not assigned)'}</span>
@@ -230,7 +238,7 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
                 )}
                 {!hasDiff && !aDet && b && (
                   <div className="pl-5 flex flex-wrap gap-2">
-                    {(b.people || []).map((p: any, idx: number) => (
+                    {getPeople(b).map((p, idx) => (
                       <span key={`b-all-${p.personId}-${idx}`} className="inline-flex items-center gap-2">
                         {renderPerson(p.personId)}
                         <span style={{ color: 'var(--text-secondary)' }}>{p.groupId ? `was in ${p.groupId}` : '(not assigned)'}</span>
@@ -373,7 +381,8 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
                                 const to = item.after?.violationsCount ?? 0;
                                 const rawDelta = to - from;
                                 // Pull optional penalty weight from the constraint definition (soft constraints)
-                                const weight = (item.after?.constraint as any)?.penalty_weight ?? (item.before?.constraint as any)?.penalty_weight ?? 1;
+                                const constraint = item.after?.constraint ?? item.before?.constraint;
+                                const weight = constraint && 'penalty_weight' in constraint ? constraint.penalty_weight : 1;
                                 const dv = rawDelta * (typeof weight === 'number' ? weight : 1);
                                 const dvFmt = formatDelta(dv, true);
                                 const borderStyle = dv > 0 ? 'var(--color-error-600)' : dv < 0 ? 'var(--color-success-600)' : 'var(--border-primary)';
@@ -394,7 +403,7 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
                                           {type === 'RepeatEncounter' && (
                                             <>
                                               {(() => {
-                                                const pf = (item.after?.constraint as any)?.penalty_function || (item.before?.constraint as any)?.penalty_function;
+                                                const pf = constraint && constraint.type === 'RepeatEncounter' ? constraint.penalty_function : undefined;
                                                 return pf ? <span> • {pf}</span> : null;
                                               })()}
                                             </>

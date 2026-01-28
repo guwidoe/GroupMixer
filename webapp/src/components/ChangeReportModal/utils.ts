@@ -1,5 +1,7 @@
 import type { ComplianceCardData } from '../../services/evaluator';
 
+type ChangeDetail = ComplianceCardData['details'][number];
+
 export interface ChangeItem {
   before?: ComplianceCardData;
   after?: ComplianceCardData;
@@ -12,7 +14,7 @@ export function formatDelta(v: number, invertGood = false): { text: string; clas
   return { text: `${sign}${v.toFixed(2)}`, className: cls };
 }
 
-const detailKeyFor = (d: any) => {
+const detailKeyFor = (d: ChangeDetail) => {
   switch (d.kind) {
     case 'RepeatEncounter':
       return `${d.kind}|${[d.pair[0], d.pair[1]].sort().join('|')}`;
@@ -21,9 +23,9 @@ const detailKeyFor = (d: any) => {
     case 'Immovable':
       return `${d.kind}|${d.session}|${d.personId}|${d.requiredGroup}|${d.assignedGroup ?? ''}`;
     case 'TogetherSplit':
-      return `${d.kind}|${d.session}|${(d.people || []).map((p: any) => p.personId).sort().join(',')}`;
+      return `${d.kind}|${d.session}|${((d.people as Array<{ personId: string }> | undefined) ?? []).map((p) => p.personId).sort().join(',')}`;
     case 'NotTogether':
-      return `${d.kind}|${d.session}|${d.groupId}|${(d.people || []).slice().sort().join(',')}`;
+      return `${d.kind}|${d.session}|${d.groupId}|${(((d.people as string[] | undefined) ?? []).slice().sort().join(','))}`;
     default:
       return `${d.kind}|${JSON.stringify(d)}`;
   }

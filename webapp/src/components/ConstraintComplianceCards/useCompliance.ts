@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { Constraint, Person, Problem, Solution } from '../../types';
+import type { Person, Problem, Solution } from '../../types';
 import type { CardData, ViolationDetail } from './types';
 
 type ScheduleMap = Record<number, Record<string, string[]>>;
@@ -32,8 +32,8 @@ export function useCompliance(problem: Problem, solution: Solution): CardData[] 
     problem.constraints.forEach((constraint, index) => {
       switch (constraint.type) {
         case 'PairMeetingCount': {
-          const sessions = (constraint as any).sessions as number[] | undefined;
-          const [idA, idB] = (constraint as any).people as [string, string];
+          const sessions = constraint.sessions;
+          const [idA, idB] = constraint.people;
           const subset = sessions && sessions.length > 0 ? sessions : Array.from({ length: problem.num_sessions }, (_, i) => i);
 
           let count = 0;
@@ -54,8 +54,8 @@ export function useCompliance(problem: Problem, solution: Solution): CardData[] 
             perSession.push({ session, together: inSame, groupId });
           });
 
-          const target = (constraint as any).target_meetings as number;
-          const mode = ((constraint as any).mode as 'at_least' | 'exact' | 'at_most') || 'at_least';
+          const target = constraint.target_meetings;
+          const mode = constraint.mode || 'at_least';
           let deviations = 0;
           if (mode === 'at_least') deviations = Math.max(0, target - count);
           else if (mode === 'exact') deviations = Math.abs(target - count);
@@ -143,7 +143,7 @@ export function useCompliance(problem: Problem, solution: Solution): CardData[] 
           const sessions = constraint.sessions ?? Array.from({ length: problem.num_sessions }, (_, i) => i);
           const details: ViolationDetail[] = [];
           let violations = 0;
-          const mode = (constraint as any).mode as 'exact' | 'at_least' | undefined;
+          const mode = constraint.mode;
           sessions.forEach((session) => {
             const peopleIds = schedule[session]?.[constraint.group_id] || [];
             const counts: Record<string, number> = {};
@@ -296,12 +296,11 @@ export function useCompliance(problem: Problem, solution: Solution): CardData[] 
           break;
         }
         default: {
-          const anyConstraint = constraint as Constraint;
           cards.push({
             id: index,
-            constraint: anyConstraint,
-            type: anyConstraint.type,
-            title: anyConstraint.type,
+            constraint,
+            type: constraint.type,
+            title: constraint.type,
             adheres: true,
             violationsCount: 0,
             details: [],

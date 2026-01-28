@@ -38,7 +38,7 @@ const ConstraintComplianceCards: React.FC<Props> = ({ problem, solution }) => {
       case 'ShouldNotBeTogether':
         return constraint.people;
       case 'PairMeetingCount':
-        return (constraint as any).people as [string, string];
+        return constraint.people;
       default:
         return null;
     }

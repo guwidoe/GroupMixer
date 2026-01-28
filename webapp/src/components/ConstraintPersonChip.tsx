@@ -49,7 +49,7 @@ const ConstraintPersonChip: React.FC<ConstraintPersonChipProps> = ({ personId, p
           aria-label={`Remove ${displayName} from constraint`}
           onClick={(e) => {
             e.stopPropagation();
-            onRemove && onRemove(personId);
+            if (onRemove) onRemove(personId);
           }}
           className="ml-1 p-0.5 rounded hover:opacity-80 focus:outline-none"
           style={{
