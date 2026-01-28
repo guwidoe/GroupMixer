@@ -10,8 +10,7 @@ import {
   rowsToCsv,
   generateUniquePersonId,
 } from './ProblemEditor/helpers';
-import { PersonForm, GroupForm, AttributeForm } from './ProblemEditor/forms';
-import { BulkAddPeopleForm, BulkUpdatePeopleForm, BulkAddGroupsForm } from './ProblemEditor/bulk';
+import { ProblemEditorForms } from './ProblemEditor/ProblemEditorForms';
 import { PeopleSection } from './ProblemEditor/sections/PeopleSection';
 import { GroupsSection } from './ProblemEditor/sections/GroupsSection';
 import { SessionsSection } from './ProblemEditor/sections/SessionsSection';
@@ -1294,42 +1293,90 @@ export function ProblemEditor() {
       )}
 
       {/* Forms */}
-      {showPersonForm && (
-        <PersonForm
-          isEditing={editingPerson !== null}
-          editingPerson={editingPerson}
-          personForm={personForm}
-          setPersonForm={setPersonForm}
-          attributeDefinitions={attributeDefinitions}
-          sessionsCount={sessionsCount}
-          onSave={handleAddPerson}
-          onUpdate={handleUpdatePerson}
-          onCancel={() => {
-            setShowPersonForm(false);
-            setEditingPerson(null);
-            setPersonForm({ attributes: {}, sessions: [] });
-          }}
-          onShowAttributeForm={() => setShowAttributeForm(true)}
-        />
-      )}
-      {showGroupForm && (
-        <GroupForm
-          isEditing={editingGroup !== null}
-          editingGroup={editingGroup}
-          groupForm={groupForm}
-          setGroupForm={setGroupForm}
-          groupFormInputs={groupFormInputs}
-          setGroupFormInputs={setGroupFormInputs}
-          onSave={handleAddGroup}
-          onUpdate={handleUpdateGroup}
-          onCancel={() => {
-            setShowGroupForm(false);
-            setEditingGroup(null);
-            setGroupForm({ size: 4 });
-            setGroupFormInputs({});
-          }}
-        />
-      )}
+      <ProblemEditorForms
+        showPersonForm={showPersonForm}
+        editingPerson={editingPerson}
+        personForm={personForm}
+        setPersonForm={setPersonForm}
+        attributeDefinitions={attributeDefinitions}
+        sessionsCount={sessionsCount}
+        onSavePerson={handleAddPerson}
+        onUpdatePerson={handleUpdatePerson}
+        onCancelPerson={() => {
+          setShowPersonForm(false);
+          setEditingPerson(null);
+          setPersonForm({ attributes: {}, sessions: [] });
+        }}
+        onShowAttributeForm={() => setShowAttributeForm(true)}
+        showGroupForm={showGroupForm}
+        editingGroup={editingGroup}
+        groupForm={groupForm}
+        setGroupForm={setGroupForm}
+        groupFormInputs={groupFormInputs}
+        setGroupFormInputs={setGroupFormInputs}
+        onSaveGroup={handleAddGroup}
+        onUpdateGroup={handleUpdateGroup}
+        onCancelGroup={() => {
+          setShowGroupForm(false);
+          setEditingGroup(null);
+          setGroupForm({ size: 4 });
+          setGroupFormInputs({});
+        }}
+        showAttributeForm={showAttributeForm}
+        editingAttribute={editingAttribute}
+        newAttribute={newAttribute}
+        setNewAttribute={setNewAttribute}
+        onSaveAttribute={handleAddAttribute}
+        onUpdateAttribute={handleUpdateAttribute}
+        onCancelAttribute={() => {
+          setShowAttributeForm(false);
+          setNewAttribute({ key: '', values: [''] });
+          setEditingAttribute(null);
+        }}
+        showBulkForm={showBulkForm}
+        bulkTextMode={bulkTextMode}
+        setBulkTextMode={setBulkTextMode}
+        bulkCsvInput={bulkCsvInput}
+        setBulkCsvInput={setBulkCsvInput}
+        bulkHeaders={bulkHeaders}
+        setBulkHeaders={setBulkHeaders}
+        bulkRows={bulkRows}
+        setBulkRows={setBulkRows}
+        onSaveBulkPeople={handleAddBulkPeople}
+        onCloseBulkPeople={() => setShowBulkForm(false)}
+        showBulkUpdateForm={showBulkUpdateForm}
+        bulkUpdateTextMode={bulkUpdateTextMode}
+        setBulkUpdateTextMode={setBulkUpdateTextMode}
+        bulkUpdateCsvInput={bulkUpdateCsvInput}
+        setBulkUpdateCsvInput={setBulkUpdateCsvInput}
+        bulkUpdateHeaders={bulkUpdateHeaders}
+        setBulkUpdateHeaders={setBulkUpdateHeaders}
+        bulkUpdateRows={bulkUpdateRows}
+        setBulkUpdateRows={setBulkUpdateRows}
+        onRefreshBulkUpdate={() => {
+          const { headers, rows } = buildPeopleCsvFromCurrent();
+          setBulkUpdateHeaders(headers);
+          setBulkUpdateRows(rows);
+          setBulkUpdateCsvInput(rowsToCsv(headers, rows));
+        }}
+        onApplyBulkUpdate={handleApplyBulkUpdate}
+        onCloseBulkUpdate={() => setShowBulkUpdateForm(false)}
+        showGroupBulkForm={showGroupBulkForm}
+        groupBulkTextMode={groupBulkTextMode}
+        setGroupBulkTextMode={setGroupBulkTextMode}
+        groupBulkCsvInput={groupBulkCsvInput}
+        setGroupBulkCsvInput={setGroupBulkCsvInput}
+        groupBulkHeaders={groupBulkHeaders}
+        setGroupBulkHeaders={setGroupBulkHeaders}
+        groupBulkRows={groupBulkRows}
+        setGroupBulkRows={setGroupBulkRows}
+        onSaveGroupBulk={handleAddGroupBulkPeople}
+        onCloseGroupBulk={() => setShowGroupBulkForm(false)}
+        csvFileInputRef={csvFileInputRef}
+        onCsvFileSelected={handleCsvFileSelected}
+        groupCsvFileInputRef={groupCsvFileInputRef}
+        onGroupCsvFileSelected={handleGroupCsvFileSelected}
+      />
       <ConstraintFormModal
         isOpen={showConstraintForm}
         isEditing={editingConstraint !== null}
@@ -1346,72 +1393,6 @@ export function ProblemEditor() {
           setConstraintForm({ type: 'RepeatEncounter', penalty_weight: 1 });
         }}
       />
-
-      {showAttributeForm && (
-        <AttributeForm
-          isEditing={editingAttribute !== null}
-          newAttribute={newAttribute}
-          setNewAttribute={setNewAttribute}
-          onSave={handleAddAttribute}
-          onUpdate={handleUpdateAttribute}
-          onCancel={() => {
-            setShowAttributeForm(false);
-            setNewAttribute({ key: '', values: [''] });
-            setEditingAttribute(null);
-          }}
-        />
-      )}
-      {showBulkForm && (
-        <BulkAddPeopleForm
-          bulkTextMode={bulkTextMode}
-          setBulkTextMode={setBulkTextMode}
-          bulkCsvInput={bulkCsvInput}
-          setBulkCsvInput={setBulkCsvInput}
-          bulkHeaders={bulkHeaders}
-          setBulkHeaders={setBulkHeaders}
-          bulkRows={bulkRows}
-          setBulkRows={setBulkRows}
-          onSave={handleAddBulkPeople}
-          onClose={() => setShowBulkForm(false)}
-        />
-      )}
-      {showBulkUpdateForm && (
-        <BulkUpdatePeopleForm
-          bulkUpdateTextMode={bulkUpdateTextMode}
-          setBulkUpdateTextMode={setBulkUpdateTextMode}
-          bulkUpdateCsvInput={bulkUpdateCsvInput}
-          setBulkUpdateCsvInput={setBulkUpdateCsvInput}
-          bulkUpdateHeaders={bulkUpdateHeaders}
-          setBulkUpdateHeaders={setBulkUpdateHeaders}
-          bulkUpdateRows={bulkUpdateRows}
-          setBulkUpdateRows={setBulkUpdateRows}
-          onRefreshFromCurrent={() => {
-            const { headers, rows } = buildPeopleCsvFromCurrent();
-            setBulkUpdateHeaders(headers);
-            setBulkUpdateRows(rows);
-            setBulkUpdateCsvInput(rowsToCsv(headers, rows));
-          }}
-          onApply={handleApplyBulkUpdate}
-          onClose={() => setShowBulkUpdateForm(false)}
-        />
-      )}
-      {showGroupBulkForm && (
-        <BulkAddGroupsForm
-          groupBulkTextMode={groupBulkTextMode}
-          setGroupBulkTextMode={setGroupBulkTextMode}
-          groupBulkCsvInput={groupBulkCsvInput}
-          setGroupBulkCsvInput={setGroupBulkCsvInput}
-          groupBulkHeaders={groupBulkHeaders}
-          setGroupBulkHeaders={setGroupBulkHeaders}
-          groupBulkRows={groupBulkRows}
-          setGroupBulkRows={setGroupBulkRows}
-          onSave={handleAddGroupBulkPeople}
-          onClose={() => setShowGroupBulkForm(false)}
-        />
-      )}
-
-      <input type="file" accept=".csv,text/csv" ref={csvFileInputRef} className="hidden" onChange={handleCsvFileSelected} />
-      <input type="file" accept=".csv,text/csv" ref={groupCsvFileInputRef} className="hidden" onChange={handleGroupCsvFileSelected} />
       {showImmovableModal && (
         <ImmovablePeopleModal
            sessionsCount={sessionsCount}
