@@ -1,25 +1,18 @@
 import React, { useState, useRef } from 'react';
 import { useAppStore } from '../store';
-import { 
-  FolderPlus, 
-  FileText, 
-  Download, 
-  Upload, 
-  Copy, 
-  Trash2, 
-  Edit3, 
-  Star, 
-  Calendar,
-  Users,
-  Layers,
-  BarChart3,
+import {
+  FolderPlus,
+  Upload,
   Search,
   Filter,
   X,
   Save,
-  ChevronDown
+  ChevronDown,
 } from 'lucide-react';
 import type { ProblemSummary } from '../types';
+import { ProblemList } from './ProblemManager/ProblemList';
+import { CreateProblemDialog } from './ProblemManager/CreateProblemDialog';
+import { DeleteConfirmDialog } from './ProblemManager/DeleteConfirmDialog';
 
 interface ProblemManagerProps {
   isOpen: boolean;
@@ -214,16 +207,6 @@ export function ProblemManager({ isOpen, onClose }: ProblemManagerProps) {
     }
   };
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -413,174 +396,22 @@ export function ProblemManager({ isOpen, onClose }: ProblemManagerProps) {
 
         {/* Problem List */}
         <div className="flex-1 overflow-auto p-4 sm:p-6">
-          {filteredProblems.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>No problems found</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {searchTerm ? 'Try adjusting your search terms.' : 'Create your first problem to get started.'}
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredProblems.map((problem) => (
-                <div
-                  key={problem.id}
-                  className={`card hover:shadow-md transition-shadow cursor-pointer ${
-                    problem.id === selectedProblemId ? 'ring-2 ring-blue-500' : ''
-                  }`}
-                >
-                  {/* Problem Header */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1 min-w-0">
-                      {editingId === problem.id ? (
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="text"
-                            className="input text-sm flex-1"
-                            value={editingName}
-                            onChange={(e) => setEditingName(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleSaveRename();
-                              if (e.key === 'Escape') handleCancelRename();
-                            }}
-                            autoFocus
-                          />
-                          <button
-                            onClick={handleSaveRename}
-                            className="text-green-600 hover:text-green-700 p-1"
-                          >
-                            <Save className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={handleCancelRename}
-                            className="text-red-600 hover:text-red-700 p-1"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div
-                          className="flex items-center space-x-2"
-                          onClick={() => loadProblem(problem.id)}
-                        >
-                          <h3 className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-                            {problem.name}
-                          </h3>
-                          {problem.isTemplate && (
-                            <Star className="h-4 w-4 text-yellow-500 flex-shrink-0" />
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Problem Stats */}
-                  <div 
-                    className="grid grid-cols-2 gap-2 text-sm mb-3"
-                    style={{ color: 'var(--text-secondary)' }}
-                    onClick={() => loadProblem(problem.id)}
-                  >
-                    <div className="flex items-center space-x-1">
-                      <Users className="h-3 w-3" />
-                      <span>{problem.peopleCount} people</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Layers className="h-3 w-3" />
-                      <span>{problem.groupsCount} groups</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>{problem.sessionsCount} sessions</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <BarChart3 className="h-3 w-3" />
-                      <span>{problem.resultsCount} results</span>
-                    </div>
-                  </div>
-
-                  {/* Timestamps */}
-                  <div className="text-xs mb-3" style={{ color: 'var(--text-tertiary)' }}>
-                    <div>Created: {formatDate(problem.createdAt)}</div>
-                    <div>Updated: {formatDate(problem.updatedAt)}</div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRename(problem.id, problem.name);
-                        }}
-                        className="p-1 transition-colors"
-                        style={{ color: 'var(--text-tertiary)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
-                        title="Rename"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDuplicate(problem.id, problem.name);
-                        }}
-                        className="p-1 transition-colors"
-                        style={{ color: 'var(--text-tertiary)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
-                        title="Duplicate"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleTemplate(problem.id);
-                        }}
-                        className="p-1 transition-colors"
-                        style={{ color: problem.isTemplate ? 'var(--color-warning-500)' : 'var(--text-tertiary)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = problem.isTemplate ? 'var(--color-warning-500)' : 'var(--text-tertiary)'}
-                        title={problem.isTemplate ? 'Remove from templates' : 'Add to templates'}
-                      >
-                        <Star className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          exportProblem(problem.id);
-                        }}
-                        className="p-1 transition-colors"
-                        style={{ color: 'var(--text-tertiary)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
-                        title="Export"
-                      >
-                        <Download className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(problem.id);
-                        }}
-                        className="p-1 transition-colors"
-                        style={{ color: 'var(--color-error-400)' }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-error-600)'}
-                        onMouseLeave={(e) => e.currentTarget.style.color = 'var(--color-error-400)'}
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <ProblemList
+            problems={filteredProblems}
+            searchTerm={searchTerm}
+            selectedProblemId={selectedProblemId}
+            editingId={editingId}
+            editingName={editingName}
+            setEditingName={setEditingName}
+            onSaveRename={handleSaveRename}
+            onCancelRename={handleCancelRename}
+            onRenameStart={handleRename}
+            onLoadProblem={loadProblem}
+            onDuplicate={handleDuplicate}
+            onToggleTemplate={toggleTemplate}
+            onExport={exportProblem}
+            onDelete={handleDelete}
+          />
         </div>
 
         {/* Hidden file input for import */}
@@ -593,86 +424,26 @@ export function ProblemManager({ isOpen, onClose }: ProblemManagerProps) {
         />
       </div>
 
-      {/* Create Problem Dialog */}
-      {showCreateDialog && (
-        <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-60 p-4">
-          <div className="rounded-lg shadow-xl p-6 w-full max-w-md mx-auto modal-content">
-            <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-              {newProblemMode === 'empty' ? 'Create New Problem' : 'Duplicate Current Problem'}
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Problem Name</label>
-                <input
-                  type="text"
-                  value={newProblemName}
-                  onChange={(e) => setNewProblemName(e.target.value)}
-                  className="input w-full text-base py-3"
-                  placeholder="Enter problem name..."
-                  autoFocus
-                />
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="isTemplate"
-                  checked={newProblemIsTemplate}
-                  onChange={(e) => setNewProblemIsTemplate(e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <label htmlFor="isTemplate" className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  Save as template
-                </label>
-              </div>
-            </div>
-            <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-4 border-t" style={{ borderColor: 'var(--border-primary)' }}>
-              <button
-                onClick={() => {
-                  setShowCreateDialog(false);
-                  setNewProblemName('');
-                  setNewProblemIsTemplate(false);
-                }}
-                className="btn-secondary flex-1 sm:flex-none px-6 py-3 text-base font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateProblem}
-                disabled={!newProblemName.trim()}
-                className="btn-primary flex-1 sm:flex-none px-6 py-3 text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Create
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CreateProblemDialog
+        open={showCreateDialog}
+        mode={newProblemMode}
+        newProblemName={newProblemName}
+        setNewProblemName={setNewProblemName}
+        newProblemIsTemplate={newProblemIsTemplate}
+        setNewProblemIsTemplate={setNewProblemIsTemplate}
+        onCreate={handleCreateProblem}
+        onCancel={() => {
+          setShowCreateDialog(false);
+          setNewProblemName('');
+          setNewProblemIsTemplate(false);
+        }}
+      />
 
-      {/* Delete Confirmation Dialog */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-60 p-4">
-          <div className="rounded-lg shadow-xl p-6 w-full max-w-md mx-auto modal-content">
-            <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Confirm Delete</h3>
-            <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
-              Are you sure you want to delete this problem? This action cannot be undone.
-            </p>
-            <div className="flex flex-col sm:flex-row justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteConfirm(null)}
-                className="btn-secondary flex-1 sm:flex-none px-6 py-3 text-base font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="btn-error flex-1 sm:flex-none px-6 py-3 text-base font-medium"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmDialog
+        open={!!showDeleteConfirm}
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteConfirm(null)}
+      />
     </div>
   );
 } 
