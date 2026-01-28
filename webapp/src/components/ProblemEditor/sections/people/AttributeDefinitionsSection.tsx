@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Edit, Plus, Tag, Trash2 } from 'lucide-react';
 import type { AttributeDefinition } from '../../../../types';
 
@@ -17,11 +17,8 @@ export function AttributeDefinitionsSection({
 }: AttributeDefinitionsSectionProps) {
   const [showAttributesSection, setShowAttributesSection] = useState(false);
 
-  useEffect(() => {
-    if (attributeDefinitions.length === 0) {
-      setShowAttributesSection(true);
-    }
-  }, [attributeDefinitions.length]);
+  const isEmpty = attributeDefinitions.length === 0;
+  const effectiveShowAttributes = showAttributesSection || isEmpty;
 
   return (
     <div className="space-y-4">
@@ -31,7 +28,7 @@ export function AttributeDefinitionsSection({
           className="flex items-center gap-2 text-left transition-colors min-w-0"
           style={{ flex: '1 1 0%' }}
         >
-          {showAttributesSection ? (
+          {effectiveShowAttributes ? (
             <ChevronDown className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
           ) : (
             <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
@@ -50,7 +47,7 @@ export function AttributeDefinitionsSection({
         </button>
       </div>
 
-      {showAttributesSection && (
+      {effectiveShowAttributes && (
         <div
           className="rounded-lg border transition-colors"
           style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}

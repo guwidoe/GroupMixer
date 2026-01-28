@@ -31,7 +31,7 @@ export function ResultsHistory() {
   const [configDetailsOpenId, setConfigDetailsOpenId] = useState<string | null>(null);
 
   const currentProblem = currentProblemId ? savedProblems[currentProblemId] : null;
-  const results = currentProblem?.results || [];
+  const results = useMemo(() => currentProblem?.results || [], [currentProblem?.results]);
   const allResultIds = results.map(r => r.id);
 
   const mostRecentResult = useMemo(

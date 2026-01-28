@@ -4,7 +4,6 @@
 
 import React from 'react';
 import { X, Plus } from 'lucide-react';
-import type { AttributeDefinition } from '../../../types';
 
 interface AttributeFormProps {
   isEditing: boolean;

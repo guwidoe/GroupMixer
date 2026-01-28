@@ -37,7 +37,7 @@ export function PeopleDirectory({
   const [peopleSearch, setPeopleSearch] = useState('');
 
   const searchValue = peopleSearch.trim().toLowerCase();
-  const basePeople = problem?.people ?? [];
+  const basePeople = useMemo(() => problem?.people ?? [], [problem?.people]);
 
   const sortedPeople = useMemo(() => {
     const filteredPeople = searchValue
