@@ -23,6 +23,9 @@ interface Props {
   onDeleteConstraint: (index: number) => void;
 }
 
+type PairMeetingCountConstraint = Extract<Constraint, { type: 'PairMeetingCount' }>;
+type ShouldStayTogetherConstraint = Extract<Constraint, { type: 'ShouldStayTogether' }>;
+
 const SOFT_TABS = ['RepeatEncounter', 'ShouldNotBeTogether', 'ShouldStayTogether', 'AttributeBalance', 'PairMeetingCount'] as const;
 
 const constraintTypeLabels: Record<typeof SOFT_TABS[number], string> = {
@@ -57,19 +60,21 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
   const selectedItems = constraintsByType[activeTab] || [];
 
   const shouldItems = (constraintsByType['ShouldStayTogether'] || []) as Array<{ constraint: Constraint; index: number }>;
-  const filteredShouldItems = shouldItems.filter(({ constraint }) => {
-    if (constraint.type !== 'ShouldStayTogether') return false;
-    const ft = filterText.trim().toLowerCase();
-    if (!ft) return true;
-    const textPool: string[] = [];
-    for (const pid of constraint.people) {
-      textPool.push(pid.toLowerCase());
+  const filteredShouldItems = shouldItems.filter(
+    (item): item is { constraint: ShouldStayTogetherConstraint; index: number } => {
+      if (item.constraint.type !== 'ShouldStayTogether') return false;
+      const ft = filterText.trim().toLowerCase();
+      if (!ft) return true;
+      const textPool: string[] = [];
+      for (const pid of item.constraint.people) {
+        textPool.push(pid.toLowerCase());
+      }
+      if (Array.isArray(item.constraint.sessions)) {
+        textPool.push(...item.constraint.sessions.map((s) => String(s + 1)));
+      }
+      return textPool.some((t) => t.includes(ft));
     }
-    if (Array.isArray(constraint.sessions)) {
-      textPool.push(...constraint.sessions.map((s) => String(s + 1)));
-    }
-    return textPool.some((t) => t.includes(ft));
-  });
+  );
 
   return (
     <div className="space-y-4 pt-0 pl-0">
@@ -264,20 +269,20 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
                     <>
                       <div className="flex flex-wrap items-center gap-1">
                         <span>Pair:</span>
-                        <ConstraintPersonChip personId={(constraint as any).people[0]} people={problem.people} />
+                        <ConstraintPersonChip personId={(constraint as PairMeetingCountConstraint).people[0]} people={problem.people} />
                         <span>&</span>
-                        <ConstraintPersonChip personId={(constraint as any).people[1]} people={problem.people} />
+                        <ConstraintPersonChip personId={(constraint as PairMeetingCountConstraint).people[1]} people={problem.people} />
                       </div>
                       <div>
-                        Target meetings: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{(constraint as any).target_meetings}</span>
+                        Target meetings: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{(constraint as PairMeetingCountConstraint).target_meetings}</span>
                       </div>
                       <div>
-                        Mode: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{(constraint as any).mode || 'at_least'}</span>
+                        Mode: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{(constraint as PairMeetingCountConstraint).mode || 'at_least'}</span>
                       </div>
                       <div className="flex items-center gap-1 text-xs" style={{color:'var(--color-accent)'}}>
                         <Clock className="w-3 h-3" />
                         <span>Sessions:</span>
-                        {(constraint as any).sessions && (constraint as any).sessions.length > 0 ? (constraint as any).sessions.map((s:number)=>s+1).join(', ') : 'All Sessions'}
+                        {(constraint as PairMeetingCountConstraint).sessions && (constraint as PairMeetingCountConstraint).sessions.length > 0 ? (constraint as PairMeetingCountConstraint).sessions.map((s:number)=>s+1).join(', ') : 'All Sessions'}
                       </div>
                     </>
                   )}
@@ -315,28 +320,28 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
           people={GetProblem().people}
           selectedConstraints={filteredShouldItems
             .filter(({ index }) => selectedShouldIndices.includes(index))
-            .map(({ index, constraint }) => ({ index, people: (constraint as any).people as string[] }))}
+            .map(({ index, constraint }) => ({ index, people: constraint.people }))}
           onCancel={() => setShowPairConvert(false)}
           onConvert={({ retainOriginal, sessions, target, mode, useSourceWeight, overrideWeight, anchorsByIndex }) => {
             const current = GetProblem();
             const newConstraints: Constraint[] = [];
             current.constraints.forEach((c, i) => {
               if (c.type === 'ShouldStayTogether' && selectedShouldIndices.includes(i)) {
-                const baseWeight = (c as any).penalty_weight;
+                const baseWeight = c.penalty_weight;
                 const weight = useSourceWeight && typeof baseWeight === 'number' ? baseWeight : (overrideWeight as number);
-                const people = (c as any).people as string[];
+                const people = c.people;
                 const perConstraintAnchor = anchorsByIndex && anchorsByIndex[i];
                 const anchor = perConstraintAnchor && people.includes(perConstraintAnchor) ? perConstraintAnchor : people[0];
                 people.forEach((p) => {
                   if (p === anchor) return;
                   newConstraints.push({
                     type: 'PairMeetingCount',
-                    people: [anchor, p] as any,
+                    people: [anchor, p],
                     sessions,
                     target_meetings: target,
                     mode,
                     penalty_weight: weight,
-                  } as any);
+                  });
                 });
                 if (retainOriginal) newConstraints.push(c);
               } else {

@@ -12,9 +12,18 @@ interface Props {
   onSave: (constraint: Constraint) => void;
 }
 
+type PairMeetingForm = {
+  a: string;
+  b: string;
+  target: number | '';
+  sessions: number[];
+  mode: 'at_least' | 'exact' | 'at_most';
+  weight: number | null;
+};
+
 const PairMeetingCountModal: React.FC<Props> = ({ people, totalSessions, initial, onCancel, onSave }) => {
   const editing = !!initial && initial.type === 'PairMeetingCount';
-  const initialState = useMemo(() => {
+  const initialState = useMemo((): PairMeetingForm => {
     if (editing) {
       const c = initial as Extract<Constraint, { type: 'PairMeetingCount' }>;
       return {
@@ -31,7 +40,7 @@ const PairMeetingCountModal: React.FC<Props> = ({ people, totalSessions, initial
       b: people[1]?.id || '',
       target: 1,
       sessions: [] as number[],
-      mode: 'at_least' as 'at_least' | 'exact' | 'at_most',
+      mode: 'at_least',
       weight: 100,
     };
   }, [editing, initial, people]);
@@ -58,22 +67,22 @@ const PairMeetingCountModal: React.FC<Props> = ({ people, totalSessions, initial
       return;
     }
     const subset = form.sessions.length > 0 ? form.sessions : allSessions;
-    if (form.target < 0 || form.target > subset.length) {
+    if (form.target === '' || form.target < 0 || form.target > subset.length) {
       setError(`Target must be between 0 and ${subset.length} for the selected sessions.`);
       return;
     }
-    if (form.weight <= 0) {
+    if (form.weight === null || form.weight <= 0) {
       setError('Penalty weight must be positive.');
       return;
     }
-    const constraint: Constraint = {
+    const constraint: Extract<Constraint, { type: 'PairMeetingCount' }> = {
       type: 'PairMeetingCount',
       people: [form.a, form.b],
       sessions: form.sessions,
       target_meetings: form.target,
       mode: form.mode,
       penalty_weight: form.weight,
-    } as unknown as Constraint;
+    };
     onSave(constraint);
   };
 
@@ -155,16 +164,16 @@ const PairMeetingCountModal: React.FC<Props> = ({ people, totalSessions, initial
                 type="number"
                 className="input w-full"
                 min={0}
-                value={(form as any).target === '' ? '' : form.target}
+                value={form.target === '' ? '' : form.target}
                 onChange={(e) => {
                   const v = e.target.value;
-                  setForm({ ...form, target: v === '' ? ('' as any) : parseInt(v, 10) });
+                  setForm({ ...form, target: v === '' ? '' : parseInt(v, 10) });
                 }}
               />
             </div>
             <div>
               <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Mode</label>
-              <select className="select w-full" value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value as any })}>
+              <select className="select w-full" value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value as PairMeetingForm['mode'] })}>
                 <option value="at_least">At least</option>
                 <option value="exact">Exact</option>
                 <option value="at_most">At most</option>
@@ -179,12 +188,12 @@ const PairMeetingCountModal: React.FC<Props> = ({ people, totalSessions, initial
               className="input w-full"
               min={0}
               step={0.1}
-              value={(form as any).weight === null ? '' : form.weight}
-              onChange={(e) => {
-                const v = e.target.value;
-                setForm({ ...form, weight: v === '' ? (null as any) : parseFloat(v) });
-              }}
-            />
+                value={form.weight === null ? '' : form.weight}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setForm({ ...form, weight: v === '' ? null : parseFloat(v) });
+                }}
+              />
           </div>
         </div>
 

@@ -43,7 +43,7 @@ const AttributeBalanceModal: React.FC<Props> = ({ initial, onCancel, onSave }) =
         desired_values: initial.desired_values || {},
         penalty_weight: initial.penalty_weight || 10,
         sessions: initial.sessions || [],
-        mode: (initial as any).mode ?? 'exact',
+        mode: initial.mode ?? 'exact',
       };
     }
     return {
