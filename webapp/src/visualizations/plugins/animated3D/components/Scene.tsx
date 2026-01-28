@@ -1,9 +1,8 @@
-import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { GLTFHumanoids } from "./GLTFHumanoids";
-import { PersonLabels } from "./InstancedHumanoids";
 import { Dinosaur, type DinoState } from "./Dinosaur";
 import { Stork, type StorkState } from "./Stork";
 import { GroupPlatform } from "./GroupPlatform";
@@ -19,6 +18,7 @@ interface SceneProps {
   transitions: SessionTransition[];
   schedule: NormalizedSchedule;
   playbackRef: React.MutableRefObject<PlaybackState>;
+  playbackState: PlaybackState;
   sceneScale: number;
   showPeopleLabels: boolean;
   onPlayDinoSound?: (sound: "roar" | "chomp" | "dig") => void;
@@ -54,6 +54,7 @@ export function Scene({
   transitions,
   schedule,
   playbackRef,
+  playbackState,
   sceneScale,
   showPeopleLabels,
   onPlayDinoSound,
@@ -74,17 +75,6 @@ export function Scene({
   
   // Track the previous session to detect resets
   const prevSessionRef = useRef<number>(-1);
-
-  // Clear everything when problem changes
-  useEffect(() => {
-    triggeredEventsRef.current = new Set();
-    lastCheckedSessionRef.current = -1;
-    lastProgressRef.current = 0;
-    prevSessionRef.current = -1;
-    setActiveDinos([]);
-    setActiveStorks([]);
-    setCoordination({ eatenPeople: new Map(), deliveredPeople: new Map() });
-  }, [personSessionData]);
 
   const handleDinoPhaseChange = useCallback((phase: DinoState, personId: string) => {
     if (phase === "chomping") {
@@ -276,11 +266,11 @@ export function Scene({
       <GLTFHumanoids
         personData={personSessionData}
         playbackRef={playbackRef}
-        transitions={transitions}
         sessionCount={schedule.sessionCount}
         onUIUpdate={onUIUpdate}
         coordination={coordination}
         showLabels={showPeopleLabels}
+        playbackState={playbackState}
       />
 
       {activeDinos.map((dino) => (

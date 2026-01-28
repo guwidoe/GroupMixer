@@ -6,19 +6,9 @@ import { useAnimationState } from "./hooks/useAnimationState";
 import { useAudio } from "./hooks/useAudio";
 import { Scene } from "./components/Scene";
 import { PlaybackControls } from "./components/PlaybackControls";
-import { Loader2, Tag, EyeOff } from "lucide-react";
+import { Tag, EyeOff } from "lucide-react";
 import type { PlaybackState } from "./types";
-
-function LoadingFallback() {
-  return (
-    <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-      <div className="flex flex-col items-center gap-3">
-        <Loader2 className="animate-spin text-white" size={32} />
-        <span className="text-white text-sm">Loading 3D scene...</span>
-      </div>
-    </div>
-  );
-}
+import { LoadingFallback } from "./components/LoadingFallback";
 
 export function Animated3DVisualization({ data }: VisualizationComponentProps) {
   const problem = data.problem;
@@ -45,6 +35,8 @@ export function Animated3DVisualization({ data }: VisualizationComponentProps) {
     reset,
     playbackState,
   } = useAnimationState(problem, schedule);
+
+  const sceneKey = useMemo(() => JSON.stringify(schedule.sessions), [schedule.sessions]);
 
   // UI state for playback (throttled updates from animation loop)
   const [uiPlayback, setUIPlayback] = useState<PlaybackState>(playbackState);
@@ -217,11 +209,13 @@ export function Animated3DVisualization({ data }: VisualizationComponentProps) {
       >
         <Suspense fallback={null}>
           <Scene
+            key={sceneKey}
             groupLayouts={groupLayouts}
             personSessionData={personSessionData}
             transitions={transitions}
             schedule={schedule}
             playbackRef={playbackRef}
+            playbackState={uiPlayback}
             sceneScale={sceneScale}
             showPeopleLabels={showPeopleLabels}
             onPlayDinoSound={handleDinoSound}

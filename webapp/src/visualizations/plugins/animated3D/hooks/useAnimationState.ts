@@ -293,17 +293,19 @@ export function useAnimationState(
     [problem, schedule, groupLayouts]
   );
 
-  // Use ref for playback state to avoid re-renders during animation
-  const playbackRef = useRef<PlaybackState>({
+  const initialPlayback: PlaybackState = {
     isPlaying: false,
     currentSession: 0,
     transitionProgress: 0,
     speed: 1,
-  });
+  };
+
+  // Use ref for playback state to avoid re-renders during animation
+  const playbackRef = useRef<PlaybackState>(initialPlayback);
 
   // Keep a state copy for UI updates (throttled)
   const [playbackState, setPlaybackState] = useState<PlaybackState>(
-    playbackRef.current
+    initialPlayback
   );
 
   // Control functions - these update the ref immediately

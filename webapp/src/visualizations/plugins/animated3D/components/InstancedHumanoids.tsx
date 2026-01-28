@@ -1,9 +1,8 @@
 import { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import type { PersonSessionData } from "../hooks/useAnimationState";
-import type { PlaybackState, SessionTransition } from "../types";
+import type { PlaybackState } from "../types";
 import type { AnimationCoordination } from "./Scene";
 import { usePersonBuffers } from "./InstancedHumanoids/buffers";
 import { useHumanoidColors } from "./InstancedHumanoids/coloring";
@@ -11,7 +10,6 @@ import { hideInstancedPerson } from "./InstancedHumanoids/utils";
 interface InstancedHumanoidsProps {
   personData: PersonSessionData[];
   playbackRef: React.MutableRefObject<PlaybackState>;
-  transitions: SessionTransition[];
   sessionCount: number;
   onUIUpdate: (state: PlaybackState) => void;
   coordination: AnimationCoordination;
@@ -26,7 +24,6 @@ const tempEuler = new THREE.Euler();
 export function InstancedHumanoids({
   personData,
   playbackRef,
-  transitions,
   sessionCount,
   onUIUpdate,
   coordination,
@@ -442,58 +439,3 @@ export function InstancedHumanoids({
   );
 }
 
-// Labels component
-interface PersonLabelsProps {
-  personData: PersonSessionData[];
-  playbackRef: React.MutableRefObject<PlaybackState>;
-}
-
-export function PersonLabels({ personData, playbackRef }: PersonLabelsProps) {
-  const maxLabels = 30;
-  const labelData = personData.slice(0, maxLabels);
-
-  return (
-    <>
-      {labelData.map((p) => (
-        <PersonLabel key={p.personId} personData={p} playbackRef={playbackRef} />
-      ))}
-    </>
-  );
-}
-
-interface PersonLabelProps {
-  personData: PersonSessionData;
-  playbackRef: React.MutableRefObject<PlaybackState>;
-}
-
-function PersonLabel({ personData, playbackRef }: PersonLabelProps) {
-  const currentSession = playbackRef.current.currentSession;
-  const visible = personData.presentInSession[currentSession];
-  const position = personData.sessionPositions[currentSession];
-
-  if (!visible) return null;
-
-  return (
-    <Html
-      position={[position.x, position.y + 1.8, position.z]}
-      center
-      distanceFactor={15}
-      style={{ pointerEvents: "none", userSelect: "none" }}
-    >
-      <div
-        style={{
-          background: "rgba(0, 0, 0, 0.75)",
-          color: "white",
-          padding: "3px 8px",
-          borderRadius: "4px",
-          fontSize: "11px",
-          fontFamily: "system-ui, sans-serif",
-          whiteSpace: "nowrap",
-          fontWeight: 500,
-        }}
-      >
-        {personData.name}
-      </div>
-    </Html>
-  );
-}

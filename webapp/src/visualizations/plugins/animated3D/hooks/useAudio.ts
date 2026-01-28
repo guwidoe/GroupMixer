@@ -4,34 +4,6 @@ import type { AudioManager } from "../types";
 // Generate simple audio tones using Web Audio API
 // (Real project would use actual sound files)
 
-function createOscillatorSound(
-  audioContext: AudioContext,
-  frequency: number,
-  duration: number,
-  type: OscillatorType = "square"
-): AudioBufferSourceNode | null {
-  // Create a simple tone generator
-  const oscillator = audioContext.createOscillator();
-  const gainNode = audioContext.createGain();
-
-  oscillator.type = type;
-  oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-
-  gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-  gainNode.gain.exponentialRampToValueAtTime(
-    0.01,
-    audioContext.currentTime + duration
-  );
-
-  oscillator.connect(gainNode);
-  gainNode.connect(audioContext.destination);
-
-  oscillator.start();
-  oscillator.stop(audioContext.currentTime + duration);
-
-  return null;
-}
-
 // Generate a roar-like sound
 function playRoar(audioContext: AudioContext) {
   // Low rumbling roar
