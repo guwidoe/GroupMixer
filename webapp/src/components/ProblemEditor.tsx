@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store';
-import { Users, Calendar, Plus, Save, Upload, Trash2, Edit, X, Zap, Hash, ChevronDown, ChevronRight, BarChart3, Lock } from 'lucide-react';
+import { X } from 'lucide-react';
 import type { Person, Group, Constraint, Problem, PersonFormData, GroupFormData, AttributeDefinition, SolverSettings } from '../types';
 
 // Extracted components from ProblemEditor directory
@@ -12,7 +11,6 @@ import {
   rowsToCsv,
   generateUniquePersonId,
 } from './ProblemEditor/helpers';
-import type { DemoCaseWithMetrics } from './ProblemEditor/types';
 import { PersonForm, GroupForm, AttributeForm } from './ProblemEditor/forms';
 import { BulkAddPeopleForm, BulkUpdatePeopleForm, BulkAddGroupsForm } from './ProblemEditor/bulk';
 import { PeopleSection } from './ProblemEditor/sections/PeopleSection';
@@ -22,6 +20,8 @@ import { ObjectivesSection } from './ProblemEditor/sections/ObjectivesSection';
 import { HardConstraintsSection } from './ProblemEditor/sections/HardConstraintsSection';
 import { SoftConstraintsSection } from './ProblemEditor/sections/SoftConstraintsSection';
 import { ConstraintsSection } from './ProblemEditor/sections/ConstraintsSection';
+import { ProblemEditorHeader } from './ProblemEditor/ProblemEditorHeader';
+import { ProblemEditorTabs } from './ProblemEditor/ProblemEditorTabs';
 import ImmovablePeopleModal from './modals/ImmovablePeopleModal';
 import RepeatEncounterModal from './modals/RepeatEncounterModal';
 import AttributeBalanceModal from './modals/AttributeBalanceModal';
@@ -40,8 +40,6 @@ export function ProblemEditor() {
     loadDemoCase,
     loadDemoCaseOverwrite,
     loadDemoCaseNewProblem,
-    demoDropdownOpen,
-    setDemoDropdownOpen,
     attributeDefinitions,
     addAttributeDefinition,
     removeAttributeDefinition,
@@ -97,71 +95,6 @@ export function ProblemEditor() {
     return 1;
   })();
 
-  // Demo dropdown refs & positioning helpers
-  const demoDropdownRef = useRef<HTMLDivElement>(null); // wraps the trigger button
-  const dropdownMenuRef = useRef<HTMLDivElement>(null); // portal menu element
-  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
-  
-  // Demo cases with metrics state
-  const [demoCasesWithMetrics, setDemoCasesWithMetrics] = useState<DemoCaseWithMetrics[]>([]);
-  const [loadingDemoMetrics, setLoadingDemoMetrics] = useState(false);
-
-  // Load demo cases with metrics when dropdown is opened
-  useEffect(() => {
-    if (demoDropdownOpen && demoCasesWithMetrics.length === 0 && !loadingDemoMetrics) {
-      setLoadingDemoMetrics(true);
-      // Dynamic import to enable code splitting (avoids static + dynamic import warning)
-      import('../services/demoDataService')
-        .then(module => module.loadDemoCasesWithMetrics())
-        .then(cases => {
-          setDemoCasesWithMetrics(cases);
-        })
-        .catch(error => {
-          console.error('Failed to load demo cases with metrics:', error);
-          addNotification({
-            type: 'error',
-            title: 'Demo Cases Load Failed',
-            message: 'Failed to load demo case metrics',
-          });
-        })
-        .finally(() => {
-          setLoadingDemoMetrics(false);
-        });
-    }
-  }, [demoDropdownOpen, demoCasesWithMetrics.length, loadingDemoMetrics, addNotification]);
-
-  // When dropdown opens, calculate its viewport position (20rem wide → 320px)
-  useEffect(() => {
-    if (demoDropdownOpen && demoDropdownRef.current) {
-      const rect = demoDropdownRef.current.getBoundingClientRect();
-      const dropdownWidth = 320;
-      setDropdownPosition({
-        top: rect.bottom + window.scrollY + 4, // 4px gap (mt-1)
-        left: rect.right - dropdownWidth + window.scrollX,
-      });
-    }
-  }, [demoDropdownOpen]);
-
-  // Click outside to close demo dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (
-        demoDropdownRef.current &&
-        !demoDropdownRef.current.contains(target) &&
-        dropdownMenuRef.current &&
-        !dropdownMenuRef.current.contains(target)
-      ) {
-        setDemoDropdownOpen(false);
-      }
-    };
-
-    if (demoDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [demoDropdownOpen, setDemoDropdownOpen]);
-
   // Auto-save functionality
   useEffect(() => {
     if (problem && currentProblemId) {
@@ -208,6 +141,7 @@ export function ProblemEditor() {
   // Demo data warning modal state
   const [showDemoWarningModal, setShowDemoWarningModal] = useState(false);
   const [pendingDemoCaseId, setPendingDemoCaseId] = useState<string | null>(null);
+  const [pendingDemoCaseName, setPendingDemoCaseName] = useState<string | null>(null);
 
   // New UI state for Constraints tab
   const SOFT_TYPES = useMemo(() => ['RepeatEncounter', 'AttributeBalance', 'ShouldNotBeTogether', 'ShouldStayTogether', 'PairMeetingCount'] as const, []);
@@ -244,7 +178,7 @@ export function ProblemEditor() {
     setShowProblemManager(true);
   };
 
-  const handleDemoCaseClick = (demoCaseId: string) => {
+  const handleDemoCaseClick = (demoCaseId: string, demoCaseName: string) => {
     // Check if current problem has content
     const currentProblem = problem;
     const hasContent = currentProblem && (
@@ -256,6 +190,7 @@ export function ProblemEditor() {
     if (hasContent) {
       // Show warning modal
       setPendingDemoCaseId(demoCaseId);
+      setPendingDemoCaseName(demoCaseName);
       setShowDemoWarningModal(true);
     } else {
       // Load directly if no content
@@ -268,6 +203,7 @@ export function ProblemEditor() {
       loadDemoCaseOverwrite(pendingDemoCaseId);
       setShowDemoWarningModal(false);
       setPendingDemoCaseId(null);
+      setPendingDemoCaseName(null);
     }
   };
 
@@ -276,12 +212,14 @@ export function ProblemEditor() {
       loadDemoCaseNewProblem(pendingDemoCaseId);
       setShowDemoWarningModal(false);
       setPendingDemoCaseId(null);
+      setPendingDemoCaseName(null);
     }
   };
 
   const handleDemoCancel = () => {
     setShowDemoWarningModal(false);
     setPendingDemoCaseId(null);
+    setPendingDemoCaseName(null);
   };
 
   const handleSessionsCountChange = (count: number | null) => {
@@ -1642,158 +1580,19 @@ export function ProblemEditor() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0">
-        <div>
-          <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Problem Setup</h2>
-          <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
-            Configure people, groups, and constraints for optimization
-          </p>
-        </div>
-        <div className="w-full overflow-x-auto">
-          <div className="flex flex-row flex-nowrap gap-2 justify-end w-full overflow-visible">
-            <button
-              onClick={handleLoadProblem}
-              className="flex items-center gap-1 sm:gap-2 justify-center px-1.5 sm:px-3 py-1.5 rounded-md font-medium transition-colors btn-secondary min-w-0 text-xs sm:text-sm focus-visible:outline-none"
-              style={{ outline: 'none', boxShadow: 'none' }}
-            >
-              <Upload className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-              <span className="truncate">Load</span>
-            </button>
-            <button
-              onClick={handleSaveProblem}
-              className="flex items-center gap-1 sm:gap-2 justify-center px-1.5 sm:px-3 py-1.5 rounded-md font-medium transition-colors btn-secondary min-w-0 text-xs sm:text-sm focus-visible:outline-none"
-              style={{ outline: 'none', boxShadow: 'none' }}
-            >
-              <Save className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-              <span className="truncate">Save</span>
-            </button>
-            <div className="relative" ref={demoDropdownRef}>
-              <button
-                onClick={() => setDemoDropdownOpen(!demoDropdownOpen)}
-                className="flex items-center gap-1 sm:gap-2 justify-center px-1.5 sm:px-3 py-1.5 rounded-md font-medium transition-colors btn-secondary min-w-0 text-xs sm:text-sm focus-visible:outline-none"
-                style={{ outline: 'none', boxShadow: 'none' }}
-              >
-                <Zap className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-                <span>Demo Data</span>
-                <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-              </button>
-              {/* Dropdown menu rendered in portal; inline fallback removed */}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* === Demo Data dropdown rendered in a portal so it's not clipped by its parent === */}
-      {demoDropdownOpen && dropdownPosition && createPortal(
-        <div
-          ref={dropdownMenuRef}
-          className="fixed z-50 w-80 rounded-md shadow-lg border overflow-hidden max-h-96 overflow-y-auto"
-          style={{
-            top: dropdownPosition.top,
-            left: dropdownPosition.left,
-            backgroundColor: 'var(--bg-primary)',
-            borderColor: 'var(--border-primary)',
-          }}
-        >
-          {loadingDemoMetrics ? (
-            <div className="p-4 text-center" style={{ color: 'var(--text-secondary)' }}>
-              <div
-                className="inline-block animate-spin rounded-full h-4 w-4 border-b-2"
-                style={{ borderColor: 'var(--color-accent)' }}
-              ></div>
-              <span className="ml-2 text-sm">Loading demo cases...</span>
-            </div>
-          ) : (
-            <>
-              {(['Simple', 'Intermediate', 'Advanced', 'Benchmark'] as const).map((category) => {
-                const casesInCategory = demoCasesWithMetrics.filter((c) => c.category === category);
-                if (casesInCategory.length === 0) return null;
-
-                return (
-                  <div key={category}>
-                    <div
-                      className="px-3 py-2 text-xs font-medium text-gray-500 bg-gray-50 border-b"
-                      style={{
-                        backgroundColor: 'var(--bg-tertiary)',
-                        borderColor: 'var(--border-primary)',
-                        color: 'var(--text-tertiary)',
-                      }}
-                    >
-                      {category}
-                    </div>
-                    {casesInCategory.map((demoCase) => (
-                      <button
-                        key={demoCase.id}
-                        onClick={() => handleDemoCaseClick(demoCase.id)}
-                        className="flex flex-col w-full px-3 py-3 text-left transition-colors border-b last:border-b-0"
-                        style={{
-                          color: 'var(--text-primary)',
-                          backgroundColor: 'transparent',
-                          borderColor: 'var(--border-primary)',
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-secondary)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-sm">{demoCase.name}</span>
-                          <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                            <Users className="w-3 h-3" />
-                            <span>{demoCase.peopleCount}</span>
-                            <Hash className="w-3 h-3 ml-1" />
-                            <span>{demoCase.groupCount}</span>
-                            <Calendar className="w-3 h-3 ml-1" />
-                            <span>{demoCase.sessionCount}</span>
-                          </div>
-                        </div>
-                        <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
-                          {demoCase.description}
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                );
-              })}
-            </>
-          )}
-        </div>,
-        document.body
-      )}
+      <ProblemEditorHeader
+        onLoadProblem={handleLoadProblem}
+        onSaveProblem={handleSaveProblem}
+        onDemoCaseClick={handleDemoCaseClick}
+      />
 
       {/* Navigation */}
-      <div className="border-b" style={{ borderColor: 'var(--border-primary)' }}>
-        {/*
-          Responsive tab bar:
-          - Justified: tabs are distributed evenly to fill each row
-          - Uses CSS grid with auto-fit and minmax
-          - Tabs wrap to new rows as needed, but only if there is not enough space for even one more tab
-          - All icons are the same size at all breakpoints
-        */}
-        <nav
-          className="flex flex-wrap justify-between gap-y-2"
-        >
-          {[
-            { id: 'people', label: 'People', icon: Users, count: (problem?.people ?? []).length },
-            { id: 'groups', label: 'Groups', icon: Hash, count: (problem?.groups ?? []).length },
-            { id: 'sessions', label: 'Sessions', icon: Calendar, count: problem?.num_sessions ?? 0 },
-            { id: 'objectives', label: 'Objectives', icon: BarChart3, count: objectiveCount > 0 ? objectiveCount : undefined },
-            { id: 'hard', label: 'Hard Constraints', icon: Lock, count: problem?.constraints ? problem.constraints.filter(c=>['ImmovablePeople','MustStayTogether'].includes(c.type as string)).length : 0 },
-            { id: 'soft', label: 'Soft Constraints', icon: Zap, count: problem?.constraints ? problem.constraints.filter(c=>['RepeatEncounter','AttributeBalance','ShouldNotBeTogether','ShouldStayTogether','PairMeetingCount'].includes(c.type as string)).length : 0 },
-          ].map(tab => (
-            <button
-              className={`flex-1 flex flex-row items-center justify-center min-w-[140px] gap-1 px-3 py-1.5 rounded-md font-medium transition-colors ${activeSection === tab.id ? 'bg-[var(--bg-tertiary)] text-[var(--color-accent)]' : 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--color-accent)]'}`}
-              key={tab.id}
-              onClick={() => navigate(`/app/problem/${tab.id}`)}
-            >
-              <tab.icon className="w-5 h-5" />
-              <span className="whitespace-nowrap">{tab.label}</span>
-              {typeof tab.count === 'number' && (
-                <span className="ml-1 px-1.5 py-0.5 rounded-full text-xs font-semibold" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>{tab.count}</span>
-              )}
-            </button>
-          ))}
-        </nav>
-      </div>
+      <ProblemEditorTabs
+        activeSection={activeSection}
+        problem={problem ?? null}
+        objectiveCount={objectiveCount}
+        onNavigate={(sectionId) => navigate(`/app/problem/${sectionId}`)}
+      />
 
       {/* Content */}
       {activeSection === 'people' && (
@@ -2236,7 +2035,7 @@ export function ProblemEditor() {
         onClose={handleDemoCancel}
         onOverwrite={handleDemoOverwrite}
         onLoadNew={handleDemoLoadNew}
-        demoCaseName={pendingDemoCaseId ? demoCasesWithMetrics.find(c => c.id === pendingDemoCaseId)?.name || 'Demo Case' : 'Demo Case'}
+        demoCaseName={pendingDemoCaseName || 'Demo Case'}
       />
     </div>
   );

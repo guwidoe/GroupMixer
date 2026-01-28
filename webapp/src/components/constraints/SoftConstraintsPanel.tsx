@@ -82,7 +82,7 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
           onClick={() => setShowInfo(!showInfo)}
         >
           {showInfo ? <ChevronDown className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} /> : <ChevronRight className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />}
-          <h4 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>How do Soft Constraints work?</h4>
+          <h4 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>How do these constraints work?</h4>
         </button>
         {showInfo && (
           <div className="p-4 pt-0 text-sm" style={{ color: 'var(--text-secondary)' }}>
