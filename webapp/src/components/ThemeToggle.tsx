@@ -138,20 +138,3 @@ export function ThemeToggle({ showLabel = false, size = 'md' }: ThemeToggleProps
   );
 }
 
-// Compact version for header
-export function HeaderThemeToggle() {
-  return <ThemeToggle size="md" />;
-}
-
-// Full version for settings
-export function SettingsThemeToggle() {
-  return (
-    <div>
-      <label className="label">Theme Preference</label>
-      <ThemeToggle showLabel size="md" />
-      <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-        System mode automatically follows your device's theme preference
-      </p>
-    </div>
-  );
-} 

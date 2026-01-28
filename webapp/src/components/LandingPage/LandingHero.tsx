@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowDown, ArrowRight, Calendar, GitBranch, ListChecks } from 'lucide-react';
 import GraphBackground from '../GraphBackground';
-import { HeaderThemeToggle } from '../ThemeToggle';
+import { ThemeToggle } from '../ThemeToggle';
 
 export function LandingHero() {
   return (
@@ -10,7 +10,7 @@ export function LandingHero() {
       <GraphBackground />
 
       <div className="absolute top-4 right-4 z-20">
-        <HeaderThemeToggle />
+        <ThemeToggle size="md" />
       </div>
 
       <section className="relative z-10 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 min-h-screen">

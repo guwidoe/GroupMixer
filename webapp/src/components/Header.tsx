@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { FolderOpen, Bug, Menu, X } from 'lucide-react';
-import { HeaderThemeToggle } from './ThemeToggle';
+import { ThemeToggle } from './ThemeToggle';
 import { useAppStore } from '../store';
 import { useState } from 'react';
 
@@ -73,7 +73,7 @@ export function Header() {
                 <span className="lg:hidden">Issues</span>
               </a>
               
-              <HeaderThemeToggle />
+              <ThemeToggle size="md" />
             </div>
           </div>
         </div>
@@ -129,7 +129,7 @@ export function Header() {
                 </a>
                 
                 <div className="flex-shrink-0">
-                  <HeaderThemeToggle />
+                  <ThemeToggle size="md" />
                 </div>
               </div>
             </div>
