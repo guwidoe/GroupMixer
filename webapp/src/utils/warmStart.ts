@@ -208,8 +208,6 @@ export function reconcileResultToInitialSchedule(
 
   // Per-session placement
   for (const s of iterateSessions(currentProblem)) {
-    const sessionKey = `session_${s}`;
-
     // Active people this session
     const activePeople = currentProblem.people.filter((p) =>
       getActiveSessionsForPerson(currentProblem, p).includes(s)

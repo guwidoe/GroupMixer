@@ -1,5 +1,4 @@
 /* tslint:disable */
-/* eslint-disable */
 export const memory: WebAssembly.Memory;
 export const evaluate_input: (a: number, b: number) => [number, number, number, number];
 export const get_default_settings: () => [number, number, number, number];

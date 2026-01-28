@@ -3,7 +3,6 @@ import type {
   Problem,
   ProblemResult,
   ProblemSummary,
-  ProblemSnapshot,
   ExportedProblem,
   SolverSettings,
   Solution,

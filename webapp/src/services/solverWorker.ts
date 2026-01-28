@@ -62,7 +62,6 @@ export class SolverWorkerService {
         );
       } catch (e) {
         // Fallback to legacy script worker in /public for older environments
-        // eslint-disable-next-line no-console
         console.warn(
           "Falling back to legacy script worker due to module worker init error:",
           (e as Error).message
@@ -323,7 +322,7 @@ export class SolverWorkerService {
     );
 
     const rustResult = JSON.parse(result);
-    const solution = convertRustResultToSolution(rustResult, lastProgress, this.lastProgressUpdate);
+    const solution = convertRustResultToSolution(rustResult, lastProgress ?? null, this.lastProgressUpdate);
 
     // Return both the solution and the last progress update
     return { solution, lastProgress: lastProgress || null };
@@ -361,7 +360,7 @@ export class SolverWorkerService {
     );
 
     const rustResult = JSON.parse(result);
-    const solution = convertRustResultToSolution(rustResult, lastProgress, this.lastProgressUpdate);
+    const solution = convertRustResultToSolution(rustResult, lastProgress ?? null, this.lastProgressUpdate);
     return { solution, lastProgress: lastProgress || null };
   }
 

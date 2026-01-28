@@ -15,7 +15,6 @@ export class ErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error) {
     // keep console signal for debugging
-    // eslint-disable-next-line no-console
     console.error(`[Visualization] ${this.props.label} crashed:`, error);
   }
 

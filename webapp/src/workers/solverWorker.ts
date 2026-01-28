@@ -12,7 +12,6 @@ async function initWasm(): Promise<void> {
   if (isInitializing) {
     while (isInitializing) {
       // Wait briefly for concurrent initialization
-      // eslint-disable-next-line no-await-in-loop
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
     return;
@@ -160,12 +159,10 @@ self.onmessage = async (e: MessageEvent<any>) => {
       }
 
       default: {
-        // eslint-disable-next-line no-console
         console.warn(`Unknown message type: ${type}`);
       }
     }
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error("Worker error:", error);
     const errorString =
       error && (error as Error).message
