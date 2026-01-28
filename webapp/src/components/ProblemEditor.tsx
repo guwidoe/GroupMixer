@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store';
-import { Users, Calendar, Settings, Plus, Save, Upload, Trash2, Edit, X, Zap, Hash, ChevronDown, ChevronRight, BarChart3, Lock } from 'lucide-react';
+import { Users, Calendar, Plus, Save, Upload, Trash2, Edit, X, Zap, Hash, ChevronDown, ChevronRight, BarChart3, Lock } from 'lucide-react';
 import type { Person, Group, Constraint, Problem, PersonFormData, GroupFormData, AttributeDefinition, SolverSettings } from '../types';
 
 // Extracted components from ProblemEditor directory
@@ -12,16 +12,16 @@ import {
   rowsToCsv,
   generateUniquePersonId,
 } from './ProblemEditor/helpers';
-import type { DemoCaseWithMetrics, AttributeBalanceConstraint } from './ProblemEditor/types';
+import type { DemoCaseWithMetrics } from './ProblemEditor/types';
 import { PersonForm, GroupForm, AttributeForm } from './ProblemEditor/forms';
 import { BulkAddPeopleForm, BulkUpdatePeopleForm, BulkAddGroupsForm } from './ProblemEditor/bulk';
 import { PeopleSection } from './ProblemEditor/sections/PeopleSection';
 import { GroupsSection } from './ProblemEditor/sections/GroupsSection';
 import { SessionsSection } from './ProblemEditor/sections/SessionsSection';
 import { ObjectivesSection } from './ProblemEditor/sections/ObjectivesSection';
-import PersonCard from './PersonCard';
-import HardConstraintsPanel from './constraints/HardConstraintsPanel';
-import SoftConstraintsPanel from './constraints/SoftConstraintsPanel';
+import { HardConstraintsSection } from './ProblemEditor/sections/HardConstraintsSection';
+import { SoftConstraintsSection } from './ProblemEditor/sections/SoftConstraintsSection';
+import { ConstraintsSection } from './ProblemEditor/sections/ConstraintsSection';
 import ImmovablePeopleModal from './modals/ImmovablePeopleModal';
 import RepeatEncounterModal from './modals/RepeatEncounterModal';
 import AttributeBalanceModal from './modals/AttributeBalanceModal';
@@ -29,7 +29,6 @@ import ShouldNotBeTogetherModal from './modals/ShouldNotBeTogetherModal';
 import ShouldStayTogetherModal from './modals/ShouldStayTogetherModal';
 import MustStayTogetherModal from './modals/MustStayTogetherModal';
 import PairMeetingCountModal from './modals/PairMeetingCountModal';
-import AttributeBalanceDashboard from './AttributeBalanceDashboard';
 import { DemoDataWarningModal } from './modals/DemoDataWarningModal';
 
 export function ProblemEditor() {
@@ -227,7 +226,6 @@ export function ProblemEditor() {
       setActiveConstraintTab(validTypes[0]);
     }
   }, [constraintCategoryTab, activeConstraintTab, SOFT_TYPES, HARD_TYPES]);
-  const [showConstraintInfo, setShowConstraintInfo] = useState<boolean>(false);
 
   const handleSaveProblem = () => {
     if (!problem) return;
@@ -1851,347 +1849,98 @@ export function ProblemEditor() {
       )}
 
       {activeSection === 'hard' && (
-        <div className="pt-0">
-          <HardConstraintsPanel
-            onAddConstraint={(type: 'ImmovablePeople'| 'MustStayTogether') => {
-              if(type==='ImmovablePeople'){
-                setEditingImmovableIndex(null);
-                setShowImmovableModal(true);
-              }else if(type==='MustStayTogether'){
-                setEditingConstraintIndex(null);
-                setShowMustStayTogetherModal(true);
-              }else{
-                setConstraintForm((prev) => ({ ...prev, type }));
-                setShowConstraintForm(true);
-              }
-            }}
-            onEditConstraint={(c: Constraint, i: number) => {
-               if(c.type==='ImmovablePeople'){
-                   setEditingImmovableIndex(i);
-                   setShowImmovableModal(true);
-               } else if(c.type==='MustStayTogether'){
-                   setEditingConstraintIndex(i);
-                   setShowMustStayTogetherModal(true);
-               } else {
-                   handleEditConstraint(c,i);
-               }
-            }}
-            onDeleteConstraint={(i: number) => handleDeleteConstraint(i)}
-          />
-        </div>
+        <HardConstraintsSection
+          onAdd={(type) => {
+            if (type === 'ImmovablePeople') {
+              setEditingImmovableIndex(null);
+              setShowImmovableModal(true);
+            } else if (type === 'MustStayTogether') {
+              setEditingConstraintIndex(null);
+              setShowMustStayTogetherModal(true);
+            } else {
+              setConstraintForm((prev) => ({ ...prev, type }));
+              setShowConstraintForm(true);
+            }
+          }}
+          onEdit={(c, i) => {
+            if (c.type === 'ImmovablePeople') {
+              setEditingImmovableIndex(i);
+              setShowImmovableModal(true);
+            } else if (c.type === 'MustStayTogether') {
+              setEditingConstraintIndex(i);
+              setShowMustStayTogetherModal(true);
+            } else {
+              handleEditConstraint(c, i);
+            }
+          }}
+          onDelete={handleDeleteConstraint}
+        />
       )}
 
       {activeSection === 'soft' && (
-        <div className="pt-0">
-          <SoftConstraintsPanel
-            onAddConstraint={(type: Constraint['type']) => {
-              setEditingConstraintIndex(null);
-              switch (type) {
-                case 'RepeatEncounter':
-                  setShowRepeatEncounterModal(true);
-                  break;
-                case 'AttributeBalance':
-                  setShowAttributeBalanceModal(true);
-                  break;
-                case 'ShouldNotBeTogether':
-                  setShowShouldNotBeTogetherModal(true);
-                  break;
-                case 'ShouldStayTogether':
-                  setShowShouldStayTogetherModal(true);
-                  break;
-                case 'PairMeetingCount':
-                  setShowPairMeetingCountModal(true);
-                  break;
-                default:
-                  // Fallback to legacy modal for any other types
-                  setConstraintForm((prev) => ({ ...prev, type }));
-                  setShowConstraintForm(true);
-              }
-            }}
-            onEditConstraint={(c: Constraint, i: number) => {
-              setEditingConstraintIndex(i);
-              switch (c.type) {
-                case 'RepeatEncounter':
-                  setShowRepeatEncounterModal(true);
-                  break;
-                case 'AttributeBalance':
-                  setShowAttributeBalanceModal(true);
-                  break;
-                case 'ShouldNotBeTogether':
-                  setShowShouldNotBeTogetherModal(true);
-                  break;
-                case 'ShouldStayTogether':
-                  setShowShouldStayTogetherModal(true);
-                  break;
-                case 'PairMeetingCount':
-                  setShowPairMeetingCountModal(true);
-                  break;
-                default:
-                  // Fallback to legacy modal for any other types
-                  handleEditConstraint(c, i);
-              }
-            }}
-            onDeleteConstraint={(i: number) => handleDeleteConstraint(i)}
-          />
-        </div>
+        <SoftConstraintsSection
+          onAdd={(type) => {
+            setEditingConstraintIndex(null);
+            switch (type) {
+              case 'RepeatEncounter':
+                setShowRepeatEncounterModal(true);
+                break;
+              case 'AttributeBalance':
+                setShowAttributeBalanceModal(true);
+                break;
+              case 'ShouldNotBeTogether':
+                setShowShouldNotBeTogetherModal(true);
+                break;
+              case 'ShouldStayTogether':
+                setShowShouldStayTogetherModal(true);
+                break;
+              case 'PairMeetingCount':
+                setShowPairMeetingCountModal(true);
+                break;
+              default:
+                setConstraintForm((prev) => ({ ...prev, type }));
+                setShowConstraintForm(true);
+            }
+          }}
+          onEdit={(c, i) => {
+            setEditingConstraintIndex(i);
+            switch (c.type) {
+              case 'RepeatEncounter':
+                setShowRepeatEncounterModal(true);
+                break;
+              case 'AttributeBalance':
+                setShowAttributeBalanceModal(true);
+                break;
+              case 'ShouldNotBeTogether':
+                setShowShouldNotBeTogetherModal(true);
+                break;
+              case 'ShouldStayTogether':
+                setShowShouldStayTogetherModal(true);
+                break;
+              case 'PairMeetingCount':
+                setShowPairMeetingCountModal(true);
+                break;
+              default:
+                handleEditConstraint(c, i);
+            }
+          }}
+          onDelete={handleDeleteConstraint}
+        />
       )}
 
       {activeSection === 'constraints' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium">Constraints ({problem?.constraints.length || 0})</h3>
-            <button
-              onClick={() => setShowConstraintForm(true)}
-              className="btn-primary flex items-center gap-2 px-4 py-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Constraint
-            </button>
-          </div>
-          
-          {/* Collapsible "About Constraints" info pane */}
-          <div className="rounded-md border" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-primary)' }}>
-            <button
-              className="flex items-center gap-2 w-full p-4 text-left"
-              onClick={() => setShowConstraintInfo(!showConstraintInfo)}
-            >
-              {showConstraintInfo ? (
-                <ChevronDown className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
-              ) : (
-                <ChevronRight className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
-              )}
-              <h4 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>About Constraints</h4>
-            </button>
-            {showConstraintInfo && (
-              <div className="p-4 pt-0">
-                <p className="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  Constraints guide the optimization process by defining rules and preferences:
-                </p>
-                <ul className="text-sm space-y-1" style={{ color: 'var(--text-secondary)' }}>
-                  <li>• <strong>RepeatEncounter:</strong> Limit how often people meet across sessions</li>
-                  <li>• <strong>AttributeBalance:</strong> Maintain desired distributions (e.g., gender balance)</li>
-                  <li>• <strong>MustStayTogether:</strong> Keep certain people in the same group</li>
-                  <li>• <strong>ShouldNotBeTogether:</strong> Prevent certain people from being grouped</li>
-                  <li>• <strong>ImmovablePeople:</strong> Fix someone to a specific group in specific sessions</li>
-                </ul>
-              </div>
-            )}
-          </div>
-
-          {/* Sub-tabs for individual constraint types */}
-          {(() => {
-            const constraintTypeLabels = {
-              'RepeatEncounter': 'Repeat Encounter Limits',
-              'AttributeBalance': 'Attribute Balance',
-              'ImmovablePeople': 'Immovable People',
-              'MustStayTogether': 'Must Stay Together',
-              'ShouldNotBeTogether': 'Should Not Be Together'
-            } as const;
-
-            const constraintsByType = (problem?.constraints || []).reduce((acc: Record<string, { constraint: Constraint; index: number }[]>, constraint, index) => {
-              if (!acc[constraint.type]) {
-                acc[constraint.type] = [];
-              }
-              acc[constraint.type].push({ constraint, index });
-              return acc;
-            }, {});
-
-            const tabOrder = [...(constraintCategoryTab === 'soft' ? SOFT_TYPES : HARD_TYPES)] as (keyof typeof constraintTypeLabels)[];
-            const selectedItems = constraintsByType[activeConstraintTab] || [];
-
-            return (
-              <>
-                {/* Category tabs */}
-                <div className="flex gap-2 mb-4">
-                  {(['soft', 'hard'] as const).map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => {
-                        setConstraintCategoryTab(cat);
-                        const firstType = cat === 'soft' ? SOFT_TYPES[0] : HARD_TYPES[0];
-                        setActiveConstraintTab(firstType);
-                      }}
-                      className={
-                        'px-3 py-1 rounded-md text-sm font-medium transition-colors ' +
-                        (constraintCategoryTab === cat ? 'btn-primary' : 'btn-secondary')
-                      }
-                    >
-                      {cat === 'soft' ? 'Soft Constraints' : 'Hard Constraints'}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Tab list */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {tabOrder.map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => setActiveConstraintTab(type)}
-                      className={
-                        'px-3 py-1 rounded-md text-sm font-medium transition-colors ' +
-                        (activeConstraintTab === type ? 'btn-primary' : 'btn-secondary')
-                      }
-                    >
-                      {constraintTypeLabels[type]}
-                      <span className="ml-1 text-xs">({constraintsByType[type]?.length || 0})</span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Content for selected tab */}
-                {problem?.constraints.length ? (
-                  selectedItems.length ? (
-                    <div className="space-y-3">
-                      <h4 className="text-base font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }}></div>
-                        {constraintTypeLabels[activeConstraintTab as keyof typeof constraintTypeLabels]}
-                        <span className="text-sm font-normal px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
-                          {selectedItems.length}
-                        </span>
-                      </h4>
-
-                      {/* Dashboard for Attribute Balance */}
-                      {activeConstraintTab === 'AttributeBalance' && (
-                        <AttributeBalanceDashboard constraints={selectedItems.map(i => i.constraint as AttributeBalanceConstraint)} problem={problem!} />
-                      )}
-
-                      <div className="grid gap-3 sm:grid-cols-1 lg:grid-cols-2">
-                        {selectedItems.map(({ constraint, index }) => (
-                          <div key={index} className="rounded-lg border p-4 transition-colors hover:shadow-md" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-xs font-medium px-2 py-1 rounded" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
-                                    {constraint.type}
-                                  </span>
-                                  {constraint.type !== 'ImmovablePeople' && (
-                                    <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}>
-                                      Weight: {(constraint as Constraint & { penalty_weight: number }).penalty_weight}
-                                    </span>
-                                  )}
-                                </div>
-                                
-                                <div className="text-sm space-y-1" style={{ color: 'var(--text-secondary)' }}>
-                                  {constraint.type === 'RepeatEncounter' && (
-                                    <>
-                                      <div>Max encounters: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{constraint.max_allowed_encounters}</span></div>
-                                      <div>Penalty function: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{constraint.penalty_function}</span></div>
-                                    </>
-                                  )}
-                                  
-                                  {constraint.type === 'AttributeBalance' && (
-                                    <>
-                                      <div>Group: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{constraint.group_id}</span></div>
-                                      <div>Attribute: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{constraint.attribute_key}</span></div>
-                                      <div className="break-words">Distribution: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{Object.entries(constraint.desired_values || {}).map(([k, v]) => `${k}: ${v}`).join(', ')}</span></div>
-                                      {constraint.sessions && constraint.sessions.length > 0 ? (
-                                        <div>Sessions: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{constraint.sessions.map(s => s + 1).join(', ')}</span></div>
-                                      ) : (
-                                        <div>Sessions: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>All sessions</span></div>
-                                      )}
-                                    </>
-                                  )}
-                                  
-                                  {constraint.type === 'ImmovablePeople' && (
-                                    <>
-                                      <div className="break-words flex flex-wrap items-center gap-1">
-                                        <span>People:</span>
-                                        {constraint.people.map((pid, idx) => {
-                                          const per = problem?.people.find(p => p.id === pid);
-                                          return (
-                                            <React.Fragment key={pid}>
-                                              {per ? <PersonCard person={per} /> : <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{pid}</span>}
-                                              {idx < constraint.people.length - 1 && <span></span>}
-                                            </React.Fragment>
-                                          );
-                                        })}
-                                      </div>
-                                      <div>Fixed to: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{constraint.group_id}</span></div>
-                                      {constraint.sessions && constraint.sessions.length > 0 ? (
-                                        <div>Sessions: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{constraint.sessions.map(s => s + 1).join(', ')}</span></div>
-                                      ) : (
-                                        <div>Sessions: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>All sessions</span></div>
-                                      )}
-                                    </>
-                                  )}
-                                  
-                                  {(constraint.type === 'MustStayTogether' || constraint.type === 'ShouldNotBeTogether') && (
-                                    <>
-                                      <div className="break-words flex flex-wrap items-center gap-1">
-                                        <span>People:</span>
-                                        {constraint.people.map((pid, idx) => {
-                                          const per = problem?.people.find(p => p.id === pid);
-                                          return (
-                                            <React.Fragment key={pid}>
-                                              {per ? <PersonCard person={per} /> : <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{pid}</span>}
-                                              {idx < constraint.people.length - 1 && <span></span>}
-                                            </React.Fragment>
-                                          );
-                                        })}
-                                      </div>
-                                      {constraint.sessions && constraint.sessions.length > 0 ? (
-                                        <div>Sessions: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{constraint.sessions.map(s => s + 1).join(', ')}</span></div>
-                                      ) : (
-                                        <div>Sessions: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>All sessions</span></div>
-                                      )}
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                              
-                              <div className="flex gap-1 ml-2">
-                                <button
-                                  onClick={() => handleEditConstraint(constraint, index)}
-                                  className="p-1.5 rounded transition-colors"
-                                  style={{ color: 'var(--text-tertiary)' }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.color = 'var(--color-accent)';
-                                    e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.color = 'var(--text-tertiary)';
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                  }}
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteConstraint(index)}
-                                  className="p-1.5 rounded transition-colors"
-                                  style={{ color: 'var(--text-tertiary)' }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.color = 'var(--color-error-600)';
-                                    e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.color = 'var(--text-tertiary)';
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                  }}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8" style={{ color: 'var(--text-secondary)' }}>
-                      <p>No {constraintTypeLabels[activeConstraintTab as keyof typeof constraintTypeLabels]} constraints defined yet.</p>
-                    </div>
-                  )
-                ) : (
-                  <div className="text-center py-12" style={{ color: 'var(--text-secondary)' }}>
-                    <Settings className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--text-tertiary)' }} />
-                    <p>No constraints added yet</p>
-                    <p className="text-sm">Add constraints to guide the optimization process</p>
-                  </div>
-                )}
-              </>
-            );
-          })()}
-        </div>
+        <ConstraintsSection
+          problem={problem ?? null}
+          activeConstraintTab={activeConstraintTab}
+          constraintCategoryTab={constraintCategoryTab}
+          hardTypes={HARD_TYPES}
+          softTypes={SOFT_TYPES}
+          onChangeCategory={setConstraintCategoryTab}
+          onChangeTab={setActiveConstraintTab}
+          onAddConstraint={() => setShowConstraintForm(true)}
+          onEditConstraint={handleEditConstraint}
+          onDeleteConstraint={handleDeleteConstraint}
+        />
       )}
 
       {/* Forms */}
