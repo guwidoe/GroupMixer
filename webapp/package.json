@@ -19,7 +19,7 @@
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@tailwindcss/postcss": "^4.1.18",
-    "@types/node": "25.0.10",
+    "@types/node": "25.1.0",
     "@types/three": "^0.182.0",
     "@vercel/analytics": "^1.6.1",
     "graphology": "^0.26.0",
