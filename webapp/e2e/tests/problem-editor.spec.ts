@@ -147,14 +147,11 @@ test.describe('Problem Editor', () => {
   });
 
   test('can bulk add people from CSV text mode without switching to grid (fixes #7)', async ({ page }) => {
-    // Click the dropdown arrow next to "Add Person" to access bulk options
-    const addPersonDropdown = page.locator('button').filter({ hasText: /▾|▼/ }).first();
-    if (await addPersonDropdown.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await addPersonDropdown.click();
-    } else {
-      // Alternative: look for "Bulk Add" button directly
-      await page.locator('button').filter({ hasText: /Bulk Add/i }).click();
-    }
+    // Click "Bulk Add" dropdown button
+    await page.locator('button').filter({ hasText: /Bulk Add/i }).first().click();
+    
+    // Click "Open Bulk Form" in the dropdown
+    await page.locator('button').filter({ hasText: /Open Bulk Form/i }).click();
 
     // Wait for bulk add modal
     await page.waitForSelector('.modal-content', { timeout: 5000 });
@@ -180,13 +177,11 @@ test.describe('Problem Editor', () => {
   });
 
   test('bulk add preserves data when switching between text and grid views', async ({ page }) => {
-    // Open bulk add modal
-    const addPersonDropdown = page.locator('button').filter({ hasText: /▾|▼/ }).first();
-    if (await addPersonDropdown.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await addPersonDropdown.click();
-    } else {
-      await page.locator('button').filter({ hasText: /Bulk Add/i }).click();
-    }
+    // Click "Bulk Add" dropdown button
+    await page.locator('button').filter({ hasText: /Bulk Add/i }).first().click();
+    
+    // Click "Open Bulk Form" in the dropdown
+    await page.locator('button').filter({ hasText: /Open Bulk Form/i }).click();
 
     await page.waitForSelector('.modal-content', { timeout: 5000 });
 
@@ -215,16 +210,11 @@ test.describe('Problem Editor', () => {
     await page.getByRole('button', { name: /Groups/i }).click();
     await page.waitForTimeout(500);
 
-    // Click bulk add for groups
-    const bulkAddButton = page.locator('button').filter({ hasText: /Bulk Add/i });
-    if (await bulkAddButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await bulkAddButton.click();
-    } else {
-      // Try dropdown
-      const dropdownButton = page.locator('button').filter({ hasText: /▾|▼/ }).first();
-      await dropdownButton.click();
-      await page.locator('button, li, a').filter({ hasText: /Bulk Add/i }).click();
-    }
+    // Click "Bulk Add" dropdown button
+    await page.locator('button').filter({ hasText: /Bulk Add/i }).first().click();
+    
+    // Click "Open Bulk Form" in the dropdown
+    await page.locator('button').filter({ hasText: /Open Bulk Form/i }).click();
 
     // Wait for modal
     await page.waitForSelector('.modal-content', { timeout: 5000 });
