@@ -73,22 +73,6 @@ async function loadDemoData(page: Page, type: 'simple' | 'intermediate' | 'advan
   await waitForPageReady(page);
 }
 
-// Helper to set theme
-async function setTheme(page: Page, theme: 'light' | 'dark') {
-  // Find and click theme toggle
-  const themeToggle = page.getByRole('button', { name: /theme|toggle.*mode|dark.*mode|light.*mode/i });
-  if (await themeToggle.isVisible()) {
-    // Check current state and toggle if needed
-    const html = page.locator('html');
-    const isDark = await html.evaluate(el => el.classList.contains('dark'));
-    
-    if ((theme === 'dark' && !isDark) || (theme === 'light' && isDark)) {
-      await themeToggle.click();
-      await page.waitForTimeout(300);
-    }
-  }
-}
-
 test.describe('Visual Regression - Landing Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/landingpage');
