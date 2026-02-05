@@ -17,7 +17,7 @@ fn problem_strategy() -> impl Strategy<Value = ApiInput> {
     (3..=12usize, 2..=4usize, 2..=4usize, 2..=5u32).prop_flat_map(
         |(num_people, num_groups, group_size, num_sessions)| {
             // Ensure we have enough capacity for all people
-            let actual_group_size = ((num_people + num_groups - 1) / num_groups).max(group_size);
+            let actual_group_size = num_people.div_ceil(num_groups).max(group_size);
 
             Just(create_test_input(
                 num_people as u32,

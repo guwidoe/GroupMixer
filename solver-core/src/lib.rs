@@ -607,7 +607,7 @@ mod callback_tests {
         let mut prev_best = f64::INFINITY;
         let mut improvements = 0;
 
-        for (_i, update) in updates.iter().enumerate() {
+        for update in updates.iter() {
             if update.best_score < prev_best {
                 improvements += 1;
                 println!(

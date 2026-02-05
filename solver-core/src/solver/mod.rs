@@ -12,9 +12,9 @@ mod display;
 mod dsu;
 mod moves;
 mod scoring;
-mod validation;
 #[cfg(test)]
 mod tests;
+mod validation;
 
 use crate::models::{
     AttributeBalanceParams, LoggingOptions, PairMeetingMode, SolverResult, TelemetryOptions,
@@ -611,4 +611,3 @@ impl State {
             + self.baseline_score
     }
 }
-

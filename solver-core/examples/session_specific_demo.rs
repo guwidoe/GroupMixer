@@ -12,7 +12,7 @@ fn main() {
                 Person {
                     id: "Alice".to_string(),
                     attributes: std::collections::HashMap::new(),
-                    sessions: Some(vec![0, 1]).into(),
+                    sessions: Some(vec![0, 1]),
                 },
                 Person {
                     id: "Bob".to_string(),

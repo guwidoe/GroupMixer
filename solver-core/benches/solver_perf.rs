@@ -5,7 +5,7 @@
 //! Results are stored in target/criterion/ for historical comparison.
 //! Criterion will automatically detect performance regressions.
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use solver_core::models::{
     ApiInput, Constraint, Group, LoggingOptions, Objective, Person, ProblemDefinition,
     RepeatEncounterParams, SimulatedAnnealingParams, SolverConfiguration, SolverParams,
@@ -13,6 +13,7 @@ use solver_core::models::{
 };
 use solver_core::run_solver;
 use std::collections::HashMap;
+use std::hint::black_box;
 
 /// Create a problem with n people, n/group_size groups, and s sessions
 fn make_problem(num_people: u32, group_size: u32, num_sessions: u32) -> ProblemDefinition {
@@ -97,9 +98,11 @@ fn bench_problem_sizes(c: &mut Criterion) {
     let large = make_api_input(make_problem(30, 6, 10), vec![], 100_000);
 
     group.throughput(Throughput::Elements(10_000));
-    group.bench_with_input(BenchmarkId::new("small", "12p/3g/3s"), &small, |b, input| {
-        b.iter(|| run_solver(black_box(input)))
-    });
+    group.bench_with_input(
+        BenchmarkId::new("small", "12p/3g/3s"),
+        &small,
+        |b, input| b.iter(|| run_solver(black_box(input))),
+    );
 
     group.throughput(Throughput::Elements(50_000));
     group.bench_with_input(
@@ -109,9 +112,11 @@ fn bench_problem_sizes(c: &mut Criterion) {
     );
 
     group.throughput(Throughput::Elements(100_000));
-    group.bench_with_input(BenchmarkId::new("large", "30p/5g/10s"), &large, |b, input| {
-        b.iter(|| run_solver(black_box(input)))
-    });
+    group.bench_with_input(
+        BenchmarkId::new("large", "30p/5g/10s"),
+        &large,
+        |b, input| b.iter(|| run_solver(black_box(input))),
+    );
 
     group.finish();
 }

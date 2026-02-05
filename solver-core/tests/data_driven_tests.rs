@@ -158,7 +158,14 @@ fn run_test_case(test_case: &TestCase, path: &Path) {
             }
 
             // Proceed with normal assertions below using `result`
-            run_assertions(test_case, path, result, &last_progress, loop_count, elapsed_ms);
+            run_assertions(
+                test_case,
+                path,
+                result,
+                &last_progress,
+                loop_count,
+                elapsed_ms,
+            );
         }
         Err(e) => {
             if test_case.expected.expect_solver_error {
@@ -235,7 +242,7 @@ fn run_assertions(
 
     if let Some(min_transfers) = test_case.expected.min_transfers_accepted {
         assert!(
-            final_progress.transfers_accepted as u64 >= min_transfers,
+            final_progress.transfers_accepted >= min_transfers,
             "Expected at least {} accepted transfers, but solver reported {}",
             min_transfers,
             final_progress.transfers_accepted
@@ -255,9 +262,14 @@ fn run_assertions(
     }
 
     if let Some(min_ips) = test_case.expected.min_iterations_per_second {
-        let iterations = test_case.input.solver.stop_conditions.max_iterations.unwrap_or(0);
+        let iterations = test_case
+            .input
+            .solver
+            .stop_conditions
+            .max_iterations
+            .unwrap_or(0);
         let actual_ips = if elapsed_ms > 0 {
-            (iterations as u64 * 1000) / elapsed_ms
+            (iterations * 1000) / elapsed_ms
         } else {
             u64::MAX
         };
@@ -356,7 +368,7 @@ fn assert_forbidden_pairs_respected(input: &ApiInput, result: &SolverResult) {
                     )
                 });
 
-                for (_group_id, members) in session_schedule {
+                for members in session_schedule.values() {
                     let mut present_members = 0;
                     for person in people {
                         if members.contains(person) {
@@ -476,44 +488,44 @@ fn assert_session_specific_constraints_respected(input: &ApiInput, result: &Solv
     // Check MustStayTogether constraints
     for constraint in &input.constraints {
         if let solver_core::models::Constraint::MustStayTogether {
-            people, sessions, ..
+            people,
+            sessions: Some(session_list),
+            ..
         } = constraint
         {
-            if let Some(session_list) = sessions {
-                // Validate that clique is together ONLY in specified sessions
-                for session in session_list {
-                    let session_key = format!("session_{}", session);
-                    let session_schedule = result
-                        .schedule
-                        .get(&session_key)
-                        .unwrap_or_else(|| panic!("Session {} not found in schedule", session_key));
+            // Validate that clique is together ONLY in specified sessions
+            for session in session_list {
+                let session_key = format!("session_{}", session);
+                let session_schedule = result
+                    .schedule
+                    .get(&session_key)
+                    .unwrap_or_else(|| panic!("Session {} not found in schedule", session_key));
 
-                    // Find which group the first person is in
-                    let mut clique_group_id = None;
-                    for (group_id, members) in session_schedule {
-                        if members.contains(&people[0]) {
-                            clique_group_id = Some(group_id);
-                            break;
-                        }
+                // Find which group the first person is in
+                let mut clique_group_id = None;
+                for (group_id, members) in session_schedule {
+                    if members.contains(&people[0]) {
+                        clique_group_id = Some(group_id);
+                        break;
                     }
+                }
 
+                assert!(
+                    clique_group_id.is_some(),
+                    "Clique member {} not found in any group for session {}",
+                    people[0],
+                    session
+                );
+
+                let group_members = session_schedule.get(clique_group_id.unwrap()).unwrap();
+
+                // Verify all clique members are in the same group for this session
+                for person in people {
                     assert!(
-                        clique_group_id.is_some(),
-                        "Clique member {} not found in any group for session {}",
-                        people[0],
-                        session
-                    );
-
-                    let group_members = session_schedule.get(clique_group_id.unwrap()).unwrap();
-
-                    // Verify all clique members are in the same group for this session
-                    for person in people {
-                        assert!(
                             group_members.contains(person),
                             "Session-specific clique constraint violated: {} should be with {:?} in session {} but is not",
                             person, people, session
                         );
-                    }
                 }
             }
         }
@@ -522,31 +534,31 @@ fn assert_session_specific_constraints_respected(input: &ApiInput, result: &Solv
     // Check ShouldNotBeTogether constraints
     for constraint in &input.constraints {
         if let solver_core::models::Constraint::ShouldNotBeTogether {
-            people, sessions, ..
+            people,
+            sessions: Some(session_list),
+            ..
         } = constraint
         {
-            if let Some(session_list) = sessions {
-                // Validate that forbidden pair/group is separated ONLY in specified sessions
-                for session in session_list {
-                    let session_key = format!("session_{}", session);
-                    let session_schedule = result
-                        .schedule
-                        .get(&session_key)
-                        .unwrap_or_else(|| panic!("Session {} not found in schedule", session_key));
+            // Validate that forbidden pair/group is separated ONLY in specified sessions
+            for session in session_list {
+                let session_key = format!("session_{}", session);
+                let session_schedule = result
+                    .schedule
+                    .get(&session_key)
+                    .unwrap_or_else(|| panic!("Session {} not found in schedule", session_key));
 
-                    for (_group_id, members) in session_schedule {
-                        let mut present_members = 0;
-                        for person in people {
-                            if members.contains(person) {
-                                present_members += 1;
-                            }
+                for members in session_schedule.values() {
+                    let mut present_members = 0;
+                    for person in people {
+                        if members.contains(person) {
+                            present_members += 1;
                         }
-                        assert!(
-                            present_members <= 1,
-                            "Session-specific forbidden constraint violated: {:?} found together in session {} group: {:?}",
-                            people, session, members
-                        );
                     }
+                    assert!(
+                        present_members <= 1,
+                        "Session-specific forbidden constraint violated: {:?} found together in session {} group: {:?}",
+                        people, session, members
+                    );
                 }
             }
         }
@@ -570,7 +582,7 @@ fn assert_participation_patterns_respected(input: &ApiInput, result: &SolverResu
                 let mut person_found = false;
 
                 // Check if person appears in any group for this session
-                for (_group_id, members) in session_schedule {
+                for members in session_schedule.values() {
                     if members.contains(&person.id) {
                         person_found = true;
                         break;
@@ -598,7 +610,7 @@ fn assert_participation_patterns_respected(input: &ApiInput, result: &SolverResu
     for (session_key, session_schedule) in &result.schedule {
         let session_idx: u32 = session_key.replace("session_", "").parse().unwrap_or(0);
 
-        for (_group_id, members) in session_schedule {
+        for members in session_schedule.values() {
             // For each person in this group, verify they should be participating in this session
             for person_id in members {
                 if let Some(person) = input.problem.people.iter().find(|p| &p.id == person_id) {

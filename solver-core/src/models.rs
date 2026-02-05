@@ -305,21 +305,16 @@ fn default_constraint_weight() -> f64 {
 }
 
 /// Modes for how to penalize deviations from the target meeting count.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum PairMeetingMode {
     /// Penalize only shortfalls: weight * max(0, target - actual)
+    #[default]
     AtLeast,
     /// Penalize absolute deviation: weight * |target - actual|
     Exact,
     /// Penalize only excess: weight * max(0, actual - target)
     AtMost,
-}
-
-impl Default for PairMeetingMode {
-    fn default() -> Self {
-        PairMeetingMode::AtLeast
-    }
 }
 
 /// Soft constraint on how often a pair should meet within a subset of sessions.
@@ -416,19 +411,14 @@ pub struct AttributeBalanceParams {
 }
 
 /// Mode for evaluating attribute balance targets.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum AttributeBalanceMode {
     /// Penalize absolute deviation from the desired count (current behavior)
+    #[default]
     Exact,
     /// Penalize only when actual < desired; overshooting is allowed without penalty
     AtLeast,
-}
-
-impl Default for AttributeBalanceMode {
-    fn default() -> Self {
-        AttributeBalanceMode::Exact
-    }
 }
 
 /// Parameters for the ImmovablePerson constraint.

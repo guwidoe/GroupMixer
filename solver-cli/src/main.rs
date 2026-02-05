@@ -181,8 +181,7 @@ fn cmd_validate(input: Option<PathBuf>, stdin: bool) -> Result<()> {
     let json_str = read_input(input, stdin)?;
 
     // First, validate JSON syntax
-    let api_input: ApiInput = serde_json::from_str(&json_str)
-        .context("JSON parse error")?;
+    let api_input: ApiInput = serde_json::from_str(&json_str).context("JSON parse error")?;
 
     // Then, validate problem constraints by attempting to create state
     // This will catch issues like:
@@ -205,17 +204,15 @@ fn cmd_validate(input: Option<PathBuf>, stdin: bool) -> Result<()> {
     }
 }
 
-fn cmd_recommend(
-    input: Option<PathBuf>,
-    stdin: bool,
-    runtime: u64,
-    pretty: bool,
-) -> Result<()> {
+fn cmd_recommend(input: Option<PathBuf>, stdin: bool, runtime: u64, pretty: bool) -> Result<()> {
     let json_str = read_input(input, stdin)?;
     let api_input: ApiInput =
         serde_json::from_str(&json_str).context("Failed to parse input JSON")?;
 
-    eprintln!("Calculating recommended settings for {}s runtime...", runtime);
+    eprintln!(
+        "Calculating recommended settings for {}s runtime...",
+        runtime
+    );
 
     let recommended = calculate_recommended_settings(
         &api_input.problem,
@@ -248,7 +245,8 @@ fn cmd_evaluate(input: Option<PathBuf>, stdin: bool, pretty: bool) -> Result<()>
     let mut eval_input = api_input.clone();
     eval_input.solver.stop_conditions.max_iterations = Some(0);
 
-    let result = run_solver(&eval_input).map_err(|e| anyhow::anyhow!("Evaluation error: {:?}", e))?;
+    let result =
+        run_solver(&eval_input).map_err(|e| anyhow::anyhow!("Evaluation error: {:?}", e))?;
 
     let output_json = if pretty {
         serde_json::to_string_pretty(&result)?
@@ -274,7 +272,10 @@ fn cmd_schema(schema_type: &str) -> Result<()> {
             print_problem_schema()?;
             Ok(())
         }
-        _ => anyhow::bail!("Unknown schema type: {}. Use: input, output, problem, or all", schema_type),
+        _ => anyhow::bail!(
+            "Unknown schema type: {}. Use: input, output, problem, or all",
+            schema_type
+        ),
     }
 }
 

@@ -300,7 +300,7 @@ impl State {
                 initial_schedule
                     .iter()
                     .filter_map(|(k, v)| {
-                        if let Some(s_idx_str) = k.split('_').last() {
+                        if let Some(s_idx_str) = k.split('_').next_back() {
                             if let Ok(s_idx) = s_idx_str.parse::<usize>() {
                                 return Some((s_idx, v));
                             }

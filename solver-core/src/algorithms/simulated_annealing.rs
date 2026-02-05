@@ -769,23 +769,21 @@ impl Solver for SimulatedAnnealing {
                     }
                 }
                 prev_cycle_index = Some(cycle_index);
-            } else if self.reheat_after_no_improvement > 0 {
-                if no_improvement_counter >= self.reheat_after_no_improvement
-                    && no_improvement_counter > 0
-                {
-                    // Only reheat if we haven't reheated recently
-                    if i - last_reheat_iteration > self.reheat_after_no_improvement {
-                        reheat_count += 1;
-                        last_reheat_iteration = i;
-                        no_improvement_counter = 0; // Reset the no improvement counter
+            } else if self.reheat_after_no_improvement > 0
+                && no_improvement_counter >= self.reheat_after_no_improvement
+                && no_improvement_counter > 0
+                && i - last_reheat_iteration > self.reheat_after_no_improvement
+            {
+                // Only reheat if we haven't reheated recently
+                reheat_count += 1;
+                last_reheat_iteration = i;
+                no_improvement_counter = 0; // Reset the no improvement counter
 
-                        if state.logging.log_stop_condition {
-                            println!(
-                                "Reheating #{} at iteration {}: no improvement for {} iterations",
-                                reheat_count, i, self.reheat_after_no_improvement
-                            );
-                        }
-                    }
+                if state.logging.log_stop_condition {
+                    println!(
+                        "Reheating #{} at iteration {}: no improvement for {} iterations",
+                        reheat_count, i, self.reheat_after_no_improvement
+                    );
                 }
             }
 
@@ -863,7 +861,7 @@ impl Solver for SimulatedAnnealing {
 
                     let include_best_schedule = if state.telemetry.emit_best_schedule {
                         let every = state.telemetry.best_schedule_every_n_callbacks.max(1);
-                        progress_callback_count % every == 0
+                        progress_callback_count.is_multiple_of(every)
                     } else {
                         false
                     };
@@ -904,7 +902,7 @@ impl Solver for SimulatedAnnealing {
                         // Current state breakdown
                         current_repetition_penalty: current_state.repetition_penalty as f64
                             * current_state.w_repetition,
-                        current_balance_penalty: current_state.attribute_balance_penalty as f64,
+                        current_balance_penalty: current_state.attribute_balance_penalty,
                         current_constraint_penalty: current_state.weighted_constraint_penalty,
                         best_repetition_penalty: metrics.best_repetition_penalty,
                         best_balance_penalty: metrics.best_balance_penalty,

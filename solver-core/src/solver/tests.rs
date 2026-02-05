@@ -1,9 +1,8 @@
 use super::*;
 use crate::{
     models::{
-        ApiInput, Constraint, Group, ImmovablePersonParams, Objective, PairMeetingCountParams,
-        PairMeetingMode, Person, ProblemDefinition, SimulatedAnnealingParams, SolverConfiguration,
-        SolverParams, StopConditions,
+        ApiInput, Constraint, Group, Person, ProblemDefinition, SimulatedAnnealingParams,
+        SolverConfiguration, SolverParams, StopConditions,
     },
     run_solver,
 };
@@ -26,13 +25,12 @@ fn create_test_input(
     let groups = groups_config
         .iter()
         .enumerate()
-        .map(|(i, (num_groups, size))| {
+        .flat_map(|(i, (num_groups, size))| {
             (0..*num_groups).map(move |j| Group {
                 id: format!("g{}_{}", i, j),
                 size: *size,
             })
         })
-        .flatten()
         .collect();
 
     ApiInput {
@@ -569,7 +567,7 @@ fn test_user_reported_json_structure() {
     );
 
     let solution = result.unwrap();
-    assert!(solution.schedule.len() > 0);
+    assert!(!solution.schedule.is_empty());
 }
 
 #[test]
@@ -594,9 +592,9 @@ fn test_constraint_parsing() {
     );
 
     // Test ShouldNotBeTogether parsing
-    let should_not_be_json = r#"{"type": "ShouldNotBeTogether", "people": ["charlie", "diana"], "penalty_weight": 500}"#;
-    let should_not_be_constraint: Result<Constraint, _> =
-        serde_json::from_str(should_not_be_json);
+    let should_not_be_json =
+        r#"{"type": "ShouldNotBeTogether", "people": ["charlie", "diana"], "penalty_weight": 500}"#;
+    let should_not_be_constraint: Result<Constraint, _> = serde_json::from_str(should_not_be_json);
     assert!(
         should_not_be_constraint.is_ok(),
         "ShouldNotBeTogether should parse successfully"
@@ -604,8 +602,7 @@ fn test_constraint_parsing() {
 
     // Test AttributeBalance parsing
     let attr_balance_json = r#"{"type": "AttributeBalance", "group_id": "team-alpha", "attribute_key": "gender", "desired_values": {"male": 2, "female": 2}, "penalty_weight": 50}"#;
-    let attr_balance_constraint: Result<Constraint, _> =
-        serde_json::from_str(attr_balance_json);
+    let attr_balance_constraint: Result<Constraint, _> = serde_json::from_str(attr_balance_json);
     assert!(
         attr_balance_constraint.is_ok(),
         "AttributeBalance should parse successfully"
@@ -716,7 +713,7 @@ fn test_simplified_user_json_structure() {
     );
 
     let solution = result.unwrap();
-    assert!(solution.schedule.len() > 0);
+    assert!(!solution.schedule.is_empty());
     assert!(solution.unique_contacts > 0);
 }
 
