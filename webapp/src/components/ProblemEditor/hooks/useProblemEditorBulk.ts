@@ -68,14 +68,26 @@ export function useProblemEditorBulk({
   };
 
   const handleAddBulkPeople = () => {
-    if (!bulkHeaders.includes('name')) {
+    // If in text mode, parse the CSV first to get headers and rows
+    let headers = bulkHeaders;
+    let rows = bulkRows;
+    if (bulkTextMode === 'text') {
+      const parsed = parseCsv(bulkCsvInput);
+      headers = parsed.headers;
+      rows = parsed.rows;
+      // Update state so grid view is in sync if user switches
+      setBulkHeaders(headers);
+      setBulkRows(rows);
+    }
+
+    if (!headers.includes('name')) {
       addNotification({ type: 'error', title: 'Missing Column', message: 'CSV must include a "name" column.' });
       return;
     }
 
-    const newPeople: Person[] = bulkRows.map((row) => {
+    const newPeople: Person[] = rows.map((row) => {
       const personAttrs: Record<string, string> = {};
-      bulkHeaders.forEach((header) => {
+      headers.forEach((header) => {
         if (row[header]) personAttrs[header] = row[header];
       });
       if (!personAttrs.name) personAttrs.name = `Person ${Date.now()}`;
@@ -87,7 +99,7 @@ export function useProblemEditorBulk({
     });
 
     const attrValueMap: Record<string, Set<string>> = {};
-    bulkHeaders.forEach((header) => {
+    headers.forEach((header) => {
       if (header === 'name') return;
       attrValueMap[header] = new Set();
     });
@@ -301,7 +313,19 @@ export function useProblemEditorBulk({
   };
 
   const handleAddGroupBulkPeople = () => {
-    if (!groupBulkHeaders.includes('id')) {
+    // If in text mode, parse the CSV first to get headers and rows
+    let headers = groupBulkHeaders;
+    let rows = groupBulkRows;
+    if (groupBulkTextMode === 'text') {
+      const parsed = parseCsv(groupBulkCsvInput);
+      headers = parsed.headers;
+      rows = parsed.rows;
+      // Update state so grid view is in sync if user switches
+      setGroupBulkHeaders(headers);
+      setGroupBulkRows(rows);
+    }
+
+    if (!headers.includes('id')) {
       addNotification({ type: 'error', title: 'Missing Column', message: 'CSV must include an "id" column.' });
       return;
     }
@@ -309,7 +333,7 @@ export function useProblemEditorBulk({
     const existingIds = new Set((problem?.groups || []).map((group) => group.id));
     const newGroups: Group[] = [];
     const duplicateIds: string[] = [];
-    groupBulkRows.forEach((row, idx) => {
+    rows.forEach((row, idx) => {
       const rawId = row['id'] ?? row['group'] ?? `Group_${Date.now()}_${idx}`;
       const id = rawId.trim();
       const sizeVal = (row['size'] ?? row['capacity'] ?? '').trim();
@@ -331,7 +355,7 @@ export function useProblemEditorBulk({
     }
 
     const attrValueMap: Record<string, Set<string>> = {};
-    groupBulkHeaders.forEach((header) => {
+    headers.forEach((header) => {
       if (header === 'id') return;
       attrValueMap[header] = new Set();
     });
