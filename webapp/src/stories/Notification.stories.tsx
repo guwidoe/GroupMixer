@@ -13,50 +13,43 @@ interface NotificationItemProps {
   onDismiss?: () => void;
 }
 
+const iconMap = {
+  success: CheckCircle,
+  error: AlertCircle,
+  warning: AlertTriangle,
+  info: Info,
+} as const;
+
+const iconColorMap = {
+  success: { color: 'var(--color-success-600)' },
+  error: { color: 'var(--color-error-600)' },
+  warning: { color: 'var(--color-warning-600)' },
+  info: { color: 'var(--color-accent)' },
+} as const;
+
+const borderColorMap = {
+  success: 'var(--color-success-300)',
+  error: 'var(--color-error-300)',
+  warning: 'var(--color-warning-300)',
+  info: 'var(--color-accent)',
+} as const;
+
 function NotificationItem({ notification, onDismiss }: NotificationItemProps) {
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'success': return CheckCircle;
-      case 'error': return AlertCircle;
-      case 'warning': return AlertTriangle;
-      case 'info': return Info;
-      default: return Info;
-    }
-  };
-
-  const getIconColor = (type: string) => {
-    switch (type) {
-      case 'success': return { color: 'var(--color-success-600)' };
-      case 'error': return { color: 'var(--color-error-600)' };
-      case 'warning': return { color: 'var(--color-warning-600)' };
-      case 'info': return { color: 'var(--color-accent)' };
-      default: return { color: 'var(--text-secondary)' };
-    }
-  };
-
-  const getBorderColor = (type: string) => {
-    switch (type) {
-      case 'success': return 'var(--color-success-300)';
-      case 'error': return 'var(--color-error-300)';
-      case 'warning': return 'var(--color-warning-300)';
-      case 'info': return 'var(--color-accent)';
-      default: return 'var(--border-primary)';
-    }
-  };
-
-  const Icon = getIcon(notification.type);
+  const Icon = iconMap[notification.type as keyof typeof iconMap] || Info;
+  const iconColor = iconColorMap[notification.type as keyof typeof iconColorMap] || { color: 'var(--text-secondary)' };
+  const borderColor = borderColorMap[notification.type as keyof typeof borderColorMap] || 'var(--border-primary)';
 
   return (
     <div
       className="border rounded-lg p-4 shadow-lg max-w-sm"
       style={{
         backgroundColor: 'var(--bg-primary)',
-        borderColor: getBorderColor(notification.type),
+        borderColor: borderColor,
         boxShadow: 'var(--shadow-lg)',
       }}
     >
       <div className="flex items-start space-x-3">
-        <Icon className="h-5 w-5 mt-0.5" style={getIconColor(notification.type)} />
+        <Icon className="h-5 w-5 mt-0.5" style={iconColor} />
         <div className="flex-1 min-w-0">
           <h4 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
             {notification.title}

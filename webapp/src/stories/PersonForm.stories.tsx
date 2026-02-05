@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
 import PersonForm from '../components/ProblemEditor/forms/PersonForm';
-import type { AttributeDefinition, PersonFormData, Person } from '../types';
+import type { AttributeDefinition, PersonFormData } from '../types';
 
 /**
  * PersonForm is a modal form for adding or editing a person.

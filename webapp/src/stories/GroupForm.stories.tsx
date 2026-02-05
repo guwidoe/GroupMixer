@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
 import GroupForm from '../components/ProblemEditor/forms/GroupForm';
-import type { GroupFormData, Group } from '../types';
+import type { GroupFormData } from '../types';
 
 /**
  * GroupForm is a modal form for adding or editing a group.

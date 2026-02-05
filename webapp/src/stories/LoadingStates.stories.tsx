@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
+/* eslint-disable react/no-multi-comp */
+
 /**
  * Loading states shown during data fetching or processing.
+ * Multiple components are defined here for Storybook demonstration purposes.
  */
 
 interface LoadingSpinnerProps {
