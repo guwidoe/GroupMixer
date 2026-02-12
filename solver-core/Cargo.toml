@@ -29,7 +29,7 @@ js-sys = "0.3"
 rand_chacha = "0.10.0"
 criterion = { version = "0.8", features = ["html_reports"] }
 serde_yaml = "0.9"
-proptest = "1.4"
+proptest = "1.10"
 
 [[bench]]
 name = "solver_perf"
