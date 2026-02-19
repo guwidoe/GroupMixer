@@ -73,8 +73,8 @@ importers:
         specifier: ^10.2.6
         version: 10.2.7(@types/react@19.2.14)(esbuild@0.27.3)(rollup@4.57.1)(storybook@10.2.8(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.30.2))
       '@storybook/addon-onboarding':
-        specifier: ^10.2.6
-        version: 10.2.7(storybook@10.2.8(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
+        specifier: ^10.2.8
+        version: 10.2.8(storybook@10.2.8(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))
       '@storybook/addon-vitest':
         specifier: ^10.2.3
         version: 10.2.7(@vitest/browser-playwright@4.0.18)(@vitest/browser@4.0.18(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.30.2))(vitest@4.0.18))(@vitest/runner@4.0.18)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(storybook@10.2.8(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(vitest@4.0.18)
@@ -872,10 +872,10 @@ packages:
     peerDependencies:
       storybook: ^10.2.7
 
-  '@storybook/addon-onboarding@10.2.7':
-    resolution: {integrity: sha512-itf4l/ctdGBwAtKWHd35tPt/VFBefGZTVpccbV4c5yhe1RV364v+UeGCgtHkA0G5R3R2Y/gdSZ+edOZXbGFKRw==}
+  '@storybook/addon-onboarding@10.2.8':
+    resolution: {integrity: sha512-/+TD055ZDmM325RYrDKqle51P1iT3GiFyDrcCYNOGTUEp3lAu/qplgOC0xMZudiv2y4ExlNYD26lJoGSTNHfHg==}
     peerDependencies:
-      storybook: ^10.2.7
+      storybook: ^10.2.8
 
   '@storybook/addon-vitest@10.2.7':
     resolution: {integrity: sha512-pVFEZRSi7APkVcAdwuTL1crXa65fJ1ME/uVXajRR832UssIk8YwOGle3P7ciqPEL/8KSsn+GbDGQXLsKN2/oFA==}
@@ -3606,7 +3606,7 @@ snapshots:
       - vite
       - webpack
 
-  '@storybook/addon-onboarding@10.2.7(storybook@10.2.8(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
+  '@storybook/addon-onboarding@10.2.8(storybook@10.2.8(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))':
     dependencies:
       storybook: 10.2.8(@testing-library/dom@10.4.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
