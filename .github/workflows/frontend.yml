@@ -67,7 +67,7 @@ jobs:
         run: cd webapp && npx playwright install chromium --with-deps
       - name: Run E2E tests (excluding visual regression)
         run: cd webapp && npm run test:e2e -- --ignore-snapshots --grep-invert "Visual Regression"
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
