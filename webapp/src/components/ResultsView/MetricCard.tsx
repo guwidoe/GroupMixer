@@ -18,7 +18,7 @@ export function MetricCard({ title, value, icon, colorClass }: MetricCardProps) 
           <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{title}</p>
           <p className={`text-2xl font-bold ${colorClass}`}>{value}</p>
         </div>
-        {React.createElement(icon, { className: `w-8 h-8 ${colorClass.replace('text-', 'text-').replace('-600', '-400')}` })}
+        {React.createElement(icon, { className: `w-8 h-8 ${colorClass.replace('-600', '-400')}` })}
       </div>
     </div>
   );
