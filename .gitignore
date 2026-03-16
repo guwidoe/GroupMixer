@@ -377,3 +377,5 @@ FodyWeavers.xsd
 
 # Pi agent workspace
 /.pi/
+
+.desloppify
