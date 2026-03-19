@@ -22,7 +22,7 @@
     "@react-sigma/core": "^5.0.6",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
-    "@tailwindcss/postcss": "^4.2.1",
+    "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "25.5.0",
     "@types/three": "^0.183.1",
     "@vercel/analytics": "^2.0.1",
