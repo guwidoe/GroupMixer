@@ -100,7 +100,8 @@ Excluded or tracked separately:
 
 #### Rust
 ```bash
-cargo nextest run --workspace
+./scripts/test-rust-fast.sh
+# equivalent cargo command: cargo nextest run --workspace --exclude solver-wasm
 ```
 
 #### Frontend logic
@@ -119,13 +120,16 @@ npm run test:e2e:workflows
 
 #### Rust coverage
 ```bash
-cargo llvm-cov --workspace --all-features --html
-cargo llvm-cov --workspace --all-features --lcov --output-path target/coverage/rust.lcov
+./scripts/coverage-rust.sh
+# or individually:
+# cargo llvm-cov --workspace --all-features --exclude solver-wasm --html --output-dir target/coverage/rust-html
+# cargo llvm-cov --workspace --all-features --exclude solver-wasm --lcov --output-path target/coverage/rust.lcov
 ```
 
 #### Optional native secondary coverage
 ```bash
-cargo tarpaulin -p solver-core --engine llvm --out Html --tests --all-features
+./scripts/coverage-rust-tarpaulin.sh
+# equivalent cargo command: cargo tarpaulin -p solver-core --engine llvm --out Html --tests --all-features
 ```
 
 #### Solver mutation testing
@@ -195,5 +199,13 @@ The threshold and gate implementation should follow these rules:
 - Frontend logic change: run Vitest unit/component coverage for the affected area
 - UI flow change: run Vitest component tests plus Playwright workflow coverage
 - Layout/theme change: run visual regression in addition to functional tests
+
+## Helper scripts
+
+Rust tooling helpers live in `scripts/`:
+- `./scripts/install-rust-test-tools.sh`
+- `./scripts/test-rust-fast.sh`
+- `./scripts/coverage-rust.sh`
+- `./scripts/coverage-rust-tarpaulin.sh`
 
 This document should be updated whenever the testing stack, coverage denominator, or required confidence workflow changes.
