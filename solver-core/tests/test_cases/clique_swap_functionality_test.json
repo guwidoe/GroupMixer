@@ -1,47 +1,237 @@
 {
   "name": "Clique Swap Functionality Test",
+  "metadata": {
+    "tags": [
+      "moves",
+      "clique",
+      "constraints"
+    ],
+    "kind": "correctness",
+    "tier": "default"
+  },
   "input": {
     "problem": {
       "people": [
-        {"id":"c1_p0","attributes":{"department":"engineering"}},
-        {"id":"c1_p1","attributes":{"department":"engineering"}},
-        {"id":"c1_p2","attributes":{"department":"engineering"}},
-        {"id":"c2_p0","attributes":{"department":"sales"}},
-        {"id":"c2_p1","attributes":{"department":"sales"}},
-        {"id":"ind_p0","attributes":{"department":"marketing"}},
-        {"id":"ind_p1","attributes":{"department":"marketing"}},
-        {"id":"ind_p2","attributes":{"department":"hr"}},
-        {"id":"ind_p3","attributes":{"department":"hr"}},
-        {"id":"ind_p4","attributes":{"department":"finance"}},
-        {"id":"ind_p5","attributes":{"department":"finance"}},
-        {"id":"ind_p6","attributes":{"department":"operations"}},
-        {"id":"ind_p7","attributes":{"department":"operations"}},
-        {"id":"ind_p8","attributes":{"department":"legal"}},
-        {"id":"ind_p9","attributes":{"department":"legal"}},
-        {"id":"ind_p10","attributes":{"department":"admin"}},
-        {"id":"ind_p11","attributes":{"department":"admin"}},
-        {"id":"ind_p12","attributes":{"department":"support"}},
-        {"id":"ind_p13","attributes":{"department":"support"}},
-        {"id":"ind_p14","attributes":{"department":"research"}},
-        {"id":"ind_p15","attributes":{"department":"research"}},
-        {"id":"ind_p16","attributes":{"department":"design"}},
-        {"id":"ind_p17","attributes":{"department":"design"}},
-        {"id":"ind_p18","attributes":{"department":"qa"}},
-        {"id":"ind_p19","attributes":{"department":"qa"}},
-        {"id":"ind_p20","attributes":{"department":"devops"}},
-        {"id":"ind_p21","attributes":{"department":"devops"}},
-        {"id":"ind_p22","attributes":{"department":"pm"}},
-        {"id":"ind_p23","attributes":{"department":"pm"}},
-        {"id":"ind_p24","attributes":{"department":"analytics"}},
-        {"id":"ind_p25","attributes":{"department":"analytics"}},
-        {"id":"ind_p26","attributes":{"department":"security"}},
-        {"id":"ind_p27","attributes":{"department":"security"}},
-        {"id":"ind_p28","attributes":{"department":"mobile"}},
-        {"id":"ind_p29","attributes":{"department":"mobile"}}
+        {
+          "id": "c1_p0",
+          "attributes": {
+            "department": "engineering"
+          }
+        },
+        {
+          "id": "c1_p1",
+          "attributes": {
+            "department": "engineering"
+          }
+        },
+        {
+          "id": "c1_p2",
+          "attributes": {
+            "department": "engineering"
+          }
+        },
+        {
+          "id": "c2_p0",
+          "attributes": {
+            "department": "sales"
+          }
+        },
+        {
+          "id": "c2_p1",
+          "attributes": {
+            "department": "sales"
+          }
+        },
+        {
+          "id": "ind_p0",
+          "attributes": {
+            "department": "marketing"
+          }
+        },
+        {
+          "id": "ind_p1",
+          "attributes": {
+            "department": "marketing"
+          }
+        },
+        {
+          "id": "ind_p2",
+          "attributes": {
+            "department": "hr"
+          }
+        },
+        {
+          "id": "ind_p3",
+          "attributes": {
+            "department": "hr"
+          }
+        },
+        {
+          "id": "ind_p4",
+          "attributes": {
+            "department": "finance"
+          }
+        },
+        {
+          "id": "ind_p5",
+          "attributes": {
+            "department": "finance"
+          }
+        },
+        {
+          "id": "ind_p6",
+          "attributes": {
+            "department": "operations"
+          }
+        },
+        {
+          "id": "ind_p7",
+          "attributes": {
+            "department": "operations"
+          }
+        },
+        {
+          "id": "ind_p8",
+          "attributes": {
+            "department": "legal"
+          }
+        },
+        {
+          "id": "ind_p9",
+          "attributes": {
+            "department": "legal"
+          }
+        },
+        {
+          "id": "ind_p10",
+          "attributes": {
+            "department": "admin"
+          }
+        },
+        {
+          "id": "ind_p11",
+          "attributes": {
+            "department": "admin"
+          }
+        },
+        {
+          "id": "ind_p12",
+          "attributes": {
+            "department": "support"
+          }
+        },
+        {
+          "id": "ind_p13",
+          "attributes": {
+            "department": "support"
+          }
+        },
+        {
+          "id": "ind_p14",
+          "attributes": {
+            "department": "research"
+          }
+        },
+        {
+          "id": "ind_p15",
+          "attributes": {
+            "department": "research"
+          }
+        },
+        {
+          "id": "ind_p16",
+          "attributes": {
+            "department": "design"
+          }
+        },
+        {
+          "id": "ind_p17",
+          "attributes": {
+            "department": "design"
+          }
+        },
+        {
+          "id": "ind_p18",
+          "attributes": {
+            "department": "qa"
+          }
+        },
+        {
+          "id": "ind_p19",
+          "attributes": {
+            "department": "qa"
+          }
+        },
+        {
+          "id": "ind_p20",
+          "attributes": {
+            "department": "devops"
+          }
+        },
+        {
+          "id": "ind_p21",
+          "attributes": {
+            "department": "devops"
+          }
+        },
+        {
+          "id": "ind_p22",
+          "attributes": {
+            "department": "pm"
+          }
+        },
+        {
+          "id": "ind_p23",
+          "attributes": {
+            "department": "pm"
+          }
+        },
+        {
+          "id": "ind_p24",
+          "attributes": {
+            "department": "analytics"
+          }
+        },
+        {
+          "id": "ind_p25",
+          "attributes": {
+            "department": "analytics"
+          }
+        },
+        {
+          "id": "ind_p26",
+          "attributes": {
+            "department": "security"
+          }
+        },
+        {
+          "id": "ind_p27",
+          "attributes": {
+            "department": "security"
+          }
+        },
+        {
+          "id": "ind_p28",
+          "attributes": {
+            "department": "mobile"
+          }
+        },
+        {
+          "id": "ind_p29",
+          "attributes": {
+            "department": "mobile"
+          }
+        }
       ],
       "groups": [
-        {"id": "g0", "size": 18},
-        {"id": "g1", "size": 17}
+        {
+          "id": "g0",
+          "size": 18
+        },
+        {
+          "id": "g1",
+          "size": 17
+        }
       ],
       "num_sessions": 3
     },
@@ -60,11 +250,18 @@
       },
       {
         "type": "MustStayTogether",
-        "people": ["c1_p0", "c1_p1", "c1_p2"]
+        "people": [
+          "c1_p0",
+          "c1_p1",
+          "c1_p2"
+        ]
       },
       {
         "type": "MustStayTogether",
-        "people": ["c2_p0", "c2_p1"]
+        "people": [
+          "c2_p0",
+          "c2_p1"
+        ]
       }
     ],
     "solver": {
@@ -95,4 +292,4 @@
     "max_constraint_penalty": 0
   },
   "test_options": {}
-} 
+}

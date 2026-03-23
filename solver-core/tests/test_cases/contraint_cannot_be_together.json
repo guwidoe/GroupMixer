@@ -1,51 +1,92 @@
 {
-    "name": "Constraint - Cannot Be Together",
-    "input": {
-      "problem": {
-        "people": [
-          { "id": "p0", "attributes": {} },
-          { "id": "p1", "attributes": {} },
-          { "id": "p2", "attributes": {} },
-          { "id": "p3", "attributes": {} },
-          { "id": "p4", "attributes": {} },
-          { "id": "p5", "attributes": {} }
-        ],
-        "groups": [
-          { "id": "g0", "size": 2 },
-          { "id": "g1", "size": 2 },
-          { "id": "g2", "size": 2 }
-        ],
-        "num_sessions": 2
-      },
-      "objectives": [],
-      "constraints": [
+  "name": "Constraint - Cannot Be Together",
+  "metadata": {
+    "tags": [
+      "constraints",
+      "separation"
+    ],
+    "kind": "correctness",
+    "tier": "default"
+  },
+  "input": {
+    "problem": {
+      "people": [
         {
-          "type": "ShouldNotBeTogether",
-          "people": ["p0", "p1", "p2"]
+          "id": "p0",
+          "attributes": {}
+        },
+        {
+          "id": "p1",
+          "attributes": {}
+        },
+        {
+          "id": "p2",
+          "attributes": {}
+        },
+        {
+          "id": "p3",
+          "attributes": {}
+        },
+        {
+          "id": "p4",
+          "attributes": {}
+        },
+        {
+          "id": "p5",
+          "attributes": {}
         }
       ],
-      "solver": {
-        "solver_type": "SimulatedAnnealing",
-        "stop_conditions": { "max_iterations": 1000 },
-        "solver_params": {
-          "solver_type": "SimulatedAnnealing",
-          "initial_temperature": 1.0,
-          "final_temperature": 0.001,
-          "cooling_schedule": "geometric"
+      "groups": [
+        {
+          "id": "g0",
+          "size": 2
         },
-        "logging": {
-          "log_frequency": 0,
-          "log_initial_state": false,
-          "log_duration_and_score": false,
-          "display_final_schedule": false,
-          "log_initial_score_breakdown": false,
-          "log_final_score_breakdown": false,
-          "log_stop_condition": false
+        {
+          "id": "g1",
+          "size": 2
+        },
+        {
+          "id": "g2",
+          "size": 2
         }
+      ],
+      "num_sessions": 2
+    },
+    "objectives": [],
+    "constraints": [
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "p0",
+          "p1",
+          "p2"
+        ]
       }
-    },
-    "expected": {
-      "cannot_be_together_respected": true
-    },
-    "test_options": {}
-  } 
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 1000
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 1.0,
+        "final_temperature": 0.001,
+        "cooling_schedule": "geometric"
+      },
+      "logging": {
+        "log_frequency": 0,
+        "log_initial_state": false,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      }
+    }
+  },
+  "expected": {
+    "cannot_be_together_respected": true
+  },
+  "test_options": {}
+}

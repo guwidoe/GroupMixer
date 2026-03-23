@@ -1,53 +1,93 @@
 {
-    "name": "Stop Condition - No Improvement",
-    "input": {
-        "problem": {
-            "people": [
-                { "id": "p1", "attributes": {} },
-                { "id": "p2", "attributes": {} },
-                { "id": "p3", "attributes": {} },
-                { "id": "p4", "attributes": {} },
-                { "id": "p5", "attributes": {} },
-                { "id": "p6", "attributes": {} }
-            ],
-            "groups": [
-                { "id": "g1", "size": 3 },
-                { "id": "g2", "size": 3 }
-            ],
-            "num_sessions": 1
+  "name": "Stop Condition - No Improvement",
+  "metadata": {
+    "tags": [
+      "stop_conditions",
+      "solver"
+    ],
+    "kind": "correctness",
+    "tier": "default"
+  },
+  "input": {
+    "problem": {
+      "people": [
+        {
+          "id": "p1",
+          "attributes": {}
         },
-        "objectives": [{ "type": "maximize_unique_contacts", "weight": 1.0 }],
-        "constraints": [
-            {
-                "type": "MustStayTogether",
-                "people": ["p1", "p2"]
-            }
-        ],
-        "solver": {
-            "solver_type": "SimulatedAnnealing",
-            "stop_conditions": {
-                "max_iterations": 1000000,
-                "no_improvement_iterations": 1000
-            },
-            "solver_params": {
-                "solver_type": "SimulatedAnnealing",
-                "initial_temperature": 1.0,
-                "final_temperature": 0.0001,
-                "cooling_schedule": "geometric"
-            },
-            "logging": {
-                "log_frequency": 0,
-                "log_initial_state": false,
-                "log_duration_and_score": false,
-                "display_final_schedule": false,
-                "log_initial_score_breakdown": false,
-                "log_final_score_breakdown": false,
-                "log_stop_condition": false
-            }
+        {
+          "id": "p2",
+          "attributes": {}
+        },
+        {
+          "id": "p3",
+          "attributes": {}
+        },
+        {
+          "id": "p4",
+          "attributes": {}
+        },
+        {
+          "id": "p5",
+          "attributes": {}
+        },
+        {
+          "id": "p6",
+          "attributes": {}
         }
+      ],
+      "groups": [
+        {
+          "id": "g1",
+          "size": 3
+        },
+        {
+          "id": "g2",
+          "size": 3
+        }
+      ],
+      "num_sessions": 1
     },
-    "expected": {
-        "must_stay_together_respected": true
-    },
-    "test_options": {}
-} 
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "constraints": [
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "p1",
+          "p2"
+        ]
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 1000000,
+        "no_improvement_iterations": 1000
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 1.0,
+        "final_temperature": 0.0001,
+        "cooling_schedule": "geometric"
+      },
+      "logging": {
+        "log_frequency": 0,
+        "log_initial_state": false,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      }
+    }
+  },
+  "expected": {
+    "must_stay_together_respected": true
+  },
+  "test_options": {}
+}

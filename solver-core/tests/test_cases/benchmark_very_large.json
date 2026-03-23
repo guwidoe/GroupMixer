@@ -1,30 +1,174 @@
 {
   "name": "Benchmark - Very Large",
+  "metadata": {
+    "tags": [
+      "performance",
+      "benchmark",
+      "scale"
+    ],
+    "kind": "performance",
+    "tier": "slow"
+  },
   "input": {
     "problem": {
       "people": [
-        {"id":"p0","attributes":{}},{"id":"p1","attributes":{}},{"id":"p2","attributes":{}},
-        {"id":"p3","attributes":{}},{"id":"p4","attributes":{}},{"id":"p5","attributes":{}},
-        {"id":"p6","attributes":{}},{"id":"p7","attributes":{}},{"id":"p8","attributes":{}},
-        {"id":"p9","attributes":{}},{"id":"p10","attributes":{}},{"id":"p11","attributes":{}},
-        {"id":"p12","attributes":{}},{"id":"p13","attributes":{}},{"id":"p14","attributes":{}},
-        {"id":"p15","attributes":{}},{"id":"p16","attributes":{}},{"id":"p17","attributes":{}},
-        {"id":"p18","attributes":{}},{"id":"p19","attributes":{}},{"id":"p20","attributes":{}},
-        {"id":"p21","attributes":{}},{"id":"p22","attributes":{}},{"id":"p23","attributes":{}},
-        {"id":"p24","attributes":{}},{"id":"p25","attributes":{}},{"id":"p26","attributes":{}},
-        {"id":"p27","attributes":{}},{"id":"p28","attributes":{}},{"id":"p29","attributes":{}}
+        {
+          "id": "p0",
+          "attributes": {}
+        },
+        {
+          "id": "p1",
+          "attributes": {}
+        },
+        {
+          "id": "p2",
+          "attributes": {}
+        },
+        {
+          "id": "p3",
+          "attributes": {}
+        },
+        {
+          "id": "p4",
+          "attributes": {}
+        },
+        {
+          "id": "p5",
+          "attributes": {}
+        },
+        {
+          "id": "p6",
+          "attributes": {}
+        },
+        {
+          "id": "p7",
+          "attributes": {}
+        },
+        {
+          "id": "p8",
+          "attributes": {}
+        },
+        {
+          "id": "p9",
+          "attributes": {}
+        },
+        {
+          "id": "p10",
+          "attributes": {}
+        },
+        {
+          "id": "p11",
+          "attributes": {}
+        },
+        {
+          "id": "p12",
+          "attributes": {}
+        },
+        {
+          "id": "p13",
+          "attributes": {}
+        },
+        {
+          "id": "p14",
+          "attributes": {}
+        },
+        {
+          "id": "p15",
+          "attributes": {}
+        },
+        {
+          "id": "p16",
+          "attributes": {}
+        },
+        {
+          "id": "p17",
+          "attributes": {}
+        },
+        {
+          "id": "p18",
+          "attributes": {}
+        },
+        {
+          "id": "p19",
+          "attributes": {}
+        },
+        {
+          "id": "p20",
+          "attributes": {}
+        },
+        {
+          "id": "p21",
+          "attributes": {}
+        },
+        {
+          "id": "p22",
+          "attributes": {}
+        },
+        {
+          "id": "p23",
+          "attributes": {}
+        },
+        {
+          "id": "p24",
+          "attributes": {}
+        },
+        {
+          "id": "p25",
+          "attributes": {}
+        },
+        {
+          "id": "p26",
+          "attributes": {}
+        },
+        {
+          "id": "p27",
+          "attributes": {}
+        },
+        {
+          "id": "p28",
+          "attributes": {}
+        },
+        {
+          "id": "p29",
+          "attributes": {}
+        }
       ],
       "groups": [
-        {"id":"g0","size":6}, {"id":"g1","size":6}, {"id":"g2","size":6},
-        {"id":"g3","size":6}, {"id": "g4","size":6}
+        {
+          "id": "g0",
+          "size": 6
+        },
+        {
+          "id": "g1",
+          "size": 6
+        },
+        {
+          "id": "g2",
+          "size": 6
+        },
+        {
+          "id": "g3",
+          "size": 6
+        },
+        {
+          "id": "g4",
+          "size": 6
+        }
       ],
       "num_sessions": 10
     },
-    "objectives": [{ "type": "maximize_unique_contacts", "weight": 1.0 }],
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
     "constraints": [],
     "solver": {
       "solver_type": "SimulatedAnnealing",
-      "stop_conditions": { "max_iterations": 1000000 },
+      "stop_conditions": {
+        "max_iterations": 1000000
+      },
       "solver_params": {
         "solver_type": "SimulatedAnnealing",
         "initial_temperature": 1.0,
@@ -46,4 +190,4 @@
     "max_constraint_penalty": 0
   },
   "test_options": {}
-} 
+}

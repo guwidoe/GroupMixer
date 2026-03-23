@@ -1,48 +1,265 @@
 {
   "name": "Google CP Equivalent Test",
+  "metadata": {
+    "tags": [
+      "regression",
+      "comparison"
+    ],
+    "kind": "correctness",
+    "tier": "default"
+  },
   "input": {
     "problem": {
       "people": [
-        {"id": "p0", "attributes": {"gender": "male"}}, {"id": "p1", "attributes": {"gender": "male"}},
-        {"id": "p2", "attributes": {"gender": "male"}}, {"id": "p3", "attributes": {"gender": "male"}},
-        {"id": "p4", "attributes": {"gender": "male"}}, {"id": "p5", "attributes": {"gender": "male"}},
-        {"id": "p6", "attributes": {"gender": "male"}}, {"id": "p7", "attributes": {"gender": "male"}},
-        {"id": "p8", "attributes": {"gender": "male"}}, {"id": "p9", "attributes": {"gender": "male"}},
-        {"id": "p10", "attributes": {"gender": "male"}}, {"id": "p11", "attributes": {"gender": "male"}},
-        {"id": "p12", "attributes": {"gender": "male"}}, {"id": "p13", "attributes": {"gender": "male"}},
-        {"id": "p14", "attributes": {"gender": "male"}}, {"id": "p15", "attributes": {"gender": "female"}},
-        {"id": "p16", "attributes": {"gender": "female"}}, {"id": "p17", "attributes": {"gender": "female"}},
-        {"id": "p18", "attributes": {"gender": "female"}}, {"id": "p19", "attributes": {"gender": "female"}},
-        {"id": "p20", "attributes": {"gender": "female"}}, {"id": "p21", "attributes": {"gender": "female"}},
-        {"id": "p22", "attributes": {"gender": "female"}}, {"id": "p23", "attributes": {"gender": "female"}},
-        {"id": "p24", "attributes": {"gender": "female"}}, {"id": "p25", "attributes": {"gender": "female"}},
-        {"id": "p26", "attributes": {"gender": "female"}}, {"id": "p27", "attributes": {"gender": "female"}},
-        {"id": "p28", "attributes": {"gender": "female"}}, {"id": "p29", "attributes": {"gender": "female"}}
+        {
+          "id": "p0",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p1",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p2",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p3",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p4",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p5",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p6",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p7",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p8",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p9",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p10",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p11",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p12",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p13",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p14",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p15",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "p16",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "p17",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "p18",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "p19",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "p20",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "p21",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "p22",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "p23",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "p24",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "p25",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "p26",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "p27",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "p28",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "p29",
+          "attributes": {
+            "gender": "female"
+          }
+        }
       ],
       "groups": [
-        {"id": "g0", "size": 6}, {"id": "g1", "size": 6}, {"id": "g2", "size": 6},
-        {"id": "g3", "size": 6}, {"id": "g4", "size": 6}
+        {
+          "id": "g0",
+          "size": 6
+        },
+        {
+          "id": "g1",
+          "size": 6
+        },
+        {
+          "id": "g2",
+          "size": 6
+        },
+        {
+          "id": "g3",
+          "size": 6
+        },
+        {
+          "id": "g4",
+          "size": 6
+        }
       ],
       "num_sessions": 10
     },
     "objectives": [
-      {"type": "maximize_unique_contacts", "weight": 1.0}
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
     ],
     "constraints": [
       {
         "type": "AttributeBalance",
         "group_id": "ALL",
         "attribute_key": "gender",
-        "desired_values": { "male": 3, "female": 3 },
+        "desired_values": {
+          "male": 3,
+          "female": 3
+        },
         "penalty_weight": 10.0
       },
-      { "type": "ShouldNotBeTogether", "people": ["p0", "p1"] },
-      { "type": "ShouldNotBeTogether", "people": ["p5", "p6"] },
-      { "type": "MustStayTogether", "people": ["p2", "p3"] }
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "p0",
+          "p1"
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "p5",
+          "p6"
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "p2",
+          "p3"
+        ]
+      }
     ],
     "solver": {
       "solver_type": "SimulatedAnnealing",
-      "stop_conditions": { "time_limit_seconds": 15 },
+      "stop_conditions": {
+        "time_limit_seconds": 15
+      },
       "solver_params": {
         "solver_type": "SimulatedAnnealing",
         "initial_temperature": 5.0,
@@ -68,4 +285,4 @@
   "test_options": {
     "loop_count": 1
   }
-} 
+}

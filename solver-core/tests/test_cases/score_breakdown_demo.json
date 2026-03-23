@@ -1,16 +1,42 @@
 {
   "name": "Score Breakdown Demo",
+  "metadata": {
+    "tags": [
+      "scoring",
+      "results"
+    ],
+    "kind": "correctness",
+    "tier": "default"
+  },
   "input": {
     "problem": {
       "people": [
-        { "id": "p0", "attributes": {} },
-        { "id": "p1", "attributes": {} },
-        { "id": "p2", "attributes": {} },
-        { "id": "p3", "attributes": {} }
+        {
+          "id": "p0",
+          "attributes": {}
+        },
+        {
+          "id": "p1",
+          "attributes": {}
+        },
+        {
+          "id": "p2",
+          "attributes": {}
+        },
+        {
+          "id": "p3",
+          "attributes": {}
+        }
       ],
       "groups": [
-        { "id": "g0", "size": 2 },
-        { "id": "g1", "size": 2 }
+        {
+          "id": "g0",
+          "size": 2
+        },
+        {
+          "id": "g1",
+          "size": 2
+        }
       ],
       "num_sessions": 1
     },
@@ -23,17 +49,26 @@
     "constraints": [
       {
         "type": "MustStayTogether",
-        "people": ["p0", "p1"],
+        "people": [
+          "p0",
+          "p1"
+        ],
         "penalty_weight": 1000.0
       },
       {
-        "type": "MustStayTogether", 
-        "people": ["p2", "p3"],
+        "type": "MustStayTogether",
+        "people": [
+          "p2",
+          "p3"
+        ],
         "penalty_weight": 5.0
       },
       {
         "type": "ShouldNotBeTogether",
-        "people": ["p0", "p2"],
+        "people": [
+          "p0",
+          "p2"
+        ],
         "penalty_weight": 10.0
       }
     ],
@@ -59,5 +94,6 @@
       }
     }
   },
-  "expected": {}
-} 
+  "expected": {},
+  "test_options": {}
+}

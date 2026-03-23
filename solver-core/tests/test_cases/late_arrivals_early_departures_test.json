@@ -1,20 +1,69 @@
 {
   "name": "Late Arrivals & Early Departures Test",
+  "metadata": {
+    "tags": [
+      "sessions",
+      "participation"
+    ],
+    "kind": "correctness",
+    "tier": "default"
+  },
   "input": {
     "problem": {
       "people": [
-        { "id": "alice", "attributes": {} },
-        { "id": "bob", "attributes": {} },
-        { "id": "charlie", "attributes": {} },
-        { "id": "diana", "attributes": {} },
-        { "id": "eve", "attributes": {}, "sessions": [1, 2] },
-        { "id": "frank", "attributes": {}, "sessions": [0, 1] },
-        { "id": "grace", "attributes": {}, "sessions": [1] },
-        { "id": "henry", "attributes": {} }
+        {
+          "id": "alice",
+          "attributes": {}
+        },
+        {
+          "id": "bob",
+          "attributes": {}
+        },
+        {
+          "id": "charlie",
+          "attributes": {}
+        },
+        {
+          "id": "diana",
+          "attributes": {}
+        },
+        {
+          "id": "eve",
+          "attributes": {},
+          "sessions": [
+            1,
+            2
+          ]
+        },
+        {
+          "id": "frank",
+          "attributes": {},
+          "sessions": [
+            0,
+            1
+          ]
+        },
+        {
+          "id": "grace",
+          "attributes": {},
+          "sessions": [
+            1
+          ]
+        },
+        {
+          "id": "henry",
+          "attributes": {}
+        }
       ],
       "groups": [
-        { "id": "team1", "size": 4 },
-        { "id": "team2", "size": 4 }
+        {
+          "id": "team1",
+          "size": 4
+        },
+        {
+          "id": "team2",
+          "size": 4
+        }
       ],
       "num_sessions": 3
     },
@@ -27,25 +76,40 @@
     "constraints": [
       {
         "type": "MustStayTogether",
-        "people": ["alice", "bob"],
+        "people": [
+          "alice",
+          "bob"
+        ],
         "penalty_weight": 1000.0
       },
       {
         "type": "ShouldNotBeTogether",
-        "people": ["charlie", "diana"],
+        "people": [
+          "charlie",
+          "diana"
+        ],
         "penalty_weight": 1000.0,
-        "sessions": [0, 2]
+        "sessions": [
+          0,
+          2
+        ]
       },
       {
         "type": "ImmovablePerson",
         "person_id": "henry",
-        "group_id": "team1", 
-        "sessions": [0, 1, 2]
+        "group_id": "team1",
+        "sessions": [
+          0,
+          1,
+          2
+        ]
       }
     ],
     "solver": {
       "solver_type": "SimulatedAnnealing",
-      "stop_conditions": { "max_iterations": 100000 },
+      "stop_conditions": {
+        "max_iterations": 100000
+      },
       "solver_params": {
         "solver_type": "SimulatedAnnealing",
         "initial_temperature": 1.0,
@@ -70,4 +134,4 @@
     "participation_patterns_respected": true
   },
   "test_options": {}
-} 
+}

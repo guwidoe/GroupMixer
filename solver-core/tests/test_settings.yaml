@@ -1,26 +1,12 @@
-# test_settings.yaml
+# Legacy note:
 #
-# Configuration for running data-driven tests in solver-core.
+# The data-driven harness no longer depends on editing this file to select cases.
+# Use normal cargo test filtering instead, for example:
 #
-# mode: "all"      - Runs all .json files in the test_cases directory.
-# mode: "filter"   - Runs only the tests whose names match one of the
-#                  strings in `filter_patterns`.
+#   cargo test -p solver-core --test data_driven_tests basic_clique_test
+#   cargo test -p solver-core --test data_driven_tests constraints__
+#   cargo test -p solver-core --test data_driven_tests -- --ignored
 #
-# filter_patterns: A list of strings to match against the "name" field
-#                  in the JSON test case files. This is only used
-#                  when the mode is "filter".
-
-# mode: "all"
-
-# filter_patterns:
-#   A list of strings to match against test case names. This is only
-#   used when `mode` is set to "filter".
-#   Example: ["Benchmark", "Constraint"]
-#   filter_patterns: []
-# --- Example for Filtering ---
-# To run only specific tests, change the mode and add patterns like this:
-#
+# This file is kept only as a pointer for older workflows.
 mode: "all"
 filter_patterns: []
-# mode: "filter"
-# filter_patterns: ["Transfer Test"]

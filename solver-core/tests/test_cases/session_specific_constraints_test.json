@@ -1,18 +1,50 @@
 {
   "name": "Session-Specific Constraints Test",
+  "metadata": {
+    "tags": [
+      "sessions",
+      "constraints"
+    ],
+    "kind": "correctness",
+    "tier": "default"
+  },
   "input": {
     "problem": {
       "people": [
-        { "id": "p0", "attributes": {} },
-        { "id": "p1", "attributes": {} },
-        { "id": "p2", "attributes": {} },
-        { "id": "p3", "attributes": {} },
-        { "id": "p4", "attributes": {} },
-        { "id": "p5", "attributes": {} }
+        {
+          "id": "p0",
+          "attributes": {}
+        },
+        {
+          "id": "p1",
+          "attributes": {}
+        },
+        {
+          "id": "p2",
+          "attributes": {}
+        },
+        {
+          "id": "p3",
+          "attributes": {}
+        },
+        {
+          "id": "p4",
+          "attributes": {}
+        },
+        {
+          "id": "p5",
+          "attributes": {}
+        }
       ],
       "groups": [
-        { "id": "g0", "size": 3 },
-        { "id": "g1", "size": 3 }
+        {
+          "id": "g0",
+          "size": 3
+        },
+        {
+          "id": "g1",
+          "size": 3
+        }
       ],
       "num_sessions": 3
     },
@@ -20,20 +52,34 @@
     "constraints": [
       {
         "type": "MustStayTogether",
-        "people": ["p0", "p1"],
+        "people": [
+          "p0",
+          "p1"
+        ],
         "penalty_weight": 1000.0,
-        "sessions": [0, 1]
+        "sessions": [
+          0,
+          1
+        ]
       },
       {
-        "type": "ShouldNotBeTogether", 
-        "people": ["p2", "p3"],
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "p2",
+          "p3"
+        ],
         "penalty_weight": 1000.0,
-        "sessions": [1, 2]
+        "sessions": [
+          1,
+          2
+        ]
       }
     ],
     "solver": {
       "solver_type": "SimulatedAnnealing",
-      "stop_conditions": { "max_iterations": 1000 },
+      "stop_conditions": {
+        "max_iterations": 1000
+      },
       "solver_params": {
         "solver_type": "SimulatedAnnealing",
         "initial_temperature": 1.0,
@@ -55,4 +101,4 @@
     "session_specific_constraints_respected": true
   },
   "test_options": {}
-} 
+}

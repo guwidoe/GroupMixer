@@ -1,30 +1,124 @@
 {
   "name": "User Missing Session Participation Bug",
+  "metadata": {
+    "tags": [
+      "validation",
+      "sessions"
+    ],
+    "kind": "correctness",
+    "tier": "default"
+  },
   "input": {
     "problem": {
       "people": [
-        { "id": "alice", "attributes": {} },
-        { "id": "bob", "attributes": {} },
-        { "id": "charlie", "attributes": {} },
-        { "id": "diana", "attributes": {} },
-        { "id": "eve", "attributes": { "name": "eve" }, "sessions": [0, 1] },
-        { "id": "frank", "attributes": { "name": "frank" }, "sessions": [0, 1, 2] },
-        { "id": "grace", "attributes": { "name": "grace" }, "sessions": [0, 1, 2] },
-        { "id": "henry", "attributes": { "name": "henry" }, "sessions": [0, 1, 2] }
+        {
+          "id": "alice",
+          "attributes": {}
+        },
+        {
+          "id": "bob",
+          "attributes": {}
+        },
+        {
+          "id": "charlie",
+          "attributes": {}
+        },
+        {
+          "id": "diana",
+          "attributes": {}
+        },
+        {
+          "id": "eve",
+          "attributes": {
+            "name": "eve"
+          },
+          "sessions": [
+            0,
+            1
+          ]
+        },
+        {
+          "id": "frank",
+          "attributes": {
+            "name": "frank"
+          },
+          "sessions": [
+            0,
+            1,
+            2
+          ]
+        },
+        {
+          "id": "grace",
+          "attributes": {
+            "name": "grace"
+          },
+          "sessions": [
+            0,
+            1,
+            2
+          ]
+        },
+        {
+          "id": "henry",
+          "attributes": {
+            "name": "henry"
+          },
+          "sessions": [
+            0,
+            1,
+            2
+          ]
+        }
       ],
       "groups": [
-        { "id": "team1", "size": 4 },
-        { "id": "team2", "size": 4 }
+        {
+          "id": "team1",
+          "size": 4
+        },
+        {
+          "id": "team2",
+          "size": 4
+        }
       ],
       "num_sessions": 3
     },
     "objectives": [
-      { "type": "maximize_unique_contacts", "weight": 1.0 }
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
     ],
     "constraints": [
-      { "type": "MustStayTogether", "people": ["alice", "bob"] },
-      { "type": "ShouldNotBeTogether", "people": ["charlie", "diana"], "penalty_weight": 1000, "sessions": [0, 2] },
-      { "type": "ImmovablePerson", "person_id": "henry", "group_id": "team1", "sessions": [0, 1, 2] }
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "alice",
+          "bob"
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "charlie",
+          "diana"
+        ],
+        "penalty_weight": 1000,
+        "sessions": [
+          0,
+          2
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "henry",
+        "group_id": "team1",
+        "sessions": [
+          0,
+          1,
+          2
+        ]
+      }
     ],
     "solver": {
       "solver_type": "SimulatedAnnealing",
@@ -50,5 +144,6 @@
       }
     }
   },
-  "expected": {}
-} 
+  "expected": {},
+  "test_options": {}
+}

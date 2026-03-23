@@ -1,20 +1,58 @@
 {
   "name": "Repetition Penalty Test",
+  "metadata": {
+    "tags": [
+      "scoring",
+      "repeat_encounter"
+    ],
+    "kind": "correctness",
+    "tier": "default"
+  },
   "input": {
     "problem": {
       "people": [
-        { "id": "p0", "attributes": {} },
-        { "id": "p1", "attributes": {} },
-        { "id": "p2", "attributes": {} },
-        { "id": "p3", "attributes": {} },
-        { "id": "p4", "attributes": {} },
-        { "id": "p5", "attributes": {} },
-        { "id": "p6", "attributes": {} },
-        { "id": "p7", "attributes": {} }
+        {
+          "id": "p0",
+          "attributes": {}
+        },
+        {
+          "id": "p1",
+          "attributes": {}
+        },
+        {
+          "id": "p2",
+          "attributes": {}
+        },
+        {
+          "id": "p3",
+          "attributes": {}
+        },
+        {
+          "id": "p4",
+          "attributes": {}
+        },
+        {
+          "id": "p5",
+          "attributes": {}
+        },
+        {
+          "id": "p6",
+          "attributes": {}
+        },
+        {
+          "id": "p7",
+          "attributes": {}
+        }
       ],
       "groups": [
-        { "id": "g0", "size": 4 },
-        { "id": "g1", "size": 4 }
+        {
+          "id": "g0",
+          "size": 4
+        },
+        {
+          "id": "g1",
+          "size": 4
+        }
       ],
       "num_sessions": 5
     },
@@ -54,5 +92,6 @@
       }
     }
   },
-  "expected": {}
-} 
+  "expected": {},
+  "test_options": {}
+}

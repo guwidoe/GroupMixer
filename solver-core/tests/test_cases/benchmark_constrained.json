@@ -1,30 +1,103 @@
 {
   "name": "Benchmark - Constrained",
+  "metadata": {
+    "tags": [
+      "performance",
+      "benchmark",
+      "constraints"
+    ],
+    "kind": "performance",
+    "tier": "slow"
+  },
   "input": {
     "problem": {
       "people": [
-        { "id": "p0", "attributes": { "gender": "male" } },
-        { "id": "p1", "attributes": { "gender": "female" } },
-        { "id": "p2", "attributes": { "gender": "male" } },
-        { "id": "p3", "attributes": { "gender": "female" } },
-        { "id": "p4", "attributes": { "gender": "male" } },
-        { "id": "p5", "attributes": { "gender": "female" } },
-        { "id": "p6", "attributes": { "gender": "male" } },
-        { "id": "p7", "attributes": { "gender": "female" } },
-        { "id": "p8", "attributes": { "gender": "male" } },
-        { "id": "p9", "attributes": { "gender": "female" } }
+        {
+          "id": "p0",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p1",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "p2",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p3",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "p4",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p5",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "p6",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p7",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "p8",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "p9",
+          "attributes": {
+            "gender": "female"
+          }
+        }
       ],
       "groups": [
-        { "id": "g0", "size": 5 },
-        { "id": "g1", "size": 5 }
+        {
+          "id": "g0",
+          "size": 5
+        },
+        {
+          "id": "g1",
+          "size": 5
+        }
       ],
       "num_sessions": 5
     },
-    "objectives": [{ "type": "maximize_unique_contacts", "weight": 1.0 }],
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
     "constraints": [
       {
         "type": "MustStayTogether",
-        "people": ["p0", "p1"]
+        "people": [
+          "p0",
+          "p1"
+        ]
       },
       {
         "type": "AttributeBalance",
@@ -39,7 +112,9 @@
     ],
     "solver": {
       "solver_type": "SimulatedAnnealing",
-      "stop_conditions": { "max_iterations": 10000 },
+      "stop_conditions": {
+        "max_iterations": 10000
+      },
       "solver_params": {
         "solver_type": "SimulatedAnnealing",
         "initial_temperature": 10.0,
@@ -64,4 +139,4 @@
     "min_iterations_per_second": 10000
   },
   "test_options": {}
-} 
+}

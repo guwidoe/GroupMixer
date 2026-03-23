@@ -31,6 +31,10 @@ criterion = { version = "0.8", features = ["html_reports"] }
 serde_yaml = "0.9"
 proptest = "1.10"
 
+[build-dependencies]
+serde = { version = "1.0.190", features = ["derive"] }
+serde_json = "1.0.149"
+
 [[bench]]
 name = "solver_perf"
 harness = false
