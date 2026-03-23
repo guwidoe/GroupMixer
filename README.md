@@ -271,17 +271,19 @@ cargo run
 
 ## Testing
 
-The project includes extensive testing:
+The authoritative repo-wide testing policy lives in [`docs/TESTING_STRATEGY.md`](docs/TESTING_STRATEGY.md).
+
+Current baseline commands:
 
 ```bash
-# Run all tests
-cargo test
+# Run all Rust tests
+cargo test --workspace
 
-# Run specific test categories
+# Run the solver data-driven integration tests
 cargo test --test data_driven_tests
 
-# Run benchmarks
-cargo test --test data_driven_tests -- --ignored
+# Run browser tests
+cd webapp && npm run test:e2e
 ```
 
 Test cases cover:
