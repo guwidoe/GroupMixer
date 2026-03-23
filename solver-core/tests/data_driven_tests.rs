@@ -80,6 +80,8 @@ struct ExpectedMetrics {
     #[serde(default)]
     min_transfers_accepted: Option<u64>,
     #[serde(default)]
+    max_attribute_balance_penalty: Option<f64>,
+    #[serde(default)]
     expect_solver_error: bool,
     #[serde(default)]
     expected_error_contains: Option<String>,
@@ -241,6 +243,15 @@ fn run_assertions(
             "Expected at least {} accepted transfers, but solver reported {}",
             min_transfers,
             final_progress.transfers_accepted
+        );
+    }
+
+    if let Some(max_attr_penalty) = test_case.expected.max_attribute_balance_penalty {
+        assert!(
+            result.attribute_balance_penalty as f64 <= max_attr_penalty,
+            "Attribute balance penalty {} exceeds maximum of {}",
+            result.attribute_balance_penalty,
+            max_attr_penalty
         );
     }
 

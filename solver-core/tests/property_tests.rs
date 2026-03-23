@@ -29,6 +29,48 @@ fn problem_strategy() -> impl Strategy<Value = ApiInput> {
     )
 }
 
+/// Strategy for generating valid problems with partial attendance patterns.
+fn sparse_attendance_problem_strategy() -> impl Strategy<Value = ApiInput> {
+    (3..=10usize, 2..=4usize, 2..=4u32).prop_flat_map(|(num_people, num_groups, num_sessions)| {
+        let actual_group_size = num_people.div_ceil(num_groups).max(2);
+
+        prop::collection::vec(
+            prop::collection::vec(0..num_sessions, 1..=num_sessions as usize),
+            num_people,
+        )
+        .prop_map(move |session_sets| {
+            let normalized_sets = session_sets
+                .into_iter()
+                .map(|mut sessions| {
+                    sessions.sort_unstable();
+                    sessions.dedup();
+                    sessions
+                })
+                .collect();
+
+            create_test_input_with_sessions(
+                num_groups as u32,
+                actual_group_size as u32,
+                num_sessions,
+                normalized_sets,
+            )
+        })
+    })
+}
+
+/// Strategy for generating problems where at least one transfer is likely feasible.
+fn extra_capacity_problem_strategy() -> impl Strategy<Value = ApiInput> {
+    (4..=10usize, 2..=4usize, 1..=3u32).prop_map(|(num_people, num_groups, num_sessions)| {
+        let actual_group_size = num_people.div_ceil(num_groups) + 1;
+        create_test_input(
+            num_people as u32,
+            num_groups as u32,
+            actual_group_size as u32,
+            num_sessions,
+        )
+    })
+}
+
 /// Creates a test input with the given parameters.
 fn create_test_input(
     num_people: u32,
@@ -41,6 +83,59 @@ fn create_test_input(
             id: format!("p{}", i),
             attributes: HashMap::new(),
             sessions: None,
+        })
+        .collect();
+
+    let groups = (0..num_groups)
+        .map(|i| Group {
+            id: format!("g{}", i),
+            size: group_size,
+        })
+        .collect();
+
+    ApiInput {
+        initial_schedule: None,
+        problem: ProblemDefinition {
+            people,
+            groups,
+            num_sessions,
+        },
+        objectives: vec![],
+        constraints: vec![],
+        solver: SolverConfiguration {
+            solver_type: "SimulatedAnnealing".to_string(),
+            stop_conditions: StopConditions {
+                max_iterations: Some(1),
+                time_limit_seconds: None,
+                no_improvement_iterations: None,
+            },
+            solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
+                initial_temperature: 1.0,
+                final_temperature: 0.1,
+                cooling_schedule: "linear".to_string(),
+                reheat_after_no_improvement: Some(0),
+                reheat_cycles: Some(0),
+            }),
+            logging: Default::default(),
+            telemetry: Default::default(),
+            allowed_sessions: None,
+        },
+    }
+}
+
+fn create_test_input_with_sessions(
+    num_groups: u32,
+    group_size: u32,
+    num_sessions: u32,
+    session_sets: Vec<Vec<u32>>,
+) -> ApiInput {
+    let people = session_sets
+        .into_iter()
+        .enumerate()
+        .map(|(i, sessions)| Person {
+            id: format!("p{}", i),
+            attributes: HashMap::new(),
+            sessions: Some(sessions),
         })
         .collect();
 
@@ -198,6 +293,90 @@ proptest! {
         prop_assert!(state.repetition_penalty >= 0);
         prop_assert!(state.constraint_penalty >= 0);
         prop_assert!(state.attribute_balance_penalty >= 0.0);
+    }
+
+    /// Property: no group capacity is exceeded after construction.
+    #[test]
+    fn group_capacities_respected(input in problem_strategy()) {
+        let state = State::new(&input).unwrap();
+
+        for session in &state.schedule {
+            for (group_idx, group) in session.iter().enumerate() {
+                prop_assert!(
+                    group.len() <= state.group_capacities[group_idx],
+                    "Group {} exceeds capacity: {} > {}",
+                    group_idx,
+                    group.len(),
+                    state.group_capacities[group_idx]
+                );
+            }
+        }
+    }
+
+    /// Property: sparse attendance patterns are preserved in the initial schedule.
+    #[test]
+    fn sparse_attendance_is_respected(input in sparse_attendance_problem_strategy()) {
+        let state = State::new(&input).unwrap();
+
+        for (person_idx, person) in input.problem.people.iter().enumerate() {
+            let active_sessions = person.sessions.clone().unwrap_or_default();
+
+            for session_idx in 0..input.problem.num_sessions as usize {
+                let appears = state.schedule[session_idx]
+                    .iter()
+                    .any(|group| group.contains(&person_idx));
+                let should_appear = active_sessions.contains(&(session_idx as u32));
+
+                prop_assert_eq!(
+                    appears,
+                    should_appear,
+                    "Person {} attendance mismatch in session {}",
+                    person.id,
+                    session_idx
+                );
+            }
+        }
+    }
+
+    /// Property: applying a feasible transfer preserves schedule validity.
+    #[test]
+    fn feasible_transfer_preserves_validity(input in extra_capacity_problem_strategy()) {
+        let mut state = State::new(&input).unwrap();
+
+        let mut applied = false;
+        'outer: for day in 0..state.num_sessions as usize {
+            for person_idx in 0..state.person_idx_to_id.len() {
+                let (from_group, _) = state.locations[day][person_idx];
+                for to_group in 0..state.group_idx_to_id.len() {
+                    if from_group == to_group {
+                        continue;
+                    }
+
+                    if state.is_transfer_feasible(day, person_idx, from_group, to_group) {
+                        state.apply_transfer(day, person_idx, from_group, to_group);
+                        applied = true;
+                        break 'outer;
+                    }
+                }
+            }
+        }
+
+        prop_assume!(applied);
+
+        for (session_idx, session) in state.schedule.iter().enumerate() {
+            let mut seen = std::collections::HashSet::new();
+            for (group_idx, group) in session.iter().enumerate() {
+                prop_assert!(group.len() <= state.group_capacities[group_idx]);
+                for &person in group {
+                    prop_assert!(
+                        seen.insert(person),
+                        "Person {} appears multiple times in session {} after transfer",
+                        person,
+                        session_idx
+                    );
+                }
+            }
+        }
     }
 }
 

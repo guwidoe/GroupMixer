@@ -157,11 +157,8 @@ pub fn with_solver_config(mut input: ApiInput, config: SolverConfiguration) -> A
 
 /// Verifies that a schedule respects group capacities.
 #[allow(dead_code)]
-pub fn assert_capacity_respected(
-    schedule: &[Vec<Vec<String>>],
-    groups: &[Group],
-) {
-    let group_caps: HashMap<_, _> = groups.iter().map(|g| (&g.id, g.size)).collect();
+pub fn assert_capacity_respected(schedule: &[Vec<Vec<String>>], groups: &[Group]) {
+    let _group_caps: HashMap<_, _> = groups.iter().map(|g| (&g.id, g.size)).collect();
 
     for (session_idx, session) in schedule.iter().enumerate() {
         for (group_idx, group_members) in session.iter().enumerate() {

@@ -1,0 +1,60 @@
+{
+  "name": "Attribute Balance Exact Edge",
+  "metadata": {
+    "tags": ["constraints", "attribute_balance"],
+    "kind": "correctness",
+    "tier": "default"
+  },
+  "input": {
+    "problem": {
+      "people": [
+        { "id": "p0", "attributes": { "gender": "female" } },
+        { "id": "p1", "attributes": { "gender": "male" } }
+      ],
+      "groups": [
+        { "id": "g0", "size": 2 }
+      ],
+      "num_sessions": 1
+    },
+    "objectives": [
+      { "type": "maximize_unique_contacts", "weight": 1.0 }
+    ],
+    "constraints": [
+      {
+        "type": "AttributeBalance",
+        "group_id": "g0",
+        "attribute_key": "gender",
+        "desired_values": {
+          "female": 1,
+          "male": 1
+        },
+        "penalty_weight": 50.0,
+        "mode": "exact"
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": { "max_iterations": 10 },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 1.0,
+        "final_temperature": 0.1,
+        "cooling_schedule": "geometric"
+      },
+      "logging": {
+        "log_frequency": 0,
+        "log_initial_state": false,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      }
+    }
+  },
+  "expected": {
+    "max_constraint_penalty": 0,
+    "max_attribute_balance_penalty": 0
+  },
+  "test_options": {}
+}

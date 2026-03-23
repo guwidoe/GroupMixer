@@ -54,8 +54,15 @@ fn main() {
     for fixture_path in fixture_paths {
         println!("cargo:rerun-if-changed={}", fixture_path.display());
 
-        let summary: FixtureSummary = serde_json::from_str(&fs::read_to_string(&fixture_path).unwrap())
-            .unwrap_or_else(|error| panic!("Failed to parse fixture {}: {error}", fixture_path.display()));
+        let summary: FixtureSummary = serde_json::from_str(
+            &fs::read_to_string(&fixture_path).unwrap(),
+        )
+        .unwrap_or_else(|error| {
+            panic!(
+                "Failed to parse fixture {}: {error}",
+                fixture_path.display()
+            )
+        });
 
         let fn_name = make_test_name(&fixture_path, &summary.metadata.tags);
         let path_literal = fixture_path.to_string_lossy();

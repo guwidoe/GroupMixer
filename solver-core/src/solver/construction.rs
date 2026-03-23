@@ -117,6 +117,52 @@ impl State {
 
         let group_count = input.problem.groups.len();
 
+        let mut seen_person_ids = std::collections::HashSet::new();
+        for person in &input.problem.people {
+            if !seen_person_ids.insert(person.id.as_str()) {
+                return Err(SolverError::ValidationError(format!(
+                    "Duplicate person ID: '{}'",
+                    person.id
+                )));
+            }
+        }
+
+        let mut seen_group_ids = std::collections::HashSet::new();
+        for group in &input.problem.groups {
+            if !seen_group_ids.insert(group.id.as_str()) {
+                return Err(SolverError::ValidationError(format!(
+                    "Duplicate group ID: '{}'",
+                    group.id
+                )));
+            }
+        }
+
+        let allowed_sessions = if let Some(sessions) = &input.solver.allowed_sessions {
+            if sessions.is_empty() {
+                return Err(SolverError::ValidationError(
+                    "allowed_sessions cannot be empty".to_string(),
+                ));
+            }
+
+            let mut normalized = sessions.clone();
+            normalized.sort_unstable();
+            normalized.dedup();
+
+            for &session in &normalized {
+                if session >= input.problem.num_sessions {
+                    return Err(SolverError::ValidationError(format!(
+                        "allowed_sessions contains invalid session {} (max: {})",
+                        session,
+                        input.problem.num_sessions.saturating_sub(1)
+                    )));
+                }
+            }
+
+            Some(normalized)
+        } else {
+            None
+        };
+
         let person_id_to_idx: HashMap<String, usize> = input
             .problem
             .people
@@ -150,6 +196,16 @@ impl State {
                 if !attr_key_to_idx.contains_key(&params.attribute_key) {
                     let attr_idx = attr_key_to_idx.len();
                     attr_key_to_idx.insert(params.attribute_key.clone(), attr_idx);
+                    attr_val_to_idx.push(HashMap::new());
+                    attr_idx_to_val.push(Vec::new());
+                }
+            }
+        }
+        for person in &input.problem.people {
+            for key in person.attributes.keys() {
+                if !attr_key_to_idx.contains_key(key) {
+                    let attr_idx = attr_key_to_idx.len();
+                    attr_key_to_idx.insert(key.clone(), attr_idx);
                     attr_val_to_idx.push(HashMap::new());
                     attr_idx_to_val.push(Vec::new());
                 }
@@ -263,7 +319,7 @@ impl State {
             should_together_sessions: vec![], // To be populated by preprocessing
             person_participation: vec![], // To be populated by preprocessing
             num_sessions: input.problem.num_sessions,
-            allowed_sessions: input.solver.allowed_sessions.clone(),
+            allowed_sessions,
             contact_matrix: vec![vec![0; people_count]; people_count],
             unique_contacts: 0,
             repetition_penalty: 0,
