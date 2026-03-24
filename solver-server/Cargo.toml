@@ -18,4 +18,8 @@ rand = "0.10.0"
 dashmap = "6.1.0"
 
 solver-core = { path = "../solver-core" }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
  

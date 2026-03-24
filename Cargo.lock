@@ -1288,12 +1288,14 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "dashmap",
+ "http-body-util",
  "indicatif",
  "rand 0.10.0",
  "serde",
  "serde_json",
  "solver-core",
  "tokio",
+ "tower",
  "uuid",
 ]
 

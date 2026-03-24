@@ -1,11 +1,11 @@
 use dashmap::DashMap;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use solver_core::{models::ApiInput, run_solver};
 use std::sync::{Arc, Mutex};
 use tokio::task;
 use uuid::Uuid;
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum JobStatus {
     Pending,
     Running,
@@ -13,7 +13,7 @@ pub enum JobStatus {
     Failed,
 }
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Job {
     pub id: Uuid,
     pub status: JobStatus,

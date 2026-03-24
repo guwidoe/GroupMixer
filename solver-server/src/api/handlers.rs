@@ -4,7 +4,7 @@ use axum::{
     http::StatusCode,
     response::Json,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use solver_core::models::ApiInput;
 use uuid::Uuid;
 
@@ -14,9 +14,9 @@ pub struct AppState {
     pub job_manager: JobManager,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct CreateJobResponse {
-    job_id: Uuid,
+    pub job_id: Uuid,
 }
 
 pub async fn create_job_handler(
