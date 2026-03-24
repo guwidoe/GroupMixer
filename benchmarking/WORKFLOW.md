@@ -128,6 +128,17 @@ Cross-machine timing is noisy and can be misleading. The repo policy is:
 - compare current vs baseline
 - use Criterion to drill into any suspect move family or kernel
 
+## Legacy fixture performance thresholds
+
+A small number of ignored data-driven benchmark fixtures still carry legacy runtime smoke expectations.
+
+Policy:
+
+- they remain optional smoke checks only
+- they are not the repo's long-term performance gate
+- enable them explicitly with `GROUPMIXER_ENABLE_FIXTURE_PERF_ASSERTIONS=1` when you intentionally want that old lightweight signal
+- use `solver-cli benchmark ...` plus baselines/comparisons for durable runtime interpretation
+
 ## Relationship between layers
 
 - `solver-core/tests/**` remains the semantic contract

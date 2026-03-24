@@ -27,6 +27,8 @@ Each fixture can declare metadata alongside `input`, `expected`, and `test_optio
 
 Performance and slow fixtures are generated as `#[ignore]` tests so they do not make the default correctness suite brittle.
 
+When a fixture still carries legacy runtime smoke thresholds (`max_runtime_ms`, `min_iterations_per_second`), those thresholds are **opt-in** and are only enforced when `GROUPMIXER_ENABLE_FIXTURE_PERF_ASSERTIONS=1` is set. Long-term runtime comparison belongs in the dedicated benchmark runner / baseline / comparison workflow, not in the default correctness harness.
+
 ## Path regression suite
 
 Wave 2 of the benchmarking architecture adds dedicated path-regression files alongside the broad data-driven harness:

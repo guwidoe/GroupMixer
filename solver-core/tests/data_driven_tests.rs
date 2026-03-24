@@ -24,6 +24,12 @@ fn default_loop_count() -> u32 {
     1
 }
 
+fn fixture_perf_assertions_enabled() -> bool {
+    std::env::var("GROUPMIXER_ENABLE_FIXTURE_PERF_ASSERTIONS")
+        .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
+        .unwrap_or(false)
+}
+
 #[derive(Deserialize, Debug, Default)]
 struct FixtureMetadata {
     #[serde(default)]
@@ -255,40 +261,51 @@ fn run_assertions(
         );
     }
 
-    if let Some(max_ms) = test_case.expected.max_runtime_ms {
-        assert!(
-            elapsed_ms <= max_ms,
-            "PERFORMANCE REGRESSION: Test '{}' took {}ms, exceeds max of {}ms",
-            test_case.name,
-            elapsed_ms,
-            max_ms
-        );
-        println!("  Performance: {}ms (max: {}ms) ✓", elapsed_ms, max_ms);
-    }
+    let has_fixture_perf_expectation = test_case.expected.max_runtime_ms.is_some()
+        || test_case.expected.min_iterations_per_second.is_some();
 
-    if let Some(min_ips) = test_case.expected.min_iterations_per_second {
-        let iterations = test_case
-            .input
-            .solver
-            .stop_conditions
-            .max_iterations
-            .unwrap_or(0);
-        let actual_ips = if elapsed_ms > 0 {
-            (iterations * 1000) / elapsed_ms
+    if has_fixture_perf_expectation {
+        if fixture_perf_assertions_enabled() {
+            if let Some(max_ms) = test_case.expected.max_runtime_ms {
+                assert!(
+                    elapsed_ms <= max_ms,
+                    "PERFORMANCE REGRESSION: Test '{}' took {}ms, exceeds max of {}ms",
+                    test_case.name,
+                    elapsed_ms,
+                    max_ms
+                );
+                println!("  Performance: {}ms (max: {}ms) ✓", elapsed_ms, max_ms);
+            }
+
+            if let Some(min_ips) = test_case.expected.min_iterations_per_second {
+                let iterations = test_case
+                    .input
+                    .solver
+                    .stop_conditions
+                    .max_iterations
+                    .unwrap_or(0);
+                let actual_ips = if elapsed_ms > 0 {
+                    (iterations * 1000) / elapsed_ms
+                } else {
+                    u64::MAX
+                };
+                assert!(
+                    actual_ips >= min_ips,
+                    "PERFORMANCE REGRESSION: Test '{}' achieved {} iter/s, below minimum of {} iter/s",
+                    test_case.name,
+                    actual_ips,
+                    min_ips
+                );
+                println!(
+                    "  Throughput: {} iter/s (min: {} iter/s) ✓",
+                    actual_ips, min_ips
+                );
+            }
         } else {
-            u64::MAX
-        };
-        assert!(
-            actual_ips >= min_ips,
-            "PERFORMANCE REGRESSION: Test '{}' achieved {} iter/s, below minimum of {} iter/s",
-            test_case.name,
-            actual_ips,
-            min_ips
-        );
-        println!(
-            "  Throughput: {} iter/s (min: {} iter/s) ✓",
-            actual_ips, min_ips
-        );
+            println!(
+                "  Fixture performance thresholds present but skipped; use GROUPMIXER_ENABLE_FIXTURE_PERF_ASSERTIONS=1 to enforce local smoke checks."
+            );
+        }
     }
 
     io::stdout().flush().unwrap();
