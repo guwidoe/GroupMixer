@@ -1,120 +1,78 @@
 # Visual Regression Testing
 
-This project uses Playwright's built-in screenshot comparison for visual regression testing.
+Visual regression in GroupMixer is a **separate layout/styling safety net**.
 
-## Overview
+Use it to catch:
+- broken layouts
+- modal rendering regressions
+- responsive/mobile drift
+- dark-mode/theme regressions
+- UI chrome changes that functional tests may not notice
 
-Visual regression tests capture screenshots of the application in various states and compare them against baseline images. When the UI changes, the tests will fail and show the differences, allowing you to catch unintended visual changes.
+Do **not** treat it as a substitute for:
+- unit/store/service coverage
+- component interaction tests
+- Playwright workflow tests
 
-## Running Visual Regression Tests
+Those layers own behavior correctness. Visual regression only owns appearance-sensitive regressions.
+
+## What the curated suite covers
+
+The current curated Playwright visual suite focuses on high-value, layout-sensitive states:
+- landing page shell
+- key problem-editor states and modal entry points
+- populated constraints layouts
+- solver ready/custom-settings states
+- empty result/history/editor states
+- header/dropdown/problem-manager chrome
+- one representative mobile populated state
+- representative dark-mode populated states
+
+The suite is intentionally narrower than the full functional workflow suite to avoid noisy, low-value snapshots.
+
+## Canonical commands
 
 ```bash
-# Run all visual regression tests
-pnpm test:e2e:visual
+# Curated visual suite across configured projects
+cd webapp
+npm run test:e2e:visual
 
-# Run with UI mode for debugging
-pnpm test:e2e:ui -- visual-regression.spec.ts
+# Stable desktop-only pass for quick review
+cd webapp
+npm run test:e2e:visual:stable
 
-# Run headed (visible browser)
-pnpm test:e2e:headed -- visual-regression.spec.ts
+# Debug interactively
+cd webapp
+npm run test:e2e:ui -- visual-regression.spec.ts
 
-# Run specific project (desktop, mobile, dark mode)
-pnpm playwright test visual-regression.spec.ts --project=chromium
-pnpm playwright test visual-regression.spec.ts --project=mobile-chrome
-pnpm playwright test visual-regression.spec.ts --project=chromium-dark
+# Update baselines after intentional UI changes
+cd webapp
+npm run test:e2e:visual:update
 ```
 
-## Updating Baselines
+## Snapshot policy
 
-When you make intentional UI changes, you need to update the baseline screenshots:
+Baseline images live under `webapp/e2e/snapshots/` and are committed to the repo.
 
-```bash
-# Update all visual regression baselines
-pnpm test:e2e:visual:update
+When updating baselines:
+1. confirm the UI change is intentional
+2. update only the affected snapshots
+3. review the generated diffs before committing
+4. mention the intentional visual change in the related commit/PR notes
 
-# Update baselines for specific project
-pnpm playwright test visual-regression.spec.ts --project=chromium --update-snapshots
+## CI / enforcement posture
 
-# Update a specific test's baseline
-pnpm playwright test visual-regression.spec.ts -g "people section" --update-snapshots
-```
+Visual regression is **not** the primary PR gate.
 
-## Test Structure
+Current posture:
+- required PR gates: lint, unit/component coverage, Rust tests/coverage, Playwright workflow tests
+- visual regression: run deliberately when touching layout/theme/responsive/modal-heavy UI, and keep baselines healthy as part of UI-focused work
 
-Visual regression tests are organized by page/feature:
+This keeps the suite valuable without letting screenshot churn replace behavior testing.
 
-- **Landing Page**: Hero section, full page scroll
-- **Problem Editor**: People, Groups, Sessions, Objectives, Constraints sections
-- **Solver Panel**: Empty state, ready state, settings
-- **Results**: Empty state, results display
-- **Manual Editor**: Empty state
-- **Header/Navigation**: Controls, dropdowns, modals
+## Tips for stable screenshots
 
-Each section tests:
-- **Empty state**: No data loaded
-- **Populated state**: With demo data loaded
-- **Modal states**: Open dialogs and modals
-- **Responsive**: Mobile viewport (in mobile-chrome project)
-- **Dark mode**: Dark theme (in chromium-dark project)
-
-## Snapshot Directory Structure
-
-Snapshots are stored in `e2e/snapshots/` with the following structure:
-
-```
-e2e/snapshots/
-└── tests/
-    └── visual-regression.spec.ts-snapshots/
-        ├── landing-hero-chromium.png
-        ├── landing-hero-mobile-chrome.png
-        ├── people-empty-chromium.png
-        ├── people-empty-chromium-dark.png
-        └── ...
-```
-
-## Configuration
-
-Visual regression settings are in `playwright.config.ts`:
-
-- **maxDiffPixelRatio**: 0.005 (0.5% pixel difference allowed)
-- **animations**: disabled (for consistent screenshots)
-- **viewport**: 1280x720 for desktop, Pixel 5 for mobile
-
-## CI Integration
-
-Visual regression tests run on every PR in the GitHub Actions workflow:
-
-1. Tests compare against committed baseline snapshots
-2. On failure, artifacts are uploaded:
-   - `visual-regression-report`: Full Playwright HTML report
-   - `screenshot-diffs`: Only the diff images showing what changed
-
-## Best Practices
-
-1. **Review diffs carefully**: Before updating baselines, verify the change is intentional
-2. **Commit baselines**: Baseline images should be committed to the repository
-3. **Run locally first**: Test visual changes locally before pushing
-4. **Use descriptive names**: Test names become part of the snapshot filename
-
-## Troubleshooting
-
-### Tests fail on CI but pass locally
-
-This usually happens due to:
-- Font rendering differences (use web fonts)
-- Different screen DPI (we use `scale: 'device'`)
-- Animation timing (we disable animations)
-
-### Large diffs for small changes
-
-Check if:
-- Animations are disabled
-- Page has fully loaded (use `waitForPageReady`)
-- No flaky content (loading spinners, timestamps)
-
-### Updating baselines on CI
-
-If you need to update baselines:
-1. Run `pnpm test:e2e:visual:update` locally
-2. Commit the new snapshot images
-3. Push to update the PR
+- wait for network idle and settle animations before capturing
+- prefer demo-data-backed states over brittle manual setup where possible
+- avoid capturing transient notifications/spinners/timestamps when they do not add safety value
+- crop to a focused area when a smaller visual target provides the signal you need
