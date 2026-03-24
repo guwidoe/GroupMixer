@@ -2,7 +2,19 @@
 
 ## Status
 
-Proposed architecture. Intended to guide the regression-safety and performance-forensics work that must land **before** the larger solver refactor.
+Partially implemented architecture.
+
+Waves 1-5 of the local benchmark stack are now in place:
+
+- deterministic solver seams
+- path-regression safety
+- solve-level benchmark artifacts/baselines/comparisons
+- Criterion microbench expansion
+- local CLI/workflow/storage integration
+
+This document now also defines the **next operational expansion**: a remote,
+same-machine benchmark queue built around immutable repo snapshots, durable
+recordings, machine-lane refs, and mirrored artifacts.
 
 ## Why this document exists
 
@@ -17,7 +29,10 @@ The intended system is inspired by the benchmark architecture in:
 - `/home/ralph/wwd-repos/production-planning/backend/internal/benchmark`
 - `/home/ralph/wwd-repos/production-planning/backend/workers/metaheuristic-rs/benchmarking`
 
-But it must be adapted to **GroupMixer's** actual solver surfaces, doctrine, and test strategy.
+The goal is not to "simplify" that reference workflow away. The operational
+model we want for GroupMixer is intentionally very close to the remote
+snapshot/recording/queue system used there, adapted to **GroupMixer's** solver
+surfaces, doctrine, and test strategy.
 
 This document is the architectural reference for that adaptation.
 
@@ -43,7 +58,8 @@ That means the benchmark system is both:
 
 ## Current state in this repo
 
-Today the repo has useful pieces, but not yet a full benchmarking architecture.
+Today the repo has the local benchmark architecture in place, but it does not
+yet have the full remote benchmark operations layer.
 
 ### Existing strengths
 
@@ -56,23 +72,28 @@ Today the repo has useful pieces, but not yet a full benchmarking architecture.
   - local state/scoring tests
 - `solver-core/benches/solver_perf.rs`
   - Criterion smoke performance coverage
+- `solver-benchmarking/`
+  - suite manifests
+  - schema-versioned run/baseline/comparison artifacts
+  - comparison summaries and explicit comparability reporting
+- `solver-cli benchmark ...`
+  - run / compare / baseline save / baseline list commands
+- `benchmarking/WORKFLOW.md`
+  - local workflow and CI lane guidance
 
 ### Current gaps
 
-- solver randomness is not externally controllable
-  - `solver-core/src/algorithms/simulated_annealing.rs` uses `rand::rng()`
-  - `solver-core/src/solver/construction.rs` uses `rand::rng()` for random initialization
-- move-family selection is implicit inside the simulated annealing loop
-- there is no explicit benchmark telemetry model for performance forensics
-- there is no stable benchmark artifact/report/baseline schema
-- there is no same-machine comparison workflow
-- current perf assertions inside data-driven tests are useful as smoke checks but too weak and too brittle to serve as the long-term performance architecture
+- there is no durable benchmark **recording store** with history, refs, and indexed machine-lane queries
+- there is no async **remote snapshot queue** for reproducible remote benchmark execution
+- there is no remote machine workflow for `snapshot`, `record-main`, and `record-feature` style operations
+- there is no mirrored remote artifact lane under local repo storage
+- there are no recordable **hotpath benchmark artifacts** equivalent to the remote hotpath lanes used in the reference repo
+- Criterion remains local and cargo-driven, which is valuable, but does not by itself provide remote queued history lanes
 
 So the repo currently has:
 
-- correctness surfaces
-- microbenchmark beginnings
-- no first-class performance-forensics system
+- a real local benchmark architecture
+- no first-class remote benchmark operations system yet
 
 ---
 
@@ -796,6 +817,318 @@ Cross-machine runtime comparisons should never be presented as equally trustwort
 
 ---
 
+## Remote benchmark operations architecture
+
+The next architectural step is to make same-machine runtime comparison
+**operationally real** on a designated remote benchmark machine.
+
+This repo should adopt the same core operating model already proven in:
+
+- `/home/ralph/wwd-repos/production-planning/backend/workers/metaheuristic-rs/benchmarking`
+- `/home/ralph/wwd-repos/production-planning/backend/workers/metaheuristic-rs/tools/remote_benchmark_async.sh`
+
+That means GroupMixer should support:
+
+1. immutable staged repo snapshots per benchmark run
+2. serialized execution on one remote machine lane
+3. durable recordings/history/index/refs
+4. remote async control operations
+5. mirrored remote artifacts back into the local checkout
+6. both full-solve and hotpath benchmark lanes inside the recording model
+
+This is not a thin wrapper. It is the operational layer that makes performance
+claims reproducible and auditable over time.
+
+### Immutable staged snapshots
+
+Each remote benchmark run should stage an immutable snapshot of the repo to a
+run-specific remote directory.
+
+Desired remote shape:
+
+```text
+<remote-stage>/groupmixer-benchmark/
+  runs/
+    <run-id>/
+      snapshot/
+        GroupMixer/
+```
+
+Why this is required:
+
+- a benchmark run must not execute against a mutable remote checkout
+- a run must remain reproducible after later commits land
+- the code that produced an artifact must be inspectable after the fact
+
+### Shared remote artifact root
+
+Immutable code snapshots should write benchmark results into a shared remote
+artifact root rather than into per-snapshot ephemeral folders.
+
+Desired remote shape:
+
+```text
+<remote-stage>/groupmixer-benchmark/
+  shared/
+    benchmarking-artifacts/
+```
+
+This keeps:
+
+- code snapshots immutable
+- benchmark history durable across runs
+- machine-lane artifacts centralized for mirroring and indexing
+
+### Recording/history store
+
+The benchmark system now needs a durable **recording** concept, not just raw run
+folders.
+
+#### Recording definition
+
+A recording is one benchmark session on one machine for one commit.
+
+A recording may contain:
+
+- one suite run
+- or a bundle of suite runs captured together for one feature/mainline check
+
+#### Suite lane identity
+
+A suite lane should be keyed by:
+
+- `suite_name`
+- `benchmark_mode`
+- `machine_id`
+- `suite_content_hash`
+
+The suite-content hash matters because filename equality is not enough for honest
+history if a suite changes materially.
+
+#### Recording store layout target
+
+```text
+benchmarking/artifacts/
+  recordings/
+    <recording-id>/
+      meta.json
+      comparisons/
+        ...
+  index/
+    benchmark.sqlite
+  refs/
+    recordings/
+      latest.json
+    machines/
+      <machine-id>/
+        latest.json
+        suites/
+          <suite-name>/
+            <benchmark-mode>/
+              latest.json
+    branches/
+      <branch>/
+        latest.json
+        suites/
+          <suite-name>/
+            <benchmark-mode>/
+              latest.json
+```
+
+#### Recording metadata contract
+
+Each recording should capture at minimum:
+
+- recording id / timestamp / purpose / source
+- git branch / commit / shortsha
+- machine id / hostname / kind
+- suite runs included in the recording
+- suite content hashes
+- mode per suite run
+- paths to run reports, summaries, and generated comparisons
+
+#### Indexed history
+
+The recording store should use:
+
+- filesystem-backed immutable artifacts as the source of truth
+- SQLite for structured queries
+- JSON ref files for named pointers
+
+This is intentionally the same operational model as the reference repo.
+
+### Remote async queue model
+
+Remote benchmark runs should be managed through an async wrapper that stages a
+snapshot and then queues benchmark execution on the designated remote machine.
+
+The queue model should include:
+
+- one exclusive remote benchmark lock per machine
+- optional idle/load gating before actual measurement begins
+- deduplication when the same commit/command/args are already pending
+- explicit timeout/watchdog behavior
+- status/tail/wait/fetch/cancel operations
+
+This gives the repo a real benchmark lane without introducing a separate
+service.
+
+### Local mirroring of remote artifacts
+
+Remote benchmark state and artifacts should be mirrored back into the local repo
+under a machine-scoped subtree.
+
+Desired local shape:
+
+```text
+benchmarking/artifacts/
+  remotes/
+    <machine-id>/
+      benchmark-runs/
+        <run-id>/
+          start.json
+          status.json
+          meta.json
+          benchmark.log
+```
+
+This local mirror should coexist with the canonical shared artifact tree so that
+operators can inspect remote state without logging into the benchmark machine.
+
+### Remote lane policy
+
+The remote benchmark machine is the authoritative timing lane for serious runtime
+claims.
+
+Policy:
+
+- semantic regression remains mandatory everywhere
+- local benchmark runs are useful for exploration and smoke checks
+- benchmark timing used for decisions should prefer the designated remote same-machine lane
+- history and refs must preserve machine identity explicitly
+- remote comparisons must not silently collapse machine boundaries
+
+### Hotpath recording parity
+
+The reference repo records both full-solve lanes and hotpath lanes. GroupMixer
+should do the same.
+
+Criterion remains the local Layer 4 microbench surface, but it is **not** enough
+by itself for the remote recording workflow.
+
+GroupMixer should therefore add recordable hotpath benchmark modes that can be:
+
+- executed through `solver-cli benchmark ...`
+- stored as structured artifacts
+- bundled into recordings
+- compared across remote same-machine history
+
+Target hotpath modes include at least:
+
+- construction
+- full recalculation
+- swap preview / apply
+- transfer preview / apply
+- clique swap preview / apply
+- search iteration / search loop
+
+This keeps parity with the reference repo's operational model without collapsing
+solve-level and microbench responsibilities together.
+
+### Command surface target
+
+#### Local workflow wrapper
+
+The repo should add a wrapper analogous to the reference workflow script.
+
+Target shape:
+
+```bash
+./tools/benchmark_workflow.sh doctor
+./tools/benchmark_workflow.sh run [-- benchmark-args...]
+./tools/benchmark_workflow.sh save <name> [-- benchmark-args...]
+./tools/benchmark_workflow.sh record [-- benchmark-args...]
+./tools/benchmark_workflow.sh record-bundle [-- benchmark-args...]
+./tools/benchmark_workflow.sh compare <name> [-- benchmark-args...]
+./tools/benchmark_workflow.sh compare-prev [-- benchmark-args...]
+./tools/benchmark_workflow.sh list [-- benchmark-args...]
+./tools/benchmark_workflow.sh history [-- benchmark-args...]
+./tools/benchmark_workflow.sh latest [-- benchmark-args...]
+./tools/benchmark_workflow.sh previous [-- benchmark-args...]
+./tools/benchmark_workflow.sh recordings list
+./tools/benchmark_workflow.sh recordings show <recording-id>
+./tools/benchmark_workflow.sh refs list
+./tools/benchmark_workflow.sh refs show <ref-name>
+```
+
+#### Remote async wrapper
+
+The repo should add a remote wrapper analogous to the reference remote benchmark
+script.
+
+Target shape:
+
+```bash
+./tools/remote_benchmark_async.sh check
+./tools/remote_benchmark_async.sh snapshot
+./tools/remote_benchmark_async.sh record-main
+./tools/remote_benchmark_async.sh record-feature <feature-name>
+./tools/remote_benchmark_async.sh start [record|record-bundle|compare-prev|save <name>|compare <name>] [-- benchmark-args...]
+./tools/remote_benchmark_async.sh status <run-id>
+./tools/remote_benchmark_async.sh tail <run-id> [lines]
+./tools/remote_benchmark_async.sh wait <run-id>
+./tools/remote_benchmark_async.sh fetch <run-id>
+./tools/remote_benchmark_async.sh list
+./tools/remote_benchmark_async.sh latest
+./tools/remote_benchmark_async.sh cancel <run-id>
+```
+
+#### Solver CLI expansion target
+
+The CLI should grow from the current run/compare/baseline commands into a fuller
+recording/history surface, including:
+
+- `solver-cli benchmark record ...`
+- `solver-cli benchmark record-bundle ...`
+- `solver-cli benchmark compare-prev ...`
+- `solver-cli benchmark recordings list`
+- `solver-cli benchmark recordings show ...`
+- `solver-cli benchmark refs list`
+- `solver-cli benchmark refs show ...`
+
+### Remote bundle policy
+
+The system should support opinionated remote bundle commands similar to the
+reference repo.
+
+#### Snapshot lane
+
+Fast single-suite remote smoke lane, initially based on the representative suite.
+
+#### Record-main lane
+
+Canonical remote mainline recording bundle. Initial full-solve target bundle:
+
+- `representative`
+- `stretch`
+- `adversarial`
+
+Once recordable hotpath modes exist, the mainline bundle should also include the
+hotpath lanes.
+
+#### Record-feature lane
+
+Canonical remote feature-validation bundle that:
+
+- records one new feature-scoped recording
+- updates feature refs
+- compares to main-latest
+- compares to feature-previous where available
+
+This is the long-term required post-feature workflow for serious solver changes.
+
+---
+
 ## Criterion's role in the final architecture
 
 Criterion remains useful, but its role becomes explicit and narrower.
@@ -845,6 +1178,9 @@ flowchart LR
     P2 --> P3[Phase 3\nBenchmark runner + artifacts]
     P3 --> P4[Phase 4\nExpanded Criterion microbenches]
     P4 --> P5[Phase 5\nCLI + workflow integration]
+    P5 --> P6[Phase 6\nRecordings + history store]
+    P6 --> P7[Phase 7\nRemote async snapshot queue]
+    P7 --> P8[Phase 8\nHotpath recording parity + remote bundles]
 ```
 
 ## Phase 0 — Architecture docs
@@ -927,6 +1263,49 @@ Goal:
 
 - make the benchmark system operable, repeatable, and durable
 
+## Phase 6 — Recording store and benchmark history
+
+Deliverables:
+
+- recording metadata types
+- recording persistence for single-suite and bundle workflows
+- SQLite benchmark history index
+- JSON ref files for named pointers
+- recording/ref/history CLI operations
+- recording store docs and policies
+
+Goal:
+
+- make benchmark history durable, queryable, and machine-lane aware
+
+## Phase 7 — Remote async snapshot queue
+
+Deliverables:
+
+- remote benchmark env/config surface
+- immutable remote snapshot staging
+- async remote control wrapper (`check`, `start`, `status`, `wait`, `tail`, `fetch`, `cancel`)
+- remote lock/dedupe/timeout/idle-gate behavior
+- local mirror of remote metadata and artifacts
+
+Goal:
+
+- create a reproducible same-machine remote benchmark lane with auditable async operations
+
+## Phase 8 — Hotpath recording parity and opinionated remote bundles
+
+Deliverables:
+
+- recordable hotpath benchmark artifact modes beyond Criterion alone
+- hotpath suite manifests / modes suitable for recording bundles
+- `record-main` and `record-feature` remote bundle workflows
+- compare-to-main / compare-to-previous materialization for bundle recordings
+- full-stack workflow and metadata regression tests for the remote benchmark system
+
+Goal:
+
+- match the reference repo's operational benchmark model for both full-solve and hotpath history lanes
+
 ## Phase dependency graph
 
 The phases are mostly sequential, but some overlap is acceptable once the deterministic solver seams are in place.
@@ -940,12 +1319,19 @@ flowchart TD
     P2 --> P4
     P3 --> P5[Phase 5\nCLI + workflow integration]
     P4 --> P5
+    P5 --> P6[Phase 6\nRecordings + history store]
+    P6 --> P7[Phase 7\nRemote async snapshot queue]
+    P7 --> P8[Phase 8\nHotpath recording parity + remote bundles]
 
     note1[Do not build baseline/compare workflows\nbefore seeds, move policy, stop reason,\nand benchmark telemetry land]
     note2[Do not migrate long-term perf gating\nout of generic tests until Phase 3 exists]
+    note3[Do not claim serious same-machine remote\nbenchmark discipline until recordings, refs,\nand immutable remote snapshots exist]
+    note4[Do not treat local Criterion alone as a\nreplacement for recordable hotpath lanes in\nremote feature/mainline history bundles]
 
     note1 -.-> P3
     note2 -.-> P5
+    note3 -.-> P7
+    note4 -.-> P8
 ```
 
 Interpretation:
@@ -954,7 +1340,10 @@ Interpretation:
 - **Phase 2** should follow immediately because it creates the semantic safety net
 - **Phase 3** can begin once Phase 1 is solid, but benefits strongly from most of Phase 2 being done
 - **Phase 4** can overlap late Phase 2 / early Phase 3 once deterministic setup exists
-- **Phase 5** should come last because it depends on the benchmark system being real, not hypothetical
+- **Phase 5** should follow the local benchmark system because it depends on the benchmark system being real, not hypothetical
+- **Phase 6** should follow Phase 5 because the recording model builds on settled artifact/storage semantics
+- **Phase 7** should follow Phase 6 because remote queue/history should target the real recording store, not bypass it
+- **Phase 8** should follow late Phase 6 / Phase 7 because remote bundle policy depends on both recordable hotpath modes and the remote queue
 
 ---
 
@@ -1005,21 +1394,20 @@ Not:
 
 ## Immediate execution recommendation
 
-Implementation should start with:
+The local benchmark foundation is now in place, so the next execution focus
+should be:
 
-1. deterministic seed support
-2. explicit move policy control
-3. explicit stop reason
-4. dedicated benchmark telemetry hooks
-5. focused move-family and path regression tests
-
-Only after that foundation is in place should the repo invest heavily in the full runner/baseline/reporting layer.
+1. recording store + refs + history index
+2. local benchmark workflow wrapper over the existing CLI
+3. remote immutable snapshot queue on the benchmark machine
+4. opinionated `snapshot` / `record-main` / `record-feature` workflows
+5. recordable hotpath lanes so remote recordings cover both full-solve and hotpath evidence
 
 That sequence gives the repo:
 
-- semantic safety first
-- trustworthy measurements second
-- architecture improvement as a side effect of benchmark readiness
+- durable same-machine history first
+- reproducible remote execution second
+- operational parity with the reference benchmark system third
 
 ---
 
