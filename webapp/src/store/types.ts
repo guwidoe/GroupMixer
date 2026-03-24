@@ -5,6 +5,7 @@
 
 import type {
   Problem,
+  ProblemResult,
   Solution,
   SolverState,
   Notification,
@@ -109,7 +110,7 @@ export interface ProblemManagerActions {
     solverSettings: SolverSettings,
     customName?: string,
     snapshotProblemOverride?: Problem
-  ) => void;
+  ) => ProblemResult | null;
   updateResultName: (resultId: string, newName: string) => void;
   deleteResult: (resultId: string) => void;
   selectResultsForComparison: (resultIds: string[]) => void;

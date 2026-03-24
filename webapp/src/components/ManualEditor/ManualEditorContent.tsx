@@ -144,16 +144,7 @@ export function ManualEditorContent() {
       peopleCount: effectiveProblem.people.length || 1,
     });
 
-    try {
-      addResult(draftSolution, effectiveProblem.settings, 'Manual Draft', effectiveProblem);
-      addNotification({ type: 'success', title: 'Draft Saved', message: 'Saved as a new result.' });
-    } catch (e) {
-      addNotification({
-        type: 'error',
-        title: 'Save Failed',
-        message: e instanceof Error ? e.message : 'Unknown error',
-      });
-    }
+    addResult(draftSolution, effectiveProblem.settings, 'Manual Draft', effectiveProblem);
   };
 
   const isGroupLocked = (groupId: string) => lockedGroups.has(groupId);

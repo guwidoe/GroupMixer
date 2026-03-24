@@ -61,7 +61,9 @@ export function saveAndContinue({
       peopleCount: effectiveProblem.people.length || 1,
       evaluated,
     });
-    useAppStore.getState().addResult(draftSolution, effectiveProblem.settings, 'Manual Draft', effectiveProblem);
+    if (!useAppStore.getState().addResult(draftSolution, effectiveProblem.settings, 'Manual Draft', effectiveProblem)) {
+      return;
+    }
   }
   setShowLeaveConfirm(false);
   setHasUnsavedChanges(false);

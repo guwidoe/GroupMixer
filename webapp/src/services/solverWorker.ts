@@ -84,10 +84,7 @@ export class SolverWorkerService {
     const error = this.buildWorkerError(messageData);
     this.rejectAllPending(error);
     if (messageData?.problemJson) {
-      console.debug(
-        "[Worker] Solver input JSON that caused the error:",
-        messageData.problemJson
-      );
+      console.error("Worker error included solver input context.");
     }
   }
 
@@ -169,10 +166,8 @@ export class SolverWorkerService {
                 console.error("[Worker]", ...message.data.args);
                 break;
               case "debug":
-                console.debug("[Worker]", ...message.data.args);
-                break;
               default:
-                console.log("[Worker]", ...message.data.args);
+                break;
             }
           }
           break;
@@ -196,7 +191,6 @@ export class SolverWorkerService {
           } catch {
             /* no-op */
           }
-          console.debug("[Worker] Problem JSON received:", message.data.problemJson);
           break;
 
         default:
@@ -264,11 +258,6 @@ export class SolverWorkerService {
 
     const problemJson = JSON.stringify(convertProblemToRustFormat(problem));
 
-    console.debug(
-      "[SolverWorkerService] Problem JSON sent to worker:",
-      problemJson
-    );
-
     const { result } = await this.sendSolve(problemJson, false);
     const rustResult = JSON.parse(result);
     return convertRustResultToSolution(
@@ -287,11 +276,6 @@ export class SolverWorkerService {
     }
 
     const problemJson = JSON.stringify(convertProblemToRustFormat(problem));
-
-    console.debug(
-      "[SolverWorkerService] Problem JSON sent to worker (with progress):",
-      problemJson
-    );
 
     const { result, lastProgress } = await this.sendSolve(
       problemJson,
@@ -324,11 +308,6 @@ export class SolverWorkerService {
     payload.initial_schedule = initialSchedule;
 
     const problemJson = JSON.stringify(payload);
-
-    console.debug(
-      "[SolverWorkerService] Problem JSON (warm-start) sent to worker:",
-      problemJson
-    );
 
     const { result, lastProgress } = await this.sendSolve(
       problemJson,
@@ -398,17 +377,10 @@ export class SolverWorkerService {
     problem: Problem,
     desiredRuntimeSeconds: number
   ): Promise<SolverSettings> {
-    console.debug(
-      "[SolverWorker] getRecommendedSettings → desiredRuntimeSeconds:",
-      desiredRuntimeSeconds
-    );
-
     const result = await this.callSolver("get_recommended_settings", {
       problemJson: JSON.stringify(problem),
       desired_runtime_seconds: desiredRuntimeSeconds,
     });
-
-    console.debug("[SolverWorker] getRecommendedSettings ← raw result:", result);
 
     return JSON.parse(result);
   }

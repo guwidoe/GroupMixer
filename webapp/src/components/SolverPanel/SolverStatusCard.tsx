@@ -111,10 +111,7 @@ export function SolverStatusCard({
         </div>
         {!solverState.isRunning ? (
           <button
-            onClick={() => {
-              console.log('[SolverPanel] Start Solver button clicked');
-              onStartSolver(true);
-            }}
+            onClick={() => onStartSolver(true)}
             className="btn-success flex-1 flex items-center justify-center space-x-2"
             disabled={!problem}
           >

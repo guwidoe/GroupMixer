@@ -1,8 +1,7 @@
 import type { MutableRefObject } from 'react';
-import type { Problem, SavedProblem, SolverSettings, SolverState, Solution, Notification } from '../../../types';
+import type { Problem, ProblemResult, SavedProblem, SolverSettings, SolverState, Solution, Notification } from '../../../types';
 import type { ProgressUpdate } from '../../../services/wasm/types';
 import { solverWorkerService } from '../../../services/solverWorker';
-import { problemStorage } from '../../../services/problemStorage';
 import { reconcileResultToInitialSchedule } from '../../../utils/warmStart';
 import { useAppStore } from '../../../store';
 
@@ -23,7 +22,12 @@ interface RunSolverArgs {
   setSolverState: (partial: Partial<SolverState>) => void;
   setSolution: (solution: Solution) => void;
   addNotification: AddNotification;
-  addResult: (solution: Solution, solverSettings: SolverSettings, customName?: string, snapshotProblemOverride?: Problem) => void;
+  addResult: (
+    solution: Solution,
+    solverSettings: SolverSettings,
+    customName?: string,
+    snapshotProblemOverride?: Problem,
+  ) => ProblemResult | null;
   ensureProblemExists: () => Problem;
   setRunSettings: (settings: SolverSettings) => void;
   setLiveVizState: (value: { schedule: Record<string, Record<string, string[]>>; progress: ProgressUpdate | null } | null) => void;
@@ -61,12 +65,8 @@ export async function runSolver({
   restartAfterSaveRef,
   saveInProgressRef,
 }: RunSolverArgs) {
-  console.log('[SolverPanel] handleStartSolver called, current problem:', problem);
-  console.log('[SolverPanel] currentProblemId at start:', currentProblemId);
-
   const currentProblem = ensureProblemExists();
-  console.log('[SolverPanel] ensureProblemExists returned:', currentProblem);
-  console.log('[SolverPanel] currentProblemId after ensureProblemExists:', currentProblemId);
+  const activeProblemId = useAppStore.getState().currentProblemId;
 
   if (!currentProblem.people || currentProblem.people.length === 0) {
     addNotification({
@@ -175,12 +175,6 @@ export async function runSolver({
         return false;
       }
 
-      if (progress.iteration % 1000 === 0 || progress.iteration < 10) {
-        console.log(
-          `[SolverPanel] Progress ${progress.iteration}: current_score=${progress.current_score}, best_score=${progress.best_score}`,
-        );
-      }
-
       setSolverState({
         ...(progress.iteration === 0 && { initialConstraintPenalty: progress.current_constraint_penalty }),
         currentIteration: progress.iteration,
@@ -230,16 +224,6 @@ export async function runSolver({
         }
       }
 
-      if (
-        progress.best_score < ((window as { lastLoggedBestScore?: number }).lastLoggedBestScore ?? 0) - 50 ||
-        !(window as { lastLoggedBestScore?: number }).lastLoggedBestScore
-      ) {
-        console.log(
-          `[SolverPanel] Significant improvement: best_score dropped to ${progress.best_score} at iteration ${progress.iteration}`,
-        );
-        (window as { lastLoggedBestScore?: number }).lastLoggedBestScore = progress.best_score;
-      }
-
       return true;
     };
 
@@ -279,11 +263,6 @@ export async function runSolver({
       lastProgress = out.lastProgress;
     }
 
-    console.log('[SolverPanel] Solver completed');
-    console.log('[SolverPanel] Solution final_score:', solution.final_score);
-    console.log('[SolverPanel] Last progress best_score:', lastProgress?.best_score);
-    console.log('[SolverPanel] Last progress current_score:', lastProgress?.current_score);
-
     solverCompletedRef.current = true;
 
     setSolution(solution);
@@ -291,8 +270,6 @@ export async function runSolver({
     const finalNoImprovementCount = lastProgress ? lastProgress.no_improvement_count : solverState.noImprovementCount;
 
     await new Promise((resolve) => setTimeout(resolve, 50));
-
-    console.log('[SolverPanel] Setting final solver state with bestScore/currentScore from lastProgress');
 
     if (cancelledRef.current) {
       setSolverState({
@@ -321,32 +298,38 @@ export async function runSolver({
       });
     }
 
-    console.log('[SolverPanel] About to save result, currentProblemId:', currentProblemId);
-    console.log('[SolverPanel] Problem exists:', !!problem);
-    if (currentProblemId) {
-      console.log('[SolverPanel] Saving result to problem:', currentProblemId);
-      addResult(solution, selectedSettings, undefined, runProblemSnapshotRef.current || undefined);
+    let savedResult: ProblemResult | null = null;
+    if (activeProblemId) {
+      savedResult = addResult(solution, selectedSettings, undefined, runProblemSnapshotRef.current || undefined);
     } else {
-      console.log('[SolverPanel] No currentProblemId, result not saved');
-      if (problem) {
-        console.log('[SolverPanel] Creating new problem to save result');
-        const newSaved = problemStorage.createProblem('Untitled Problem', problem);
-        problemStorage.setCurrentProblemId(newSaved.id);
-        useAppStore.setState({ currentProblemId: newSaved.id });
-        addResult(solution, selectedSettings, undefined, runProblemSnapshotRef.current || undefined);
-      }
+      addNotification({
+        type: 'warning',
+        title: 'Result Not Saved',
+        message: 'The solver finished, but no current problem was available for saving the result.',
+      });
     }
 
     if (cancelledRef.current) {
       if (restartAfterSaveRef.current) {
-        addNotification({
-          type: 'success',
-          title: 'Saved Best-So-Far',
-          message: 'Resuming solver with the same settings...',
-        });
         restartAfterSaveRef.current = false;
-        cancelledRef.current = false;
         saveInProgressRef.current = false;
+        cancelledRef.current = false;
+
+        if (!savedResult) {
+          addNotification({
+            type: 'warning',
+            title: 'Resume Skipped',
+            message: 'Best-so-far could not be saved, so the solver was left stopped.',
+          });
+          return;
+        }
+
+        addNotification({
+          type: 'info',
+          title: 'Resuming Solver',
+          message: 'Best-so-far saved. Resuming with the same settings...',
+        });
+
         const resumeProblem = problemWithSettings;
         const initialSchedule = solution.assignments.reduce<Record<string, Record<string, string[]>>>(
           (acc, a) => {
@@ -395,13 +378,15 @@ export async function runSolver({
         }, 0);
         return;
       } else {
-        addNotification({
-          type: 'success',
-          title: 'Saved Best-So-Far',
-          message: 'Solver stopped and best-so-far solution saved.',
-        });
         cancelledRef.current = false;
         saveInProgressRef.current = false;
+        if (!savedResult) {
+          addNotification({
+            type: 'warning',
+            title: 'Best-So-Far Not Saved',
+            message: 'The solver stopped, but the best-so-far snapshot could not be saved.',
+          });
+        }
         return;
       }
     }

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import type { Problem, SavedProblem, SolverSettings, SolverState, Solution, Notification } from '../../../types';
+import type { Problem, ProblemResult, SavedProblem, SolverSettings, SolverState, Solution, Notification } from '../../../types';
 import type { ProgressUpdate } from '../../../services/wasm/types';
 import type { ScheduleSnapshot } from '../../../visualizations/types';
 import { solverWorkerService } from '../../../services/solverWorker';
@@ -25,7 +25,12 @@ interface UseSolverActionsArgs {
   setSolverState: (partial: Partial<SolverState>) => void;
   setSolution: (solution: Solution) => void;
   addNotification: AddNotification;
-  addResult: (solution: Solution, solverSettings: SolverSettings, customName?: string, snapshotProblemOverride?: Problem) => void;
+  addResult: (
+    solution: Solution,
+    solverSettings: SolverSettings,
+    customName?: string,
+    snapshotProblemOverride?: Problem,
+  ) => ProblemResult | null;
   ensureProblemExists: () => Problem;
   handleSettingsChange: (settings: Partial<SolverSettings>) => void;
   setShowCancelConfirm: (value: boolean) => void;
