@@ -53,6 +53,18 @@ impl BenchmarkStorage {
         self.root.join("comparisons")
     }
 
+    pub fn recordings_dir(&self) -> PathBuf {
+        self.root.join("recordings")
+    }
+
+    pub fn index_dir(&self) -> PathBuf {
+        self.root.join("index")
+    }
+
+    pub fn refs_dir(&self) -> PathBuf {
+        self.root.join("refs")
+    }
+
     pub fn machines_dir(&self) -> PathBuf {
         self.root.join("machines")
     }
@@ -66,6 +78,9 @@ impl BenchmarkStorage {
             self.root(),
             self.runs_dir().as_path(),
             self.comparisons_dir().as_path(),
+            self.recordings_dir().as_path(),
+            self.index_dir().as_path(),
+            self.refs_dir().as_path(),
             self.machines_dir().as_path(),
             self.baselines_root_dir().as_path(),
         ] {

@@ -1,7 +1,10 @@
 pub mod artifacts;
 pub mod compare;
+pub mod index;
 pub mod machine;
 pub mod manifest;
+pub mod recording_types;
+pub mod refs;
 pub mod runner;
 pub mod storage;
 pub mod summary;
@@ -20,6 +23,13 @@ pub use manifest::{
     BenchmarkSuiteClass, BenchmarkSuiteManifest, LoadedBenchmarkCase, LoadedBenchmarkSuite,
 };
 pub use compare::{compare_run_to_baseline, persist_comparison_report};
+pub use index::{db_path as benchmark_index_path, list_recordings, list_refs};
+pub use recording_types::{
+    BenchmarkRef, BenchmarkRefTarget, RecordingGitIdentity, RecordingIndexRow,
+    RecordingMachineIdentity, RecordingMetadata, RecordingSuiteRun, RefIndexRow,
+    BENCHMARK_REF_SCHEMA_VERSION, FULL_SOLVE_BENCHMARK_MODE, RECORDING_SCHEMA_VERSION,
+};
+pub use refs::{build_ref, load_ref, ref_file_path, standard_ref_names};
 pub use runner::{
     load_baseline_snapshot, load_run_report, persist_run_report, run_loaded_suite,
     run_suite_from_manifest, save_baseline_snapshot, RunnerOptions,
