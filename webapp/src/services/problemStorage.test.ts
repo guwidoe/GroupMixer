@@ -104,6 +104,16 @@ describe("ProblemStorageService", () => {
     ).toThrow(/storage quota exceeded/i);
   });
 
+  it("throws when deleting a problem cannot be persisted", () => {
+    const service = createService();
+    const created = service.createProblem("Workshop", createSampleProblem());
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("quota exceeded");
+    });
+
+    expect(() => service.deleteProblem(created.id)).toThrow(/storage quota exceeded/i);
+  });
+
   it("restores snapshots and migrates missing snapshots", () => {
     const service = createService();
     const saved = createSavedProblem({
