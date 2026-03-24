@@ -40,7 +40,7 @@ export const useThemeStore = create<ThemeState>()(
     persist(
       (set, get) => ({
         theme: "system", // Default to system preference
-        isDark: calculateIsDark("system"),
+        isDark: false,
 
         setTheme: (theme: Theme) => {
           const isDark = calculateIsDark(theme);
@@ -66,14 +66,7 @@ export const useThemeStore = create<ThemeState>()(
       }),
       {
         name: "theme-storage",
-        onRehydrateStorage: () => (state) => {
-          if (state) {
-            // Recalculate isDark based on current system preference when hydrating
-            const isDark = calculateIsDark(state.theme);
-            applyTheme(isDark);
-            state.isDark = isDark;
-          }
-        },
+        skipHydration: true,
       }
     ),
     {
@@ -82,22 +75,61 @@ export const useThemeStore = create<ThemeState>()(
   )
 );
 
-// Listen for system theme changes
-if (typeof window !== "undefined") {
+function syncThemeFromState(): void {
+  const { theme } = useThemeStore.getState();
+  const isDark = calculateIsDark(theme);
+  applyTheme(isDark);
+  useThemeStore.setState({ isDark });
+}
+
+function readPersistedTheme(): Theme | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const stored = window.localStorage.getItem("theme-storage");
+    if (!stored) {
+      return null;
+    }
+
+    const parsed = JSON.parse(stored) as { state?: { theme?: unknown } };
+    const theme = parsed.state?.theme;
+    return theme === "light" || theme === "dark" || theme === "system"
+      ? theme
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function attachSystemThemeListener(onChange: () => void): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
   const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
-  mediaQuery.addEventListener("change", () => {
+  if (typeof mediaQuery.addEventListener === "function") {
+    mediaQuery.addEventListener("change", onChange);
+    return () => mediaQuery.removeEventListener("change", onChange);
+  }
+
+  mediaQuery.addListener(onChange);
+  return () => mediaQuery.removeListener(onChange);
+}
+
+export function initializeThemeStore(): () => void {
+  const persistedTheme = readPersistedTheme();
+  if (persistedTheme) {
+    useThemeStore.setState({ theme: persistedTheme });
+  }
+  syncThemeFromState();
+
+  return attachSystemThemeListener(() => {
     const { theme, setTheme } = useThemeStore.getState();
     if (theme === "system") {
-      // If using system theme, update when system preference changes
       setTheme("system");
     }
   });
-}
-
-// Initialize theme on load
-if (typeof document !== "undefined") {
-  // Apply initial theme
-  const initialState = useThemeStore.getState();
-  applyTheme(initialState.isDark);
 }

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import LandingPage from './components/LandingPage';
 import { ManualEditor } from './components/ManualEditor';
@@ -6,10 +7,12 @@ import { ResultsHistory } from './components/ResultsHistory';
 import { ResultsView } from './components/ResultsView';
 import { SolverPanel } from './components/SolverPanel';
 import MainApp from './MainApp';
-import { useThemeStore } from './store/theme';
+import { initializeThemeStore, useThemeStore } from './store/theme';
 
 function App() {
   const { theme } = useThemeStore();
+
+  useEffect(() => initializeThemeStore(), []);
 
   return (
     <div className={theme}>

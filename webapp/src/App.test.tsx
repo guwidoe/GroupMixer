@@ -18,7 +18,7 @@ vi.mock("./MainApp", () => ({
   ),
 }));
 
-vi.mock("./components/ProblemEditor", () => ({
+vi.mock("./components/ProblemEditor/ProblemEditor", () => ({
   ProblemEditor: () => <div>Problem editor test stub</div>,
 }));
 
