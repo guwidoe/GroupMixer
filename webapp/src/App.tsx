@@ -1,12 +1,12 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import LandingPage from './components/LandingPage';
+import { ManualEditor } from './components/ManualEditor';
+import { ProblemEditor } from './components/ProblemEditor/ProblemEditor';
+import { ResultsHistory } from './components/ResultsHistory';
+import { ResultsView } from './components/ResultsView';
+import { SolverPanel } from './components/SolverPanel';
 import MainApp from './MainApp';
 import { useThemeStore } from './store/theme';
-import { ProblemEditor } from './components/ProblemEditor';
-import { SolverPanel } from './components/SolverPanel';
-import { ResultsView } from './components/ResultsView';
-import { ResultsHistory } from './components/ResultsHistory';
-import { ManualEditor } from './components/ManualEditor';
 
 function App() {
   const { theme } = useThemeStore();
