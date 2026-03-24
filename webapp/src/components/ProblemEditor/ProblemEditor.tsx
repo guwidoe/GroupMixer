@@ -203,9 +203,9 @@ export function ProblemEditor() {
           onAddPerson={() => entities.setShowPersonForm(true)}
           onEditPerson={entities.handleEditPerson}
           onDeletePerson={entities.handleDeletePerson}
-          onOpenBulkAddForm={bulk.openBulkAddForm}
-          onOpenBulkUpdateForm={bulk.openBulkUpdateForm}
-          onTriggerCsvUpload={() => bulk.csvFileInputRef.current?.click()}
+          onOpenBulkAddForm={bulk.addPeople.openForm}
+          onOpenBulkUpdateForm={bulk.updatePeople.openForm}
+          onTriggerCsvUpload={() => bulk.addPeople.csvFileInputRef.current?.click()}
           onTriggerExcelImport={() =>
             addNotification({ type: 'info', title: 'Coming Soon', message: 'Excel import is not yet implemented.' })
           }
@@ -218,8 +218,8 @@ export function ProblemEditor() {
           onAddGroup={() => entities.setShowGroupForm(true)}
           onEditGroup={entities.handleEditGroup}
           onDeleteGroup={entities.handleDeleteGroup}
-          onOpenBulkAddForm={bulk.openGroupBulkForm}
-          onTriggerCsvUpload={() => bulk.groupCsvFileInputRef.current?.click()}
+          onOpenBulkAddForm={bulk.addGroups.openForm}
+          onTriggerCsvUpload={() => bulk.addGroups.csvFileInputRef.current?.click()}
         />
       )}
 
@@ -302,49 +302,49 @@ export function ProblemEditor() {
           onCancelAttribute: editorActions.handleCancelAttributeForm,
         }}
         bulkAddPeople={{
-          showBulkForm: bulk.showBulkForm,
-          bulkTextMode: bulk.bulkTextMode,
-          setBulkTextMode: bulk.setBulkTextMode,
-          bulkCsvInput: bulk.bulkCsvInput,
-          setBulkCsvInput: bulk.setBulkCsvInput,
-          bulkHeaders: bulk.bulkHeaders,
-          setBulkHeaders: bulk.setBulkHeaders,
-          bulkRows: bulk.bulkRows,
-          setBulkRows: bulk.setBulkRows,
-          onSaveBulkPeople: bulk.handleAddBulkPeople,
-          onCloseBulkPeople: () => bulk.setShowBulkForm(false),
+          showBulkForm: bulk.addPeople.showForm,
+          bulkTextMode: bulk.addPeople.textMode,
+          setBulkTextMode: bulk.addPeople.setTextMode,
+          bulkCsvInput: bulk.addPeople.csvInput,
+          setBulkCsvInput: bulk.addPeople.setCsvInput,
+          bulkHeaders: bulk.addPeople.headers,
+          setBulkHeaders: bulk.addPeople.setHeaders,
+          bulkRows: bulk.addPeople.rows,
+          setBulkRows: bulk.addPeople.setRows,
+          onSaveBulkPeople: bulk.addPeople.save,
+          onCloseBulkPeople: () => bulk.addPeople.setShowForm(false),
         }}
         bulkUpdatePeople={{
-          showBulkUpdateForm: bulk.showBulkUpdateForm,
-          bulkUpdateTextMode: bulk.bulkUpdateTextMode,
-          setBulkUpdateTextMode: bulk.setBulkUpdateTextMode,
-          bulkUpdateCsvInput: bulk.bulkUpdateCsvInput,
-          setBulkUpdateCsvInput: bulk.setBulkUpdateCsvInput,
-          bulkUpdateHeaders: bulk.bulkUpdateHeaders,
-          setBulkUpdateHeaders: bulk.setBulkUpdateHeaders,
-          bulkUpdateRows: bulk.bulkUpdateRows,
-          setBulkUpdateRows: bulk.setBulkUpdateRows,
-          onRefreshBulkUpdate: bulk.refreshBulkUpdateFromCurrent,
-          onApplyBulkUpdate: bulk.handleApplyBulkUpdate,
-          onCloseBulkUpdate: () => bulk.setShowBulkUpdateForm(false),
+          showBulkUpdateForm: bulk.updatePeople.showForm,
+          bulkUpdateTextMode: bulk.updatePeople.textMode,
+          setBulkUpdateTextMode: bulk.updatePeople.setTextMode,
+          bulkUpdateCsvInput: bulk.updatePeople.csvInput,
+          setBulkUpdateCsvInput: bulk.updatePeople.setCsvInput,
+          bulkUpdateHeaders: bulk.updatePeople.headers,
+          setBulkUpdateHeaders: bulk.updatePeople.setHeaders,
+          bulkUpdateRows: bulk.updatePeople.rows,
+          setBulkUpdateRows: bulk.updatePeople.setRows,
+          onRefreshBulkUpdate: bulk.updatePeople.refreshFromCurrent,
+          onApplyBulkUpdate: bulk.updatePeople.apply,
+          onCloseBulkUpdate: () => bulk.updatePeople.setShowForm(false),
         }}
         bulkAddGroups={{
-          showGroupBulkForm: bulk.showGroupBulkForm,
-          groupBulkTextMode: bulk.groupBulkTextMode,
-          setGroupBulkTextMode: bulk.setGroupBulkTextMode,
-          groupBulkCsvInput: bulk.groupBulkCsvInput,
-          setGroupBulkCsvInput: bulk.setGroupBulkCsvInput,
-          groupBulkHeaders: bulk.groupBulkHeaders,
-          setGroupBulkHeaders: bulk.setGroupBulkHeaders,
-          groupBulkRows: bulk.groupBulkRows,
-          setGroupBulkRows: bulk.setGroupBulkRows,
-          onSaveGroupBulk: bulk.handleAddGroupBulkPeople,
-          onCloseGroupBulk: () => bulk.setShowGroupBulkForm(false),
+          showGroupBulkForm: bulk.addGroups.showForm,
+          groupBulkTextMode: bulk.addGroups.textMode,
+          setGroupBulkTextMode: bulk.addGroups.setTextMode,
+          groupBulkCsvInput: bulk.addGroups.csvInput,
+          setGroupBulkCsvInput: bulk.addGroups.setCsvInput,
+          groupBulkHeaders: bulk.addGroups.headers,
+          setGroupBulkHeaders: bulk.addGroups.setHeaders,
+          groupBulkRows: bulk.addGroups.rows,
+          setGroupBulkRows: bulk.addGroups.setRows,
+          onSaveGroupBulk: bulk.addGroups.save,
+          onCloseGroupBulk: () => bulk.addGroups.setShowForm(false),
         }}
-        csvFileInputRef={bulk.csvFileInputRef}
-        onCsvFileSelected={bulk.handleCsvFileSelected}
-        groupCsvFileInputRef={bulk.groupCsvFileInputRef}
-        onGroupCsvFileSelected={bulk.handleGroupCsvFileSelected}
+        csvFileInputRef={bulk.addPeople.csvFileInputRef}
+        onCsvFileSelected={bulk.addPeople.handleCsvFileSelected}
+        groupCsvFileInputRef={bulk.addGroups.csvFileInputRef}
+        onGroupCsvFileSelected={bulk.addGroups.handleCsvFileSelected}
       />
       <ConstraintFormModal
         isOpen={constraints.showConstraintForm}
