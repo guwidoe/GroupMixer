@@ -27,6 +27,7 @@ import {
   createEditorSlice,
   initialSolverState,
   initialUIState,
+  DEFAULT_ATTRIBUTE_DEFINITIONS,
   loadAttributeDefinitions,
 } from "./slices";
 
@@ -54,7 +55,7 @@ const getInitialState = () => ({
   savedProblems: {},
   selectedResultIds: [],
   ui: initialUIState,
-  attributeDefinitions: loadAttributeDefinitions(),
+  attributeDefinitions: DEFAULT_ATTRIBUTE_DEFINITIONS,
   demoDropdownOpen: false,
   manualEditorUnsaved: false,
   manualEditorLeaveHook: null,
@@ -77,6 +78,7 @@ export const useAppStore = create<AppStore>()(
       reset: () => set(getInitialState()),
 
       initializeApp: () => {
+        set({ attributeDefinitions: loadAttributeDefinitions() });
         get().loadSavedProblems();
       },
     }),

@@ -7,7 +7,7 @@ import type { AttributeState, AttributeActions, StoreSlice } from "../types";
 
 const ATTRIBUTE_DEFS_KEY = "people-distributor-attribute-definitions";
 
-const DEFAULT_ATTRIBUTE_DEFINITIONS: AttributeDefinition[] = [
+export const DEFAULT_ATTRIBUTE_DEFINITIONS: AttributeDefinition[] = [
   { key: "gender", values: ["male", "female"] },
   {
     key: "department",
@@ -40,7 +40,7 @@ function saveAttributeDefinitions(definitions: AttributeDefinition[]): void {
 export const createAttributeSlice: StoreSlice<AttributeState & AttributeActions> = (
   set
 ) => ({
-  attributeDefinitions: loadAttributeDefinitions(),
+  attributeDefinitions: DEFAULT_ATTRIBUTE_DEFINITIONS,
 
   setAttributeDefinitions: (definitions) => {
     saveAttributeDefinitions(definitions);
