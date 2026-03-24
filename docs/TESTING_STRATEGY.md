@@ -2,6 +2,8 @@
 
 This document is the authoritative testing and coverage policy for GroupMixer.
 
+For the day-to-day contributor workflow, see [`docs/TEST_PYRAMID_AND_REFACTOR_WORKFLOW.md`](./TEST_PYRAMID_AND_REFACTOR_WORKFLOW.md).
+
 The goal is **refactor safety**, not just a single percentage. For this repository, **100% line coverage is a floor for the most important code paths, not the full strategy**. Confidence comes from multiple layers working together:
 
 - narrow unit tests for branch-heavy logic

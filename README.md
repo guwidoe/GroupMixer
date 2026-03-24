@@ -272,6 +272,7 @@ cargo run
 ## Testing
 
 The authoritative repo-wide testing policy lives in [`docs/TESTING_STRATEGY.md`](docs/TESTING_STRATEGY.md).
+For practical "what should I run before I commit this refactor?" guidance, see [`docs/TEST_PYRAMID_AND_REFACTOR_WORKFLOW.md`](docs/TEST_PYRAMID_AND_REFACTOR_WORKFLOW.md).
 
 Current baseline commands:
 
