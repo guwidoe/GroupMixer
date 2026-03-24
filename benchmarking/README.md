@@ -9,6 +9,7 @@ Primary references:
 - `benchmarking/SCHEMAS.md`
 - `benchmarking/TOOLING.md`
 - `benchmarking/WORKFLOW.md`
+- `benchmarking/AUDIT.md`
 
 ## What lives here
 
