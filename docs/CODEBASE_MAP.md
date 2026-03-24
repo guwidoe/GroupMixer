@@ -62,7 +62,7 @@ GroupMixer/
 │   ├── src/
 │   │   ├── lib.rs           # Public API: run_solver(), recommended_settings
 │   │   ├── models.rs        # All serializable types (ApiInput, Constraint, etc.)
-│   │   ├── solver.rs        # State management, constraint processing (50k tokens)
+│   │   ├── solver/          # State management, validation, construction, moves
 │   │   └── algorithms/
 │   │       ├── mod.rs       # Solver trait definition
 │   │       └── simulated_annealing.rs  # SA implementation with dual moves
@@ -90,7 +90,7 @@ GroupMixer/
 │   │   ├── visualizations/  # Pluggable viz system (matrix, graph, 3D)
 │   │   └── workers/         # Web Worker for off-thread solving
 │   └── public/
-│       ├── solver_wasm.*    # Compiled WASM files
+│       ├── pkg/solver_wasm.* # Generated wasm-pack output
 │       └── test_cases/      # Sample problems
 │
 ├── legacy_cpp/              # Original C++ implementation
@@ -113,7 +113,7 @@ GroupMixer/
 |------|---------|--------|
 | `src/lib.rs` | Public API facade, recommended settings calculation | 6,297 |
 | `src/models.rs` | All serializable types: ApiInput, Constraint enum, SolverResult | 8,574 |
-| `src/solver.rs` | State class, constraint preprocessing, cost calculations | 50,158 |
+| `src/solver/` | State construction, validation, scoring, moves, display | split across modules |
 | `src/algorithms/mod.rs` | Solver trait definition | 1,339 |
 | `src/algorithms/simulated_annealing.rs` | SA with clique swaps, reheating, delta scoring | 12,283 |
 
@@ -123,7 +123,7 @@ GroupMixer/
 - `calculate_recommended_settings(api_input, runtime_seconds) -> SolverConfiguration`
 - Types: `ApiInput`, `Person`, `Group`, `Constraint`, `SolverResult`, `ProgressUpdate`
 
-**Dependencies**: serde, rand, thiserror, uuid, indicatif
+**Dependencies**: serde, rand, thiserror, uuid, log, serde_json
 
 **Patterns**:
 - **Facade**: Simple public API hiding complex implementation

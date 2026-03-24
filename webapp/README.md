@@ -1,69 +1,56 @@
-# React + TypeScript + Vite
+# GroupMixer webapp
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + TypeScript + Vite frontend for building problems, running the solver in-browser via WASM + worker, and visualizing results.
 
-Currently, two official plugins are available:
+## Key responsibilities
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- problem editing and local persistence
+- solver configuration and progress display
+- worker-backed browser solving
+- results history, comparison, export, and visualizations
+- Playwright and Vitest coverage for frontend behavior
 
-## Expanding the ESLint configuration
+## Local development
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm ci
+npm run build-wasm
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The WASM build writes generated files to `public/pkg/`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Common commands
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# Lint
+npm run lint
+
+# Unit/component tests
+npm run test:unit
+
+# Coverage
+npm run test:coverage:ci
+
+# Browser workflows
+npm run test:e2e:workflows
+
+# Production build
+npm run build
 ```
+
+## Important directories
+
+- `src/components/` — UI surfaces
+- `src/services/` — wasm, worker, storage, evaluation, demo-data helpers
+- `src/store/` — Zustand slices and actions
+- `src/visualizations/` — pluggable result visualizations
+- `src/workers/` — module worker entrypoint for solver execution
+- `public/pkg/` — generated wasm-pack output (ignored)
+- `public/test_cases/` — demo and regression fixture inputs
+
+## Build contract
+
+- Vite resolves `virtual:wasm-solver` to `public/pkg/solver_wasm.js`
+- `npm run build-wasm` must run before first local dev/build if generated files are absent
+- generated WASM artifacts are not the source of truth; `solver-wasm/` is

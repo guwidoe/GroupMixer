@@ -557,7 +557,7 @@ pub struct Objective {
 
 ### Core Dependencies
 
-- **serde**: Serialization/deserialization for JSON/YAML configuration
+- **serde**: Serialization/deserialization for solver data
 - **rand**: High-quality random number generation for optimization
 - **uuid**: Unique identifier generation
 - **thiserror**: Structured error handling
@@ -566,8 +566,8 @@ pub struct Objective {
 ### Development Dependencies
 
 - **serde_json**: JSON parsing and generation
-- **serde_yaml**: YAML configuration file support
-- **indicatif**: Progress bars for long-running optimizations
+- **criterion**: Benchmark harness and HTML reports
+- **proptest**: Property-based testing
 
 ## 🚀 Future Enhancements
 

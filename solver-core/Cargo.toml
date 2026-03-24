@@ -11,12 +11,10 @@ path = "src/lib.rs"
 serde = { version = "1.0.190", features = ["derive"] }
 rand = { version = "0.10.0", features = ["std_rng"] }
 uuid = { version = "1.22.0", features = ["v4", "serde", "js"] }
-indicatif = "0.18.4"
 getrandom = { version = "0.4", features = ["wasm_js"] }
 log = "0.4"
 serde_json = "1.0.149"
 thiserror = "2.0.18"
-serde_yaml = "0.9.34-deprecated"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies.getrandom]
 version = "0.3"
@@ -28,7 +26,6 @@ js-sys = "0.3"
 [dev-dependencies]
 rand_chacha = "0.10.0"
 criterion = { version = "0.8", features = ["html_reports"] }
-serde_yaml = "0.9"
 proptest = "1.10"
 
 [build-dependencies]

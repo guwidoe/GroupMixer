@@ -38,7 +38,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(dirname, "./src"),
-      "virtual:wasm-solver": path.resolve(dirname, "./public/solver_wasm.js"),
+      "virtual:wasm-solver": path.resolve(dirname, "./public/pkg/solver_wasm.js"),
     },
   },
   worker: {
