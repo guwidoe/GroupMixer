@@ -1,0 +1,19 @@
+{
+  "coverage-gutters.coverageFileNames": [
+    "rust.lcov",
+    "lcov.info"
+  ],
+  "coverage-gutters.showLineCoverage": true,
+  "coverage-gutters.showRulerCoverage": true,
+  "coverage-gutters.showGutterCoverage": true,
+  "files.exclude": {
+    "target/coverage": true,
+    "webapp/coverage": true,
+    "webapp/playwright-report": true
+  },
+  "search.exclude": {
+    "target/coverage": true,
+    "webapp/coverage": true,
+    "webapp/playwright-report": true
+  }
+}

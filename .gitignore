@@ -372,6 +372,8 @@ FodyWeavers.xsd
 
 # Playwright
 /webapp/playwright-report/
+/webapp/coverage/
+/target/coverage/
 /webapp/test-results/
 /webapp/playwright/.cache/
 
