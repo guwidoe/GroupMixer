@@ -118,6 +118,20 @@ fn duplicate_group_ids_are_rejected() {
 }
 
 #[test]
+fn insufficient_group_capacity_is_rejected_with_clear_error() {
+    let mut input = basic_input();
+    input.problem.groups = vec![Group {
+        id: "tiny".to_string(),
+        size: 2,
+    }];
+
+    let error = State::new(&input).unwrap_err().to_string();
+    assert!(error.contains("Not enough group capacity for all people"), "{error}");
+    assert!(error.contains("People: 4"), "{error}");
+    assert!(error.contains("Capacity: 2"), "{error}");
+}
+
+#[test]
 fn empty_allowed_sessions_are_rejected() {
     let mut input = basic_input();
     input.solver.allowed_sessions = Some(vec![]);

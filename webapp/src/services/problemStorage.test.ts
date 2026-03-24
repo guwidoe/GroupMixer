@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ProblemStorageService,
   compareProblemConfigurations,
@@ -20,6 +20,10 @@ describe("ProblemStorageService", () => {
     vi.useRealTimers();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("creates, persists, and summarizes problems", () => {
     const service = createService();
     const created = service.createProblem("Workshop", createSampleProblem(), true);
@@ -35,6 +39,14 @@ describe("ProblemStorageService", () => {
         isTemplate: true,
       }),
     ]);
+  });
+
+  it("falls back to an empty problem map when localStorage contains malformed JSON", () => {
+    localStorage.setItem("people-distributor-problems", "{not-json");
+
+    const service = createService();
+    expect(service.getAllProblems()).toEqual({});
+    expect(service.getProblemSummaries()).toEqual([]);
   });
 
   it("adds results and snapshots the current problem state", () => {
@@ -81,6 +93,17 @@ describe("ProblemStorageService", () => {
     expect(imported.results[0].id).not.toBe(savedWithResult.results[0].id);
   });
 
+  it("surfaces a helpful error when persistence hits storage limits", () => {
+    const service = createService();
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("quota exceeded");
+    });
+
+    expect(() =>
+      service.createProblem("Too big", createSampleProblem())
+    ).toThrow(/storage quota exceeded/i);
+  });
+
   it("restores snapshots and migrates missing snapshots", () => {
     const service = createService();
     const saved = createSavedProblem({
@@ -113,5 +136,17 @@ describe("ProblemStorageService", () => {
     const diff = compareProblemConfigurations(current, snapshot);
     expect(diff.isDifferent).toBe(true);
     expect(diff.changes.num_sessions).toBe(true);
+  });
+
+  it("tracks the current problem id and can clear all persisted data", () => {
+    const service = createService();
+    const created = service.createProblem("Workshop", createSampleProblem());
+
+    service.setCurrentProblemId(created.id);
+    expect(service.getCurrentProblemId()).toBe(created.id);
+
+    service.clearAllData();
+    expect(service.getCurrentProblemId()).toBeNull();
+    expect(service.getAllProblems()).toEqual({});
   });
 });
