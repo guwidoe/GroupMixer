@@ -4,6 +4,7 @@ import type { ProgressUpdate } from '../../../services/wasm/types';
 import { solverWorkerService } from '../../../services/solverWorker';
 import { reconcileResultToInitialSchedule } from '../../../utils/warmStart';
 import { useAppStore } from '../../../store';
+import { normalizeRecommendedSolverSettings } from './recommendedSettings';
 
 export type AddNotification = (notification: Omit<Notification, 'id'>) => void;
 
@@ -105,37 +106,7 @@ export async function runSolver({
           currentProblem,
           desiredRuntimeMain ?? 3,
         );
-
-        const sp = (rawSettings as SolverSettings & { solver_params: Record<string, unknown> }).solver_params;
-        if (sp && !('SimulatedAnnealing' in sp) && sp.solver_type === 'SimulatedAnnealing') {
-          const {
-            initial_temperature,
-            final_temperature,
-            cooling_schedule,
-            reheat_cycles,
-            reheat_after_no_improvement,
-          } = sp as {
-            initial_temperature: number;
-            final_temperature: number;
-            cooling_schedule: string;
-            reheat_cycles?: number;
-            reheat_after_no_improvement: number;
-          };
-          selectedSettings = {
-            ...rawSettings,
-            solver_params: {
-              SimulatedAnnealing: {
-                initial_temperature,
-                final_temperature,
-                cooling_schedule,
-                reheat_cycles,
-                reheat_after_no_improvement,
-              },
-            },
-          } as SolverSettings;
-        } else {
-          selectedSettings = rawSettings as SolverSettings;
-        }
+        selectedSettings = normalizeRecommendedSolverSettings(rawSettings as SolverSettings);
       } catch (err) {
         console.error('[SolverPanel] Failed to fetch recommended settings – falling back to existing settings', err);
       }

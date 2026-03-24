@@ -5,6 +5,7 @@ import type { ScheduleSnapshot } from '../../../visualizations/types';
 import { solverWorkerService } from '../../../services/solverWorker';
 import { runSolver } from '../utils/runSolver';
 import { saveBestSoFar } from '../utils/saveBestSoFar';
+import { normalizeRecommendedSolverSettings } from '../utils/recommendedSettings';
 
 type AddNotification = (notification: Omit<Notification, 'id'>) => void;
 
@@ -166,36 +167,7 @@ export function useSolverActions({
         desiredRuntimeSettings,
       );
 
-      let uiSettings: SolverSettings = recommendedSettings as SolverSettings;
-      const sp = (recommendedSettings as SolverSettings & { solver_params: Record<string, unknown> }).solver_params;
-      if (sp && !('SimulatedAnnealing' in sp) && sp.solver_type === 'SimulatedAnnealing') {
-        const {
-          initial_temperature,
-          final_temperature,
-          cooling_schedule,
-          reheat_cycles,
-          reheat_after_no_improvement,
-        } = sp as {
-          initial_temperature: number;
-          final_temperature: number;
-          cooling_schedule: string;
-          reheat_cycles?: number;
-          reheat_after_no_improvement: number;
-        };
-
-        uiSettings = {
-          ...recommendedSettings,
-          solver_params: {
-            SimulatedAnnealing: {
-              initial_temperature,
-              final_temperature,
-              cooling_schedule,
-              reheat_cycles,
-              reheat_after_no_improvement,
-            },
-          },
-        } as SolverSettings;
-      }
+      const uiSettings = normalizeRecommendedSolverSettings(recommendedSettings as SolverSettings);
 
       handleSettingsChange(uiSettings);
       addNotification({
