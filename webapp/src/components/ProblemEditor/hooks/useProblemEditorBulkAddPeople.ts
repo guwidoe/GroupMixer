@@ -1,20 +1,15 @@
 import { useRef, useState } from 'react';
 import type { AttributeDefinition, Person, Problem } from '../../../types';
 import { generateUniquePersonId, parseCsv } from '../helpers';
+import type { ProblemEditorBulkNotification } from './problemEditorBulkNotifications';
 import { applyAttributeDefinitionUpdates, buildProblemWithPeople } from './problemEditorBulkUtils';
-
-export type NotificationPayload = {
-  type: 'success' | 'error' | 'info';
-  title: string;
-  message: string;
-};
 
 interface UseProblemEditorBulkAddPeopleArgs {
   problem: Problem | null;
   attributeDefinitions: AttributeDefinition[];
   addAttributeDefinition: (definition: AttributeDefinition) => void;
   removeAttributeDefinition: (key: string) => void;
-  addNotification: (notification: NotificationPayload) => void;
+  addNotification: (notification: ProblemEditorBulkNotification) => void;
   setProblem: (problem: Problem) => void;
 }
 

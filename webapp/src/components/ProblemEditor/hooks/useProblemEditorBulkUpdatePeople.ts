@@ -1,19 +1,19 @@
 import { useState } from 'react';
 import type { AttributeDefinition, Person, Problem } from '../../../types';
 import { generateUniquePersonId, parseCsv, rowsToCsv } from '../helpers';
+import type { ProblemEditorBulkNotification } from './problemEditorBulkNotifications';
 import {
   applyAttributeDefinitionUpdates,
   buildPeopleCsvFromCurrent,
   buildProblemWithPeople,
 } from './problemEditorBulkUtils';
-import type { NotificationPayload } from './useProblemEditorBulkAddPeople';
 
 interface UseProblemEditorBulkUpdatePeopleArgs {
   problem: Problem | null;
   attributeDefinitions: AttributeDefinition[];
   addAttributeDefinition: (definition: AttributeDefinition) => void;
   removeAttributeDefinition: (key: string) => void;
-  addNotification: (notification: NotificationPayload) => void;
+  addNotification: (notification: ProblemEditorBulkNotification) => void;
   setProblem: (problem: Problem) => void;
 }
 

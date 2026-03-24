@@ -1,15 +1,15 @@
 import { useRef, useState } from 'react';
 import type { AttributeDefinition, Group, Problem } from '../../../types';
 import { parseCsv } from '../helpers';
+import type { ProblemEditorBulkNotification } from './problemEditorBulkNotifications';
 import { applyAttributeDefinitionUpdates, buildProblemWithGroups } from './problemEditorBulkUtils';
-import type { NotificationPayload } from './useProblemEditorBulkAddPeople';
 
 interface UseProblemEditorBulkAddGroupsArgs {
   problem: Problem | null;
   attributeDefinitions: AttributeDefinition[];
   addAttributeDefinition: (definition: AttributeDefinition) => void;
   removeAttributeDefinition: (key: string) => void;
-  addNotification: (notification: NotificationPayload) => void;
+  addNotification: (notification: ProblemEditorBulkNotification) => void;
   setProblem: (problem: Problem) => void;
 }
 

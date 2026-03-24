@@ -1,6 +1,7 @@
 import type { AttributeDefinition, Problem } from '../../../types';
+import type { ProblemEditorBulkNotification } from './problemEditorBulkNotifications';
 import { useProblemEditorBulkAddGroups } from './useProblemEditorBulkAddGroups';
-import { useProblemEditorBulkAddPeople, type NotificationPayload } from './useProblemEditorBulkAddPeople';
+import { useProblemEditorBulkAddPeople } from './useProblemEditorBulkAddPeople';
 import { useProblemEditorBulkUpdatePeople } from './useProblemEditorBulkUpdatePeople';
 
 interface UseProblemEditorBulkArgs {
@@ -8,7 +9,7 @@ interface UseProblemEditorBulkArgs {
   attributeDefinitions: AttributeDefinition[];
   addAttributeDefinition: (definition: AttributeDefinition) => void;
   removeAttributeDefinition: (key: string) => void;
-  addNotification: (notification: NotificationPayload) => void;
+  addNotification: (notification: ProblemEditorBulkNotification) => void;
   setProblem: (problem: Problem) => void;
 }
 
