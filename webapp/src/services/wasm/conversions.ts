@@ -117,5 +117,9 @@ export function convertRustResultToSolution(
     elapsed_time_ms: progressToUse ? progressToUse.elapsed_seconds * 1000 : 0,
     weighted_repetition_penalty: rustResult.weighted_repetition_penalty,
     weighted_constraint_penalty: rustResult.weighted_constraint_penalty,
+    effective_seed: rustResult.effective_seed,
+    move_policy: rustResult.move_policy,
+    stop_reason: rustResult.stop_reason,
+    benchmark_telemetry: rustResult.benchmark_telemetry,
   };
 }

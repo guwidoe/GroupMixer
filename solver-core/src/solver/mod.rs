@@ -110,6 +110,8 @@ pub enum SolverError {
 /// #         ),
 /// #         logging: solver_core::models::LoggingOptions::default(),
 /// #         telemetry: Default::default(),
+/// #         seed: None,
+/// #         move_policy: None,
 /// #         allowed_sessions: None,
 /// #     },
 /// # };
@@ -423,6 +425,8 @@ impl State {
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0)}),
     /// #         logging: LoggingOptions::default(),
     /// #         telemetry: Default::default(),
+    /// #         seed: None,
+    /// #         move_policy: None,
     /// #         allowed_sessions: None,
     /// #     },
     /// # };

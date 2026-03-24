@@ -211,6 +211,8 @@ pub fn get_default_settings() -> Result<String, JsValue> {
             ..Default::default()
         },
         telemetry: Default::default(),
+        seed: None,
+        move_policy: None,
         allowed_sessions: None,
     };
 
@@ -482,6 +484,8 @@ mod tests {
                 }),
                 logging: Default::default(),
                 telemetry: Default::default(),
+                seed: None,
+                move_policy: None,
                 allowed_sessions: None,
             },
         }

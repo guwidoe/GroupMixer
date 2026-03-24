@@ -484,6 +484,8 @@ fn sample_move_family(
 ///         ..Default::default()
 ///     },
 ///     telemetry: Default::default(),
+///     seed: None,
+///     move_policy: None,
 ///     allowed_sessions: None,
 /// };
 ///
@@ -501,7 +503,7 @@ fn sample_move_family(
 /// #     solver: config,
 /// # };
 /// let mut state = State::new(&input)?;
-/// let result = solver.solve(&mut state, None)?;
+/// let result = solver.solve(&mut state, None, None)?;
 ///
 /// println!("Final score: {}", result.final_score);
 /// println!("Unique contacts: {}", result.unique_contacts);
@@ -587,6 +589,8 @@ impl SimulatedAnnealing {
     ///     ),
     ///     logging: LoggingOptions::default(),
     ///     telemetry: Default::default(),
+    ///     seed: None,
+    ///     move_policy: None,
     ///     allowed_sessions: None,
     /// };
     ///
@@ -731,6 +735,8 @@ impl Solver for SimulatedAnnealing {
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
     /// #         telemetry: Default::default(),
+    /// #         seed: None,
+    /// #         move_policy: None,
     /// #         allowed_sessions: None,
     /// #     },
     /// # };
@@ -739,7 +745,7 @@ impl Solver for SimulatedAnnealing {
     /// let mut state = State::new(&input)?;
     ///
     /// // Run optimization
-    /// let result = solver.solve(&mut state, None)?;
+    /// let result = solver.solve(&mut state, None, None)?;
     ///
     /// // Analyze results
     /// println!("Optimization completed!");
