@@ -60,6 +60,18 @@ Run one ignored performance fixture:
 cargo test -p solver-core --test data_driven_tests benchmark_unconstrained -- --ignored
 ```
 
+Run mutation testing for solver-core:
+
+```bash
+./scripts/mutation-solver-core.sh
+# or: cargo mutants -p solver-core
+```
+
+Suggested workflow:
+- use normal `cargo test`/fixture/property runs during local iteration
+- run mutation testing before or during high-risk solver refactors
+- keep mutation runs for heavier CI cadences rather than every tiny edit
+
 ## Extending the framework
 
 When adding a new solver feature or regression case:

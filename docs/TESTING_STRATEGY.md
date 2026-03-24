@@ -134,8 +134,11 @@ npm run test:e2e:workflows
 
 #### Solver mutation testing
 ```bash
-cargo mutants -p solver-core
+./scripts/mutation-solver-core.sh
+# equivalent cargo command: cargo mutants -p solver-core
 ```
+
+Mutation testing is an on-demand local and protected-branch/nightly confidence layer for `solver-core`, not an every-edit command.
 
 #### WASM wrapper tests
 ```bash
@@ -207,5 +210,6 @@ Rust tooling helpers live in `scripts/`:
 - `./scripts/test-rust-fast.sh`
 - `./scripts/coverage-rust.sh`
 - `./scripts/coverage-rust-tarpaulin.sh`
+- `./scripts/mutation-solver-core.sh`
 
 This document should be updated whenever the testing stack, coverage denominator, or required confidence workflow changes.

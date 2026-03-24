@@ -5,8 +5,18 @@
 
 use super::{SolverError, State};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ScoreValidationSummary {
+    pub unique_contacts_match: bool,
+    pub repetition_penalty_match: bool,
+}
+
 impl State {
     pub fn validate_scores(&mut self) {
+        let _ = self.validate_scores_summary();
+    }
+
+    pub fn validate_scores_summary(&mut self) -> ScoreValidationSummary {
         let people_count = self.person_idx_to_id.len();
 
         // Store original cached values
@@ -18,9 +28,14 @@ impl State {
 
         let recalculated_unique_contacts = self.unique_contacts;
         let recalculated_repetition_penalty = self.repetition_penalty;
+        let unique_contacts_mismatch = cached_unique_contacts != recalculated_unique_contacts;
+        let repetition_penalty_mismatch =
+            cached_repetition_penalty != recalculated_repetition_penalty;
+        let unique_contacts_match = !unique_contacts_mismatch;
+        let repetition_penalty_match = !repetition_penalty_mismatch;
 
         // Check for discrepancies (allowing small floating point errors)
-        if cached_unique_contacts != recalculated_unique_contacts {
+        if unique_contacts_mismatch {
             eprintln!("Score validation failed!");
             eprintln!(
                 "Unique Contacts mismatch: cached={}, recalculated={}",
@@ -60,11 +75,16 @@ impl State {
             eprintln!("Updating cached values to match recalculated values");
         }
 
-        if cached_repetition_penalty != recalculated_repetition_penalty {
+        if repetition_penalty_mismatch {
             eprintln!(
                 "Repetition Penalty mismatch: cached={}, recalculated={}",
                 cached_repetition_penalty, recalculated_repetition_penalty
             );
+        }
+
+        ScoreValidationSummary {
+            unique_contacts_match,
+            repetition_penalty_match,
         }
     }
 

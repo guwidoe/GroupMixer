@@ -142,6 +142,18 @@ fn invalid_allowed_sessions_are_rejected() {
 }
 
 #[test]
+fn invalid_person_session_equal_to_num_sessions_is_rejected() {
+    let mut input = basic_input();
+    input.problem.people[0].sessions = Some(vec![2]);
+
+    let error = State::new(&input).unwrap_err().to_string();
+    assert!(
+        error.contains("invalid session index: 2 (max: 1)"),
+        "{error}"
+    );
+}
+
+#[test]
 fn allowed_sessions_are_sorted_and_deduplicated() {
     let mut input = basic_input();
     input.solver.allowed_sessions = Some(vec![1, 0, 1]);
@@ -273,6 +285,110 @@ fn score_breakdown_reports_clean_and_violating_states() {
     let breakdown = violating_state.format_score_breakdown();
     assert!(breakdown.contains("ShouldNotBeTogether[0]: 1 (weight: 25.0)"));
     assert!(breakdown.contains("Total: 42.00"));
+}
+
+#[test]
+fn score_breakdown_omits_zero_violations_for_all_constraint_types() {
+    let mut input = basic_input();
+    input.constraints.push(Constraint::ShouldNotBeTogether {
+        people: vec!["p0".to_string(), "p1".to_string()],
+        penalty_weight: 25.0,
+        sessions: None,
+    });
+    input.constraints.push(Constraint::ShouldStayTogether {
+        people: vec!["p2".to_string(), "p3".to_string()],
+        penalty_weight: 15.0,
+        sessions: None,
+    });
+    input.constraints.push(Constraint::MustStayTogether {
+        people: vec!["p0".to_string(), "p2".to_string()],
+        sessions: None,
+    });
+
+    let mut state = State::new(&input).unwrap();
+    state.forbidden_pair_violations.fill(0);
+    state.should_together_violations.fill(0);
+    state.clique_violations.fill(0);
+    state.immovable_violations = 0;
+
+    let breakdown = state.format_score_breakdown();
+
+    assert!(breakdown.contains("Constraints: All satisfied"));
+    assert!(!breakdown.contains("ShouldNotBeTogether[0]"));
+    assert!(!breakdown.contains("ShouldStayTogether[0]"));
+    assert!(!breakdown.contains("MustStayTogether[0]"));
+    assert!(!breakdown.contains("ImmovablePerson:"));
+}
+
+#[test]
+fn score_breakdown_includes_positive_violations_for_all_constraint_types() {
+    let mut input = basic_input();
+    input.constraints.push(Constraint::ShouldNotBeTogether {
+        people: vec!["p0".to_string(), "p1".to_string()],
+        penalty_weight: 25.0,
+        sessions: None,
+    });
+    input.constraints.push(Constraint::ShouldStayTogether {
+        people: vec!["p2".to_string(), "p3".to_string()],
+        penalty_weight: 15.0,
+        sessions: None,
+    });
+    input.constraints.push(Constraint::MustStayTogether {
+        people: vec!["p0".to_string(), "p2".to_string()],
+        sessions: None,
+    });
+
+    let mut state = State::new(&input).unwrap();
+    state.forbidden_pair_violations[0] = 1;
+    state.should_together_violations[0] = 1;
+    state.clique_violations[0] = 1;
+    state.immovable_violations = 1;
+    state.current_cost = 99.0;
+
+    let breakdown = state.format_score_breakdown();
+
+    assert!(breakdown.contains("ShouldNotBeTogether[0]: 1 (weight: 25.0)"));
+    assert!(breakdown.contains("ShouldStayTogether[0]: 1 (weight: 15.0)"));
+    assert!(breakdown.contains("MustStayTogether[0]: 1 (hard)"));
+    assert!(breakdown.contains("ImmovablePerson: 1 (weight: 1000.0)"));
+    assert!(!breakdown.contains("Constraints: All satisfied"));
+}
+
+#[test]
+fn validate_scores_recalculates_cache_and_reports_mismatches() {
+    let mut state = State::new(&basic_input()).unwrap();
+    let expected_contacts = state.unique_contacts;
+    let expected_repetition_penalty = state.repetition_penalty;
+
+    state.unique_contacts += 5;
+    state.repetition_penalty += 3;
+
+    let summary = state.validate_scores_summary();
+
+    assert!(!summary.unique_contacts_match);
+    assert!(!summary.repetition_penalty_match);
+    assert_eq!(state.unique_contacts, expected_contacts);
+    assert_eq!(state.repetition_penalty, expected_repetition_penalty);
+}
+
+#[test]
+fn validate_scores_repairs_cache_via_void_api_too() {
+    let mut state = State::new(&basic_input()).unwrap();
+    let expected_contacts = state.unique_contacts;
+    let expected_repetition_penalty = state.repetition_penalty;
+
+    state.unique_contacts += 7;
+    state.repetition_penalty += 4;
+    state.validate_scores();
+
+    assert_eq!(state.unique_contacts, expected_contacts);
+    assert_eq!(state.repetition_penalty, expected_repetition_penalty);
+}
+
+#[test]
+fn validate_no_duplicate_assignments_accepts_valid_schedule() {
+    let state = State::new(&basic_input()).unwrap();
+    assert!(state.validate_no_duplicate_assignments().is_ok());
 }
 
 #[test]
