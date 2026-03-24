@@ -22,17 +22,21 @@ interface LiveVizState {
   progress: ProgressUpdate | null;
 }
 
-interface SolverStatusCardProps {
-  solverState: SolverState;
-  problem: Problem | null;
+interface SolverRuntimeControls {
   solverFormInputs: SolverFormInputs;
   setSolverFormInputs: React.Dispatch<React.SetStateAction<SolverFormInputs>>;
   desiredRuntimeMain: number | null;
   setDesiredRuntimeMain: (value: number | null) => void;
+}
+
+interface SolverActionControls {
   onStartSolver: (useRecommended: boolean) => void;
   onCancelSolver: () => void;
   onSaveBestSoFar: () => void;
   onResetSolver: () => void;
+}
+
+interface SolverLiveVizControls {
   displaySettings: SolverSettings;
   showLiveViz: boolean;
   onToggleLiveViz: () => void;
@@ -40,32 +44,30 @@ interface SolverStatusCardProps {
   liveVizPluginId: string;
   onLiveVizPluginChange: (id: string) => void;
   getLiveVizProblem: () => Problem | null;
+}
+
+interface SolverMetricsControls {
   showMetrics: boolean;
   onToggleMetrics: () => void;
   formatIterationTime: (ms: number) => string;
 }
 
+interface SolverStatusCardProps {
+  solverState: SolverState;
+  problem: Problem | null;
+  runtime: SolverRuntimeControls;
+  actions: SolverActionControls;
+  liveViz: SolverLiveVizControls;
+  metrics: SolverMetricsControls;
+}
+
 export function SolverStatusCard({
   solverState,
   problem,
-  solverFormInputs,
-  setSolverFormInputs,
-  desiredRuntimeMain,
-  setDesiredRuntimeMain,
-  onStartSolver,
-  onCancelSolver,
-  onSaveBestSoFar,
-  onResetSolver,
-  displaySettings,
-  showLiveViz,
-  onToggleLiveViz,
-  liveVizState,
-  liveVizPluginId,
-  onLiveVizPluginChange,
-  getLiveVizProblem,
-  showMetrics,
-  onToggleMetrics,
-  formatIterationTime,
+  runtime,
+  actions,
+  liveViz,
+  metrics,
 }: SolverStatusCardProps) {
   return (
     <div className="card">
@@ -92,16 +94,16 @@ export function SolverStatusCard({
           </label>
           <input
             type="number"
-            value={solverFormInputs.desiredRuntimeMain ?? (desiredRuntimeMain?.toString() || '')}
+            value={runtime.solverFormInputs.desiredRuntimeMain ?? (runtime.desiredRuntimeMain?.toString() || '')}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setSolverFormInputs((prev) => ({ ...prev, desiredRuntimeMain: e.target.value }))
+              runtime.setSolverFormInputs((prev) => ({ ...prev, desiredRuntimeMain: e.target.value }))
             }
             onBlur={() => {
-              const inputValue = solverFormInputs.desiredRuntimeMain || (desiredRuntimeMain?.toString() || '');
+              const inputValue = runtime.solverFormInputs.desiredRuntimeMain || (runtime.desiredRuntimeMain?.toString() || '');
               const numValue = inputValue === '' ? null : Number(inputValue);
               if (numValue === null || (!isNaN(numValue) && numValue >= 1)) {
-                setDesiredRuntimeMain(numValue);
-                setSolverFormInputs((prev) => ({ ...prev, desiredRuntimeMain: undefined }));
+                runtime.setDesiredRuntimeMain(numValue);
+                runtime.setSolverFormInputs((prev) => ({ ...prev, desiredRuntimeMain: undefined }));
               }
             }}
             disabled={solverState.isRunning}
@@ -111,7 +113,7 @@ export function SolverStatusCard({
         </div>
         {!solverState.isRunning ? (
           <button
-            onClick={() => onStartSolver(true)}
+            onClick={() => actions.onStartSolver(true)}
             className="btn-success flex-1 flex items-center justify-center space-x-2"
             disabled={!problem}
           >
@@ -120,12 +122,12 @@ export function SolverStatusCard({
           </button>
         ) : (
           <div className="flex flex-1 gap-2">
-            <button onClick={onCancelSolver} className="btn-warning flex-1 flex items-center justify-center space-x-2">
+            <button onClick={actions.onCancelSolver} className="btn-warning flex-1 flex items-center justify-center space-x-2">
               <Pause className="h-4 w-4" />
               <span>Cancel Solver</span>
             </button>
             <button
-              onClick={onSaveBestSoFar}
+              onClick={actions.onSaveBestSoFar}
               className="btn-secondary flex-1 flex items-center justify-center space-x-2"
               title="Save best-so-far and continue solving"
             >
@@ -136,7 +138,7 @@ export function SolverStatusCard({
         )}
 
         <button
-          onClick={onResetSolver}
+          onClick={actions.onResetSolver}
           className="btn-secondary flex items-center justify-center space-x-2"
           disabled={solverState.isRunning}
         >
@@ -145,7 +147,7 @@ export function SolverStatusCard({
         </button>
       </div>
 
-      <ProgressBars solverState={solverState} displaySettings={displaySettings} />
+      <ProgressBars solverState={solverState} displaySettings={liveViz.displaySettings} />
 
       <div className="flex flex-row gap-2 sm:gap-4 mb-6 overflow-x-auto">
         <div className="text-center p-3 sm:p-4 bg-primary-50 rounded-lg flex-shrink-0 min-w-0 flex-1">
@@ -213,21 +215,21 @@ export function SolverStatusCard({
             type="button"
             className="px-3 py-1 rounded text-sm transition-colors border"
             style={{
-              backgroundColor: showLiveViz ? 'var(--bg-tertiary)' : 'transparent',
-              color: showLiveViz ? 'var(--color-accent)' : 'var(--text-secondary)',
-              borderColor: showLiveViz ? 'var(--color-accent)' : 'var(--border-primary)',
+              backgroundColor: liveViz.showLiveViz ? 'var(--bg-tertiary)' : 'transparent',
+              color: liveViz.showLiveViz ? 'var(--color-accent)' : 'var(--text-secondary)',
+              borderColor: liveViz.showLiveViz ? 'var(--color-accent)' : 'var(--border-primary)',
             }}
-            onClick={onToggleLiveViz}
+            onClick={liveViz.onToggleLiveViz}
           >
-            {showLiveViz ? 'Enabled' : 'Disabled'}
+            {liveViz.showLiveViz ? 'Enabled' : 'Disabled'}
           </button>
         </div>
 
-        {showLiveViz ? (
+        {liveViz.showLiveViz ? (
           solverState.isRunning ? (
-            liveVizState ? (
+            liveViz.liveVizState ? (
               (() => {
-                const liveProblem = getLiveVizProblem();
+                const liveProblem = liveViz.getLiveVizProblem();
                 if (!liveProblem) return null;
                 return (
                   <div
@@ -238,13 +240,13 @@ export function SolverStatusCard({
                     }}
                   >
                     <VisualizationPanel
-                      pluginId={liveVizPluginId}
-                      onPluginChange={onLiveVizPluginChange}
+                      pluginId={liveViz.liveVizPluginId}
+                      onPluginChange={liveViz.onLiveVizPluginChange}
                       data={{
                         kind: 'live',
                         problem: liveProblem,
-                        progress: liveVizState.progress,
-                        schedule: liveVizState.schedule,
+                        progress: liveViz.liveVizState.progress,
+                        schedule: liveViz.liveVizState.schedule,
                       }}
                     />
                   </div>
@@ -265,9 +267,9 @@ export function SolverStatusCard({
 
       <DetailedMetrics
         solverState={solverState}
-        showMetrics={showMetrics}
-        onToggleMetrics={onToggleMetrics}
-        formatIterationTime={formatIterationTime}
+        showMetrics={metrics.showMetrics}
+        onToggleMetrics={metrics.onToggleMetrics}
+        formatIterationTime={metrics.formatIterationTime}
       />
     </div>
   );
