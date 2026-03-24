@@ -1,5 +1,10 @@
 import type { Assignment, Problem, Solution, SolverSettings } from "../types";
-import { convertProblemToRustFormat, convertRustResultToSolution } from "./wasm/conversions";
+import {
+  buildRustProblemJson,
+  buildRustProblemPayload,
+  parseProgressUpdate,
+  parseRustSolution,
+} from "./rustBoundary";
 import { isWasmSolverModule, type WasmSolverModule } from "./wasm/module";
 import type { ProgressCallback, ProgressUpdate } from "./wasm/types";
 
@@ -79,10 +84,9 @@ class WasmService {
 
     let problemJson: string | undefined;
     try {
-      problemJson = JSON.stringify(convertProblemToRustFormat(problem));
+      problemJson = buildRustProblemJson(problem);
       const resultJson = module.solve(problemJson);
-      const rustResult = JSON.parse(resultJson);
-      return convertRustResultToSolution(rustResult);
+      return parseRustSolution(resultJson);
     } catch (error) {
       console.error("WASM solve error:", error);
       if (problemJson) {
@@ -102,14 +106,14 @@ class WasmService {
 
     let problemJson: string | undefined;
     try {
-      problemJson = JSON.stringify(convertProblemToRustFormat(problem));
+      problemJson = buildRustProblemJson(problem);
 
       let lastProgress: ProgressUpdate | null = null;
 
       const wasmProgressCallback = progressCallback
         ? (progressJson: string) => {
             try {
-              const progress: ProgressUpdate = JSON.parse(progressJson);
+              const progress = parseProgressUpdate(progressJson);
               lastProgress = progress; // Track the last progress update
               progressCallback(progress);
               return true;
@@ -125,9 +129,8 @@ class WasmService {
         wasmProgressCallback
       );
 
-      const rustResult = JSON.parse(resultJson);
       return {
-        solution: convertRustResultToSolution(rustResult, lastProgress ?? undefined),
+        solution: parseRustSolution(resultJson, lastProgress ?? undefined),
         lastProgress,
       };
     } catch (error) {
@@ -201,10 +204,7 @@ class WasmService {
   ): Promise<Solution> {
     const module = await this.requireModule();
     // Build ApiInput with initial_schedule populated from assignments
-    const payload = convertProblemToRustFormat(problem) as Record<
-      string,
-      unknown
-    > & {
+    const payload = buildRustProblemPayload(problem) as Record<string, unknown> & {
       initial_schedule?: Record<string, Record<string, string[]>>;
     };
 
@@ -220,8 +220,7 @@ class WasmService {
 
     try {
       const resultJson = module.evaluate_input!(JSON.stringify(payload));
-      const rustResult = JSON.parse(resultJson);
-      return convertRustResultToSolution(rustResult);
+      return parseRustSolution(resultJson);
     } catch (error) {
       console.error("WASM evaluateSolution error:", error);
       throw new Error(

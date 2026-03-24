@@ -9,9 +9,11 @@ import {
   type WorkerResponseMessage,
 } from "./solverWorker/protocol";
 import {
-  convertProblemToRustFormat,
-  convertRustResultToSolution,
-} from "./wasm/conversions";
+  buildRustProblemJson,
+  buildWarmStartProblemJson,
+  parseProgressUpdate,
+  parseRustSolution,
+} from "./rustBoundary";
 
 type PendingMessage =
   | {
@@ -108,7 +110,7 @@ export class SolverWorkerService {
         case "PROGRESS":
           if (pending?.kind === "solve" && pending.progressCallback) {
             try {
-              const progress: ProgressUpdate = JSON.parse(
+              const progress = parseProgressUpdate(
                 message.data.progressJson || "{}"
               );
               pending.progressCallback(progress);
@@ -124,7 +126,7 @@ export class SolverWorkerService {
             let lastProgress: ProgressUpdate | null = null;
             if (message.data.lastProgressJson) {
               try {
-                lastProgress = JSON.parse(message.data.lastProgressJson);
+                lastProgress = parseProgressUpdate(message.data.lastProgressJson);
               } catch (error) {
                 console.error("Failed to parse last progress update:", error);
               }
@@ -256,15 +258,10 @@ export class SolverWorkerService {
       await this.initialize();
     }
 
-    const problemJson = JSON.stringify(convertProblemToRustFormat(problem));
+    const problemJson = buildRustProblemJson(problem);
 
     const { result } = await this.sendSolve(problemJson, false);
-    const rustResult = JSON.parse(result);
-    return convertRustResultToSolution(
-      rustResult,
-      null,
-      this.lastProgressUpdate
-    );
+    return parseRustSolution(result, null, this.lastProgressUpdate);
   }
 
   async solveWithProgress(
@@ -275,7 +272,7 @@ export class SolverWorkerService {
       await this.initialize();
     }
 
-    const problemJson = JSON.stringify(convertProblemToRustFormat(problem));
+    const problemJson = buildRustProblemJson(problem);
 
     const { result, lastProgress } = await this.sendSolve(
       problemJson,
@@ -283,12 +280,7 @@ export class SolverWorkerService {
       progressCallback
     );
 
-    const rustResult = JSON.parse(result);
-    const solution = convertRustResultToSolution(
-      rustResult,
-      lastProgress,
-      this.lastProgressUpdate
-    );
+    const solution = parseRustSolution(result, lastProgress, this.lastProgressUpdate);
 
     return { solution, lastProgress };
   }
@@ -302,12 +294,7 @@ export class SolverWorkerService {
       await this.initialize();
     }
 
-    const payload = convertProblemToRustFormat(problem) as Record<string, unknown> & {
-      initial_schedule?: Record<string, Record<string, string[]>>;
-    };
-    payload.initial_schedule = initialSchedule;
-
-    const problemJson = JSON.stringify(payload);
+    const problemJson = buildWarmStartProblemJson(problem, initialSchedule);
 
     const { result, lastProgress } = await this.sendSolve(
       problemJson,
@@ -315,12 +302,7 @@ export class SolverWorkerService {
       progressCallback
     );
 
-    const rustResult = JSON.parse(result);
-    const solution = convertRustResultToSolution(
-      rustResult,
-      lastProgress,
-      this.lastProgressUpdate
-    );
+    const solution = parseRustSolution(result, lastProgress, this.lastProgressUpdate);
     return { solution, lastProgress };
   }
 
