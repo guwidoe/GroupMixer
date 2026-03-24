@@ -6,6 +6,7 @@ REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DEFAULT_ENV_FILE="${SCRIPT_DIR}/remote_benchmark.env"
 LOCAL_REMOTE_DIR="${REPO_DIR}/benchmarking/artifacts/remotes"
 DEFAULT_WAIT_POLL_SECONDS=10
+STATUS_LOCAL_TTL_SECONDS=""
 
 usage() {
   cat <<'EOF'
@@ -100,6 +101,7 @@ setup_config() {
   GROUPMIXER_REMOTE_SNAPSHOT_SUITE="${GROUPMIXER_REMOTE_SNAPSHOT_SUITE:-representative}"
   GROUPMIXER_REMOTE_RECORD_MAIN_SUITES="${GROUPMIXER_REMOTE_RECORD_MAIN_SUITES:-$(default_recording_suite_bundle | tr '\n' ' ')}"
   GROUPMIXER_REMOTE_RECORD_FEATURE_SUITES="${GROUPMIXER_REMOTE_RECORD_FEATURE_SUITES:-${GROUPMIXER_REMOTE_RECORD_MAIN_SUITES}}"
+  STATUS_LOCAL_TTL_SECONDS="${GROUPMIXER_REMOTE_STATUS_LOCAL_TTL_SECONDS:-2}"
 
   REMOTE_REPO_DIR="${GROUPMIXER_REMOTE_STAGE_DIR%/}/GroupMixer"
   REMOTE_BENCH_ROOT="${GROUPMIXER_REMOTE_STAGE_DIR%/}/groupmixer-benchmark"
@@ -108,6 +110,7 @@ setup_config() {
   REMOTE_LOCK_FILE="${REMOTE_BENCH_ROOT}/benchmark.lock"
   LOCAL_MACHINE_DIR="${LOCAL_REMOTE_DIR}/${GROUPMIXER_REMOTE_MACHINE_NAME}"
   LOCAL_RUNS_DIR="${LOCAL_MACHINE_DIR}/benchmark-runs"
+  LOCAL_SHARED_ARTIFACTS_DIR="${LOCAL_MACHINE_DIR}/artifacts"
 }
 
 remote_run_snapshot_root() {
@@ -301,6 +304,65 @@ mirror_run() {
   fi
 }
 
+mirror_remote_results() {
+  mkdir -p "${LOCAL_MACHINE_DIR}" "${LOCAL_SHARED_ARTIFACTS_DIR}"
+  if "${GROUPMIXER_REMOTE_SSH_BIN}" "${GROUPMIXER_REMOTE_SSH_TARGET}" "test -d '${REMOTE_SHARED_ARTIFACTS_DIR}'"; then
+    "${GROUPMIXER_REMOTE_RSYNC_BIN}" -az -e "${GROUPMIXER_REMOTE_RSYNC_SSH}" \
+      "${GROUPMIXER_REMOTE_SSH_TARGET}:${REMOTE_SHARED_ARTIFACTS_DIR}/" \
+      "${LOCAL_SHARED_ARTIFACTS_DIR}/"
+    echo "[groupmixer][remote] mirrored shared artifacts to ${LOCAL_SHARED_ARTIFACTS_DIR}"
+  fi
+}
+
+local_run_dir() {
+  local run_id="$1"
+  printf '%s\n' "${LOCAL_RUNS_DIR}/${run_id}"
+}
+
+write_local_run_json() {
+  local run_id="$1"
+  local name="$2"
+  local json_payload="$3"
+  local run_dir
+  run_dir="$(local_run_dir "${run_id}")"
+  mkdir -p "${run_dir}"
+  printf '%s\n' "${json_payload}" > "${run_dir}/${name}"
+}
+
+acquire_status_lock() {
+  local run_id="$1"
+  local lock_dir="${LOCAL_MACHINE_DIR}/.locks"
+  mkdir -p "${lock_dir}"
+  local lock_file="${lock_dir}/status-$(sanitize_name "${run_id}").lock"
+  exec 9>"${lock_file}"
+  flock -n 9
+}
+
+status_cache_file() {
+  local run_id="$1"
+  local cache_dir="${LOCAL_MACHINE_DIR}/.cache"
+  mkdir -p "${cache_dir}"
+  printf '%s\n' "${cache_dir}/status-$(sanitize_name "${run_id}").json"
+}
+
+status_cache_fresh() {
+  local cache_file="$1"
+  local ttl="$2"
+  if [[ ! -f "${cache_file}" ]]; then
+    printf '0\n'
+    return
+  fi
+  local now mtime age
+  now="$(date +%s)"
+  mtime="$(stat -c %Y "${cache_file}")"
+  age=$((now - mtime))
+  if (( age <= ttl )); then
+    printf '1\n'
+  else
+    printf '0\n'
+  fi
+}
+
 write_latest_local() {
   local run_id="$1"
   mkdir -p "${LOCAL_MACHINE_DIR}"
@@ -332,6 +394,7 @@ start_run() {
   start_json="$(run_remote_action "${payload_json}")"
   effective_run_id="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["run_id"])' <<<"${start_json}")"
   write_latest_local "${effective_run_id}"
+  write_local_run_json "${effective_run_id}" "start.json" "${start_json}"
   mirror_run "${effective_run_id}"
   python3 - <<'PY' <<<"${start_json}"
 import json, sys
@@ -349,9 +412,18 @@ PY
 
 status_run() {
   local run_id="$1"
-  local payload_json status_json
-  payload_json="$(build_payload_json status "${run_id}" record)"
-  status_json="$(run_remote_action "${payload_json}")"
+  local cache_file cache_fresh payload_json status_json
+  acquire_status_lock "${run_id}" || return 0
+  cache_file="$(status_cache_file "${run_id}")"
+  cache_fresh="$(status_cache_fresh "${cache_file}" "${STATUS_LOCAL_TTL_SECONDS}")"
+  if [[ "${cache_fresh}" == "1" ]]; then
+    status_json="$(<"${cache_file}")"
+  else
+    payload_json="$(build_payload_json status "${run_id}" record)"
+    status_json="$(run_remote_action "${payload_json}")"
+    printf '%s\n' "${status_json}" > "${cache_file}"
+  fi
+  write_local_run_json "${run_id}" "status.json" "${status_json}"
   print_status_summary "${status_json}"
 }
 
@@ -361,9 +433,12 @@ wait_run() {
     local payload_json status_json done exit_code
     payload_json="$(build_payload_json status "${run_id}" record)"
     status_json="$(run_remote_action "${payload_json}")"
+    printf '%s\n' "${status_json}" > "$(status_cache_file "${run_id}")"
+    write_local_run_json "${run_id}" "status.json" "${status_json}"
     print_status_summary "${status_json}"
     done="$(python3 -c 'import json,sys; print(str(json.load(sys.stdin).get("done", False)).lower())' <<<"${status_json}")"
     if [[ "${done}" == "true" ]]; then
+      mirror_remote_results
       mirror_run "${run_id}"
       exit_code="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("exit_code", 1))' <<<"${status_json}")"
       [[ "${exit_code}" == "0" ]]
@@ -409,6 +484,7 @@ PY
 
 fetch_run() {
   local run_id="$1"
+  mirror_remote_results
   mirror_run "${run_id}"
 }
 
@@ -528,6 +604,7 @@ main() {
       [[ $# -eq 2 ]] || { usage; exit 1; }
       setup_config
       run_remote_action "$(build_payload_json cancel "$2" record)"
+      mirror_remote_results
       mirror_run "$2"
       ;;
     ""|-h|--help|help)
