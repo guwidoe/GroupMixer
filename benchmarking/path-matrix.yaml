@@ -1,0 +1,170 @@
+version: 1
+reference_doc: docs/BENCHMARKING_ARCHITECTURE.md
+purpose: Explicit mapping from benchmark-architecture paths to the tests and fixtures that intentionally cover them.
+
+families:
+  swap:
+    - id: swap.same_group_noop
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_swap_regression.rs::same_group_noop_returns_zero_and_apply_is_noop
+    - id: swap.non_participant_rejection
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_swap_regression.rs::non_participant_swap_returns_infinity_and_apply_is_noop
+    - id: swap.forbidden_pair_delta
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_swap_regression.rs::forbidden_pair_delta_matches_apply_and_recalculation
+        fixtures:
+          - benchmarking/cases/path/swap_forbidden_pair.json#path.swap.forbidden-pair
+    - id: swap.should_together_delta
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_swap_regression.rs::should_together_delta_matches_apply_and_recalculation
+    - id: swap.attribute_balance_delta
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_swap_regression.rs::attribute_balance_delta_matches_apply_and_recalculation
+    - id: swap.pair_meeting_delta
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_swap_regression.rs::pair_meeting_delta_matches_apply_and_recalculation
+    - id: swap.apply_cache_consistency
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_swap_regression.rs::forbidden_pair_delta_matches_apply_and_recalculation
+          - solver-core/tests/move_swap_regression.rs::attribute_balance_delta_matches_apply_and_recalculation
+        fixtures:
+          - benchmarking/cases/path/swap_forbidden_pair.json#path.swap.forbidden-pair
+
+  transfer:
+    - id: transfer.target_full_rejection
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_transfer_regression.rs::target_full_transfer_is_rejected
+    - id: transfer.source_singleton_rejection
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_transfer_regression.rs::source_singleton_transfer_is_rejected
+    - id: transfer.clique_member_rejection
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_transfer_regression.rs::clique_member_transfer_is_rejected
+    - id: transfer.immovable_rejection
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_transfer_regression.rs::immovable_transfer_is_rejected
+    - id: transfer.attribute_balance_delta
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_transfer_regression.rs::attribute_balance_transfer_delta_matches_apply_and_recalculation
+    - id: transfer.pair_meeting_delta
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_transfer_regression.rs::pair_meeting_transfer_delta_matches_apply_and_recalculation
+        fixtures:
+          - benchmarking/cases/path/transfer_pair_meeting.json#path.transfer.pair-meeting
+    - id: transfer.apply_cache_consistency
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_transfer_regression.rs::attribute_balance_transfer_delta_matches_apply_and_recalculation
+          - solver-core/tests/move_transfer_regression.rs::pair_meeting_transfer_delta_matches_apply_and_recalculation
+        fixtures:
+          - benchmarking/cases/path/transfer_pair_meeting.json#path.transfer.pair-meeting
+
+  clique_swap:
+    - id: clique_swap.inactive_session_rejection
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_clique_swap_regression.rs::inactive_session_clique_swap_is_rejected
+    - id: clique_swap.partial_participation
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_clique_swap_regression.rs::partial_participation_clique_swap_moves_only_active_members
+        fixtures:
+          - benchmarking/cases/path/clique_swap_partial_participation.json#path.clique-swap.partial-participation
+    - id: clique_swap.immovable_clique_member_rejection
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_clique_swap_regression.rs::immovable_clique_member_blocks_clique_swap
+    - id: clique_swap.immovable_target_member_rejection
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_clique_swap_regression.rs::immovable_target_member_blocks_clique_swap
+    - id: clique_swap.insufficient_target_or_size_mismatch
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_clique_swap_regression.rs::insufficient_target_people_and_size_mismatch_do_not_mutate_state
+    - id: clique_swap.accepted_full_recalculation_consistency
+      covered_by:
+        rust_tests:
+          - solver-core/tests/move_clique_swap_regression.rs::accepted_clique_swap_matches_full_recalculation
+        fixtures:
+          - benchmarking/cases/path/clique_swap_partial_participation.json#path.clique-swap.partial-participation
+
+  search_driver:
+    - id: search_driver.allowed_sessions_enforcement
+      covered_by:
+        rust_tests:
+          - solver-core/tests/search_driver_regression.rs::allowed_sessions_preserve_other_warm_start_sessions
+        fixtures:
+          - benchmarking/cases/path/search_driver_allowed_sessions.json#path.search-driver.allowed-sessions
+    - id: search_driver.cycle_reheating
+      covered_by:
+        rust_tests:
+          - solver-core/tests/search_driver_regression.rs::cycle_reheating_is_reported_in_benchmark_telemetry
+    - id: search_driver.no_improvement_reheating
+      covered_by:
+        rust_tests:
+          - solver-core/tests/search_driver_regression.rs::no_improvement_reheating_is_reported_in_benchmark_telemetry
+    - id: search_driver.time_limit_stop
+      covered_by:
+        rust_tests:
+          - solver-core/tests/search_driver_regression.rs::time_limit_stop_reason_surfaces_through_result_and_telemetry
+    - id: search_driver.no_improvement_stop
+      covered_by:
+        rust_tests:
+          - solver-core/tests/core_regression_tests.rs::result_reports_no_improvement_stop_reason
+    - id: search_driver.callback_early_stop
+      covered_by:
+        rust_tests:
+          - solver-core/tests/search_driver_regression.rs::progress_callback_can_request_early_stop
+    - id: search_driver.forced_move_policy
+      covered_by:
+        rust_tests:
+          - solver-core/tests/core_regression_tests.rs::forced_swap_move_policy_only_attempts_swaps
+          - solver-core/tests/core_regression_tests.rs::forced_transfer_move_policy_only_attempts_transfers
+          - solver-core/tests/core_regression_tests.rs::forced_clique_move_policy_only_attempts_clique_swaps
+
+  construction:
+    - id: construction.seeded_random_init_determinism
+      covered_by:
+        rust_tests:
+          - solver-core/tests/construction_regression.rs::seeded_random_initialization_is_repeatable
+        fixtures:
+          - benchmarking/cases/path/construction_clique_immovable.json#path.construction.clique-immovable
+    - id: construction.warm_start_preservation
+      covered_by:
+        rust_tests:
+          - solver-core/tests/search_driver_regression.rs::allowed_sessions_preserve_other_warm_start_sessions
+        fixtures:
+          - benchmarking/cases/path/search_driver_allowed_sessions.json#path.search-driver.allowed-sessions
+    - id: construction.immovable_placement
+      covered_by:
+        rust_tests:
+          - solver-core/tests/construction_regression.rs::construction_places_immovable_people_in_required_group
+        fixtures:
+          - benchmarking/cases/path/construction_clique_immovable.json#path.construction.clique-immovable
+    - id: construction.clique_placement
+      covered_by:
+        rust_tests:
+          - solver-core/tests/construction_regression.rs::construction_keeps_clique_members_together_when_active
+        fixtures:
+          - benchmarking/cases/path/construction_clique_immovable.json#path.construction.clique-immovable
+    - id: construction.partial_attendance_placement
+      covered_by:
+        rust_tests:
+          - solver-core/tests/construction_regression.rs::construction_omits_non_participants_from_inactive_sessions
+        fixtures:
+          - benchmarking/cases/path/construction_clique_immovable.json#path.construction.clique-immovable

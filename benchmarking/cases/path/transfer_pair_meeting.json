@@ -1,0 +1,74 @@
+{
+  "id": "path.transfer.pair-meeting",
+  "class": "path",
+  "family": "transfer",
+  "paths": [
+    "transfer.pair_meeting_delta",
+    "transfer.apply_cache_consistency"
+  ],
+  "description": "Deterministic transfer case where moving one endpoint satisfies a pair-meeting target and exercises cache reconciliation.",
+  "input": {
+    "initial_schedule": {
+      "session_0": {
+        "g0": ["p0", "p1", "p4"],
+        "g1": ["p2", "p3"],
+        "g2": []
+      },
+      "session_1": {
+        "g0": ["p0", "p4"],
+        "g1": ["p1", "p2"],
+        "g2": ["p3"]
+      }
+    },
+    "problem": {
+      "people": [
+        { "id": "p0", "attributes": {} },
+        { "id": "p1", "attributes": {} },
+        { "id": "p2", "attributes": {} },
+        { "id": "p3", "attributes": {} },
+        { "id": "p4", "attributes": {} }
+      ],
+      "groups": [
+        { "id": "g0", "size": 3 },
+        { "id": "g1", "size": 2 },
+        { "id": "g2", "size": 2 }
+      ],
+      "num_sessions": 2
+    },
+    "objectives": [
+      { "type": "maximize_unique_contacts", "weight": 1.0 }
+    ],
+    "constraints": [
+      {
+        "type": "PairMeetingCount",
+        "people": ["p0", "p1"],
+        "sessions": [0, 1],
+        "target_meetings": 2,
+        "mode": "at_least",
+        "penalty_weight": 13.0
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 50,
+        "time_limit_seconds": null,
+        "no_improvement_iterations": null
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 1.0,
+        "final_temperature": 0.1,
+        "cooling_schedule": "geometric",
+        "reheat_after_no_improvement": 0,
+        "reheat_cycles": 0
+      },
+      "logging": {},
+      "telemetry": {},
+      "seed": 29,
+      "move_policy": {
+        "forced_family": "transfer"
+      }
+    }
+  }
+}
