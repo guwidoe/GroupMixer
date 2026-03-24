@@ -66,8 +66,8 @@
 use crate::algorithms::simulated_annealing::SimulatedAnnealing;
 use crate::algorithms::Solver;
 use crate::models::{
-    ApiInput, ProblemDefinition, ProgressCallback, ProgressUpdate, SimulatedAnnealingParams,
-    SolverConfiguration, SolverParams, SolverResult, StopConditions,
+    ApiInput, BenchmarkObserver, ProblemDefinition, ProgressCallback, ProgressUpdate,
+    SimulatedAnnealingParams, SolverConfiguration, SolverParams, SolverResult, StopConditions,
 };
 use crate::models::{Constraint, Objective};
 use crate::solver::{SolverError, State};
@@ -206,7 +206,7 @@ pub mod solver;
 /// - Medium problems (30 people, 6 groups): 5-10 seconds  
 /// - Large problems (60+ people, 10+ groups): 30-60 seconds
 pub fn run_solver(input: &ApiInput) -> Result<SolverResult, SolverError> {
-    run_solver_with_progress(input, None)
+    run_solver_with_callbacks(input, None, None)
 }
 
 /// Runs the optimization solver with progress callback support.
@@ -263,6 +263,23 @@ pub fn run_solver_with_progress(
     input: &ApiInput,
     progress_callback: Option<&ProgressCallback>,
 ) -> Result<SolverResult, SolverError> {
+    run_solver_with_callbacks(input, progress_callback, None)
+}
+
+/// Runs the optimization solver with benchmark observer support.
+pub fn run_solver_with_benchmark_observer(
+    input: &ApiInput,
+    benchmark_observer: Option<&BenchmarkObserver>,
+) -> Result<SolverResult, SolverError> {
+    run_solver_with_callbacks(input, None, benchmark_observer)
+}
+
+/// Runs the optimization solver with both UI progress callbacks and benchmark observer events.
+pub fn run_solver_with_callbacks(
+    input: &ApiInput,
+    progress_callback: Option<&ProgressCallback>,
+    benchmark_observer: Option<&BenchmarkObserver>,
+) -> Result<SolverResult, SolverError> {
     let mut state = State::new(input)?;
 
     let solver: Box<dyn algorithms::Solver> = match input.solver.solver_type.as_str() {
@@ -275,7 +292,7 @@ pub fn run_solver_with_progress(
         }
     };
 
-    solver.solve(&mut state, progress_callback)
+    solver.solve(&mut state, progress_callback, benchmark_observer)
 }
 
 /// Calculates recommended solver settings based on a trial run.
@@ -318,6 +335,8 @@ pub fn calculate_recommended_settings(
         }),
         logging: Default::default(),
         telemetry: Default::default(),
+        seed: None,
+        move_policy: None,
         allowed_sessions: None,
     };
 
@@ -355,7 +374,7 @@ pub fn calculate_recommended_settings(
     #[cfg(not(target_arch = "wasm32"))]
     let trial_secs = {
         let start = std::time::Instant::now();
-        solver.solve(&mut state, Some(&progress))?;
+        solver.solve(&mut state, Some(&progress), None)?;
         start.elapsed().as_secs_f64()
     };
 
@@ -364,7 +383,7 @@ pub fn calculate_recommended_settings(
     let trial_secs = {
         use js_sys::Date;
         let start = Date::now();
-        solver.solve(&mut state, Some(&progress))?;
+        solver.solve(&mut state, Some(&progress), None)?;
         (Date::now() - start) / 1000.0
     };
 
@@ -444,6 +463,8 @@ pub fn calculate_recommended_settings(
         }),
         logging: Default::default(),
         telemetry: Default::default(),
+        seed: None,
+        move_policy: None,
         allowed_sessions: None,
     })
 }
@@ -746,6 +767,8 @@ mod callback_tests {
                     ..Default::default()
                 },
                 telemetry: Default::default(),
+                seed: None,
+                move_policy: None,
                 allowed_sessions: None,
             },
         }
@@ -844,6 +867,8 @@ mod callback_tests {
                     ..Default::default()
                 },
                 telemetry: Default::default(),
+                seed: None,
+                move_policy: None,
                 allowed_sessions: None,
             },
         }

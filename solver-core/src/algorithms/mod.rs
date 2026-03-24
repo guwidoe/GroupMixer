@@ -20,7 +20,7 @@
 //!
 //! ```no_run
 //! use solver_core::algorithms::Solver;
-//! use solver_core::models::{SolverResult, SolverConfiguration, ProgressCallback};
+//! use solver_core::models::{BenchmarkObserver, ProgressCallback, SolverConfiguration, SolverResult};
 //! use solver_core::solver::{SolverError, State};
 //!
 //! pub struct MyAlgorithm {
@@ -35,7 +35,7 @@
 //! }
 //!
 //! impl Solver for MyAlgorithm {
-//!     fn solve(&self, state: &mut State, _progress_callback: Option<&ProgressCallback>) -> Result<SolverResult, SolverError> {
+//!     fn solve(&self, state: &mut State, _progress_callback: Option<&ProgressCallback>, _benchmark_observer: Option<&BenchmarkObserver>) -> Result<SolverResult, SolverError> {
 //!         // implement your optimization algorithm here
 //!         todo!()
 //!     }
@@ -53,7 +53,7 @@
 //! - **Genetic Algorithm** (future): Good for very large problems,
 //!   population-based approach with parallel evaluation potential.
 
-use crate::models::{ProgressCallback, SolverResult};
+use crate::models::{BenchmarkObserver, ProgressCallback, SolverResult};
 use crate::solver::{SolverError, State};
 
 pub mod simulated_annealing;
@@ -81,13 +81,13 @@ pub mod simulated_annealing;
 ///
 /// ```no_run
 /// use solver_core::algorithms::Solver;
-/// use solver_core::models::{SolverResult, ProgressCallback};
+/// use solver_core::models::{BenchmarkObserver, ProgressCallback, SolverResult};
 /// use solver_core::solver::{SolverError, State};
 ///
 /// struct SimpleHillClimbing;
 ///
 /// impl Solver for SimpleHillClimbing {
-///     fn solve(&self, state: &mut State, _progress_callback: Option<&ProgressCallback>) -> Result<SolverResult, SolverError> {
+///     fn solve(&self, state: &mut State, _progress_callback: Option<&ProgressCallback>, _benchmark_observer: Option<&BenchmarkObserver>) -> Result<SolverResult, SolverError> {
 ///         let mut iterations = 0;
 ///         let mut no_improvement_count = 0;
 ///         
@@ -157,5 +157,6 @@ pub trait Solver {
         &self,
         state: &mut State,
         progress_callback: Option<&ProgressCallback>,
+        benchmark_observer: Option<&BenchmarkObserver>,
     ) -> Result<SolverResult, SolverError>;
 }

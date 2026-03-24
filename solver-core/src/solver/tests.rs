@@ -58,6 +58,8 @@ fn create_test_input(
             }),
             logging: Default::default(),
             telemetry: Default::default(),
+            seed: None,
+            move_policy: None,
             allowed_sessions: None,
         },
     }
@@ -1150,6 +1152,8 @@ mod attribute_balance_tests {
                 }),
                 logging: LoggingOptions::default(),
                 telemetry: Default::default(),
+                seed: None,
+                move_policy: None,
                 allowed_sessions: None,
             },
         }
@@ -1235,6 +1239,8 @@ mod attribute_balance_tests {
                 }),
                 logging: LoggingOptions::default(),
                 telemetry: Default::default(),
+                seed: None,
+                move_policy: None,
                 allowed_sessions: None,
             },
         };

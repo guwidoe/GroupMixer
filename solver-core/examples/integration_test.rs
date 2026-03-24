@@ -89,6 +89,8 @@ fn main() {
             }),
             logging: LoggingOptions::default(),
             telemetry: Default::default(),
+            seed: None,
+            move_policy: None,
             allowed_sessions: None,
         },
     };

@@ -3,9 +3,11 @@
 //! This module contains the `State::new` constructor and constraint
 //! preprocessing logic that converts API input into the internal solver state.
 
-use super::{Dsu, SolverError, State};
+use super::{derive_phase_seed, CONSTRUCTION_SEED_SALT, Dsu, SolverError, State};
 use crate::models::{ApiInput, Constraint, PairMeetingMode};
 use rand::seq::SliceRandom;
+use rand::{rng, RngExt, SeedableRng};
+use rand_chacha::ChaCha12Rng;
 use std::collections::HashMap;
 
 impl State {
@@ -116,6 +118,15 @@ impl State {
         }
 
         let group_count = input.problem.groups.len();
+
+        let effective_seed = input.solver.seed.unwrap_or_else(|| rng().random::<u64>());
+        let move_policy = input
+            .solver
+            .move_policy
+            .clone()
+            .unwrap_or_default()
+            .normalized()
+            .map_err(SolverError::ValidationError)?;
 
         let mut seen_person_ids = std::collections::HashSet::new();
         for person in &input.problem.people {
@@ -302,6 +313,8 @@ impl State {
             attr_idx_to_val,
             logging: input.solver.logging.clone(),
             telemetry: input.solver.telemetry.clone(),
+            effective_seed,
+            move_policy,
             schedule,
             locations,
             person_attributes,
@@ -393,7 +406,10 @@ impl State {
         }
 
         // --- Initialize remaining slots with a random assignment (clique-aware) ---
-        let mut rng = rand::rng();
+        let mut rng = ChaCha12Rng::seed_from_u64(derive_phase_seed(
+            state.effective_seed,
+            CONSTRUCTION_SEED_SALT,
+        ));
 
         for (day, day_schedule) in state.schedule.iter_mut().enumerate() {
             let mut group_cursors = vec![0; group_count];

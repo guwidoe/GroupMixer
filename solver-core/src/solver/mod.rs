@@ -17,12 +17,23 @@ mod tests;
 mod validation;
 
 use crate::models::{
-    AttributeBalanceParams, LoggingOptions, PairMeetingMode, SolverResult, TelemetryOptions,
+    AttributeBalanceParams, LoggingOptions, MovePolicy, PairMeetingMode,
+    SolverBenchmarkTelemetry, SolverResult, StopReason, TelemetryOptions,
 };
 use dsu::Dsu;
 use serde::Serialize;
 use std::collections::HashMap;
 use thiserror::Error;
+
+pub(crate) const CONSTRUCTION_SEED_SALT: u64 = 0x6a09e667f3bcc909;
+pub(crate) const SEARCH_SEED_SALT: u64 = 0xbb67ae8584caa73b;
+
+pub(crate) fn derive_phase_seed(base_seed: u64, salt: u64) -> u64 {
+    let mut z = base_seed.wrapping_add(salt).wrapping_add(0x9e3779b97f4a7c15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94d049bb133111eb);
+    z ^ (z >> 31)
+}
 
 /// Errors that can occur during solver operation.
 ///
@@ -146,6 +157,12 @@ pub struct State {
 
     /// Optional telemetry controls (used by progress updates / visualizations)
     pub telemetry: TelemetryOptions,
+
+    /// Effective seed used for this run.
+    pub effective_seed: u64,
+
+    /// Effective normalized move policy used for this run.
+    pub move_policy: MovePolicy,
 
     // === CORE SCHEDULE DATA ===
     // The main optimization variables - who is assigned where and when
@@ -426,6 +443,16 @@ impl State {
     /// # Ok::<(), solver_core::solver::SolverError>(())
     /// ```
     pub fn to_solver_result(&self, final_score: f64, no_improvement_count: u64) -> SolverResult {
+        self.to_solver_result_with_metadata(final_score, no_improvement_count, None, None)
+    }
+
+    pub fn to_solver_result_with_metadata(
+        &self,
+        final_score: f64,
+        no_improvement_count: u64,
+        stop_reason: Option<StopReason>,
+        benchmark_telemetry: Option<SolverBenchmarkTelemetry>,
+    ) -> SolverResult {
         let mut schedule_output = HashMap::new();
         for (day, day_schedule) in self.schedule.iter().enumerate() {
             let session_key = format!("session_{}", day);
@@ -455,6 +482,10 @@ impl State {
             no_improvement_count,
             weighted_repetition_penalty,
             weighted_constraint_penalty,
+            effective_seed: Some(self.effective_seed),
+            move_policy: Some(self.move_policy.clone()),
+            stop_reason,
+            benchmark_telemetry,
         }
     }
 

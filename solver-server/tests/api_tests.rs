@@ -74,6 +74,8 @@ fn valid_input() -> ApiInput {
             }),
             logging: Default::default(),
             telemetry: Default::default(),
+            seed: None,
+            move_policy: None,
             allowed_sessions: None,
         },
     }

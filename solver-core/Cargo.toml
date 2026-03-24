@@ -10,6 +10,7 @@ path = "src/lib.rs"
 [dependencies]
 serde = { version = "1.0.190", features = ["derive"] }
 rand = { version = "0.10.0", features = ["std_rng"] }
+rand_chacha = "0.10.0"
 uuid = { version = "1.22.0", features = ["v4", "serde", "js"] }
 getrandom = { version = "0.4", features = ["wasm_js"] }
 log = "0.4"
@@ -24,7 +25,6 @@ features = ["wasm_js"]
 js-sys = "0.3"
 
 [dev-dependencies]
-rand_chacha = "0.10.0"
 criterion = { version = "0.8", features = ["html_reports"] }
 proptest = "1.10"
 

@@ -118,6 +118,8 @@ pub fn default_solver_config(max_iterations: u64) -> SolverConfiguration {
         }),
         logging: Default::default(),
         telemetry: Default::default(),
+        seed: None,
+        move_policy: None,
         allowed_sessions: None,
     }
 }

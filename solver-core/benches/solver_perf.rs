@@ -79,6 +79,8 @@ fn make_api_input(
                 debug_dump_invariant_context: false,
             },
             telemetry: TelemetryOptions::default(),
+            seed: None,
+            move_policy: None,
             allowed_sessions: None,
         },
     }

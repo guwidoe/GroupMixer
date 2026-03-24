@@ -3,9 +3,9 @@ mod common;
 use common::default_solver_config;
 use solver_core::algorithms::simulated_annealing::SimulatedAnnealing;
 use solver_core::models::{
-    ApiInput, Constraint, Group, LoggingOptions, Objective, Person, ProblemDefinition,
-    RepeatEncounterParams, SimulatedAnnealingParams, SolverConfiguration, SolverParams,
-    StopConditions,
+    ApiInput, Constraint, Group, LoggingOptions, MovePolicy, Objective, Person,
+    ProblemDefinition, RepeatEncounterParams, SimulatedAnnealingParams, SolverConfiguration,
+    SolverParams, StopConditions,
 };
 use solver_core::solver::State;
 use solver_core::{run_solver, run_solver_with_progress};
@@ -75,6 +75,8 @@ fn basic_input() -> ApiInput {
             }),
             logging: LoggingOptions::default(),
             telemetry: Default::default(),
+            seed: None,
+            move_policy: None,
             allowed_sessions: None,
         },
     }
@@ -212,6 +214,64 @@ fn progress_callback_can_stop_solver_early() {
     assert!(!captured.is_empty(), "callback should have been invoked");
     assert!(captured.iter().copied().max().unwrap() < 5_000);
     assert!(!result.schedule.is_empty());
+}
+
+#[test]
+fn initial_construction_is_deterministic_for_same_seed() {
+    let mut input = basic_input();
+    input.solver.seed = Some(4242);
+
+    let state_a = State::new(&input).expect("seeded state should build");
+    let state_b = State::new(&input).expect("seeded state should build twice");
+
+    assert_eq!(state_a.schedule, state_b.schedule);
+    assert_eq!(state_a.effective_seed, 4242);
+    assert_eq!(state_b.effective_seed, 4242);
+}
+
+#[test]
+fn full_solver_run_is_deterministic_for_same_seed() {
+    let mut input = basic_input();
+    input.solver.seed = Some(777);
+    input.solver.stop_conditions.max_iterations = Some(500);
+    input.solver.stop_conditions.no_improvement_iterations = Some(200);
+
+    let result_a = run_solver(&input).expect("seeded solve should succeed");
+    let result_b = run_solver(&input).expect("seeded solve should be replayable");
+
+    assert_eq!(result_a.schedule, result_b.schedule);
+    assert_eq!(result_a.final_score, result_b.final_score);
+    assert_eq!(result_a.effective_seed, Some(777));
+    assert_eq!(result_b.effective_seed, Some(777));
+    assert_eq!(result_a.move_policy, Some(MovePolicy::default()));
+    assert_eq!(result_b.move_policy, Some(MovePolicy::default()));
+    assert_eq!(result_a.stop_reason, result_b.stop_reason);
+
+    let telemetry_a = result_a
+        .benchmark_telemetry
+        .as_ref()
+        .expect("final result should include benchmark telemetry");
+    let telemetry_b = result_b
+        .benchmark_telemetry
+        .as_ref()
+        .expect("final result should include benchmark telemetry");
+
+    assert_eq!(telemetry_a.iterations_completed, telemetry_b.iterations_completed);
+    assert_eq!(telemetry_a.moves.swap.attempts, telemetry_b.moves.swap.attempts);
+    assert_eq!(telemetry_a.moves.swap.accepted, telemetry_b.moves.swap.accepted);
+    assert_eq!(telemetry_a.moves.transfer.attempts, telemetry_b.moves.transfer.attempts);
+    assert_eq!(
+        telemetry_a.moves.transfer.accepted,
+        telemetry_b.moves.transfer.accepted
+    );
+    assert_eq!(
+        telemetry_a.moves.clique_swap.attempts,
+        telemetry_b.moves.clique_swap.attempts
+    );
+    assert_eq!(
+        telemetry_a.moves.clique_swap.accepted,
+        telemetry_b.moves.clique_swap.accepted
+    );
 }
 
 #[test]
@@ -423,6 +483,8 @@ fn simulated_annealing_auto_reheat_defaults_without_no_improvement_limit() {
         }),
         logging: LoggingOptions::default(),
         telemetry: Default::default(),
+        seed: None,
+        move_policy: None,
         allowed_sessions: None,
     };
 
@@ -448,6 +510,8 @@ fn simulated_annealing_auto_reheat_is_bounded_by_no_improvement_limit() {
         }),
         logging: LoggingOptions::default(),
         telemetry: Default::default(),
+        seed: None,
+        move_policy: None,
         allowed_sessions: None,
     };
 
@@ -473,6 +537,8 @@ fn simulated_annealing_keeps_explicit_zero_reheat_disabled() {
         }),
         logging: LoggingOptions::default(),
         telemetry: Default::default(),
+        seed: None,
+        move_policy: None,
         allowed_sessions: None,
     };
 

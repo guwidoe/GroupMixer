@@ -520,11 +520,187 @@ pub struct SolverConfiguration {
     /// Defaults to disabled to avoid any performance overhead unless explicitly requested.
     #[serde(default)]
     pub telemetry: TelemetryOptions,
+    /// Optional seed used to make solver runs reproducible.
+    ///
+    /// When omitted, the solver derives a fresh random seed for the run and reports the
+    /// effective seed in solver results / benchmark telemetry.
+    #[serde(default)]
+    pub seed: Option<u64>,
+    /// Optional move-policy override controlling which move families may run and how they are selected.
+    ///
+    /// When omitted, the solver preserves the current adaptive mixed-search behavior.
+    #[serde(default)]
+    pub move_policy: Option<MovePolicy>,
     /// Optional allow-list of session indices that the solver is allowed to modify during iterations.
     /// If present, the solver will only generate moves within these sessions, leaving others unchanged.
     /// Session indices are 0-based.
     #[serde(default)]
     pub allowed_sessions: Option<Vec<u32>>,
+}
+
+/// Explicit move families supported by the simulated annealing search loop.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[serde(rename_all = "snake_case")]
+pub enum MoveFamily {
+    Swap,
+    Transfer,
+    CliqueSwap,
+}
+
+impl MoveFamily {
+    pub const ALL: [Self; 3] = [Self::Swap, Self::Transfer, Self::CliqueSwap];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Swap => "swap",
+            Self::Transfer => "transfer",
+            Self::CliqueSwap => "clique_swap",
+        }
+    }
+}
+
+/// Selection mode for mixed move-family search.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum MoveSelectionMode {
+    /// Preserve the current solver behavior, where transfer / clique swap probabilities
+    /// are derived from the current state.
+    #[default]
+    Adaptive,
+    /// Use caller-provided explicit weights instead of the adaptive heuristics.
+    Weighted,
+}
+
+/// Explicit weights for each move family when `MoveSelectionMode::Weighted` is used.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct MoveFamilyWeights {
+    pub swap: f64,
+    pub transfer: f64,
+    pub clique_swap: f64,
+}
+
+impl Default for MoveFamilyWeights {
+    fn default() -> Self {
+        Self {
+            swap: 1.0,
+            transfer: 1.0,
+            clique_swap: 1.0,
+        }
+    }
+}
+
+/// Controls which move families are allowed in a run and how the solver chooses between them.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+pub struct MovePolicy {
+    /// Selection mode for mixed-family runs.
+    #[serde(default)]
+    pub mode: MoveSelectionMode,
+    /// Optional allow-list of move families for this run.
+    ///
+    /// When omitted, all move families are allowed.
+    #[serde(default)]
+    pub allowed_families: Option<Vec<MoveFamily>>,
+    /// Optional single-family override used for path tests and diagnostics.
+    ///
+    /// When present, the search loop will only attempt the specified move family.
+    #[serde(default)]
+    pub forced_family: Option<MoveFamily>,
+    /// Optional explicit family weights used when `mode` is `weighted`.
+    #[serde(default)]
+    pub weights: Option<MoveFamilyWeights>,
+}
+
+impl MovePolicy {
+    pub fn normalized(&self) -> Result<Self, String> {
+        let mut normalized = self.clone();
+
+        if let Some(allowed) = normalized.allowed_families.as_mut() {
+            if allowed.is_empty() {
+                return Err("move_policy.allowed_families cannot be empty".to_string());
+            }
+
+            allowed.sort_unstable();
+            allowed.dedup();
+        }
+
+        if let Some(forced_family) = normalized.forced_family {
+            if let Some(allowed) = &normalized.allowed_families {
+                if !allowed.contains(&forced_family) {
+                    return Err(format!(
+                        "move_policy.forced_family '{}' is not present in move_policy.allowed_families",
+                        forced_family.as_str()
+                    ));
+                }
+            }
+
+            if normalized.weights.is_some() {
+                return Err(
+                    "move_policy.weights cannot be combined with move_policy.forced_family"
+                        .to_string(),
+                );
+            }
+        }
+
+        match normalized.mode {
+            MoveSelectionMode::Adaptive => {
+                if normalized.weights.is_some() {
+                    return Err(
+                        "move_policy.weights requires move_policy.mode = 'weighted'"
+                            .to_string(),
+                    );
+                }
+            }
+            MoveSelectionMode::Weighted => {
+                let weights = normalized.weights.as_ref().ok_or_else(|| {
+                    "move_policy.mode = 'weighted' requires move_policy.weights".to_string()
+                })?;
+
+                let families = normalized.allowed_families();
+                let total_weight = families
+                    .iter()
+                    .map(|family| weights.weight_for(*family))
+                    .sum::<f64>();
+
+                for (family, weight) in [
+                    (MoveFamily::Swap, weights.swap),
+                    (MoveFamily::Transfer, weights.transfer),
+                    (MoveFamily::CliqueSwap, weights.clique_swap),
+                ] {
+                    if weight < 0.0 {
+                        return Err(format!(
+                            "move_policy weight for '{}' cannot be negative",
+                            family.as_str()
+                        ));
+                    }
+                }
+
+                if total_weight <= 0.0 {
+                    return Err(
+                        "move_policy.weights must leave positive total weight across allowed families"
+                            .to_string(),
+                    );
+                }
+            }
+        }
+
+        Ok(normalized)
+    }
+
+    pub fn allowed_families(&self) -> Vec<MoveFamily> {
+        self.allowed_families
+            .clone()
+            .unwrap_or_else(|| MoveFamily::ALL.to_vec())
+    }
+}
+
+impl MoveFamilyWeights {
+    pub fn weight_for(&self, family: MoveFamily) -> f64 {
+        match family {
+            MoveFamily::Swap => self.swap,
+            MoveFamily::Transfer => self.transfer,
+            MoveFamily::CliqueSwap => self.clique_swap,
+        }
+    }
 }
 
 /// Controls optional telemetry emitted during solver execution.
@@ -821,6 +997,15 @@ pub struct ProgressUpdate {
     #[serde(default)]
     pub best_schedule:
         Option<std::collections::HashMap<String, std::collections::HashMap<String, Vec<String>>>>,
+    /// Effective seed used for the current run.
+    #[serde(default)]
+    pub effective_seed: Option<u64>,
+    /// Effective move policy used for the current run.
+    #[serde(default)]
+    pub move_policy: Option<MovePolicy>,
+    /// Explicit stop reason. Present on final progress updates and absent on intermediate updates.
+    #[serde(default)]
+    pub stop_reason: Option<StopReason>,
 }
 
 /// Callback function type for receiving progress updates during solver execution.
@@ -835,6 +1020,84 @@ pub struct ProgressUpdate {
 /// progress. The callback should return `true` to continue solving or `false`
 /// to request early termination.
 pub type ProgressCallback = Box<dyn Fn(&ProgressUpdate) -> bool + Send>;
+
+/// Explicit reason why a solver run stopped.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum StopReason {
+    MaxIterationsReached,
+    TimeLimitReached,
+    NoImprovementLimitReached,
+    ProgressCallbackRequestedStop,
+}
+
+/// Per-move-family benchmark telemetry summary.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+pub struct MoveFamilyBenchmarkTelemetry {
+    #[serde(default)]
+    pub attempts: u64,
+    #[serde(default)]
+    pub accepted: u64,
+    #[serde(default)]
+    pub rejected: u64,
+    #[serde(default)]
+    pub preview_seconds: f64,
+    #[serde(default)]
+    pub apply_seconds: f64,
+    #[serde(default)]
+    pub full_recalculation_count: u64,
+    #[serde(default)]
+    pub full_recalculation_seconds: f64,
+}
+
+/// Benchmark telemetry grouped by move family.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+pub struct MoveFamilyBenchmarkTelemetrySummary {
+    #[serde(default)]
+    pub swap: MoveFamilyBenchmarkTelemetry,
+    #[serde(default)]
+    pub transfer: MoveFamilyBenchmarkTelemetry,
+    #[serde(default)]
+    pub clique_swap: MoveFamilyBenchmarkTelemetry,
+}
+
+/// End-of-run benchmark telemetry intended for regression / benchmark artifacts.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct SolverBenchmarkTelemetry {
+    pub effective_seed: u64,
+    pub move_policy: MovePolicy,
+    pub stop_reason: StopReason,
+    pub iterations_completed: u64,
+    pub no_improvement_count: u64,
+    pub reheats_performed: u64,
+    pub initial_score: f64,
+    pub best_score: f64,
+    pub final_score: f64,
+    pub initialization_seconds: f64,
+    pub search_seconds: f64,
+    pub finalization_seconds: f64,
+    pub total_seconds: f64,
+    pub moves: MoveFamilyBenchmarkTelemetrySummary,
+}
+
+/// Benchmark observer lifecycle events.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(tag = "event", content = "payload", rename_all = "snake_case")]
+pub enum BenchmarkEvent {
+    RunStarted(BenchmarkRunStarted),
+    RunCompleted(SolverBenchmarkTelemetry),
+}
+
+/// Initial benchmark metadata emitted before the search loop starts.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct BenchmarkRunStarted {
+    pub effective_seed: u64,
+    pub move_policy: MovePolicy,
+    pub initial_score: f64,
+}
+
+/// Callback for benchmark-oriented observer events.
+pub type BenchmarkObserver = Box<dyn Fn(&BenchmarkEvent) + Send>;
 
 /// The result returned by the optimization solver.
 ///
@@ -912,6 +1175,18 @@ pub struct SolverResult {
     pub weighted_repetition_penalty: f64,
     /// Weighted constraint penalty (actual penalty value used in cost calculation)
     pub weighted_constraint_penalty: f64,
+    /// Effective seed used for this run.
+    #[serde(default)]
+    pub effective_seed: Option<u64>,
+    /// Effective move policy used for this run.
+    #[serde(default)]
+    pub move_policy: Option<MovePolicy>,
+    /// Explicit stop reason for this run.
+    #[serde(default)]
+    pub stop_reason: Option<StopReason>,
+    /// Benchmark-oriented end-of-run telemetry.
+    #[serde(default)]
+    pub benchmark_telemetry: Option<SolverBenchmarkTelemetry>,
 }
 
 impl SolverResult {

@@ -118,6 +118,8 @@ fn create_test_input(
             }),
             logging: Default::default(),
             telemetry: Default::default(),
+            seed: None,
+            move_policy: None,
             allowed_sessions: None,
         },
     }
@@ -171,6 +173,8 @@ fn create_test_input_with_sessions(
             }),
             logging: Default::default(),
             telemetry: Default::default(),
+            seed: None,
+            move_policy: None,
             allowed_sessions: None,
         },
     }

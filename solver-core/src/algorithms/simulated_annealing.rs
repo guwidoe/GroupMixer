@@ -24,11 +24,15 @@
 
 use crate::algorithms::Solver;
 use crate::models::{
-    ProgressCallback, ProgressUpdate, SolverConfiguration, SolverParams, SolverResult,
+    BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, MoveFamily,
+    MoveFamilyBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
+    MoveSelectionMode, ProgressCallback, ProgressUpdate, SolverBenchmarkTelemetry,
+    SolverConfiguration, SolverParams, SolverResult, StopReason,
 };
-use crate::solver::{SolverError, State};
+use crate::solver::{derive_phase_seed, SolverError, State, SEARCH_SEED_SALT};
 use rand::seq::SliceRandom;
-use rand::{rng, RngExt};
+use rand::{RngExt, SeedableRng};
+use rand_chacha::ChaCha12Rng;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
 
@@ -308,6 +312,100 @@ impl AlgorithmMetrics {
             search_efficiency,
         )
     }
+}
+
+#[derive(Debug, Clone, Default)]
+struct BenchmarkMoveTelemetry {
+    swap: MoveFamilyBenchmarkTelemetry,
+    transfer: MoveFamilyBenchmarkTelemetry,
+    clique_swap: MoveFamilyBenchmarkTelemetry,
+}
+
+impl BenchmarkMoveTelemetry {
+    fn family_mut(&mut self, family: MoveFamily) -> &mut MoveFamilyBenchmarkTelemetry {
+        match family {
+            MoveFamily::Swap => &mut self.swap,
+            MoveFamily::Transfer => &mut self.transfer,
+            MoveFamily::CliqueSwap => &mut self.clique_swap,
+        }
+    }
+
+    fn into_summary(self) -> MoveFamilyBenchmarkTelemetrySummary {
+        MoveFamilyBenchmarkTelemetrySummary {
+            swap: self.swap,
+            transfer: self.transfer,
+            clique_swap: self.clique_swap,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct WeightedMoveChoice {
+    family: MoveFamily,
+    weight: f64,
+}
+
+fn sample_move_family(
+    move_policy: &MovePolicy,
+    clique_swap_probability: f64,
+    transfer_probability: f64,
+    rng: &mut ChaCha12Rng,
+) -> MoveFamily {
+    if let Some(forced_family) = move_policy.forced_family {
+        return forced_family;
+    }
+
+    let allowed_families = move_policy.allowed_families();
+    let mut choices = Vec::with_capacity(allowed_families.len());
+
+    match move_policy.mode {
+        MoveSelectionMode::Adaptive => {
+            for family in allowed_families {
+                let weight = match family {
+                    MoveFamily::CliqueSwap => clique_swap_probability.max(0.0),
+                    MoveFamily::Transfer => transfer_probability.max(0.0),
+                    MoveFamily::Swap => (1.0 - clique_swap_probability - transfer_probability)
+                        .max(0.0),
+                };
+
+                choices.push(WeightedMoveChoice { family, weight });
+            }
+        }
+        MoveSelectionMode::Weighted => {
+            let weights = move_policy
+                .weights
+                .as_ref()
+                .expect("weighted policy should have been validated before solve");
+
+            for family in allowed_families {
+                choices.push(WeightedMoveChoice {
+                    family,
+                    weight: weights.weight_for(family),
+                });
+            }
+        }
+    }
+
+    let total_weight = choices.iter().map(|choice| choice.weight).sum::<f64>();
+    if total_weight <= 0.0 {
+        return choices
+            .first()
+            .map(|choice| choice.family)
+            .unwrap_or(MoveFamily::Swap);
+    }
+
+    let mut selection = rng.random::<f64>() * total_weight;
+    for choice in &choices {
+        if selection < choice.weight {
+            return choice.family;
+        }
+        selection -= choice.weight;
+    }
+
+    choices
+        .last()
+        .map(|choice| choice.family)
+        .unwrap_or(MoveFamily::Swap)
 }
 
 /// Simulated Annealing solver for the Social Group Scheduling Problem.
@@ -702,9 +800,13 @@ impl Solver for SimulatedAnnealing {
         &self,
         state: &mut State,
         progress_callback: Option<&ProgressCallback>,
+        benchmark_observer: Option<&BenchmarkObserver>,
     ) -> Result<SolverResult, SolverError> {
         let start_time = get_start_time();
-        let mut rng = rng();
+        let mut rng = ChaCha12Rng::seed_from_u64(derive_phase_seed(
+            state.effective_seed,
+            SEARCH_SEED_SALT,
+        ));
         let mut current_state = state.clone();
         let mut best_state = state.clone();
         let mut best_cost = state.calculate_cost();
@@ -712,6 +814,8 @@ impl Solver for SimulatedAnnealing {
         let mut last_callback_time = get_start_time();
         let mut progress_callback_count: u64 = 0;
         let mut final_iteration = 0;
+        let mut stop_reason = StopReason::MaxIterationsReached;
+        let initialization_finished_at = get_current_time();
 
         if state.logging.log_initial_score_breakdown {
             println!(
@@ -742,6 +846,17 @@ impl Solver for SimulatedAnnealing {
         let initial_score = state.calculate_cost();
 
         let mut metrics = AlgorithmMetrics::new(initial_score);
+        let mut benchmark_moves = BenchmarkMoveTelemetry::default();
+
+        if let Some(observer) = benchmark_observer {
+            observer(&BenchmarkEvent::RunStarted(BenchmarkRunStarted {
+                effective_seed: state.effective_seed,
+                move_policy: state.move_policy.clone(),
+                initial_score,
+            }));
+        }
+
+        let search_started_at = get_current_time();
 
         for i in 0..self.max_iterations {
             final_iteration = i;
@@ -933,10 +1048,14 @@ impl Solver for SimulatedAnnealing {
                         } else {
                             None
                         },
+                        effective_seed: Some(state.effective_seed),
+                        move_policy: Some(state.move_policy.clone()),
+                        stop_reason: None,
                     };
 
                     // If callback returns false, stop early
                     if !callback(&progress) {
+                        stop_reason = StopReason::ProgressCallbackRequestedStop;
                         if state.logging.log_stop_condition {
                             println!("Stopping early: progress callback requested termination.");
                         }
@@ -961,11 +1080,15 @@ impl Solver for SimulatedAnnealing {
 
             // Use pre-calculated move probabilities for performance
             let transfer_probability = transfer_probabilities[day];
-            let move_selector = rng.random::<f64>();
-
             let clique_swap_probability = clique_swap_probabilities[day];
+            let chosen_family = sample_move_family(
+                &state.move_policy,
+                clique_swap_probability,
+                transfer_probability,
+                &mut rng,
+            );
 
-            if move_selector < clique_swap_probability && !current_state.cliques.is_empty() {
+            if chosen_family == MoveFamily::CliqueSwap {
                 // === CLIQUE SWAP ===
                 // --- Attempt Clique Swap ---
                 let clique_idx = rng.random_range(0..current_state.cliques.len());
@@ -1027,6 +1150,7 @@ impl Solver for SimulatedAnnealing {
                             non_clique_people.into_iter().take(active_count).collect();
 
                         // Calculate delta cost for clique swap
+                        let preview_started_at = get_current_time();
                         let delta_cost = current_state.calculate_clique_swap_cost_delta(
                             day,
                             clique_idx,
@@ -1034,8 +1158,13 @@ impl Solver for SimulatedAnnealing {
                             target_group,
                             &target_people,
                         );
+                        let preview_seconds =
+                            get_elapsed_seconds_between(preview_started_at, get_current_time());
                         // By default, record the estimated delta; if accepted, override with actual delta
                         let mut recorded_delta = delta_cost;
+                        let telemetry = benchmark_moves.family_mut(MoveFamily::CliqueSwap);
+                        telemetry.attempts += 1;
+                        telemetry.preview_seconds += preview_seconds;
 
                         //let current_cost = current_state.current_cost;
                         //let next_cost = current_cost + delta_cost;
@@ -1046,6 +1175,7 @@ impl Solver for SimulatedAnnealing {
 
                         if move_accepted {
                             let prev_cost = current_state.current_cost;
+                            let apply_started_at = get_current_time();
                             current_state.apply_clique_swap(
                                 day,
                                 clique_idx,
@@ -1053,6 +1183,12 @@ impl Solver for SimulatedAnnealing {
                                 target_group,
                                 &target_people,
                             );
+                            let apply_finished_at = get_current_time();
+                            let apply_seconds =
+                                get_elapsed_seconds_between(apply_started_at, apply_finished_at);
+                            telemetry.apply_seconds += apply_seconds;
+                            telemetry.full_recalculation_count += 1;
+                            telemetry.full_recalculation_seconds += apply_seconds;
 
                             // Since apply_clique_swap does a full recalculation, we need to get the actual cost
                             let actual_current_cost = current_state.current_cost;
@@ -1100,11 +1236,17 @@ impl Solver for SimulatedAnnealing {
                             }
                         }
 
+                        if move_accepted {
+                            telemetry.accepted += 1;
+                        } else {
+                            telemetry.rejected += 1;
+                        }
+
                         // Record using chosen delta (actual if accepted, estimated otherwise)
                         metrics.record_clique_swap(recorded_delta, move_accepted);
                     }
                 }
-            } else if move_selector < clique_swap_probability + transfer_probability {
+            } else if chosen_family == MoveFamily::Transfer {
                 // === SINGLE PERSON TRANSFER ===
                 let transferable_people: Vec<usize> = (0..current_state.person_idx_to_id.len())
                     .filter(|&p_idx| current_state.person_participation[p_idx][day])
@@ -1131,17 +1273,28 @@ impl Solver for SimulatedAnnealing {
                             [rng.random_range(0..possible_target_groups.len())];
 
                         // Calculate delta cost for transfer
+                        let preview_started_at = get_current_time();
                         let delta_cost = current_state
                             .calculate_transfer_cost_delta(day, person_idx, from_group, to_group);
+                        let preview_seconds =
+                            get_elapsed_seconds_between(preview_started_at, get_current_time());
                         let current_cost = current_state.current_cost;
                         let next_cost = current_cost + delta_cost;
+                        let telemetry = benchmark_moves.family_mut(MoveFamily::Transfer);
+                        telemetry.attempts += 1;
+                        telemetry.preview_seconds += preview_seconds;
 
                         // Accept or reject the transfer
                         let move_accepted = delta_cost < 0.0
                             || rng.random::<f64>() < (-delta_cost / temperature).exp();
 
                         if move_accepted {
+                            let apply_started_at = get_current_time();
                             current_state.apply_transfer(day, person_idx, from_group, to_group);
+                            telemetry.apply_seconds += get_elapsed_seconds_between(
+                                apply_started_at,
+                                get_current_time(),
+                            );
 
                             current_state.current_cost = next_cost;
 
@@ -1182,8 +1335,14 @@ impl Solver for SimulatedAnnealing {
                             if next_cost < best_cost {
                                 // Recalculate to eliminate any incremental drift before
                                 // recording a new best and to keep telemetry consistent.
+                                let recalc_started_at = get_current_time();
                                 current_state._recalculate_scores();
                                 let verified_cost = current_state.calculate_cost();
+                                telemetry.full_recalculation_count += 1;
+                                telemetry.full_recalculation_seconds += get_elapsed_seconds_between(
+                                    recalc_started_at,
+                                    get_current_time(),
+                                );
                                 if verified_cost < best_cost {
                                     best_cost = verified_cost;
                                     best_state = current_state.clone();
@@ -1191,6 +1350,12 @@ impl Solver for SimulatedAnnealing {
                                     improvement_found = true;
                                 }
                             }
+                        }
+
+                        if move_accepted {
+                            telemetry.accepted += 1;
+                        } else {
+                            telemetry.rejected += 1;
                         }
 
                         // Record the move attempt
@@ -1216,9 +1381,15 @@ impl Solver for SimulatedAnnealing {
                 }
 
                 // --- Evaluate the swap ---
+                let preview_started_at = get_current_time();
                 let delta_cost = current_state.calculate_swap_cost_delta(day, p1_idx, p2_idx);
+                let preview_seconds =
+                    get_elapsed_seconds_between(preview_started_at, get_current_time());
                 let current_cost = current_state.current_cost;
                 let next_cost = current_cost + delta_cost;
+                let telemetry = benchmark_moves.family_mut(MoveFamily::Swap);
+                telemetry.attempts += 1;
+                telemetry.preview_seconds += preview_seconds;
 
                 let move_accepted =
                     delta_cost < 0.0 || rng.random::<f64>() < (-delta_cost / temperature).exp();
@@ -1232,7 +1403,10 @@ impl Solver for SimulatedAnnealing {
                         println!("  accepted non-improving move with zero temperature");
                     }
 
+                    let apply_started_at = get_current_time();
                     current_state.apply_swap(day, p1_idx, p2_idx);
+                    telemetry.apply_seconds +=
+                        get_elapsed_seconds_between(apply_started_at, get_current_time());
                     current_state.current_cost = next_cost;
 
                     // Optional invariant check after applying move
@@ -1270,8 +1444,14 @@ impl Solver for SimulatedAnnealing {
                     if next_cost < best_cost {
                         // Recalculate to eliminate any incremental drift before
                         // recording a new best and to keep telemetry consistent.
+                        let recalc_started_at = get_current_time();
                         current_state._recalculate_scores();
                         let verified_cost = current_state.calculate_cost();
+                        telemetry.full_recalculation_count += 1;
+                        telemetry.full_recalculation_seconds += get_elapsed_seconds_between(
+                            recalc_started_at,
+                            get_current_time(),
+                        );
                         if verified_cost < best_cost {
                             best_cost = verified_cost;
                             best_state = current_state.clone();
@@ -1279,6 +1459,12 @@ impl Solver for SimulatedAnnealing {
                             improvement_found = true;
                         }
                     }
+                }
+
+                if move_accepted {
+                    telemetry.accepted += 1;
+                } else {
+                    telemetry.rejected += 1;
                 }
 
                 // Record the move attempt
@@ -1306,6 +1492,7 @@ impl Solver for SimulatedAnnealing {
 
             if let Some(no_improvement_limit) = self.no_improvement_iterations {
                 if no_improvement_counter >= no_improvement_limit {
+                    stop_reason = StopReason::NoImprovementLimitReached;
                     if state.logging.log_stop_condition {
                         println!(
                             "Stopping early: no improvement for {no_improvement_limit} iterations."
@@ -1317,6 +1504,7 @@ impl Solver for SimulatedAnnealing {
 
             if let Some(time_limit) = self.time_limit_seconds {
                 if get_elapsed_seconds_since_start(start_time) >= time_limit {
+                    stop_reason = StopReason::TimeLimitReached;
                     if state.logging.log_stop_condition {
                         println!("Stopping early: time limit of {time_limit} seconds reached.");
                     }
@@ -1332,6 +1520,8 @@ impl Solver for SimulatedAnnealing {
                 current_state.weighted_constraint_penalty,
             );
         }
+
+        let search_finished_at = get_current_time();
 
         // Validate that our incremental tracking matches full recalculation
         let recalculated_cost = best_state.calculate_cost();
@@ -1349,6 +1539,36 @@ impl Solver for SimulatedAnnealing {
         // Recalculate scores to ensure accuracy
         best_state._recalculate_scores();
         let final_cost = best_state.calculate_cost();
+        let finalization_finished_at = get_current_time();
+        let initialization_seconds =
+            get_elapsed_seconds_between(start_time, initialization_finished_at);
+        let search_seconds =
+            get_elapsed_seconds_between(search_started_at, search_finished_at);
+        let finalization_seconds = get_elapsed_seconds_between(
+            search_finished_at,
+            finalization_finished_at,
+        );
+        let total_seconds = get_elapsed_seconds_between(start_time, finalization_finished_at);
+        let benchmark_telemetry = SolverBenchmarkTelemetry {
+            effective_seed: state.effective_seed,
+            move_policy: state.move_policy.clone(),
+            stop_reason,
+            iterations_completed: final_iteration + 1,
+            no_improvement_count: no_improvement_counter,
+            reheats_performed: reheat_count,
+            initial_score,
+            best_score: best_cost,
+            final_score: final_cost,
+            initialization_seconds,
+            search_seconds,
+            finalization_seconds,
+            total_seconds,
+            moves: benchmark_moves.into_summary(),
+        };
+
+        if let Some(observer) = benchmark_observer {
+            observer(&BenchmarkEvent::RunCompleted(benchmark_telemetry.clone()));
+        }
 
         // Send final progress update if callback is provided
         // IMPORTANT: This must happen AFTER _recalculate_scores() to ensure accurate scores
@@ -1466,6 +1686,9 @@ impl Solver for SimulatedAnnealing {
                 } else {
                     None
                 },
+                effective_seed: Some(state.effective_seed),
+                move_policy: Some(state.move_policy.clone()),
+                stop_reason: Some(stop_reason),
             };
 
             // Call the callback one final time (ignore return value since we're done)
@@ -1476,7 +1699,7 @@ impl Solver for SimulatedAnnealing {
         *state = best_state.clone();
         state._recalculate_scores();
 
-        let elapsed = get_elapsed_seconds(start_time);
+        let elapsed = total_seconds;
 
         if state.logging.log_duration_and_score {
             println!("Solver finished in {elapsed:.2} seconds. Final score: {final_cost:.2}");
@@ -1487,7 +1710,12 @@ impl Solver for SimulatedAnnealing {
         }
 
         best_state.validate_scores();
-        let result = best_state.to_solver_result(final_cost, no_improvement_counter);
+        let result = best_state.to_solver_result_with_metadata(
+            final_cost,
+            no_improvement_counter,
+            Some(stop_reason),
+            Some(benchmark_telemetry.clone()),
+        );
 
         if state.logging.display_final_schedule {
             println!("{}", result.display());
