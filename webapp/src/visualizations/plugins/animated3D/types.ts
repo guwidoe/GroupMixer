@@ -29,6 +29,12 @@ export interface PlaybackState {
   speed: number; // Playback speed multiplier
 }
 
+// Track which people are being animated by dino/stork
+export interface AnimationCoordination {
+  eatenPeople: Map<string, { hidden: boolean }>;
+  deliveredPeople: Map<string, { visible: boolean }>;
+}
+
 // Audio manager interface
 export interface AudioManager {
   playDinoRoar: () => void;

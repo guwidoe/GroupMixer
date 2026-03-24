@@ -8,7 +8,12 @@ import { Stork, type StorkState } from "./Stork";
 import { GroupPlatform } from "./GroupPlatform";
 import { Ground } from "./Ground";
 import { Sky } from "./Sky";
-import type { GroupLayout, PlaybackState, SessionTransition } from "../types";
+import type {
+  AnimationCoordination,
+  GroupLayout,
+  PlaybackState,
+  SessionTransition,
+} from "../types";
 import type { NormalizedSchedule } from "../../../models/normalize";
 import type { PersonSessionData } from "../hooks/useAnimationState";
 
@@ -40,12 +45,6 @@ interface ActiveStork {
   targetPosition: THREE.Vector3;
   personName: string;
   state: StorkState;
-}
-
-// Track which people are being animated by dino/stork
-export interface AnimationCoordination {
-  eatenPeople: Map<string, { hidden: boolean }>;
-  deliveredPeople: Map<string, { visible: boolean }>;
 }
 
 export function Scene({
