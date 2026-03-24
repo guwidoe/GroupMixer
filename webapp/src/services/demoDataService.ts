@@ -18,23 +18,12 @@ export interface DemoCaseWithMetrics extends DemoCase {
 // Dynamically discover test case files
 // In a production environment, this would ideally be served by a backend endpoint
 async function discoverTestCaseFiles(): Promise<string[]> {
-  console.log("Discovering test case files...");
-
   // Try to fetch a manifest file first (if it exists)
   try {
-    console.log("Attempting to fetch manifest from: /test_cases/manifest.json");
     const manifestResponse = await fetch("/test_cases/manifest.json");
-    console.log("Manifest fetch response:", {
-      status: manifestResponse.status,
-      statusText: manifestResponse.statusText,
-      ok: manifestResponse.ok,
-      url: manifestResponse.url,
-      headers: Object.fromEntries(manifestResponse.headers.entries()),
-    });
 
     if (manifestResponse.ok) {
       const manifest = await manifestResponse.json();
-      console.log("Found manifest file with test cases:", manifest.files);
       return manifest.files;
     } else {
       console.warn(
@@ -46,9 +35,6 @@ async function discoverTestCaseFiles(): Promise<string[]> {
   }
 
   // If manifest doesn't exist, return empty list
-  console.log(
-    "No manifest file found, demo cases will need to be added manually"
-  );
   return [];
 }
 
@@ -97,15 +83,7 @@ async function loadTestCaseFile(
   filename: string
 ): Promise<DemoCaseWithMetrics | null> {
   try {
-    console.log(`Attempting to load test case file: ${filename}`);
     const response = await fetch(`/test_cases/${filename}`);
-    console.log(`Response for ${filename}:`, {
-      status: response.status,
-      statusText: response.statusText,
-      ok: response.ok,
-      url: response.url,
-      headers: Object.fromEntries(response.headers.entries()),
-    });
 
     if (!response.ok) {
       console.warn(
@@ -115,13 +93,9 @@ async function loadTestCaseFile(
     }
 
     const testCase = await response.json();
-    console.log(
-      `Successfully loaded and parsed ${filename}, checking for demo metadata...`
-    );
 
     // Check if this test case has demo metadata
     if (!testCase.demo_metadata) {
-      console.log(`Skipping ${filename} - no demo metadata found`);
       return null; // Skip files without demo metadata
     }
 
@@ -139,7 +113,6 @@ async function loadTestCaseFile(
       sessionCount: problem.num_sessions || 0,
     };
 
-    console.log(`Successfully created demo case for ${filename}:`, demoCase);
     return demoCase;
   } catch (error) {
     console.error(`Error loading test case file ${filename}:`, error);
@@ -151,8 +124,6 @@ async function loadTestCaseFile(
 export async function loadDemoCasesWithMetrics(): Promise<
   DemoCaseWithMetrics[]
 > {
-  console.log("Loading demo cases from test case files...");
-
   // First discover all available test case files
   const testCaseFiles = await discoverTestCaseFiles();
 
@@ -179,18 +150,11 @@ export async function loadDemoCasesWithMetrics(): Promise<
     return a.name.localeCompare(b.name);
   });
 
-  console.log(
-    `Loaded ${demoCases.length} demo cases:`,
-    demoCases.map((c) => c.name)
-  );
-
   return demoCases;
 }
 
 // Load a specific demo case by ID
 export async function loadDemoCase(demoCaseId: string): Promise<Problem> {
-  console.log(`Loading demo case: ${demoCaseId}`);
-
   // First, load all demo cases to find the one with matching ID
   const demoCases = await loadDemoCasesWithMetrics();
   const demoCase = demoCases.find((c) => c.id === demoCaseId);
