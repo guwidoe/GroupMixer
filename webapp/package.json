@@ -46,7 +46,7 @@
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^5.0.1",
-    "@eslint/js": "9.39.2",
+    "@eslint/js": "10.0.1",
     "@playwright/test": "^1.58.2",
     "@storybook/addon-a11y": "^10.2.19",
     "@storybook/addon-docs": "^10.2.19",
@@ -62,11 +62,11 @@
     "@vitest/browser-playwright": "^4.0.18",
     "@vitest/coverage-v8": "^4.0.18",
     "autoprefixer": "^10.4.27",
-    "eslint": "9.39.2",
+    "eslint": "10.1.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.5.0",
-    "eslint-plugin-storybook": "^10.2.6",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "eslint-plugin-storybook": "^10.3.3",
     "globals": "17.4.0",
     "jsdom": "^29.0.1",
     "playwright": "^1.58.2",
@@ -74,7 +74,7 @@
     "storybook": "^10.2.19",
     "tailwindcss": "^4.2.2",
     "typescript": "~5.9.3",
-    "typescript-eslint": "8.54.0",
+    "typescript-eslint": "8.57.2",
     "vite": "7.3.1",
     "vitest": "^4.0.18"
   }
