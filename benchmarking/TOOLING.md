@@ -28,6 +28,28 @@ Safety knobs:
 - `GROUPMIXER_BENCH_PYTHON_BIN=/usr/bin/python3` forces a known-safe interpreter when needed
 - `./tools/benchmark_workflow.sh doctor` reports the selected interpreter and refuses intercepted wrappers
 
+## Remote async workflow
+
+Primary entrypoint:
+
+```bash
+./tools/remote_benchmark_async.sh check
+./tools/remote_benchmark_async.sh snapshot
+./tools/remote_benchmark_async.sh record-main
+./tools/remote_benchmark_async.sh record-feature move-policy-refactor
+./tools/remote_benchmark_async.sh status <run-id>
+./tools/remote_benchmark_async.sh wait <run-id>
+./tools/remote_benchmark_async.sh fetch <run-id>
+```
+
+Remote runs stage an immutable repo snapshot and then execute benchmark workflow commands inside that snapshot.
+
+Safety knobs:
+
+- `GROUPMIXER_REMOTE_BENCH_BUILD_JOBS=1` bounds remote release builds
+- `GROUPMIXER_REMOTE_PYTHON_BIN=/usr/bin/python3` forces a known-safe remote interpreter when needed
+- mirrored metadata is written locally under `benchmarking/artifacts/remotes/<machine>/benchmark-runs/<run-id>/`
+
 ## Artifact root
 
 Default local artifact root:

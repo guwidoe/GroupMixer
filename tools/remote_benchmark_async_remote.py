@@ -177,6 +177,9 @@ if action == "start":
             "run_id": run_id,
             "bench_command": payload["bench_command"],
             "bench_args": payload.get("bench_args", []),
+            "bundle_kind": payload.get("bundle_kind", ""),
+            "feature_name": payload.get("feature_name", ""),
+            "feature_previous_targets": payload.get("feature_previous_targets", {}),
             "requested_suite": payload.get("requested_suite"),
             "requested_suites": payload.get("requested_suites", []),
             "remote_python_bin": payload.get("remote_python_bin", ""),
@@ -222,6 +225,9 @@ lock_file = Path({remote_lock_file!r})
 prefix = {prefix!r}
 bench_command = {payload['bench_command']!r}
 bench_args = {payload.get('bench_args', [])!r}
+bundle_kind = {payload.get('bundle_kind', '')!r}
+feature_name = {payload.get('feature_name', '')!r}
+feature_previous_targets = {payload.get('feature_previous_targets', {})!r}
 idle_max_load1 = {payload.get('idle_max_load1', '')!r}
 idle_poll_seconds = int({payload.get('idle_poll_seconds', '30')!r})
 idle_streak_required = int({payload.get('idle_streak', '1')!r})
@@ -243,6 +249,105 @@ def mark_done(exit_code: int):
     (run_dir / "exit_code").write_text(str(exit_code) + "\\n")
     (run_dir / "finished_at").write_text(iso_now() + "\\n")
     (run_dir / "done").touch()
+
+def resolve_stored_path(stored_path: str) -> Path:
+    path = Path(stored_path)
+    if path.is_absolute():
+        return path
+    return repo_dir / "benchmarking" / "artifacts" / path
+
+def load_recording_suite_runs() -> list[dict]:
+    recording_meta_path = repo_dir / "benchmarking" / "artifacts" / "recordings" / run_dir.name / "meta.json"
+    if not recording_meta_path.exists():
+        return []
+    return json.loads(recording_meta_path.read_text()).get("suite_runs", [])
+
+def load_ref_target_run_report(ref_name: str) -> str | None:
+    ref_path = repo_dir / "benchmarking" / "artifacts" / "refs" / f"{ref_name}.json"
+    if not ref_path.exists():
+        return None
+    data = json.loads(ref_path.read_text())
+    return data.get("target", {{}}).get("run_report_path")
+
+def run_followup_compare(log, *, suite_name: str, mode: str, current_run_report: Path, compare_label: str, baseline_run_report: Path | None = None, branch: str | None = None) -> int:
+    summary_dir = run_dir / "comparisons" / suite_name
+    summary_dir.mkdir(parents=True, exist_ok=True)
+    summary_path = summary_dir / f"{compare_label}.summary.txt"
+    cmd_parts = [
+        "./tools/benchmark_runner.py",
+    ]
+    if baseline_run_report is None:
+        cmd_parts.extend([
+            "compare-prev",
+            "--suite", suite_name,
+            "--mode", mode,
+            "--artifacts-dir", "benchmarking/artifacts",
+            "--summary-output", str(summary_path),
+        ])
+        if branch:
+            cmd_parts.extend(["--branch", branch])
+    else:
+        cmd_parts.extend([
+            "compare",
+            "--run", str(current_run_report),
+            "--baseline-run", str(baseline_run_report),
+            "--artifacts-dir", "benchmarking/artifacts",
+            "--summary-output", str(summary_path),
+        ])
+    command = prefix + " ".join(shlex.quote(part) for part in cmd_parts)
+    log.write(f"\\n[groupmixer][remote] follow-up compare: {{' '.join(cmd_parts)}}\\n")
+    log.flush()
+    followup = subprocess.run(["bash", "-lc", command], cwd=repo_dir, env=env, stdout=log, stderr=subprocess.STDOUT)
+    return followup.returncode
+
+def materialize_followup_comparisons(log) -> int:
+    if bench_command != "record-bundle" or not bundle_kind:
+        return 0
+    suite_runs = load_recording_suite_runs()
+    if not suite_runs:
+        log.write("\\n[groupmixer][remote] no recording metadata found for follow-up comparisons\\n")
+        log.flush()
+        return 1
+
+    overall = 0
+    for suite_run in suite_runs:
+        suite_name = suite_run.get("suite_name")
+        mode = suite_run.get("benchmark_mode", "full_solve")
+        current_run_report = resolve_stored_path(suite_run["run_report_path"])
+        if bundle_kind == "main":
+            rc = run_followup_compare(
+                log,
+                suite_name=suite_name,
+                mode=mode,
+                current_run_report=current_run_report,
+                compare_label="compare-prev",
+                branch={payload.get('git_branch', '')!r},
+            )
+            overall = overall or rc
+        elif bundle_kind == "feature":
+            main_latest = load_ref_target_run_report(f"main/suites/{{suite_name}}/{{mode}}/latest")
+            if main_latest:
+                rc = run_followup_compare(
+                    log,
+                    suite_name=suite_name,
+                    mode=mode,
+                    current_run_report=current_run_report,
+                    compare_label="compare-main-latest",
+                    baseline_run_report=resolve_stored_path(main_latest),
+                )
+                overall = overall or rc
+            feature_previous = feature_previous_targets.get(suite_name)
+            if feature_previous:
+                rc = run_followup_compare(
+                    log,
+                    suite_name=suite_name,
+                    mode=mode,
+                    current_run_report=current_run_report,
+                    compare_label="compare-feature-previous",
+                    baseline_run_report=resolve_stored_path(feature_previous),
+                )
+                overall = overall or rc
+    return overall
 
 def handle_term(signum, frame):
     mark_done(130)
@@ -296,6 +401,10 @@ with lock_file.open("a+") as lock_handle:
                 (run_dir / "timed_out").touch()
                 (run_dir / "timeout_seconds").write_text(str(bench_max_seconds) + "\\n")
                 break
+        if exit_code == 0:
+            followup_exit = materialize_followup_comparisons(log)
+            if followup_exit != 0:
+                exit_code = followup_exit
     (run_dir / "load_finished.json").write_text(json.dumps(load_snapshot(), indent=2) + "\\n")
     mark_done(exit_code)
     raise SystemExit(exit_code)

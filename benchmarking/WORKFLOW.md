@@ -179,6 +179,40 @@ Policy:
 - enable them explicitly with `GROUPMIXER_ENABLE_FIXTURE_PERF_ASSERTIONS=1` when you intentionally want that old lightweight signal
 - use `solver-cli benchmark ...` plus baselines/comparisons for durable runtime interpretation
 
+## Remote same-machine workflow
+
+For serious timing interpretation, use the designated remote benchmark lane.
+
+### Configure the machine once
+
+```bash
+cp ./tools/remote_benchmark.env.example ./tools/remote_benchmark.env
+# fill in SSH target, machine name, and stage dir
+./tools/remote_benchmark_async.sh check
+```
+
+### Queue a representative snapshot run
+
+```bash
+./tools/remote_benchmark_async.sh snapshot
+./tools/remote_benchmark_async.sh wait "$(./tools/remote_benchmark_async.sh latest)"
+./tools/remote_benchmark_async.sh fetch "$(./tools/remote_benchmark_async.sh latest)"
+```
+
+### Queue a mainline bundle
+
+```bash
+./tools/remote_benchmark_async.sh record-main
+```
+
+### Queue a feature-validation bundle
+
+```bash
+./tools/remote_benchmark_async.sh record-feature move-policy-refactor
+```
+
+Both bundle commands stage an immutable snapshot, persist one recording, and materialize explicit comparison follow-ups for the relevant lanes.
+
 ## Relationship between layers
 
 - `solver-core/tests/**` remains the semantic contract

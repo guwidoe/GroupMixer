@@ -224,6 +224,26 @@ Examples:
 ./tools/benchmark_workflow.sh compare-prev --suite representative
 ```
 
+## Remote-machine mirror layout
+
+When remote async runs are used, remote state is mirrored locally under:
+
+```text
+benchmarking/artifacts/remotes/
+  <machine-id>/
+    artifacts/
+      ... mirrored shared remote benchmark artifacts ...
+    benchmark-runs/
+      <run-id>/
+        start.json
+        status.json
+        benchmark.log
+        meta.json
+        ...
+```
+
+This local mirror lets operators inspect remote queue state and fetched artifacts without shelling back into the benchmark machine.
+
 ## Forward link to remote benchmarking
 
 This recording store is the foundation for the next benchmark wave:

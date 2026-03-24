@@ -150,8 +150,12 @@ enum BenchmarkCommands {
         run: PathBuf,
 
         /// Baseline name (resolved via machine + suite) or explicit baseline snapshot path
-        #[arg(long, value_name = "NAME_OR_FILE")]
-        baseline: String,
+        #[arg(long, value_name = "NAME_OR_FILE", conflicts_with = "baseline_run")]
+        baseline: Option<String>,
+
+        /// Path to a baseline run-report.json to compare against directly
+        #[arg(long, value_name = "FILE", conflicts_with = "baseline")]
+        baseline_run: Option<PathBuf>,
 
         /// Override artifact root (defaults to GROUPMIXER_BENCHMARK_ARTIFACTS_DIR or benchmarking/artifacts)
         #[arg(long, value_name = "DIR")]
@@ -448,9 +452,10 @@ fn cmd_benchmark(command: BenchmarkCommands) -> Result<()> {
         BenchmarkCommands::Compare {
             run,
             baseline,
+            baseline_run,
             artifacts_dir,
             summary_output,
-        } => cmd_benchmark_compare(run, baseline, artifacts_dir, summary_output),
+        } => cmd_benchmark_compare(run, baseline, baseline_run, artifacts_dir, summary_output),
         BenchmarkCommands::Record {
             suite,
             manifest,
@@ -602,7 +607,8 @@ fn cmd_benchmark_run(
 
 fn cmd_benchmark_compare(
     run_path: PathBuf,
-    baseline: String,
+    baseline: Option<String>,
+    baseline_run: Option<PathBuf>,
     artifacts_dir: Option<PathBuf>,
     summary_output: Option<PathBuf>,
 ) -> Result<()> {
@@ -610,14 +616,30 @@ fn cmd_benchmark_compare(
     storage.ensure_layout()?;
 
     let run_report = load_run_report(&run_path)?;
-    let baseline_path = storage.resolve_baseline_path(&baseline, Some(&run_report))?;
-    let baseline_snapshot = load_baseline_snapshot(&baseline_path)?;
+    let (baseline_snapshot, baseline_source) = if let Some(baseline_name) = baseline {
+        let baseline_path = storage.resolve_baseline_path(&baseline_name, Some(&run_report))?;
+        (load_baseline_snapshot(&baseline_path)?, baseline_path.display().to_string())
+    } else if let Some(baseline_run_path) = baseline_run {
+        let baseline_run_report = load_run_report(&baseline_run_path)?;
+        (
+            solver_benchmarking::BaselineSnapshot {
+                schema_version: solver_benchmarking::BASELINE_SNAPSHOT_SCHEMA_VERSION,
+                baseline_name: baseline_run_report.run.run_id.clone(),
+                created_at: baseline_run_report.run.generated_at.clone(),
+                source_run_path: Some(baseline_run_path.display().to_string()),
+                run_report: baseline_run_report,
+            },
+            baseline_run_path.display().to_string(),
+        )
+    } else {
+        anyhow::bail!("compare requires either --baseline or --baseline-run");
+    };
     let comparison = compare_run_to_baseline(&run_report, &baseline_snapshot);
     let comparison_path = persist_comparison_report(&comparison, storage.root())?;
     let summary = render_comparison_summary(&comparison);
 
     println!("Comparison artifact: {}", comparison_path.display());
-    println!("Baseline source: {}", baseline_path.display());
+    println!("Baseline source: {}", baseline_source);
     println!();
     println!("{}", summary);
 

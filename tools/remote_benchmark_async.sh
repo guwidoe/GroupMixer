@@ -206,6 +206,9 @@ build_payload_json() {
   BENCH_MAX_SECONDS="${GROUPMIXER_REMOTE_BENCH_MAX_SECONDS}" \
   BENCH_KILL_AFTER_SECONDS="${GROUPMIXER_REMOTE_BENCH_KILL_AFTER_SECONDS}" \
   BENCH_BUILD_JOBS="${GROUPMIXER_REMOTE_BENCH_BUILD_JOBS}" \
+  BUNDLE_KIND_VALUE="${GROUPMIXER_REMOTE_PAYLOAD_BUNDLE_KIND:-}" \
+  FEATURE_NAME_VALUE="${GROUPMIXER_REMOTE_PAYLOAD_FEATURE_NAME:-}" \
+  FEATURE_PREVIOUS_TARGETS_JSON_VALUE="${GROUPMIXER_REMOTE_PAYLOAD_FEATURE_PREVIOUS_TARGETS_JSON:-}" \
   python3 - "$action" "$run_id" "$bench_command" "$@" <<'PY'
 import json
 import os
@@ -236,9 +239,50 @@ payload = {
     "bench_max_seconds": os.environ.get("BENCH_MAX_SECONDS", "7200"),
     "bench_kill_after_seconds": os.environ.get("BENCH_KILL_AFTER_SECONDS", "30"),
     "bench_build_jobs": os.environ.get("BENCH_BUILD_JOBS", "1"),
+    "bundle_kind": os.environ.get("BUNDLE_KIND_VALUE", ""),
+    "feature_name": os.environ.get("FEATURE_NAME_VALUE", ""),
+    "feature_previous_targets": json.loads(os.environ.get("FEATURE_PREVIOUS_TARGETS_JSON_VALUE", "{}") or "{}"),
 }
 print(json.dumps(payload))
 PY
+}
+
+remote_ref_target_run_report() {
+  local ref_name="$1"
+  "${GROUPMIXER_REMOTE_SSH_BIN}" "${GROUPMIXER_REMOTE_SSH_TARGET}" python3 - <<PY
+import json
+from pathlib import Path
+ref_path = Path(${REMOTE_SHARED_ARTIFACTS_DIR@Q}) / "refs" / (${ref_name@Q} + ".json")
+if ref_path.exists():
+    data = json.loads(ref_path.read_text())
+    target = data.get("target", {})
+    print(target.get("run_report_path", ""))
+PY
+}
+
+collect_feature_previous_targets_json() {
+  local feature_name="$1"
+  shift
+  local sanitized_feature_name
+  sanitized_feature_name="$(sanitize_name "${feature_name}")"
+  local targets_json="{}"
+  local suite target ref_name
+  for suite in "$@"; do
+    ref_name="features/${sanitized_feature_name}/suites/${suite}/full_solve/latest"
+    target="$(remote_ref_target_run_report "${ref_name}")"
+    if [[ -n "${target}" ]]; then
+      targets_json="$(TARGETS_JSON="${targets_json}" SUITE_NAME="${suite}" TARGET_PATH="${target}" python3 - <<'PY'
+import json
+import os
+
+mapping = json.loads(os.environ["TARGETS_JSON"])
+mapping[os.environ["SUITE_NAME"]] = os.environ["TARGET_PATH"]
+print(json.dumps(mapping))
+PY
+)"
+    fi
+  done
+  printf '%s\n' "${targets_json}"
 }
 
 run_remote_action() {
@@ -531,7 +575,37 @@ start_recording_bundle() {
     bundle_args+=(--suite "${suite}")
   done
 
-  start_run record-bundle "${bundle_args[@]}"
+  local feature_previous_targets_json="{}"
+  if [[ "${bundle_kind}" == "feature" ]]; then
+    feature_previous_targets_json="$(collect_feature_previous_targets_json "${feature_name}" "${suites[@]}")"
+  fi
+
+  local run_id
+  run_id="$(generate_run_id "${label}")"
+  bundle_args+=(--recording-id "${run_id}")
+  stage_remote_run_snapshot "${run_id}"
+  local payload_json start_json effective_run_id
+  GROUPMIXER_REMOTE_PAYLOAD_BUNDLE_KIND="${bundle_kind}" \
+  GROUPMIXER_REMOTE_PAYLOAD_FEATURE_NAME="${feature_name}" \
+  GROUPMIXER_REMOTE_PAYLOAD_FEATURE_PREVIOUS_TARGETS_JSON="${feature_previous_targets_json}" \
+    payload_json="$(build_payload_json start "${run_id}" "record-bundle" "${bundle_args[@]}")"
+  start_json="$(run_remote_action "${payload_json}")"
+  effective_run_id="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["run_id"])' <<<"${start_json}")"
+  write_latest_local "${effective_run_id}"
+  write_local_run_json "${effective_run_id}" "start.json" "${start_json}"
+  mirror_run "${effective_run_id}"
+  python3 - <<'PY' <<<"${start_json}"
+import json, sys
+start = json.load(sys.stdin)
+if start.get("deduped"):
+    print(f"[groupmixer][remote] reusing active benchmark run {start['run_id']}")
+else:
+    print(f"[groupmixer][remote] started benchmark run {start['run_id']}")
+print(f"[groupmixer][remote] launcher: {start.get('launcher','')}")
+print(f"[groupmixer][remote] session: {start.get('session_name','')}")
+print(f"[groupmixer][remote] pid: {start.get('pid','')}")
+print(f"[groupmixer][remote] log: {start.get('remote_log','')}")
+PY
 }
 
 run_check() {
