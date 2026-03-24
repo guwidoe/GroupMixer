@@ -39,6 +39,22 @@ pub struct RecordingOptions {
     pub feature_name: Option<String>,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct RecordingQuery {
+    pub machine_id: Option<String>,
+    pub branch: Option<String>,
+    pub feature_name: Option<String>,
+    pub purpose: Option<String>,
+    pub suite_name: Option<String>,
+    pub benchmark_mode: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RecordingSuiteRunMatch {
+    pub recording: RecordingMetadata,
+    pub suite_run: RecordingSuiteRun,
+}
+
 pub fn recording_dir(root: &Path, recording_id: &str) -> PathBuf {
     root.join("recordings").join(recording_id)
 }
@@ -156,6 +172,74 @@ pub fn list_recording_metadatas(root: &Path) -> Result<Vec<RecordingMetadata>> {
         out.push(load_recording(root, &row.recording_id)?);
     }
     Ok(out)
+}
+
+pub fn find_recording_suite_runs(
+    root: &Path,
+    query: &RecordingQuery,
+) -> Result<Vec<RecordingSuiteRunMatch>> {
+    let mut matches = Vec::new();
+
+    for recording in list_recording_metadatas(root)? {
+        if let Some(machine_id) = &query.machine_id {
+            if &recording.machine.id != machine_id {
+                continue;
+            }
+        }
+        if let Some(branch) = &query.branch {
+            if &recording.git.branch != branch {
+                continue;
+            }
+        }
+        if let Some(feature_name) = &query.feature_name {
+            if recording.feature_name.as_ref() != Some(feature_name) {
+                continue;
+            }
+        }
+        if let Some(purpose) = &query.purpose {
+            if &recording.purpose != purpose {
+                continue;
+            }
+        }
+
+        for suite_run in &recording.suite_runs {
+            if let Some(suite_name) = &query.suite_name {
+                if &suite_run.suite_name != suite_name {
+                    continue;
+                }
+            }
+            if let Some(benchmark_mode) = &query.benchmark_mode {
+                if &suite_run.benchmark_mode != benchmark_mode {
+                    continue;
+                }
+            }
+
+            matches.push(RecordingSuiteRunMatch {
+                recording: recording.clone(),
+                suite_run: suite_run.clone(),
+            });
+        }
+    }
+
+    matches.sort_by(|left, right| {
+        right
+            .recording
+            .recorded_at
+            .cmp(&left.recording.recorded_at)
+            .then_with(|| right.recording.recording_id.cmp(&left.recording.recording_id))
+            .then_with(|| right.suite_run.suite_name.cmp(&left.suite_run.suite_name))
+    });
+
+    Ok(matches)
+}
+
+pub fn resolve_artifact_path(root: &Path, stored_path: &str) -> PathBuf {
+    let path = PathBuf::from(stored_path);
+    if path.is_absolute() {
+        path
+    } else {
+        root.join(path)
+    }
 }
 
 fn recording_suite_run(root: &Path, run: &RecordingRunInput) -> Result<RecordingSuiteRun> {

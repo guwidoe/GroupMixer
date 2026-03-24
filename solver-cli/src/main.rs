@@ -17,7 +17,10 @@ use clap::{Parser, Subcommand, ValueEnum};
 use solver_benchmarking::{
     compare_run_to_baseline, load_baseline_snapshot, load_run_report, persist_comparison_report,
     persist_run_report, render_comparison_summary, run_suite_from_manifest, save_baseline_snapshot,
-    BaselineDescriptor, BenchmarkStorage, RunnerOptions,
+    create_recording_for_run, create_recording_for_runs, find_recording_suite_runs,
+    list_recordings, list_refs, load_recording, load_ref, resolve_artifact_path,
+    BaselineDescriptor, BenchmarkStorage, RecordingOptions, RecordingQuery, RecordingRunInput,
+    RunnerOptions, FULL_SOLVE_BENCHMARK_MODE,
 };
 use solver_core::models::ApiInput;
 use solver_core::{calculate_recommended_settings, run_solver};
@@ -159,6 +162,153 @@ enum BenchmarkCommands {
         summary_output: Option<PathBuf>,
     },
 
+    /// Run one suite and persist it as a recording
+    Record {
+        /// Built-in suite id to run
+        #[arg(long, value_enum, default_value = "path", conflicts_with = "manifest")]
+        suite: BenchmarkSuiteArg,
+
+        /// Explicit benchmark suite manifest path
+        #[arg(long, value_name = "FILE")]
+        manifest: Option<PathBuf>,
+
+        /// Override artifact root
+        #[arg(long, value_name = "DIR")]
+        artifacts_dir: Option<PathBuf>,
+
+        /// Cargo profile label stored in machine metadata
+        #[arg(long, default_value = "dev")]
+        cargo_profile: String,
+
+        /// Explicit recording id
+        #[arg(long, value_name = "ID")]
+        recording_id: Option<String>,
+
+        /// Recording purpose label
+        #[arg(long, default_value = "manual-record")]
+        purpose: String,
+
+        /// Optional feature label for feature-lane refs
+        #[arg(long, value_name = "FEATURE")]
+        feature_name: Option<String>,
+    },
+
+    /// Run multiple suites and persist one bundle recording
+    RecordBundle {
+        /// Built-in suite ids to run; may be repeated
+        #[arg(long, value_enum, value_name = "SUITE")]
+        suite: Vec<BenchmarkSuiteArg>,
+
+        /// Explicit benchmark suite manifest paths; may be repeated
+        #[arg(long, value_name = "FILE")]
+        manifest: Vec<PathBuf>,
+
+        /// Override artifact root
+        #[arg(long, value_name = "DIR")]
+        artifacts_dir: Option<PathBuf>,
+
+        /// Cargo profile label stored in machine metadata
+        #[arg(long, default_value = "dev")]
+        cargo_profile: String,
+
+        /// Explicit recording id
+        #[arg(long, value_name = "ID")]
+        recording_id: Option<String>,
+
+        /// Recording purpose label
+        #[arg(long, default_value = "manual-bundle")]
+        purpose: String,
+
+        /// Optional feature label for feature-lane refs
+        #[arg(long, value_name = "FEATURE")]
+        feature_name: Option<String>,
+    },
+
+    /// Compare the latest recording in a suite lane to the previous one
+    ComparePrev {
+        /// Suite lane to compare
+        #[arg(long, value_name = "SUITE")]
+        suite: String,
+
+        /// Benchmark mode within the suite lane
+        #[arg(long, default_value = FULL_SOLVE_BENCHMARK_MODE)]
+        mode: String,
+
+        /// Override artifact root
+        #[arg(long, value_name = "DIR")]
+        artifacts_dir: Option<PathBuf>,
+
+        /// Filter to one machine id
+        #[arg(long, value_name = "MACHINE")]
+        machine_id: Option<String>,
+
+        /// Filter to one branch
+        #[arg(long, value_name = "BRANCH")]
+        branch: Option<String>,
+
+        /// Optional path to also write the human-readable summary text
+        #[arg(long, value_name = "FILE")]
+        summary_output: Option<PathBuf>,
+    },
+
+    /// Recording history operations
+    Recordings {
+        #[command(subcommand)]
+        command: BenchmarkRecordingsCommands,
+    },
+
+    /// Benchmark ref operations
+    Refs {
+        #[command(subcommand)]
+        command: BenchmarkRefsCommands,
+    },
+
+    /// Show the latest recording or lane entry
+    Latest {
+        /// Override artifact root
+        #[arg(long, value_name = "DIR")]
+        artifacts_dir: Option<PathBuf>,
+
+        /// Optional suite lane filter
+        #[arg(long, value_name = "SUITE")]
+        suite: Option<String>,
+
+        /// Benchmark mode when filtering by suite lane
+        #[arg(long, default_value = FULL_SOLVE_BENCHMARK_MODE)]
+        mode: String,
+
+        /// Filter to one machine id
+        #[arg(long, value_name = "MACHINE")]
+        machine_id: Option<String>,
+
+        /// Filter to one branch
+        #[arg(long, value_name = "BRANCH")]
+        branch: Option<String>,
+    },
+
+    /// Show the previous recording or lane entry
+    Previous {
+        /// Override artifact root
+        #[arg(long, value_name = "DIR")]
+        artifacts_dir: Option<PathBuf>,
+
+        /// Optional suite lane filter
+        #[arg(long, value_name = "SUITE")]
+        suite: Option<String>,
+
+        /// Benchmark mode when filtering by suite lane
+        #[arg(long, default_value = FULL_SOLVE_BENCHMARK_MODE)]
+        mode: String,
+
+        /// Filter to one machine id
+        #[arg(long, value_name = "MACHINE")]
+        machine_id: Option<String>,
+
+        /// Filter to one branch
+        #[arg(long, value_name = "BRANCH")]
+        branch: Option<String>,
+    },
+
     /// Baseline snapshot operations
     Baseline {
         #[command(subcommand)]
@@ -196,6 +346,42 @@ enum BenchmarkBaselineCommands {
         /// Filter to one machine id
         #[arg(long, value_name = "MACHINE")]
         machine_id: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+enum BenchmarkRecordingsCommands {
+    /// List known benchmark recordings
+    List {
+        #[arg(long, value_name = "DIR")]
+        artifacts_dir: Option<PathBuf>,
+    },
+
+    /// Show one recording as JSON
+    Show {
+        #[arg(value_name = "ID")]
+        recording_id: String,
+
+        #[arg(long, value_name = "DIR")]
+        artifacts_dir: Option<PathBuf>,
+    },
+}
+
+#[derive(Subcommand)]
+enum BenchmarkRefsCommands {
+    /// List benchmark refs
+    List {
+        #[arg(long, value_name = "DIR")]
+        artifacts_dir: Option<PathBuf>,
+    },
+
+    /// Show one benchmark ref as JSON
+    Show {
+        #[arg(value_name = "NAME")]
+        ref_name: String,
+
+        #[arg(long, value_name = "DIR")]
+        artifacts_dir: Option<PathBuf>,
     },
 }
 
@@ -265,6 +451,99 @@ fn cmd_benchmark(command: BenchmarkCommands) -> Result<()> {
             artifacts_dir,
             summary_output,
         } => cmd_benchmark_compare(run, baseline, artifacts_dir, summary_output),
+        BenchmarkCommands::Record {
+            suite,
+            manifest,
+            artifacts_dir,
+            cargo_profile,
+            recording_id,
+            purpose,
+            feature_name,
+        } => cmd_benchmark_record(
+            suite,
+            manifest,
+            artifacts_dir,
+            cargo_profile,
+            recording_id,
+            purpose,
+            feature_name,
+        ),
+        BenchmarkCommands::RecordBundle {
+            suite,
+            manifest,
+            artifacts_dir,
+            cargo_profile,
+            recording_id,
+            purpose,
+            feature_name,
+        } => cmd_benchmark_record_bundle(
+            suite,
+            manifest,
+            artifacts_dir,
+            cargo_profile,
+            recording_id,
+            purpose,
+            feature_name,
+        ),
+        BenchmarkCommands::ComparePrev {
+            suite,
+            mode,
+            artifacts_dir,
+            machine_id,
+            branch,
+            summary_output,
+        } => cmd_benchmark_compare_prev(
+            suite,
+            mode,
+            artifacts_dir,
+            machine_id,
+            branch,
+            summary_output,
+        ),
+        BenchmarkCommands::Recordings { command } => match command {
+            BenchmarkRecordingsCommands::List { artifacts_dir } => {
+                cmd_benchmark_recordings_list(artifacts_dir)
+            }
+            BenchmarkRecordingsCommands::Show {
+                recording_id,
+                artifacts_dir,
+            } => cmd_benchmark_recordings_show(recording_id, artifacts_dir),
+        },
+        BenchmarkCommands::Refs { command } => match command {
+            BenchmarkRefsCommands::List { artifacts_dir } => cmd_benchmark_refs_list(artifacts_dir),
+            BenchmarkRefsCommands::Show {
+                ref_name,
+                artifacts_dir,
+            } => cmd_benchmark_refs_show(ref_name, artifacts_dir),
+        },
+        BenchmarkCommands::Latest {
+            artifacts_dir,
+            suite,
+            mode,
+            machine_id,
+            branch,
+        } => cmd_benchmark_latest_or_previous(
+            artifacts_dir,
+            suite,
+            mode,
+            machine_id,
+            branch,
+            0,
+        ),
+        BenchmarkCommands::Previous {
+            artifacts_dir,
+            suite,
+            mode,
+            machine_id,
+            branch,
+        } => cmd_benchmark_latest_or_previous(
+            artifacts_dir,
+            suite,
+            mode,
+            machine_id,
+            branch,
+            1,
+        ),
         BenchmarkCommands::Baseline { command } => match command {
             BenchmarkBaselineCommands::Save {
                 run,
@@ -350,6 +629,275 @@ fn cmd_benchmark_compare(
     Ok(())
 }
 
+fn cmd_benchmark_record(
+    suite: BenchmarkSuiteArg,
+    manifest: Option<PathBuf>,
+    artifacts_dir: Option<PathBuf>,
+    cargo_profile: String,
+    recording_id: Option<String>,
+    purpose: String,
+    feature_name: Option<String>,
+) -> Result<()> {
+    let storage = benchmark_storage(artifacts_dir);
+    storage.ensure_layout()?;
+
+    let manifest_path = resolve_suite_manifest_path(&suite, manifest);
+    let options = RunnerOptions {
+        artifacts_dir: storage.root().to_path_buf(),
+        cargo_profile,
+    };
+
+    let report = run_suite_from_manifest(&manifest_path, &options)?;
+    let run_path = persist_run_report(&report, storage.root())?;
+    let recording = create_recording_for_run(
+        storage.root(),
+        report,
+        run_path.clone(),
+        &RecordingOptions {
+            recording_id,
+            purpose,
+            source: "solver-cli benchmark record".to_string(),
+            feature_name,
+        },
+    )?;
+
+    println!("Run report: {}", run_path.display());
+    println!(
+        "Recording saved: {}",
+        storage
+            .recordings_dir()
+            .join(&recording.recording_id)
+            .join("meta.json")
+            .display()
+    );
+    Ok(())
+}
+
+fn cmd_benchmark_record_bundle(
+    suites: Vec<BenchmarkSuiteArg>,
+    manifests: Vec<PathBuf>,
+    artifacts_dir: Option<PathBuf>,
+    cargo_profile: String,
+    recording_id: Option<String>,
+    purpose: String,
+    feature_name: Option<String>,
+) -> Result<()> {
+    let storage = benchmark_storage(artifacts_dir);
+    storage.ensure_layout()?;
+
+    let manifest_paths = resolve_bundle_manifest_paths(suites, manifests)?;
+    let options = RunnerOptions {
+        artifacts_dir: storage.root().to_path_buf(),
+        cargo_profile,
+    };
+
+    let mut inputs = Vec::with_capacity(manifest_paths.len());
+    for manifest_path in manifest_paths {
+        let report = run_suite_from_manifest(&manifest_path, &options)?;
+        let run_path = persist_run_report(&report, storage.root())?;
+        println!("Run report: {}", run_path.display());
+        inputs.push(RecordingRunInput::full_solve(report, run_path));
+    }
+
+    let recording = create_recording_for_runs(
+        storage.root(),
+        inputs,
+        &RecordingOptions {
+            recording_id,
+            purpose,
+            source: "solver-cli benchmark record-bundle".to_string(),
+            feature_name,
+        },
+    )?;
+
+    println!(
+        "Recording saved: {}",
+        storage
+            .recordings_dir()
+            .join(&recording.recording_id)
+            .join("meta.json")
+            .display()
+    );
+    Ok(())
+}
+
+fn cmd_benchmark_compare_prev(
+    suite: String,
+    mode: String,
+    artifacts_dir: Option<PathBuf>,
+    machine_id: Option<String>,
+    branch: Option<String>,
+    summary_output: Option<PathBuf>,
+) -> Result<()> {
+    let storage = benchmark_storage(artifacts_dir);
+    storage.ensure_layout()?;
+
+    let query = RecordingQuery {
+        machine_id,
+        branch,
+        feature_name: None,
+        purpose: None,
+        suite_name: Some(suite),
+        benchmark_mode: Some(mode),
+    };
+    let matches = find_recording_suite_runs(storage.root(), &query)?;
+    if matches.len() < 2 {
+        anyhow::bail!("compare-prev requires at least two recordings in the selected suite lane");
+    }
+
+    let current = &matches[0];
+    let previous = &matches[1];
+    let current_run = load_run_report(resolve_artifact_path(storage.root(), &current.suite_run.run_report_path))?;
+    let baseline_run = load_run_report(resolve_artifact_path(storage.root(), &previous.suite_run.run_report_path))?;
+    let synthetic_baseline = solver_benchmarking::BaselineSnapshot {
+        schema_version: solver_benchmarking::BASELINE_SNAPSHOT_SCHEMA_VERSION,
+        baseline_name: format!("previous-{}", previous.recording.recording_id),
+        created_at: previous.recording.recorded_at.clone(),
+        source_run_path: Some(previous.suite_run.run_report_path.clone()),
+        run_report: baseline_run,
+    };
+    let comparison = compare_run_to_baseline(&current_run, &synthetic_baseline);
+    let comparison_path = persist_comparison_report(&comparison, storage.root())?;
+    let summary = render_comparison_summary(&comparison);
+
+    println!("Comparison artifact: {}", comparison_path.display());
+    println!(
+        "Compared latest recording {} against previous {}",
+        current.recording.recording_id, previous.recording.recording_id
+    );
+    println!();
+    println!("{}", summary);
+
+    if let Some(summary_output) = summary_output {
+        write_text_file(&summary_output, &summary)?;
+        println!("Summary written: {}", summary_output.display());
+    }
+
+    Ok(())
+}
+
+fn cmd_benchmark_recordings_list(artifacts_dir: Option<PathBuf>) -> Result<()> {
+    let storage = benchmark_storage(artifacts_dir);
+    storage.ensure_layout()?;
+
+    let rows = list_recordings(storage.root())?;
+    if rows.is_empty() {
+        println!("No recordings found under {}", storage.root().display());
+        return Ok(());
+    }
+
+    println!("Recordings under {}", storage.root().display());
+    for row in rows {
+        println!(
+            "- id={} recorded_at={} purpose={} branch={} short_sha={} machine={} suite_count={}{}",
+            row.recording_id,
+            row.recorded_at,
+            row.purpose,
+            row.git_branch,
+            row.git_short_sha,
+            row.machine_id,
+            row.suite_count,
+            row.feature_name
+                .as_ref()
+                .map(|value| format!(" feature={value}"))
+                .unwrap_or_default()
+        );
+    }
+    Ok(())
+}
+
+fn cmd_benchmark_recordings_show(recording_id: String, artifacts_dir: Option<PathBuf>) -> Result<()> {
+    let storage = benchmark_storage(artifacts_dir);
+    storage.ensure_layout()?;
+    let recording = load_recording(storage.root(), &recording_id)?;
+    print_json_pretty(&recording)
+}
+
+fn cmd_benchmark_refs_list(artifacts_dir: Option<PathBuf>) -> Result<()> {
+    let storage = benchmark_storage(artifacts_dir);
+    storage.ensure_layout()?;
+    let rows = list_refs(storage.root())?;
+    if rows.is_empty() {
+        println!("No refs found under {}", storage.root().display());
+        return Ok(());
+    }
+
+    println!("Refs under {}", storage.root().display());
+    for row in rows {
+        println!(
+            "- ref={} recording={} suite={} mode={} updated_at={}",
+            row.ref_name,
+            row.target_recording_id,
+            row.target_suite_name,
+            row.target_benchmark_mode,
+            row.updated_at
+        );
+    }
+    Ok(())
+}
+
+fn cmd_benchmark_refs_show(ref_name: String, artifacts_dir: Option<PathBuf>) -> Result<()> {
+    let storage = benchmark_storage(artifacts_dir);
+    storage.ensure_layout()?;
+    let benchmark_ref = load_ref(storage.root(), &ref_name)?;
+    print_json_pretty(&benchmark_ref)
+}
+
+fn cmd_benchmark_latest_or_previous(
+    artifacts_dir: Option<PathBuf>,
+    suite: Option<String>,
+    mode: String,
+    machine_id: Option<String>,
+    branch: Option<String>,
+    index: usize,
+) -> Result<()> {
+    let storage = benchmark_storage(artifacts_dir);
+    storage.ensure_layout()?;
+
+    if let Some(suite) = suite {
+        let matches = find_recording_suite_runs(
+            storage.root(),
+            &RecordingQuery {
+                machine_id,
+                branch,
+                feature_name: None,
+                purpose: None,
+                suite_name: Some(suite),
+                benchmark_mode: Some(mode),
+            },
+        )?;
+        let Some(entry) = matches.get(index) else {
+            anyhow::bail!("no matching recording found for requested lane position {}", index);
+        };
+        println!(
+            "recording_id={} suite={} mode={} run_id={} recorded_at={} machine={} branch={}",
+            entry.recording.recording_id,
+            entry.suite_run.suite_name,
+            entry.suite_run.benchmark_mode,
+            entry.suite_run.run_id,
+            entry.recording.recorded_at,
+            entry.recording.machine.id,
+            entry.recording.git.branch
+        );
+        return Ok(());
+    }
+
+    let recordings = solver_benchmarking::list_recording_metadatas(storage.root())?;
+    let Some(recording) = recordings.get(index) else {
+        anyhow::bail!("no recording found at position {}", index);
+    };
+    println!(
+        "recording_id={} recorded_at={} purpose={} machine={} branch={} suite_count={}",
+        recording.recording_id,
+        recording.recorded_at,
+        recording.purpose,
+        recording.machine.id,
+        recording.git.branch,
+        recording.suite_runs.len()
+    );
+    Ok(())
+}
+
 fn cmd_benchmark_baseline_save(
     run_path: PathBuf,
     name: String,
@@ -413,12 +961,32 @@ fn resolve_suite_manifest_path(
     })
 }
 
+fn resolve_bundle_manifest_paths(
+    suites: Vec<BenchmarkSuiteArg>,
+    manifests: Vec<PathBuf>,
+) -> Result<Vec<PathBuf>> {
+    let mut out: Vec<PathBuf> = suites
+        .into_iter()
+        .map(|suite| resolve_suite_manifest_path(&suite, None))
+        .collect();
+    out.extend(manifests);
+    if out.is_empty() {
+        anyhow::bail!("record-bundle requires at least one --suite or --manifest");
+    }
+    Ok(out)
+}
+
 fn write_text_file(path: &Path, contents: &str) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
             .with_context(|| format!("Failed to create parent dir {:?}", parent))?;
     }
     fs::write(path, contents).with_context(|| format!("Failed to write file: {:?}", path))
+}
+
+fn print_json_pretty<T: serde::Serialize>(value: &T) -> Result<()> {
+    println!("{}", serde_json::to_string_pretty(value)?);
+    Ok(())
 }
 
 fn read_input(file: Option<PathBuf>, use_stdin: bool) -> Result<String> {

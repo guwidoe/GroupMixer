@@ -31,9 +31,10 @@ pub use recording_types::{
     BENCHMARK_REF_SCHEMA_VERSION, FULL_SOLVE_BENCHMARK_MODE, RECORDING_SCHEMA_VERSION,
 };
 pub use recordings::{
-    create_recording_for_run, create_recording_for_runs, list_recording_metadatas,
-    load_recording, persist_recording, recording_dir, recording_meta_path, RecordingOptions,
-    RecordingRunInput,
+    create_recording_for_run, create_recording_for_runs, find_recording_suite_runs,
+    list_recording_metadatas, load_recording, persist_recording, recording_dir,
+    recording_meta_path, resolve_artifact_path, RecordingOptions, RecordingQuery,
+    RecordingRunInput, RecordingSuiteRunMatch,
 };
 pub use refs::{build_ref, load_ref, ref_file_path, standard_ref_names};
 pub use runner::{
