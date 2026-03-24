@@ -130,12 +130,23 @@ impl State {
             return f64::INFINITY; // No participating clique members
         }
 
+        if target_people.len() != active_members.len() {
+            return f64::INFINITY;
+        }
+
         // Check if target people are all participating
         if !target_people
             .iter()
             .all(|&person| self.person_participation[person][day])
         {
             return f64::INFINITY; // Some target people not participating
+        }
+
+        if !target_people
+            .iter()
+            .all(|&person| self.locations[day][person].0 == to_group)
+        {
+            return f64::INFINITY;
         }
 
         // Hard guard: do not allow moving a clique if any active member is immovable to a different group
@@ -156,84 +167,14 @@ impl State {
             }
         }
 
-        let mut delta_cost = 0.0;
-
-        // Calculate contact/repetition delta for active members only
-        for &clique_member in &active_members {
-            for &target_person in target_people {
-                // Current contacts between clique member and target person
-                let current_contacts = self.contact_matrix[clique_member][target_person];
-
-                // After swap, they will have one more contact
-                let new_contacts = current_contacts + 1;
-
-                // Repetition penalty delta
-                let old_penalty = if current_contacts > 1 {
-                    (current_contacts as i32 - 1).pow(2)
-                } else {
-                    0
-                };
-                let new_penalty = (new_contacts as i32 - 1).pow(2);
-                delta_cost += self.w_repetition * (new_penalty - old_penalty) as f64;
-
-                // Unique contacts delta
-                if current_contacts == 0 {
-                    delta_cost -= self.w_contacts; // Gaining a unique contact
-                } else if current_contacts == 1 {
-                    delta_cost += self.w_contacts; // Losing a unique contact
-                }
-            }
-
-            // Lost contacts with people remaining in from_group
-            let from_group_members = &self.schedule[day][from_group];
-            for &remaining_member in from_group_members {
-                if remaining_member == clique_member || active_members.contains(&remaining_member) {
-                    continue;
-                }
-                // Only consider participating members
-                if !self.person_participation[remaining_member][day] {
-                    continue;
-                }
-
-                let current_contacts = self.contact_matrix[clique_member][remaining_member];
-                if current_contacts > 0 {
-                    let old_penalty = (current_contacts as i32 - 1).pow(2);
-                    let new_penalty = if current_contacts > 1 {
-                        (current_contacts as i32 - 2).pow(2)
-                    } else {
-                        0
-                    };
-                    delta_cost += self.w_repetition * (new_penalty - old_penalty) as f64;
-
-                    if current_contacts == 1 {
-                        delta_cost += self.w_contacts; // Losing a unique contact
-                    }
-                }
-            }
-        }
-
-        // Add attribute balance delta
-        delta_cost += self.calculate_attribute_balance_delta_for_groups(
-            day,
-            from_group,
-            to_group,
-            &active_members,
-            target_people,
-        );
-
-        // Add constraint penalty delta for active members only
-        delta_cost += self.calculate_clique_swap_constraint_penalty_delta(
-            day,
-            &active_members,
-            target_people,
-            from_group,
-            to_group,
-        );
-
-        delta_cost
+        let previous_cost = self.current_cost;
+        let mut trial_state = self.clone();
+        trial_state.apply_clique_swap(day, clique_idx, from_group, to_group, target_people);
+        trial_state.current_cost - previous_cost
     }
 
     /// Calculate constraint penalty delta for clique swaps
+    #[allow(dead_code)]
     fn calculate_clique_swap_constraint_penalty_delta(
         &self,
         day: usize,
@@ -354,6 +295,7 @@ impl State {
     }
 
     /// Simplified attribute balance delta calculation for clique swaps
+    #[allow(dead_code)]
     fn calculate_attribute_balance_delta_for_groups(
         &self,
         day: usize,
