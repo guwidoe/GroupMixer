@@ -408,3 +408,236 @@ pub fn get_recommended_settings(
         )))),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use solver_core::models::{
+        Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams, SolverConfiguration,
+        SolverParams, StopConditions,
+    };
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+    use std::rc::Rc;
+    use wasm_bindgen::closure::Closure;
+    use wasm_bindgen::JsCast;
+    use wasm_bindgen_test::*;
+
+    fn valid_input() -> ApiInput {
+        ApiInput {
+            initial_schedule: None,
+            problem: ProblemDefinition {
+                people: vec![
+                    Person {
+                        id: "p0".to_string(),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    },
+                    Person {
+                        id: "p1".to_string(),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    },
+                    Person {
+                        id: "p2".to_string(),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    },
+                    Person {
+                        id: "p3".to_string(),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    },
+                ],
+                groups: vec![
+                    Group {
+                        id: "g0".to_string(),
+                        size: 2,
+                    },
+                    Group {
+                        id: "g1".to_string(),
+                        size: 2,
+                    },
+                ],
+                num_sessions: 2,
+            },
+            objectives: vec![Objective {
+                r#type: "maximize_unique_contacts".to_string(),
+                weight: 1.0,
+            }],
+            constraints: vec![],
+            solver: SolverConfiguration {
+                solver_type: "SimulatedAnnealing".to_string(),
+                stop_conditions: StopConditions {
+                    max_iterations: Some(50),
+                    time_limit_seconds: None,
+                    no_improvement_iterations: Some(10),
+                },
+                solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
+                    initial_temperature: 5.0,
+                    final_temperature: 0.1,
+                    cooling_schedule: "geometric".to_string(),
+                    reheat_after_no_improvement: Some(0),
+                    reheat_cycles: Some(0),
+                }),
+                logging: Default::default(),
+                telemetry: Default::default(),
+                allowed_sessions: None,
+            },
+        }
+    }
+
+    fn valid_input_json() -> String {
+        serde_json::to_string(&valid_input()).unwrap()
+    }
+
+    fn invalid_problem_json() -> String {
+        serde_json::json!({
+            "problem": {
+                "people": [],
+                "groups": [],
+                "num_sessions": 0
+            },
+            "objectives": [],
+            "constraints": [],
+            "solver": {
+                "solver_type": "SimulatedAnnealing",
+                "stop_conditions": { "max_iterations": 10 },
+                "solver_params": {
+                    "solver_type": "SimulatedAnnealing",
+                    "initial_temperature": 1.0,
+                    "final_temperature": 0.1,
+                    "cooling_schedule": "geometric"
+                },
+                "logging": {}
+            }
+        })
+        .to_string()
+    }
+
+    fn js_error_message(error: JsValue) -> String {
+        error.unchecked_into::<js_sys::Error>().message().into()
+    }
+
+    #[wasm_bindgen_test]
+    fn solve_returns_valid_serialized_result() {
+        let result_json = solve(&valid_input_json()).expect("solve should succeed");
+        let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
+
+        assert!(result.get("schedule").is_some());
+        assert!(result.get("final_score").is_some());
+    }
+
+    #[wasm_bindgen_test]
+    fn solve_rejects_invalid_json_with_js_error() {
+        let error = solve("{not-json").expect_err("invalid JSON should error");
+        let message = js_error_message(error);
+        assert!(message.contains("Failed to parse problem"), "{message}");
+    }
+
+    #[wasm_bindgen_test]
+    fn solve_with_progress_invokes_callback_and_honors_false_return() {
+        let calls = Rc::new(RefCell::new(0usize));
+        let payloads = Rc::new(RefCell::new(Vec::<String>::new()));
+
+        let calls_clone = Rc::clone(&calls);
+        let payloads_clone = Rc::clone(&payloads);
+        let callback = Closure::wrap(Box::new(move |progress_json: JsValue| -> JsValue {
+            *calls_clone.borrow_mut() += 1;
+            payloads_clone
+                .borrow_mut()
+                .push(progress_json.as_string().unwrap());
+            JsValue::from_bool(false)
+        }) as Box<dyn FnMut(JsValue) -> JsValue>);
+
+        let function: js_sys::Function = callback
+            .as_ref()
+            .unchecked_ref::<js_sys::Function>()
+            .clone();
+        let result_json = solve_with_progress(&valid_input_json(), Some(function)).unwrap();
+        let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
+
+        assert!(*calls.borrow() >= 1);
+        assert!(payloads
+            .borrow()
+            .iter()
+            .all(|payload| payload.contains("iteration")));
+        assert!(result.get("schedule").is_some());
+    }
+
+    #[wasm_bindgen_test]
+    fn solve_with_progress_survives_callback_exceptions() {
+        let throwing_callback =
+            js_sys::Function::new_with_args("payload", "throw new Error(`boom:${payload.length}`)");
+
+        let result_json = solve_with_progress(&valid_input_json(), Some(throwing_callback))
+            .expect("callback exceptions should not break solving");
+        let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
+
+        assert!(result.get("schedule").is_some());
+    }
+
+    #[wasm_bindgen_test]
+    fn validate_problem_reports_expected_shape() {
+        let result_json =
+            validate_problem(&invalid_problem_json()).expect("validation should succeed");
+        let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
+
+        assert_eq!(result["valid"], serde_json::Value::Bool(false));
+        assert!(result["errors"].as_array().unwrap().len() >= 3);
+    }
+
+    #[wasm_bindgen_test]
+    fn get_default_settings_returns_serialized_solver_configuration() {
+        let settings_json = get_default_settings().expect("default settings should serialize");
+        let settings: serde_json::Value = serde_json::from_str(&settings_json).unwrap();
+
+        assert_eq!(
+            settings["solver_type"],
+            serde_json::Value::String("SimulatedAnnealing".to_string())
+        );
+        assert_eq!(
+            settings["stop_conditions"]["max_iterations"],
+            serde_json::Value::from(10000)
+        );
+        assert_eq!(
+            settings["stop_conditions"]["time_limit_seconds"],
+            serde_json::Value::from(30)
+        );
+    }
+
+    #[wasm_bindgen_test]
+    fn evaluate_input_returns_structured_result_for_supplied_schedule() {
+        let mut input = valid_input();
+        input.initial_schedule = Some(HashMap::from([
+            (
+                "session_0".to_string(),
+                HashMap::from([
+                    ("g0".to_string(), vec!["p0".to_string(), "p1".to_string()]),
+                    ("g1".to_string(), vec!["p2".to_string(), "p3".to_string()]),
+                ]),
+            ),
+            (
+                "session_1".to_string(),
+                HashMap::from([
+                    ("g0".to_string(), vec!["p0".to_string(), "p2".to_string()]),
+                    ("g1".to_string(), vec!["p1".to_string(), "p3".to_string()]),
+                ]),
+            ),
+        ]));
+
+        let result_json = evaluate_input(&serde_json::to_string(&input).unwrap())
+            .expect("evaluate_input should succeed");
+        let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
+
+        assert_eq!(
+            result["schedule"]["session_0"]["g0"][0],
+            serde_json::Value::String("p0".to_string())
+        );
+        assert_eq!(
+            result["schedule"]["session_1"]["g1"][1],
+            serde_json::Value::String("p3".to_string())
+        );
+        assert!(result.get("final_score").is_some());
+    }
+}

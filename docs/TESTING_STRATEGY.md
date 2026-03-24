@@ -143,6 +143,8 @@ Mutation testing is an on-demand local and protected-branch/nightly confidence l
 #### WASM wrapper tests
 ```bash
 wasm-pack test --headless --chrome solver-wasm
+# local fallback when browser webdriver setup is unavailable:
+# wasm-pack test --node solver-wasm
 ```
 
 #### Frontend unit/component coverage
