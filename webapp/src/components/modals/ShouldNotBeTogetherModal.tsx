@@ -11,7 +11,7 @@ interface Props {
   onSave: (constraint: Constraint) => void;
 }
 
-const ShouldNotBeTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onCancel, onSave }) => {
+export function ShouldNotBeTogetherModal({ sessionsCount, initial, onCancel, onSave }: Props) {
   const { resolveProblem, ui } = useAppStore();
   
   const getInitialState = () => {
@@ -208,6 +208,4 @@ const ShouldNotBeTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onC
       </div>
     </div>
   );
-};
-
-export default ShouldNotBeTogetherModal; 
+}

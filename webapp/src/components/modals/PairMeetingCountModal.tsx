@@ -21,7 +21,7 @@ type PairMeetingForm = {
   weight: number | null;
 };
 
-const PairMeetingCountModal: React.FC<Props> = ({ people, totalSessions, initial, onCancel, onSave }) => {
+export function PairMeetingCountModal({ people, totalSessions, initial, onCancel, onSave }: Props) {
   const editing = !!initial && initial.type === 'PairMeetingCount';
   const initialState = useMemo((): PairMeetingForm => {
     if (editing) {
@@ -204,8 +204,6 @@ const PairMeetingCountModal: React.FC<Props> = ({ people, totalSessions, initial
       </div>
     </div>
   );
-};
-
-export default PairMeetingCountModal;
+}
 
 

@@ -11,7 +11,7 @@ interface Props {
   onSave: (constraint: Constraint) => void;
 }
 
-const ImmovablePeopleModal: React.FC<Props> = ({ sessionsCount, initial, onCancel, onSave }) => {
+export function ImmovablePeopleModal({ sessionsCount, initial, onCancel, onSave }: Props) {
   const { resolveProblem, ui } = useAppStore();
   
   const getInitialState = () => {
@@ -226,6 +226,4 @@ const ImmovablePeopleModal: React.FC<Props> = ({ sessionsCount, initial, onCance
       </div>
     </div>
   );
-};
-
-export default ImmovablePeopleModal; 
+}

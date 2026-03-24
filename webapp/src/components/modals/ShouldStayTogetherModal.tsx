@@ -11,7 +11,7 @@ interface Props {
   onSave: (constraint: Constraint) => void;
 }
 
-const ShouldStayTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onCancel, onSave }) => {
+export function ShouldStayTogetherModal({ sessionsCount, initial, onCancel, onSave }: Props) {
   const { resolveProblem, ui } = useAppStore();
 
   const getInitialState = () => {
@@ -188,8 +188,6 @@ const ShouldStayTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onCa
       </div>
     </div>
   );
-};
-
-export default ShouldStayTogetherModal;
+}
 
 

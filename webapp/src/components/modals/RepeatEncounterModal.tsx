@@ -8,7 +8,7 @@ interface Props {
   onSave: (constraint: Constraint) => void;
 }
 
-const RepeatEncounterModal: React.FC<Props> = ({ initial, onCancel, onSave }) => {
+export function RepeatEncounterModal({ initial, onCancel, onSave }: Props) {
   const editing = !!initial;
 
   const getInitialState = () => {
@@ -136,6 +136,4 @@ const RepeatEncounterModal: React.FC<Props> = ({ initial, onCancel, onSave }) =>
       <ModalFooter onCancel={onCancel} onSave={handleSave} />
     </ModalWrapper>
   );
-};
-
-export default RepeatEncounterModal;
+}

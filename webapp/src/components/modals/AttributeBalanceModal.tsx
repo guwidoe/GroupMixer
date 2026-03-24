@@ -18,7 +18,7 @@ interface FormState {
   mode: "exact" | "at_least";
 }
 
-const AttributeBalanceModal: React.FC<Props> = ({ initial, onCancel, onSave }) => {
+export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
   const { resolveProblem, attributeDefinitions, ui } = useAppStore();
   
   const getInitialState = (): FormState => {
@@ -272,6 +272,4 @@ const AttributeBalanceModal: React.FC<Props> = ({ initial, onCancel, onSave }) =
       </div>
     </div>
   );
-};
-
-export default AttributeBalanceModal; 
+}

@@ -1,12 +1,12 @@
 import React from 'react';
 import type { Problem } from '../../types';
-import ImmovablePeopleModal from '../modals/ImmovablePeopleModal';
-import RepeatEncounterModal from '../modals/RepeatEncounterModal';
-import AttributeBalanceModal from '../modals/AttributeBalanceModal';
-import ShouldNotBeTogetherModal from '../modals/ShouldNotBeTogetherModal';
-import ShouldStayTogetherModal from '../modals/ShouldStayTogetherModal';
-import MustStayTogetherModal from '../modals/MustStayTogetherModal';
-import PairMeetingCountModal from '../modals/PairMeetingCountModal';
+import { ImmovablePeopleModal } from '../modals/ImmovablePeopleModal';
+import { RepeatEncounterModal } from '../modals/RepeatEncounterModal';
+import { AttributeBalanceModal } from '../modals/AttributeBalanceModal';
+import { ShouldNotBeTogetherModal } from '../modals/ShouldNotBeTogetherModal';
+import { ShouldStayTogetherModal } from '../modals/ShouldStayTogetherModal';
+import { MustStayTogetherModal } from '../modals/MustStayTogetherModal';
+import { PairMeetingCountModal } from '../modals/PairMeetingCountModal';
 
 interface ProblemEditorConstraintModalsProps {
   problem: Problem | null;
