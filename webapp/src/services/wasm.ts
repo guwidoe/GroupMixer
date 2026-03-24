@@ -1,11 +1,10 @@
 import type { Assignment, Problem, Solution, SolverSettings } from "../types";
-import type { WasmModule } from "../types/wasm";
 import { convertProblemToRustFormat, convertRustResultToSolution } from "./wasm/conversions";
+import { isWasmSolverModule, type WasmSolverModule } from "./wasm/module";
 import type { ProgressCallback, ProgressUpdate } from "./wasm/types";
 
-
 class WasmService {
-  private module: WasmModule | null = null;
+  private module: WasmSolverModule | null = null;
   private loading = false;
   private initializationFailed = false;
 
@@ -18,7 +17,7 @@ class WasmService {
     return text && text !== "[object Object]" ? text : fallback;
   }
 
-  private async requireModule(): Promise<WasmModule> {
+  private async requireModule(): Promise<WasmSolverModule> {
     if (!this.module && !this.initializationFailed) {
       await this.initialize();
     }
@@ -55,9 +54,12 @@ class WasmService {
         throw new Error("WASM module does not expose the expected async initializer.");
       }
 
-      await wasmModule.default();
+      if (!isWasmSolverModule(wasmModule)) {
+        throw new Error("WASM module shape does not match the expected runtime contract.");
+      }
 
-      this.module = wasmModule as unknown as WasmModule;
+      await wasmModule.default();
+      this.module = wasmModule;
     } catch (error) {
       console.error("Failed to load WASM module:", error);
       this.initializationFailed = true;
