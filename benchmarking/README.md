@@ -8,6 +8,7 @@ Primary references:
 - `benchmarking/SPEC.md`
 - `benchmarking/SCHEMAS.md`
 - `benchmarking/TOOLING.md`
+- `benchmarking/WORKFLOW.md`
 
 ## What lives here
 

@@ -6,6 +6,8 @@ For the day-to-day contributor workflow, see [`docs/TEST_PYRAMID_AND_REFACTOR_WO
 
 The goal is **refactor safety**, not just a single percentage. For this repository, **100% line coverage is a floor for the most important code paths, not the full strategy**. Confidence comes from multiple layers working together:
 
+For benchmark lane selection and operator workflow, see [`benchmarking/WORKFLOW.md`](../benchmarking/WORKFLOW.md).
+
 - narrow unit tests for branch-heavy logic
 - data-driven integration tests for end-to-end solver behavior
 - property/invariant tests for structural guarantees
@@ -252,10 +254,25 @@ Heavier layers remain intentionally separate today:
 - **Playwright workflow tests**: real browser journeys across solving, persistence, navigation
 - **Visual regression**: layout, responsive, modal, and styling drift
 
+## Benchmark lane policy
+
+Benchmarking is split across three different surfaces with different trust levels:
+
+- **path / regression tests**: semantic correctness for specific move families and solver branches
+- **solve-level benchmark runner** (`solver-cli benchmark ...`): structured run/baseline/comparison workflow for representative runtime + quality interpretation
+- **Criterion microbenches** (`cargo bench -p solver-core --bench solver_perf ...`): repeated hot-kernel timing for low-level forensics
+
+Policy:
+
+- every PR should rely on semantic lanes first
+- same-machine runtime comparison is a heavier diagnostic lane, not a generic cross-machine PR gate
+- Criterion is for hotspot analysis, not for baseline/report semantics
+
 ## Contributor rule of thumb
 
 - Small Rust change: run relevant unit/data-driven/property tests plus `cargo nextest run --workspace`
 - Solver refactor: run full Rust coverage plus mutation testing for the affected solver areas
+- Performance-sensitive solver refactor: add the relevant solve-level benchmark run and, if needed, matching `solver_perf` Criterion microbench group
 - Frontend logic change: run Vitest unit/component coverage for the affected area
 - UI flow change: run Vitest component tests plus Playwright workflow coverage
 - Layout/theme change: run visual regression in addition to functional tests
