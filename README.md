@@ -276,15 +276,22 @@ The authoritative repo-wide testing policy lives in [`docs/TESTING_STRATEGY.md`]
 Current baseline commands:
 
 ```bash
-# Run all Rust tests
-cargo test --workspace
+# Run the fast Rust gate
+./scripts/test-rust-fast.sh
 
-# Run the solver data-driven integration tests
-cargo test --test data_driven_tests
+# Generate the Rust coverage artifacts + summary gate
+./scripts/coverage-rust.sh
 
-# Run browser tests
-cd webapp && npm run test:e2e
+# Run frontend unit/component coverage with CI thresholds
+cd webapp && npm run test:coverage:ci
+
+# Run browser workflow tests
+cd webapp && npm run test:e2e:workflows
 ```
+
+Coverage outputs are published in standard formats for review:
+- Rust: `target/coverage/rust-summary.txt`, `target/coverage/rust.lcov`, `target/coverage/rust-html/`
+- Frontend: `webapp/coverage/unit/`
 
 Test cases cover:
 

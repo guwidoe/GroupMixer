@@ -75,6 +75,12 @@ The primary frontend unit/component coverage denominator is:
 - `webapp/src/utils/**`
 - high-value `webapp/src/components/**`
 
+The **currently enforced** frontend coverage gate is intentionally narrower than the long-term denominator above and is defined in `webapp/vite.config.ts`. It covers the currently hardened, refactor-critical surfaces first:
+- persistence and conversion services (`problemStorage`, `compare`, worker/wasm conversions)
+- critical Zustand slices (`problemSlice`, `solverSlice`, `uiSlice`)
+- utility modules already treated as refactor-sensitive
+- key navigation/results/problem-manager components that now have direct behavior tests
+
 Excluded or tracked separately:
 - `webapp/src/stories/**`
 - generated files and build outputs
@@ -122,9 +128,12 @@ npm run test:e2e:workflows
 ```bash
 ./scripts/coverage-rust.sh
 # or individually:
-# cargo llvm-cov --workspace --all-features --exclude solver-wasm --html --output-dir target/coverage/rust-html
-# cargo llvm-cov --workspace --all-features --exclude solver-wasm --lcov --output-path target/coverage/rust.lcov
+# cargo llvm-cov --workspace --all-features --exclude solver-wasm --exclude solver-cli --ignore-filename-regex '.*/src/main.rs' --summary-only
+# cargo llvm-cov --workspace --all-features --exclude solver-wasm --exclude solver-cli --ignore-filename-regex '.*/src/main.rs' --html --output-dir target/coverage/rust-html
+# cargo llvm-cov --workspace --all-features --exclude solver-wasm --exclude solver-cli --ignore-filename-regex '.*/src/main.rs' --lcov --output-path target/coverage/rust.lcov
 ```
+
+This script now also writes `target/coverage/rust-summary.txt` for CI summaries/review.
 
 #### Optional native secondary coverage
 ```bash
@@ -151,6 +160,7 @@ wasm-pack test --headless --chrome solver-wasm
 ```bash
 cd webapp
 npm run test:coverage
+npm run test:coverage:ci
 ```
 
 #### Frontend browser workflow tests
@@ -183,6 +193,49 @@ The threshold and gate implementation should follow these rules:
 - coverage reporting must produce human-readable and machine-readable artifacts
 - Playwright workflow tests are required browser gates
 - visual regression and mutation testing may run on a heavier cadence if needed, but must remain part of the repo strategy
+
+### Current staged CI thresholds
+
+These are **ratchet floors**, not the final target:
+
+#### Rust (`cargo llvm-cov` gate)
+- denominator: `solver-core` + `solver-server` coverage, excluding `solver-cli`, `solver-wasm`, and binary `src/main.rs` glue
+- enforced in CI via `RUST_COVERAGE_FAIL_UNDER_*`
+- current floor:
+  - lines: `78%`
+  - functions: `87%`
+
+Branch coverage is not currently emitted in a stable/useful way by the repo's `cargo llvm-cov` setup, so it is tracked qualitatively for now rather than hard-failed.
+
+#### Frontend (`vitest --coverage` gate)
+- denominator: the critical, explicitly enumerated modules in `webapp/vite.config.ts`
+- current floor:
+  - lines: `73%`
+  - statements: `74%`
+  - functions: `80%`
+  - branches: `65%`
+
+These thresholds are expected to ratchet upward as more `webapp` surfaces are brought under direct test coverage.
+
+## CI artifact/reporting policy
+
+Every PR should surface the following machine/human-readable outputs:
+- Rust: `target/coverage/rust.lcov`, `target/coverage/rust-html/`, `target/coverage/rust-summary.txt`
+- Frontend: `webapp/coverage/unit/` including HTML, LCOV, Cobertura, and JSON summary output
+
+Current PR gates:
+- `.github/workflows/rust.yml`
+  - `rust-tests`
+  - `rust-coverage`
+- `.github/workflows/frontend.yml`
+  - `lint`
+  - `unit-coverage`
+  - `build`
+  - `e2e`
+
+Heavier layers remain intentionally separate today:
+- mutation testing: on-demand / protected-branch cadence
+- visual regression: separate UI-layout safety net, not a required PR gate yet
 
 ## What each layer is trusted to catch
 

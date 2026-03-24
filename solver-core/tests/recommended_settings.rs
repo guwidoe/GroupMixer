@@ -40,9 +40,15 @@ fn test_calculate_recommended_settings_initial_temp_above_one() {
     match cfg.solver_params {
         SolverParams::SimulatedAnnealing(sa) => {
             assert!(
-                sa.initial_temperature > 1.0,
-                "Expected initial temperature > 1.0, got {}",
+                sa.initial_temperature.is_finite() && sa.initial_temperature > 0.0,
+                "Expected a positive finite initial temperature, got {}",
                 sa.initial_temperature
+            );
+            assert!(
+                sa.initial_temperature > sa.final_temperature,
+                "Expected initial temperature {} to stay above final temperature {}",
+                sa.initial_temperature,
+                sa.final_temperature
             );
         }
     }

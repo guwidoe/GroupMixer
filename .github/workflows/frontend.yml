@@ -25,6 +25,41 @@ jobs:
       - name: Run ESLint
         run: cd webapp && npm run lint
 
+  unit-coverage:
+    name: Unit tests + coverage gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: webapp/package-lock.json
+      - name: Install dependencies
+        run: cd webapp && npm ci
+      - name: Run unit/component coverage gate
+        run: cd webapp && npm run test:coverage:ci
+      - name: Publish frontend coverage summary
+        run: |
+          node <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          const fs = require('node:fs');
+          const summary = JSON.parse(fs.readFileSync('webapp/coverage/unit/coverage-summary.json', 'utf8'));
+          const total = summary.total;
+          console.log('## Frontend coverage gate');
+          console.log('');
+          console.log('| Metric | Coverage |');
+          console.log('| --- | ---: |');
+          console.log(`| Lines | ${total.lines.pct}% |`);
+          console.log(`| Statements | ${total.statements.pct}% |`);
+          console.log(`| Functions | ${total.functions.pct}% |`);
+          console.log(`| Branches | ${total.branches.pct}% |`);
+          NODE
+      - uses: actions/upload-artifact@v7
+        with:
+          name: frontend-coverage
+          path: webapp/coverage/unit/
+          retention-days: 7
+
   build:
     name: Build
     runs-on: ubuntu-latest

@@ -13,6 +13,7 @@
     "test:unit": "vitest --project app",
     "test:unit:watch": "vitest --project app --watch",
     "test:coverage": "vitest --project app --coverage",
+    "test:coverage:ci": "vitest --project app --coverage --run",
     "test:storybook": "vitest --project storybook",
     "test:e2e": "playwright test",
     "test:e2e:workflows": "playwright test --ignore-snapshots --grep-invert \"Visual Regression\"",

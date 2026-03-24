@@ -23,16 +23,27 @@ jobs:
   rust-coverage:
     name: Rust coverage (llvm-cov)
     runs-on: ubuntu-latest
+    env:
+      RUST_COVERAGE_FAIL_UNDER_LINES: '78'
+      RUST_COVERAGE_FAIL_UNDER_FUNCTIONS: '87'
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: llvm-tools-preview
       - uses: taiki-e/install-action@cargo-llvm-cov
-      - name: Generate LCOV report
-        run: ./scripts/coverage-rust.sh --lcov-only
+      - name: Generate gated Rust coverage artifacts
+        run: ./scripts/coverage-rust.sh
+      - name: Publish Rust coverage summary
+        run: |
+          echo '## Rust coverage gate' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          cat target/coverage/rust-summary.txt >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v7
         with:
-          name: rust-lcov
-          path: target/coverage/rust.lcov
+          name: rust-coverage-artifacts
+          path: |
+            target/coverage/rust.lcov
+            target/coverage/rust-summary.txt
+            target/coverage/rust-html/
           retention-days: 7

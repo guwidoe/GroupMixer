@@ -11,6 +11,28 @@ const dirname =
     ? __dirname
     : path.dirname(fileURLToPath(import.meta.url));
 
+const criticalCoverageInclude = [
+  "src/services/problemStorage.ts",
+  "src/services/problemStorage/**/*.ts",
+  "src/services/solverWorker/conversions.ts",
+  "src/services/wasm/conversions.ts",
+  "src/store/slices/problemSlice.ts",
+  "src/store/slices/solverSlice.ts",
+  "src/store/slices/uiSlice.ts",
+  "src/utils/csvExport.ts",
+  "src/utils/metricCalculations.ts",
+  "src/utils/personUtils.ts",
+  "src/utils/problemSnapshot.ts",
+  "src/components/Navigation.tsx",
+  "src/components/ProblemEditor/ProblemEditorHeader.tsx",
+  "src/components/ProblemManager/CreateProblemDialog.tsx",
+  "src/components/ProblemManager/DeleteConfirmDialog.tsx",
+  "src/components/ResultsView/ConfigDiffBadge.tsx",
+  "src/components/ResultsView/ResultsExportDropdown.tsx",
+  "src/components/ResultsView/ResultsHeader.tsx",
+  "src/components/ResultsView/ResultsSchedule.tsx",
+];
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -42,16 +64,24 @@ export default defineConfig({
     css: true,
     coverage: {
       provider: "v8",
-      reporter: ["text", "html", "lcov"],
+      reporter: ["text", "html", "lcov", "json-summary", "cobertura"],
       reportsDirectory: "./coverage/unit",
-      include: ["src/**/*.{ts,tsx}"],
+      include: criticalCoverageInclude,
       exclude: [
         "src/**/*.stories.*",
         "src/stories/**",
         "src/main.tsx",
         "src/vite-env.d.ts",
         "src/types/wasm.d.ts",
+        "src/**/*.test.{ts,tsx}",
+        "src/test/**",
       ],
+      thresholds: {
+        lines: 73,
+        statements: 74,
+        functions: 80,
+        branches: 65,
+      },
     },
     projects: [
       {
