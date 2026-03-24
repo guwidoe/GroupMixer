@@ -18,7 +18,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: taiki-e/install-action@nextest
       - name: Run fast Rust suite
-        run: ./scripts/test-rust-fast.sh
+        run: bash ./scripts/test-rust-fast.sh
 
   rust-coverage:
     name: Rust coverage (llvm-cov)
@@ -33,7 +33,7 @@ jobs:
           components: llvm-tools-preview
       - uses: taiki-e/install-action@cargo-llvm-cov
       - name: Generate gated Rust coverage artifacts
-        run: ./scripts/coverage-rust.sh
+        run: bash ./scripts/coverage-rust.sh
       - name: Publish Rust coverage summary
         run: |
           echo '## Rust coverage gate' >> "$GITHUB_STEP_SUMMARY"

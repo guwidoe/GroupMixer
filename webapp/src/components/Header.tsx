@@ -29,6 +29,7 @@ export function Header() {
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="sm:hidden p-2 rounded-md transition-colors"
               style={{ color: 'var(--text-secondary)' }}
+              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >

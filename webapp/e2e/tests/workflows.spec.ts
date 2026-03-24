@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { addGroup, addPerson, openApp, runSolver, saveCurrentProblem } from './helpers';
+import {
+  addGroup,
+  addPerson,
+  openApp,
+  openProblemManager,
+  runSolver,
+  saveCurrentProblem,
+} from './helpers';
 
 test.describe('Workflow coverage', () => {
   test('saves a problem, reloads the app, and loads it back from problem manager', async ({ page }) => {
@@ -19,7 +26,7 @@ test.describe('Workflow coverage', () => {
     await page.reload();
     await page.waitForSelector('nav, header', { timeout: 15000 });
 
-    await page.getByRole('button', { name: /\(manage\)/i }).click();
+    await openProblemManager(page);
     await expect(page.getByRole('heading', { name: /problem manager/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Untitled Problem' })).toBeVisible();
     await expect(page.getByText('2 people', { exact: true })).toBeVisible();

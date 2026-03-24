@@ -12,6 +12,27 @@ export async function openApp(page: Page) {
   await expect(page.getByRole('link', { name: /problem setup/i })).toBeVisible();
 }
 
+export async function openProblemManager(page: Page) {
+  const directManageButton = page.getByRole('button', {
+    name: /manage problems|\(manage\)/i,
+  });
+
+  if (await directManageButton.isVisible().catch(() => false)) {
+    await directManageButton.click();
+    return;
+  }
+
+  const mobileMenuButton = page.getByRole('button', { name: /open menu/i });
+  await expect(mobileMenuButton).toBeVisible();
+  await mobileMenuButton.click();
+
+  const mobileManageButton = page.getByRole('button', {
+    name: /manage problems|\(manage\)/i,
+  });
+  await expect(mobileManageButton).toBeVisible();
+  await mobileManageButton.click();
+}
+
 export async function addPerson(page: Page, name: string) {
   await page.getByRole('button', { name: /^add person$/i }).click();
   await expect(page.locator('.modal-content')).toBeVisible();

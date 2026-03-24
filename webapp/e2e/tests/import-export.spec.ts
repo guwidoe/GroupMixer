@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { openProblemManager } from './helpers';
 
 test.describe('Import/Export and Demo Data', () => {
   test.beforeEach(async ({ page }) => {
@@ -38,13 +39,8 @@ test.describe('Import/Export and Demo Data', () => {
     await expect(loadButton).toBeVisible();
   });
 
-  test('manage problems modal can open', async ({ page }, testInfo) => {
-    // Skip on mobile - button may be hidden in mobile menu
-    test.skip(testInfo.project.name === 'mobile-chrome', 'Manage Problems button not directly accessible on mobile');
-    
-    // Click Manage Problems button
-    const manageButton = page.getByRole('button', { name: /Manage Problems/i });
-    await manageButton.click();
+  test('manage problems modal can open', async ({ page }) => {
+    await openProblemManager(page);
 
     // Should open modal with Problem Manager title
     await expect(page.getByRole('heading', { name: /Problem Manager/i })).toBeVisible();
