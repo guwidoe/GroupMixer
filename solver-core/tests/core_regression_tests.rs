@@ -5,7 +5,7 @@ use solver_core::algorithms::simulated_annealing::SimulatedAnnealing;
 use solver_core::models::{
     ApiInput, Constraint, Group, LoggingOptions, MoveFamily, MovePolicy,
     MoveSelectionMode, Objective, Person, ProblemDefinition, RepeatEncounterParams,
-    SimulatedAnnealingParams, SolverConfiguration, SolverParams, StopConditions,
+    SimulatedAnnealingParams, SolverConfiguration, SolverParams, StopConditions, StopReason,
 };
 use solver_core::solver::State;
 use solver_core::{run_solver, run_solver_with_progress};
@@ -234,6 +234,63 @@ fn progress_callback_can_stop_solver_early() {
     assert!(!captured.is_empty(), "callback should have been invoked");
     assert!(captured.iter().copied().max().unwrap() < 5_000);
     assert!(!result.schedule.is_empty());
+    assert_eq!(result.stop_reason, Some(StopReason::ProgressCallbackRequestedStop));
+}
+
+#[test]
+fn final_progress_update_includes_stop_reason() {
+    let mut input = basic_input();
+    input.solver.stop_conditions.max_iterations = Some(5_000);
+
+    let last_progress = Arc::new(Mutex::new(None));
+    let last_progress_clone = Arc::clone(&last_progress);
+    let callback: solver_core::models::ProgressCallback = Box::new(move |progress| {
+        *last_progress_clone.lock().unwrap() = Some(progress.clone());
+        false
+    });
+
+    let _ = run_solver_with_progress(&input, Some(&callback)).expect("solver should stop cleanly");
+    let progress = last_progress
+        .lock()
+        .unwrap()
+        .clone()
+        .expect("final progress update should be captured");
+
+    assert_eq!(
+        progress.stop_reason,
+        Some(StopReason::ProgressCallbackRequestedStop)
+    );
+}
+
+#[test]
+fn result_reports_max_iterations_stop_reason() {
+    let mut input = basic_input();
+    input.solver.stop_conditions.max_iterations = Some(1);
+    input.solver.stop_conditions.no_improvement_iterations = None;
+
+    let result = run_solver(&input).expect("solve should succeed");
+    assert_eq!(result.stop_reason, Some(StopReason::MaxIterationsReached));
+}
+
+#[test]
+fn result_reports_no_improvement_stop_reason() {
+    let mut input = basic_input();
+    input.solver.stop_conditions.max_iterations = Some(500);
+    input.solver.stop_conditions.no_improvement_iterations = Some(1);
+
+    let result = run_solver(&input).expect("solve should succeed");
+    assert_eq!(result.stop_reason, Some(StopReason::NoImprovementLimitReached));
+}
+
+#[test]
+fn result_reports_time_limit_stop_reason() {
+    let mut input = basic_input();
+    input.solver.stop_conditions.max_iterations = Some(5_000);
+    input.solver.stop_conditions.no_improvement_iterations = None;
+    input.solver.stop_conditions.time_limit_seconds = Some(0);
+
+    let result = run_solver(&input).expect("solve should succeed");
+    assert_eq!(result.stop_reason, Some(StopReason::TimeLimitReached));
 }
 
 #[test]
