@@ -7,6 +7,7 @@ Primary references:
 - `docs/BENCHMARKING_ARCHITECTURE.md`
 - `benchmarking/SPEC.md`
 - `benchmarking/SCHEMAS.md`
+- `benchmarking/TOOLING.md`
 
 ## What lives here
 

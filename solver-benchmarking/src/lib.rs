@@ -3,6 +3,7 @@ pub mod compare;
 pub mod machine;
 pub mod manifest;
 pub mod runner;
+pub mod storage;
 pub mod summary;
 
 pub use artifacts::{
@@ -22,5 +23,9 @@ pub use compare::{compare_run_to_baseline, persist_comparison_report};
 pub use runner::{
     load_baseline_snapshot, load_run_report, persist_run_report, run_loaded_suite,
     run_suite_from_manifest, save_baseline_snapshot, RunnerOptions,
+};
+pub use storage::{
+    default_artifacts_dir, machine_identity_label, BaselineDescriptor, BenchmarkStorage,
+    MachineRecord,
 };
 pub use summary::render_comparison_summary;

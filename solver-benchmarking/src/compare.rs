@@ -4,6 +4,7 @@ use crate::artifacts::{
     ClassRollupComparison, CaseComparison, COMPARISON_REPORT_SCHEMA_VERSION,
 };
 use crate::manifest::BenchmarkSuiteClass;
+use crate::storage::BenchmarkStorage;
 use crate::{BaselineSnapshot, CaseRunArtifact, ClassRollup, RunReport};
 use anyhow::{Context, Result};
 use chrono::Utc;
@@ -98,8 +99,9 @@ pub fn persist_comparison_report(
     report: &ComparisonReport,
     artifacts_dir: impl AsRef<Path>,
 ) -> Result<PathBuf> {
-    let artifacts_dir = artifacts_dir.as_ref();
-    let comparison_dir = artifacts_dir.join("comparisons");
+    let storage = BenchmarkStorage::new(artifacts_dir.as_ref());
+    storage.ensure_layout()?;
+    let comparison_dir = storage.comparisons_dir().join(sanitize_filename(&report.suite_id));
     fs::create_dir_all(&comparison_dir).with_context(|| {
         format!(
             "failed to create benchmark comparison dir {}",

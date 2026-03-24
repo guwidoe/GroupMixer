@@ -1,0 +1,114 @@
+# Benchmark tooling and storage policy
+
+This document defines the operator-facing storage layout and same-machine policy for GroupMixer benchmarks.
+
+Reference architecture: `docs/BENCHMARKING_ARCHITECTURE.md`
+
+## Artifact root
+
+Default local artifact root:
+
+```text
+benchmarking/artifacts/
+```
+
+Override with:
+
+```bash
+export GROUPMIXER_BENCHMARK_ARTIFACTS_DIR=/absolute/path/to/artifacts
+```
+
+## Machine identity
+
+Benchmark runs capture machine identity into every structured artifact and also persist a machine record under:
+
+```text
+benchmarking/artifacts/machines/<machine-id>.json
+```
+
+Machine identity uses:
+
+1. `GROUPMIXER_BENCHMARK_MACHINE_ID` if set
+2. otherwise the local hostname if available
+
+Recorded fields include:
+
+- benchmark machine id
+- hostname
+- CPU model
+- logical core count
+- OS
+- kernel
+- `rustc --version`
+- cargo profile
+- dirty-tree status is recorded in git identity inside run artifacts
+
+## Storage layout
+
+```text
+benchmarking/artifacts/
+  machines/
+    <machine-id>.json
+  runs/
+    <run-id>/
+      run-report.json
+      cases/
+        <case-id>.json
+  baselines/
+    <machine-id>/
+      <suite-id>/
+        <baseline-name>.json
+  comparisons/
+    <suite-id>/
+      <suite>__<baseline>__<run-id>.json
+```
+
+## Why baselines are nested by machine and suite
+
+Runtime comparisons are only trustworthy on the same machine class.
+
+By storing baselines under both machine id and suite id, the normal lookup path is explicit and honest:
+
+- baseline names are local to one machine + one suite
+- `path` and `representative` baselines do not collide
+- a cross-machine comparison requires an explicit path, not an ambiguous short name
+
+## Lookup rules
+
+### Run reports
+
+Run reports are referenced by full path, typically:
+
+```text
+benchmarking/artifacts/runs/<run-id>/run-report.json
+```
+
+### Baselines
+
+A baseline may be referenced by:
+
+- full path, or
+- short baseline name when the current run report is available to infer machine + suite
+
+Short-name resolution expands to:
+
+```text
+benchmarking/artifacts/baselines/<machine-id>/<suite-id>/<baseline-name>.json
+```
+
+## Same-machine policy
+
+- local developers may compare against baselines from the same machine id
+- CI should always enforce semantic correctness lanes
+- serious runtime regression checks should run on a controlled same-machine lane
+- cross-machine runtime comparisons may still be generated, but they must remain explicitly labeled as not comparable for trustworthy runtime interpretation
+
+## Recommended environment setup
+
+For a dedicated benchmark workstation, set:
+
+```bash
+export GROUPMIXER_BENCHMARK_MACHINE_ID=groupmixer-bench-linux-amd64
+```
+
+That keeps baseline directories stable even if the hostname changes.

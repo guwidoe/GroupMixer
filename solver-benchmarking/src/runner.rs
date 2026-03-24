@@ -5,6 +5,7 @@ use crate::artifacts::{
 };
 use crate::machine::{capture_git_identity, capture_machine_identity};
 use crate::manifest::{load_suite_manifest, BenchmarkSuiteClass, LoadedBenchmarkCase, LoadedBenchmarkSuite};
+use crate::storage::{machine_identity_label, BenchmarkStorage};
 use anyhow::{Context, Result};
 use chrono::Utc;
 use solver_core::models::MoveFamilyBenchmarkTelemetrySummary;
@@ -24,7 +25,7 @@ pub struct RunnerOptions {
 impl Default for RunnerOptions {
     fn default() -> Self {
         Self {
-            artifacts_dir: PathBuf::from("benchmarking/artifacts"),
+            artifacts_dir: BenchmarkStorage::from_env_or_default().root().to_path_buf(),
             cargo_profile: std::env::var("PROFILE").unwrap_or_else(|_| "dev".to_string()),
         }
     }
@@ -86,8 +87,11 @@ pub fn run_loaded_suite(suite: &LoadedBenchmarkSuite, options: &RunnerOptions) -
 }
 
 pub fn persist_run_report(report: &RunReport, artifacts_dir: impl AsRef<Path>) -> Result<PathBuf> {
-    let artifacts_dir = artifacts_dir.as_ref();
-    let run_dir = artifacts_dir.join("runs").join(&report.run.run_id);
+    let storage = BenchmarkStorage::new(artifacts_dir.as_ref());
+    storage.ensure_layout()?;
+    storage.persist_machine_record(&report.run.machine, &report.run.generated_at)?;
+
+    let run_dir = storage.run_dir(&report.run.run_id);
     let case_dir = run_dir.join("cases");
     fs::create_dir_all(&case_dir)
         .with_context(|| format!("failed to create benchmark run dir {}", run_dir.display()))?;
@@ -108,14 +112,14 @@ pub fn save_baseline_snapshot(
     artifacts_dir: impl AsRef<Path>,
     source_run_path: Option<PathBuf>,
 ) -> Result<PathBuf> {
-    let artifacts_dir = artifacts_dir.as_ref();
-    let baseline_dir = artifacts_dir.join("baselines");
-    fs::create_dir_all(&baseline_dir).with_context(|| {
-        format!(
-            "failed to create benchmark baseline dir {}",
-            baseline_dir.display()
-        )
-    })?;
+    let storage = BenchmarkStorage::new(artifacts_dir.as_ref());
+    storage.ensure_layout()?;
+    storage.persist_machine_record(&report.run.machine, &report.run.generated_at)?;
+
+    let machine_id = machine_identity_label(&report.run.machine)
+        .context("cannot save baseline without machine identity")?;
+    let baseline_path =
+        storage.baseline_snapshot_path(&machine_id, &report.suite.suite_id, baseline_name);
 
     let snapshot = BaselineSnapshot {
         schema_version: BASELINE_SNAPSHOT_SCHEMA_VERSION,
@@ -125,7 +129,6 @@ pub fn save_baseline_snapshot(
         run_report: report.clone(),
     };
 
-    let baseline_path = baseline_dir.join(format!("{}.json", sanitize_filename(baseline_name)));
     write_json(&baseline_path, &snapshot)?;
     Ok(baseline_path)
 }
@@ -354,6 +357,10 @@ fn average(values: &[f64]) -> Option<f64> {
 }
 
 fn write_json<T: serde::Serialize>(path: &Path, value: &T) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create benchmark dir {}", parent.display()))?;
+    }
     let contents = serde_json::to_string_pretty(value).context("failed to serialize benchmark artifact")?;
     fs::write(path, contents)
         .with_context(|| format!("failed to write benchmark artifact {}", path.display()))
