@@ -70,9 +70,17 @@ export function ProblemEditor() {
 
   useEffect(() => {
     if (problem && currentProblemId) {
-      updateCurrentProblem(currentProblemId, problem);
+      try {
+        updateCurrentProblem(currentProblemId, problem);
+      } catch (error) {
+        addNotification({
+          type: 'error',
+          title: 'Auto-save Failed',
+          message: error instanceof Error ? error.message : 'Failed to persist problem changes.',
+        });
+      }
     }
-  }, [problem, currentProblemId, updateCurrentProblem]);
+  }, [problem, currentProblemId, updateCurrentProblem, addNotification]);
 
   const constraints = useProblemEditorConstraints({
     problem,
@@ -89,8 +97,16 @@ export function ProblemEditor() {
     if (!problem) return;
 
     if (currentProblemId) {
-      updateCurrentProblem(currentProblemId, problem);
-      addNotification({ type: 'success', title: 'Saved', message: 'Problem saved.' });
+      try {
+        updateCurrentProblem(currentProblemId, problem);
+        addNotification({ type: 'success', title: 'Saved', message: 'Problem saved.' });
+      } catch (error) {
+        addNotification({
+          type: 'error',
+          title: 'Save Failed',
+          message: error instanceof Error ? error.message : 'Failed to persist problem changes.',
+        });
+      }
     } else {
       saveProblem('Untitled Problem');
     }

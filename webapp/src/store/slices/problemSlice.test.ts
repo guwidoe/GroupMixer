@@ -117,4 +117,15 @@ describe("createProblemSlice", () => {
     expect(problemStorage.setCurrentProblemId).toHaveBeenCalledWith(saved.id);
     expect(harness.getState().currentProblemId).toBe(saved.id);
   });
+
+  it("propagates persistence errors when updating the current problem", () => {
+    vi.mocked(problemStorage.updateProblem).mockImplementation(() => {
+      throw new Error('disk full');
+    });
+    const harness = createHarness({
+      problem: createSampleProblem(),
+    });
+
+    expect(() => harness.slice.updateCurrentProblem('problem-1', createSampleProblem())).toThrow('disk full');
+  });
 });
