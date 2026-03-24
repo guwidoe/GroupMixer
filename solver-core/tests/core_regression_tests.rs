@@ -3,9 +3,9 @@ mod common;
 use common::default_solver_config;
 use solver_core::algorithms::simulated_annealing::SimulatedAnnealing;
 use solver_core::models::{
-    ApiInput, Constraint, Group, LoggingOptions, MovePolicy, Objective, Person,
-    ProblemDefinition, RepeatEncounterParams, SimulatedAnnealingParams, SolverConfiguration,
-    SolverParams, StopConditions,
+    ApiInput, Constraint, Group, LoggingOptions, MoveFamily, MovePolicy,
+    MoveSelectionMode, Objective, Person, ProblemDefinition, RepeatEncounterParams,
+    SimulatedAnnealingParams, SolverConfiguration, SolverParams, StopConditions,
 };
 use solver_core::solver::State;
 use solver_core::{run_solver, run_solver_with_progress};
@@ -99,6 +99,26 @@ fn warm_start_schedule() -> HashMap<String, HashMap<String, Vec<String>>> {
             ]),
         ),
     ])
+}
+
+fn clique_input() -> ApiInput {
+    let mut input = basic_input();
+    input.constraints.push(Constraint::MustStayTogether {
+        people: vec!["p0".to_string(), "p1".to_string()],
+        sessions: None,
+    });
+    input.solver.stop_conditions.max_iterations = Some(250);
+    input.solver.stop_conditions.no_improvement_iterations = Some(100);
+    input
+}
+
+fn transfer_input() -> ApiInput {
+    let mut input = basic_input();
+    input.problem.groups.push(Group {
+        id: "g2".to_string(),
+        size: 2,
+    });
+    input
 }
 
 #[test]
@@ -272,6 +292,98 @@ fn full_solver_run_is_deterministic_for_same_seed() {
         telemetry_a.moves.clique_swap.accepted,
         telemetry_b.moves.clique_swap.accepted
     );
+}
+
+#[test]
+fn move_policy_is_sorted_and_deduplicated() {
+    let mut input = basic_input();
+    input.solver.move_policy = Some(MovePolicy {
+        allowed_families: Some(vec![
+            MoveFamily::Transfer,
+            MoveFamily::Swap,
+            MoveFamily::Transfer,
+        ]),
+        ..Default::default()
+    });
+
+    let state = State::new(&input).expect("move policy should normalize");
+    assert_eq!(
+        state.move_policy.allowed_families,
+        Some(vec![MoveFamily::Swap, MoveFamily::Transfer])
+    );
+}
+
+#[test]
+fn invalid_weighted_move_policy_is_rejected() {
+    let mut input = basic_input();
+    input.solver.move_policy = Some(MovePolicy {
+        mode: MoveSelectionMode::Weighted,
+        ..Default::default()
+    });
+
+    let error = State::new(&input).unwrap_err().to_string();
+    assert!(
+        error.contains("move_policy.mode = 'weighted' requires move_policy.weights"),
+        "{error}"
+    );
+}
+
+#[test]
+fn forced_swap_move_policy_only_attempts_swaps() {
+    let mut input = basic_input();
+    input.solver.seed = Some(11);
+    input.solver.move_policy = Some(MovePolicy {
+        forced_family: Some(MoveFamily::Swap),
+        ..Default::default()
+    });
+
+    let result = run_solver(&input).expect("swap-only solve should succeed");
+    let telemetry = result
+        .benchmark_telemetry
+        .expect("benchmark telemetry should be present");
+
+    assert!(telemetry.moves.swap.attempts > 0);
+    assert_eq!(telemetry.moves.transfer.attempts, 0);
+    assert_eq!(telemetry.moves.clique_swap.attempts, 0);
+    assert_eq!(result.move_policy, input.solver.move_policy.clone());
+}
+
+#[test]
+fn forced_transfer_move_policy_only_attempts_transfers() {
+    let mut input = transfer_input();
+    input.solver.seed = Some(12);
+    input.solver.move_policy = Some(MovePolicy {
+        forced_family: Some(MoveFamily::Transfer),
+        ..Default::default()
+    });
+
+    let result = run_solver(&input).expect("transfer-only solve should succeed");
+    let telemetry = result
+        .benchmark_telemetry
+        .expect("benchmark telemetry should be present");
+
+    assert!(telemetry.moves.transfer.attempts > 0);
+    assert_eq!(telemetry.moves.swap.attempts, 0);
+    assert_eq!(telemetry.moves.clique_swap.attempts, 0);
+}
+
+#[test]
+fn forced_clique_move_policy_only_attempts_clique_swaps() {
+    let mut input = clique_input();
+    input.solver.seed = Some(13);
+    input.solver.move_policy = Some(MovePolicy {
+        forced_family: Some(MoveFamily::CliqueSwap),
+        ..Default::default()
+    });
+
+    let result = run_solver(&input).expect("clique-only solve should succeed");
+    let telemetry = result
+        .benchmark_telemetry
+        .expect("benchmark telemetry should be present");
+
+    assert!(telemetry.moves.clique_swap.attempts > 0);
+    assert_eq!(telemetry.moves.swap.attempts, 0);
+    assert_eq!(telemetry.moves.transfer.attempts, 0);
 }
 
 #[test]
