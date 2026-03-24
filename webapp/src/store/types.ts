@@ -35,7 +35,7 @@ export interface UIState {
     notifications: Notification[];
     showProblemManager: boolean;
     showResultComparison: boolean;
-    warmStartResultId?: string | null;
+    warmStartResultId: string | null;
   };
 }
 

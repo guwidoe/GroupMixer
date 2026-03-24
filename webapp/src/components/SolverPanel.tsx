@@ -27,9 +27,7 @@ export function SolverPanel() {
   const currentProblemId = useAppStore((state) => state.currentProblemId);
   const savedProblems = useAppStore((state) => state.savedProblems);
   const warmStartResultId = useAppStore((state) => state.ui.warmStartResultId);
-  const setWarmStartFromResult = useAppStore(
-    (state) => (state as unknown as { setWarmStartFromResult: (id: string | null) => void }).setWarmStartFromResult,
-  );
+  const setWarmStartFromResult = useAppStore((state) => state.setWarmStartFromResult);
 
   const [warmStartSelection, setWarmStartSelection] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
