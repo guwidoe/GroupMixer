@@ -1,7 +1,7 @@
 //! solver-cli: Command-line interface for GroupMixer solver
 //!
-//! This CLI enables AI agents to test 100% of solver functionality
-//! without requiring a web interface.
+//! This CLI enables AI agents and developers to exercise solver functionality
+//! without requiring the web interface.
 //!
 //! # Commands
 //!
@@ -9,15 +9,21 @@
 //! - `validate`: Validate a problem file without solving
 //! - `recommend`: Get recommended solver settings for a problem
 //! - `evaluate`: Evaluate an existing schedule
+//! - `benchmark`: Run / save / compare benchmark artifacts
 //! - `schema`: Print the JSON schema for input/output formats
 
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
+use solver_benchmarking::{
+    compare_run_to_baseline, load_baseline_snapshot, load_run_report, persist_comparison_report,
+    persist_run_report, render_comparison_summary, run_suite_from_manifest, save_baseline_snapshot,
+    BaselineDescriptor, BenchmarkStorage, RunnerOptions,
+};
 use solver_core::models::ApiInput;
 use solver_core::{calculate_recommended_settings, run_solver};
 use std::fs;
 use std::io::{self, Read};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
 #[command(name = "solver-cli")]
@@ -95,12 +101,121 @@ enum Commands {
         pretty: bool,
     },
 
+    /// Run / save / compare benchmark artifacts
+    Benchmark {
+        #[command(subcommand)]
+        command: BenchmarkCommands,
+    },
+
     /// Print example JSON schemas for input/output formats
     Schema {
         /// Which schema to print: input, output, problem, or all
         #[arg(value_name = "TYPE", default_value = "all")]
         schema_type: String,
     },
+}
+
+#[derive(Subcommand)]
+enum BenchmarkCommands {
+    /// Run a benchmark suite and persist the run report
+    Run {
+        /// Built-in suite id to run
+        #[arg(long, value_enum, default_value = "path", conflicts_with = "manifest")]
+        suite: BenchmarkSuiteArg,
+
+        /// Explicit benchmark suite manifest path
+        #[arg(long, value_name = "FILE")]
+        manifest: Option<PathBuf>,
+
+        /// Override artifact root (defaults to GROUPMIXER_BENCHMARK_ARTIFACTS_DIR or benchmarking/artifacts)
+        #[arg(long, value_name = "DIR")]
+        artifacts_dir: Option<PathBuf>,
+
+        /// Cargo profile label stored in machine metadata
+        #[arg(long, default_value = "dev")]
+        cargo_profile: String,
+
+        /// Save the produced run as a named baseline
+        #[arg(long, value_name = "NAME")]
+        save_baseline: Option<String>,
+    },
+
+    /// Compare a run report to a named or explicit baseline snapshot
+    Compare {
+        /// Path to run-report.json
+        #[arg(long, value_name = "FILE")]
+        run: PathBuf,
+
+        /// Baseline name (resolved via machine + suite) or explicit baseline snapshot path
+        #[arg(long, value_name = "NAME_OR_FILE")]
+        baseline: String,
+
+        /// Override artifact root (defaults to GROUPMIXER_BENCHMARK_ARTIFACTS_DIR or benchmarking/artifacts)
+        #[arg(long, value_name = "DIR")]
+        artifacts_dir: Option<PathBuf>,
+
+        /// Optional path to also write the human-readable summary text
+        #[arg(long, value_name = "FILE")]
+        summary_output: Option<PathBuf>,
+    },
+
+    /// Baseline snapshot operations
+    Baseline {
+        #[command(subcommand)]
+        command: BenchmarkBaselineCommands,
+    },
+}
+
+#[derive(Subcommand)]
+enum BenchmarkBaselineCommands {
+    /// Save a named baseline from an existing run report
+    Save {
+        /// Path to run-report.json
+        #[arg(long, value_name = "FILE")]
+        run: PathBuf,
+
+        /// Baseline name to save under the run's machine + suite
+        #[arg(long, value_name = "NAME")]
+        name: String,
+
+        /// Override artifact root (defaults to GROUPMIXER_BENCHMARK_ARTIFACTS_DIR or benchmarking/artifacts)
+        #[arg(long, value_name = "DIR")]
+        artifacts_dir: Option<PathBuf>,
+    },
+
+    /// List known baselines in artifact storage
+    List {
+        /// Override artifact root (defaults to GROUPMIXER_BENCHMARK_ARTIFACTS_DIR or benchmarking/artifacts)
+        #[arg(long, value_name = "DIR")]
+        artifacts_dir: Option<PathBuf>,
+
+        /// Filter to one suite id
+        #[arg(long, value_name = "SUITE")]
+        suite: Option<String>,
+
+        /// Filter to one machine id
+        #[arg(long, value_name = "MACHINE")]
+        machine_id: Option<String>,
+    },
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+enum BenchmarkSuiteArg {
+    Path,
+    Representative,
+    Stretch,
+    Adversarial,
+}
+
+impl BenchmarkSuiteArg {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Path => "path",
+            Self::Representative => "representative",
+            Self::Stretch => "stretch",
+            Self::Adversarial => "adversarial",
+        }
+    }
 }
 
 fn main() -> Result<()> {
@@ -129,8 +244,181 @@ fn main() -> Result<()> {
             pretty,
         } => cmd_evaluate(input, stdin, pretty),
 
+        Commands::Benchmark { command } => cmd_benchmark(command),
+
         Commands::Schema { schema_type } => cmd_schema(&schema_type),
     }
+}
+
+fn cmd_benchmark(command: BenchmarkCommands) -> Result<()> {
+    match command {
+        BenchmarkCommands::Run {
+            suite,
+            manifest,
+            artifacts_dir,
+            cargo_profile,
+            save_baseline,
+        } => cmd_benchmark_run(suite, manifest, artifacts_dir, cargo_profile, save_baseline),
+        BenchmarkCommands::Compare {
+            run,
+            baseline,
+            artifacts_dir,
+            summary_output,
+        } => cmd_benchmark_compare(run, baseline, artifacts_dir, summary_output),
+        BenchmarkCommands::Baseline { command } => match command {
+            BenchmarkBaselineCommands::Save {
+                run,
+                name,
+                artifacts_dir,
+            } => cmd_benchmark_baseline_save(run, name, artifacts_dir),
+            BenchmarkBaselineCommands::List {
+                artifacts_dir,
+                suite,
+                machine_id,
+            } => cmd_benchmark_baseline_list(artifacts_dir, suite, machine_id),
+        },
+    }
+}
+
+fn cmd_benchmark_run(
+    suite: BenchmarkSuiteArg,
+    manifest: Option<PathBuf>,
+    artifacts_dir: Option<PathBuf>,
+    cargo_profile: String,
+    save_baseline: Option<String>,
+) -> Result<()> {
+    let storage = benchmark_storage(artifacts_dir);
+    storage.ensure_layout()?;
+
+    let manifest_path = resolve_suite_manifest_path(&suite, manifest);
+    let options = RunnerOptions {
+        artifacts_dir: storage.root().to_path_buf(),
+        cargo_profile,
+    };
+
+    let report = run_suite_from_manifest(&manifest_path, &options)?;
+    let run_path = persist_run_report(&report, storage.root())?;
+
+    println!(
+        "Benchmark suite '{}' completed: {} cases ({} ok / {} failed)",
+        report.suite.suite_id,
+        report.totals.total_cases,
+        report.totals.successful_cases,
+        report.totals.failed_cases
+    );
+    println!("Run report: {}", run_path.display());
+
+    if let Some(baseline_name) = save_baseline {
+        let baseline_path = save_baseline_snapshot(
+            &report,
+            &baseline_name,
+            storage.root(),
+            Some(run_path.clone()),
+        )?;
+        println!("Baseline saved: {}", baseline_path.display());
+    }
+
+    Ok(())
+}
+
+fn cmd_benchmark_compare(
+    run_path: PathBuf,
+    baseline: String,
+    artifacts_dir: Option<PathBuf>,
+    summary_output: Option<PathBuf>,
+) -> Result<()> {
+    let storage = benchmark_storage(artifacts_dir);
+    storage.ensure_layout()?;
+
+    let run_report = load_run_report(&run_path)?;
+    let baseline_path = storage.resolve_baseline_path(&baseline, Some(&run_report))?;
+    let baseline_snapshot = load_baseline_snapshot(&baseline_path)?;
+    let comparison = compare_run_to_baseline(&run_report, &baseline_snapshot);
+    let comparison_path = persist_comparison_report(&comparison, storage.root())?;
+    let summary = render_comparison_summary(&comparison);
+
+    println!("Comparison artifact: {}", comparison_path.display());
+    println!("Baseline source: {}", baseline_path.display());
+    println!();
+    println!("{}", summary);
+
+    if let Some(summary_output) = summary_output {
+        write_text_file(&summary_output, &summary)?;
+        println!("Summary written: {}", summary_output.display());
+    }
+
+    Ok(())
+}
+
+fn cmd_benchmark_baseline_save(
+    run_path: PathBuf,
+    name: String,
+    artifacts_dir: Option<PathBuf>,
+) -> Result<()> {
+    let storage = benchmark_storage(artifacts_dir);
+    storage.ensure_layout()?;
+
+    let run_report = load_run_report(&run_path)?;
+    let baseline_path = save_baseline_snapshot(&run_report, &name, storage.root(), Some(run_path))?;
+    println!("Baseline saved: {}", baseline_path.display());
+    Ok(())
+}
+
+fn cmd_benchmark_baseline_list(
+    artifacts_dir: Option<PathBuf>,
+    suite: Option<String>,
+    machine_id: Option<String>,
+) -> Result<()> {
+    let storage = benchmark_storage(artifacts_dir);
+    storage.ensure_layout()?;
+
+    let baselines = storage.list_baselines(machine_id.as_deref(), suite.as_deref())?;
+    if baselines.is_empty() {
+        println!("No baselines found under {}", storage.root().display());
+        return Ok(());
+    }
+
+    println!("Baselines under {}", storage.root().display());
+    for descriptor in baselines {
+        print_baseline_descriptor(&descriptor)?;
+    }
+    Ok(())
+}
+
+fn print_baseline_descriptor(descriptor: &BaselineDescriptor) -> Result<()> {
+    let snapshot = load_baseline_snapshot(&descriptor.path)?;
+    println!(
+        "- machine={} suite={} baseline={} created_at={} path={}",
+        descriptor.machine_id,
+        descriptor.suite_id,
+        snapshot.baseline_name,
+        snapshot.created_at,
+        descriptor.path.display()
+    );
+    Ok(())
+}
+
+fn benchmark_storage(artifacts_dir: Option<PathBuf>) -> BenchmarkStorage {
+    artifacts_dir
+        .map(BenchmarkStorage::new)
+        .unwrap_or_else(BenchmarkStorage::from_env_or_default)
+}
+
+fn resolve_suite_manifest_path(
+    suite: &BenchmarkSuiteArg,
+    manifest: Option<PathBuf>,
+) -> PathBuf {
+    manifest.unwrap_or_else(|| {
+        PathBuf::from(format!("benchmarking/suites/{}.yaml", suite.as_str()))
+    })
+}
+
+fn write_text_file(path: &Path, contents: &str) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("Failed to create parent dir {:?}", parent))?;
+    }
+    fs::write(path, contents).with_context(|| format!("Failed to write file: {:?}", path))
 }
 
 fn read_input(file: Option<PathBuf>, use_stdin: bool) -> Result<String> {
@@ -180,14 +468,8 @@ fn cmd_solve(
 fn cmd_validate(input: Option<PathBuf>, stdin: bool) -> Result<()> {
     let json_str = read_input(input, stdin)?;
 
-    // First, validate JSON syntax
     let api_input: ApiInput = serde_json::from_str(&json_str).context("JSON parse error")?;
 
-    // Then, validate problem constraints by attempting to create state
-    // This will catch issues like:
-    // - Insufficient group capacity
-    // - Invalid constraint references
-    // - Duplicate IDs
     use solver_core::solver::State;
     match State::new(&api_input) {
         Ok(_) => {
@@ -241,7 +523,6 @@ fn cmd_evaluate(input: Option<PathBuf>, stdin: bool, pretty: bool) -> Result<()>
         anyhow::bail!("Evaluate requires initial_schedule in the input");
     }
 
-    // Run solver with 0 iterations to just evaluate the initial schedule
     let mut eval_input = api_input.clone();
     eval_input.solver.stop_conditions.max_iterations = Some(0);
 
@@ -374,4 +655,32 @@ fn print_problem_schema() -> Result<()> {
 }"#;
     println!("{}", example);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn suite_manifest_defaults_to_builtin_path_manifest() {
+        let path = resolve_suite_manifest_path(&BenchmarkSuiteArg::Path, None);
+        assert_eq!(path, PathBuf::from("benchmarking/suites/path.yaml"));
+    }
+
+    #[test]
+    fn baseline_list_works_against_storage_layout() {
+        let temp = TempDir::new().expect("temp dir");
+        let storage = BenchmarkStorage::new(temp.path());
+        storage.ensure_layout().expect("layout");
+        let path = storage.baseline_snapshot_path("benchbox", "path", "baseline-a");
+        fs::create_dir_all(path.parent().unwrap()).expect("mk parent");
+        fs::write(&path, "{}\n").expect("write baseline");
+
+        let baselines = storage
+            .list_baselines(Some("benchbox"), Some("path"))
+            .expect("list baselines");
+        assert_eq!(baselines.len(), 1);
+        assert_eq!(baselines[0].baseline_name, "baseline-a");
+    }
 }

@@ -1325,7 +1325,9 @@ dependencies = [
  "anyhow",
  "clap",
  "serde_json",
+ "solver-benchmarking",
  "solver-core",
+ "tempfile",
 ]
 
 [[package]]
