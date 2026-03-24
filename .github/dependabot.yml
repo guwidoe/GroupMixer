@@ -11,6 +11,15 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     open-pull-requests-limit: 10
+    ignore:
+      # eslint-plugin-react does not yet advertise compatibility with ESLint 10,
+      # so major bumps currently produce broken lockfiles/CI failures.
+      - dependency-name: "eslint"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "@eslint/js"
+        update-types:
+          - "version-update:semver-major"
     groups:
       # Keep React packages in sync to avoid version mismatches
       react:
