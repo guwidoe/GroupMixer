@@ -4,6 +4,30 @@ This document defines the operator-facing storage layout and same-machine policy
 
 Reference architecture: `docs/BENCHMARKING_ARCHITECTURE.md`
 
+## Local workflow wrapper
+
+Primary entrypoint:
+
+```bash
+./tools/benchmark_workflow.sh doctor
+./tools/benchmark_workflow.sh run --suite representative
+./tools/benchmark_workflow.sh save before-refactor --suite representative
+./tools/benchmark_workflow.sh record --suite representative --recording-id rep-1
+./tools/benchmark_workflow.sh record-bundle --suite representative --suite stretch --recording-id nightly-main
+./tools/benchmark_workflow.sh compare-prev --suite representative
+./tools/benchmark_workflow.sh history
+./tools/benchmark_workflow.sh recordings show <recording-id>
+./tools/benchmark_workflow.sh refs list
+```
+
+The wrapper builds and launches `solver-cli benchmark ...` through `tools/benchmark_runner.py`.
+
+Safety knobs:
+
+- `GROUPMIXER_BENCH_BUILD_JOBS=1` keeps release builds memory-bounded by default
+- `GROUPMIXER_BENCH_PYTHON_BIN=/usr/bin/python3` forces a known-safe interpreter when needed
+- `./tools/benchmark_workflow.sh doctor` reports the selected interpreter and refuses intercepted wrappers
+
 ## Artifact root
 
 Default local artifact root:
@@ -102,6 +126,16 @@ benchmarking/artifacts/baselines/<machine-id>/<suite-id>/<baseline-name>.json
 - CI should always enforce semantic correctness lanes
 - serious runtime regression checks should run on a controlled same-machine lane
 - cross-machine runtime comparisons may still be generated, but they must remain explicitly labeled as not comparable for trustworthy runtime interpretation
+
+## Recording/history surfaces
+
+The benchmark tooling now includes a durable recording/history layer:
+
+- `benchmarking/artifacts/recordings/`
+- `benchmarking/artifacts/index/benchmark.sqlite`
+- `benchmarking/artifacts/refs/`
+
+See `benchmarking/RECORDINGS.md` for the recording-store design and operator model.
 
 ## Recommended environment setup
 

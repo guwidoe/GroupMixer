@@ -128,6 +128,46 @@ Cross-machine timing is noisy and can be misleading. The repo policy is:
 - compare current vs baseline
 - use Criterion to drill into any suspect move family or kernel
 
+## Recording workflow
+
+For durable same-machine history, prefer recordings over ad hoc shell notes.
+
+### Record one suite into history
+
+```bash
+solver-cli benchmark record --suite representative --recording-id rep-before-refactor
+```
+
+or through the wrapper:
+
+```bash
+./tools/benchmark_workflow.sh record --suite representative --recording-id rep-before-refactor
+```
+
+### Record a bundle for one feature or checkpoint
+
+```bash
+solver-cli benchmark record-bundle \
+  --suite representative \
+  --suite stretch \
+  --recording-id feature-checkpoint
+```
+
+### Compare latest vs previous in one lane
+
+```bash
+solver-cli benchmark compare-prev --suite representative
+```
+
+### Inspect history and refs
+
+```bash
+solver-cli benchmark recordings list
+solver-cli benchmark refs list
+solver-cli benchmark latest --suite representative
+solver-cli benchmark previous --suite representative
+```
+
 ## Legacy fixture performance thresholds
 
 A small number of ignored data-driven benchmark fixtures still carry legacy runtime smoke expectations.
