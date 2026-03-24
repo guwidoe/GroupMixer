@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://groupmixer.local/benchmarking/schemas/run-report.schema.json",
+  "title": "GroupMixer benchmark run report",
+  "type": "object",
+  "required": ["schema_version", "suite", "run", "totals", "class_rollups", "cases"],
+  "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "suite": {
+      "type": "object",
+      "required": ["suite_id", "class", "manifest_path"],
+      "properties": {
+        "suite_id": { "type": "string" },
+        "class": { "type": "string", "enum": ["path", "representative", "stretch", "adversarial"] },
+        "title": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] },
+        "manifest_path": { "type": "string" }
+      }
+    },
+    "run": {
+      "type": "object",
+      "required": ["run_id", "generated_at", "git", "machine"],
+      "properties": {
+        "run_id": { "type": "string" },
+        "generated_at": { "type": "string" },
+        "git": { "type": "object" },
+        "machine": { "type": "object" }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "required": ["total_cases", "successful_cases", "failed_cases", "total_runtime_seconds"],
+      "properties": {
+        "total_cases": { "type": "integer" },
+        "successful_cases": { "type": "integer" },
+        "failed_cases": { "type": "integer" },
+        "total_runtime_seconds": { "type": "number" }
+      }
+    },
+    "class_rollups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["class", "total_cases", "successful_cases", "failed_cases", "total_runtime_seconds", "average_runtime_seconds"],
+        "properties": {
+          "class": { "type": "string", "enum": ["path", "representative", "stretch", "adversarial"] },
+          "total_cases": { "type": "integer" },
+          "successful_cases": { "type": "integer" },
+          "failed_cases": { "type": "integer" },
+          "total_runtime_seconds": { "type": "number" },
+          "average_runtime_seconds": { "type": "number" },
+          "average_final_score": { "type": ["number", "null"] },
+          "average_best_score": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "items": { "$ref": "case-run.schema.json" }
+    }
+  }
+}

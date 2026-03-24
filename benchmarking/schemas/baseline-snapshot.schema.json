@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://groupmixer.local/benchmarking/schemas/baseline-snapshot.schema.json",
+  "title": "GroupMixer benchmark baseline snapshot",
+  "type": "object",
+  "required": ["schema_version", "baseline_name", "created_at", "run_report"],
+  "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "baseline_name": { "type": "string" },
+    "created_at": { "type": "string" },
+    "source_run_path": { "type": ["string", "null"] },
+    "run_report": { "$ref": "run-report.schema.json" }
+  }
+}
