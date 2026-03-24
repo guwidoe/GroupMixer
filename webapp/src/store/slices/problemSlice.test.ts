@@ -76,7 +76,7 @@ describe("createProblemSlice", () => {
       },
     });
 
-    const problem = harness.slice.getProblem();
+    const problem = harness.slice.resolveProblem();
 
     expect(problem.people).toEqual([]);
     expect(problem.groups).toEqual([]);
@@ -111,7 +111,7 @@ describe("createProblemSlice", () => {
       savedProblems: { [saved.id]: saved },
     });
 
-    const problem = harness.slice.getProblem();
+    const problem = harness.slice.resolveProblem();
 
     expect(problem).toEqual(saved.problem);
     expect(problemStorage.setCurrentProblemId).toHaveBeenCalledWith(saved.id);

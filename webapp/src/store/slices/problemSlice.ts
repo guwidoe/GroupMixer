@@ -58,7 +58,7 @@ export const createProblemSlice: StoreSlice<ProblemState & ProblemActions> = (
     }
   },
 
-  getProblem: () => {
+  resolveProblem: () => {
     const currentProblem = get().problem;
     if (currentProblem) {
       return currentProblem;

@@ -12,7 +12,7 @@ interface Props {
 }
 
 const ImmovablePeopleModal: React.FC<Props> = ({ sessionsCount, initial, onCancel, onSave }) => {
-  const { getProblem, ui } = useAppStore();
+  const { resolveProblem, ui } = useAppStore();
   
   const getInitialState = () => {
     if (ui.isLoading) {
@@ -24,7 +24,7 @@ const ImmovablePeopleModal: React.FC<Props> = ({ sessionsCount, initial, onCance
       };
     }
     
-    const problem = getProblem();
+    const problem = resolveProblem();
     const editing = !!initial;
     const initPeople: string[] = editing && initial?.type === 'ImmovablePeople' ? initial.people : [];
     const initGroup: string = editing && initial?.type === 'ImmovablePeople' ? initial.group_id : ((problem.groups && problem.groups.length > 0) ? problem.groups[0].id : '');
@@ -50,7 +50,7 @@ const ImmovablePeopleModal: React.FC<Props> = ({ sessionsCount, initial, onCance
     return null;
   }
   
-  const problem = getProblem();
+  const problem = resolveProblem();
   const editing = !!initial;
 
   const togglePerson = (pid: string) => {

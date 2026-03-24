@@ -64,7 +64,7 @@ export interface ProblemActions {
   setProblem: (problem: Problem) => void;
   updateProblem: (updates: Partial<Problem>) => void;
   updateCurrentProblem: (problemId: string, problem: Problem) => void;
-  getProblem: () => Problem;
+  resolveProblem: () => Problem;
   ensureProblemExists: () => Problem;
 }
 

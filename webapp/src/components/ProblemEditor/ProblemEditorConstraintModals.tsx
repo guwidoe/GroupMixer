@@ -11,7 +11,7 @@ import PairMeetingCountModal from '../modals/PairMeetingCountModal';
 interface ProblemEditorConstraintModalsProps {
   problem: Problem | null;
   sessionsCount: number;
-  getProblem: () => Problem;
+  resolveProblem: () => Problem;
   setProblem: (problem: Problem) => void;
 
   showImmovableModal: boolean;
@@ -39,7 +39,7 @@ interface ProblemEditorConstraintModalsProps {
 export function ProblemEditorConstraintModals({
   problem,
   sessionsCount,
-  getProblem,
+  resolveProblem,
   setProblem,
   showImmovableModal,
   setShowImmovableModal,
@@ -65,13 +65,13 @@ export function ProblemEditorConstraintModals({
       {showImmovableModal && (
         <ImmovablePeopleModal
           sessionsCount={sessionsCount}
-          initial={editingImmovableIndex !== null ? (getProblem().constraints[editingImmovableIndex] || null) : null}
+          initial={editingImmovableIndex !== null ? (resolveProblem().constraints[editingImmovableIndex] || null) : null}
           onCancel={() => {
             setShowImmovableModal(false);
             setEditingImmovableIndex(null);
           }}
           onSave={(con) => {
-            const currentProblem = getProblem();
+            const currentProblem = resolveProblem();
             const updatedConstraints = [...currentProblem.constraints];
             if (editingImmovableIndex !== null) {
               updatedConstraints[editingImmovableIndex] = con;
@@ -92,13 +92,13 @@ export function ProblemEditorConstraintModals({
 
       {showRepeatEncounterModal && (
         <RepeatEncounterModal
-          initial={editingConstraintIndex !== null ? (getProblem().constraints[editingConstraintIndex] || null) : null}
+          initial={editingConstraintIndex !== null ? (resolveProblem().constraints[editingConstraintIndex] || null) : null}
           onCancel={() => {
             setShowRepeatEncounterModal(false);
             setEditingConstraintIndex(null);
           }}
           onSave={(constraint) => {
-            const currentProblem = getProblem();
+            const currentProblem = resolveProblem();
             const updatedConstraints = [...currentProblem.constraints];
             if (editingConstraintIndex !== null) {
               updatedConstraints[editingConstraintIndex] = constraint;
@@ -119,13 +119,13 @@ export function ProblemEditorConstraintModals({
 
       {showAttributeBalanceModal && (
         <AttributeBalanceModal
-          initial={editingConstraintIndex !== null ? (getProblem().constraints[editingConstraintIndex] || null) : null}
+          initial={editingConstraintIndex !== null ? (resolveProblem().constraints[editingConstraintIndex] || null) : null}
           onCancel={() => {
             setShowAttributeBalanceModal(false);
             setEditingConstraintIndex(null);
           }}
           onSave={(constraint) => {
-            const currentProblem = getProblem();
+            const currentProblem = resolveProblem();
             const updatedConstraints = [...currentProblem.constraints];
             if (editingConstraintIndex !== null) {
               updatedConstraints[editingConstraintIndex] = constraint;
@@ -147,13 +147,13 @@ export function ProblemEditorConstraintModals({
       {showShouldNotBeTogetherModal && (
         <ShouldNotBeTogetherModal
           sessionsCount={sessionsCount}
-          initial={editingConstraintIndex !== null ? (getProblem().constraints[editingConstraintIndex] || null) : null}
+          initial={editingConstraintIndex !== null ? (resolveProblem().constraints[editingConstraintIndex] || null) : null}
           onCancel={() => {
             setShowShouldNotBeTogetherModal(false);
             setEditingConstraintIndex(null);
           }}
           onSave={(constraint) => {
-            const currentProblem = getProblem();
+            const currentProblem = resolveProblem();
             const updatedConstraints = [...currentProblem.constraints];
             if (editingConstraintIndex !== null) {
               updatedConstraints[editingConstraintIndex] = constraint;
@@ -175,13 +175,13 @@ export function ProblemEditorConstraintModals({
       {showShouldStayTogetherModal && (
         <ShouldStayTogetherModal
           sessionsCount={sessionsCount}
-          initial={editingConstraintIndex !== null ? (getProblem().constraints[editingConstraintIndex] || null) : null}
+          initial={editingConstraintIndex !== null ? (resolveProblem().constraints[editingConstraintIndex] || null) : null}
           onCancel={() => {
             setShowShouldStayTogetherModal(false);
             setEditingConstraintIndex(null);
           }}
           onSave={(constraint) => {
-            const currentProblem = getProblem();
+            const currentProblem = resolveProblem();
             const updatedConstraints = [...currentProblem.constraints];
             if (editingConstraintIndex !== null) {
               updatedConstraints[editingConstraintIndex] = constraint;
@@ -221,13 +221,13 @@ export function ProblemEditorConstraintModals({
       {showMustStayTogetherModal && (
         <MustStayTogetherModal
           sessionsCount={sessionsCount}
-          initial={editingConstraintIndex !== null ? (getProblem().constraints[editingConstraintIndex] || null) : null}
+          initial={editingConstraintIndex !== null ? (resolveProblem().constraints[editingConstraintIndex] || null) : null}
           onCancel={() => {
             setShowMustStayTogetherModal(false);
             setEditingConstraintIndex(null);
           }}
           onSave={(constraint) => {
-            const currentProblem = getProblem();
+            const currentProblem = resolveProblem();
             const updatedConstraints = [...currentProblem.constraints];
             if (editingConstraintIndex !== null) {
               updatedConstraints[editingConstraintIndex] = constraint;

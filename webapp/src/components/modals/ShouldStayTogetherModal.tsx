@@ -12,7 +12,7 @@ interface Props {
 }
 
 const ShouldStayTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onCancel, onSave }) => {
-  const { getProblem, ui } = useAppStore();
+  const { resolveProblem, ui } = useAppStore();
 
   const getInitialState = () => {
     if (ui.isLoading) {
@@ -48,7 +48,7 @@ const ShouldStayTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onCa
 
   if (ui.isLoading) return null;
 
-  const problem = getProblem();
+  const problem = resolveProblem();
   const editing = !!initial;
 
   const filteredPeople = problem.people.filter(p => {
