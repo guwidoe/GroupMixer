@@ -7,7 +7,7 @@
 
 mod bench_inputs;
 
-use bench_inputs::construction_bench_input;
+use bench_inputs::{construction_bench_input, swap_bench_input, transfer_bench_input};
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion, Throughput};
 use solver_core::solver::State;
 use std::hint::black_box;
@@ -51,5 +51,75 @@ fn bench_full_recalculation(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_construction, bench_full_recalculation);
+fn bench_swap(c: &mut Criterion) {
+    let input = swap_bench_input();
+    let mut group = c.benchmark_group("swap");
+    group.throughput(Throughput::Elements(1));
+
+    group.bench_function("preview_delta", |b| {
+        b.iter(|| {
+            black_box(input.state.calculate_swap_cost_delta(
+                input.day,
+                input.p1_idx,
+                input.p2_idx,
+            ))
+        })
+    });
+
+    group.bench_function("apply", |b| {
+        b.iter_batched(
+            || input.state.clone(),
+            |mut state| {
+                state.apply_swap(input.day, input.p1_idx, input.p2_idx);
+                black_box(state.current_cost)
+            },
+            BatchSize::SmallInput,
+        )
+    });
+
+    group.finish();
+}
+
+fn bench_transfer(c: &mut Criterion) {
+    let input = transfer_bench_input();
+    let mut group = c.benchmark_group("transfer");
+    group.throughput(Throughput::Elements(1));
+
+    group.bench_function("preview_delta", |b| {
+        b.iter(|| {
+            black_box(input.state.calculate_transfer_cost_delta(
+                input.day,
+                input.person_idx,
+                input.from_group,
+                input.to_group,
+            ))
+        })
+    });
+
+    group.bench_function("apply", |b| {
+        b.iter_batched(
+            || input.state.clone(),
+            |mut state| {
+                state.apply_transfer(
+                    input.day,
+                    input.person_idx,
+                    input.from_group,
+                    input.to_group,
+                );
+                black_box(state.current_cost)
+            },
+            BatchSize::SmallInput,
+        )
+    });
+
+    group.finish();
+}
+
+criterion_group!(
+    benches,
+    bench_construction,
+    bench_full_recalculation,
+    bench_swap,
+    bench_transfer
+);
 criterion_main!(benches);
