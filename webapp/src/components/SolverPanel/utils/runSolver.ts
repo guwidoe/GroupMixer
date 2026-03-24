@@ -2,9 +2,15 @@ import type { MutableRefObject } from 'react';
 import type { Problem, ProblemResult, SavedProblem, SolverSettings, SolverState, Solution, Notification } from '../../../types';
 import type { ProgressUpdate } from '../../../services/wasm/types';
 import { solverWorkerService } from '../../../services/solverWorker';
-import { reconcileResultToInitialSchedule } from '../../../utils/warmStart';
 import { useAppStore } from '../../../store';
-import { normalizeRecommendedSolverSettings } from './recommendedSettings';
+import {
+  buildRunSettings,
+  createProgressCallback,
+  executeSolverRun,
+  selectSolverSettings,
+  snapshotProblem,
+  validateProblemForSolve,
+} from './runSolverHelpers';
 
 export type AddNotification = (notification: Omit<Notification, 'id'>) => void;
 
@@ -69,21 +75,7 @@ export async function runSolver({
   const currentProblem = ensureProblemExists();
   const activeProblemId = useAppStore.getState().currentProblemId;
 
-  if (!currentProblem.people || currentProblem.people.length === 0) {
-    addNotification({
-      type: 'error',
-      title: 'No People',
-      message: 'Please add people to the problem first',
-    });
-    return;
-  }
-
-  if (!currentProblem.groups || currentProblem.groups.length === 0) {
-    addNotification({
-      type: 'error',
-      title: 'No Groups',
-      message: 'Please add groups to the problem first',
-    });
+  if (!validateProblemForSolve(currentProblem, addNotification)) {
     return;
   }
 
@@ -98,30 +90,14 @@ export async function runSolver({
       message: 'Optimization algorithm started',
     });
 
-    let selectedSettings: SolverSettings = solverSettings;
+    const selectedSettings = await selectSolverSettings({
+      useRecommended,
+      currentProblem,
+      desiredRuntimeMain,
+      solverSettings,
+    });
 
-    if (useRecommended) {
-      try {
-        const rawSettings = await solverWorkerService.getRecommendedSettings(
-          currentProblem,
-          desiredRuntimeMain ?? 3,
-        );
-        selectedSettings = normalizeRecommendedSolverSettings(rawSettings as SolverSettings);
-      } catch (err) {
-        console.error('[SolverPanel] Failed to fetch recommended settings – falling back to existing settings', err);
-      }
-    }
-
-    const runSelectedSettings: SolverSettings = showLiveVizRef.current
-      ? {
-          ...selectedSettings,
-          telemetry: {
-            ...(selectedSettings.telemetry || {}),
-            emit_best_schedule: true,
-            best_schedule_every_n_callbacks: selectedSettings.telemetry?.best_schedule_every_n_callbacks ?? 3,
-          },
-        }
-      : selectedSettings;
+    const runSelectedSettings: SolverSettings = buildRunSettings(selectedSettings, showLiveVizRef.current);
 
     setRunSettings(runSelectedSettings);
     setLiveVizState(null);
@@ -132,106 +108,27 @@ export async function runSolver({
       settings: runSelectedSettings,
     };
 
-    try {
-      runProblemSnapshotRef.current = JSON.parse(JSON.stringify(currentProblem));
-    } catch {
-      runProblemSnapshotRef.current = { ...currentProblem } as Problem;
-    }
+    runProblemSnapshotRef.current = snapshotProblem(currentProblem);
 
-    const progressCallback = (progress: ProgressUpdate): void => {
-      if (solverCompletedRef.current) {
-        return;
-      }
-      if (cancelledRef.current) {
-        return;
-      }
+    const progressCallback = createProgressCallback({
+      showLiveVizRef,
+      solverCompletedRef,
+      cancelledRef,
+      setSolverState,
+      setLiveVizState,
+      liveVizLastUiUpdateRef,
+    });
 
-      setSolverState({
-        ...(progress.iteration === 0 && { initialConstraintPenalty: progress.current_constraint_penalty }),
-        currentIteration: progress.iteration,
-        currentScore: progress.current_score,
-        bestScore: progress.best_score,
-        elapsedTime: progress.elapsed_seconds * 1000,
-        noImprovementCount: progress.no_improvement_count,
-        temperature: progress.temperature,
-        coolingProgress: progress.cooling_progress,
-        cliqueSwapsTried: progress.clique_swaps_tried,
-        cliqueSwapsAccepted: progress.clique_swaps_accepted,
-        transfersTried: progress.transfers_tried,
-        transfersAccepted: progress.transfers_accepted,
-        swapsTried: progress.swaps_tried,
-        swapsAccepted: progress.swaps_accepted,
-        overallAcceptanceRate: progress.overall_acceptance_rate,
-        recentAcceptanceRate: progress.recent_acceptance_rate,
-        avgAttemptedMoveDelta: progress.avg_attempted_move_delta,
-        avgAcceptedMoveDelta: progress.avg_accepted_move_delta,
-        biggestAcceptedIncrease: progress.biggest_accepted_increase,
-        biggestAttemptedIncrease: progress.biggest_attempted_increase,
-        currentRepetitionPenalty: progress.current_repetition_penalty,
-        currentBalancePenalty: progress.current_balance_penalty,
-        currentConstraintPenalty: progress.current_constraint_penalty,
-        bestRepetitionPenalty: progress.best_repetition_penalty,
-        bestBalancePenalty: progress.best_balance_penalty,
-        bestConstraintPenalty: progress.best_constraint_penalty,
-        reheatsPerformed: progress.reheats_performed,
-        iterationsSinceLastReheat: progress.iterations_since_last_reheat,
-        localOptimaEscapes: progress.local_optima_escapes,
-        avgTimePerIterationMs: progress.avg_time_per_iteration_ms,
-        cliqueSwapSuccessRate: progress.clique_swap_success_rate,
-        transferSuccessRate: progress.transfer_success_rate,
-        swapSuccessRate: progress.swap_success_rate,
-        scoreVariance: progress.score_variance,
-        searchEfficiency: progress.search_efficiency,
-      });
-
-      if (showLiveVizRef.current && progress.best_schedule) {
-        const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-        if (now - liveVizLastUiUpdateRef.current > 200) {
-          liveVizLastUiUpdateRef.current = now;
-          setLiveVizState({
-            schedule: progress.best_schedule,
-            progress,
-          });
-        }
-      }
-
-    };
-
-    let solution;
-    let lastProgress;
-    if (warmStartResultId) {
-      try {
-        const sourceProblem = currentProblemId ? savedProblems[currentProblemId] : null;
-        const result = sourceProblem?.results.find((r) => r.id === warmStartResultId);
-        if (!result) {
-          throw new Error('Selected warm-start result not found');
-        }
-        const initialSchedule = reconcileResultToInitialSchedule(currentProblem, result);
-        setWarmStartFromResult(null);
-        const out = await solverWorkerService.solveWithProgressWarmStart(
-          problemWithSettings,
-          initialSchedule,
-          progressCallback,
-        );
-        solution = out.solution;
-        lastProgress = out.lastProgress;
-      } catch (e) {
-        console.error('[SolverPanel] Warm-start failed, falling back to normal start:', e);
-        addNotification({
-          type: 'warning',
-          title: 'Warm Start Failed',
-          message: e instanceof Error ? e.message : 'Falling back to default start',
-        });
-        setWarmStartFromResult(null);
-        const out = await solverWorkerService.solveWithProgress(problemWithSettings, progressCallback);
-        solution = out.solution;
-        lastProgress = out.lastProgress;
-      }
-    } else {
-      const out = await solverWorkerService.solveWithProgress(problemWithSettings, progressCallback);
-      solution = out.solution;
-      lastProgress = out.lastProgress;
-    }
+    const { solution, lastProgress } = await executeSolverRun({
+      currentProblem,
+      currentProblemId,
+      savedProblems,
+      warmStartResultId,
+      setWarmStartFromResult,
+      problemWithSettings,
+      progressCallback,
+      addNotification,
+    });
 
     solverCompletedRef.current = true;
 
