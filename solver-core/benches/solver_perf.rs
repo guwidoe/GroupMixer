@@ -7,8 +7,13 @@
 
 mod bench_inputs;
 
-use bench_inputs::{construction_bench_input, swap_bench_input, transfer_bench_input};
-use criterion::{criterion_group, criterion_main, BatchSize, Criterion, Throughput};
+use bench_inputs::{
+    clique_swap_bench_input, construction_bench_input, search_loop_bench_inputs, swap_bench_input,
+    transfer_bench_input,
+};
+use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion, Throughput};
+use solver_core::algorithms::simulated_annealing::SimulatedAnnealing;
+use solver_core::algorithms::Solver;
 use solver_core::solver::State;
 use std::hint::black_box;
 
@@ -115,11 +120,73 @@ fn bench_transfer(c: &mut Criterion) {
     group.finish();
 }
 
+fn bench_clique_swap(c: &mut Criterion) {
+    let input = clique_swap_bench_input();
+    let mut group = c.benchmark_group("clique_swap");
+    group.throughput(Throughput::Elements(1));
+
+    group.bench_function("preview_delta", |b| {
+        b.iter(|| {
+            black_box(input.state.calculate_clique_swap_cost_delta(
+                input.day,
+                input.clique_idx,
+                input.from_group,
+                input.to_group,
+                &input.target_people,
+            ))
+        })
+    });
+
+    group.bench_function("apply", |b| {
+        b.iter_batched(
+            || input.state.clone(),
+            |mut state| {
+                state.apply_clique_swap(
+                    input.day,
+                    input.clique_idx,
+                    input.from_group,
+                    input.to_group,
+                    &input.target_people,
+                );
+                black_box(state.current_cost)
+            },
+            BatchSize::SmallInput,
+        )
+    });
+
+    group.finish();
+}
+
+fn bench_search_loop(c: &mut Criterion) {
+    let mut group = c.benchmark_group("search_loop");
+
+    for input in search_loop_bench_inputs() {
+        let solver = SimulatedAnnealing::new(&input.input.solver);
+        group.throughput(Throughput::Elements(input.iterations));
+        group.bench_with_input(BenchmarkId::new("solve", input.id), &input.base_state, |b, _| {
+            b.iter_batched(
+                || input.base_state.clone(),
+                |mut state| {
+                    let result = solver
+                        .solve(&mut state, None, None)
+                        .expect("search loop benchmark should solve");
+                    black_box(result.final_score)
+                },
+                BatchSize::LargeInput,
+            )
+        });
+    }
+
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_construction,
     bench_full_recalculation,
     bench_swap,
-    bench_transfer
+    bench_transfer,
+    bench_clique_swap,
+    bench_search_loop
 );
 criterion_main!(benches);
