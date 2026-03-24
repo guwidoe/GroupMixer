@@ -43,7 +43,7 @@ const constraintTypeLabels: Record<typeof SOFT_TABS[number], string> = {
 const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstraint, onDeleteConstraint }) => {
   const [activeTab, setActiveTab] = useState<typeof SOFT_TABS[number]>('RepeatEncounter');
   const [showInfo, setShowInfo] = useState(false);
-  const { GetProblem, setProblem, ui } = useAppStore();
+  const { getProblem, setProblem, ui } = useAppStore();
   const [filterText, setFilterText] = useState('');
   const [selectedShouldIndices, setSelectedShouldIndices] = useState<number[]>([]);
   const [showPairConvert, setShowPairConvert] = useState(false);
@@ -53,7 +53,7 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
     return <div className="space-y-4 pt-1 pl-0">Loading...</div>;
   }
 
-  const problem = GetProblem();
+  const problem = getProblem();
 
   const constraintsByType = (problem.constraints || []).reduce((acc: Record<string, { constraint: Constraint; index: number }[]>, c, i) => {
     if (!acc[c.type]) acc[c.type] = [];

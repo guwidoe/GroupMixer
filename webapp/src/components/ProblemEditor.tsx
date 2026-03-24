@@ -26,7 +26,7 @@ export function ProblemEditor() {
   const { 
     problem, 
     setProblem, 
-    GetProblem,
+    getProblem,
     addNotification, 
     loadDemoCase,
     loadDemoCaseOverwrite,
@@ -446,7 +446,7 @@ export function ProblemEditor() {
       <ProblemEditorConstraintModals
         problem={problem ?? null}
         sessionsCount={sessionsCount}
-        getProblem={GetProblem}
+        getProblem={getProblem}
         setProblem={setProblem}
         showImmovableModal={constraints.showImmovableModal}
         setShowImmovableModal={constraints.setShowImmovableModal}

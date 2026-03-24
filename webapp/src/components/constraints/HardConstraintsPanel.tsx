@@ -30,14 +30,14 @@ function HardConstraintsPanel({ onAddConstraint, onEditConstraint, onDeleteConst
   const [showInfo, setShowInfo] = useState(false);
   const [filterText, setFilterText] = useState('');
   const [minMembers, setMinMembers] = useState<number | ''>('');
-  const { GetProblem, setProblem, ui } = useAppStore();
+  const { getProblem, setProblem, ui } = useAppStore();
 
   // Don't render until loading is complete to avoid creating new problems
   if (ui.isLoading) {
     return <div className="space-y-4 pt-1 pl-0">Loading...</div>;
   }
 
-  const problem = GetProblem();
+  const problem = getProblem();
 
   const constraintsByType = (problem.constraints || []).reduce((acc: Record<string, { constraint: Constraint; index: number }[]>, c, i) => {
     if (!acc[c.type]) acc[c.type] = [];

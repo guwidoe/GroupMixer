@@ -19,7 +19,7 @@ interface FormState {
 }
 
 const AttributeBalanceModal: React.FC<Props> = ({ initial, onCancel, onSave }) => {
-  const { GetProblem, attributeDefinitions, ui } = useAppStore();
+  const { getProblem, attributeDefinitions, ui } = useAppStore();
   
   const getInitialState = (): FormState => {
     if (ui.isLoading) {
@@ -33,7 +33,7 @@ const AttributeBalanceModal: React.FC<Props> = ({ initial, onCancel, onSave }) =
       };
     }
     
-    const problem = GetProblem();
+    const problem = getProblem();
     const editing = !!initial;
 
     if (editing && initial?.type === 'AttributeBalance') {
@@ -64,7 +64,7 @@ const AttributeBalanceModal: React.FC<Props> = ({ initial, onCancel, onSave }) =
     return null;
   }
   
-  const problem = GetProblem();
+  const problem = getProblem();
   const editing = !!initial;
   const sessionsCount = problem.num_sessions || 0;
 

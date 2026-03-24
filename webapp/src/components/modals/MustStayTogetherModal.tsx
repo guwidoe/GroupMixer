@@ -12,7 +12,7 @@ interface Props {
 }
 
 const MustStayTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onCancel, onSave }) => {
-  const { GetProblem, ui } = useAppStore();
+  const { getProblem, ui } = useAppStore();
 
   const getInitialState = () => {
     if (ui.isLoading) {
@@ -45,7 +45,7 @@ const MustStayTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onCanc
     return null;
   }
 
-  const problem = GetProblem();
+  const problem = getProblem();
   const editing = !!initial;
 
   const togglePerson = (pid: string) => {
