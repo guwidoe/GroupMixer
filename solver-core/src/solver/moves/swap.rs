@@ -7,6 +7,64 @@ use super::super::State;
 use crate::models::PairMeetingMode;
 
 impl State {
+    fn repetition_penalty_for_contact_count(count: u32) -> i32 {
+        if count > 1 {
+            (count as i32 - 1).pow(2)
+        } else {
+            0
+        }
+    }
+
+    fn contact_delta_for_membership_change(
+        &self,
+        day: usize,
+        person_idx: usize,
+        members: &[usize],
+        self_member_idx: usize,
+        direction: i32,
+    ) -> f64 {
+        let mut delta_cost = 0.0;
+
+        for &member in members.iter() {
+            if member == self_member_idx || !self.person_participation[member][day] {
+                continue;
+            }
+
+            let count = self.contact_matrix[person_idx][member];
+            if direction < 0 && count == 0 {
+                continue;
+            }
+
+            let new_count = if direction < 0 { count - 1 } else { count + 1 };
+            let old_penalty = Self::repetition_penalty_for_contact_count(count);
+            let new_penalty = Self::repetition_penalty_for_contact_count(new_count);
+            delta_cost += self.w_repetition * (new_penalty - old_penalty) as f64;
+
+            if direction < 0 && count == 1 {
+                delta_cost += self.w_contacts;
+            }
+            if direction > 0 && count == 0 {
+                delta_cost -= self.w_contacts;
+            }
+        }
+
+        delta_cost
+    }
+
+    fn swapped_group_members(
+        members: &[usize],
+        person_to_remove: usize,
+        person_to_add: usize,
+    ) -> Vec<usize> {
+        let mut next_members: Vec<usize> = members
+            .iter()
+            .filter(|&&person| person != person_to_remove)
+            .copied()
+            .collect();
+        next_members.push(person_to_add);
+        next_members
+    }
+
     /// Calculates the change in the total cost function if a swap were to be performed.
     ///
     /// This is the core method for evaluating potential moves during optimization.
@@ -131,122 +189,13 @@ impl State {
         // --- Contact/Repetition Delta ---
         let g1_members = &self.schedule[day][g1_idx];
         let g2_members = &self.schedule[day][g2_idx];
+        let next_g1_members = Self::swapped_group_members(g1_members, p1_idx, p2_idx);
+        let next_g2_members = Self::swapped_group_members(g2_members, p2_idx, p1_idx);
 
-        // --- Changes for p1 (loses contacts with g1, gains with g2) ---
-        for &member in g1_members.iter() {
-            if member == p1_idx {
-                continue;
-            }
-            // Only consider contacts with participating members
-            if !self.person_participation[member][day] {
-                continue;
-            }
-
-            let count = self.contact_matrix[p1_idx][member];
-            if count > 0 {
-                // Repetition penalty change: (new_penalty - old_penalty)
-                let old_penalty = if count > 1 {
-                    (count as i32 - 1).pow(2)
-                } else {
-                    0
-                };
-                let new_count = count - 1;
-                let new_penalty = if new_count > 1 {
-                    (new_count as i32 - 1).pow(2)
-                } else {
-                    0
-                };
-                delta_cost += self.w_repetition * (new_penalty - old_penalty) as f64;
-                if count == 1 {
-                    // Unique contacts: losing one, so cost increases
-                    delta_cost += self.w_contacts;
-                }
-            }
-        }
-        for &member in g2_members.iter() {
-            if member == p2_idx {
-                continue;
-            }
-            // Only consider contacts with participating members
-            if !self.person_participation[member][day] {
-                continue;
-            }
-
-            let count = self.contact_matrix[p1_idx][member];
-            // Repetition penalty change: (new_penalty - old_penalty)
-            let old_penalty = if count > 1 {
-                (count as i32 - 1).pow(2)
-            } else {
-                0
-            };
-            let new_count = count + 1;
-            let new_penalty = if new_count > 1 {
-                (new_count as i32 - 1).pow(2)
-            } else {
-                0
-            };
-            delta_cost += self.w_repetition * (new_penalty - old_penalty) as f64;
-            if count == 0 {
-                // Unique contacts: gaining one, so cost decreases
-                delta_cost -= self.w_contacts;
-            }
-        }
-
-        // --- Changes for p2 (loses contacts with g2, gains with g1) ---
-        for &member in g2_members.iter() {
-            if member == p2_idx {
-                continue;
-            }
-            // Only consider contacts with participating members
-            if !self.person_participation[member][day] {
-                continue;
-            }
-
-            let count = self.contact_matrix[p2_idx][member];
-            if count > 0 {
-                let old_penalty = if count > 1 {
-                    (count as i32 - 1).pow(2)
-                } else {
-                    0
-                };
-                let new_count = count - 1;
-                let new_penalty = if new_count > 1 {
-                    (new_count as i32 - 1).pow(2)
-                } else {
-                    0
-                };
-                delta_cost += self.w_repetition * (new_penalty - old_penalty) as f64;
-                if count == 1 {
-                    delta_cost += self.w_contacts;
-                }
-            }
-        }
-        for &member in g1_members.iter() {
-            if member == p1_idx {
-                continue;
-            }
-            // Only consider contacts with participating members
-            if !self.person_participation[member][day] {
-                continue;
-            }
-
-            let count = self.contact_matrix[p2_idx][member];
-            let old_penalty = if count > 1 {
-                (count as i32 - 1).pow(2)
-            } else {
-                0
-            };
-            let new_count = count + 1;
-            let new_penalty = if new_count > 1 {
-                (new_count as i32 - 1).pow(2)
-            } else {
-                0
-            };
-            delta_cost += self.w_repetition * (new_penalty - old_penalty) as f64;
-            if count == 0 {
-                delta_cost -= self.w_contacts;
-            }
-        }
+        delta_cost += self.contact_delta_for_membership_change(day, p1_idx, g1_members, p1_idx, -1);
+        delta_cost += self.contact_delta_for_membership_change(day, p1_idx, g2_members, p2_idx, 1);
+        delta_cost += self.contact_delta_for_membership_change(day, p2_idx, g2_members, p2_idx, -1);
+        delta_cost += self.contact_delta_for_membership_change(day, p2_idx, g1_members, p1_idx, 1);
 
         // Attribute Balance Delta
         for ac in &self.attribute_balance_constraints {
@@ -277,23 +226,11 @@ impl State {
             };
 
             let new_penalty_g1 = if applies_to_g1 {
-                let mut next_g1_members: Vec<usize> = g1_members
-                    .iter()
-                    .filter(|&&p| p != p1_idx)
-                    .cloned()
-                    .collect();
-                next_g1_members.push(p2_idx);
                 self.calculate_group_attribute_penalty_for_members(&next_g1_members, ac)
             } else {
                 0.0
             };
             let new_penalty_g2 = if applies_to_g2 {
-                let mut next_g2_members: Vec<usize> = g2_members
-                    .iter()
-                    .filter(|&&p| p != p2_idx)
-                    .cloned()
-                    .collect();
-                next_g2_members.push(p1_idx);
                 self.calculate_group_attribute_penalty_for_members(&next_g2_members, ac)
             } else {
                 0.0
@@ -340,18 +277,6 @@ impl State {
             }
 
             // Penalty after swap
-            let mut next_g1_members: Vec<usize> = g1_members
-                .iter()
-                .filter(|&&p| p != p1_idx)
-                .cloned()
-                .collect();
-            next_g1_members.push(p2_idx);
-            let mut next_g2_members: Vec<usize> = g2_members
-                .iter()
-                .filter(|&&p| p != p2_idx)
-                .cloned()
-                .collect();
-            next_g2_members.push(p1_idx);
             if next_g1_members.contains(&p1) && next_g1_members.contains(&p2) {
                 delta_cost += pair_weight;
             }
@@ -389,19 +314,6 @@ impl State {
             };
 
             // New penalty after swap
-            let mut next_g1_members: Vec<usize> = g1_members
-                .iter()
-                .filter(|&&p| p != p1_idx)
-                .cloned()
-                .collect();
-            next_g1_members.push(p2_idx);
-            let mut next_g2_members: Vec<usize> = g2_members
-                .iter()
-                .filter(|&&p| p != p2_idx)
-                .cloned()
-                .collect();
-            next_g2_members.push(p1_idx);
-
             let new_p1_in_g1 = next_g1_members.contains(&person1);
             let new_p1_in_g2 = next_g2_members.contains(&person1);
             let new_p2_in_g1 = next_g1_members.contains(&person2);
