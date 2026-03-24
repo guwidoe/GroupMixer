@@ -8,7 +8,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import react from 'eslint-plugin-react'
 import tseslint from 'typescript-eslint'
 
-export default tseslint.config({ ignores: ['dist', 'public/pkg'] }, {
+export default tseslint.config({ ignores: ['dist', 'public/pkg', 'coverage'] }, {
   files: ['**/*.{ts,tsx}'],
   extends: [
     js.configs.recommended,
