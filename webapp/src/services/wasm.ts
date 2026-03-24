@@ -9,6 +9,15 @@ class WasmService {
   private loading = false;
   private initializationFailed = false;
 
+  private formatErrorMessage(error: unknown, fallback: string): string {
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+
+    const text = String(error);
+    return text && text !== "[object Object]" ? text : fallback;
+  }
+
   private async requireModule(): Promise<WasmModule> {
     if (!this.module && !this.initializationFailed) {
       await this.initialize();
@@ -49,11 +58,15 @@ class WasmService {
       await wasmModule.default();
 
       this.module = wasmModule as unknown as WasmModule;
-      console.log("WASM module loaded successfully");
     } catch (error) {
       console.error("Failed to load WASM module:", error);
       this.initializationFailed = true;
-      throw new Error("Failed to initialize WASM solver");
+      throw new Error(
+        `Failed to initialize WASM solver: ${this.formatErrorMessage(
+          error,
+          "Unknown initialization error"
+        )}`
+      );
     } finally {
       this.loading = false;
     }
@@ -65,19 +78,16 @@ class WasmService {
     let problemJson: string | undefined;
     try {
       problemJson = JSON.stringify(convertProblemToRustFormat(problem));
-      console.log("Solver input JSON:", problemJson);
       const resultJson = module.solve(problemJson);
       const rustResult = JSON.parse(resultJson);
       return convertRustResultToSolution(rustResult);
     } catch (error) {
       console.error("WASM solve error:", error);
       if (problemJson) {
-        console.debug("Solver input JSON that caused the error:", problemJson);
+        console.error("WASM solve error occurred after serializing solver input.");
       }
       throw new Error(
-        `Failed to solve problem: ${
-          error instanceof Error ? error.stack || error.message : String(error)
-        }`
+        `Failed to solve problem: ${this.formatErrorMessage(error, "Unknown solver error")}`
       );
     }
   }
@@ -120,12 +130,15 @@ class WasmService {
     } catch (error) {
       console.error("WASM solveWithProgress error:", error);
       if (problemJson) {
-        console.debug("Solver input JSON that caused the error:", problemJson);
+        console.error(
+          "WASM solveWithProgress error occurred after serializing solver input."
+        );
       }
       throw new Error(
-        `Failed to solve problem: ${
-          error instanceof Error ? error.stack || error.message : String(error)
-        }`
+        `Failed to solve problem: ${this.formatErrorMessage(
+          error,
+          "Unknown solver error"
+        )}`
       );
     }
   }
@@ -142,9 +155,10 @@ class WasmService {
     } catch (error) {
       console.error("WASM validation error:", error);
       throw new Error(
-        `Failed to validate problem: ${
-          error instanceof Error ? error.stack || error.message : String(error)
-        }`
+        `Failed to validate problem: ${this.formatErrorMessage(
+          error,
+          "Unknown validation error"
+        )}`
       );
     }
   }
@@ -158,9 +172,10 @@ class WasmService {
     } catch (error) {
       console.error("WASM get default settings error:", error);
       throw new Error(
-        `Failed to get default settings: ${
-          error instanceof Error ? error.stack || error.message : String(error)
-        }`
+        `Failed to get default settings: ${this.formatErrorMessage(
+          error,
+          "Unknown settings error"
+        )}`
       );
     }
   }
@@ -207,9 +222,10 @@ class WasmService {
     } catch (error) {
       console.error("WASM evaluateSolution error:", error);
       throw new Error(
-        `Failed to evaluate solution: ${
-          error instanceof Error ? error.stack || error.message : String(error)
-        }`
+        `Failed to evaluate solution: ${this.formatErrorMessage(
+          error,
+          "Unknown evaluation error"
+        )}`
       );
     }
   }
