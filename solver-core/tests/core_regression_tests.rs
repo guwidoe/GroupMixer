@@ -3,12 +3,15 @@ mod common;
 use common::default_solver_config;
 use solver_core::algorithms::simulated_annealing::SimulatedAnnealing;
 use solver_core::models::{
-    ApiInput, Constraint, Group, LoggingOptions, MoveFamily, MovePolicy,
+    ApiInput, BenchmarkEvent, Constraint, Group, LoggingOptions, MoveFamily, MovePolicy,
     MoveSelectionMode, Objective, Person, ProblemDefinition, RepeatEncounterParams,
     SimulatedAnnealingParams, SolverConfiguration, SolverParams, StopConditions, StopReason,
 };
 use solver_core::solver::State;
-use solver_core::{run_solver, run_solver_with_progress};
+use solver_core::{
+    run_solver, run_solver_with_benchmark_observer, run_solver_with_callbacks,
+    run_solver_with_progress,
+};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -291,6 +294,73 @@ fn result_reports_time_limit_stop_reason() {
 
     let result = run_solver(&input).expect("solve should succeed");
     assert_eq!(result.stop_reason, Some(StopReason::TimeLimitReached));
+}
+
+#[test]
+fn benchmark_observer_receives_started_and_completed_events() {
+    let mut input = basic_input();
+    input.solver.seed = Some(2024);
+
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let events_clone = Arc::clone(&events);
+    let observer: solver_core::models::BenchmarkObserver = Box::new(move |event| {
+        events_clone.lock().unwrap().push(event.clone());
+    });
+
+    let result = run_solver_with_benchmark_observer(&input, Some(&observer))
+        .expect("solve with benchmark observer should succeed");
+    let events = events.lock().unwrap().clone();
+
+    assert_eq!(events.len(), 2, "observer should receive start + completion");
+
+    match &events[0] {
+        BenchmarkEvent::RunStarted(started) => {
+            assert_eq!(started.effective_seed, 2024);
+            assert_eq!(started.move_policy, MovePolicy::default());
+        }
+        other => panic!("unexpected first benchmark event: {other:?}"),
+    }
+
+    let completed = match &events[1] {
+        BenchmarkEvent::RunCompleted(completed) => completed,
+        other => panic!("unexpected completion benchmark event: {other:?}"),
+    };
+
+    assert_eq!(completed.effective_seed, 2024);
+    assert_eq!(completed.stop_reason, result.stop_reason.unwrap());
+    assert!(completed.total_seconds >= 0.0);
+    assert!(completed.search_seconds >= 0.0);
+    assert!(completed.initialization_seconds >= 0.0);
+    assert!(completed.finalization_seconds >= 0.0);
+    assert_eq!(
+        result.benchmark_telemetry.as_ref().expect("result telemetry"),
+        completed
+    );
+}
+
+#[test]
+fn progress_callback_and_benchmark_observer_can_run_together() {
+    let input = basic_input();
+
+    let progress_count = Arc::new(Mutex::new(0usize));
+    let progress_count_clone = Arc::clone(&progress_count);
+    let progress_callback: solver_core::models::ProgressCallback = Box::new(move |_| {
+        *progress_count_clone.lock().unwrap() += 1;
+        true
+    });
+
+    let benchmark_count = Arc::new(Mutex::new(0usize));
+    let benchmark_count_clone = Arc::clone(&benchmark_count);
+    let observer: solver_core::models::BenchmarkObserver = Box::new(move |_| {
+        *benchmark_count_clone.lock().unwrap() += 1;
+    });
+
+    let result = run_solver_with_callbacks(&input, Some(&progress_callback), Some(&observer))
+        .expect("combined callback solve should succeed");
+
+    assert!(*progress_count.lock().unwrap() >= 1);
+    assert_eq!(*benchmark_count.lock().unwrap(), 2);
+    assert!(result.benchmark_telemetry.is_some());
 }
 
 #[test]
