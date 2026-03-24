@@ -320,19 +320,3 @@ export interface ExportedProblem {
   exportedAt: number;
 }
 
-// WASM Module types
-export interface WasmModule {
-  solve: (problem_json: string) => string;
-  solve_with_progress: (
-    problem_json: string,
-    progress_callback?: (progress_json: string) => boolean
-  ) => string;
-  validate_problem: (problem_json: string) => string;
-  get_default_settings: () => string;
-  get_recommended_settings: (
-    problem_json: string,
-    desired_runtime_seconds: bigint
-  ) => string;
-  evaluate_input?: (input_json: string) => string;
-  init_panic_hook?: () => void;
-}
