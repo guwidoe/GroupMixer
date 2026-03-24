@@ -34,7 +34,7 @@
     ],
     "constraints": [
       {
-        "type": "ShouldBeTogether",
+        "type": "ShouldStayTogether",
         "people": ["p0", "p3"],
         "penalty_weight": 4.0
       },

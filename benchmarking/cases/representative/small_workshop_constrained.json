@@ -34,7 +34,7 @@
         "penalty_weight": 7.0
       },
       {
-        "type": "ShouldBeTogether",
+        "type": "ShouldStayTogether",
         "people": ["p2", "p3"],
         "penalty_weight": 5.0
       },
