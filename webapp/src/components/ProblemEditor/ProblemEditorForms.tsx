@@ -3,7 +3,7 @@ import type { AttributeDefinition, Group, GroupFormData, Person, PersonFormData 
 import { BulkAddGroupsForm, BulkAddPeopleForm, BulkUpdatePeopleForm } from './bulk';
 import { AttributeForm, GroupForm, PersonForm } from './forms';
 
-interface ProblemEditorFormsProps {
+interface PersonFormConfig {
   showPersonForm: boolean;
   editingPerson: Person | null;
   personForm: PersonFormData;
@@ -14,7 +14,9 @@ interface ProblemEditorFormsProps {
   onUpdatePerson: () => void;
   onCancelPerson: () => void;
   onShowAttributeForm: () => void;
+}
 
+interface GroupFormConfig {
   showGroupForm: boolean;
   editingGroup: Group | null;
   groupForm: GroupFormData;
@@ -24,7 +26,9 @@ interface ProblemEditorFormsProps {
   onSaveGroup: () => void;
   onUpdateGroup: () => void;
   onCancelGroup: () => void;
+}
 
+interface AttributeFormConfig {
   showAttributeForm: boolean;
   editingAttribute: AttributeDefinition | null;
   newAttribute: { key: string; values: string[] };
@@ -32,7 +36,9 @@ interface ProblemEditorFormsProps {
   onSaveAttribute: () => void;
   onUpdateAttribute: () => void;
   onCancelAttribute: () => void;
+}
 
+interface BulkAddPeopleFormConfig {
   showBulkForm: boolean;
   bulkTextMode: 'text' | 'grid';
   setBulkTextMode: React.Dispatch<React.SetStateAction<'text' | 'grid'>>;
@@ -44,7 +50,9 @@ interface ProblemEditorFormsProps {
   setBulkRows: React.Dispatch<React.SetStateAction<Record<string, string>[]>>;
   onSaveBulkPeople: () => void;
   onCloseBulkPeople: () => void;
+}
 
+interface BulkUpdatePeopleFormConfig {
   showBulkUpdateForm: boolean;
   bulkUpdateTextMode: 'text' | 'grid';
   setBulkUpdateTextMode: React.Dispatch<React.SetStateAction<'text' | 'grid'>>;
@@ -57,7 +65,9 @@ interface ProblemEditorFormsProps {
   onRefreshBulkUpdate: () => void;
   onApplyBulkUpdate: () => void;
   onCloseBulkUpdate: () => void;
+}
 
+interface BulkAddGroupsFormConfig {
   showGroupBulkForm: boolean;
   groupBulkTextMode: 'text' | 'grid';
   setGroupBulkTextMode: React.Dispatch<React.SetStateAction<'text' | 'grid'>>;
@@ -69,7 +79,15 @@ interface ProblemEditorFormsProps {
   setGroupBulkRows: React.Dispatch<React.SetStateAction<Record<string, string>[]>>;
   onSaveGroupBulk: () => void;
   onCloseGroupBulk: () => void;
+}
 
+interface ProblemEditorFormsProps {
+  person: PersonFormConfig;
+  group: GroupFormConfig;
+  attribute: AttributeFormConfig;
+  bulkAddPeople: BulkAddPeopleFormConfig;
+  bulkUpdatePeople: BulkUpdatePeopleFormConfig;
+  bulkAddGroups: BulkAddGroupsFormConfig;
   csvFileInputRef: React.RefObject<HTMLInputElement>;
   onCsvFileSelected: (event: React.ChangeEvent<HTMLInputElement>) => void;
   groupCsvFileInputRef: React.RefObject<HTMLInputElement>;
@@ -77,66 +95,12 @@ interface ProblemEditorFormsProps {
 }
 
 export function ProblemEditorForms({
-  showPersonForm,
-  editingPerson,
-  personForm,
-  setPersonForm,
-  attributeDefinitions,
-  sessionsCount,
-  onSavePerson,
-  onUpdatePerson,
-  onCancelPerson,
-  onShowAttributeForm,
-  showGroupForm,
-  editingGroup,
-  groupForm,
-  setGroupForm,
-  groupFormInputs,
-  setGroupFormInputs,
-  onSaveGroup,
-  onUpdateGroup,
-  onCancelGroup,
-  showAttributeForm,
-  editingAttribute,
-  newAttribute,
-  setNewAttribute,
-  onSaveAttribute,
-  onUpdateAttribute,
-  onCancelAttribute,
-  showBulkForm,
-  bulkTextMode,
-  setBulkTextMode,
-  bulkCsvInput,
-  setBulkCsvInput,
-  bulkHeaders,
-  setBulkHeaders,
-  bulkRows,
-  setBulkRows,
-  onSaveBulkPeople,
-  onCloseBulkPeople,
-  showBulkUpdateForm,
-  bulkUpdateTextMode,
-  setBulkUpdateTextMode,
-  bulkUpdateCsvInput,
-  setBulkUpdateCsvInput,
-  bulkUpdateHeaders,
-  setBulkUpdateHeaders,
-  bulkUpdateRows,
-  setBulkUpdateRows,
-  onRefreshBulkUpdate,
-  onApplyBulkUpdate,
-  onCloseBulkUpdate,
-  showGroupBulkForm,
-  groupBulkTextMode,
-  setGroupBulkTextMode,
-  groupBulkCsvInput,
-  setGroupBulkCsvInput,
-  groupBulkHeaders,
-  setGroupBulkHeaders,
-  groupBulkRows,
-  setGroupBulkRows,
-  onSaveGroupBulk,
-  onCloseGroupBulk,
+  person,
+  group,
+  attribute,
+  bulkAddPeople,
+  bulkUpdatePeople,
+  bulkAddGroups,
   csvFileInputRef,
   onCsvFileSelected,
   groupCsvFileInputRef,
@@ -144,89 +108,89 @@ export function ProblemEditorForms({
 }: ProblemEditorFormsProps) {
   return (
     <>
-      {showPersonForm && (
+      {person.showPersonForm && (
         <PersonForm
-          isEditing={editingPerson !== null}
-          editingPerson={editingPerson}
-          personForm={personForm}
-          setPersonForm={setPersonForm}
-          attributeDefinitions={attributeDefinitions}
-          sessionsCount={sessionsCount}
-          onSave={onSavePerson}
-          onUpdate={onUpdatePerson}
-          onCancel={onCancelPerson}
-          onShowAttributeForm={onShowAttributeForm}
+          isEditing={person.editingPerson !== null}
+          editingPerson={person.editingPerson}
+          personForm={person.personForm}
+          setPersonForm={person.setPersonForm}
+          attributeDefinitions={person.attributeDefinitions}
+          sessionsCount={person.sessionsCount}
+          onSave={person.onSavePerson}
+          onUpdate={person.onUpdatePerson}
+          onCancel={person.onCancelPerson}
+          onShowAttributeForm={person.onShowAttributeForm}
         />
       )}
 
-      {showGroupForm && (
+      {group.showGroupForm && (
         <GroupForm
-          isEditing={editingGroup !== null}
-          editingGroup={editingGroup}
-          groupForm={groupForm}
-          setGroupForm={setGroupForm}
-          groupFormInputs={groupFormInputs}
-          setGroupFormInputs={setGroupFormInputs}
-          onSave={onSaveGroup}
-          onUpdate={onUpdateGroup}
-          onCancel={onCancelGroup}
+          isEditing={group.editingGroup !== null}
+          editingGroup={group.editingGroup}
+          groupForm={group.groupForm}
+          setGroupForm={group.setGroupForm}
+          groupFormInputs={group.groupFormInputs}
+          setGroupFormInputs={group.setGroupFormInputs}
+          onSave={group.onSaveGroup}
+          onUpdate={group.onUpdateGroup}
+          onCancel={group.onCancelGroup}
         />
       )}
 
-      {showAttributeForm && (
+      {attribute.showAttributeForm && (
         <AttributeForm
-          isEditing={editingAttribute !== null}
-          newAttribute={newAttribute}
-          setNewAttribute={setNewAttribute}
-          onSave={onSaveAttribute}
-          onUpdate={onUpdateAttribute}
-          onCancel={onCancelAttribute}
+          isEditing={attribute.editingAttribute !== null}
+          newAttribute={attribute.newAttribute}
+          setNewAttribute={attribute.setNewAttribute}
+          onSave={attribute.onSaveAttribute}
+          onUpdate={attribute.onUpdateAttribute}
+          onCancel={attribute.onCancelAttribute}
         />
       )}
 
-      {showBulkForm && (
+      {bulkAddPeople.showBulkForm && (
         <BulkAddPeopleForm
-          bulkTextMode={bulkTextMode}
-          setBulkTextMode={setBulkTextMode}
-          bulkCsvInput={bulkCsvInput}
-          setBulkCsvInput={setBulkCsvInput}
-          bulkHeaders={bulkHeaders}
-          setBulkHeaders={setBulkHeaders}
-          bulkRows={bulkRows}
-          setBulkRows={setBulkRows}
-          onSave={onSaveBulkPeople}
-          onClose={onCloseBulkPeople}
+          bulkTextMode={bulkAddPeople.bulkTextMode}
+          setBulkTextMode={bulkAddPeople.setBulkTextMode}
+          bulkCsvInput={bulkAddPeople.bulkCsvInput}
+          setBulkCsvInput={bulkAddPeople.setBulkCsvInput}
+          bulkHeaders={bulkAddPeople.bulkHeaders}
+          setBulkHeaders={bulkAddPeople.setBulkHeaders}
+          bulkRows={bulkAddPeople.bulkRows}
+          setBulkRows={bulkAddPeople.setBulkRows}
+          onSave={bulkAddPeople.onSaveBulkPeople}
+          onClose={bulkAddPeople.onCloseBulkPeople}
         />
       )}
 
-      {showBulkUpdateForm && (
+      {bulkUpdatePeople.showBulkUpdateForm && (
         <BulkUpdatePeopleForm
-          bulkUpdateTextMode={bulkUpdateTextMode}
-          setBulkUpdateTextMode={setBulkUpdateTextMode}
-          bulkUpdateCsvInput={bulkUpdateCsvInput}
-          setBulkUpdateCsvInput={setBulkUpdateCsvInput}
-          bulkUpdateHeaders={bulkUpdateHeaders}
-          setBulkUpdateHeaders={setBulkUpdateHeaders}
-          bulkUpdateRows={bulkUpdateRows}
-          setBulkUpdateRows={setBulkUpdateRows}
-          onRefreshFromCurrent={onRefreshBulkUpdate}
-          onApply={onApplyBulkUpdate}
-          onClose={onCloseBulkUpdate}
+          bulkUpdateTextMode={bulkUpdatePeople.bulkUpdateTextMode}
+          setBulkUpdateTextMode={bulkUpdatePeople.setBulkUpdateTextMode}
+          bulkUpdateCsvInput={bulkUpdatePeople.bulkUpdateCsvInput}
+          setBulkUpdateCsvInput={bulkUpdatePeople.setBulkUpdateCsvInput}
+          bulkUpdateHeaders={bulkUpdatePeople.bulkUpdateHeaders}
+          setBulkUpdateHeaders={bulkUpdatePeople.setBulkUpdateHeaders}
+          bulkUpdateRows={bulkUpdatePeople.bulkUpdateRows}
+          setBulkUpdateRows={bulkUpdatePeople.setBulkUpdateRows}
+          onRefreshFromCurrent={bulkUpdatePeople.onRefreshBulkUpdate}
+          onApply={bulkUpdatePeople.onApplyBulkUpdate}
+          onClose={bulkUpdatePeople.onCloseBulkUpdate}
         />
       )}
 
-      {showGroupBulkForm && (
+      {bulkAddGroups.showGroupBulkForm && (
         <BulkAddGroupsForm
-          groupBulkTextMode={groupBulkTextMode}
-          setGroupBulkTextMode={setGroupBulkTextMode}
-          groupBulkCsvInput={groupBulkCsvInput}
-          setGroupBulkCsvInput={setGroupBulkCsvInput}
-          groupBulkHeaders={groupBulkHeaders}
-          setGroupBulkHeaders={setGroupBulkHeaders}
-          groupBulkRows={groupBulkRows}
-          setGroupBulkRows={setGroupBulkRows}
-          onSave={onSaveGroupBulk}
-          onClose={onCloseGroupBulk}
+          groupBulkTextMode={bulkAddGroups.groupBulkTextMode}
+          setGroupBulkTextMode={bulkAddGroups.setGroupBulkTextMode}
+          groupBulkCsvInput={bulkAddGroups.groupBulkCsvInput}
+          setGroupBulkCsvInput={bulkAddGroups.setGroupBulkCsvInput}
+          groupBulkHeaders={bulkAddGroups.groupBulkHeaders}
+          setGroupBulkHeaders={bulkAddGroups.setGroupBulkHeaders}
+          groupBulkRows={bulkAddGroups.groupBulkRows}
+          setGroupBulkRows={bulkAddGroups.setGroupBulkRows}
+          onSave={bulkAddGroups.onSaveGroupBulk}
+          onClose={bulkAddGroups.onCloseGroupBulk}
         />
       )}
 

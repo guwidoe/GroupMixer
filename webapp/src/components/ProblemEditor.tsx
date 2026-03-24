@@ -20,6 +20,7 @@ import { ConstraintFormModal } from './ProblemEditor/ConstraintFormModal';
 import { ProblemEditorConstraintModals } from './ProblemEditor/ProblemEditorConstraintModals';
 import { useProblemEditorConstraints } from './ProblemEditor/hooks/useProblemEditorConstraints';
 import { useProblemEditorEntities } from './ProblemEditor/hooks/useProblemEditorEntities';
+import { createProblemEditorActions } from './ProblemEditor/problemEditorActions';
 import { DemoDataWarningModal } from './modals/DemoDataWarningModal';
 
 export function ProblemEditor() {
@@ -178,6 +179,13 @@ export function ProblemEditor() {
     setProblem,
   });
 
+  const editorActions = createProblemEditorActions({
+    problem,
+    updateProblem,
+    constraints,
+    entities,
+  });
+
   // Don't render until loading is complete to avoid creating new problems
   if (ui.isLoading) {
     return <div className="animate-fade-in">Loading...</div>;
@@ -239,95 +247,22 @@ export function ProblemEditor() {
       {activeSection === 'objectives' && (
         <ObjectivesSection
           currentWeight={getCurrentObjectiveWeight()}
-          onCommit={(newWeight) => {
-            if (!problem) return;
-            const newObjectives = [
-              {
-                type: 'maximize_unique_contacts',
-                weight: newWeight,
-              },
-            ];
-            updateProblem({ objectives: newObjectives });
-          }}
+          onCommit={editorActions.handleObjectiveCommit}
         />
       )}
 
       {activeSection === 'hard' && (
         <HardConstraintsSection
-          onAdd={(type) => {
-            if (type === 'ImmovablePeople') {
-              constraints.setEditingImmovableIndex(null);
-              constraints.setShowImmovableModal(true);
-            } else if (type === 'MustStayTogether') {
-              constraints.setEditingConstraintIndex(null);
-              constraints.setShowMustStayTogetherModal(true);
-            } else {
-              constraints.setConstraintForm((prev) => ({ ...prev, type }));
-              constraints.setShowConstraintForm(true);
-            }
-          }}
-          onEdit={(c, i) => {
-            if (c.type === 'ImmovablePeople') {
-              constraints.setEditingImmovableIndex(i);
-              constraints.setShowImmovableModal(true);
-            } else if (c.type === 'MustStayTogether') {
-              constraints.setEditingConstraintIndex(i);
-              constraints.setShowMustStayTogetherModal(true);
-            } else {
-              constraints.handleEditConstraint(c, i);
-            }
-          }}
+          onAdd={editorActions.handleHardConstraintAdd}
+          onEdit={editorActions.handleHardConstraintEdit}
           onDelete={constraints.handleDeleteConstraint}
         />
       )}
 
       {activeSection === 'soft' && (
         <SoftConstraintsSection
-          onAdd={(type) => {
-            constraints.setEditingConstraintIndex(null);
-            switch (type) {
-              case 'RepeatEncounter':
-                constraints.setShowRepeatEncounterModal(true);
-                break;
-              case 'AttributeBalance':
-                constraints.setShowAttributeBalanceModal(true);
-                break;
-              case 'ShouldNotBeTogether':
-                constraints.setShowShouldNotBeTogetherModal(true);
-                break;
-              case 'ShouldStayTogether':
-                constraints.setShowShouldStayTogetherModal(true);
-                break;
-              case 'PairMeetingCount':
-                constraints.setShowPairMeetingCountModal(true);
-                break;
-              default:
-                constraints.setConstraintForm((prev) => ({ ...prev, type }));
-                constraints.setShowConstraintForm(true);
-            }
-          }}
-          onEdit={(c, i) => {
-            constraints.setEditingConstraintIndex(i);
-            switch (c.type) {
-              case 'RepeatEncounter':
-                constraints.setShowRepeatEncounterModal(true);
-                break;
-              case 'AttributeBalance':
-                constraints.setShowAttributeBalanceModal(true);
-                break;
-              case 'ShouldNotBeTogether':
-                constraints.setShowShouldNotBeTogetherModal(true);
-                break;
-              case 'ShouldStayTogether':
-                constraints.setShowShouldStayTogetherModal(true);
-                break;
-              case 'PairMeetingCount':
-                constraints.setShowPairMeetingCountModal(true);
-                break;
-              default:
-                constraints.handleEditConstraint(c, i);
-            }
-          }}
+          onAdd={editorActions.handleSoftConstraintAdd}
+          onEdit={editorActions.handleSoftConstraintEdit}
           onDelete={constraints.handleDeleteConstraint}
         />
       )}
@@ -349,79 +284,78 @@ export function ProblemEditor() {
 
       {/* Forms */}
       <ProblemEditorForms
-        showPersonForm={entities.showPersonForm}
-        editingPerson={entities.editingPerson}
-        personForm={entities.personForm}
-        setPersonForm={entities.setPersonForm}
-        attributeDefinitions={attributeDefinitions}
-        sessionsCount={sessionsCount}
-        onSavePerson={entities.handleAddPerson}
-        onUpdatePerson={entities.handleUpdatePerson}
-        onCancelPerson={() => {
-          entities.setShowPersonForm(false);
-          entities.setEditingPerson(null);
-          entities.setPersonForm({ attributes: {}, sessions: [] });
+        person={{
+          showPersonForm: entities.showPersonForm,
+          editingPerson: entities.editingPerson,
+          personForm: entities.personForm,
+          setPersonForm: entities.setPersonForm,
+          attributeDefinitions,
+          sessionsCount,
+          onSavePerson: entities.handleAddPerson,
+          onUpdatePerson: entities.handleUpdatePerson,
+          onCancelPerson: editorActions.handleCancelPersonForm,
+          onShowAttributeForm: () => entities.setShowAttributeForm(true),
         }}
-        onShowAttributeForm={() => entities.setShowAttributeForm(true)}
-        showGroupForm={entities.showGroupForm}
-        editingGroup={entities.editingGroup}
-        groupForm={entities.groupForm}
-        setGroupForm={entities.setGroupForm}
-        groupFormInputs={entities.groupFormInputs}
-        setGroupFormInputs={entities.setGroupFormInputs}
-        onSaveGroup={entities.handleAddGroup}
-        onUpdateGroup={entities.handleUpdateGroup}
-        onCancelGroup={() => {
-          entities.setShowGroupForm(false);
-          entities.setEditingGroup(null);
-          entities.setGroupForm({ size: 4 });
-          entities.setGroupFormInputs({});
+        group={{
+          showGroupForm: entities.showGroupForm,
+          editingGroup: entities.editingGroup,
+          groupForm: entities.groupForm,
+          setGroupForm: entities.setGroupForm,
+          groupFormInputs: entities.groupFormInputs,
+          setGroupFormInputs: entities.setGroupFormInputs,
+          onSaveGroup: entities.handleAddGroup,
+          onUpdateGroup: entities.handleUpdateGroup,
+          onCancelGroup: editorActions.handleCancelGroupForm,
         }}
-        showAttributeForm={entities.showAttributeForm}
-        editingAttribute={entities.editingAttribute}
-        newAttribute={entities.newAttribute}
-        setNewAttribute={entities.setNewAttribute}
-        onSaveAttribute={entities.handleAddAttribute}
-        onUpdateAttribute={entities.handleUpdateAttribute}
-        onCancelAttribute={() => {
-          entities.setShowAttributeForm(false);
-          entities.setNewAttribute({ key: '', values: [''] });
-          entities.setEditingAttribute(null);
+        attribute={{
+          showAttributeForm: entities.showAttributeForm,
+          editingAttribute: entities.editingAttribute,
+          newAttribute: entities.newAttribute,
+          setNewAttribute: entities.setNewAttribute,
+          onSaveAttribute: entities.handleAddAttribute,
+          onUpdateAttribute: entities.handleUpdateAttribute,
+          onCancelAttribute: editorActions.handleCancelAttributeForm,
         }}
-        showBulkForm={bulk.showBulkForm}
-        bulkTextMode={bulk.bulkTextMode}
-        setBulkTextMode={bulk.setBulkTextMode}
-        bulkCsvInput={bulk.bulkCsvInput}
-        setBulkCsvInput={bulk.setBulkCsvInput}
-        bulkHeaders={bulk.bulkHeaders}
-        setBulkHeaders={bulk.setBulkHeaders}
-        bulkRows={bulk.bulkRows}
-        setBulkRows={bulk.setBulkRows}
-        onSaveBulkPeople={bulk.handleAddBulkPeople}
-        onCloseBulkPeople={() => bulk.setShowBulkForm(false)}
-        showBulkUpdateForm={bulk.showBulkUpdateForm}
-        bulkUpdateTextMode={bulk.bulkUpdateTextMode}
-        setBulkUpdateTextMode={bulk.setBulkUpdateTextMode}
-        bulkUpdateCsvInput={bulk.bulkUpdateCsvInput}
-        setBulkUpdateCsvInput={bulk.setBulkUpdateCsvInput}
-        bulkUpdateHeaders={bulk.bulkUpdateHeaders}
-        setBulkUpdateHeaders={bulk.setBulkUpdateHeaders}
-        bulkUpdateRows={bulk.bulkUpdateRows}
-        setBulkUpdateRows={bulk.setBulkUpdateRows}
-        onRefreshBulkUpdate={bulk.refreshBulkUpdateFromCurrent}
-        onApplyBulkUpdate={bulk.handleApplyBulkUpdate}
-        onCloseBulkUpdate={() => bulk.setShowBulkUpdateForm(false)}
-        showGroupBulkForm={bulk.showGroupBulkForm}
-        groupBulkTextMode={bulk.groupBulkTextMode}
-        setGroupBulkTextMode={bulk.setGroupBulkTextMode}
-        groupBulkCsvInput={bulk.groupBulkCsvInput}
-        setGroupBulkCsvInput={bulk.setGroupBulkCsvInput}
-        groupBulkHeaders={bulk.groupBulkHeaders}
-        setGroupBulkHeaders={bulk.setGroupBulkHeaders}
-        groupBulkRows={bulk.groupBulkRows}
-        setGroupBulkRows={bulk.setGroupBulkRows}
-        onSaveGroupBulk={bulk.handleAddGroupBulkPeople}
-        onCloseGroupBulk={() => bulk.setShowGroupBulkForm(false)}
+        bulkAddPeople={{
+          showBulkForm: bulk.showBulkForm,
+          bulkTextMode: bulk.bulkTextMode,
+          setBulkTextMode: bulk.setBulkTextMode,
+          bulkCsvInput: bulk.bulkCsvInput,
+          setBulkCsvInput: bulk.setBulkCsvInput,
+          bulkHeaders: bulk.bulkHeaders,
+          setBulkHeaders: bulk.setBulkHeaders,
+          bulkRows: bulk.bulkRows,
+          setBulkRows: bulk.setBulkRows,
+          onSaveBulkPeople: bulk.handleAddBulkPeople,
+          onCloseBulkPeople: () => bulk.setShowBulkForm(false),
+        }}
+        bulkUpdatePeople={{
+          showBulkUpdateForm: bulk.showBulkUpdateForm,
+          bulkUpdateTextMode: bulk.bulkUpdateTextMode,
+          setBulkUpdateTextMode: bulk.setBulkUpdateTextMode,
+          bulkUpdateCsvInput: bulk.bulkUpdateCsvInput,
+          setBulkUpdateCsvInput: bulk.setBulkUpdateCsvInput,
+          bulkUpdateHeaders: bulk.bulkUpdateHeaders,
+          setBulkUpdateHeaders: bulk.setBulkUpdateHeaders,
+          bulkUpdateRows: bulk.bulkUpdateRows,
+          setBulkUpdateRows: bulk.setBulkUpdateRows,
+          onRefreshBulkUpdate: bulk.refreshBulkUpdateFromCurrent,
+          onApplyBulkUpdate: bulk.handleApplyBulkUpdate,
+          onCloseBulkUpdate: () => bulk.setShowBulkUpdateForm(false),
+        }}
+        bulkAddGroups={{
+          showGroupBulkForm: bulk.showGroupBulkForm,
+          groupBulkTextMode: bulk.groupBulkTextMode,
+          setGroupBulkTextMode: bulk.setGroupBulkTextMode,
+          groupBulkCsvInput: bulk.groupBulkCsvInput,
+          setGroupBulkCsvInput: bulk.setGroupBulkCsvInput,
+          groupBulkHeaders: bulk.groupBulkHeaders,
+          setGroupBulkHeaders: bulk.setGroupBulkHeaders,
+          groupBulkRows: bulk.groupBulkRows,
+          setGroupBulkRows: bulk.setGroupBulkRows,
+          onSaveGroupBulk: bulk.handleAddGroupBulkPeople,
+          onCloseGroupBulk: () => bulk.setShowGroupBulkForm(false),
+        }}
         csvFileInputRef={bulk.csvFileInputRef}
         onCsvFileSelected={bulk.handleCsvFileSelected}
         groupCsvFileInputRef={bulk.groupCsvFileInputRef}
@@ -437,11 +371,7 @@ export function ProblemEditor() {
         sessionsCount={sessionsCount}
         onAdd={constraints.handleAddConstraint}
         onUpdate={constraints.handleUpdateConstraint}
-        onClose={() => {
-          constraints.setShowConstraintForm(false);
-          constraints.setEditingConstraint(null);
-          constraints.setConstraintForm({ type: 'RepeatEncounter', penalty_weight: 1 });
-        }}
+        onClose={editorActions.handleCloseConstraintForm}
       />
       <ProblemEditorConstraintModals
         problem={problem ?? null}
