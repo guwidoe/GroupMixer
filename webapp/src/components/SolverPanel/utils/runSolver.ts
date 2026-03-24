@@ -138,12 +138,12 @@ export async function runSolver({
       runProblemSnapshotRef.current = { ...currentProblem } as Problem;
     }
 
-    const progressCallback = (progress: ProgressUpdate): boolean => {
+    const progressCallback = (progress: ProgressUpdate): void => {
       if (solverCompletedRef.current) {
-        return false;
+        return;
       }
       if (cancelledRef.current) {
-        return false;
+        return;
       }
 
       setSolverState({
@@ -195,7 +195,6 @@ export async function runSolver({
         }
       }
 
-      return true;
     };
 
     let solution;

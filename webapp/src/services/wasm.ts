@@ -109,7 +109,8 @@ class WasmService {
             try {
               const progress: ProgressUpdate = JSON.parse(progressJson);
               lastProgress = progress; // Track the last progress update
-              return progressCallback(progress);
+              progressCallback(progress);
+              return true;
             } catch (e) {
               console.error("Failed to parse progress update:", e);
               return true; // Continue on parse error

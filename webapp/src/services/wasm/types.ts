@@ -50,7 +50,7 @@ export interface ProgressUpdate {
   best_schedule?: Record<string, Record<string, string[]>>;
 }
 
-export type ProgressCallback = (progress: ProgressUpdate) => boolean;
+export type ProgressCallback = (progress: ProgressUpdate) => void;
 
 export interface RustResult {
   schedule: Record<string, Record<string, string[]>>;
