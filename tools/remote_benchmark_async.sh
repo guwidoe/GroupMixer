@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DEFAULT_ENV_FILE="${SCRIPT_DIR}/remote_benchmark.env"
 LOCAL_REMOTE_DIR="${REPO_DIR}/benchmarking/artifacts/remotes"
+DEFAULT_WAIT_POLL_SECONDS=10
 
 usage() {
   cat <<'EOF'
@@ -22,12 +23,16 @@ Usage:
   tools/remote_benchmark_async.sh latest
   tools/remote_benchmark_async.sh cancel <run-id>
 
+Defaults:
+  - start without extra args runs `record` asynchronously on the remote machine.
+  - snapshot runs the codified remote snapshot lane using `record -- --suite <snapshot-suite>`.
+  - record-main runs the configured remote mainline recording bundle.
+  - record-feature runs the configured remote feature-validation bundle.
+
 Notes:
-  - This script stages immutable repo snapshots to a designated remote machine.
-  - Remote execution is serialized behind one explicit machine lock.
-  - Remote benchmark state is mirrored locally under benchmarking/artifacts/remotes/<machine>/.
-  - Only `check` is available in the initial staging/config slice; the async control
-    commands are completed in the next implementation slice.
+  - benchmark jobs are serialized remotely behind a single exclusive lock
+  - repeated `start` requests for the same commit/command/args dedupe to one active run
+  - remote benchmark state is mirrored locally under benchmarking/artifacts/remotes/<machine>/
 EOF
 }
 
@@ -63,6 +68,10 @@ local_git_shortsha() {
   git -C "${REPO_DIR}" rev-parse --short HEAD
 }
 
+local_git_subject() {
+  git -C "${REPO_DIR}" log -1 --pretty=%s | tr '\t\n' '  ' | tr '()' '[]'
+}
+
 default_recording_suite_bundle() {
   cat <<'EOF'
 representative
@@ -82,10 +91,15 @@ setup_config() {
   GROUPMIXER_REMOTE_RSYNC_SSH="${GROUPMIXER_REMOTE_RSYNC_SSH:-${GROUPMIXER_REMOTE_SSH_BIN}}"
   GROUPMIXER_REMOTE_PYTHON_BIN="${GROUPMIXER_REMOTE_PYTHON_BIN:-}"
   GROUPMIXER_REMOTE_MACHINE_NAME="$(sanitize_name "${GROUPMIXER_REMOTE_MACHINE_NAME}")"
+  GROUPMIXER_REMOTE_BENCH_IDLE_MAX_LOAD1="${GROUPMIXER_REMOTE_BENCH_IDLE_MAX_LOAD1:-}"
+  GROUPMIXER_REMOTE_BENCH_IDLE_POLL_SECONDS="${GROUPMIXER_REMOTE_BENCH_IDLE_POLL_SECONDS:-30}"
+  GROUPMIXER_REMOTE_BENCH_IDLE_STREAK="${GROUPMIXER_REMOTE_BENCH_IDLE_STREAK:-1}"
+  GROUPMIXER_REMOTE_BENCH_MAX_SECONDS="${GROUPMIXER_REMOTE_BENCH_MAX_SECONDS:-7200}"
+  GROUPMIXER_REMOTE_BENCH_KILL_AFTER_SECONDS="${GROUPMIXER_REMOTE_BENCH_KILL_AFTER_SECONDS:-30}"
+  GROUPMIXER_REMOTE_BENCH_BUILD_JOBS="${GROUPMIXER_REMOTE_BENCH_BUILD_JOBS:-1}"
   GROUPMIXER_REMOTE_SNAPSHOT_SUITE="${GROUPMIXER_REMOTE_SNAPSHOT_SUITE:-representative}"
   GROUPMIXER_REMOTE_RECORD_MAIN_SUITES="${GROUPMIXER_REMOTE_RECORD_MAIN_SUITES:-$(default_recording_suite_bundle | tr '\n' ' ')}"
   GROUPMIXER_REMOTE_RECORD_FEATURE_SUITES="${GROUPMIXER_REMOTE_RECORD_FEATURE_SUITES:-${GROUPMIXER_REMOTE_RECORD_MAIN_SUITES}}"
-  GROUPMIXER_REMOTE_BENCH_BUILD_JOBS="${GROUPMIXER_REMOTE_BENCH_BUILD_JOBS:-1}"
 
   REMOTE_REPO_DIR="${GROUPMIXER_REMOTE_STAGE_DIR%/}/GroupMixer"
   REMOTE_BENCH_ROOT="${GROUPMIXER_REMOTE_STAGE_DIR%/}/groupmixer-benchmark"
@@ -127,8 +141,7 @@ stage_remote() {
 
 stage_remote_run_snapshot() {
   local run_id="$1"
-  local snapshot_root snapshot_repo_dir
-  snapshot_root="$(remote_run_snapshot_root "${run_id}")"
+  local snapshot_repo_dir
   snapshot_repo_dir="$(remote_run_repo_dir "${run_id}")"
   echo "[groupmixer][remote] staging immutable snapshot for run ${run_id}"
   "${GROUPMIXER_REMOTE_SSH_BIN}" "${GROUPMIXER_REMOTE_SSH_TARGET}" \
@@ -144,31 +157,378 @@ stage_remote_run_snapshot() {
     "rm -rf '${snapshot_repo_dir}/benchmarking/artifacts' && ln -s '${REMOTE_SHARED_ARTIFACTS_DIR}' '${snapshot_repo_dir}/benchmarking/artifacts'"
 }
 
-mirror_remote_state_root() {
-  mkdir -p "${LOCAL_MACHINE_DIR}" "${LOCAL_RUNS_DIR}"
+extract_suite_args() {
+  local args=("$@")
+  local i=0
+  while (( i < ${#args[@]} )); do
+    if [[ "${args[$i]}" == "--suite" ]]; then
+      if (( i + 1 < ${#args[@]} )); then
+        printf '%s\n' "${args[$((i + 1))]}"
+        ((i += 2))
+        continue
+      fi
+      break
+    fi
+    ((i += 1))
+  done
+}
+
+extract_primary_suite_arg() {
+  extract_suite_args "$@" | head -n 1
+}
+
+build_payload_json() {
+  local action="$1"
+  local run_id="$2"
+  local bench_command="$3"
+  shift 3 || true
+  local requested_suite requested_suites_csv
+  requested_suite="$(extract_primary_suite_arg "$@")"
+  requested_suites_csv="$(extract_suite_args "$@" | paste -sd, -)"
+  REQUESTED_SUITE="${requested_suite}" \
+  REQUESTED_SUITES_CSV="${requested_suites_csv}" \
+  REMOTE_REPO_DIR="${REMOTE_REPO_DIR}" \
+  REMOTE_RUNS_DIR="${REMOTE_RUNS_DIR}" \
+  REMOTE_LOCK_FILE="${REMOTE_LOCK_FILE}" \
+  REMOTE_ENV_FILE="${GROUPMIXER_REMOTE_ENV_FILE:-}" \
+  MACHINE_NAME="${GROUPMIXER_REMOTE_MACHINE_NAME}" \
+  REMOTE_PYTHON_BIN_VALUE="${GROUPMIXER_REMOTE_PYTHON_BIN}" \
+  GIT_BRANCH="$(local_git_branch)" \
+  GIT_COMMIT="$(local_git_commit)" \
+  GIT_SHORTSHA="$(local_git_shortsha)" \
+  GIT_SUBJECT="$(local_git_subject)" \
+  IDLE_MAX_LOAD1="${GROUPMIXER_REMOTE_BENCH_IDLE_MAX_LOAD1}" \
+  IDLE_POLL_SECONDS="${GROUPMIXER_REMOTE_BENCH_IDLE_POLL_SECONDS}" \
+  IDLE_STREAK="${GROUPMIXER_REMOTE_BENCH_IDLE_STREAK}" \
+  BENCH_MAX_SECONDS="${GROUPMIXER_REMOTE_BENCH_MAX_SECONDS}" \
+  BENCH_KILL_AFTER_SECONDS="${GROUPMIXER_REMOTE_BENCH_KILL_AFTER_SECONDS}" \
+  BENCH_BUILD_JOBS="${GROUPMIXER_REMOTE_BENCH_BUILD_JOBS}" \
+  python3 - "$action" "$run_id" "$bench_command" "$@" <<'PY'
+import json
+import os
+import sys
+
+action, run_id, bench_command, *bench_args = sys.argv[1:]
+requested_suites = [value for value in os.environ.get("REQUESTED_SUITES_CSV", "").split(",") if value]
+payload = {
+    "action": action,
+    "run_id": run_id,
+    "bench_command": bench_command,
+    "bench_args": bench_args,
+    "remote_repo_dir": os.environ["REMOTE_REPO_DIR"],
+    "remote_runs_dir": os.environ["REMOTE_RUNS_DIR"],
+    "remote_lock_file": os.environ["REMOTE_LOCK_FILE"],
+    "remote_env_file": os.environ.get("REMOTE_ENV_FILE", ""),
+    "machine_name": os.environ["MACHINE_NAME"],
+    "requested_suite": os.environ.get("REQUESTED_SUITE", ""),
+    "requested_suites": requested_suites,
+    "remote_python_bin": os.environ.get("REMOTE_PYTHON_BIN_VALUE", ""),
+    "git_branch": os.environ["GIT_BRANCH"],
+    "git_commit": os.environ["GIT_COMMIT"],
+    "git_shortsha": os.environ["GIT_SHORTSHA"],
+    "git_subject": os.environ["GIT_SUBJECT"],
+    "idle_max_load1": os.environ.get("IDLE_MAX_LOAD1", ""),
+    "idle_poll_seconds": os.environ.get("IDLE_POLL_SECONDS", "30"),
+    "idle_streak": os.environ.get("IDLE_STREAK", "1"),
+    "bench_max_seconds": os.environ.get("BENCH_MAX_SECONDS", "7200"),
+    "bench_kill_after_seconds": os.environ.get("BENCH_KILL_AFTER_SECONDS", "30"),
+    "bench_build_jobs": os.environ.get("BENCH_BUILD_JOBS", "1"),
+}
+print(json.dumps(payload))
+PY
+}
+
+run_remote_action() {
+  local payload_json="$1"
+  local payload_b64 quoted_b64 quoted_remote_python
+  payload_b64="$(printf '%s' "${payload_json}" | base64 | tr -d '\n')"
+  quoted_b64="$(printf '%q' "${payload_b64}")"
+  quoted_remote_python="$(printf '%q' "${GROUPMIXER_REMOTE_PYTHON_BIN}")"
+  "${GROUPMIXER_REMOTE_SSH_BIN}" "${GROUPMIXER_REMOTE_SSH_TARGET}" \
+    "cd '${REMOTE_REPO_DIR}' && GROUPMIXER_REMOTE_PAYLOAD_B64=${quoted_b64} GROUPMIXER_REMOTE_PYTHON_BIN=${quoted_remote_python} bash -lc 'py=\"\${GROUPMIXER_REMOTE_PYTHON_BIN:-}\"; if [[ -z \"\$py\" ]]; then if [[ -x /usr/bin/python3 ]]; then py=/usr/bin/python3; else py=python3; fi; fi; exec \"\$py\" tools/remote_benchmark_async_remote.py'"
+}
+
+print_status_summary() {
+  python3 - <<'PY' <<<"$1"
+import json, sys
+status = json.load(sys.stdin)
+if "error" in status:
+    print(status["error"], file=sys.stderr)
+    raise SystemExit(1)
+done = bool(status.get("done"))
+exit_code = status.get("exit_code")
+bench_alive = bool(status.get("bench_process_alive"))
+lock_acquired = status.get("lock_acquired_at")
+if done:
+    state = "passed" if str(exit_code) == "0" else "failed"
+elif bench_alive:
+    state = "benchmarking"
+elif lock_acquired:
+    state = "preparing"
+else:
+    state = "queued"
+print(f"run_id: {status.get('run_id','')}")
+print(f"command: {status.get('command','')} {' '.join(status.get('bench_args', []))}".rstrip())
+print(f"suite: {status.get('requested_suite','')}")
+requested_suites = ", ".join(status.get("requested_suites", []))
+if requested_suites:
+    print(f"suites: {requested_suites}")
+print(f"commit: {status.get('git_shortsha','')}")
+print(f"machine: {status.get('machine_name','')}")
+print(f"remote_python: {status.get('remote_python_bin','')}")
+print(f"state: {state}")
+print(f"launcher: {status.get('launcher','')}")
+print(f"session: {status.get('session_name','')}")
+print(f"pid: {status.get('pid','')}")
+print(f"bench_pid: {status.get('bench_pid','')}")
+print(f"queued_at: {status.get('queued_at','')}")
+print(f"lock_acquired_at: {status.get('lock_acquired_at','')}")
+print(f"idle_ready_at: {status.get('idle_ready_at','')}")
+print(f"finished_at: {status.get('finished_at','')}")
+print(f"exit_code: {status.get('exit_code','')}")
+print(f"remote_log: {status.get('remote_log','')}")
+PY
+}
+
+mirror_run() {
+  local run_id="$1"
+  mkdir -p "${LOCAL_RUNS_DIR}"
+  if "${GROUPMIXER_REMOTE_SSH_BIN}" "${GROUPMIXER_REMOTE_SSH_TARGET}" "test -d '${REMOTE_RUNS_DIR}/${run_id}'"; then
+    "${GROUPMIXER_REMOTE_RSYNC_BIN}" -az -e "${GROUPMIXER_REMOTE_RSYNC_SSH}" \
+      "${GROUPMIXER_REMOTE_SSH_TARGET}:${REMOTE_RUNS_DIR}/${run_id}/" \
+      "${LOCAL_RUNS_DIR}/${run_id}/"
+    echo "[groupmixer][remote] mirrored benchmark run to ${LOCAL_RUNS_DIR}/${run_id}"
+  fi
+}
+
+write_latest_local() {
+  local run_id="$1"
+  mkdir -p "${LOCAL_MACHINE_DIR}"
+  printf '%s\n' "${run_id}" > "${LOCAL_MACHINE_DIR}/latest-run"
+}
+
+start_run() {
+  local bench_command="record"
+  if [[ $# -gt 0 ]]; then
+    bench_command="$1"
+    shift
+  fi
+  case "${bench_command}" in
+    record|record-bundle|compare-prev)
+      ;;
+    save|compare)
+      [[ $# -ge 1 ]] || { usage >&2; exit 1; }
+      ;;
+    *)
+      echo "unsupported async benchmark command: ${bench_command}" >&2
+      exit 1
+      ;;
+  esac
+
+  local run_id payload_json start_json effective_run_id
+  run_id="$(generate_run_id "${bench_command}")"
+  stage_remote_run_snapshot "${run_id}"
+  payload_json="$(build_payload_json start "${run_id}" "${bench_command}" "$@")"
+  start_json="$(run_remote_action "${payload_json}")"
+  effective_run_id="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["run_id"])' <<<"${start_json}")"
+  write_latest_local "${effective_run_id}"
+  mirror_run "${effective_run_id}"
+  python3 - <<'PY' <<<"${start_json}"
+import json, sys
+start = json.load(sys.stdin)
+if start.get("deduped"):
+    print(f"[groupmixer][remote] reusing active benchmark run {start['run_id']}")
+else:
+    print(f"[groupmixer][remote] started benchmark run {start['run_id']}")
+print(f"[groupmixer][remote] launcher: {start.get('launcher','')}")
+print(f"[groupmixer][remote] session: {start.get('session_name','')}")
+print(f"[groupmixer][remote] pid: {start.get('pid','')}")
+print(f"[groupmixer][remote] log: {start.get('remote_log','')}")
+PY
+}
+
+status_run() {
+  local run_id="$1"
+  local payload_json status_json
+  payload_json="$(build_payload_json status "${run_id}" record)"
+  status_json="$(run_remote_action "${payload_json}")"
+  print_status_summary "${status_json}"
+}
+
+wait_run() {
+  local run_id="$1"
+  while true; do
+    local payload_json status_json done exit_code
+    payload_json="$(build_payload_json status "${run_id}" record)"
+    status_json="$(run_remote_action "${payload_json}")"
+    print_status_summary "${status_json}"
+    done="$(python3 -c 'import json,sys; print(str(json.load(sys.stdin).get("done", False)).lower())' <<<"${status_json}")"
+    if [[ "${done}" == "true" ]]; then
+      mirror_run "${run_id}"
+      exit_code="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("exit_code", 1))' <<<"${status_json}")"
+      [[ "${exit_code}" == "0" ]]
+      return
+    fi
+    sleep "${GROUPMIXER_REMOTE_BENCH_WAIT_POLL_SECONDS:-${DEFAULT_WAIT_POLL_SECONDS}}"
+    echo "---"
+  done
+}
+
+list_runs() {
+  local payload_json list_json
+  payload_json="$(build_payload_json list "" record)"
+  list_json="$(run_remote_action "${payload_json}")"
+  python3 - <<'PY' <<<"${list_json}"
+import json, sys
+runs = json.load(sys.stdin).get("runs", [])
+for run in runs:
+    state = "running"
+    if run.get("done"):
+        state = "passed" if str(run.get("exit_code")) == "0" else "failed"
+    print("\t".join([
+        run.get("run_id", ""),
+        run.get("command", "") or "",
+        run.get("commit", "") or "",
+        state,
+        str(run.get("exit_code", "") or ""),
+    ]))
+PY
+}
+
+latest_run() {
+  local payload_json latest_json
+  payload_json="$(build_payload_json latest "" record)"
+  latest_json="$(run_remote_action "${payload_json}")"
+  python3 - <<'PY' <<<"${latest_json}"
+import json, sys
+run = json.load(sys.stdin).get("run")
+if run:
+    print(run.get("run_id", ""))
+PY
+}
+
+fetch_run() {
+  local run_id="$1"
+  mirror_run "${run_id}"
+}
+
+start_snapshot() {
+  echo "[groupmixer][remote] snapshot suite: ${GROUPMIXER_REMOTE_SNAPSHOT_SUITE}"
+  start_run record --suite "${GROUPMIXER_REMOTE_SNAPSHOT_SUITE}"
+}
+
+start_recording_bundle() {
+  local bundle_kind="$1"
+  local feature_name="${2:-}"
+  local suites_raw purpose label
+  case "${bundle_kind}" in
+    main)
+      suites_raw="${GROUPMIXER_REMOTE_RECORD_MAIN_SUITES}"
+      purpose="mainline"
+      label="record-main"
+      ;;
+    feature)
+      suites_raw="${GROUPMIXER_REMOTE_RECORD_FEATURE_SUITES}"
+      purpose="feature-validation"
+      label="record-feature-${feature_name}"
+      ;;
+    *)
+      echo "unsupported bundle kind: ${bundle_kind}" >&2
+      exit 1
+      ;;
+  esac
+
+  local suites=()
+  # shellcheck disable=SC2206
+  suites=(${suites_raw})
+  [[ ${#suites[@]} -gt 0 ]] || {
+    echo "no remote recording suites configured for ${bundle_kind}" >&2
+    exit 1
+  }
+
+  local bundle_args=(--purpose "${purpose}")
+  if [[ "${bundle_kind}" == "feature" ]]; then
+    bundle_args+=(--feature-name "${feature_name}")
+  fi
+  local suite
+  for suite in "${suites[@]}"; do
+    bundle_args+=(--suite "${suite}")
+  done
+
+  start_run record-bundle "${bundle_args[@]}"
 }
 
 run_check() {
-  setup_config
   stage_remote
-  local remote_python
-  remote_python="${GROUPMIXER_REMOTE_PYTHON_BIN:-python3}"
-  "${GROUPMIXER_REMOTE_SSH_BIN}" "${GROUPMIXER_REMOTE_SSH_TARGET}" \
-    "cd '${REMOTE_REPO_DIR}' && if [[ -n '${GROUPMIXER_REMOTE_PYTHON_BIN}' ]]; then export GROUPMIXER_REMOTE_PYTHON_BIN='${GROUPMIXER_REMOTE_PYTHON_BIN}'; fi; bash -lc 'command -v cargo >/dev/null && command -v rustc >/dev/null && command -v rsync >/dev/null && echo [groupmixer][remote] host: \$(hostname) && echo [groupmixer][remote] uname: \"\$(uname -a)\" && cargo -V && rustc -Vv && ${remote_python} -V'"
-  echo "[groupmixer][remote] machine=${GROUPMIXER_REMOTE_MACHINE_NAME}"
-  echo "[groupmixer][remote] stage_dir=${GROUPMIXER_REMOTE_STAGE_DIR}"
-  echo "[groupmixer][remote] shared_artifacts=${REMOTE_SHARED_ARTIFACTS_DIR}"
+  local payload_json
+  payload_json="$(build_payload_json check "" record)"
+  run_remote_action "${payload_json}"
 }
 
 main() {
   local command="${1:-}"
   case "${command}" in
     check)
+      setup_config
       run_check
       ;;
-    snapshot|record-main|record-feature|start|status|tail|wait|fetch|list|latest|cancel)
-      echo "remote async control commands are implemented in the next slice; staging/config support is ready now" >&2
-      exit 3
+    snapshot)
+      setup_config
+      stage_remote
+      start_snapshot
+      ;;
+    record-main)
+      setup_config
+      stage_remote
+      start_recording_bundle main
+      ;;
+    record-feature)
+      [[ $# -eq 2 ]] || { usage; exit 1; }
+      setup_config
+      stage_remote
+      start_recording_bundle feature "$2"
+      ;;
+    start)
+      shift || true
+      setup_config
+      stage_remote
+      start_run "$@"
+      ;;
+    status)
+      [[ $# -eq 2 ]] || { usage; exit 1; }
+      setup_config
+      status_run "$2"
+      ;;
+    tail)
+      [[ $# -ge 2 && $# -le 3 ]] || { usage; exit 1; }
+      setup_config
+      local run_id="$2"
+      local lines="${3:-200}"
+      exec "${GROUPMIXER_REMOTE_SSH_BIN}" "${GROUPMIXER_REMOTE_SSH_TARGET}" "tail -n ${lines} -f '${REMOTE_RUNS_DIR}/${run_id}/benchmark.log'"
+      ;;
+    wait)
+      [[ $# -eq 2 ]] || { usage; exit 1; }
+      setup_config
+      wait_run "$2"
+      ;;
+    fetch)
+      [[ $# -eq 2 ]] || { usage; exit 1; }
+      setup_config
+      fetch_run "$2"
+      ;;
+    list)
+      setup_config
+      list_runs
+      ;;
+    latest)
+      setup_config
+      latest_run
+      ;;
+    cancel)
+      [[ $# -eq 2 ]] || { usage; exit 1; }
+      setup_config
+      run_remote_action "$(build_payload_json cancel "$2" record)"
+      mirror_run "$2"
       ;;
     ""|-h|--help|help)
       usage
