@@ -7,51 +7,49 @@
 
 mod bench_inputs;
 
-use bench_inputs::{constrained_solve_inputs, iteration_throughput_input, solve_scale_inputs};
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use solver_core::run_solver;
+use bench_inputs::construction_bench_input;
+use criterion::{criterion_group, criterion_main, BatchSize, Criterion, Throughput};
+use solver_core::solver::State;
 use std::hint::black_box;
 
-fn bench_problem_sizes(c: &mut Criterion) {
-    let mut group = c.benchmark_group("problem_sizes");
+fn bench_construction(c: &mut Criterion) {
+    let input = construction_bench_input();
+    let mut group = c.benchmark_group("construction");
+    group.throughput(Throughput::Elements(
+        input.cold_input.problem.people.len() as u64,
+    ));
 
-    for input in solve_scale_inputs() {
-        group.throughput(Throughput::Elements(input.throughput));
-        group.bench_with_input(BenchmarkId::new("solve", input.id), &input.input, |b, input| {
-            b.iter(|| run_solver(black_box(input)))
-        });
-    }
+    group.bench_function("cold_seeded_state_new", |b| {
+        b.iter(|| State::new(black_box(&input.cold_input)).expect("cold state should build"))
+    });
 
-    group.finish();
-}
-
-fn bench_with_constraints(c: &mut Criterion) {
-    let mut group = c.benchmark_group("constrained");
-
-    for input in constrained_solve_inputs() {
-        group.throughput(Throughput::Elements(input.throughput));
-        group.bench_with_input(BenchmarkId::new("solve", input.id), &input.input, |b, input| {
-            b.iter(|| run_solver(black_box(input)))
-        });
-    }
+    group.bench_function("warm_start_state_new", |b| {
+        b.iter(|| State::new(black_box(&input.warm_input)).expect("warm state should build"))
+    });
 
     group.finish();
 }
 
-fn bench_iteration_throughput(c: &mut Criterion) {
-    let mut group = c.benchmark_group("iteration_throughput");
-    let input = iteration_throughput_input();
+fn bench_full_recalculation(c: &mut Criterion) {
+    let input = construction_bench_input();
+    let mut group = c.benchmark_group("recalculation");
+    group.throughput(Throughput::Elements(
+        input.recalc_state.person_idx_to_id.len() as u64,
+    ));
 
-    group.throughput(Throughput::Elements(input.throughput));
-    group.bench_function(input.id, |b| b.iter(|| run_solver(black_box(&input.input))));
+    group.bench_function("full_recalculate_scores", |b| {
+        b.iter_batched(
+            || input.recalc_state.clone(),
+            |mut state| {
+                state._recalculate_scores();
+                black_box(state.current_cost)
+            },
+            BatchSize::SmallInput,
+        )
+    });
 
     group.finish();
 }
 
-criterion_group!(
-    benches,
-    bench_problem_sizes,
-    bench_with_constraints,
-    bench_iteration_throughput
-);
+criterion_group!(benches, bench_construction, bench_full_recalculation);
 criterion_main!(benches);
