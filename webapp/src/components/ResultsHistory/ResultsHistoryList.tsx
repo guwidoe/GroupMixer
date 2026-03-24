@@ -5,9 +5,7 @@ import { compareProblemConfigurations } from '../../services/problemStorage';
 import { ResultCard } from './ResultCard';
 import { getScoreColor } from './utils';
 
-interface ResultsHistoryListProps {
-  results: ProblemResult[];
-  currentProblem: SavedProblem;
+interface ResultsHistoryListState {
   selectedResultIds: string[];
   expandedResults: Set<string>;
   editingId: string | null;
@@ -16,6 +14,9 @@ interface ResultsHistoryListProps {
   configDetailsOpenId: string | null;
   bestResultId?: string;
   mostRecentResult: ProblemResult | null;
+}
+
+interface ResultsHistoryListActions {
   onToggleSelected: (resultId: string) => void;
   onToggleExpanded: (resultId: string) => void;
   onStartRename: (result: ProblemResult) => void;
@@ -32,41 +33,28 @@ interface ResultsHistoryListProps {
   onRestoreConfig: (result: ProblemResult) => void;
 }
 
+interface ResultsHistoryListProps {
+  results: ProblemResult[];
+  currentProblem: SavedProblem;
+  state: ResultsHistoryListState;
+  actions: ResultsHistoryListActions;
+}
+
 export function ResultsHistoryList({
   results,
   currentProblem,
-  selectedResultIds,
-  expandedResults,
-  editingId,
-  editingName,
-  exportDropdownOpenId,
-  configDetailsOpenId,
-  bestResultId,
-  mostRecentResult,
-  onToggleSelected,
-  onToggleExpanded,
-  onStartRename,
-  onSaveRename,
-  onCancelRename,
-  onChangeEditingName,
-  onOpenDetails,
-  onDelete,
-  onExport,
-  onToggleExportDropdown,
-  onCloseExportDropdown,
-  onToggleConfigDetails,
-  onCloseConfigDetails,
-  onRestoreConfig,
+  state,
+  actions,
 }: ResultsHistoryListProps) {
   return (
     <div className="space-y-4">
       {results
         .sort((a, b) => b.timestamp - a.timestamp)
         .map((result) => {
-          const isExpanded = expandedResults.has(result.id);
-          const isSelected = selectedResultIds.includes(result.id);
-          const isBest = result.id === bestResultId;
-          const isCurrent = result.id === mostRecentResult?.id;
+          const isExpanded = state.expandedResults.has(result.id);
+          const isSelected = state.selectedResultIds.includes(result.id);
+          const isBest = result.id === state.bestResultId;
+          const isCurrent = result.id === state.mostRecentResult?.id;
 
           const metrics = (() => {
             const problemConfig = result.problemSnapshot || currentProblem.problem;
@@ -82,7 +70,7 @@ export function ResultsHistoryList({
           const conColorClass = getColorClass(conPenalty === 0 ? 0 : 1, true);
 
           const configDiff = compareProblemConfigurations(currentProblem.problem, result.problemSnapshot);
-          const scoreColorClass = getScoreColor(result.solution.final_score, result, results, mostRecentResult);
+          const scoreColorClass = getScoreColor(result.solution.final_score, result, results, state.mostRecentResult);
 
           return (
             <ResultCard
@@ -92,25 +80,25 @@ export function ResultsHistoryList({
               isSelected={isSelected}
               isBest={isBest}
               isCurrent={isCurrent}
-              editingId={editingId}
-              editingName={editingName}
-              onChangeEditingName={onChangeEditingName}
-              onStartRename={onStartRename}
-              onSaveRename={onSaveRename}
-              onCancelRename={onCancelRename}
-              onToggleSelected={onToggleSelected}
-              onToggleExpanded={onToggleExpanded}
-              onOpenDetails={onOpenDetails}
-              onDelete={onDelete}
-              onExport={onExport}
-              exportDropdownOpen={exportDropdownOpenId === result.id}
-              onToggleExportDropdown={onToggleExportDropdown}
-              onCloseExportDropdown={onCloseExportDropdown}
+              editingId={state.editingId}
+              editingName={state.editingName}
+              onChangeEditingName={actions.onChangeEditingName}
+              onStartRename={actions.onStartRename}
+              onSaveRename={actions.onSaveRename}
+              onCancelRename={actions.onCancelRename}
+              onToggleSelected={actions.onToggleSelected}
+              onToggleExpanded={actions.onToggleExpanded}
+              onOpenDetails={actions.onOpenDetails}
+              onDelete={actions.onDelete}
+              onExport={actions.onExport}
+              exportDropdownOpen={state.exportDropdownOpenId === result.id}
+              onToggleExportDropdown={actions.onToggleExportDropdown}
+              onCloseExportDropdown={actions.onCloseExportDropdown}
               configDiff={configDiff}
-              configDetailsOpen={configDetailsOpenId === result.id}
-              onToggleConfigDetails={onToggleConfigDetails}
-              onCloseConfigDetails={onCloseConfigDetails}
-              onRestoreConfig={onRestoreConfig}
+              configDetailsOpen={state.configDetailsOpenId === result.id}
+              onToggleConfigDetails={actions.onToggleConfigDetails}
+              onCloseConfigDetails={actions.onCloseConfigDetails}
+              onRestoreConfig={actions.onRestoreConfig}
               metrics={metrics}
               scoreColorClass={scoreColorClass}
               repPenalty={repPenalty}

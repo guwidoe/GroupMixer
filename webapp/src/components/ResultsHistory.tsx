@@ -206,30 +206,34 @@ export function ResultsHistory() {
         <ResultsHistoryList
           results={results}
           currentProblem={currentProblem}
-          selectedResultIds={selectedResultIds}
-          expandedResults={expandedResults}
-          editingId={editingId}
-          editingName={editingName}
-          exportDropdownOpenId={exportDropdownOpenId}
-          configDetailsOpenId={configDetailsOpenId}
-          bestResultId={bestResult?.id}
-          mostRecentResult={mostRecentResult}
-          onToggleSelected={toggleResultSelection}
-          onToggleExpanded={toggleExpanded}
-          onStartRename={handleRename}
-          onSaveRename={handleSaveRename}
-          onCancelRename={handleCancelRename}
-          onChangeEditingName={setEditingName}
-          onOpenDetails={handleOpenDetails}
-          onDelete={handleDelete}
-          onExport={handleExportResult}
-          onToggleExportDropdown={(resultId) => setExportDropdownOpenId(exportDropdownOpenId === resultId ? null : resultId)}
-          onCloseExportDropdown={() => setExportDropdownOpenId(null)}
-          onToggleConfigDetails={(resultId) => setConfigDetailsOpenId(configDetailsOpenId === resultId ? null : resultId)}
-          onCloseConfigDetails={() => setConfigDetailsOpenId(null)}
-          onRestoreConfig={(result) => {
-            const suggested = `${currentProblem?.name || 'Problem'} – ${result.name || 'Result'} (restored)`;
-            restoreResultAsNewProblem(result.id, suggested);
+          state={{
+            selectedResultIds,
+            expandedResults,
+            editingId,
+            editingName,
+            exportDropdownOpenId,
+            configDetailsOpenId,
+            bestResultId: bestResult?.id,
+            mostRecentResult,
+          }}
+          actions={{
+            onToggleSelected: toggleResultSelection,
+            onToggleExpanded: toggleExpanded,
+            onStartRename: handleRename,
+            onSaveRename: handleSaveRename,
+            onCancelRename: handleCancelRename,
+            onChangeEditingName: setEditingName,
+            onOpenDetails: handleOpenDetails,
+            onDelete: handleDelete,
+            onExport: handleExportResult,
+            onToggleExportDropdown: (resultId) => setExportDropdownOpenId(exportDropdownOpenId === resultId ? null : resultId),
+            onCloseExportDropdown: () => setExportDropdownOpenId(null),
+            onToggleConfigDetails: (resultId) => setConfigDetailsOpenId(configDetailsOpenId === resultId ? null : resultId),
+            onCloseConfigDetails: () => setConfigDetailsOpenId(null),
+            onRestoreConfig: (result) => {
+              const suggested = `${currentProblem?.name || 'Problem'} – ${result.name || 'Result'} (restored)`;
+              restoreResultAsNewProblem(result.id, suggested);
+            },
           }}
         />
       )}
