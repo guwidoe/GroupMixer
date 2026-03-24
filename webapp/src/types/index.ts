@@ -329,4 +329,10 @@ export interface WasmModule {
   ) => string;
   validate_problem: (problem_json: string) => string;
   get_default_settings: () => string;
+  get_recommended_settings: (
+    problem_json: string,
+    desired_runtime_seconds: bigint
+  ) => string;
+  evaluate_input?: (input_json: string) => string;
+  init_panic_hook?: () => void;
 }

@@ -6,10 +6,14 @@ declare module "virtual:wasm-solver" {
   ): string;
   export function validate_problem(problem_json: string): string;
   export function get_default_settings(): string;
+  export function get_recommended_settings(
+    problem_json: string,
+    desired_runtime_seconds: bigint
+  ): string;
   export function evaluate_input(input_json: string): string;
   export function init_panic_hook(): void;
   export default function init(
-    module_or_path?: string | URL | Request
+    module_or_path?: string | URL | Request | Response | BufferSource | WebAssembly.Module
   ): Promise<void>;
 }
 
@@ -21,9 +25,15 @@ export type WasmModule = {
   ) => string;
   validate_problem: (problem_json: string) => string;
   get_default_settings: () => string;
+  get_recommended_settings: (
+    problem_json: string,
+    desired_runtime_seconds: bigint
+  ) => string;
   evaluate_input?: (input_json: string) => string;
   init_panic_hook: () => void;
-  default: () => Promise<void>;
+  default: (
+    module_or_path?: string | URL | Request | Response | BufferSource | WebAssembly.Module
+  ) => Promise<void>;
 };
 
 export interface Problem {

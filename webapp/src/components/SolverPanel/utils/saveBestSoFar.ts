@@ -1,6 +1,5 @@
 import type { MutableRefObject } from 'react';
 import type { Problem, SolverSettings, SolverState, Solution, Notification } from '../../../types';
-import type { ProgressUpdate } from '../../../services/wasm';
 import { wasmService } from '../../../services/wasm';
 import { solverWorkerService } from '../../../services/solverWorker';
 
@@ -43,9 +42,7 @@ export async function saveBestSoFar({
     return;
   }
 
-  const lastProgress = (solverWorkerService as unknown as { lastProgressUpdate?: ProgressUpdate }).lastProgressUpdate as
-    | ProgressUpdate
-    | undefined;
+  const lastProgress = solverWorkerService.getLastProgressUpdate();
   if (lastProgress && lastProgress.best_schedule) {
     saveInProgressRef.current = true;
     const bestSchedule = lastProgress.best_schedule;

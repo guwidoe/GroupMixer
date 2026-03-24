@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import type { Problem, SavedProblem, SolverSettings, SolverState, Solution, Notification } from '../../../types';
-import type { ProgressUpdate } from '../../../services/wasm';
+import type { ProgressUpdate } from '../../../services/wasm/types';
 import type { ScheduleSnapshot } from '../../../visualizations/types';
 import { solverWorkerService } from '../../../services/solverWorker';
 import { runSolver } from '../utils/runSolver';
@@ -156,7 +156,7 @@ export function useSolverActions({
     const currentProblem = ensureProblemExists();
 
     try {
-      const recommendedSettings = await solverWorkerService.get_recommended_settings(
+      const recommendedSettings = await solverWorkerService.getRecommendedSettings(
         currentProblem,
         desiredRuntimeSettings,
       );

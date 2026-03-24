@@ -10,7 +10,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import type { Problem, SolverSettings, SolverState } from '../../types';
-import type { ProgressUpdate } from '../../services/wasm';
+import type { ProgressUpdate } from '../../services/wasm/types';
 import type { ScheduleSnapshot } from '../../visualizations/types';
 import { VisualizationPanel } from '../../visualizations/VisualizationPanel';
 import { Tooltip } from '../Tooltip';

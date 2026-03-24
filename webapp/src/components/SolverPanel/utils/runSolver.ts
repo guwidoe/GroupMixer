@@ -1,6 +1,6 @@
 import type { MutableRefObject } from 'react';
 import type { Problem, SavedProblem, SolverSettings, SolverState, Solution, Notification } from '../../../types';
-import type { ProgressUpdate } from '../../../services/wasm';
+import type { ProgressUpdate } from '../../../services/wasm/types';
 import { solverWorkerService } from '../../../services/solverWorker';
 import { problemStorage } from '../../../services/problemStorage';
 import { reconcileResultToInitialSchedule } from '../../../utils/warmStart';
@@ -101,7 +101,7 @@ export async function runSolver({
 
     if (useRecommended) {
       try {
-        const rawSettings = await solverWorkerService.get_recommended_settings(
+        const rawSettings = await solverWorkerService.getRecommendedSettings(
           currentProblem,
           desiredRuntimeMain ?? 3,
         );

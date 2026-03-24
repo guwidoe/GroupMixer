@@ -1,4 +1,4 @@
-import type { Problem, Solution, SolverSettings } from "../types";
+import type { Assignment, Problem, Solution, SolverSettings } from "../types";
 import type { WasmModule } from "../types/wasm";
 import { convertProblemToRustFormat, convertRustResultToSolution } from "./wasm/conversions";
 import type { ProgressCallback, ProgressUpdate } from "./wasm/types";
@@ -9,6 +9,20 @@ class WasmService {
   private loading = false;
   private initializationFailed = false;
 
+  private async requireModule(): Promise<WasmModule> {
+    if (!this.module && !this.initializationFailed) {
+      await this.initialize();
+    }
+
+    if (!this.module) {
+      throw new Error(
+        "WASM module not available. Please check the build configuration."
+      );
+    }
+
+    return this.module;
+  }
+
   async initialize(): Promise<void> {
     if (this.module || this.loading || this.initializationFailed) {
       return;
@@ -17,7 +31,7 @@ class WasmService {
     this.loading = true;
 
     try {
-      // Load the WASM module via the virtual alias (vite alias → public/solver_wasm.js)
+      // Load the WASM module via the virtual alias (vite alias → public/pkg/solver_wasm.js)
       const wasmModule = await import("virtual:wasm-solver").catch((error) => {
         console.warn(
           "WASM module not found. This might be a build issue:",
@@ -28,34 +42,11 @@ class WasmService {
         );
       });
 
-      // Initialize the WASM module
-      if (
-        typeof (wasmModule as unknown as { default?: () => Promise<void> })
-          .default === "function"
-      ) {
-        await (
-          wasmModule as unknown as { default: () => Promise<void> }
-        ).default();
-      } else if (
-        typeof (wasmModule as unknown as { wasm_bindgen?: () => Promise<void> })
-          .wasm_bindgen === "function"
-      ) {
-        await (
-          wasmModule as unknown as { wasm_bindgen: () => Promise<void> }
-        ).wasm_bindgen();
-      } else if (
-        typeof (
-          wasmModule as unknown as { initSync?: (m?: unknown) => unknown }
-        ).initSync === "function"
-      ) {
-        (
-          wasmModule as unknown as { initSync: (m?: unknown) => unknown }
-        ).initSync();
-      } else {
-        console.warn(
-          "WASM module has no default/wasm_bindgen/initSync initializer; proceeding without explicit init"
-        );
+      if (typeof wasmModule.default !== "function") {
+        throw new Error("WASM module does not expose the expected async initializer.");
       }
+
+      await wasmModule.default();
 
       this.module = wasmModule as unknown as WasmModule;
       console.log("WASM module loaded successfully");
@@ -69,21 +60,13 @@ class WasmService {
   }
 
   async solve(problem: Problem): Promise<Solution> {
-    if (!this.module && !this.initializationFailed) {
-      await this.initialize();
-    }
-
-    if (!this.module) {
-      throw new Error(
-        "WASM module not available. Please check the build configuration."
-      );
-    }
+    const module = await this.requireModule();
 
     let problemJson: string | undefined;
     try {
       problemJson = JSON.stringify(convertProblemToRustFormat(problem));
       console.log("Solver input JSON:", problemJson);
-      const resultJson = this.module.solve(problemJson);
+      const resultJson = module.solve(problemJson);
       const rustResult = JSON.parse(resultJson);
       return convertRustResultToSolution(rustResult);
     } catch (error) {
@@ -102,20 +85,14 @@ class WasmService {
   async solveWithProgress(
     problem: Problem,
     progressCallback?: ProgressCallback
-  ): Promise<Solution> {
-    if (!this.module && !this.initializationFailed) {
-      await this.initialize();
-    }
-
-    if (!this.module) {
-      throw new Error("WASM module not initialized");
-    }
+  ): Promise<{ solution: Solution; lastProgress: ProgressUpdate | null }> {
+    const module = await this.requireModule();
 
     let problemJson: string | undefined;
     try {
       problemJson = JSON.stringify(convertProblemToRustFormat(problem));
 
-      let lastProgress: ProgressUpdate | undefined;
+      let lastProgress: ProgressUpdate | null = null;
 
       const wasmProgressCallback = progressCallback
         ? (progressJson: string) => {
@@ -130,13 +107,16 @@ class WasmService {
           }
         : undefined;
 
-      const resultJson = this.module.solve_with_progress(
+      const resultJson = module.solve_with_progress(
         problemJson,
         wasmProgressCallback
       );
 
       const rustResult = JSON.parse(resultJson);
-      return convertRustResultToSolution(rustResult, lastProgress);
+      return {
+        solution: convertRustResultToSolution(rustResult, lastProgress ?? undefined),
+        lastProgress,
+      };
     } catch (error) {
       console.error("WASM solveWithProgress error:", error);
       if (problemJson) {
@@ -153,94 +133,35 @@ class WasmService {
   async validateProblem(
     problem: Problem
   ): Promise<{ valid: boolean; errors: string[] }> {
-    if (!this.module && !this.initializationFailed) {
-      await this.initialize();
-    }
-
-    if (!this.module) {
-      return {
-        valid: false,
-        errors: [
-          "WASM module not available. Please check the build configuration.",
-        ],
-      };
-    }
+    const module = await this.requireModule();
 
     try {
       const problemJson = JSON.stringify(problem);
-      const resultJson = this.module.validate_problem(problemJson);
+      const resultJson = module.validate_problem(problemJson);
       return JSON.parse(resultJson);
     } catch (error) {
       console.error("WASM validation error:", error);
-      return { valid: false, errors: ["Validation failed"] };
+      throw new Error(
+        `Failed to validate problem: ${
+          error instanceof Error ? error.stack || error.message : String(error)
+        }`
+      );
     }
   }
 
   async getDefaultSettings(): Promise<SolverSettings> {
-    if (!this.module && !this.initializationFailed) {
-      await this.initialize();
-    }
-
-    if (!this.module) {
-      // Return reasonable defaults when WASM is not available
-      return {
-        solver_type: "SimulatedAnnealing",
-        stop_conditions: {
-          max_iterations: 10000,
-          time_limit_seconds: 30,
-          no_improvement_iterations: 5000,
-        },
-        solver_params: {
-          SimulatedAnnealing: {
-            initial_temperature: 1.0,
-            final_temperature: 0.01,
-            cooling_schedule: "geometric",
-            reheat_after_no_improvement: 0,
-          },
-        },
-        logging: {
-          log_frequency: 1000,
-          log_initial_state: true,
-          log_duration_and_score: true,
-          display_final_schedule: true,
-          log_initial_score_breakdown: true,
-          log_final_score_breakdown: true,
-          log_stop_condition: true,
-        },
-      };
-    }
+    const module = await this.requireModule();
 
     try {
-      const settingsJson = this.module.get_default_settings();
+      const settingsJson = module.get_default_settings();
       return JSON.parse(settingsJson);
     } catch (error) {
       console.error("WASM get default settings error:", error);
-      // Fallback to reasonable defaults
-      return {
-        solver_type: "SimulatedAnnealing",
-        stop_conditions: {
-          max_iterations: 10000,
-          time_limit_seconds: 30,
-          no_improvement_iterations: 5000,
-        },
-        solver_params: {
-          SimulatedAnnealing: {
-            initial_temperature: 1.0,
-            final_temperature: 0.01,
-            cooling_schedule: "geometric",
-            reheat_after_no_improvement: 0,
-          },
-        },
-        logging: {
-          log_frequency: 1000,
-          log_initial_state: true,
-          log_duration_and_score: true,
-          display_final_schedule: true,
-          log_initial_score_breakdown: true,
-          log_final_score_breakdown: true,
-          log_stop_condition: true,
-        },
-      };
+      throw new Error(
+        `Failed to get default settings: ${
+          error instanceof Error ? error.stack || error.message : String(error)
+        }`
+      );
     }
   }
 
@@ -260,14 +181,7 @@ class WasmService {
     problem: Problem,
     assignments: Assignment[]
   ): Promise<Solution> {
-    if (!this.module && !this.initializationFailed) {
-      await this.initialize();
-    }
-    if (!this.module) {
-      throw new Error(
-        "WASM module not available. Please check the build configuration."
-      );
-    }
+    const module = await this.requireModule();
     // Build ApiInput with initial_schedule populated from assignments
     const payload = convertProblemToRustFormat(problem) as Record<
       string,
@@ -287,7 +201,7 @@ class WasmService {
     payload.initial_schedule = schedule;
 
     try {
-      const resultJson = this.module.evaluate_input!(JSON.stringify(payload));
+      const resultJson = module.evaluate_input!(JSON.stringify(payload));
       const rustResult = JSON.parse(resultJson);
       return convertRustResultToSolution(rustResult);
     } catch (error) {

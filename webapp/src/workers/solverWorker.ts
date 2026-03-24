@@ -2,16 +2,19 @@
 // Uses ESM imports instead of importScripts to work with wasm-pack --target web output
 
 import wasmInit, * as wasmModule from "virtual:wasm-solver";
+import type {
+  WorkerErrorData,
+  WorkerRequestMessage,
+} from "../services/solverWorker/protocol";
 
-let isInitializing = false as boolean;
-let isInitialized = false as boolean;
+let isInitializing = false;
+let isInitialized = false;
 let lastProblemJson: string | null = null;
 
 async function initWasm(): Promise<void> {
   if (isInitialized) return;
   if (isInitializing) {
     while (isInitializing) {
-      // Wait briefly for concurrent initialization
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
     return;
@@ -19,12 +22,10 @@ async function initWasm(): Promise<void> {
 
   isInitializing = true;
   try {
-    // Initialize the wasm-bindgen module (ESM glue exports default init)
     if (typeof wasmInit === "function") {
       await wasmInit();
     }
 
-    // Optional: set panic hook for better Rust panics
     if (
       typeof (wasmModule as Record<string, unknown>)["init_panic_hook"] ===
       "function"
@@ -44,13 +45,16 @@ async function initWasm(): Promise<void> {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-self.onmessage = async (e: MessageEvent<any>) => {
-  const { type, id, data } = e.data as {
-    type: string;
-    id: string;
-    data?: unknown;
-  };
+function postFatalError(data: WorkerErrorData): void {
+  self.postMessage({ type: "FATAL_ERROR", data });
+}
+
+function postRequestError(id: string, data: WorkerErrorData): void {
+  self.postMessage({ type: "ERROR", id, data });
+}
+
+self.onmessage = async (e: MessageEvent<WorkerRequestMessage>) => {
+  const { type, id } = e.data;
 
   try {
     switch (type) {
@@ -61,10 +65,7 @@ self.onmessage = async (e: MessageEvent<any>) => {
       }
 
       case "SOLVE": {
-        const { problemJson, useProgress } = data as {
-          problemJson: string;
-          useProgress?: boolean;
-        };
+        const { problemJson, useProgress } = e.data.data;
         lastProblemJson = problemJson;
 
         if (!isInitialized) {
@@ -81,7 +82,7 @@ self.onmessage = async (e: MessageEvent<any>) => {
           const progressCallback = (progressJson: string): boolean => {
             lastProgressJson = progressJson;
             self.postMessage({ type: "PROGRESS", id, data: { progressJson } });
-            return true; // continue
+            return true;
           };
 
           const result = (
@@ -108,7 +109,6 @@ self.onmessage = async (e: MessageEvent<any>) => {
       }
 
       case "CANCEL": {
-        // Cooperative cancellation would require wasm changes; acknowledge for now
         self.postMessage({ type: "CANCELLED", id });
         break;
       }
@@ -124,9 +124,13 @@ self.onmessage = async (e: MessageEvent<any>) => {
             id,
             data: { result: settings },
           });
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          self.postMessage({ type: "RPC_ERROR", id, data: { error: message } });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          self.postMessage({
+            type: "RPC_ERROR",
+            id,
+            data: { error: message },
+          });
         }
         break;
       }
@@ -134,16 +138,13 @@ self.onmessage = async (e: MessageEvent<any>) => {
       case "get_recommended_settings": {
         try {
           if (!isInitialized) throw new Error("WASM module not initialized.");
-          const { problemJson, desired_runtime_seconds } = data as {
-            problemJson: string;
-            desired_runtime_seconds: number;
-          };
+          const { problemJson, desired_runtime_seconds } = e.data.data;
           const settings = (
             wasmModule as unknown as {
               get_recommended_settings: (pj: string, seconds: bigint) => string;
             }
           ).get_recommended_settings(
-            problemJson,
+            problemJson || "",
             BigInt(desired_runtime_seconds)
           );
           self.postMessage({
@@ -151,16 +152,19 @@ self.onmessage = async (e: MessageEvent<any>) => {
             id,
             data: { result: settings },
           });
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          self.postMessage({ type: "RPC_ERROR", id, data: { error: message } });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          self.postMessage({
+            type: "RPC_ERROR",
+            id,
+            data: { error: message },
+          });
         }
         break;
       }
 
-      default: {
+      default:
         console.warn(`Unknown message type: ${type}`);
-      }
     }
   } catch (error) {
     console.error("Worker error:", error);
@@ -168,23 +172,17 @@ self.onmessage = async (e: MessageEvent<any>) => {
       error && (error as Error).message
         ? (error as Error).message
         : String(error);
-    self.postMessage({
-      type: "ERROR",
-      id,
-      data: {
-        error: errorString,
-        problemJson: lastProblemJson,
-      },
+    postRequestError(id, {
+      error: errorString,
+      problemJson: lastProblemJson || undefined,
     });
   }
 };
 
-// Forward uncaught worker errors
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-self.onerror = function (error: any) {
-  const errMsg = error && error.message ? error.message : String(error);
-  self.postMessage({
-    type: "ERROR",
-    data: { error: errMsg, filename: error.filename, lineno: error.lineno },
+self.onerror = function (error: ErrorEvent) {
+  postFatalError({
+    error: error?.message || String(error),
+    filename: error?.filename,
+    lineno: error?.lineno,
   });
 };

@@ -1,6 +1,6 @@
 import type React from "react";
 import type { Problem, Solution } from "../types";
-import type { ProgressUpdate } from "../services/wasm";
+import type { ProgressUpdate } from "../services/wasm/types";
 
 export type ScheduleSnapshot = Record<string, Record<string, string[]>>;
 

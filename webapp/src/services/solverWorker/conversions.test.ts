@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   convertProblemToRustFormat,
   convertRustResultToSolution,
-} from "./conversions";
+} from "../wasm/conversions";
 import { createSampleProblem } from "../../test/fixtures";
 import type { ProgressUpdate } from "../wasm/types";
 
@@ -50,7 +50,7 @@ const progress: ProgressUpdate = {
   search_efficiency: 0,
 };
 
-describe("solverWorker conversions", () => {
+describe("shared solver conversions", () => {
   it("preserves explicit objectives and normalizes immovable sessions", () => {
     const rustProblem = convertProblemToRustFormat(
       createSampleProblem({
