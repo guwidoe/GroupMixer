@@ -1,13 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { openApp, waitForModal } from './helpers';
 
 test.describe('Problem Editor', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to the app - first go to /app which redirects to /app/problem/people
-    await page.goto('/app');
-    // Wait for the app to fully load - look for the navigation or header
-    await page.waitForSelector('nav, header', { timeout: 15000 });
-    // Give extra time for React hydration
-    await page.waitForTimeout(1000);
+    await openApp(page);
   });
 
   test('displays problem editor with tabs', async ({ page }) => {
@@ -21,16 +17,10 @@ test.describe('Problem Editor', () => {
   });
 
   test('can add an attribute definition', async ({ page }) => {
-    // First expand the attribute definitions section if collapsed
     const attributeHeader = page.locator('text=Attribute Definitions');
     await attributeHeader.click();
-    await page.waitForTimeout(300);
-
-    // Click "Add Attribute" button
     await page.locator('button').filter({ hasText: /Add Attribute/i }).click();
-
-    // Wait for modal
-    await page.waitForSelector('.modal-content', { timeout: 5000 });
+    await waitForModal(page);
 
     // Fill in attribute name using placeholder
     await page.getByPlaceholder(/department, experience/i).fill('test-attr');
@@ -46,11 +36,8 @@ test.describe('Problem Editor', () => {
   });
 
   test('can add a person', async ({ page }) => {
-    // Click "Add Person" button in the toolbar
     await page.locator('button').filter({ hasText: /^Add Person$/ }).click();
-
-    // Wait for modal to appear
-    await page.waitForSelector('.modal-content', { timeout: 5000 });
+    await waitForModal(page);
 
     // Fill in person name using placeholder text
     await page.getByPlaceholder(/Enter person's name/i).fill('alice');
@@ -63,29 +50,20 @@ test.describe('Problem Editor', () => {
   });
 
   test('can delete a person', async ({ page }) => {
-    // First add a person
     await page.locator('button').filter({ hasText: /^Add Person$/ }).click();
-    await page.waitForSelector('.modal-content', { timeout: 5000 });
+    await waitForModal(page);
     await page.getByPlaceholder(/Enter person's name/i).fill('bob');
     await page.locator('.modal-content button').filter({ hasText: /^Add Person$/i }).click();
     await expect(page.getByRole('heading', { name: 'bob' })).toBeVisible();
 
-    // Wait for notification to disappear (optional)
-    await page.waitForTimeout(1000);
-
-    // Find the person card with "bob" - it's a div with the person name
-    // The card has edit and delete buttons as the last two buttons
     const personCard = page.locator('h4:has-text("bob")').locator('..').locator('..');
-    // Click the last button (trash/delete icon)
     await personCard.locator('button').last().click();
 
-    // Confirm deletion if there's a confirmation dialog
     const confirmButton = page.getByRole('button', { name: /confirm|yes|delete/i });
     if (await confirmButton.isVisible({ timeout: 1000 }).catch(() => false)) {
       await confirmButton.click();
     }
 
-    // Verify person is removed (the heading should no longer be visible)
     await expect(page.getByRole('heading', { name: 'bob' })).toBeHidden({ timeout: 5000 });
   });
 
@@ -98,17 +76,11 @@ test.describe('Problem Editor', () => {
   });
 
   test('can add a group', async ({ page }) => {
-    // Navigate to groups
     await page.getByRole('button', { name: /Groups/i }).click();
+    await expect(page.getByRole('button', { name: /Add Group/i })).toBeVisible();
 
-    // Wait for groups section to load
-    await page.waitForTimeout(500);
-
-    // Click Add Group button in toolbar
     await page.locator('button').filter({ hasText: /^Add Group$/ }).click();
-
-    // Wait for modal
-    await page.waitForSelector('.modal-content', { timeout: 5000 });
+    await waitForModal(page);
 
     // Fill in group ID using placeholder
     await page.getByPlaceholder(/team-alpha/i).fill('Team Alpha');
@@ -147,14 +119,9 @@ test.describe('Problem Editor', () => {
   });
 
   test('can bulk add people from CSV text mode without switching to grid (fixes #7)', async ({ page }) => {
-    // Click "Bulk Add" dropdown button
     await page.locator('button').filter({ hasText: /Bulk Add/i }).first().click();
-    
-    // Click "Open Bulk Form" in the dropdown
     await page.locator('button').filter({ hasText: /Open Bulk Form/i }).click();
-
-    // Wait for bulk add modal
-    await page.waitForSelector('.modal-content', { timeout: 5000 });
+    await waitForModal(page);
 
     // Ensure we're in "CSV Text" mode (default)
     const csvTextButton = page.locator('button').filter({ hasText: /CSV Text/i });
@@ -177,13 +144,9 @@ test.describe('Problem Editor', () => {
   });
 
   test('bulk add preserves data when switching between text and grid views', async ({ page }) => {
-    // Click "Bulk Add" dropdown button
     await page.locator('button').filter({ hasText: /Bulk Add/i }).first().click();
-    
-    // Click "Open Bulk Form" in the dropdown
     await page.locator('button').filter({ hasText: /Open Bulk Form/i }).click();
-
-    await page.waitForSelector('.modal-content', { timeout: 5000 });
+    await waitForModal(page);
 
     // Enter CSV in text mode
     const csvData = 'name,role\nDave,Developer\nEve,Designer';
@@ -206,18 +169,12 @@ test.describe('Problem Editor', () => {
   });
 
   test('bulk add groups from CSV text mode without switching to grid (fixes #7)', async ({ page }) => {
-    // Navigate to groups
     await page.getByRole('button', { name: /Groups/i }).click();
-    await page.waitForTimeout(500);
+    await expect(page.getByRole('button', { name: /Add Group/i })).toBeVisible();
 
-    // Click "Bulk Add" dropdown button
     await page.locator('button').filter({ hasText: /Bulk Add/i }).first().click();
-    
-    // Click "Open Bulk Form" in the dropdown
     await page.locator('button').filter({ hasText: /Open Bulk Form/i }).click();
-
-    // Wait for modal
-    await page.waitForSelector('.modal-content', { timeout: 5000 });
+    await waitForModal(page);
 
     // Enter CSV with groups (requires 'id' column for groups)
     const csvData = 'id,size\nTeam-A,4\nTeam-B,6\nTeam-C,5';
