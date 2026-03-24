@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "id": "path.clique-swap.partial-participation",
   "class": "path",
   "family": "clique_swap",

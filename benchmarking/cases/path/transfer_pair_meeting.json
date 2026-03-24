@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "id": "path.transfer.pair-meeting",
   "class": "path",
   "family": "transfer",

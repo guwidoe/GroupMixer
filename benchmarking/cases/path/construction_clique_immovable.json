@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "id": "path.construction.clique-immovable",
   "class": "path",
   "family": "construction",

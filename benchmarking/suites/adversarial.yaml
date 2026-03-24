@@ -1,0 +1,8 @@
+schema_version: 1
+suite_id: adversarial
+class: adversarial
+title: Adversarial solve-level benchmark suite
+description: Constraint-heavy or awkward cases that expose rejection-heavy and boundary-shaped behavior.
+default_max_iterations: 60
+cases:
+  - manifest: ../cases/adversarial/constraint_heavy_partial_attendance.json

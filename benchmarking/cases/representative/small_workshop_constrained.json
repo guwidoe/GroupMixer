@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "id": "representative.small-workshop-constrained",
+  "class": "representative",
+  "tags": ["workshop", "constraints", "day-to-day"],
+  "title": "Small workshop constrained",
+  "description": "Representative case with soft and hard constraints to exercise normal mixed search behavior.",
+  "input": {
+    "initial_schedule": null,
+    "problem": {
+      "people": [
+        { "id": "p0", "attributes": { "track": "a" } },
+        { "id": "p1", "attributes": { "track": "a" } },
+        { "id": "p2", "attributes": { "track": "b" } },
+        { "id": "p3", "attributes": { "track": "b" } },
+        { "id": "p4", "attributes": { "track": "c" } },
+        { "id": "p5", "attributes": { "track": "c" } },
+        { "id": "p6", "attributes": { "track": "d" } },
+        { "id": "p7", "attributes": { "track": "d" } }
+      ],
+      "groups": [
+        { "id": "g0", "size": 4 },
+        { "id": "g1", "size": 4 }
+      ],
+      "num_sessions": 3
+    },
+    "objectives": [
+      { "type": "maximize_unique_contacts", "weight": 1.0 }
+    ],
+    "constraints": [
+      {
+        "type": "ShouldNotBeTogether",
+        "people": ["p0", "p1"],
+        "penalty_weight": 7.0
+      },
+      {
+        "type": "ShouldBeTogether",
+        "people": ["p2", "p3"],
+        "penalty_weight": 5.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": ["p4", "p5"],
+        "sessions": [0, 1, 2],
+        "target_meetings": 2,
+        "mode": "at_least",
+        "penalty_weight": 6.0
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 60,
+        "time_limit_seconds": null,
+        "no_improvement_iterations": 20
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 6.0,
+        "final_temperature": 0.2,
+        "cooling_schedule": "geometric",
+        "reheat_after_no_improvement": 5,
+        "reheat_cycles": 1
+      },
+      "logging": {},
+      "telemetry": {},
+      "seed": 102,
+      "move_policy": null,
+      "allowed_sessions": null
+    }
+  }
+}

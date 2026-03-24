@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "id": "path.swap.forbidden-pair",
   "class": "path",
   "family": "swap",

@@ -1,4 +1,5 @@
 {
+  "schema_version": 1,
   "id": "path.search-driver.allowed-sessions",
   "class": "path",
   "family": "search_driver",

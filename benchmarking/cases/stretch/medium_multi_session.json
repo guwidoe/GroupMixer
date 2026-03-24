@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "id": "stretch.medium-multi-session",
+  "class": "stretch",
+  "tags": ["scale", "multi-session", "stress"],
+  "title": "Medium multi-session stretch",
+  "description": "A modestly larger deterministic case for controlled stretch benchmarking without making tests slow.",
+  "input": {
+    "initial_schedule": null,
+    "problem": {
+      "people": [
+        { "id": "p0", "attributes": { "role": "eng" } },
+        { "id": "p1", "attributes": { "role": "eng" } },
+        { "id": "p2", "attributes": { "role": "eng" } },
+        { "id": "p3", "attributes": { "role": "design" } },
+        { "id": "p4", "attributes": { "role": "design" } },
+        { "id": "p5", "attributes": { "role": "design" } },
+        { "id": "p6", "attributes": { "role": "pm" } },
+        { "id": "p7", "attributes": { "role": "pm" } },
+        { "id": "p8", "attributes": { "role": "pm" } },
+        { "id": "p9", "attributes": { "role": "qa" } },
+        { "id": "p10", "attributes": { "role": "qa" } },
+        { "id": "p11", "attributes": { "role": "qa" } }
+      ],
+      "groups": [
+        { "id": "g0", "size": 4 },
+        { "id": "g1", "size": 4 },
+        { "id": "g2", "size": 4 }
+      ],
+      "num_sessions": 4
+    },
+    "objectives": [
+      { "type": "maximize_unique_contacts", "weight": 1.0 }
+    ],
+    "constraints": [
+      {
+        "type": "ShouldBeTogether",
+        "people": ["p0", "p3"],
+        "penalty_weight": 4.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": ["p8", "p11"],
+        "penalty_weight": 5.0
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "g0",
+        "attribute_key": "role",
+        "desired_values": { "eng": 1, "design": 1, "pm": 1, "qa": 1 },
+        "mode": "exact",
+        "penalty_weight": 7.0
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 80,
+        "time_limit_seconds": null,
+        "no_improvement_iterations": 30
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 8.0,
+        "final_temperature": 0.2,
+        "cooling_schedule": "geometric",
+        "reheat_after_no_improvement": 10,
+        "reheat_cycles": 1
+      },
+      "logging": {},
+      "telemetry": {},
+      "seed": 201,
+      "move_policy": null,
+      "allowed_sessions": null
+    }
+  }
+}
