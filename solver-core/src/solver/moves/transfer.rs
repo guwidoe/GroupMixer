@@ -541,6 +541,7 @@ impl State {
 
         // Keep legacy constraint_penalty consistent with calculate_cost()
         self._update_constraint_penalty_total();
+        self.refresh_cost_from_caches();
 
         // Debug-only final invariant check for the whole session
         if self.logging.debug_validate_invariants {

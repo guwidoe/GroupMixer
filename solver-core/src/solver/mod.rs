@@ -381,6 +381,40 @@ impl State {
         self.current_cost = self.calculate_cost();
     }
 
+    pub(crate) fn refresh_cost_from_caches(&mut self) {
+        let mut weighted_constraint_penalty = 0.0;
+
+        for (idx, violations) in self.forbidden_pair_violations.iter().enumerate() {
+            weighted_constraint_penalty += *violations as f64 * self.forbidden_pair_weights[idx];
+        }
+
+        for (idx, violations) in self.should_together_violations.iter().enumerate() {
+            weighted_constraint_penalty +=
+                *violations as f64 * self.should_together_weights[idx];
+        }
+
+        for idx in 0..self.pairmin_pairs.len() {
+            let target = self.pairmin_required[idx] as i32;
+            let have = self.pairmin_counts[idx] as i32;
+            let penalty = match self.pairmin_modes[idx] {
+                PairMeetingMode::AtLeast => (target - have).max(0) as f64,
+                PairMeetingMode::Exact => (have - target).abs() as f64,
+                PairMeetingMode::AtMost => (have - target).max(0) as f64,
+            } * self.pairmin_weights[idx];
+
+            weighted_constraint_penalty += penalty;
+        }
+
+        weighted_constraint_penalty += self.immovable_violations as f64 * 1000.0;
+
+        self.weighted_constraint_penalty = weighted_constraint_penalty;
+        self.current_cost = (self.repetition_penalty as f64 * self.w_repetition)
+            + self.attribute_balance_penalty
+            + self.weighted_constraint_penalty
+            - (self.unique_contacts as f64 * self.w_contacts)
+            + self.baseline_score;
+    }
+
     /// Converts the current state to an API result format.
     ///
     /// This method transforms the internal integer-based representation back to

@@ -1022,5 +1022,6 @@ impl State {
 
         // Update the legacy constraint_penalty field for backward compatibility
         self._update_constraint_penalty_total();
+        self.refresh_cost_from_caches();
     }
 }

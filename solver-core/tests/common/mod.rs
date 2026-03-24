@@ -7,6 +7,7 @@ use solver_core::models::{
     ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams,
     SolverConfiguration, SolverParams, StopConditions,
 };
+use solver_core::solver::State;
 use std::collections::HashMap;
 
 /// Creates a simple test input with the specified configuration.
@@ -244,4 +245,100 @@ pub fn assert_not_together_in_session(
         "Expected {} and {} to be in different groups in session {}, but both are in {:?}",
         person1, person2, session, p1_group
     );
+}
+
+/// Builds a warm-start schedule map using the provided group order for each session.
+#[allow(dead_code)]
+pub fn make_initial_schedule(
+    group_ids: &[&str],
+    sessions: Vec<Vec<Vec<&str>>>,
+) -> HashMap<String, HashMap<String, Vec<String>>> {
+    sessions
+        .into_iter()
+        .enumerate()
+        .map(|(session_idx, groups)| {
+            let group_map = group_ids
+                .iter()
+                .enumerate()
+                .map(|(group_idx, group_id)| {
+                    let members = groups
+                        .get(group_idx)
+                        .cloned()
+                        .unwrap_or_default()
+                        .into_iter()
+                        .map(str::to_string)
+                        .collect::<Vec<_>>();
+                    ((*group_id).to_string(), members)
+                })
+                .collect::<HashMap<_, _>>();
+
+            (format!("session_{session_idx}"), group_map)
+        })
+        .collect()
+}
+
+#[allow(dead_code)]
+pub fn assert_state_matches_full_recalculation(state: &State) {
+    state
+        .validate_no_duplicate_assignments()
+        .expect("state should not contain duplicate assignments");
+
+    let mut recalculated = state.clone();
+    recalculated._recalculate_scores();
+
+    assert_eq!(state.unique_contacts, recalculated.unique_contacts);
+    assert_eq!(state.repetition_penalty, recalculated.repetition_penalty);
+    assert_eq!(state.constraint_penalty, recalculated.constraint_penalty);
+    assert_eq!(state.clique_violations, recalculated.clique_violations);
+    assert_eq!(
+        state.forbidden_pair_violations,
+        recalculated.forbidden_pair_violations
+    );
+    assert_eq!(
+        state.should_together_violations,
+        recalculated.should_together_violations
+    );
+    assert_eq!(state.immovable_violations, recalculated.immovable_violations);
+    assert_eq!(state.pairmin_counts, recalculated.pairmin_counts);
+    assert!(
+        (state.attribute_balance_penalty - recalculated.attribute_balance_penalty).abs() < 1e-9,
+        "attribute balance penalty mismatch: cached={} recalculated={}",
+        state.attribute_balance_penalty,
+        recalculated.attribute_balance_penalty
+    );
+    assert!(
+        (state.weighted_constraint_penalty - recalculated.weighted_constraint_penalty).abs() < 1e-9,
+        "weighted constraint penalty mismatch: cached={} recalculated={}",
+        state.weighted_constraint_penalty,
+        recalculated.weighted_constraint_penalty
+    );
+    assert!(
+        (state.current_cost - recalculated.current_cost).abs() < 1e-9,
+        "current cost mismatch: cached={} recalculated={}",
+        state.current_cost,
+        recalculated.current_cost
+    );
+}
+
+#[allow(dead_code)]
+pub fn assert_delta_matches_after(before: &State, after: &State, predicted_delta: f64) {
+    let mut recalculated_after = after.clone();
+    recalculated_after._recalculate_scores();
+    let actual_delta = recalculated_after.current_cost - before.current_cost;
+    assert!(
+        (predicted_delta - actual_delta).abs() < 1e-9,
+        "predicted delta {} did not match actual delta {}",
+        predicted_delta,
+        actual_delta
+    );
+    assert_state_matches_full_recalculation(after);
+}
+
+#[allow(dead_code)]
+pub fn count_person_occurrences_in_session(state: &State, session: usize, person_id: &str) -> usize {
+    let person_idx = state.person_id_to_idx[person_id];
+    state.schedule[session]
+        .iter()
+        .map(|group| group.iter().filter(|&&idx| idx == person_idx).count())
+        .sum()
 }
