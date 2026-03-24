@@ -27,6 +27,25 @@ Each fixture can declare metadata alongside `input`, `expected`, and `test_optio
 
 Performance and slow fixtures are generated as `#[ignore]` tests so they do not make the default correctness suite brittle.
 
+## Path regression suite
+
+Wave 2 of the benchmarking architecture adds dedicated path-regression files alongside the broad data-driven harness:
+
+- `move_swap_regression.rs`
+- `move_transfer_regression.rs`
+- `move_clique_swap_regression.rs`
+- `search_driver_regression.rs`
+- `construction_regression.rs`
+
+These files intentionally cover move-family and driver branches called out in `docs/BENCHMARKING_ARCHITECTURE.md`.
+
+The explicit catalog for those paths now lives in:
+
+- `benchmarking/path-matrix.yaml`
+- `benchmarking/cases/path/`
+
+Use these targeted tests when changing delta logic, move application, construction behavior, reheating/stop logic, or allowed-session handling. Keep the data-driven harness as the main end-to-end contract, and use the path-regression layer when you need to prove that a specific solver branch still activates and still reconciles with a full recalculation.
+
 ## Running fixtures
 
 Run the default correctness suite:
