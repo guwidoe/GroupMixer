@@ -1,5 +1,6 @@
 import React from 'react';
-import type { Problem } from '../../types';
+import type { Constraint, Problem } from '../../types';
+import { IndexedConstraintModal } from './IndexedConstraintModal';
 import { ImmovablePeopleModal } from '../modals/ImmovablePeopleModal';
 import { RepeatEncounterModal } from '../modals/RepeatEncounterModal';
 import { AttributeBalanceModal } from '../modals/AttributeBalanceModal';
@@ -9,7 +10,6 @@ import { MustStayTogetherModal } from '../modals/MustStayTogetherModal';
 import { PairMeetingCountModal } from '../modals/PairMeetingCountModal';
 
 interface ProblemEditorConstraintModalsProps {
-  problem: Problem | null;
   sessionsCount: number;
   resolveProblem: () => Problem;
   setProblem: (problem: Problem) => void;
@@ -37,7 +37,6 @@ interface ProblemEditorConstraintModalsProps {
 }
 
 export function ProblemEditorConstraintModals({
-  problem,
   sessionsCount,
   resolveProblem,
   setProblem,
@@ -60,191 +59,132 @@ export function ProblemEditorConstraintModals({
   editingConstraintIndex,
   setEditingConstraintIndex,
 }: ProblemEditorConstraintModalsProps) {
+  type PeopleConstraint = Extract<Constraint, { type: 'ImmovablePeople' }>;
+  type RepeatConstraint = Extract<Constraint, { type: 'RepeatEncounter' }>;
+  type AttributeConstraint = Extract<Constraint, { type: 'AttributeBalance' }>;
+  type ShouldNotConstraint = Extract<Constraint, { type: 'ShouldNotBeTogether' }>;
+  type ShouldStayConstraint = Extract<Constraint, { type: 'ShouldStayTogether' }>;
+  type PairMeetingConstraint = Extract<Constraint, { type: 'PairMeetingCount' }>;
+  type MustStayConstraint = Extract<Constraint, { type: 'MustStayTogether' }>;
+
   return (
     <>
-      {showImmovableModal && (
-        <ImmovablePeopleModal
-          sessionsCount={sessionsCount}
-          initial={editingImmovableIndex !== null ? (resolveProblem().constraints[editingImmovableIndex] || null) : null}
-          onCancel={() => {
-            setShowImmovableModal(false);
-            setEditingImmovableIndex(null);
-          }}
-          onSave={(con) => {
-            const currentProblem = resolveProblem();
-            const updatedConstraints = [...currentProblem.constraints];
-            if (editingImmovableIndex !== null) {
-              updatedConstraints[editingImmovableIndex] = con;
-            } else {
-              updatedConstraints.push(con);
-            }
+      <IndexedConstraintModal<PeopleConstraint>
+        open={showImmovableModal}
+        editingIndex={editingImmovableIndex}
+        setEditingIndex={setEditingImmovableIndex}
+        setOpen={setShowImmovableModal}
+        resolveProblem={resolveProblem}
+        setProblem={setProblem}
+      >
+        {({ initial, onCancel, onSave }) => (
+          <ImmovablePeopleModal
+            sessionsCount={sessionsCount}
+            initial={initial}
+            onCancel={onCancel}
+            onSave={onSave}
+          />
+        )}
+      </IndexedConstraintModal>
 
-            setProblem({
-              ...currentProblem,
-              constraints: updatedConstraints,
-            });
+      <IndexedConstraintModal<RepeatConstraint>
+        open={showRepeatEncounterModal}
+        editingIndex={editingConstraintIndex}
+        setEditingIndex={setEditingConstraintIndex}
+        setOpen={setShowRepeatEncounterModal}
+        resolveProblem={resolveProblem}
+        setProblem={setProblem}
+      >
+        {({ initial, onCancel, onSave }) => (
+          <RepeatEncounterModal initial={initial} onCancel={onCancel} onSave={onSave} />
+        )}
+      </IndexedConstraintModal>
 
-            setShowImmovableModal(false);
-            setEditingImmovableIndex(null);
-          }}
-        />
-      )}
+      <IndexedConstraintModal<AttributeConstraint>
+        open={showAttributeBalanceModal}
+        editingIndex={editingConstraintIndex}
+        setEditingIndex={setEditingConstraintIndex}
+        setOpen={setShowAttributeBalanceModal}
+        resolveProblem={resolveProblem}
+        setProblem={setProblem}
+      >
+        {({ initial, onCancel, onSave }) => (
+          <AttributeBalanceModal initial={initial} onCancel={onCancel} onSave={onSave} />
+        )}
+      </IndexedConstraintModal>
 
-      {showRepeatEncounterModal && (
-        <RepeatEncounterModal
-          initial={editingConstraintIndex !== null ? (resolveProblem().constraints[editingConstraintIndex] || null) : null}
-          onCancel={() => {
-            setShowRepeatEncounterModal(false);
-            setEditingConstraintIndex(null);
-          }}
-          onSave={(constraint) => {
-            const currentProblem = resolveProblem();
-            const updatedConstraints = [...currentProblem.constraints];
-            if (editingConstraintIndex !== null) {
-              updatedConstraints[editingConstraintIndex] = constraint;
-            } else {
-              updatedConstraints.push(constraint);
-            }
+      <IndexedConstraintModal<ShouldNotConstraint>
+        open={showShouldNotBeTogetherModal}
+        editingIndex={editingConstraintIndex}
+        setEditingIndex={setEditingConstraintIndex}
+        setOpen={setShowShouldNotBeTogetherModal}
+        resolveProblem={resolveProblem}
+        setProblem={setProblem}
+      >
+        {({ initial, onCancel, onSave }) => (
+          <ShouldNotBeTogetherModal
+            sessionsCount={sessionsCount}
+            initial={initial}
+            onCancel={onCancel}
+            onSave={onSave}
+          />
+        )}
+      </IndexedConstraintModal>
 
-            setProblem({
-              ...currentProblem,
-              constraints: updatedConstraints,
-            });
+      <IndexedConstraintModal<ShouldStayConstraint>
+        open={showShouldStayTogetherModal}
+        editingIndex={editingConstraintIndex}
+        setEditingIndex={setEditingConstraintIndex}
+        setOpen={setShowShouldStayTogetherModal}
+        resolveProblem={resolveProblem}
+        setProblem={setProblem}
+      >
+        {({ initial, onCancel, onSave }) => (
+          <ShouldStayTogetherModal
+            sessionsCount={sessionsCount}
+            initial={initial}
+            onCancel={onCancel}
+            onSave={onSave}
+          />
+        )}
+      </IndexedConstraintModal>
 
-            setShowRepeatEncounterModal(false);
-            setEditingConstraintIndex(null);
-          }}
-        />
-      )}
+      <IndexedConstraintModal<PairMeetingConstraint>
+        open={showPairMeetingCountModal}
+        editingIndex={editingConstraintIndex}
+        setEditingIndex={setEditingConstraintIndex}
+        setOpen={setShowPairMeetingCountModal}
+        resolveProblem={resolveProblem}
+        setProblem={setProblem}
+      >
+        {({ problem, initial, onCancel, onSave }) => (
+          <PairMeetingCountModal
+            people={problem.people}
+            totalSessions={problem.num_sessions}
+            initial={initial}
+            onCancel={onCancel}
+            onSave={onSave}
+          />
+        )}
+      </IndexedConstraintModal>
 
-      {showAttributeBalanceModal && (
-        <AttributeBalanceModal
-          initial={editingConstraintIndex !== null ? (resolveProblem().constraints[editingConstraintIndex] || null) : null}
-          onCancel={() => {
-            setShowAttributeBalanceModal(false);
-            setEditingConstraintIndex(null);
-          }}
-          onSave={(constraint) => {
-            const currentProblem = resolveProblem();
-            const updatedConstraints = [...currentProblem.constraints];
-            if (editingConstraintIndex !== null) {
-              updatedConstraints[editingConstraintIndex] = constraint;
-            } else {
-              updatedConstraints.push(constraint);
-            }
-
-            setProblem({
-              ...currentProblem,
-              constraints: updatedConstraints,
-            });
-
-            setShowAttributeBalanceModal(false);
-            setEditingConstraintIndex(null);
-          }}
-        />
-      )}
-
-      {showShouldNotBeTogetherModal && (
-        <ShouldNotBeTogetherModal
-          sessionsCount={sessionsCount}
-          initial={editingConstraintIndex !== null ? (resolveProblem().constraints[editingConstraintIndex] || null) : null}
-          onCancel={() => {
-            setShowShouldNotBeTogetherModal(false);
-            setEditingConstraintIndex(null);
-          }}
-          onSave={(constraint) => {
-            const currentProblem = resolveProblem();
-            const updatedConstraints = [...currentProblem.constraints];
-            if (editingConstraintIndex !== null) {
-              updatedConstraints[editingConstraintIndex] = constraint;
-            } else {
-              updatedConstraints.push(constraint);
-            }
-
-            setProblem({
-              ...currentProblem,
-              constraints: updatedConstraints,
-            });
-
-            setShowShouldNotBeTogetherModal(false);
-            setEditingConstraintIndex(null);
-          }}
-        />
-      )}
-
-      {showShouldStayTogetherModal && (
-        <ShouldStayTogetherModal
-          sessionsCount={sessionsCount}
-          initial={editingConstraintIndex !== null ? (resolveProblem().constraints[editingConstraintIndex] || null) : null}
-          onCancel={() => {
-            setShowShouldStayTogetherModal(false);
-            setEditingConstraintIndex(null);
-          }}
-          onSave={(constraint) => {
-            const currentProblem = resolveProblem();
-            const updatedConstraints = [...currentProblem.constraints];
-            if (editingConstraintIndex !== null) {
-              updatedConstraints[editingConstraintIndex] = constraint;
-            } else {
-              updatedConstraints.push(constraint);
-            }
-            setProblem({
-              ...currentProblem,
-              constraints: updatedConstraints,
-            });
-            setShowShouldStayTogetherModal(false);
-            setEditingConstraintIndex(null);
-          }}
-        />
-      )}
-
-      {showPairMeetingCountModal && (
-        <PairMeetingCountModal
-          people={problem?.people ?? []}
-          totalSessions={problem?.num_sessions ?? 0}
-          initial={editingConstraintIndex !== null && problem ? problem.constraints[editingConstraintIndex] : null}
-          onCancel={() => setShowPairMeetingCountModal(false)}
-          onSave={(constraint) => {
-            if (!problem) {
-              setShowPairMeetingCountModal(false);
-              return;
-            }
-            const next = [...problem.constraints];
-            if (editingConstraintIndex !== null) next[editingConstraintIndex] = constraint;
-            else next.push(constraint);
-            setProblem({ ...problem, constraints: next });
-            setShowPairMeetingCountModal(false);
-          }}
-        />
-      )}
-
-      {showMustStayTogetherModal && (
-        <MustStayTogetherModal
-          sessionsCount={sessionsCount}
-          initial={editingConstraintIndex !== null ? (resolveProblem().constraints[editingConstraintIndex] || null) : null}
-          onCancel={() => {
-            setShowMustStayTogetherModal(false);
-            setEditingConstraintIndex(null);
-          }}
-          onSave={(constraint) => {
-            const currentProblem = resolveProblem();
-            const updatedConstraints = [...currentProblem.constraints];
-            if (editingConstraintIndex !== null) {
-              updatedConstraints[editingConstraintIndex] = constraint;
-            } else {
-              updatedConstraints.push(constraint);
-            }
-
-            setProblem({
-              ...currentProblem,
-              constraints: updatedConstraints,
-            });
-
-            setShowMustStayTogetherModal(false);
-            setEditingConstraintIndex(null);
-          }}
-        />
-      )}
+      <IndexedConstraintModal<MustStayConstraint>
+        open={showMustStayTogetherModal}
+        editingIndex={editingConstraintIndex}
+        setEditingIndex={setEditingConstraintIndex}
+        setOpen={setShowMustStayTogetherModal}
+        resolveProblem={resolveProblem}
+        setProblem={setProblem}
+      >
+        {({ initial, onCancel, onSave }) => (
+          <MustStayTogetherModal
+            sessionsCount={sessionsCount}
+            initial={initial}
+            onCancel={onCancel}
+            onSave={onSave}
+          />
+        )}
+      </IndexedConstraintModal>
     </>
   );
 }

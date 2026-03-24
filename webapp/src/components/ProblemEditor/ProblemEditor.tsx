@@ -359,7 +359,6 @@ export function ProblemEditor() {
         onClose={editorActions.handleCloseConstraintForm}
       />
       <ProblemEditorConstraintModals
-        problem={problem ?? null}
         sessionsCount={sessionsCount}
         resolveProblem={resolveProblem}
         setProblem={setProblem}
