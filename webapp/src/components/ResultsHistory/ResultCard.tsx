@@ -26,14 +26,18 @@ import type { ProblemConfigDifference } from '../../services/problemStorage';
 import { useOutsideClick } from '../../hooks';
 import { formatDate, formatDuration, formatLargeNumber, formatNumber } from './utils';
 
-interface ResultCardProps {
-  result: ProblemResult;
+export interface ResultCardState {
   isExpanded: boolean;
   isSelected: boolean;
   isBest: boolean;
   isCurrent: boolean;
   editingId: string | null;
   editingName: string;
+  exportDropdownOpen: boolean;
+  configDetailsOpen: boolean;
+}
+
+export interface ResultCardActions {
   onChangeEditingName: (value: string) => void;
   onStartRename: (result: ProblemResult) => void;
   onSaveRename: () => void;
@@ -43,14 +47,15 @@ interface ResultCardProps {
   onOpenDetails: (result: ProblemResult) => void;
   onDelete: (resultId: string) => void;
   onExport: (result: ProblemResult, format: 'json' | 'csv' | 'excel') => void;
-  exportDropdownOpen: boolean;
   onToggleExportDropdown: (resultId: string) => void;
   onCloseExportDropdown: () => void;
-  configDiff: ProblemConfigDifference | null;
-  configDetailsOpen: boolean;
   onToggleConfigDetails: (resultId: string) => void;
   onCloseConfigDetails: () => void;
   onRestoreConfig: (result: ProblemResult) => void;
+}
+
+export interface ResultCardMetrics {
+  configDiff: ProblemConfigDifference | null;
   metrics: MetricCalculations;
   scoreColorClass: string;
   repPenalty: number;
@@ -61,63 +66,42 @@ interface ResultCardProps {
   conColorClass: string;
 }
 
+interface ResultCardProps {
+  result: ProblemResult;
+  state: ResultCardState;
+  actions: ResultCardActions;
+  metrics: ResultCardMetrics;
+}
+
 export function ResultCard({
   result,
-  isExpanded,
-  isSelected,
-  isBest,
-  isCurrent,
-  editingId,
-  editingName,
-  onChangeEditingName,
-  onStartRename,
-  onSaveRename,
-  onCancelRename,
-  onToggleSelected,
-  onToggleExpanded,
-  onOpenDetails,
-  onDelete,
-  onExport,
-  exportDropdownOpen,
-  onToggleExportDropdown,
-  onCloseExportDropdown,
-  configDiff,
-  configDetailsOpen,
-  onToggleConfigDetails,
-  onCloseConfigDetails,
-  onRestoreConfig,
+  state,
+  actions,
   metrics,
-  scoreColorClass,
-  repPenalty,
-  balPenalty,
-  conPenalty,
-  repColorClass,
-  balColorClass,
-  conColorClass,
 }: ResultCardProps) {
   const exportDropdownRef = useRef<HTMLDivElement>(null);
   const configDetailsRef = useRef<HTMLDivElement>(null);
 
   useOutsideClick({
     refs: [exportDropdownRef],
-    onOutsideClick: () => onCloseExportDropdown(),
-    enabled: exportDropdownOpen,
+    onOutsideClick: () => actions.onCloseExportDropdown(),
+    enabled: state.exportDropdownOpen,
   });
 
   useOutsideClick({
     refs: [configDetailsRef],
-    onOutsideClick: () => onCloseConfigDetails(),
-    enabled: configDetailsOpen,
+    onOutsideClick: () => actions.onCloseConfigDetails(),
+    enabled: state.configDetailsOpen,
   });
 
   return (
     <div
-      className={`card transition-all ${isCurrent ? '' : isSelected ? 'ring-2' : ''} ${isBest ? 'badge-best' : ''}`}
+      className={`card transition-all ${state.isCurrent ? '' : state.isSelected ? 'ring-2' : ''} ${state.isBest ? 'badge-best' : ''}`}
       style={{
-        ...(isCurrent ? {
+        ...(state.isCurrent ? {
           borderColor: 'var(--text-accent-green)',
           boxShadow: `0 0 0 3px var(--text-accent-green)`,
-        } : isSelected ? {
+        } : state.isSelected ? {
           borderColor: 'var(--color-accent)',
           boxShadow: `0 0 0 2px var(--color-accent)`,
         } : {}),
@@ -125,16 +109,16 @@ export function ResultCard({
       onClick={(e) => {
         const target = e.target as HTMLElement;
         if (target.closest('button, a, input, textarea, svg')) return;
-        onToggleSelected(result.id);
+        actions.onToggleSelected(result.id);
       }}
     >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
         <div className="flex items-start sm:items-center space-x-3 min-w-0 flex-1">
           <button
-            onClick={() => onToggleSelected(result.id)}
+            onClick={() => actions.onToggleSelected(result.id)}
             className="text-gray-400 hover:text-gray-600 flex-shrink-0 mt-1 sm:mt-0"
           >
-            {isSelected ? (
+            {state.isSelected ? (
               <CheckSquare className="h-5 w-5" style={{ color: 'var(--color-accent)' }} />
             ) : (
               <Square className="h-5 w-5" />
@@ -142,27 +126,27 @@ export function ResultCard({
           </button>
 
           <div className="flex-1 min-w-0">
-            {editingId === result.id ? (
+            {state.editingId === result.id ? (
               <div className="flex items-center space-x-2">
                 <input
                   type="text"
                   className="input text-sm flex-1"
-                  value={editingName}
-                  onChange={(e) => onChangeEditingName(e.target.value)}
+                  value={state.editingName}
+                  onChange={(e) => actions.onChangeEditingName(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') onSaveRename();
-                    if (e.key === 'Escape') onCancelRename();
+                    if (e.key === 'Enter') actions.onSaveRename();
+                    if (e.key === 'Escape') actions.onCancelRename();
                   }}
                   autoFocus
                 />
                 <button
-                  onClick={onSaveRename}
+                  onClick={actions.onSaveRename}
                   className="text-green-600 hover:text-green-700 flex-shrink-0"
                 >
                   <Save className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={onCancelRename}
+                  onClick={actions.onCancelRename}
                   className="text-red-600 hover:text-red-700 flex-shrink-0"
                 >
                   <X className="h-4 w-4" />
@@ -175,7 +159,7 @@ export function ResultCard({
                     {result.name}
                   </h3>
                   <button
-                    onClick={() => onStartRename(result)}
+                    onClick={() => actions.onStartRename(result)}
                     className="text-gray-400 hover:text-gray-600 flex-shrink-0"
                     title="Rename result"
                   >
@@ -183,10 +167,10 @@ export function ResultCard({
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-2 items-center">
-                  {isBest && (
+                  {state.isBest && (
                     <span className="px-2 py-1 rounded-full text-xs badge-best">Best</span>
                   )}
-                  {isCurrent && (
+                  {state.isCurrent && (
                     <span
                       className="px-2 py-1 rounded-full text-xs border"
                       style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--color-accent)', borderColor: 'var(--color-accent)' }}
@@ -194,12 +178,12 @@ export function ResultCard({
                       Latest
                     </span>
                   )}
-                  {configDiff && configDiff.isDifferent && (
+                  {metrics.configDiff && metrics.configDiff.isDifferent && (
                     <div className="relative" ref={configDetailsRef}>
                       <span
                         onClick={(e) => {
                           e.stopPropagation();
-                          onToggleConfigDetails(result.id);
+                          actions.onToggleConfigDetails(result.id);
                         }}
                         className="px-2 py-1 rounded-full text-xs border cursor-pointer flex items-center gap-1 transition-colors hover:opacity-80"
                         style={{
@@ -212,10 +196,10 @@ export function ResultCard({
                       >
                         <AlertTriangle className="h-3 w-3" />
                         <span>Different Config</span>
-                        <ChevronRight className={`h-3 w-3 transition-transform ${configDetailsOpen ? 'rotate-90' : ''}`} />
+                        <ChevronRight className={`h-3 w-3 transition-transform ${state.configDetailsOpen ? 'rotate-90' : ''}`} />
                       </span>
 
-                      {configDetailsOpen && (
+                      {state.configDetailsOpen && (
                         <div
                           className="absolute top-full left-0 mt-1 z-10 w-80 max-w-[calc(100vw-2rem)] p-3 rounded-lg border shadow-lg"
                           style={{
@@ -233,7 +217,7 @@ export function ResultCard({
                               This result was created with a different problem setup than the most recent result and may not be directly comparable with the current configuration.
                             </p>
                             <div className="mt-2 space-y-1">
-                              {Object.entries(configDiff.details).map(([key, detail]) => (
+                              {Object.entries(metrics.configDiff.details).map(([key, detail]) => (
                                 detail ? (
                                   <div key={key} className="flex items-start space-x-2 text-xs">
                                     <div className="w-1.5 h-1.5 bg-red-500 rounded-full mt-1.5 flex-shrink-0" />
@@ -247,7 +231,7 @@ export function ResultCard({
                                 className="btn-primary w-full text-xs"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onRestoreConfig(result);
+                                  actions.onRestoreConfig(result);
                                 }}
                               >
                                 Restore this result&apos;s configuration as new problem
@@ -266,17 +250,17 @@ export function ResultCard({
 
         <div className="flex items-center space-x-2 flex-shrink-0">
           <button
-            onClick={() => onOpenDetails(result)}
+            onClick={() => actions.onOpenDetails(result)}
             className="btn-secondary flex items-center gap-2 px-3 py-1 text-sm"
           >
             <Eye className="h-4 w-4" />
             View in Result Details
           </button>
           <button
-            onClick={() => onToggleExpanded(result.id)}
+            onClick={() => actions.onToggleExpanded(result.id)}
             className="text-gray-400 hover:text-gray-600"
           >
-            {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+            {state.isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
           </button>
         </div>
       </div>
@@ -285,7 +269,7 @@ export function ResultCard({
         <div className="flex items-center min-w-0 space-x-2">
           <BarChart3 className="h-4 w-4" style={{ color: 'var(--text-tertiary)' }} />
           <span style={{ color: 'var(--text-secondary)' }}>Score:</span>
-          <span className={`font-medium ${scoreColorClass}`}>{result.solution.final_score.toFixed(2)}</span>
+          <span className={`font-medium ${metrics.scoreColorClass}`}>{result.solution.final_score.toFixed(2)}</span>
         </div>
         <div className="flex items-center min-w-0 space-x-2">
           <Users className="h-4 w-4" style={{ color: 'var(--text-tertiary)' }} />
@@ -330,17 +314,17 @@ export function ResultCard({
               </div>
               <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
                 <div style={{ color: 'var(--text-secondary)' }}>Repetition Penalty</div>
-                <div className={`font-medium ${repColorClass}`}>{repPenalty.toFixed(2)}</div>
-              </div>
-              <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                <div style={{ color: 'var(--text-secondary)' }}>Balance Penalty</div>
-                <div className={`font-medium ${balColorClass}`}>{balPenalty.toFixed(2)}</div>
-              </div>
-              <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                <div style={{ color: 'var(--text-secondary)' }}>Constraint Penalty</div>
-                <div className={`font-medium ${conColorClass}`}>{conPenalty.toFixed(2)}</div>
-              </div>
+              <div className={`font-medium ${metrics.repColorClass}`}>{metrics.repPenalty.toFixed(2)}</div>
             </div>
+            <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+              <div style={{ color: 'var(--text-secondary)' }}>Balance Penalty</div>
+              <div className={`font-medium ${metrics.balColorClass}`}>{metrics.balPenalty.toFixed(2)}</div>
+            </div>
+            <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+              <div style={{ color: 'var(--text-secondary)' }}>Constraint Penalty</div>
+              <div className={`font-medium ${metrics.conColorClass}`}>{metrics.conPenalty.toFixed(2)}</div>
+            </div>
+          </div>
           </div>
 
           <div>
@@ -399,7 +383,7 @@ export function ResultCard({
           <div className="flex flex-row flex-wrap items-center justify-between pt-3 border-t gap-3">
             <div className="relative" ref={exportDropdownRef}>
               <button
-                onClick={() => onToggleExportDropdown(result.id)}
+                onClick={() => actions.onToggleExportDropdown(result.id)}
                 className="btn-secondary flex items-center space-x-2"
               >
                 <Download className="h-4 w-4" />
@@ -407,13 +391,13 @@ export function ResultCard({
                 <ChevronDown className="h-3 w-3" />
               </button>
 
-              {exportDropdownOpen && (
+              {state.exportDropdownOpen && (
                 <div
                   className="absolute left-0 mt-1 w-40 rounded-md shadow-lg z-10 border overflow-hidden"
                   style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
                 >
                   <button
-                    onClick={() => onExport(result, 'json')}
+                    onClick={() => actions.onExport(result, 'json')}
                     className="flex items-center w-full px-3 py-2 text-sm text-left transition-colors"
                     style={{ color: 'var(--text-primary)', backgroundColor: 'transparent' }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
@@ -423,7 +407,7 @@ export function ResultCard({
                     <span>Export as JSON</span>
                   </button>
                   <button
-                    onClick={() => onExport(result, 'csv')}
+                    onClick={() => actions.onExport(result, 'csv')}
                     className="flex items-center w-full px-3 py-2 text-sm text-left transition-colors"
                     style={{ color: 'var(--text-primary)', backgroundColor: 'transparent' }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
@@ -433,7 +417,7 @@ export function ResultCard({
                     <span>Export as CSV</span>
                   </button>
                   <button
-                    onClick={() => onExport(result, 'excel')}
+                    onClick={() => actions.onExport(result, 'excel')}
                     className="flex items-center w-full px-3 py-2 text-sm text-left transition-colors"
                     style={{ color: 'var(--text-primary)', backgroundColor: 'transparent' }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'}
@@ -446,7 +430,7 @@ export function ResultCard({
               )}
             </div>
             <button
-              onClick={() => onDelete(result.id)}
+              onClick={() => actions.onDelete(result.id)}
               className="btn-danger flex items-center space-x-2"
             >
               <Trash2 className="h-4 w-4" />

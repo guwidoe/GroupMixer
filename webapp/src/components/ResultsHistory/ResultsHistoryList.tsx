@@ -2,7 +2,7 @@ import React from 'react';
 import type { ProblemResult, SavedProblem } from '../../types';
 import { calculateMetrics, getColorClass } from '../../utils/metricCalculations';
 import { compareProblemConfigurations } from '../../services/problemStorage';
-import { ResultCard } from './ResultCard';
+import { ResultCard, type ResultCardActions, type ResultCardMetrics, type ResultCardState } from './ResultCard';
 import { getScoreColor } from './utils';
 
 interface ResultsHistoryListState {
@@ -76,37 +76,28 @@ export function ResultsHistoryList({
             <ResultCard
               key={result.id}
               result={result}
-              isExpanded={isExpanded}
-              isSelected={isSelected}
-              isBest={isBest}
-              isCurrent={isCurrent}
-              editingId={state.editingId}
-              editingName={state.editingName}
-              onChangeEditingName={actions.onChangeEditingName}
-              onStartRename={actions.onStartRename}
-              onSaveRename={actions.onSaveRename}
-              onCancelRename={actions.onCancelRename}
-              onToggleSelected={actions.onToggleSelected}
-              onToggleExpanded={actions.onToggleExpanded}
-              onOpenDetails={actions.onOpenDetails}
-              onDelete={actions.onDelete}
-              onExport={actions.onExport}
-              exportDropdownOpen={state.exportDropdownOpenId === result.id}
-              onToggleExportDropdown={actions.onToggleExportDropdown}
-              onCloseExportDropdown={actions.onCloseExportDropdown}
-              configDiff={configDiff}
-              configDetailsOpen={state.configDetailsOpenId === result.id}
-              onToggleConfigDetails={actions.onToggleConfigDetails}
-              onCloseConfigDetails={actions.onCloseConfigDetails}
-              onRestoreConfig={actions.onRestoreConfig}
-              metrics={metrics}
-              scoreColorClass={scoreColorClass}
-              repPenalty={repPenalty}
-              balPenalty={balPenalty}
-              conPenalty={conPenalty}
-              repColorClass={repColorClass}
-              balColorClass={balColorClass}
-              conColorClass={conColorClass}
+              state={{
+                isExpanded,
+                isSelected,
+                isBest,
+                isCurrent,
+                editingId: state.editingId,
+                editingName: state.editingName,
+                exportDropdownOpen: state.exportDropdownOpenId === result.id,
+                configDetailsOpen: state.configDetailsOpenId === result.id,
+              } satisfies ResultCardState}
+              actions={actions satisfies ResultCardActions}
+              metrics={{
+                configDiff,
+                metrics,
+                scoreColorClass,
+                repPenalty,
+                balPenalty,
+                conPenalty,
+                repColorClass,
+                balColorClass,
+                conColorClass,
+              } satisfies ResultCardMetrics}
             />
           );
         })}
