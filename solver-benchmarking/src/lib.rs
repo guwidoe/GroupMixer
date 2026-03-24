@@ -4,6 +4,7 @@ pub mod index;
 pub mod machine;
 pub mod manifest;
 pub mod recording_types;
+pub mod recordings;
 pub mod refs;
 pub mod runner;
 pub mod storage;
@@ -28,6 +29,11 @@ pub use recording_types::{
     BenchmarkRef, BenchmarkRefTarget, RecordingGitIdentity, RecordingIndexRow,
     RecordingMachineIdentity, RecordingMetadata, RecordingSuiteRun, RefIndexRow,
     BENCHMARK_REF_SCHEMA_VERSION, FULL_SOLVE_BENCHMARK_MODE, RECORDING_SCHEMA_VERSION,
+};
+pub use recordings::{
+    create_recording_for_run, create_recording_for_runs, list_recording_metadatas,
+    load_recording, persist_recording, recording_dir, recording_meta_path, RecordingOptions,
+    RecordingRunInput,
 };
 pub use refs::{build_ref, load_ref, ref_file_path, standard_ref_names};
 pub use runner::{

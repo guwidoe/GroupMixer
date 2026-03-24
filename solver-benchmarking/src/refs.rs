@@ -1,3 +1,4 @@
+use crate::index::upsert_ref;
 use crate::recording_types::{
     BenchmarkRef, BenchmarkRefTarget, RecordingMetadata, RecordingSuiteRun,
     BENCHMARK_REF_SCHEMA_VERSION,
@@ -69,6 +70,31 @@ pub fn load_ref(root: &Path, ref_name: &str) -> Result<BenchmarkRef> {
         .with_context(|| format!("failed to parse benchmark ref {}", path.display()))
 }
 
+pub fn update_standard_refs(root: &Path, recording: &RecordingMetadata) -> Result<()> {
+    for suite_run in &recording.suite_runs {
+        for ref_name in standard_ref_names(recording, suite_run) {
+            let benchmark_ref = build_ref(
+                ref_name.clone(),
+                recording.recorded_at.clone(),
+                recording,
+                suite_run,
+            );
+            let path = ref_file_path(root, &ref_name);
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent).with_context(|| {
+                    format!("failed to create benchmark ref dir {}", parent.display())
+                })?;
+            }
+            let contents = serde_json::to_string_pretty(&benchmark_ref)
+                .context("failed to serialize benchmark ref")?;
+            fs::write(&path, contents)
+                .with_context(|| format!("failed to write benchmark ref {}", path.display()))?;
+            upsert_ref(root, &benchmark_ref, &relative_to_root(root, &path))?;
+        }
+    }
+    Ok(())
+}
+
 fn sanitize(value: &str) -> String {
     value
         .chars()
@@ -77,6 +103,13 @@ fn sanitize(value: &str) -> String {
             _ => '_',
         })
         .collect()
+}
+
+fn relative_to_root(root: &Path, path: &Path) -> String {
+    path.strip_prefix(root)
+        .ok()
+        .map(|relative| relative.to_string_lossy().to_string())
+        .unwrap_or_else(|| path.display().to_string())
 }
 
 #[cfg(test)]
