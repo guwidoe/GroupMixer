@@ -96,11 +96,6 @@ async fn json_response<T: DeserializeOwned>(response: axum::response::Response) 
     serde_json::from_slice(&bytes).unwrap()
 }
 
-async fn text_response(response: axum::response::Response) -> String {
-    let bytes = response.into_body().collect().await.unwrap().to_bytes();
-    String::from_utf8(bytes.to_vec()).unwrap()
-}
-
 async fn wait_for_terminal_job(manager: &JobManager, job_id: Uuid) -> Job {
     for _ in 0..100 {
         if let Some(job) = manager.get_job(job_id) {
@@ -465,4 +460,125 @@ async fn error_catalog_endpoints_are_available() {
     assert_eq!(error_response.status(), StatusCode::OK);
     let error_json: serde_json::Value = json_response(error_response).await;
     assert_eq!(error_json["code"], "invalid-input");
+}
+
+#[tokio::test]
+async fn contract_endpoints_emit_canonical_error_envelopes() {
+    let app = create_router(AppState {
+        job_manager: JobManager::new(),
+    });
+
+    let invalid_json_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/solve")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"problem": "#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(invalid_json_response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let invalid_json_body: serde_json::Value = json_response(invalid_json_response).await;
+    assert_eq!(invalid_json_body["error"]["code"], "invalid-input");
+    assert!(invalid_json_body["error"]["related_help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|value| value == "/api/v1/help/solve"));
+
+    let unsupported_constraint_input = json!({
+        "problem": {
+            "people": [
+                {"id": "alice", "attributes": {}},
+                {"id": "bob", "attributes": {}}
+            ],
+            "groups": [
+                {"id": "team-1", "size": 2}
+            ],
+            "num_sessions": 1
+        },
+        "initial_schedule": null,
+        "objectives": [],
+        "constraints": [
+            {"type": "ShouldBeTogether", "people": ["alice", "bob"]}
+        ],
+        "solver": {
+            "solver_type": "SimulatedAnnealing",
+            "stop_conditions": {"max_iterations": 1, "time_limit_seconds": null, "no_improvement_iterations": null},
+            "solver_params": {"solver_type": "SimulatedAnnealing", "initial_temperature": 1.0, "final_temperature": 0.1, "cooling_schedule": "geometric", "reheat_cycles": 0, "reheat_after_no_improvement": 0},
+            "logging": {},
+            "telemetry": {},
+            "seed": null,
+            "move_policy": null,
+            "allowed_sessions": null
+        }
+    });
+    let unsupported_constraint_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/solve")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&unsupported_constraint_input).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(unsupported_constraint_response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let unsupported_constraint_body: serde_json::Value = json_response(unsupported_constraint_response).await;
+    assert_eq!(unsupported_constraint_body["error"]["code"], "unsupported-constraint-kind");
+    assert!(unsupported_constraint_body["error"]["related_help"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|value| value == "/api/v1/help/validate-problem"));
+
+    let unknown_schema_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/schemas/does-not-exist")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(unknown_schema_response.status(), StatusCode::NOT_FOUND);
+    let unknown_schema_body: serde_json::Value = json_response(unknown_schema_response).await;
+    assert_eq!(unknown_schema_body["error"]["code"], "unknown-schema");
+    assert!(unknown_schema_body["error"]["valid_alternatives"].as_array().unwrap().len() >= 1);
+
+    let unknown_operation_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/help/does-not-exist")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(unknown_operation_response.status(), StatusCode::NOT_FOUND);
+    let unknown_operation_body: serde_json::Value = json_response(unknown_operation_response).await;
+    assert_eq!(unknown_operation_body["error"]["code"], "unknown-operation");
+
+    let unknown_error_response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/errors/does-not-exist")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(unknown_error_response.status(), StatusCode::NOT_FOUND);
+    let unknown_error_body: serde_json::Value = json_response(unknown_error_response).await;
+    assert_eq!(unknown_error_body["error"]["code"], "unknown-error-code");
 }

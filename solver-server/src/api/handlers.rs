@@ -1,19 +1,20 @@
 use crate::api::contract_surface::{binding_for_operation_id, public_contract_bindings, HttpContractBinding};
 use crate::jobs::manager::JobManager;
 use axum::{
+    body::Bytes,
     extract::{Path, State},
     http::StatusCode,
-    response::Json,
+    response::{IntoResponse, Json, Response},
 };
 use schemars::schema::RootSchema;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use solver_contracts::{
     bootstrap::bootstrap_spec,
-    errors::{error_specs, PublicErrorSpec},
+    errors::{error_spec, error_specs, PublicErrorSpec, INFEASIBLE_PROBLEM_ERROR, INVALID_INPUT_ERROR, UNKNOWN_ERROR_CODE_ERROR, UNKNOWN_OPERATION_ERROR, UNKNOWN_SCHEMA_ERROR, UNSUPPORTED_CONSTRAINT_KIND_ERROR},
     examples::example_spec,
     operations::{local_help, operation_spec, OperationSpec},
     schemas::{export_schema, schema_specs},
-    types::{ResultSummary, ValidateResponse},
+    types::{PublicError, PublicErrorEnvelope, ResultSummary, ValidateResponse, ValidationIssue},
 };
 use solver_core::{
     calculate_recommended_settings,
@@ -75,6 +76,18 @@ pub struct SchemaSummary {
     pub version: &'static str,
 }
 
+#[derive(Debug)]
+pub struct ApiError {
+    status: StatusCode,
+    body: PublicErrorEnvelope,
+}
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -> Response {
+        (self.status, Json(self.body)).into_response()
+    }
+}
+
 pub async fn create_job_handler(
     State(state): State<AppState>,
     Json(payload): Json<ApiInput>,
@@ -109,8 +122,9 @@ pub async fn bootstrap_help_handler() -> Json<BootstrapHelpResponse> {
 
 pub async fn operation_help_handler(
     Path(operation_id): Path<String>,
-) -> Result<Json<OperationHelpResponse>, StatusCode> {
-    let help = local_help(&operation_id).ok_or(StatusCode::NOT_FOUND)?;
+) -> Result<Json<OperationHelpResponse>, ApiError> {
+    let help = local_help(&operation_id)
+        .ok_or_else(|| unknown_operation_api_error(&operation_id))?;
     let examples = help
         .operation
         .example_ids
@@ -155,10 +169,10 @@ pub async fn schema_list_handler() -> Json<Vec<SchemaSummary>> {
     )
 }
 
-pub async fn schema_get_handler(Path(schema_id): Path<String>) -> Result<Json<RootSchema>, StatusCode> {
+pub async fn schema_get_handler(Path(schema_id): Path<String>) -> Result<Json<RootSchema>, ApiError> {
     export_schema(&schema_id)
         .map(Json)
-        .ok_or(StatusCode::NOT_FOUND)
+        .ok_or_else(|| unknown_schema_api_error(&schema_id))
 }
 
 pub async fn error_list_handler() -> Json<Vec<PublicErrorSpec>> {
@@ -167,23 +181,25 @@ pub async fn error_list_handler() -> Json<Vec<PublicErrorSpec>> {
 
 pub async fn error_get_handler(
     Path(error_code): Path<String>,
-) -> Result<Json<PublicErrorSpec>, StatusCode> {
+) -> Result<Json<PublicErrorSpec>, ApiError> {
     error_specs()
         .iter()
         .find(|spec| spec.code == error_code)
         .cloned()
         .map(Json)
-        .ok_or(StatusCode::NOT_FOUND)
+        .ok_or_else(|| unknown_error_code_api_error(&error_code))
 }
 
-pub async fn solve_handler(Json(payload): Json<ApiInput>) -> Result<Json<SolverResult>, StatusCode> {
-    let result = run_solver(&payload).map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?;
+pub async fn solve_handler(body: Bytes) -> Result<Json<SolverResult>, ApiError> {
+    let payload: ApiInput = parse_json_body(&body, "solve", &["solve-request"])?;
+    let result = run_solver(&payload).map_err(|error| map_solver_error(format!("{:?}", error), "solve"))?;
     Ok(Json(result))
 }
 
 pub async fn validate_problem_handler(
-    Json(payload): Json<ApiInput>,
-) -> Json<ValidateResponse> {
+    body: Bytes,
+) -> Result<Json<ValidateResponse>, ApiError> {
+    let payload: ApiInput = parse_json_body(&body, "validate-problem", &["validate-request"])?;
     use solver_core::solver::State;
     let response = match State::new(&payload) {
         Ok(_) => ValidateResponse {
@@ -192,39 +208,49 @@ pub async fn validate_problem_handler(
         },
         Err(error) => ValidateResponse {
             valid: false,
-            issues: vec![solver_contracts::types::ValidationIssue {
+            issues: vec![ValidationIssue {
                 code: Some("infeasible-problem".to_string()),
                 message: format!("{:?}", error),
                 path: None,
             }],
         },
     };
-    Json(response)
+    Ok(Json(response))
 }
 
 pub async fn recommend_settings_handler(
-    Json(problem): Json<ProblemDefinition>,
-) -> Result<Json<SolverConfiguration>, StatusCode> {
+    body: Bytes,
+) -> Result<Json<SolverConfiguration>, ApiError> {
+    let problem: ProblemDefinition = parse_json_body(&body, "recommend-settings", &["problem-definition"])?;
     let recommended =
-        calculate_recommended_settings(&problem, &[], &[], 30).map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?;
+        calculate_recommended_settings(&problem, &[], &[], 30).map_err(|error| map_solver_error(format!("{:?}", error), "recommend-settings"))?;
     Ok(Json(recommended))
 }
 
 pub async fn evaluate_input_handler(
-    Json(mut payload): Json<ApiInput>,
-) -> Result<Json<SolverResult>, StatusCode> {
+    body: Bytes,
+) -> Result<Json<SolverResult>, ApiError> {
+    let mut payload: ApiInput = parse_json_body(&body, "evaluate-input", &["solve-request"])?;
     if payload.initial_schedule.is_none() {
-        return Err(StatusCode::UNPROCESSABLE_ENTITY);
+        return Err(api_error(
+            INVALID_INPUT_ERROR,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "Evaluate input requires initial_schedule in the request body",
+            Some("initial_schedule".to_string()),
+            vec!["provide initial_schedule".to_string()],
+            Some(vec![help_path("evaluate-input")]),
+        ));
     }
     payload.solver.stop_conditions.max_iterations = Some(0);
-    let result = run_solver(&payload).map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?;
+    let result = run_solver(&payload).map_err(|error| map_solver_error(format!("{:?}", error), "evaluate-input"))?;
     Ok(Json(result))
 }
 
 pub async fn inspect_result_handler(
-    Json(result): Json<SolverResult>,
-) -> Json<ResultSummary> {
-    Json(ResultSummary::from(&result))
+    body: Bytes,
+) -> Result<Json<ResultSummary>, ApiError> {
+    let result: SolverResult = parse_json_body(&body, "inspect-result", &["solve-response"])?;
+    Ok(Json(ResultSummary::from(&result)))
 }
 
 #[axum::debug_handler]
@@ -255,6 +281,146 @@ pub async fn get_job_result_handler(
 
 fn route_for_operation(operation_id: &str) -> Option<RouteRef> {
     binding_for_operation_id(operation_id).map(route_ref)
+}
+
+fn help_path(operation_id: &str) -> String {
+    format!("/api/v1/help/{operation_id}")
+}
+
+fn parse_json_body<T: DeserializeOwned>(
+    body: &Bytes,
+    operation_id: &str,
+    schema_ids: &[&str],
+) -> Result<T, ApiError> {
+    serde_json::from_slice::<T>(body).map_err(|error| {
+        let message = format!("Failed to parse request JSON: {}", error);
+        if message.contains("unknown variant") || message.contains("expected one of") {
+            return api_error(
+                UNSUPPORTED_CONSTRAINT_KIND_ERROR,
+                StatusCode::UNPROCESSABLE_ENTITY,
+                message,
+                Some("constraints[*].type".to_string()),
+                vec![
+                    "RepeatEncounter".to_string(),
+                    "AttributeBalance".to_string(),
+                    "MustStayTogether".to_string(),
+                    "ShouldStayTogether".to_string(),
+                    "ShouldNotBeTogether".to_string(),
+                    "ImmovablePerson".to_string(),
+                    "ImmovablePeople".to_string(),
+                    "PairMeetingCount".to_string(),
+                ],
+                Some(vec![help_path("validate-problem"), help_path("get-schema")]),
+            );
+        }
+
+        api_error(
+            INVALID_INPUT_ERROR,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            message,
+            Some(format!("line {}, column {}", error.line(), error.column())),
+            schema_ids.iter().map(|value| value.to_string()).collect(),
+            Some(vec![help_path(operation_id)]),
+        )
+    })
+}
+
+fn api_error(
+    code: &str,
+    status: StatusCode,
+    message: impl Into<String>,
+    where_path: Option<String>,
+    valid_alternatives: Vec<String>,
+    related_help_override: Option<Vec<String>>,
+) -> ApiError {
+    let spec = error_spec(code).expect("registered error spec");
+    ApiError {
+        status,
+        body: PublicErrorEnvelope {
+            error: PublicError {
+                code: spec.code.to_string(),
+                message: message.into(),
+                where_path,
+                why: Some(spec.why.to_string()),
+                valid_alternatives,
+                recovery: Some(spec.recovery.to_string()),
+                related_help: related_help_override.unwrap_or_else(|| {
+                    spec.related_help_operation_ids
+                        .iter()
+                        .map(|operation_id| help_path(operation_id))
+                        .collect()
+                }),
+            },
+        },
+    }
+}
+
+fn unknown_schema_api_error(schema_id: &str) -> ApiError {
+    api_error(
+        UNKNOWN_SCHEMA_ERROR,
+        StatusCode::NOT_FOUND,
+        format!("Unknown schema id '{}'", schema_id),
+        Some("schema_id".to_string()),
+        schema_specs().iter().map(|spec| spec.id.to_string()).collect(),
+        Some(vec![help_path("get-schema")]),
+    )
+}
+
+fn unknown_error_code_api_error(error_code: &str) -> ApiError {
+    api_error(
+        UNKNOWN_ERROR_CODE_ERROR,
+        StatusCode::NOT_FOUND,
+        format!("Unknown error code '{}'", error_code),
+        Some("error_code".to_string()),
+        error_specs().iter().map(|spec| spec.code.to_string()).collect(),
+        Some(vec![help_path("inspect-errors")]),
+    )
+}
+
+fn unknown_operation_api_error(operation_id: &str) -> ApiError {
+    api_error(
+        UNKNOWN_OPERATION_ERROR,
+        StatusCode::NOT_FOUND,
+        format!("Unknown operation '{}'", operation_id),
+        Some("operation_id".to_string()),
+        bootstrap_spec()
+            .top_level_operation_ids
+            .iter()
+            .map(|value| value.to_string())
+            .collect(),
+        Some(vec!["/api/v1/help".to_string()]),
+    )
+}
+
+fn map_solver_error(message: String, operation_id: &str) -> ApiError {
+    if message.contains("unknown variant") || message.contains("expected one of") {
+        return api_error(
+            UNSUPPORTED_CONSTRAINT_KIND_ERROR,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            message,
+            Some("constraints[*].type".to_string()),
+            vec![
+                "RepeatEncounter".to_string(),
+                "AttributeBalance".to_string(),
+                "MustStayTogether".to_string(),
+                "ShouldStayTogether".to_string(),
+                "ShouldNotBeTogether".to_string(),
+                "ImmovablePerson".to_string(),
+                "ImmovablePeople".to_string(),
+                "PairMeetingCount".to_string(),
+            ],
+            Some(vec![help_path("validate-problem"), help_path("get-schema")]),
+        );
+    }
+
+    api_error(
+        INFEASIBLE_PROBLEM_ERROR,
+        StatusCode::UNPROCESSABLE_ENTITY,
+        message,
+        None,
+        Vec::new(),
+        Some(vec![help_path(operation_id), help_path("validate-problem")]),
+    )
 }
 
 fn route_ref(binding: &HttpContractBinding) -> RouteRef {
