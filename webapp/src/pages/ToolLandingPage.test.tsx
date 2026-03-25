@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import ToolLandingPage from './ToolLandingPage';
@@ -33,5 +34,22 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(schema?.textContent).toContain('WebApplication');
     expect(schema?.textContent).toContain('FAQPage');
     expect(schema?.textContent).toContain('GroupMixer');
+  });
+
+  it('generates groups locally from the landing tool without using /app', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /generate groups/i }));
+
+    expect(await screen.findByRole('heading', { name: /session 1/i })).toBeInTheDocument();
+    expect(await screen.findByText('Group 1')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /reshuffle/i })).toBeEnabled();
+    expect(await screen.findByRole('button', { name: /export csv/i })).toBeInTheDocument();
   });
 });

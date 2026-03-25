@@ -1,0 +1,495 @@
+import { useCallback, useMemo, useState } from 'react';
+import { useLocalStorageState } from '../../hooks/useLocalStorageState';
+import type { ToolPageConfig } from '../../pages/toolPageConfigs';
+import type {
+  QuickSetupAnalysis,
+  QuickSetupDraft,
+  QuickSetupGroupResult,
+  QuickSetupParticipant,
+  QuickSetupResult,
+  QuickSetupSessionResult,
+} from './types';
+
+const SAMPLE_NAMES = ['Alex', 'Sam', 'Priya', 'Jordan', 'Mina', 'Luis', 'Taylor', 'Casey'].join('\n');
+const SAMPLE_CSV = [
+  'name,team,role',
+  'Alex,Blue,Engineer',
+  'Sam,Blue,Designer',
+  'Priya,Gold,Engineer',
+  'Jordan,Gold,Facilitator',
+  'Mina,Green,Research',
+  'Luis,Green,Engineer',
+].join('\n');
+
+export interface QuickSetupController {
+  draft: QuickSetupDraft;
+  analysis: QuickSetupAnalysis;
+  participantCount: number;
+  estimatedGroupCount: number;
+  estimatedGroupSize: number;
+  result: QuickSetupResult | null;
+  canGenerate: boolean;
+  draftStorageLabel: string;
+  updateDraft: (updater: QuickSetupDraft | ((draft: QuickSetupDraft) => QuickSetupDraft)) => void;
+  setPreset: (preset: QuickSetupDraft['preset']) => void;
+  toggleAdvanced: () => void;
+  generateGroups: () => void;
+  reshuffle: () => void;
+  resetDraft: () => void;
+  loadSampleData: () => void;
+  exportGroupsCsv: () => void;
+  exportProjectDraft: () => void;
+}
+
+function defaultDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
+  return {
+    participantInput: SAMPLE_NAMES,
+    groupingMode: 'groupCount',
+    groupingValue: 4,
+    sessions: pageConfig.defaultPreset === 'networking' ? 3 : 1,
+    preset: pageConfig.defaultPreset,
+    avoidRepeatPairings: pageConfig.defaultPreset === 'networking',
+    keepTogetherInput: '',
+    avoidPairingsInput: '',
+    inputMode: 'names',
+    balanceAttributeKey: null,
+    advancedOpen: false,
+  };
+}
+
+function normalizeName(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function parseCsv(text: string) {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length === 0) {
+    return { headers: [] as string[], rows: [] as Record<string, string>[] };
+  }
+
+  const headers = lines[0].split(',').map((entry) => entry.trim()).filter(Boolean);
+  const rows = lines.slice(1).map((line) => {
+    const cells = line.split(',').map((entry) => entry.trim());
+    return headers.reduce<Record<string, string>>((acc, header, index) => {
+      acc[header] = cells[index] ?? '';
+      return acc;
+    }, {});
+  });
+
+  return { headers, rows };
+}
+
+function parseParticipants(draft: QuickSetupDraft): Pick<QuickSetupAnalysis, 'participants' | 'availableBalanceKeys'> {
+  if (draft.inputMode === 'csv') {
+    const { headers, rows } = parseCsv(draft.participantInput);
+    if (headers.length === 0) {
+      return { participants: [], availableBalanceKeys: [] };
+    }
+
+    const preferredNameHeader = headers.find((header) => normalizeName(header) === 'name') ?? headers[0];
+    const availableBalanceKeys = headers.filter((header) => header !== preferredNameHeader);
+    const participants = rows
+      .map((row, index) => {
+        const name = row[preferredNameHeader]?.trim();
+        if (!name) {
+          return null;
+        }
+        const attributes = availableBalanceKeys.reduce<Record<string, string>>((acc, key) => {
+          const value = row[key]?.trim();
+          if (value) {
+            acc[key] = value;
+          }
+          return acc;
+        }, {});
+        return {
+          id: `csv-${index + 1}`,
+          name,
+          attributes,
+        } satisfies QuickSetupParticipant;
+      })
+      .filter((participant): participant is QuickSetupParticipant => Boolean(participant));
+
+    return { participants, availableBalanceKeys };
+  }
+
+  const participants = draft.participantInput
+    .split(/[\n,;]+/)
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((name, index) => ({
+      id: `name-${index + 1}`,
+      name,
+      attributes: {},
+    } satisfies QuickSetupParticipant));
+
+  return { participants, availableBalanceKeys: [] };
+}
+
+function parseConstraintLines(text: string): string[][] {
+  return text
+    .split(/\r?\n/)
+    .map((line) =>
+      line
+        .split(/[,+]/)
+        .map((value) => value.trim())
+        .filter(Boolean),
+    )
+    .filter((line) => line.length > 1);
+}
+
+function parsePairConstraints(text: string) {
+  return text
+    .split(/\r?\n/)
+    .map((line) =>
+      line
+        .split(/-|,/)
+        .map((value) => value.trim())
+        .filter(Boolean),
+    )
+    .filter((parts) => parts.length >= 2)
+    .map(([left, right]) => ({ left, right }));
+}
+
+function analyzeDraft(draft: QuickSetupDraft): QuickSetupAnalysis {
+  const { participants, availableBalanceKeys } = parseParticipants(draft);
+  const nameSet = new Set(participants.map((participant) => normalizeName(participant.name)));
+  const ignoredConstraintNames = new Set<string>();
+
+  const keepTogetherGroups = parseConstraintLines(draft.keepTogetherInput)
+    .map((names) => {
+      const validNames = names.filter((name) => {
+        const exists = nameSet.has(normalizeName(name));
+        if (!exists) {
+          ignoredConstraintNames.add(name);
+        }
+        return exists;
+      });
+      return { names: validNames };
+    })
+    .filter((group) => group.names.length > 1);
+
+  const avoidPairings = parsePairConstraints(draft.avoidPairingsInput)
+    .map(({ left, right }) => {
+      const leftExists = nameSet.has(normalizeName(left));
+      const rightExists = nameSet.has(normalizeName(right));
+      if (!leftExists) {
+        ignoredConstraintNames.add(left);
+      }
+      if (!rightExists) {
+        ignoredConstraintNames.add(right);
+      }
+      return leftExists && rightExists ? { left, right } : null;
+    })
+    .filter((pair): pair is NonNullable<typeof pair> => Boolean(pair));
+
+  return {
+    participants,
+    availableBalanceKeys,
+    keepTogetherGroups,
+    avoidPairings,
+    ignoredConstraintNames: [...ignoredConstraintNames],
+  };
+}
+
+function mulberry32(seed: number) {
+  let value = seed >>> 0;
+  return () => {
+    value += 0x6d2b79f5;
+    let t = value;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffled<T>(items: T[], random: () => number): T[] {
+  const out = [...items];
+  for (let index = out.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [out[index], out[swapIndex]] = [out[swapIndex], out[index]];
+  }
+  return out;
+}
+
+function pairKey(left: string, right: string) {
+  return [left, right].sort().join('::');
+}
+
+function buildEntities(participants: QuickSetupParticipant[], analysis: QuickSetupAnalysis) {
+  const participantByName = new Map(
+    participants.map((participant) => [normalizeName(participant.name), participant] as const),
+  );
+  const claimed = new Set<string>();
+  const entities: QuickSetupParticipant[][] = [];
+
+  for (const group of analysis.keepTogetherGroups) {
+    const members = group.names
+      .map((name) => participantByName.get(normalizeName(name)))
+      .filter((participant): participant is QuickSetupParticipant => Boolean(participant))
+      .filter((participant) => !claimed.has(participant.id));
+    if (members.length > 1) {
+      members.forEach((member) => claimed.add(member.id));
+      entities.push(members);
+    }
+  }
+
+  for (const participant of participants) {
+    if (!claimed.has(participant.id)) {
+      entities.push([participant]);
+    }
+  }
+
+  return entities;
+}
+
+function generateSessions(draft: QuickSetupDraft, analysis: QuickSetupAnalysis, seed: number): QuickSetupResult {
+  const participants = analysis.participants;
+  const totalParticipants = participants.length;
+  const groupCount =
+    draft.groupingMode === 'groupCount'
+      ? Math.max(1, draft.groupingValue)
+      : Math.max(1, Math.ceil(totalParticipants / Math.max(1, draft.groupingValue)));
+  const preferredGroupSize = Math.max(1, Math.ceil(totalParticipants / groupCount));
+  const entities = buildEntities(participants, analysis);
+  const random = mulberry32(seed);
+  const pairCounts = new Map<string, number>();
+  const sessions: QuickSetupSessionResult[] = [];
+
+  const avoidPairs = new Set(
+    analysis.avoidPairings.map((pair) => pairKey(normalizeName(pair.left), normalizeName(pair.right))),
+  );
+
+  const attributeTargets = new Map<string, Map<string, number>>();
+  if (draft.balanceAttributeKey) {
+    const counts = participants.reduce<Map<string, number>>((acc, participant) => {
+      const value = participant.attributes[draft.balanceAttributeKey!];
+      if (value) {
+        acc.set(value, (acc.get(value) ?? 0) + 1);
+      }
+      return acc;
+    }, new Map());
+    attributeTargets.set(
+      draft.balanceAttributeKey,
+      new Map([...counts.entries()].map(([value, count]) => [value, count / groupCount])),
+    );
+  }
+
+  for (let sessionIndex = 0; sessionIndex < Math.max(1, draft.sessions); sessionIndex += 1) {
+    const groups: QuickSetupGroupResult[] = Array.from({ length: groupCount }, (_, index) => ({
+      id: `Group ${index + 1}`,
+      members: [],
+    }));
+
+    for (const entity of shuffled(entities, random)) {
+      let bestGroup: QuickSetupGroupResult | null = null;
+      let bestScore = Number.POSITIVE_INFINITY;
+
+      for (const group of groups) {
+        const projectedMembers = [...group.members, ...entity];
+        const projectedSize = projectedMembers.length;
+
+        let invalid = false;
+        for (const member of entity) {
+          for (const existing of group.members) {
+            if (avoidPairs.has(pairKey(normalizeName(member.name), normalizeName(existing.name)))) {
+              invalid = true;
+              break;
+            }
+          }
+          if (invalid) {
+            break;
+          }
+        }
+        if (invalid) {
+          continue;
+        }
+
+        let score = group.members.length * 2;
+        score += Math.max(0, projectedSize - preferredGroupSize) * 8;
+
+        if (draft.avoidRepeatPairings) {
+          for (const member of entity) {
+            for (const existing of group.members) {
+              score += (pairCounts.get(pairKey(member.id, existing.id)) ?? 0) * 20;
+            }
+          }
+        }
+
+        if (draft.balanceAttributeKey && attributeTargets.has(draft.balanceAttributeKey)) {
+          const targetCounts = attributeTargets.get(draft.balanceAttributeKey)!;
+          const projectedCounts = projectedMembers.reduce<Map<string, number>>((acc, participant) => {
+            const value = participant.attributes[draft.balanceAttributeKey!];
+            if (value) {
+              acc.set(value, (acc.get(value) ?? 0) + 1);
+            }
+            return acc;
+          }, new Map());
+
+          for (const [value, target] of targetCounts.entries()) {
+            score += Math.abs((projectedCounts.get(value) ?? 0) - target) * 4;
+          }
+        }
+
+        score += random();
+
+        if (score < bestScore) {
+          bestScore = score;
+          bestGroup = group;
+        }
+      }
+
+      (bestGroup ?? groups[0]).members.push(...entity);
+    }
+
+    if (draft.avoidRepeatPairings) {
+      for (const group of groups) {
+        for (let leftIndex = 0; leftIndex < group.members.length; leftIndex += 1) {
+          for (let rightIndex = leftIndex + 1; rightIndex < group.members.length; rightIndex += 1) {
+            const key = pairKey(group.members[leftIndex].id, group.members[rightIndex].id);
+            pairCounts.set(key, (pairCounts.get(key) ?? 0) + 1);
+          }
+        }
+      }
+    }
+
+    sessions.push({
+      sessionNumber: sessionIndex + 1,
+      groups,
+    });
+  }
+
+  return {
+    seed,
+    generatedAt: new Date().toISOString(),
+    sessions,
+  };
+}
+
+function csvForResult(result: QuickSetupResult) {
+  const lines = ['session,group,members'];
+  for (const session of result.sessions) {
+    for (const group of session.groups) {
+      lines.push(`${session.sessionNumber},${group.id},"${group.members.map((member) => member.name).join(', ')}"`);
+    }
+  }
+  return lines.join('\n');
+}
+
+function downloadBlob(filename: string, content: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController {
+  const storageKey = `groupmixer.quick-setup.${pageConfig.key}.v1`;
+  const [draft, setDraft] = useLocalStorageState<QuickSetupDraft>(storageKey, defaultDraft(pageConfig));
+  const [result, setResult] = useState<QuickSetupResult | null>(null);
+
+  const analysis = useMemo(() => analyzeDraft(draft), [draft]);
+  const participantCount = analysis.participants.length;
+  const estimatedGroupCount =
+    draft.groupingMode === 'groupCount'
+      ? Math.max(1, draft.groupingValue)
+      : Math.max(1, Math.ceil(participantCount / Math.max(1, draft.groupingValue)));
+  const estimatedGroupSize =
+    draft.groupingMode === 'groupSize'
+      ? Math.max(1, draft.groupingValue)
+      : Math.max(1, Math.ceil(participantCount / Math.max(1, draft.groupingValue)));
+  const canGenerate = participantCount >= 2 && draft.groupingValue > 0;
+
+  const updateDraft = useCallback(
+    (updater: QuickSetupDraft | ((draft: QuickSetupDraft) => QuickSetupDraft)) => {
+      setDraft(updater);
+    },
+    [setDraft],
+  );
+
+  const setPreset = useCallback(
+    (preset: QuickSetupDraft['preset']) => {
+      setDraft((current) => ({
+        ...current,
+        preset,
+        sessions: preset === 'networking' ? Math.max(2, current.sessions) : current.sessions,
+        avoidRepeatPairings: preset === 'networking' ? true : current.avoidRepeatPairings,
+      }));
+    },
+    [setDraft],
+  );
+
+  const toggleAdvanced = useCallback(() => {
+    setDraft((current) => ({ ...current, advancedOpen: !current.advancedOpen }));
+  }, [setDraft]);
+
+  const generateWithSeed = useCallback(
+    (seed: number) => {
+      if (!canGenerate) {
+        return;
+      }
+      setResult(generateSessions(draft, analysis, seed));
+    },
+    [analysis, canGenerate, draft],
+  );
+
+  const generateGroups = useCallback(() => {
+    generateWithSeed(Date.now());
+  }, [generateWithSeed]);
+
+  const reshuffle = useCallback(() => {
+    generateWithSeed(Date.now() + Math.floor(Math.random() * 100000));
+  }, [generateWithSeed]);
+
+  const resetDraft = useCallback(() => {
+    setDraft(defaultDraft(pageConfig));
+    setResult(null);
+  }, [pageConfig, setDraft]);
+
+  const loadSampleData = useCallback(() => {
+    setDraft((current) => ({
+      ...current,
+      participantInput: current.inputMode === 'csv' ? SAMPLE_CSV : SAMPLE_NAMES,
+    }));
+  }, [setDraft]);
+
+  const exportGroupsCsv = useCallback(() => {
+    if (!result) {
+      return;
+    }
+    downloadBlob('groupmixer-groups.csv', csvForResult(result), 'text/csv');
+  }, [result]);
+
+  const exportProjectDraft = useCallback(() => {
+    downloadBlob(
+      'groupmixer-quick-setup.json',
+      JSON.stringify({ draft, pageKey: pageConfig.key }, null, 2),
+      'application/json',
+    );
+  }, [draft, pageConfig.key]);
+
+  return {
+    draft,
+    analysis,
+    participantCount,
+    estimatedGroupCount,
+    estimatedGroupSize,
+    result,
+    canGenerate,
+    draftStorageLabel: 'Saved locally in this browser',
+    updateDraft,
+    setPreset,
+    toggleAdvanced,
+    generateGroups,
+    reshuffle,
+    resetDraft,
+    loadSampleData,
+    exportGroupsCsv,
+    exportProjectDraft,
+  };
+}
