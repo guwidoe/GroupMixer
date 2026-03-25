@@ -8,6 +8,8 @@ The goal is **refactor safety**, not just a single percentage. For this reposito
 
 For benchmark lane selection and operator workflow, see [`benchmarking/WORKFLOW.md`](../benchmarking/WORKFLOW.md).
 
+For the upcoming webapp worker/WASM migration risk map and required pre-migration safety net, see [`docs/WEBAPP_RUNTIME_MIGRATION_REGRESSION_MATRIX.md`](./WEBAPP_RUNTIME_MIGRATION_REGRESSION_MATRIX.md).
+
 - narrow unit tests for branch-heavy logic
 - data-driven integration tests for end-to-end solver behavior
 - property/invariant tests for structural guarantees
