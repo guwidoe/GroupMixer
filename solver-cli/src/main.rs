@@ -12,6 +12,7 @@
 //! - `benchmark`: Run / save / compare benchmark artifacts
 //! - `schema`: Print the JSON schema for input/output formats
 
+mod cli_help;
 mod contract_surface;
 
 use anyhow::{Context, Result};
@@ -429,6 +430,11 @@ impl BenchmarkSuiteArg {
 }
 
 fn main() -> Result<()> {
+    let raw_args: Vec<String> = std::env::args().collect();
+    if cli_help::try_print_contract_help(&raw_args)? {
+        return Ok(());
+    }
+
     let cli = Cli::parse();
 
     match cli.command {
