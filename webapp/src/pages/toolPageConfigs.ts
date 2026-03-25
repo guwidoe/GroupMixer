@@ -68,7 +68,7 @@ export const TOOL_PAGE_CONFIGS: Record<ToolPageKey, ToolPageConfig> = {
       'Free random group generator. Paste names, pick group count, and generate balanced groups in seconds. No sign-up required. Add constraints when you need them.',
     h1: 'Random Group Generator',
     subhead:
-      'Paste names, choose the number of groups, and generate instantly. Free, private, and no sign-up needed.',
+      'Paste names, choose the number of groups, and generate instantly. Private, and no sign-up needed.',
     defaultPreset: 'random',
     faqEntries: [
       {

@@ -217,7 +217,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
               <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
                 <span className="flex items-center gap-1.5">
                   <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }} />
-                  Free &amp; private
+                  Private (processed in your browser)
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }} />
@@ -243,15 +243,15 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                   <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">
                     Try the full group optimizer.
                   </h2>
-                  <p className="mt-3 text-sm leading-7 sm:text-base" style={{ color: 'var(--text-secondary)' }}>
-                    Add keep-together rules, avoid-pairing constraints, multi-session rounds, and smarter balancing — without losing the draft you already started here.
-                  </p>
 
                   <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                     <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Keep together</span>
                     <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Avoid pairings</span>
                     <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Multiple rounds</span>
-                    <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Better balancing</span>
+                    <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Maximize mixing</span>
+                    <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Balance genders</span>
+                    <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Tweak results</span>
+                    <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Balance any attribute</span>
                   </div>
 
                   <div className="mt-5 flex flex-wrap items-center gap-3">
