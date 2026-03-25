@@ -26,6 +26,9 @@ pub use operations::{LocalHelpSpec, OperationSpec};
 pub use schemas::SchemaSpec;
 
 #[cfg(test)]
+mod invariants;
+
+#[cfg(test)]
 mod tests {
     use crate::{bootstrap, errors, examples, operations, schemas};
 
