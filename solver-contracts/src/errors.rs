@@ -8,6 +8,7 @@ use serde::Serialize;
 pub const INVALID_INPUT_ERROR: &str = "invalid-input";
 pub const UNKNOWN_OPERATION_ERROR: &str = "unknown-operation";
 pub const UNKNOWN_SCHEMA_ERROR: &str = "unknown-schema";
+pub const UNKNOWN_ERROR_CODE_ERROR: &str = "unknown-error-code";
 pub const INFEASIBLE_PROBLEM_ERROR: &str = "infeasible-problem";
 pub const UNSUPPORTED_CONSTRAINT_KIND_ERROR: &str = "unsupported-constraint-kind";
 pub const PERMISSION_DENIED_ERROR: &str = "permission-denied";
@@ -47,6 +48,14 @@ const ERROR_SPECS: &[PublicErrorSpec] = &[
         why: "The caller requested a schema identifier that does not exist in the contract registry.",
         recovery: "Inspect the schema lookup/help affordance and request one of the registered schema IDs.",
         related_help_operation_ids: &[GET_SCHEMA_OPERATION_ID],
+    },
+    PublicErrorSpec {
+        code: UNKNOWN_ERROR_CODE_ERROR,
+        category: ErrorCategory::Unsupported,
+        summary: "The requested public error code is not registered.",
+        why: "The caller requested an error code identifier that does not exist in the contract registry.",
+        recovery: "Inspect the error-catalog help affordance and request one of the registered public error codes.",
+        related_help_operation_ids: &[INSPECT_ERRORS_OPERATION_ID],
     },
     PublicErrorSpec {
         code: INFEASIBLE_PROBLEM_ERROR,

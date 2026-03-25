@@ -14,6 +14,7 @@
 
 mod cli_help;
 mod contract_surface;
+mod public_errors;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
@@ -26,8 +27,8 @@ use solver_benchmarking::{
     BaselineDescriptor, BenchmarkStorage, RecordingOptions, RecordingQuery, RecordingRunInput,
     RunnerOptions, FULL_SOLVE_BENCHMARK_MODE,
 };
-use solver_contracts::{bootstrap::bootstrap_spec, errors::{error_spec, error_specs}, operations::operation_spec, schemas::{export_schema, schema_specs}};
-use solver_core::models::ApiInput;
+use solver_contracts::{bootstrap::bootstrap_spec, errors::{error_spec, error_specs}, operations::operation_spec, schemas::{export_schema, schema_specs}, types::{ValidateResponse, ValidationIssue}};
+use solver_core::models::{ApiInput, ProblemDefinition};
 use solver_core::{calculate_recommended_settings, run_solver};
 use std::fs;
 use std::io::{self, Read};
@@ -453,7 +454,14 @@ impl BenchmarkSuiteArg {
     }
 }
 
-fn main() -> Result<()> {
+fn main() {
+    if let Err(error) = run() {
+        eprintln!("{}", error);
+        std::process::exit(1);
+    }
+}
+
+fn run() -> Result<()> {
     let raw_args: Vec<String> = std::env::args().collect();
     if cli_help::try_print_contract_help(&raw_args)? {
         return Ok(());
@@ -1065,17 +1073,23 @@ fn print_json_pretty<T: serde::Serialize>(value: &T) -> Result<()> {
     Ok(())
 }
 
-fn read_input(file: Option<PathBuf>, use_stdin: bool) -> Result<String> {
+fn read_input(file: Option<PathBuf>, use_stdin: bool, operation_id: &str) -> Result<String> {
     if use_stdin {
         let mut buffer = String::new();
         io::stdin()
             .read_to_string(&mut buffer)
-            .context("Failed to read from stdin")?;
+            .map_err(|error| public_errors::internal_error(format!("Failed to read from stdin: {error}"), operation_id))?;
         Ok(buffer)
     } else if let Some(path) = file {
-        fs::read_to_string(&path).with_context(|| format!("Failed to read file: {:?}", path))
+        fs::read_to_string(&path)
+            .map_err(|error| public_errors::internal_error(format!("Failed to read file {:?}: {}", path, error), operation_id))
     } else {
-        anyhow::bail!("Either provide an input file or use --stdin")
+        Err(public_errors::invalid_input_error(
+            "Either provide an input file or use --stdin",
+            Some("input".to_string()),
+            operation_id,
+            vec!["<FILE>".to_string(), "--stdin".to_string()],
+        ))
     }
 }
 
@@ -1085,12 +1099,19 @@ fn cmd_solve(
     output: Option<PathBuf>,
     pretty: bool,
 ) -> Result<()> {
-    let json_str = read_input(input, stdin)?;
-    let api_input: ApiInput =
-        serde_json::from_str(&json_str).context("Failed to parse input JSON")?;
+    let json_str = read_input(input, stdin, "solve")?;
+    let api_input: ApiInput = serde_json::from_str(&json_str).map_err(|error| {
+        public_errors::invalid_input_error(
+            format!("Failed to parse input JSON: {}", error),
+            Some(format!("line {}, column {}", error.line(), error.column())),
+            "solve",
+            vec!["solve-request".to_string()],
+        )
+    })?;
 
     eprintln!("Running solver...");
-    let result = run_solver(&api_input).map_err(|e| anyhow::anyhow!("Solver error: {:?}", e))?;
+    let result = run_solver(&api_input)
+        .map_err(|error| public_errors::map_solver_error(format!("{:?}", error), "solve"))?;
 
     let output_json = if pretty {
         serde_json::to_string_pretty(&result)?
@@ -1100,7 +1121,7 @@ fn cmd_solve(
 
     if let Some(output_path) = output {
         fs::write(&output_path, &output_json)
-            .with_context(|| format!("Failed to write output to {:?}", output_path))?;
+            .map_err(|error| public_errors::internal_error(format!("Failed to write output to {:?}: {}", output_path, error), "solve"))?;
         eprintln!("Result written to {:?}", output_path);
     } else {
         println!("{}", output_json);
@@ -1110,30 +1131,55 @@ fn cmd_solve(
 }
 
 fn cmd_validate(input: Option<PathBuf>, stdin: bool) -> Result<()> {
-    let json_str = read_input(input, stdin)?;
+    let json_str = read_input(input, stdin, "validate-problem")?;
 
-    let api_input: ApiInput = serde_json::from_str(&json_str).context("JSON parse error")?;
+    let api_input: ApiInput = serde_json::from_str(&json_str).map_err(|error| {
+        public_errors::invalid_input_error(
+            format!("Failed to parse input JSON: {}", error),
+            Some(format!("line {}, column {}", error.line(), error.column())),
+            "validate-problem",
+            vec!["validate-request".to_string()],
+        )
+    })?;
 
     use solver_core::solver::State;
     match State::new(&api_input) {
         Ok(_) => {
-            println!("{{\"valid\": true, \"message\": \"Problem definition is valid\"}}");
+            let response = ValidateResponse {
+                valid: true,
+                issues: Vec::new(),
+            };
+            print_json_pretty(&response)?;
             Ok(())
         }
         Err(e) => {
-            println!(
-                "{{\"valid\": false, \"error\": \"{}\"}}",
-                format!("{:?}", e).replace('"', "\\\"")
-            );
+            let error_text = format!("{:?}", e);
+            let issue = if error_text.contains("unknown variant") || error_text.contains("expected one of") {
+                ValidationIssue {
+                    code: Some("unsupported-constraint-kind".to_string()),
+                    message: error_text,
+                    path: Some("constraints[*].type".to_string()),
+                }
+            } else {
+                ValidationIssue {
+                    code: Some("infeasible-problem".to_string()),
+                    message: error_text,
+                    path: None,
+                }
+            };
+            let response = ValidateResponse {
+                valid: false,
+                issues: vec![issue],
+            };
+            print_json_pretty(&response)?;
             Ok(())
         }
     }
 }
 
 fn cmd_recommend(input: Option<PathBuf>, stdin: bool, runtime: u64, pretty: bool) -> Result<()> {
-    let json_str = read_input(input, stdin)?;
-    let api_input: ApiInput =
-        serde_json::from_str(&json_str).context("Failed to parse input JSON")?;
+    let json_str = read_input(input, stdin, "recommend-settings")?;
+    let recommendation_input = parse_recommend_input(&json_str)?;
 
     eprintln!(
         "Calculating recommended settings for {}s runtime...",
@@ -1141,12 +1187,12 @@ fn cmd_recommend(input: Option<PathBuf>, stdin: bool, runtime: u64, pretty: bool
     );
 
     let recommended = calculate_recommended_settings(
-        &api_input.problem,
-        &api_input.objectives,
-        &api_input.constraints,
+        &recommendation_input.problem,
+        &recommendation_input.objectives,
+        &recommendation_input.constraints,
         runtime,
     )
-    .map_err(|e| anyhow::anyhow!("Error calculating settings: {:?}", e))?;
+    .map_err(|error| public_errors::map_solver_error(format!("{:?}", error), "recommend-settings"))?;
 
     let output_json = if pretty {
         serde_json::to_string_pretty(&recommended)?
@@ -1159,19 +1205,30 @@ fn cmd_recommend(input: Option<PathBuf>, stdin: bool, runtime: u64, pretty: bool
 }
 
 fn cmd_evaluate(input: Option<PathBuf>, stdin: bool, pretty: bool) -> Result<()> {
-    let json_str = read_input(input, stdin)?;
-    let api_input: ApiInput =
-        serde_json::from_str(&json_str).context("Failed to parse input JSON")?;
+    let json_str = read_input(input, stdin, "evaluate-input")?;
+    let api_input: ApiInput = serde_json::from_str(&json_str).map_err(|error| {
+        public_errors::invalid_input_error(
+            format!("Failed to parse input JSON: {}", error),
+            Some(format!("line {}, column {}", error.line(), error.column())),
+            "evaluate-input",
+            vec!["solve-request".to_string()],
+        )
+    })?;
 
     if api_input.initial_schedule.is_none() {
-        anyhow::bail!("Evaluate requires initial_schedule in the input");
+        return Err(public_errors::invalid_input_error(
+            "Evaluate requires initial_schedule in the input",
+            Some("initial_schedule".to_string()),
+            "evaluate-input",
+            vec!["provide initial_schedule".to_string()],
+        ));
     }
 
     let mut eval_input = api_input.clone();
     eval_input.solver.stop_conditions.max_iterations = Some(0);
 
-    let result =
-        run_solver(&eval_input).map_err(|e| anyhow::anyhow!("Evaluation error: {:?}", e))?;
+    let result = run_solver(&eval_input)
+        .map_err(|error| public_errors::map_solver_error(format!("{:?}", error), "evaluate-input"))?;
 
     let output_json = if pretty {
         serde_json::to_string_pretty(&result)?
@@ -1210,8 +1267,12 @@ fn cmd_schema(schema_id: Option<String>, json: bool) -> Result<()> {
         return Ok(());
     };
 
-    let schema = export_schema(&schema_id)
-        .ok_or_else(|| anyhow::anyhow!(unknown_schema_message(&schema_id)))?;
+    let schema = export_schema(&schema_id).ok_or_else(|| {
+        public_errors::unknown_schema_error(
+            &schema_id,
+            known_schema_ids().into_iter().map(str::to_string).collect(),
+        )
+    })?;
 
     if json {
         print_json_pretty(&schema)?;
@@ -1319,8 +1380,15 @@ fn cmd_errors(error_code: Option<String>, json: bool) -> Result<()> {
         return Ok(());
     };
 
-    let spec = error_spec(&error_code)
-        .ok_or_else(|| anyhow::anyhow!(unknown_error_message(&error_code)))?;
+    let spec = error_spec(&error_code).ok_or_else(|| {
+        public_errors::unknown_error_code_error(
+            &error_code,
+            error_specs()
+                .iter()
+                .map(|spec| spec.code.to_string())
+                .collect(),
+        )
+    })?;
     if json {
         print_json_pretty(spec)
     } else {
@@ -1345,25 +1413,44 @@ fn resolve_schema_alias(schema_id: String) -> String {
     }
 }
 
+#[derive(Debug, Clone)]
+struct RecommendInput {
+    problem: ProblemDefinition,
+    objectives: Vec<solver_core::models::Objective>,
+    constraints: Vec<solver_core::models::Constraint>,
+}
+
+fn parse_recommend_input(json_str: &str) -> Result<RecommendInput> {
+    if let Ok(problem) = serde_json::from_str::<ProblemDefinition>(json_str) {
+        return Ok(RecommendInput {
+            problem,
+            objectives: Vec::new(),
+            constraints: Vec::new(),
+        });
+    }
+
+    if let Ok(api_input) = serde_json::from_str::<ApiInput>(json_str) {
+        return Ok(RecommendInput {
+            problem: api_input.problem,
+            objectives: api_input.objectives,
+            constraints: api_input.constraints,
+        });
+    }
+
+    let error = serde_json::from_str::<ProblemDefinition>(json_str).unwrap_err();
+    Err(public_errors::invalid_input_error(
+        format!(
+            "Failed to parse recommend input as problem-definition or solve-request JSON: {}",
+            error
+        ),
+        Some(format!("line {}, column {}", error.line(), error.column())),
+        "recommend-settings",
+        vec!["problem-definition".to_string(), "solve-request".to_string()],
+    ))
+}
+
 fn known_schema_ids() -> Vec<&'static str> {
     schema_specs().iter().map(|spec| spec.id).collect()
-}
-
-fn unknown_schema_message(schema_id: &str) -> String {
-    format!(
-        "Unknown schema id '{}'. Use one of: {}",
-        schema_id,
-        known_schema_ids().join(", ")
-    )
-}
-
-fn unknown_error_message(error_code: &str) -> String {
-    let known: Vec<_> = error_specs().iter().map(|spec| spec.code).collect();
-    format!(
-        "Unknown error code '{}'. Use one of: {}",
-        error_code,
-        known.join(", ")
-    )
 }
 
 #[cfg(test)]

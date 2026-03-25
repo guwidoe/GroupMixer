@@ -82,6 +82,12 @@ pub fn binding_for_command(command_name: &str) -> Option<&'static CliContractBin
     CLI_BINDINGS.iter().find(|binding| binding.command_name == command_name)
 }
 
+pub fn binding_for_operation_id(operation_id: &str) -> Option<&'static CliContractBinding> {
+    CLI_BINDINGS
+        .iter()
+        .find(|binding| binding.operation_id == Some(operation_id))
+}
+
 #[cfg(test)]
 mod tests {
     use super::{binding_for_command, cli_contract_bindings, public_cli_contract_bindings, CliSurfaceScope};
