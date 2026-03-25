@@ -8,14 +8,44 @@ import {
 import { isWasmSolverModule, type WasmSolverModule } from "./wasm/module";
 import type { ProgressCallback, ProgressUpdate } from "./wasm/types";
 
-class WasmService {
+export type WasmModuleLoader = () => Promise<unknown>;
+
+export class WasmService {
   private module: WasmSolverModule | null = null;
   private loading = false;
   private initializationFailed = false;
 
+  constructor(
+    private readonly loadModule: WasmModuleLoader = () => import("virtual:wasm-solver"),
+  ) {}
+
   private formatErrorMessage(error: unknown, fallback: string): string {
     if (error instanceof Error && error.message) {
       return error.message;
+    }
+
+    if (error && typeof error === "object") {
+      const record = error as {
+        message?: unknown;
+        error?: {
+          code?: unknown;
+          message?: unknown;
+        };
+      };
+
+      if (typeof record.message === "string" && record.message) {
+        return record.message;
+      }
+
+      if (record.error && typeof record.error === "object") {
+        const code = typeof record.error.code === "string" ? record.error.code : undefined;
+        const message =
+          typeof record.error.message === "string" ? record.error.message : undefined;
+
+        if (message) {
+          return code ? `${code}: ${message}` : message;
+        }
+      }
     }
 
     const text = String(error);
@@ -45,7 +75,7 @@ class WasmService {
 
     try {
       // Load the WASM module via the virtual alias (vite alias → public/pkg/solver_wasm.js)
-      const wasmModule = await import("virtual:wasm-solver").catch((error) => {
+      const wasmModule = await this.loadModule().catch((error) => {
         console.warn(
           "WASM module not found. This might be a build issue:",
           error.message
@@ -182,6 +212,30 @@ class WasmService {
           error,
           "Unknown settings error"
         )}`
+      );
+    }
+  }
+
+  async getRecommendedSettings(
+    problem: Problem,
+    desiredRuntimeSeconds: number,
+  ): Promise<SolverSettings> {
+    const module = await this.requireModule();
+
+    try {
+      const problemJson = JSON.stringify(problem);
+      const settingsJson = module.get_recommended_settings(
+        problemJson,
+        BigInt(desiredRuntimeSeconds),
+      );
+      return JSON.parse(settingsJson);
+    } catch (error) {
+      console.error("WASM get recommended settings error:", error);
+      throw new Error(
+        `Failed to get recommended settings: ${this.formatErrorMessage(
+          error,
+          "Unknown settings error",
+        )}`,
       );
     }
   }
