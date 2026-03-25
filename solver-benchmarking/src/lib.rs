@@ -1,4 +1,5 @@
 pub mod artifacts;
+pub mod benchmark_mode;
 pub mod compare;
 pub mod index;
 pub mod machine;
@@ -25,10 +26,18 @@ pub use manifest::{
 };
 pub use compare::{compare_run_to_baseline, persist_comparison_report};
 pub use index::{db_path as benchmark_index_path, list_recordings, list_refs};
+pub use benchmark_mode::{
+    default_benchmark_mode, is_hotpath_benchmark_mode, is_supported_benchmark_mode,
+    CLIQUE_SWAP_APPLY_BENCHMARK_MODE, CLIQUE_SWAP_PREVIEW_BENCHMARK_MODE,
+    CONSTRUCTION_BENCHMARK_MODE, FULL_RECALCULATION_BENCHMARK_MODE,
+    FULL_SOLVE_BENCHMARK_MODE, SEARCH_ITERATION_BENCHMARK_MODE,
+    SWAP_APPLY_BENCHMARK_MODE, SWAP_PREVIEW_BENCHMARK_MODE,
+    TRANSFER_APPLY_BENCHMARK_MODE, TRANSFER_PREVIEW_BENCHMARK_MODE,
+};
 pub use recording_types::{
     BenchmarkRef, BenchmarkRefTarget, RecordingGitIdentity, RecordingIndexRow,
     RecordingMachineIdentity, RecordingMetadata, RecordingSuiteRun, RefIndexRow,
-    BENCHMARK_REF_SCHEMA_VERSION, FULL_SOLVE_BENCHMARK_MODE, RECORDING_SCHEMA_VERSION,
+    BENCHMARK_REF_SCHEMA_VERSION, RECORDING_SCHEMA_VERSION,
 };
 pub use recordings::{
     create_recording_for_run, create_recording_for_runs, find_recording_suite_runs,

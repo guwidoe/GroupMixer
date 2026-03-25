@@ -7,6 +7,42 @@ pub const RUN_REPORT_SCHEMA_VERSION: u32 = 1;
 pub const BASELINE_SNAPSHOT_SCHEMA_VERSION: u32 = 1;
 pub const COMPARISON_REPORT_SCHEMA_VERSION: u32 = 1;
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum BenchmarkArtifactKind {
+    FullSolve,
+    HotPath,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct HotPathMetrics {
+    pub benchmark_mode: String,
+    #[serde(default)]
+    pub preset: Option<String>,
+    pub iterations: u64,
+    #[serde(default)]
+    pub warmup_iterations: u64,
+    pub measured_operations: u64,
+    #[serde(default)]
+    pub average_runtime_seconds: f64,
+    #[serde(default)]
+    pub ops_per_second: f64,
+    #[serde(default)]
+    pub checksum: i64,
+    #[serde(default)]
+    pub measurement_seconds: f64,
+    #[serde(default)]
+    pub setup_seconds: f64,
+    #[serde(default)]
+    pub preview_seconds: f64,
+    #[serde(default)]
+    pub apply_seconds: f64,
+    #[serde(default)]
+    pub full_recalculation_seconds: f64,
+    #[serde(default)]
+    pub search_seconds: f64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct GitIdentity {
     #[serde(default)]
@@ -74,6 +110,7 @@ pub struct CaseRunArtifact {
     pub run_id: String,
     pub generated_at: String,
     pub suite_id: String,
+    pub benchmark_mode: String,
     pub suite_class: BenchmarkSuiteClass,
     pub case_id: String,
     pub case_class: BenchmarkSuiteClass,
@@ -90,6 +127,7 @@ pub struct CaseRunArtifact {
     pub effective_seed: Option<u64>,
     #[serde(default)]
     pub effective_budget: EffectiveBenchmarkBudget,
+    pub artifact_kind: BenchmarkArtifactKind,
     #[serde(default)]
     pub effective_move_policy: Option<MovePolicy>,
     #[serde(default)]
@@ -119,11 +157,14 @@ pub struct CaseRunArtifact {
     pub weighted_constraint_penalty: Option<f64>,
     #[serde(default)]
     pub moves: MoveFamilyBenchmarkTelemetrySummary,
+    #[serde(default)]
+    pub hotpath_metrics: Option<HotPathMetrics>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RunSuiteMetadata {
     pub suite_id: String,
+    pub benchmark_mode: String,
     pub class: BenchmarkSuiteClass,
     #[serde(default)]
     pub title: Option<String>,
@@ -203,6 +244,7 @@ pub struct ComparabilityReport {
     pub status: ComparisonStatus,
     #[serde(default)]
     pub reasons: Vec<String>,
+    pub same_benchmark_mode: bool,
     pub same_machine: bool,
     pub same_suite: bool,
 }
@@ -305,6 +347,7 @@ pub struct ComparisonReport {
     pub baseline_run_id: String,
     pub current_run_id: String,
     pub suite_id: String,
+    pub benchmark_mode: String,
     pub comparability: ComparabilityReport,
     pub case_comparisons: Vec<CaseComparison>,
     pub class_rollups: Vec<ClassRollupComparison>,
@@ -324,9 +367,11 @@ mod tests {
             baseline_run_id: "baseline-run".to_string(),
             current_run_id: "current-run".to_string(),
             suite_id: "path".to_string(),
+            benchmark_mode: "full_solve".to_string(),
             comparability: ComparabilityReport {
                 status: ComparisonStatus::Comparable,
                 reasons: vec![],
+                same_benchmark_mode: true,
                 same_machine: true,
                 same_suite: true,
             },

@@ -288,9 +288,10 @@ fn bool_to_i64(value: bool) -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::benchmark_mode::FULL_SOLVE_BENCHMARK_MODE;
     use crate::recording_types::{
         BenchmarkRefTarget, RecordingGitIdentity, RecordingMachineIdentity, RecordingSuiteRun,
-        BENCHMARK_REF_SCHEMA_VERSION, FULL_SOLVE_BENCHMARK_MODE, RECORDING_SCHEMA_VERSION,
+        BENCHMARK_REF_SCHEMA_VERSION, RECORDING_SCHEMA_VERSION,
     };
     use tempfile::TempDir;
 

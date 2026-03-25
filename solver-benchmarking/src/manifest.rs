@@ -1,3 +1,4 @@
+use crate::benchmark_mode::{default_benchmark_mode, is_hotpath_benchmark_mode, is_supported_benchmark_mode};
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use solver_core::models::{ApiInput, MovePolicy};
@@ -38,6 +39,8 @@ impl BenchmarkSuiteClass {
 pub struct BenchmarkSuiteManifest {
     pub schema_version: u32,
     pub suite_id: String,
+    #[serde(default = "default_benchmark_mode")]
+    pub benchmark_mode: String,
     pub class: BenchmarkSuiteClass,
     #[serde(default)]
     pub title: Option<String>,
@@ -51,6 +54,10 @@ pub struct BenchmarkSuiteManifest {
     pub default_time_limit_seconds: Option<u64>,
     #[serde(default)]
     pub default_move_policy: Option<MovePolicy>,
+    #[serde(default)]
+    pub default_iterations: Option<u64>,
+    #[serde(default)]
+    pub default_warmup_iterations: Option<u64>,
     pub cases: Vec<BenchmarkCaseOverride>,
 }
 
@@ -67,6 +74,10 @@ pub struct BenchmarkCaseOverride {
     pub time_limit_seconds: Option<u64>,
     #[serde(default)]
     pub move_policy: Option<MovePolicy>,
+    #[serde(default)]
+    pub iterations: Option<u64>,
+    #[serde(default)]
+    pub warmup_iterations: Option<u64>,
     #[serde(default = "default_enabled")]
     pub enabled: bool,
 }
@@ -90,7 +101,10 @@ pub struct BenchmarkCaseManifest {
     pub description: Option<String>,
     #[serde(default)]
     pub tags: Vec<String>,
-    pub input: ApiInput,
+    #[serde(default)]
+    pub input: Option<ApiInput>,
+    #[serde(default)]
+    pub hotpath_preset: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -146,6 +160,21 @@ pub fn load_suite_manifest(path: impl AsRef<Path>) -> Result<LoadedBenchmarkSuit
                 );
             }
         }
+        if is_hotpath_benchmark_mode(&manifest.benchmark_mode) {
+            if case_manifest.hotpath_preset.as_deref().is_none_or(str::is_empty) {
+                bail!(
+                    "hotpath suite {} requires case {} to define hotpath_preset",
+                    manifest.suite_id,
+                    case_manifest.id
+                );
+            }
+        } else if case_manifest.input.is_none() {
+            bail!(
+                "full-solve suite {} requires case {} to define input",
+                manifest.suite_id,
+                case_manifest.id
+            );
+        }
         cases.push(LoadedBenchmarkCase {
             manifest_path: case_path,
             manifest: case_manifest,
@@ -186,6 +215,13 @@ fn validate_suite_manifest(path: &Path, manifest: &BenchmarkSuiteManifest) -> Re
     if manifest.suite_id.trim().is_empty() {
         bail!("benchmark suite manifest {} is missing suite_id", path.display());
     }
+    if !is_supported_benchmark_mode(&manifest.benchmark_mode) {
+        bail!(
+            "benchmark suite manifest {} uses unsupported benchmark_mode {}",
+            path.display(),
+            manifest.benchmark_mode
+        );
+    }
     if manifest.cases.is_empty() {
         bail!("benchmark suite manifest {} has no cases", path.display());
     }
@@ -204,9 +240,17 @@ fn validate_case_manifest(path: &Path, manifest: &BenchmarkCaseManifest) -> Resu
     if manifest.id.trim().is_empty() {
         bail!("benchmark case manifest {} is missing id", path.display());
     }
-    if manifest.input.solver.solver_type.trim().is_empty() {
+    if let Some(input) = &manifest.input {
+        if input.solver.solver_type.trim().is_empty() {
+            bail!(
+                "benchmark case manifest {} has empty solver type in input",
+                path.display()
+            );
+        }
+    }
+    if manifest.input.is_none() && manifest.hotpath_preset.as_deref().is_none_or(str::is_empty) {
         bail!(
-            "benchmark case manifest {} has empty solver type in input",
+            "benchmark case manifest {} must define either input or hotpath_preset",
             path.display()
         );
     }
@@ -224,6 +268,7 @@ mod tests {
             .expect("path suite should load");
 
         assert_eq!(suite.manifest.suite_id, "path");
+        assert_eq!(suite.manifest.benchmark_mode, "full_solve");
         assert_eq!(suite.manifest.class, BenchmarkSuiteClass::Path);
         assert!(suite.cases.len() >= 5);
         assert!(suite
@@ -241,6 +286,6 @@ mod tests {
 
         assert_eq!(case.class, BenchmarkSuiteClass::Representative);
         assert_eq!(case.id, "representative.small-workshop-balanced");
-        assert!(!case.input.problem.people.is_empty());
+        assert!(!case.input.expect("input should exist").problem.people.is_empty());
     }
 }

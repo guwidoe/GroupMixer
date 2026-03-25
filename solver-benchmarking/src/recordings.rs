@@ -1,9 +1,10 @@
 use crate::artifacts::RunReport;
+use crate::benchmark_mode::FULL_SOLVE_BENCHMARK_MODE;
 use crate::index::{list_recordings as list_recording_rows, upsert_recording};
 use crate::manifest::SUITE_SCHEMA_VERSION;
 use crate::recording_types::{
     RecordingGitIdentity, RecordingMachineIdentity, RecordingMetadata, RecordingSuiteRun,
-    FULL_SOLVE_BENCHMARK_MODE, RECORDING_SCHEMA_VERSION,
+    RECORDING_SCHEMA_VERSION,
 };
 use crate::refs::update_standard_refs;
 use anyhow::{bail, Context, Result};
@@ -340,6 +341,7 @@ mod tests {
             schema_version: RUN_REPORT_SCHEMA_VERSION,
             suite: RunSuiteMetadata {
                 suite_id: suite_id.to_string(),
+                benchmark_mode: FULL_SOLVE_BENCHMARK_MODE.to_string(),
                 class: BenchmarkSuiteClass::Representative,
                 title: None,
                 description: None,

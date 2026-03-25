@@ -3,8 +3,8 @@ use crate::artifacts::{ComparisonReport, ComparisonStatus, RegressionSuspect};
 pub fn render_comparison_summary(report: &ComparisonReport) -> String {
     let mut lines = Vec::new();
     lines.push(format!(
-        "Benchmark comparison for suite '{}' (baseline '{}' vs run '{}')",
-        report.suite_id, report.baseline_name, report.current_run_id
+        "Benchmark comparison for suite '{}' mode '{}' (baseline '{}' vs run '{}')",
+        report.suite_id, report.benchmark_mode, report.baseline_name, report.current_run_id
     ));
 
     match report.comparability.status {
@@ -94,7 +94,7 @@ mod tests {
         let comparison = compare_run_to_baseline(&report, &baseline);
 
         let summary = render_comparison_summary(&comparison);
-        assert!(summary.contains("Benchmark comparison for suite 'path'"));
+        assert!(summary.contains("Benchmark comparison for suite 'path' mode 'full_solve'"));
         assert!(summary.contains("Comparability: comparable"));
         assert!(summary.contains("Top runtime regressions:"));
     }

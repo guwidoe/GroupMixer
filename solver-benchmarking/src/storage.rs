@@ -291,6 +291,7 @@ mod tests {
             schema_version: 1,
             suite: RunSuiteMetadata {
                 suite_id: "path".to_string(),
+                benchmark_mode: crate::FULL_SOLVE_BENCHMARK_MODE.to_string(),
                 class: BenchmarkSuiteClass::Path,
                 title: None,
                 description: None,

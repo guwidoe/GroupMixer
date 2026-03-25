@@ -28,6 +28,14 @@ pub fn compare_run_to_baseline(current: &RunReport, baseline: &BaselineSnapshot)
         ));
     }
 
+    let same_benchmark_mode = current.suite.benchmark_mode == baseline.run_report.suite.benchmark_mode;
+    if !same_benchmark_mode {
+        reasons.push(format!(
+            "benchmark mode mismatch: current={} baseline={}",
+            current.suite.benchmark_mode, baseline.run_report.suite.benchmark_mode
+        ));
+    }
+
     let same_machine = same_machine_identity(current, &baseline.run_report);
     if !same_machine {
         reasons.push("machine identity mismatch; runtime comparison is not trustworthy".to_string());
@@ -76,6 +84,7 @@ pub fn compare_run_to_baseline(current: &RunReport, baseline: &BaselineSnapshot)
             ComparisonStatus::NotComparable
         },
         reasons,
+        same_benchmark_mode,
         same_machine,
         same_suite: current.suite.suite_id == baseline.run_report.suite.suite_id,
     };
@@ -88,6 +97,7 @@ pub fn compare_run_to_baseline(current: &RunReport, baseline: &BaselineSnapshot)
         baseline_run_id: baseline.run_report.run.run_id.clone(),
         current_run_id: current.run.run_id.clone(),
         suite_id: current.suite.suite_id.clone(),
+        benchmark_mode: current.suite.benchmark_mode.clone(),
         comparability,
         case_comparisons,
         class_rollups,
@@ -482,5 +492,38 @@ mod tests {
             .reasons
             .iter()
             .any(|reason| reason.contains("suite id mismatch")));
+    }
+
+    #[test]
+    fn benchmark_mode_mismatch_is_reported_explicitly() {
+        let temp = TempDir::new().expect("temp dir");
+        let options = RunnerOptions {
+            artifacts_dir: temp.path().to_path_buf(),
+            cargo_profile: "test".to_string(),
+        };
+        let mut report = run_suite_from_manifest("../benchmarking/suites/path.yaml", &options)
+            .expect("run path suite");
+        let baseline_path = save_baseline_snapshot(
+            &report,
+            "path-baseline",
+            &options.artifacts_dir,
+            None,
+        )
+        .expect("save baseline");
+        let baseline = crate::runner::load_baseline_snapshot(&baseline_path).expect("load baseline");
+
+        report.suite.benchmark_mode = "swap_preview".to_string();
+        for case in &mut report.cases {
+            case.benchmark_mode = "swap_preview".to_string();
+        }
+
+        let comparison = compare_run_to_baseline(&report, &baseline);
+        assert_eq!(comparison.comparability.status, ComparisonStatus::NotComparable);
+        assert!(!comparison.comparability.same_benchmark_mode);
+        assert!(comparison
+            .comparability
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("benchmark mode mismatch")));
     }
 }

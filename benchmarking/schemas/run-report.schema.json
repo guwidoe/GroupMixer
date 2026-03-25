@@ -8,9 +8,24 @@
     "schema_version": { "type": "integer", "minimum": 1 },
     "suite": {
       "type": "object",
-      "required": ["suite_id", "class", "manifest_path"],
+      "required": ["suite_id", "benchmark_mode", "class", "manifest_path"],
       "properties": {
         "suite_id": { "type": "string" },
+        "benchmark_mode": {
+          "type": "string",
+          "enum": [
+            "full_solve",
+            "construction",
+            "full_recalculation",
+            "swap_preview",
+            "swap_apply",
+            "transfer_preview",
+            "transfer_apply",
+            "clique_swap_preview",
+            "clique_swap_apply",
+            "search_iteration"
+          ]
+        },
         "class": { "type": "string", "enum": ["path", "representative", "stretch", "adversarial"] },
         "title": { "type": ["string", "null"] },
         "description": { "type": ["string", "null"] },

@@ -1,5 +1,6 @@
 schema_version: 1
 suite_id: representative
+benchmark_mode: full_solve
 class: representative
 title: Representative solve-level benchmark suite
 description: Small but realistic day-to-day workshop scheduling workloads for routine performance checks.

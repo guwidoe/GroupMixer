@@ -1,5 +1,6 @@
 schema_version: 1
 suite_id: path
+benchmark_mode: full_solve
 class: path
 title: Path regression benchmark suite
 description: Deterministic small cases that intentionally activate specific move families or solver branches.

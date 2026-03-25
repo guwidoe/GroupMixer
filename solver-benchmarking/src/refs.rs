@@ -115,9 +115,9 @@ fn relative_to_root(root: &Path, path: &Path) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::benchmark_mode::FULL_SOLVE_BENCHMARK_MODE;
     use crate::recording_types::{
-        RecordingGitIdentity, RecordingMachineIdentity, FULL_SOLVE_BENCHMARK_MODE,
-        RECORDING_SCHEMA_VERSION,
+        RecordingGitIdentity, RecordingMachineIdentity, RECORDING_SCHEMA_VERSION,
     };
 
     fn sample_recording() -> RecordingMetadata {

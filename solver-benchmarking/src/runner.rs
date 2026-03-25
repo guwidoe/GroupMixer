@@ -1,8 +1,10 @@
 use crate::artifacts::{
-    BaselineSnapshot, CaseRunArtifact, CaseRunStatus, ClassRollup, EffectiveBenchmarkBudget,
-    RunMetadata, RunReport, RunSuiteMetadata, RunTotals, SolveTimingBreakdown,
+    BaselineSnapshot, BenchmarkArtifactKind, CaseRunArtifact, CaseRunStatus, ClassRollup,
+    EffectiveBenchmarkBudget, RunMetadata, RunReport, RunSuiteMetadata, RunTotals,
+    SolveTimingBreakdown,
     BASELINE_SNAPSHOT_SCHEMA_VERSION, CASE_RUN_SCHEMA_VERSION, RUN_REPORT_SCHEMA_VERSION,
 };
+use crate::benchmark_mode::FULL_SOLVE_BENCHMARK_MODE;
 use crate::machine::{capture_git_identity, capture_machine_identity};
 use crate::manifest::{load_suite_manifest, BenchmarkSuiteClass, LoadedBenchmarkCase, LoadedBenchmarkSuite};
 use crate::storage::{machine_identity_label, BenchmarkStorage};
@@ -69,6 +71,7 @@ pub fn run_loaded_suite(suite: &LoadedBenchmarkSuite, options: &RunnerOptions) -
         schema_version: RUN_REPORT_SCHEMA_VERSION,
         suite: RunSuiteMetadata {
             suite_id: suite.manifest.suite_id.clone(),
+            benchmark_mode: suite.manifest.benchmark_mode.clone(),
             class: suite.manifest.class,
             title: suite.manifest.title.clone(),
             description: suite.manifest.description.clone(),
@@ -159,6 +162,7 @@ fn run_case(
     git: crate::artifacts::GitIdentity,
     machine: crate::artifacts::MachineIdentity,
 ) -> CaseRunArtifact {
+    debug_assert_eq!(suite.manifest.benchmark_mode, FULL_SOLVE_BENCHMARK_MODE);
     let input = apply_effective_overrides(suite, case);
     let effective_budget = EffectiveBenchmarkBudget {
         max_iterations: input.solver.stop_conditions.max_iterations,
@@ -192,6 +196,7 @@ fn run_case(
                 run_id: run_id.to_string(),
                 generated_at: generated_at.to_string(),
                 suite_id: suite.manifest.suite_id.clone(),
+                benchmark_mode: suite.manifest.benchmark_mode.clone(),
                 suite_class: suite.manifest.class,
                 case_id: case.manifest.id.clone(),
                 case_class: case.manifest.class,
@@ -203,6 +208,7 @@ fn run_case(
                 machine,
                 effective_seed: result.effective_seed.or(input.solver.seed),
                 effective_budget,
+                artifact_kind: BenchmarkArtifactKind::FullSolve,
                 effective_move_policy: result.move_policy.or(input.solver.move_policy.clone()),
                 stop_reason: result.stop_reason,
                 status: CaseRunStatus::Success,
@@ -218,6 +224,7 @@ fn run_case(
                 weighted_repetition_penalty: Some(result.weighted_repetition_penalty),
                 weighted_constraint_penalty: Some(result.weighted_constraint_penalty),
                 moves,
+                hotpath_metrics: None,
             }
         }
         Err(error) => CaseRunArtifact {
@@ -225,6 +232,7 @@ fn run_case(
             run_id: run_id.to_string(),
             generated_at: generated_at.to_string(),
             suite_id: suite.manifest.suite_id.clone(),
+            benchmark_mode: suite.manifest.benchmark_mode.clone(),
             suite_class: suite.manifest.class,
             case_id: case.manifest.id.clone(),
             case_class: case.manifest.class,
@@ -236,6 +244,7 @@ fn run_case(
             machine,
             effective_seed: input.solver.seed,
             effective_budget,
+            artifact_kind: BenchmarkArtifactKind::FullSolve,
             effective_move_policy: input.solver.move_policy.clone(),
             stop_reason: None,
             status: CaseRunStatus::SolverError,
@@ -254,12 +263,17 @@ fn run_case(
             weighted_repetition_penalty: None,
             weighted_constraint_penalty: None,
             moves: MoveFamilyBenchmarkTelemetrySummary::default(),
+            hotpath_metrics: None,
         },
     }
 }
 
 fn apply_effective_overrides(suite: &LoadedBenchmarkSuite, case: &LoadedBenchmarkCase) -> solver_core::models::ApiInput {
-    let mut input = case.manifest.input.clone();
+    let mut input = case
+        .manifest
+        .input
+        .clone()
+        .expect("full-solve benchmark cases require input");
 
     input.solver.seed = case
         .overrides

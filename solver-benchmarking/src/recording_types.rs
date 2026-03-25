@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 
 pub const RECORDING_SCHEMA_VERSION: &str = "groupmixer-benchmark-recording";
 pub const BENCHMARK_REF_SCHEMA_VERSION: &str = "groupmixer-benchmark-ref";
-pub const FULL_SOLVE_BENCHMARK_MODE: &str = "full_solve";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RecordingMetadata {

@@ -14,16 +14,17 @@ This folder implements the solve-level benchmark system described in `docs/BENCH
 
 ### Suite manifest
 
-A suite manifest describes one benchmark class and the case manifests it contains.
+A suite manifest describes one benchmark class, one explicit benchmark mode, and the case manifests it contains.
 
 Current shape:
 
 - `schema_version`
 - `suite_id`
+- `benchmark_mode` (`full_solve` by default; hotpath modes are explicit)
 - `class`
 - `title`
 - `description`
-- optional suite-level defaults for seed, stop budget, and move policy
+- optional suite-level defaults for seed, stop budget, move policy, hotpath iterations, and hotpath warmup iterations
 - `cases[]`
 
 ### Case manifest
@@ -38,7 +39,7 @@ Current shape:
 - optional `family` and `paths` metadata for path cases
 - optional `tags`
 - `description`
-- `input` as a valid `solver_core::models::ApiInput`
+- either `input` as a valid `solver_core::models::ApiInput` or `hotpath_preset` for a deterministic hotpath fixture
 
 ## Directory layout
 
@@ -52,11 +53,13 @@ benchmarking/
     representative.yaml
     stretch.yaml
     adversarial.yaml
+    hotpath-*.yaml
   cases/
     path/
     representative/
     stretch/
     adversarial/
+    hotpath/
   schemas/
     case-run.schema.json
     run-report.schema.json
