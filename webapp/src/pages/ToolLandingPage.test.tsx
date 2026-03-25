@@ -145,6 +145,11 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByText('Free & private')).toBeInTheDocument();
     expect(screen.getByText('No sign-up')).toBeInTheDocument();
     expect(screen.getByText('Results in seconds')).toBeInTheDocument();
+
+    // Optimizer CTA fills the desktop dead-space under the hero copy
+    expect(screen.getByText(/want to do better than random/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /try the full group optimizer/i })).toBeInTheDocument();
+    expect(screen.getByText(/your landing-page draft comes with you/i)).toBeInTheDocument();
   });
 
   it('renders FAQ section for SEO', () => {

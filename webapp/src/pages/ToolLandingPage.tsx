@@ -229,6 +229,49 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                 </span>
               </div>
 
+              <div
+                className="mt-8 rounded-2xl border p-5 sm:p-6"
+                style={{
+                  borderColor: 'var(--border-primary)',
+                  backgroundColor: 'var(--bg-primary)',
+                }}
+              >
+                <div className="max-w-lg">
+                  <div className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-secondary)' }}>
+                    Want to do better than random?
+                  </div>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">
+                    Try the full group optimizer.
+                  </h2>
+                  <p className="mt-3 text-sm leading-7 sm:text-base" style={{ color: 'var(--text-secondary)' }}>
+                    Add keep-together rules, avoid-pairing constraints, multi-session rounds, and smarter balancing — without losing the draft you already started here.
+                  </p>
+
+                  <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Keep together</span>
+                    <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Avoid pairings</span>
+                    <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Multiple rounds</span>
+                    <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Better balancing</span>
+                  </div>
+
+                  <div className="mt-5 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
+                      className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white"
+                      style={{ backgroundColor: 'var(--color-accent)' }}
+                    >
+                      <Users className="h-4 w-4" />
+                      Open expert workspace
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                    <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      Your landing-page draft comes with you.
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {!controller.result && (
                 <div className="mt-10 hidden text-sm lg:block" style={{ color: 'var(--text-secondary)' }}>
                   <span className="flex items-center gap-1">
