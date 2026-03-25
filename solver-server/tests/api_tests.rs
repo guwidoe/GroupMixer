@@ -8,7 +8,7 @@ use solver_core::models::{
     SolverConfiguration, SolverParams, StopConditions,
 };
 use solver_contracts::types::{ResultSummary, ValidateResponse};
-use solver_server::api::handlers::{AppState, CreateJobResponse};
+use solver_server::api::{contract_surface::public_contract_bindings, handlers::{AppState, CreateJobResponse}};
 use solver_server::api::routes::create_router;
 use solver_server::jobs::manager::{Job, JobManager, JobStatus};
 use std::collections::HashMap;
@@ -647,5 +647,34 @@ async fn help_and_error_navigation_targets_resolve_locally() {
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK, "error related help path should resolve: {}", help_path);
+    }
+}
+
+#[tokio::test]
+async fn public_contract_routes_stay_in_parity_with_contract_registry() {
+    let app = create_router(AppState {
+        job_manager: JobManager::new(),
+    });
+
+    let binding_operation_ids: Vec<_> = public_contract_bindings()
+        .filter_map(|binding| binding.operation_id)
+        .collect();
+    assert!(binding_operation_ids.contains(&"solve"));
+    assert!(binding_operation_ids.contains(&"get-schema"));
+    assert!(binding_operation_ids.contains(&"inspect-errors"));
+
+    for operation_id in binding_operation_ids {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(format!("/api/v1/help/{operation_id}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK, "help route missing for operation {}", operation_id);
     }
 }
