@@ -15,6 +15,83 @@ pub struct HttpContractBinding {
 
 const HTTP_BINDINGS: &[HttpContractBinding] = &[
     HttpContractBinding {
+        method: "GET",
+        route_path: "/api/v1/help",
+        operation_id: None,
+        scope: HttpSurfaceScope::PublicContract,
+        note: "Bootstrap help endpoint for the public solver contract.",
+    },
+    HttpContractBinding {
+        method: "GET",
+        route_path: "/api/v1/help/{operation_id}",
+        operation_id: None,
+        scope: HttpSurfaceScope::PublicContract,
+        note: "Local help endpoint for one public solver operation.",
+    },
+    HttpContractBinding {
+        method: "POST",
+        route_path: "/api/v1/solve",
+        operation_id: Some("solve"),
+        scope: HttpSurfaceScope::PublicContract,
+        note: "Synchronous solve endpoint for the public solver contract.",
+    },
+    HttpContractBinding {
+        method: "POST",
+        route_path: "/api/v1/validate-problem",
+        operation_id: Some("validate-problem"),
+        scope: HttpSurfaceScope::PublicContract,
+        note: "Input validation endpoint for the public solver contract.",
+    },
+    HttpContractBinding {
+        method: "POST",
+        route_path: "/api/v1/recommend-settings",
+        operation_id: Some("recommend-settings"),
+        scope: HttpSurfaceScope::PublicContract,
+        note: "Configuration recommendation endpoint for the public solver contract.",
+    },
+    HttpContractBinding {
+        method: "POST",
+        route_path: "/api/v1/evaluate-input",
+        operation_id: Some("evaluate-input"),
+        scope: HttpSurfaceScope::PublicContract,
+        note: "Input evaluation endpoint for the public solver contract.",
+    },
+    HttpContractBinding {
+        method: "POST",
+        route_path: "/api/v1/inspect-result",
+        operation_id: Some("inspect-result"),
+        scope: HttpSurfaceScope::PublicContract,
+        note: "Result summary endpoint for the public solver contract.",
+    },
+    HttpContractBinding {
+        method: "GET",
+        route_path: "/api/v1/schemas",
+        operation_id: Some("get-schema"),
+        scope: HttpSurfaceScope::PublicContract,
+        note: "Schema listing endpoint for the public solver contract.",
+    },
+    HttpContractBinding {
+        method: "GET",
+        route_path: "/api/v1/schemas/{schema_id}",
+        operation_id: Some("get-schema"),
+        scope: HttpSurfaceScope::PublicContract,
+        note: "Schema lookup endpoint for the public solver contract.",
+    },
+    HttpContractBinding {
+        method: "GET",
+        route_path: "/api/v1/errors",
+        operation_id: Some("inspect-errors"),
+        scope: HttpSurfaceScope::PublicContract,
+        note: "Error catalog endpoint for the public solver contract.",
+    },
+    HttpContractBinding {
+        method: "GET",
+        route_path: "/api/v1/errors/{error_code}",
+        operation_id: Some("inspect-errors"),
+        scope: HttpSurfaceScope::PublicContract,
+        note: "Error-code lookup endpoint for the public solver contract.",
+    },
+    HttpContractBinding {
         method: "POST",
         route_path: "/api/v1/jobs",
         operation_id: None,
@@ -41,9 +118,20 @@ pub fn http_contract_bindings() -> &'static [HttpContractBinding] {
     HTTP_BINDINGS
 }
 
+pub fn binding_for_operation_id(operation_id: &str) -> Option<&'static HttpContractBinding> {
+    HTTP_BINDINGS.iter().find(|binding| binding.operation_id == Some(operation_id))
+}
+
+pub fn public_contract_bindings() -> impl Iterator<Item = &'static HttpContractBinding> {
+    HTTP_BINDINGS
+        .iter()
+        .filter(|binding| binding.scope == HttpSurfaceScope::PublicContract)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{http_contract_bindings, HttpSurfaceScope};
+    use super::{http_contract_bindings, public_contract_bindings, HttpSurfaceScope};
+    use solver_contracts::operations::operation_spec;
     use std::collections::HashSet;
 
     #[test]
@@ -57,9 +145,21 @@ mod tests {
 
     #[test]
     fn legacy_job_routes_are_explicitly_marked_out_of_scope() {
-        for binding in http_contract_bindings() {
+        for binding in http_contract_bindings()
+            .iter()
+            .filter(|binding| binding.route_path.contains("/jobs"))
+        {
             assert_eq!(binding.scope, HttpSurfaceScope::OutOfScopeSupport);
             assert!(binding.operation_id.is_none());
+        }
+    }
+
+    #[test]
+    fn public_contract_route_operation_ids_resolve_when_present() {
+        for binding in public_contract_bindings() {
+            if let Some(operation_id) = binding.operation_id {
+                assert!(operation_spec(operation_id).is_some(), "missing op: {operation_id}");
+            }
         }
     }
 }

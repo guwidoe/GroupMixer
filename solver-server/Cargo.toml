@@ -12,11 +12,13 @@ tokio = { version = "1", features = ["full"] }
 axum = { version = "0.8.8", features = ["macros"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+schemars = "0.8"
 uuid = { version = "1.22.0", features = ["v4", "serde"] }
 rand = "0.10.0"
 dashmap = "6.1.0"
 
 solver-core = { path = "../solver-core" }
+solver-contracts = { path = "../solver-contracts" }
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

@@ -7,6 +7,7 @@ use solver_core::models::{
     ApiInput, Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams,
     SolverConfiguration, SolverParams, StopConditions,
 };
+use solver_contracts::types::{ResultSummary, ValidateResponse};
 use solver_server::api::handlers::{AppState, CreateJobResponse};
 use solver_server::api::routes::create_router;
 use solver_server::jobs::manager::{Job, JobManager, JobStatus};
@@ -93,6 +94,11 @@ fn invalid_input() -> ApiInput {
 async fn json_response<T: DeserializeOwned>(response: axum::response::Response) -> T {
     let bytes = response.into_body().collect().await.unwrap().to_bytes();
     serde_json::from_slice(&bytes).unwrap()
+}
+
+async fn text_response(response: axum::response::Response) -> String {
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    String::from_utf8(bytes.to_vec()).unwrap()
 }
 
 async fn wait_for_terminal_job(manager: &JobManager, job_id: Uuid) -> Job {
@@ -262,4 +268,201 @@ async fn create_job_route_returns_parseable_uuid_payload() {
     assert!(body.get("job_id").is_some());
     assert!(Uuid::parse_str(body.get("job_id").unwrap().as_str().unwrap()).is_ok());
     assert_eq!(body, json!({ "job_id": body["job_id"].clone() }));
+}
+
+#[tokio::test]
+async fn bootstrap_help_and_schema_endpoints_are_discoverable() {
+    let app = create_router(AppState {
+        job_manager: JobManager::new(),
+    });
+
+    let help_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/help")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(help_response.status(), StatusCode::OK);
+    let help_json: serde_json::Value = json_response(help_response).await;
+    assert_eq!(help_json["title"], "GroupMixer solver contracts");
+    assert!(help_json["operations"].as_array().unwrap().iter().any(|entry| entry["operation_id"] == "solve"));
+
+    let operation_help_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/help/solve")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(operation_help_response.status(), StatusCode::OK);
+    let operation_help_json: serde_json::Value = json_response(operation_help_response).await;
+    assert_eq!(operation_help_json["operation"]["id"], "solve");
+    assert!(operation_help_json["examples"].as_array().unwrap().len() >= 1);
+
+    let schema_list_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/schemas")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(schema_list_response.status(), StatusCode::OK);
+    let schemas_json: serde_json::Value = json_response(schema_list_response).await;
+    assert!(schemas_json.as_array().unwrap().iter().any(|entry| entry["id"] == "solve-request"));
+
+    let schema_response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/schemas/solve-request")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(schema_response.status(), StatusCode::OK);
+    let schema_json: serde_json::Value = json_response(schema_response).await;
+    assert_eq!(schema_json["title"], "ApiInput");
+}
+
+#[tokio::test]
+async fn contract_solver_endpoints_return_public_shapes() {
+    let app = create_router(AppState {
+        job_manager: JobManager::new(),
+    });
+
+    let solve_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/solve")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&valid_input()).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(solve_response.status(), StatusCode::OK);
+    let solve_body: solver_core::models::SolverResult = json_response(solve_response).await;
+    assert!(solve_body.schedule.contains_key("session_0"));
+
+    let validate_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/validate-problem")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&valid_input()).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(validate_response.status(), StatusCode::OK);
+    let validate_body: ValidateResponse = json_response(validate_response).await;
+    assert!(validate_body.valid);
+
+    let recommend_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/recommend-settings")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&valid_input().problem).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(recommend_response.status(), StatusCode::OK);
+    let recommend_body: solver_core::models::SolverConfiguration = json_response(recommend_response).await;
+    assert_eq!(recommend_body.solver_type, "SimulatedAnnealing");
+
+    let evaluate_input = {
+        let mut input = valid_input();
+        input.initial_schedule = Some(
+            serde_json::from_value(json!({"session_0": {"g0": ["p0", "p1"], "g1": ["p2", "p3"]}, "session_1": {"g0": ["p0", "p2"], "g1": ["p1", "p3"]}})).unwrap(),
+        );
+        input
+    };
+    let evaluate_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/evaluate-input")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&evaluate_input).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(evaluate_response.status(), StatusCode::OK);
+    let evaluate_body: solver_core::models::SolverResult = json_response(evaluate_response).await;
+    assert!(evaluate_body.schedule.contains_key("session_0"));
+
+    let inspect_response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/inspect-result")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&solve_body).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(inspect_response.status(), StatusCode::OK);
+    let summary: ResultSummary = json_response(inspect_response).await;
+    assert_eq!(summary.unique_contacts, solve_body.unique_contacts);
+}
+
+#[tokio::test]
+async fn error_catalog_endpoints_are_available() {
+    let app = create_router(AppState {
+        job_manager: JobManager::new(),
+    });
+
+    let errors_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/errors")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(errors_response.status(), StatusCode::OK);
+    let errors_json: serde_json::Value = json_response(errors_response).await;
+    assert!(errors_json.as_array().unwrap().iter().any(|entry| entry["code"] == "invalid-input"));
+
+    let error_response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/errors/invalid-input")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(error_response.status(), StatusCode::OK);
+    let error_json: serde_json::Value = json_response(error_response).await;
+    assert_eq!(error_json["code"], "invalid-input");
 }
