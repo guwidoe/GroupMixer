@@ -68,6 +68,11 @@ export function Header() {
             )}
             
             <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Link to="/" className="flex items-center space-x-2 text-sm transition-colors p-2 rounded-md hover:bg-opacity-50 flex-1 sm:flex-none justify-center sm:justify-start" style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-tertiary)' }}>
+                <span className="hidden lg:inline">Tool Home</span>
+                <span className="lg:hidden">Home</span>
+              </Link>
+
               <a href="https://github.com/guwidoe/GroupMixer/issues" target="_blank" rel="noopener noreferrer" title="Report an issue or suggest a feature" className="flex items-center space-x-2 text-sm transition-colors p-2 rounded-md hover:bg-opacity-50 flex-1 sm:flex-none justify-center sm:justify-start" style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-tertiary)' }}>
                 <Bug className="h-4 w-4" />
                 <span className="hidden lg:inline">Report Issue</span>
@@ -116,6 +121,15 @@ export function Header() {
               )}
               
               <div className="flex items-center gap-2">
+                <Link
+                  to="/"
+                  className="flex items-center space-x-2 text-sm transition-colors p-2 rounded-md flex-1 justify-start"
+                  style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-tertiary)' }}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <span>Tool Home</span>
+                </Link>
+
                 <a 
                   href="https://github.com/guwidoe/GroupMixer/issues" 
                   target="_blank" 
