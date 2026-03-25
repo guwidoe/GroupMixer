@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useLocalStorageState } from '../../hooks/useLocalStorageState';
 import type { ToolPageConfig } from '../../pages/toolPageConfigs';
+import { buildGroups, buildProblemFromDraft, parseParticipantInput } from '../../utils/quickSetup';
 import type {
   QuickSetupAnalysis,
   QuickSetupDraft,
@@ -61,71 +62,16 @@ function normalizeName(value: string): string {
   return value.trim().toLowerCase();
 }
 
-function parseCsv(text: string) {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  if (lines.length === 0) {
-    return { headers: [] as string[], rows: [] as Record<string, string>[] };
-  }
-
-  const headers = lines[0].split(',').map((entry) => entry.trim()).filter(Boolean);
-  const rows = lines.slice(1).map((line) => {
-    const cells = line.split(',').map((entry) => entry.trim());
-    return headers.reduce<Record<string, string>>((acc, header, index) => {
-      acc[header] = cells[index] ?? '';
-      return acc;
-    }, {});
-  });
-
-  return { headers, rows };
-}
-
 function parseParticipants(draft: QuickSetupDraft): Pick<QuickSetupAnalysis, 'participants' | 'availableBalanceKeys'> {
-  if (draft.inputMode === 'csv') {
-    const { headers, rows } = parseCsv(draft.participantInput);
-    if (headers.length === 0) {
-      return { participants: [], availableBalanceKeys: [] };
-    }
-
-    const preferredNameHeader = headers.find((header) => normalizeName(header) === 'name') ?? headers[0];
-    const availableBalanceKeys = headers.filter((header) => header !== preferredNameHeader);
-    const participants = rows
-      .map((row, index) => {
-        const name = row[preferredNameHeader]?.trim();
-        if (!name) {
-          return null;
-        }
-        const attributes = availableBalanceKeys.reduce<Record<string, string>>((acc, key) => {
-          const value = row[key]?.trim();
-          if (value) {
-            acc[key] = value;
-          }
-          return acc;
-        }, {});
-        return {
-          id: `csv-${index + 1}`,
-          name,
-          attributes,
-        } satisfies QuickSetupParticipant;
-      })
-      .filter((participant): participant is QuickSetupParticipant => Boolean(participant));
-
-    return { participants, availableBalanceKeys };
-  }
-
-  const participants = draft.participantInput
-    .split(/[\n,;]+/)
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .map((name, index) => ({
-      id: `name-${index + 1}`,
-      name,
-      attributes: {},
-    } satisfies QuickSetupParticipant));
-
-  return { participants, availableBalanceKeys: [] };
+  const parsed = parseParticipantInput(draft);
+  return {
+    participants: parsed.people.map((person) => ({
+      id: person.id,
+      name: person.id,
+      attributes: person.attributes,
+    })),
+    availableBalanceKeys: parsed.attributeKeys,
+  };
 }
 
 function parseConstraintLines(text: string): string[][] {
@@ -395,14 +341,9 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
 
   const analysis = useMemo(() => analyzeDraft(draft), [draft]);
   const participantCount = analysis.participants.length;
-  const estimatedGroupCount =
-    draft.groupingMode === 'groupCount'
-      ? Math.max(1, draft.groupingValue)
-      : Math.max(1, Math.ceil(participantCount / Math.max(1, draft.groupingValue)));
-  const estimatedGroupSize =
-    draft.groupingMode === 'groupSize'
-      ? Math.max(1, draft.groupingValue)
-      : Math.max(1, Math.ceil(participantCount / Math.max(1, draft.groupingValue)));
+  const estimatedGroups = useMemo(() => buildGroups(participantCount, draft), [participantCount, draft]);
+  const estimatedGroupCount = estimatedGroups.length;
+  const estimatedGroupSize = estimatedGroups[0]?.size ?? 0;
   const canGenerate = participantCount >= 2 && draft.groupingValue > 0;
 
   const updateDraft = useCallback(
@@ -466,9 +407,10 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
   }, [result]);
 
   const exportProjectDraft = useCallback(() => {
+    const mapped = buildProblemFromDraft(draft);
     downloadBlob(
       'groupmixer-quick-setup.json',
-      JSON.stringify({ draft, pageKey: pageConfig.key }, null, 2),
+      JSON.stringify({ draft, pageKey: pageConfig.key, ...mapped }, null, 2),
       'application/json',
     );
   }, [draft, pageConfig.key]);
