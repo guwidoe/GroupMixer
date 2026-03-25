@@ -1,6 +1,9 @@
-import { Download, FolderOpen, Save } from 'lucide-react';
+import { Download, FolderOpen, Layers3, Save, Target, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store';
+import { MetricCard } from '../ResultsView/MetricCard';
+import { ResultsScheduleGrid } from '../ResultsView/ResultsScheduleGrid';
+import { buildResultsSessionData } from '../results/buildResultsViewModel';
 import type { QuickSetupController } from './useQuickSetup';
 
 interface QuickSetupResultsProps {
@@ -11,6 +14,9 @@ export function QuickSetupResults({ controller }: QuickSetupResultsProps) {
   const { result } = controller;
   const replaceWorkspace = useAppStore((state) => state.replaceWorkspace);
   const navigate = useNavigate();
+  const workspacePayload = controller.buildWorkspaceBridgePayload();
+  const solvedSolution = workspacePayload.solution ?? null;
+  const sharedSessionData = solvedSolution ? buildResultsSessionData(workspacePayload.problem, solvedSolution) : [];
 
   const openAdvancedWorkspace = () => {
     replaceWorkspace(controller.buildWorkspaceBridgePayload());
@@ -74,37 +80,56 @@ export function QuickSetupResults({ controller }: QuickSetupResultsProps) {
           </div>
 
           <div className="mt-6 space-y-6">
-            {result.sessions.map((session) => (
-              <div key={session.sessionNumber}>
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <h3 className="text-base font-semibold">Session {session.sessionNumber}</h3>
-                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    Seed {result.seed}
+            {solvedSolution ? (
+              <>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <MetricCard title="Cost Score" value={solvedSolution.final_score.toFixed(1)} icon={Target} colorClass="text-green-600" />
+                  <MetricCard title="Unique Contacts" value={solvedSolution.unique_contacts} icon={Users} colorClass="text-blue-600" />
+                  <MetricCard title="Sessions" value={workspacePayload.problem.num_sessions} icon={Layers3} colorClass="text-purple-600" />
+                </div>
+                <div>
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <h3 className="text-base font-semibold">Inline results preview</h3>
+                    <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      Seed {result.seed}
+                    </div>
+                  </div>
+                  <ResultsScheduleGrid sessionData={sharedSessionData} />
+                </div>
+              </>
+            ) : (
+              result.sessions.map((session) => (
+                <div key={session.sessionNumber}>
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <h3 className="text-base font-semibold">Session {session.sessionNumber}</h3>
+                    <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      Seed {result.seed}
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {session.groups.map((group) => (
+                      <div
+                        key={`${session.sessionNumber}-${group.id}`}
+                        className="rounded-2xl border p-4"
+                        style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}
+                      >
+                        <div className="text-sm font-semibold">{group.id}</div>
+                        <ul className="mt-3 space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                          {group.members.map((member) => (
+                            <li key={member.id} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                              <span>{member.name}</span>
+                              {Object.keys(member.attributes).length > 0 && (
+                                <span className="text-xs uppercase tracking-[0.18em]">{Object.values(member.attributes).join(' / ')}</span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  {session.groups.map((group) => (
-                    <div
-                      key={`${session.sessionNumber}-${group.id}`}
-                      className="rounded-2xl border p-4"
-                      style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}
-                    >
-                      <div className="text-sm font-semibold">{group.id}</div>
-                      <ul className="mt-3 space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                        {group.members.map((member) => (
-                          <li key={member.id} className="flex items-center justify-between gap-3 rounded-xl px-3 py-2" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                            <span>{member.name}</span>
-                            {Object.keys(member.attributes).length > 0 && (
-                              <span className="text-xs uppercase tracking-[0.18em]">{Object.values(member.attributes).join(' / ')}</span>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </>
       )}

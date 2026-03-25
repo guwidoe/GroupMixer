@@ -7,6 +7,7 @@ import { calculateMetrics, getColorClass } from '../utils/metricCalculations';
 import { snapshotToProblem } from '../utils/problemSnapshot';
 import { useLocalStorageState, useOutsideClick } from '../hooks';
 import ConstraintComplianceCards from './ConstraintComplianceCards';
+import { buildResultsSessionData } from './results/buildResultsViewModel';
 import { ResultsHeader } from './ResultsView/ResultsHeader';
 import { ResultsMetrics } from './ResultsView/ResultsMetrics';
 import { ResultsSchedule } from './ResultsView/ResultsSchedule';
@@ -173,27 +174,7 @@ export function ResultsView() {
       return [];
     }
 
-    return Array.from({ length: effectiveProblem.num_sessions || 0 }, (_, sessionIndex) => {
-      const sessionAssignments = solution.assignments.filter(a => a.session_id === sessionIndex);
-
-      const groups = effectiveProblem.groups.map(group => {
-        const groupAssignments = sessionAssignments.filter(a => a.group_id === group.id);
-        const people = groupAssignments
-          .map(a => effectiveProblem.people.find(p => p.id === a.person_id))
-          .filter((person): person is typeof effectiveProblem.people[number] => Boolean(person));
-
-        return {
-          ...group,
-          people,
-        };
-      }) || [];
-
-      return {
-        sessionIndex,
-        groups,
-        totalPeople: sessionAssignments.length,
-      };
-    });
+    return buildResultsSessionData(effectiveProblem, solution);
   }, [solution, effectiveProblem]);
 
   if (!solution) {
