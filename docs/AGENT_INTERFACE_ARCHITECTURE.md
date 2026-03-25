@@ -542,6 +542,54 @@ Expose the same affordances over HTTP with:
 
 Expose browser-local help/capabilities APIs from the same registry.
 
+#### Concrete WASM rollout plan
+
+The `solver-wasm` projection should be implemented in five explicit steps so the
+browser surface stays thin and contract-driven:
+
+1. **Inventory and binding table**
+   - enumerate exported WASM affordances
+   - map public solver-facing exports onto stable `solver-contracts`
+     operation IDs
+   - mark legacy/support-only exports as explicitly out of scope rather than
+     letting them silently masquerade as contract surfaces
+2. **Bootstrap + local help + schema accessors**
+   - expose a minimal browser-local bootstrap surface such as capabilities/help
+   - expose local help for one operation at a time
+   - expose schema listing and schema lookup by stable schema ID
+3. **Canonical JS-facing errors**
+   - stop relying on ad hoc thrown strings for public solver-facing failures
+   - project failures into the shared `PublicErrorEnvelope`/`PublicError`
+     semantics, rendered in a JS-friendly shape
+4. **Recursive related-help navigation**
+   - ensure operation help and public errors include exact related help targets
+     that a browser caller can follow locally
+   - keep this transport-native by using operation IDs and WASM help accessors,
+     not generic external-doc pointers
+5. **Parity tests**
+   - add wasm/unit tests that fail when exported operation IDs, schema IDs,
+     error codes, or related-help edges drift from `solver-contracts`
+
+The intended public/browser-local discovery surface is:
+
+- bootstrap: `capabilities()`
+- local help: `get_operation_help(operation_id)`
+- schema list: `list_schemas()`
+- schema lookup: `get_schema(schema_id)`
+- error list: `list_public_errors()`
+- error lookup: `get_public_error(error_code)`
+
+The intended public/browser-local execution surface is:
+
+- `solve_contract(request)`
+- `validate_problem_contract(request)`
+- `recommend_settings_contract(problem_definition, desired_runtime_seconds)`
+- `evaluate_input_contract(request)`
+- `inspect_result_contract(result)`
+
+These should be exported as thin JS/WASM projections of `solver-contracts`, not
+as a second handwritten semantic registry.
+
 ### Phase 5 — Generate reference docs
 
 Generate Markdown or JSON reference output from the same contract layer.
