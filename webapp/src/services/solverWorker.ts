@@ -8,14 +8,33 @@ import {
   type SolverRpcMethod,
   type SolverRunResult,
   type WorkerErrorData,
+  type WorkerRequestMessage,
   type WorkerResponseMessage,
 } from "./solverWorker/protocol";
 import {
-  buildRustProblemJson,
-  buildWarmStartProblemJson,
-  parseProgressUpdate,
-  parseRustSolution,
+  buildRustProblemPayload,
+  buildWarmStartProblemPayload,
+  parseRustSolutionResult,
 } from "./rustBoundary";
+import type { WasmRecommendSettingsRequest } from "./wasm/module";
+
+function buildRecommendSettingsRequest(
+  problem: Problem,
+  desiredRuntimeSeconds: number,
+): WasmRecommendSettingsRequest {
+  const payload = buildRustProblemPayload(problem) as {
+    problem?: Record<string, unknown>;
+    objectives?: unknown[];
+    constraints?: unknown[];
+  };
+
+  return {
+    problem_definition: payload.problem ?? {},
+    objectives: payload.objectives ?? [],
+    constraints: payload.constraints ?? [],
+    desired_runtime_seconds: desiredRuntimeSeconds,
+  };
+}
 
 type PendingMessage =
   | {
@@ -25,7 +44,7 @@ type PendingMessage =
     }
   | {
       kind: "rpc";
-      resolve: (value: string) => void;
+      resolve: (value: unknown) => void;
       reject: (error: Error) => void;
     }
   | {
@@ -75,7 +94,7 @@ export class SolverWorkerService {
       throw new Error(
         `Failed to initialize solver worker: ${
           error instanceof Error ? error.message : String(error)
-        }`
+        }`,
       );
     }
   }
@@ -112,28 +131,22 @@ export class SolverWorkerService {
         case "PROGRESS":
           if (pending?.kind === "solve" && pending.progressCallback) {
             try {
-              const progress = parseProgressUpdate(
-                message.data.progressJson || "{}"
-              );
+              const progress = message.data.progress;
               pending.progressCallback(progress);
               this.lastProgressUpdate = progress;
             } catch (error) {
-              console.error("Failed to parse progress update:", error);
+              console.error("Failed to handle progress update:", error);
             }
           }
           break;
 
         case "SOLVE_SUCCESS":
           if (pending?.kind === "solve") {
-            let lastProgress: ProgressUpdate | null = null;
-            if (message.data.lastProgressJson) {
-              try {
-                lastProgress = parseProgressUpdate(message.data.lastProgressJson);
-              } catch (error) {
-                console.error("Failed to parse last progress update:", error);
-              }
+            const lastProgress = message.data.lastProgress ?? null;
+            if (lastProgress) {
+              this.lastProgressUpdate = lastProgress;
             }
-            pending.resolve({ result: message.data.result || "", lastProgress });
+            pending.resolve({ result: message.data.result, lastProgress });
             this.pendingMessages.delete(message.id);
           }
           break;
@@ -178,7 +191,7 @@ export class SolverWorkerService {
 
         case "RPC_SUCCESS":
           if (pending?.kind === "rpc") {
-            pending.resolve(message.data.result || "");
+            pending.resolve(message.data.result);
             this.pendingMessages.delete(message.id);
           }
           break;
@@ -190,7 +203,7 @@ export class SolverWorkerService {
             window.dispatchEvent(
               new CustomEvent("solver-problem-json", {
                 detail: message.data.problemJson,
-              })
+              }),
             );
           } catch {
             /* no-op */
@@ -223,21 +236,21 @@ export class SolverWorkerService {
     });
   }
 
-  private sendRpc(
+  private sendRpc<T>(
     method: SolverRpcMethod,
-    data: SolverMessageData
-  ): Promise<string> {
+    data: SolverMessageData,
+  ): Promise<T> {
     return new Promise((resolve, reject) => {
       const id = this.nextMessageId();
-      this.pendingMessages.set(id, { kind: "rpc", resolve, reject });
+      this.pendingMessages.set(id, { kind: "rpc", resolve: resolve as (value: unknown) => void, reject });
       this.postMessage(createRpcRequestMessage(method, id, data));
     });
   }
 
   private sendSolve(
-    problemJson: string,
+    problemPayload: Record<string, unknown>,
     useProgress: boolean,
-    progressCallback?: ProgressCallback
+    progressCallback?: ProgressCallback,
   ): Promise<SolverRunResult> {
     return new Promise((resolve, reject) => {
       const id = this.nextMessageId();
@@ -247,7 +260,7 @@ export class SolverWorkerService {
         reject,
         progressCallback,
       });
-      this.postMessage(createSolveRequestMessage(id, problemJson, useProgress));
+      this.postMessage(createSolveRequestMessage(id, problemPayload, useProgress));
     });
   }
 
@@ -256,29 +269,29 @@ export class SolverWorkerService {
       await this.initialize();
     }
 
-    const problemJson = buildRustProblemJson(problem);
+    const problemPayload = buildRustProblemPayload(problem);
 
-    const { result } = await this.sendSolve(problemJson, false);
-    return parseRustSolution(result, null, this.lastProgressUpdate);
+    const { result } = await this.sendSolve(problemPayload, false);
+    return parseRustSolutionResult(result, null, this.lastProgressUpdate);
   }
 
   async solveWithProgress(
     problem: Problem,
-    progressCallback?: ProgressCallback
+    progressCallback?: ProgressCallback,
   ): Promise<{ solution: Solution; lastProgress: ProgressUpdate | null }> {
     if (!this.isInitialized) {
       await this.initialize();
     }
 
-    const problemJson = buildRustProblemJson(problem);
+    const problemPayload = buildRustProblemPayload(problem);
 
     const { result, lastProgress } = await this.sendSolve(
-      problemJson,
+      problemPayload,
       true,
-      progressCallback
+      progressCallback,
     );
 
-    const solution = parseRustSolution(result, lastProgress, this.lastProgressUpdate);
+    const solution = parseRustSolutionResult(result, lastProgress, this.lastProgressUpdate);
 
     return { solution, lastProgress };
   }
@@ -286,21 +299,21 @@ export class SolverWorkerService {
   async solveWithProgressWarmStart(
     problem: Problem,
     initialSchedule: Record<string, Record<string, string[]>>,
-    progressCallback?: ProgressCallback
+    progressCallback?: ProgressCallback,
   ): Promise<{ solution: Solution; lastProgress: ProgressUpdate | null }> {
     if (!this.isInitialized) {
       await this.initialize();
     }
 
-    const problemJson = buildWarmStartProblemJson(problem, initialSchedule);
+    const problemPayload = buildWarmStartProblemPayload(problem, initialSchedule);
 
     const { result, lastProgress } = await this.sendSolve(
-      problemJson,
+      problemPayload,
       true,
-      progressCallback
+      progressCallback,
     );
 
-    const solution = parseRustSolution(result, lastProgress, this.lastProgressUpdate);
+    const solution = parseRustSolutionResult(result, lastProgress, this.lastProgressUpdate);
     return { solution, lastProgress };
   }
 
@@ -337,32 +350,32 @@ export class SolverWorkerService {
     this.pendingMessages.clear();
   }
 
-  private async callSolver(
+  private async callSolver<T>(
     method: SolverRpcMethod,
-    data: SolverMessageData
-  ): Promise<string> {
+    data: SolverMessageData,
+  ): Promise<T> {
     if (!this.isInitialized) {
       await this.initialize();
     }
 
-    return this.sendRpc(method, data);
+    return this.sendRpc<T>(method, data);
+  }
+
+  public async getDefaultSolverConfiguration(): Promise<SolverSettings> {
+    return this.callSolver<SolverSettings>("get_default_solver_configuration", {});
   }
 
   public async getDefaultSettings(): Promise<SolverSettings> {
-    const result = await this.callSolver("get_default_settings", {});
-    return JSON.parse(result);
+    return this.getDefaultSolverConfiguration();
   }
 
   public async getRecommendedSettings(
     problem: Problem,
-    desiredRuntimeSeconds: number
+    desiredRuntimeSeconds: number,
   ): Promise<SolverSettings> {
-    const result = await this.callSolver("get_recommended_settings", {
-      problemJson: JSON.stringify(problem),
-      desired_runtime_seconds: desiredRuntimeSeconds,
+    return this.callSolver<SolverSettings>("recommend_settings", {
+      recommendRequest: buildRecommendSettingsRequest(problem, desiredRuntimeSeconds),
     });
-
-    return JSON.parse(result);
   }
 }
 

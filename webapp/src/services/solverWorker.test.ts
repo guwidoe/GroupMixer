@@ -4,17 +4,26 @@ import { createSampleProblem, createSampleSolution, createSampleSolverSettings }
 import { SolverWorkerService } from "./solverWorker";
 import type { ProgressUpdate } from "./wasm/types";
 import {
-  buildRustProblemJson,
-  buildWarmStartProblemJson,
-  parseProgressUpdate,
-  parseRustSolution,
+  buildRustProblemPayload,
+  buildWarmStartProblemPayload,
+  parseRustSolutionResult,
 } from "./rustBoundary";
 
 vi.mock("./rustBoundary", () => ({
-  buildRustProblemJson: vi.fn(() => "problem-json"),
-  buildWarmStartProblemJson: vi.fn(() => "warm-start-json"),
-  parseProgressUpdate: vi.fn((payload: string) => JSON.parse(payload)),
-  parseRustSolution: vi.fn(() => createSampleSolution()),
+  buildRustProblemPayload: vi.fn(() => ({
+    problem: { people: [], groups: [], num_sessions: 2 },
+    objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
+    constraints: [],
+    solver: { solver_type: "SimulatedAnnealing" },
+  })),
+  buildWarmStartProblemPayload: vi.fn(() => ({
+    problem: { people: [], groups: [], num_sessions: 2 },
+    objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
+    constraints: [],
+    solver: { solver_type: "SimulatedAnnealing" },
+    initial_schedule: { session_0: { g1: ["p1"] } },
+  })),
+  parseRustSolutionResult: vi.fn(() => createSampleSolution()),
 }));
 
 type PostedMessage = { type: string; id?: string; data?: Record<string, unknown> };
@@ -161,26 +170,33 @@ describe("SolverWorkerService", () => {
     const solvePromise = service.solveWithProgress(createProblem(), callback);
     const worker = FakeWorker.latest();
 
-    expect(buildRustProblemJson).toHaveBeenCalledWith(expect.objectContaining({ people: expect.any(Array) }));
+    expect(buildRustProblemPayload).toHaveBeenCalledWith(expect.objectContaining({ people: expect.any(Array) }));
     expect(worker.postedMessages.at(-1)).toEqual({
       type: "SOLVE",
       id: "2",
-      data: { problemJson: "problem-json", useProgress: true },
+      data: {
+        problemPayload: {
+          problem: { people: [], groups: [], num_sessions: 2 },
+          objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
+          constraints: [],
+          solver: { solver_type: "SimulatedAnnealing" },
+        },
+        useProgress: true,
+      },
     });
 
-    worker.emit({ type: "PROGRESS", id: "2", data: { progressJson: JSON.stringify(progress) } });
+    worker.emit({ type: "PROGRESS", id: "2", data: { progress } });
     worker.emit({
       type: "SOLVE_SUCCESS",
       id: "2",
-      data: { result: "result-json", lastProgressJson: JSON.stringify(progress) },
+      data: { result: { schedule: {}, final_score: 9 }, lastProgress: progress },
     });
 
     const result = await solvePromise;
 
-    expect(parseProgressUpdate).toHaveBeenCalledTimes(2);
     expect(callback).toHaveBeenCalledWith(progress);
     expect(result.lastProgress).toEqual(progress);
-    expect(parseRustSolution).toHaveBeenCalledWith("result-json", progress, progress);
+    expect(parseRustSolutionResult).toHaveBeenCalledWith({ schedule: {}, final_score: 9 }, progress, progress);
     expect(service.getLastProgressUpdate()).toEqual(progress);
   });
 
@@ -192,43 +208,59 @@ describe("SolverWorkerService", () => {
     const solvePromise = service.solveWithProgressWarmStart(createProblem(), initialSchedule);
     const worker = FakeWorker.latest();
 
-    expect(buildWarmStartProblemJson).toHaveBeenCalledWith(
+    expect(buildWarmStartProblemPayload).toHaveBeenCalledWith(
       expect.objectContaining({ people: expect.any(Array) }),
       initialSchedule,
     );
     expect(worker.postedMessages.at(-1)).toEqual({
       type: "SOLVE",
       id: "2",
-      data: { problemJson: "warm-start-json", useProgress: true },
+      data: {
+        problemPayload: {
+          problem: { people: [], groups: [], num_sessions: 2 },
+          objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
+          constraints: [],
+          solver: { solver_type: "SimulatedAnnealing" },
+          initial_schedule: { session_0: { g1: ["p1"] } },
+        },
+        useProgress: true,
+      },
     });
 
-    worker.emit({ type: "SOLVE_SUCCESS", id: "2", data: { result: "result-json" } });
+    worker.emit({ type: "SOLVE_SUCCESS", id: "2", data: { result: { schedule: {}, final_score: 9 } } });
     await solvePromise;
   });
 
-  it("fetches default and recommended settings through RPC messages", async () => {
+  it("fetches default and recommended settings through canonical RPC messages", async () => {
     const service = createService();
     await initializeService(service);
-    const settingsJson = JSON.stringify(createSampleSolverSettings());
+    const settings = createSampleSolverSettings();
 
     const defaultsPromise = service.getDefaultSettings();
     const worker = FakeWorker.latest();
     expect(worker.postedMessages.at(-1)).toEqual({
-      type: "get_default_settings",
+      type: "get_default_solver_configuration",
       id: "2",
       data: {},
     });
-    worker.emit({ type: "RPC_SUCCESS", id: "2", data: { result: settingsJson } });
-    await expect(defaultsPromise).resolves.toEqual(JSON.parse(settingsJson));
+    worker.emit({ type: "RPC_SUCCESS", id: "2", data: { result: settings } });
+    await expect(defaultsPromise).resolves.toEqual(settings);
 
     const recommendedPromise = service.getRecommendedSettings(createProblem(), 9);
     expect(worker.postedMessages.at(-1)).toEqual({
-      type: "get_recommended_settings",
+      type: "recommend_settings",
       id: "3",
-      data: { problemJson: JSON.stringify(createProblem()), desired_runtime_seconds: 9 },
+      data: {
+        recommendRequest: {
+          problem_definition: { people: [], groups: [], num_sessions: 2 },
+          objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
+          constraints: [],
+          desired_runtime_seconds: 9,
+        },
+      },
     });
-    worker.emit({ type: "RPC_SUCCESS", id: "3", data: { result: settingsJson } });
-    await expect(recommendedPromise).resolves.toEqual(JSON.parse(settingsJson));
+    worker.emit({ type: "RPC_SUCCESS", id: "3", data: { result: settings } });
+    await expect(recommendedPromise).resolves.toEqual(settings);
   });
 
   it("rejects pending calls on fatal worker errors", async () => {
@@ -251,7 +283,15 @@ describe("SolverWorkerService", () => {
     expect(firstWorker.postedMessages.at(-1)).toEqual({
       type: "SOLVE",
       id: "2",
-      data: { problemJson: "problem-json", useProgress: false },
+      data: {
+        problemPayload: {
+          problem: { people: [], groups: [], num_sessions: 2 },
+          objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
+          constraints: [],
+          solver: { solver_type: "SimulatedAnnealing" },
+        },
+        useProgress: false,
+      },
     });
 
     const cancelPromise = service.cancel();

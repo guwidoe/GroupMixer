@@ -16,49 +16,60 @@ import {
 describe("solver worker protocol", () => {
   it("exposes the supported RPC methods as a runtime-checked catalog", () => {
     expect(SOLVER_RPC_METHODS).toEqual([
-      "get_default_settings",
-      "get_recommended_settings",
+      "get_default_solver_configuration",
+      "recommend_settings",
     ]);
-    expect(isSolverRpcMethod("get_default_settings")).toBe(true);
-    expect(isSolverRpcMethod("get_recommended_settings")).toBe(true);
+    expect(isSolverRpcMethod("get_default_solver_configuration")).toBe(true);
+    expect(isSolverRpcMethod("recommend_settings")).toBe(true);
     expect(isSolverRpcMethod("not-a-method")).toBe(false);
   });
 
   it("builds request messages with the expected boundary shape", () => {
     expect(createInitRequestMessage("1")).toEqual({ type: "INIT", id: "1" });
     expect(createCancelRequestMessage("2")).toEqual({ type: "CANCEL", id: "2" });
-    expect(createSolveRequestMessage("3", "problem-json", true)).toEqual({
+    expect(createSolveRequestMessage("3", { problem: { people: [] } }, true)).toEqual({
       type: "SOLVE",
       id: "3",
-      data: { problemJson: "problem-json", useProgress: true },
+      data: { problemPayload: { problem: { people: [] } }, useProgress: true },
     });
     expect(
-      createRpcRequestMessage("get_recommended_settings", "4", {
-        problemJson: "problem-json",
-        desired_runtime_seconds: 9,
+      createRpcRequestMessage("recommend_settings", "4", {
+        recommendRequest: {
+          problem_definition: { people: [] },
+          objectives: [],
+          constraints: [],
+          desired_runtime_seconds: 9,
+        },
       }),
     ).toEqual({
-      type: "get_recommended_settings",
+      type: "recommend_settings",
       id: "4",
-      data: { problemJson: "problem-json", desired_runtime_seconds: 9 },
+      data: {
+        recommendRequest: {
+          problem_definition: { people: [] },
+          objectives: [],
+          constraints: [],
+          desired_runtime_seconds: 9,
+        },
+      },
     });
   });
 
   it("builds response messages with the expected boundary shape", () => {
-    expect(createProgressMessage("5", "progress-json")).toEqual({
+    expect(createProgressMessage("5", { iteration: 1 } as never)).toEqual({
       type: "PROGRESS",
       id: "5",
-      data: { progressJson: "progress-json" },
+      data: { progress: { iteration: 1 } },
     });
-    expect(createSolveSuccessMessage("6", "result-json", "last-progress")).toEqual({
+    expect(createSolveSuccessMessage("6", { final_score: 1 } as never, { iteration: 2 } as never)).toEqual({
       type: "SOLVE_SUCCESS",
       id: "6",
-      data: { result: "result-json", lastProgressJson: "last-progress" },
+      data: { result: { final_score: 1 }, lastProgress: { iteration: 2 } },
     });
-    expect(createRpcSuccessMessage("7", "settings-json")).toEqual({
+    expect(createRpcSuccessMessage("7", { solver_type: "SimulatedAnnealing" })).toEqual({
       type: "RPC_SUCCESS",
       id: "7",
-      data: { result: "settings-json" },
+      data: { result: { solver_type: "SimulatedAnnealing" } },
     });
     expect(createRequestErrorMessage("8", { error: "boom" }, "RPC_ERROR")).toEqual({
       type: "RPC_ERROR",

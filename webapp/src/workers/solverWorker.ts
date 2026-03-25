@@ -2,6 +2,7 @@
 // Uses ESM imports instead of importScripts to work with wasm-pack --target web output
 
 import wasmInit, * as wasmModule from "virtual:wasm-solver";
+import type { WasmContractModule } from "../services/wasm/module";
 import {
   createFatalErrorMessage,
   createProgressMessage,
@@ -12,23 +13,22 @@ import {
   type WorkerRequestMessage,
   type WorkerResponseMessage,
 } from "../services/solverWorker/protocol";
+import type { ProgressUpdate, RustResult } from "../services/wasm/types";
 
 type WorkerConsole = Pick<Console, "warn" | "error">;
 
-type WorkerWasmModule = {
+type WorkerWasmModule = Partial<Pick<
+  WasmContractModule,
+  | "solve_with_progress"
+  | "get_default_solver_configuration"
+  | "recommend_settings"
+>> & {
   init_panic_hook?: () => void;
-  solve: (problemJson: string) => string;
-  solve_with_progress: (
-    problemJson: string,
-    progressCallback: (progressJson: string) => boolean,
-  ) => string;
-  get_default_settings: () => string;
-  get_recommended_settings: (problemJson: string, desiredRuntimeSeconds: bigint) => string;
 };
 
 export interface SolverWorkerRuntimeDeps {
   wasmInit?: (() => Promise<unknown>) | (() => unknown);
-  wasmModule: Partial<WorkerWasmModule>;
+  wasmModule: WorkerWasmModule;
   postMessage: (message: WorkerResponseMessage) => void;
   console?: WorkerConsole;
   setTimeoutFn?: (callback: () => void, ms: number) => unknown;
@@ -52,7 +52,6 @@ export function createSolverWorkerRuntime({
 }: SolverWorkerRuntimeDeps): SolverWorkerRuntime {
   let isInitializing = false;
   let isInitialized = false;
-  let lastProblemJson: string | null = null;
 
   async function initWasm(): Promise<void> {
     if (isInitialized) return;
@@ -102,8 +101,7 @@ export function createSolverWorkerRuntime({
         }
 
         case "SOLVE": {
-          const { problemJson, useProgress } = message.data;
-          lastProblemJson = problemJson;
+          const { problemPayload, useProgress } = message.data;
 
           if (!isInitialized) {
             await initWasm();
@@ -113,29 +111,24 @@ export function createSolverWorkerRuntime({
             throw new Error("WASM module not initialized");
           }
 
-          if (useProgress) {
-            let lastProgressJson: string | null = null;
-
-            const progressCallback = (progressJson: string): boolean => {
-              lastProgressJson = progressJson;
-              postMessage(createProgressMessage(id, progressJson));
-              return true;
-            };
-
-            if (typeof wasm.solve_with_progress !== "function") {
-              throw new Error("WASM module is missing solve_with_progress");
-            }
-
-            const result = wasm.solve_with_progress(problemJson, progressCallback);
-            postMessage(createSolveSuccessMessage(id, result, lastProgressJson));
-          } else {
-            if (typeof wasm.solve !== "function") {
-              throw new Error("WASM module is missing solve");
-            }
-
-            const result = wasm.solve(problemJson);
-            postMessage(createSolveSuccessMessage(id, result));
+          if (typeof wasm.solve_with_progress !== "function") {
+            throw new Error("WASM module is missing solve_with_progress");
           }
+
+          let lastProgress: ProgressUpdate | null = null;
+          const progressCallback = useProgress
+            ? (progress: ProgressUpdate): boolean => {
+                lastProgress = progress;
+                postMessage(createProgressMessage(id, progress));
+                return true;
+              }
+            : undefined;
+
+          const result = wasm.solve_with_progress(
+            problemPayload || {},
+            progressCallback,
+          ) as RustResult;
+          postMessage(createSolveSuccessMessage(id, result, lastProgress));
           break;
         }
 
@@ -144,14 +137,14 @@ export function createSolverWorkerRuntime({
           break;
         }
 
-        case "get_default_settings": {
+        case "get_default_solver_configuration": {
           try {
             if (!isInitialized) throw new Error("WASM module not initialized.");
-            if (typeof wasm.get_default_settings !== "function") {
-              throw new Error("WASM module is missing get_default_settings");
+            if (typeof wasm.get_default_solver_configuration !== "function") {
+              throw new Error("WASM module is missing get_default_solver_configuration");
             }
 
-            const settings = wasm.get_default_settings();
+            const settings = wasm.get_default_solver_configuration();
             postMessage(createRpcSuccessMessage(id, settings));
           } catch (error) {
             postMessage(
@@ -165,17 +158,20 @@ export function createSolverWorkerRuntime({
           break;
         }
 
-        case "get_recommended_settings": {
+        case "recommend_settings": {
           try {
             if (!isInitialized) throw new Error("WASM module not initialized.");
-            if (typeof wasm.get_recommended_settings !== "function") {
-              throw new Error("WASM module is missing get_recommended_settings");
+            if (typeof wasm.recommend_settings !== "function") {
+              throw new Error("WASM module is missing recommend_settings");
             }
 
-            const { problemJson, desired_runtime_seconds } = message.data;
-            const settings = wasm.get_recommended_settings(
-              problemJson || "",
-              BigInt(desired_runtime_seconds),
+            const settings = wasm.recommend_settings(
+              message.data.recommendRequest || {
+                problem_definition: {},
+                objectives: [],
+                constraints: [],
+                desired_runtime_seconds: 0,
+              },
             );
             postMessage(createRpcSuccessMessage(id, settings));
           } catch (error) {
@@ -197,7 +193,6 @@ export function createSolverWorkerRuntime({
       workerConsole.error("Worker error:", error);
       postRequestError(id, {
         error: errorToMessage(error),
-        problemJson: lastProblemJson || undefined,
       });
     }
   }
@@ -235,7 +230,7 @@ export function attachSolverWorkerRuntime(
 
 const runtime = createSolverWorkerRuntime({
   wasmInit: typeof wasmInit === "function" ? wasmInit : undefined,
-  wasmModule: wasmModule as Partial<WorkerWasmModule>,
+  wasmModule: wasmModule as WorkerWasmModule,
   postMessage: (message) => self.postMessage(message),
 });
 

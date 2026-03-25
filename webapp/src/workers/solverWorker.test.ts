@@ -24,15 +24,12 @@ describe("solverWorker runtime", () => {
     const wasmInit = vi.fn(async () => undefined);
     const wasmModule = {
       init_panic_hook: vi.fn(),
-      solve: vi.fn((problemJson: string) => `solved:${problemJson}`),
-      solve_with_progress: vi.fn((problemJson: string, callback: (progress: string) => boolean) => {
-        callback('{"iteration":1}');
-        return `solved-with-progress:${problemJson}`;
+      solve_with_progress: vi.fn((input: Record<string, unknown>, callback?: ((progress: Record<string, unknown>) => boolean) | null) => {
+        callback?.({ iteration: 1, best_score: 3 });
+        return { schedule: {}, final_score: 1, input };
       }),
-      get_default_settings: vi.fn(() => '{"solver_type":"SimulatedAnnealing"}'),
-      get_recommended_settings: vi.fn((_problemJson: string, desiredRuntimeSeconds: bigint) => {
-        return JSON.stringify({ desiredRuntimeSeconds: Number(desiredRuntimeSeconds) });
-      }),
+      get_default_solver_configuration: vi.fn(() => ({ solver_type: "SimulatedAnnealing" })),
+      recommend_settings: vi.fn((request: Record<string, unknown>) => ({ request })),
     };
 
     const runtime = createSolverWorkerRuntime({
@@ -79,23 +76,30 @@ describe("solverWorker runtime", () => {
     ]);
   });
 
-  it("solves without progress and auto-initializes the worker runtime", async () => {
+  it("solves without progress and auto-initializes the worker runtime through the canonical solve surface", async () => {
     const { runtime, wasmInit, wasmModule } = createRuntime();
 
     await runtime.handleMessage({
       type: "SOLVE",
       id: "1",
-      data: { problemJson: "problem-json", useProgress: false },
+      data: { problemPayload: { problem: { people: [] } }, useProgress: false },
     });
 
     expect(wasmInit).toHaveBeenCalledTimes(1);
-    expect(wasmModule.solve).toHaveBeenCalledWith("problem-json");
+    expect(wasmModule.solve_with_progress).toHaveBeenCalledWith(
+      { problem: { people: [] } },
+      undefined,
+    );
     expect(postedMessages).toEqual([
-      { type: "SOLVE_SUCCESS", id: "1", data: { result: "solved:problem-json", lastProgressJson: undefined } },
+      {
+        type: "SOLVE_SUCCESS",
+        id: "1",
+        data: { result: { schedule: {}, final_score: 1, input: { problem: { people: [] } } }, lastProgress: null },
+      },
     ]);
   });
 
-  it("streams progress updates and captures the final progress payload", async () => {
+  it("streams structured progress updates and captures the final progress payload", async () => {
     const { runtime, wasmModule } = createRuntime();
     await initializeRuntime(runtime);
     postedMessages = [];
@@ -103,47 +107,68 @@ describe("solverWorker runtime", () => {
     await runtime.handleMessage({
       type: "SOLVE",
       id: "2",
-      data: { problemJson: "problem-json", useProgress: true },
+      data: { problemPayload: { problem: { people: [] } }, useProgress: true },
     });
 
     expect(wasmModule.solve_with_progress).toHaveBeenCalledTimes(1);
     expect(postedMessages).toEqual([
-      { type: "PROGRESS", id: "2", data: { progressJson: '{"iteration":1}' } },
+      { type: "PROGRESS", id: "2", data: { progress: { iteration: 1, best_score: 3 } } },
       {
         type: "SOLVE_SUCCESS",
         id: "2",
         data: {
-          result: "solved-with-progress:problem-json",
-          lastProgressJson: '{"iteration":1}',
+          result: { schedule: {}, final_score: 1, input: { problem: { people: [] } } },
+          lastProgress: { iteration: 1, best_score: 3 },
         },
       },
     ]);
   });
 
-  it("returns default settings and recommended settings through RPC responses", async () => {
+  it("returns default configuration and recommended settings through canonical RPC responses", async () => {
     const { runtime, wasmModule } = createRuntime();
     await initializeRuntime(runtime);
     postedMessages = [];
 
-    await runtime.handleMessage({ type: "get_default_settings", id: "2", data: {} });
+    await runtime.handleMessage({ type: "get_default_solver_configuration", id: "2", data: {} });
     await runtime.handleMessage({
-      type: "get_recommended_settings",
+      type: "recommend_settings",
       id: "3",
-      data: { problemJson: "problem-json", desired_runtime_seconds: 11 },
+      data: {
+        recommendRequest: {
+          problem_definition: { people: [] },
+          objectives: [],
+          constraints: [],
+          desired_runtime_seconds: 11,
+        },
+      },
     });
 
-    expect(wasmModule.get_default_settings).toHaveBeenCalledTimes(1);
-    expect(wasmModule.get_recommended_settings).toHaveBeenCalledWith("problem-json", 11n);
+    expect(wasmModule.get_default_solver_configuration).toHaveBeenCalledTimes(1);
+    expect(wasmModule.recommend_settings).toHaveBeenCalledWith({
+      problem_definition: { people: [] },
+      objectives: [],
+      constraints: [],
+      desired_runtime_seconds: 11,
+    });
     expect(postedMessages).toEqual([
       {
         type: "RPC_SUCCESS",
         id: "2",
-        data: { result: '{"solver_type":"SimulatedAnnealing"}' },
+        data: { result: { solver_type: "SimulatedAnnealing" } },
       },
       {
         type: "RPC_SUCCESS",
         id: "3",
-        data: { result: '{"desiredRuntimeSeconds":11}' },
+        data: {
+          result: {
+            request: {
+              problem_definition: { people: [] },
+              objectives: [],
+              constraints: [],
+              desired_runtime_seconds: 11,
+            },
+          },
+        },
       },
     ]);
   });
@@ -151,7 +176,7 @@ describe("solverWorker runtime", () => {
   it("returns RPC_ERROR when RPC handlers fail", async () => {
     const { runtime } = createRuntime({
       wasmModule: {
-        get_default_settings: vi.fn(() => {
+        get_default_solver_configuration: vi.fn(() => {
           throw new Error("settings boom");
         }),
       },
@@ -159,7 +184,7 @@ describe("solverWorker runtime", () => {
     await initializeRuntime(runtime);
     postedMessages = [];
 
-    await runtime.handleMessage({ type: "get_default_settings", id: "2", data: {} });
+    await runtime.handleMessage({ type: "get_default_solver_configuration", id: "2", data: {} });
 
     expect(postedMessages).toEqual([
       {
@@ -170,10 +195,10 @@ describe("solverWorker runtime", () => {
     ]);
   });
 
-  it("includes the last problem json when solve handling fails", async () => {
+  it("posts solve errors without relying on legacy problem json context", async () => {
     const { runtime } = createRuntime({
       wasmModule: {
-        solve: vi.fn(() => {
+        solve_with_progress: vi.fn(() => {
           throw new Error("solve boom");
         }),
       },
@@ -184,14 +209,14 @@ describe("solverWorker runtime", () => {
     await runtime.handleMessage({
       type: "SOLVE",
       id: "2",
-      data: { problemJson: "problem-json", useProgress: false },
+      data: { problemPayload: { problem: { people: [] } }, useProgress: false },
     });
 
     expect(postedMessages).toEqual([
       {
         type: "ERROR",
         id: "2",
-        data: { error: "solve boom", problemJson: "problem-json" },
+        data: { error: "solve boom" },
       },
     ]);
   });

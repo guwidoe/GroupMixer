@@ -1,12 +1,13 @@
-import type { ProgressUpdate } from "../wasm/types";
+import type { WasmRecommendSettingsRequest } from "../wasm/module";
+import type { ProgressUpdate, RustResult } from "../wasm/types";
 
 export type SolverRpcMethod =
-  | "get_default_settings"
-  | "get_recommended_settings";
+  | "get_default_solver_configuration"
+  | "recommend_settings";
 
 export const SOLVER_RPC_METHODS = [
-  "get_default_settings",
-  "get_recommended_settings",
+  "get_default_solver_configuration",
+  "recommend_settings",
 ] as const satisfies readonly SolverRpcMethod[];
 
 export function isSolverRpcMethod(value: string): value is SolverRpcMethod {
@@ -14,10 +15,10 @@ export function isSolverRpcMethod(value: string): value is SolverRpcMethod {
 }
 
 export interface SolverMessageData {
-  problemJson?: string;
+  problemPayload?: Record<string, unknown>;
   useProgress?: boolean;
+  recommendRequest?: WasmRecommendSettingsRequest;
   args?: unknown[];
-  desired_runtime_seconds?: number;
 }
 
 export interface InitRequestMessage {
@@ -34,7 +35,7 @@ export interface SolveRequestMessage {
   type: "SOLVE";
   id: string;
   data: {
-    problemJson: string;
+    problemPayload: Record<string, unknown>;
     useProgress?: boolean;
   };
 }
@@ -68,7 +69,7 @@ export interface ProgressMessage {
   type: "PROGRESS";
   id: string;
   data: {
-    progressJson: string;
+    progress: ProgressUpdate;
   };
 }
 
@@ -76,8 +77,8 @@ export interface SolveSuccessMessage {
   type: "SOLVE_SUCCESS";
   id: string;
   data: {
-    result: string;
-    lastProgressJson?: string | null;
+    result: RustResult;
+    lastProgress?: ProgressUpdate | null;
   };
 }
 
@@ -96,7 +97,7 @@ export interface RpcSuccessMessage {
   type: "RPC_SUCCESS";
   id: string;
   data: {
-    result: string;
+    result: unknown;
   };
 }
 
@@ -132,13 +133,13 @@ export function createCancelRequestMessage(id: string): CancelRequestMessage {
 
 export function createSolveRequestMessage(
   id: string,
-  problemJson: string,
+  problemPayload: Record<string, unknown>,
   useProgress = false,
 ): SolveRequestMessage {
   return {
     type: "SOLVE",
     id,
-    data: { problemJson, useProgress },
+    data: { problemPayload, useProgress },
   };
 }
 
@@ -156,30 +157,30 @@ export function createRpcRequestMessage(
 
 export function createProgressMessage(
   id: string,
-  progressJson: string,
+  progress: ProgressUpdate,
 ): ProgressMessage {
   return {
     type: "PROGRESS",
     id,
-    data: { progressJson },
+    data: { progress },
   };
 }
 
 export function createSolveSuccessMessage(
   id: string,
-  result: string,
-  lastProgressJson?: string | null,
+  result: RustResult,
+  lastProgress?: ProgressUpdate | null,
 ): SolveSuccessMessage {
   return {
     type: "SOLVE_SUCCESS",
     id,
-    data: { result, lastProgressJson },
+    data: { result, lastProgress },
   };
 }
 
-export function createRpcSuccessMessage(
+export function createRpcSuccessMessage<T>(
   id: string,
-  result: string,
+  result: T,
 ): RpcSuccessMessage {
   return {
     type: "RPC_SUCCESS",
@@ -219,11 +220,11 @@ export type WorkerResponseMessage =
   | FatalErrorMessage;
 
 export interface SolverRunResult {
-  result: string;
+  result: RustResult;
   lastProgress: ProgressUpdate | null;
 }
 
 export interface SolverRunOutcome {
-  solutionJson: string;
+  solution: RustResult;
   lastProgress: ProgressUpdate | null;
 }
