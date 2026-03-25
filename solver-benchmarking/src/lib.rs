@@ -1,6 +1,8 @@
 pub mod artifacts;
 pub mod benchmark_mode;
 pub mod compare;
+pub mod hotpath;
+pub mod hotpath_inputs;
 pub mod index;
 pub mod machine;
 pub mod manifest;

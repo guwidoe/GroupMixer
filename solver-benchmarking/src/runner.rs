@@ -5,6 +5,7 @@ use crate::artifacts::{
     BASELINE_SNAPSHOT_SCHEMA_VERSION, CASE_RUN_SCHEMA_VERSION, RUN_REPORT_SCHEMA_VERSION,
 };
 use crate::benchmark_mode::FULL_SOLVE_BENCHMARK_MODE;
+use crate::hotpath::run_hotpath_case_artifact;
 use crate::machine::{capture_git_identity, capture_machine_identity};
 use crate::manifest::{load_suite_manifest, BenchmarkSuiteClass, LoadedBenchmarkCase, LoadedBenchmarkSuite};
 use crate::storage::{machine_identity_label, BenchmarkStorage};
@@ -54,14 +55,25 @@ pub fn run_loaded_suite(suite: &LoadedBenchmarkSuite, options: &RunnerOptions) -
 
     let mut cases = Vec::with_capacity(suite.cases.len());
     for case in &suite.cases {
-        cases.push(run_case(
-            &run_id,
-            &generated_at,
-            suite,
-            case,
-            git.clone(),
-            machine.clone(),
-        ));
+        cases.push(if suite.manifest.benchmark_mode == FULL_SOLVE_BENCHMARK_MODE {
+            run_case(
+                &run_id,
+                &generated_at,
+                suite,
+                case,
+                git.clone(),
+                machine.clone(),
+            )
+        } else {
+            run_hotpath_case_artifact(
+                &run_id,
+                &generated_at,
+                suite,
+                case,
+                git.clone(),
+                machine.clone(),
+            )
+        });
     }
 
     let totals = build_totals(&cases);
@@ -392,6 +404,8 @@ fn sanitize_filename(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
+    use std::fs;
     use tempfile::TempDir;
 
     #[test]
@@ -425,5 +439,70 @@ mod tests {
         let baseline = load_baseline_snapshot(&baseline_path).expect("reload baseline");
         assert_eq!(baseline.baseline_name, "path-baseline");
         assert_eq!(baseline.run_report.run.run_id, report.run.run_id);
+    }
+
+    #[test]
+    fn hotpath_suite_runs_and_persists_structured_metrics() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite_dir = temp.path().join("benchmarking/suites");
+        let case_dir = temp.path().join("benchmarking/cases/hotpath");
+        fs::create_dir_all(&suite_dir).expect("mk suite dir");
+        fs::create_dir_all(&case_dir).expect("mk case dir");
+
+        let case_path = case_dir.join("swap_preview.json");
+        fs::write(
+            &case_path,
+            serde_json::to_string_pretty(&json!({
+                "schema_version": 1,
+                "id": "hotpath.swap-preview.default",
+                "class": "representative",
+                "title": "Hotpath swap preview",
+                "description": "Deterministic swap preview kernel run",
+                "tags": ["hotpath", "swap", "preview"],
+                "hotpath_preset": "swap_default"
+            }))
+            .expect("serialize case"),
+        )
+        .expect("write case");
+
+        let suite_path = suite_dir.join("hotpath-swap-preview.yaml");
+        fs::write(
+            &suite_path,
+            [
+                "schema_version: 1",
+                "suite_id: hotpath-swap-preview",
+                "benchmark_mode: swap_preview",
+                "class: representative",
+                "default_iterations: 8",
+                "default_warmup_iterations: 1",
+                "cases:",
+                "  - manifest: ../cases/hotpath/swap_preview.json",
+            ]
+            .join("\n"),
+        )
+        .expect("write suite");
+
+        let options = RunnerOptions {
+            artifacts_dir: temp.path().join("artifacts"),
+            cargo_profile: "test".to_string(),
+        };
+
+        let report = run_suite_from_manifest(&suite_path, &options).expect("hotpath suite should run");
+        assert_eq!(report.suite.benchmark_mode, "swap_preview");
+        assert_eq!(report.totals.total_cases, 1);
+        assert_eq!(report.cases[0].artifact_kind, BenchmarkArtifactKind::HotPath);
+        let metrics = report.cases[0]
+            .hotpath_metrics
+            .as_ref()
+            .expect("hotpath metrics should exist");
+        assert_eq!(metrics.benchmark_mode, "swap_preview");
+        assert_eq!(metrics.preset.as_deref(), Some("swap_default"));
+        assert_eq!(metrics.iterations, 8);
+        assert!(metrics.preview_seconds > 0.0);
+
+        let run_path = persist_run_report(&report, &options.artifacts_dir).expect("persist run report");
+        let reloaded = load_run_report(&run_path).expect("reload run report");
+        assert_eq!(reloaded.suite.benchmark_mode, "swap_preview");
+        assert_eq!(reloaded.cases[0].artifact_kind, BenchmarkArtifactKind::HotPath);
     }
 }

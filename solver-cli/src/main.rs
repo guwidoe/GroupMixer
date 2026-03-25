@@ -718,7 +718,7 @@ fn cmd_benchmark_record_bundle(
         let report = run_suite_from_manifest(&manifest_path, &options)?;
         let run_path = persist_run_report(&report, storage.root())?;
         println!("Run report: {}", run_path.display());
-        inputs.push(RecordingRunInput::full_solve(report, run_path));
+        inputs.push(RecordingRunInput::from_report(report, run_path));
     }
 
     let recording = create_recording_for_runs(

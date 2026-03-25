@@ -22,13 +22,19 @@ pub struct RecordingRunInput {
 }
 
 impl RecordingRunInput {
-    pub fn full_solve(report: RunReport, run_report_path: PathBuf) -> Self {
+    pub fn from_report(report: RunReport, run_report_path: PathBuf) -> Self {
         Self {
+            benchmark_mode: report.suite.benchmark_mode.clone(),
             report,
             run_report_path,
-            benchmark_mode: FULL_SOLVE_BENCHMARK_MODE.to_string(),
             summary_path: None,
         }
+    }
+
+    pub fn full_solve(report: RunReport, run_report_path: PathBuf) -> Self {
+        let mut input = Self::from_report(report, run_report_path);
+        input.benchmark_mode = FULL_SOLVE_BENCHMARK_MODE.to_string();
+        input
     }
 }
 
@@ -70,7 +76,7 @@ pub fn create_recording_for_run(
     run_report_path: PathBuf,
     options: &RecordingOptions,
 ) -> Result<RecordingMetadata> {
-    create_recording_for_runs(root, vec![RecordingRunInput::full_solve(report, run_report_path)], options)
+    create_recording_for_runs(root, vec![RecordingRunInput::from_report(report, run_report_path)], options)
 }
 
 pub fn create_recording_for_runs(

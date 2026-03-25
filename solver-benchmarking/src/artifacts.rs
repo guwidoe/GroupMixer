@@ -34,6 +34,8 @@ pub struct HotPathMetrics {
     #[serde(default)]
     pub setup_seconds: f64,
     #[serde(default)]
+    pub construction_seconds: f64,
+    #[serde(default)]
     pub preview_seconds: f64,
     #[serde(default)]
     pub apply_seconds: f64,
