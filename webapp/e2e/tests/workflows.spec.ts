@@ -72,6 +72,8 @@ test.describe('Workflow coverage', () => {
     await expect(page).toHaveURL(/\/app\/results/);
     await expect(page.getByRole('heading', { name: /optimization results/i })).toBeVisible();
     await expect(page.getByText(/group assignments/i)).toBeVisible();
+    await expect(page.getByText(/4 people assigned/i).first()).toBeVisible();
+    await expect(page.getByText('Alice').first()).toBeVisible();
 
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: /^export$/i }).click();

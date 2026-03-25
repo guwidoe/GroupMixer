@@ -103,7 +103,7 @@ export interface ProgressUpdate {
 
   score_variance: number;
   search_efficiency: number;
-  best_schedule?: Record<string, Record<string, string[]>>;
+  best_schedule?: WasmRecordLike<WasmRecordLike<string[]>>;
   effective_seed?: number;
   move_policy?: MovePolicy;
   stop_reason?: StopReason;
@@ -111,8 +111,10 @@ export interface ProgressUpdate {
 
 export type ProgressCallback = (progress: ProgressUpdate) => void;
 
+export type WasmRecordLike<T> = Record<string, T> | Map<string, T>;
+
 export interface RustResult {
-  schedule: Record<string, Record<string, string[]>>;
+  schedule: WasmRecordLike<WasmRecordLike<string[]>>;
   final_score: number;
   unique_contacts: number;
   repetition_penalty: number;

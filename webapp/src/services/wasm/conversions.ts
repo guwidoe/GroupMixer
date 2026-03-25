@@ -1,5 +1,17 @@
 import type { Assignment, Constraint, Problem, Solution } from '../../types';
-import type { ProgressUpdate, RustResult } from './types';
+import type { ProgressUpdate, RustResult, WasmRecordLike } from './types';
+
+function getRecordEntries<T>(value: WasmRecordLike<T> | null | undefined): Array<[string, T]> {
+  if (!value) {
+    return [];
+  }
+
+  if (value instanceof Map) {
+    return Array.from(value.entries());
+  }
+
+  return Object.entries(value);
+}
 
 export function convertProblemToRustFormat(problem: Problem): Record<string, unknown> {
   const solverSettings = { ...problem.settings };
@@ -91,9 +103,9 @@ export function convertRustResultToSolution(
 ): Solution {
   const assignments: Assignment[] = [];
 
-  for (const [sessionName, groups] of Object.entries(rustResult.schedule)) {
+  for (const [sessionName, groups] of getRecordEntries(rustResult.schedule)) {
     const sessionId = parseInt(sessionName.replace('session_', ''));
-    for (const [groupId, people] of Object.entries(groups as Record<string, string[]>)) {
+    for (const [groupId, people] of getRecordEntries(groups)) {
       for (const personId of people) {
         assignments.push({
           person_id: personId,
