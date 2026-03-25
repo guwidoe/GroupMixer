@@ -1,13 +1,53 @@
+import type { SolverSettings } from '../types';
+import type { ProgressUpdate, RustResult } from '../services/wasm/types';
+
 declare module 'virtual:wasm-solver' {
   export type WasmProgressCallback = (progress_json: string) => boolean;
+  export type WasmContractProgressCallback = (progress: ProgressUpdate) => boolean;
+
+  export type ContractSolveInput = Record<string, unknown>;
+
+  export interface RecommendSettingsRequest {
+    problem_definition: Record<string, unknown>;
+    objectives: unknown[];
+    constraints: unknown[];
+    desired_runtime_seconds: number;
+  }
+
+  export interface ValidationIssue {
+    code?: string;
+    message: string;
+    path?: string;
+  }
+
+  export interface ValidateResponse {
+    valid: boolean;
+    issues: ValidationIssue[];
+  }
+
+  export interface ResultSummary {
+    final_score: number;
+    unique_contacts: number;
+    repetition_penalty: number;
+    attribute_balance_penalty: number;
+    constraint_penalty: number;
+    effective_seed?: number;
+    stop_reason?: string;
+  }
 
   export function evaluate_input(input_json: string): string;
   export function get_default_settings(): string;
+  export function get_default_solver_configuration(): SolverSettings;
   export function get_recommended_settings(problem_json: string, desired_runtime_seconds: bigint): string;
   export function greet(): void;
   export function init_panic_hook(): void;
+  export function recommend_settings(input: RecommendSettingsRequest): SolverSettings;
   export function solve(problem_json: string): string;
   export function solve_with_progress(problem_json: string, progress_callback?: WasmProgressCallback | null): string;
+  export function solve_with_progress(input: ContractSolveInput, progress_callback?: WasmContractProgressCallback | null): RustResult;
+  export function validate_problem_contract(input: ContractSolveInput): ValidateResponse;
+  export function evaluate_input_contract(input: ContractSolveInput): RustResult;
+  export function inspect_result_contract(result: RustResult): ResultSummary;
   export function test_callback_consistency(problem_json: string): string;
   export function validate_problem(problem_json: string): string;
 
