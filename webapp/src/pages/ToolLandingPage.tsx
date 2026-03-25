@@ -78,22 +78,28 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                 {config.intro}
               </p>
 
+              <div className="mt-8 flex flex-wrap gap-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-tertiary)' }}>Paste names</span>
+                <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-tertiary)' }}>Choose groups or size</span>
+                <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-tertiary)' }}>Add rules only if needed</span>
+              </div>
+
               <div className="mt-10 grid gap-4 sm:grid-cols-3">
                 {[
                   {
                     icon: Compass,
-                    title: 'Fast first success',
-                    body: 'Paste names, choose sizing, and generate a workable first pass without opening the expert app.',
+                    title: 'Start simple',
+                    body: 'Use the landing tool like a fast random group generator instead of learning the whole workspace first.',
                   },
                   {
                     icon: Layers3,
-                    title: 'Layered complexity',
-                    body: 'Reveal sessions, keep-together rules, avoid-pairing, and balancing only when you actually need them.',
+                    title: 'Reveal more only when needed',
+                    body: 'Keep together, avoid pairing, balancing, and repeat-round controls stay available without dominating the first screen.',
                   },
                   {
                     icon: ArrowRight,
-                    title: 'Advanced path preserved',
-                    body: 'The full /app workspace remains the expert cockpit for deeper editing, solver control, and detailed inspection.',
+                    title: 'Still grows into the expert app',
+                    body: 'If the setup becomes serious, move the same draft into /app for deeper editing, solver tuning, and results inspection.',
                   },
                 ].map(({ icon: Icon, title, body }) => (
                   <div
@@ -115,12 +121,66 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
           </div>
         </section>
 
+        <section className="px-4 pb-10 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+            <div className="max-w-3xl">
+              <h2 className="text-2xl font-semibold tracking-tight">What people usually need first</h2>
+              <p className="mt-4 text-base leading-7" style={{ color: 'var(--text-secondary)' }}>
+                Most visitors are not looking for a lecture on optimization. They want a fast way to split names into random groups, balanced teams, or repeat rounds — and only then decide whether stronger rules matter.
+              </p>
+            </div>
+
+            <div className="mt-8 grid gap-4 lg:grid-cols-3">
+              {[
+                {
+                  title: 'Random groups in seconds',
+                  body: 'Paste a list of names, choose the number of groups or people per group, and generate a clean first pass immediately.',
+                },
+                {
+                  title: 'Balanced teams when needed',
+                  body: 'Switch on CSV mode and use balancing or keep-together rules when the groups need more structure than a simple randomizer can provide.',
+                },
+                {
+                  title: 'Multiple rounds without repetition',
+                  body: 'Use the networking preset to plan repeated rounds and reduce repeat pairings for workshops, mixers, and breakout sessions.',
+                },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="rounded-3xl border p-6"
+                  style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+                >
+                  <h3 className="text-lg font-semibold tracking-tight">{item.title}</h3>
+                  <p className="mt-3 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
+                    {item.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="px-4 pb-16 sm:px-6 lg:px-8">
           <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,360px)]">
             <div>
-              <h2 className="text-2xl font-semibold tracking-tight">Why this route exists</h2>
+              <h2 className="text-2xl font-semibold tracking-tight">Technical credibility, lower in the page where it belongs</h2>
               <p className="mt-4 max-w-3xl text-base leading-7" style={{ color: 'var(--text-secondary)' }}>
-                Search visitors should land on a page that behaves like a real grouping tool immediately. The landing route now works as a safe scratchpad while the advanced application remains available under <code>/app</code>.
+                GroupMixer still keeps the strengths that matter for serious planning: local-first processing, multi-session support, no-repeat pairings, keep-together and avoid-pairing rules, and a deeper expert workspace. Those details now support the first interaction instead of replacing it.
+              </p>
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                {[
+                  'Privacy-first browser workflow',
+                  'Multi-session group planning',
+                  'Keep-together and avoid-pairing rules',
+                  'Advanced Rust + WebAssembly engine under the hood',
+                ].map((item) => (
+                  <div key={item} className="rounded-2xl border px-4 py-3 text-sm" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
+                    {item}
+                  </div>
+                ))}
+              </div>
+              <p className="mt-6 max-w-3xl text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
+                If you only need a fast random group generator, stay on the landing tool. If you need deeper control, the same product continues inside <code>/app</code> without flattening the advanced workflow into a toy interface.
               </p>
             </div>
 
