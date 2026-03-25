@@ -186,6 +186,8 @@ export async function runSolver({
       },
     });
 
+    setRunSettings(selectedSettings);
+
     solverCompletedRef.current = true;
 
     setSolution(solution);

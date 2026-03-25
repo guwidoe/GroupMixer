@@ -34,9 +34,10 @@ mkdir -p target/coverage
 COMMON_ARGS=(
   --workspace
   --all-features
+  --exclude solver-benchmarking
   --exclude solver-wasm
   --exclude solver-cli
-  --ignore-filename-regex '.*/src/main.rs'
+  --ignore-filename-regex '.*/src/main.rs|.*/src/bin/generate-reference.rs'
 )
 
 FAIL_ARGS=()

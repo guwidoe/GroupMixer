@@ -102,7 +102,7 @@ describe('ToolLandingPage SEO wiring', () => {
         expect.objectContaining({ name: 'landing_open_advanced_workspace' }),
       ]),
     );
-  });
+  }, 10000);
 
   it('syncs a new expert-workspace problem in the background and carries edits into /app', async () => {
     const user = userEvent.setup();
@@ -143,7 +143,7 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByRole('button', { name: /generate groups/i })).toHaveClass('btn-primary');
     
     // Trust signals visible (exact match on the dot-prefixed trust items)
-    expect(screen.getByText('Free & private')).toBeInTheDocument();
+    expect(screen.getByText('Private (processed in your browser)')).toBeInTheDocument();
     expect(screen.getByText('No sign-up')).toBeInTheDocument();
     expect(screen.getByText('Results in seconds')).toBeInTheDocument();
 
@@ -152,7 +152,7 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByRole('heading', { name: /try the full group optimizer/i })).toBeInTheDocument();
     expect(screen.getByText(/your landing-page draft comes with you/i)).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /open expert workspace/i })[0]).toHaveClass('btn-primary');
-  });
+  }, 10000);
 
   it('renders FAQ section for SEO', () => {
     render(

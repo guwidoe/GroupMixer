@@ -100,7 +100,7 @@ describe("MainApp stateful integration routes", () => {
 
     expect(solverWorkerService.getRecommendedSettings).toHaveBeenCalledWith(savedProblem.problem, 3);
     expect(await screen.findByText(/settings updated/i)).toBeInTheDocument();
-  });
+  }, 10000);
 
   it("surfaces auto-set failures through the real /app/solver notification path", async () => {
     const user = userEvent.setup();

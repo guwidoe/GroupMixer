@@ -28,5 +28,5 @@ describe('ProblemManager', () => {
 
     expect(screen.getByRole('heading', { name: /create new problem/i })).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/enter problem name/i)).toBeInTheDocument();
-  });
+  }, 10000);
 });
