@@ -80,3 +80,24 @@ This move does **not**:
 - refactor unrelated code while moving paths
 
 If a future package rename is desired, it should be proposed and executed as a separate compatibility-reviewed change.
+
+## Post-move outcome
+
+The backend workspace move intentionally introduced **no Cargo package rename**
+and **no binary rename**.
+
+Compatibility impact after the move:
+
+- unchanged:
+  - `cargo test -p solver-core`
+  - `cargo test -p solver-contracts`
+  - `cargo test -p solver-cli`
+  - `cargo test -p solver-server`
+  - `cargo test -p solver-wasm`
+  - `cargo run -p solver-server`
+  - `cargo run -p solver-cli -- ...`
+- changed:
+  - directory navigation and path-based docs/scripts now use `backend/...`
+
+This means the move is a repository-layout compatibility change, not a public
+Cargo package or binary compatibility break.
