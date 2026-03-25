@@ -452,4 +452,40 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].suite_count, 2);
     }
+
+    #[test]
+    fn create_recording_for_run_preserves_hotpath_benchmark_mode() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite = temp.path().join("benchmarking/suites/hotpath-swap-preview.yaml");
+        fs::create_dir_all(suite.parent().unwrap()).expect("mk suite dir");
+        fs::write(
+            &suite,
+            "schema_version: 1\nsuite_id: hotpath-swap-preview\nbenchmark_mode: swap_preview\nclass: representative\ncases: []\n",
+        )
+        .expect("write suite");
+
+        let run_path = temp.path().join("runs/hotpath-run/run-report.json");
+        fs::create_dir_all(run_path.parent().unwrap()).expect("mk run dir");
+        fs::write(&run_path, "{}\n").expect("write run");
+
+        let mut report = sample_report("hotpath-swap-preview", &suite, "hotpath-run");
+        report.suite.benchmark_mode = "swap_preview".to_string();
+
+        let recording = create_recording_for_run(
+            temp.path(),
+            report,
+            run_path,
+            &RecordingOptions {
+                recording_id: Some("hotpath-recording-1".to_string()),
+                purpose: "manual-record".to_string(),
+                source: "solver-cli benchmark record".to_string(),
+                feature_name: None,
+            },
+        )
+        .expect("create hotpath recording");
+
+        assert_eq!(recording.suite_runs.len(), 1);
+        assert_eq!(recording.suite_runs[0].suite_name, "hotpath-swap-preview");
+        assert_eq!(recording.suite_runs[0].benchmark_mode, "swap_preview");
+    }
 }
