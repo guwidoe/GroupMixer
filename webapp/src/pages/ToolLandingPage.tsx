@@ -1,29 +1,93 @@
-import { ArrowRight, ChevronDown, Download, RotateCcw, Sparkles, Users } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { ArrowRight, ChevronDown, Copy, Download, RotateCcw, Sparkles, Users } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { QuickSetupFaq } from '../components/LandingTool/QuickSetupFaq';
 import { QuickSetupAdvancedOptions } from '../components/LandingTool/QuickSetupAdvancedOptions';
+import { QuickSetupFaq } from '../components/LandingTool/QuickSetupFaq';
 import { useQuickSetup } from '../components/LandingTool/useQuickSetup';
 import { LandingFooter } from '../components/LandingPage/LandingFooter';
+import { ResultsScheduleGrid } from '../components/ResultsView/ResultsScheduleGrid';
+import { buildResultsSessionData } from '../components/results/buildResultsViewModel';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { Seo } from '../components/Seo';
 import { trackLandingEvent } from '../services/landingInstrumentation';
 import { useAppStore } from '../store';
-import { ThemeToggle } from '../components/ThemeToggle';
-import { ResultsScheduleGrid } from '../components/ResultsView/ResultsScheduleGrid';
-import { buildResultsSessionData } from '../components/results/buildResultsViewModel';
 import { TOOL_PAGE_CONFIGS, type ToolPageKey } from './toolPageConfigs';
 
 interface ToolLandingPageProps {
   pageKey: ToolPageKey;
 }
 
+type ResultFormat = 'cards' | 'list' | 'text' | 'csv';
+
+interface DisplaySession {
+  sessionNumber: number;
+  groups: Array<{
+    id: string;
+    members: string[];
+  }>;
+}
+
+function buildDisplaySessions(
+  sharedSessionData: Array<{ sessionIndex: number; groups: Array<{ id: string; people: Array<{ id: string }> }> }>,
+  fallbackSessions: Array<{ sessionNumber: number; groups: Array<{ id: string; members: Array<{ name: string }> }> }>,
+): DisplaySession[] {
+  if (sharedSessionData.length > 0) {
+    return sharedSessionData.map((session) => ({
+      sessionNumber: session.sessionIndex + 1,
+      groups: session.groups.map((group) => ({
+        id: group.id,
+        members: group.people.map((person) => person.id),
+      })),
+    }));
+  }
+
+  return fallbackSessions.map((session) => ({
+    sessionNumber: session.sessionNumber,
+    groups: session.groups.map((group) => ({
+      id: group.id,
+      members: group.members.map((member) => member.name),
+    })),
+  }));
+}
+
+function buildResultText(sessions: DisplaySession[]) {
+  return sessions
+    .map((session) =>
+      [
+        `Session ${session.sessionNumber}`,
+        ...session.groups.map((group) => `${group.id}: ${group.members.join(', ') || 'No assignments'}`),
+      ].join('\n'),
+    )
+    .join('\n\n');
+}
+
+function buildResultCsv(sessions: DisplaySession[]) {
+  const lines = ['session,group,members'];
+  for (const session of sessions) {
+    for (const group of session.groups) {
+      lines.push(`${session.sessionNumber},${group.id},"${group.members.join(', ')}"`);
+    }
+  }
+  return lines.join('\n');
+}
+
+async function copyText(value: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+  } catch {
+    // Ignore clipboard failures in unsupported environments.
+  }
+}
+
 export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
   const config = TOOL_PAGE_CONFIGS[pageKey];
   const controller = useQuickSetup(config);
-  const replaceWorkspace = useAppStore((state) => state.replaceWorkspace);
+  const syncWorkspaceDraft = useAppStore((state) => state.syncWorkspaceDraft);
   const navigate = useNavigate();
   const resultsRef = useRef<HTMLDivElement>(null);
   const [hasScrolledToResults, setHasScrolledToResults] = useState(false);
+  const [resultFormat, setResultFormat] = useState<ResultFormat>('cards');
+  const [copiedFormat, setCopiedFormat] = useState<ResultFormat | null>(null);
 
   useEffect(() => {
     trackLandingEvent('landing_route_viewed', {
@@ -33,7 +97,41 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
     });
   }, [config.canonicalPath, config.defaultPreset, pageKey]);
 
-  // Scroll to results when they first appear
+  const workspacePayload = controller.workspacePayload;
+  const solvedSolution = workspacePayload.solution ?? null;
+  const sharedSessionData = solvedSolution ? buildResultsSessionData(workspacePayload.problem, solvedSolution) : [];
+  const displaySessions = useMemo(
+    () => buildDisplaySessions(sharedSessionData, controller.result?.sessions ?? []),
+    [controller.result?.sessions, sharedSessionData],
+  );
+  const resultText = useMemo(() => buildResultText(displaySessions), [displaySessions]);
+  const resultCsv = useMemo(() => buildResultCsv(displaySessions), [displaySessions]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      const syncedProblemId = syncWorkspaceDraft({
+        ...workspacePayload,
+        currentProblemId: controller.draft.workspaceProblemId,
+        problemName: `${config.h1} draft`,
+      });
+
+      if (syncedProblemId !== controller.draft.workspaceProblemId) {
+        controller.updateDraft((current) => ({
+          ...current,
+          workspaceProblemId: syncedProblemId,
+        }));
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timeout);
+  }, [
+    config.h1,
+    controller,
+    controller.draft.workspaceProblemId,
+    syncWorkspaceDraft,
+    workspacePayload,
+  ]);
+
   useEffect(() => {
     if (controller.result && !hasScrolledToResults && resultsRef.current) {
       setHasScrolledToResults(true);
@@ -41,20 +139,34 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
     }
   }, [controller.result, hasScrolledToResults]);
 
+  useEffect(() => {
+    if (!controller.result) {
+      setResultFormat('cards');
+      setCopiedFormat(null);
+    }
+  }, [controller.result]);
+
   const openAdvancedWorkspace = (target: 'results' | 'people') => {
     trackLandingEvent('landing_open_advanced_workspace', {
       hasResult: Boolean(controller.result),
       source: 'landing_page',
     });
-    replaceWorkspace(controller.buildWorkspaceBridgePayload());
+
+    const syncedProblemId = syncWorkspaceDraft({
+      ...workspacePayload,
+      currentProblemId: controller.draft.workspaceProblemId,
+      problemName: `${config.h1} draft`,
+    });
+
+    if (syncedProblemId !== controller.draft.workspaceProblemId) {
+      controller.updateDraft((current) => ({
+        ...current,
+        workspaceProblemId: syncedProblemId,
+      }));
+    }
+
     navigate(target === 'results' ? '/app/results' : '/app/problem/people');
   };
-
-  const workspacePayload = controller.buildWorkspaceBridgePayload();
-  const solvedSolution = workspacePayload.solution ?? null;
-  const sharedSessionData = solvedSolution
-    ? buildResultsSessionData(workspacePayload.problem, solvedSolution)
-    : [];
 
   const { draft, participantCount, estimatedGroupCount, estimatedGroupSize } = controller;
 
@@ -67,7 +179,6 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
         faqEntries={config.faqEntries}
       />
 
-      {/* ─── Minimal header ─── */}
       <header
         className="border-b"
         style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
@@ -78,38 +189,31 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
             <span className="text-lg font-semibold tracking-tight">GroupMixer</span>
           </Link>
           <div className="flex items-center gap-2">
-            <Link
-              to="/app"
+            <button
+              type="button"
+              onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
               className="hidden items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors sm:inline-flex"
               style={{ color: 'var(--text-secondary)' }}
             >
               Expert workspace
               <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+            </button>
             <ThemeToggle size="md" />
           </div>
         </div>
       </header>
 
       <main>
-        {/* ═══════════════════════════════════════════════════════
-            HERO — Tool-first: headline left, form right
-            ═══════════════════════════════════════════════════════ */}
         <section className="px-4 pb-10 pt-8 sm:px-6 lg:pb-16 lg:pt-12">
           <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1fr_minmax(340px,420px)] lg:items-start lg:gap-12">
-            {/* ── Left: copy ── */}
             <div className="max-w-xl pt-2">
               <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl lg:leading-[1.15]">
                 {config.h1}
               </h1>
-              <p
-                className="mt-4 text-base leading-7 sm:text-lg sm:leading-8"
-                style={{ color: 'var(--text-secondary)' }}
-              >
+              <p className="mt-4 text-base leading-7 sm:text-lg sm:leading-8" style={{ color: 'var(--text-secondary)' }}>
                 {config.subhead}
               </p>
 
-              {/* Quick trust signals */}
               <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
                 <span className="flex items-center gap-1.5">
                   <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }} />
@@ -125,7 +229,6 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                 </span>
               </div>
 
-              {/* Scroll-down nudge on desktop when no results yet */}
               {!controller.result && (
                 <div className="mt-10 hidden text-sm lg:block" style={{ color: 'var(--text-secondary)' }}>
                   <span className="flex items-center gap-1">
@@ -136,12 +239,10 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
               )}
             </div>
 
-            {/* ── Right: the tool ── */}
             <div
               className="rounded-2xl border p-5 shadow-sm sm:p-6"
               style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
             >
-              {/* Participants textarea */}
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <label htmlFor="participantInput" className="text-sm font-medium">
@@ -153,8 +254,8 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                         type="button"
                         className="font-medium"
                         onClick={() =>
-                          controller.updateDraft((c) => ({
-                            ...c,
+                          controller.updateDraft((current) => ({
+                            ...current,
                             inputMode: 'csv',
                             balanceAttributeKey: null,
                           }))
@@ -167,8 +268,8 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                         type="button"
                         className="font-medium"
                         onClick={() =>
-                          controller.updateDraft((c) => ({
-                            ...c,
+                          controller.updateDraft((current) => ({
+                            ...current,
                             inputMode: 'names',
                             balanceAttributeKey: null,
                           }))
@@ -190,14 +291,10 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                 <textarea
                   id="participantInput"
                   value={draft.participantInput}
-                  onChange={(e) =>
-                    controller.updateDraft((c) => ({ ...c, participantInput: e.target.value }))
+                  onChange={(event) =>
+                    controller.updateDraft((current) => ({ ...current, participantInput: event.target.value }))
                   }
-                  placeholder={
-                    draft.inputMode === 'csv'
-                      ? 'name,team,role\nAlex,Blue,Engineer'
-                      : 'One name per line'
-                  }
+                  placeholder={draft.inputMode === 'csv' ? 'name,team,role\nAlex,Blue,Engineer' : 'One name per line'}
                   className="min-h-[130px] w-full rounded-xl border px-3 py-2.5 text-sm leading-relaxed outline-none transition-shadow focus:ring-2"
                   style={{
                     borderColor: 'var(--border-primary)',
@@ -207,7 +304,6 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                 />
               </div>
 
-              {/* Group sizing */}
               <div className="mt-4">
                 <label htmlFor="groupingValue" className="mb-1.5 block text-sm font-medium">
                   {draft.groupingMode === 'groupCount' ? 'Number of groups' : 'People per group'}
@@ -218,10 +314,10 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                     type="number"
                     min={1}
                     value={draft.groupingValue}
-                    onChange={(e) =>
-                      controller.updateDraft((c) => ({
-                        ...c,
-                        groupingValue: Math.max(1, Number(e.target.value) || 1),
+                    onChange={(event) =>
+                      controller.updateDraft((current) => ({
+                        ...current,
+                        groupingValue: Math.max(1, Number(event.target.value) || 1),
                       }))
                     }
                     className="w-24 rounded-xl border px-3 py-2 text-sm outline-none transition-shadow focus:ring-2"
@@ -236,9 +332,9 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                     className="rounded-lg px-2.5 py-2 text-xs font-medium"
                     style={{ color: 'var(--text-secondary)' }}
                     onClick={() =>
-                      controller.updateDraft((c) => ({
-                        ...c,
-                        groupingMode: c.groupingMode === 'groupCount' ? 'groupSize' : 'groupCount',
+                      controller.updateDraft((current) => ({
+                        ...current,
+                        groupingMode: current.groupingMode === 'groupCount' ? 'groupSize' : 'groupCount',
                       }))
                     }
                   >
@@ -247,11 +343,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                 </div>
               </div>
 
-              {/* Live summary */}
-              <div
-                className="mt-4 grid grid-cols-3 gap-2 rounded-xl px-3 py-2.5 text-center text-sm"
-                style={{ backgroundColor: 'var(--bg-secondary)' }}
-              >
+              <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl px-3 py-2.5 text-center text-sm" style={{ backgroundColor: 'var(--bg-secondary)' }}>
                 <div>
                   <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>People</div>
                   <div className="text-lg font-semibold">{participantCount}</div>
@@ -266,7 +358,6 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                 </div>
               </div>
 
-              {/* Generate button */}
               <div className="mt-5 flex gap-2">
                 <button
                   type="button"
@@ -299,7 +390,6 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                 )}
               </div>
 
-              {/* Advanced options toggle — collapsed by default */}
               <div className="mt-4">
                 <QuickSetupAdvancedOptions controller={controller} />
               </div>
@@ -307,15 +397,8 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
           </div>
         </section>
 
-        {/* ═══════════════════════════════════════════════════════
-            INLINE RESULTS — appears after Generate
-            ═══════════════════════════════════════════════════════ */}
         {controller.result && (
-          <section
-            ref={resultsRef}
-            className="border-t px-4 pb-12 pt-8 sm:px-6"
-            style={{ borderColor: 'var(--border-primary)' }}
-          >
+          <section ref={resultsRef} className="border-t px-4 pb-12 pt-8 sm:px-6" style={{ borderColor: 'var(--border-primary)' }}>
             <div className="mx-auto max-w-6xl">
               <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-xl font-semibold">Your groups</h2>
@@ -342,72 +425,144 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
               </div>
 
               {controller.errorMessage && (
-                <div
-                  className="mb-5 rounded-xl px-4 py-3 text-sm"
-                  style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}
-                >
+                <div className="mb-5 rounded-xl px-4 py-3 text-sm" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}>
                   {controller.errorMessage}
                 </div>
               )}
 
-              {/* Solver-backed results with the shared grid */}
-              {solvedSolution ? (
-                <ResultsScheduleGrid sessionData={sharedSessionData} />
-              ) : (
-                // Fallback local results
-                controller.result.sessions.map((session) => (
-                  <div key={session.sessionNumber} className="mb-6">
-                    <h3 className="mb-3 text-base font-semibold">
-                      Session {session.sessionNumber}
-                    </h3>
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      {session.groups.map((group) => (
-                        <div
-                          key={`${session.sessionNumber}-${group.id}`}
-                          className="rounded-xl border p-4"
-                          style={{
-                            borderColor: 'var(--border-primary)',
-                            backgroundColor: 'var(--bg-primary)',
-                          }}
-                        >
-                          <div className="mb-2 flex items-center justify-between">
-                            <span className="text-sm font-semibold">{group.id}</span>
-                            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                              {group.members.length} people
-                            </span>
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
+                <div className="flex flex-wrap gap-2" role="tablist" aria-label="Result formats">
+                  {(['cards', 'list', 'text', 'csv'] as ResultFormat[]).map((format) => (
+                    <button
+                      key={format}
+                      type="button"
+                      role="tab"
+                      aria-selected={resultFormat === format}
+                      onClick={() => setResultFormat(format)}
+                      className="rounded-full border px-3 py-1.5 text-sm font-medium capitalize"
+                      style={{
+                        borderColor: resultFormat === format ? 'var(--color-accent)' : 'var(--border-primary)',
+                        backgroundColor: resultFormat === format ? 'var(--bg-secondary)' : 'transparent',
+                      }}
+                    >
+                      {format}
+                    </button>
+                  ))}
+                </div>
+
+                {(resultFormat === 'text' || resultFormat === 'csv') && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const formatToCopy = resultFormat;
+                      await copyText(formatToCopy === 'csv' ? resultCsv : resultText);
+                      setCopiedFormat(formatToCopy);
+                      window.setTimeout(() => setCopiedFormat((current) => (current === formatToCopy ? null : current)), 1200);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium"
+                    style={{ borderColor: 'var(--border-primary)' }}
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    {copiedFormat === resultFormat ? 'Copied' : `Copy ${resultFormat.toUpperCase()}`}
+                  </button>
+                )}
+              </div>
+
+              {resultFormat === 'cards' && (
+                solvedSolution ? (
+                  <ResultsScheduleGrid sessionData={sharedSessionData} />
+                ) : (
+                  controller.result.sessions.map((session) => (
+                    <div key={session.sessionNumber} className="mb-6">
+                      <h3 className="mb-3 text-base font-semibold">Session {session.sessionNumber}</h3>
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {session.groups.map((group) => (
+                          <div
+                            key={`${session.sessionNumber}-${group.id}`}
+                            className="rounded-xl border p-4"
+                            style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+                          >
+                            <div className="mb-2 flex items-center justify-between">
+                              <span className="text-sm font-semibold">{group.id}</span>
+                              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                {group.members.length} people
+                              </span>
+                            </div>
+                            <ul className="space-y-1">
+                              {group.members.map((member) => (
+                                <li
+                                  key={member.id}
+                                  className="rounded-lg px-2.5 py-1.5 text-sm"
+                                  style={{ backgroundColor: 'var(--bg-secondary)' }}
+                                >
+                                  {member.name}
+                                </li>
+                              ))}
+                            </ul>
                           </div>
-                          <ul className="space-y-1">
-                            {group.members.map((member) => (
-                              <li
-                                key={member.id}
-                                className="rounded-lg px-2.5 py-1.5 text-sm"
-                                style={{ backgroundColor: 'var(--bg-secondary)' }}
-                              >
-                                {member.name}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))
+                )
+              )}
+
+              {resultFormat === 'list' && (
+                <div className="space-y-5">
+                  {displaySessions.map((session) => (
+                    <div key={session.sessionNumber} className="rounded-xl border p-4" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
+                      <h3 className="text-base font-semibold">Session {session.sessionNumber}</h3>
+                      <div className="mt-3 space-y-3">
+                        {session.groups.map((group) => (
+                          <div key={`${session.sessionNumber}-${group.id}`}>
+                            <div className="text-sm font-semibold">{group.id}</div>
+                            <div className="mt-1 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
+                              {group.members.join(', ') || 'No assignments'}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {resultFormat === 'text' && (
+                <div className="space-y-3">
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    Plain text format for easy copy/paste into chat, docs, or email.
+                  </p>
+                  <textarea
+                    aria-label="Text results"
+                    readOnly
+                    value={resultText}
+                    className="min-h-[260px] w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                    style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+              )}
+
+              {resultFormat === 'csv' && (
+                <div className="space-y-3">
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    CSV format for spreadsheets, docs, and quick manual editing.
+                  </p>
+                  <textarea
+                    aria-label="CSV results"
+                    readOnly
+                    value={resultCsv}
+                    className="min-h-[260px] w-full rounded-xl border px-4 py-3 font-mono text-sm outline-none"
+                    style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                  />
+                </div>
               )}
             </div>
           </section>
         )}
 
-        {/* ═══════════════════════════════════════════════════════
-            USE CASES — below the fold
-            ═══════════════════════════════════════════════════════ */}
-        <section
-          className="border-t px-4 pb-12 pt-10 sm:px-6"
-          style={{ borderColor: 'var(--border-primary)' }}
-        >
+        <section className="border-t px-4 pb-12 pt-10 sm:px-6" style={{ borderColor: 'var(--border-primary)' }}>
           <div className="mx-auto max-w-6xl">
-            <h2 className="text-2xl font-semibold tracking-tight">
-              Works for classrooms, workshops, and events
-            </h2>
+            <h2 className="text-2xl font-semibold tracking-tight">Works for classrooms, workshops, and events</h2>
             <p className="mt-3 max-w-2xl text-base leading-7" style={{ color: 'var(--text-secondary)' }}>
               Start with a simple random split. When you need more control, GroupMixer grows with you.
             </p>
@@ -439,11 +594,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                   body: 'Plan icebreaker rounds where everyone meets someone new. Keep certain people together or apart.',
                 },
               ].map((item) => (
-                <div
-                  key={item.title}
-                  className="rounded-xl border p-5"
-                  style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
-                >
+                <div key={item.title} className="rounded-xl border p-5" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
                   <h3 className="text-base font-semibold">{item.title}</h3>
                   <p className="mt-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
                     {item.body}
@@ -454,13 +605,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
           </div>
         </section>
 
-        {/* ═══════════════════════════════════════════════════════
-            ADVANCED POWER — layered reveal
-            ═══════════════════════════════════════════════════════ */}
-        <section
-          className="border-t px-4 pb-12 pt-10 sm:px-6"
-          style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
-        >
+        <section className="border-t px-4 pb-12 pt-10 sm:px-6" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
           <div className="mx-auto max-w-6xl">
             <h2 className="text-2xl font-semibold tracking-tight">Need more control?</h2>
             <p className="mt-3 max-w-2xl text-base leading-7" style={{ color: 'var(--text-secondary)' }}>
@@ -486,11 +631,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                   body: 'Use CSV input to balance groups by role, skill level, gender, department, or any custom column.',
                 },
               ].map((item) => (
-                <div
-                  key={item.title}
-                  className="rounded-xl border p-5"
-                  style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}
-                >
+                <div key={item.title} className="rounded-xl border p-5" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
                   <h3 className="text-base font-semibold">{item.title}</h3>
                   <p className="mt-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
                     {item.body}
@@ -500,15 +641,16 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
             </div>
 
             <div className="mt-8">
-              <Link
-                to="/app"
+              <button
+                type="button"
+                onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
                 className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white"
                 style={{ backgroundColor: 'var(--color-accent)' }}
               >
                 <Users className="h-4 w-4" />
                 Open expert workspace
                 <ArrowRight className="h-4 w-4" />
-              </Link>
+              </button>
               <p className="mt-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
                 The expert workspace gives you full control over sessions, constraints, solver settings, and detailed result analysis.
               </p>
@@ -516,13 +658,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
           </div>
         </section>
 
-        {/* ═══════════════════════════════════════════════════════
-            FAQ — SEO + trust
-            ═══════════════════════════════════════════════════════ */}
-        <section
-          className="border-t px-4 pb-14 pt-10 sm:px-6"
-          style={{ borderColor: 'var(--border-primary)' }}
-        >
+        <section className="border-t px-4 pb-14 pt-10 sm:px-6" style={{ borderColor: 'var(--border-primary)' }}>
           <div className="mx-auto max-w-3xl">
             <h2 className="mb-6 text-2xl font-semibold tracking-tight">Frequently asked questions</h2>
             <QuickSetupFaq entries={config.faqEntries} />
@@ -530,7 +666,6 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
         </section>
       </main>
 
-      {/* ─── Footer ─── */}
       <LandingFooter />
     </div>
   );

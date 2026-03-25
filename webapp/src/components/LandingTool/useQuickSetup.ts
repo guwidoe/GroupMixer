@@ -35,6 +35,12 @@ export interface QuickSetupController {
   errorMessage: string | null;
   canGenerate: boolean;
   draftStorageLabel: string;
+  workspacePayload: {
+    problem: Problem;
+    solution?: Solution | null;
+    attributeDefinitions?: AttributeDefinition[];
+    currentProblemId?: string | null;
+  };
   buildWorkspaceBridgePayload: () => {
     problem: Problem;
     solution?: Solution | null;
@@ -65,6 +71,7 @@ function defaultDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
     inputMode: 'names',
     balanceAttributeKey: null,
     advancedOpen: false,
+    workspaceProblemId: null,
   };
 }
 
@@ -401,6 +408,25 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
   const estimatedGroupSize = estimatedGroups[0]?.size ?? 0;
   const canGenerate = participantCount >= 2 && draft.groupingValue > 0;
 
+  const workspacePayload = useMemo(() => {
+    if (lastSolvedProblem) {
+      return {
+        problem: lastSolvedProblem,
+        solution: lastSolvedSolution,
+        attributeDefinitions: lastSolvedAttributeDefinitions,
+        currentProblemId: draft.workspaceProblemId ?? null,
+      };
+    }
+
+    const mapped = buildProblemFromDraft(draft);
+    return {
+      problem: mapped.problem,
+      solution: null,
+      attributeDefinitions: mapped.attributeDefinitions,
+      currentProblemId: draft.workspaceProblemId ?? null,
+    };
+  }, [draft, lastSolvedAttributeDefinitions, lastSolvedProblem, lastSolvedSolution]);
+
   const updateDraft = useCallback(
     (updater: QuickSetupDraft | ((draft: QuickSetupDraft) => QuickSetupDraft)) => {
       setDraft(updater);
@@ -497,23 +523,8 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
   }, [draft, pageConfig.key]);
 
   const buildWorkspaceBridgePayload = useCallback(() => {
-    if (lastSolvedProblem) {
-      return {
-        problem: lastSolvedProblem,
-        solution: lastSolvedSolution,
-        attributeDefinitions: lastSolvedAttributeDefinitions,
-        currentProblemId: null,
-      };
-    }
-
-    const mapped = buildProblemFromDraft(draft);
-    return {
-      problem: mapped.problem,
-      solution: null,
-      attributeDefinitions: mapped.attributeDefinitions,
-      currentProblemId: null,
-    };
-  }, [draft, lastSolvedAttributeDefinitions, lastSolvedProblem, lastSolvedSolution]);
+    return workspacePayload;
+  }, [workspacePayload]);
 
   return {
     draft,
@@ -526,6 +537,7 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
     errorMessage,
     canGenerate,
     draftStorageLabel: 'Saved locally in this browser',
+    workspacePayload,
     buildWorkspaceBridgePayload,
     updateDraft,
     setPreset,

@@ -15,6 +15,7 @@ export interface QuickSetupDraft {
   inputMode: QuickSetupInputMode;
   balanceAttributeKey: string | null;
   advancedOpen: boolean;
+  workspaceProblemId: string | null;
 }
 
 export interface QuickSetupParticipant {

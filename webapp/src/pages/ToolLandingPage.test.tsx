@@ -92,7 +92,7 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.click(screen.getByRole('button', { name: /open in expert workspace/i }));
 
     const state = useAppStore.getState();
-    expect(state.currentProblemId).toBeNull();
+    expect(state.currentProblemId).toBeTruthy();
     expect(state.problem).not.toBeNull();
     expect(state.solution).not.toBeNull();
     expect(state.ui.activeTab).toBe('results');
@@ -102,6 +102,32 @@ describe('ToolLandingPage SEO wiring', () => {
         expect.objectContaining({ name: 'landing_open_advanced_workspace' }),
       ]),
     );
+  });
+
+  it('syncs a new expert-workspace problem in the background and carries edits into /app', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" />
+      </MemoryRouter>,
+    );
+
+    const textarea = screen.getByLabelText(/participants/i);
+    await user.clear(textarea);
+    await user.type(textarea, 'Ada\nGrace\nLinus\nMargaret');
+
+    await user.click(screen.getAllByRole('button', { name: /expert workspace/i })[0]);
+
+    const state = useAppStore.getState();
+    expect(state.currentProblemId).toBeTruthy();
+    expect(state.problem?.people.map((person) => person.id)).toEqual(['Ada', 'Grace', 'Linus', 'Margaret']);
+    expect(state.savedProblems[state.currentProblemId!]?.problem.people.map((person) => person.id)).toEqual([
+      'Ada',
+      'Grace',
+      'Linus',
+      'Margaret',
+    ]);
   });
 
   it('shows the tool form above the fold with participants input and generate button', () => {
@@ -130,5 +156,30 @@ describe('ToolLandingPage SEO wiring', () => {
 
     expect(screen.getByRole('heading', { name: /frequently asked questions/i })).toBeInTheDocument();
     expect(screen.getByText(/how do i split a list of names into random groups/i)).toBeInTheDocument();
+  });
+
+  it('offers multiple copy-friendly result formats after generating groups', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /generate groups/i }));
+
+    expect(await screen.findByRole('tab', { name: 'cards' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'list' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'text' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'csv' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'text' }));
+    expect((screen.getByRole('textbox', { name: /text results/i }) as HTMLTextAreaElement).value).toContain('Session 1');
+    expect(screen.getByRole('button', { name: /copy text/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'csv' }));
+    expect((screen.getByRole('textbox', { name: /csv results/i }) as HTMLTextAreaElement).value).toContain('session,group,members');
+    expect(screen.getByRole('button', { name: /copy csv/i })).toBeInTheDocument();
   });
 });
