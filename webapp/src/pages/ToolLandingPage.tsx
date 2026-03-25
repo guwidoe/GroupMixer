@@ -258,8 +258,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                     <button
                       type="button"
                       onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
-                      className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white"
-                      style={{ backgroundColor: 'var(--color-accent)' }}
+                      className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold"
                     >
                       <Users className="h-4 w-4" />
                       Open expert workspace
@@ -413,8 +412,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                     controller.generateGroups();
                   }}
                   disabled={!controller.canGenerate || controller.isSolving}
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
-                  style={{ backgroundColor: 'var(--color-accent)' }}
+                  className="btn-primary inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Sparkles className="h-4 w-4" />
                   {controller.isSolving ? 'Generating…' : 'Generate Groups'}
@@ -458,8 +456,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                   <button
                     type="button"
                     onClick={() => openAdvancedWorkspace('results')}
-                    className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-white"
-                    style={{ backgroundColor: 'var(--color-accent)' }}
+                    className="btn-primary inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold"
                   >
                     Open in expert workspace
                     <ArrowRight className="h-3.5 w-3.5" />
@@ -687,8 +684,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
               <button
                 type="button"
                 onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
-                className="inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white"
-                style={{ backgroundColor: 'var(--color-accent)' }}
+                className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold"
               >
                 <Users className="h-4 w-4" />
                 Open expert workspace

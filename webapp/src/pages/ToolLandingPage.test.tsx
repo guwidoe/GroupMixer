@@ -140,6 +140,7 @@ describe('ToolLandingPage SEO wiring', () => {
     // Tool form is visible immediately
     expect(screen.getByLabelText(/participants/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /generate groups/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /generate groups/i })).toHaveClass('btn-primary');
     
     // Trust signals visible (exact match on the dot-prefixed trust items)
     expect(screen.getByText('Free & private')).toBeInTheDocument();
@@ -150,6 +151,7 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByText(/want to do better than random/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /try the full group optimizer/i })).toBeInTheDocument();
     expect(screen.getByText(/your landing-page draft comes with you/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /open expert workspace/i })[0]).toHaveClass('btn-primary');
   });
 
   it('renders FAQ section for SEO', () => {
