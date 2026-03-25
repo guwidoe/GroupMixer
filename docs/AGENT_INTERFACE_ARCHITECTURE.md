@@ -594,6 +594,37 @@ as a second handwritten semantic registry.
 
 Generate Markdown or JSON reference output from the same contract layer.
 
+#### Concrete docs/parity rollout plan
+
+Once CLI, server, and WASM consume `solver-contracts`, the repo should add a
+single derived-reference workflow with three parts:
+
+1. **Generate deterministic reference artifacts**
+   - materialize operations, schemas, errors, and examples into a stable docs
+     location under `docs/reference/generated/solver-contracts/`
+   - generate both review-friendly Markdown and machine-readable JSON index
+     artifacts
+2. **Add stale-output guardrails**
+   - provide one repo command that regenerates the artifacts
+   - provide one repo command that fails if checked-in generated outputs are
+     stale or missing
+3. **Add cross-surface parity checks**
+   - compare `solver-contracts` against the public projections in:
+     - `solver-cli`
+     - `solver-server`
+     - `solver-wasm`
+   - prove parity for operation IDs, schema IDs, error codes, and related-help
+     targets where representable
+
+Contributor workflow should be explicit:
+
+1. change `solver-contracts`
+2. update transport projections (`solver-cli`, `solver-server`, `solver-wasm`)
+3. regenerate derived reference artifacts
+4. run parity/freshness checks
+
+If a semantic change skips step 1, that change is architecturally backwards.
+
 ### Phase 6 — Optional package restructure
 
 After the contracts layer is working and adopted by all three interfaces,
