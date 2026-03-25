@@ -133,6 +133,16 @@ cargo test -p solver-server -- --nocapture
 cargo test -p solver-wasm
 ```
 
+### Normal repo verification entrypoint
+
+`gate.sh` now includes the generated-reference freshness check via:
+
+```bash
+./tools/contracts_reference.sh check
+```
+
+and the Rust test phase exercises the cross-surface parity tests.
+
 ## Normal review expectation
 
 A public semantic change is not complete until:

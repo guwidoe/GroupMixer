@@ -44,6 +44,10 @@ print_step "Rust: Running tests"
 cargo test --all
 print_success "Rust tests OK"
 
+print_step "Contracts: Checking generated reference artifacts"
+./tools/contracts_reference.sh check
+print_success "Contract reference artifacts OK"
+
 # ============================================
 # WASM build
 # ============================================
