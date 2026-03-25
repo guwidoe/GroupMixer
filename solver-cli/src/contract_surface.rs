@@ -91,7 +91,7 @@ pub fn binding_for_operation_id(operation_id: &str) -> Option<&'static CliContra
 #[cfg(test)]
 mod tests {
     use super::{binding_for_command, cli_contract_bindings, public_cli_contract_bindings, CliSurfaceScope};
-    use solver_contracts::operations::operation_spec;
+    use solver_contracts::{bootstrap::bootstrap_spec, operations::operation_spec};
     use std::collections::HashSet;
 
     #[test]
@@ -120,5 +120,15 @@ mod tests {
         let benchmark = binding_for_command("benchmark").expect("benchmark binding");
         assert_eq!(benchmark.scope, CliSurfaceScope::OutOfScopeSupport);
         assert!(benchmark.operation_id.is_none());
+    }
+
+    #[test]
+    fn public_operation_bindings_are_subset_of_bootstrap_top_level_operations() {
+        let top_level: HashSet<_> = bootstrap_spec().top_level_operation_ids.iter().copied().collect();
+        for binding in public_cli_contract_bindings() {
+            if let Some(operation_id) = binding.operation_id {
+                assert!(top_level.contains(operation_id), "{} not in bootstrap top-level ops", operation_id);
+            }
+        }
     }
 }

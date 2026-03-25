@@ -220,4 +220,20 @@ mod tests {
         assert!(help.contains("validate-problem"));
         assert!(help.contains("solve-request"));
     }
+
+    #[test]
+    fn root_help_mentions_contract_inspection_commands() {
+        let help = render_root_help();
+        assert!(help.contains("capabilities"));
+        assert!(help.contains("errors"));
+        assert!(help.contains("schema"));
+    }
+
+    #[test]
+    fn schema_help_points_back_to_contract_discovery() {
+        let help = render_command_help("schema", "get-schema");
+        assert!(help.contains("get-schema-solve-request") || help.contains("solve-request"));
+        assert!(help.contains("solver-cli errors"));
+        assert!(help.contains("solver-cli schema <schema-id>"));
+    }
 }

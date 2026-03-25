@@ -1479,4 +1479,55 @@ mod tests {
         assert_eq!(baselines.len(), 1);
         assert_eq!(baselines[0].baseline_name, "baseline-a");
     }
+
+    #[test]
+    fn schema_command_unknown_id_uses_canonical_error_output() {
+        let error = cmd_schema(Some("does-not-exist".to_string()), false)
+            .expect_err("unknown schema should fail")
+            .to_string();
+        assert!(error.contains("error[unknown-schema]"));
+        assert!(error.contains("solver-cli schema --help"));
+    }
+
+    #[test]
+    fn errors_command_unknown_code_uses_canonical_error_output() {
+        let error = cmd_errors(Some("does-not-exist".to_string()), false)
+            .expect_err("unknown error code should fail")
+            .to_string();
+        assert!(error.contains("error[unknown-error-code]"));
+        assert!(error.contains("solver-cli errors --help"));
+    }
+
+    #[test]
+    fn evaluate_without_initial_schedule_uses_canonical_error_output() {
+        let temp = TempDir::new().expect("temp dir");
+        let input_path = temp.path().join("input.json");
+        fs::write(
+            &input_path,
+            r#"{
+  "problem": {"people": [], "groups": [], "num_sessions": 1},
+  "initial_schedule": null,
+  "objectives": [],
+  "constraints": [],
+  "solver": {
+    "solver_type": "SimulatedAnnealing",
+    "stop_conditions": {"max_iterations": 1, "time_limit_seconds": null, "no_improvement_iterations": null},
+    "solver_params": {"solver_type": "SimulatedAnnealing", "initial_temperature": 1.0, "final_temperature": 0.1, "cooling_schedule": "geometric", "reheat_cycles": 0, "reheat_after_no_improvement": 0},
+    "logging": {},
+    "telemetry": {},
+    "seed": null,
+    "move_policy": null,
+    "allowed_sessions": null
+  }
+}"#,
+        )
+        .expect("write input");
+
+        let error = cmd_evaluate(Some(input_path), false, false)
+            .expect_err("evaluate should fail")
+            .to_string();
+        assert!(error.contains("error[invalid-input]"));
+        assert!(error.contains("initial_schedule"));
+        assert!(error.contains("solver-cli evaluate --help"));
+    }
 }
