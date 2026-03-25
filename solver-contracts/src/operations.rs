@@ -1,3 +1,7 @@
+use crate::errors::{
+    INFEASIBLE_PROBLEM_ERROR, INTERNAL_ERROR, INVALID_INPUT_ERROR, UNKNOWN_OPERATION_ERROR,
+    UNKNOWN_SCHEMA_ERROR, UNSUPPORTED_CONSTRAINT_KIND_ERROR,
+};
 use crate::schemas::{
     PUBLIC_ERROR_ENVELOPE_SCHEMA_ID, RESULT_SUMMARY_SCHEMA_ID, SOLVE_REQUEST_SCHEMA_ID,
     SOLVE_RESPONSE_SCHEMA_ID, VALIDATE_REQUEST_SCHEMA_ID, VALIDATE_RESPONSE_SCHEMA_ID,
@@ -39,7 +43,12 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         family: "solver",
         input_schema_ids: &[SOLVE_REQUEST_SCHEMA_ID],
         output_schema_ids: &[SOLVE_RESPONSE_SCHEMA_ID],
-        error_codes: &[],
+        error_codes: &[
+            INVALID_INPUT_ERROR,
+            INFEASIBLE_PROBLEM_ERROR,
+            UNSUPPORTED_CONSTRAINT_KIND_ERROR,
+            INTERNAL_ERROR,
+        ],
         related_operation_ids: &[
             VALIDATE_PROBLEM_OPERATION_ID,
             INSPECT_RESULT_OPERATION_ID,
@@ -56,7 +65,12 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         family: "validation",
         input_schema_ids: &[VALIDATE_REQUEST_SCHEMA_ID],
         output_schema_ids: &[VALIDATE_RESPONSE_SCHEMA_ID],
-        error_codes: &[],
+        error_codes: &[
+            INVALID_INPUT_ERROR,
+            UNSUPPORTED_CONSTRAINT_KIND_ERROR,
+            INFEASIBLE_PROBLEM_ERROR,
+            INTERNAL_ERROR,
+        ],
         related_operation_ids: &[
             SOLVE_OPERATION_ID,
             GET_SCHEMA_OPERATION_ID,
@@ -72,7 +86,7 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         family: "results",
         input_schema_ids: &[SOLVE_RESPONSE_SCHEMA_ID],
         output_schema_ids: &[RESULT_SUMMARY_SCHEMA_ID],
-        error_codes: &[],
+        error_codes: &[INVALID_INPUT_ERROR, INTERNAL_ERROR],
         related_operation_ids: &[SOLVE_OPERATION_ID, GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID],
         example_ids: &[],
     },
@@ -84,7 +98,7 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         family: "introspection",
         input_schema_ids: &[],
         output_schema_ids: &[],
-        error_codes: &[],
+        error_codes: &[UNKNOWN_SCHEMA_ERROR, INTERNAL_ERROR],
         related_operation_ids: &[
             SOLVE_OPERATION_ID,
             VALIDATE_PROBLEM_OPERATION_ID,
@@ -101,7 +115,7 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         family: "introspection",
         input_schema_ids: &[],
         output_schema_ids: &[PUBLIC_ERROR_ENVELOPE_SCHEMA_ID],
-        error_codes: &[],
+        error_codes: &[UNKNOWN_OPERATION_ERROR, INTERNAL_ERROR],
         related_operation_ids: &[
             SOLVE_OPERATION_ID,
             VALIDATE_PROBLEM_OPERATION_ID,
