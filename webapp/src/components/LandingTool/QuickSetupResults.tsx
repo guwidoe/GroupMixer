@@ -1,5 +1,6 @@
 import { Download, FolderOpen, Layers3, Save, Target, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { trackLandingEvent } from '../../services/landingInstrumentation';
 import { useAppStore } from '../../store';
 import { MetricCard } from '../ResultsView/MetricCard';
 import { ResultsScheduleGrid } from '../ResultsView/ResultsScheduleGrid';
@@ -19,6 +20,10 @@ export function QuickSetupResults({ controller }: QuickSetupResultsProps) {
   const sharedSessionData = solvedSolution ? buildResultsSessionData(workspacePayload.problem, solvedSolution) : [];
 
   const openAdvancedWorkspace = () => {
+    trackLandingEvent('landing_open_advanced_workspace', {
+      hasResult: Boolean(result),
+      source: 'quick_setup_results',
+    });
     replaceWorkspace(controller.buildWorkspaceBridgePayload());
     navigate(result ? '/app/results' : '/app/problem/people');
   };
@@ -61,7 +66,12 @@ export function QuickSetupResults({ controller }: QuickSetupResultsProps) {
             </button>
             <button
               type="button"
-              onClick={controller.exportProjectDraft}
+              onClick={() => {
+                trackLandingEvent('landing_save_project_clicked', {
+                  hasResult: Boolean(result),
+                });
+                controller.exportProjectDraft();
+              }}
               className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium"
               style={{ borderColor: 'var(--border-primary)' }}
             >

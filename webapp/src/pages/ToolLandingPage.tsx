@@ -1,6 +1,8 @@
 import { ArrowRight, Compass, Layers3 } from 'lucide-react';
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { LandingFooter } from '../components/LandingPage/LandingFooter';
+import { trackLandingEvent } from '../services/landingInstrumentation';
 import { QuickSetupFaq } from '../components/LandingTool/QuickSetupFaq';
 import { QuickSetupPanel } from '../components/LandingTool/QuickSetupPanel';
 import { Seo } from '../components/Seo';
@@ -12,6 +14,14 @@ interface ToolLandingPageProps {
 
 export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
   const config = TOOL_PAGE_CONFIGS[pageKey];
+
+  useEffect(() => {
+    trackLandingEvent('landing_route_viewed', {
+      pageKey,
+      canonicalPath: config.canonicalPath,
+      preset: config.defaultPreset,
+    });
+  }, [config.canonicalPath, config.defaultPreset, pageKey]);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>

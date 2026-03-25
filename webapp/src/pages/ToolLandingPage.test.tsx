@@ -31,6 +31,7 @@ vi.mock('../services/solver/solveProblem', () => ({
 
 beforeEach(() => {
   window.localStorage.clear();
+  window.__groupmixerLandingEvents = [];
   useAppStore.getState().reset();
 });
 
@@ -64,6 +65,11 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(schema?.textContent).toContain('WebApplication');
     expect(schema?.textContent).toContain('FAQPage');
     expect(schema?.textContent).toContain('GroupMixer');
+    expect(window.__groupmixerLandingEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'landing_route_viewed' }),
+      ]),
+    );
   });
 
   it('generates groups locally from the landing tool without using /app', async () => {
@@ -89,5 +95,11 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(state.problem).not.toBeNull();
     expect(state.solution).not.toBeNull();
     expect(state.ui.activeTab).toBe('results');
+    expect(window.__groupmixerLandingEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'landing_generate_clicked' }),
+        expect.objectContaining({ name: 'landing_open_advanced_workspace' }),
+      ]),
+    );
   });
 });

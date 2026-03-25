@@ -1,3 +1,4 @@
+import { trackLandingEvent } from '../../services/landingInstrumentation';
 import type { QuickSetupController } from './useQuickSetup';
 
 interface QuickSetupAdvancedOptionsProps {
@@ -11,7 +12,13 @@ export function QuickSetupAdvancedOptions({ controller }: QuickSetupAdvancedOpti
     <section className="rounded-3xl border p-5" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
       <button
         type="button"
-        onClick={controller.toggleAdvanced}
+        onClick={() => {
+          trackLandingEvent('landing_advanced_toggled', {
+            nextOpen: !draft.advancedOpen,
+            inputMode: draft.inputMode,
+          });
+          controller.toggleAdvanced();
+        }}
         className="flex w-full items-center justify-between gap-4 text-left"
       >
         <div>

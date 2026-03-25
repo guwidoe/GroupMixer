@@ -1,4 +1,5 @@
 import { RotateCcw, Sparkles } from 'lucide-react';
+import { trackLandingEvent } from '../../services/landingInstrumentation';
 import type { QuickSetupController } from './useQuickSetup';
 
 interface QuickSetupBasicFormProps {
@@ -146,7 +147,14 @@ export function QuickSetupBasicForm({ controller }: QuickSetupBasicFormProps) {
       <div className="flex flex-col gap-3 sm:flex-row">
         <button
           type="button"
-          onClick={controller.generateGroups}
+          onClick={() => {
+            trackLandingEvent('landing_generate_clicked', {
+              preset: draft.preset,
+              participantCount,
+              groupingMode: draft.groupingMode,
+            });
+            controller.generateGroups();
+          }}
           disabled={!controller.canGenerate || controller.isSolving}
           className="inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
           style={{ backgroundColor: 'var(--color-accent)' }}
