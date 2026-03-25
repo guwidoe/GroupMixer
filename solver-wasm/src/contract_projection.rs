@@ -241,8 +241,10 @@ fn to_js_value<T: Serialize>(value: &T) -> Result<JsValue, JsValue> {
 mod tests {
     use super::{
         build_capabilities_response, build_error_lookup_response, build_operation_help_response,
-        build_schema_lookup_response, build_schema_summaries,
+        build_schema_lookup_response, build_schema_summaries, build_error_catalog,
     };
+    use solver_contracts::{bootstrap::bootstrap_spec, errors::error_specs, schemas::schema_specs};
+    use std::collections::HashSet;
 
     #[test]
     fn capabilities_response_exposes_bootstrap_and_top_level_bindings() {
@@ -290,5 +292,30 @@ mod tests {
         let solve_schema = build_schema_lookup_response("solve-request").expect("solve-request schema");
         assert_eq!(solve_schema.id, "solve-request");
         assert!(solve_schema.schema.schema.object.is_some() || solve_schema.schema.schema.subschemas.is_some());
+    }
+
+    #[test]
+    fn bootstrap_schema_and_error_exports_stay_in_parity_with_contracts() {
+        let capability_ids: HashSet<_> = build_capabilities_response()
+            .top_level_operations
+            .into_iter()
+            .map(|operation| operation.operation_id)
+            .collect();
+        let bootstrap_ids: HashSet<_> = bootstrap_spec().top_level_operation_ids.iter().copied().collect();
+        assert_eq!(capability_ids, bootstrap_ids);
+
+        let schema_ids: HashSet<_> = build_schema_summaries()
+            .into_iter()
+            .map(|schema| schema.id)
+            .collect();
+        let registered_schema_ids: HashSet<_> = schema_specs().iter().map(|schema| schema.id).collect();
+        assert_eq!(schema_ids, registered_schema_ids);
+
+        let error_codes: HashSet<_> = build_error_catalog()
+            .into_iter()
+            .map(|error| error.error.code)
+            .collect();
+        let registered_error_codes: HashSet<_> = error_specs().iter().map(|error| error.code).collect();
+        assert_eq!(error_codes, registered_error_codes);
     }
 }
