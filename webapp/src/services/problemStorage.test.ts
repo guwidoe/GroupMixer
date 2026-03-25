@@ -79,6 +79,22 @@ describe("ProblemStorageService", () => {
     expect(service.getProblem(saved.id)?.problem.num_sessions).toBe(4);
   });
 
+  it("preserves newly saved results when a pending autosave flushes an updated problem definition", () => {
+    vi.useFakeTimers();
+    const service = createService();
+    const saved = service.createProblem("Workshop", createSampleProblem());
+
+    service.updateProblem(saved.id, createSampleProblem({ num_sessions: 4 }));
+    service.addResult(saved.id, createSampleSolution(), createSampleSolverSettings(), "Run 1");
+
+    vi.advanceTimersByTime(2000);
+
+    const persisted = service.getProblem(saved.id)!;
+    expect(persisted.problem.num_sessions).toBe(4);
+    expect(persisted.results).toHaveLength(1);
+    expect(persisted.results[0].name).toBe("Run 1");
+  });
+
   it("exports, imports, and regenerates ids for imported results", () => {
     const service = createService();
     const saved = service.createProblem("Workshop", createSampleProblem());

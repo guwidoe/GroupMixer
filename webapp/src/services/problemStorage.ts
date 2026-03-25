@@ -342,7 +342,15 @@ export class ProblemStorageService {
     }
 
     this.autoSaveTimeout = window.setTimeout(() => {
-      this.saveProblem(problem);
+      const latestPersistedProblem = this.getProblem(problem.id);
+      this.saveProblem(
+        latestPersistedProblem
+          ? {
+              ...latestPersistedProblem,
+              problem: problem.problem,
+            }
+          : problem,
+      );
       this.autoSaveTimeout = null;
     }, this.autoSaveDelay);
   }

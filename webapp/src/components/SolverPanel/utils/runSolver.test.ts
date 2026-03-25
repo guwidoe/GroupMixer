@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSampleProblem, createSampleSolution, createSampleSolverSettings, createSavedProblem } from '../../../test/fixtures';
 import type { Problem, ProblemResult, SavedProblem, SolverState } from '../../../types';
 import { solveProblem } from '../../../services/solver/solveProblem';
+import { problemStorage } from '../../../services/problemStorage';
 import { runSolver } from './runSolver';
 import { solverWorkerService } from '../../../services/solverWorker';
 import { useAppStore } from '../../../store';
@@ -23,6 +24,15 @@ vi.mock('../../../utils/warmStart', () => ({
 vi.mock('../../../store', () => ({
   useAppStore: {
     getState: vi.fn(),
+    setState: vi.fn(),
+  },
+}));
+
+vi.mock('../../../services/problemStorage', () => ({
+  problemStorage: {
+    getCurrentProblemId: vi.fn(() => null),
+    addResult: vi.fn(),
+    getProblem: vi.fn(() => null),
   },
 }));
 
@@ -204,17 +214,47 @@ describe('runSolver', () => {
     );
   });
 
-  it('warns instead of saving when no active problem id exists in store state', async () => {
+  it('warns instead of saving when no active problem id exists in props or store state', async () => {
     vi.mocked(useAppStore.getState).mockReturnValue({ currentProblemId: null } as { currentProblemId: string | null });
-    const args = createArgs();
+    const args = createArgs({ currentProblemId: null });
 
     await runSolver(args);
 
     expect(args.addResult).not.toHaveBeenCalled();
+    expect(problemStorage.addResult).not.toHaveBeenCalled();
     expect(args.addNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'warning',
         title: 'Result Not Saved',
+      }),
+    );
+  });
+
+  it('falls back to persisted storage when props and store state have not caught up yet', async () => {
+    vi.mocked(useAppStore.getState).mockReturnValue({ currentProblemId: null } as { currentProblemId: string | null });
+    vi.mocked(problemStorage.getCurrentProblemId).mockReturnValue('problem-1');
+    const persistedResult = createSavedResult('Result 1');
+    vi.mocked(problemStorage.addResult).mockReturnValue(persistedResult);
+    vi.mocked(problemStorage.getProblem).mockReturnValue(
+      createSavedProblem({ id: 'problem-1', results: [persistedResult] }),
+    );
+    const args = createArgs({ currentProblemId: null });
+
+    await runSolver(args);
+
+    expect(useAppStore.setState).toHaveBeenCalledWith({ currentProblemId: 'problem-1' });
+    expect(args.addResult).not.toHaveBeenCalled();
+    expect(problemStorage.addResult).toHaveBeenCalledWith(
+      'problem-1',
+      args.__expected.solution,
+      args.__expected.solverSettings,
+      undefined,
+      expect.any(Object),
+    );
+    expect(args.addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'success',
+        title: 'Result Saved',
       }),
     );
   });

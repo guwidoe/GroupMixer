@@ -133,6 +133,23 @@ cargo test -p solver-server -- --nocapture
 cargo test -p solver-wasm
 ```
 
+### Validate the real browser consumer path
+
+The canonical browser/WASM surface is now consumed through the webapp adapter in:
+
+- `webapp/src/services/wasm/contracts.ts`
+- compatibility facade: `webapp/src/services/wasm.ts`
+- worker/runtime path: `webapp/src/services/solverWorker.ts` and `webapp/src/workers/solverWorker.ts`
+
+Recommended local checks when changing the browser surface:
+
+```bash
+cd webapp
+npm run test:runtime-safety:unit
+npx tsc --noEmit
+npx playwright test e2e/tests/workflows.spec.ts --project=chromium
+```
+
 ### Normal repo verification entrypoint
 
 `gate.sh` now includes the generated-reference freshness check via:
@@ -151,6 +168,21 @@ A public semantic change is not complete until:
 - the affected projection(s) are updated
 - generated reference artifacts are refreshed
 - freshness/parity checks pass
+
+## Browser naming / legacy policy
+
+Canonical browser-facing WASM exports are now the clean structured names:
+
+- `solve`
+- `solve_with_progress`
+- `validate_problem`
+- `get_default_solver_configuration`
+- `recommend_settings`
+- `evaluate_input`
+- `inspect_result`
+
+Legacy JSON-string compatibility exports, where still retained, must be explicit
+support shims with `*_legacy_json` names.
 
 ## Related docs
 

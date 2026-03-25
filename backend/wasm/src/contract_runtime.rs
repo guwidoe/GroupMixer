@@ -15,6 +15,30 @@ use solver_core::{
 };
 use wasm_bindgen::JsValue;
 
+const MAX_SAFE_JS_INTEGER: u64 = 9_007_199_254_740_991;
+
+fn random_js_safe_seed() -> Result<u64, PublicErrorEnvelope> {
+    let mut bytes = [0_u8; 8];
+    getrandom::fill(&mut bytes).map_err(|error| {
+        internal_error(
+            "solve",
+            format!("Failed to generate a browser-safe solver seed: {}", error),
+        )
+    })?;
+
+    Ok(u64::from_le_bytes(bytes) & MAX_SAFE_JS_INTEGER)
+}
+
+fn ensure_browser_safe_seed(request: &ApiInput) -> Result<ApiInput, PublicErrorEnvelope> {
+    if request.solver.seed.is_some() {
+        return Ok(request.clone());
+    }
+
+    let mut adjusted = request.clone();
+    adjusted.solver.seed = Some(random_js_safe_seed()?);
+    Ok(adjusted)
+}
+
 pub fn solve_contract_js(input: JsValue) -> Result<JsValue, JsValue> {
     let request: ApiInput = parse_js_value(input, "solve", &["solve-request"])?;
     let result = solve_contract(&request).map_err(|error| public_error_to_js_value(&error))?;
@@ -67,13 +91,16 @@ pub fn inspect_result_contract_js(result: JsValue) -> Result<JsValue, JsValue> {
 }
 
 pub fn solve_contract(request: &ApiInput) -> Result<SolverResult, PublicErrorEnvelope> {
-    run_solver(request).map_err(|error| infeasible_problem_error("solve", error.to_string()))
+    let adjusted = ensure_browser_safe_seed(request)?;
+    run_solver(&adjusted).map_err(|error| infeasible_problem_error("solve", error.to_string()))
 }
 
 pub fn solve_with_progress_contract(
     request: &ApiInput,
     progress_callback: Option<js_sys::Function>,
 ) -> Result<SolverResult, PublicErrorEnvelope> {
+    let adjusted = ensure_browser_safe_seed(request)?;
+
     if let Some(js_callback) = progress_callback {
         let rust_callback = Box::new(move |progress: &ProgressUpdate| -> bool {
             let progress_value = match serde_wasm_bindgen::to_value(progress) {
@@ -100,10 +127,10 @@ pub fn solve_with_progress_contract(
         let rust_callback: Box<dyn Fn(&ProgressUpdate) -> bool + Send> =
             unsafe { std::mem::transmute(rust_callback) };
 
-        run_solver_with_progress(request, Some(&rust_callback))
+        run_solver_with_progress(&adjusted, Some(&rust_callback))
             .map_err(|error| infeasible_problem_error("solve", error.to_string()))
     } else {
-        solve_contract(request)
+        run_solver(&adjusted).map_err(|error| infeasible_problem_error("solve", error.to_string()))
     }
 }
 
@@ -143,11 +170,13 @@ pub fn recommend_settings_contract(
 pub fn evaluate_input_contract(
     request: &ApiInput,
 ) -> Result<SolverResult, PublicErrorEnvelope> {
+    let adjusted = ensure_browser_safe_seed(request)?;
+
     if request.initial_schedule.is_none() {
         return Err(evaluate_requires_initial_schedule_error());
     }
 
-    let mut state = State::new(request)
+    let mut state = State::new(&adjusted)
         .map_err(|error| infeasible_problem_error("evaluate-input", error.to_string()))?;
     state._recalculate_locations_from_schedule();
     state._recalculate_scores();
@@ -187,6 +216,7 @@ mod tests {
         evaluate_input_contract, get_default_solver_configuration, inspect_result_contract,
         recommend_settings_contract, solve_contract, solve_with_progress_contract,
         validate_problem_contract,
+        MAX_SAFE_JS_INTEGER,
     };
     use solver_contracts::types::RecommendSettingsRequest;
     use solver_core::models::{
@@ -266,6 +296,7 @@ mod tests {
         let result = solve_contract(&valid_input()).expect("solve succeeds");
         assert!(!result.schedule.is_empty());
         assert!(result.final_score.is_finite());
+        assert!(result.effective_seed.unwrap_or_default() <= MAX_SAFE_JS_INTEGER);
     }
 
     #[test]
@@ -273,6 +304,7 @@ mod tests {
         let result = solve_with_progress_contract(&valid_input(), None).expect("solve succeeds");
         assert!(!result.schedule.is_empty());
         assert!(result.final_score.is_finite());
+        assert!(result.effective_seed.unwrap_or_default() <= MAX_SAFE_JS_INTEGER);
     }
 
     #[test]

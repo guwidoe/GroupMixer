@@ -1,5 +1,6 @@
 import type { MutableRefObject } from 'react';
 import type { Problem, ProblemResult, SavedProblem, SolverSettings, SolverState, Solution, Notification } from '../../../types';
+import { problemStorage } from '../../../services/problemStorage';
 import { solveProblem } from '../../../services/solver/solveProblem';
 import type { ProgressUpdate } from '../../../services/wasm/types';
 import { solverWorkerService } from '../../../services/solverWorker';
@@ -12,6 +13,53 @@ import {
 } from './runSolverHelpers';
 
 export type AddNotification = (notification: Omit<Notification, 'id'>) => void;
+
+function persistResultWithExplicitProblemId({
+  problemId,
+  solution,
+  selectedSettings,
+  snapshotProblem,
+  addNotification,
+}: {
+  problemId: string;
+  solution: Solution;
+  selectedSettings: SolverSettings;
+  snapshotProblem?: Problem;
+  addNotification: AddNotification;
+}): ProblemResult | null {
+  try {
+    const result = problemStorage.addResult(problemId, solution, selectedSettings, undefined, snapshotProblem);
+    const persistedProblem = problemStorage.getProblem(problemId);
+
+    useAppStore.setState((state) => ({
+      currentProblemId: problemId,
+      savedProblems: persistedProblem
+        ? {
+            ...state.savedProblems,
+            [problemId]: {
+              ...persistedProblem,
+              problem: state.problem || persistedProblem.problem,
+            },
+          }
+        : state.savedProblems,
+    }));
+
+    addNotification({
+      type: 'success',
+      title: 'Result Saved',
+      message: `Result "${result.name}" has been saved to the current problem.`,
+    });
+
+    return result;
+  } catch (error) {
+    addNotification({
+      type: 'error',
+      title: 'Save Result Failed',
+      message: error instanceof Error ? error.message : 'Failed to save result',
+    });
+    return null;
+  }
+}
 
 interface RunSolverArgs {
   useRecommended: boolean;
@@ -72,7 +120,6 @@ export async function runSolver({
   saveInProgressRef,
 }: RunSolverArgs) {
   const currentProblem = ensureProblemExists();
-  const activeProblemId = useAppStore.getState().currentProblemId;
 
   if (!validateProblemForSolve(currentProblem, addNotification)) {
     return;
@@ -173,9 +220,37 @@ export async function runSolver({
       });
     }
 
+    const storeProblemId = useAppStore.getState().currentProblemId;
+    const activeProblemId = currentProblemId ?? storeProblemId ?? problemStorage.getCurrentProblemId();
+
+    if (activeProblemId && storeProblemId !== activeProblemId) {
+      useAppStore.setState({ currentProblemId: activeProblemId });
+    }
+
     let savedResult: ProblemResult | null = null;
     if (activeProblemId) {
-      savedResult = addResult(solution, selectedSettings, undefined, runProblemSnapshotRef.current || undefined);
+      const snapshotProblem = runProblemSnapshotRef.current || undefined;
+      if (storeProblemId && storeProblemId === activeProblemId) {
+        savedResult = addResult(solution, selectedSettings, undefined, snapshotProblem);
+      } else {
+        savedResult = persistResultWithExplicitProblemId({
+          problemId: activeProblemId,
+          solution,
+          selectedSettings,
+          snapshotProblem,
+          addNotification,
+        });
+      }
+
+      if (!savedResult && activeProblemId) {
+        savedResult = persistResultWithExplicitProblemId({
+          problemId: activeProblemId,
+          solution,
+          selectedSettings,
+          snapshotProblem,
+          addNotification,
+        });
+      }
     } else {
       addNotification({
         type: 'warning',

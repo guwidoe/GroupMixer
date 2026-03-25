@@ -100,3 +100,18 @@ export async function runSolver(page: Page) {
   await expect(page.getByRole('button', { name: /cancel solver/i })).toBeVisible({ timeout: 5000 });
   await expect(startButton).toBeVisible({ timeout: 30000 });
 }
+
+export async function expectSavedResultCount(page: Page, expectedCount: number) {
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const currentProblemId = window.localStorage.getItem('people-distributor-current-problem');
+        const rawProblems = window.localStorage.getItem('people-distributor-problems');
+        const savedProblems = rawProblems ? JSON.parse(rawProblems) as Record<string, { results?: unknown[] }> : {};
+        return currentProblemId && savedProblems[currentProblemId]
+          ? savedProblems[currentProblemId].results?.length ?? 0
+          : 0;
+      }),
+    )
+    .toBe(expectedCount);
+}

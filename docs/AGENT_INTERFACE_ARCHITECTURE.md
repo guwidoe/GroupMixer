@@ -581,11 +581,23 @@ The intended public/browser-local discovery surface is:
 
 The intended public/browser-local execution surface is:
 
-- `solve_contract(request)`
-- `validate_problem_contract(request)`
-- `recommend_settings_contract(problem_definition, desired_runtime_seconds)`
-- `evaluate_input_contract(request)`
-- `inspect_result_contract(result)`
+- `solve(request)`
+- `solve_with_progress(request, progress_callback?)`
+- `validate_problem(request)`
+- `get_default_solver_configuration()`
+- `recommend_settings(recommend_settings_request)`
+- `evaluate_input(request)`
+- `inspect_result(result)`
+
+Legacy JSON-string compatibility exports, if they remain temporarily, should be
+explicitly named as support-only shims such as:
+
+- `solve_legacy_json(...)`
+- `solve_with_progress_legacy_json(...)`
+- `validate_problem_legacy_json(...)`
+- `get_default_settings_legacy_json()`
+- `get_recommended_settings_legacy_json(...)`
+- `evaluate_input_legacy_json(...)`
 
 These should be exported as thin JS/WASM projections of `solver-contracts`, not
 as a second handwritten semantic registry.

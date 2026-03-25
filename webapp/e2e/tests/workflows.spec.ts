@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import {
   addGroup,
   addPerson,
+  expectSavedResultCount,
   openSolver,
   openApp,
   openProblemManager,
@@ -62,7 +63,10 @@ test.describe('Workflow coverage', () => {
 
     await saveCurrentProblem(page);
     await runSolver(page);
-    await expect(page.getByText(/result saved/i).first()).toBeVisible({ timeout: 10000 });
+    await expectSavedResultCount(page, 1);
+
+    await page.getByRole('link', { name: /^results$/i }).click();
+    await expect(page.getByText(/result 1/i).first()).toBeVisible();
 
     await page.getByRole('link', { name: /result details/i }).click();
     await expect(page).toHaveURL(/\/app\/results/);
@@ -115,7 +119,8 @@ test.describe('Workflow coverage', () => {
 
     await expect(page.getByText(/^Running$/)).toBeVisible({ timeout: 5000 });
     await expect(page.getByRole('button', { name: /cancel solver/i })).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText(/result saved/i).first()).toBeVisible({ timeout: 15000 });
+    await expect(customStart).toBeVisible({ timeout: 30000 });
+    await expectSavedResultCount(page, 1);
 
     await page.reload();
     await waitForAppShell(page);
@@ -128,7 +133,12 @@ test.describe('Workflow coverage', () => {
 
     await customStart.click();
     await expect(page.getByText(/^Running$/)).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText(/result saved/i).first()).toBeVisible({ timeout: 15000 });
+    await expect(customStart).toBeVisible({ timeout: 30000 });
+    await expectSavedResultCount(page, 2);
+
+    await page.getByRole('link', { name: /^results$/i }).click();
+    await expect(page.getByText(/result 1/i).first()).toBeVisible();
+    await expect(page.getByText(/result 2/i).first()).toBeVisible();
   });
 
   test('shows a browser-visible solver error when worker startup fails', async ({ page }) => {
