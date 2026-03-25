@@ -21,195 +21,228 @@ export interface ToolPageConfig {
   metaDescription: string;
   h1: string;
   subhead: string;
-  intro: string;
   defaultPreset: ToolPagePreset;
   faqEntries: ToolPageFaqEntry[];
 }
+
+// ─── Shared FAQ entries used across multiple pages ───
+
+const FAQ_FREE: ToolPageFaqEntry = {
+  question: 'Is GroupMixer free to use?',
+  answer:
+    'Yes. GroupMixer is completely free. There is no sign-up, no account required, and no usage limits.',
+};
+
+const FAQ_PRIVACY: ToolPageFaqEntry = {
+  question: 'Does my data stay private?',
+  answer:
+    'Yes. All processing happens locally in your browser. Your names and group data are never sent to a server.',
+};
+
+const FAQ_CONSTRAINTS: ToolPageFaqEntry = {
+  question: 'Can I add rules like keep-together or keep-apart?',
+  answer:
+    'Yes. Open the advanced options to add keep-together groups, avoid-pairing rules, multiple sessions, and attribute balancing. Or use the expert workspace for full control.',
+};
+
+const FAQ_MULTIPLE_ROUNDS: ToolPageFaqEntry = {
+  question: 'Can I create groups for multiple rounds?',
+  answer:
+    'Yes. Set the number of sessions in the advanced options and enable "Avoid repeat pairings" to minimize how often the same people end up together.',
+};
+
+const FAQ_EXPERT: ToolPageFaqEntry = {
+  question: 'What is the expert workspace?',
+  answer:
+    'The expert workspace gives you detailed control over sessions, constraints, solver settings, warm-start from previous results, and full result analysis. It uses the same powerful solver engine.',
+};
+
+// ─── Page configs ───
 
 export const TOOL_PAGE_CONFIGS: Record<ToolPageKey, ToolPageConfig> = {
   home: {
     key: 'home',
     canonicalPath: '/',
-    title: 'GroupMixer — Random Group Generator with Flexible Constraints',
+    title: 'Random Group Generator — Split Names into Teams Instantly | GroupMixer',
     metaDescription:
-      'Create random groups fast, then move into the full GroupMixer workspace when you need constraints, balancing, and repeat-session planning.',
-    h1: 'Make balanced groups fast — then go deeper when you need to.',
+      'Free random group generator. Paste names, pick group count, and generate balanced groups in seconds. No sign-up required. Add constraints when you need them.',
+    h1: 'Random Group Generator',
     subhead:
-      'Start with a quick participant list and rough group sizing, then continue into the expert workspace for constraints, solver controls, and detailed results.',
-    intro:
-      'GroupMixer is a tool-first group generator for teachers, facilitators, event hosts, and workshop organizers who need a quick first result without giving up advanced control later.',
-    defaultPreset: 'balanced',
-    faqEntries: [
-      {
-        question: 'Can I start simple and refine later?',
-        answer:
-          'Yes. The landing tool is meant for fast first success, while the /app workspace remains available for advanced editing, solver tuning, and result inspection.',
-      },
-      {
-        question: 'Is this only for classrooms?',
-        answer:
-          'No. It also fits breakout rooms, workshops, conferences, social mixers, and any repeated group-planning workflow.',
-      },
-      {
-        question: 'Does my data stay private?',
-        answer:
-          'Your quick setup starts as a local browser scratchpad. You only move it into the advanced workspace when you explicitly choose to continue there.',
-      },
-    ],
-  },
-  'random-group-generator': {
-    key: 'random-group-generator',
-    canonicalPath: '/random-group-generator',
-    title: 'Random Group Generator — GroupMixer',
-    metaDescription:
-      'Use GroupMixer as a random group generator for classrooms, workshops, and events. Start with a simple participant list and continue into advanced grouping when needed.',
-    h1: 'Random group generator for fast first drafts.',
-    subhead:
-      'Paste names, choose group count or size, and move from a quick setup into a deeper planning workspace when the session needs more structure.',
-    intro:
-      'This route is tuned for people who want a simple random group generator first, with more powerful options available only when they become useful.',
+      'Paste names, choose the number of groups, and generate instantly. Free, private, and no sign-up needed.',
     defaultPreset: 'random',
     faqEntries: [
       {
-        question: 'Can I control the number of groups or group size?',
+        question: 'How do I split a list of names into random groups?',
         answer:
-          'Yes. The landing shell supports both planning modes so you can think in terms that match your event setup.',
+          'Paste your names (one per line) into the text box, set the number of groups or people per group, and click "Generate Groups". Your groups appear instantly.',
       },
-      {
-        question: 'What if I need constraints later?',
-        answer:
-          'You can continue into the advanced workspace to add constraints, solver settings, and detailed edits without switching products.',
-      },
-      {
-        question: 'Is GroupMixer free to use?',
-        answer:
-          'Yes. You can use the public tool and advanced workspace without paying to create and refine group assignments.',
-      },
+      FAQ_FREE,
+      FAQ_PRIVACY,
+      FAQ_CONSTRAINTS,
+      FAQ_MULTIPLE_ROUNDS,
+      FAQ_EXPERT,
     ],
   },
+
+  'random-group-generator': {
+    key: 'random-group-generator',
+    canonicalPath: '/random-group-generator',
+    title: 'Random Group Generator — Create Groups from a List of Names | GroupMixer',
+    metaDescription:
+      'Free random group generator. Paste a list of names, choose how many groups, and split them instantly. Works for classrooms, workshops, and events.',
+    h1: 'Random Group Generator',
+    subhead:
+      'Paste a list of names, choose how many groups you want, and split them instantly. No sign-up, no server — everything runs in your browser.',
+    defaultPreset: 'random',
+    faqEntries: [
+      {
+        question: 'How does the random group generator work?',
+        answer:
+          'Paste names into the text box (one per line), set the number of groups or the size per group, and click Generate. GroupMixer creates a balanced random split instantly.',
+      },
+      {
+        question: 'Can I control the number of groups or group size?',
+        answer:
+          'Yes. You can either set a fixed number of groups or specify how many people you want per group. GroupMixer handles the math for you.',
+      },
+      FAQ_FREE,
+      FAQ_PRIVACY,
+      FAQ_CONSTRAINTS,
+    ],
+  },
+
   'random-team-generator': {
     key: 'random-team-generator',
     canonicalPath: '/random-team-generator',
-    title: 'Random Team Generator — GroupMixer',
+    title: 'Random Team Generator — Create Balanced Teams Fast | GroupMixer',
     metaDescription:
-      'Create random teams quickly with GroupMixer, then use the advanced app for balancing, constraints, and multi-session team planning.',
-    h1: 'Random team generator for workshops, projects, and events.',
+      'Free random team generator. Paste names and create balanced teams instantly. Add rules for skill balancing, keep-together, and keep-apart when needed.',
+    h1: 'Random Team Generator',
     subhead:
-      'Start with a fast team draft now, then bring the same setup into the advanced workspace when you need balancing and deeper control.',
-    intro:
-      'This route is aimed at facilitators and organizers who think in teams rather than generic groups but still want the same underlying planning power.',
+      'Create random teams in seconds. Paste names, pick team count, and generate. Add balancing rules when you need fairer teams.',
     defaultPreset: 'balanced',
     faqEntries: [
       {
-        question: 'Is this useful for repeated sessions?',
+        question: 'How do I create random teams?',
         answer:
-          'Yes. GroupMixer is especially strong when you later need to rotate people across multiple sessions while tracking who has already met.',
+          'Paste your participant names, set the number of teams, and click Generate. GroupMixer splits them into balanced teams instantly.',
       },
       {
-        question: 'Do I have to learn the full app first?',
+        question: 'Can I balance teams by skill or role?',
         answer:
-          'No. The point of this page is to give you a simple starting surface before exposing the expert tools.',
+          'Yes. Switch to CSV input mode and add columns like "role" or "skill". Then use the balance-by-attribute option to distribute those attributes evenly.',
       },
+      FAQ_FREE,
+      FAQ_PRIVACY,
+      FAQ_MULTIPLE_ROUNDS,
     ],
   },
+
   'breakout-room-generator': {
     key: 'breakout-room-generator',
     canonicalPath: '/breakout-room-generator',
-    title: 'Breakout Room Generator — GroupMixer',
+    title: 'Breakout Room Generator — Split Participants into Rooms | GroupMixer',
     metaDescription:
-      'Generate breakout-room groups quickly for classes, workshops, and remote sessions. Use GroupMixer for simple setup first and advanced planning later.',
-    h1: 'Breakout room generator for classes, workshops, and remote sessions.',
+      'Free breakout room generator. Paste names and split participants into breakout rooms instantly. Great for classes, workshops, and remote meetings.',
+    h1: 'Breakout Room Generator',
     subhead:
-      'Get to a usable breakout-room setup quickly, then use the expert workspace if you need balancing, constraints, or repeat-session planning.',
-    intro:
-      'This route focuses on the breakout-room use case where time-to-first-group matters more than showing every advanced control immediately.',
+      'Split participants into breakout rooms instantly. Paste names, set room count, and generate. Perfect for workshops, classes, and remote sessions.',
     defaultPreset: 'networking',
     faqEntries: [
       {
-        question: 'Can I use this for one-off breakout rooms?',
+        question: 'How do I create breakout rooms?',
         answer:
-          'Yes. The landing shell is designed to be useful even when you only need a quick single-session result.',
+          'Paste participant names, choose the number of rooms, and click Generate. GroupMixer assigns everyone to rooms instantly.',
       },
       {
-        question: 'What if I am running multiple rounds?',
+        question: 'Can I rotate people across multiple breakout rounds?',
         answer:
-          'That is where the advanced workspace becomes especially useful because it can support more structured multi-session planning.',
+          'Yes. Set the number of sessions in the advanced options and enable "Avoid repeat pairings" so people meet new faces each round.',
       },
+      FAQ_FREE,
+      FAQ_PRIVACY,
+      FAQ_CONSTRAINTS,
     ],
   },
+
   'student-group-generator': {
     key: 'student-group-generator',
     canonicalPath: '/student-group-generator',
-    title: 'Student Group Generator — GroupMixer',
+    title: 'Student Group Generator — Create Classroom Groups Fast | GroupMixer',
     metaDescription:
-      'Create student groups quickly with GroupMixer, then move into the full app for balancing, attendance, and classroom constraints.',
-    h1: 'Student group generator for teachers and classroom facilitators.',
+      'Free student group generator for teachers. Paste your class roster and create balanced student groups in seconds. Add rules for keeping students together or apart.',
+    h1: 'Student Group Generator',
     subhead:
-      'Start with a quick list of students and rough grouping targets, then continue into the advanced workspace for classroom-specific constraints.',
-    intro:
-      'This route is written for classroom use where a teacher wants fast initial grouping but still needs room to handle real-world constraints later.',
+      'Paste your class roster and create student groups instantly. Keep it simple or add rules like keep-together and balanced teams when needed.',
     defaultPreset: 'balanced',
     faqEntries: [
       {
-        question: 'Can I keep the advanced classroom workflow?',
+        question: 'How do I create student groups?',
         answer:
-          'Yes. The /app workspace remains the expert cockpit, so this landing route is an easier entry point rather than a replacement.',
+          'Paste student names (one per line), choose the number of groups, and click Generate. GroupMixer handles the rest.',
       },
       {
-        question: 'Will this later support attendance and constraints?',
+        question: 'Can I keep certain students together or apart?',
         answer:
-          'Yes. The architecture is intentionally shared so the quick setup can flow into the same backend-aligned model used by the advanced app.',
+          'Yes. Open the advanced options to specify keep-together and avoid-pairing rules. The solver respects these when creating groups.',
       },
+      FAQ_FREE,
+      FAQ_PRIVACY,
+      FAQ_MULTIPLE_ROUNDS,
     ],
   },
+
   'speed-networking-generator': {
     key: 'speed-networking-generator',
     canonicalPath: '/speed-networking-generator',
-    title: 'Speed Networking Generator — GroupMixer',
+    title: 'Speed Networking Generator — Multiple Rounds, Less Repetition | GroupMixer',
     metaDescription:
-      'Generate speed-networking rounds quickly, avoid repeat pairings, and move into GroupMixer\'s advanced workspace when you need deeper control.',
-    h1: 'Speed networking generator for repeat rounds with less repetition.',
+      'Free speed networking generator. Create multiple rounds where participants meet new people each time. Minimize repeat pairings automatically.',
+    h1: 'Speed Networking Generator',
     subhead:
-      'Set up names fast, generate multiple rounds, and use the networking preset to reduce repeat pairings across sessions.',
-    intro:
-      'This route targets facilitators running networking rounds, mentor matching, and social-mixer formats where repeated pairings matter.',
+      'Generate multiple networking rounds where people meet new faces each time. Paste names, set rounds, and minimize repeat pairings.',
     defaultPreset: 'networking',
     faqEntries: [
       {
-        question: 'Can I avoid repeat pairings across rounds?',
+        question: 'How does the speed networking generator work?',
         answer:
-          'Yes. The networking route is designed for multi-session flows and defaults toward reducing repeated encounters when possible.',
+          'Paste participant names, set the number of rounds (sessions), and enable "Avoid repeat pairings". GroupMixer creates groups for each round while minimizing how often the same people meet.',
       },
       {
-        question: 'Can I keep some people together or apart?',
+        question: 'Can I control group size for networking rounds?',
         answer:
-          'Yes. You can start with a fast setup here, then reveal the advanced options or continue into the expert workspace for deeper rules.',
+          'Yes. Set either the number of groups per round or the people per group. GroupMixer calculates the rest.',
       },
+      FAQ_FREE,
+      FAQ_PRIVACY,
+      FAQ_EXPERT,
     ],
   },
+
   'group-generator-with-constraints': {
     key: 'group-generator-with-constraints',
     canonicalPath: '/group-generator-with-constraints',
-    title: 'Group Generator with Constraints — GroupMixer',
+    title: 'Group Generator with Constraints — Keep Together, Keep Apart, Balance | GroupMixer',
     metaDescription:
-      'Create random groups, then add rules like keep together, avoid pairing, balancing, and no repeat pairings with GroupMixer.',
-    h1: 'Group generator with keep-together, keep-apart, and balancing rules.',
+      'Free group generator with constraints. Add keep-together, keep-apart, balanced teams, and no-repeat-pairing rules. Paste names and generate smart groups.',
+    h1: 'Group Generator with Constraints',
     subhead:
-      'Start with a simple participant list, then add lightweight rules without jumping straight into an overwhelming advanced interface.',
-    intro:
-      'This route speaks directly to users who know they need more than a basic randomizer but still want a tool-first workflow before entering the expert app.',
+      'Create groups with rules. Keep people together, keep them apart, balance by attribute, and avoid repeat pairings across rounds.',
     defaultPreset: 'balanced',
     faqEntries: [
       {
-        question: 'Can I keep certain people together?',
+        question: 'What constraints can I set?',
         answer:
-          'Yes. The landing tool already supports a keep-together control, and the advanced workspace exposes the same idea in more detail.',
+          'You can keep certain people together, keep others apart, avoid repeat pairings across sessions, and balance groups by any CSV column (like role, skill, or department).',
       },
       {
-        question: 'Can I avoid pairing certain people?',
+        question: 'Do I need the expert workspace for constraints?',
         answer:
-          'Yes. Use the avoid-pairing option in the landing tool and continue into the expert workspace when you need more structured constraint editing.',
+          'No. Basic constraints are available right here in the advanced options. The expert workspace adds deeper control for complex planning.',
       },
+      FAQ_FREE,
+      FAQ_PRIVACY,
+      FAQ_MULTIPLE_ROUNDS,
     ],
   },
 };

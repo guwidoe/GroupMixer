@@ -46,19 +46,19 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(
       await screen.findByRole('heading', {
         level: 1,
-        name: 'Random team generator for workshops, projects, and events.',
+        name: 'Random Team Generator',
       }),
     ).toBeInTheDocument();
 
-    expect(document.title).toBe('Random Team Generator — GroupMixer');
+    expect(document.title).toBe('Random Team Generator — Create Balanced Teams Fast | GroupMixer');
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(
-      'Create random teams quickly with GroupMixer, then use the advanced app for balancing, constraints, and multi-session team planning.',
+      'Free random team generator. Paste names and create balanced teams instantly. Add rules for skill balancing, keep-together, and keep-apart when needed.',
     );
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
       'https://www.groupmixer.app/random-team-generator',
     );
     expect(document.querySelector('meta[property="og:title"]')?.getAttribute('content')).toBe(
-      'Random Team Generator — GroupMixer',
+      'Random Team Generator — Create Balanced Teams Fast | GroupMixer',
     );
 
     const schema = document.getElementById('groupmixer-route-schema');
@@ -72,7 +72,7 @@ describe('ToolLandingPage SEO wiring', () => {
     );
   });
 
-  it('generates groups locally from the landing tool without using /app', async () => {
+  it('generates groups locally from the landing tool without leaving the page', async () => {
     const user = userEvent.setup();
 
     render(
@@ -83,12 +83,13 @@ describe('ToolLandingPage SEO wiring', () => {
 
     await user.click(screen.getByRole('button', { name: /generate groups/i }));
 
-    expect(await screen.findByRole('heading', { name: /session 1/i })).toBeInTheDocument();
+    // Results appear inline
+    expect(await screen.findByRole('heading', { name: /your groups/i })).toBeInTheDocument();
     expect(await screen.findByText('Group 1')).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: /reshuffle/i })).toBeEnabled();
     expect(await screen.findByRole('button', { name: /export csv/i })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /open in advanced workspace/i }));
+    // Can transition to expert workspace
+    await user.click(screen.getByRole('button', { name: /open in expert workspace/i }));
 
     const state = useAppStore.getState();
     expect(state.currentProblemId).toBeNull();
@@ -101,5 +102,33 @@ describe('ToolLandingPage SEO wiring', () => {
         expect.objectContaining({ name: 'landing_open_advanced_workspace' }),
       ]),
     );
+  });
+
+  it('shows the tool form above the fold with participants input and generate button', () => {
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" />
+      </MemoryRouter>,
+    );
+
+    // Tool form is visible immediately
+    expect(screen.getByLabelText(/participants/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /generate groups/i })).toBeInTheDocument();
+    
+    // Trust signals visible (exact match on the dot-prefixed trust items)
+    expect(screen.getByText('Free & private')).toBeInTheDocument();
+    expect(screen.getByText('No sign-up')).toBeInTheDocument();
+    expect(screen.getByText('Results in seconds')).toBeInTheDocument();
+  });
+
+  it('renders FAQ section for SEO', () => {
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { name: /frequently asked questions/i })).toBeInTheDocument();
+    expect(screen.getByText(/how do i split a list of names into random groups/i)).toBeInTheDocument();
   });
 });
