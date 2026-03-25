@@ -12,6 +12,7 @@ export interface SolveProblemOptions {
   progressCallback?: (progress: ProgressUpdate) => void;
   warmStartSchedule?: WarmStartSchedule;
   enableBestScheduleTelemetry?: boolean;
+  onRunProblemPrepared?: (runProblem: Problem, selectedSettings: SolverSettings) => void;
 }
 
 export interface SolveProblemResult {
@@ -57,12 +58,15 @@ export async function solveProblem({
   progressCallback,
   warmStartSchedule,
   enableBestScheduleTelemetry = false,
+  onRunProblemPrepared,
 }: SolveProblemOptions): Promise<SolveProblemResult> {
   const selectedSettings = await selectSettings(problem, useRecommendedSettings, desiredRuntimeSeconds);
   const runProblem: Problem = {
     ...problem,
     settings: buildRunSettings(selectedSettings, enableBestScheduleTelemetry),
   };
+
+  onRunProblemPrepared?.(runProblem, selectedSettings);
 
   const { solution, lastProgress } = warmStartSchedule
     ? await solverWorkerService.solveWithProgressWarmStart(runProblem, warmStartSchedule, progressCallback)

@@ -181,9 +181,10 @@ export async function runSolver({
       progressCallback,
       warmStartSchedule,
       enableBestScheduleTelemetry: showLiveVizRef.current,
+      onRunProblemPrepared: (preparedRunProblem) => {
+        setRunSettings(preparedRunProblem.settings);
+      },
     });
-
-    setRunSettings(runProblem.settings);
 
     solverCompletedRef.current = true;
 

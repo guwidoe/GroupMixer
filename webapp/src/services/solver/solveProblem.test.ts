@@ -63,6 +63,52 @@ describe('solveProblem', () => {
     );
   });
 
+  it('publishes the prepared run settings before the solve resolves', async () => {
+    const problem = createSampleProblem({ settings: createSampleSolverSettings() });
+    const rawRecommended = {
+      ...createSampleSolverSettings(),
+      stop_conditions: {
+        max_iterations: 486486,
+        time_limit_seconds: 2,
+        no_improvement_iterations: 243243,
+      },
+    } as SolverSettings;
+    const preparedRunProblems: typeof problem[] = [];
+    let resolveSolve!: (value: { solution: ReturnType<typeof createSampleSolution>; lastProgress: null }) => void;
+    const solvePromise = new Promise<{ solution: ReturnType<typeof createSampleSolution>; lastProgress: null }>((resolve) => {
+      resolveSolve = resolve;
+    });
+
+    vi.mocked(solverWorkerService.getRecommendedSettings).mockResolvedValue(rawRecommended);
+    vi.mocked(solverWorkerService.solveWithProgress).mockReturnValue(solvePromise);
+
+    const pendingResult = solveProblem({
+      problem,
+      useRecommendedSettings: true,
+      onRunProblemPrepared: (runProblem) => {
+        preparedRunProblems.push(runProblem);
+      },
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(preparedRunProblems).toEqual([
+      expect.objectContaining({
+        settings: expect.objectContaining({
+          stop_conditions: expect.objectContaining({
+            max_iterations: 486486,
+            time_limit_seconds: 2,
+            no_improvement_iterations: 243243,
+          }),
+        }),
+      }),
+    ]);
+
+    resolveSolve({ solution: createSampleSolution(), lastProgress: null });
+    await pendingResult;
+  });
+
   it('falls back to the existing problem settings when recommended settings fail', async () => {
     const problem = createSampleProblem({ settings: createSampleSolverSettings() });
     vi.mocked(solverWorkerService.getRecommendedSettings).mockRejectedValue(new Error('settings failed'));

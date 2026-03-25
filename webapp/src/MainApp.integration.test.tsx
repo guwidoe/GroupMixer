@@ -13,6 +13,8 @@ import { solverWorkerService } from "./services/solverWorker";
 vi.mock("./services/solverWorker", () => ({
   solverWorkerService: {
     getRecommendedSettings: vi.fn(),
+    solveWithProgress: vi.fn(),
+    solveWithProgressWarmStart: vi.fn(),
     cancel: vi.fn(),
   },
 }));
@@ -41,6 +43,16 @@ function renderAppRoute(route: string) {
       </Routes>
     </MemoryRouter>,
   );
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
 }
 
 describe("MainApp stateful integration routes", () => {
@@ -154,5 +166,46 @@ describe("MainApp stateful integration routes", () => {
     await user.click(screen.getByRole("button", { name: /view in result details/i }));
 
     expect(await screen.findByRole("heading", { name: /optimization results/i })).toBeInTheDocument();
+  });
+
+  it("updates progress targets immediately when automatic settings choose a larger run budget", async () => {
+    const user = userEvent.setup();
+    const savedProblem = createSavedProblem({
+      id: "problem-1",
+      problem: createSampleProblem({ settings: createSampleSolverSettings() }),
+    });
+    const deferred = createDeferred<{
+      solution: ReturnType<typeof createSavedProblem>["results"][number]["solution"];
+      lastProgress: null;
+    }>();
+
+    vi.mocked(solverWorkerService.getRecommendedSettings).mockResolvedValue({
+      ...createSampleSolverSettings(),
+      stop_conditions: {
+        max_iterations: 486486,
+        time_limit_seconds: 2,
+        no_improvement_iterations: 243243,
+      },
+    });
+    vi.mocked(solverWorkerService.solveWithProgress).mockReturnValue(deferred.promise);
+
+    useAppStore.setState({
+      problem: savedProblem.problem,
+      currentProblemId: savedProblem.id,
+      savedProblems: { [savedProblem.id]: savedProblem },
+    });
+
+    renderAppRoute("/app/solver");
+
+    await user.click(await screen.findByRole("button", { name: /start solver with automatic settings/i }));
+
+    expect(await screen.findByText("0 / 486,486")).toBeInTheDocument();
+    expect(screen.getByText("0.0s / 2s")).toBeInTheDocument();
+    expect(screen.getByText("0 / 243,243")).toBeInTheDocument();
+
+    deferred.resolve({
+      solution: savedProblem.results[0].solution,
+      lastProgress: null,
+    });
   });
 });
