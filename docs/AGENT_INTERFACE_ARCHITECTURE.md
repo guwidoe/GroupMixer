@@ -652,6 +652,35 @@ has stabilized, not as the first move.
 6. **Keep the receiver static; let the caller do the planning.**
 7. **Generate reference docs from the contract layer whenever possible.**
 
+## Current contributor workflow
+
+This architecture is now meant to be followed operationally, not just
+conceptually.
+
+When changing a public solver-facing semantic fact, contributors should use the
+following order:
+
+1. update `solver-contracts`
+2. update the relevant projection(s):
+   - `solver-cli`
+   - `solver-server`
+   - `solver-wasm`
+3. regenerate `docs/reference/generated/solver-contracts/`
+4. run contract freshness and parity checks
+
+Primary local commands:
+
+```bash
+./tools/contracts_reference.sh generate
+./tools/contracts_reference.sh check
+cargo test -p solver-contracts
+cargo test -p solver-cli
+cargo test -p solver-server -- --nocapture
+cargo test -p solver-wasm
+```
+
+See `docs/CONTRACTS_WORKFLOW.md` for the concrete contributor workflow.
+
 ## Bottom line
 
 The elegant architecture is:
