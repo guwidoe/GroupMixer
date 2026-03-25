@@ -1908,6 +1908,7 @@ dependencies = [
  "serde",
  "serde_json",
  "solver-benchmarking",
+ "solver-contracts",
  "solver-core",
  "tempfile",
 ]
