@@ -395,6 +395,15 @@ enum BenchmarkSuiteArg {
     Representative,
     Stretch,
     Adversarial,
+    HotpathConstruction,
+    HotpathFullRecalculation,
+    HotpathSwapPreview,
+    HotpathSwapApply,
+    HotpathTransferPreview,
+    HotpathTransferApply,
+    HotpathCliqueSwapPreview,
+    HotpathCliqueSwapApply,
+    HotpathSearchIteration,
 }
 
 impl BenchmarkSuiteArg {
@@ -404,6 +413,15 @@ impl BenchmarkSuiteArg {
             Self::Representative => "representative",
             Self::Stretch => "stretch",
             Self::Adversarial => "adversarial",
+            Self::HotpathConstruction => "hotpath-construction",
+            Self::HotpathFullRecalculation => "hotpath-full-recalculation",
+            Self::HotpathSwapPreview => "hotpath-swap-preview",
+            Self::HotpathSwapApply => "hotpath-swap-apply",
+            Self::HotpathTransferPreview => "hotpath-transfer-preview",
+            Self::HotpathTransferApply => "hotpath-transfer-apply",
+            Self::HotpathCliqueSwapPreview => "hotpath-clique-swap-preview",
+            Self::HotpathCliqueSwapApply => "hotpath-clique-swap-apply",
+            Self::HotpathSearchIteration => "hotpath-search-iteration",
         }
     }
 }

@@ -1,6 +1,6 @@
 # Benchmarking
 
-This folder defines the solve-level benchmarking system for GroupMixer.
+This folder defines the structured benchmarking system for GroupMixer.
 
 Primary references:
 
@@ -21,12 +21,17 @@ Primary references:
 
 ## Architectural role
 
-This folder is the **Layer 3 solve-level benchmark surface**.
+This folder is the **structured benchmark operations surface**.
 
 It is intentionally separate from `solver-core/benches/`:
 
 - `solver-core/benches/` owns Criterion microbench timing
-- `benchmarking/` owns suite taxonomy, manifests, artifacts, baselines, and comparisons
+- `benchmarking/` owns suite taxonomy, manifests, artifacts, baselines, recordings, and comparisons
+
+That includes both:
+
+- solve-level `full_solve` suites
+- recordable hotpath suites used for remote/history lanes
 
 ## Current suite classes
 
@@ -36,3 +41,16 @@ It is intentionally separate from `solver-core/benches/`:
 - `adversarial`
 
 Each case belongs to exactly one primary class so rollups preserve context instead of flattening unlike workloads into one mixed average.
+
+## Current benchmark-mode families
+
+- `full_solve`
+- `construction`
+- `full_recalculation`
+- `swap_preview`
+- `swap_apply`
+- `transfer_preview`
+- `transfer_apply`
+- `clique_swap_preview`
+- `clique_swap_apply`
+- `search_iteration`

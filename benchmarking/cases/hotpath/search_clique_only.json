@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "hotpath.search-iteration.clique-only",
+  "class": "representative",
+  "family": "search_iteration",
+  "paths": ["search_iteration", "clique_swap"],
+  "title": "Hotpath search iteration clique-only preset",
+  "description": "Deterministic clique-only search iteration lane over a prebuilt state.",
+  "tags": ["hotpath", "search", "clique_swap", "representative"],
+  "hotpath_preset": "search_clique_only"
+}

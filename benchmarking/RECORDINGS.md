@@ -13,6 +13,8 @@ A recording captures one benchmark session on one machine for one commit. It may
 - one suite run, or
 - a bundle of suite runs captured together for one feature or mainline check
 
+A suite run may be either a `full_solve` lane or a recordable hotpath lane such as `swap_preview` or `search_iteration`.
+
 The store must support:
 
 - immutable recording metadata
@@ -196,7 +198,8 @@ Recording and history operations are now available through `solver-cli`:
 
 ```bash
 solver-cli benchmark record --suite representative
-solver-cli benchmark record-bundle --suite representative --suite stretch
+solver-cli benchmark record --suite hotpath-swap-preview
+solver-cli benchmark record-bundle --suite representative --suite stretch --suite hotpath-search-iteration
 solver-cli benchmark compare-prev --suite representative
 solver-cli benchmark recordings list
 solver-cli benchmark recordings show <recording-id>

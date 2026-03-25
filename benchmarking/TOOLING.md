@@ -13,7 +13,8 @@ Primary entrypoint:
 ./tools/benchmark_workflow.sh run --suite representative
 ./tools/benchmark_workflow.sh save before-refactor --suite representative
 ./tools/benchmark_workflow.sh record --suite representative --recording-id rep-1
-./tools/benchmark_workflow.sh record-bundle --suite representative --suite stretch --recording-id nightly-main
+./tools/benchmark_workflow.sh record --suite hotpath-swap-preview --recording-id hotpath-swap-1
+./tools/benchmark_workflow.sh record-bundle --suite representative --suite stretch --suite hotpath-search-iteration --recording-id nightly-main
 ./tools/benchmark_workflow.sh compare-prev --suite representative
 ./tools/benchmark_workflow.sh history
 ./tools/benchmark_workflow.sh recordings show <recording-id>
@@ -43,6 +44,11 @@ Primary entrypoint:
 ```
 
 Remote runs stage an immutable repo snapshot and then execute benchmark workflow commands inside that snapshot.
+
+By default the canonical remote main/feature bundles now include both:
+
+- full-solve suites: `representative`, `stretch`, `adversarial`
+- hotpath suites: `hotpath-construction`, `hotpath-full-recalculation`, `hotpath-swap-preview`, `hotpath-swap-apply`, `hotpath-transfer-preview`, `hotpath-transfer-apply`, `hotpath-clique-swap-preview`, `hotpath-clique-swap-apply`, `hotpath-search-iteration`
 
 Safety knobs:
 

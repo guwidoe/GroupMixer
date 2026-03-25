@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "hotpath.clique-swap.default",
+  "class": "representative",
+  "family": "clique_swap",
+  "paths": ["clique_swap_preview", "clique_swap_apply"],
+  "title": "Hotpath clique swap preset",
+  "description": "Deterministic clique-swap kernel lane used for preview and apply history.",
+  "tags": ["hotpath", "clique_swap", "representative"],
+  "hotpath_preset": "clique_swap_default"
+}

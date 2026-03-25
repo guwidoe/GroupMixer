@@ -1,0 +1,10 @@
+schema_version: 1
+suite_id: hotpath-construction
+benchmark_mode: construction
+class: representative
+title: Hotpath construction benchmark suite
+description: Deterministic construction kernel lane for recording/history bundles.
+default_iterations: 32
+default_warmup_iterations: 2
+cases:
+  - manifest: ../cases/hotpath/construction_default.json

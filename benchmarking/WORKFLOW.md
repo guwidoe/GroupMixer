@@ -205,6 +205,8 @@ cp ./tools/remote_benchmark.env.example ./tools/remote_benchmark.env
 ./tools/remote_benchmark_async.sh record-main
 ```
 
+The canonical mainline bundle includes both solve-level and hotpath lanes.
+
 ### Queue a feature-validation bundle
 
 ```bash
@@ -212,6 +214,18 @@ cp ./tools/remote_benchmark.env.example ./tools/remote_benchmark.env
 ```
 
 Both bundle commands stage an immutable snapshot, persist one recording, and materialize explicit comparison follow-ups for the relevant lanes.
+
+The current canonical bundle adds these hotpath lanes alongside the full-solve suites:
+
+- `hotpath-construction`
+- `hotpath-full-recalculation`
+- `hotpath-swap-preview`
+- `hotpath-swap-apply`
+- `hotpath-transfer-preview`
+- `hotpath-transfer-apply`
+- `hotpath-clique-swap-preview`
+- `hotpath-clique-swap-apply`
+- `hotpath-search-iteration`
 
 ## Relationship between layers
 

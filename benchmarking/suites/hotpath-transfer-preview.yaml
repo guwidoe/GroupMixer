@@ -1,0 +1,10 @@
+schema_version: 1
+suite_id: hotpath-transfer-preview
+benchmark_mode: transfer_preview
+class: representative
+title: Hotpath transfer preview benchmark suite
+description: Deterministic transfer delta lane for recording/history bundles.
+default_iterations: 64
+default_warmup_iterations: 4
+cases:
+  - manifest: ../cases/hotpath/transfer_default.json

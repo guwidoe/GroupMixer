@@ -1,0 +1,10 @@
+schema_version: 1
+suite_id: hotpath-swap-preview
+benchmark_mode: swap_preview
+class: representative
+title: Hotpath swap preview benchmark suite
+description: Deterministic swap delta lane for recording/history bundles.
+default_iterations: 64
+default_warmup_iterations: 4
+cases:
+  - manifest: ../cases/hotpath/swap_default.json

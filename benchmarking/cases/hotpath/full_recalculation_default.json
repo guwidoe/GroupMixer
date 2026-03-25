@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "hotpath.full-recalculation.default",
+  "class": "representative",
+  "family": "recalculation",
+  "paths": ["full_recalculation"],
+  "title": "Hotpath full recalculation preset",
+  "description": "Deterministic full score recalculation lane for remote-recordable hotpath benchmarking.",
+  "tags": ["hotpath", "recalculation", "representative"],
+  "hotpath_preset": "construction_default"
+}

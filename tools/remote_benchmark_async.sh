@@ -78,6 +78,15 @@ default_recording_suite_bundle() {
 representative
 stretch
 adversarial
+hotpath-construction
+hotpath-full-recalculation
+hotpath-swap-preview
+hotpath-swap-apply
+hotpath-transfer-preview
+hotpath-transfer-apply
+hotpath-clique-swap-preview
+hotpath-clique-swap-apply
+hotpath-search-iteration
 EOF
 }
 
@@ -260,18 +269,64 @@ if ref_path.exists():
 PY
 }
 
+suite_manifest_path() {
+  local suite_ref="$1"
+  if [[ -f "${suite_ref}" ]]; then
+    printf '%s\n' "${suite_ref}"
+  else
+    printf '%s\n' "${REPO_DIR}/benchmarking/suites/${suite_ref}.yaml"
+  fi
+}
+
+suite_manifest_field() {
+  local suite_ref="$1"
+  local field_name="$2"
+  local default_value="$3"
+  local manifest_path
+  manifest_path="$(suite_manifest_path "${suite_ref}")"
+  FIELD_NAME="${field_name}" DEFAULT_VALUE="${default_value}" python3 - "${manifest_path}" <<'PY'
+import os
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+value = os.environ["DEFAULT_VALUE"]
+if path.exists():
+    prefix = os.environ["FIELD_NAME"] + ":"
+    for line in path.read_text().splitlines():
+        stripped = line.strip()
+        if stripped.startswith(prefix):
+            value = stripped.split(":", 1)[1].strip()
+            break
+print(value)
+PY
+}
+
+suite_manifest_id() {
+  local suite_ref="$1"
+  local fallback
+  fallback="$(basename "${suite_ref}" .yaml)"
+  suite_manifest_field "${suite_ref}" "suite_id" "${fallback}"
+}
+
+suite_manifest_benchmark_mode() {
+  suite_manifest_field "$1" "benchmark_mode" "full_solve"
+}
+
 collect_feature_previous_targets_json() {
   local feature_name="$1"
   shift
   local sanitized_feature_name
   sanitized_feature_name="$(sanitize_name "${feature_name}")"
   local targets_json="{}"
-  local suite target ref_name
+  local suite suite_id suite_mode target ref_name
   for suite in "$@"; do
-    ref_name="features/${sanitized_feature_name}/suites/${suite}/full_solve/latest"
+    suite_id="$(suite_manifest_id "${suite}")"
+    suite_mode="$(suite_manifest_benchmark_mode "${suite}")"
+    ref_name="features/${sanitized_feature_name}/suites/${suite_id}/${suite_mode}/latest"
     target="$(remote_ref_target_run_report "${ref_name}")"
     if [[ -n "${target}" ]]; then
-      targets_json="$(TARGETS_JSON="${targets_json}" SUITE_NAME="${suite}" TARGET_PATH="${target}" python3 - <<'PY'
+      targets_json="$(TARGETS_JSON="${targets_json}" SUITE_NAME="${suite_id}" TARGET_PATH="${target}" python3 - <<'PY'
 import json
 import os
 
@@ -572,7 +627,11 @@ start_recording_bundle() {
   fi
   local suite
   for suite in "${suites[@]}"; do
-    bundle_args+=(--suite "${suite}")
+    if [[ -f "${suite}" || "${suite}" == */* || "${suite}" == *.yaml ]]; then
+      bundle_args+=(--manifest "${suite}")
+    else
+      bundle_args+=(--suite "${suite}")
+    fi
   done
 
   local feature_previous_targets_json="{}"

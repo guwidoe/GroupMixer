@@ -1,0 +1,10 @@
+schema_version: 1
+suite_id: hotpath-swap-apply
+benchmark_mode: swap_apply
+class: representative
+title: Hotpath swap apply benchmark suite
+description: Deterministic swap apply lane for recording/history bundles.
+default_iterations: 64
+default_warmup_iterations: 4
+cases:
+  - manifest: ../cases/hotpath/swap_default.json
