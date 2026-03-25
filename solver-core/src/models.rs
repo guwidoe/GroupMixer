@@ -4,6 +4,7 @@
 //! problems, configure the solver, and receive results. The API is designed to be
 //! serializable (JSON/YAML) for easy integration with web services and configuration files.
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -65,7 +66,7 @@ use std::collections::HashMap;
 ///     },
 /// };
 /// ```
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct ApiInput {
     /// The core problem definition: people, groups, and sessions
     pub problem: ProblemDefinition,
@@ -90,7 +91,7 @@ pub struct ApiInput {
 /// This structure specifies the fundamental elements that need to be scheduled:
 /// the list of people to be assigned, the groups they can be assigned to,
 /// and how many scheduling sessions will occur.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct ProblemDefinition {
     /// List of all people to be scheduled into groups
     pub people: Vec<Person>,
@@ -131,7 +132,7 @@ pub struct ProblemDefinition {
 ///     sessions: Some(vec![1, 2]), // Only participates in sessions 1 and 2
 /// };
 /// ```
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct Person {
     /// Unique identifier for this person (must be unique across all people)
     pub id: String,
@@ -159,7 +160,7 @@ pub struct Person {
 ///     size: 6, // Can hold up to 6 people
 /// };
 /// ```
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct Group {
     /// Unique identifier for this group (must be unique across all groups)
     pub id: String,
@@ -186,7 +187,7 @@ pub struct Group {
 ///     weight: 1.0,
 /// };
 /// ```
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct Objective {
     /// The type of objective to optimize for
     pub r#type: String, // "maximize_unique_contacts"
@@ -253,7 +254,7 @@ pub struct Objective {
 ///     sessions: None, // Applies to all sessions
 /// };
 /// ```
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum Constraint {
     /// Limits how often people can encounter each other across sessions
@@ -307,7 +308,7 @@ fn default_constraint_weight() -> f64 {
 }
 
 /// Modes for how to penalize deviations from the target meeting count.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum PairMeetingMode {
     /// Penalize only shortfalls: weight * max(0, target - actual)
@@ -320,7 +321,7 @@ pub enum PairMeetingMode {
 }
 
 /// Soft constraint on how often a pair should meet within a subset of sessions.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct PairMeetingCountParams {
     /// Exactly two person IDs involved in the constraint
     pub people: Vec<String>,
@@ -355,7 +356,7 @@ pub struct PairMeetingCountParams {
 ///     penalty_weight: 100.0,
 /// };
 /// ```
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct RepeatEncounterParams {
     /// Maximum number of times two people can be in the same group
     pub max_allowed_encounters: u32,
@@ -393,7 +394,7 @@ pub struct RepeatEncounterParams {
 ///     mode: AttributeBalanceMode::Exact,
 /// };
 /// ```
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct AttributeBalanceParams {
     /// ID of the group where this balance constraint applies
     pub group_id: String,
@@ -413,7 +414,7 @@ pub struct AttributeBalanceParams {
 }
 
 /// Mode for evaluating attribute balance targets.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum AttributeBalanceMode {
     /// Penalize absolute deviation from the desired count (current behavior)
@@ -441,7 +442,7 @@ pub enum AttributeBalanceMode {
 ///     sessions: Some(vec![0, 1, 2]), // Sessions 0, 1, and 2
 /// };
 /// ```
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct ImmovablePersonParams {
     /// ID of the person who must be fixed in place
     pub person_id: String,
@@ -458,7 +459,7 @@ pub struct ImmovablePersonParams {
 /// This is the multi-person analogue of `ImmovablePersonParams` and is now the
 /// preferred format. The solver treats these as hard constraints; therefore no
 /// penalty weight is necessary.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct ImmovablePeopleParams {
     /// IDs of the people who must be fixed in place
     pub people: Vec<String>,
@@ -508,7 +509,7 @@ pub struct ImmovablePeopleParams {
 ///     allowed_sessions: None,
 /// };
 /// ```
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct SolverConfiguration {
     /// Type of solver algorithm to use (currently "SimulatedAnnealing")
     pub solver_type: String,
@@ -543,7 +544,7 @@ pub struct SolverConfiguration {
 }
 
 /// Explicit move families supported by the simulated annealing search loop.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
 pub enum MoveFamily {
     Swap,
@@ -564,7 +565,7 @@ impl MoveFamily {
 }
 
 /// Selection mode for mixed move-family search.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum MoveSelectionMode {
     /// Preserve the current solver behavior, where transfer / clique swap probabilities
@@ -576,7 +577,7 @@ pub enum MoveSelectionMode {
 }
 
 /// Explicit weights for each move family when `MoveSelectionMode::Weighted` is used.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct MoveFamilyWeights {
     pub swap: f64,
     pub transfer: f64,
@@ -594,7 +595,7 @@ impl Default for MoveFamilyWeights {
 }
 
 /// Controls which move families are allowed in a run and how the solver chooses between them.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
 pub struct MovePolicy {
     /// Selection mode for mixed-family runs.
     #[serde(default)]
@@ -711,7 +712,7 @@ impl MoveFamilyWeights {
 ///
 /// This is intentionally separate from `LoggingOptions` so that progress/visualization features
 /// can be enabled independently of stdout logging.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct TelemetryOptions {
     /// When true, include a `best_schedule` snapshot in some progress updates.
     ///
@@ -756,7 +757,7 @@ impl Default for TelemetryOptions {
 ///     no_improvement_iterations: Some(1_000),
 /// };
 /// ```
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct StopConditions {
     /// Maximum number of optimization iterations before stopping
     pub max_iterations: Option<u64>,
@@ -770,7 +771,7 @@ pub struct StopConditions {
 ///
 /// This enum allows different algorithms to have their own parameter structures
 /// while maintaining a unified API.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 #[serde(tag = "solver_type")]
 pub enum SolverParams {
     /// Parameters for the Simulated Annealing algorithm
@@ -797,7 +798,7 @@ pub enum SolverParams {
 ///     reheat_cycles: Some(0), // Reheat after 1000 iterations without improvement (0 = no reheat)
 /// };
 /// ```
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct SimulatedAnnealingParams {
     /// Starting temperature (higher values allow more random moves initially)
     pub initial_temperature: f64,
@@ -857,7 +858,7 @@ pub struct SimulatedAnnealingParams {
 ///     ..Default::default()
 /// };
 /// ```
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Default)]
 pub struct LoggingOptions {
     /// How often to log progress (every N iterations). `None` disables progress logging.
     #[serde(default)]
@@ -898,7 +899,7 @@ pub struct LoggingOptions {
 /// Contains comprehensive metrics about the current state of optimization,
 /// including detailed move statistics, acceptance rates, and performance metrics.
 /// This information is valuable for algorithm tuning and providing rich user feedback.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct ProgressUpdate {
     // === Basic Progress Information ===
     /// Current iteration number (0-based)
@@ -1026,7 +1027,7 @@ pub struct ProgressUpdate {
 pub type ProgressCallback = Box<dyn Fn(&ProgressUpdate) -> bool + Send>;
 
 /// Explicit reason why a solver run stopped.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum StopReason {
     MaxIterationsReached,
@@ -1036,7 +1037,7 @@ pub enum StopReason {
 }
 
 /// Per-move-family benchmark telemetry summary.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
 pub struct MoveFamilyBenchmarkTelemetry {
     #[serde(default)]
     pub attempts: u64,
@@ -1055,7 +1056,7 @@ pub struct MoveFamilyBenchmarkTelemetry {
 }
 
 /// Benchmark telemetry grouped by move family.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
 pub struct MoveFamilyBenchmarkTelemetrySummary {
     #[serde(default)]
     pub swap: MoveFamilyBenchmarkTelemetry,
@@ -1066,7 +1067,7 @@ pub struct MoveFamilyBenchmarkTelemetrySummary {
 }
 
 /// End-of-run benchmark telemetry intended for regression / benchmark artifacts.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct SolverBenchmarkTelemetry {
     pub effective_seed: u64,
     pub move_policy: MovePolicy,
@@ -1085,7 +1086,7 @@ pub struct SolverBenchmarkTelemetry {
 }
 
 /// Benchmark observer lifecycle events.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(tag = "event", content = "payload", rename_all = "snake_case")]
 pub enum BenchmarkEvent {
     RunStarted(BenchmarkRunStarted),
@@ -1093,7 +1094,7 @@ pub enum BenchmarkEvent {
 }
 
 /// Initial benchmark metadata emitted before the search loop starts.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct BenchmarkRunStarted {
     pub effective_seed: u64,
     pub move_policy: MovePolicy,
@@ -1161,7 +1162,7 @@ pub type BenchmarkObserver = Box<dyn Fn(&BenchmarkEvent) + Send>;
 ///     Err(e) => eprintln!("Error: {:?}", e),
 /// }
 /// ```
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct SolverResult {
     /// Overall optimization score (higher is better)
     pub final_score: f64,

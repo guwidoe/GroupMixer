@@ -30,11 +30,11 @@ mod tests {
     use crate::{bootstrap, errors, examples, operations, schemas};
 
     #[test]
-    fn placeholder_registries_are_accessible() {
-        assert!(bootstrap::bootstrap_spec().top_level_operation_ids.is_empty());
-        assert!(operations::operation_specs().is_empty());
-        assert!(schemas::schema_specs().is_empty());
-        assert!(errors::error_specs().is_empty());
-        assert!(examples::example_specs().is_empty());
+    fn registry_modules_are_accessible() {
+        let _ = bootstrap::bootstrap_spec();
+        let _ = operations::operation_specs();
+        let _ = schemas::schema_specs();
+        let _ = errors::error_specs();
+        let _ = examples::example_specs();
     }
 }
