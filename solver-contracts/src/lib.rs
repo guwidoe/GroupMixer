@@ -22,7 +22,7 @@ pub mod types;
 pub use bootstrap::BootstrapSpec;
 pub use errors::PublicErrorSpec;
 pub use examples::ExampleSpec;
-pub use operations::OperationSpec;
+pub use operations::{LocalHelpSpec, OperationSpec};
 pub use schemas::SchemaSpec;
 
 #[cfg(test)]
