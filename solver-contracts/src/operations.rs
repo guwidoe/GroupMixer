@@ -2,6 +2,10 @@ use crate::errors::{
     INFEASIBLE_PROBLEM_ERROR, INTERNAL_ERROR, INVALID_INPUT_ERROR, UNKNOWN_OPERATION_ERROR,
     UNKNOWN_SCHEMA_ERROR, UNSUPPORTED_CONSTRAINT_KIND_ERROR,
 };
+use crate::examples::{
+    GET_SCHEMA_EXAMPLE_ID, INSPECT_RESULT_SUMMARY_EXAMPLE_ID, PUBLIC_ERROR_LOOKUP_EXAMPLE_ID,
+    SOLVE_HAPPY_PATH_EXAMPLE_ID, VALIDATE_INVALID_CONSTRAINT_EXAMPLE_ID,
+};
 use crate::schemas::{
     PUBLIC_ERROR_ENVELOPE_SCHEMA_ID, RESULT_SUMMARY_SCHEMA_ID, SOLVE_REQUEST_SCHEMA_ID,
     SOLVE_RESPONSE_SCHEMA_ID, VALIDATE_REQUEST_SCHEMA_ID, VALIDATE_RESPONSE_SCHEMA_ID,
@@ -55,7 +59,7 @@ const OPERATION_SPECS: &[OperationSpec] = &[
             GET_SCHEMA_OPERATION_ID,
             INSPECT_ERRORS_OPERATION_ID,
         ],
-        example_ids: &[],
+        example_ids: &[SOLVE_HAPPY_PATH_EXAMPLE_ID],
     },
     OperationSpec {
         id: VALIDATE_PROBLEM_OPERATION_ID,
@@ -76,7 +80,7 @@ const OPERATION_SPECS: &[OperationSpec] = &[
             GET_SCHEMA_OPERATION_ID,
             INSPECT_ERRORS_OPERATION_ID,
         ],
-        example_ids: &[],
+        example_ids: &[VALIDATE_INVALID_CONSTRAINT_EXAMPLE_ID],
     },
     OperationSpec {
         id: INSPECT_RESULT_OPERATION_ID,
@@ -88,7 +92,7 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         output_schema_ids: &[RESULT_SUMMARY_SCHEMA_ID],
         error_codes: &[INVALID_INPUT_ERROR, INTERNAL_ERROR],
         related_operation_ids: &[SOLVE_OPERATION_ID, GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID],
-        example_ids: &[],
+        example_ids: &[INSPECT_RESULT_SUMMARY_EXAMPLE_ID],
     },
     OperationSpec {
         id: GET_SCHEMA_OPERATION_ID,
@@ -105,7 +109,7 @@ const OPERATION_SPECS: &[OperationSpec] = &[
             INSPECT_RESULT_OPERATION_ID,
             INSPECT_ERRORS_OPERATION_ID,
         ],
-        example_ids: &[],
+        example_ids: &[GET_SCHEMA_EXAMPLE_ID],
     },
     OperationSpec {
         id: INSPECT_ERRORS_OPERATION_ID,
@@ -122,7 +126,7 @@ const OPERATION_SPECS: &[OperationSpec] = &[
             INSPECT_RESULT_OPERATION_ID,
             GET_SCHEMA_OPERATION_ID,
         ],
-        example_ids: &[],
+        example_ids: &[PUBLIC_ERROR_LOOKUP_EXAMPLE_ID],
     },
 ];
 
