@@ -273,3 +273,19 @@ The contract-native browser migration should not start until the repo has:
 
 Without those layers, the risk of silently regressing real webapp behavior is
 too high.
+
+## Required pre-migration command gate
+
+Before starting the browser-surface migration epic (`TODO-b0982713`), run:
+
+```bash
+cd webapp
+npm run test:runtime-safety:unit
+npx tsc --noEmit
+npm run test:runtime-safety:e2e
+# or:
+# npm run test:runtime-safety
+```
+
+This command gate is the operationalized outcome of hardening epic
+`TODO-b25d5c75`.

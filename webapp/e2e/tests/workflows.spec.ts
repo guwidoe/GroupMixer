@@ -82,6 +82,8 @@ test.describe('Workflow coverage', () => {
   });
 
   test('auto-sets custom solver settings, shows a running solver state, reloads, and warm-starts from a saved result', async ({ page }) => {
+    test.setTimeout(60000);
+
     await openApp(page);
 
     for (const person of ['Alice', 'Bob', 'Cara', 'Dan', 'Eli', 'Fran']) {

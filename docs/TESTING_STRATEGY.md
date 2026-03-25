@@ -175,6 +175,34 @@ cd webapp
 npm run test:e2e:workflows
 ```
 
+#### Pre-migration webapp runtime safety gate
+Use this gate before changing the webapp -> worker -> WASM runtime seam for the
+contract-native browser migration.
+
+This gate is the required prerequisite for the migration tracked in:
+- hardening epic: `TODO-b25d5c75`
+- migration epic: `TODO-b0982713`
+
+Run:
+```bash
+cd webapp
+npm run test:runtime-safety:unit
+npx tsc --noEmit
+npm run test:runtime-safety:e2e
+# or the combined command:
+# npm run test:runtime-safety
+```
+
+This gate intentionally concentrates on:
+- `solverWorker` protocol/runtime behavior
+- wasm service/module behavior
+- stateful `/app` route mounts for solver/results/history
+- manual evaluation / save-best-so-far paths
+- browser workflows for recommendation, warm start, persistence, and worker-start failure
+
+See also:
+- `docs/WEBAPP_RUNTIME_MIGRATION_REGRESSION_MATRIX.md`
+
 #### Frontend visual regression
 ```bash
 cd webapp
