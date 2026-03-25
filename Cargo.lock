@@ -1971,6 +1971,7 @@ dependencies = [
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
+ "solver-contracts",
  "solver-core",
  "wasm-bindgen",
  "wasm-bindgen-futures",

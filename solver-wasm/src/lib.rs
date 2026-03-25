@@ -1,3 +1,5 @@
+pub mod contract_surface;
+
 use serde::Serialize;
 use solver_core::models::{ApiInput, ProblemDefinition, ProgressUpdate};
 use wasm_bindgen::prelude::*;
