@@ -12,6 +12,8 @@
 //! - `benchmark`: Run / save / compare benchmark artifacts
 //! - `schema`: Print the JSON schema for input/output formats
 
+mod contract_surface;
+
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use solver_benchmarking::{

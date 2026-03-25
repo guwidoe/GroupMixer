@@ -3,12 +3,14 @@ use crate::errors::{
     UNKNOWN_SCHEMA_ERROR, UNSUPPORTED_CONSTRAINT_KIND_ERROR,
 };
 use crate::examples::{
-    GET_SCHEMA_EXAMPLE_ID, INSPECT_RESULT_SUMMARY_EXAMPLE_ID, PUBLIC_ERROR_LOOKUP_EXAMPLE_ID,
-    SOLVE_HAPPY_PATH_EXAMPLE_ID, VALIDATE_INVALID_CONSTRAINT_EXAMPLE_ID,
+    EVALUATE_INPUT_EXAMPLE_ID, GET_SCHEMA_EXAMPLE_ID, INSPECT_RESULT_SUMMARY_EXAMPLE_ID,
+    PUBLIC_ERROR_LOOKUP_EXAMPLE_ID, RECOMMEND_SETTINGS_EXAMPLE_ID, SOLVE_HAPPY_PATH_EXAMPLE_ID,
+    VALIDATE_INVALID_CONSTRAINT_EXAMPLE_ID,
 };
 use crate::schemas::{
-    PUBLIC_ERROR_ENVELOPE_SCHEMA_ID, RESULT_SUMMARY_SCHEMA_ID, SOLVE_REQUEST_SCHEMA_ID,
-    SOLVE_RESPONSE_SCHEMA_ID, VALIDATE_REQUEST_SCHEMA_ID, VALIDATE_RESPONSE_SCHEMA_ID,
+    PROBLEM_DEFINITION_SCHEMA_ID, PUBLIC_ERROR_ENVELOPE_SCHEMA_ID, RESULT_SUMMARY_SCHEMA_ID,
+    SOLVE_REQUEST_SCHEMA_ID, SOLVE_RESPONSE_SCHEMA_ID, SOLVER_CONFIGURATION_SCHEMA_ID,
+    VALIDATE_REQUEST_SCHEMA_ID, VALIDATE_RESPONSE_SCHEMA_ID,
 };
 use crate::types::{ErrorCode, ExampleId, OperationId, OperationKind, SchemaId};
 
@@ -17,6 +19,8 @@ pub const VALIDATE_PROBLEM_OPERATION_ID: &str = "validate-problem";
 pub const INSPECT_RESULT_OPERATION_ID: &str = "inspect-result";
 pub const GET_SCHEMA_OPERATION_ID: &str = "get-schema";
 pub const INSPECT_ERRORS_OPERATION_ID: &str = "inspect-errors";
+pub const RECOMMEND_SETTINGS_OPERATION_ID: &str = "recommend-settings";
+pub const EVALUATE_INPUT_OPERATION_ID: &str = "evaluate-input";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OperationSpec {
@@ -95,6 +99,30 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         example_ids: &[INSPECT_RESULT_SUMMARY_EXAMPLE_ID],
     },
     OperationSpec {
+        id: RECOMMEND_SETTINGS_OPERATION_ID,
+        summary: "Recommend solver settings from a problem definition.",
+        description: "Analyze a problem definition and return a recommended solver configuration without executing the main solve workflow.",
+        kind: OperationKind::Compute,
+        family: "configuration",
+        input_schema_ids: &[PROBLEM_DEFINITION_SCHEMA_ID],
+        output_schema_ids: &[SOLVER_CONFIGURATION_SCHEMA_ID],
+        error_codes: &[INVALID_INPUT_ERROR, INFEASIBLE_PROBLEM_ERROR, INTERNAL_ERROR],
+        related_operation_ids: &[SOLVE_OPERATION_ID, VALIDATE_PROBLEM_OPERATION_ID, GET_SCHEMA_OPERATION_ID],
+        example_ids: &[RECOMMEND_SETTINGS_EXAMPLE_ID],
+    },
+    OperationSpec {
+        id: EVALUATE_INPUT_OPERATION_ID,
+        summary: "Evaluate an existing scheduled input without running search.",
+        description: "Accept a solve request that already includes an initial schedule, recompute scores, and return the resulting solver result payload.",
+        kind: OperationKind::Inspect,
+        family: "results",
+        input_schema_ids: &[SOLVE_REQUEST_SCHEMA_ID],
+        output_schema_ids: &[SOLVE_RESPONSE_SCHEMA_ID],
+        error_codes: &[INVALID_INPUT_ERROR, INFEASIBLE_PROBLEM_ERROR, INTERNAL_ERROR],
+        related_operation_ids: &[INSPECT_RESULT_OPERATION_ID, SOLVE_OPERATION_ID, GET_SCHEMA_OPERATION_ID],
+        example_ids: &[EVALUATE_INPUT_EXAMPLE_ID],
+    },
+    OperationSpec {
         id: GET_SCHEMA_OPERATION_ID,
         summary: "Inspect a named public schema from the contract registry.",
         description: "Return machine-readable schema metadata for one stable schema identifier.",
@@ -143,6 +171,8 @@ pub fn top_level_operation_ids() -> &'static [OperationId] {
         SOLVE_OPERATION_ID,
         VALIDATE_PROBLEM_OPERATION_ID,
         INSPECT_RESULT_OPERATION_ID,
+        RECOMMEND_SETTINGS_OPERATION_ID,
+        EVALUATE_INPUT_OPERATION_ID,
         GET_SCHEMA_OPERATION_ID,
         INSPECT_ERRORS_OPERATION_ID,
     ]

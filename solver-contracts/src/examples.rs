@@ -1,10 +1,12 @@
 use crate::operations::{
-    GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID, INSPECT_RESULT_OPERATION_ID,
-    SOLVE_OPERATION_ID, VALIDATE_PROBLEM_OPERATION_ID,
+    EVALUATE_INPUT_OPERATION_ID, GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID,
+    INSPECT_RESULT_OPERATION_ID, RECOMMEND_SETTINGS_OPERATION_ID, SOLVE_OPERATION_ID,
+    VALIDATE_PROBLEM_OPERATION_ID,
 };
 use crate::schemas::{
-    PUBLIC_ERROR_ENVELOPE_SCHEMA_ID, RESULT_SUMMARY_SCHEMA_ID, SOLVE_REQUEST_SCHEMA_ID,
-    SOLVE_RESPONSE_SCHEMA_ID, VALIDATE_RESPONSE_SCHEMA_ID,
+    PROBLEM_DEFINITION_SCHEMA_ID, PUBLIC_ERROR_ENVELOPE_SCHEMA_ID, RESULT_SUMMARY_SCHEMA_ID,
+    SOLVE_REQUEST_SCHEMA_ID, SOLVE_RESPONSE_SCHEMA_ID, SOLVER_CONFIGURATION_SCHEMA_ID,
+    VALIDATE_RESPONSE_SCHEMA_ID,
 };
 use crate::types::{ExampleId, OperationId, SchemaId};
 
@@ -13,6 +15,8 @@ pub const VALIDATE_INVALID_CONSTRAINT_EXAMPLE_ID: &str = "validate-invalid-const
 pub const INSPECT_RESULT_SUMMARY_EXAMPLE_ID: &str = "inspect-result-summary";
 pub const PUBLIC_ERROR_LOOKUP_EXAMPLE_ID: &str = "inspect-errors-public-error";
 pub const GET_SCHEMA_EXAMPLE_ID: &str = "get-schema-solve-request";
+pub const RECOMMEND_SETTINGS_EXAMPLE_ID: &str = "recommend-settings-minimal";
+pub const EVALUATE_INPUT_EXAMPLE_ID: &str = "evaluate-input-minimal";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReferenceSnippetFormat {
@@ -207,7 +211,90 @@ const GET_SCHEMA_SNIPPETS: &[ReferenceSnippet] = &[
         label: "schema lookup",
         format: ReferenceSnippetFormat::Shell,
         schema_id: Some(SOLVE_REQUEST_SCHEMA_ID),
-        content: "solver-cli schema input",
+        content: "solver-cli schema solve-request",
+    },
+];
+
+const RECOMMEND_SETTINGS_SNIPPETS: &[ReferenceSnippet] = &[
+    ReferenceSnippet {
+        label: "problem definition json",
+        format: ReferenceSnippetFormat::Json,
+        schema_id: Some(PROBLEM_DEFINITION_SCHEMA_ID),
+        content: r#"{
+  "people": [
+    {"id": "alice", "attributes": {}},
+    {"id": "bob", "attributes": {}}
+  ],
+  "groups": [
+    {"id": "team-1", "size": 2}
+  ],
+  "num_sessions": 1
+}"#,
+    },
+    ReferenceSnippet {
+        label: "recommended solver configuration",
+        format: ReferenceSnippetFormat::Json,
+        schema_id: Some(SOLVER_CONFIGURATION_SCHEMA_ID),
+        content: r#"{
+  "solver_type": "SimulatedAnnealing",
+  "stop_conditions": {
+    "max_iterations": 1000,
+    "time_limit_seconds": 30,
+    "no_improvement_iterations": 500
+  },
+  "solver_params": {
+    "solver_type": "SimulatedAnnealing",
+    "initial_temperature": 100.0,
+    "final_temperature": 0.1,
+    "cooling_schedule": "geometric",
+    "reheat_cycles": 0,
+    "reheat_after_no_improvement": 0
+  },
+  "logging": {},
+  "telemetry": {},
+  "seed": null,
+  "move_policy": null,
+  "allowed_sessions": null
+}"#,
+    },
+    ReferenceSnippet {
+        label: "cli invocation",
+        format: ReferenceSnippetFormat::Shell,
+        schema_id: None,
+        content: "solver-cli recommend problem.json --runtime 30 --pretty",
+    },
+];
+
+const EVALUATE_INPUT_SNIPPETS: &[ReferenceSnippet] = &[
+    ReferenceSnippet {
+        label: "evaluate invocation",
+        format: ReferenceSnippetFormat::Shell,
+        schema_id: None,
+        content: "solver-cli evaluate scheduled-input.json --pretty",
+    },
+    ReferenceSnippet {
+        label: "evaluate result json",
+        format: ReferenceSnippetFormat::Json,
+        schema_id: Some(SOLVE_RESPONSE_SCHEMA_ID),
+        content: r#"{
+  "final_score": 1.0,
+  "schedule": {
+    "session_0": {
+      "team-1": ["alice", "bob"]
+    }
+  },
+  "unique_contacts": 1,
+  "repetition_penalty": 0,
+  "attribute_balance_penalty": 0,
+  "constraint_penalty": 0,
+  "no_improvement_count": 0,
+  "weighted_repetition_penalty": 0.0,
+  "weighted_constraint_penalty": 0.0,
+  "effective_seed": null,
+  "move_policy": null,
+  "stop_reason": "max_iterations_reached",
+  "benchmark_telemetry": null
+}"#,
     },
 ];
 
@@ -246,6 +333,20 @@ const EXAMPLE_SPECS: &[ExampleSpec] = &[
         summary: "Schema lookup example.",
         description: "Shows a transport-specific invocation that targets the solve-request schema.",
         snippets: GET_SCHEMA_SNIPPETS,
+    },
+    ExampleSpec {
+        id: RECOMMEND_SETTINGS_EXAMPLE_ID,
+        operation_id: RECOMMEND_SETTINGS_OPERATION_ID,
+        summary: "Recommend solver settings from a problem definition.",
+        description: "Shows a minimal problem definition and a representative recommended solver configuration.",
+        snippets: RECOMMEND_SETTINGS_SNIPPETS,
+    },
+    ExampleSpec {
+        id: EVALUATE_INPUT_EXAMPLE_ID,
+        operation_id: EVALUATE_INPUT_OPERATION_ID,
+        summary: "Evaluate a scheduled input without running search.",
+        description: "Shows the shape of a representative evaluation result for an input that already includes an initial schedule.",
+        snippets: EVALUATE_INPUT_SNIPPETS,
     },
 ];
 

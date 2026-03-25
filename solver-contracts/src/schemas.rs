@@ -1,6 +1,6 @@
 use crate::types::{
-    PublicErrorEnvelope, ResultSummary, SchemaId, SolveRequest, SolveResponse, ValidateRequest,
-    ValidateResponse,
+    ProblemDefinitionContract, PublicErrorEnvelope, ResultSummary, SchemaId,
+    SolveRequest, SolveResponse, SolverConfigurationContract, ValidateRequest, ValidateResponse,
 };
 use schemars::{schema::RootSchema, schema_for};
 
@@ -10,6 +10,8 @@ pub const SOLVE_REQUEST_SCHEMA_ID: &str = "solve-request";
 pub const SOLVE_RESPONSE_SCHEMA_ID: &str = "solve-response";
 pub const VALIDATE_REQUEST_SCHEMA_ID: &str = "validate-request";
 pub const VALIDATE_RESPONSE_SCHEMA_ID: &str = "validate-response";
+pub const PROBLEM_DEFINITION_SCHEMA_ID: &str = "problem-definition";
+pub const SOLVER_CONFIGURATION_SCHEMA_ID: &str = "solver-configuration";
 pub const RESULT_SUMMARY_SCHEMA_ID: &str = "result-summary";
 pub const PUBLIC_ERROR_ENVELOPE_SCHEMA_ID: &str = "public-error-envelope";
 
@@ -40,6 +42,16 @@ const SCHEMA_SPECS: &[SchemaSpec] = &[
         id: VALIDATE_RESPONSE_SCHEMA_ID,
         version: SCHEMA_VERSION_V1,
         export: export_validate_response_schema,
+    },
+    SchemaSpec {
+        id: PROBLEM_DEFINITION_SCHEMA_ID,
+        version: SCHEMA_VERSION_V1,
+        export: export_problem_definition_schema,
+    },
+    SchemaSpec {
+        id: SOLVER_CONFIGURATION_SCHEMA_ID,
+        version: SCHEMA_VERSION_V1,
+        export: export_solver_configuration_schema,
     },
     SchemaSpec {
         id: RESULT_SUMMARY_SCHEMA_ID,
@@ -79,6 +91,14 @@ fn export_validate_request_schema() -> RootSchema {
 
 fn export_validate_response_schema() -> RootSchema {
     schema_for!(ValidateResponse)
+}
+
+fn export_problem_definition_schema() -> RootSchema {
+    schema_for!(ProblemDefinitionContract)
+}
+
+fn export_solver_configuration_schema() -> RootSchema {
+    schema_for!(SolverConfigurationContract)
 }
 
 fn export_result_summary_schema() -> RootSchema {

@@ -26,6 +26,12 @@ pub type SolveResponse = solver_core::models::SolverResult;
 /// Validation currently accepts the same request shape as a solve operation.
 pub type ValidateRequest = SolveRequest;
 
+/// Public problem-definition shape currently reuses the core domain model.
+pub type ProblemDefinitionContract = solver_core::models::ProblemDefinition;
+
+/// Public solver-configuration shape currently reuses the core solver config model.
+pub type SolverConfigurationContract = solver_core::models::SolverConfiguration;
+
 /// High-level operation category for transport-neutral help/rendering.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
