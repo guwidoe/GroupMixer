@@ -13,6 +13,7 @@ use crate::schemas::{
     VALIDATE_REQUEST_SCHEMA_ID, VALIDATE_RESPONSE_SCHEMA_ID,
 };
 use crate::types::{ErrorCode, ExampleId, OperationId, OperationKind, SchemaId};
+use serde::Serialize;
 
 pub const SOLVE_OPERATION_ID: &str = "solve";
 pub const VALIDATE_PROBLEM_OPERATION_ID: &str = "validate-problem";
@@ -22,7 +23,7 @@ pub const INSPECT_ERRORS_OPERATION_ID: &str = "inspect-errors";
 pub const RECOMMEND_SETTINGS_OPERATION_ID: &str = "recommend-settings";
 pub const EVALUATE_INPUT_OPERATION_ID: &str = "evaluate-input";
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct OperationSpec {
     pub id: OperationId,
     pub summary: &'static str,
@@ -36,7 +37,7 @@ pub struct OperationSpec {
     pub example_ids: &'static [ExampleId],
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct LocalHelpSpec {
     pub operation: &'static OperationSpec,
     pub related_operations: &'static [OperationId],

@@ -17,6 +17,7 @@ mod contract_surface;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
+use serde::Serialize;
 use solver_benchmarking::{
     compare_run_to_baseline, load_baseline_snapshot, load_run_report, persist_comparison_report,
     persist_run_report, render_comparison_summary, run_suite_from_manifest, save_baseline_snapshot,
@@ -25,6 +26,7 @@ use solver_benchmarking::{
     BaselineDescriptor, BenchmarkStorage, RecordingOptions, RecordingQuery, RecordingRunInput,
     RunnerOptions, FULL_SOLVE_BENCHMARK_MODE,
 };
+use solver_contracts::{bootstrap::bootstrap_spec, errors::{error_spec, error_specs}, operations::operation_spec, schemas::{export_schema, schema_specs}};
 use solver_core::models::ApiInput;
 use solver_core::{calculate_recommended_settings, run_solver};
 use std::fs;
@@ -115,9 +117,31 @@ enum Commands {
 
     /// Print example JSON schemas for input/output formats
     Schema {
-        /// Which schema to print: input, output, problem, or all
-        #[arg(value_name = "TYPE", default_value = "all")]
-        schema_type: String,
+        /// Stable schema id to inspect (defaults to listing known schemas)
+        #[arg(value_name = "SCHEMA_ID")]
+        schema_id: Option<String>,
+
+        /// Emit machine-readable JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// List bootstrap capabilities from solver-contracts
+    Capabilities {
+        /// Emit machine-readable JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Inspect canonical public error codes from solver-contracts
+    Errors {
+        /// Specific error code to inspect (defaults to listing known codes)
+        #[arg(value_name = "ERROR_CODE")]
+        error_code: Option<String>,
+
+        /// Emit machine-readable JSON
+        #[arg(long)]
+        json: bool,
     },
 }
 
@@ -462,7 +486,11 @@ fn main() -> Result<()> {
 
         Commands::Benchmark { command } => cmd_benchmark(command),
 
-        Commands::Schema { schema_type } => cmd_schema(&schema_type),
+        Commands::Schema { schema_id, json } => cmd_schema(schema_id, json),
+
+        Commands::Capabilities { json } => cmd_capabilities(json),
+
+        Commands::Errors { error_code, json } => cmd_errors(error_code, json),
     }
 }
 
@@ -1155,122 +1183,187 @@ fn cmd_evaluate(input: Option<PathBuf>, stdin: bool, pretty: bool) -> Result<()>
     Ok(())
 }
 
-fn cmd_schema(schema_type: &str) -> Result<()> {
-    match schema_type {
-        "input" => print_input_schema(),
-        "output" => print_output_schema(),
-        "problem" => print_problem_schema(),
-        "all" => {
-            println!("=== INPUT SCHEMA ===\n");
-            print_input_schema()?;
-            println!("\n=== OUTPUT SCHEMA ===\n");
-            print_output_schema()?;
-            println!("\n=== PROBLEM SCHEMA ===\n");
-            print_problem_schema()?;
-            Ok(())
+fn cmd_schema(schema_id: Option<String>, json: bool) -> Result<()> {
+    let Some(schema_id) = schema_id.map(resolve_schema_alias) else {
+        #[derive(Serialize)]
+        struct SchemaListEntry<'a> {
+            id: &'a str,
+            version: &'a str,
         }
-        _ => anyhow::bail!(
-            "Unknown schema type: {}. Use: input, output, problem, or all",
-            schema_type
-        ),
-    }
-}
 
-fn print_input_schema() -> Result<()> {
-    let example = r#"{
-  "problem": {
-    "people": [
-      {"id": "alice", "attributes": {"department": "eng"}, "sessions": null},
-      {"id": "bob", "attributes": {"department": "sales"}, "sessions": [0, 1]}
-    ],
-    "groups": [
-      {"id": "team-1", "size": 4},
-      {"id": "team-2", "size": 4}
-    ],
-    "num_sessions": 3
-  },
-  "objectives": [
-    {"type": "maximize_unique_contacts", "weight": 1.0}
-  ],
-  "constraints": [
-    {"type": "RepeatEncounter", "max_allowed_encounters": 1, "penalty_function": "squared", "penalty_weight": 100.0},
-    {"type": "AttributeBalance", "group_id": "team-1", "attribute_key": "department", "desired_values": {"eng": 2, "sales": 2}, "penalty_weight": 50.0, "mode": "Exact", "sessions": null},
-    {"type": "ShouldNotBeTogether", "people": ["alice", "bob"], "penalty_weight": 200.0, "sessions": null},
-    {"type": "ShouldStayTogether", "people": ["alice", "charlie"], "penalty_weight": 150.0, "sessions": null},
-    {"type": "MustStayTogether", "clique": ["alice", "bob"]},
-    {"type": "ImmovablePerson", "person_id": "alice", "session": 0, "group_id": "team-1"},
-    {"type": "PairMeetingCount", "min_encounters": 1, "max_encounters": 2, "penalty_weight": 50.0}
-  ],
-  "solver": {
-    "solver_type": "SimulatedAnnealing",
-    "stop_conditions": {
-      "max_iterations": 100000,
-      "time_limit_seconds": 30,
-      "no_improvement_iterations": 10000
-    },
-    "solver_params": {
-      "solver_type": "SimulatedAnnealing",
-      "initial_temperature": 100.0,
-      "final_temperature": 0.01,
-      "cooling_schedule": "geometric",
-      "reheat_after_no_improvement": 5000,
-      "reheat_cycles": 3
-    },
-    "logging": {
-      "log_frequency": 1000,
-      "display_final_schedule": true,
-      "log_final_score_breakdown": true
+        let entries: Vec<_> = schema_specs()
+            .iter()
+            .map(|spec| SchemaListEntry {
+                id: spec.id,
+                version: spec.version,
+            })
+            .collect();
+
+        if json {
+            print_json_pretty(&entries)?;
+        } else {
+            println!("Known schema ids:");
+            for entry in entries {
+                println!("- {} ({})", entry.id, entry.version);
+            }
+        }
+        return Ok(());
+    };
+
+    let schema = export_schema(&schema_id)
+        .ok_or_else(|| anyhow::anyhow!(unknown_schema_message(&schema_id)))?;
+
+    if json {
+        print_json_pretty(&schema)?;
+    } else {
+        println!("schema: {}", schema_id);
+        println!();
+        println!("{}", serde_json::to_string_pretty(&schema)?);
     }
-  },
-  "initial_schedule": null
-}"#;
-    println!("{}", example);
+
     Ok(())
 }
 
-fn print_output_schema() -> Result<()> {
-    let example = r#"{
-  "schedule": {
-    "session_0": {"team-1": ["alice", "bob"], "team-2": ["charlie", "dave"]},
-    "session_1": {"team-1": ["alice", "charlie"], "team-2": ["bob", "dave"]}
-  },
-  "final_score": 45.5,
-  "unique_contacts": 12,
-  "repetition_penalty": 0.0,
-  "attribute_balance_penalty": 5.5,
-  "soft_constraint_penalty": 0.0,
-  "iterations_run": 50000,
-  "time_elapsed_ms": 15234,
-  "constraint_violations": {
-    "repeat_encounters": [],
-    "attribute_imbalances": [],
-    "should_not_together": [],
-    "should_stay_together": []
-  }
-}"#;
-    println!("{}", example);
-    Ok(())
+fn cmd_capabilities(json: bool) -> Result<()> {
+    #[derive(Serialize)]
+    struct CapabilityEntry<'a> {
+        command_name: &'a str,
+        operation_id: Option<&'a str>,
+        summary: &'a str,
+        kind: Option<String>,
+        input_schema_ids: Vec<&'a str>,
+        output_schema_ids: Vec<&'a str>,
+        related_operation_ids: Vec<&'a str>,
+    }
+
+    #[derive(Serialize)]
+    struct CapabilityPayload<'a> {
+        title: &'a str,
+        summary: &'a str,
+        discovery_note: &'a str,
+        operations: Vec<CapabilityEntry<'a>>,
+    }
+
+    let bootstrap = bootstrap_spec();
+    let operations = crate::contract_surface::public_cli_contract_bindings()
+        .map(|binding| {
+            if let Some(operation_id) = binding.operation_id {
+                let operation = operation_spec(operation_id).expect("bound operation");
+                CapabilityEntry {
+                    command_name: binding.command_name,
+                    operation_id: Some(operation.id),
+                    summary: operation.summary,
+                    kind: Some(format!("{:?}", operation.kind).to_ascii_lowercase()),
+                    input_schema_ids: operation.input_schema_ids.to_vec(),
+                    output_schema_ids: operation.output_schema_ids.to_vec(),
+                    related_operation_ids: operation.related_operation_ids.to_vec(),
+                }
+            } else {
+                CapabilityEntry {
+                    command_name: binding.command_name,
+                    operation_id: None,
+                    summary: binding.note,
+                    kind: None,
+                    input_schema_ids: Vec::new(),
+                    output_schema_ids: Vec::new(),
+                    related_operation_ids: bootstrap.top_level_operation_ids.to_vec(),
+                }
+            }
+        })
+        .collect();
+
+    let payload = CapabilityPayload {
+        title: bootstrap.title,
+        summary: bootstrap.summary,
+        discovery_note: bootstrap.discovery_note,
+        operations,
+    };
+
+    if json {
+        print_json_pretty(&payload)
+    } else {
+        println!("{}", payload.title);
+        println!();
+        println!("{}", payload.summary);
+        println!();
+        for operation in payload.operations {
+            println!("- {}", operation.command_name);
+            if let Some(operation_id) = operation.operation_id {
+                println!("  operation_id: {}", operation_id);
+            }
+            println!("  summary: {}", operation.summary);
+            if !operation.input_schema_ids.is_empty() {
+                println!("  input schemas: {}", operation.input_schema_ids.join(", "));
+            }
+            if !operation.output_schema_ids.is_empty() {
+                println!("  output schemas: {}", operation.output_schema_ids.join(", "));
+            }
+            if !operation.related_operation_ids.is_empty() {
+                println!("  related: {}", operation.related_operation_ids.join(", "));
+            }
+            println!();
+        }
+        Ok(())
+    }
 }
 
-fn print_problem_schema() -> Result<()> {
-    let example = r#"{
-  "people": [
-    {
-      "id": "string (required, unique)",
-      "attributes": {"key": "value"},
-      "sessions": [0, 1, 2] // null means all sessions
+fn cmd_errors(error_code: Option<String>, json: bool) -> Result<()> {
+    let Some(error_code) = error_code else {
+        if json {
+            return print_json_pretty(&error_specs());
+        }
+        println!("Known public error codes:");
+        for spec in error_specs() {
+            println!("- {}: {}", spec.code, spec.summary);
+        }
+        return Ok(());
+    };
+
+    let spec = error_spec(&error_code)
+        .ok_or_else(|| anyhow::anyhow!(unknown_error_message(&error_code)))?;
+    if json {
+        print_json_pretty(spec)
+    } else {
+        println!("error: {}", spec.code);
+        println!("category: {:?}", spec.category);
+        println!("summary: {}", spec.summary);
+        println!("why: {}", spec.why);
+        println!("recovery: {}", spec.recovery);
+        if !spec.related_help_operation_ids.is_empty() {
+            println!("related help: {}", spec.related_help_operation_ids.join(", "));
+        }
+        Ok(())
     }
-  ],
-  "groups": [
-    {
-      "id": "string (required, unique)",
-      "size": 4 // capacity per session
+}
+
+fn resolve_schema_alias(schema_id: String) -> String {
+    match schema_id.as_str() {
+        "input" => "solve-request".to_string(),
+        "output" => "solve-response".to_string(),
+        "problem" => "problem-definition".to_string(),
+        other => other.to_string(),
     }
-  ],
-  "num_sessions": 3
-}"#;
-    println!("{}", example);
-    Ok(())
+}
+
+fn known_schema_ids() -> Vec<&'static str> {
+    schema_specs().iter().map(|spec| spec.id).collect()
+}
+
+fn unknown_schema_message(schema_id: &str) -> String {
+    format!(
+        "Unknown schema id '{}'. Use one of: {}",
+        schema_id,
+        known_schema_ids().join(", ")
+    )
+}
+
+fn unknown_error_message(error_code: &str) -> String {
+    let known: Vec<_> = error_specs().iter().map(|spec| spec.code).collect();
+    format!(
+        "Unknown error code '{}'. Use one of: {}",
+        error_code,
+        known.join(", ")
+    )
 }
 
 #[cfg(test)]

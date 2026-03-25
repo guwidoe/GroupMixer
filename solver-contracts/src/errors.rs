@@ -3,6 +3,7 @@ use crate::operations::{
     SOLVE_OPERATION_ID, VALIDATE_PROBLEM_OPERATION_ID,
 };
 use crate::types::{ErrorCategory, ErrorCode, OperationId};
+use serde::Serialize;
 
 pub const INVALID_INPUT_ERROR: &str = "invalid-input";
 pub const UNKNOWN_OPERATION_ERROR: &str = "unknown-operation";
@@ -12,7 +13,7 @@ pub const UNSUPPORTED_CONSTRAINT_KIND_ERROR: &str = "unsupported-constraint-kind
 pub const PERMISSION_DENIED_ERROR: &str = "permission-denied";
 pub const INTERNAL_ERROR: &str = "internal-error";
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct PublicErrorSpec {
     pub code: ErrorCode,
     pub category: ErrorCategory,

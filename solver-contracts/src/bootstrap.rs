@@ -1,7 +1,8 @@
 use crate::operations::top_level_operation_ids;
 use crate::types::OperationId;
+use serde::Serialize;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct BootstrapSpec {
     pub title: &'static str,
     pub summary: &'static str,

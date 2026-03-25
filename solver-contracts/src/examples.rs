@@ -9,6 +9,7 @@ use crate::schemas::{
     VALIDATE_RESPONSE_SCHEMA_ID,
 };
 use crate::types::{ExampleId, OperationId, SchemaId};
+use serde::Serialize;
 
 pub const SOLVE_HAPPY_PATH_EXAMPLE_ID: &str = "solve-happy-path";
 pub const VALIDATE_INVALID_CONSTRAINT_EXAMPLE_ID: &str = "validate-invalid-constraint";
@@ -18,7 +19,7 @@ pub const GET_SCHEMA_EXAMPLE_ID: &str = "get-schema-solve-request";
 pub const RECOMMEND_SETTINGS_EXAMPLE_ID: &str = "recommend-settings-minimal";
 pub const EVALUATE_INPUT_EXAMPLE_ID: &str = "evaluate-input-minimal";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum ReferenceSnippetFormat {
     Json,
     Shell,
@@ -26,7 +27,7 @@ pub enum ReferenceSnippetFormat {
     JavaScript,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ReferenceSnippet {
     pub label: &'static str,
     pub format: ReferenceSnippetFormat,
@@ -34,7 +35,7 @@ pub struct ReferenceSnippet {
     pub content: &'static str,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ExampleSpec {
     pub id: ExampleId,
     pub operation_id: OperationId,
