@@ -1,5 +1,5 @@
 pub mod contract_surface;
-mod contract_projection;
+pub mod contract_projection;
 mod contract_runtime;
 mod public_errors;
 

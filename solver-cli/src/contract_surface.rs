@@ -1,6 +1,7 @@
 use solver_contracts::operations::{
     EVALUATE_INPUT_OPERATION_ID, GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID,
-    RECOMMEND_SETTINGS_OPERATION_ID, SOLVE_OPERATION_ID, VALIDATE_PROBLEM_OPERATION_ID,
+    INSPECT_RESULT_OPERATION_ID, RECOMMEND_SETTINGS_OPERATION_ID, SOLVE_OPERATION_ID,
+    VALIDATE_PROBLEM_OPERATION_ID,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -41,6 +42,12 @@ const CLI_BINDINGS: &[CliContractBinding] = &[
         operation_id: Some(EVALUATE_INPUT_OPERATION_ID),
         scope: CliSurfaceScope::PublicContract,
         note: "Public result/evaluation workflow for scheduled inputs.",
+    },
+    CliContractBinding {
+        command_name: "inspect-result",
+        operation_id: Some(INSPECT_RESULT_OPERATION_ID),
+        scope: CliSurfaceScope::PublicContract,
+        note: "Public result-summary inspection workflow.",
     },
     CliContractBinding {
         command_name: "schema",

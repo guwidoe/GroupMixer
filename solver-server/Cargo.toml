@@ -23,4 +23,6 @@ solver-contracts = { path = "../solver-contracts" }
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
+solver-cli = { path = "../solver-cli" }
+solver-wasm = { path = "../solver-wasm" }
  

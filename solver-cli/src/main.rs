@@ -9,6 +9,7 @@
 //! - `validate`: Validate a problem file without solving
 //! - `recommend`: Get recommended solver settings for a problem
 //! - `evaluate`: Evaluate an existing schedule
+//! - `inspect-result`: Inspect a compact summary from a solver result
 //! - `benchmark`: Run / save / compare benchmark artifacts
 //! - `schema`: Print the JSON schema for input/output formats
 
@@ -27,8 +28,8 @@ use solver_benchmarking::{
     BaselineDescriptor, BenchmarkStorage, RecordingOptions, RecordingQuery, RecordingRunInput,
     RunnerOptions, FULL_SOLVE_BENCHMARK_MODE,
 };
-use solver_contracts::{bootstrap::bootstrap_spec, errors::{error_spec, error_specs}, operations::operation_spec, schemas::{export_schema, schema_specs}, types::{ValidateResponse, ValidationIssue}};
-use solver_core::models::{ApiInput, ProblemDefinition};
+use solver_contracts::{bootstrap::bootstrap_spec, errors::{error_spec, error_specs}, operations::operation_spec, schemas::{export_schema, schema_specs}, types::{ResultSummary, ValidateResponse, ValidationIssue}};
+use solver_core::models::{ApiInput, ProblemDefinition, SolverResult};
 use solver_core::{calculate_recommended_settings, run_solver};
 use std::fs;
 use std::io::{self, Read};
@@ -98,6 +99,22 @@ enum Commands {
     /// Evaluate an existing schedule (compute metrics without solving)
     Evaluate {
         /// Input JSON file path (must include initial_schedule)
+        #[arg(value_name = "FILE")]
+        input: Option<PathBuf>,
+
+        /// Read input from stdin instead of a file
+        #[arg(long)]
+        stdin: bool,
+
+        /// Pretty-print the JSON output
+        #[arg(long)]
+        pretty: bool,
+    },
+
+    /// Inspect a compact summary from an existing solver result
+    #[command(name = "inspect-result")]
+    InspectResult {
+        /// Input JSON file path containing a solver result
         #[arg(value_name = "FILE")]
         input: Option<PathBuf>,
 
@@ -491,6 +508,12 @@ fn run() -> Result<()> {
             stdin,
             pretty,
         } => cmd_evaluate(input, stdin, pretty),
+
+        Commands::InspectResult {
+            input,
+            stdin,
+            pretty,
+        } => cmd_inspect_result(input, stdin, pretty),
 
         Commands::Benchmark { command } => cmd_benchmark(command),
 
@@ -1237,6 +1260,26 @@ fn cmd_evaluate(input: Option<PathBuf>, stdin: bool, pretty: bool) -> Result<()>
     };
 
     println!("{}", output_json);
+    Ok(())
+}
+
+fn cmd_inspect_result(input: Option<PathBuf>, stdin: bool, pretty: bool) -> Result<()> {
+    let json_str = read_input(input, stdin, "inspect-result")?;
+    let result: SolverResult = serde_json::from_str(&json_str).map_err(|error| {
+        public_errors::invalid_input_error(
+            format!("Failed to parse result JSON: {}", error),
+            Some(format!("line {}, column {}", error.line(), error.column())),
+            "inspect-result",
+            vec!["solve-response".to_string()],
+        )
+    })?;
+
+    let summary = ResultSummary::from(&result);
+    if pretty {
+        print_json_pretty(&summary)?;
+    } else {
+        println!("{}", serde_json::to_string(&summary)?);
+    }
     Ok(())
 }
 
