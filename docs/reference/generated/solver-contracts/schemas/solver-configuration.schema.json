@@ -1,0 +1,366 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SolverConfiguration",
+  "description": "Complete configuration for the optimization solver.\n\nThis structure specifies which algorithm to use, when to stop optimization, algorithm-specific parameters, and logging preferences.\n\n# Example\n\n```no_run use solver_core::models::*;\n\nlet config = SolverConfiguration { solver_type: \"SimulatedAnnealing\".to_string(), stop_conditions: StopConditions { max_iterations: Some(50_000), time_limit_seconds: Some(60), no_improvement_iterations: Some(5_000), }, solver_params: SolverParams::SimulatedAnnealing( SimulatedAnnealingParams { initial_temperature: 100.0, final_temperature: 0.1, cooling_schedule: \"geometric\".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0), } ), logging: LoggingOptions { log_frequency: Some(1000), display_final_schedule: true, log_final_score_breakdown: true, ..Default::default() }, telemetry: Default::default(), seed: None, move_policy: None, allowed_sessions: None, }; ```",
+  "type": "object",
+  "required": [
+    "solver_params",
+    "solver_type",
+    "stop_conditions"
+  ],
+  "properties": {
+    "allowed_sessions": {
+      "description": "Optional allow-list of session indices that the solver is allowed to modify during iterations. If present, the solver will only generate moves within these sessions, leaving others unchanged. Session indices are 0-based.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "integer",
+        "format": "uint32",
+        "minimum": 0.0
+      }
+    },
+    "logging": {
+      "description": "Logging and output preferences (defaults to minimal logging)",
+      "default": {
+        "debug_dump_invariant_context": false,
+        "debug_validate_invariants": false,
+        "display_final_schedule": false,
+        "log_duration_and_score": false,
+        "log_final_score_breakdown": false,
+        "log_frequency": null,
+        "log_initial_score_breakdown": false,
+        "log_initial_state": false,
+        "log_stop_condition": false
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/LoggingOptions"
+        }
+      ]
+    },
+    "move_policy": {
+      "description": "Optional move-policy override controlling which move families may run and how they are selected.\n\nWhen omitted, the solver preserves the current adaptive mixed-search behavior.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/MovePolicy"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "seed": {
+      "description": "Optional seed used to make solver runs reproducible.\n\nWhen omitted, the solver derives a fresh random seed for the run and reports the effective seed in solver results / benchmark telemetry.",
+      "default": null,
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "solver_params": {
+      "description": "Algorithm-specific parameters",
+      "allOf": [
+        {
+          "$ref": "#/definitions/SolverParams"
+        }
+      ]
+    },
+    "solver_type": {
+      "description": "Type of solver algorithm to use (currently \"SimulatedAnnealing\")",
+      "type": "string"
+    },
+    "stop_conditions": {
+      "description": "Conditions that determine when to stop optimization",
+      "allOf": [
+        {
+          "$ref": "#/definitions/StopConditions"
+        }
+      ]
+    },
+    "telemetry": {
+      "description": "Telemetry options controlling what is emitted via progress updates.\n\nDefaults to disabled to avoid any performance overhead unless explicitly requested.",
+      "default": {
+        "best_schedule_every_n_callbacks": 5,
+        "emit_best_schedule": false
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/TelemetryOptions"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "LoggingOptions": {
+      "description": "Configuration options for logging and output during optimization.\n\nThese options control what information is displayed during and after the optimization process. Useful for debugging, monitoring progress, and understanding the solver's behavior.\n\n# Example\n\n```no_run use solver_core::models::LoggingOptions;\n\n// Comprehensive logging for debugging let logging = LoggingOptions { log_frequency: Some(1000),           // Log every 1000 iterations log_initial_state: true,             // Show starting configuration log_duration_and_score: true,        // Show final timing and score display_final_schedule: true,        // Show the final schedule log_initial_score_breakdown: true,   // Detailed initial scoring log_final_score_breakdown: true,     // Detailed final scoring log_stop_condition: true,            // Show why optimization stopped debug_validate_invariants: true,     // Validate invariants after each move debug_dump_invariant_context: true,  // Include detailed context in invariant violation errors };\n\n// Minimal logging for production let minimal_logging = LoggingOptions { display_final_schedule: true, log_final_score_breakdown: true, ..Default::default() }; ```",
+      "type": "object",
+      "properties": {
+        "debug_dump_invariant_context": {
+          "description": "When enabled alongside `debug_validate_invariants`, the solver will include detailed context (attempted move description and before/after schedules) in any invariant violation error.",
+          "default": false,
+          "type": "boolean"
+        },
+        "debug_validate_invariants": {
+          "description": "When enabled, the solver performs invariant checks after each applied move. This is expensive and intended only for debugging.",
+          "default": false,
+          "type": "boolean"
+        },
+        "display_final_schedule": {
+          "description": "Whether to display the final schedule in a human-readable format",
+          "default": false,
+          "type": "boolean"
+        },
+        "log_duration_and_score": {
+          "description": "Whether to log the total optimization time and final score",
+          "default": false,
+          "type": "boolean"
+        },
+        "log_final_score_breakdown": {
+          "description": "Whether to log a detailed breakdown of the final score",
+          "default": false,
+          "type": "boolean"
+        },
+        "log_frequency": {
+          "description": "How often to log progress (every N iterations). `None` disables progress logging.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "log_initial_score_breakdown": {
+          "description": "Whether to log a detailed breakdown of the initial score",
+          "default": false,
+          "type": "boolean"
+        },
+        "log_initial_state": {
+          "description": "Whether to log the initial state and configuration",
+          "default": false,
+          "type": "boolean"
+        },
+        "log_stop_condition": {
+          "description": "Whether to log the reason why optimization stopped",
+          "default": false,
+          "type": "boolean"
+        }
+      }
+    },
+    "MoveFamily": {
+      "description": "Explicit move families supported by the simulated annealing search loop.",
+      "type": "string",
+      "enum": [
+        "swap",
+        "transfer",
+        "clique_swap"
+      ]
+    },
+    "MoveFamilyWeights": {
+      "description": "Explicit weights for each move family when `MoveSelectionMode::Weighted` is used.",
+      "type": "object",
+      "required": [
+        "clique_swap",
+        "swap",
+        "transfer"
+      ],
+      "properties": {
+        "clique_swap": {
+          "type": "number",
+          "format": "double"
+        },
+        "swap": {
+          "type": "number",
+          "format": "double"
+        },
+        "transfer": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "MovePolicy": {
+      "description": "Controls which move families are allowed in a run and how the solver chooses between them.",
+      "type": "object",
+      "properties": {
+        "allowed_families": {
+          "description": "Optional allow-list of move families for this run.\n\nWhen omitted, all move families are allowed.",
+          "default": null,
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/MoveFamily"
+          }
+        },
+        "forced_family": {
+          "description": "Optional single-family override used for path tests and diagnostics.\n\nWhen present, the search loop will only attempt the specified move family.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/MoveFamily"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mode": {
+          "description": "Selection mode for mixed-family runs.",
+          "default": "adaptive",
+          "allOf": [
+            {
+              "$ref": "#/definitions/MoveSelectionMode"
+            }
+          ]
+        },
+        "weights": {
+          "description": "Optional explicit family weights used when `mode` is `weighted`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/MoveFamilyWeights"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "MoveSelectionMode": {
+      "description": "Selection mode for mixed move-family search.",
+      "oneOf": [
+        {
+          "description": "Preserve the current solver behavior, where transfer / clique swap probabilities are derived from the current state.",
+          "type": "string",
+          "enum": [
+            "adaptive"
+          ]
+        },
+        {
+          "description": "Use caller-provided explicit weights instead of the adaptive heuristics.",
+          "type": "string",
+          "enum": [
+            "weighted"
+          ]
+        }
+      ]
+    },
+    "SolverParams": {
+      "description": "Algorithm-specific parameters for different solver types.\n\nThis enum allows different algorithms to have their own parameter structures while maintaining a unified API.",
+      "oneOf": [
+        {
+          "description": "Parameters for the Simulated Annealing algorithm",
+          "type": "object",
+          "required": [
+            "cooling_schedule",
+            "final_temperature",
+            "initial_temperature",
+            "solver_type"
+          ],
+          "properties": {
+            "cooling_schedule": {
+              "description": "Temperature reduction schedule: \"geometric\" for exponential decay, \"linear\" for linear decay",
+              "type": "string"
+            },
+            "final_temperature": {
+              "description": "Ending temperature (lower values focus on local improvements)",
+              "type": "number",
+              "format": "double"
+            },
+            "initial_temperature": {
+              "description": "Starting temperature (higher values allow more random moves initially)",
+              "type": "number",
+              "format": "double"
+            },
+            "reheat_after_no_improvement": {
+              "description": "Optional reheat threshold: number of iterations without improvement before reheating. When reached, temperature is reset to initial_temperature and the cooling schedule is recalculated for the remaining iterations.\n\nSemantics: - `Some(0)`: disable reheating explicitly - `Some(N>0)`: reheat after N iterations without improvement - `None` (unspecified): default to the smaller of `max_iterations/10` or `no_improvement_iterations/2` (if set)",
+              "default": null,
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "reheat_cycles": {
+              "description": "Fixed reheat cycles: split the total iterations into this many cycles. For each cycle, temperature cools from `initial_temperature` down to `final_temperature`, then reheats to `initial_temperature` at the cycle boundary.\n\nSemantics: - `Some(0)` or `None`: disabled (use default behavior) - `Some(N>0)`: enable cycle-based reheating with N cycles across `max_iterations`",
+              "default": null,
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "solver_type": {
+              "type": "string",
+              "enum": [
+                "SimulatedAnnealing"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "StopConditions": {
+      "description": "Defines when the optimization process should stop.\n\nMultiple stop conditions can be specified, and the solver will stop when the first condition is met. This allows for flexible control over optimization duration vs. quality trade-offs.\n\n# Example\n\n```no_run use solver_core::models::StopConditions;\n\n// Stop after 10,000 iterations OR 30 seconds OR 1,000 iterations without improvement let conditions = StopConditions { max_iterations: Some(10_000), time_limit_seconds: Some(30), no_improvement_iterations: Some(1_000), }; ```",
+      "type": "object",
+      "properties": {
+        "max_iterations": {
+          "description": "Maximum number of optimization iterations before stopping",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "no_improvement_iterations": {
+          "description": "Stop if no improvement found for this many iterations",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "time_limit_seconds": {
+          "description": "Maximum time in seconds before stopping",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    },
+    "TelemetryOptions": {
+      "description": "Controls optional telemetry emitted during solver execution.\n\nThis is intentionally separate from `LoggingOptions` so that progress/visualization features can be enabled independently of stdout logging.",
+      "type": "object",
+      "properties": {
+        "best_schedule_every_n_callbacks": {
+          "description": "Include a schedule snapshot every N progress callbacks (when enabled).\n\nValues <= 1 mean \\\"every callback\\\".",
+          "default": 0,
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "emit_best_schedule": {
+          "description": "When true, include a `best_schedule` snapshot in some progress updates.\n\nThis can be expensive for large problems (it clones and serializes schedules), so it is disabled by default.",
+          "default": false,
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

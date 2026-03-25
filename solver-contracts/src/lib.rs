@@ -16,6 +16,7 @@ pub mod bootstrap;
 pub mod errors;
 pub mod examples;
 pub mod operations;
+pub mod reference_docs;
 pub mod schemas;
 pub mod types;
 

@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProblemDefinition",
+  "description": "Defines the core optimization problem: people, groups, and sessions.\n\nThis structure specifies the fundamental elements that need to be scheduled: the list of people to be assigned, the groups they can be assigned to, and how many scheduling sessions will occur.",
+  "type": "object",
+  "required": [
+    "groups",
+    "num_sessions",
+    "people"
+  ],
+  "properties": {
+    "groups": {
+      "description": "List of all available groups with their capacity limits",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Group"
+      }
+    },
+    "num_sessions": {
+      "description": "Total number of scheduling sessions (time periods)",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "people": {
+      "description": "List of all people to be scheduled into groups",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Person"
+      }
+    }
+  },
+  "definitions": {
+    "Group": {
+      "description": "Represents a group that people can be assigned to.\n\nEach group has a unique identifier and a fixed capacity that limits how many people can be assigned to it in any single session.\n\n# Example\n\n```no_run use solver_core::models::Group;\n\nlet team = Group { id: \"Development Team\".to_string(), size: 6, // Can hold up to 6 people }; ```",
+      "type": "object",
+      "required": [
+        "id",
+        "size"
+      ],
+      "properties": {
+        "id": {
+          "description": "Unique identifier for this group (must be unique across all groups)",
+          "type": "string"
+        },
+        "size": {
+          "description": "Maximum number of people that can be assigned to this group in any session",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      }
+    },
+    "Person": {
+      "description": "Represents a person who can be scheduled into groups.\n\nEach person has a unique identifier, optional attributes for constraint handling (e.g., gender, department), and can optionally specify which sessions they will participate in.\n\n# Example\n\n```no_run use solver_core::models::Person; use std::collections::HashMap;\n\n// Person participating in all sessions let alice = Person { id: \"Alice\".to_string(), attributes: { let mut attrs = HashMap::new(); attrs.insert(\"gender\".to_string(), \"female\".to_string()); attrs.insert(\"department\".to_string(), \"engineering\".to_string()); attrs }, sessions: None, // Participates in all sessions };\n\n// Person with limited participation (late arrival/early departure) let bob = Person { id: \"Bob\".to_string(), attributes: HashMap::new(), sessions: Some(vec![1, 2]), // Only participates in sessions 1 and 2 }; ```",
+      "type": "object",
+      "required": [
+        "attributes",
+        "id"
+      ],
+      "properties": {
+        "attributes": {
+          "description": "Key-value attributes used for constraint evaluation (e.g., \"gender\" -> \"female\")",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "id": {
+          "description": "Unique identifier for this person (must be unique across all people)",
+          "type": "string"
+        },
+        "sessions": {
+          "description": "Optional list of session indices this person participates in. If `None`, the person participates in all sessions. Session indices are 0-based (first session is 0).",
+          "default": null,
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          }
+        }
+      }
+    }
+  }
+}

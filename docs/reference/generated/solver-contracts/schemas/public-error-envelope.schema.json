@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PublicErrorEnvelope",
+  "description": "Envelope for public transport-level error responses.",
+  "type": "object",
+  "required": [
+    "error"
+  ],
+  "properties": {
+    "error": {
+      "$ref": "#/definitions/PublicError"
+    }
+  },
+  "definitions": {
+    "PublicError": {
+      "description": "Canonical public error instance shape shared across CLI, HTTP, and WASM projections.",
+      "type": "object",
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "recovery": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "related_help": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "valid_alternatives": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "where_path": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "why": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}
