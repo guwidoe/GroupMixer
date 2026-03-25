@@ -2,10 +2,12 @@ import { test, expect } from '@playwright/test';
 import {
   addGroup,
   addPerson,
+  openSolver,
   openApp,
   openProblemManager,
   runSolver,
   saveCurrentProblem,
+  waitForAppShell,
 } from './helpers';
 
 test.describe('Workflow coverage', () => {
@@ -77,5 +79,83 @@ test.describe('Workflow coverage', () => {
     await expect(page.getByText(/result 1/i).first()).toBeVisible();
     await page.getByRole('button', { name: /view in result details/i }).click();
     await expect(page.getByRole('heading', { name: /optimization results/i })).toBeVisible();
+  });
+
+  test('auto-sets custom solver settings, shows a running solver state, reloads, and warm-starts from a saved result', async ({ page }) => {
+    await openApp(page);
+
+    for (const person of ['Alice', 'Bob', 'Cara', 'Dan', 'Eli', 'Fran']) {
+      await addPerson(page, person);
+    }
+
+    await page.getByRole('button', { name: /groups/i }).click();
+    await addGroup(page, 'Team Alpha', 3);
+    await addGroup(page, 'Team Beta', 3);
+
+    await page.getByRole('button', { name: /sessions/i }).click();
+    const sessionInput = page.locator('input[type="number"]').first();
+    await sessionInput.fill('3');
+    await sessionInput.blur();
+    await expect(sessionInput).toHaveValue('3');
+
+    await saveCurrentProblem(page);
+    await openSolver(page);
+
+    await page.getByRole('button', { name: /solve with custom settings/i }).click();
+    const desiredRuntime = page.locator('#desiredRuntime');
+    await desiredRuntime.fill('2');
+    await desiredRuntime.blur();
+    await page.getByRole('button', { name: /auto-set/i }).click();
+    await expect(page.getByText(/settings updated/i).first()).toBeVisible();
+
+    const customStart = page.getByRole('button', { name: /start solver with custom settings/i });
+    await customStart.click();
+
+    await expect(page.getByText(/^Running$/)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('button', { name: /cancel solver/i })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/result saved/i).first()).toBeVisible({ timeout: 15000 });
+
+    await page.reload();
+    await waitForAppShell(page);
+    await openSolver(page);
+
+    await page.getByRole('button', { name: /solve with custom settings/i }).click();
+    await page.getByRole('button', { name: /start from random \(default\)/i }).click();
+    await page.getByRole('button', { name: /result 1/i }).first().click();
+    await expect(page.getByRole('button', { name: /result 1 • score/i })).toBeVisible();
+
+    await customStart.click();
+    await expect(page.getByText(/^Running$/)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/result saved/i).first()).toBeVisible({ timeout: 15000 });
+  });
+
+  test('shows a browser-visible solver error when worker startup fails', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.Worker = class {
+        constructor() {
+          throw new Error('Injected worker failure');
+        }
+
+        postMessage() {}
+        terminate() {}
+      } as unknown as typeof Worker;
+    });
+
+    await openApp(page);
+
+    for (const person of ['Alice', 'Bob', 'Cara', 'Dan']) {
+      await addPerson(page, person);
+    }
+
+    await page.getByRole('button', { name: /groups/i }).click();
+    await addGroup(page, 'Team Alpha', 2);
+    await addGroup(page, 'Team Beta', 2);
+    await saveCurrentProblem(page);
+
+    await openSolver(page);
+    await page.getByRole('button', { name: /start solver with automatic settings/i }).click();
+
+    await expect(page.getByText(/solver error/i).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/failed to initialize solver worker: injected worker failure/i).first()).toBeVisible({ timeout: 10000 });
   });
 });

@@ -80,13 +80,17 @@ export async function saveCurrentProblem(page: Page) {
   await expect(page.getByText(/problem saved|saved\./i).first()).toBeVisible();
 }
 
-export async function runSolver(page: Page) {
+export async function openSolver(page: Page) {
   await clickAndWaitForUrl(
     page,
     page.getByRole('link', { name: /^solver$/i }),
     /\/app\/solver/,
     page.getByRole('button', { name: /start solver with automatic settings/i }),
   );
+}
+
+export async function runSolver(page: Page) {
+  await openSolver(page);
 
   const startButton = page.getByRole('button', {
     name: /start solver with automatic settings/i,
