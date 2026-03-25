@@ -1,291 +1,69 @@
 import type { Assignment, Problem, Solution, SolverSettings } from "../types";
-import {
-  buildRustProblemJson,
-  buildRustProblemPayload,
-  parseProgressUpdate,
-  parseRustSolution,
-} from "./rustBoundary";
-import { isWasmSolverModule, type WasmSolverModule } from "./wasm/module";
+import { WasmContractClient } from "./wasm/contracts";
+import type { WasmModuleLoader } from "./wasm/module";
 import type { ProgressCallback, ProgressUpdate } from "./wasm/types";
 
-export type WasmModuleLoader = () => Promise<unknown>;
-
 export class WasmService {
-  private module: WasmSolverModule | null = null;
-  private loading = false;
-  private initializationFailed = false;
+  private readonly contractClient: WasmContractClient;
 
-  constructor(
-    private readonly loadModule: WasmModuleLoader = () => import("virtual:wasm-solver"),
-  ) {}
-
-  private formatErrorMessage(error: unknown, fallback: string): string {
-    if (error instanceof Error && error.message) {
-      return error.message;
-    }
-
-    if (error && typeof error === "object") {
-      const record = error as {
-        message?: unknown;
-        error?: {
-          code?: unknown;
-          message?: unknown;
-        };
-      };
-
-      if (typeof record.message === "string" && record.message) {
-        return record.message;
-      }
-
-      if (record.error && typeof record.error === "object") {
-        const code = typeof record.error.code === "string" ? record.error.code : undefined;
-        const message =
-          typeof record.error.message === "string" ? record.error.message : undefined;
-
-        if (message) {
-          return code ? `${code}: ${message}` : message;
-        }
-      }
-    }
-
-    const text = String(error);
-    return text && text !== "[object Object]" ? text : fallback;
-  }
-
-  private async requireModule(): Promise<WasmSolverModule> {
-    if (!this.module && !this.initializationFailed) {
-      await this.initialize();
-    }
-
-    if (!this.module) {
-      throw new Error(
-        "WASM module not available. Please check the build configuration."
-      );
-    }
-
-    return this.module;
+  constructor(loadModule?: WasmModuleLoader) {
+    this.contractClient = new WasmContractClient(loadModule);
   }
 
   async initialize(): Promise<void> {
-    if (this.module || this.loading || this.initializationFailed) {
-      return;
-    }
-
-    this.loading = true;
-
-    try {
-      // Load the WASM module via the virtual alias (vite alias → public/pkg/solver_wasm.js)
-      const wasmModule = await this.loadModule().catch((error) => {
-        console.warn(
-          "WASM module not found. This might be a build issue:",
-          error.message
-        );
-        throw new Error(
-          "WASM module not available. Please check the build configuration."
-        );
-      });
-
-      if (typeof wasmModule.default !== "function") {
-        throw new Error("WASM module does not expose the expected async initializer.");
-      }
-
-      if (!isWasmSolverModule(wasmModule)) {
-        throw new Error("WASM module shape does not match the expected runtime contract.");
-      }
-
-      await wasmModule.default();
-      this.module = wasmModule;
-    } catch (error) {
-      console.error("Failed to load WASM module:", error);
-      this.initializationFailed = true;
-      throw new Error(
-        `Failed to initialize WASM solver: ${this.formatErrorMessage(
-          error,
-          "Unknown initialization error"
-        )}`
-      );
-    } finally {
-      this.loading = false;
-    }
+    await this.contractClient.initialize();
   }
 
   async solve(problem: Problem): Promise<Solution> {
-    const module = await this.requireModule();
-
-    let problemJson: string | undefined;
-    try {
-      problemJson = buildRustProblemJson(problem);
-      const resultJson = module.solve(problemJson);
-      return parseRustSolution(resultJson);
-    } catch (error) {
-      console.error("WASM solve error:", error);
-      if (problemJson) {
-        console.error("WASM solve error occurred after serializing solver input.");
-      }
-      throw new Error(
-        `Failed to solve problem: ${this.formatErrorMessage(error, "Unknown solver error")}`
-      );
-    }
+    return this.contractClient.solve(problem);
   }
 
   async solveWithProgress(
     problem: Problem,
-    progressCallback?: ProgressCallback
+    progressCallback?: ProgressCallback,
   ): Promise<{ solution: Solution; lastProgress: ProgressUpdate | null }> {
-    const module = await this.requireModule();
-
-    let problemJson: string | undefined;
-    try {
-      problemJson = buildRustProblemJson(problem);
-
-      let lastProgress: ProgressUpdate | null = null;
-
-      const wasmProgressCallback = progressCallback
-        ? (progressJson: string) => {
-            try {
-              const progress = parseProgressUpdate(progressJson);
-              lastProgress = progress; // Track the last progress update
-              progressCallback(progress);
-              return true;
-            } catch (e) {
-              console.error("Failed to parse progress update:", e);
-              return true; // Continue on parse error
-            }
-          }
-        : undefined;
-
-      const resultJson = module.solve_with_progress(
-        problemJson,
-        wasmProgressCallback
-      );
-
-      return {
-        solution: parseRustSolution(resultJson, lastProgress ?? undefined),
-        lastProgress,
-      };
-    } catch (error) {
-      console.error("WASM solveWithProgress error:", error);
-      if (problemJson) {
-        console.error(
-          "WASM solveWithProgress error occurred after serializing solver input."
-        );
-      }
-      throw new Error(
-        `Failed to solve problem: ${this.formatErrorMessage(
-          error,
-          "Unknown solver error"
-        )}`
-      );
-    }
+    return this.contractClient.solveWithProgress(problem, progressCallback);
   }
 
   async validateProblem(
-    problem: Problem
+    problem: Problem,
   ): Promise<{ valid: boolean; errors: string[] }> {
-    const module = await this.requireModule();
-
-    try {
-      const problemJson = JSON.stringify(problem);
-      const resultJson = module.validate_problem(problemJson);
-      return JSON.parse(resultJson);
-    } catch (error) {
-      console.error("WASM validation error:", error);
-      throw new Error(
-        `Failed to validate problem: ${this.formatErrorMessage(
-          error,
-          "Unknown validation error"
-        )}`
-      );
-    }
+    const response = await this.contractClient.validateProblem(problem);
+    return {
+      valid: response.valid,
+      errors: response.issues.map((issue) => issue.message),
+    };
   }
 
   async getDefaultSettings(): Promise<SolverSettings> {
-    const module = await this.requireModule();
-
-    try {
-      const settingsJson = module.get_default_settings();
-      return JSON.parse(settingsJson);
-    } catch (error) {
-      console.error("WASM get default settings error:", error);
-      throw new Error(
-        `Failed to get default settings: ${this.formatErrorMessage(
-          error,
-          "Unknown settings error"
-        )}`
-      );
-    }
+    return this.contractClient.getDefaultSolverConfiguration();
   }
 
   async getRecommendedSettings(
     problem: Problem,
     desiredRuntimeSeconds: number,
   ): Promise<SolverSettings> {
-    const module = await this.requireModule();
-
-    try {
-      const problemJson = JSON.stringify(problem);
-      const settingsJson = module.get_recommended_settings(
-        problemJson,
-        BigInt(desiredRuntimeSeconds),
-      );
-      return JSON.parse(settingsJson);
-    } catch (error) {
-      console.error("WASM get recommended settings error:", error);
-      throw new Error(
-        `Failed to get recommended settings: ${this.formatErrorMessage(
-          error,
-          "Unknown settings error",
-        )}`,
-      );
-    }
+    return this.contractClient.recommendSettings(problem, desiredRuntimeSeconds);
   }
 
   isReady(): boolean {
-    return this.module !== null;
+    return this.contractClient.isReady();
   }
 
   isLoading(): boolean {
-    return this.loading;
+    return this.contractClient.isLoading();
   }
 
   hasInitializationFailed(): boolean {
-    return this.initializationFailed;
+    return this.contractClient.hasInitializationFailed();
   }
 
   async evaluateSolution(
     problem: Problem,
-    assignments: Assignment[]
+    assignments: Assignment[],
   ): Promise<Solution> {
-    const module = await this.requireModule();
-    // Build ApiInput with initial_schedule populated from assignments
-    const payload = buildRustProblemPayload(problem) as Record<string, unknown> & {
-      initial_schedule?: Record<string, Record<string, string[]>>;
-    };
-
-    // Convert assignments → schedule map
-    const schedule: Record<string, Record<string, string[]>> = {};
-    for (const a of assignments) {
-      const sessionKey = `session_${a.session_id}`;
-      schedule[sessionKey] = schedule[sessionKey] || {};
-      schedule[sessionKey][a.group_id] = schedule[sessionKey][a.group_id] || [];
-      schedule[sessionKey][a.group_id].push(a.person_id);
-    }
-    payload.initial_schedule = schedule;
-
-    try {
-      const resultJson = module.evaluate_input!(JSON.stringify(payload));
-      return parseRustSolution(resultJson);
-    } catch (error) {
-      console.error("WASM evaluateSolution error:", error);
-      throw new Error(
-        `Failed to evaluate solution: ${this.formatErrorMessage(
-          error,
-          "Unknown evaluation error"
-        )}`
-      );
-    }
+    return this.contractClient.evaluateInput(problem, assignments);
   }
-
 }
 
 export const wasmService = new WasmService();
