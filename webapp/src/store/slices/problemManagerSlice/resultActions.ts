@@ -54,6 +54,8 @@ export function createResultActions(set: SetState, get: GetState): Pick<ProblemM
           problemForSnapshot,
         );
 
+        const persistedProblem = problemStorage.getProblem(currentProblemId);
+
         set((state) => {
           const currentProblem = state.savedProblems[currentProblemId] ?? currentSavedProblem;
           if (!currentProblem) {
@@ -63,11 +65,16 @@ export function createResultActions(set: SetState, get: GetState): Pick<ProblemM
           return {
             savedProblems: {
               ...state.savedProblems,
-              [currentProblemId]: {
-                ...currentProblem,
-                problem: problem || currentProblem.problem,
-                results: [...(currentProblem?.results || []), result],
-              },
+              [currentProblemId]: persistedProblem
+                ? {
+                    ...persistedProblem,
+                    problem: problem || persistedProblem.problem,
+                  }
+                : {
+                    ...currentProblem,
+                    problem: problem || currentProblem.problem,
+                    results: [...(currentProblem.results || []), result],
+                  },
             },
           };
         });

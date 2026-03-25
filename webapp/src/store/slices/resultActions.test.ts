@@ -8,6 +8,7 @@ import { problemStorage } from '../../services/problemStorage';
 vi.mock('../../services/problemStorage', () => ({
   problemStorage: {
     addResult: vi.fn(),
+    getProblem: vi.fn(),
   },
 }));
 
@@ -74,6 +75,10 @@ describe('createResultActions', () => {
       duration: 456,
     };
     vi.mocked(problemStorage.addResult).mockReturnValue(persistedResult);
+    vi.mocked(problemStorage.getProblem).mockReturnValue({
+      ...savedProblem,
+      results: [persistedResult],
+    });
 
     const harness = createHarness({
       problem: savedProblem.problem,
@@ -101,6 +106,50 @@ describe('createResultActions', () => {
       type: 'success',
       title: 'Result Saved',
     });
+  });
+
+  it('prefers the persisted problem snapshot after saving so results are not duplicated in state', () => {
+    const existingResult: ProblemResult = {
+      id: 'result-1',
+      name: 'Older Result',
+      solution: createSampleSolution({ final_score: 20 }),
+      solverSettings: createSampleSolverSettings(),
+      problemSnapshot: undefined,
+      timestamp: 100,
+      duration: 100,
+    };
+    const savedProblem = createSavedProblem({ id: 'problem-1', results: [existingResult] });
+    const persistedResult: ProblemResult = {
+      id: 'result-2',
+      name: 'Result 2',
+      solution: createSampleSolution(),
+      solverSettings: createSampleSolverSettings(),
+      problemSnapshot: {
+        people: savedProblem.problem.people,
+        groups: savedProblem.problem.groups,
+        num_sessions: savedProblem.problem.num_sessions,
+        objectives: savedProblem.problem.objectives,
+        constraints: savedProblem.problem.constraints,
+      },
+      timestamp: 123,
+      duration: 456,
+    };
+
+    vi.mocked(problemStorage.addResult).mockReturnValue(persistedResult);
+    vi.mocked(problemStorage.getProblem).mockReturnValue({
+      ...savedProblem,
+      results: [existingResult, persistedResult],
+    });
+
+    const harness = createHarness({
+      problem: savedProblem.problem,
+      savedProblems: { [savedProblem.id]: savedProblem },
+      currentProblemId: savedProblem.id,
+    });
+
+    harness.actions.addResult(createSampleSolution(), createSampleSolverSettings(), undefined, savedProblem.problem);
+
+    expect(harness.getState().savedProblems[savedProblem.id].results).toEqual([existingResult, persistedResult]);
   });
 
   it('returns null and reports an error when there is no current problem id', () => {

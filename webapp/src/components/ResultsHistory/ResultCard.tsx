@@ -274,8 +274,8 @@ export function ResultCard({
         <div className="flex items-center min-w-0 space-x-2">
           <Users className="h-4 w-4" style={{ color: 'var(--text-tertiary)' }} />
           <span style={{ color: 'var(--text-secondary)' }}>Unique:</span>
-          <span className={`font-medium ${metrics.uniqueColorClass}`} style={{ whiteSpace: 'nowrap' }}>
-            {result.solution.unique_contacts} / {metrics.effectiveMaxUniqueTotal}
+          <span className={`font-medium ${metrics.metrics.uniqueColorClass}`} style={{ whiteSpace: 'nowrap' }}>
+            {result.solution.unique_contacts} / {metrics.metrics.effectiveMaxUniqueTotal}
           </span>
         </div>
         <div className="flex items-center min-w-0 space-x-2">
@@ -295,21 +295,21 @@ export function ResultCard({
         </div>
       </div>
 
-      {isExpanded && (
+      {state.isExpanded && (
         <div className="mt-4 pt-4 border-t space-y-4">
           <div>
             <h4 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>Score Breakdown</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
                 <div style={{ color: 'var(--text-secondary)' }}>Unique Contacts</div>
-                <div className={`font-medium ${metrics.uniqueColorClass}`}>
-                  {result.solution.unique_contacts} / {metrics.effectiveMaxUniqueTotal}
+                <div className={`font-medium ${metrics.metrics.uniqueColorClass}`}>
+                  {result.solution.unique_contacts} / {metrics.metrics.effectiveMaxUniqueTotal}
                 </div>
               </div>
               <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
                 <div style={{ color: 'var(--text-secondary)' }}>Avg Contacts / Person</div>
-                <div className={`font-medium ${metrics.avgColorClass}`}>
-                  {metrics.avgUniqueContacts.toFixed(1)} / {metrics.effectiveMaxAvgContacts}
+                <div className={`font-medium ${metrics.metrics.avgColorClass}`}>
+                  {metrics.metrics.avgUniqueContacts.toFixed(1)} / {metrics.metrics.effectiveMaxAvgContacts}
                 </div>
               </div>
               <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }}>

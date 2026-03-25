@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAppStore } from '../store';
 import {
+  Copy,
   FolderPlus,
   Upload,
   Search,
