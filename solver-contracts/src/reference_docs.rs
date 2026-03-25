@@ -295,7 +295,12 @@ fn snippet_format_name(format: ReferenceSnippetFormat) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::{generate_reference_artifacts, DEFAULT_REFERENCE_OUTPUT_DIR};
+    use super::{
+        generate_reference_artifacts, write_or_check_reference_artifacts,
+        ReferenceArtifactsResult, WriteMode, DEFAULT_REFERENCE_OUTPUT_DIR,
+    };
+    use std::fs;
+    use tempfile::tempdir;
 
     #[test]
     fn generated_reference_artifacts_cover_core_reference_surfaces() {
@@ -313,5 +318,35 @@ mod tests {
         assert!(paths.contains(&"catalog.json".to_string()));
         assert!(paths.iter().any(|path| path.starts_with("schemas/") && path.ends_with(".schema.json")));
         assert_eq!(DEFAULT_REFERENCE_OUTPUT_DIR, "docs/reference/generated/solver-contracts");
+    }
+
+    #[test]
+    fn write_then_check_reference_artifacts_passes() {
+        let temp = tempdir().expect("temp dir");
+        let written = write_or_check_reference_artifacts(temp.path(), WriteMode::Write)
+            .expect("write generated artifacts");
+        match written {
+            ReferenceArtifactsResult::Written(summary) => assert!(summary.files_written >= 6),
+            other => panic!("unexpected result: {other:?}"),
+        }
+
+        let checked = write_or_check_reference_artifacts(temp.path(), WriteMode::Check)
+            .expect("check generated artifacts");
+        match checked {
+            ReferenceArtifactsResult::Checked(summary) => assert!(summary.checked_files >= 6),
+            other => panic!("unexpected result: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn stale_reference_artifacts_are_detected() {
+        let temp = tempdir().expect("temp dir");
+        write_or_check_reference_artifacts(temp.path(), WriteMode::Write)
+            .expect("write generated artifacts");
+        fs::write(temp.path().join("operations.md"), "stale artifact\n").expect("overwrite artifact");
+
+        let mismatches = write_or_check_reference_artifacts(temp.path(), WriteMode::Check)
+            .expect_err("stale outputs should fail check");
+        assert!(mismatches.iter().any(|mismatch| mismatch.path == std::path::PathBuf::from("operations.md")));
     }
 }
