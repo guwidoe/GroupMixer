@@ -20,6 +20,7 @@ pub struct WasmCapabilityOperationSummary {
     pub summary: &'static str,
     pub family: &'static str,
     pub kind: solver_contracts::types::OperationKind,
+    pub help_export_name: &'static str,
     #[serde(default)]
     pub export_name: Option<&'static str>,
     pub help_target: &'static str,
@@ -47,6 +48,7 @@ pub struct WasmOperationExampleSummary {
 pub struct WasmRelatedOperationSummary {
     pub operation_id: &'static str,
     pub summary: &'static str,
+    pub help_export_name: &'static str,
     #[serde(default)]
     pub export_name: Option<&'static str>,
     pub help_target: &'static str,
@@ -55,6 +57,7 @@ pub struct WasmRelatedOperationSummary {
 #[derive(Debug, Clone, Serialize)]
 pub struct WasmOperationHelpResponse {
     pub operation: OperationSpec,
+    pub help_export_name: &'static str,
     #[serde(default)]
     pub export_name: Option<&'static str>,
     pub help_target: &'static str,
@@ -78,6 +81,7 @@ pub struct WasmSchemaLookupResponse {
 #[derive(Debug, Clone, Serialize)]
 pub struct WasmErrorLookupResponse {
     pub error: PublicErrorSpec,
+    pub help_export_name: &'static str,
     pub related_help_targets: Vec<&'static str>,
 }
 
@@ -117,6 +121,7 @@ pub fn build_capabilities_response() -> WasmBootstrapResponse {
                 summary: operation.summary,
                 family: operation.family,
                 kind: operation.kind,
+                help_export_name: "get_operation_help",
                 export_name: binding_for_operation_id(operation.id).map(|binding| binding.export_name),
                 help_target: operation.id,
             })
@@ -156,6 +161,7 @@ pub fn build_operation_help_response(operation_id: &str) -> Result<WasmOperation
             Some(WasmRelatedOperationSummary {
                 operation_id: operation.id,
                 summary: operation.summary,
+                help_export_name: "get_operation_help",
                 export_name: binding_for_operation_id(operation.id).map(|binding| binding.export_name),
                 help_target: operation.id,
             })
@@ -164,6 +170,7 @@ pub fn build_operation_help_response(operation_id: &str) -> Result<WasmOperation
 
     Ok(WasmOperationHelpResponse {
         operation: help.operation.clone(),
+        help_export_name: "get_operation_help",
         export_name: binding_for_operation_id(help.operation.id).map(|binding| binding.export_name),
         help_target: help.operation.id,
         examples,
@@ -202,6 +209,7 @@ pub fn build_error_catalog() -> Vec<WasmErrorLookupResponse> {
         .iter()
         .cloned()
         .map(|error| WasmErrorLookupResponse {
+            help_export_name: "get_operation_help",
             related_help_targets: error.related_help_operation_ids.to_vec(),
             error,
         })
@@ -213,6 +221,7 @@ pub fn build_error_lookup_response(error_code: &str) -> Result<WasmErrorLookupRe
         .cloned()
         .ok_or_else(|| public_error_to_js_value(&unknown_error_code_error(error_code)))?;
     Ok(WasmErrorLookupResponse {
+        help_export_name: "get_operation_help",
         related_help_targets: error.related_help_operation_ids.to_vec(),
         error,
     })
@@ -230,7 +239,10 @@ fn to_js_value<T: Serialize>(value: &T) -> Result<JsValue, JsValue> {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_capabilities_response, build_operation_help_response, build_schema_lookup_response, build_schema_summaries};
+    use super::{
+        build_capabilities_response, build_error_lookup_response, build_operation_help_response,
+        build_schema_lookup_response, build_schema_summaries,
+    };
 
     #[test]
     fn capabilities_response_exposes_bootstrap_and_top_level_bindings() {
@@ -238,15 +250,36 @@ mod tests {
         assert_eq!(response.help_export_name, "get_operation_help");
         assert!(response.top_level_operations.iter().any(|operation| operation.operation_id == "solve"));
         assert!(response.top_level_operations.iter().any(|operation| operation.export_name == Some("solve_contract")));
+        assert!(response.top_level_operations.iter().all(|operation| operation.help_export_name == "get_operation_help"));
     }
 
     #[test]
     fn operation_help_response_includes_examples_and_related_operations() {
         let response = build_operation_help_response("solve").expect("solve help");
         assert_eq!(response.operation.id, "solve");
+        assert_eq!(response.help_export_name, "get_operation_help");
         assert_eq!(response.export_name, Some("solve_contract"));
         assert!(response.examples.iter().any(|example| example.id == "solve-happy-path"));
         assert!(response.related_operations.iter().any(|operation| operation.operation_id == "validate-problem"));
+    }
+
+    #[test]
+    fn related_help_targets_resolve_from_help_and_error_surfaces() {
+        let help = build_operation_help_response("solve").expect("solve help");
+        for related in help.related_operations {
+            let related_help = build_operation_help_response(related.help_target)
+                .expect("related help target should resolve");
+            assert_eq!(related.help_export_name, "get_operation_help");
+            assert_eq!(related_help.operation.id, related.help_target);
+        }
+
+        let error = build_error_lookup_response("invalid-input").expect("error lookup");
+        assert_eq!(error.help_export_name, "get_operation_help");
+        for target in error.related_help_targets {
+            let related_help = build_operation_help_response(target)
+                .expect("error related help target should resolve");
+            assert_eq!(related_help.operation.id, target);
+        }
     }
 
     #[test]
