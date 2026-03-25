@@ -57,6 +57,17 @@
       }
     }
     </script>
+    <script id="groupmixer-agent-bootstrap" type="application/json">
+    {
+      "version": "1",
+      "kind": "browser-agent-api",
+      "global": "GroupMixerAgent",
+      "readyEvent": "groupmixer:agent-ready",
+      "preferredTransport": "worker",
+      "transports": ["worker", "wasm"],
+      "bootstrapMethod": "capabilities"
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>

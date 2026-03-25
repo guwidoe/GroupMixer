@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  BROWSER_AGENT_GLOBAL,
+  BROWSER_AGENT_READY_EVENT,
   createBrowserAgentApi,
   installBrowserAgentApi,
   type BrowserAgentApi,
@@ -51,6 +53,7 @@ describe('browserAgentApi', () => {
     await api.worker.initialize();
 
     expect(await api.wasm.capabilities()).toEqual({ bootstrap: { title: 'GroupMixer solver contracts' } });
+    expect(await api.worker.capabilities()).toEqual({ bootstrap: { title: 'GroupMixer solver contracts' } });
     expect(await api.worker.getOperationHelp('solve')).toEqual({ operation: { id: 'solve' } });
     expect(await api.worker.solve({ problem: { people: [] } })).toEqual({ schedule: {}, final_score: 1 });
   });
@@ -58,15 +61,21 @@ describe('browserAgentApi', () => {
   it('installs the browser agent API on window and emits a ready event', async () => {
     const api = createApi();
     const readyListener = vi.fn();
-    window.addEventListener('groupmixer:agent-ready', readyListener);
+    window.addEventListener(BROWSER_AGENT_READY_EVENT, readyListener);
 
     const installed = installBrowserAgentApi(window, api);
 
     expect(installed).toBe(api);
-    expect(window.GroupMixerAgent).toBe(api);
+    expect(window[BROWSER_AGENT_GLOBAL as keyof Window]).toBe(api);
 
     await vi.waitFor(() => {
       expect(readyListener).toHaveBeenCalledTimes(1);
     });
+
+    expect(readyListener.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        detail: { api },
+      }),
+    );
   });
 });

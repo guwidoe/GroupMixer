@@ -19,6 +19,19 @@ declare global {
   }
 }
 
+export const BROWSER_AGENT_GLOBAL = 'GroupMixerAgent';
+export const BROWSER_AGENT_READY_EVENT = 'groupmixer:agent-ready';
+export const BROWSER_AGENT_BOOTSTRAP_ID = 'groupmixer-agent-bootstrap';
+export const BROWSER_AGENT_BOOTSTRAP_SPEC = {
+  version: '1',
+  kind: 'browser-agent-api',
+  global: BROWSER_AGENT_GLOBAL,
+  readyEvent: BROWSER_AGENT_READY_EVENT,
+  preferredTransport: 'worker',
+  transports: ['worker', 'wasm'],
+  bootstrapMethod: 'capabilities',
+} as const;
+
 export interface BrowserAgentTransportApi {
   initialize(): Promise<void>;
   capabilities(): Promise<WasmBootstrapResponse>;
@@ -179,7 +192,7 @@ class WorkerBrowserAgentTransport implements BrowserAgentTransportApi {
 
 export function createBrowserAgentApi(deps: BrowserAgentApiDeps = {}): BrowserAgentApi {
   return {
-    version: '1',
+    version: BROWSER_AGENT_BOOTSTRAP_SPEC.version,
     runtime: 'browser',
     wasm: deps.wasm ?? new WasmBrowserAgentTransport(),
     worker: deps.worker ?? new WorkerBrowserAgentTransport(),
@@ -190,9 +203,9 @@ export function installBrowserAgentApi(
   targetWindow: Window,
   api: BrowserAgentApi = createBrowserAgentApi(),
 ): BrowserAgentApi {
-  targetWindow.GroupMixerAgent = api;
+  targetWindow[BROWSER_AGENT_GLOBAL as 'GroupMixerAgent'] = api;
   targetWindow.dispatchEvent(
-    new CustomEvent('groupmixer:agent-ready', {
+    new CustomEvent(BROWSER_AGENT_READY_EVENT, {
       detail: { api },
     }),
   );
