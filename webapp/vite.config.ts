@@ -54,7 +54,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ["@/../solver-wasm/pkg"],
+    exclude: ["@/../backend/wasm/pkg"],
   },
   assetsInclude: ["**/*.wasm"],
   test: {

@@ -1,10 +1,10 @@
 # solver-core test suite
 
-`solver-core/tests/data_driven_tests.rs` is the main end-to-end integration contract for the solver.
+`backend/core/tests/data_driven_tests.rs` is the main end-to-end integration contract for the solver.
 
 ## Fixture layout
 
-Fixtures live in `solver-core/tests/test_cases/*.json`.
+Fixtures live in `backend/core/tests/test_cases/*.json`.
 
 Each fixture can declare metadata alongside `input`, `expected`, and `test_options`:
 
@@ -103,4 +103,4 @@ When adding a new solver feature or regression case:
 4. encode expected behavior in `expected`
 5. use unit/property tests for local branches and invariants, but keep cross-cutting solver behavior in fixture form where practical
 
-The generated per-fixture tests come from `solver-core/build.rs`, which scans the fixture directory and emits one Rust test per JSON file.
+The generated per-fixture tests come from `backend/core/build.rs`, which scans the fixture directory and emits one Rust test per JSON file.

@@ -31,7 +31,7 @@ echo ""
 
 # 2. CLI smoke test
 echo -e "${YELLOW}[2/4] Running CLI smoke test...${NC}"
-if cargo run -p solver-cli --release -- solve solver-cli/test_cases/simple_test.json > /dev/null 2>&1; then
+if cargo run -p solver-cli --release -- solve backend/cli/test_cases/simple_test.json > /dev/null 2>&1; then
     echo -e "${GREEN}✓ CLI smoke test passed${NC}"
 else
     echo -e "${RED}✗ CLI smoke test failed${NC}"

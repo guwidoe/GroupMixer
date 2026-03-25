@@ -58,7 +58,7 @@ graph TB
 
 ```
 GroupMixer/
-├── solver-core/              # Core Rust optimization library
+├── backend/core/              # Core Rust optimization library
 │   ├── src/
 │   │   ├── lib.rs           # Public API: run_solver(), recommended_settings
 │   │   ├── models.rs        # All serializable types (ApiInput, Constraint, etc.)
@@ -69,10 +69,10 @@ GroupMixer/
 │   ├── examples/            # Integration demos
 │   └── tests/               # Data-driven test suite with JSON cases
 │
-├── solver-wasm/             # WebAssembly bindings for browser use
+├── backend/wasm/             # WebAssembly bindings for browser use
 │   └── src/lib.rs           # wasm-bindgen exports: solve(), validate(), etc.
 │
-├── solver-server/           # REST API server (optional)
+├── backend/api/           # REST API server (optional)
 │   └── src/
 │       ├── main.rs          # Axum server entry point
 │       ├── api/             # Routes and handlers
@@ -448,8 +448,8 @@ else:
 ## Navigation Guide
 
 ### To add a new constraint type:
-1. `solver-core/src/models.rs` - Add variant to `Constraint` enum
-2. `solver-core/src/solver.rs` - Add preprocessing and penalty calculation
+1. `backend/core/src/models.rs` - Add variant to `Constraint` enum
+2. `backend/core/src/solver.rs` - Add preprocessing and penalty calculation
 3. `webapp/src/types/index.ts` - Add TypeScript type
 4. `webapp/src/services/wasm.ts` - Add format conversion if needed
 5. `webapp/src/components/constraints/*.tsx` - Add UI panel
@@ -462,13 +462,13 @@ else:
 3. Register in `webapp/src/visualizations/registry.ts`
 
 ### To modify the optimization algorithm:
-1. `solver-core/src/algorithms/` - Add new algorithm or modify SA
+1. `backend/core/src/algorithms/` - Add new algorithm or modify SA
 2. Implement `Solver` trait
-3. Add solver_type string in `solver-core/src/lib.rs`
+3. Add solver_type string in `backend/core/src/lib.rs`
 
 ### To add a new API endpoint (server):
-1. `solver-server/src/api/handlers.rs` - Add handler function
-2. `solver-server/src/api/routes.rs` - Add route
+1. `backend/api/src/api/handlers.rs` - Add handler function
+2. `backend/api/src/api/routes.rs` - Add route
 
 ### To debug constraint violations:
 1. Enable `debug_validate_invariants: true` in SolverConfiguration

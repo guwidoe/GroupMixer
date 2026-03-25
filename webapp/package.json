@@ -9,7 +9,7 @@
     "vercel-build": "chmod +x ./vercel-build.sh && ./vercel-build.sh",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "build-wasm": "wasm-pack build ../solver-wasm --target web --out-dir $(pwd)/public/pkg",
+    "build-wasm": "wasm-pack build ../backend/wasm --target web --out-dir $(pwd)/public/pkg",
     "test:unit": "vitest --project app",
     "test:unit:watch": "vitest --project app --watch",
     "test:coverage": "vitest --project app --coverage",

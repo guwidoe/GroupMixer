@@ -23,9 +23,9 @@ Primary references:
 
 This folder is the **structured benchmark operations surface**.
 
-It is intentionally separate from `solver-core/benches/`:
+It is intentionally separate from `backend/core/benches/`:
 
-- `solver-core/benches/` owns Criterion microbench timing
+- `backend/core/benches/` owns Criterion microbench timing
 - `benchmarking/` owns suite taxonomy, manifests, artifacts, baselines, recordings, and comparisons
 
 That includes both:

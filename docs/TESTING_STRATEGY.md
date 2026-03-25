@@ -23,9 +23,9 @@ For benchmark lane selection and operator workflow, see [`benchmarking/WORKFLOW.
 Primary business-critical surface.
 
 Required layers:
-- module/unit tests in `solver-core/src/**`
-- data-driven integration tests in `solver-core/tests/**`
-- property/invariant tests in `solver-core/tests/property_tests.rs`
+- module/unit tests in `backend/core/src/**`
+- data-driven integration tests in `backend/core/tests/**`
+- property/invariant tests in `backend/core/tests/property_tests.rs`
 - mutation testing with `cargo-mutants`
 
 ### `solver-server`
@@ -59,11 +59,11 @@ Important: Storybook stories are complementary only. They are not the main app t
 
 ### Rust denominator
 The primary Rust coverage denominator is:
-- `solver-core/src/**`
-- `solver-server/src/**`
+- `backend/core/src/**`
+- `backend/api/src/**`
 
 Reported separately:
-- `solver-wasm/src/**`
+- `backend/wasm/src/**`
 
 Excluded or tracked separately:
 - generated artifacts
@@ -155,9 +155,9 @@ Mutation testing is an on-demand local and protected-branch/nightly confidence l
 
 #### WASM wrapper tests
 ```bash
-wasm-pack test --headless --chrome solver-wasm
+wasm-pack test --headless --chrome backend/wasm
 # local fallback when browser webdriver setup is unavailable:
-# wasm-pack test --node solver-wasm
+# wasm-pack test --node backend/wasm
 ```
 
 #### Frontend unit/component coverage
@@ -182,9 +182,9 @@ npm run test:e2e:visual
 ## Coverage and quality goals
 
 Long-term targets:
-- `solver-core/src/**`: 100% line coverage, branch coverage as high as practical, backed by mutation testing
-- `solver-server/src/**`: 100% line coverage for exposed route and lifecycle logic
-- `solver-wasm/src/**`: high wrapper-function coverage, reported separately
+- `backend/core/src/**`: 100% line coverage, branch coverage as high as practical, backed by mutation testing
+- `backend/api/src/**`: 100% line coverage for exposed route and lifecycle logic
+- `backend/wasm/src/**`: high wrapper-function coverage, reported separately
 - `webapp/src/store/**`, `src/services/**`, `src/utils/**`: 100% line coverage target
 - high-value frontend components: behavior-focused coverage strong enough to support UI refactors without relying only on E2E
 

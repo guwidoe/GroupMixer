@@ -28,7 +28,7 @@ Each fixture is a small JSON document with this shape:
 
 ## Relationship to tests
 
-These fixtures are **catalog assets**, not replacements for `solver-core/tests/`.
+These fixtures are **catalog assets**, not replacements for `backend/core/tests/`.
 
 - Rust regression tests prove semantics and cache consistency.
 - Path fixtures make the path catalog inspectable and reusable by the future benchmark runner.

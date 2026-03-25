@@ -229,8 +229,8 @@ The current canonical bundle adds these hotpath lanes alongside the full-solve s
 
 ## Relationship between layers
 
-- `solver-core/tests/**` remains the semantic contract
+- `backend/core/tests/**` remains the semantic contract
 - `solver-benchmarking/` owns structured run/baseline/comparison artifacts
-- `solver-core/benches/` owns repeated kernel timing with Criterion
+- `backend/core/benches/` owns repeated kernel timing with Criterion
 
 Do not collapse these roles together.

@@ -63,14 +63,14 @@ yet have the full remote benchmark operations layer.
 
 ### Existing strengths
 
-- `solver-core/tests/data_driven_tests.rs`
+- `backend/core/tests/data_driven_tests.rs`
   - strong end-to-end fixture harness
   - already the main solver integration contract
-- `solver-core/tests/property_tests.rs`
+- `backend/core/tests/property_tests.rs`
   - invariant coverage
-- `solver-core/src/solver/tests.rs`
+- `backend/core/src/solver/tests.rs`
   - local state/scoring tests
-- `solver-core/benches/solver_perf.rs`
+- `backend/core/benches/solver_perf.rs`
   - Criterion smoke performance coverage
 - `solver-benchmarking/`
   - suite manifests
@@ -155,7 +155,7 @@ flowchart TD
     B --> C[Layer 3\nSolve-level suite benchmarking]
     C --> D[Layer 4\nMicrobench hot-path measurement]
 
-    A1[solver-core/tests] --> A
+    A1[backend/core/tests] --> A
     B1[path fixtures + move-family tests] --> B
     C1[benchmark manifests + artifacts + baselines] --> C
     D1[Criterion benches] --> D
@@ -169,8 +169,8 @@ Prove refactor safety.
 
 ### Primary location
 
-- `solver-core/tests/`
-- `solver-core/src/solver/tests.rs`
+- `backend/core/tests/`
+- `backend/core/src/solver/tests.rs`
 - property tests and focused integration tests
 
 ### What it should prove
@@ -206,9 +206,9 @@ Prove that every move family and important solver code path is both:
 
 New tests and fixtures in:
 
-- `solver-core/tests/move_*.rs`
-- `solver-core/tests/search_driver_regression.rs`
-- `solver-core/tests/construction_regression.rs`
+- `backend/core/tests/move_*.rs`
+- `backend/core/tests/search_driver_regression.rs`
+- `backend/core/tests/construction_regression.rs`
 - `benchmarking/cases/path/`
 - `benchmarking/path-matrix.yaml`
 
@@ -265,7 +265,7 @@ solver-benchmarking/
 - compare current vs baseline
 - generate concise human summaries
 
-### Why this should be separate from `solver-core/benches/`
+### Why this should be separate from `backend/core/benches/`
 
 Criterion is excellent for repeated microbench timing.
 It is not the right primary home for:
@@ -289,7 +289,7 @@ Measure hot-path kernels repeatedly with Criterion.
 
 ### Primary location
 
-- `solver-core/benches/`
+- `backend/core/benches/`
 
 ### What it should cover
 
@@ -356,9 +356,9 @@ solver-benchmarking/
 ## Existing surfaces that remain important
 
 ```text
-solver-core/tests/
-solver-core/benches/
-solver-cli/
+backend/core/tests/
+backend/core/benches/
+backend/cli/
 ```
 
 ---
@@ -381,8 +381,8 @@ Add explicit seed support in the solver configuration.
 
 The seed must drive:
 
-- random initialization in `solver-core/src/solver/construction.rs`
-- move selection in `solver-core/src/algorithms/simulated_annealing.rs`
+- random initialization in `backend/core/src/solver/construction.rs`
+- move selection in `backend/core/src/algorithms/simulated_annealing.rs`
 - acceptance RNG in the same search loop
 
 ### Desired shape
@@ -489,8 +489,8 @@ The benchmark architecture depends on better solver regression structure.
 
 The current fixture harness in:
 
-- `solver-core/tests/data_driven_tests.rs`
-- `solver-core/tests/test_cases/*.json`
+- `backend/core/tests/data_driven_tests.rs`
+- `backend/core/tests/test_cases/*.json`
 
 should remain the main integration contract for solver behavior.
 
@@ -501,11 +501,11 @@ That is already aligned with repo guidance.
 Suggested additions:
 
 ```text
-solver-core/tests/move_swap_regression.rs
-solver-core/tests/move_transfer_regression.rs
-solver-core/tests/move_clique_swap_regression.rs
-solver-core/tests/search_driver_regression.rs
-solver-core/tests/construction_regression.rs
+backend/core/tests/move_swap_regression.rs
+backend/core/tests/move_transfer_regression.rs
+backend/core/tests/move_clique_swap_regression.rs
+backend/core/tests/search_driver_regression.rs
+backend/core/tests/construction_regression.rs
 ```
 
 These tests should be deterministic and narrow enough to prove exact behavior around a targeted path.
@@ -1365,7 +1365,7 @@ The benchmark system is intentionally chosen to pressure the solver architecture
 A later refactor will probably want something like:
 
 ```text
-solver-core/src/search/
+backend/core/src/search/
   driver.rs
   move_policy.rs
   telemetry.rs

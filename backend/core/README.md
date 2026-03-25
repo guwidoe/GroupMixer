@@ -17,7 +17,7 @@ The solver-core addresses the **Social Group Scheduling Problem**: given a set o
 ### Core Components
 
 ```
-solver-core/
+backend/core/
 ├── src/
 │   ├── lib.rs              # Public API and main entry point
 │   ├── models.rs           # Data structures and API types

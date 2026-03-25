@@ -64,14 +64,14 @@ This updates the generated contract reference under:
 
 ## How to add or change a public operation
 
-1. update `solver-contracts/src/operations.rs`
+1. update `backend/contracts/src/operations.rs`
    - add/update the stable operation ID
    - summary / description
    - schema references
    - error references
    - related operations
    - examples
-2. update `solver-contracts/src/bootstrap.rs` if top-level discovery should change
+2. update `backend/contracts/src/bootstrap.rs` if top-level discovery should change
 3. update transport projections:
    - CLI command/binding/help
    - server route/binding/help
@@ -82,7 +82,7 @@ This updates the generated contract reference under:
 ## How to add or change a schema
 
 1. update the public DTO type or schema export source
-2. register the schema in `solver-contracts/src/schemas.rs`
+2. register the schema in `backend/contracts/src/schemas.rs`
 3. update any operation metadata that references the schema
 4. update transport projections if they expose or consume the schema directly
 5. regenerate reference docs
@@ -90,18 +90,18 @@ This updates the generated contract reference under:
 
 ## How to add or change a public error code
 
-1. update `solver-contracts/src/errors.rs`
+1. update `backend/contracts/src/errors.rs`
    - stable code
    - category
    - summary
    - why
    - recovery
    - related-help targets
-2. update any affected operation metadata in `solver-contracts/src/operations.rs`
+2. update any affected operation metadata in `backend/contracts/src/operations.rs`
 3. update transport-specific error projection layers:
-   - `solver-cli/src/public_errors.rs`
-   - `solver-server/src/api/handlers.rs`
-   - `solver-wasm/src/public_errors.rs`
+   - `backend/cli/src/public_errors.rs`
+   - `backend/api/src/api/handlers.rs`
+   - `backend/wasm/src/public_errors.rs`
 4. regenerate reference docs
 5. run contract/parity validation
 

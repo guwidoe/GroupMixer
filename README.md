@@ -146,7 +146,7 @@ The webapp will be available at `http://localhost:5173`
 1. **Start the server:**
 
    ```bash
-   cd solver-server
+   cd backend/api
    cargo run
    ```
 
@@ -260,15 +260,15 @@ npm run build-wasm
 
 ```bash
 # Core solver library
-cd solver-core
+cd backend/core
 cargo build --release
 
 # WebAssembly module
-cd solver-wasm
+cd backend/wasm
 wasm-pack build --target web --out-dir ../webapp/public/pkg
 
 # HTTP server
-cd solver-server
+cd backend/api
 cargo run
 ```
 

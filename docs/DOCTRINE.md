@@ -12,9 +12,9 @@ GroupMixer adopts `docs/reference/principles/AGENTIC_ENGINEERING_PRINCIPLES.md` 
 
 This doctrine applies across the repo, including:
 
-- `solver-core/`
-- `solver-wasm/`
-- `solver-server/`
+- `backend/core/`
+- `backend/wasm/`
+- `backend/api/`
 - `webapp/`
 - supporting docs, tests, workflows, and developer tooling
 

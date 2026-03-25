@@ -13,9 +13,9 @@ Reference architecture: `docs/BENCHMARKING_ARCHITECTURE.md`
 The repo now has all four intended benchmark layers/surfaces in place:
 
 1. deterministic solver seams in `solver-core`
-2. path-regression semantic safety in `solver-core/tests/`
+2. path-regression semantic safety in `backend/core/tests/`
 3. solve-level benchmark runner/artifacts/baselines/comparisons in `solver-benchmarking/`
-4. hot-path Criterion microbenches in `solver-core/benches/`
+4. hot-path Criterion microbenches in `backend/core/benches/`
 5. operator-facing storage/CLI/workflow integration in `benchmarking/` + `solver-cli`
 
 ## What was explicitly checked in this audit
@@ -47,11 +47,11 @@ Observed behavior:
 
 ### Semantic path-regression layer
 
-- `solver-core/tests/move_swap_regression.rs`
-- `solver-core/tests/move_transfer_regression.rs`
-- `solver-core/tests/move_clique_swap_regression.rs`
-- `solver-core/tests/search_driver_regression.rs`
-- `solver-core/tests/construction_regression.rs`
+- `backend/core/tests/move_swap_regression.rs`
+- `backend/core/tests/move_transfer_regression.rs`
+- `backend/core/tests/move_clique_swap_regression.rs`
+- `backend/core/tests/search_driver_regression.rs`
+- `backend/core/tests/construction_regression.rs`
 - `benchmarking/path-matrix.yaml`
 - `benchmarking/cases/path/`
 
@@ -67,7 +67,7 @@ Observed behavior:
 
 ### Operator / workflow layer
 
-- `solver-cli/src/main.rs`
+- `backend/cli/src/main.rs`
 - `benchmarking/README.md`
 - `benchmarking/SPEC.md`
 - `benchmarking/SCHEMAS.md`
@@ -76,8 +76,8 @@ Observed behavior:
 
 ### Criterion hot-path layer
 
-- `solver-core/benches/bench_inputs.rs`
-- `solver-core/benches/solver_perf.rs`
+- `backend/core/benches/bench_inputs.rs`
+- `backend/core/benches/solver_perf.rs`
 
 ## Benchmark command matrix
 
