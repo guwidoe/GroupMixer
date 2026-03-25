@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ArrowRight, Compass, Layers3, Wand2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { LandingFooter } from '../components/LandingPage/LandingFooter';
+import { Seo } from '../components/Seo';
 import { TOOL_PAGE_CONFIGS, type ToolPageKey } from './toolPageConfigs';
 
 type GroupMode = 'count' | 'size';
@@ -36,6 +37,12 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
+      <Seo
+        title={config.title}
+        description={config.metaDescription}
+        canonicalPath={config.canonicalPath}
+        faqEntries={config.faqEntries}
+      />
       <header
         className="border-b"
         style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
