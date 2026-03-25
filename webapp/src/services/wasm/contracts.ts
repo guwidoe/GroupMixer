@@ -210,8 +210,14 @@ export class WasmContractClient {
   }
 
   async solve(problem: Problem): Promise<Solution> {
-    const { solution } = await this.solveWithProgress(problem);
-    return solution;
+    const module = await this.requireModule();
+
+    try {
+      const result = module.solve(buildSolvePayload(problem));
+      return convertRustResultToSolution(result as RustResult);
+    } catch (error) {
+      throw normalizeContractError(error, "Failed to solve problem");
+    }
   }
 
   async solveWithProgress(
@@ -246,7 +252,7 @@ export class WasmContractClient {
     const module = await this.requireModule();
 
     try {
-      return module.validate_problem_contract(buildSolvePayload(problem));
+      return module.validate_problem(buildSolvePayload(problem));
     } catch (error) {
       throw normalizeContractError(error, "Failed to validate problem");
     }
@@ -256,7 +262,7 @@ export class WasmContractClient {
     const module = await this.requireModule();
 
     try {
-      const result = module.evaluate_input_contract(buildEvaluatePayload(problem, assignments));
+      const result = module.evaluate_input(buildEvaluatePayload(problem, assignments));
       return convertRustResultToSolution(result as RustResult);
     } catch (error) {
       throw normalizeContractError(error, "Failed to evaluate input");
@@ -267,7 +273,7 @@ export class WasmContractClient {
     const module = await this.requireModule();
 
     try {
-      return module.inspect_result_contract(result);
+      return module.inspect_result(result);
     } catch (error) {
       throw normalizeContractError(error, "Failed to inspect result");
     }

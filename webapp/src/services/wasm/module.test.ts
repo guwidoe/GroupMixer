@@ -7,14 +7,15 @@ describe("isWasmSolverModule", () => {
       solve: vi.fn(),
       solve_with_progress: vi.fn(),
       validate_problem: vi.fn(),
-      get_default_settings: vi.fn(),
-      get_recommended_settings: vi.fn(),
-      validate_problem_contract: vi.fn(),
       get_default_solver_configuration: vi.fn(),
       recommend_settings: vi.fn(),
-      evaluate_input_contract: vi.fn(),
-      inspect_result_contract: vi.fn(),
       evaluate_input: vi.fn(),
+      inspect_result: vi.fn(),
+      solve_legacy_json: vi.fn(),
+      solve_with_progress_legacy_json: vi.fn(),
+      validate_problem_legacy_json: vi.fn(),
+      get_default_settings_legacy_json: vi.fn(),
+      get_recommended_settings_legacy_json: vi.fn(),
       init_panic_hook: vi.fn(),
       default: vi.fn(),
     };
@@ -43,10 +44,12 @@ describe("isWasmSolverModule", () => {
   it("rejects modules missing the contract-native exports", () => {
     expect(
       isWasmContractModule({
+        solve: vi.fn(),
         solve_with_progress: vi.fn(),
-        validate_problem_contract: vi.fn(),
+        validate_problem: vi.fn(),
         get_default_solver_configuration: vi.fn(),
         recommend_settings: vi.fn(),
+        evaluate_input: vi.fn(),
         default: vi.fn(),
       }),
     ).toBe(false);

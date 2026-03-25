@@ -60,23 +60,24 @@ export interface WasmInitOutput {
 }
 
 export interface WasmSolverModule {
-  solve: (problemJson: string) => string;
-  solve_with_progress(problemJson: string, progressCallback?: WasmProgressJsonCallback | null): string;
-  solve_with_progress(input: WasmContractSolveInput, progressCallback?: WasmContractProgressCallback | null): RustResult;
-  validate_problem: (problemJson: string) => string;
-  get_default_settings: () => string;
-  get_recommended_settings: (
+  solve: (input: WasmContractSolveInput) => RustResult;
+  solve_with_progress: (input: WasmContractSolveInput, progressCallback?: WasmContractProgressCallback | null) => RustResult;
+  validate_problem: (input: WasmContractSolveInput) => WasmValidateResponse;
+  get_default_solver_configuration: () => SolverSettings;
+  recommend_settings: (input: WasmRecommendSettingsRequest) => SolverSettings;
+  evaluate_input: (input: WasmContractSolveInput) => RustResult;
+  inspect_result: (result: RustResult) => WasmResultSummary;
+  solve_legacy_json?: (problemJson: string) => string;
+  solve_with_progress_legacy_json?: (
+    problemJson: string,
+    progressCallback?: WasmProgressJsonCallback | null,
+  ) => string;
+  validate_problem_legacy_json?: (problemJson: string) => string;
+  get_default_settings_legacy_json?: () => string;
+  get_recommended_settings_legacy_json?: (
     problemJson: string,
     desiredRuntimeSeconds: bigint,
   ) => string;
-  validate_problem_contract: (input: WasmContractSolveInput) => WasmValidateResponse;
-  get_default_solver_configuration: () => SolverSettings;
-  recommend_settings: (input: WasmRecommendSettingsRequest) => SolverSettings;
-  evaluate_input_contract: (input: WasmContractSolveInput) => RustResult;
-  inspect_result_contract: (result: RustResult) => WasmResultSummary;
-  solve_contract?: (input: WasmContractSolveInput) => RustResult;
-  recommend_settings_contract?: (input: WasmRecommendSettingsRequest) => SolverSettings;
-  evaluate_input?: (inputJson: string) => string;
   init_panic_hook?: () => void;
   default: (moduleOrPath?: WasmInitInput | Promise<WasmInitInput>) => Promise<WasmInitOutput>;
 }
@@ -94,8 +95,10 @@ export function isWasmSolverModule(value: unknown): value is WasmSolverModule {
     typeof module.solve === 'function' &&
     typeof module.solve_with_progress === 'function' &&
     typeof module.validate_problem === 'function' &&
-    typeof module.get_default_settings === 'function' &&
-    typeof module.get_recommended_settings === 'function' &&
+    typeof module.get_default_solver_configuration === 'function' &&
+    typeof module.recommend_settings === 'function' &&
+    typeof module.evaluate_input === 'function' &&
+    typeof module.inspect_result === 'function' &&
     typeof module.default === 'function'
   );
 }
@@ -108,12 +111,13 @@ export function isWasmContractModule(value: unknown): value is WasmSolverModule 
   const module = value as Partial<WasmSolverModule>;
 
   return (
+    typeof module.solve === "function" &&
     typeof module.solve_with_progress === "function" &&
-    typeof module.validate_problem_contract === "function" &&
+    typeof module.validate_problem === "function" &&
     typeof module.get_default_solver_configuration === "function" &&
     typeof module.recommend_settings === "function" &&
-    typeof module.evaluate_input_contract === "function" &&
-    typeof module.inspect_result_contract === "function" &&
+    typeof module.evaluate_input === "function" &&
+    typeof module.inspect_result === "function" &&
     typeof module.default === "function"
   );
 }

@@ -53,10 +53,6 @@ pub fn recommend_settings_js(input: JsValue) -> Result<JsValue, JsValue> {
     serialize_output(&settings, "recommend-settings")
 }
 
-pub fn recommend_settings_contract_js(input: JsValue) -> Result<JsValue, JsValue> {
-    recommend_settings_js(input)
-}
-
 pub fn evaluate_input_contract_js(input: JsValue) -> Result<JsValue, JsValue> {
     let request: ApiInput = parse_js_value(input, "evaluate-input", &["solve-request"])?;
     let result = evaluate_input_contract(&request)

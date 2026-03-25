@@ -251,7 +251,7 @@ mod tests {
         let response = build_capabilities_response();
         assert_eq!(response.help_export_name, "get_operation_help");
         assert!(response.top_level_operations.iter().any(|operation| operation.operation_id == "solve"));
-        assert!(response.top_level_operations.iter().any(|operation| operation.export_name == Some("solve_with_progress")));
+        assert!(response.top_level_operations.iter().any(|operation| operation.export_name == Some("solve")));
         assert!(response.top_level_operations.iter().any(|operation| operation.operation_id == "get-default-solver-configuration"));
         assert!(response.top_level_operations.iter().all(|operation| operation.help_export_name == "get_operation_help"));
     }
@@ -261,7 +261,7 @@ mod tests {
         let response = build_operation_help_response("solve").expect("solve help");
         assert_eq!(response.operation.id, "solve");
         assert_eq!(response.help_export_name, "get_operation_help");
-        assert_eq!(response.export_name, Some("solve_with_progress"));
+        assert_eq!(response.export_name, Some("solve"));
         assert!(response.examples.iter().any(|example| example.id == "solve-happy-path"));
         assert!(response.examples.iter().any(|example| example.id == "solve-progress-update"));
         assert!(response.related_operations.iter().any(|operation| operation.operation_id == "validate-problem"));

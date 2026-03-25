@@ -71,21 +71,15 @@ pub fn get_public_error(error_code: &str) -> Result<JsValue, JsValue> {
 }
 
 #[wasm_bindgen]
-pub fn solve_contract(input: JsValue) -> Result<JsValue, JsValue> {
+pub fn solve(input: JsValue) -> Result<JsValue, JsValue> {
     init_panic_hook();
     contract_runtime::solve_contract_js(input)
 }
 
 #[wasm_bindgen]
-pub fn validate_problem_contract(input: JsValue) -> Result<JsValue, JsValue> {
+pub fn validate_problem(input: JsValue) -> Result<JsValue, JsValue> {
     init_panic_hook();
     contract_runtime::validate_problem_contract_js(input)
-}
-
-#[wasm_bindgen]
-pub fn recommend_settings_contract(problem_definition: JsValue) -> Result<JsValue, JsValue> {
-    init_panic_hook();
-    contract_runtime::recommend_settings_contract_js(problem_definition)
 }
 
 #[wasm_bindgen]
@@ -101,19 +95,19 @@ pub fn recommend_settings(input: JsValue) -> Result<JsValue, JsValue> {
 }
 
 #[wasm_bindgen]
-pub fn evaluate_input_contract(input: JsValue) -> Result<JsValue, JsValue> {
+pub fn evaluate_input(input: JsValue) -> Result<JsValue, JsValue> {
     init_panic_hook();
     contract_runtime::evaluate_input_contract_js(input)
 }
 
 #[wasm_bindgen]
-pub fn inspect_result_contract(result: JsValue) -> Result<JsValue, JsValue> {
+pub fn inspect_result(result: JsValue) -> Result<JsValue, JsValue> {
     init_panic_hook();
     contract_runtime::inspect_result_contract_js(result)
 }
 
 #[wasm_bindgen]
-pub fn solve(problem_json: &str) -> Result<String, JsValue> {
+pub fn solve_legacy_json(problem_json: &str) -> Result<String, JsValue> {
     init_panic_hook();
 
     let api_input: ApiInput = serde_json::from_str(problem_json).map_err(|e| {
@@ -142,66 +136,71 @@ pub fn solve_with_progress(
     progress_callback: Option<js_sys::Function>,
 ) -> Result<JsValue, JsValue> {
     init_panic_hook();
-
-    if let Some(problem_json) = input.as_string() {
-        let api_input: ApiInput = serde_json::from_str(&problem_json).map_err(|e| {
-            JsValue::from(js_sys::Error::new(&format!(
-                "Failed to parse problem: {}",
-                e
-            )))
-        })?;
-
-        let result = if let Some(js_callback) = progress_callback {
-            let rust_callback = Box::new(move |progress: &ProgressUpdate| -> bool {
-                let progress_json = match serde_json::to_string(progress) {
-                    Ok(json) => json,
-                    Err(e) => {
-                        web_sys::console::error_1(
-                            &format!("Failed to serialize progress: {}", e).into(),
-                        );
-                        return true;
-                    }
-                };
-
-                let this = JsValue::null();
-                let json_value = JsValue::from_str(&progress_json);
-
-                match js_callback.call1(&this, &json_value) {
-                    Ok(result) => result.as_bool().unwrap_or(true),
-                    Err(e) => {
-                        web_sys::console::error_1(
-                            &format!("Progress callback error: {:?}", e).into(),
-                        );
-                        true
-                    }
-                }
-            }) as Box<dyn Fn(&ProgressUpdate) -> bool>;
-
-            let rust_callback: Box<dyn Fn(&ProgressUpdate) -> bool + Send> =
-                unsafe { std::mem::transmute(rust_callback) };
-
-            solver_core::run_solver_with_progress(&api_input, Some(&rust_callback))
-                .map_err(|e| JsValue::from(js_sys::Error::new(&format!("Solver error: {}", e))))?
-        } else {
-            solver_core::run_solver(&api_input)
-                .map_err(|e| JsValue::from(js_sys::Error::new(&format!("Solver error: {}", e))))?
-        };
-
-        let result_json = serde_json::to_string(&result).map_err(|e| {
-            JsValue::from(js_sys::Error::new(&format!(
-                "Failed to serialize result: {}",
-                e
-            )))
-        })?;
-
-        return Ok(JsValue::from_str(&result_json));
-    }
-
     contract_runtime::solve_with_progress_js(input, progress_callback)
 }
 
 #[wasm_bindgen]
-pub fn validate_problem(problem_json: &str) -> Result<String, JsValue> {
+pub fn solve_with_progress_legacy_json(
+    problem_json: &str,
+    progress_callback: Option<js_sys::Function>,
+) -> Result<String, JsValue> {
+    init_panic_hook();
+
+    let api_input: ApiInput = serde_json::from_str(problem_json).map_err(|e| {
+        JsValue::from(js_sys::Error::new(&format!(
+            "Failed to parse problem: {}",
+            e
+        )))
+    })?;
+
+    let result = if let Some(js_callback) = progress_callback {
+        let rust_callback = Box::new(move |progress: &ProgressUpdate| -> bool {
+            let progress_json = match serde_json::to_string(progress) {
+                Ok(json) => json,
+                Err(e) => {
+                    web_sys::console::error_1(
+                        &format!("Failed to serialize progress: {}", e).into(),
+                    );
+                    return true;
+                }
+            };
+
+            let this = JsValue::null();
+            let json_value = JsValue::from_str(&progress_json);
+
+            match js_callback.call1(&this, &json_value) {
+                Ok(result) => result.as_bool().unwrap_or(true),
+                Err(e) => {
+                    web_sys::console::error_1(
+                        &format!("Progress callback error: {:?}", e).into(),
+                    );
+                    true
+                }
+            }
+        }) as Box<dyn Fn(&ProgressUpdate) -> bool>;
+
+        let rust_callback: Box<dyn Fn(&ProgressUpdate) -> bool + Send> =
+            unsafe { std::mem::transmute(rust_callback) };
+
+        solver_core::run_solver_with_progress(&api_input, Some(&rust_callback))
+            .map_err(|e| JsValue::from(js_sys::Error::new(&format!("Solver error: {}", e))))?
+    } else {
+        solver_core::run_solver(&api_input)
+            .map_err(|e| JsValue::from(js_sys::Error::new(&format!("Solver error: {}", e))))?
+    };
+
+    let result_json = serde_json::to_string(&result).map_err(|e| {
+        JsValue::from(js_sys::Error::new(&format!(
+            "Failed to serialize result: {}",
+            e
+        )))
+    })?;
+
+    Ok(result_json)
+}
+
+#[wasm_bindgen]
+pub fn validate_problem_legacy_json(problem_json: &str) -> Result<String, JsValue> {
     init_panic_hook();
 
     let api_input: ApiInput = serde_json::from_str(problem_json).map_err(|e| {
@@ -262,7 +261,7 @@ pub fn validate_problem(problem_json: &str) -> Result<String, JsValue> {
 }
 
 #[wasm_bindgen]
-pub fn get_default_settings() -> Result<String, JsValue> {
+pub fn get_default_settings_legacy_json() -> Result<String, JsValue> {
     init_panic_hook();
 
     let settings = solver_core::default_solver_configuration();
@@ -283,7 +282,7 @@ pub fn get_default_settings() -> Result<String, JsValue> {
 /// and optionally `initial_schedule` in the `{"session_0": {"group_id": ["person_id", ...]}, ...}` format.
 /// Returns a `SolverResult` JSON with score breakdown computed from the provided schedule.
 #[wasm_bindgen]
-pub fn evaluate_input(input_json: &str) -> Result<String, JsValue> {
+pub fn evaluate_input_legacy_json(input_json: &str) -> Result<String, JsValue> {
     init_panic_hook();
 
     let api_input: ApiInput = serde_json::from_str(input_json).map_err(|e| {
@@ -407,7 +406,7 @@ pub fn test_callback_consistency(problem_json: &str) -> Result<String, JsValue> 
 }
 
 #[wasm_bindgen]
-pub fn get_recommended_settings(
+pub fn get_recommended_settings_legacy_json(
     problem_json: &str,
     desired_runtime_seconds: u64,
 ) -> Result<String, JsValue> {
@@ -576,8 +575,8 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn solve_returns_valid_serialized_result() {
-        let result_json = solve(&valid_input_json()).expect("solve should succeed");
-        let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
+        let result_value = solve(JsValue::from_str(&valid_input_json()).into()).expect("solve should succeed");
+        let result: serde_json::Value = serde_wasm_bindgen::from_value(result_value).unwrap();
 
         assert!(result.get("schedule").is_some());
         assert!(result.get("final_score").is_some());
@@ -585,9 +584,9 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn solve_rejects_invalid_json_with_js_error() {
-        let error = solve("{not-json").expect_err("invalid JSON should error");
+        let error = solve(JsValue::from_str("{not-json").into()).expect_err("invalid JSON should error");
         let message = js_error_message(error);
-        assert!(message.contains("Failed to parse problem"), "{message}");
+        assert!(message.contains("Failed to parse request payload"), "{message}");
     }
 
     #[wasm_bindgen_test]
@@ -609,8 +608,8 @@ mod tests {
             .as_ref()
             .unchecked_ref::<js_sys::Function>()
             .clone();
-        let result_json = solve_with_progress(JsValue::from_str(&valid_input_json()), Some(function)).unwrap();
-        let result: serde_json::Value = serde_json::from_str(&result_json.as_string().unwrap()).unwrap();
+        let result_json = solve_with_progress_legacy_json(&valid_input_json(), Some(function)).unwrap();
+        let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
 
         assert!(*calls.borrow() >= 1);
         assert!(payloads
@@ -625,9 +624,9 @@ mod tests {
         let throwing_callback =
             js_sys::Function::new_with_args("payload", "throw new Error(`boom:${payload.length}`)");
 
-        let result_json = solve_with_progress(JsValue::from_str(&valid_input_json()), Some(throwing_callback))
+        let result_json = solve_with_progress_legacy_json(&valid_input_json(), Some(throwing_callback))
             .expect("callback exceptions should not break solving");
-        let result: serde_json::Value = serde_json::from_str(&result_json.as_string().unwrap()).unwrap();
+        let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
 
         assert!(result.get("schedule").is_some());
     }
@@ -635,7 +634,7 @@ mod tests {
     #[wasm_bindgen_test]
     fn validate_problem_reports_expected_shape() {
         let result_json =
-            validate_problem(&invalid_problem_json()).expect("validation should succeed");
+            validate_problem_legacy_json(&invalid_problem_json()).expect("validation should succeed");
         let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
 
         assert_eq!(result["valid"], serde_json::Value::Bool(false));
@@ -644,7 +643,7 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn get_default_settings_returns_serialized_solver_configuration() {
-        let settings_json = get_default_settings().expect("default settings should serialize");
+        let settings_json = get_default_settings_legacy_json().expect("default settings should serialize");
         let settings: serde_json::Value = serde_json::from_str(&settings_json).unwrap();
 
         assert_eq!(
@@ -681,7 +680,7 @@ mod tests {
             ),
         ]));
 
-        let result_json = evaluate_input(&serde_json::to_string(&input).unwrap())
+        let result_json = evaluate_input_legacy_json(&serde_json::to_string(&input).unwrap())
             .expect("evaluate_input should succeed");
         let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
 

@@ -35,21 +35,22 @@ declare module 'virtual:wasm-solver' {
     stop_reason?: string;
   }
 
-  export function evaluate_input(input_json: string): string;
-  export function get_default_settings(): string;
   export function get_default_solver_configuration(): SolverSettings;
-  export function get_recommended_settings(problem_json: string, desired_runtime_seconds: bigint): string;
+  export function get_default_settings_legacy_json(): string;
   export function greet(): void;
   export function init_panic_hook(): void;
   export function recommend_settings(input: RecommendSettingsRequest): SolverSettings;
-  export function solve(problem_json: string): string;
-  export function solve_with_progress(problem_json: string, progress_callback?: WasmProgressCallback | null): string;
+  export function get_recommended_settings_legacy_json(problem_json: string, desired_runtime_seconds: bigint): string;
+  export function solve(input: ContractSolveInput): RustResult;
+  export function solve_legacy_json(problem_json: string): string;
   export function solve_with_progress(input: ContractSolveInput, progress_callback?: WasmContractProgressCallback | null): RustResult;
-  export function validate_problem_contract(input: ContractSolveInput): ValidateResponse;
-  export function evaluate_input_contract(input: ContractSolveInput): RustResult;
-  export function inspect_result_contract(result: RustResult): ResultSummary;
+  export function solve_with_progress_legacy_json(problem_json: string, progress_callback?: WasmProgressCallback | null): string;
+  export function validate_problem(input: ContractSolveInput): ValidateResponse;
+  export function validate_problem_legacy_json(problem_json: string): string;
+  export function evaluate_input(input: ContractSolveInput): RustResult;
+  export function evaluate_input_legacy_json(input_json: string): string;
+  export function inspect_result(result: RustResult): ResultSummary;
   export function test_callback_consistency(problem_json: string): string;
-  export function validate_problem(problem_json: string): string;
 
   export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
