@@ -69,7 +69,8 @@ use crate::algorithms::simulated_annealing::SimulatedAnnealing;
 use crate::algorithms::Solver;
 use crate::models::{
     ApiInput, BenchmarkObserver, ProblemDefinition, ProgressCallback, ProgressUpdate,
-    SimulatedAnnealingParams, SolverConfiguration, SolverParams, SolverResult, StopConditions,
+    LoggingOptions, SimulatedAnnealingParams, SolverConfiguration, SolverParams,
+    SolverResult, StopConditions,
 };
 use crate::models::{Constraint, Objective};
 use crate::solver::{SolverError, State};
@@ -299,6 +300,39 @@ pub fn run_solver_with_callbacks(
     };
 
     solver.solve(&mut state, progress_callback, benchmark_observer)
+}
+
+/// Returns the canonical default solver configuration for public callers.
+pub fn default_solver_configuration() -> SolverConfiguration {
+    SolverConfiguration {
+        solver_type: "SimulatedAnnealing".into(),
+        stop_conditions: StopConditions {
+            max_iterations: Some(10_000),
+            time_limit_seconds: Some(30),
+            no_improvement_iterations: Some(5_000),
+        },
+        solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
+            initial_temperature: 1.0,
+            final_temperature: 0.01,
+            cooling_schedule: "geometric".into(),
+            reheat_cycles: Some(0),
+            reheat_after_no_improvement: Some(0),
+        }),
+        logging: LoggingOptions {
+            log_frequency: Some(1000),
+            log_initial_state: true,
+            log_duration_and_score: true,
+            display_final_schedule: true,
+            log_initial_score_breakdown: true,
+            log_final_score_breakdown: true,
+            log_stop_condition: true,
+            ..Default::default()
+        },
+        telemetry: Default::default(),
+        seed: None,
+        move_policy: None,
+        allowed_sessions: None,
+    }
 }
 
 /// Calculates recommended solver settings based on a trial run.

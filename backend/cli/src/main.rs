@@ -28,9 +28,9 @@ use solver_benchmarking::{
     BaselineDescriptor, BenchmarkStorage, RecordingOptions, RecordingQuery, RecordingRunInput,
     RunnerOptions, FULL_SOLVE_BENCHMARK_MODE,
 };
-use solver_contracts::{bootstrap::bootstrap_spec, errors::{error_spec, error_specs}, operations::operation_spec, schemas::{export_schema, schema_specs}, types::{ResultSummary, ValidateResponse, ValidationIssue}};
-use solver_core::models::{ApiInput, ProblemDefinition, SolverResult};
-use solver_core::{calculate_recommended_settings, run_solver};
+use solver_contracts::{bootstrap::bootstrap_spec, errors::{error_spec, error_specs}, operations::operation_spec, schemas::{export_schema, schema_specs}, types::{RecommendSettingsRequest, ResultSummary, ValidateResponse, ValidationIssue}};
+use solver_core::models::{ApiInput, SolverResult};
+use solver_core::{calculate_recommended_settings, default_solver_configuration, run_solver};
 use std::fs;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
@@ -77,19 +77,23 @@ enum Commands {
         stdin: bool,
     },
 
+    /// Get the canonical default solver configuration
+    #[command(name = "default-config")]
+    DefaultConfig {
+        /// Pretty-print the JSON output
+        #[arg(long)]
+        pretty: bool,
+    },
+
     /// Get recommended solver settings for a problem
     Recommend {
-        /// Input JSON file path (problem definition only)
+        /// Input JSON file path (recommend-settings-request)
         #[arg(value_name = "FILE")]
         input: Option<PathBuf>,
 
         /// Read input from stdin instead of a file
         #[arg(long)]
         stdin: bool,
-
-        /// Desired runtime in seconds
-        #[arg(short, long, default_value = "30")]
-        runtime: u64,
 
         /// Pretty-print the JSON output
         #[arg(long)]
@@ -496,12 +500,12 @@ fn run() -> Result<()> {
 
         Commands::Validate { input, stdin } => cmd_validate(input, stdin),
 
+        Commands::DefaultConfig { pretty } => cmd_default_config(pretty),
         Commands::Recommend {
             input,
             stdin,
-            runtime,
             pretty,
-        } => cmd_recommend(input, stdin, runtime, pretty),
+        } => cmd_recommend(input, stdin, pretty),
 
         Commands::Evaluate {
             input,
@@ -1200,20 +1204,32 @@ fn cmd_validate(input: Option<PathBuf>, stdin: bool) -> Result<()> {
     }
 }
 
-fn cmd_recommend(input: Option<PathBuf>, stdin: bool, runtime: u64, pretty: bool) -> Result<()> {
+fn cmd_default_config(pretty: bool) -> Result<()> {
+    let configuration = default_solver_configuration();
+    let output_json = if pretty {
+        serde_json::to_string_pretty(&configuration)?
+    } else {
+        serde_json::to_string(&configuration)?
+    };
+
+    println!("{}", output_json);
+    Ok(())
+}
+
+fn cmd_recommend(input: Option<PathBuf>, stdin: bool, pretty: bool) -> Result<()> {
     let json_str = read_input(input, stdin, "recommend-settings")?;
     let recommendation_input = parse_recommend_input(&json_str)?;
 
     eprintln!(
         "Calculating recommended settings for {}s runtime...",
-        runtime
+        recommendation_input.desired_runtime_seconds
     );
 
     let recommended = calculate_recommended_settings(
-        &recommendation_input.problem,
+        &recommendation_input.problem_definition,
         &recommendation_input.objectives,
         &recommendation_input.constraints,
-        runtime,
+        recommendation_input.desired_runtime_seconds,
     )
     .map_err(|error| public_errors::map_solver_error(format!("{:?}", error), "recommend-settings"))?;
 
@@ -1456,39 +1472,16 @@ fn resolve_schema_alias(schema_id: String) -> String {
     }
 }
 
-#[derive(Debug, Clone)]
-struct RecommendInput {
-    problem: ProblemDefinition,
-    objectives: Vec<solver_core::models::Objective>,
-    constraints: Vec<solver_core::models::Constraint>,
-}
-
-fn parse_recommend_input(json_str: &str) -> Result<RecommendInput> {
-    if let Ok(problem) = serde_json::from_str::<ProblemDefinition>(json_str) {
-        return Ok(RecommendInput {
-            problem,
-            objectives: Vec::new(),
-            constraints: Vec::new(),
-        });
-    }
-
-    if let Ok(api_input) = serde_json::from_str::<ApiInput>(json_str) {
-        return Ok(RecommendInput {
-            problem: api_input.problem,
-            objectives: api_input.objectives,
-            constraints: api_input.constraints,
-        });
-    }
-
-    let error = serde_json::from_str::<ProblemDefinition>(json_str).unwrap_err();
+fn parse_recommend_input(json_str: &str) -> Result<RecommendSettingsRequest> {
+    let error = serde_json::from_str::<RecommendSettingsRequest>(json_str).unwrap_err();
     Err(public_errors::invalid_input_error(
         format!(
-            "Failed to parse recommend input as problem-definition or solve-request JSON: {}",
+            "Failed to parse recommend input as recommend-settings-request JSON: {}",
             error
         ),
         Some(format!("line {}, column {}", error.line(), error.column())),
         "recommend-settings",
-        vec!["problem-definition".to_string(), "solve-request".to_string()],
+        vec!["recommend-settings-request".to_string()],
     ))
 }
 

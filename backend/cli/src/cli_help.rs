@@ -167,12 +167,17 @@ fn render_usage_and_options(command_name: &str) -> String {
             "  --stdin           Read input JSON from stdin\n"
         )
         .to_string(),
-        "recommend" => concat!(
-            "  solver-cli recommend <FILE> [--runtime <SECONDS>] [--pretty]\n",
-            "  solver-cli recommend --stdin [--runtime <SECONDS>] [--pretty]\n",
+        "default-config" => concat!(
+            "  solver-cli default-config [--pretty]\n",
             "\nOPTIONS:\n",
-            "  --stdin           Read problem JSON from stdin\n",
-            "  -r, --runtime     Desired runtime in seconds\n",
+            "  --pretty          Pretty-print JSON output\n"
+        )
+        .to_string(),
+        "recommend" => concat!(
+            "  solver-cli recommend <FILE> [--pretty]\n",
+            "  solver-cli recommend --stdin [--pretty]\n",
+            "\nOPTIONS:\n",
+            "  --stdin           Read recommend-settings-request JSON from stdin\n",
             "  --pretty          Pretty-print JSON output\n"
         )
         .to_string(),
@@ -210,6 +215,7 @@ mod tests {
         assert!(help.contains("Run the solver for a complete optimization input."));
         assert!(help.contains("Validate solver input without running optimization."));
         assert!(help.contains("recommend"));
+        assert!(help.contains("default-config"));
         assert!(help.contains("benchmark"));
     }
 

@@ -1,7 +1,7 @@
 use solver_contracts::operations::{
-    EVALUATE_INPUT_OPERATION_ID, GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID,
-    INSPECT_RESULT_OPERATION_ID, RECOMMEND_SETTINGS_OPERATION_ID, SOLVE_OPERATION_ID,
-    VALIDATE_PROBLEM_OPERATION_ID,
+    EVALUATE_INPUT_OPERATION_ID, GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
+    GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID, INSPECT_RESULT_OPERATION_ID,
+    RECOMMEND_SETTINGS_OPERATION_ID, SOLVE_OPERATION_ID, VALIDATE_PROBLEM_OPERATION_ID,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -56,10 +56,16 @@ const WASM_BINDINGS: &[WasmContractBinding] = &[
         note: "Public error lookup derived from solver-contracts.",
     },
     WasmContractBinding {
-        export_name: "solve_contract",
+        export_name: "solve_with_progress",
         operation_id: Some(SOLVE_OPERATION_ID),
         scope: WasmSurfaceScope::PublicContract,
-        note: "Contract-native solve export returning structured JS values.",
+        note: "Primary contract-native solve export returning structured JS values and optional progress callbacks.",
+    },
+    WasmContractBinding {
+        export_name: "solve_contract",
+        operation_id: None,
+        scope: WasmSurfaceScope::OutOfScopeSupport,
+        note: "Compatibility alias for the older structured solve export name during migration.",
     },
     WasmContractBinding {
         export_name: "validate_problem_contract",
@@ -68,10 +74,22 @@ const WASM_BINDINGS: &[WasmContractBinding] = &[
         note: "Contract-native validation export returning the shared validation shape.",
     },
     WasmContractBinding {
-        export_name: "recommend_settings_contract",
+        export_name: "get_default_solver_configuration",
+        operation_id: Some(GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID),
+        scope: WasmSurfaceScope::PublicContract,
+        note: "Contract-native default configuration export returning structured JS values.",
+    },
+    WasmContractBinding {
+        export_name: "recommend_settings",
         operation_id: Some(RECOMMEND_SETTINGS_OPERATION_ID),
         scope: WasmSurfaceScope::PublicContract,
         note: "Contract-native recommendation export returning structured JS values.",
+    },
+    WasmContractBinding {
+        export_name: "recommend_settings_contract",
+        operation_id: None,
+        scope: WasmSurfaceScope::OutOfScopeSupport,
+        note: "Compatibility alias for the older structured recommendation export name during migration.",
     },
     WasmContractBinding {
         export_name: "evaluate_input_contract",
@@ -102,12 +120,6 @@ const WASM_BINDINGS: &[WasmContractBinding] = &[
         operation_id: None,
         scope: WasmSurfaceScope::OutOfScopeSupport,
         note: "Legacy JSON-string solve export retained for compatibility during the WASM contract rollout.",
-    },
-    WasmContractBinding {
-        export_name: "solve_with_progress",
-        operation_id: None,
-        scope: WasmSurfaceScope::OutOfScopeSupport,
-        note: "Legacy progress-callback solve export retained as support tooling outside the public contract.",
     },
     WasmContractBinding {
         export_name: "validate_problem",
@@ -198,14 +210,15 @@ mod tests {
     }
 
     #[test]
-    fn legacy_string_based_exports_are_explicitly_out_of_scope() {
+    fn legacy_and_compatibility_exports_are_explicitly_out_of_scope() {
         for export_name in [
             "solve",
-            "solve_with_progress",
+            "solve_contract",
             "validate_problem",
             "get_default_settings",
             "evaluate_input",
             "get_recommended_settings",
+            "recommend_settings_contract",
         ] {
             let binding = binding_for_export(export_name).expect("legacy binding");
             assert_eq!(binding.scope, WasmSurfaceScope::OutOfScopeSupport);

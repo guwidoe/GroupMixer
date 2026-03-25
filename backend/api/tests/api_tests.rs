@@ -7,7 +7,7 @@ use solver_core::models::{
     ApiInput, Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams,
     SolverConfiguration, SolverParams, StopConditions,
 };
-use solver_contracts::types::{ResultSummary, ValidateResponse};
+use solver_contracts::types::{RecommendSettingsRequest, ResultSummary, ValidateResponse};
 use solver_server::api::{contract_surface::public_contract_bindings, handlers::{AppState, CreateJobResponse}};
 use solver_server::api::routes::create_router;
 use solver_server::jobs::manager::{Job, JobManager, JobStatus};
@@ -373,6 +373,22 @@ async fn contract_solver_endpoints_return_public_shapes() {
     let validate_body: ValidateResponse = json_response(validate_response).await;
     assert!(validate_body.valid);
 
+    let default_config_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/default-solver-configuration")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(default_config_response.status(), StatusCode::OK);
+    let default_config_body: solver_core::models::SolverConfiguration =
+        json_response(default_config_response).await;
+    assert_eq!(default_config_body.stop_conditions.time_limit_seconds, Some(30));
+
     let recommend_response = app
         .clone()
         .oneshot(
@@ -380,7 +396,15 @@ async fn contract_solver_endpoints_return_public_shapes() {
                 .method("POST")
                 .uri("/api/v1/recommend-settings")
                 .header("content-type", "application/json")
-                .body(Body::from(serde_json::to_vec(&valid_input().problem).unwrap()))
+                .body(Body::from(
+                    serde_json::to_vec(&RecommendSettingsRequest {
+                        problem_definition: valid_input().problem,
+                        objectives: Vec::new(),
+                        constraints: Vec::new(),
+                        desired_runtime_seconds: 11,
+                    })
+                    .unwrap(),
+                ))
                 .unwrap(),
         )
         .await
@@ -388,6 +412,7 @@ async fn contract_solver_endpoints_return_public_shapes() {
     assert_eq!(recommend_response.status(), StatusCode::OK);
     let recommend_body: solver_core::models::SolverConfiguration = json_response(recommend_response).await;
     assert_eq!(recommend_body.solver_type, "SimulatedAnnealing");
+    assert_eq!(recommend_body.stop_conditions.time_limit_seconds, Some(11));
 
     let evaluate_input = {
         let mut input = valid_input();

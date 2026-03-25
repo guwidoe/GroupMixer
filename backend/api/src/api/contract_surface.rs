@@ -43,6 +43,13 @@ const HTTP_BINDINGS: &[HttpContractBinding] = &[
         note: "Input validation endpoint for the public solver contract.",
     },
     HttpContractBinding {
+        method: "GET",
+        route_path: "/api/v1/default-solver-configuration",
+        operation_id: Some("get-default-solver-configuration"),
+        scope: HttpSurfaceScope::PublicContract,
+        note: "Default solver-configuration endpoint for the public solver contract.",
+    },
+    HttpContractBinding {
         method: "POST",
         route_path: "/api/v1/recommend-settings",
         operation_id: Some("recommend-settings"),

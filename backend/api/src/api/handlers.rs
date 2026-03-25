@@ -14,11 +14,12 @@ use solver_contracts::{
     examples::example_spec,
     operations::{local_help, operation_spec, OperationSpec},
     schemas::{export_schema, schema_specs},
-    types::{PublicError, PublicErrorEnvelope, ResultSummary, ValidateResponse, ValidationIssue},
+    types::{PublicError, PublicErrorEnvelope, RecommendSettingsRequest, ResultSummary, ValidateResponse, ValidationIssue},
 };
 use solver_core::{
     calculate_recommended_settings,
-    models::{ApiInput, ProblemDefinition, SolverConfiguration, SolverResult},
+    default_solver_configuration,
+    models::{ApiInput, SolverConfiguration, SolverResult},
     run_solver,
 };
 use uuid::Uuid;
@@ -223,12 +224,26 @@ pub async fn validate_problem_handler(
     Ok(Json(response))
 }
 
+pub async fn default_solver_configuration_handler() -> Json<SolverConfiguration> {
+    Json(default_solver_configuration())
+}
+
 pub async fn recommend_settings_handler(
     body: Bytes,
 ) -> Result<Json<SolverConfiguration>, ApiError> {
-    let problem: ProblemDefinition = parse_json_body(&body, "recommend-settings", &["problem-definition"])?;
+    let request: RecommendSettingsRequest = parse_json_body(
+        &body,
+        "recommend-settings",
+        &["recommend-settings-request"],
+    )?;
     let recommended =
-        calculate_recommended_settings(&problem, &[], &[], 30).map_err(|error| map_solver_error(format!("{:?}", error), "recommend-settings"))?;
+        calculate_recommended_settings(
+            &request.problem_definition,
+            &request.objectives,
+            &request.constraints,
+            request.desired_runtime_seconds,
+        )
+        .map_err(|error| map_solver_error(format!("{:?}", error), "recommend-settings"))?;
     Ok(Json(recommended))
 }
 

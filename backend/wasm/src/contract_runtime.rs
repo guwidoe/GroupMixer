@@ -4,19 +4,29 @@ use crate::public_errors::{
 };
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use solver_contracts::types::{ResultSummary, ValidateResponse, ValidationIssue};
+use solver_contracts::types::{
+    PublicErrorEnvelope, RecommendSettingsRequest, ResultSummary, ValidateResponse,
+    ValidationIssue,
+};
 use solver_core::{
-    calculate_recommended_settings,
-    models::{ApiInput, ProblemDefinition, SolverConfiguration, SolverResult},
+    calculate_recommended_settings, default_solver_configuration, run_solver, run_solver_with_progress,
+    models::{ApiInput, ProgressUpdate, SolverConfiguration, SolverResult},
     solver::State,
 };
 use wasm_bindgen::JsValue;
 
-const DEFAULT_RECOMMENDED_RUNTIME_SECONDS: u64 = 30;
-
 pub fn solve_contract_js(input: JsValue) -> Result<JsValue, JsValue> {
     let request: ApiInput = parse_js_value(input, "solve", &["solve-request"])?;
-    let result = solve_contract(&request)
+    let result = solve_contract(&request).map_err(|error| public_error_to_js_value(&error))?;
+    serialize_output(&result, "solve")
+}
+
+pub fn solve_with_progress_js(
+    input: JsValue,
+    progress_callback: Option<js_sys::Function>,
+) -> Result<JsValue, JsValue> {
+    let request: ApiInput = parse_js_value(input, "solve", &["solve-request"])?;
+    let result = solve_with_progress_contract(&request, progress_callback)
         .map_err(|error| public_error_to_js_value(&error))?;
     serialize_output(&result, "solve")
 }
@@ -27,15 +37,24 @@ pub fn validate_problem_contract_js(input: JsValue) -> Result<JsValue, JsValue> 
     serialize_output(&response, "validate-problem")
 }
 
-pub fn recommend_settings_contract_js(problem_definition: JsValue) -> Result<JsValue, JsValue> {
-    let problem: ProblemDefinition = parse_js_value(
-        problem_definition,
+pub fn get_default_solver_configuration_js() -> Result<JsValue, JsValue> {
+    let settings = get_default_solver_configuration();
+    serialize_output(&settings, "get-default-solver-configuration")
+}
+
+pub fn recommend_settings_js(input: JsValue) -> Result<JsValue, JsValue> {
+    let request: RecommendSettingsRequest = parse_js_value(
+        input,
         "recommend-settings",
-        &["problem-definition"],
+        &["recommend-settings-request"],
     )?;
-    let settings = recommend_settings_contract(&problem)
+    let settings = recommend_settings_contract(&request)
         .map_err(|error| public_error_to_js_value(&error))?;
     serialize_output(&settings, "recommend-settings")
+}
+
+pub fn recommend_settings_contract_js(input: JsValue) -> Result<JsValue, JsValue> {
+    recommend_settings_js(input)
 }
 
 pub fn evaluate_input_contract_js(input: JsValue) -> Result<JsValue, JsValue> {
@@ -51,9 +70,45 @@ pub fn inspect_result_contract_js(result: JsValue) -> Result<JsValue, JsValue> {
     serialize_output(&summary, "inspect-result")
 }
 
-pub fn solve_contract(request: &ApiInput) -> Result<SolverResult, solver_contracts::types::PublicErrorEnvelope> {
-    solver_core::run_solver(request)
-        .map_err(|error| infeasible_problem_error("solve", error.to_string()))
+pub fn solve_contract(request: &ApiInput) -> Result<SolverResult, PublicErrorEnvelope> {
+    run_solver(request).map_err(|error| infeasible_problem_error("solve", error.to_string()))
+}
+
+pub fn solve_with_progress_contract(
+    request: &ApiInput,
+    progress_callback: Option<js_sys::Function>,
+) -> Result<SolverResult, PublicErrorEnvelope> {
+    if let Some(js_callback) = progress_callback {
+        let rust_callback = Box::new(move |progress: &ProgressUpdate| -> bool {
+            let progress_value = match serde_wasm_bindgen::to_value(progress) {
+                Ok(value) => value,
+                Err(error) => {
+                    web_sys::console::error_1(
+                        &format!("Failed to serialize progress update: {}", error).into(),
+                    );
+                    return true;
+                }
+            };
+
+            match js_callback.call1(&JsValue::NULL, &progress_value) {
+                Ok(result) => result.as_bool().unwrap_or(true),
+                Err(error) => {
+                    web_sys::console::error_1(
+                        &format!("Progress callback error: {:?}", error).into(),
+                    );
+                    true
+                }
+            }
+        }) as Box<dyn Fn(&ProgressUpdate) -> bool>;
+
+        let rust_callback: Box<dyn Fn(&ProgressUpdate) -> bool + Send> =
+            unsafe { std::mem::transmute(rust_callback) };
+
+        run_solver_with_progress(request, Some(&rust_callback))
+            .map_err(|error| infeasible_problem_error("solve", error.to_string()))
+    } else {
+        solve_contract(request)
+    }
 }
 
 pub fn validate_problem_contract(request: &ApiInput) -> ValidateResponse {
@@ -73,16 +128,25 @@ pub fn validate_problem_contract(request: &ApiInput) -> ValidateResponse {
     }
 }
 
+pub fn get_default_solver_configuration() -> SolverConfiguration {
+    default_solver_configuration()
+}
+
 pub fn recommend_settings_contract(
-    problem: &ProblemDefinition,
-) -> Result<SolverConfiguration, solver_contracts::types::PublicErrorEnvelope> {
-    calculate_recommended_settings(problem, &[], &[], DEFAULT_RECOMMENDED_RUNTIME_SECONDS)
-        .map_err(|error| infeasible_problem_error("recommend-settings", error.to_string()))
+    request: &RecommendSettingsRequest,
+) -> Result<SolverConfiguration, PublicErrorEnvelope> {
+    calculate_recommended_settings(
+        &request.problem_definition,
+        &request.objectives,
+        &request.constraints,
+        request.desired_runtime_seconds,
+    )
+    .map_err(|error| infeasible_problem_error("recommend-settings", error.to_string()))
 }
 
 pub fn evaluate_input_contract(
     request: &ApiInput,
-) -> Result<SolverResult, solver_contracts::types::PublicErrorEnvelope> {
+) -> Result<SolverResult, PublicErrorEnvelope> {
     if request.initial_schedule.is_none() {
         return Err(evaluate_requires_initial_schedule_error());
     }
@@ -123,10 +187,15 @@ fn serialize_output<T: Serialize>(value: &T, operation_id: &str) -> Result<JsVal
 
 #[cfg(test)]
 mod tests {
-    use super::{evaluate_input_contract, inspect_result_contract, solve_contract, validate_problem_contract};
+    use super::{
+        evaluate_input_contract, get_default_solver_configuration, inspect_result_contract,
+        recommend_settings_contract, solve_contract, solve_with_progress_contract,
+        validate_problem_contract,
+    };
+    use solver_contracts::types::RecommendSettingsRequest;
     use solver_core::models::{
-        Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams, SolverConfiguration,
-        SolverParams, StopConditions,
+        Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams,
+        SolverConfiguration, SolverParams, StopConditions,
     };
     use std::collections::HashMap;
 
@@ -204,10 +273,38 @@ mod tests {
     }
 
     #[test]
+    fn solve_with_progress_contract_runs_without_callback() {
+        let result = solve_with_progress_contract(&valid_input(), None).expect("solve succeeds");
+        assert!(!result.schedule.is_empty());
+        assert!(result.final_score.is_finite());
+    }
+
+    #[test]
     fn validate_contract_returns_shared_validation_shape() {
         let response = validate_problem_contract(&valid_input());
         assert!(response.valid);
         assert!(response.issues.is_empty());
+    }
+
+    #[test]
+    fn default_solver_configuration_uses_public_defaults() {
+        let configuration = get_default_solver_configuration();
+        assert_eq!(configuration.solver_type, "SimulatedAnnealing");
+        assert_eq!(configuration.stop_conditions.max_iterations, Some(10_000));
+        assert_eq!(configuration.stop_conditions.time_limit_seconds, Some(30));
+    }
+
+    #[test]
+    fn recommend_settings_contract_uses_explicit_runtime_request() {
+        let input = valid_input();
+        let request = RecommendSettingsRequest {
+            problem_definition: input.problem,
+            objectives: input.objectives,
+            constraints: input.constraints,
+            desired_runtime_seconds: 11,
+        };
+        let configuration = recommend_settings_contract(&request).expect("recommend succeeds");
+        assert_eq!(configuration.stop_conditions.time_limit_seconds, Some(11));
     }
 
     #[test]
