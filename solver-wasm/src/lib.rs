@@ -1,4 +1,5 @@
 pub mod contract_surface;
+mod contract_projection;
 
 use serde::Serialize;
 use solver_core::models::{ApiInput, ProblemDefinition, ProgressUpdate};
@@ -29,6 +30,42 @@ fn set_panic_hook() {
 pub fn init_panic_hook() {
     #[cfg(feature = "console_error_panic_hook")]
     set_panic_hook();
+}
+
+#[wasm_bindgen]
+pub fn capabilities() -> Result<JsValue, JsValue> {
+    init_panic_hook();
+    contract_projection::capabilities_js()
+}
+
+#[wasm_bindgen]
+pub fn get_operation_help(operation_id: &str) -> Result<JsValue, JsValue> {
+    init_panic_hook();
+    contract_projection::get_operation_help_js(operation_id)
+}
+
+#[wasm_bindgen]
+pub fn list_schemas() -> Result<JsValue, JsValue> {
+    init_panic_hook();
+    contract_projection::list_schemas_js()
+}
+
+#[wasm_bindgen]
+pub fn get_schema(schema_id: &str) -> Result<JsValue, JsValue> {
+    init_panic_hook();
+    contract_projection::get_schema_js(schema_id)
+}
+
+#[wasm_bindgen]
+pub fn list_public_errors() -> Result<JsValue, JsValue> {
+    init_panic_hook();
+    contract_projection::list_public_errors_js()
+}
+
+#[wasm_bindgen]
+pub fn get_public_error(error_code: &str) -> Result<JsValue, JsValue> {
+    init_panic_hook();
+    contract_projection::get_public_error_js(error_code)
 }
 
 #[wasm_bindgen]
