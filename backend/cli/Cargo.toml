@@ -9,9 +9,9 @@ name = "solver-cli"
 path = "src/main.rs"
 
 [dependencies]
-solver-core = { path = "../solver-core" }
-solver-contracts = { path = "../solver-contracts" }
-solver-benchmarking = { path = "../solver-benchmarking" }
+solver-core = { path = "../core" }
+solver-contracts = { path = "../contracts" }
+solver-benchmarking = { path = "../../solver-benchmarking" }
 clap = { version = "4.6", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

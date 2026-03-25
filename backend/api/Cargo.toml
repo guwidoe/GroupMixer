@@ -17,12 +17,12 @@ uuid = { version = "1.22.0", features = ["v4", "serde"] }
 rand = "0.10.0"
 dashmap = "6.1.0"
 
-solver-core = { path = "../solver-core" }
-solver-contracts = { path = "../solver-contracts" }
+solver-core = { path = "../core" }
+solver-contracts = { path = "../contracts" }
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
-solver-cli = { path = "../solver-cli" }
-solver-wasm = { path = "../solver-wasm" }
+solver-cli = { path = "../cli" }
+solver-wasm = { path = "../wasm" }
  
