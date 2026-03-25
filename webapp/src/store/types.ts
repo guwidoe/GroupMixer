@@ -137,6 +137,17 @@ export interface EditorActions {
   setManualEditorLeaveHook: (hook: ((nextPath: string) => void) | null) => void;
 }
 
+export interface WorkspaceBridgeInput {
+  problem: Problem;
+  solution?: Solution | null;
+  attributeDefinitions?: AttributeDefinition[];
+  currentProblemId?: string | null;
+}
+
+export interface WorkspaceActions {
+  replaceWorkspace: (input: WorkspaceBridgeInput) => void;
+}
+
 export interface UtilityActions {
   reset: () => void;
   initializeApp: () => void;
@@ -161,6 +172,7 @@ export interface AppStore
     AttributeActions,
     DemoDataActions,
     EditorActions,
+    WorkspaceActions,
     UtilityActions {}
 
 // Type for slice creators

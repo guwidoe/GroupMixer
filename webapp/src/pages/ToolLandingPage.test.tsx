@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { useAppStore } from '../store';
 import ToolLandingPage from './ToolLandingPage';
 
 vi.mock('../services/solver/solveProblem', () => ({
@@ -30,6 +31,7 @@ vi.mock('../services/solver/solveProblem', () => ({
 
 beforeEach(() => {
   window.localStorage.clear();
+  useAppStore.getState().reset();
 });
 
 describe('ToolLandingPage SEO wiring', () => {
@@ -79,5 +81,13 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(await screen.findByText('Group 1')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /reshuffle/i })).toBeEnabled();
     expect(await screen.findByRole('button', { name: /export csv/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /open in advanced workspace/i }));
+
+    const state = useAppStore.getState();
+    expect(state.currentProblemId).toBeNull();
+    expect(state.problem).not.toBeNull();
+    expect(state.solution).not.toBeNull();
+    expect(state.ui.activeTab).toBe('results');
   });
 });

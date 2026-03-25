@@ -3,6 +3,7 @@ import { useLocalStorageState } from '../../hooks/useLocalStorageState';
 import type { ToolPageConfig } from '../../pages/toolPageConfigs';
 import { solveProblem } from '../../services/solver/solveProblem';
 import { buildGroups, buildProblemFromDraft, parseParticipantInput } from '../../utils/quickSetup';
+import type { AttributeDefinition, Problem, Solution } from '../../types';
 import type {
   QuickSetupAnalysis,
   QuickSetupDraft,
@@ -34,6 +35,12 @@ export interface QuickSetupController {
   errorMessage: string | null;
   canGenerate: boolean;
   draftStorageLabel: string;
+  buildWorkspaceBridgePayload: () => {
+    problem: Problem;
+    solution?: Solution | null;
+    attributeDefinitions?: AttributeDefinition[];
+    currentProblemId?: string | null;
+  };
   updateDraft: (updater: QuickSetupDraft | ((draft: QuickSetupDraft) => QuickSetupDraft)) => void;
   setPreset: (preset: QuickSetupDraft['preset']) => void;
   toggleAdvanced: () => void;
@@ -383,6 +390,9 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
   const [result, setResult] = useState<QuickSetupResult | null>(null);
   const [isSolving, setIsSolving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [lastSolvedProblem, setLastSolvedProblem] = useState<Problem | null>(null);
+  const [lastSolvedSolution, setLastSolvedSolution] = useState<Solution | null>(null);
+  const [lastSolvedAttributeDefinitions, setLastSolvedAttributeDefinitions] = useState<AttributeDefinition[]>([]);
 
   const analysis = useMemo(() => analyzeDraft(draft), [draft]);
   const participantCount = analysis.participants.length;
@@ -428,10 +438,16 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
           useRecommendedSettings: true,
           desiredRuntimeSeconds: draft.preset === 'networking' ? 5 : 3,
         });
+        setLastSolvedProblem(mapped.problem);
+        setLastSolvedSolution(solution);
+        setLastSolvedAttributeDefinitions(mapped.attributeDefinitions);
         setResult(quickSetupResultFromSolution(mapped.problem, solution, seed));
       } catch (error) {
         console.error('[QuickSetup] Falling back to local grouping after solve failure:', error);
         setErrorMessage(error instanceof Error ? error.message : 'Unable to solve this setup right now. Showing a local draft grouping instead.');
+        setLastSolvedProblem(null);
+        setLastSolvedSolution(null);
+        setLastSolvedAttributeDefinitions([]);
         setResult(generateSessions(draft, analysis, seed));
       } finally {
         setIsSolving(false);
@@ -451,6 +467,10 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
   const resetDraft = useCallback(() => {
     setDraft(defaultDraft(pageConfig));
     setResult(null);
+    setLastSolvedProblem(null);
+    setLastSolvedSolution(null);
+    setLastSolvedAttributeDefinitions([]);
+    setErrorMessage(null);
   }, [pageConfig, setDraft]);
 
   const loadSampleData = useCallback(() => {
@@ -476,6 +496,25 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
     );
   }, [draft, pageConfig.key]);
 
+  const buildWorkspaceBridgePayload = useCallback(() => {
+    if (lastSolvedProblem) {
+      return {
+        problem: lastSolvedProblem,
+        solution: lastSolvedSolution,
+        attributeDefinitions: lastSolvedAttributeDefinitions,
+        currentProblemId: null,
+      };
+    }
+
+    const mapped = buildProblemFromDraft(draft);
+    return {
+      problem: mapped.problem,
+      solution: null,
+      attributeDefinitions: mapped.attributeDefinitions,
+      currentProblemId: null,
+    };
+  }, [draft, lastSolvedAttributeDefinitions, lastSolvedProblem, lastSolvedSolution]);
+
   return {
     draft,
     analysis,
@@ -487,6 +526,7 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
     errorMessage,
     canGenerate,
     draftStorageLabel: 'Saved locally in this browser',
+    buildWorkspaceBridgePayload,
     updateDraft,
     setPreset,
     toggleAdvanced,

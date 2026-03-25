@@ -1,5 +1,6 @@
 import { Download, FolderOpen, Save } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useAppStore } from '../../store';
 import type { QuickSetupController } from './useQuickSetup';
 
 interface QuickSetupResultsProps {
@@ -8,6 +9,13 @@ interface QuickSetupResultsProps {
 
 export function QuickSetupResults({ controller }: QuickSetupResultsProps) {
   const { result } = controller;
+  const replaceWorkspace = useAppStore((state) => state.replaceWorkspace);
+  const navigate = useNavigate();
+
+  const openAdvancedWorkspace = () => {
+    replaceWorkspace(controller.buildWorkspaceBridgePayload());
+    navigate(result ? '/app/results' : '/app/problem/people');
+  };
 
   return (
     <section className="rounded-3xl border p-5" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
@@ -54,14 +62,15 @@ export function QuickSetupResults({ controller }: QuickSetupResultsProps) {
               <Save className="h-4 w-4" />
               Save draft file
             </button>
-            <Link
-              to="/app"
+            <button
+              type="button"
+              onClick={openAdvancedWorkspace}
               className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white"
               style={{ backgroundColor: 'var(--color-accent)' }}
             >
               <FolderOpen className="h-4 w-4" />
               Open in advanced workspace
-            </Link>
+            </button>
           </div>
 
           <div className="mt-6 space-y-6">

@@ -1,5 +1,6 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import type { ToolPageConfig } from '../../pages/toolPageConfigs';
+import { useAppStore } from '../../store';
 import { QuickSetupAdvancedOptions } from './QuickSetupAdvancedOptions';
 import { QuickSetupBasicForm } from './QuickSetupBasicForm';
 import { QuickSetupResults } from './QuickSetupResults';
@@ -11,6 +12,13 @@ interface QuickSetupPanelProps {
 
 export function QuickSetupPanel({ pageConfig }: QuickSetupPanelProps) {
   const controller = useQuickSetup(pageConfig);
+  const replaceWorkspace = useAppStore((state) => state.replaceWorkspace);
+  const navigate = useNavigate();
+
+  const openAdvancedWorkspace = () => {
+    replaceWorkspace(controller.buildWorkspaceBridgePayload());
+    navigate('/app/problem/people');
+  };
 
   return (
     <div className="space-y-5">
@@ -25,13 +33,14 @@ export function QuickSetupPanel({ pageConfig }: QuickSetupPanelProps) {
             </div>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight">Create groups in under a minute</h2>
           </div>
-          <Link
-            to="/app"
+          <button
+            type="button"
+            onClick={openAdvancedWorkspace}
             className="hidden rounded-full border px-4 py-2 text-sm font-medium lg:inline-flex"
             style={{ borderColor: 'var(--border-primary)' }}
           >
             Expert workspace
-          </Link>
+          </button>
         </div>
 
         <p className="mt-4 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>

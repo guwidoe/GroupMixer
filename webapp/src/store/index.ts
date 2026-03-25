@@ -15,6 +15,8 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { AppStore } from "./types";
+import type { AttributeDefinition, Problem, Solution } from "../types";
+import { mergeAttributeDefinitions } from "../services/demoDataService";
 
 import {
   createProblemSlice,
@@ -61,6 +63,30 @@ const getInitialState = () => ({
   manualEditorLeaveHook: null,
 });
 
+function solverStateFromWorkspaceSolution(solution: Solution | null) {
+  if (!solution) {
+    return initialSolverState;
+  }
+
+  return {
+    ...initialSolverState,
+    isRunning: false,
+    isComplete: true,
+    currentIteration: solution.iteration_count,
+    bestScore: solution.final_score,
+    currentScore: solution.final_score,
+    elapsedTime: solution.elapsed_time_ms,
+    noImprovementCount: solution.benchmark_telemetry?.no_improvement_count ?? 0,
+  };
+}
+
+function mergeWorkspaceAttributes(existing: AttributeDefinition[], incoming?: AttributeDefinition[]) {
+  if (!incoming || incoming.length === 0) {
+    return existing;
+  }
+  return mergeAttributeDefinitions(existing, incoming);
+}
+
 export const useAppStore = create<AppStore>()(
   devtools(
     (set, get) => ({
@@ -76,6 +102,36 @@ export const useAppStore = create<AppStore>()(
 
       // Utility actions
       reset: () => set(getInitialState()),
+
+      replaceWorkspace: ({
+        problem,
+        solution = null,
+        attributeDefinitions,
+        currentProblemId = null,
+      }: {
+        problem: Problem;
+        solution?: Solution | null;
+        attributeDefinitions?: AttributeDefinition[];
+        currentProblemId?: string | null;
+      }) =>
+        set((state) => ({
+          problem,
+          solution,
+          currentProblemId,
+          selectedResultIds: [],
+          solverState: solverStateFromWorkspaceSolution(solution),
+          attributeDefinitions: mergeWorkspaceAttributes(state.attributeDefinitions, attributeDefinitions),
+          ui: {
+            ...state.ui,
+            activeTab: solution ? "results" : "problem",
+            warmStartResultId: null,
+            showResultComparison: false,
+            showProblemManager: false,
+            isLoading: false,
+          },
+          manualEditorUnsaved: false,
+          manualEditorLeaveHook: null,
+        })),
 
       initializeApp: () => {
         set({ attributeDefinitions: loadAttributeDefinitions() });
