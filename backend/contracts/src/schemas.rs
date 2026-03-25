@@ -1,6 +1,7 @@
 use crate::types::{
-    ProblemDefinitionContract, PublicErrorEnvelope, ResultSummary, SchemaId,
-    SolveRequest, SolveResponse, SolverConfigurationContract, ValidateRequest, ValidateResponse,
+    ProblemDefinitionContract, ProgressUpdateContract, PublicErrorEnvelope,
+    RecommendSettingsRequest, ResultSummary, SchemaId, SolveRequest, SolveResponse,
+    SolverConfigurationContract, ValidateRequest, ValidateResponse,
 };
 use schemars::{schema::RootSchema, schema_for};
 
@@ -11,7 +12,9 @@ pub const SOLVE_RESPONSE_SCHEMA_ID: &str = "solve-response";
 pub const VALIDATE_REQUEST_SCHEMA_ID: &str = "validate-request";
 pub const VALIDATE_RESPONSE_SCHEMA_ID: &str = "validate-response";
 pub const PROBLEM_DEFINITION_SCHEMA_ID: &str = "problem-definition";
+pub const RECOMMEND_SETTINGS_REQUEST_SCHEMA_ID: &str = "recommend-settings-request";
 pub const SOLVER_CONFIGURATION_SCHEMA_ID: &str = "solver-configuration";
+pub const PROGRESS_UPDATE_SCHEMA_ID: &str = "progress-update";
 pub const RESULT_SUMMARY_SCHEMA_ID: &str = "result-summary";
 pub const PUBLIC_ERROR_ENVELOPE_SCHEMA_ID: &str = "public-error-envelope";
 
@@ -49,9 +52,19 @@ const SCHEMA_SPECS: &[SchemaSpec] = &[
         export: export_problem_definition_schema,
     },
     SchemaSpec {
+        id: RECOMMEND_SETTINGS_REQUEST_SCHEMA_ID,
+        version: SCHEMA_VERSION_V1,
+        export: export_recommend_settings_request_schema,
+    },
+    SchemaSpec {
         id: SOLVER_CONFIGURATION_SCHEMA_ID,
         version: SCHEMA_VERSION_V1,
         export: export_solver_configuration_schema,
+    },
+    SchemaSpec {
+        id: PROGRESS_UPDATE_SCHEMA_ID,
+        version: SCHEMA_VERSION_V1,
+        export: export_progress_update_schema,
     },
     SchemaSpec {
         id: RESULT_SUMMARY_SCHEMA_ID,
@@ -97,8 +110,16 @@ fn export_problem_definition_schema() -> RootSchema {
     schema_for!(ProblemDefinitionContract)
 }
 
+fn export_recommend_settings_request_schema() -> RootSchema {
+    schema_for!(RecommendSettingsRequest)
+}
+
 fn export_solver_configuration_schema() -> RootSchema {
     schema_for!(SolverConfigurationContract)
+}
+
+fn export_progress_update_schema() -> RootSchema {
+    schema_for!(ProgressUpdateContract)
 }
 
 fn export_result_summary_schema() -> RootSchema {

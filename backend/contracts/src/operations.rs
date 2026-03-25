@@ -3,12 +3,15 @@ use crate::errors::{
     UNKNOWN_OPERATION_ERROR, UNKNOWN_SCHEMA_ERROR, UNSUPPORTED_CONSTRAINT_KIND_ERROR,
 };
 use crate::examples::{
-    EVALUATE_INPUT_EXAMPLE_ID, GET_SCHEMA_EXAMPLE_ID, INSPECT_RESULT_SUMMARY_EXAMPLE_ID,
-    PUBLIC_ERROR_LOOKUP_EXAMPLE_ID, RECOMMEND_SETTINGS_EXAMPLE_ID, SOLVE_HAPPY_PATH_EXAMPLE_ID,
+    DEFAULT_SOLVER_CONFIGURATION_EXAMPLE_ID, EVALUATE_INPUT_EXAMPLE_ID,
+    GET_SCHEMA_EXAMPLE_ID, INSPECT_RESULT_SUMMARY_EXAMPLE_ID,
+    PUBLIC_ERROR_LOOKUP_EXAMPLE_ID, RECOMMEND_SETTINGS_EXAMPLE_ID,
+    SOLVE_HAPPY_PATH_EXAMPLE_ID, SOLVE_PROGRESS_UPDATE_EXAMPLE_ID,
     VALIDATE_INVALID_CONSTRAINT_EXAMPLE_ID,
 };
 use crate::schemas::{
-    PROBLEM_DEFINITION_SCHEMA_ID, PUBLIC_ERROR_ENVELOPE_SCHEMA_ID, RESULT_SUMMARY_SCHEMA_ID,
+    PROGRESS_UPDATE_SCHEMA_ID, PUBLIC_ERROR_ENVELOPE_SCHEMA_ID,
+    RECOMMEND_SETTINGS_REQUEST_SCHEMA_ID, RESULT_SUMMARY_SCHEMA_ID,
     SOLVE_REQUEST_SCHEMA_ID, SOLVE_RESPONSE_SCHEMA_ID, SOLVER_CONFIGURATION_SCHEMA_ID,
     VALIDATE_REQUEST_SCHEMA_ID, VALIDATE_RESPONSE_SCHEMA_ID,
 };
@@ -20,6 +23,7 @@ pub const VALIDATE_PROBLEM_OPERATION_ID: &str = "validate-problem";
 pub const INSPECT_RESULT_OPERATION_ID: &str = "inspect-result";
 pub const GET_SCHEMA_OPERATION_ID: &str = "get-schema";
 pub const INSPECT_ERRORS_OPERATION_ID: &str = "inspect-errors";
+pub const GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID: &str = "get-default-solver-configuration";
 pub const RECOMMEND_SETTINGS_OPERATION_ID: &str = "recommend-settings";
 pub const EVALUATE_INPUT_OPERATION_ID: &str = "evaluate-input";
 
@@ -32,6 +36,7 @@ pub struct OperationSpec {
     pub family: &'static str,
     pub input_schema_ids: &'static [SchemaId],
     pub output_schema_ids: &'static [SchemaId],
+    pub progress_schema_ids: &'static [SchemaId],
     pub error_codes: &'static [ErrorCode],
     pub related_operation_ids: &'static [OperationId],
     pub example_ids: &'static [ExampleId],
@@ -52,6 +57,7 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         family: "solver",
         input_schema_ids: &[SOLVE_REQUEST_SCHEMA_ID],
         output_schema_ids: &[SOLVE_RESPONSE_SCHEMA_ID],
+        progress_schema_ids: &[PROGRESS_UPDATE_SCHEMA_ID],
         error_codes: &[
             INVALID_INPUT_ERROR,
             INFEASIBLE_PROBLEM_ERROR,
@@ -63,8 +69,10 @@ const OPERATION_SPECS: &[OperationSpec] = &[
             INSPECT_RESULT_OPERATION_ID,
             GET_SCHEMA_OPERATION_ID,
             INSPECT_ERRORS_OPERATION_ID,
+            GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
+            RECOMMEND_SETTINGS_OPERATION_ID,
         ],
-        example_ids: &[SOLVE_HAPPY_PATH_EXAMPLE_ID],
+        example_ids: &[SOLVE_HAPPY_PATH_EXAMPLE_ID, SOLVE_PROGRESS_UPDATE_EXAMPLE_ID],
     },
     OperationSpec {
         id: VALIDATE_PROBLEM_OPERATION_ID,
@@ -74,6 +82,7 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         family: "validation",
         input_schema_ids: &[VALIDATE_REQUEST_SCHEMA_ID],
         output_schema_ids: &[VALIDATE_RESPONSE_SCHEMA_ID],
+        progress_schema_ids: &[],
         error_codes: &[
             INVALID_INPUT_ERROR,
             UNSUPPORTED_CONSTRAINT_KIND_ERROR,
@@ -95,20 +104,44 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         family: "results",
         input_schema_ids: &[SOLVE_RESPONSE_SCHEMA_ID],
         output_schema_ids: &[RESULT_SUMMARY_SCHEMA_ID],
+        progress_schema_ids: &[],
         error_codes: &[INVALID_INPUT_ERROR, INTERNAL_ERROR],
         related_operation_ids: &[SOLVE_OPERATION_ID, GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID],
         example_ids: &[INSPECT_RESULT_SUMMARY_EXAMPLE_ID],
     },
     OperationSpec {
+        id: GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
+        summary: "Get the canonical default solver configuration.",
+        description: "Return the baseline solver configuration that callers can use as a clean starting point before applying problem-aware tuning or manual edits.",
+        kind: OperationKind::Read,
+        family: "configuration",
+        input_schema_ids: &[],
+        output_schema_ids: &[SOLVER_CONFIGURATION_SCHEMA_ID],
+        progress_schema_ids: &[],
+        error_codes: &[INTERNAL_ERROR],
+        related_operation_ids: &[
+            RECOMMEND_SETTINGS_OPERATION_ID,
+            SOLVE_OPERATION_ID,
+            GET_SCHEMA_OPERATION_ID,
+        ],
+        example_ids: &[DEFAULT_SOLVER_CONFIGURATION_EXAMPLE_ID],
+    },
+    OperationSpec {
         id: RECOMMEND_SETTINGS_OPERATION_ID,
-        summary: "Recommend solver settings from a problem definition.",
-        description: "Analyze a problem definition and return a recommended solver configuration without executing the main solve workflow.",
+        summary: "Recommend solver settings from an explicit recommendation request.",
+        description: "Analyze a problem definition plus runtime target and return a recommended solver configuration without executing the main solve workflow.",
         kind: OperationKind::Compute,
         family: "configuration",
-        input_schema_ids: &[PROBLEM_DEFINITION_SCHEMA_ID],
+        input_schema_ids: &[RECOMMEND_SETTINGS_REQUEST_SCHEMA_ID],
         output_schema_ids: &[SOLVER_CONFIGURATION_SCHEMA_ID],
+        progress_schema_ids: &[],
         error_codes: &[INVALID_INPUT_ERROR, INFEASIBLE_PROBLEM_ERROR, INTERNAL_ERROR],
-        related_operation_ids: &[SOLVE_OPERATION_ID, VALIDATE_PROBLEM_OPERATION_ID, GET_SCHEMA_OPERATION_ID],
+        related_operation_ids: &[
+            GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
+            SOLVE_OPERATION_ID,
+            VALIDATE_PROBLEM_OPERATION_ID,
+            GET_SCHEMA_OPERATION_ID,
+        ],
         example_ids: &[RECOMMEND_SETTINGS_EXAMPLE_ID],
     },
     OperationSpec {
@@ -119,6 +152,7 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         family: "results",
         input_schema_ids: &[SOLVE_REQUEST_SCHEMA_ID],
         output_schema_ids: &[SOLVE_RESPONSE_SCHEMA_ID],
+        progress_schema_ids: &[],
         error_codes: &[INVALID_INPUT_ERROR, INFEASIBLE_PROBLEM_ERROR, INTERNAL_ERROR],
         related_operation_ids: &[INSPECT_RESULT_OPERATION_ID, SOLVE_OPERATION_ID, GET_SCHEMA_OPERATION_ID],
         example_ids: &[EVALUATE_INPUT_EXAMPLE_ID],
@@ -131,11 +165,14 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         family: "introspection",
         input_schema_ids: &[],
         output_schema_ids: &[],
+        progress_schema_ids: &[],
         error_codes: &[UNKNOWN_SCHEMA_ERROR, INTERNAL_ERROR],
         related_operation_ids: &[
             SOLVE_OPERATION_ID,
             VALIDATE_PROBLEM_OPERATION_ID,
             INSPECT_RESULT_OPERATION_ID,
+            GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
+            RECOMMEND_SETTINGS_OPERATION_ID,
             INSPECT_ERRORS_OPERATION_ID,
         ],
         example_ids: &[GET_SCHEMA_EXAMPLE_ID],
@@ -148,11 +185,14 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         family: "introspection",
         input_schema_ids: &[],
         output_schema_ids: &[PUBLIC_ERROR_ENVELOPE_SCHEMA_ID],
+        progress_schema_ids: &[],
         error_codes: &[UNKNOWN_OPERATION_ERROR, UNKNOWN_ERROR_CODE_ERROR, INTERNAL_ERROR],
         related_operation_ids: &[
             SOLVE_OPERATION_ID,
             VALIDATE_PROBLEM_OPERATION_ID,
             INSPECT_RESULT_OPERATION_ID,
+            GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
+            RECOMMEND_SETTINGS_OPERATION_ID,
             GET_SCHEMA_OPERATION_ID,
         ],
         example_ids: &[PUBLIC_ERROR_LOOKUP_EXAMPLE_ID],
@@ -172,6 +212,7 @@ pub fn top_level_operation_ids() -> &'static [OperationId] {
         SOLVE_OPERATION_ID,
         VALIDATE_PROBLEM_OPERATION_ID,
         INSPECT_RESULT_OPERATION_ID,
+        GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
         RECOMMEND_SETTINGS_OPERATION_ID,
         EVALUATE_INPUT_OPERATION_ID,
         GET_SCHEMA_OPERATION_ID,

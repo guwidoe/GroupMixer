@@ -27,10 +27,20 @@
 - version: `v1`
 - artifact: `schemas/problem-definition.schema.json`
 
+## `recommend-settings-request`
+
+- version: `v1`
+- artifact: `schemas/recommend-settings-request.schema.json`
+
 ## `solver-configuration`
 
 - version: `v1`
 - artifact: `schemas/solver-configuration.schema.json`
+
+## `progress-update`
+
+- version: `v1`
+- artifact: `schemas/progress-update.schema.json`
 
 ## `result-summary`
 

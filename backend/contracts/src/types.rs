@@ -32,6 +32,20 @@ pub type ProblemDefinitionContract = solver_core::models::ProblemDefinition;
 /// Public solver-configuration shape currently reuses the core solver config model.
 pub type SolverConfigurationContract = solver_core::models::SolverConfiguration;
 
+/// Public progress-update shape currently reuses the core progress telemetry model.
+pub type ProgressUpdateContract = solver_core::models::ProgressUpdate;
+
+/// Canonical request shape for runtime-aware solver setting recommendations.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct RecommendSettingsRequest {
+    pub problem_definition: ProblemDefinitionContract,
+    #[serde(default)]
+    pub objectives: Vec<solver_core::models::Objective>,
+    #[serde(default)]
+    pub constraints: Vec<solver_core::models::Constraint>,
+    pub desired_runtime_seconds: u64,
+}
+
 /// High-level operation category for transport-neutral help/rendering.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]

@@ -174,6 +174,7 @@ fn render_operations_markdown() -> String {
         output.push_str(&format!("- description: {}\n", operation.description));
         output.push_str(&format!("- input schemas: {}\n", join_or_none(operation.input_schema_ids)));
         output.push_str(&format!("- output schemas: {}\n", join_or_none(operation.output_schema_ids)));
+        output.push_str(&format!("- progress schemas: {}\n", join_or_none(operation.progress_schema_ids)));
         output.push_str(&format!("- error codes: {}\n", join_or_none(operation.error_codes)));
         output.push_str(&format!("- related operations: {}\n", join_or_none(operation.related_operation_ids)));
         output.push_str(&format!("- examples: {}\n\n", join_or_none(operation.example_ids)));

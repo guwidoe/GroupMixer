@@ -1,10 +1,11 @@
 use crate::operations::{
-    EVALUATE_INPUT_OPERATION_ID, GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID,
-    INSPECT_RESULT_OPERATION_ID, RECOMMEND_SETTINGS_OPERATION_ID, SOLVE_OPERATION_ID,
-    VALIDATE_PROBLEM_OPERATION_ID,
+    EVALUATE_INPUT_OPERATION_ID, GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
+    GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID, INSPECT_RESULT_OPERATION_ID,
+    RECOMMEND_SETTINGS_OPERATION_ID, SOLVE_OPERATION_ID, VALIDATE_PROBLEM_OPERATION_ID,
 };
 use crate::schemas::{
-    PROBLEM_DEFINITION_SCHEMA_ID, PUBLIC_ERROR_ENVELOPE_SCHEMA_ID, RESULT_SUMMARY_SCHEMA_ID,
+    PROGRESS_UPDATE_SCHEMA_ID, PUBLIC_ERROR_ENVELOPE_SCHEMA_ID,
+    RECOMMEND_SETTINGS_REQUEST_SCHEMA_ID, RESULT_SUMMARY_SCHEMA_ID,
     SOLVE_REQUEST_SCHEMA_ID, SOLVE_RESPONSE_SCHEMA_ID, SOLVER_CONFIGURATION_SCHEMA_ID,
     VALIDATE_RESPONSE_SCHEMA_ID,
 };
@@ -16,7 +17,9 @@ pub const VALIDATE_INVALID_CONSTRAINT_EXAMPLE_ID: &str = "validate-invalid-const
 pub const INSPECT_RESULT_SUMMARY_EXAMPLE_ID: &str = "inspect-result-summary";
 pub const PUBLIC_ERROR_LOOKUP_EXAMPLE_ID: &str = "inspect-errors-public-error";
 pub const GET_SCHEMA_EXAMPLE_ID: &str = "get-schema-solve-request";
+pub const DEFAULT_SOLVER_CONFIGURATION_EXAMPLE_ID: &str = "default-solver-configuration";
 pub const RECOMMEND_SETTINGS_EXAMPLE_ID: &str = "recommend-settings-minimal";
+pub const SOLVE_PROGRESS_UPDATE_EXAMPLE_ID: &str = "solve-progress-update";
 pub const EVALUATE_INPUT_EXAMPLE_ID: &str = "evaluate-input-minimal";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -128,7 +131,73 @@ const SOLVE_HAPPY_PATH_SNIPPETS: &[ReferenceSnippet] = &[
         label: "js invocation",
         format: ReferenceSnippetFormat::JavaScript,
         schema_id: None,
-        content: "await groupmixer.solve(problemJson)",
+        content: "await groupmixer.solve(request)",
+    },
+];
+
+const SOLVE_PROGRESS_UPDATE_SNIPPETS: &[ReferenceSnippet] = &[
+    ReferenceSnippet {
+        label: "progress update json",
+        format: ReferenceSnippetFormat::Json,
+        schema_id: Some(PROGRESS_UPDATE_SCHEMA_ID),
+        content: r#"{
+  "iteration": 250,
+  "max_iterations": 1000,
+  "temperature": 12.5,
+  "current_score": 18.0,
+  "best_score": 14.0,
+  "current_contacts": 22,
+  "best_contacts": 24,
+  "repetition_penalty": 2,
+  "elapsed_seconds": 1.75,
+  "no_improvement_count": 40,
+  "clique_swaps_tried": 12,
+  "clique_swaps_accepted": 4,
+  "clique_swaps_rejected": 8,
+  "transfers_tried": 80,
+  "transfers_accepted": 21,
+  "transfers_rejected": 59,
+  "swaps_tried": 158,
+  "swaps_accepted": 44,
+  "swaps_rejected": 114,
+  "overall_acceptance_rate": 0.276,
+  "recent_acceptance_rate": 0.31,
+  "avg_attempted_move_delta": -0.42,
+  "avg_accepted_move_delta": -1.15,
+  "biggest_accepted_increase": 3.0,
+  "biggest_attempted_increase": 7.0,
+  "current_repetition_penalty": 2.0,
+  "current_balance_penalty": 0.0,
+  "current_constraint_penalty": 0.0,
+  "best_repetition_penalty": 1.0,
+  "best_balance_penalty": 0.0,
+  "best_constraint_penalty": 0.0,
+  "reheats_performed": 0,
+  "iterations_since_last_reheat": 250,
+  "local_optima_escapes": 6,
+  "avg_time_per_iteration_ms": 0.45,
+  "cooling_progress": 0.25,
+  "clique_swap_success_rate": 0.3333333333333333,
+  "transfer_success_rate": 0.2625,
+  "swap_success_rate": 0.27848101265822783,
+  "score_variance": 1.8,
+  "search_efficiency": 5.7,
+  "best_schedule": {
+    "session_0": {
+      "team-1": ["alice", "bob"],
+      "team-2": ["carol", "dave"]
+    }
+  },
+  "effective_seed": 7,
+  "move_policy": null,
+  "stop_reason": null
+}"#,
+    },
+    ReferenceSnippet {
+        label: "transport note",
+        format: ReferenceSnippetFormat::JavaScript,
+        schema_id: None,
+        content: "Solve-capable transports may emit progress-update payloads while a solve is running.",
     },
 ];
 
@@ -216,20 +285,64 @@ const GET_SCHEMA_SNIPPETS: &[ReferenceSnippet] = &[
     },
 ];
 
+const DEFAULT_SOLVER_CONFIGURATION_SNIPPETS: &[ReferenceSnippet] = &[
+    ReferenceSnippet {
+        label: "default solver configuration",
+        format: ReferenceSnippetFormat::Json,
+        schema_id: Some(SOLVER_CONFIGURATION_SCHEMA_ID),
+        content: r#"{
+  "solver_type": "SimulatedAnnealing",
+  "stop_conditions": {
+    "max_iterations": 10000,
+    "time_limit_seconds": 30,
+    "no_improvement_iterations": 5000
+  },
+  "solver_params": {
+    "solver_type": "SimulatedAnnealing",
+    "initial_temperature": 1.0,
+    "final_temperature": 0.01,
+    "cooling_schedule": "geometric",
+    "reheat_cycles": 0,
+    "reheat_after_no_improvement": 0
+  },
+  "logging": {
+    "log_frequency": 1000,
+    "log_initial_state": true,
+    "log_duration_and_score": true,
+    "display_final_schedule": true,
+    "log_initial_score_breakdown": true,
+    "log_final_score_breakdown": true,
+    "log_stop_condition": true,
+    "debug_validate_invariants": false,
+    "debug_dump_invariant_context": false
+  },
+  "telemetry": {},
+  "seed": null,
+  "move_policy": null,
+  "allowed_sessions": null
+}"#,
+    },
+];
+
 const RECOMMEND_SETTINGS_SNIPPETS: &[ReferenceSnippet] = &[
     ReferenceSnippet {
-        label: "problem definition json",
+        label: "recommend settings request",
         format: ReferenceSnippetFormat::Json,
-        schema_id: Some(PROBLEM_DEFINITION_SCHEMA_ID),
+        schema_id: Some(RECOMMEND_SETTINGS_REQUEST_SCHEMA_ID),
         content: r#"{
-  "people": [
-    {"id": "alice", "attributes": {}},
-    {"id": "bob", "attributes": {}}
-  ],
-  "groups": [
-    {"id": "team-1", "size": 2}
-  ],
-  "num_sessions": 1
+  "problem_definition": {
+    "people": [
+      {"id": "alice", "attributes": {}},
+      {"id": "bob", "attributes": {}}
+    ],
+    "groups": [
+      {"id": "team-1", "size": 2}
+    ],
+    "num_sessions": 1
+  },
+  "objectives": [],
+  "constraints": [],
+  "desired_runtime_seconds": 30
 }"#,
     },
     ReferenceSnippet {
@@ -308,6 +421,13 @@ const EXAMPLE_SPECS: &[ExampleSpec] = &[
         snippets: SOLVE_HAPPY_PATH_SNIPPETS,
     },
     ExampleSpec {
+        id: SOLVE_PROGRESS_UPDATE_EXAMPLE_ID,
+        operation_id: SOLVE_OPERATION_ID,
+        summary: "Representative progress update emitted while solve is running.",
+        description: "Shows the stable progress payload shape that solve-capable transports can emit during execution.",
+        snippets: SOLVE_PROGRESS_UPDATE_SNIPPETS,
+    },
+    ExampleSpec {
         id: VALIDATE_INVALID_CONSTRAINT_EXAMPLE_ID,
         operation_id: VALIDATE_PROBLEM_OPERATION_ID,
         summary: "Validation failure for an unsupported constraint kind.",
@@ -336,10 +456,17 @@ const EXAMPLE_SPECS: &[ExampleSpec] = &[
         snippets: GET_SCHEMA_SNIPPETS,
     },
     ExampleSpec {
+        id: DEFAULT_SOLVER_CONFIGURATION_EXAMPLE_ID,
+        operation_id: GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
+        summary: "Read the canonical default solver configuration.",
+        description: "Shows the baseline solver configuration callers can start from before applying runtime-aware recommendation or manual tuning.",
+        snippets: DEFAULT_SOLVER_CONFIGURATION_SNIPPETS,
+    },
+    ExampleSpec {
         id: RECOMMEND_SETTINGS_EXAMPLE_ID,
         operation_id: RECOMMEND_SETTINGS_OPERATION_ID,
-        summary: "Recommend solver settings from a problem definition.",
-        description: "Shows a minimal problem definition and a representative recommended solver configuration.",
+        summary: "Recommend solver settings from an explicit runtime-aware request.",
+        description: "Shows a minimal recommend-settings request carrying a problem definition plus desired runtime and a representative recommended solver configuration.",
         snippets: RECOMMEND_SETTINGS_SNIPPETS,
     },
     ExampleSpec {

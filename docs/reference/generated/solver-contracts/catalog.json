@@ -7,6 +7,7 @@
       "solve",
       "validate-problem",
       "inspect-result",
+      "get-default-solver-configuration",
       "recommend-settings",
       "evaluate-input",
       "get-schema",
@@ -26,6 +27,9 @@
       "output_schema_ids": [
         "solve-response"
       ],
+      "progress_schema_ids": [
+        "progress-update"
+      ],
       "error_codes": [
         "invalid-input",
         "infeasible-problem",
@@ -36,10 +40,13 @@
         "validate-problem",
         "inspect-result",
         "get-schema",
-        "inspect-errors"
+        "inspect-errors",
+        "get-default-solver-configuration",
+        "recommend-settings"
       ],
       "example_ids": [
-        "solve-happy-path"
+        "solve-happy-path",
+        "solve-progress-update"
       ]
     },
     {
@@ -54,6 +61,7 @@
       "output_schema_ids": [
         "validate-response"
       ],
+      "progress_schema_ids": [],
       "error_codes": [
         "invalid-input",
         "unsupported-constraint-kind",
@@ -81,6 +89,7 @@
       "output_schema_ids": [
         "result-summary"
       ],
+      "progress_schema_ids": [],
       "error_codes": [
         "invalid-input",
         "internal-error"
@@ -95,23 +104,48 @@
       ]
     },
     {
+      "id": "get-default-solver-configuration",
+      "summary": "Get the canonical default solver configuration.",
+      "description": "Return the baseline solver configuration that callers can use as a clean starting point before applying problem-aware tuning or manual edits.",
+      "kind": "read",
+      "family": "configuration",
+      "input_schema_ids": [],
+      "output_schema_ids": [
+        "solver-configuration"
+      ],
+      "progress_schema_ids": [],
+      "error_codes": [
+        "internal-error"
+      ],
+      "related_operation_ids": [
+        "recommend-settings",
+        "solve",
+        "get-schema"
+      ],
+      "example_ids": [
+        "default-solver-configuration"
+      ]
+    },
+    {
       "id": "recommend-settings",
-      "summary": "Recommend solver settings from a problem definition.",
-      "description": "Analyze a problem definition and return a recommended solver configuration without executing the main solve workflow.",
+      "summary": "Recommend solver settings from an explicit recommendation request.",
+      "description": "Analyze a problem definition plus runtime target and return a recommended solver configuration without executing the main solve workflow.",
       "kind": "compute",
       "family": "configuration",
       "input_schema_ids": [
-        "problem-definition"
+        "recommend-settings-request"
       ],
       "output_schema_ids": [
         "solver-configuration"
       ],
+      "progress_schema_ids": [],
       "error_codes": [
         "invalid-input",
         "infeasible-problem",
         "internal-error"
       ],
       "related_operation_ids": [
+        "get-default-solver-configuration",
         "solve",
         "validate-problem",
         "get-schema"
@@ -132,6 +166,7 @@
       "output_schema_ids": [
         "solve-response"
       ],
+      "progress_schema_ids": [],
       "error_codes": [
         "invalid-input",
         "infeasible-problem",
@@ -154,6 +189,7 @@
       "family": "introspection",
       "input_schema_ids": [],
       "output_schema_ids": [],
+      "progress_schema_ids": [],
       "error_codes": [
         "unknown-schema",
         "internal-error"
@@ -162,6 +198,8 @@
         "solve",
         "validate-problem",
         "inspect-result",
+        "get-default-solver-configuration",
+        "recommend-settings",
         "inspect-errors"
       ],
       "example_ids": [
@@ -178,6 +216,7 @@
       "output_schema_ids": [
         "public-error-envelope"
       ],
+      "progress_schema_ids": [],
       "error_codes": [
         "unknown-operation",
         "unknown-error-code",
@@ -187,6 +226,8 @@
         "solve",
         "validate-problem",
         "inspect-result",
+        "get-default-solver-configuration",
+        "recommend-settings",
         "get-schema"
       ],
       "example_ids": [
@@ -216,7 +257,15 @@
       "version": "v1"
     },
     {
+      "id": "recommend-settings-request",
+      "version": "v1"
+    },
+    {
       "id": "solver-configuration",
+      "version": "v1"
+    },
+    {
+      "id": "progress-update",
       "version": "v1"
     },
     {
@@ -354,7 +403,27 @@
           "label": "js invocation",
           "format": "JavaScript",
           "schema_id": null,
-          "content": "await groupmixer.solve(problemJson)"
+          "content": "await groupmixer.solve(request)"
+        }
+      ]
+    },
+    {
+      "id": "solve-progress-update",
+      "operation_id": "solve",
+      "summary": "Representative progress update emitted while solve is running.",
+      "description": "Shows the stable progress payload shape that solve-capable transports can emit during execution.",
+      "snippets": [
+        {
+          "label": "progress update json",
+          "format": "Json",
+          "schema_id": "progress-update",
+          "content": "{\n  \"iteration\": 250,\n  \"max_iterations\": 1000,\n  \"temperature\": 12.5,\n  \"current_score\": 18.0,\n  \"best_score\": 14.0,\n  \"current_contacts\": 22,\n  \"best_contacts\": 24,\n  \"repetition_penalty\": 2,\n  \"elapsed_seconds\": 1.75,\n  \"no_improvement_count\": 40,\n  \"clique_swaps_tried\": 12,\n  \"clique_swaps_accepted\": 4,\n  \"clique_swaps_rejected\": 8,\n  \"transfers_tried\": 80,\n  \"transfers_accepted\": 21,\n  \"transfers_rejected\": 59,\n  \"swaps_tried\": 158,\n  \"swaps_accepted\": 44,\n  \"swaps_rejected\": 114,\n  \"overall_acceptance_rate\": 0.276,\n  \"recent_acceptance_rate\": 0.31,\n  \"avg_attempted_move_delta\": -0.42,\n  \"avg_accepted_move_delta\": -1.15,\n  \"biggest_accepted_increase\": 3.0,\n  \"biggest_attempted_increase\": 7.0,\n  \"current_repetition_penalty\": 2.0,\n  \"current_balance_penalty\": 0.0,\n  \"current_constraint_penalty\": 0.0,\n  \"best_repetition_penalty\": 1.0,\n  \"best_balance_penalty\": 0.0,\n  \"best_constraint_penalty\": 0.0,\n  \"reheats_performed\": 0,\n  \"iterations_since_last_reheat\": 250,\n  \"local_optima_escapes\": 6,\n  \"avg_time_per_iteration_ms\": 0.45,\n  \"cooling_progress\": 0.25,\n  \"clique_swap_success_rate\": 0.3333333333333333,\n  \"transfer_success_rate\": 0.2625,\n  \"swap_success_rate\": 0.27848101265822783,\n  \"score_variance\": 1.8,\n  \"search_efficiency\": 5.7,\n  \"best_schedule\": {\n    \"session_0\": {\n      \"team-1\": [\"alice\", \"bob\"],\n      \"team-2\": [\"carol\", \"dave\"]\n    }\n  },\n  \"effective_seed\": 7,\n  \"move_policy\": null,\n  \"stop_reason\": null\n}"
+        },
+        {
+          "label": "transport note",
+          "format": "JavaScript",
+          "schema_id": null,
+          "content": "Solve-capable transports may emit progress-update payloads while a solve is running."
         }
       ]
     },
@@ -427,16 +496,30 @@
       ]
     },
     {
-      "id": "recommend-settings-minimal",
-      "operation_id": "recommend-settings",
-      "summary": "Recommend solver settings from a problem definition.",
-      "description": "Shows a minimal problem definition and a representative recommended solver configuration.",
+      "id": "default-solver-configuration",
+      "operation_id": "get-default-solver-configuration",
+      "summary": "Read the canonical default solver configuration.",
+      "description": "Shows the baseline solver configuration callers can start from before applying runtime-aware recommendation or manual tuning.",
       "snippets": [
         {
-          "label": "problem definition json",
+          "label": "default solver configuration",
           "format": "Json",
-          "schema_id": "problem-definition",
-          "content": "{\n  \"people\": [\n    {\"id\": \"alice\", \"attributes\": {}},\n    {\"id\": \"bob\", \"attributes\": {}}\n  ],\n  \"groups\": [\n    {\"id\": \"team-1\", \"size\": 2}\n  ],\n  \"num_sessions\": 1\n}"
+          "schema_id": "solver-configuration",
+          "content": "{\n  \"solver_type\": \"SimulatedAnnealing\",\n  \"stop_conditions\": {\n    \"max_iterations\": 10000,\n    \"time_limit_seconds\": 30,\n    \"no_improvement_iterations\": 5000\n  },\n  \"solver_params\": {\n    \"solver_type\": \"SimulatedAnnealing\",\n    \"initial_temperature\": 1.0,\n    \"final_temperature\": 0.01,\n    \"cooling_schedule\": \"geometric\",\n    \"reheat_cycles\": 0,\n    \"reheat_after_no_improvement\": 0\n  },\n  \"logging\": {\n    \"log_frequency\": 1000,\n    \"log_initial_state\": true,\n    \"log_duration_and_score\": true,\n    \"display_final_schedule\": true,\n    \"log_initial_score_breakdown\": true,\n    \"log_final_score_breakdown\": true,\n    \"log_stop_condition\": true,\n    \"debug_validate_invariants\": false,\n    \"debug_dump_invariant_context\": false\n  },\n  \"telemetry\": {},\n  \"seed\": null,\n  \"move_policy\": null,\n  \"allowed_sessions\": null\n}"
+        }
+      ]
+    },
+    {
+      "id": "recommend-settings-minimal",
+      "operation_id": "recommend-settings",
+      "summary": "Recommend solver settings from an explicit runtime-aware request.",
+      "description": "Shows a minimal recommend-settings request carrying a problem definition plus desired runtime and a representative recommended solver configuration.",
+      "snippets": [
+        {
+          "label": "recommend settings request",
+          "format": "Json",
+          "schema_id": "recommend-settings-request",
+          "content": "{\n  \"problem_definition\": {\n    \"people\": [\n      {\"id\": \"alice\", \"attributes\": {}},\n      {\"id\": \"bob\", \"attributes\": {}}\n    ],\n    \"groups\": [\n      {\"id\": \"team-1\", \"size\": 2}\n    ],\n    \"num_sessions\": 1\n  },\n  \"objectives\": [],\n  \"constraints\": [],\n  \"desired_runtime_seconds\": 30\n}"
         },
         {
           "label": "recommended solver configuration",
