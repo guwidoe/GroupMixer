@@ -302,6 +302,8 @@ async fn bootstrap_help_and_schema_endpoints_are_discoverable() {
     let operation_help_json: serde_json::Value = json_response(operation_help_response).await;
     assert_eq!(operation_help_json["operation"]["id"], "solve");
     assert!(operation_help_json["examples"].as_array().unwrap().len() >= 1);
+    assert_eq!(operation_help_json["help_path"], "/api/v1/help/solve");
+    assert!(operation_help_json["related_operations"].as_array().unwrap().iter().any(|entry| entry["help_path"] == "/api/v1/help/validate-problem"));
 
     let schema_list_response = app
         .clone()
@@ -581,4 +583,69 @@ async fn contract_endpoints_emit_canonical_error_envelopes() {
     assert_eq!(unknown_error_response.status(), StatusCode::NOT_FOUND);
     let unknown_error_body: serde_json::Value = json_response(unknown_error_response).await;
     assert_eq!(unknown_error_body["error"]["code"], "unknown-error-code");
+}
+
+#[tokio::test]
+async fn help_and_error_navigation_targets_resolve_locally() {
+    let app = create_router(AppState {
+        job_manager: JobManager::new(),
+    });
+
+    let solve_help_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/help/solve")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let solve_help: serde_json::Value = json_response(solve_help_response).await;
+    let related_help_targets = solve_help["related_operations"].as_array().unwrap();
+    assert!(!related_help_targets.is_empty());
+    for target in related_help_targets {
+        let help_path = target["help_path"].as_str().unwrap();
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(help_path)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK, "related help path should resolve: {}", help_path);
+    }
+
+    let bad_schema_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/schemas/nope")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let bad_schema_body: serde_json::Value = json_response(bad_schema_response).await;
+    for target in bad_schema_body["error"]["related_help"].as_array().unwrap() {
+        let help_path = target.as_str().unwrap();
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(help_path)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK, "error related help path should resolve: {}", help_path);
+    }
 }

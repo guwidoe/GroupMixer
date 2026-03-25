@@ -39,6 +39,7 @@ pub struct HelpOperationSummary {
     pub operation_id: &'static str,
     pub summary: &'static str,
     pub route: Option<RouteRef>,
+    pub help_path: String,
 }
 
 #[derive(Serialize)]
@@ -53,6 +54,7 @@ pub struct BootstrapHelpResponse {
 pub struct OperationHelpResponse {
     pub operation: OperationSpec,
     pub route: Option<RouteRef>,
+    pub help_path: String,
     pub examples: Vec<OperationExampleSummary>,
     pub related_operations: Vec<HelpOperationSummary>,
 }
@@ -108,6 +110,7 @@ pub async fn bootstrap_help_handler() -> Json<BootstrapHelpResponse> {
                 operation_id: operation.id,
                 summary: operation.summary,
                 route: route_for_operation(operation.id),
+                help_path: help_path(operation.id),
             })
         })
         .collect();
@@ -145,6 +148,7 @@ pub async fn operation_help_handler(
                 operation_id: operation.id,
                 summary: operation.summary,
                 route: route_for_operation(operation.id),
+                help_path: help_path(operation.id),
             })
         })
         .collect();
@@ -152,6 +156,7 @@ pub async fn operation_help_handler(
     Ok(Json(OperationHelpResponse {
         operation: help.operation.clone(),
         route: route_for_operation(help.operation.id),
+        help_path: help_path(help.operation.id),
         examples,
         related_operations,
     }))
