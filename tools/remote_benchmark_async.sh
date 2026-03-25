@@ -351,9 +351,9 @@ run_remote_action() {
 }
 
 print_status_summary() {
-  python3 - <<'PY' <<<"$1"
+  python3 - "$1" <<'PY'
 import json, sys
-status = json.load(sys.stdin)
+status = json.loads(sys.argv[1])
 if "error" in status:
     print(status["error"], file=sys.stderr)
     raise SystemExit(1)
@@ -474,6 +474,9 @@ start_run() {
     bench_command="$1"
     shift
   fi
+  if [[ "${1:-}" == "--" ]]; then
+    shift
+  fi
   case "${bench_command}" in
     record|record-bundle|compare-prev)
       ;;
@@ -495,9 +498,9 @@ start_run() {
   write_latest_local "${effective_run_id}"
   write_local_run_json "${effective_run_id}" "start.json" "${start_json}"
   mirror_run "${effective_run_id}"
-  python3 - <<'PY' <<<"${start_json}"
+  python3 - "${start_json}" <<'PY'
 import json, sys
-start = json.load(sys.stdin)
+start = json.loads(sys.argv[1])
 if start.get("deduped"):
     print(f"[groupmixer][remote] reusing active benchmark run {start['run_id']}")
 else:
@@ -552,9 +555,9 @@ list_runs() {
   local payload_json list_json
   payload_json="$(build_payload_json list "" record)"
   list_json="$(run_remote_action "${payload_json}")"
-  python3 - <<'PY' <<<"${list_json}"
+  python3 - "${list_json}" <<'PY'
 import json, sys
-runs = json.load(sys.stdin).get("runs", [])
+runs = json.loads(sys.argv[1]).get("runs", [])
 for run in runs:
     state = "running"
     if run.get("done"):
@@ -573,9 +576,9 @@ latest_run() {
   local payload_json latest_json
   payload_json="$(build_payload_json latest "" record)"
   latest_json="$(run_remote_action "${payload_json}")"
-  python3 - <<'PY' <<<"${latest_json}"
+  python3 - "${latest_json}" <<'PY'
 import json, sys
-run = json.load(sys.stdin).get("run")
+run = json.loads(sys.argv[1]).get("run")
 if run:
     print(run.get("run_id", ""))
 PY
@@ -653,9 +656,9 @@ start_recording_bundle() {
   write_latest_local "${effective_run_id}"
   write_local_run_json "${effective_run_id}" "start.json" "${start_json}"
   mirror_run "${effective_run_id}"
-  python3 - <<'PY' <<<"${start_json}"
+  python3 - "${start_json}" <<'PY'
 import json, sys
-start = json.load(sys.stdin)
+start = json.loads(sys.argv[1])
 if start.get("deduped"):
     print(f"[groupmixer][remote] reusing active benchmark run {start['run_id']}")
 else:

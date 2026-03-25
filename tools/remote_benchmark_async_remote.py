@@ -263,7 +263,7 @@ def load_recording_suite_runs() -> list[dict]:
     return json.loads(recording_meta_path.read_text()).get("suite_runs", [])
 
 def load_ref_target_run_report(ref_name: str) -> str | None:
-    ref_path = repo_dir / "benchmarking" / "artifacts" / "refs" / f"{ref_name}.json"
+    ref_path = repo_dir / "benchmarking" / "artifacts" / "refs" / f"{{ref_name}}.json"
     if not ref_path.exists():
         return None
     data = json.loads(ref_path.read_text())
@@ -272,7 +272,7 @@ def load_ref_target_run_report(ref_name: str) -> str | None:
 def run_followup_compare(log, *, suite_name: str, mode: str, current_run_report: Path, compare_label: str, baseline_run_report: Path | None = None, branch: str | None = None) -> int:
     summary_dir = run_dir / "comparisons" / suite_name
     summary_dir.mkdir(parents=True, exist_ok=True)
-    summary_path = summary_dir / f"{compare_label}.summary.txt"
+    summary_path = summary_dir / f"{{compare_label}}.summary.txt"
     cmd_parts = [
         "./tools/benchmark_runner.py",
     ]
