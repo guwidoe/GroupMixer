@@ -1,11 +1,13 @@
 import type { Problem, Solution, SolverSettings } from "../types";
 import type { ProgressUpdate, ProgressCallback } from "./wasm/types";
 import {
+  createInitRequestMessage,
+  createRpcRequestMessage,
+  createSolveRequestMessage,
   type SolverMessageData,
   type SolverRpcMethod,
   type SolverRunResult,
   type WorkerErrorData,
-  type WorkerRequestMessage,
   type WorkerResponseMessage,
 } from "./solverWorker/protocol";
 import {
@@ -217,7 +219,7 @@ export class SolverWorkerService {
     return new Promise((resolve, reject) => {
       const id = this.nextMessageId();
       this.pendingMessages.set(id, { kind: "init", resolve, reject });
-      this.postMessage({ type: "INIT", id });
+      this.postMessage(createInitRequestMessage(id));
     });
   }
 
@@ -228,7 +230,7 @@ export class SolverWorkerService {
     return new Promise((resolve, reject) => {
       const id = this.nextMessageId();
       this.pendingMessages.set(id, { kind: "rpc", resolve, reject });
-      this.postMessage({ type: method, id, data });
+      this.postMessage(createRpcRequestMessage(method, id, data));
     });
   }
 
@@ -245,11 +247,7 @@ export class SolverWorkerService {
         reject,
         progressCallback,
       });
-      this.postMessage({
-        type: "SOLVE",
-        id,
-        data: { problemJson, useProgress },
-      });
+      this.postMessage(createSolveRequestMessage(id, problemJson, useProgress));
     });
   }
 

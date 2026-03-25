@@ -2,187 +2,243 @@
 // Uses ESM imports instead of importScripts to work with wasm-pack --target web output
 
 import wasmInit, * as wasmModule from "virtual:wasm-solver";
-import type {
-  WorkerErrorData,
-  WorkerRequestMessage,
+import {
+  createFatalErrorMessage,
+  createProgressMessage,
+  createRequestErrorMessage,
+  createRpcSuccessMessage,
+  createSolveSuccessMessage,
+  type WorkerErrorData,
+  type WorkerRequestMessage,
+  type WorkerResponseMessage,
 } from "../services/solverWorker/protocol";
 
-let isInitializing = false;
-let isInitialized = false;
-let lastProblemJson: string | null = null;
+type WorkerConsole = Pick<Console, "warn" | "error">;
 
-async function initWasm(): Promise<void> {
-  if (isInitialized) return;
-  if (isInitializing) {
-    while (isInitializing) {
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-    return;
-  }
+type WorkerWasmModule = {
+  init_panic_hook?: () => void;
+  solve: (problemJson: string) => string;
+  solve_with_progress: (
+    problemJson: string,
+    progressCallback: (progressJson: string) => boolean,
+  ) => string;
+  get_default_settings: () => string;
+  get_recommended_settings: (problemJson: string, desiredRuntimeSeconds: bigint) => string;
+};
 
-  isInitializing = true;
-  try {
-    if (typeof wasmInit === "function") {
-      await wasmInit();
-    }
-
-    if (
-      typeof (wasmModule as Record<string, unknown>)["init_panic_hook"] ===
-      "function"
-    ) {
-      (
-        wasmModule as unknown as { init_panic_hook: () => void }
-      ).init_panic_hook();
-    }
-
-    isInitialized = true;
-  } catch (error) {
-    isInitializing = false;
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`WASM initialization failed: ${message}`);
-  } finally {
-    isInitializing = false;
-  }
+export interface SolverWorkerRuntimeDeps {
+  wasmInit?: (() => Promise<unknown>) | (() => unknown);
+  wasmModule: Partial<WorkerWasmModule>;
+  postMessage: (message: WorkerResponseMessage) => void;
+  console?: WorkerConsole;
+  setTimeoutFn?: (callback: () => void, ms: number) => unknown;
 }
 
-function postFatalError(data: WorkerErrorData): void {
-  self.postMessage({ type: "FATAL_ERROR", data });
+export interface SolverWorkerRuntime {
+  handleMessage: (message: WorkerRequestMessage) => Promise<void>;
+  handleError: (error: Pick<ErrorEvent, "message" | "filename" | "lineno">) => void;
 }
 
-function postRequestError(id: string, data: WorkerErrorData): void {
-  self.postMessage({ type: "ERROR", id, data });
+function errorToMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
-self.onmessage = async (e: MessageEvent<WorkerRequestMessage>) => {
-  const { type, id } = e.data;
+export function createSolverWorkerRuntime({
+  wasmInit: wasmInitFn,
+  wasmModule: wasm,
+  postMessage,
+  console: workerConsole = console,
+  setTimeoutFn = (callback, ms) => setTimeout(callback, ms),
+}: SolverWorkerRuntimeDeps): SolverWorkerRuntime {
+  let isInitializing = false;
+  let isInitialized = false;
+  let lastProblemJson: string | null = null;
 
-  try {
-    switch (type) {
-      case "INIT": {
-        await initWasm();
-        self.postMessage({ type: "INIT_SUCCESS", id });
-        break;
+  async function initWasm(): Promise<void> {
+    if (isInitialized) return;
+    if (isInitializing) {
+      while (isInitializing) {
+        await new Promise((resolve) => setTimeoutFn(resolve as () => void, 10));
+      }
+      return;
+    }
+
+    isInitializing = true;
+    try {
+      if (typeof wasmInitFn === "function") {
+        await wasmInitFn();
       }
 
-      case "SOLVE": {
-        const { problemJson, useProgress } = e.data.data;
-        lastProblemJson = problemJson;
+      if (typeof wasm.init_panic_hook === "function") {
+        wasm.init_panic_hook();
+      }
 
-        if (!isInitialized) {
+      isInitialized = true;
+    } catch (error) {
+      isInitializing = false;
+      throw new Error(`WASM initialization failed: ${errorToMessage(error)}`);
+    } finally {
+      isInitializing = false;
+    }
+  }
+
+  function postFatalError(data: WorkerErrorData): void {
+    postMessage(createFatalErrorMessage(data));
+  }
+
+  function postRequestError(id: string, data: WorkerErrorData): void {
+    postMessage(createRequestErrorMessage(id, data));
+  }
+
+  async function handleMessage(message: WorkerRequestMessage): Promise<void> {
+    const { type, id } = message;
+
+    try {
+      switch (type) {
+        case "INIT": {
           await initWasm();
+          postMessage({ type: "INIT_SUCCESS", id });
+          break;
         }
 
-        if (!isInitialized) {
-          throw new Error("WASM module not initialized");
-        }
+        case "SOLVE": {
+          const { problemJson, useProgress } = message.data;
+          lastProblemJson = problemJson;
 
-        if (useProgress) {
-          let lastProgressJson: string | null = null;
+          if (!isInitialized) {
+            await initWasm();
+          }
 
-          const progressCallback = (progressJson: string): boolean => {
-            lastProgressJson = progressJson;
-            self.postMessage({ type: "PROGRESS", id, data: { progressJson } });
-            return true;
-          };
+          if (!isInitialized) {
+            throw new Error("WASM module not initialized");
+          }
 
-          const result = (
-            wasmModule as unknown as {
-              solve_with_progress: (
-                pj: string,
-                cb: (p: string) => boolean
-              ) => string;
+          if (useProgress) {
+            let lastProgressJson: string | null = null;
+
+            const progressCallback = (progressJson: string): boolean => {
+              lastProgressJson = progressJson;
+              postMessage(createProgressMessage(id, progressJson));
+              return true;
+            };
+
+            if (typeof wasm.solve_with_progress !== "function") {
+              throw new Error("WASM module is missing solve_with_progress");
             }
-          ).solve_with_progress(problemJson, progressCallback);
 
-          self.postMessage({
-            type: "SOLVE_SUCCESS",
-            id,
-            data: { result, lastProgressJson },
-          });
-        } else {
-          const result = (
-            wasmModule as unknown as { solve: (pj: string) => string }
-          ).solve(problemJson);
-          self.postMessage({ type: "SOLVE_SUCCESS", id, data: { result } });
-        }
-        break;
-      }
-
-      case "CANCEL": {
-        self.postMessage({ type: "CANCELLED", id });
-        break;
-      }
-
-      case "get_default_settings": {
-        try {
-          if (!isInitialized) throw new Error("WASM module not initialized.");
-          const settings = (
-            wasmModule as unknown as { get_default_settings: () => string }
-          ).get_default_settings();
-          self.postMessage({
-            type: "RPC_SUCCESS",
-            id,
-            data: { result: settings },
-          });
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          self.postMessage({
-            type: "RPC_ERROR",
-            id,
-            data: { error: message },
-          });
-        }
-        break;
-      }
-
-      case "get_recommended_settings": {
-        try {
-          if (!isInitialized) throw new Error("WASM module not initialized.");
-          const { problemJson, desired_runtime_seconds } = e.data.data;
-          const settings = (
-            wasmModule as unknown as {
-              get_recommended_settings: (pj: string, seconds: bigint) => string;
+            const result = wasm.solve_with_progress(problemJson, progressCallback);
+            postMessage(createSolveSuccessMessage(id, result, lastProgressJson));
+          } else {
+            if (typeof wasm.solve !== "function") {
+              throw new Error("WASM module is missing solve");
             }
-          ).get_recommended_settings(
-            problemJson || "",
-            BigInt(desired_runtime_seconds)
-          );
-          self.postMessage({
-            type: "RPC_SUCCESS",
-            id,
-            data: { result: settings },
-          });
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          self.postMessage({
-            type: "RPC_ERROR",
-            id,
-            data: { error: message },
-          });
-        }
-        break;
-      }
 
-      default:
-        console.warn(`Unknown message type: ${type}`);
+            const result = wasm.solve(problemJson);
+            postMessage(createSolveSuccessMessage(id, result));
+          }
+          break;
+        }
+
+        case "CANCEL": {
+          postMessage({ type: "CANCELLED", id });
+          break;
+        }
+
+        case "get_default_settings": {
+          try {
+            if (!isInitialized) throw new Error("WASM module not initialized.");
+            if (typeof wasm.get_default_settings !== "function") {
+              throw new Error("WASM module is missing get_default_settings");
+            }
+
+            const settings = wasm.get_default_settings();
+            postMessage(createRpcSuccessMessage(id, settings));
+          } catch (error) {
+            postMessage(
+              createRequestErrorMessage(
+                id,
+                { error: errorToMessage(error) },
+                "RPC_ERROR",
+              ),
+            );
+          }
+          break;
+        }
+
+        case "get_recommended_settings": {
+          try {
+            if (!isInitialized) throw new Error("WASM module not initialized.");
+            if (typeof wasm.get_recommended_settings !== "function") {
+              throw new Error("WASM module is missing get_recommended_settings");
+            }
+
+            const { problemJson, desired_runtime_seconds } = message.data;
+            const settings = wasm.get_recommended_settings(
+              problemJson || "",
+              BigInt(desired_runtime_seconds),
+            );
+            postMessage(createRpcSuccessMessage(id, settings));
+          } catch (error) {
+            postMessage(
+              createRequestErrorMessage(
+                id,
+                { error: errorToMessage(error) },
+                "RPC_ERROR",
+              ),
+            );
+          }
+          break;
+        }
+
+        default:
+          workerConsole.warn(`Unknown message type: ${type}`);
+      }
+    } catch (error) {
+      workerConsole.error("Worker error:", error);
+      postRequestError(id, {
+        error: errorToMessage(error),
+        problemJson: lastProblemJson || undefined,
+      });
     }
-  } catch (error) {
-    console.error("Worker error:", error);
-    const errorString =
-      error && (error as Error).message
-        ? (error as Error).message
-        : String(error);
-    postRequestError(id, {
-      error: errorString,
-      problemJson: lastProblemJson || undefined,
+  }
+
+  function handleError(error: Pick<ErrorEvent, "message" | "filename" | "lineno">): void {
+    postFatalError({
+      error: error?.message || String(error),
+      filename: error?.filename,
+      lineno: error?.lineno,
     });
   }
-};
 
-self.onerror = function (error: ErrorEvent) {
-  postFatalError({
-    error: error?.message || String(error),
-    filename: error?.filename,
-    lineno: error?.lineno,
-  });
-};
+  return {
+    handleMessage,
+    handleError,
+  };
+}
+
+function isWorkerGlobalScope(value: unknown): value is DedicatedWorkerGlobalScope {
+  return typeof WorkerGlobalScope !== "undefined" && value instanceof WorkerGlobalScope;
+}
+
+export function attachSolverWorkerRuntime(
+  scope: Pick<DedicatedWorkerGlobalScope, "postMessage" | "onmessage" | "onerror">,
+  runtime: SolverWorkerRuntime,
+): void {
+  scope.onmessage = (event: MessageEvent<WorkerRequestMessage>) => {
+    void runtime.handleMessage(event.data);
+  };
+
+  scope.onerror = (error: ErrorEvent) => {
+    runtime.handleError(error);
+  };
+}
+
+const runtime = createSolverWorkerRuntime({
+  wasmInit: typeof wasmInit === "function" ? wasmInit : undefined,
+  wasmModule: wasmModule as Partial<WorkerWasmModule>,
+  postMessage: (message) => self.postMessage(message),
+});
+
+if (typeof self !== "undefined" && isWorkerGlobalScope(self)) {
+  attachSolverWorkerRuntime(self, runtime);
+}

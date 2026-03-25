@@ -4,6 +4,15 @@ export type SolverRpcMethod =
   | "get_default_settings"
   | "get_recommended_settings";
 
+export const SOLVER_RPC_METHODS = [
+  "get_default_settings",
+  "get_recommended_settings",
+] as const satisfies readonly SolverRpcMethod[];
+
+export function isSolverRpcMethod(value: string): value is SolverRpcMethod {
+  return (SOLVER_RPC_METHODS as readonly string[]).includes(value);
+}
+
 export interface SolverMessageData {
   problemJson?: string;
   useProgress?: boolean;
@@ -111,6 +120,91 @@ export interface ProblemJsonMessage {
 export interface FatalErrorMessage {
   type: "FATAL_ERROR";
   data: WorkerErrorData;
+}
+
+export function createInitRequestMessage(id: string): InitRequestMessage {
+  return { type: "INIT", id };
+}
+
+export function createCancelRequestMessage(id: string): CancelRequestMessage {
+  return { type: "CANCEL", id };
+}
+
+export function createSolveRequestMessage(
+  id: string,
+  problemJson: string,
+  useProgress = false,
+): SolveRequestMessage {
+  return {
+    type: "SOLVE",
+    id,
+    data: { problemJson, useProgress },
+  };
+}
+
+export function createRpcRequestMessage(
+  method: SolverRpcMethod,
+  id: string,
+  data: SolverMessageData,
+): RpcRequestMessage {
+  return {
+    type: method,
+    id,
+    data,
+  };
+}
+
+export function createProgressMessage(
+  id: string,
+  progressJson: string,
+): ProgressMessage {
+  return {
+    type: "PROGRESS",
+    id,
+    data: { progressJson },
+  };
+}
+
+export function createSolveSuccessMessage(
+  id: string,
+  result: string,
+  lastProgressJson?: string | null,
+): SolveSuccessMessage {
+  return {
+    type: "SOLVE_SUCCESS",
+    id,
+    data: { result, lastProgressJson },
+  };
+}
+
+export function createRpcSuccessMessage(
+  id: string,
+  result: string,
+): RpcSuccessMessage {
+  return {
+    type: "RPC_SUCCESS",
+    id,
+    data: { result },
+  };
+}
+
+export function createRequestErrorMessage(
+  id: string,
+  data: WorkerErrorData,
+  type: RequestErrorMessage["type"] = "ERROR",
+): RequestErrorMessage {
+  return {
+    type,
+    id,
+    data,
+  };
+}
+
+export function createFatalErrorMessage(data: WorkerErrorData): FatalErrorMessage {
+  return {
+    type: "FATAL_ERROR",
+    data,
+  };
 }
 
 export type WorkerResponseMessage =
