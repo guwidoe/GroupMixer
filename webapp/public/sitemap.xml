@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://www.groupmixer.app/</loc>
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/random-group-generator</loc>
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/random-team-generator</loc>
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/breakout-room-generator</loc>
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/student-group-generator</loc>
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/speed-networking-generator</loc>
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/group-generator-with-constraints</loc>
+  </url>
+</urlset>

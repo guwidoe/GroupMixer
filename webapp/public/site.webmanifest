@@ -1,7 +1,7 @@
 {
-  "name": "Group Mixer",
-  "short_name": "Group Mixer",
-  "description": "Intelligent Group Assignment & Scheduling Tool",
+  "name": "GroupMixer",
+  "short_name": "GroupMixer",
+  "description": "Random group generator, team mixer, and advanced grouping workspace.",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",

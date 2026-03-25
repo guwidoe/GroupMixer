@@ -5,7 +5,9 @@ export type ToolPageKey =
   | 'random-group-generator'
   | 'random-team-generator'
   | 'breakout-room-generator'
-  | 'student-group-generator';
+  | 'student-group-generator'
+  | 'speed-networking-generator'
+  | 'group-generator-with-constraints';
 
 export interface ToolPageFaqEntry {
   question: string;
@@ -48,6 +50,11 @@ export const TOOL_PAGE_CONFIGS: Record<ToolPageKey, ToolPageConfig> = {
         answer:
           'No. It also fits breakout rooms, workshops, conferences, social mixers, and any repeated group-planning workflow.',
       },
+      {
+        question: 'Does my data stay private?',
+        answer:
+          'Your quick setup starts as a local browser scratchpad. You only move it into the advanced workspace when you explicitly choose to continue there.',
+      },
     ],
   },
   'random-group-generator': {
@@ -72,6 +79,11 @@ export const TOOL_PAGE_CONFIGS: Record<ToolPageKey, ToolPageConfig> = {
         question: 'What if I need constraints later?',
         answer:
           'You can continue into the advanced workspace to add constraints, solver settings, and detailed edits without switching products.',
+      },
+      {
+        question: 'Is GroupMixer free to use?',
+        answer:
+          'Yes. You can use the public tool and advanced workspace without paying to create and refine group assignments.',
       },
     ],
   },
@@ -147,6 +159,56 @@ export const TOOL_PAGE_CONFIGS: Record<ToolPageKey, ToolPageConfig> = {
         question: 'Will this later support attendance and constraints?',
         answer:
           'Yes. The architecture is intentionally shared so the quick setup can flow into the same backend-aligned model used by the advanced app.',
+      },
+    ],
+  },
+  'speed-networking-generator': {
+    key: 'speed-networking-generator',
+    canonicalPath: '/speed-networking-generator',
+    title: 'Speed Networking Generator — GroupMixer',
+    metaDescription:
+      'Generate speed-networking rounds quickly, avoid repeat pairings, and move into GroupMixer\'s advanced workspace when you need deeper control.',
+    h1: 'Speed networking generator for repeat rounds with less repetition.',
+    subhead:
+      'Set up names fast, generate multiple rounds, and use the networking preset to reduce repeat pairings across sessions.',
+    intro:
+      'This route targets facilitators running networking rounds, mentor matching, and social-mixer formats where repeated pairings matter.',
+    defaultPreset: 'networking',
+    faqEntries: [
+      {
+        question: 'Can I avoid repeat pairings across rounds?',
+        answer:
+          'Yes. The networking route is designed for multi-session flows and defaults toward reducing repeated encounters when possible.',
+      },
+      {
+        question: 'Can I keep some people together or apart?',
+        answer:
+          'Yes. You can start with a fast setup here, then reveal the advanced options or continue into the expert workspace for deeper rules.',
+      },
+    ],
+  },
+  'group-generator-with-constraints': {
+    key: 'group-generator-with-constraints',
+    canonicalPath: '/group-generator-with-constraints',
+    title: 'Group Generator with Constraints — GroupMixer',
+    metaDescription:
+      'Create random groups, then add rules like keep together, avoid pairing, balancing, and no repeat pairings with GroupMixer.',
+    h1: 'Group generator with keep-together, keep-apart, and balancing rules.',
+    subhead:
+      'Start with a simple participant list, then add lightweight rules without jumping straight into an overwhelming advanced interface.',
+    intro:
+      'This route speaks directly to users who know they need more than a basic randomizer but still want a tool-first workflow before entering the expert app.',
+    defaultPreset: 'balanced',
+    faqEntries: [
+      {
+        question: 'Can I keep certain people together?',
+        answer:
+          'Yes. The landing tool already supports a keep-together control, and the advanced workspace exposes the same idea in more detail.',
+      },
+      {
+        question: 'Can I avoid pairing certain people?',
+        answer:
+          'Yes. Use the avoid-pairing option in the landing tool and continue into the expert workspace when you need more structured constraint editing.',
       },
     ],
   },

@@ -65,6 +65,14 @@ describe("App routing", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders additional intent routes with the same shared shell", async () => {
+    renderWithRouter(<App />, { route: "/speed-networking-generator" });
+
+    expect(
+      await screen.findByText("Tool landing test stub: speed-networking-generator")
+    ).toBeInTheDocument();
+  });
+
   it("renders nested /app routes inside the main shell", async () => {
     renderWithRouter(<App />, { route: "/app/problem/people" });
 
