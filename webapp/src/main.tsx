@@ -5,6 +5,9 @@ import { Analytics } from '@vercel/analytics/react'
 import './index.css'
 import '@react-sigma/core/lib/style.css'
 import App from './App.tsx'
+import { installBrowserAgentApi } from './services/browserAgentApi'
+
+installBrowserAgentApi(window)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

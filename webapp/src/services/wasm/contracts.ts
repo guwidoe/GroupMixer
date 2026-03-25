@@ -4,8 +4,13 @@ import { convertRustResultToSolution } from "./conversions";
 import {
   isWasmContractModule,
   type WasmContractModule,
+  type WasmBootstrapResponse,
+  type WasmErrorLookupResponse,
   type WasmPublicErrorEnvelope,
+  type WasmOperationHelpResponse,
   type WasmRecommendSettingsRequest,
+  type WasmSchemaLookupResponse,
+  type WasmSchemaSummary,
   type WasmValidateResponse,
   type WasmResultSummary,
   type WasmModuleLoader,
@@ -194,6 +199,66 @@ export class WasmContractClient {
     }
   }
 
+  async capabilities(): Promise<WasmBootstrapResponse> {
+    const module = await this.requireModule();
+
+    try {
+      return module.capabilities();
+    } catch (error) {
+      throw normalizeContractError(error, "Failed to read solver capabilities");
+    }
+  }
+
+  async getOperationHelp(operationId: string): Promise<WasmOperationHelpResponse> {
+    const module = await this.requireModule();
+
+    try {
+      return module.get_operation_help(operationId);
+    } catch (error) {
+      throw normalizeContractError(error, `Failed to read operation help for ${operationId}`);
+    }
+  }
+
+  async listSchemas(): Promise<WasmSchemaSummary[]> {
+    const module = await this.requireModule();
+
+    try {
+      return module.list_schemas();
+    } catch (error) {
+      throw normalizeContractError(error, "Failed to list public schemas");
+    }
+  }
+
+  async getSchema(schemaId: string): Promise<WasmSchemaLookupResponse> {
+    const module = await this.requireModule();
+
+    try {
+      return module.get_schema(schemaId);
+    } catch (error) {
+      throw normalizeContractError(error, `Failed to get schema ${schemaId}`);
+    }
+  }
+
+  async listPublicErrors(): Promise<WasmErrorLookupResponse[]> {
+    const module = await this.requireModule();
+
+    try {
+      return module.list_public_errors();
+    } catch (error) {
+      throw normalizeContractError(error, "Failed to list public errors");
+    }
+  }
+
+  async getPublicError(errorCode: string): Promise<WasmErrorLookupResponse> {
+    const module = await this.requireModule();
+
+    try {
+      return module.get_public_error(errorCode);
+    } catch (error) {
+      throw normalizeContractError(error, `Failed to get public error ${errorCode}`);
+    }
+  }
+
   async recommendSettings(
     problem: Problem,
     desiredRuntimeSeconds: number,
@@ -215,6 +280,16 @@ export class WasmContractClient {
     try {
       const result = module.solve(buildSolvePayload(problem));
       return convertRustResultToSolution(result as RustResult);
+    } catch (error) {
+      throw normalizeContractError(error, "Failed to solve problem");
+    }
+  }
+
+  async solveContract(input: Record<string, unknown>): Promise<RustResult> {
+    const module = await this.requireModule();
+
+    try {
+      return module.solve(input);
     } catch (error) {
       throw normalizeContractError(error, "Failed to solve problem");
     }
@@ -248,6 +323,31 @@ export class WasmContractClient {
     }
   }
 
+  async solveContractWithProgress(
+    input: Record<string, unknown>,
+    progressCallback?: ProgressCallback,
+  ): Promise<{ result: RustResult; lastProgress: ProgressUpdate | null }> {
+    const module = await this.requireModule();
+
+    try {
+      let lastProgress: ProgressUpdate | null = null;
+      const result = module.solve_with_progress(
+        input,
+        progressCallback
+          ? ((progress: ProgressUpdate) => {
+              lastProgress = progress;
+              progressCallback(progress);
+              return true;
+            })
+          : undefined,
+      );
+
+      return { result: result as RustResult, lastProgress };
+    } catch (error) {
+      throw normalizeContractError(error, "Failed to solve problem");
+    }
+  }
+
   async validateProblem(problem: Problem): Promise<WasmValidateResponse> {
     const module = await this.requireModule();
 
@@ -258,12 +358,44 @@ export class WasmContractClient {
     }
   }
 
+  async validateProblemContract(input: Record<string, unknown>): Promise<WasmValidateResponse> {
+    const module = await this.requireModule();
+
+    try {
+      return module.validate_problem(input);
+    } catch (error) {
+      throw normalizeContractError(error, "Failed to validate problem");
+    }
+  }
+
+  async recommendSettingsContract(
+    input: WasmRecommendSettingsRequest,
+  ): Promise<SolverSettings> {
+    const module = await this.requireModule();
+
+    try {
+      return module.recommend_settings(input);
+    } catch (error) {
+      throw normalizeContractError(error, "Failed to recommend solver settings");
+    }
+  }
+
   async evaluateInput(problem: Problem, assignments: Assignment[]): Promise<Solution> {
     const module = await this.requireModule();
 
     try {
       const result = module.evaluate_input(buildEvaluatePayload(problem, assignments));
       return convertRustResultToSolution(result as RustResult);
+    } catch (error) {
+      throw normalizeContractError(error, "Failed to evaluate input");
+    }
+  }
+
+  async evaluateInputContract(input: Record<string, unknown>): Promise<RustResult> {
+    const module = await this.requireModule();
+
+    try {
+      return module.evaluate_input(input);
     } catch (error) {
       throw normalizeContractError(error, "Failed to evaluate input");
     }

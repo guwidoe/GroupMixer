@@ -16,11 +16,29 @@ import {
 describe("solver worker protocol", () => {
   it("exposes the supported RPC methods as a runtime-checked catalog", () => {
     expect(SOLVER_RPC_METHODS).toEqual([
+      "capabilities",
+      "get_operation_help",
+      "list_schemas",
+      "get_schema",
+      "list_public_errors",
+      "get_public_error",
+      "validate_problem",
       "get_default_solver_configuration",
       "recommend_settings",
+      "evaluate_input",
+      "inspect_result",
     ]);
+    expect(isSolverRpcMethod("capabilities")).toBe(true);
+    expect(isSolverRpcMethod("get_operation_help")).toBe(true);
+    expect(isSolverRpcMethod("list_schemas")).toBe(true);
+    expect(isSolverRpcMethod("get_schema")).toBe(true);
+    expect(isSolverRpcMethod("list_public_errors")).toBe(true);
+    expect(isSolverRpcMethod("get_public_error")).toBe(true);
+    expect(isSolverRpcMethod("validate_problem")).toBe(true);
     expect(isSolverRpcMethod("get_default_solver_configuration")).toBe(true);
     expect(isSolverRpcMethod("recommend_settings")).toBe(true);
+    expect(isSolverRpcMethod("evaluate_input")).toBe(true);
+    expect(isSolverRpcMethod("inspect_result")).toBe(true);
     expect(isSolverRpcMethod("not-a-method")).toBe(false);
   });
 

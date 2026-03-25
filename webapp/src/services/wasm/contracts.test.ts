@@ -32,6 +32,12 @@ vi.mock("./conversions", () => ({
 }));
 
 type FakeContractModule = {
+  capabilities: ReturnType<typeof vi.fn>;
+  get_operation_help: ReturnType<typeof vi.fn>;
+  list_schemas: ReturnType<typeof vi.fn>;
+  get_schema: ReturnType<typeof vi.fn>;
+  list_public_errors: ReturnType<typeof vi.fn>;
+  get_public_error: ReturnType<typeof vi.fn>;
   solve: ReturnType<typeof vi.fn>;
   solve_with_progress: ReturnType<typeof vi.fn>;
   validate_problem: ReturnType<typeof vi.fn>;
@@ -53,6 +59,12 @@ function createProblem(): Problem {
 
 function createContractModule(): FakeContractModule {
   return {
+    capabilities: vi.fn(() => ({ bootstrap: { title: "GroupMixer solver contracts" } })),
+    get_operation_help: vi.fn((operationId: string) => ({ operation: { id: operationId } })),
+    list_schemas: vi.fn(() => [{ id: "solve-request", version: "1.0.0" }]),
+    get_schema: vi.fn((schemaId: string) => ({ id: schemaId, version: "1.0.0", schema: {} })),
+    list_public_errors: vi.fn(() => [{ error: { code: "invalid-input", message: "bad input" } }]),
+    get_public_error: vi.fn((errorCode: string) => ({ error: { code: errorCode, message: "bad input" } })),
     solve: vi.fn(() => ({ schedule: {}, final_score: 8, unique_contacts: 2 })),
     solve_with_progress: vi.fn((_: Record<string, unknown>, callback?: ((progress: unknown) => boolean) | null) => {
       callback?.({ iteration: 5, elapsed_seconds: 1.5, best_score: 7 });
@@ -113,6 +125,32 @@ describe("WasmContractClient", () => {
     });
   });
 
+  it("surfaces discovery metadata from the wasm contract module", async () => {
+    const wasmModule = createContractModule();
+    const client = new WasmContractClient(async () => wasmModule);
+
+    await expect(client.capabilities()).resolves.toEqual({
+      bootstrap: { title: "GroupMixer solver contracts" },
+    });
+    await expect(client.getOperationHelp("solve")).resolves.toEqual({
+      operation: { id: "solve" },
+    });
+    await expect(client.listSchemas()).resolves.toEqual([
+      { id: "solve-request", version: "1.0.0" },
+    ]);
+    await expect(client.getSchema("solve-request")).resolves.toEqual({
+      id: "solve-request",
+      version: "1.0.0",
+      schema: {},
+    });
+    await expect(client.listPublicErrors()).resolves.toEqual([
+      { error: { code: "invalid-input", message: "bad input" } },
+    ]);
+    await expect(client.getPublicError("invalid-input")).resolves.toEqual({
+      error: { code: "invalid-input", message: "bad input" },
+    });
+  });
+
   it("solves with structured progress payloads and converts results once", async () => {
     const wasmModule = createContractModule();
     const client = new WasmContractClient(async () => wasmModule);
@@ -142,6 +180,23 @@ describe("WasmContractClient", () => {
     expect(wasmModule.solve).toHaveBeenCalledWith(
       expect.objectContaining({ problem: expect.any(Object) }),
     );
+  });
+
+  it("supports raw contract-native solve calls for browser agents", async () => {
+    const wasmModule = createContractModule();
+    const client = new WasmContractClient(async () => wasmModule);
+
+    await expect(client.solveContract({ problem: { people: [] } })).resolves.toEqual({
+      schedule: {},
+      final_score: 8,
+      unique_contacts: 2,
+    });
+    await expect(
+      client.solveContractWithProgress({ problem: { people: [] } }),
+    ).resolves.toEqual({
+      result: { schedule: {}, final_score: 9, unique_contacts: 1 },
+      lastProgress: null,
+    });
   });
 
   it("attaches initial_schedule for structured evaluation calls", async () => {

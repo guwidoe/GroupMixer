@@ -2,12 +2,30 @@ import type { WasmRecommendSettingsRequest } from "../wasm/module";
 import type { ProgressUpdate, RustResult } from "../wasm/types";
 
 export type SolverRpcMethod =
+  | "capabilities"
+  | "get_operation_help"
+  | "list_schemas"
+  | "get_schema"
+  | "list_public_errors"
+  | "get_public_error"
+  | "validate_problem"
   | "get_default_solver_configuration"
-  | "recommend_settings";
+  | "recommend_settings"
+  | "evaluate_input"
+  | "inspect_result";
 
 export const SOLVER_RPC_METHODS = [
+  "capabilities",
+  "get_operation_help",
+  "list_schemas",
+  "get_schema",
+  "list_public_errors",
+  "get_public_error",
+  "validate_problem",
   "get_default_solver_configuration",
   "recommend_settings",
+  "evaluate_input",
+  "inspect_result",
 ] as const satisfies readonly SolverRpcMethod[];
 
 export function isSolverRpcMethod(value: string): value is SolverRpcMethod {
@@ -16,6 +34,7 @@ export function isSolverRpcMethod(value: string): value is SolverRpcMethod {
 
 export interface SolverMessageData {
   problemPayload?: Record<string, unknown>;
+  resultPayload?: RustResult;
   useProgress?: boolean;
   recommendRequest?: WasmRecommendSettingsRequest;
   args?: unknown[];
