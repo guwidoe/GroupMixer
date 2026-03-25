@@ -82,5 +82,9 @@ assert payload['bench_command'] == 'record'
 assert payload['requested_suite'] == 'path'
 assert payload['requested_suites'] == ['path']
 assert payload['bench_args'] == ['--suite', 'path'], payload['bench_args']
+assert payload['git_branch']
+assert payload['git_commit']
+assert payload['git_shortsha']
+assert payload['git_dirty_tree'] in {'true', 'false'}
 print('remote_benchmark_async start regression test passed')
 PY

@@ -25,7 +25,13 @@ ln -s "$(python3 -c 'import sys; print(sys.executable)')" "${tmpdir}/bin/python3
 cat > "${snapshot_repo_dir}/tools/benchmark_workflow.sh" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
-printf '%s\n' "\$*" > $(printf '%q' "${bench_log}")
+{
+  printf 'args=%s\n' "\$*"
+  printf 'branch=%s\n' "\${GROUPMIXER_BENCHMARK_GIT_BRANCH:-}"
+  printf 'commit=%s\n' "\${GROUPMIXER_BENCHMARK_GIT_COMMIT_SHA:-}"
+  printf 'short=%s\n' "\${GROUPMIXER_BENCHMARK_GIT_SHORT_SHA:-}"
+  printf 'dirty=%s\n' "\${GROUPMIXER_BENCHMARK_GIT_DIRTY_TREE:-}"
+} > $(printf '%q' "${bench_log}")
 exit 0
 EOF
 chmod +x "${snapshot_repo_dir}/tools/benchmark_workflow.sh"
@@ -104,6 +110,11 @@ status = json.loads(pathlib.Path(sys.argv[1]).read_text())
 bench_log = pathlib.Path(sys.argv[2])
 assert status.get("done") is True, status
 assert str(status.get("exit_code")) == "0", status
-assert bench_log.read_text().strip() == "record --suite path"
+log_lines = bench_log.read_text().splitlines()
+assert "args=record --suite path" in log_lines
+assert "branch=test-branch" in log_lines
+assert "commit=deadbeef" in log_lines
+assert "short=deadbee" in log_lines
+assert "dirty=false" in log_lines
 print("remote_benchmark_async_remote local helper test passed")
 PY

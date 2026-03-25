@@ -44,6 +44,10 @@ def bench_env() -> dict:
     env.update(
         {
             "GROUPMIXER_BENCHMARK_MACHINE_ID": payload.get("machine_name", "remote"),
+            "GROUPMIXER_BENCHMARK_GIT_BRANCH": payload.get("git_branch", ""),
+            "GROUPMIXER_BENCHMARK_GIT_COMMIT_SHA": payload.get("git_commit", ""),
+            "GROUPMIXER_BENCHMARK_GIT_SHORT_SHA": payload.get("git_shortsha", ""),
+            "GROUPMIXER_BENCHMARK_GIT_DIRTY_TREE": str(payload.get("git_dirty_tree", "false")),
             "GROUPMIXER_BENCH_BUILD_JOBS": str(payload.get("bench_build_jobs", "1")),
         }
     )

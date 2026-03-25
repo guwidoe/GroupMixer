@@ -73,6 +73,14 @@ local_git_subject() {
   git -C "${REPO_DIR}" log -1 --pretty=%s | tr '\t\n' '  ' | tr '()' '[]'
 }
 
+local_git_dirty() {
+  if [[ -n "$(git -C "${REPO_DIR}" status --short)" ]]; then
+    printf 'true\n'
+  else
+    printf 'false\n'
+  fi
+}
+
 default_recording_suite_bundle() {
   cat <<'EOF'
 representative
@@ -209,6 +217,7 @@ build_payload_json() {
   GIT_COMMIT="$(local_git_commit)" \
   GIT_SHORTSHA="$(local_git_shortsha)" \
   GIT_SUBJECT="$(local_git_subject)" \
+  GIT_DIRTY_TREE="$(local_git_dirty)" \
   IDLE_MAX_LOAD1="${GROUPMIXER_REMOTE_BENCH_IDLE_MAX_LOAD1}" \
   IDLE_POLL_SECONDS="${GROUPMIXER_REMOTE_BENCH_IDLE_POLL_SECONDS}" \
   IDLE_STREAK="${GROUPMIXER_REMOTE_BENCH_IDLE_STREAK}" \
@@ -242,6 +251,7 @@ payload = {
     "git_commit": os.environ["GIT_COMMIT"],
     "git_shortsha": os.environ["GIT_SHORTSHA"],
     "git_subject": os.environ["GIT_SUBJECT"],
+    "git_dirty_tree": os.environ.get("GIT_DIRTY_TREE", "false"),
     "idle_max_load1": os.environ.get("IDLE_MAX_LOAD1", ""),
     "idle_poll_seconds": os.environ.get("IDLE_POLL_SECONDS", "30"),
     "idle_streak": os.environ.get("IDLE_STREAK", "1"),
