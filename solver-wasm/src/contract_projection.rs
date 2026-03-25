@@ -1,4 +1,8 @@
 use crate::contract_surface::binding_for_operation_id;
+use crate::public_errors::{
+    internal_error, public_error_to_js_value, unknown_error_code_error, unknown_operation_error,
+    unknown_schema_error,
+};
 use schemars::schema::RootSchema;
 use serde::Serialize;
 use solver_contracts::{
@@ -132,7 +136,7 @@ pub fn build_capabilities_response() -> WasmBootstrapResponse {
 
 pub fn build_operation_help_response(operation_id: &str) -> Result<WasmOperationHelpResponse, JsValue> {
     let help = local_help(operation_id)
-        .ok_or_else(|| js_sys::Error::new(&format!("Unknown operation '{}'", operation_id)))?;
+        .ok_or_else(|| public_error_to_js_value(&unknown_operation_error(operation_id)))?;
     let examples = help
         .operation
         .example_ids
@@ -179,9 +183,13 @@ pub fn build_schema_summaries() -> Vec<WasmSchemaSummary> {
 
 pub fn build_schema_lookup_response(schema_id: &str) -> Result<WasmSchemaLookupResponse, JsValue> {
     let spec = schema_spec(schema_id)
-        .ok_or_else(|| js_sys::Error::new(&format!("Unknown schema '{}'", schema_id)))?;
-    let schema = export_schema(schema_id)
-        .ok_or_else(|| js_sys::Error::new(&format!("Failed to export schema '{}'", schema_id)))?;
+        .ok_or_else(|| public_error_to_js_value(&unknown_schema_error(schema_id)))?;
+    let schema = export_schema(schema_id).ok_or_else(|| {
+        public_error_to_js_value(&internal_error(
+            "get-schema",
+            format!("Failed to export schema '{}'", schema_id),
+        ))
+    })?;
     Ok(WasmSchemaLookupResponse {
         id: spec.id,
         version: spec.version,
@@ -203,7 +211,7 @@ pub fn build_error_catalog() -> Vec<WasmErrorLookupResponse> {
 pub fn build_error_lookup_response(error_code: &str) -> Result<WasmErrorLookupResponse, JsValue> {
     let error = error_spec(error_code)
         .cloned()
-        .ok_or_else(|| js_sys::Error::new(&format!("Unknown error code '{}'", error_code)))?;
+        .ok_or_else(|| public_error_to_js_value(&unknown_error_code_error(error_code)))?;
     Ok(WasmErrorLookupResponse {
         related_help_targets: error.related_help_operation_ids.to_vec(),
         error,
@@ -212,7 +220,12 @@ pub fn build_error_lookup_response(error_code: &str) -> Result<WasmErrorLookupRe
 
 fn to_js_value<T: Serialize>(value: &T) -> Result<JsValue, JsValue> {
     serde_wasm_bindgen::to_value(value)
-        .map_err(|error| js_sys::Error::new(&format!("Failed to serialize JS value: {}", error)).into())
+        .map_err(|error| {
+            public_error_to_js_value(&internal_error(
+                "get-schema",
+                format!("Failed to serialize JS value: {}", error),
+            ))
+        })
 }
 
 #[cfg(test)]

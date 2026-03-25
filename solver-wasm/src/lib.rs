@@ -1,5 +1,7 @@
 pub mod contract_surface;
 mod contract_projection;
+mod contract_runtime;
+mod public_errors;
 
 use serde::Serialize;
 use solver_core::models::{ApiInput, ProblemDefinition, ProgressUpdate};
@@ -66,6 +68,36 @@ pub fn list_public_errors() -> Result<JsValue, JsValue> {
 pub fn get_public_error(error_code: &str) -> Result<JsValue, JsValue> {
     init_panic_hook();
     contract_projection::get_public_error_js(error_code)
+}
+
+#[wasm_bindgen]
+pub fn solve_contract(input: JsValue) -> Result<JsValue, JsValue> {
+    init_panic_hook();
+    contract_runtime::solve_contract_js(input)
+}
+
+#[wasm_bindgen]
+pub fn validate_problem_contract(input: JsValue) -> Result<JsValue, JsValue> {
+    init_panic_hook();
+    contract_runtime::validate_problem_contract_js(input)
+}
+
+#[wasm_bindgen]
+pub fn recommend_settings_contract(problem_definition: JsValue) -> Result<JsValue, JsValue> {
+    init_panic_hook();
+    contract_runtime::recommend_settings_contract_js(problem_definition)
+}
+
+#[wasm_bindgen]
+pub fn evaluate_input_contract(input: JsValue) -> Result<JsValue, JsValue> {
+    init_panic_hook();
+    contract_runtime::evaluate_input_contract_js(input)
+}
+
+#[wasm_bindgen]
+pub fn inspect_result_contract(result: JsValue) -> Result<JsValue, JsValue> {
+    init_panic_hook();
+    contract_runtime::inspect_result_contract_js(result)
 }
 
 #[wasm_bindgen]
