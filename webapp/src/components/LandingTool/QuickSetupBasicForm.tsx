@@ -147,17 +147,17 @@ export function QuickSetupBasicForm({ controller }: QuickSetupBasicFormProps) {
         <button
           type="button"
           onClick={controller.generateGroups}
-          disabled={!controller.canGenerate}
+          disabled={!controller.canGenerate || controller.isSolving}
           className="inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
           style={{ backgroundColor: 'var(--color-accent)' }}
         >
           <Sparkles className="h-4 w-4" />
-          Generate groups
+          {controller.isSolving ? 'Generating…' : 'Generate groups'}
         </button>
         <button
           type="button"
           onClick={controller.reshuffle}
-          disabled={!controller.result}
+          disabled={!controller.result || controller.isSolving}
           className="inline-flex items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
           style={{ borderColor: 'var(--border-primary)' }}
         >

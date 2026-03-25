@@ -1,8 +1,36 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import ToolLandingPage from './ToolLandingPage';
+
+vi.mock('../services/solver/solveProblem', () => ({
+  solveProblem: vi.fn(async ({ problem }: { problem: { people: Array<{ id: string }>; groups: Array<{ id: string }>; num_sessions: number } }) => ({
+    selectedSettings: problem.settings,
+    runProblem: problem,
+    lastProgress: null,
+    solution: {
+      assignments: Array.from({ length: problem.num_sessions }).flatMap((_, sessionIndex) =>
+        problem.people.map((person, personIndex) => ({
+          person_id: person.id,
+          group_id: problem.groups[personIndex % problem.groups.length]?.id ?? problem.groups[0].id,
+          session_id: sessionIndex,
+        })),
+      ),
+      final_score: 0,
+      unique_contacts: 0,
+      repetition_penalty: 0,
+      attribute_balance_penalty: 0,
+      constraint_penalty: 0,
+      iteration_count: 10,
+      elapsed_time_ms: 5,
+    },
+  })),
+}));
+
+beforeEach(() => {
+  window.localStorage.clear();
+});
 
 describe('ToolLandingPage SEO wiring', () => {
   it('renders route-specific copy and updates document metadata from config', async () => {

@@ -1,14 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSampleProblem, createSampleSolution, createSampleSolverSettings, createSavedProblem } from '../../../test/fixtures';
-import type { Problem, ProblemResult, SavedProblem, SolverState, SolverSettings } from '../../../types';
+import type { Problem, ProblemResult, SavedProblem, SolverState } from '../../../types';
+import { solveProblem } from '../../../services/solver/solveProblem';
 import { runSolver } from './runSolver';
 import { solverWorkerService } from '../../../services/solverWorker';
 import { useAppStore } from '../../../store';
 
+vi.mock('../../../services/solver/solveProblem', () => ({
+  solveProblem: vi.fn(),
+}));
+
 vi.mock('../../../services/solverWorker', () => ({
   solverWorkerService: {
-    getRecommendedSettings: vi.fn(),
-    solveWithProgress: vi.fn(),
     solveWithProgressWarmStart: vi.fn(),
   },
 }));
@@ -72,9 +75,14 @@ function createArgs(overrides: Partial<Parameters<typeof runSolver>[0]> = {}) {
   const setWarmStartFromResult = vi.fn();
   const ensureProblemExists = vi.fn(() => problem);
 
-  vi.mocked(solverWorkerService.solveWithProgress).mockResolvedValue({
+  vi.mocked(solveProblem).mockResolvedValue({
     solution,
     lastProgress,
+    selectedSettings: solverSettings,
+    runProblem: {
+      ...problem,
+      settings: solverSettings,
+    },
   });
 
   return {
@@ -121,77 +129,51 @@ describe('runSolver', () => {
     vi.mocked(useAppStore.getState).mockReturnValue({ currentProblemId: 'problem-1' } as { currentProblemId: string | null });
   });
 
-  it('uses recommended settings, normalizes them, and saves via the active store problem id', async () => {
-    const rawRecommended = {
-      solver_type: 'SimulatedAnnealing',
-      stop_conditions: { time_limit_seconds: 5 },
-      solver_params: {
-        solver_type: 'SimulatedAnnealing',
-        initial_temperature: 9,
-        final_temperature: 1,
-        cooling_schedule: 'linear',
-        reheat_cycles: 2,
-        reheat_after_no_improvement: 11,
-      },
-    } as unknown as SolverSettings;
-    vi.mocked(solverWorkerService.getRecommendedSettings).mockResolvedValue(rawRecommended);
-
+  it('uses the shared solve service and saves via the active store problem id', async () => {
     const args = createArgs({ useRecommended: true, currentProblemId: null });
 
     await runSolver(args);
 
     expect(args.ensureProblemExists).toHaveBeenCalled();
-    expect(solverWorkerService.getRecommendedSettings).toHaveBeenCalledWith(args.problem, 7);
-    expect(args.setRunSettings).toHaveBeenCalledWith(
+    expect(solveProblem).toHaveBeenCalledWith(
       expect.objectContaining({
-        solver_params: {
-          SimulatedAnnealing: {
-            initial_temperature: 9,
-            final_temperature: 1,
-            cooling_schedule: 'linear',
-            reheat_cycles: 2,
-            reheat_after_no_improvement: 11,
-          },
-        },
+        problem: expect.objectContaining({ settings: args.solverSettings }),
+        useRecommendedSettings: true,
+        desiredRuntimeSeconds: 7,
+        enableBestScheduleTelemetry: false,
       }),
     );
-    expect(solverWorkerService.solveWithProgress).toHaveBeenCalledWith(
-      expect.objectContaining({
-        settings: expect.objectContaining({
-          solver_params: {
-            SimulatedAnnealing: expect.objectContaining({
-              initial_temperature: 9,
-              reheat_after_no_improvement: 11,
-            }),
-          },
-        }),
-      }),
-      expect.any(Function),
+    expect(args.setRunSettings).toHaveBeenCalledWith(
+      expect.objectContaining(args.solverSettings),
     );
     expect(args.addResult).toHaveBeenCalledWith(
       args.__expected.solution,
-      expect.objectContaining({
-        solver_params: {
-          SimulatedAnnealing: expect.objectContaining({
-            initial_temperature: 9,
-          }),
-        },
-      }),
+      args.__expected.solverSettings,
       undefined,
       expect.any(Object),
     );
   });
 
-  it('falls back to existing settings when recommended settings lookup fails', async () => {
-    vi.mocked(solverWorkerService.getRecommendedSettings).mockRejectedValue(new Error('settings failed'));
+  it('uses the solver-service selected settings payload for the run', async () => {
     const args = createArgs({ useRecommended: true });
+    const selectedSettings = createSampleSolverSettings();
+    selectedSettings.stop_conditions.time_limit_seconds = 5;
+    vi.mocked(solveProblem).mockResolvedValue({
+      solution: args.__expected.solution,
+      lastProgress: args.__expected.lastProgress,
+      selectedSettings,
+      runProblem: {
+        ...args.problem,
+        settings: selectedSettings,
+      },
+    });
 
     await runSolver(args);
 
-    expect(args.setRunSettings).toHaveBeenCalledWith(args.solverSettings);
+    expect(args.setRunSettings).toHaveBeenCalledWith(selectedSettings);
     expect(args.addResult).toHaveBeenCalledWith(
       args.__expected.solution,
-      args.solverSettings,
+      selectedSettings,
       undefined,
       expect.any(Object),
     );
@@ -208,7 +190,11 @@ describe('runSolver', () => {
     await runSolver(args);
 
     expect(solverWorkerService.solveWithProgressWarmStart).not.toHaveBeenCalled();
-    expect(solverWorkerService.solveWithProgress).toHaveBeenCalled();
+    expect(solveProblem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        warmStartSchedule: undefined,
+      }),
+    );
     expect(args.setWarmStartFromResult).toHaveBeenCalledWith(null);
     expect(args.addNotification).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -23,6 +23,12 @@ export function QuickSetupResults({ controller }: QuickSetupResultsProps) {
         </div>
       </div>
 
+      {controller.errorMessage && (
+        <div className="mt-5 rounded-2xl px-4 py-3 text-sm" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
+          {controller.errorMessage}
+        </div>
+      )}
+
       {!result ? (
         <div className="mt-5 rounded-3xl border border-dashed p-6 text-sm leading-7" style={{ borderColor: 'var(--border-primary)', color: 'var(--text-secondary)' }}>
           Paste names, pick group sizing, and click <strong>Generate groups</strong>. Results will appear here without touching the global app state.

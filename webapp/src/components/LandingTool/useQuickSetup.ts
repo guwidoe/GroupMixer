@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useLocalStorageState } from '../../hooks/useLocalStorageState';
 import type { ToolPageConfig } from '../../pages/toolPageConfigs';
+import { solveProblem } from '../../services/solver/solveProblem';
 import { buildGroups, buildProblemFromDraft, parseParticipantInput } from '../../utils/quickSetup';
 import type {
   QuickSetupAnalysis,
@@ -29,6 +30,8 @@ export interface QuickSetupController {
   estimatedGroupCount: number;
   estimatedGroupSize: number;
   result: QuickSetupResult | null;
+  isSolving: boolean;
+  errorMessage: string | null;
   canGenerate: boolean;
   draftStorageLabel: string;
   updateDraft: (updater: QuickSetupDraft | ((draft: QuickSetupDraft) => QuickSetupDraft)) => void;
@@ -324,6 +327,46 @@ function csvForResult(result: QuickSetupResult) {
   return lines.join('\n');
 }
 
+function quickSetupResultFromSolution(problem: ReturnType<typeof buildProblemFromDraft>['problem'], solution: { assignments: Array<{ person_id: string; group_id: string; session_id: number }> }, seed: number): QuickSetupResult {
+  const peopleById = new Map(
+    problem.people.map((person) => [
+      person.id,
+      {
+        id: person.id,
+        name: person.id,
+        attributes: person.attributes,
+      } satisfies QuickSetupParticipant,
+    ] as const),
+  );
+
+  const groupsBySession = new Map<number, Map<string, QuickSetupGroupResult>>();
+  for (const assignment of solution.assignments) {
+    if (!groupsBySession.has(assignment.session_id)) {
+      groupsBySession.set(assignment.session_id, new Map(problem.groups.map((group) => [group.id, { id: group.id, members: [] }] as const)));
+    }
+    groupsBySession.get(assignment.session_id)?.get(assignment.group_id)?.members.push(
+      peopleById.get(assignment.person_id) ?? {
+        id: assignment.person_id,
+        name: assignment.person_id,
+        attributes: {},
+      },
+    );
+  }
+
+  const sessions: QuickSetupSessionResult[] = [...groupsBySession.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([sessionId, groups]) => ({
+      sessionNumber: sessionId + 1,
+      groups: [...groups.values()],
+    }));
+
+  return {
+    seed,
+    generatedAt: new Date().toISOString(),
+    sessions,
+  };
+}
+
 function downloadBlob(filename: string, content: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
@@ -338,6 +381,8 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
   const storageKey = `groupmixer.quick-setup.${pageConfig.key}.v1`;
   const [draft, setDraft] = useLocalStorageState<QuickSetupDraft>(storageKey, defaultDraft(pageConfig));
   const [result, setResult] = useState<QuickSetupResult | null>(null);
+  const [isSolving, setIsSolving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const analysis = useMemo(() => analyzeDraft(draft), [draft]);
   const participantCount = analysis.participants.length;
@@ -370,21 +415,37 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
   }, [setDraft]);
 
   const generateWithSeed = useCallback(
-    (seed: number) => {
+    async (seed: number) => {
       if (!canGenerate) {
         return;
       }
-      setResult(generateSessions(draft, analysis, seed));
+      setIsSolving(true);
+      setErrorMessage(null);
+      const mapped = buildProblemFromDraft(draft);
+      try {
+        const { solution } = await solveProblem({
+          problem: mapped.problem,
+          useRecommendedSettings: true,
+          desiredRuntimeSeconds: draft.preset === 'networking' ? 5 : 3,
+        });
+        setResult(quickSetupResultFromSolution(mapped.problem, solution, seed));
+      } catch (error) {
+        console.error('[QuickSetup] Falling back to local grouping after solve failure:', error);
+        setErrorMessage(error instanceof Error ? error.message : 'Unable to solve this setup right now. Showing a local draft grouping instead.');
+        setResult(generateSessions(draft, analysis, seed));
+      } finally {
+        setIsSolving(false);
+      }
     },
     [analysis, canGenerate, draft],
   );
 
   const generateGroups = useCallback(() => {
-    generateWithSeed(Date.now());
+    void generateWithSeed(Date.now());
   }, [generateWithSeed]);
 
   const reshuffle = useCallback(() => {
-    generateWithSeed(Date.now() + Math.floor(Math.random() * 100000));
+    void generateWithSeed(Date.now() + Math.floor(Math.random() * 100000));
   }, [generateWithSeed]);
 
   const resetDraft = useCallback(() => {
@@ -422,6 +483,8 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
     estimatedGroupCount,
     estimatedGroupSize,
     result,
+    isSolving,
+    errorMessage,
     canGenerate,
     draftStorageLabel: 'Saved locally in this browser',
     updateDraft,

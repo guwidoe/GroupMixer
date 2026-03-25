@@ -1,13 +1,12 @@
 import type { MutableRefObject } from 'react';
 import type { Problem, ProblemResult, SavedProblem, SolverSettings, SolverState, Solution, Notification } from '../../../types';
+import { solveProblem } from '../../../services/solver/solveProblem';
 import type { ProgressUpdate } from '../../../services/wasm/types';
 import { solverWorkerService } from '../../../services/solverWorker';
 import { useAppStore } from '../../../store';
+import { reconcileResultToInitialSchedule } from '../../../utils/warmStart';
 import {
-  buildRunSettings,
   createProgressCallback,
-  executeSolverRun,
-  selectSolverSettings,
   snapshotProblem,
   validateProblemForSolve,
 } from './runSolverHelpers';
@@ -90,23 +89,8 @@ export async function runSolver({
       message: 'Optimization algorithm started',
     });
 
-    const selectedSettings = await selectSolverSettings({
-      useRecommended,
-      currentProblem,
-      desiredRuntimeMain,
-      solverSettings,
-    });
-
-    const runSelectedSettings: SolverSettings = buildRunSettings(selectedSettings, showLiveVizRef.current);
-
-    setRunSettings(runSelectedSettings);
     setLiveVizState(null);
     liveVizLastUiUpdateRef.current = 0;
-
-    const problemWithSettings = {
-      ...currentProblem,
-      settings: runSelectedSettings,
-    };
 
     runProblemSnapshotRef.current = snapshotProblem(currentProblem);
 
@@ -119,16 +103,40 @@ export async function runSolver({
       liveVizLastUiUpdateRef,
     });
 
-    const { solution, lastProgress } = await executeSolverRun({
-      currentProblem,
-      currentProblemId,
-      savedProblems,
-      warmStartResultId,
-      setWarmStartFromResult,
-      problemWithSettings,
+    let warmStartSchedule: Record<string, Record<string, string[]>> | undefined;
+    if (warmStartResultId) {
+      try {
+        const sourceProblem = currentProblemId ? savedProblems[currentProblemId] : null;
+        const result = sourceProblem?.results.find((savedResult) => savedResult.id === warmStartResultId);
+        if (!result) {
+          throw new Error('Selected warm-start result not found');
+        }
+        warmStartSchedule = reconcileResultToInitialSchedule(currentProblem, result);
+      } catch (error) {
+        console.error('[SolverPanel] Warm-start failed, falling back to normal start:', error);
+        addNotification({
+          type: 'warning',
+          title: 'Warm Start Failed',
+          message: error instanceof Error ? error.message : 'Falling back to default start',
+        });
+      } finally {
+        setWarmStartFromResult(null);
+      }
+    }
+
+    const { solution, lastProgress, selectedSettings, runProblem } = await solveProblem({
+      problem: {
+        ...currentProblem,
+        settings: solverSettings,
+      },
+      useRecommendedSettings: useRecommended,
+      desiredRuntimeSeconds: desiredRuntimeMain,
       progressCallback,
-      addNotification,
+      warmStartSchedule,
+      enableBestScheduleTelemetry: showLiveVizRef.current,
     });
+
+    setRunSettings(runProblem.settings);
 
     solverCompletedRef.current = true;
 
@@ -197,7 +205,7 @@ export async function runSolver({
           message: 'Best-so-far saved. Resuming with the same settings...',
         });
 
-        const resumeProblem = problemWithSettings;
+        const resumeProblem = runProblem;
         const initialSchedule = solution.assignments.reduce<Record<string, Record<string, string[]>>>(
           (acc, a) => {
             const sessionKey = `session_${a.session_id}`;
