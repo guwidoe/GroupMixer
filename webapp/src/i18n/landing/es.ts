@@ -12,8 +12,8 @@ const OPTIMIZER_FEATURES = [
   'Múltiples rondas',
   'Maximizar mezcla',
   'Equilibrar géneros',
-  'Ajustar resultados',
   'Equilibrar cualquier atributo',
+  'Ajustar resultados',
 ];
 
 const CHROME = {

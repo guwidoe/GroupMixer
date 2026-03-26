@@ -12,8 +12,8 @@ const OPTIMIZER_FEATURES = [
   'Multiple rounds',
   'Maximize mixing',
   'Balance genders',
-  'Tweak results',
   'Balance any attribute',
+  'Tweak results',
 ];
 
 const CHROME = {

@@ -12,8 +12,8 @@ const OPTIMIZER_FEATURES = [
   'Plusieurs tours',
   'Maximiser le brassage',
   'Équilibrer les genres',
-  'Ajuster les résultats',
   'Équilibrer n’importe quel attribut',
+  'Ajuster les résultats',
 ];
 
 const CHROME = {

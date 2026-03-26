@@ -12,8 +12,8 @@ const OPTIMIZER_FEATURES = [
   '多轮分组',
   '最大化混合',
   '性别平衡',
-  '手动微调结果',
   '按任意属性平衡',
+  '手动微调结果',
 ];
 
 const CHROME = {

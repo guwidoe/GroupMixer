@@ -12,8 +12,8 @@ const OPTIMIZER_FEATURES = [
   'Mehrere Runden',
   'Durchmischung maximieren',
   'Geschlechter balancieren',
-  'Ergebnisse anpassen',
   'Beliebige Attribute balancieren',
+  'Ergebnisse anpassen',
 ];
 
 const CHROME = {
