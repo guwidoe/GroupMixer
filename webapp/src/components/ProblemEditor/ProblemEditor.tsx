@@ -1,413 +1,158 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useAppStore } from '../../store';
-import type { Problem } from '../../types';
+import React from 'react';
 import { DemoDataWarningModal } from '../modals/DemoDataWarningModal';
 import { ConstraintFormModal } from './ConstraintFormModal';
-import { getDefaultSolverSettings } from './helpers';
-import { useProblemEditorBulk } from './hooks/useProblemEditorBulk';
-import { useProblemEditorConstraints } from './hooks/useProblemEditorConstraints';
-import { useProblemEditorEntities } from './hooks/useProblemEditorEntities';
 import { ProblemSetupLayout } from './layout/ProblemSetupLayout';
 import { ProblemEditorConstraintModals } from './ProblemEditorConstraintModals';
 import { ProblemEditorForms } from './ProblemEditorForms';
 import { ProblemEditorHeader } from './ProblemEditorHeader';
-import { isProblemSetupSectionId } from './navigation/problemSetupNav';
-import { createProblemEditorActions } from './problemEditorActions';
-import { ConstraintsSection } from './sections/ConstraintsSection';
-import { GroupsSection } from './sections/GroupsSection';
-import { HardConstraintsSection } from './sections/HardConstraintsSection';
-import { ObjectivesSection } from './sections/ObjectivesSection';
-import { PeopleSection } from './sections/PeopleSection';
-import { SessionsSection } from './sections/SessionsSection';
-import { SoftConstraintsSection } from './sections/SoftConstraintsSection';
+import { ProblemSetupSectionRenderer } from './ProblemSetupSectionRenderer';
+import { useProblemEditorController } from './useProblemEditorController';
 
 export function ProblemEditor() {
-  const {
-    problem,
-    setProblem,
-    resolveProblem,
-    addNotification,
-    loadDemoCase,
-    loadDemoCaseOverwrite,
-    loadDemoCaseNewProblem,
-    attributeDefinitions,
-    addAttributeDefinition,
-    removeAttributeDefinition,
-    setShowProblemManager,
-    currentProblemId,
-    saveProblem,
-    updateCurrentProblem,
-    updateProblem,
-    ui,
-  } = useAppStore();
+  const controller = useProblemEditorController();
 
-  const { section } = useParams<{ section: string }>();
-  const activeSection =
-    section === 'constraints' || (section && isProblemSetupSectionId(section)) ? section : 'people';
-  const navigationSection = activeSection === 'constraints' ? null : activeSection;
-  const navigate = useNavigate();
-
-  const [sessionsCount, setSessionsCount] = useState(problem?.num_sessions || 3);
-  const entities = useProblemEditorEntities({
-    problem,
-    addAttributeDefinition,
-    removeAttributeDefinition,
-    addNotification,
-    setProblem,
-  });
-
-  const getCurrentObjectiveWeight = () => {
-    if (problem?.objectives && problem.objectives.length > 0) {
-      return problem.objectives[0].weight;
-    }
-    return 1;
-  };
-
-  const objectiveCount = (() => {
-    if (problem?.objectives && problem.objectives.length > 0) {
-      return problem.objectives.filter((objective) => objective.weight > 0).length;
-    }
-    return 1;
-  })();
-
-  useEffect(() => {
-    if (problem && currentProblemId) {
-      try {
-        updateCurrentProblem(currentProblemId, problem);
-      } catch (error) {
-        addNotification({
-          type: 'error',
-          title: 'Auto-save Failed',
-          message: error instanceof Error ? error.message : 'Failed to persist problem changes.',
-        });
-      }
-    }
-  }, [problem, currentProblemId, updateCurrentProblem, addNotification]);
-
-  const constraints = useProblemEditorConstraints({
-    problem,
-    sessionsCount,
-    addNotification,
-    setProblem,
-  });
-
-  const [showDemoWarningModal, setShowDemoWarningModal] = useState(false);
-  const [pendingDemoCaseId, setPendingDemoCaseId] = useState<string | null>(null);
-  const [pendingDemoCaseName, setPendingDemoCaseName] = useState<string | null>(null);
-
-  const handleSaveProblem = () => {
-    if (!problem) return;
-
-    if (currentProblemId) {
-      try {
-        updateCurrentProblem(currentProblemId, problem);
-        addNotification({ type: 'success', title: 'Saved', message: 'Problem saved.' });
-      } catch (error) {
-        addNotification({
-          type: 'error',
-          title: 'Save Failed',
-          message: error instanceof Error ? error.message : 'Failed to persist problem changes.',
-        });
-      }
-    } else {
-      saveProblem('Untitled Problem');
-    }
-  };
-
-  const handleLoadProblem = () => {
-    setShowProblemManager(true);
-  };
-
-  const handleDemoCaseClick = (demoCaseId: string, demoCaseName: string) => {
-    const currentProblem = problem;
-    const hasContent =
-      currentProblem &&
-      (currentProblem.people.length > 0 ||
-        currentProblem.groups.length > 0 ||
-        currentProblem.constraints.length > 0);
-
-    if (hasContent) {
-      setPendingDemoCaseId(demoCaseId);
-      setPendingDemoCaseName(demoCaseName);
-      setShowDemoWarningModal(true);
-    } else {
-      loadDemoCase(demoCaseId);
-    }
-  };
-
-  const handleDemoOverwrite = () => {
-    if (pendingDemoCaseId) {
-      loadDemoCaseOverwrite(pendingDemoCaseId);
-      setShowDemoWarningModal(false);
-      setPendingDemoCaseId(null);
-      setPendingDemoCaseName(null);
-    }
-  };
-
-  const handleDemoLoadNew = () => {
-    if (pendingDemoCaseId) {
-      loadDemoCaseNewProblem(pendingDemoCaseId);
-      setShowDemoWarningModal(false);
-      setPendingDemoCaseId(null);
-      setPendingDemoCaseName(null);
-    }
-  };
-
-  const handleDemoCancel = () => {
-    setShowDemoWarningModal(false);
-    setPendingDemoCaseId(null);
-    setPendingDemoCaseName(null);
-  };
-
-  const handleSessionsCountChange = (count: number | null) => {
-    if (count !== null) {
-      setSessionsCount(count);
-
-      const updatedProblem: Problem = {
-        people: problem?.people || [],
-        groups: problem?.groups || [],
-        num_sessions: count,
-        constraints: problem?.constraints || [],
-        settings: problem?.settings || getDefaultSolverSettings(),
-      };
-
-      setProblem(updatedProblem);
-    }
-  };
-
-  const bulk = useProblemEditorBulk({
-    problem,
-    attributeDefinitions,
-    addAttributeDefinition,
-    removeAttributeDefinition,
-    addNotification,
-    setProblem,
-  });
-
-  const editorActions = createProblemEditorActions({
-    problem,
-    updateProblem,
-    constraints,
-    entities,
-  });
-
-  if (ui.isLoading) {
+  if (controller.ui.isLoading) {
     return <div className="animate-fade-in">Loading...</div>;
   }
 
   return (
     <div className="space-y-6">
       <ProblemEditorHeader
-        onLoadProblem={handleLoadProblem}
-        onSaveProblem={handleSaveProblem}
-        onDemoCaseClick={handleDemoCaseClick}
+        onLoadProblem={controller.handleLoadProblem}
+        onSaveProblem={controller.handleSaveProblem}
+        onDemoCaseClick={controller.handleDemoCaseClick}
       />
 
       <ProblemSetupLayout
-        problem={problem ?? null}
-        attributeDefinitions={attributeDefinitions}
-        objectiveCount={objectiveCount}
-        activeSection={navigationSection}
-        onNavigate={(sectionId) => navigate(`/app/problem/${sectionId}`)}
+        problem={controller.problem ?? null}
+        attributeDefinitions={controller.attributeDefinitions}
+        objectiveCount={controller.objectiveCount}
+        activeSection={controller.navigationSection}
+        onNavigate={controller.navigateToSection}
       >
-        {activeSection === 'people' && (
-          <PeopleSection
-            problem={problem ?? null}
-            attributeDefinitions={attributeDefinitions}
-            sessionsCount={sessionsCount}
-            onAddAttribute={() => entities.setShowAttributeForm(true)}
-            onEditAttribute={entities.handleEditAttribute}
-            onRemoveAttribute={removeAttributeDefinition}
-            onAddPerson={() => entities.setShowPersonForm(true)}
-            onEditPerson={entities.handleEditPerson}
-            onDeletePerson={entities.handleDeletePerson}
-            onOpenBulkAddForm={bulk.addPeople.openForm}
-            onOpenBulkUpdateForm={bulk.updatePeople.openForm}
-            onTriggerCsvUpload={() => bulk.addPeople.csvFileInputRef.current?.click()}
-            onTriggerExcelImport={() =>
-              addNotification({ type: 'info', title: 'Coming Soon', message: 'Excel import is not yet implemented.' })
-            }
-          />
-        )}
-
-        {activeSection === 'groups' && (
-          <GroupsSection
-            problem={problem ?? null}
-            onAddGroup={() => entities.setShowGroupForm(true)}
-            onEditGroup={entities.handleEditGroup}
-            onDeleteGroup={entities.handleDeleteGroup}
-            onOpenBulkAddForm={bulk.addGroups.openForm}
-            onTriggerCsvUpload={() => bulk.addGroups.csvFileInputRef.current?.click()}
-          />
-        )}
-
-        {activeSection === 'sessions' && (
-          <SessionsSection
-            sessionsCount={sessionsCount}
-            onChangeSessionsCount={handleSessionsCountChange}
-          />
-        )}
-
-        {activeSection === 'objectives' && (
-          <ObjectivesSection
-            currentWeight={getCurrentObjectiveWeight()}
-            onCommit={editorActions.handleObjectiveCommit}
-          />
-        )}
-
-        {activeSection === 'hard' && (
-          <HardConstraintsSection
-            onAdd={editorActions.handleHardConstraintAdd}
-            onEdit={editorActions.handleHardConstraintEdit}
-            onDelete={constraints.handleDeleteConstraint}
-          />
-        )}
-
-        {activeSection === 'soft' && (
-          <SoftConstraintsSection
-            onAdd={editorActions.handleSoftConstraintAdd}
-            onEdit={editorActions.handleSoftConstraintEdit}
-            onDelete={constraints.handleDeleteConstraint}
-          />
-        )}
-
-        {activeSection === 'constraints' && (
-          <ConstraintsSection
-            problem={problem ?? null}
-            activeConstraintTab={constraints.activeConstraintTab}
-            constraintCategoryTab={constraints.constraintCategoryTab}
-            hardTypes={constraints.HARD_TYPES}
-            softTypes={constraints.SOFT_TYPES}
-            onChangeCategory={constraints.setConstraintCategoryTab}
-            onChangeTab={constraints.setActiveConstraintTab}
-            onAddConstraint={() => constraints.setShowConstraintForm(true)}
-            onEditConstraint={constraints.handleEditConstraint}
-            onDeleteConstraint={constraints.handleDeleteConstraint}
-          />
-        )}
+        <ProblemSetupSectionRenderer controller={controller} />
       </ProblemSetupLayout>
 
       <ProblemEditorForms
         person={{
-          showPersonForm: entities.showPersonForm,
-          editingPerson: entities.editingPerson,
-          personForm: entities.personForm,
-          setPersonForm: entities.setPersonForm,
-          attributeDefinitions,
-          sessionsCount,
-          onSavePerson: entities.handleAddPerson,
-          onUpdatePerson: entities.handleUpdatePerson,
-          onCancelPerson: editorActions.handleCancelPersonForm,
-          onShowAttributeForm: () => entities.setShowAttributeForm(true),
+          showPersonForm: controller.entities.showPersonForm,
+          editingPerson: controller.entities.editingPerson,
+          personForm: controller.entities.personForm,
+          setPersonForm: controller.entities.setPersonForm,
+          attributeDefinitions: controller.attributeDefinitions,
+          sessionsCount: controller.sessionsCount,
+          onSavePerson: controller.entities.handleAddPerson,
+          onUpdatePerson: controller.entities.handleUpdatePerson,
+          onCancelPerson: controller.editorActions.handleCancelPersonForm,
+          onShowAttributeForm: () => controller.entities.setShowAttributeForm(true),
         }}
         group={{
-          showGroupForm: entities.showGroupForm,
-          editingGroup: entities.editingGroup,
-          groupForm: entities.groupForm,
-          setGroupForm: entities.setGroupForm,
-          groupFormInputs: entities.groupFormInputs,
-          setGroupFormInputs: entities.setGroupFormInputs,
-          onSaveGroup: entities.handleAddGroup,
-          onUpdateGroup: entities.handleUpdateGroup,
-          onCancelGroup: editorActions.handleCancelGroupForm,
+          showGroupForm: controller.entities.showGroupForm,
+          editingGroup: controller.entities.editingGroup,
+          groupForm: controller.entities.groupForm,
+          setGroupForm: controller.entities.setGroupForm,
+          groupFormInputs: controller.entities.groupFormInputs,
+          setGroupFormInputs: controller.entities.setGroupFormInputs,
+          onSaveGroup: controller.entities.handleAddGroup,
+          onUpdateGroup: controller.entities.handleUpdateGroup,
+          onCancelGroup: controller.editorActions.handleCancelGroupForm,
         }}
         attribute={{
-          showAttributeForm: entities.showAttributeForm,
-          editingAttribute: entities.editingAttribute,
-          newAttribute: entities.newAttribute,
-          setNewAttribute: entities.setNewAttribute,
-          onSaveAttribute: entities.handleAddAttribute,
-          onUpdateAttribute: entities.handleUpdateAttribute,
-          onCancelAttribute: editorActions.handleCancelAttributeForm,
+          showAttributeForm: controller.entities.showAttributeForm,
+          editingAttribute: controller.entities.editingAttribute,
+          newAttribute: controller.entities.newAttribute,
+          setNewAttribute: controller.entities.setNewAttribute,
+          onSaveAttribute: controller.entities.handleAddAttribute,
+          onUpdateAttribute: controller.entities.handleUpdateAttribute,
+          onCancelAttribute: controller.editorActions.handleCancelAttributeForm,
         }}
         bulkAddPeople={{
-          showBulkForm: bulk.addPeople.showForm,
-          bulkTextMode: bulk.addPeople.textMode,
-          setBulkTextMode: bulk.addPeople.setTextMode,
-          bulkCsvInput: bulk.addPeople.csvInput,
-          setBulkCsvInput: bulk.addPeople.setCsvInput,
-          bulkHeaders: bulk.addPeople.headers,
-          setBulkHeaders: bulk.addPeople.setHeaders,
-          bulkRows: bulk.addPeople.rows,
-          setBulkRows: bulk.addPeople.setRows,
-          onSaveBulkPeople: bulk.addPeople.save,
-          onCloseBulkPeople: () => bulk.addPeople.setShowForm(false),
+          showBulkForm: controller.bulk.addPeople.showForm,
+          bulkTextMode: controller.bulk.addPeople.textMode,
+          setBulkTextMode: controller.bulk.addPeople.setTextMode,
+          bulkCsvInput: controller.bulk.addPeople.csvInput,
+          setBulkCsvInput: controller.bulk.addPeople.setCsvInput,
+          bulkHeaders: controller.bulk.addPeople.headers,
+          setBulkHeaders: controller.bulk.addPeople.setHeaders,
+          bulkRows: controller.bulk.addPeople.rows,
+          setBulkRows: controller.bulk.addPeople.setRows,
+          onSaveBulkPeople: controller.bulk.addPeople.save,
+          onCloseBulkPeople: () => controller.bulk.addPeople.setShowForm(false),
         }}
         bulkUpdatePeople={{
-          showBulkUpdateForm: bulk.updatePeople.showForm,
-          bulkUpdateTextMode: bulk.updatePeople.textMode,
-          setBulkUpdateTextMode: bulk.updatePeople.setTextMode,
-          bulkUpdateCsvInput: bulk.updatePeople.csvInput,
-          setBulkUpdateCsvInput: bulk.updatePeople.setCsvInput,
-          bulkUpdateHeaders: bulk.updatePeople.headers,
-          setBulkUpdateHeaders: bulk.updatePeople.setHeaders,
-          bulkUpdateRows: bulk.updatePeople.rows,
-          setBulkUpdateRows: bulk.updatePeople.setRows,
-          onRefreshBulkUpdate: bulk.updatePeople.refreshFromCurrent,
-          onApplyBulkUpdate: bulk.updatePeople.apply,
-          onCloseBulkUpdate: () => bulk.updatePeople.setShowForm(false),
+          showBulkUpdateForm: controller.bulk.updatePeople.showForm,
+          bulkUpdateTextMode: controller.bulk.updatePeople.textMode,
+          setBulkUpdateTextMode: controller.bulk.updatePeople.setTextMode,
+          bulkUpdateCsvInput: controller.bulk.updatePeople.csvInput,
+          setBulkUpdateCsvInput: controller.bulk.updatePeople.setCsvInput,
+          bulkUpdateHeaders: controller.bulk.updatePeople.headers,
+          setBulkUpdateHeaders: controller.bulk.updatePeople.setHeaders,
+          bulkUpdateRows: controller.bulk.updatePeople.rows,
+          setBulkUpdateRows: controller.bulk.updatePeople.setRows,
+          onRefreshBulkUpdate: controller.bulk.updatePeople.refreshFromCurrent,
+          onApplyBulkUpdate: controller.bulk.updatePeople.apply,
+          onCloseBulkUpdate: () => controller.bulk.updatePeople.setShowForm(false),
         }}
         bulkAddGroups={{
-          showGroupBulkForm: bulk.addGroups.showForm,
-          groupBulkTextMode: bulk.addGroups.textMode,
-          setGroupBulkTextMode: bulk.addGroups.setTextMode,
-          groupBulkCsvInput: bulk.addGroups.csvInput,
-          setGroupBulkCsvInput: bulk.addGroups.setCsvInput,
-          groupBulkHeaders: bulk.addGroups.headers,
-          setGroupBulkHeaders: bulk.addGroups.setHeaders,
-          groupBulkRows: bulk.addGroups.rows,
-          setGroupBulkRows: bulk.addGroups.setRows,
-          onSaveGroupBulk: bulk.addGroups.save,
-          onCloseGroupBulk: () => bulk.addGroups.setShowForm(false),
+          showGroupBulkForm: controller.bulk.addGroups.showForm,
+          groupBulkTextMode: controller.bulk.addGroups.textMode,
+          setGroupBulkTextMode: controller.bulk.addGroups.setTextMode,
+          groupBulkCsvInput: controller.bulk.addGroups.csvInput,
+          setGroupBulkCsvInput: controller.bulk.addGroups.setCsvInput,
+          groupBulkHeaders: controller.bulk.addGroups.headers,
+          setGroupBulkHeaders: controller.bulk.addGroups.setHeaders,
+          groupBulkRows: controller.bulk.addGroups.rows,
+          setGroupBulkRows: controller.bulk.addGroups.setRows,
+          onSaveGroupBulk: controller.bulk.addGroups.save,
+          onCloseGroupBulk: () => controller.bulk.addGroups.setShowForm(false),
         }}
-        csvFileInputRef={bulk.addPeople.csvFileInputRef}
-        onCsvFileSelected={bulk.addPeople.handleCsvFileSelected}
-        groupCsvFileInputRef={bulk.addGroups.csvFileInputRef}
-        onGroupCsvFileSelected={bulk.addGroups.handleCsvFileSelected}
+        csvFileInputRef={controller.bulk.addPeople.csvFileInputRef}
+        onCsvFileSelected={controller.bulk.addPeople.handleCsvFileSelected}
+        groupCsvFileInputRef={controller.bulk.addGroups.csvFileInputRef}
+        onGroupCsvFileSelected={controller.bulk.addGroups.handleCsvFileSelected}
       />
       <ConstraintFormModal
-        isOpen={constraints.showConstraintForm}
-        isEditing={constraints.editingConstraint !== null}
-        constraintForm={constraints.constraintForm}
-        setConstraintForm={constraints.setConstraintForm}
-        problem={problem ?? null}
-        attributeDefinitions={attributeDefinitions}
-        sessionsCount={sessionsCount}
-        onAdd={constraints.handleAddConstraint}
-        onUpdate={constraints.handleUpdateConstraint}
-        onClose={editorActions.handleCloseConstraintForm}
+        isOpen={controller.constraints.showConstraintForm}
+        isEditing={controller.constraints.editingConstraint !== null}
+        constraintForm={controller.constraints.constraintForm}
+        setConstraintForm={controller.constraints.setConstraintForm}
+        problem={controller.problem ?? null}
+        attributeDefinitions={controller.attributeDefinitions}
+        sessionsCount={controller.sessionsCount}
+        onAdd={controller.constraints.handleAddConstraint}
+        onUpdate={controller.constraints.handleUpdateConstraint}
+        onClose={controller.editorActions.handleCloseConstraintForm}
       />
       <ProblemEditorConstraintModals
-        sessionsCount={sessionsCount}
-        resolveProblem={resolveProblem}
-        setProblem={setProblem}
-        showImmovableModal={constraints.showImmovableModal}
-        setShowImmovableModal={constraints.setShowImmovableModal}
-        editingImmovableIndex={constraints.editingImmovableIndex}
-        setEditingImmovableIndex={constraints.setEditingImmovableIndex}
-        showRepeatEncounterModal={constraints.showRepeatEncounterModal}
-        setShowRepeatEncounterModal={constraints.setShowRepeatEncounterModal}
-        showAttributeBalanceModal={constraints.showAttributeBalanceModal}
-        setShowAttributeBalanceModal={constraints.setShowAttributeBalanceModal}
-        showShouldNotBeTogetherModal={constraints.showShouldNotBeTogetherModal}
-        setShowShouldNotBeTogetherModal={constraints.setShowShouldNotBeTogetherModal}
-        showShouldStayTogetherModal={constraints.showShouldStayTogetherModal}
-        setShowShouldStayTogetherModal={constraints.setShowShouldStayTogetherModal}
-        showMustStayTogetherModal={constraints.showMustStayTogetherModal}
-        setShowMustStayTogetherModal={constraints.setShowMustStayTogetherModal}
-        showPairMeetingCountModal={constraints.showPairMeetingCountModal}
-        setShowPairMeetingCountModal={constraints.setShowPairMeetingCountModal}
-        editingConstraintIndex={constraints.editingConstraintIndex}
-        setEditingConstraintIndex={constraints.setEditingConstraintIndex}
+        sessionsCount={controller.sessionsCount}
+        resolveProblem={controller.resolveProblem}
+        setProblem={controller.setProblem}
+        showImmovableModal={controller.constraints.showImmovableModal}
+        setShowImmovableModal={controller.constraints.setShowImmovableModal}
+        editingImmovableIndex={controller.constraints.editingImmovableIndex}
+        setEditingImmovableIndex={controller.constraints.setEditingImmovableIndex}
+        showRepeatEncounterModal={controller.constraints.showRepeatEncounterModal}
+        setShowRepeatEncounterModal={controller.constraints.setShowRepeatEncounterModal}
+        showAttributeBalanceModal={controller.constraints.showAttributeBalanceModal}
+        setShowAttributeBalanceModal={controller.constraints.setShowAttributeBalanceModal}
+        showShouldNotBeTogetherModal={controller.constraints.showShouldNotBeTogetherModal}
+        setShowShouldNotBeTogetherModal={controller.constraints.setShowShouldNotBeTogetherModal}
+        showShouldStayTogetherModal={controller.constraints.showShouldStayTogetherModal}
+        setShowShouldStayTogetherModal={controller.constraints.setShowShouldStayTogetherModal}
+        showMustStayTogetherModal={controller.constraints.showMustStayTogetherModal}
+        setShowMustStayTogetherModal={controller.constraints.setShowMustStayTogetherModal}
+        showPairMeetingCountModal={controller.constraints.showPairMeetingCountModal}
+        setShowPairMeetingCountModal={controller.constraints.setShowPairMeetingCountModal}
+        editingConstraintIndex={controller.constraints.editingConstraintIndex}
+        setEditingConstraintIndex={controller.constraints.setEditingConstraintIndex}
       />
 
       <DemoDataWarningModal
-        isOpen={showDemoWarningModal}
-        onClose={handleDemoCancel}
-        onOverwrite={handleDemoOverwrite}
-        onLoadNew={handleDemoLoadNew}
-        demoCaseName={pendingDemoCaseName || 'Demo Case'}
+        isOpen={controller.showDemoWarningModal}
+        onClose={controller.handleDemoCancel}
+        onOverwrite={controller.handleDemoOverwrite}
+        onLoadNew={controller.handleDemoLoadNew}
+        demoCaseName={controller.pendingDemoCaseName || 'Demo Case'}
       />
     </div>
   );
