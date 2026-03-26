@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import type { CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
@@ -14,6 +15,9 @@ function MainApp() {
   const { ui, scenario, currentScenarioId, initializeApp, setShowScenarioManager } = useAppStore();
   const location = useLocation();
   const hasTrackedAppEntryRef = useRef(false);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const navigationRef = useRef<HTMLDivElement>(null);
+  const [scenarioShellHeight, setScenarioShellHeight] = useState<string>('20rem');
   const seo = getAppSeo(location.pathname);
   const isScenarioSetupRoute = location.pathname.startsWith('/app/scenario');
 
@@ -39,6 +43,43 @@ function MainApp() {
     );
   }, [location.pathname, location.search]);
 
+  useLayoutEffect(() => {
+    if (!isScenarioSetupRoute) {
+      return;
+    }
+
+    const updateScenarioShellHeight = () => {
+      const headerHeight = headerRef.current?.getBoundingClientRect().height ?? 0;
+      const navigationHeight = navigationRef.current?.getBoundingClientRect().height ?? 0;
+      const chromeHeight = Math.ceil(headerHeight + navigationHeight);
+      const nextHeight = `max(20rem, calc(100vh - ${chromeHeight}px))`;
+      setScenarioShellHeight((currentHeight) => (currentHeight === nextHeight ? currentHeight : nextHeight));
+    };
+
+    updateScenarioShellHeight();
+
+    const resizeObserver = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(() => {
+          updateScenarioShellHeight();
+        });
+
+    if (resizeObserver && headerRef.current) {
+      resizeObserver.observe(headerRef.current);
+    }
+
+    if (resizeObserver && navigationRef.current) {
+      resizeObserver.observe(navigationRef.current);
+    }
+
+    window.addEventListener('resize', updateScenarioShellHeight);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', updateScenarioShellHeight);
+    };
+  }, [isScenarioSetupRoute]);
+
   return (
     <div className="flex min-h-screen flex-col transition-colors" style={{ backgroundColor: 'var(--bg-secondary)' }}>
       <Seo
@@ -49,13 +90,18 @@ function MainApp() {
         includeStructuredData={false}
       />
 
-      <Header />
-      <Navigation />
+      <div ref={headerRef}>
+        <Header />
+      </div>
+      <div ref={navigationRef}>
+        <Navigation />
+      </div>
 
       <main
         className={isScenarioSetupRoute
-          ? 'w-full px-4 py-4 md:flex md:min-h-[20rem] md:flex-1 md:flex-col md:overflow-hidden md:px-0 md:py-0'
+          ? 'w-full px-4 py-4 md:flex md:h-[var(--scenario-shell-height)] md:flex-col md:overflow-hidden md:px-0 md:py-0'
           : 'container mx-auto w-full flex-1 px-4 py-6'}
+        style={isScenarioSetupRoute ? ({ '--scenario-shell-height': scenarioShellHeight } as CSSProperties) : undefined}
       >
         {scenario && !currentScenarioId && (
           <div className={isScenarioSetupRoute ? 'px-4 pt-6' : ''}>
