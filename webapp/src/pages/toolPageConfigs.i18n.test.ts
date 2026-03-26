@@ -28,11 +28,13 @@ describe('toolPageConfigs locale routing', () => {
   it('adds all approved locale-prefixed routes for the selected localized rollout pages', () => {
     expect(TOOL_PAGE_ROUTES).toEqual(
       expect.arrayContaining([
+        { key: 'home', locale: 'de', path: '/de' },
         { key: 'home', locale: 'es', path: '/es' },
         { key: 'home', locale: 'fr', path: '/fr' },
         { key: 'home', locale: 'ja', path: '/ja' },
         { key: 'home', locale: 'hi', path: '/hi' },
         { key: 'home', locale: 'zh', path: '/zh' },
+        { key: 'random-team-generator', locale: 'de', path: '/de/random-team-generator' },
         { key: 'random-team-generator', locale: 'es', path: '/es/random-team-generator' },
         { key: 'random-team-generator', locale: 'fr', path: '/fr/random-team-generator' },
         { key: 'random-team-generator', locale: 'ja', path: '/ja/random-team-generator' },
@@ -51,6 +53,7 @@ describe('toolPageConfigs locale routing', () => {
     expect(config.canonicalPath).toBe('/zh/random-team-generator');
     expect(config.alternates).toEqual([
       { hreflang: 'en', canonicalPath: '/random-team-generator' },
+      { hreflang: 'de', canonicalPath: '/de/random-team-generator' },
       { hreflang: 'es', canonicalPath: '/es/random-team-generator' },
       { hreflang: 'fr', canonicalPath: '/fr/random-team-generator' },
       { hreflang: 'ja', canonicalPath: '/ja/random-team-generator' },

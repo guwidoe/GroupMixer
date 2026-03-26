@@ -7,6 +7,7 @@ This document defines the operating policy for multilingual landing expansion **
 Current shipped landing locales:
 
 - English (`/slug`)
+- German (`/de/slug`) for selected high-value pages
 - Spanish (`/es/slug`) for selected high-value pages
 - French (`/fr/slug`) for selected high-value pages
 - Japanese (`/ja/slug`) for selected high-value pages
@@ -17,6 +18,7 @@ Current shipped landing locales:
 
 The following decisions are now implemented:
 
+- German is approved and live on the shared landing engine
 - Japanese is approved and live on the shared landing engine
 - Hindi is approved and live on the shared landing engine
 - Chinese is approved specifically as **Simplified Chinese**

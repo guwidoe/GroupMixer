@@ -39,6 +39,7 @@ That manifest drives:
 Localized copy resources live in:
 
 - `webapp/src/i18n/landing/en.ts`
+- `webapp/src/i18n/landing/de.ts`
 - `webapp/src/i18n/landing/es.ts`
 - `webapp/src/i18n/landing/fr.ts`
 - `webapp/src/i18n/landing/ja.ts`
@@ -71,15 +72,15 @@ Next candidates to evaluate before publishing more English pages:
 
 ## Current multilingual rollout
 
-Spanish, French, Japanese, Hindi, and Simplified Chinese are now live on the shared landing engine for the highest-value landing pages:
+German, Spanish, French, Japanese, Hindi, and Simplified Chinese are now live on the shared landing engine for the highest-value landing pages:
 
-- `/` ↔ `/es` ↔ `/fr` ↔ `/ja` ↔ `/hi` ↔ `/zh`
-- `/random-group-generator` ↔ `/es/random-group-generator` ↔ `/fr/random-group-generator` ↔ `/ja/random-group-generator` ↔ `/hi/random-group-generator` ↔ `/zh/random-group-generator`
-- `/random-team-generator` ↔ `/es/random-team-generator` ↔ `/fr/random-team-generator` ↔ `/ja/random-team-generator` ↔ `/hi/random-team-generator` ↔ `/zh/random-team-generator`
-- `/breakout-room-generator` ↔ `/es/breakout-room-generator` ↔ `/fr/breakout-room-generator` ↔ `/ja/breakout-room-generator` ↔ `/hi/breakout-room-generator` ↔ `/zh/breakout-room-generator`
-- `/workshop-group-generator` ↔ `/es/workshop-group-generator` ↔ `/fr/workshop-group-generator` ↔ `/ja/workshop-group-generator` ↔ `/hi/workshop-group-generator` ↔ `/zh/workshop-group-generator`
-- `/student-group-generator` ↔ `/es/student-group-generator` ↔ `/fr/student-group-generator` ↔ `/ja/student-group-generator` ↔ `/hi/student-group-generator` ↔ `/zh/student-group-generator`
-- `/speed-networking-generator` ↔ `/es/speed-networking-generator` ↔ `/fr/speed-networking-generator` ↔ `/ja/speed-networking-generator` ↔ `/hi/speed-networking-generator` ↔ `/zh/speed-networking-generator`
+- `/` ↔ `/de` ↔ `/es` ↔ `/fr` ↔ `/ja` ↔ `/hi` ↔ `/zh`
+- `/random-group-generator` ↔ `/de/random-group-generator` ↔ `/es/random-group-generator` ↔ `/fr/random-group-generator` ↔ `/ja/random-group-generator` ↔ `/hi/random-group-generator` ↔ `/zh/random-group-generator`
+- `/random-team-generator` ↔ `/de/random-team-generator` ↔ `/es/random-team-generator` ↔ `/fr/random-team-generator` ↔ `/ja/random-team-generator` ↔ `/hi/random-team-generator` ↔ `/zh/random-team-generator`
+- `/breakout-room-generator` ↔ `/de/breakout-room-generator` ↔ `/es/breakout-room-generator` ↔ `/fr/breakout-room-generator` ↔ `/ja/breakout-room-generator` ↔ `/hi/breakout-room-generator` ↔ `/zh/breakout-room-generator`
+- `/workshop-group-generator` ↔ `/de/workshop-group-generator` ↔ `/es/workshop-group-generator` ↔ `/fr/workshop-group-generator` ↔ `/ja/workshop-group-generator` ↔ `/hi/workshop-group-generator` ↔ `/zh/workshop-group-generator`
+- `/student-group-generator` ↔ `/de/student-group-generator` ↔ `/es/student-group-generator` ↔ `/fr/student-group-generator` ↔ `/ja/student-group-generator` ↔ `/hi/student-group-generator` ↔ `/zh/student-group-generator`
+- `/speed-networking-generator` ↔ `/de/speed-networking-generator` ↔ `/es/speed-networking-generator` ↔ `/fr/speed-networking-generator` ↔ `/ja/speed-networking-generator` ↔ `/hi/speed-networking-generator` ↔ `/zh/speed-networking-generator`
 
 Supporting English-only pages remain unprefixed for now until they justify localization demand and review effort.
 
@@ -108,6 +109,7 @@ Current route policy:
   - `/random-team-generator`
 - localized landing pages use locale prefixes
   - `/es/...`
+  - `/de/...`
   - `/fr/...`
   - `/ja/...`
   - `/hi/...`

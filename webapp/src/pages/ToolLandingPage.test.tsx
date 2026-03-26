@@ -164,6 +164,7 @@ describe('ToolLandingPage SEO wiring', () => {
     const selector = await screen.findByRole('combobox', { name: /language/i });
     expect(selector).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'English' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Deutsch' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Español' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Français' })).toBeInTheDocument();
   });
