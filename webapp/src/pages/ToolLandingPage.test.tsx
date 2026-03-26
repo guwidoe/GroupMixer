@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { useAppStore } from '../store';
 import ToolLandingPage from './ToolLandingPage';
+import { TOOL_PAGE_CONFIGS } from './toolPageConfigs';
 
 vi.mock('../services/solver/solveProblem', () => ({
   solveProblem: vi.fn(async ({ problem }: { problem: { people: Array<{ id: string }>; groups: Array<{ id: string }>; num_sessions: number } }) => ({
@@ -37,6 +38,8 @@ beforeEach(() => {
 
 describe('ToolLandingPage SEO wiring', () => {
   it('renders route-specific copy and updates document metadata from config', async () => {
+    const config = TOOL_PAGE_CONFIGS['random-team-generator'];
+
     render(
       <MemoryRouter initialEntries={['/random-team-generator?exp=seo-hero-test&var=B']}>
         <ToolLandingPage pageKey="random-team-generator" />
@@ -46,14 +49,14 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(
       await screen.findByRole('heading', {
         level: 1,
-        name: 'Random Team Generator',
+        name: config.hero.title,
       }),
     ).toBeInTheDocument();
 
-    expect(document.title).toBe('Random Team Generator — Create Balanced Teams Fast | GroupMixer');
-    expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(
-      'Free random team generator. Paste names and create balanced teams instantly. Add rules for skill balancing, keep-together, and keep-apart when needed.',
-    );
+    expect(screen.getByText(config.hero.eyebrow)).toBeInTheDocument();
+    expect(screen.getByText(config.hero.audienceSummary)).toBeInTheDocument();
+    expect(document.title).toBe(config.seo.title);
+    expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(config.seo.description);
     expect(document.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('index,follow');
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
       'https://www.groupmixer.app/random-team-generator',

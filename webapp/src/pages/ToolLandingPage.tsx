@@ -119,11 +119,20 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
           pageKey,
           canonicalPath: config.canonicalPath,
           preset: config.defaultPreset,
+          audience: config.inventory.audience,
+          pageExperimentLabel: config.experiment.label,
         },
         telemetryAttribution,
       ),
     );
-  }, [config.canonicalPath, config.defaultPreset, pageKey, telemetryAttribution]);
+  }, [
+    config.canonicalPath,
+    config.defaultPreset,
+    config.experiment.label,
+    config.inventory.audience,
+    pageKey,
+    telemetryAttribution,
+  ]);
 
   const workspacePayload = controller.workspacePayload;
   const solvedSolution = workspacePayload.solution ?? null;
@@ -145,7 +154,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
       const syncedProblemId = syncWorkspaceDraft({
         ...workspacePayload,
         currentProblemId: controller.draft.workspaceProblemId,
-        problemName: `${config.h1} draft`,
+        problemName: `${config.hero.title} draft`,
       });
 
       if (syncedProblemId !== controller.draft.workspaceProblemId) {
@@ -158,7 +167,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
 
     return () => window.clearTimeout(timeout);
   }, [
-    config.h1,
+    config.hero.title,
     controller,
     controller.draft.workspaceProblemId,
     syncWorkspaceDraft,
@@ -192,7 +201,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
     const syncedProblemId = syncWorkspaceDraft({
       ...workspacePayload,
       currentProblemId: controller.draft.workspaceProblemId,
-      problemName: `${config.h1} draft`,
+      problemName: `${config.hero.title} draft`,
     });
 
     if (syncedProblemId !== controller.draft.workspaceProblemId) {
@@ -377,8 +386,8 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
       <Seo
-        title={config.title}
-        description={config.metaDescription}
+        title={config.seo.title}
+        description={config.seo.description}
         canonicalPath={config.canonicalPath}
         faqEntries={config.faqEntries}
       />
@@ -411,26 +420,26 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
         <section className="px-4 pb-10 pt-8 sm:px-6 lg:pb-16 lg:pt-12">
           <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1fr_minmax(340px,420px)] lg:items-start lg:gap-12">
             <div data-testid="landing-hero" className={`${heroOrderClass} max-w-xl pt-2`}>
+              <div className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-secondary)' }}>
+                {config.hero.eyebrow}
+              </div>
               <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl lg:leading-[1.15]">
-                {config.h1}
+                {config.hero.title}
               </h1>
               <p className="mt-4 text-base leading-7 sm:text-lg sm:leading-8" style={{ color: 'var(--text-secondary)' }}>
-                {config.subhead}
+                {config.hero.subhead}
+              </p>
+              <p className="mt-3 max-w-2xl text-sm leading-6 sm:text-base" style={{ color: 'var(--text-secondary)' }}>
+                {config.hero.audienceSummary}
               </p>
 
               <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }} />
-                  Private (processed in your browser)
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }} />
-                  No sign-up
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }} />
-                  Results in seconds
-                </span>
+                {config.hero.trustBullets.map((bullet) => (
+                  <span key={bullet} className="flex items-center gap-1.5">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }} />
+                    {bullet}
+                  </span>
+                ))}
               </div>
 
               <div
@@ -442,20 +451,18 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
               >
                 <div className="max-w-lg">
                   <div className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-secondary)' }}>
-                    Want to do better than random?
+                    {config.optimizerCta.eyebrow}
                   </div>
                   <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">
-                    Try the full group optimizer.
+                    {config.optimizerCta.title}
                   </h2>
 
                   <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                    <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Keep together</span>
-                    <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Avoid pairings</span>
-                    <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Multiple rounds</span>
-                    <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Maximize mixing</span>
-                    <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Balance genders</span>
-                    <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Tweak results</span>
-                    <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>Balance any attribute</span>
+                    {config.optimizerCta.featureBullets.map((feature) => (
+                      <span key={feature} className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                        {feature}
+                      </span>
+                    ))}
                   </div>
 
                   <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -465,11 +472,11 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                       className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold"
                     >
                       <Users className="h-4 w-4" />
-                      Open expert workspace
+                      {config.optimizerCta.buttonLabel}
                       <ArrowRight className="h-4 w-4" />
                     </button>
                     <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      Your landing-page draft comes with you.
+                      {config.optimizerCta.supportingText}
                     </span>
                   </div>
                 </div>

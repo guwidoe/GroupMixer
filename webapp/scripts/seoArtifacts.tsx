@@ -5,7 +5,7 @@ import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { buildSeoDocument, CANONICAL_ORIGIN, DEFAULT_OG_IMAGE } from '../src/seo/seoDocument.ts';
-import { TOOL_PAGE_CONFIGS_DATA, TOOL_PAGE_ROUTE_ENTRIES } from '../src/pages/toolPageConfigs.data.mjs';
+import { TOOL_PAGE_CONFIGS, TOOL_PAGE_ROUTES } from '../src/pages/toolPageConfigs.ts';
 import { getAppSeo } from '../src/seo/appRouteSeo.ts';
 
 type StorageShape = {
@@ -127,7 +127,7 @@ function applySeoDocument(templateHtml: string, rootMarkup: string, seo: ReturnT
 }
 
 function buildSitemapXml(): string {
-  const urls = TOOL_PAGE_ROUTE_ENTRIES.map(({ path: routePath }) => {
+  const urls = TOOL_PAGE_ROUTES.map(({ path: routePath }) => {
     const suffix = routePath === '/' ? '/' : routePath;
     return `  <url>\n    <loc>${CANONICAL_ORIGIN}${suffix}</loc>\n  </url>`;
   }).join('\n');
@@ -154,10 +154,10 @@ async function renderRouteMarkup(routePath: string): Promise<string> {
 }
 
 async function renderLandingPages(templateHtml: string) {
-  for (const config of Object.values(TOOL_PAGE_CONFIGS_DATA)) {
+  for (const config of Object.values(TOOL_PAGE_CONFIGS)) {
     const seo = buildSeoDocument({
-      title: config.title,
-      description: config.metaDescription,
+      title: config.seo.title,
+      description: config.seo.description,
       canonicalPath: config.canonicalPath,
       faqEntries: config.faqEntries,
     });

@@ -23,11 +23,14 @@ Search Console showed `/app` utility routes being indexed. Those routes are usef
 Landing-page SEO inventory lives in:
 
 - `webapp/src/pages/toolPageConfigs.data.mjs`
+- validated + typed via `webapp/src/pages/toolPageConfigs.ts`
 
 That manifest drives:
 
 - app route registration
 - landing-page copy + metadata
+- audience framing + shared CTA content
+- experiment labels + rollout inventory metadata
 - sitemap generation
 - static landing prerender output
 
@@ -54,10 +57,21 @@ The normal webapp build runs both automatically.
 ## Adding a new landing page safely
 
 1. Add the page config to `webapp/src/pages/toolPageConfigs.data.mjs`
-2. Re-run:
+2. Keep it inside the shared content model:
+   - `seo.title`
+   - `seo.description`
+   - `hero.eyebrow`
+   - `hero.title`
+   - `hero.subhead`
+   - `hero.audienceSummary`
+   - `faqEntries`
+   - `experiment.label` / `experiment.futureVariants`
+   - `inventory.searchIntent` / `inventory.audience` / `inventory.priority`
+3. Do **not** copy `ToolLandingPage.tsx` or create page-specific landing components.
+4. Re-run:
    - `cd webapp && npm run sync:seo-assets`
-3. Verify route metadata/tests as needed
-4. Build once to confirm prerender output:
+5. Verify route metadata/tests as needed
+6. Build once to confirm prerender output:
    - `cd webapp && npm run build`
 
 If a new landing page is not in the manifest, it will not automatically appear in the sitemap or prerender output.
@@ -73,3 +87,23 @@ Landing pages should share the same functional implementation and differ mainly 
 - FAQ/schema content
 - target audience framing
 - experiment labels
+
+## Shared behavior vs config-only differences
+
+The landing-page factory is intentionally split into:
+
+- shared behavior
+  - quick setup form
+  - solver integration
+  - results rendering
+  - workspace handoff
+  - telemetry plumbing
+- config-only differences
+  - copy
+  - metadata
+  - FAQ/schema text
+  - audience framing
+  - experiment labels
+  - rollout priority
+
+If a new search-intent page needs different functionality, treat that as product work first — not as an SEO-page fork.
