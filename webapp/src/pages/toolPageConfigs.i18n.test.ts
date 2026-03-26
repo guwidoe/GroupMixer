@@ -11,11 +11,13 @@ describe('toolPageConfigs locale routing', () => {
   it('keeps English unprefixed and builds prefixed locale routes for future locales', () => {
     expect(DEFAULT_LOCALE).toBe('en');
     expect(getLocaleHomePath('en')).toBe('/');
+    expect(getLocaleHomePath('de')).toBe('/de');
     expect(getLocaleHomePath('es')).toBe('/es');
     expect(getLocaleHomePath('fr')).toBe('/fr');
     expect(getLocaleHomePath('ja')).toBe('/ja');
     expect(getLocaleHomePath('hi')).toBe('/hi');
     expect(getLocaleHomePath('zh')).toBe('/zh');
+    expect(buildToolPagePath('de', 'random-team-generator', 'random-team-generator')).toBe('/de/random-team-generator');
     expect(buildToolPagePath('es', 'random-team-generator', 'random-team-generator')).toBe('/es/random-team-generator');
     expect(buildToolPagePath('fr', 'random-team-generator', 'random-team-generator')).toBe('/fr/random-team-generator');
     expect(buildToolPagePath('ja', 'random-team-generator', 'random-team-generator')).toBe('/ja/random-team-generator');

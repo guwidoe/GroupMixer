@@ -1,5 +1,5 @@
 export const DEFAULT_LOCALE = 'en' as const;
-export const SUPPORTED_LOCALES = ['en', 'es', 'fr', 'ja', 'hi', 'zh'] as const;
+export const SUPPORTED_LOCALES = ['en', 'de', 'es', 'fr', 'ja', 'hi', 'zh'] as const;
 
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 export type ToolPagePreset = 'random' | 'balanced' | 'networking';

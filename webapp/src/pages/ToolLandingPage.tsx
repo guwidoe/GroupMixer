@@ -6,6 +6,7 @@ import { QuickSetupAdvancedOptions } from '../components/LandingTool/QuickSetupA
 import { QuickSetupFaq } from '../components/LandingTool/QuickSetupFaq';
 import { useQuickSetup } from '../components/LandingTool/useQuickSetup';
 import { LandingFooter } from '../components/LandingPage/LandingFooter';
+import { LandingLanguageSelector } from '../components/LandingPage/LandingLanguageSelector';
 import { ResultsScheduleGrid } from '../components/ResultsView/ResultsScheduleGrid';
 import { buildResultsSessionData } from '../components/results/buildResultsViewModel';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -18,7 +19,14 @@ import {
   trackLandingEvent,
 } from '../services/landingInstrumentation';
 import { useAppStore } from '../store';
-import { getLocaleHomePath, getToolPageConfig, type SupportedLocale, type ToolPageKey } from './toolPageConfigs';
+import {
+  buildToolPagePath,
+  getLocaleDisplayName,
+  getLocaleHomePath,
+  getToolPageConfig,
+  type SupportedLocale,
+  type ToolPageKey,
+} from './toolPageConfigs';
 
 interface ToolLandingPageProps {
   pageKey: ToolPageKey;
@@ -98,6 +106,15 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const assetBaseUrl = import.meta.env?.BASE_URL ?? '/';
   const [resultFormat, setResultFormat] = useState<ResultFormat>('cards');
   const [copiedFormat, setCopiedFormat] = useState<ResultFormat | null>(null);
+  const languageOptions = useMemo(
+    () =>
+      config.liveLocales.map((liveLocale) => ({
+        locale: liveLocale,
+        label: getLocaleDisplayName(liveLocale),
+        to: `${buildToolPagePath(liveLocale, pageKey, config.slug)}${location.search}`,
+      })),
+    [config.liveLocales, config.slug, location.search, pageKey],
+  );
   const telemetryAttribution = useMemo(
     () =>
       readTelemetryAttributionFromSearch({
@@ -406,6 +423,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
             <span className="text-lg font-semibold tracking-tight">GroupMixer</span>
           </Link>
           <div className="flex items-center gap-2">
+            <LandingLanguageSelector currentLocale={config.locale} options={languageOptions} />
             <button
               type="button"
               onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}

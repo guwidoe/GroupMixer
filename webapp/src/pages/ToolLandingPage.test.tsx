@@ -154,6 +154,20 @@ describe('ToolLandingPage SEO wiring', () => {
     );
   });
 
+  it('shows a language selector in the title bar for pages with multiple live locales', async () => {
+    render(
+      <MemoryRouter initialEntries={['/random-team-generator']}>
+        <ToolLandingPage pageKey="random-team-generator" locale="en" />
+      </MemoryRouter>,
+    );
+
+    const selector = await screen.findByRole('combobox', { name: /language/i });
+    expect(selector).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'English' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Español' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Français' })).toBeInTheDocument();
+  });
+
   it('generates groups locally from the landing tool without leaving the page', async () => {
     const user = userEvent.setup();
 

@@ -1,3 +1,4 @@
+import { DE_TOOL_PAGE_CONTENT } from '../i18n/landing/de';
 import { EN_TOOL_PAGE_CONTENT } from '../i18n/landing/en';
 import { ES_TOOL_PAGE_CONTENT } from '../i18n/landing/es';
 import { FR_TOOL_PAGE_CONTENT } from '../i18n/landing/fr';
@@ -96,7 +97,7 @@ function assertLocaleList(value: unknown, path: string): SupportedLocale[] {
   }
 
   const locales = value.map((entry, index) => {
-    if (entry === 'en' || entry === 'es' || entry === 'fr' || entry === 'ja' || entry === 'hi' || entry === 'zh') {
+    if (entry === 'en' || entry === 'de' || entry === 'es' || entry === 'fr' || entry === 'ja' || entry === 'hi' || entry === 'zh') {
       return entry;
     }
 
@@ -112,6 +113,25 @@ export function getLocaleHrefLang(locale: SupportedLocale): string {
   }
 
   return locale;
+}
+
+export function getLocaleDisplayName(locale: SupportedLocale): string {
+  switch (locale) {
+    case 'en':
+      return 'English';
+    case 'de':
+      return 'Deutsch';
+    case 'es':
+      return 'Español';
+    case 'fr':
+      return 'Français';
+    case 'ja':
+      return '日本語';
+    case 'hi':
+      return 'हिन्दी';
+    case 'zh':
+      return '简体中文';
+  }
 }
 
 function assertSeoContent(value: unknown, path: string): ToolPageSeoContent {
@@ -281,6 +301,7 @@ export const TOOL_PAGE_DEFINITIONS = Object.fromEntries(
 ) as Record<ToolPageKey, ToolPageDefinition>;
 
 const RAW_LOCALE_CONTENT: Record<SupportedLocale, Partial<Record<ToolPageKey, unknown>>> = {
+  de: DE_TOOL_PAGE_CONTENT,
   en: EN_TOOL_PAGE_CONTENT,
   es: ES_TOOL_PAGE_CONTENT,
   fr: FR_TOOL_PAGE_CONTENT,
