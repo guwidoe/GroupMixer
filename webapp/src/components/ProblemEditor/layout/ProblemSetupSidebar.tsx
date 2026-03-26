@@ -13,6 +13,7 @@ interface ProblemSetupSidebarProps {
   isCollapsed: boolean;
   onToggleCollapsed: () => void;
   onNavigate: (sectionId: ProblemSetupSectionId) => void;
+  headerContent?: React.ReactNode;
 }
 
 export function ProblemSetupSidebar({
@@ -21,27 +22,24 @@ export function ProblemSetupSidebar({
   isCollapsed,
   onToggleCollapsed,
   onNavigate,
+  headerContent,
 }: ProblemSetupSidebarProps) {
   return (
     <aside
       className={`hidden overflow-hidden border-r transition-[width] duration-200 ease-out md:flex md:flex-shrink-0 ${
-        isCollapsed ? 'md:w-14' : 'md:w-64 lg:w-72'
+        isCollapsed ? 'md:w-14' : 'md:w-72'
       }`}
       style={{ borderColor: 'var(--border-primary)' }}
       aria-label="Problem Setup navigation"
     >
       <div className="sticky top-0 flex h-[calc(100vh-7rem)] w-full flex-col">
-        <div className={`flex items-center border-b px-2 py-2 ${isCollapsed ? 'justify-center' : 'justify-between'}`} style={{ borderColor: 'var(--border-primary)' }}>
-          {!isCollapsed && (
-            <div className="px-1">
-              <div className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
-                Sections
-              </div>
-            </div>
-          )}
-        </div>
+        {!isCollapsed && headerContent && (
+          <div className="border-b px-4 py-4" style={{ borderColor: 'var(--border-primary)' }}>
+            {headerContent}
+          </div>
+        )}
 
-        <nav className="flex-1 overflow-y-auto px-2 py-1">
+        <nav className="flex-1 overflow-y-auto px-2 py-2">
           {groupedSections.map(({ group, sections }) => (
             <ProblemSetupSidebarGroup
               key={group.id}

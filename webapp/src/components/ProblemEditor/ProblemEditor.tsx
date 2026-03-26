@@ -23,7 +23,7 @@ export function ProblemEditor() {
         objectiveCount={controller.objectiveCount}
         activeSection={controller.navigationSection}
         onNavigate={controller.navigateToSection}
-        contentHeader={
+        sidebarHeader={
           <ProblemEditorHeader
             onLoadProblem={controller.handleLoadProblem}
             onSaveProblem={controller.handleSaveProblem}

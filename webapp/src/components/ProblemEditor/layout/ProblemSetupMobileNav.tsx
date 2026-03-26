@@ -11,12 +11,14 @@ interface ProblemSetupMobileNavProps {
   }>;
   activeSection: ProblemSetupSectionId | null;
   onNavigate: (sectionId: ProblemSetupSectionId) => void;
+  headerContent?: React.ReactNode;
 }
 
 export function ProblemSetupMobileNav({
   groupedSections,
   activeSection,
   onNavigate,
+  headerContent,
 }: ProblemSetupMobileNavProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -64,10 +66,10 @@ export function ProblemSetupMobileNav({
           />
 
           <div
-            className="absolute inset-y-0 left-0 w-[80vw] max-w-xs overflow-y-auto border-r p-4 shadow-xl"
+            className="absolute inset-y-0 left-0 w-[80vw] max-w-xs overflow-y-auto border-r shadow-xl"
             style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
           >
-            <div className="mb-4 flex items-center justify-between gap-3 border-b pb-3" style={{ borderColor: 'var(--border-primary)' }}>
+            <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: 'var(--border-primary)' }}>
               <h2 className="text-sm font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
                 Problem Setup
               </h2>
@@ -81,7 +83,13 @@ export function ProblemSetupMobileNav({
               </button>
             </div>
 
-            <div className="space-y-4">
+            {headerContent && (
+              <div className="border-b px-4 py-4" style={{ borderColor: 'var(--border-primary)' }}>
+                {headerContent}
+              </div>
+            )}
+
+            <div className="px-4 py-3">
               {groupedSections.map(({ group, sections }) => (
                 <ProblemSetupSidebarGroup
                   key={group.id}
