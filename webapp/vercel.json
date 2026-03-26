@@ -3,12 +3,15 @@
   "outputDirectory": "dist",
   "routes": [
     {
+      "handle": "filesystem"
+    },
+    {
       "src": "/test_cases/(.*)",
       "dest": "/test_cases/$1"
     },
     {
-      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|wasm|d\\.ts|json|html))$",
-      "dest": "/$1"
+      "src": "/app(?:/(.*))?",
+      "dest": "/app/index.html"
     },
     {
       "src": "/(.*)",

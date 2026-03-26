@@ -1,3 +1,5 @@
+# Keep the advanced workspace crawlable so search engines can observe its noindex meta tags.
+# The sitemap is the intentional SEO surface and only lists public landing pages.
 User-agent: *
 Allow: /
 

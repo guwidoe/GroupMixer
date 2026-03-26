@@ -5,6 +5,7 @@ interface LandingFooterProps {
 }
 
 export function LandingFooter({ expertWorkspaceTo = '/app' }: LandingFooterProps) {
+  const assetBaseUrl = import.meta.env?.BASE_URL ?? '/';
   return (
     <footer
       className="border-t px-4 py-8 sm:px-6"
@@ -13,7 +14,7 @@ export function LandingFooter({ expertWorkspaceTo = '/app' }: LandingFooterProps
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
           <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-            <img src={import.meta.env.BASE_URL + 'logo.svg'} alt="" className="h-5 w-5" />
+            <img src={assetBaseUrl + 'logo.svg'} alt="" className="h-5 w-5" />
             <span>GroupMixer — Free random group generator</span>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-sm" style={{ color: 'var(--text-secondary)' }}>

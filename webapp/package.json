@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run build-wasm && tsc && vite build",
+    "sync:seo-assets": "tsx scripts/seoArtifacts.tsx sync-public",
+    "prerender:seo": "tsx scripts/seoArtifacts.tsx prerender-dist",
+    "build": "npm run sync:seo-assets && npm run build-wasm && tsc && vite build && npm run prerender:seo",
     "vercel-build": "chmod +x ./vercel-build.sh && ./vercel-build.sh",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
@@ -76,6 +78,7 @@
     "postcss": "^8.5.8",
     "storybook": "^10.2.19",
     "tailwindcss": "^4.2.2",
+    "tsx": "^4.21.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "8.57.2",
     "vite": "8.0.2",

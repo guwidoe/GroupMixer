@@ -95,6 +95,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
   const location = useLocation();
   const resultsRef = useRef<HTMLDivElement>(null);
   const hasScrolledToResultsRef = useRef(false);
+  const assetBaseUrl = import.meta.env?.BASE_URL ?? '/';
   const [resultFormat, setResultFormat] = useState<ResultFormat>('cards');
   const [copiedFormat, setCopiedFormat] = useState<ResultFormat | null>(null);
   const telemetryAttribution = useMemo(
@@ -388,7 +389,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5">
-            <img src={import.meta.env.BASE_URL + 'logo.svg'} alt="GroupMixer logo" className="h-8 w-8" />
+            <img src={assetBaseUrl + 'logo.svg'} alt="GroupMixer logo" className="h-8 w-8" />
             <span className="text-lg font-semibold tracking-tight">GroupMixer</span>
           </Link>
           <div className="flex items-center gap-2">

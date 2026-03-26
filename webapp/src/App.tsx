@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ManualEditor } from './components/ManualEditor';
 import { ProblemEditor } from './components/ProblemEditor/ProblemEditor';
