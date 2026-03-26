@@ -3,7 +3,7 @@ use crate::public_errors::{
     internal_error, public_error_to_js_value, unknown_error_code_error, unknown_operation_error,
     unknown_schema_error,
 };
-use schemars::schema::RootSchema;
+use schemars::Schema;
 use serde::Serialize;
 use solver_contracts::{
     bootstrap::{bootstrap_spec, BootstrapSpec},
@@ -75,7 +75,7 @@ pub struct WasmSchemaSummary {
 pub struct WasmSchemaLookupResponse {
     pub id: &'static str,
     pub version: &'static str,
-    pub schema: RootSchema,
+    pub schema: Schema,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -293,7 +293,7 @@ mod tests {
 
         let solve_schema = build_schema_lookup_response("solve-request").expect("solve-request schema");
         assert_eq!(solve_schema.id, "solve-request");
-        assert!(solve_schema.schema.schema.object.is_some() || solve_schema.schema.schema.subschemas.is_some());
+        assert!(solve_schema.schema.as_object().is_some() || solve_schema.schema.as_bool().is_some());
     }
 
     #[test]

@@ -308,7 +308,7 @@ fn sha256_file(path: &Path) -> Result<String> {
     let contents = fs::read(path)
         .with_context(|| format!("failed to read suite manifest for hashing {}", path.display()))?;
     let digest = Sha256::digest(contents);
-    Ok(format!("{:x}", digest))
+    Ok(digest.iter().map(|byte| format!("{byte:02x}")).collect())
 }
 
 fn relative_or_display(root: &Path, path: &Path) -> String {
