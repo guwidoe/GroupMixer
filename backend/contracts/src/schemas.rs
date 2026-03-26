@@ -3,7 +3,7 @@ use crate::types::{
     RecommendSettingsRequest, ResultSummary, SchemaId, SolveRequest, SolveResponse,
     SolverConfigurationContract, ValidateRequest, ValidateResponse,
 };
-use schemars::{schema::RootSchema, schema_for};
+use schemars::{schema_for, Schema};
 
 pub const SCHEMA_VERSION_V1: &str = "v1";
 
@@ -22,7 +22,7 @@ pub const PUBLIC_ERROR_ENVELOPE_SCHEMA_ID: &str = "public-error-envelope";
 pub struct SchemaSpec {
     pub id: SchemaId,
     pub version: &'static str,
-    pub export: fn() -> RootSchema,
+    pub export: fn() -> Schema,
 }
 
 const SCHEMA_SPECS: &[SchemaSpec] = &[
@@ -86,47 +86,47 @@ pub fn schema_spec(id: &str) -> Option<&'static SchemaSpec> {
     SCHEMA_SPECS.iter().find(|spec| spec.id == id)
 }
 
-pub fn export_schema(id: &str) -> Option<RootSchema> {
+pub fn export_schema(id: &str) -> Option<Schema> {
     schema_spec(id).map(|spec| (spec.export)())
 }
 
-fn export_solve_request_schema() -> RootSchema {
+fn export_solve_request_schema() -> Schema {
     schema_for!(SolveRequest)
 }
 
-fn export_solve_response_schema() -> RootSchema {
+fn export_solve_response_schema() -> Schema {
     schema_for!(SolveResponse)
 }
 
-fn export_validate_request_schema() -> RootSchema {
+fn export_validate_request_schema() -> Schema {
     schema_for!(ValidateRequest)
 }
 
-fn export_validate_response_schema() -> RootSchema {
+fn export_validate_response_schema() -> Schema {
     schema_for!(ValidateResponse)
 }
 
-fn export_problem_definition_schema() -> RootSchema {
+fn export_problem_definition_schema() -> Schema {
     schema_for!(ProblemDefinitionContract)
 }
 
-fn export_recommend_settings_request_schema() -> RootSchema {
+fn export_recommend_settings_request_schema() -> Schema {
     schema_for!(RecommendSettingsRequest)
 }
 
-fn export_solver_configuration_schema() -> RootSchema {
+fn export_solver_configuration_schema() -> Schema {
     schema_for!(SolverConfigurationContract)
 }
 
-fn export_progress_update_schema() -> RootSchema {
+fn export_progress_update_schema() -> Schema {
     schema_for!(ProgressUpdateContract)
 }
 
-fn export_result_summary_schema() -> RootSchema {
+fn export_result_summary_schema() -> Schema {
     schema_for!(ResultSummary)
 }
 
-fn export_public_error_envelope_schema() -> RootSchema {
+fn export_public_error_envelope_schema() -> Schema {
     schema_for!(PublicErrorEnvelope)
 }
 
@@ -145,7 +145,7 @@ mod tests {
     fn registered_schema_exports_succeed() {
         for spec in schema_specs() {
             let exported = export_schema(spec.id).expect("schema registered");
-            assert!(exported.schema.object.is_some() || exported.schema.subschemas.is_some());
+            assert!(exported.as_object().is_some() || exported.as_bool().is_some());
         }
     }
 }
