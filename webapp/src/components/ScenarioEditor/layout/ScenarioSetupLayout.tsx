@@ -57,7 +57,7 @@ export function ScenarioSetupLayout({
           collapsedHeaderContent={collapsedSidebarHeader}
         />
 
-        <div className="min-w-0 flex-1 p-4 md:h-full md:min-h-0 md:overflow-y-auto md:p-6">{children}</div>
+        <div className="theme-scrollbar min-w-0 flex-1 p-4 md:h-full md:min-h-0 md:overflow-y-auto md:p-6">{children}</div>
       </div>
     </div>
   );

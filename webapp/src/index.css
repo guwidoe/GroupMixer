@@ -80,6 +80,9 @@
   --tooltip-text: #f8fafc;
   --tooltip-border: color-mix(in srgb, var(--text-primary) 18%, transparent);
   --tooltip-shadow: 0 18px 36px rgba(15, 23, 42, 0.18);
+  --scrollbar-track: color-mix(in srgb, var(--bg-secondary) 92%, var(--border-primary) 8%);
+  --scrollbar-thumb: color-mix(in srgb, var(--border-secondary) 88%, var(--text-tertiary) 12%);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--text-tertiary) 30%, var(--border-secondary) 70%);
   }
 
   /* Dark theme variables */
@@ -111,6 +114,9 @@
     --tooltip-text: var(--text-primary);
     --tooltip-border: color-mix(in srgb, var(--border-primary) 86%, transparent);
     --tooltip-shadow: 0 18px 36px rgba(0, 0, 0, 0.38);
+    --scrollbar-track: color-mix(in srgb, var(--bg-secondary) 88%, black 12%);
+    --scrollbar-thumb: color-mix(in srgb, var(--bg-tertiary) 55%, var(--text-tertiary) 45%);
+    --scrollbar-thumb-hover: color-mix(in srgb, var(--text-secondary) 58%, var(--bg-tertiary) 42%);
   }
 
   .dark .label {
@@ -131,6 +137,30 @@
     background-color: var(--bg-secondary);
     color: var(--text-primary);
     transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .theme-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+
+  .theme-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .theme-scrollbar::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+
+  .theme-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 9999px;
+    border: 2px solid var(--scrollbar-track);
+  }
+
+  .theme-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
   }
 
   /* Global theme-aware styles */

@@ -54,7 +54,7 @@ function MainApp() {
 
       <main
         className={isScenarioSetupRoute
-          ? 'px-4 py-4 md:flex md:h-[calc(100vh-7.5rem)] md:min-h-[34rem] md:flex-col'
+          ? 'px-4 py-4 md:flex md:h-[calc(100vh-7.5rem)] md:min-h-[20rem] md:flex-col md:overflow-hidden md:px-0 md:py-0'
           : 'container mx-auto px-4 py-6'}
       >
         {scenario && !currentScenarioId && (

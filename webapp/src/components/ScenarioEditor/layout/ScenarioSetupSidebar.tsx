@@ -37,7 +37,7 @@ export function ScenarioSetupSidebar({
     >
       <div className="flex h-full min-h-0 max-h-full w-full flex-col overflow-hidden">
         {!isCollapsed && headerContent && (
-          <div className="shrink-0 border-b px-3 py-3" style={{ borderColor: 'var(--border-primary)' }}>
+          <div className="shrink-0 border-b px-3 py-2" style={{ borderColor: 'var(--border-primary)' }}>
             {headerContent}
           </div>
         )}
@@ -48,8 +48,8 @@ export function ScenarioSetupSidebar({
           </div>
         )}
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <nav className="flex min-h-full flex-col px-1 py-2">
+        <div className="theme-scrollbar min-h-0 flex-1 overflow-y-auto">
+          <nav className="flex min-h-full flex-col px-0 pb-0 pt-2">
             {groupedSections.map(({ group, sections }) => (
               <ScenarioSetupSidebarGroup
                 key={group.id}

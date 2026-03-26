@@ -26,7 +26,7 @@ export function ScenarioSetupSidebarItem({
         aria-current={isActive ? 'page' : undefined}
         aria-label={section.label}
         className={`relative flex items-center gap-2.5 rounded-md py-2 text-sm font-medium transition-colors ${
-          isCollapsed ? 'w-full justify-center px-0' : 'w-full px-2.5 text-left'
+          isCollapsed ? 'w-full justify-center px-0' : 'w-full px-[1.375rem] text-left'
         }`}
         style={{
           backgroundColor: isActive ? 'var(--bg-tertiary)' : 'transparent',

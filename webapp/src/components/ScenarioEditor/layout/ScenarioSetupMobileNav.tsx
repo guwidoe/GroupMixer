@@ -66,7 +66,7 @@ export function ScenarioSetupMobileNav({
           />
 
           <div
-            className="absolute inset-y-0 left-0 w-[80vw] max-w-xs overflow-y-auto border-r shadow-xl"
+            className="theme-scrollbar absolute inset-y-0 left-0 w-[80vw] max-w-xs overflow-y-auto border-r shadow-xl"
             style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
           >
             <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: 'var(--border-primary)' }}>

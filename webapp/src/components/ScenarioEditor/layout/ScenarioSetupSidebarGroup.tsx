@@ -24,7 +24,7 @@ export function ScenarioSetupSidebarGroup({
 
   if (isRailCollapsed) {
     return (
-      <section className="mt-3 flex flex-col gap-0.5" aria-label={group.label}>
+      <section className="mt-3 flex flex-col gap-0.5 first:mt-2" aria-label={group.label}>
         <div className="mx-auto mb-1 h-px w-4" style={{ backgroundColor: 'var(--border-primary)' }} />
         {sections.map((section) => (
           <ScenarioSetupSidebarItem
@@ -40,12 +40,12 @@ export function ScenarioSetupSidebarGroup({
   }
 
   return (
-    <section className="mt-3" aria-label={group.label}>
+    <section className="mt-3 first:mt-2" aria-label={group.label}>
       <Tooltip content={group.label} className="block w-full" placement="right">
         <button
           type="button"
           onClick={() => setIsExpanded((value) => !value)}
-          className="flex w-full items-center justify-between px-2.5 py-1 text-left transition-colors"
+          className="flex w-full items-center justify-between px-[1.375rem] py-1 text-left transition-colors"
           style={{ color: 'var(--text-tertiary)' }}
           aria-expanded={isExpanded}
           aria-controls={`scenario-setup-group-${group.id}`}
