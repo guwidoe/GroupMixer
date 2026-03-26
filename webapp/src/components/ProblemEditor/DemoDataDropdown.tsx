@@ -150,7 +150,7 @@ export function DemoDataDropdown({
     <button
       type="button"
       onClick={() => setDemoDropdownOpen(!demoDropdownOpen)}
-      className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm font-medium transition-colors"
+      className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm font-medium transition-colors hover:bg-[var(--bg-tertiary)]"
       style={{
         backgroundColor: demoDropdownOpen ? 'var(--bg-tertiary)' : 'transparent',
         color: demoDropdownOpen ? 'var(--color-accent)' : 'var(--text-secondary)',

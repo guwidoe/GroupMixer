@@ -52,7 +52,7 @@ function MainApp() {
       <Header />
       <Navigation />
 
-      <main className={isProblemSetupRoute ? 'pb-6' : 'container mx-auto px-4 py-6'}>
+      <main className={isProblemSetupRoute ? 'md:h-[calc(100vh-7.5rem)] md:overflow-hidden' : 'container mx-auto px-4 py-6'}>
         {problem && !currentProblemId && (
           <div className={isProblemSetupRoute ? 'px-4 pt-6' : ''}>
             <div

@@ -27,19 +27,19 @@ export function ProblemSetupSidebar({
   return (
     <aside
       className={`hidden overflow-hidden border-r transition-[width] duration-200 ease-out md:flex md:flex-shrink-0 ${
-        isCollapsed ? 'md:w-14' : 'md:w-72'
+        isCollapsed ? 'md:w-14' : 'md:w-64'
       }`}
       style={{ borderColor: 'var(--border-primary)' }}
       aria-label="Problem Setup navigation"
     >
-      <div className="sticky top-0 flex h-[calc(100vh-7rem)] w-full flex-col">
+      <div className="flex h-full min-h-0 w-full flex-col">
         {!isCollapsed && headerContent && (
-          <div className="border-b px-4 py-4" style={{ borderColor: 'var(--border-primary)' }}>
+          <div className="border-b px-3 py-3" style={{ borderColor: 'var(--border-primary)' }}>
             {headerContent}
           </div>
         )}
 
-        <nav className="flex-1 overflow-y-auto px-2 py-2">
+        <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
           {groupedSections.map(({ group, sections }) => (
             <ProblemSetupSidebarGroup
               key={group.id}
