@@ -1,4 +1,4 @@
-import type { SupportedLocale, ToolPageAlternateLink, ToolPageFaqEntry } from '../pages/toolPageConfigs';
+import { getLocaleHrefLang, type SupportedLocale, type ToolPageAlternateLink, type ToolPageFaqEntry } from '../pages/toolPageConfigs';
 
 export const CANONICAL_ORIGIN = 'https://www.groupmixer.app';
 export const DEFAULT_OG_IMAGE = `${CANONICAL_ORIGIN}/og-image.png`;
@@ -25,7 +25,7 @@ export interface SeoDocumentData {
   canonicalUrl: string;
   robotsContent: string;
   schemaText: string;
-  htmlLang: SupportedLocale;
+  htmlLang: string;
   alternateLinks: SeoAlternateLinkData[];
 }
 
@@ -45,6 +45,7 @@ export function buildSeoDocument({
 }: SeoDocumentInput): SeoDocumentData {
   const canonicalUrl = buildCanonicalUrl(canonicalPath);
   const robotsContent = indexable ? 'index,follow' : 'noindex,nofollow';
+  const htmlLang = getLocaleHrefLang(locale);
   const alternateLinks = alternates.map((alternate) => ({
     hreflang: alternate.hreflang,
     href: buildCanonicalUrl(alternate.canonicalPath),
@@ -57,7 +58,7 @@ export function buildSeoDocument({
       canonicalUrl,
       robotsContent,
       schemaText: '',
-      htmlLang: locale,
+      htmlLang,
       alternateLinks,
     };
   }
@@ -71,7 +72,7 @@ export function buildSeoDocument({
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web Browser',
       description,
-      inLanguage: locale,
+      inLanguage: htmlLang,
       offers: {
         '@type': 'Offer',
         price: '0',
@@ -84,7 +85,7 @@ export function buildSeoDocument({
     schemaNodes.push({
       '@context': 'https://schema.org',
       '@type': 'FAQPage',
-      inLanguage: locale,
+      inLanguage: htmlLang,
       mainEntity: faqEntries.map((entry) => ({
         '@type': 'Question',
         name: entry.question,
@@ -102,7 +103,7 @@ export function buildSeoDocument({
     canonicalUrl,
     robotsContent,
     schemaText: JSON.stringify(schemaNodes.length === 1 ? schemaNodes[0] : schemaNodes),
-    htmlLang: locale,
+    htmlLang,
     alternateLinks,
   };
 }

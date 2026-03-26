@@ -25,7 +25,7 @@ function hasAttribution(attribution: TelemetryAttribution): boolean {
 export function canonicalPathToLandingSlug(canonicalPath: string): string {
   const trimmed = canonicalPath
     .replace(/^\/+|\/+$/g, '')
-    .replace(/^(en|es|fr)(?=\/|$)/, '')
+    .replace(/^(en|es|fr|ja|hi|zh)(?=\/|$)/, '')
     .replace(/^\/+|\/+$/g, '');
   return trimmed || 'home';
 }

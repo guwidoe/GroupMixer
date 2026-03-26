@@ -25,4 +25,26 @@ describe('buildSeoDocument locale SEO metadata', () => {
     ]);
     expect(documentData.schemaText).toContain('"inLanguage":"es"');
   });
+
+  it('labels Simplified Chinese alternates and schema language correctly', () => {
+    const documentData = buildSeoDocument({
+      title: '标题',
+      description: '描述',
+      canonicalPath: '/zh/random-team-generator',
+      locale: 'zh',
+      alternates: [
+        { hreflang: 'en', canonicalPath: '/random-team-generator' },
+        { hreflang: 'zh-Hans', canonicalPath: '/zh/random-team-generator' },
+        { hreflang: 'x-default', canonicalPath: '/random-team-generator' },
+      ],
+      faqEntries: [],
+    });
+
+    expect(documentData.htmlLang).toBe('zh-Hans');
+    expect(documentData.alternateLinks[1]).toEqual({
+      hreflang: 'zh-Hans',
+      href: 'https://www.groupmixer.app/zh/random-team-generator',
+    });
+    expect(documentData.schemaText).toContain('"inLanguage":"zh-Hans"');
+  });
 });

@@ -1,6 +1,9 @@
 import { EN_TOOL_PAGE_CONTENT } from '../i18n/landing/en';
 import { ES_TOOL_PAGE_CONTENT } from '../i18n/landing/es';
 import { FR_TOOL_PAGE_CONTENT } from '../i18n/landing/fr';
+import { HI_TOOL_PAGE_CONTENT } from '../i18n/landing/hi';
+import { JA_TOOL_PAGE_CONTENT } from '../i18n/landing/ja';
+import { ZH_TOOL_PAGE_CONTENT } from '../i18n/landing/zh';
 import {
   DEFAULT_LOCALE,
   SUPPORTED_LOCALES,
@@ -93,7 +96,7 @@ function assertLocaleList(value: unknown, path: string): SupportedLocale[] {
   }
 
   const locales = value.map((entry, index) => {
-    if (entry === 'en' || entry === 'es' || entry === 'fr') {
+    if (entry === 'en' || entry === 'es' || entry === 'fr' || entry === 'ja' || entry === 'hi' || entry === 'zh') {
       return entry;
     }
 
@@ -101,6 +104,14 @@ function assertLocaleList(value: unknown, path: string): SupportedLocale[] {
   });
 
   return Array.from(new Set(locales));
+}
+
+export function getLocaleHrefLang(locale: SupportedLocale): string {
+  if (locale === 'zh') {
+    return 'zh-Hans';
+  }
+
+  return locale;
 }
 
 function assertSeoContent(value: unknown, path: string): ToolPageSeoContent {
@@ -273,6 +284,9 @@ const RAW_LOCALE_CONTENT: Record<SupportedLocale, Partial<Record<ToolPageKey, un
   en: EN_TOOL_PAGE_CONTENT,
   es: ES_TOOL_PAGE_CONTENT,
   fr: FR_TOOL_PAGE_CONTENT,
+  ja: JA_TOOL_PAGE_CONTENT,
+  hi: HI_TOOL_PAGE_CONTENT,
+  zh: ZH_TOOL_PAGE_CONTENT,
 };
 
 const VALIDATED_LOCALE_CONTENT = Object.fromEntries(
@@ -288,7 +302,7 @@ const VALIDATED_LOCALE_CONTENT = Object.fromEntries(
 
 function buildAlternates(definition: ToolPageDefinition): ToolPageAlternateLink[] {
   const localizedAlternates = definition.liveLocales.map((locale) => ({
-    hreflang: locale,
+    hreflang: getLocaleHrefLang(locale),
     canonicalPath: buildToolPagePath(locale, definition.key, definition.slug),
   }));
 

@@ -13,8 +13,14 @@ describe('toolPageConfigs locale routing', () => {
     expect(getLocaleHomePath('en')).toBe('/');
     expect(getLocaleHomePath('es')).toBe('/es');
     expect(getLocaleHomePath('fr')).toBe('/fr');
+    expect(getLocaleHomePath('ja')).toBe('/ja');
+    expect(getLocaleHomePath('hi')).toBe('/hi');
+    expect(getLocaleHomePath('zh')).toBe('/zh');
     expect(buildToolPagePath('es', 'random-team-generator', 'random-team-generator')).toBe('/es/random-team-generator');
     expect(buildToolPagePath('fr', 'random-team-generator', 'random-team-generator')).toBe('/fr/random-team-generator');
+    expect(buildToolPagePath('ja', 'random-team-generator', 'random-team-generator')).toBe('/ja/random-team-generator');
+    expect(buildToolPagePath('hi', 'random-team-generator', 'random-team-generator')).toBe('/hi/random-team-generator');
+    expect(buildToolPagePath('zh', 'random-team-generator', 'random-team-generator')).toBe('/zh/random-team-generator');
   });
 
   it('adds Spanish and French prefixed routes only for the selected localized rollout pages', () => {

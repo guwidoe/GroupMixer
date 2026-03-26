@@ -1,5 +1,5 @@
 export const DEFAULT_LOCALE = 'en' as const;
-export const SUPPORTED_LOCALES = ['en', 'es', 'fr'] as const;
+export const SUPPORTED_LOCALES = ['en', 'es', 'fr', 'ja', 'hi', 'zh'] as const;
 
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 export type ToolPagePreset = 'random' | 'balanced' | 'networking';
@@ -100,7 +100,7 @@ export interface ToolPageDefinition {
 }
 
 export interface ToolPageAlternateLink {
-  hreflang: SupportedLocale | 'x-default';
+  hreflang: string;
   canonicalPath: string;
 }
 

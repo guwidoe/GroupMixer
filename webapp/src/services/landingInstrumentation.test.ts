@@ -20,6 +20,9 @@ describe('landingInstrumentation attribution helpers', () => {
     expect(canonicalPathToLandingSlug('/random-team-generator')).toBe('random-team-generator');
     expect(canonicalPathToLandingSlug('/es/random-team-generator')).toBe('random-team-generator');
     expect(canonicalPathToLandingSlug('/fr')).toBe('home');
+    expect(canonicalPathToLandingSlug('/ja/random-team-generator')).toBe('random-team-generator');
+    expect(canonicalPathToLandingSlug('/hi/random-team-generator')).toBe('random-team-generator');
+    expect(canonicalPathToLandingSlug('/zh/random-team-generator')).toBe('random-team-generator');
   });
 
   it('reads experiment and variant from search while falling back to the landing slug', () => {
