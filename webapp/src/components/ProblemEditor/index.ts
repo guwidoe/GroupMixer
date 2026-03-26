@@ -2,8 +2,7 @@
  * ProblemEditor module exports.
  */
 
-// Main component - still in parent directory for now
-// Will be moved here once refactoring is complete
+export { ProblemEditor } from './ProblemEditor';
 
 // Helper utilities
 export * from './helpers';

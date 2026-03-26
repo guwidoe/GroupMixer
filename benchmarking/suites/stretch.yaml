@@ -1,0 +1,9 @@
+schema_version: 1
+suite_id: stretch
+benchmark_mode: full_solve
+class: stretch
+title: Stretch solve-level benchmark suite
+description: Larger deterministic workloads used for controlled stress and scaling diagnosis.
+default_max_iterations: 80
+cases:
+  - manifest: ../cases/stretch/medium_multi_session.json

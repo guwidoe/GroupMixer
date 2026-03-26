@@ -5,6 +5,7 @@
 
 import type {
   Problem,
+  ProblemResult,
   Solution,
   SolverState,
   Notification,
@@ -34,7 +35,7 @@ export interface UIState {
     notifications: Notification[];
     showProblemManager: boolean;
     showResultComparison: boolean;
-    warmStartResultId?: string | null;
+    warmStartResultId: string | null;
   };
 }
 
@@ -63,7 +64,7 @@ export interface ProblemActions {
   setProblem: (problem: Problem) => void;
   updateProblem: (updates: Partial<Problem>) => void;
   updateCurrentProblem: (problemId: string, problem: Problem) => void;
-  GetProblem: () => Problem;
+  resolveProblem: () => Problem;
   ensureProblemExists: () => Problem;
 }
 
@@ -109,7 +110,7 @@ export interface ProblemManagerActions {
     solverSettings: SolverSettings,
     customName?: string,
     snapshotProblemOverride?: Problem
-  ) => void;
+  ) => ProblemResult | null;
   updateResultName: (resultId: string, newName: string) => void;
   deleteResult: (resultId: string) => void;
   selectResultsForComparison: (resultIds: string[]) => void;
@@ -136,6 +137,22 @@ export interface EditorActions {
   setManualEditorLeaveHook: (hook: ((nextPath: string) => void) | null) => void;
 }
 
+export interface WorkspaceBridgeInput {
+  problem: Problem;
+  solution?: Solution | null;
+  attributeDefinitions?: AttributeDefinition[];
+  currentProblemId?: string | null;
+}
+
+export interface WorkspaceDraftSyncInput extends WorkspaceBridgeInput {
+  problemName: string;
+}
+
+export interface WorkspaceActions {
+  replaceWorkspace: (input: WorkspaceBridgeInput) => void;
+  syncWorkspaceDraft: (input: WorkspaceDraftSyncInput) => string;
+}
+
 export interface UtilityActions {
   reset: () => void;
   initializeApp: () => void;
@@ -160,6 +177,7 @@ export interface AppStore
     AttributeActions,
     DemoDataActions,
     EditorActions,
+    WorkspaceActions,
     UtilityActions {}
 
 // Type for slice creators

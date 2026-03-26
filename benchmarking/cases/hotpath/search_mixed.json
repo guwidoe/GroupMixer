@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "hotpath.search-iteration.mixed",
+  "class": "representative",
+  "family": "search_iteration",
+  "paths": ["search_iteration"],
+  "title": "Hotpath search iteration mixed preset",
+  "description": "Deterministic mixed-family search iteration lane over a prebuilt state.",
+  "tags": ["hotpath", "search", "mixed", "representative"],
+  "hotpath_preset": "search_mixed"
+}

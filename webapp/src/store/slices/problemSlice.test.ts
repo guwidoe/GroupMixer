@@ -76,7 +76,7 @@ describe("createProblemSlice", () => {
       },
     });
 
-    const problem = harness.slice.GetProblem();
+    const problem = harness.slice.resolveProblem();
 
     expect(problem.people).toEqual([]);
     expect(problem.groups).toEqual([]);
@@ -111,10 +111,21 @@ describe("createProblemSlice", () => {
       savedProblems: { [saved.id]: saved },
     });
 
-    const problem = harness.slice.GetProblem();
+    const problem = harness.slice.resolveProblem();
 
     expect(problem).toEqual(saved.problem);
     expect(problemStorage.setCurrentProblemId).toHaveBeenCalledWith(saved.id);
     expect(harness.getState().currentProblemId).toBe(saved.id);
+  });
+
+  it("propagates persistence errors when updating the current problem", () => {
+    vi.mocked(problemStorage.updateProblem).mockImplementation(() => {
+      throw new Error('disk full');
+    });
+    const harness = createHarness({
+      problem: createSampleProblem(),
+    });
+
+    expect(() => harness.slice.updateCurrentProblem('problem-1', createSampleProblem())).toThrow('disk full');
   });
 });

@@ -25,11 +25,11 @@ This repo adopts `docs/reference/principles/AGENTIC_ENGINEERING_PRINCIPLES.md` a
 
 ## Structure
 
-- `solver-core/` — core optimization engine, models, solver state, scoring, validation, move logic
-- `solver-core/tests/` — primary Rust integration-testing area; data-driven fixtures + property tests + focused integration tests
-- `solver-wasm/` — wasm-bindgen wrapper exposing the solver to the browser
-- `solver-server/` — optional Axum API with async job manager
-- `solver-cli/` — CLI surface for local solver usage
+- `backend/core/` — core optimization engine, models, solver state, scoring, validation, move logic
+- `backend/core/tests/` — primary Rust integration-testing area; data-driven fixtures + property tests + focused integration tests
+- `backend/wasm/` — wasm-bindgen wrapper exposing the solver to the browser
+- `backend/api/` — optional Axum API with async job manager
+- `backend/cli/` — CLI surface for local solver usage
 - `webapp/` — React frontend, browser worker integration, storage, visualization, and E2E tests
 - `docs/` — architecture, doctrine, and repo documentation
 - `legacy_cpp/`, `legacy_rust/`, `python/` — historical/reference implementations; do not treat as the main product surface
@@ -44,7 +44,7 @@ cargo test --workspace
 ./gate.sh
 
 # Build wasm into the webapp public output
-cd solver-wasm && wasm-pack build --target web --out-dir ../webapp/public/pkg
+cd backend/wasm && wasm-pack build --target web --out-dir ../webapp/public/pkg
 
 # Run server
 cargo run -p solver-server
@@ -64,15 +64,15 @@ cd webapp && npm run test:e2e
 - `docs/reference/principles/AGENTIC_ENGINEERING_PRINCIPLES.md` — repo doctrine; normative reference
 - `docs/CODEBASE_MAP.md` — high-level architecture map of the repo
 - `gate.sh` — current whole-repo verification script
-- `solver-core/src/lib.rs` — public Rust API entry points
-- `solver-core/src/models.rs` — serialized domain model and solver-facing types
-- `solver-core/src/solver/` — internal solver state, construction, validation, scoring, and move logic
-- `solver-core/tests/data_driven_tests.rs` — main solver integration-test harness
-- `solver-core/tests/test_cases/` — JSON solver fixture cases used by the data-driven harness
-- `solver-core/tests/property_tests.rs` — property/invariant tests for solver behavior
-- `solver-server/src/api/` — Axum routes and handlers
-- `solver-server/src/jobs/manager.rs` — async in-memory job lifecycle logic
-- `solver-wasm/src/lib.rs` — JS/WASM bridge surface
+- `backend/core/src/lib.rs` — public Rust API entry points
+- `backend/core/src/models.rs` — serialized domain model and solver-facing types
+- `backend/core/src/solver/` — internal solver state, construction, validation, scoring, and move logic
+- `backend/core/tests/data_driven_tests.rs` — main solver integration-test harness
+- `backend/core/tests/test_cases/` — JSON solver fixture cases used by the data-driven harness
+- `backend/core/tests/property_tests.rs` — property/invariant tests for solver behavior
+- `backend/api/src/api/` — Axum routes and handlers
+- `backend/api/src/jobs/manager.rs` — async in-memory job lifecycle logic
+- `backend/wasm/src/lib.rs` — JS/WASM bridge surface
 - `webapp/src/App.tsx` — frontend router entry
 - `webapp/src/store/` — Zustand store slices and actions
 - `webapp/src/services/` — wasm integration, persistence, evaluation, worker helpers
@@ -86,7 +86,7 @@ cd webapp && npm run test:e2e
   - property tests for invariants
   - data-driven tests as the end-to-end solver contract
   - mutation testing/coverage work to verify the suite is actually protective
-- When changing solver behavior, add or update fixture cases in `solver-core/tests/test_cases/` whenever the change affects observable end-to-end behavior.
+- When changing solver behavior, add or update fixture cases in `backend/core/tests/test_cases/` whenever the change affects observable end-to-end behavior.
 - `solver-server` is optional and localhost-oriented; treat it as a separate API surface worth testing independently of `solver-core`.
 - `webapp` consumes the Rust solver through WASM and browser workers; frontend regressions can come from services/store/conversion code as much as from React components.
 - Prefer repo-level docs updates when workflows, doctrine, or architecture assumptions change.

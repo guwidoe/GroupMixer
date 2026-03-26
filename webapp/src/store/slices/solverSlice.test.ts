@@ -71,5 +71,9 @@ describe("createSolverSlice", () => {
     harness.slice.setWarmStartFromResult("result-123");
 
     expect(harness.getState().ui.warmStartResultId).toBe("result-123");
+
+    harness.slice.setWarmStartFromResult(null);
+
+    expect(harness.getState().ui.warmStartResultId).toBeNull();
   });
 });

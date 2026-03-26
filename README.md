@@ -132,9 +132,10 @@ To run the webapp locally:
 git clone https://github.com/yourusername/GroupMixer.git
 cd GroupMixer
 
-# Build and run the webapp
+# Install deps, generate WASM, and run the webapp
 cd webapp
-npm install
+npm ci
+npm run build-wasm
 npm run dev
 ```
 
@@ -145,11 +146,11 @@ The webapp will be available at `http://localhost:5173`
 1. **Start the server:**
 
    ```bash
-   cd solver-server
+   cd backend/api
    cargo run
    ```
 
-2. **Submit a job via HTTP POST to `http://localhost:3000/solve`:**
+2. **Create a job via HTTP POST to `http://localhost:3000/api/v1/jobs`:**
    ```json
    {
      "problem": {
@@ -184,6 +185,8 @@ The webapp will be available at `http://localhost:5173`
      }
    }
    ```
+
+3. **Poll job status via `GET /api/v1/jobs/{job_id}/status` and fetch the result from `GET /api/v1/jobs/{job_id}/result`.**
 
 ### 📚 Using the Core Library
 
@@ -257,15 +260,15 @@ npm run build-wasm
 
 ```bash
 # Core solver library
-cd solver-core
+cd backend/core
 cargo build --release
 
 # WebAssembly module
-cd solver-wasm
-wasm-pack build --target no-modules
+cd backend/wasm
+wasm-pack build --target web --out-dir ../webapp/public/pkg
 
 # HTTP server
-cd solver-server
+cd backend/api
 cargo run
 ```
 

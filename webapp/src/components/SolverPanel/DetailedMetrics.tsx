@@ -21,6 +21,9 @@ const DetailedMetrics: React.FC<DetailedMetricsProps> = ({
   onToggleMetrics,
   formatIterationTime,
 }) => {
+  const finiteNumber = (value: number | undefined): number =>
+    typeof value === 'number' && Number.isFinite(value) ? value : 0;
+
   return (
     <div className="mb-2">
       <button className="flex items-center gap-3 cursor-pointer mb-3 text-left" onClick={onToggleMetrics}>
@@ -49,7 +52,7 @@ const DetailedMetrics: React.FC<DetailedMetricsProps> = ({
                 </Tooltip>
               </div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-accent-blue)' }}>
-                {solverState.temperature?.toFixed(4) || '0.0000'}
+                {finiteNumber(solverState.temperature).toFixed(4)}
               </div>
             </div>
             <div
@@ -63,7 +66,7 @@ const DetailedMetrics: React.FC<DetailedMetricsProps> = ({
                 </Tooltip>
               </div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-accent-purple)' }}>
-                {((solverState.coolingProgress || 0) * 100).toFixed(1)}%
+                {(finiteNumber(solverState.coolingProgress) * 100).toFixed(1)}%
               </div>
             </div>
             <div
@@ -77,7 +80,7 @@ const DetailedMetrics: React.FC<DetailedMetricsProps> = ({
                 </Tooltip>
               </div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-accent-green)' }}>
-                {((solverState.overallAcceptanceRate || 0) * 100).toFixed(1)}%
+                {(finiteNumber(solverState.overallAcceptanceRate) * 100).toFixed(1)}%
               </div>
             </div>
             <div
@@ -91,7 +94,7 @@ const DetailedMetrics: React.FC<DetailedMetricsProps> = ({
                 </Tooltip>
               </div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-accent-orange)' }}>
-                {((solverState.recentAcceptanceRate || 0) * 100).toFixed(1)}%
+                {(finiteNumber(solverState.recentAcceptanceRate) * 100).toFixed(1)}%
               </div>
             </div>
           </div>
@@ -123,7 +126,7 @@ const DetailedMetrics: React.FC<DetailedMetricsProps> = ({
                 <div className="flex justify-between">
                   <span style={{ color: 'var(--text-secondary)' }}>Success Rate:</span>
                   <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {((solverState.cliqueSwapSuccessRate || 0) * 100).toFixed(1)}%
+                    {(finiteNumber(solverState.cliqueSwapSuccessRate) * 100).toFixed(1)}%
                   </span>
                 </div>
               </div>
@@ -155,7 +158,7 @@ const DetailedMetrics: React.FC<DetailedMetricsProps> = ({
                 <div className="flex justify-between">
                   <span style={{ color: 'var(--text-secondary)' }}>Success Rate:</span>
                   <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {((solverState.transferSuccessRate || 0) * 100).toFixed(1)}%
+                    {(finiteNumber(solverState.transferSuccessRate) * 100).toFixed(1)}%
                   </span>
                 </div>
               </div>
@@ -187,7 +190,7 @@ const DetailedMetrics: React.FC<DetailedMetricsProps> = ({
                 <div className="flex justify-between">
                   <span style={{ color: 'var(--text-secondary)' }}>Success Rate:</span>
                   <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {((solverState.swapSuccessRate || 0) * 100).toFixed(1)}%
+                    {(finiteNumber(solverState.swapSuccessRate) * 100).toFixed(1)}%
                   </span>
                 </div>
               </div>
@@ -234,7 +237,7 @@ const DetailedMetrics: React.FC<DetailedMetricsProps> = ({
                 </Tooltip>
               </div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-accent-pink)' }}>
-                {formatIterationTime(solverState.avgTimePerIterationMs || 0)}
+                {formatIterationTime(finiteNumber(solverState.avgTimePerIterationMs))}
               </div>
             </div>
             <div
@@ -248,7 +251,7 @@ const DetailedMetrics: React.FC<DetailedMetricsProps> = ({
                 </Tooltip>
               </div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-accent-emerald)' }}>
-                {(solverState.searchEfficiency || 0).toFixed(2)}
+                {finiteNumber(solverState.searchEfficiency).toFixed(2)}
               </div>
             </div>
           </div>
@@ -265,7 +268,7 @@ const DetailedMetrics: React.FC<DetailedMetricsProps> = ({
                 </Tooltip>
               </div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-accent-lime)' }}>
-                {(solverState.avgAttemptedMoveDelta || 0).toFixed(3)}
+                {finiteNumber(solverState.avgAttemptedMoveDelta).toFixed(3)}
               </div>
             </div>
             <div
@@ -279,7 +282,7 @@ const DetailedMetrics: React.FC<DetailedMetricsProps> = ({
                 </Tooltip>
               </div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-accent-amber)' }}>
-                {(solverState.avgAcceptedMoveDelta || 0).toFixed(3)}
+                {finiteNumber(solverState.avgAcceptedMoveDelta).toFixed(3)}
               </div>
             </div>
             <div
@@ -293,7 +296,7 @@ const DetailedMetrics: React.FC<DetailedMetricsProps> = ({
                 </Tooltip>
               </div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-accent-red)' }}>
-                {(solverState.biggestAttemptedIncrease || 0).toFixed(3)}
+                {finiteNumber(solverState.biggestAttemptedIncrease).toFixed(3)}
               </div>
             </div>
             <div
@@ -307,7 +310,7 @@ const DetailedMetrics: React.FC<DetailedMetricsProps> = ({
                 </Tooltip>
               </div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-accent-orange)' }}>
-                {(solverState.biggestAcceptedIncrease || 0).toFixed(3)}
+                {finiteNumber(solverState.biggestAcceptedIncrease).toFixed(3)}
               </div>
             </div>
             <div
@@ -321,7 +324,7 @@ const DetailedMetrics: React.FC<DetailedMetricsProps> = ({
                 </Tooltip>
               </div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-accent-rose)' }}>
-                {(solverState.scoreVariance || 0).toFixed(2)}
+                {finiteNumber(solverState.scoreVariance).toFixed(2)}
               </div>
             </div>
           </div>
@@ -338,7 +341,7 @@ const DetailedMetrics: React.FC<DetailedMetricsProps> = ({
                 </Tooltip>
               </div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {solverState.currentRepetitionPenalty?.toFixed(2) || '0'}
+                {finiteNumber(solverState.currentRepetitionPenalty).toFixed(2)}
               </div>
             </div>
             <div
@@ -352,7 +355,7 @@ const DetailedMetrics: React.FC<DetailedMetricsProps> = ({
                 </Tooltip>
               </div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {solverState.currentBalancePenalty?.toFixed(2) || '0'}
+                {finiteNumber(solverState.currentBalancePenalty).toFixed(2)}
               </div>
             </div>
             <div
@@ -366,7 +369,7 @@ const DetailedMetrics: React.FC<DetailedMetricsProps> = ({
                 </Tooltip>
               </div>
               <div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {solverState.currentConstraintPenalty?.toFixed(2) || '0'}
+                {finiteNumber(solverState.currentConstraintPenalty).toFixed(2)}
               </div>
             </div>
           </div>

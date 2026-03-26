@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   convertProblemToRustFormat,
   convertRustResultToSolution,
-} from "./conversions";
+} from "../wasm/conversions";
 import { createSampleProblem } from "../../test/fixtures";
 import type { ProgressUpdate } from "../wasm/types";
 
@@ -50,7 +50,7 @@ const progress: ProgressUpdate = {
   search_efficiency: 0,
 };
 
-describe("solverWorker conversions", () => {
+describe("shared solver conversions", () => {
   it("preserves explicit objectives and normalizes immovable sessions", () => {
     const rustProblem = convertProblemToRustFormat(
       createSampleProblem({
@@ -102,5 +102,48 @@ describe("solverWorker conversions", () => {
     ]);
     expect(solution.iteration_count).toBe(7);
     expect(solution.elapsed_time_ms).toBe(2000);
+  });
+
+  it("converts browser-local wasm Map schedules into assignments", () => {
+    const solution = convertRustResultToSolution(
+      {
+        schedule: new Map([
+          [
+            "session_0",
+            new Map([
+              ["g1", ["p1", "p2"]],
+              ["g2", ["p3", "p4"]],
+            ]),
+          ],
+          [
+            "session_1",
+            new Map([
+              ["g1", ["p1", "p3"]],
+              ["g2", ["p2", "p4"]],
+            ]),
+          ],
+        ]) as unknown as Record<string, Record<string, string[]>>,
+        final_score: 9,
+        unique_contacts: 4,
+        repetition_penalty: 0,
+        attribute_balance_penalty: 0,
+        constraint_penalty: 0,
+        weighted_repetition_penalty: 0,
+        weighted_constraint_penalty: 0,
+      },
+      progress,
+      null
+    );
+
+    expect(solution.assignments).toEqual([
+      { person_id: "p1", group_id: "g1", session_id: 0 },
+      { person_id: "p2", group_id: "g1", session_id: 0 },
+      { person_id: "p3", group_id: "g2", session_id: 0 },
+      { person_id: "p4", group_id: "g2", session_id: 0 },
+      { person_id: "p1", group_id: "g1", session_id: 1 },
+      { person_id: "p3", group_id: "g1", session_id: 1 },
+      { person_id: "p2", group_id: "g2", session_id: 1 },
+      { person_id: "p4", group_id: "g2", session_id: 1 },
+    ]);
   });
 });

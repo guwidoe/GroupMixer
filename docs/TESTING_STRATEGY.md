@@ -6,6 +6,10 @@ For the day-to-day contributor workflow, see [`docs/TEST_PYRAMID_AND_REFACTOR_WO
 
 The goal is **refactor safety**, not just a single percentage. For this repository, **100% line coverage is a floor for the most important code paths, not the full strategy**. Confidence comes from multiple layers working together:
 
+For benchmark lane selection and operator workflow, see [`benchmarking/WORKFLOW.md`](../benchmarking/WORKFLOW.md).
+
+For the upcoming webapp worker/WASM migration risk map and required pre-migration safety net, see [`docs/WEBAPP_RUNTIME_MIGRATION_REGRESSION_MATRIX.md`](./WEBAPP_RUNTIME_MIGRATION_REGRESSION_MATRIX.md).
+
 - narrow unit tests for branch-heavy logic
 - data-driven integration tests for end-to-end solver behavior
 - property/invariant tests for structural guarantees
@@ -21,9 +25,9 @@ The goal is **refactor safety**, not just a single percentage. For this reposito
 Primary business-critical surface.
 
 Required layers:
-- module/unit tests in `solver-core/src/**`
-- data-driven integration tests in `solver-core/tests/**`
-- property/invariant tests in `solver-core/tests/property_tests.rs`
+- module/unit tests in `backend/core/src/**`
+- data-driven integration tests in `backend/core/tests/**`
+- property/invariant tests in `backend/core/tests/property_tests.rs`
 - mutation testing with `cargo-mutants`
 
 ### `solver-server`
@@ -57,11 +61,11 @@ Important: Storybook stories are complementary only. They are not the main app t
 
 ### Rust denominator
 The primary Rust coverage denominator is:
-- `solver-core/src/**`
-- `solver-server/src/**`
+- `backend/core/src/**`
+- `backend/api/src/**`
 
 Reported separately:
-- `solver-wasm/src/**`
+- `backend/wasm/src/**`
 
 Excluded or tracked separately:
 - generated artifacts
@@ -153,9 +157,9 @@ Mutation testing is an on-demand local and protected-branch/nightly confidence l
 
 #### WASM wrapper tests
 ```bash
-wasm-pack test --headless --chrome solver-wasm
+wasm-pack test --headless --chrome backend/wasm
 # local fallback when browser webdriver setup is unavailable:
-# wasm-pack test --node solver-wasm
+# wasm-pack test --node backend/wasm
 ```
 
 #### Frontend unit/component coverage
@@ -171,6 +175,34 @@ cd webapp
 npm run test:e2e:workflows
 ```
 
+#### Pre-migration webapp runtime safety gate
+Use this gate before changing the webapp -> worker -> WASM runtime seam for the
+contract-native browser migration.
+
+This gate is the required prerequisite for the migration tracked in:
+- hardening epic: `TODO-b25d5c75`
+- migration epic: `TODO-b0982713`
+
+Run:
+```bash
+cd webapp
+npm run test:runtime-safety:unit
+npx tsc --noEmit
+npm run test:runtime-safety:e2e
+# or the combined command:
+# npm run test:runtime-safety
+```
+
+This gate intentionally concentrates on:
+- `solverWorker` protocol/runtime behavior
+- wasm service/module behavior
+- stateful `/app` route mounts for solver/results/history
+- manual evaluation / save-best-so-far paths
+- browser workflows for recommendation, warm start, persistence, and worker-start failure
+
+See also:
+- `docs/WEBAPP_RUNTIME_MIGRATION_REGRESSION_MATRIX.md`
+
 #### Frontend visual regression
 ```bash
 cd webapp
@@ -180,9 +212,9 @@ npm run test:e2e:visual
 ## Coverage and quality goals
 
 Long-term targets:
-- `solver-core/src/**`: 100% line coverage, branch coverage as high as practical, backed by mutation testing
-- `solver-server/src/**`: 100% line coverage for exposed route and lifecycle logic
-- `solver-wasm/src/**`: high wrapper-function coverage, reported separately
+- `backend/core/src/**`: 100% line coverage, branch coverage as high as practical, backed by mutation testing
+- `backend/api/src/**`: 100% line coverage for exposed route and lifecycle logic
+- `backend/wasm/src/**`: high wrapper-function coverage, reported separately
 - `webapp/src/store/**`, `src/services/**`, `src/utils/**`: 100% line coverage target
 - high-value frontend components: behavior-focused coverage strong enough to support UI refactors without relying only on E2E
 
@@ -252,10 +284,25 @@ Heavier layers remain intentionally separate today:
 - **Playwright workflow tests**: real browser journeys across solving, persistence, navigation
 - **Visual regression**: layout, responsive, modal, and styling drift
 
+## Benchmark lane policy
+
+Benchmarking is split across three different surfaces with different trust levels:
+
+- **path / regression tests**: semantic correctness for specific move families and solver branches
+- **solve-level benchmark runner** (`solver-cli benchmark ...`): structured run/baseline/comparison workflow for representative runtime + quality interpretation
+- **Criterion microbenches** (`cargo bench -p solver-core --bench solver_perf ...`): repeated hot-kernel timing for low-level forensics
+
+Policy:
+
+- every PR should rely on semantic lanes first
+- same-machine runtime comparison is a heavier diagnostic lane, not a generic cross-machine PR gate
+- Criterion is for hotspot analysis, not for baseline/report semantics
+
 ## Contributor rule of thumb
 
 - Small Rust change: run relevant unit/data-driven/property tests plus `cargo nextest run --workspace`
 - Solver refactor: run full Rust coverage plus mutation testing for the affected solver areas
+- Performance-sensitive solver refactor: add the relevant solve-level benchmark run and, if needed, matching `solver_perf` Criterion microbench group
 - Frontend logic change: run Vitest unit/component coverage for the affected area
 - UI flow change: run Vitest component tests plus Playwright workflow coverage
 - Layout/theme change: run visual regression in addition to functional tests

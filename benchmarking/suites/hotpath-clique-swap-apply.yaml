@@ -1,0 +1,10 @@
+schema_version: 1
+suite_id: hotpath-clique-swap-apply
+benchmark_mode: clique_swap_apply
+class: representative
+title: Hotpath clique swap apply benchmark suite
+description: Deterministic clique-swap apply lane for recording/history bundles.
+default_iterations: 48
+default_warmup_iterations: 4
+cases:
+  - manifest: ../cases/hotpath/clique_swap_default.json

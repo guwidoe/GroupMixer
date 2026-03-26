@@ -54,7 +54,7 @@ async function loadDemoData(page: Page, type: 'simple' | 'intermediate' = 'simpl
 test.describe('Visual Regression - Landing Page', () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === 'mobile-chrome', 'landing visuals are curated around desktop layout');
-    await page.goto('/landingpage');
+    await page.goto('/');
     await waitForPageReady(page);
   });
 

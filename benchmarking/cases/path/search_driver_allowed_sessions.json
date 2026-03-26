@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "id": "path.search-driver.allowed-sessions",
+  "class": "path",
+  "family": "search_driver",
+  "paths": [
+    "search_driver.allowed_sessions_enforcement",
+    "construction.warm_start_preservation"
+  ],
+  "description": "Warm-started solver case that only allows session 1 to mutate so untouched sessions remain a deterministic forensic baseline.",
+  "input": {
+    "initial_schedule": {
+      "session_0": {
+        "g0": ["p0", "p1"],
+        "g1": ["p2", "p3"]
+      },
+      "session_1": {
+        "g0": ["p0", "p2"],
+        "g1": ["p1", "p3"]
+      },
+      "session_2": {
+        "g0": ["p0", "p3"],
+        "g1": ["p1", "p2"]
+      }
+    },
+    "problem": {
+      "people": [
+        { "id": "p0", "attributes": {} },
+        { "id": "p1", "attributes": {} },
+        { "id": "p2", "attributes": {} },
+        { "id": "p3", "attributes": {} }
+      ],
+      "groups": [
+        { "id": "g0", "size": 2 },
+        { "id": "g1", "size": 2 }
+      ],
+      "num_sessions": 3
+    },
+    "objectives": [
+      { "type": "maximize_unique_contacts", "weight": 1.0 }
+    ],
+    "constraints": [],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 200,
+        "time_limit_seconds": null,
+        "no_improvement_iterations": null
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 3.0,
+        "final_temperature": 0.1,
+        "cooling_schedule": "geometric",
+        "reheat_after_no_improvement": 0,
+        "reheat_cycles": 0
+      },
+      "logging": {},
+      "telemetry": {},
+      "seed": 53,
+      "allowed_sessions": [1]
+    }
+  }
+}

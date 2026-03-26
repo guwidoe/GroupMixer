@@ -5,8 +5,10 @@ import { describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { renderWithRouter } from "./test/utils";
 
-vi.mock("./components/LandingPage", () => ({
-  default: () => <div>Landing page test stub</div>,
+vi.mock("./pages/ToolLandingPage", () => ({
+  default: ({ pageKey }: { pageKey: string }) => (
+    <div>Tool landing test stub: {pageKey}</div>
+  ),
 }));
 
 vi.mock("./MainApp", () => ({
@@ -18,7 +20,7 @@ vi.mock("./MainApp", () => ({
   ),
 }));
 
-vi.mock("./components/ProblemEditor", () => ({
+vi.mock("./components/ProblemEditor/ProblemEditor", () => ({
   ProblemEditor: () => <div>Problem editor test stub</div>,
 }));
 
@@ -39,11 +41,35 @@ vi.mock("./components/ManualEditor", () => ({
 }));
 
 describe("App routing", () => {
-  it("redirects the root route to the landing page", async () => {
+  it("renders the tool-first landing page on the root route", async () => {
     renderWithRouter(<App />, { route: "/" });
 
     expect(
-      await screen.findByText("Landing page test stub")
+      await screen.findByText("Tool landing test stub: home")
+    ).toBeInTheDocument();
+  });
+
+  it("redirects /landingpage back to the root tool route", async () => {
+    renderWithRouter(<App />, { route: "/landingpage" });
+
+    expect(
+      await screen.findByText("Tool landing test stub: home")
+    ).toBeInTheDocument();
+  });
+
+  it("renders SEO entry routes with the shared tool shell", async () => {
+    renderWithRouter(<App />, { route: "/random-team-generator" });
+
+    expect(
+      await screen.findByText("Tool landing test stub: random-team-generator")
+    ).toBeInTheDocument();
+  });
+
+  it("renders additional intent routes with the same shared shell", async () => {
+    renderWithRouter(<App />, { route: "/speed-networking-generator" });
+
+    expect(
+      await screen.findByText("Tool landing test stub: speed-networking-generator")
     ).toBeInTheDocument();
   });
 

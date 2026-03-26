@@ -11,8 +11,8 @@ interface Props {
   onSave: (constraint: Constraint) => void;
 }
 
-const ShouldNotBeTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onCancel, onSave }) => {
-  const { GetProblem, ui } = useAppStore();
+export function ShouldNotBeTogetherModal({ sessionsCount, initial, onCancel, onSave }: Props) {
+  const { resolveProblem, ui } = useAppStore();
   
   const getInitialState = () => {
     if (ui.isLoading) {
@@ -51,7 +51,7 @@ const ShouldNotBeTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onC
     return null;
   }
   
-  const problem = GetProblem();
+  const problem = resolveProblem();
   const editing = !!initial;
   
   const filteredPeople = problem.people.filter(p => {
@@ -208,6 +208,4 @@ const ShouldNotBeTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onC
       </div>
     </div>
   );
-};
-
-export default ShouldNotBeTogetherModal; 
+}

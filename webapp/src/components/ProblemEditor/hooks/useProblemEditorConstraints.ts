@@ -45,12 +45,16 @@ export function useProblemEditorConstraints({
   );
   const HARD_TYPES = useMemo(() => ['ImmovablePeople', 'MustStayTogether'] as const, []);
 
+  type SoftConstraintType = (typeof SOFT_TYPES)[number];
+  type HardConstraintType = (typeof HARD_TYPES)[number];
   type ConstraintCategory = 'soft' | 'hard';
+  type ActiveConstraintTab = SoftConstraintType | HardConstraintType;
+
   const [constraintCategoryTab, setConstraintCategoryTab] = useState<ConstraintCategory>('soft');
-  const [activeConstraintTab, setActiveConstraintTab] = useState<string>(SOFT_TYPES[0]);
+  const [activeConstraintTab, setActiveConstraintTab] = useState<ActiveConstraintTab>(SOFT_TYPES[0]);
 
   useEffect(() => {
-    const validTypes = (constraintCategoryTab === 'soft' ? SOFT_TYPES : HARD_TYPES) as readonly string[];
+    const validTypes: readonly ActiveConstraintTab[] = constraintCategoryTab === 'soft' ? SOFT_TYPES : HARD_TYPES;
     if (!validTypes.includes(activeConstraintTab)) {
       setActiveConstraintTab(validTypes[0]);
     }

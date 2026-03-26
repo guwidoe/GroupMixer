@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "hotpath.swap.default",
+  "class": "representative",
+  "family": "swap",
+  "paths": ["swap_preview", "swap_apply"],
+  "title": "Hotpath swap preset",
+  "description": "Deterministic swap kernel lane used for preview and apply history.",
+  "tags": ["hotpath", "swap", "representative"],
+  "hotpath_preset": "swap_default"
+}

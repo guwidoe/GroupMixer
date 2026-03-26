@@ -1,5 +1,5 @@
 import { problemStorage } from '../../../services/problemStorage';
-import type { Problem, Solution, SolverSettings } from '../../../types';
+import type { Problem, ProblemResult, Solution, SolverSettings } from '../../../types';
 import type { ProblemManagerActions, ProblemManagerState, StoreSlice } from '../../types';
 
 type SliceTools = Parameters<StoreSlice<ProblemManagerState & ProblemManagerActions>>;
@@ -16,11 +16,8 @@ export function createResultActions(set: SetState, get: GetState): Pick<ProblemM
       solverSettings: SolverSettings,
       customName?: string,
       snapshotProblemOverride?: Problem,
-    ) => {
+    ): ProblemResult | null => {
       const { currentProblemId, savedProblems, problem } = get();
-      console.log('[Store] addResult called with currentProblemId:', currentProblemId);
-      console.log('[Store] savedProblems keys:', Object.keys(savedProblems));
-      console.log('[Store] current problem in savedProblems:', currentProblemId ? savedProblems[currentProblemId] : null);
 
       if (!currentProblemId) {
         get().addNotification({
@@ -28,20 +25,21 @@ export function createResultActions(set: SetState, get: GetState): Pick<ProblemM
           title: 'No Current Problem',
           message: 'Please save the current problem first before adding results.',
         });
-        return;
+        return null;
       }
 
+      let currentSavedProblem = savedProblems[currentProblemId];
       if (currentProblemId && !savedProblems[currentProblemId]) {
-        console.log('[Store] Problem not found in savedProblems, reloading...');
         get().loadSavedProblems();
         const { savedProblems: reloadedProblems } = get();
+        currentSavedProblem = reloadedProblems[currentProblemId];
         if (currentProblemId && !reloadedProblems[currentProblemId]) {
           get().addNotification({
             type: 'error',
             title: 'Save Result Failed',
             message: 'Problem not found in saved problems.',
           });
-          return;
+          return null;
         }
       }
 
@@ -56,19 +54,27 @@ export function createResultActions(set: SetState, get: GetState): Pick<ProblemM
           problemForSnapshot,
         );
 
+        const persistedProblem = problemStorage.getProblem(currentProblemId);
+
         set((state) => {
-          const currentProblem = state.savedProblems[currentProblemId];
-          console.log('[Store] Current problem in state:', currentProblem);
-          console.log('[Store] Current problem results:', currentProblem?.results);
+          const currentProblem = state.savedProblems[currentProblemId] ?? currentSavedProblem;
+          if (!currentProblem) {
+            return {};
+          }
 
           return {
             savedProblems: {
               ...state.savedProblems,
-              [currentProblemId]: {
-                ...currentProblem,
-                problem: problem || currentProblem.problem,
-                results: [...(currentProblem?.results || []), result],
-              },
+              [currentProblemId]: persistedProblem
+                ? {
+                    ...persistedProblem,
+                    problem: problem || persistedProblem.problem,
+                  }
+                : {
+                    ...currentProblem,
+                    problem: problem || currentProblem.problem,
+                    results: [...(currentProblem.results || []), result],
+                  },
             },
           };
         });
@@ -78,12 +84,14 @@ export function createResultActions(set: SetState, get: GetState): Pick<ProblemM
           title: 'Result Saved',
           message: `Result "${result.name}" has been saved to the current problem.`,
         });
+        return result;
       } catch (error) {
         get().addNotification({
           type: 'error',
           title: 'Save Result Failed',
           message: error instanceof Error ? error.message : 'Failed to save result',
         });
+        return null;
       }
     },
 

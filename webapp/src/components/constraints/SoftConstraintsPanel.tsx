@@ -6,6 +6,10 @@ import AttributeBalanceDashboard from '../AttributeBalanceDashboard';
 // PersonCard removed in favor of ConstraintPersonChip
 import ConstraintPersonChip from '../ConstraintPersonChip';
 import PairMeetingCountBulkConvertModal from '../modals/PairMeetingCountBulkConvertModal';
+import {
+  removePersonFromPeopleConstraint,
+  replaceConstraintsAtIndices,
+} from './constraintMutations';
 
 // Import the specific constraint type for the dashboard
 interface AttributeBalanceConstraint {
@@ -39,7 +43,7 @@ const constraintTypeLabels: Record<typeof SOFT_TABS[number], string> = {
 const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstraint, onDeleteConstraint }) => {
   const [activeTab, setActiveTab] = useState<typeof SOFT_TABS[number]>('RepeatEncounter');
   const [showInfo, setShowInfo] = useState(false);
-  const { GetProblem, ui } = useAppStore();
+  const { resolveProblem, setProblem, ui } = useAppStore();
   const [filterText, setFilterText] = useState('');
   const [selectedShouldIndices, setSelectedShouldIndices] = useState<number[]>([]);
   const [showPairConvert, setShowPairConvert] = useState(false);
@@ -49,7 +53,7 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
     return <div className="space-y-4 pt-1 pl-0">Loading...</div>;
   }
 
-  const problem = GetProblem();
+  const problem = resolveProblem();
 
   const constraintsByType = (problem.constraints || []).reduce((acc: Record<string, { constraint: Constraint; index: number }[]>, c, i) => {
     if (!acc[c.type]) acc[c.type] = [];
@@ -238,19 +242,15 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
                               personId={pid}
                               people={problem.people}
                               onRemove={(removeId) => {
-                                const c = constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>;
-                                const newPeople = c.people.filter(p => p !== removeId);
-                                const willBeInvalid = newPeople.length < 2;
-                                if (willBeInvalid) {
-                                  if (!window.confirm('Removing this person will leave the constraint invalid. Remove the entire constraint?')) return;
-                                  const nextConstraints = GetProblem().constraints.filter((_, i2) => i2 !== index);
-                                  useAppStore.getState().setProblem({ ...GetProblem(), constraints: nextConstraints });
-                                  return;
-                                }
-                                const updated = GetProblem().constraints.map((cst, i2) =>
-                                  i2 === index ? { ...cst, people: newPeople } as Constraint : cst
-                                );
-                                useAppStore.getState().setProblem({ ...GetProblem(), constraints: updated });
+                                  const c = constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>;
+                                  const newPeople = c.people.filter(p => p !== removeId);
+                                  const willBeInvalid = newPeople.length < 2;
+                                  if (willBeInvalid) {
+                                    if (!window.confirm('Removing this person will leave the constraint invalid. Remove the entire constraint?')) return;
+                                    setProblem(removePersonFromPeopleConstraint(problem, index, removeId, 2));
+                                    return;
+                                  }
+                                  setProblem(removePersonFromPeopleConstraint(problem, index, removeId, 2));
                               }}
                             />
                             {idx < (constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>).people.length - 1 && <span></span>}
@@ -316,39 +316,40 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
       {showPairConvert && (
         <PairMeetingCountBulkConvertModal
           selectedCount={selectedShouldIndices.length}
-          totalSessions={GetProblem().num_sessions}
-          people={GetProblem().people}
+          totalSessions={problem.num_sessions}
+          people={problem.people}
           selectedConstraints={filteredShouldItems
             .filter(({ index }) => selectedShouldIndices.includes(index))
             .map(({ index, constraint }) => ({ index, people: constraint.people }))}
           onCancel={() => setShowPairConvert(false)}
           onConvert={({ retainOriginal, sessions, target, mode, useSourceWeight, overrideWeight, anchorsByIndex }) => {
-            const current = GetProblem();
-            const newConstraints: Constraint[] = [];
-            current.constraints.forEach((c, i) => {
-              if (c.type === 'ShouldStayTogether' && selectedShouldIndices.includes(i)) {
-                const baseWeight = c.penalty_weight;
-                const weight = useSourceWeight && typeof baseWeight === 'number' ? baseWeight : (overrideWeight as number);
-                const people = c.people;
-                const perConstraintAnchor = anchorsByIndex && anchorsByIndex[i];
-                const anchor = perConstraintAnchor && people.includes(perConstraintAnchor) ? perConstraintAnchor : people[0];
-                people.forEach((p) => {
-                  if (p === anchor) return;
-                  newConstraints.push({
-                    type: 'PairMeetingCount',
-                    people: [anchor, p],
-                    sessions,
-                    target_meetings: target,
-                    mode,
-                    penalty_weight: weight,
-                  });
-                });
-                if (retainOriginal) newConstraints.push(c);
-              } else {
-                newConstraints.push(c);
+            setProblem(replaceConstraintsAtIndices(problem, selectedShouldIndices, (currentConstraint, index) => {
+              if (currentConstraint.type !== 'ShouldStayTogether') {
+                return [currentConstraint];
               }
-            });
-            useAppStore.getState().setProblem({ ...current, constraints: newConstraints });
+
+              const baseWeight = currentConstraint.penalty_weight;
+              const weight = useSourceWeight && typeof baseWeight === 'number' ? baseWeight : (overrideWeight as number);
+              const people = currentConstraint.people;
+              const perConstraintAnchor = anchorsByIndex && anchorsByIndex[index];
+              const anchor = perConstraintAnchor && people.includes(perConstraintAnchor) ? perConstraintAnchor : people[0];
+              const pairConstraints = people.flatMap((personId) => {
+                if (personId === anchor) {
+                  return [];
+                }
+
+                return [{
+                  type: 'PairMeetingCount',
+                  people: [anchor, personId],
+                  sessions,
+                  target_meetings: target,
+                  mode,
+                  penalty_weight: weight,
+                } satisfies Constraint];
+              });
+
+              return retainOriginal ? [...pairConstraints, currentConstraint] : pairConstraints;
+            }));
             setSelectedShouldIndices([]);
             setShowPairConvert(false);
           }}

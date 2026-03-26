@@ -18,8 +18,8 @@ interface FormState {
   mode: "exact" | "at_least";
 }
 
-const AttributeBalanceModal: React.FC<Props> = ({ initial, onCancel, onSave }) => {
-  const { GetProblem, attributeDefinitions, ui } = useAppStore();
+export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
+  const { resolveProblem, attributeDefinitions, ui } = useAppStore();
   
   const getInitialState = (): FormState => {
     if (ui.isLoading) {
@@ -33,7 +33,7 @@ const AttributeBalanceModal: React.FC<Props> = ({ initial, onCancel, onSave }) =
       };
     }
     
-    const problem = GetProblem();
+    const problem = resolveProblem();
     const editing = !!initial;
 
     if (editing && initial?.type === 'AttributeBalance') {
@@ -64,7 +64,7 @@ const AttributeBalanceModal: React.FC<Props> = ({ initial, onCancel, onSave }) =
     return null;
   }
   
-  const problem = GetProblem();
+  const problem = resolveProblem();
   const editing = !!initial;
   const sessionsCount = problem.num_sessions || 0;
 
@@ -272,6 +272,4 @@ const AttributeBalanceModal: React.FC<Props> = ({ initial, onCancel, onSave }) =
       </div>
     </div>
   );
-};
-
-export default AttributeBalanceModal; 
+}

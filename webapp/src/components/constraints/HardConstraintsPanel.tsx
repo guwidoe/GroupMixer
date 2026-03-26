@@ -4,6 +4,10 @@ import type { Constraint, Person } from '../../types';
 // PersonCard removed in favor of ConstraintPersonChip
 import ConstraintPersonChip from '../ConstraintPersonChip';
 import { useAppStore } from '../../store';
+import {
+  removePersonFromPeopleConstraint,
+  replaceConstraintsAtIndices,
+} from './constraintMutations';
 
 interface Props {
   onAddConstraint: (type: 'ImmovablePeople' | 'MustStayTogether') => void;
@@ -26,14 +30,14 @@ function HardConstraintsPanel({ onAddConstraint, onEditConstraint, onDeleteConst
   const [showInfo, setShowInfo] = useState(false);
   const [filterText, setFilterText] = useState('');
   const [minMembers, setMinMembers] = useState<number | ''>('');
-  const { GetProblem, ui } = useAppStore();
+  const { resolveProblem, setProblem, ui } = useAppStore();
 
   // Don't render until loading is complete to avoid creating new problems
   if (ui.isLoading) {
     return <div className="space-y-4 pt-1 pl-0">Loading...</div>;
   }
 
-  const problem = GetProblem();
+  const problem = resolveProblem();
 
   const constraintsByType = (problem.constraints || []).reduce((acc: Record<string, { constraint: Constraint; index: number }[]>, c, i) => {
     if (!acc[c.type]) acc[c.type] = [];
@@ -241,12 +245,10 @@ function HardConstraintsPanel({ onAddConstraint, onEditConstraint, onDeleteConst
                                   const willBeInvalid = newPeople.length === 0;
                                   if (willBeInvalid) {
                                     if (!window.confirm('Removing this person will leave the constraint empty. Remove the entire constraint?')) return;
-                                    const nextConstraints = problem.constraints.filter((_, i2) => i2 !== index);
-                                    useAppStore.getState().setProblem({ ...problem, constraints: nextConstraints });
+                                    setProblem(removePersonFromPeopleConstraint(problem, index, removeId, 1));
                                     return;
                                   }
-                                  const updated = problem.constraints.map((cst, i2) => i2 === index ? ({ ...cst, people: newPeople } as Constraint) : cst);
-                                  useAppStore.getState().setProblem({ ...problem, constraints: updated });
+                                  setProblem(removePersonFromPeopleConstraint(problem, index, removeId, 1));
                                 }}
                               />
                               {idx < constraint.people.length - 1 && <span></span>}
@@ -279,12 +281,10 @@ function HardConstraintsPanel({ onAddConstraint, onEditConstraint, onDeleteConst
                                   const willBeInvalid = newPeople.length < 2;
                                   if (willBeInvalid) {
                                     if (!window.confirm('Removing this person will leave the clique invalid (needs at least two people). Remove the entire constraint?')) return;
-                                    const nextConstraints = problem.constraints.filter((_, i2) => i2 !== index);
-                                    useAppStore.getState().setProblem({ ...problem, constraints: nextConstraints });
+                                    setProblem(removePersonFromPeopleConstraint(problem, index, removeId, 2));
                                     return;
                                   }
-                                  const updated = problem.constraints.map((cst, i2) => i2 === index ? ({ ...cst, people: newPeople } as Constraint) : cst);
-                                  useAppStore.getState().setProblem({ ...problem, constraints: updated });
+                                  setProblem(removePersonFromPeopleConstraint(problem, index, removeId, 2));
                                 }}
                               />
                               {idx < constraint.people.length - 1 && <span></span>}
@@ -356,14 +356,13 @@ function HardConstraintsPanel({ onAddConstraint, onEditConstraint, onDeleteConst
                     return; // simple guard; could show validation
                   }
                   const weight = bulkWeight as number;
-                  const current = GetProblem();
-                  const newConstraints = current.constraints.flatMap((c, i) => {
-                    if (c.type === 'MustStayTogether' && selectedMustIndices.includes(i)) {
-                      return [{ type: 'ShouldStayTogether', people: c.people, sessions: c.sessions, penalty_weight: weight } as Constraint];
+                  setProblem(replaceConstraintsAtIndices(problem, selectedMustIndices, (constraint) => {
+                    if (constraint.type !== 'MustStayTogether') {
+                      return [constraint];
                     }
-                    return [c];
-                  });
-                  useAppStore.getState().setProblem({ ...current, constraints: newConstraints });
+
+                    return [{ type: 'ShouldStayTogether', people: constraint.people, sessions: constraint.sessions, penalty_weight: weight } satisfies Constraint];
+                  }));
                   clearSelection();
                   setShowBulkConvert(false);
                 }}

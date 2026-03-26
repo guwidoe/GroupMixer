@@ -1,0 +1,13 @@
+schema_version: 1
+suite_id: path
+benchmark_mode: full_solve
+class: path
+title: Path regression benchmark suite
+description: Deterministic small cases that intentionally activate specific move families or solver branches.
+default_max_iterations: 40
+cases:
+  - manifest: ../cases/path/swap_forbidden_pair.json
+  - manifest: ../cases/path/transfer_pair_meeting.json
+  - manifest: ../cases/path/clique_swap_partial_participation.json
+  - manifest: ../cases/path/search_driver_allowed_sessions.json
+  - manifest: ../cases/path/construction_clique_immovable.json

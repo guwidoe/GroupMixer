@@ -23,6 +23,7 @@ import { pullNewConstraints, pullNewPeople } from './pullHandlers';
 import { canDrop } from './moveUtils';
 import { buildManualDraftSolution } from './draftSolution';
 import { discardAndContinue, saveAndContinue } from './leaveActions';
+import { buildMoveReportData, findAssignedGroup, stagePersonMove } from './dropPipeline';
 
 export function ManualEditorContent() {
   const navigate = useNavigate();
@@ -144,16 +145,7 @@ export function ManualEditorContent() {
       peopleCount: effectiveProblem.people.length || 1,
     });
 
-    try {
-      addResult(draftSolution, effectiveProblem.settings, 'Manual Draft', effectiveProblem);
-      addNotification({ type: 'success', title: 'Draft Saved', message: 'Saved as a new result.' });
-    } catch (e) {
-      addNotification({
-        type: 'error',
-        title: 'Save Failed',
-        message: e instanceof Error ? e.message : 'Unknown error',
-      });
-    }
+    addResult(draftSolution, effectiveProblem.settings, 'Manual Draft', effectiveProblem);
   };
 
   const isGroupLocked = (groupId: string) => lockedGroups.has(groupId);
@@ -234,63 +226,19 @@ export function ManualEditorContent() {
       return;
     }
 
-    const fromGroupId = Object.entries(draftSchedule[sessionId] || {}).find(([, list]) => list.includes(personId))?.[0];
-    let beforeScore = {
-      final_score: 0,
-      unique_contacts: 0,
-      repetition_penalty: 0,
-      attribute_balance_penalty: 0,
-      constraint_penalty: 0,
-    };
-    let beforeCompliance = compliance;
-    if (effectiveProblem) {
-      try {
-        const beforeEval = await wasmService.evaluateSolution(effectiveProblem, draftAssignments);
-        beforeScore = {
-          final_score: beforeEval.final_score,
-          unique_contacts: beforeEval.unique_contacts,
-          repetition_penalty: beforeEval.repetition_penalty,
-          attribute_balance_penalty: beforeEval.attribute_balance_penalty,
-          constraint_penalty: beforeEval.constraint_penalty,
-        };
-        beforeCompliance = evaluateCompliance(effectiveProblem, beforeEval as unknown as Solution);
-      } catch {
-        // ignore eval failures for report preview
-      }
-    }
-
-    const prevAssignments = draft ? cloneAssignments(draft.assignments) : [];
-    const staged = draft ? cloneAssignments(draft.assignments).filter((a) => !(a.person_id === personId && a.session_id === sessionId)) : [];
-    staged.push({ person_id: personId, group_id: targetGroupId, session_id: sessionId });
+    const fromGroupId = findAssignedGroup(draftSchedule, sessionId, personId);
+    const prevAssignments = cloneAssignments(draft.assignments);
+    const staged = stagePersonMove(prevAssignments, personId, targetGroupId, sessionId);
 
     const shouldShowReport = mode === 'warn' || mode === 'strict';
     if (shouldShowReport && effectiveProblem) {
-      try {
-        const afterEval = await wasmService.evaluateSolution(effectiveProblem, staged);
-        const afterScore = {
-          final_score: afterEval.final_score,
-          unique_contacts: afterEval.unique_contacts,
-          repetition_penalty: afterEval.repetition_penalty,
-          attribute_balance_penalty: afterEval.attribute_balance_penalty,
-          constraint_penalty: afterEval.constraint_penalty,
-        };
-        const afterCompliance = evaluateCompliance(effectiveProblem, afterEval as unknown as Solution);
-        setReportData({
-          before: { score: beforeScore, compliance: beforeCompliance },
-          after: { score: afterScore, compliance: afterCompliance },
-          people: effectiveProblem.people,
-        });
-        if (shouldShowReport) {
-          setPendingMove({ personId, fromGroupId, toGroupId: targetGroupId, sessionId, prevAssignments });
-          setShowReport(true);
-        } else {
-          movePerson(personId, fromGroupId, targetGroupId, sessionId);
-        }
-      } catch (e) {
-        console.warn('Failed to build change report:', e);
-        if (!shouldShowReport) {
-          movePerson(personId, fromGroupId, targetGroupId, sessionId);
-        }
+      const nextReportData = await buildMoveReportData(effectiveProblem, draftAssignments, staged, compliance);
+      if (nextReportData) {
+        setReportData(nextReportData);
+        setPendingMove({ personId, fromGroupId, toGroupId: targetGroupId, sessionId, prevAssignments });
+        setShowReport(true);
+      } else {
+        console.warn('Failed to build change report');
       }
     } else {
       movePerson(personId, fromGroupId, targetGroupId, sessionId);

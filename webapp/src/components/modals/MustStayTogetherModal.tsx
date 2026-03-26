@@ -11,8 +11,8 @@ interface Props {
   onSave: (constraint: Constraint) => void;
 }
 
-const MustStayTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onCancel, onSave }) => {
-  const { GetProblem, ui } = useAppStore();
+export function MustStayTogetherModal({ sessionsCount, initial, onCancel, onSave }: Props) {
+  const { resolveProblem, ui } = useAppStore();
 
   const getInitialState = () => {
     if (ui.isLoading) {
@@ -45,7 +45,7 @@ const MustStayTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onCanc
     return null;
   }
 
-  const problem = GetProblem();
+  const problem = resolveProblem();
   const editing = !!initial;
 
   const togglePerson = (pid: string) => {
@@ -164,6 +164,4 @@ const MustStayTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onCanc
       <ModalFooter onCancel={onCancel} onSave={handleSave} />
     </ModalWrapper>
   );
-};
-
-export default MustStayTogetherModal;
+}

@@ -167,9 +167,9 @@ Run:
 
 ```bash
 ./scripts/test-rust-fast.sh
-wasm-pack test --node solver-wasm
+wasm-pack test --node backend/wasm
 # or browser mode when available:
-# wasm-pack test --headless --chrome solver-wasm
+# wasm-pack test --headless --chrome backend/wasm
 ```
 
 Then run at least one browser workflow pass:

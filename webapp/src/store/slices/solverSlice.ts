@@ -62,6 +62,6 @@ export const createSolverSlice: StoreSlice<SolverSliceState & SolverActions> = (
 
   setWarmStartFromResult: (resultId) =>
     set((state) => ({
-      ui: { ...state.ui, warmStartResultId: resultId as unknown as never },
+      ui: { ...state.ui, warmStartResultId: resultId },
     })),
 });

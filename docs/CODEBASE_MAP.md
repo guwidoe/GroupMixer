@@ -58,21 +58,21 @@ graph TB
 
 ```
 GroupMixer/
-├── solver-core/              # Core Rust optimization library
+├── backend/core/              # Core Rust optimization library
 │   ├── src/
 │   │   ├── lib.rs           # Public API: run_solver(), recommended_settings
 │   │   ├── models.rs        # All serializable types (ApiInput, Constraint, etc.)
-│   │   ├── solver.rs        # State management, constraint processing (50k tokens)
+│   │   ├── solver/          # State management, validation, construction, moves
 │   │   └── algorithms/
 │   │       ├── mod.rs       # Solver trait definition
 │   │       └── simulated_annealing.rs  # SA implementation with dual moves
 │   ├── examples/            # Integration demos
 │   └── tests/               # Data-driven test suite with JSON cases
 │
-├── solver-wasm/             # WebAssembly bindings for browser use
+├── backend/wasm/             # WebAssembly bindings for browser use
 │   └── src/lib.rs           # wasm-bindgen exports: solve(), validate(), etc.
 │
-├── solver-server/           # REST API server (optional)
+├── backend/api/           # REST API server (optional)
 │   └── src/
 │       ├── main.rs          # Axum server entry point
 │       ├── api/             # Routes and handlers
@@ -90,7 +90,7 @@ GroupMixer/
 │   │   ├── visualizations/  # Pluggable viz system (matrix, graph, 3D)
 │   │   └── workers/         # Web Worker for off-thread solving
 │   └── public/
-│       ├── solver_wasm.*    # Compiled WASM files
+│       ├── pkg/solver_wasm.* # Generated wasm-pack output
 │       └── test_cases/      # Sample problems
 │
 ├── legacy_cpp/              # Original C++ implementation
@@ -113,7 +113,7 @@ GroupMixer/
 |------|---------|--------|
 | `src/lib.rs` | Public API facade, recommended settings calculation | 6,297 |
 | `src/models.rs` | All serializable types: ApiInput, Constraint enum, SolverResult | 8,574 |
-| `src/solver.rs` | State class, constraint preprocessing, cost calculations | 50,158 |
+| `src/solver/` | State construction, validation, scoring, moves, display | split across modules |
 | `src/algorithms/mod.rs` | Solver trait definition | 1,339 |
 | `src/algorithms/simulated_annealing.rs` | SA with clique swaps, reheating, delta scoring | 12,283 |
 
@@ -123,7 +123,7 @@ GroupMixer/
 - `calculate_recommended_settings(api_input, runtime_seconds) -> SolverConfiguration`
 - Types: `ApiInput`, `Person`, `Group`, `Constraint`, `SolverResult`, `ProgressUpdate`
 
-**Dependencies**: serde, rand, thiserror, uuid, indicatif
+**Dependencies**: serde, rand, thiserror, uuid, log, serde_json
 
 **Patterns**:
 - **Facade**: Simple public API hiding complex implementation
@@ -448,8 +448,8 @@ else:
 ## Navigation Guide
 
 ### To add a new constraint type:
-1. `solver-core/src/models.rs` - Add variant to `Constraint` enum
-2. `solver-core/src/solver.rs` - Add preprocessing and penalty calculation
+1. `backend/core/src/models.rs` - Add variant to `Constraint` enum
+2. `backend/core/src/solver.rs` - Add preprocessing and penalty calculation
 3. `webapp/src/types/index.ts` - Add TypeScript type
 4. `webapp/src/services/wasm.ts` - Add format conversion if needed
 5. `webapp/src/components/constraints/*.tsx` - Add UI panel
@@ -462,13 +462,13 @@ else:
 3. Register in `webapp/src/visualizations/registry.ts`
 
 ### To modify the optimization algorithm:
-1. `solver-core/src/algorithms/` - Add new algorithm or modify SA
+1. `backend/core/src/algorithms/` - Add new algorithm or modify SA
 2. Implement `Solver` trait
-3. Add solver_type string in `solver-core/src/lib.rs`
+3. Add solver_type string in `backend/core/src/lib.rs`
 
 ### To add a new API endpoint (server):
-1. `solver-server/src/api/handlers.rs` - Add handler function
-2. `solver-server/src/api/routes.rs` - Add route
+1. `backend/api/src/api/handlers.rs` - Add handler function
+2. `backend/api/src/api/routes.rs` - Add route
 
 ### To debug constraint violations:
 1. Enable `debug_validate_invariants: true` in SolverConfiguration

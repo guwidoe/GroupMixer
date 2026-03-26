@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Zap } from 'lucide-react';
-import type { SavedProblem } from '../../../store/slices/problemManagerSlice';
+import type { SavedProblem } from '../../../types';
 
 interface WarmStartSelectorProps {
   savedProblems: Record<string, SavedProblem>;

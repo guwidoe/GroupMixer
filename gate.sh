@@ -44,12 +44,16 @@ print_step "Rust: Running tests"
 cargo test --all
 print_success "Rust tests OK"
 
+print_step "Contracts: Checking generated reference artifacts"
+./tools/contracts_reference.sh check
+print_success "Contract reference artifacts OK"
+
 # ============================================
 # WASM build
 # ============================================
 
 print_step "WASM: Building solver-wasm"
-cd solver-wasm
+cd backend/wasm
 wasm-pack build --target web --out-dir ../webapp/public/pkg
 cd ..
 print_success "WASM build OK"

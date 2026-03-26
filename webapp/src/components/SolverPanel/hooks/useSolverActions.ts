@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react';
-import type { Problem, SavedProblem, SolverSettings, SolverState, Solution, Notification } from '../../../types';
-import type { ProgressUpdate } from '../../../services/wasm';
+import type { Problem, ProblemResult, SavedProblem, SolverSettings, SolverState, Solution, Notification } from '../../../types';
+import type { ProgressUpdate } from '../../../services/wasm/types';
 import type { ScheduleSnapshot } from '../../../visualizations/types';
 import { solverWorkerService } from '../../../services/solverWorker';
 import { runSolver } from '../utils/runSolver';
 import { saveBestSoFar } from '../utils/saveBestSoFar';
+import { normalizeRecommendedSolverSettings } from '../utils/recommendedSettings';
 
 type AddNotification = (notification: Omit<Notification, 'id'>) => void;
 
@@ -25,7 +26,12 @@ interface UseSolverActionsArgs {
   setSolverState: (partial: Partial<SolverState>) => void;
   setSolution: (solution: Solution) => void;
   addNotification: AddNotification;
-  addResult: (solution: Solution, solverSettings: SolverSettings, customName?: string, snapshotProblemOverride?: Problem) => void;
+  addResult: (
+    solution: Solution,
+    solverSettings: SolverSettings,
+    customName?: string,
+    snapshotProblemOverride?: Problem,
+  ) => ProblemResult | null;
   ensureProblemExists: () => Problem;
   handleSettingsChange: (settings: Partial<SolverSettings>) => void;
   setShowCancelConfirm: (value: boolean) => void;
@@ -156,41 +162,12 @@ export function useSolverActions({
     const currentProblem = ensureProblemExists();
 
     try {
-      const recommendedSettings = await solverWorkerService.get_recommended_settings(
+      const recommendedSettings = await solverWorkerService.getRecommendedSettings(
         currentProblem,
         desiredRuntimeSettings,
       );
 
-      let uiSettings: SolverSettings = recommendedSettings as SolverSettings;
-      const sp = (recommendedSettings as SolverSettings & { solver_params: Record<string, unknown> }).solver_params;
-      if (sp && !('SimulatedAnnealing' in sp) && sp.solver_type === 'SimulatedAnnealing') {
-        const {
-          initial_temperature,
-          final_temperature,
-          cooling_schedule,
-          reheat_cycles,
-          reheat_after_no_improvement,
-        } = sp as {
-          initial_temperature: number;
-          final_temperature: number;
-          cooling_schedule: string;
-          reheat_cycles?: number;
-          reheat_after_no_improvement: number;
-        };
-
-        uiSettings = {
-          ...recommendedSettings,
-          solver_params: {
-            SimulatedAnnealing: {
-              initial_temperature,
-              final_temperature,
-              cooling_schedule,
-              reheat_cycles,
-              reheat_after_no_improvement,
-            },
-          },
-        } as SolverSettings;
-      }
+      const uiSettings = normalizeRecommendedSolverSettings(recommendedSettings as SolverSettings);
 
       handleSettingsChange(uiSettings);
       addNotification({

@@ -11,8 +11,8 @@ interface Props {
   onSave: (constraint: Constraint) => void;
 }
 
-const ImmovablePeopleModal: React.FC<Props> = ({ sessionsCount, initial, onCancel, onSave }) => {
-  const { GetProblem, ui } = useAppStore();
+export function ImmovablePeopleModal({ sessionsCount, initial, onCancel, onSave }: Props) {
+  const { resolveProblem, ui } = useAppStore();
   
   const getInitialState = () => {
     if (ui.isLoading) {
@@ -24,7 +24,7 @@ const ImmovablePeopleModal: React.FC<Props> = ({ sessionsCount, initial, onCance
       };
     }
     
-    const problem = GetProblem();
+    const problem = resolveProblem();
     const editing = !!initial;
     const initPeople: string[] = editing && initial?.type === 'ImmovablePeople' ? initial.people : [];
     const initGroup: string = editing && initial?.type === 'ImmovablePeople' ? initial.group_id : ((problem.groups && problem.groups.length > 0) ? problem.groups[0].id : '');
@@ -50,7 +50,7 @@ const ImmovablePeopleModal: React.FC<Props> = ({ sessionsCount, initial, onCance
     return null;
   }
   
-  const problem = GetProblem();
+  const problem = resolveProblem();
   const editing = !!initial;
 
   const togglePerson = (pid: string) => {
@@ -226,6 +226,4 @@ const ImmovablePeopleModal: React.FC<Props> = ({ sessionsCount, initial, onCance
       </div>
     </div>
   );
-};
-
-export default ImmovablePeopleModal; 
+}

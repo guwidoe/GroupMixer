@@ -1,50 +1,91 @@
 import type { Problem, Solution, SolverSettings } from "../types";
 import type { ProgressUpdate, ProgressCallback } from "./wasm/types";
-import { convertProblemToRustFormat, convertRustResultToSolution } from "./solverWorker/conversions";
+import {
+  createInitRequestMessage,
+  createRpcRequestMessage,
+  createSolveRequestMessage,
+  type SolverMessageData,
+  type SolverRpcMethod,
+  type SolverRunResult,
+  type WorkerErrorData,
+  type WorkerRequestMessage,
+  type WorkerResponseMessage,
+} from "./solverWorker/protocol";
+import {
+  buildRustProblemPayload,
+  buildWarmStartProblemPayload,
+  parseRustSolutionResult,
+} from "./rustBoundary";
+import type {
+  WasmBootstrapResponse,
+  WasmErrorLookupResponse,
+  WasmOperationHelpResponse,
+  WasmRecommendSettingsRequest,
+  WasmResultSummary,
+  WasmSchemaLookupResponse,
+  WasmSchemaSummary,
+  WasmValidateResponse,
+} from "./wasm/module";
+import type { RustResult } from "./wasm/types";
 
-interface WorkerMessage {
-  type: string;
-  id: string;
-  data?: unknown;
+function buildRecommendSettingsRequest(
+  problem: Problem,
+  desiredRuntimeSeconds: number,
+): WasmRecommendSettingsRequest {
+  const payload = buildRustProblemPayload(problem) as {
+    problem?: Record<string, unknown>;
+    objectives?: unknown[];
+    constraints?: unknown[];
+  };
+
+  return {
+    problem_definition: payload.problem ?? {},
+    objectives: payload.objectives ?? [],
+    constraints: payload.constraints ?? [],
+    desired_runtime_seconds: desiredRuntimeSeconds,
+  };
 }
 
-interface SolverMessageData {
-  problemJson?: string;
-  useProgress?: boolean;
-  args?: unknown[];
-  desired_runtime_seconds?: number;
-}
-
-interface SolverResult {
-  result: string;
-  lastProgress?: ProgressUpdate | null;
-}
-
-interface WorkerMessageData {
-  progressJson?: string;
-  result?: string;
-  lastProgressJson?: string;
-  error?: string;
-  problemJson?: string;
-  level?: string;
-  args?: unknown[];
-}
-
+type PendingMessage =
+  | {
+      kind: "init";
+      resolve: () => void;
+      reject: (error: Error) => void;
+    }
+  | {
+      kind: "rpc";
+      resolve: (value: unknown) => void;
+      reject: (error: Error) => void;
+    }
+  | {
+      kind: "solve";
+      resolve: (value: SolverRunResult) => void;
+      reject: (error: Error) => void;
+      progressCallback?: ProgressCallback;
+    };
 
 export class SolverWorkerService {
   private worker: Worker | null = null;
   private messageId = 0;
-  private pendingMessages = new Map<
-    string,
-    {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      resolve: (value: any) => void;
-      reject: (error: Error) => void;
-      progressCallback?: ProgressCallback;
-    }
-  >();
+  private pendingMessages = new Map<string, PendingMessage>();
   private isInitialized = false;
   private lastProgressUpdate: ProgressUpdate | null = null;
+
+  private nextMessageId(): string {
+    this.messageId += 1;
+    return this.messageId.toString();
+  }
+
+  private rejectAllPending(error: Error): void {
+    this.pendingMessages.forEach(({ reject }) => reject(error));
+    this.pendingMessages.clear();
+  }
+
+  private createWorker(): Worker {
+    return new Worker(new URL("../workers/solverWorker.ts", import.meta.url), {
+      type: "module",
+    });
+  }
 
   async initialize(): Promise<void> {
     if (this.worker || this.isInitialized) {
@@ -52,26 +93,9 @@ export class SolverWorkerService {
     }
 
     try {
-      // Prefer module worker that imports ESM wasm glue
-      try {
-        this.worker = new Worker(
-          new URL("../workers/solverWorker.ts", import.meta.url),
-          {
-            type: "module",
-          }
-        );
-      } catch (e) {
-        // Fallback to legacy script worker in /public for older environments
-        console.warn(
-          "Falling back to legacy script worker due to module worker init error:",
-          (e as Error).message
-        );
-        this.worker = new Worker("/solver-worker.js");
-      }
+      this.worker = this.createWorker();
       this.setupMessageHandler();
-
-      // Initialize the worker
-      await this.sendMessage("INIT", {});
+      await this.sendInit();
       this.isInitialized = true;
     } catch (error) {
       console.error("Failed to initialize solver worker:", error);
@@ -80,193 +104,173 @@ export class SolverWorkerService {
       throw new Error(
         `Failed to initialize solver worker: ${
           error instanceof Error ? error.message : String(error)
-        }`
+        }`,
       );
+    }
+  }
+
+  private buildWorkerError(messageData?: WorkerErrorData): Error {
+    return new Error(messageData?.error || "Unknown worker error");
+  }
+
+  private handleFatalWorkerError(messageData?: WorkerErrorData): void {
+    const error = this.buildWorkerError(messageData);
+    this.rejectAllPending(error);
+    if (messageData?.problemJson) {
+      console.error("Worker error included solver input context.");
     }
   }
 
   private setupMessageHandler(): void {
     if (!this.worker) return;
 
-    this.worker.onmessage = (e: MessageEvent<WorkerMessage>) => {
-      const { type, id, data } = e.data;
-      const pending = this.pendingMessages.get(id);
+    this.worker.onmessage = (e: MessageEvent<WorkerResponseMessage>) => {
+      const message = e.data;
+      const pending = "id" in message && message.id
+        ? this.pendingMessages.get(message.id)
+        : undefined;
 
-      switch (type) {
+      switch (message.type) {
         case "INIT_SUCCESS":
-          if (pending) {
-            pending.resolve(true);
-            this.pendingMessages.delete(id);
+          if (pending?.kind === "init") {
+            pending.resolve();
+            this.pendingMessages.delete(message.id);
           }
           break;
 
         case "PROGRESS":
-          if (pending?.progressCallback) {
+          if (pending?.kind === "solve" && pending.progressCallback) {
             try {
-              const messageData = data as WorkerMessageData;
-              const progress: ProgressUpdate = JSON.parse(
-                messageData.progressJson || "{}"
-              );
+              const progress = message.data.progress;
               pending.progressCallback(progress);
               this.lastProgressUpdate = progress;
             } catch (error) {
-              console.error("Failed to parse progress update:", error);
+              console.error("Failed to handle progress update:", error);
             }
           }
           break;
 
         case "SOLVE_SUCCESS":
-          if (pending) {
-            // The worker now returns both the result and the last progress JSON
-            const messageData = data as WorkerMessageData;
-            const { result, lastProgressJson } = messageData;
-
-            let lastProgress: ProgressUpdate | null = null;
-            if (lastProgressJson) {
-              try {
-                lastProgress = JSON.parse(lastProgressJson);
-              } catch (e) {
-                console.error("Failed to parse last progress update:", e);
-              }
+          if (pending?.kind === "solve") {
+            const lastProgress = message.data.lastProgress ?? null;
+            if (lastProgress) {
+              this.lastProgressUpdate = lastProgress;
             }
-
-            // Resolve with both the final result and the last progress update
-            pending.resolve({ result: result || "", lastProgress });
-            this.pendingMessages.delete(id);
+            pending.resolve({ result: message.data.result, lastProgress });
+            this.pendingMessages.delete(message.id);
           }
           break;
 
         case "CANCELLED":
           if (pending) {
             pending.reject(new Error("Solver cancelled"));
-            this.pendingMessages.delete(id);
+            this.pendingMessages.delete(message.id);
           }
           break;
 
-        case "ERROR": {
+        case "ERROR":
+        case "RPC_ERROR": {
           if (pending) {
-            const messageData = data as WorkerMessageData;
-            pending.reject(new Error(messageData.error || "Unknown error"));
-            this.pendingMessages.delete(id);
+            pending.reject(this.buildWorkerError(message.data));
+            this.pendingMessages.delete(message.id);
           } else {
-            console.error("Worker error:", data);
-          }
-          const messageData = data as WorkerMessageData;
-          if (messageData.problemJson) {
-            console.debug(
-              "[Worker] Solver input JSON that caused the error:",
-              messageData.problemJson
-            );
+            this.handleFatalWorkerError(message.data);
           }
           break;
         }
 
+        case "FATAL_ERROR":
+          this.handleFatalWorkerError(message.data);
+          break;
+
         case "LOG":
-          {
-            const messageData = data as WorkerMessageData;
-            const { level, args } = messageData;
-            if (Array.isArray(args)) {
-              switch (level) {
-                case "warn":
-                  console.warn("[Worker]", ...args);
-                  break;
-                case "error":
-                  console.error("[Worker]", ...args);
-                  break;
-                case "debug":
-                  console.debug("[Worker]", ...args);
-                  break;
-                default:
-                  console.log("[Worker]", ...args);
-              }
+          if (Array.isArray(message.data.args)) {
+            switch (message.data.level) {
+              case "warn":
+                console.warn("[Worker]", ...message.data.args);
+                break;
+              case "error":
+                console.error("[Worker]", ...message.data.args);
+                break;
+              case "debug":
+              default:
+                break;
             }
           }
           break;
 
         case "RPC_SUCCESS":
-          if (pending) {
-            const messageData = data as WorkerMessageData;
-            pending.resolve(messageData.result || "");
-            this.pendingMessages.delete(id);
-          }
-          break;
-
-        case "RPC_ERROR":
-          if (pending) {
-            const messageData = data as WorkerMessageData;
-            pending.reject(new Error(messageData.error || "Unknown error"));
-            this.pendingMessages.delete(id);
+          if (pending?.kind === "rpc") {
+            pending.resolve(message.data.result);
+            this.pendingMessages.delete(message.id);
           }
           break;
 
         case "PROBLEM_JSON":
-          {
-            const messageData = data as WorkerMessageData;
-            const { problemJson } = messageData;
-            try {
-              // Store globally for quick copy/paste in devtools
-              (
-                window as unknown as Record<string, unknown>
-              ).lastSolverProblemJson = problemJson;
-              // Emit a browser event so other parts of the UI / devtools can listen
-              window.dispatchEvent(
-                new CustomEvent("solver-problem-json", { detail: problemJson })
-              );
-            } catch {
-              /* no-op */
-            }
-            console.debug("[Worker] Problem JSON received:", problemJson);
+          try {
+            (window as unknown as Record<string, unknown>).lastSolverProblemJson =
+              message.data.problemJson;
+            window.dispatchEvent(
+              new CustomEvent("solver-problem-json", {
+                detail: message.data.problemJson,
+              }),
+            );
+          } catch {
+            /* no-op */
           }
           break;
 
         default:
-          console.warn("Unknown worker message type:", type);
+          console.warn("Unknown worker message type:", message);
       }
     };
 
     this.worker.onerror = () => {
       console.error("Worker error occurred");
-      // Reject all pending messages
-      this.pendingMessages.forEach(({ reject }) => {
-        reject(new Error("Worker error"));
-      });
-      this.pendingMessages.clear();
+      this.rejectAllPending(new Error("Worker error"));
     };
   }
 
-  private sendMessage(
-    type: string,
-    data: SolverMessageData,
-    progressCallback?: ProgressCallback
-  ): Promise<string> {
+  private postMessage(message: WorkerRequestMessage): void {
+    if (!this.worker) {
+      throw new Error("Worker not initialized");
+    }
+    this.worker.postMessage(message);
+  }
+
+  private sendInit(): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (!this.worker) {
-        reject(new Error("Worker not initialized"));
-        return;
-      }
-
-      const id = (++this.messageId).toString();
-      this.pendingMessages.set(id, { resolve, reject, progressCallback });
-
-      this.worker.postMessage({ type, id, data });
+      const id = this.nextMessageId();
+      this.pendingMessages.set(id, { kind: "init", resolve, reject });
+      this.postMessage(createInitRequestMessage(id));
     });
   }
 
-  private sendMessageWithProgress(
-    type: string,
+  private sendRpc<T>(
+    method: SolverRpcMethod,
     data: SolverMessageData,
-    progressCallback?: ProgressCallback
-  ): Promise<SolverResult> {
+  ): Promise<T> {
     return new Promise((resolve, reject) => {
-      if (!this.worker) {
-        reject(new Error("Worker not initialized"));
-        return;
-      }
+      const id = this.nextMessageId();
+      this.pendingMessages.set(id, { kind: "rpc", resolve: resolve as (value: unknown) => void, reject });
+      this.postMessage(createRpcRequestMessage(method, id, data));
+    });
+  }
 
-      const id = (++this.messageId).toString();
-      this.pendingMessages.set(id, { resolve, reject, progressCallback });
-
-      this.worker.postMessage({ type, id, data });
+  private sendSolve(
+    problemPayload: Record<string, unknown>,
+    useProgress: boolean,
+    progressCallback?: ProgressCallback,
+  ): Promise<SolverRunResult> {
+    return new Promise((resolve, reject) => {
+      const id = this.nextMessageId();
+      this.pendingMessages.set(id, {
+        kind: "solve",
+        resolve,
+        reject,
+        progressCallback,
+      });
+      this.postMessage(createSolveRequestMessage(id, problemPayload, useProgress));
     });
   }
 
@@ -275,120 +279,96 @@ export class SolverWorkerService {
       await this.initialize();
     }
 
-    // Build the JSON once so we can log it on errors
-    const problemJson = JSON.stringify(
-      convertProblemToRustFormat(problem)
-    );
+    const problemPayload = buildRustProblemPayload(problem);
 
-    // For debugging purposes, log the payload we are about to send to the worker
-    console.debug(
-      "[SolverWorkerService] Problem JSON sent to worker:",
-      problemJson
-    );
+    const { result } = await this.sendSolve(problemPayload, false);
+    return parseRustSolutionResult(result, null, this.lastProgressUpdate);
+  }
 
-    const resultJson = await this.sendMessage("SOLVE", {
-      problemJson,
-      useProgress: false,
-    });
-    const rustResult = JSON.parse(resultJson);
-    return convertRustResultToSolution(rustResult, null, this.lastProgressUpdate);
+  async solveContract(problemPayload: Record<string, unknown>): Promise<RustResult> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    const { result } = await this.sendSolve(problemPayload, false);
+    return result;
   }
 
   async solveWithProgress(
     problem: Problem,
-    progressCallback?: ProgressCallback
+    progressCallback?: ProgressCallback,
   ): Promise<{ solution: Solution; lastProgress: ProgressUpdate | null }> {
     if (!this.isInitialized) {
       await this.initialize();
     }
 
-    const problemJson = JSON.stringify(
-      convertProblemToRustFormat(problem)
+    const problemPayload = buildRustProblemPayload(problem);
+
+    const { result, lastProgress } = await this.sendSolve(
+      problemPayload,
+      true,
+      progressCallback,
     );
 
-    console.debug(
-      "[SolverWorkerService] Problem JSON sent to worker (with progress):",
-      problemJson
-    );
+    const solution = parseRustSolutionResult(result, lastProgress, this.lastProgressUpdate);
 
-    // The promise now resolves with an object { result, lastProgress }
-    const { result, lastProgress } = await this.sendMessageWithProgress(
-      "SOLVE",
-      {
-        problemJson,
-        useProgress: true,
-      },
-      progressCallback
-    );
+    return { solution, lastProgress };
+  }
 
-    const rustResult = JSON.parse(result);
-    const solution = convertRustResultToSolution(rustResult, lastProgress ?? null, this.lastProgressUpdate);
+  async solveContractWithProgress(
+    problemPayload: Record<string, unknown>,
+    progressCallback?: ProgressCallback,
+  ): Promise<{ result: RustResult; lastProgress: ProgressUpdate | null }> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
 
-    // Return both the solution and the last progress update
-    return { solution, lastProgress: lastProgress || null };
+    return this.sendSolve(problemPayload, true, progressCallback);
   }
 
   async solveWithProgressWarmStart(
     problem: Problem,
     initialSchedule: Record<string, Record<string, string[]>>,
-    progressCallback?: ProgressCallback
+    progressCallback?: ProgressCallback,
   ): Promise<{ solution: Solution; lastProgress: ProgressUpdate | null }> {
     if (!this.isInitialized) {
       await this.initialize();
     }
 
-    // Inject initial_schedule into the payload expected by Rust ApiInput
-    const payload = convertProblemToRustFormat(problem) as Record<
-      string,
-      unknown
-    > & {
-      initial_schedule?: Record<string, Record<string, string[]>>;
-    };
-    payload.initial_schedule = initialSchedule;
+    const problemPayload = buildWarmStartProblemPayload(problem, initialSchedule);
 
-    const problemJson = JSON.stringify(payload);
-
-    console.debug(
-      "[SolverWorkerService] Problem JSON (warm-start) sent to worker:",
-      problemJson
+    const { result, lastProgress } = await this.sendSolve(
+      problemPayload,
+      true,
+      progressCallback,
     );
 
-    const { result, lastProgress } = await this.sendMessageWithProgress(
-      "SOLVE",
-      { problemJson, useProgress: true },
-      progressCallback
-    );
-
-    const rustResult = JSON.parse(result);
-    const solution = convertRustResultToSolution(rustResult, lastProgress ?? null, this.lastProgressUpdate);
-    return { solution, lastProgress: lastProgress || null };
+    const solution = parseRustSolutionResult(result, lastProgress, this.lastProgressUpdate);
+    return { solution, lastProgress };
   }
 
   async cancel(): Promise<void> {
     if (!this.worker) return;
 
-    // Reject all pending messages with a specific cancellation error
-    this.pendingMessages.forEach(({ reject }) => {
-      reject(new Error("Solver cancelled by user"));
-    });
-    this.pendingMessages.clear();
+    this.rejectAllPending(new Error("Solver cancelled by user"));
 
-    // Terminate the current worker
     this.worker.terminate();
     this.worker = null;
     this.isInitialized = false;
 
-    // Reinitialize for future use
     try {
       await this.initialize();
     } catch (error) {
       console.error("Failed to reinitialize worker after cancellation:", error);
-      // Don't throw here - cancellation succeeded even if reinitialization failed
     }
   }
 
   isReady(): boolean {
     return this.isInitialized;
+  }
+
+  getLastProgressUpdate(): ProgressUpdate | null {
+    return this.lastProgressUpdate;
   }
 
   terminate(): void {
@@ -400,79 +380,92 @@ export class SolverWorkerService {
     this.pendingMessages.clear();
   }
 
-  // Helper to invoke RPC-style methods exposed by the worker / WASM module
-  private async callSolver(
-    method: string,
-    ...args: unknown[]
-  ): Promise<string> {
+  private async callSolver<T>(
+    method: SolverRpcMethod,
+    data: SolverMessageData,
+  ): Promise<T> {
     if (!this.isInitialized) {
       await this.initialize();
     }
 
-    let data: SolverMessageData = {};
-
-    switch (method) {
-      case "get_default_settings":
-        // No extra data needed
-        data = {};
-        break;
-      case "get_recommended_settings":
-        // Expect args: problemJson, desired_runtime_seconds
-        data = {
-          problemJson: args[0] as string,
-          desired_runtime_seconds: args[1] as number,
-        };
-        break;
-      default:
-        // Generic mapping: send raw args array
-        data = { args };
-    }
-
-    const result = await this.sendMessage(method, data);
-    return result;
+    return this.sendRpc<T>(method, data);
   }
 
-  public async get_default_settings(): Promise<SolverSettings> {
-    const result = await this.callSolver("get_default_settings");
-    return JSON.parse(result as string);
+  public async getDefaultSolverConfiguration(): Promise<SolverSettings> {
+    return this.callSolver<SolverSettings>("get_default_solver_configuration", {});
   }
 
-  public async get_recommended_settings(
+  public async capabilities(): Promise<WasmBootstrapResponse> {
+    return this.callSolver<WasmBootstrapResponse>("capabilities", {});
+  }
+
+  public async getOperationHelp(operationId: string): Promise<WasmOperationHelpResponse> {
+    return this.callSolver<WasmOperationHelpResponse>("get_operation_help", {
+      args: [operationId],
+    });
+  }
+
+  public async listSchemas(): Promise<WasmSchemaSummary[]> {
+    return this.callSolver<WasmSchemaSummary[]>("list_schemas", {});
+  }
+
+  public async getSchema(schemaId: string): Promise<WasmSchemaLookupResponse> {
+    return this.callSolver<WasmSchemaLookupResponse>("get_schema", {
+      args: [schemaId],
+    });
+  }
+
+  public async listPublicErrors(): Promise<WasmErrorLookupResponse[]> {
+    return this.callSolver<WasmErrorLookupResponse[]>("list_public_errors", {});
+  }
+
+  public async getPublicError(errorCode: string): Promise<WasmErrorLookupResponse> {
+    return this.callSolver<WasmErrorLookupResponse>("get_public_error", {
+      args: [errorCode],
+    });
+  }
+
+  public async validateProblemContract(
+    problemPayload: Record<string, unknown>,
+  ): Promise<WasmValidateResponse> {
+    return this.callSolver<WasmValidateResponse>("validate_problem", {
+      problemPayload,
+    });
+  }
+
+  public async getDefaultSettings(): Promise<SolverSettings> {
+    return this.getDefaultSolverConfiguration();
+  }
+
+  public async getRecommendedSettings(
     problem: Problem,
-    desired_runtime_seconds: number
+    desiredRuntimeSeconds: number,
   ): Promise<SolverSettings> {
-    // ===== DEBUG LOGGING =====
-    // These logs help verify exactly what is sent to the WASM layer and what comes back.
-    try {
-      console.debug(
-        "[SolverWorker] get_recommended_settings → problem:",
-        JSON.stringify(problem, null, 2)
-      );
-      console.debug(
-        "[SolverWorker] get_recommended_settings → desired_runtime_seconds:",
-        desired_runtime_seconds
-      );
-    } catch {
-      // Swallow JSON.stringify errors for circular structures – shouldn't happen here.
-    }
+    return this.callSolver<SolverSettings>("recommend_settings", {
+      recommendRequest: buildRecommendSettingsRequest(problem, desiredRuntimeSeconds),
+    });
+  }
 
-    const result = await this.callSolver(
-      "get_recommended_settings",
-      JSON.stringify(problem),
-      desired_runtime_seconds
-    );
+  public async recommendSettingsContract(
+    recommendRequest: WasmRecommendSettingsRequest,
+  ): Promise<SolverSettings> {
+    return this.callSolver<SolverSettings>("recommend_settings", {
+      recommendRequest,
+    });
+  }
 
-    // Log the raw JSON result for inspection before parsing.
-    try {
-      console.debug(
-        "[SolverWorker] get_recommended_settings ← raw result:",
-        result
-      );
-    } catch {
-      /* ignore */
-    }
+  public async evaluateInputContract(
+    problemPayload: Record<string, unknown>,
+  ): Promise<RustResult> {
+    return this.callSolver<RustResult>("evaluate_input", {
+      problemPayload,
+    });
+  }
 
-    return JSON.parse(result as string);
+  public async inspectResult(resultPayload: RustResult): Promise<WasmResultSummary> {
+    return this.callSolver<WasmResultSummary>("inspect_result", {
+      resultPayload,
+    });
   }
 }
 

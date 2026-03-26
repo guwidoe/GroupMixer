@@ -3,8 +3,7 @@
  */
 
 import React from 'react';
-import type { Problem, SolverSettings } from '../../types';
-import type { SavedProblem } from '../../store/slices/problemManagerSlice';
+import type { Problem, SavedProblem, SolverSettings } from '../../types';
 import type { SolverFormInputs } from './SettingsPanel/types';
 import { AutoConfigPanel } from './SettingsPanel/AutoConfigPanel';
 import { WarmStartSelector } from './SettingsPanel/WarmStartSelector';

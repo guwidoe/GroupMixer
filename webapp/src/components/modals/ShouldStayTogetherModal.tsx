@@ -11,8 +11,8 @@ interface Props {
   onSave: (constraint: Constraint) => void;
 }
 
-const ShouldStayTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onCancel, onSave }) => {
-  const { GetProblem, ui } = useAppStore();
+export function ShouldStayTogetherModal({ sessionsCount, initial, onCancel, onSave }: Props) {
+  const { resolveProblem, ui } = useAppStore();
 
   const getInitialState = () => {
     if (ui.isLoading) {
@@ -48,7 +48,7 @@ const ShouldStayTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onCa
 
   if (ui.isLoading) return null;
 
-  const problem = GetProblem();
+  const problem = resolveProblem();
   const editing = !!initial;
 
   const filteredPeople = problem.people.filter(p => {
@@ -188,8 +188,6 @@ const ShouldStayTogetherModal: React.FC<Props> = ({ sessionsCount, initial, onCa
       </div>
     </div>
   );
-};
-
-export default ShouldStayTogetherModal;
+}
 
 

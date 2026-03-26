@@ -5,26 +5,61 @@ import type { AttributeBalanceConstraint } from '../types';
 import AttributeBalanceDashboard from '../../AttributeBalanceDashboard';
 import PersonCard from '../../PersonCard';
 
+type ConstraintItem = { constraint: Constraint; index: number };
+type SupportedConstraintType =
+  | 'RepeatEncounter'
+  | 'AttributeBalance'
+  | 'ImmovablePeople'
+  | 'MustStayTogether'
+  | 'ShouldNotBeTogether'
+  | 'ShouldStayTogether'
+  | 'PairMeetingCount';
+type SoftConstraintType = Extract<SupportedConstraintType, 'RepeatEncounter' | 'AttributeBalance' | 'ShouldNotBeTogether' | 'ShouldStayTogether' | 'PairMeetingCount'>;
+type HardConstraintType = Extract<SupportedConstraintType, 'ImmovablePeople' | 'MustStayTogether'>;
+
 interface ConstraintsSectionProps {
   problem: Problem | null;
-  activeConstraintTab: Constraint['type'];
+  activeConstraintTab: SupportedConstraintType;
   constraintCategoryTab: 'soft' | 'hard';
-  hardTypes: readonly Constraint['type'][];
-  softTypes: readonly Constraint['type'][];
+  hardTypes: readonly HardConstraintType[];
+  softTypes: readonly SoftConstraintType[];
   onChangeCategory: (category: 'soft' | 'hard') => void;
-  onChangeTab: (tab: Constraint['type']) => void;
+  onChangeTab: (tab: SupportedConstraintType) => void;
   onAddConstraint: () => void;
   onEditConstraint: (constraint: Constraint, index: number) => void;
   onDeleteConstraint: (index: number) => void;
 }
 
-const constraintTypeLabels = {
+const constraintTypeLabels: Record<SupportedConstraintType, string> = {
   RepeatEncounter: 'Repeat Encounter Limits',
   AttributeBalance: 'Attribute Balance',
   ImmovablePeople: 'Immovable People',
   MustStayTogether: 'Must Stay Together',
   ShouldNotBeTogether: 'Should Not Be Together',
-} as const;
+  ShouldStayTogether: 'Should Stay Together',
+  PairMeetingCount: 'Pair Meeting Count',
+};
+
+function getConstraintWeight(constraint: Constraint): number | null {
+  switch (constraint.type) {
+    case 'RepeatEncounter':
+    case 'AttributeBalance':
+    case 'ShouldNotBeTogether':
+    case 'ShouldStayTogether':
+    case 'PairMeetingCount':
+      return constraint.penalty_weight;
+    default:
+      return null;
+  }
+}
+
+function renderSessions(sessions?: number[]): string {
+  return sessions && sessions.length > 0 ? sessions.map((session) => session + 1).join(', ') : 'All sessions';
+}
+
+function isAttributeBalanceItem(item: ConstraintItem): item is { constraint: AttributeBalanceConstraint & Constraint; index: number } {
+  return item.constraint.type === 'AttributeBalance';
+}
 
 export function ConstraintsSection({
   problem,
@@ -42,17 +77,17 @@ export function ConstraintsSection({
   const constraints = problem?.constraints || [];
 
   const constraintsByType = constraints.reduce(
-    (acc: Record<string, { constraint: Constraint; index: number }[]>, constraint, index) => {
+    (acc: Partial<Record<SupportedConstraintType, ConstraintItem[]>>, constraint, index) => {
       if (!acc[constraint.type]) {
         acc[constraint.type] = [];
       }
-      acc[constraint.type].push({ constraint, index });
+      acc[constraint.type]?.push({ constraint, index });
       return acc;
     },
     {}
   );
 
-  const tabOrder = (constraintCategoryTab === 'soft' ? softTypes : hardTypes) as (keyof typeof constraintTypeLabels)[];
+  const tabOrder = constraintCategoryTab === 'soft' ? softTypes : hardTypes;
   const selectedItems = constraintsByType[activeConstraintTab] || [];
 
   return (
@@ -136,7 +171,7 @@ export function ConstraintsSection({
           <div className="space-y-3">
             <h4 className="text-base font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }}></div>
-              {constraintTypeLabels[activeConstraintTab as keyof typeof constraintTypeLabels]}
+              {constraintTypeLabels[activeConstraintTab]}
               <span className="text-sm font-normal px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
                 {selectedItems.length}
               </span>
@@ -144,7 +179,7 @@ export function ConstraintsSection({
 
             {activeConstraintTab === 'AttributeBalance' && problem && (
               <AttributeBalanceDashboard
-                constraints={selectedItems.map(i => i.constraint as AttributeBalanceConstraint)}
+                constraints={selectedItems.filter(isAttributeBalanceItem).map((item) => item.constraint)}
                 problem={problem}
               />
             )}
@@ -158,9 +193,9 @@ export function ConstraintsSection({
                         <span className="text-xs font-medium px-2 py-1 rounded" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
                           {constraint.type}
                         </span>
-                        {constraint.type !== 'ImmovablePeople' && (
+                        {getConstraintWeight(constraint) !== null && (
                           <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}>
-                            Weight: {(constraint as Constraint & { penalty_weight: number }).penalty_weight}
+                            Weight: {getConstraintWeight(constraint)}
                           </span>
                         )}
                       </div>
@@ -178,11 +213,7 @@ export function ConstraintsSection({
                             <div>Group: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{constraint.group_id}</span></div>
                             <div>Attribute: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{constraint.attribute_key}</span></div>
                             <div className="break-words">Distribution: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{Object.entries(constraint.desired_values || {}).map(([k, v]) => `${k}: ${v}`).join(', ')}</span></div>
-                            {constraint.sessions && constraint.sessions.length > 0 ? (
-                              <div>Sessions: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{constraint.sessions.map(s => s + 1).join(', ')}</span></div>
-                            ) : (
-                              <div>Sessions: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>All sessions</span></div>
-                            )}
+                            <div>Sessions: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{renderSessions(constraint.sessions)}</span></div>
                           </>
                         )}
 
@@ -201,15 +232,11 @@ export function ConstraintsSection({
                               })}
                             </div>
                             <div>Fixed to: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{constraint.group_id}</span></div>
-                            {constraint.sessions && constraint.sessions.length > 0 ? (
-                              <div>Sessions: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{constraint.sessions.map(s => s + 1).join(', ')}</span></div>
-                            ) : (
-                              <div>Sessions: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>All sessions</span></div>
-                            )}
+                            <div>Sessions: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{renderSessions(constraint.sessions)}</span></div>
                           </>
                         )}
 
-                        {(constraint.type === 'MustStayTogether' || constraint.type === 'ShouldNotBeTogether') && (
+                        {(constraint.type === 'MustStayTogether' || constraint.type === 'ShouldNotBeTogether' || constraint.type === 'ShouldStayTogether') && (
                           <>
                             <div className="break-words flex flex-wrap items-center gap-1">
                               <span>People:</span>
@@ -223,11 +250,27 @@ export function ConstraintsSection({
                                 );
                               })}
                             </div>
-                            {constraint.sessions && constraint.sessions.length > 0 ? (
-                              <div>Sessions: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{constraint.sessions.map(s => s + 1).join(', ')}</span></div>
-                            ) : (
-                              <div>Sessions: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>All sessions</span></div>
-                            )}
+                            <div>Sessions: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{renderSessions(constraint.sessions)}</span></div>
+                          </>
+                        )}
+
+                        {constraint.type === 'PairMeetingCount' && (
+                          <>
+                            <div className="break-words flex flex-wrap items-center gap-1">
+                              <span>People:</span>
+                              {constraint.people.map((pid, idx) => {
+                                const per = problem?.people.find((person) => person.id === pid);
+                                return (
+                                  <React.Fragment key={pid}>
+                                    {per ? <PersonCard person={per} /> : <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{pid}</span>}
+                                    {idx < constraint.people.length - 1 && <span>&amp;</span>}
+                                  </React.Fragment>
+                                );
+                              })}
+                            </div>
+                            <div>Target meetings: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{constraint.target_meetings}</span></div>
+                            <div>Mode: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{constraint.mode || 'at_least'}</span></div>
+                            <div>Sessions: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{renderSessions(constraint.sessions)}</span></div>
                           </>
                         )}
                       </div>
@@ -272,7 +315,7 @@ export function ConstraintsSection({
           </div>
         ) : (
           <div className="text-center py-8" style={{ color: 'var(--text-secondary)' }}>
-            <p>No {constraintTypeLabels[activeConstraintTab as keyof typeof constraintTypeLabels]} constraints defined yet.</p>
+            <p>No {constraintTypeLabels[activeConstraintTab]} constraints defined yet.</p>
           </div>
         )
       ) : (

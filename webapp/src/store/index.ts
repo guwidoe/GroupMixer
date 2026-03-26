@@ -15,6 +15,9 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { AppStore } from "./types";
+import type { AttributeDefinition, Problem, Solution } from "../types";
+import { mergeAttributeDefinitions } from "../services/demoDataService";
+import { problemStorage } from "../services/problemStorage";
 
 import {
   createProblemSlice,
@@ -27,6 +30,7 @@ import {
   createEditorSlice,
   initialSolverState,
   initialUIState,
+  DEFAULT_ATTRIBUTE_DEFINITIONS,
   loadAttributeDefinitions,
 } from "./slices";
 
@@ -54,11 +58,35 @@ const getInitialState = () => ({
   savedProblems: {},
   selectedResultIds: [],
   ui: initialUIState,
-  attributeDefinitions: loadAttributeDefinitions(),
+  attributeDefinitions: DEFAULT_ATTRIBUTE_DEFINITIONS,
   demoDropdownOpen: false,
   manualEditorUnsaved: false,
   manualEditorLeaveHook: null,
 });
+
+function solverStateFromWorkspaceSolution(solution: Solution | null) {
+  if (!solution) {
+    return initialSolverState;
+  }
+
+  return {
+    ...initialSolverState,
+    isRunning: false,
+    isComplete: true,
+    currentIteration: solution.iteration_count,
+    bestScore: solution.final_score,
+    currentScore: solution.final_score,
+    elapsedTime: solution.elapsed_time_ms,
+    noImprovementCount: solution.benchmark_telemetry?.no_improvement_count ?? 0,
+  };
+}
+
+function mergeWorkspaceAttributes(existing: AttributeDefinition[], incoming?: AttributeDefinition[]) {
+  if (!incoming || incoming.length === 0) {
+    return existing;
+  }
+  return mergeAttributeDefinitions(existing, incoming);
+}
 
 export const useAppStore = create<AppStore>()(
   devtools(
@@ -76,7 +104,86 @@ export const useAppStore = create<AppStore>()(
       // Utility actions
       reset: () => set(getInitialState()),
 
+      replaceWorkspace: ({
+        problem,
+        solution = null,
+        attributeDefinitions,
+        currentProblemId = null,
+      }: {
+        problem: Problem;
+        solution?: Solution | null;
+        attributeDefinitions?: AttributeDefinition[];
+        currentProblemId?: string | null;
+      }) =>
+        set((state) => ({
+          problem,
+          solution,
+          currentProblemId,
+          selectedResultIds: [],
+          solverState: solverStateFromWorkspaceSolution(solution),
+          attributeDefinitions: mergeWorkspaceAttributes(state.attributeDefinitions, attributeDefinitions),
+          ui: {
+            ...state.ui,
+            activeTab: solution ? "results" : "problem",
+            warmStartResultId: null,
+            showResultComparison: false,
+            showProblemManager: false,
+            isLoading: false,
+          },
+          manualEditorUnsaved: false,
+          manualEditorLeaveHook: null,
+        })),
+
+      syncWorkspaceDraft: ({
+        problem,
+        solution = null,
+        attributeDefinitions,
+        currentProblemId = null,
+        problemName,
+      }) => {
+        let savedProblem = currentProblemId ? problemStorage.getProblem(currentProblemId) : null;
+
+        if (savedProblem) {
+          savedProblem = {
+            ...savedProblem,
+            problem,
+          };
+          problemStorage.saveProblem(savedProblem);
+        } else {
+          savedProblem = problemStorage.createProblem(problemName, problem);
+          currentProblemId = savedProblem.id;
+        }
+
+        problemStorage.setCurrentProblemId(savedProblem.id);
+
+        set((state) => ({
+          problem,
+          solution,
+          currentProblemId: savedProblem.id,
+          savedProblems: {
+            ...state.savedProblems,
+            [savedProblem.id]: savedProblem,
+          },
+          selectedResultIds: [],
+          solverState: solverStateFromWorkspaceSolution(solution),
+          attributeDefinitions: mergeWorkspaceAttributes(state.attributeDefinitions, attributeDefinitions),
+          ui: {
+            ...state.ui,
+            activeTab: solution ? "results" : "problem",
+            warmStartResultId: null,
+            showResultComparison: false,
+            showProblemManager: false,
+            isLoading: false,
+          },
+          manualEditorUnsaved: false,
+          manualEditorLeaveHook: null,
+        }));
+
+        return savedProblem.id;
+      },
+
       initializeApp: () => {
+        set({ attributeDefinitions: loadAttributeDefinitions() });
         get().loadSavedProblems();
       },
     }),

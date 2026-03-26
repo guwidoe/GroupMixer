@@ -68,6 +68,11 @@ export class ProblemStorageService {
       updatedAt: Date.now(),
     };
 
+    this.writeProblems(problems);
+  }
+
+  private writeProblems(problems: Record<string, SavedProblem>): void {
+
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(problems));
     } catch (error) {
@@ -191,11 +196,7 @@ export class ProblemStorageService {
     const problems = this.getAllProblems();
     delete problems[id];
 
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(problems));
-    } catch (error) {
-      console.error("Failed to delete problem from storage:", error);
-    }
+    this.writeProblems(problems);
 
     // Clear current problem if it was deleted
     if (this.getCurrentProblemId() === id) {
@@ -341,7 +342,15 @@ export class ProblemStorageService {
     }
 
     this.autoSaveTimeout = window.setTimeout(() => {
-      this.saveProblem(problem);
+      const latestPersistedProblem = this.getProblem(problem.id);
+      this.saveProblem(
+        latestPersistedProblem
+          ? {
+              ...latestPersistedProblem,
+              problem: problem.problem,
+            }
+          : problem,
+      );
       this.autoSaveTimeout = null;
     }, this.autoSaveDelay);
   }

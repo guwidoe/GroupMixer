@@ -32,6 +32,8 @@ x86/
 [Aa][Rr][Mm]64/
 bld/
 [Bb]in/
+!solver-contracts/src/bin/
+!solver-contracts/src/bin/generate-reference.rs
 [Oo]bj/
 [Oo]ut/
 [Ll]og/
@@ -372,6 +374,8 @@ FodyWeavers.xsd
 
 # Playwright
 /webapp/playwright-report/
+/webapp/coverage/
+/target/coverage/
 /webapp/test-results/
 /webapp/playwright/.cache/
 
@@ -379,3 +383,5 @@ FodyWeavers.xsd
 /.pi/
 
 .desloppify
+
+tools/remote_benchmark.env

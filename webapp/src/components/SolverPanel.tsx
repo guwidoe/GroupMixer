@@ -27,9 +27,7 @@ export function SolverPanel() {
   const currentProblemId = useAppStore((state) => state.currentProblemId);
   const savedProblems = useAppStore((state) => state.savedProblems);
   const warmStartResultId = useAppStore((state) => state.ui.warmStartResultId);
-  const setWarmStartFromResult = useAppStore(
-    (state) => (state as unknown as { setWarmStartFromResult: (id: string | null) => void }).setWarmStartFromResult,
-  );
+  const setWarmStartFromResult = useAppStore((state) => state.setWarmStartFromResult);
 
   const [warmStartSelection, setWarmStartSelection] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -229,24 +227,32 @@ export function SolverPanel() {
       <SolverStatusCard
         solverState={solverState}
         problem={problem}
-        solverFormInputs={solverFormInputs}
-        setSolverFormInputs={setSolverFormInputs}
-        desiredRuntimeMain={desiredRuntimeMain}
-        setDesiredRuntimeMain={setDesiredRuntimeMain}
-        onStartSolver={handleStartSolver}
-        onCancelSolver={() => setShowCancelConfirm(true)}
-        onSaveBestSoFar={handleSaveBestSoFar}
-        onResetSolver={handleResetSolver}
-        displaySettings={displaySettings}
-        showLiveViz={showLiveViz}
-        onToggleLiveViz={toggleLiveViz}
-        liveVizState={liveVizState}
-        liveVizPluginId={liveVizPluginId}
-        onLiveVizPluginChange={handleLiveVizPluginChange}
-        getLiveVizProblem={getLiveVizProblem}
-        showMetrics={showMetrics}
-        onToggleMetrics={toggleMetrics}
-        formatIterationTime={formatIterationTime}
+        runtime={{
+          solverFormInputs,
+          setSolverFormInputs,
+          desiredRuntimeMain,
+          setDesiredRuntimeMain,
+        }}
+        actions={{
+          onStartSolver: handleStartSolver,
+          onCancelSolver: () => setShowCancelConfirm(true),
+          onSaveBestSoFar: handleSaveBestSoFar,
+          onResetSolver: handleResetSolver,
+        }}
+        liveViz={{
+          displaySettings,
+          showLiveViz,
+          onToggleLiveViz: toggleLiveViz,
+          liveVizState,
+          liveVizPluginId,
+          onLiveVizPluginChange: handleLiveVizPluginChange,
+          getLiveVizProblem,
+        }}
+        metrics={{
+          showMetrics,
+          onToggleMetrics: toggleMetrics,
+          formatIterationTime,
+        }}
       />
 
       <button

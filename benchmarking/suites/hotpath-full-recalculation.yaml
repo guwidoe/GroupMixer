@@ -1,0 +1,10 @@
+schema_version: 1
+suite_id: hotpath-full-recalculation
+benchmark_mode: full_recalculation
+class: representative
+title: Hotpath full recalculation benchmark suite
+description: Deterministic full score recalculation kernel lane for recording/history bundles.
+default_iterations: 32
+default_warmup_iterations: 2
+cases:
+  - manifest: ../cases/hotpath/full_recalculation_default.json

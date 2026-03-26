@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://groupmixer.local/benchmarking/schemas/comparison-report.schema.json",
+  "title": "GroupMixer benchmark comparison report",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "compared_at",
+    "baseline_name",
+    "baseline_run_id",
+    "current_run_id",
+    "suite_id",
+    "benchmark_mode",
+    "comparability",
+    "case_comparisons",
+    "class_rollups",
+    "suspects"
+  ],
+  "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "compared_at": { "type": "string" },
+    "baseline_name": { "type": "string" },
+    "baseline_run_id": { "type": "string" },
+    "current_run_id": { "type": "string" },
+    "suite_id": { "type": "string" },
+    "benchmark_mode": { "type": "string" },
+    "comparability": {
+      "type": "object",
+      "required": ["status", "reasons", "same_benchmark_mode", "same_machine", "same_suite"],
+      "properties": {
+        "status": { "type": "string", "enum": ["comparable", "not_comparable"] },
+        "reasons": { "type": "array", "items": { "type": "string" } },
+        "same_benchmark_mode": { "type": "boolean" },
+        "same_machine": { "type": "boolean" },
+        "same_suite": { "type": "boolean" }
+      }
+    },
+    "case_comparisons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["case_id", "class", "runtime_seconds", "move_family_deltas"],
+        "properties": {
+          "case_id": { "type": "string" },
+          "class": { "type": "string", "enum": ["path", "representative", "stretch", "adversarial"] },
+          "runtime_seconds": { "$ref": "#/definitions/numericDelta" },
+          "final_score": { "anyOf": [{ "$ref": "#/definitions/numericDelta" }, { "type": "null" }] },
+          "best_score": { "anyOf": [{ "$ref": "#/definitions/numericDelta" }, { "type": "null" }] },
+          "iteration_count": { "anyOf": [{ "$ref": "#/definitions/integerDelta" }, { "type": "null" }] },
+          "stop_reason_baseline": { "type": ["string", "null"] },
+          "stop_reason_current": { "type": ["string", "null"] },
+          "move_family_deltas": { "type": "array", "items": { "type": "object" } }
+        }
+      }
+    },
+    "class_rollups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["class", "total_runtime_seconds"],
+        "properties": {
+          "class": { "type": "string", "enum": ["path", "representative", "stretch", "adversarial"] },
+          "total_runtime_seconds": { "$ref": "#/definitions/numericDelta" },
+          "average_runtime_seconds": { "anyOf": [{ "$ref": "#/definitions/numericDelta" }, { "type": "null" }] },
+          "average_final_score": { "anyOf": [{ "$ref": "#/definitions/numericDelta" }, { "type": "null" }] },
+          "average_best_score": { "anyOf": [{ "$ref": "#/definitions/numericDelta" }, { "type": "null" }] }
+        }
+      }
+    },
+    "suspects": {
+      "type": "object",
+      "required": ["top_runtime_regressions", "top_quality_regressions", "top_move_family_regressions", "top_improvements"],
+      "properties": {
+        "top_runtime_regressions": { "type": "array", "items": { "$ref": "#/definitions/suspect" } },
+        "top_quality_regressions": { "type": "array", "items": { "$ref": "#/definitions/suspect" } },
+        "top_move_family_regressions": { "type": "array", "items": { "$ref": "#/definitions/suspect" } },
+        "top_improvements": { "type": "array", "items": { "$ref": "#/definitions/suspect" } }
+      }
+    }
+  },
+  "definitions": {
+    "numericDelta": {
+      "type": "object",
+      "required": ["baseline", "current", "absolute", "percent"],
+      "properties": {
+        "baseline": { "type": "number" },
+        "current": { "type": "number" },
+        "absolute": { "type": "number" },
+        "percent": { "type": ["number", "null"] }
+      }
+    },
+    "integerDelta": {
+      "type": "object",
+      "required": ["baseline", "current", "absolute", "percent"],
+      "properties": {
+        "baseline": { "type": "integer" },
+        "current": { "type": "integer" },
+        "absolute": { "type": "integer" },
+        "percent": { "type": ["number", "null"] }
+      }
+    },
+    "suspect": {
+      "type": "object",
+      "required": ["kind", "id", "summary", "absolute_delta", "percent_delta"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["case_runtime", "case_quality", "move_family"] },
+        "id": { "type": "string" },
+        "summary": { "type": "string" },
+        "absolute_delta": { "type": "number" },
+        "percent_delta": { "type": ["number", "null"] }
+      }
+    }
+  }
+}

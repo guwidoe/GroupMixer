@@ -1,14 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { openProblemManager } from './helpers';
+import { closeTransientUi, openApp, openProblemManager } from './helpers';
 
 test.describe('Import/Export and Demo Data', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/app');
-    await page.waitForSelector('nav, header', { timeout: 15000 });
-    await page.waitForTimeout(500);
-    // Close any open modals
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(200);
+    await openApp(page);
+    await closeTransientUi(page);
   });
 
   test('demo data dropdown is accessible', async ({ page }) => {
@@ -16,14 +12,10 @@ test.describe('Import/Export and Demo Data', () => {
     const demoButton = page.getByRole('button', { name: /Demo Data/i });
     await expect(demoButton).toBeVisible();
 
-    // Click to open dropdown
     await demoButton.click();
-    await page.waitForTimeout(300);
 
-    // Should see demo options
     await expect(page.getByText(/Simple|Intermediate|Advanced|Small Team|Conference/i).first()).toBeVisible();
 
-    // Close by pressing Escape
     await page.keyboard.press('Escape');
   });
 

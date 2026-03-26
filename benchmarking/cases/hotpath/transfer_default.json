@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "hotpath.transfer.default",
+  "class": "representative",
+  "family": "transfer",
+  "paths": ["transfer_preview", "transfer_apply"],
+  "title": "Hotpath transfer preset",
+  "description": "Deterministic transfer kernel lane used for preview and apply history.",
+  "tags": ["hotpath", "transfer", "representative"],
+  "hotpath_preset": "transfer_default"
+}

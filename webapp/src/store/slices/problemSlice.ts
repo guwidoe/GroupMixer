@@ -50,15 +50,11 @@ export const createProblemSlice: StoreSlice<ProblemState & ProblemActions> = (
   },
 
   updateCurrentProblem: (problemId, problem) => {
-    try {
-      problemStorage.updateProblem(problemId, problem);
-      set({ problem });
-    } catch (error) {
-      console.error("Failed to update problem:", error);
-    }
+    problemStorage.updateProblem(problemId, problem);
+    set({ problem });
   },
 
-  GetProblem: () => {
+  resolveProblem: () => {
     const currentProblem = get().problem;
     if (currentProblem) {
       return currentProblem;

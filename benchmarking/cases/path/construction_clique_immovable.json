@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "id": "path.construction.clique-immovable",
+  "class": "path",
+  "family": "construction",
+  "paths": [
+    "construction.seeded_random_init_determinism",
+    "construction.immovable_placement",
+    "construction.clique_placement",
+    "construction.partial_attendance_placement"
+  ],
+  "description": "Seeded construction case combining clique placement, immovable placement, and a partially attending participant.",
+  "input": {
+    "problem": {
+      "people": [
+        { "id": "p0", "attributes": {} },
+        { "id": "p1", "attributes": {} },
+        { "id": "p2", "attributes": {} },
+        { "id": "p3", "attributes": {} },
+        { "id": "p4", "attributes": {} },
+        { "id": "p5", "attributes": {}, "sessions": [0] }
+      ],
+      "groups": [
+        { "id": "g0", "size": 2 },
+        { "id": "g1", "size": 2 },
+        { "id": "g2", "size": 2 }
+      ],
+      "num_sessions": 2
+    },
+    "objectives": [
+      { "type": "maximize_unique_contacts", "weight": 1.0 }
+    ],
+    "constraints": [
+      {
+        "type": "MustStayTogether",
+        "people": ["p0", "p1"]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "p2",
+        "group_id": "g2",
+        "sessions": [0]
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 1,
+        "time_limit_seconds": null,
+        "no_improvement_iterations": null
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 1.0,
+        "final_temperature": 0.1,
+        "cooling_schedule": "geometric",
+        "reheat_after_no_improvement": 0,
+        "reheat_cycles": 0
+      },
+      "logging": {},
+      "telemetry": {},
+      "seed": 41
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "hotpath.construction.default",
+  "class": "representative",
+  "family": "construction",
+  "paths": ["construction"],
+  "title": "Hotpath construction preset",
+  "description": "Deterministic cold construction lane for remote-recordable hotpath benchmarking.",
+  "tags": ["hotpath", "construction", "representative"],
+  "hotpath_preset": "construction_default"
+}

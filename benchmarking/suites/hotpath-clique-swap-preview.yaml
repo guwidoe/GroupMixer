@@ -1,0 +1,10 @@
+schema_version: 1
+suite_id: hotpath-clique-swap-preview
+benchmark_mode: clique_swap_preview
+class: representative
+title: Hotpath clique swap preview benchmark suite
+description: Deterministic clique-swap delta lane for recording/history bundles.
+default_iterations: 48
+default_warmup_iterations: 4
+cases:
+  - manifest: ../cases/hotpath/clique_swap_default.json

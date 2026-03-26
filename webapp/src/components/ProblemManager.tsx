@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useAppStore } from '../store';
 import {
+  Copy,
   FolderPlus,
   Upload,
   Search,
@@ -176,7 +177,7 @@ export function ProblemManager({ isOpen, onClose }: ProblemManagerProps) {
     setEditingName('');
   };
 
-  const handleDuplicate = async (id: string, name: string) => {
+  const handleDuplicate = (id: string, name: string) => {
     const newName = prompt(`Enter name for the duplicate of "${name}":`, `${name} (Copy)`);
     if (newName && newName.trim()) {
       const includeResults = confirm('Include existing results in the duplicate?');

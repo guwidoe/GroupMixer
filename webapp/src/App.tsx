@@ -1,21 +1,27 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import LandingPage from './components/LandingPage';
-import MainApp from './MainApp';
-import { useThemeStore } from './store/theme';
-import { ProblemEditor } from './components/ProblemEditor';
-import { SolverPanel } from './components/SolverPanel';
-import { ResultsView } from './components/ResultsView';
-import { ResultsHistory } from './components/ResultsHistory';
+import { useEffect } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { ManualEditor } from './components/ManualEditor';
+import { ProblemEditor } from './components/ProblemEditor/ProblemEditor';
+import { ResultsHistory } from './components/ResultsHistory';
+import { ResultsView } from './components/ResultsView';
+import { SolverPanel } from './components/SolverPanel';
+import MainApp from './MainApp';
+import ToolLandingPage from './pages/ToolLandingPage';
+import { TOOL_PAGE_ROUTES } from './pages/toolPageConfigs';
+import { initializeThemeStore, useThemeStore } from './store/theme';
 
 function App() {
   const { theme } = useThemeStore();
 
+  useEffect(() => initializeThemeStore(), []);
+
   return (
     <div className={theme}>
       <Routes>
-        <Route path="/" element={<Navigate to="/landingpage" />} />
-        <Route path="/landingpage" element={<LandingPage />} />
+        {TOOL_PAGE_ROUTES.map(({ key, path }) => (
+          <Route key={key} path={path} element={<ToolLandingPage pageKey={key} />} />
+        ))}
+        <Route path="/landingpage" element={<Navigate to="/" replace />} />
         <Route path="/app" element={<MainApp />}>
           <Route index element={<Navigate to="problem/people" replace />} />
           <Route path="problem" element={<Navigate to="/app/problem/people" replace />} />

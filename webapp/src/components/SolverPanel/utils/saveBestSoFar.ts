@@ -1,6 +1,5 @@
 import type { MutableRefObject } from 'react';
-import type { Problem, SolverSettings, SolverState, Solution, Notification } from '../../../types';
-import type { ProgressUpdate } from '../../../services/wasm';
+import type { Problem, ProblemResult, SolverSettings, SolverState, Solution, Notification } from '../../../types';
 import { wasmService } from '../../../services/wasm';
 import { solverWorkerService } from '../../../services/solverWorker';
 
@@ -12,7 +11,12 @@ interface SaveBestSoFarArgs {
   runSettings: SolverSettings | null;
   solverSettings: SolverSettings;
   runProblemSnapshotRef: MutableRefObject<Problem | null>;
-  addResult: (solution: Solution, solverSettings: SolverSettings, customName?: string, snapshotProblemOverride?: Problem) => void;
+  addResult: (
+    solution: Solution,
+    solverSettings: SolverSettings,
+    customName?: string,
+    snapshotProblemOverride?: Problem,
+  ) => ProblemResult | null;
   addNotification: AddNotification;
   cancelledRef: MutableRefObject<boolean>;
   restartAfterSaveRef: MutableRefObject<boolean>;
@@ -43,9 +47,7 @@ export async function saveBestSoFar({
     return;
   }
 
-  const lastProgress = (solverWorkerService as unknown as { lastProgressUpdate?: ProgressUpdate }).lastProgressUpdate as
-    | ProgressUpdate
-    | undefined;
+  const lastProgress = solverWorkerService.getLastProgressUpdate();
   if (lastProgress && lastProgress.best_schedule) {
     saveInProgressRef.current = true;
     const bestSchedule = lastProgress.best_schedule;
@@ -69,18 +71,8 @@ export async function saveBestSoFar({
       } as typeof evaluated;
       const settingsForSave = runSettings || solverSettings;
       addResult(evaluatedWithRunMeta, settingsForSave, undefined, runProblemSnapshotRef.current || undefined);
-      addNotification({
-        type: 'success',
-        title: 'Saved Best-So-Far',
-        message: 'Snapshot saved without interrupting the solver.',
-      });
     } catch (e) {
       console.error('[SolverPanel] Failed to evaluate snapshot metrics:', e);
-      addNotification({
-        type: 'warning',
-        title: 'Saved Snapshot (Partial Metrics)',
-        message: 'Saved assignments; metrics could not be evaluated.',
-      });
       const fallbackSolution = {
         assignments,
         final_score: lastProgress.best_score,
@@ -94,7 +86,13 @@ export async function saveBestSoFar({
         weighted_constraint_penalty: 0,
       } as unknown as Solution;
       const settingsForSave = runSettings || solverSettings;
-      addResult(fallbackSolution, settingsForSave, undefined, runProblemSnapshotRef.current || undefined);
+      if (addResult(fallbackSolution, settingsForSave, undefined, runProblemSnapshotRef.current || undefined)) {
+        addNotification({
+          type: 'warning',
+          title: 'Saved Snapshot (Partial Metrics)',
+          message: 'Saved assignments, but metric evaluation failed so some metrics may be incomplete.',
+        });
+      }
     } finally {
       saveInProgressRef.current = false;
     }
