@@ -42,7 +42,7 @@ describe('ToolLandingPage SEO wiring', () => {
 
     render(
       <MemoryRouter initialEntries={['/random-team-generator?exp=seo-hero-test&var=B']}>
-        <ToolLandingPage pageKey="random-team-generator" />
+        <ToolLandingPage pageKey="random-team-generator" locale="en" />
       </MemoryRouter>,
     );
 
@@ -92,7 +92,7 @@ describe('ToolLandingPage SEO wiring', () => {
 
     render(
       <MemoryRouter>
-        <ToolLandingPage pageKey="home" />
+        <ToolLandingPage pageKey="home" locale="en" />
       </MemoryRouter>,
     );
 
@@ -124,7 +124,7 @@ describe('ToolLandingPage SEO wiring', () => {
 
     render(
       <MemoryRouter>
-        <ToolLandingPage pageKey="home" />
+        <ToolLandingPage pageKey="home" locale="en" />
       </MemoryRouter>,
     );
 
@@ -148,7 +148,7 @@ describe('ToolLandingPage SEO wiring', () => {
   it('shows the tool form above the fold with participants input and generate button', () => {
     render(
       <MemoryRouter>
-        <ToolLandingPage pageKey="home" />
+        <ToolLandingPage pageKey="home" locale="en" />
       </MemoryRouter>,
     );
 
@@ -172,7 +172,7 @@ describe('ToolLandingPage SEO wiring', () => {
   it('stacks the generator above the hero content on mobile while preserving desktop order classes', () => {
     render(
       <MemoryRouter>
-        <ToolLandingPage pageKey="home" />
+        <ToolLandingPage pageKey="home" locale="en" />
       </MemoryRouter>,
     );
 
@@ -183,7 +183,7 @@ describe('ToolLandingPage SEO wiring', () => {
   it('renders FAQ section for SEO', () => {
     render(
       <MemoryRouter>
-        <ToolLandingPage pageKey="home" />
+        <ToolLandingPage pageKey="home" locale="en" />
       </MemoryRouter>,
     );
 
@@ -196,7 +196,7 @@ describe('ToolLandingPage SEO wiring', () => {
 
     render(
       <MemoryRouter>
-        <ToolLandingPage pageKey="home" />
+        <ToolLandingPage pageKey="home" locale="en" />
       </MemoryRouter>,
     );
 
@@ -211,7 +211,7 @@ describe('ToolLandingPage SEO wiring', () => {
 
     render(
       <MemoryRouter>
-        <ToolLandingPage pageKey="home" />
+        <ToolLandingPage pageKey="home" locale="en" />
       </MemoryRouter>,
     );
 
@@ -232,7 +232,7 @@ describe('ToolLandingPage SEO wiring', () => {
 
     render(
       <MemoryRouter>
-        <ToolLandingPage pageKey="home" />
+        <ToolLandingPage pageKey="home" locale="en" />
       </MemoryRouter>,
     );
 

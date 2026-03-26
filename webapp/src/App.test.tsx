@@ -6,8 +6,8 @@ import App from "./App";
 import { renderWithRouter } from "./test/utils";
 
 vi.mock("./pages/ToolLandingPage", () => ({
-  default: ({ pageKey }: { pageKey: string }) => (
-    <div>Tool landing test stub: {pageKey}</div>
+  default: ({ pageKey, locale }: { pageKey: string; locale: string }) => (
+    <div>Tool landing test stub: {locale}:{pageKey}</div>
   ),
 }));
 
@@ -45,7 +45,7 @@ describe("App routing", () => {
     renderWithRouter(<App />, { route: "/" });
 
     expect(
-      await screen.findByText("Tool landing test stub: home")
+      await screen.findByText("Tool landing test stub: en:home")
     ).toBeInTheDocument();
   });
 
@@ -53,7 +53,7 @@ describe("App routing", () => {
     renderWithRouter(<App />, { route: "/landingpage" });
 
     expect(
-      await screen.findByText("Tool landing test stub: home")
+      await screen.findByText("Tool landing test stub: en:home")
     ).toBeInTheDocument();
   });
 
@@ -61,7 +61,7 @@ describe("App routing", () => {
     renderWithRouter(<App />, { route: "/random-team-generator" });
 
     expect(
-      await screen.findByText("Tool landing test stub: random-team-generator")
+      await screen.findByText("Tool landing test stub: en:random-team-generator")
     ).toBeInTheDocument();
   });
 
@@ -69,7 +69,7 @@ describe("App routing", () => {
     renderWithRouter(<App />, { route: "/speed-networking-generator" });
 
     expect(
-      await screen.findByText("Tool landing test stub: speed-networking-generator")
+      await screen.findByText("Tool landing test stub: en:speed-networking-generator")
     ).toBeInTheDocument();
   });
 
@@ -77,7 +77,7 @@ describe("App routing", () => {
     renderWithRouter(<App />, { route: "/random-pair-generator" });
 
     expect(
-      await screen.findByText("Tool landing test stub: random-pair-generator")
+      await screen.findByText("Tool landing test stub: en:random-pair-generator")
     ).toBeInTheDocument();
   });
 

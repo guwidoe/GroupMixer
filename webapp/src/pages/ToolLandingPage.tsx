@@ -13,16 +13,16 @@ import { Seo } from '../components/Seo';
 import {
   buildTelemetryPayload,
   buildTrackedAppPath,
-  canonicalPathToLandingSlug,
   persistTelemetryAttribution,
   readTelemetryAttributionFromSearch,
   trackLandingEvent,
 } from '../services/landingInstrumentation';
 import { useAppStore } from '../store';
-import { TOOL_PAGE_CONFIGS, type ToolPageKey } from './toolPageConfigs';
+import { getLocaleHomePath, getToolPageConfig, type SupportedLocale, type ToolPageKey } from './toolPageConfigs';
 
 interface ToolLandingPageProps {
   pageKey: ToolPageKey;
+  locale: SupportedLocale;
 }
 
 type ResultFormat = 'cards' | 'list' | 'text' | 'csv';
@@ -87,8 +87,8 @@ async function copyText(value: string) {
   }
 }
 
-export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
-  const config = TOOL_PAGE_CONFIGS[pageKey];
+export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProps) {
+  const config = getToolPageConfig(pageKey, locale);
   const controller = useQuickSetup(config);
   const syncWorkspaceDraft = useAppStore((state) => state.syncWorkspaceDraft);
   const navigate = useNavigate();
@@ -102,9 +102,9 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
     () =>
       readTelemetryAttributionFromSearch({
         search: location.search,
-        fallbackLandingSlug: canonicalPathToLandingSlug(config.canonicalPath),
+        fallbackLandingSlug: pageKey,
       }),
-    [config.canonicalPath, location.search],
+    [location.search, pageKey],
   );
 
   useEffect(() => {
@@ -119,6 +119,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
           pageKey,
           canonicalPath: config.canonicalPath,
           preset: config.defaultPreset,
+          locale: config.locale,
           audience: config.inventory.audience,
           pageExperimentLabel: config.experiment.label,
         },
@@ -130,6 +131,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
     config.defaultPreset,
     config.experiment.label,
     config.inventory.audience,
+    config.locale,
     pageKey,
     telemetryAttribution,
   ]);
@@ -390,6 +392,8 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
         description={config.seo.description}
         canonicalPath={config.canonicalPath}
         faqEntries={config.faqEntries}
+        locale={config.locale}
+        alternates={config.alternates}
       />
 
       <header
@@ -397,7 +401,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
         style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link to="/" className="flex items-center gap-2.5">
+          <Link to={getLocaleHomePath(config.locale)} className="flex items-center gap-2.5">
             <img src={assetBaseUrl + 'logo.svg'} alt="GroupMixer logo" className="h-8 w-8" />
             <span className="text-lg font-semibold tracking-tight">GroupMixer</span>
           </Link>
@@ -408,7 +412,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
               className="hidden items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors sm:inline-flex"
               style={{ color: 'var(--text-secondary)' }}
             >
-              Expert workspace
+              {config.chrome.expertWorkspaceLabel}
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
             <ThemeToggle size="md" />
@@ -486,7 +490,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                 <div className="mt-10 hidden text-sm lg:block" style={{ color: 'var(--text-secondary)' }}>
                   <span className="flex items-center gap-1">
                     <ChevronDown className="h-4 w-4" />
-                    Scroll down for use cases &amp; FAQ
+                    {config.chrome.scrollHint}
                   </span>
                 </div>
               )}
@@ -654,38 +658,13 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
 
         <section className="border-t px-4 pb-12 pt-10 sm:px-6" style={{ borderColor: 'var(--border-primary)' }}>
           <div className="mx-auto max-w-6xl">
-            <h2 className="text-2xl font-semibold tracking-tight">Works for classrooms, workshops, and events</h2>
+            <h2 className="text-2xl font-semibold tracking-tight">{config.useCasesSection.title}</h2>
             <p className="mt-3 max-w-2xl text-base leading-7" style={{ color: 'var(--text-secondary)' }}>
-              Start with a simple random split. When you need more control, GroupMixer grows with you.
+              {config.useCasesSection.description}
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {[
-                {
-                  title: 'Classroom groups',
-                  body: 'Teachers paste a student roster and create balanced groups in seconds. No learning curve.',
-                },
-                {
-                  title: 'Workshop breakout rooms',
-                  body: 'Split participants into breakout rooms for a single session or rotate across multiple rounds.',
-                },
-                {
-                  title: 'Speed networking',
-                  body: 'Generate multiple rounds where people meet new faces each time. Minimize repeat pairings automatically.',
-                },
-                {
-                  title: 'Team projects',
-                  body: 'Divide a class or team into project groups. Optionally balance by skill, role, or department.',
-                },
-                {
-                  title: 'Conference sessions',
-                  body: 'Assign attendees to parallel tracks or discussion tables while respecting constraints.',
-                },
-                {
-                  title: 'Social mixers',
-                  body: 'Plan icebreaker rounds where everyone meets someone new. Keep certain people together or apart.',
-                },
-              ].map((item) => (
+              {config.useCasesSection.cards.map((item) => (
                 <div key={item.title} className="rounded-xl border p-5" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
                   <h3 className="text-base font-semibold">{item.title}</h3>
                   <p className="mt-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
@@ -699,30 +678,13 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
 
         <section className="border-t px-4 pb-12 pt-10 sm:px-6" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
           <div className="mx-auto max-w-6xl">
-            <h2 className="text-2xl font-semibold tracking-tight">Need more control?</h2>
+            <h2 className="text-2xl font-semibold tracking-tight">{config.advancedSection.title}</h2>
             <p className="mt-3 max-w-2xl text-base leading-7" style={{ color: 'var(--text-secondary)' }}>
-              GroupMixer is more than a random shuffler. When simple groups aren't enough, unlock advanced rules without switching tools.
+              {config.advancedSection.description}
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
-              {[
-                {
-                  title: 'Keep certain people together',
-                  body: 'Ensure friends, co-workers, or pre-assigned pairs always land in the same group.',
-                },
-                {
-                  title: 'Keep certain people apart',
-                  body: 'Prevent specific people from being grouped together — useful for conflict avoidance or diversity.',
-                },
-                {
-                  title: 'Avoid repeat pairings',
-                  body: 'Run multiple rounds where the same two people don\'t end up together again.',
-                },
-                {
-                  title: 'Balance groups by attribute',
-                  body: 'Use CSV input to balance groups by role, skill level, gender, department, or any custom column.',
-                },
-              ].map((item) => (
+              {config.advancedSection.cards.map((item) => (
                 <div key={item.title} className="rounded-xl border p-5" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
                   <h3 className="text-base font-semibold">{item.title}</h3>
                   <p className="mt-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
@@ -739,11 +701,11 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                 className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold"
               >
                 <Users className="h-4 w-4" />
-                Open expert workspace
+                {config.advancedSection.buttonLabel}
                 <ArrowRight className="h-4 w-4" />
               </button>
               <p className="mt-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                The expert workspace gives you full control over sessions, constraints, solver settings, and detailed result analysis.
+                {config.advancedSection.supportingText}
               </p>
             </div>
           </div>
@@ -751,13 +713,19 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
 
         <section className="border-t px-4 pb-14 pt-10 sm:px-6" style={{ borderColor: 'var(--border-primary)' }}>
           <div className="mx-auto max-w-3xl">
-            <h2 className="mb-6 text-2xl font-semibold tracking-tight">Frequently asked questions</h2>
+            <h2 className="mb-6 text-2xl font-semibold tracking-tight">{config.chrome.faqHeading}</h2>
             <QuickSetupFaq entries={config.faqEntries} />
           </div>
         </section>
       </main>
 
-      <LandingFooter expertWorkspaceTo={buildTrackedAppPath('/app', telemetryAttribution)} />
+      <LandingFooter
+        expertWorkspaceTo={buildTrackedAppPath('/app', telemetryAttribution)}
+        expertWorkspaceLabel={config.chrome.expertWorkspaceLabel}
+        tagline={config.chrome.footerTagline}
+        feedbackLabel={config.chrome.feedbackLabel}
+        privacyNote={config.chrome.privacyNote}
+      />
     </div>
   );
 }

@@ -18,6 +18,8 @@ describe('landingInstrumentation attribution helpers', () => {
   it('derives a stable landing slug from canonical paths', () => {
     expect(canonicalPathToLandingSlug('/')).toBe('home');
     expect(canonicalPathToLandingSlug('/random-team-generator')).toBe('random-team-generator');
+    expect(canonicalPathToLandingSlug('/es/random-team-generator')).toBe('random-team-generator');
+    expect(canonicalPathToLandingSlug('/fr')).toBe('home');
   });
 
   it('reads experiment and variant from search while falling back to the landing slug', () => {

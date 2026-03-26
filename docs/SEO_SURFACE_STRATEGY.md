@@ -5,6 +5,7 @@
 The public SEO surface is:
 
 - `/`
+- locale-aware landing routes like `/es/...` and `/fr/...` when a page is live in those locales
 - shared tool landing pages from `webapp/src/pages/toolPageConfigs.data.mjs`
 
 The advanced workspace is **not** an SEO target:
@@ -28,11 +29,18 @@ Landing-page SEO inventory lives in:
 That manifest drives:
 
 - app route registration
+- locale-aware route registration
 - landing-page copy + metadata
 - audience framing + shared CTA content
 - experiment labels + rollout inventory metadata
 - sitemap generation
 - static landing prerender output
+
+Localized copy resources live in:
+
+- `webapp/src/i18n/landing/en.ts`
+- `webapp/src/i18n/landing/es.ts`
+- `webapp/src/i18n/landing/fr.ts`
 
 ## Current English landing inventory
 
@@ -70,6 +78,33 @@ Two scripts are now part of the workflow:
 
 The normal webapp build runs both automatically.
 
+## Multilingual route + SEO contract
+
+Current route policy:
+
+- English is the default unprefixed locale
+  - `/`
+  - `/random-team-generator`
+- localized landing pages use locale prefixes
+  - `/es/...`
+  - `/fr/...`
+- the advanced workspace remains shared and not localized for SEO
+  - `/app`
+  - `/app/*`
+
+Canonical / hreflang policy:
+
+- each localized landing page self-canonicalizes
+- alternates are emitted for every live locale variant of the same landing page
+- `x-default` always points to the English route
+- `/app` keeps `noindex,nofollow` and does not participate in multilingual SEO
+
+Sitemap policy:
+
+- every live localized landing route appears in the sitemap
+- each sitemap entry includes `xhtml:link` alternates for sibling locales + `x-default`
+- a locale/page only appears when its localized resource file is present and the page definition marks that locale as live
+
 ## Vercel routing policy
 
 `webapp/vercel.json` now uses filesystem-first routing:
@@ -82,6 +117,8 @@ The normal webapp build runs both automatically.
 
 1. Add the page config to `webapp/src/pages/toolPageConfigs.data.mjs`
 2. Keep it inside the shared content model:
+   - locale-invariant page definition in `webapp/src/pages/toolPageConfigs.data.mjs`
+   - localized content resource in `webapp/src/i18n/landing/<locale>.ts`
    - `seo.title`
    - `seo.description`
    - `hero.eyebrow`
@@ -89,6 +126,8 @@ The normal webapp build runs both automatically.
    - `hero.subhead`
    - `hero.audienceSummary`
    - `faqEntries`
+   - `useCasesSection`
+   - `advancedSection`
    - `experiment.label` / `experiment.futureVariants`
    - `inventory.searchIntent` / `inventory.audience` / `inventory.priority`
 3. Do **not** copy `ToolLandingPage.tsx` or create page-specific landing components.

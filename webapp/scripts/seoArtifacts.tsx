@@ -5,7 +5,7 @@ import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { buildSeoDocument, CANONICAL_ORIGIN, DEFAULT_OG_IMAGE } from '../src/seo/seoDocument.ts';
-import { TOOL_PAGE_CONFIGS, TOOL_PAGE_ROUTES } from '../src/pages/toolPageConfigs.ts';
+import { getToolPageConfig, TOOL_PAGE_ROUTES } from '../src/pages/toolPageConfigs.ts';
 import { getAppSeo } from '../src/seo/appRouteSeo.ts';
 
 type StorageShape = {
@@ -103,11 +103,21 @@ function replaceOrThrow(html: string, pattern: RegExp, replacement: string): str
 function applySeoDocument(templateHtml: string, rootMarkup: string, seo: ReturnType<typeof buildSeoDocument>): string {
   let html = templateHtml;
 
+  html = replaceOrThrow(html, /<html lang="[^"]*">/, `<html lang="${seo.htmlLang}">`);
   html = replaceOrThrow(html, /<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(seo.title)}</title>`);
   html = replaceOrThrow(html, /<meta name="title" content="[^"]*"\s*\/>/, `<meta name="title" content="${escapeHtml(seo.title)}" />`);
   html = replaceOrThrow(html, /<meta name="description" content="[^"]*"\s*\/>/, `<meta name="description" content="${escapeHtml(seo.description)}" />`);
   html = replaceOrThrow(html, /<meta name="robots" content="[^"]*"\s*\/>/, `<meta name="robots" content="${seo.robotsContent}" />`);
-  html = replaceOrThrow(html, /<link rel="canonical" href="[^"]*"\s*\/>/, `<link rel="canonical" href="${seo.canonicalUrl}" />`);
+  html = replaceOrThrow(
+    html,
+    /<link rel="canonical" href="[^"]*"\s*\/>/,
+    [
+      `<link rel="canonical" href="${seo.canonicalUrl}" />`,
+      ...seo.alternateLinks.map(
+        (alternate) => `<link rel="alternate" hreflang="${alternate.hreflang}" href="${alternate.href}" />`,
+      ),
+    ].join('\n    '),
+  );
   html = replaceOrThrow(html, /<meta property="og:url" content="[^"]*"\s*\/>/, `<meta property="og:url" content="${seo.canonicalUrl}" />`);
   html = replaceOrThrow(html, /<meta property="og:title" content="[^"]*"\s*\/>/, `<meta property="og:title" content="${escapeHtml(seo.title)}" />`);
   html = replaceOrThrow(html, /<meta property="og:description" content="[^"]*"\s*\/>/, `<meta property="og:description" content="${escapeHtml(seo.description)}" />`);
@@ -127,12 +137,20 @@ function applySeoDocument(templateHtml: string, rootMarkup: string, seo: ReturnT
 }
 
 function buildSitemapXml(): string {
-  const urls = TOOL_PAGE_ROUTES.map(({ path: routePath }) => {
+  const urls = TOOL_PAGE_ROUTES.map(({ key, locale, path: routePath }) => {
+    const config = getToolPageConfig(key, locale);
     const suffix = routePath === '/' ? '/' : routePath;
-    return `  <url>\n    <loc>${CANONICAL_ORIGIN}${suffix}</loc>\n  </url>`;
+    const alternateLinks = config.alternates
+      .map(
+        (alternate) =>
+          `    <xhtml:link rel="alternate" hreflang="${alternate.hreflang}" href="${CANONICAL_ORIGIN}${alternate.canonicalPath === '/' ? '/' : alternate.canonicalPath}" />`,
+      )
+      .join('\n');
+
+    return `  <url>\n    <loc>${CANONICAL_ORIGIN}${suffix}</loc>\n${alternateLinks}\n  </url>`;
   }).join('\n');
 
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls}\n</urlset>\n`;
 }
 
 async function writeSitemap(targetDir: string) {
@@ -154,12 +172,15 @@ async function renderRouteMarkup(routePath: string): Promise<string> {
 }
 
 async function renderLandingPages(templateHtml: string) {
-  for (const config of Object.values(TOOL_PAGE_CONFIGS)) {
+  for (const route of TOOL_PAGE_ROUTES) {
+    const config = getToolPageConfig(route.key, route.locale);
     const seo = buildSeoDocument({
       title: config.seo.title,
       description: config.seo.description,
       canonicalPath: config.canonicalPath,
       faqEntries: config.faqEntries,
+      locale: config.locale,
+      alternates: config.alternates,
     });
     const markup = await renderRouteMarkup(config.canonicalPath);
     const html = applySeoDocument(templateHtml, markup, seo);

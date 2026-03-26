@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { ToolPageFaqEntry } from '../pages/toolPageConfigs';
+import type { SupportedLocale, ToolPageAlternateLink, ToolPageFaqEntry } from '../pages/toolPageConfigs';
 import { buildSeoDocument, DEFAULT_OG_IMAGE } from '../seo/seoDocument';
 
 interface SeoProps {
@@ -9,6 +9,8 @@ interface SeoProps {
   faqEntries?: ToolPageFaqEntry[];
   indexable?: boolean;
   includeStructuredData?: boolean;
+  locale?: SupportedLocale;
+  alternates?: ToolPageAlternateLink[];
 }
 
 function ensureMeta(
@@ -52,6 +54,21 @@ function ensureJsonLdScript(): HTMLScriptElement {
   return script;
 }
 
+function replaceAlternateLinks(alternates: Array<{ hreflang: string; href: string }>) {
+  document.head
+    .querySelectorAll('link[rel="alternate"][data-groupmixer-hreflang="true"]')
+    .forEach((element) => element.remove());
+
+  for (const alternate of alternates) {
+    const link = document.createElement('link');
+    link.rel = 'alternate';
+    link.hreflang = alternate.hreflang;
+    link.href = alternate.href;
+    link.dataset.groupmixerHreflang = 'true';
+    document.head.appendChild(link);
+  }
+}
+
 export function Seo({
   title,
   description,
@@ -59,6 +76,8 @@ export function Seo({
   faqEntries = [],
   indexable = true,
   includeStructuredData = true,
+  locale = 'en',
+  alternates = [],
 }: SeoProps) {
   useEffect(() => {
     const documentData = buildSeoDocument({
@@ -68,9 +87,12 @@ export function Seo({
       faqEntries,
       indexable,
       includeStructuredData,
+      locale,
+      alternates,
     });
 
     document.title = title;
+    document.documentElement.lang = documentData.htmlLang;
     ensureMeta('meta[name="title"]', 'name', 'title').content = title;
     ensureMeta('meta[name="description"]', 'name', 'description').content = description;
     ensureMeta('meta[property="og:type"]', 'property', 'og:type').content = 'website';
@@ -87,6 +109,7 @@ export function Seo({
     ensureMeta('meta[name="robots"]', 'name', 'robots').content = documentData.robotsContent;
 
     ensureCanonicalLink().href = documentData.canonicalUrl;
+    replaceAlternateLinks(documentData.alternateLinks);
 
     if (!includeStructuredData) {
       const existingSchema = document.getElementById('groupmixer-route-schema');
@@ -97,7 +120,7 @@ export function Seo({
     }
 
     ensureJsonLdScript().textContent = documentData.schemaText;
-  }, [canonicalPath, description, faqEntries, includeStructuredData, indexable, title]);
+  }, [alternates, canonicalPath, description, faqEntries, includeStructuredData, indexable, locale, title]);
 
   return null;
 }

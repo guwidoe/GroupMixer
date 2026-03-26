@@ -18,8 +18,8 @@ function App() {
   return (
     <div className={theme}>
       <Routes>
-        {TOOL_PAGE_ROUTES.map(({ key, path }) => (
-          <Route key={key} path={path} element={<ToolLandingPage pageKey={key} />} />
+        {TOOL_PAGE_ROUTES.map(({ key, locale, path }) => (
+          <Route key={`${locale}:${key}`} path={path} element={<ToolLandingPage pageKey={key} locale={locale} />} />
         ))}
         <Route path="/landingpage" element={<Navigate to="/" replace />} />
         <Route path="/app" element={<MainApp />}>

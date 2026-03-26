@@ -1,7 +1,12 @@
-import type { ToolPageFaqEntry } from '../pages/toolPageConfigs';
+import type { SupportedLocale, ToolPageAlternateLink, ToolPageFaqEntry } from '../pages/toolPageConfigs';
 
 export const CANONICAL_ORIGIN = 'https://www.groupmixer.app';
 export const DEFAULT_OG_IMAGE = `${CANONICAL_ORIGIN}/og-image.png`;
+
+export interface SeoAlternateLinkData {
+  hreflang: string;
+  href: string;
+}
 
 export interface SeoDocumentInput {
   title: string;
@@ -10,6 +15,8 @@ export interface SeoDocumentInput {
   faqEntries?: ToolPageFaqEntry[];
   indexable?: boolean;
   includeStructuredData?: boolean;
+  locale?: SupportedLocale;
+  alternates?: ToolPageAlternateLink[];
 }
 
 export interface SeoDocumentData {
@@ -18,6 +25,12 @@ export interface SeoDocumentData {
   canonicalUrl: string;
   robotsContent: string;
   schemaText: string;
+  htmlLang: SupportedLocale;
+  alternateLinks: SeoAlternateLinkData[];
+}
+
+export function buildCanonicalUrl(canonicalPath: string): string {
+  return `${CANONICAL_ORIGIN}${canonicalPath === '/' ? '/' : canonicalPath}`;
 }
 
 export function buildSeoDocument({
@@ -27,9 +40,15 @@ export function buildSeoDocument({
   faqEntries = [],
   indexable = true,
   includeStructuredData = true,
+  locale = 'en',
+  alternates = [],
 }: SeoDocumentInput): SeoDocumentData {
-  const canonicalUrl = `${CANONICAL_ORIGIN}${canonicalPath === '/' ? '/' : canonicalPath}`;
+  const canonicalUrl = buildCanonicalUrl(canonicalPath);
   const robotsContent = indexable ? 'index,follow' : 'noindex,nofollow';
+  const alternateLinks = alternates.map((alternate) => ({
+    hreflang: alternate.hreflang,
+    href: buildCanonicalUrl(alternate.canonicalPath),
+  }));
 
   if (!includeStructuredData) {
     return {
@@ -38,6 +57,8 @@ export function buildSeoDocument({
       canonicalUrl,
       robotsContent,
       schemaText: '',
+      htmlLang: locale,
+      alternateLinks,
     };
   }
 
@@ -50,6 +71,7 @@ export function buildSeoDocument({
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web Browser',
       description,
+      inLanguage: locale,
       offers: {
         '@type': 'Offer',
         price: '0',
@@ -62,6 +84,7 @@ export function buildSeoDocument({
     schemaNodes.push({
       '@context': 'https://schema.org',
       '@type': 'FAQPage',
+      inLanguage: locale,
       mainEntity: faqEntries.map((entry) => ({
         '@type': 'Question',
         name: entry.question,
@@ -79,5 +102,7 @@ export function buildSeoDocument({
     canonicalUrl,
     robotsContent,
     schemaText: JSON.stringify(schemaNodes.length === 1 ? schemaNodes[0] : schemaNodes),
+    htmlLang: locale,
+    alternateLinks,
   };
 }

@@ -1,36 +1,58 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://www.groupmixer.app/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/" />
   </url>
   <url>
     <loc>https://www.groupmixer.app/random-group-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/random-group-generator" />
   </url>
   <url>
     <loc>https://www.groupmixer.app/random-team-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/random-team-generator" />
   </url>
   <url>
     <loc>https://www.groupmixer.app/random-pair-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/random-pair-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/random-pair-generator" />
   </url>
   <url>
     <loc>https://www.groupmixer.app/team-shuffle-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/team-shuffle-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/team-shuffle-generator" />
   </url>
   <url>
     <loc>https://www.groupmixer.app/breakout-room-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/breakout-room-generator" />
   </url>
   <url>
     <loc>https://www.groupmixer.app/workshop-group-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/workshop-group-generator" />
   </url>
   <url>
     <loc>https://www.groupmixer.app/student-group-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/student-group-generator" />
   </url>
   <url>
     <loc>https://www.groupmixer.app/icebreaker-group-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/icebreaker-group-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/icebreaker-group-generator" />
   </url>
   <url>
     <loc>https://www.groupmixer.app/speed-networking-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/speed-networking-generator" />
   </url>
   <url>
     <loc>https://www.groupmixer.app/group-generator-with-constraints</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/group-generator-with-constraints" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/group-generator-with-constraints" />
   </url>
 </urlset>

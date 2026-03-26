@@ -1,69 +1,30 @@
-import { TOOL_PAGE_CONFIGS_DATA } from './toolPageConfigs.data.mjs';
+import { EN_TOOL_PAGE_CONTENT } from '../i18n/landing/en';
+import { ES_TOOL_PAGE_CONTENT } from '../i18n/landing/es';
+import { FR_TOOL_PAGE_CONTENT } from '../i18n/landing/fr';
+import {
+  DEFAULT_LOCALE,
+  SUPPORTED_LOCALES,
+  type SupportedLocale,
+  type ToolPageAlternateLink,
+  type ToolPageChromeContent,
+  type ToolPageConfig,
+  type ToolPageCardContent,
+  type ToolPageDefinition,
+  type ToolPageFaqEntry,
+  type ToolPageAdvancedSectionContent,
+  type ToolPageHeroContent,
+  type ToolPageInventoryConfig,
+  type ToolPageKey,
+  type ToolPageLocalizedContent,
+  type ToolPageOptimizerCtaContent,
+  type ToolPagePreset,
+  type ToolPageRouteEntry,
+  type ToolPageSectionContent,
+  type ToolPageSeoContent,
+} from './toolPageTypes';
+import { TOOL_PAGE_DEFINITIONS_DATA } from './toolPageConfigs.data.mjs';
 
-export type ToolPagePreset = 'random' | 'balanced' | 'networking';
-
-export type ToolPageKey =
-  | 'home'
-  | 'random-group-generator'
-  | 'random-team-generator'
-  | 'random-pair-generator'
-  | 'team-shuffle-generator'
-  | 'breakout-room-generator'
-  | 'workshop-group-generator'
-  | 'student-group-generator'
-  | 'icebreaker-group-generator'
-  | 'speed-networking-generator'
-  | 'group-generator-with-constraints';
-
-export interface ToolPageFaqEntry {
-  question: string;
-  answer: string;
-}
-
-export interface ToolPageSeoContent {
-  title: string;
-  description: string;
-}
-
-export interface ToolPageHeroContent {
-  eyebrow: string;
-  title: string;
-  subhead: string;
-  audienceSummary: string;
-  trustBullets: string[];
-}
-
-export interface ToolPageOptimizerCtaContent {
-  eyebrow: string;
-  title: string;
-  featureBullets: string[];
-  buttonLabel: string;
-  supportingText: string;
-}
-
-export interface ToolPageExperimentConfig {
-  label: string;
-  futureVariants: string[];
-}
-
-export interface ToolPageInventoryConfig {
-  searchIntent: string;
-  audience: string;
-  priority: 'primary' | 'supporting';
-  rolloutStage: 'live' | 'next' | 'backlog';
-}
-
-export interface ToolPageConfig {
-  key: ToolPageKey;
-  canonicalPath: string;
-  defaultPreset: ToolPagePreset;
-  seo: ToolPageSeoContent;
-  hero: ToolPageHeroContent;
-  optimizerCta: ToolPageOptimizerCtaContent;
-  faqEntries: ToolPageFaqEntry[];
-  experiment: ToolPageExperimentConfig;
-  inventory: ToolPageInventoryConfig;
-}
+export * from './toolPageTypes';
 
 function failConfig(message: string): never {
   throw new Error(`Invalid tool page config: ${message}`);
@@ -126,29 +87,139 @@ function assertRolloutStage(value: unknown, path: string): ToolPageInventoryConf
   failConfig(`${path} must be "live", "next", or "backlog".`);
 }
 
-function validateToolPageConfig(key: ToolPageKey, value: unknown): ToolPageConfig {
+function assertLocaleList(value: unknown, path: string): SupportedLocale[] {
+  if (!Array.isArray(value) || value.length === 0) {
+    failConfig(`${path} must be a non-empty locale array.`);
+  }
+
+  const locales = value.map((entry, index) => {
+    if (entry === 'en' || entry === 'es' || entry === 'fr') {
+      return entry;
+    }
+
+    failConfig(`${path}[${index}] must be one of ${SUPPORTED_LOCALES.join(', ')}.`);
+  });
+
+  return Array.from(new Set(locales));
+}
+
+function assertSeoContent(value: unknown, path: string): ToolPageSeoContent {
+  if (typeof value !== 'object' || value === null) {
+    failConfig(`${path} must be an object.`);
+  }
+
+  return {
+    title: assertNonEmptyString((value as { title?: unknown }).title, `${path}.title`),
+    description: assertNonEmptyString((value as { description?: unknown }).description, `${path}.description`),
+  };
+}
+
+function assertHeroContent(value: unknown, path: string): ToolPageHeroContent {
+  if (typeof value !== 'object' || value === null) {
+    failConfig(`${path} must be an object.`);
+  }
+
+  return {
+    eyebrow: assertNonEmptyString((value as { eyebrow?: unknown }).eyebrow, `${path}.eyebrow`),
+    title: assertNonEmptyString((value as { title?: unknown }).title, `${path}.title`),
+    subhead: assertNonEmptyString((value as { subhead?: unknown }).subhead, `${path}.subhead`),
+    audienceSummary: assertNonEmptyString((value as { audienceSummary?: unknown }).audienceSummary, `${path}.audienceSummary`),
+    trustBullets: assertStringArray((value as { trustBullets?: unknown }).trustBullets, `${path}.trustBullets`),
+  };
+}
+
+function assertOptimizerCtaContent(value: unknown, path: string): ToolPageOptimizerCtaContent {
+  if (typeof value !== 'object' || value === null) {
+    failConfig(`${path} must be an object.`);
+  }
+
+  return {
+    eyebrow: assertNonEmptyString((value as { eyebrow?: unknown }).eyebrow, `${path}.eyebrow`),
+    title: assertNonEmptyString((value as { title?: unknown }).title, `${path}.title`),
+    featureBullets: assertStringArray((value as { featureBullets?: unknown }).featureBullets, `${path}.featureBullets`),
+    buttonLabel: assertNonEmptyString((value as { buttonLabel?: unknown }).buttonLabel, `${path}.buttonLabel`),
+    supportingText: assertNonEmptyString((value as { supportingText?: unknown }).supportingText, `${path}.supportingText`),
+  };
+}
+
+function assertChromeContent(value: unknown, path: string): ToolPageChromeContent {
+  if (typeof value !== 'object' || value === null) {
+    failConfig(`${path} must be an object.`);
+  }
+
+  return {
+    expertWorkspaceLabel: assertNonEmptyString((value as { expertWorkspaceLabel?: unknown }).expertWorkspaceLabel, `${path}.expertWorkspaceLabel`),
+    faqHeading: assertNonEmptyString((value as { faqHeading?: unknown }).faqHeading, `${path}.faqHeading`),
+    footerTagline: assertNonEmptyString((value as { footerTagline?: unknown }).footerTagline, `${path}.footerTagline`),
+    feedbackLabel: assertNonEmptyString((value as { feedbackLabel?: unknown }).feedbackLabel, `${path}.feedbackLabel`),
+    privacyNote: assertNonEmptyString((value as { privacyNote?: unknown }).privacyNote, `${path}.privacyNote`),
+    scrollHint: assertNonEmptyString((value as { scrollHint?: unknown }).scrollHint, `${path}.scrollHint`),
+  };
+}
+
+function assertCardContent(value: unknown, path: string): ToolPageCardContent {
+  if (typeof value !== 'object' || value === null) {
+    failConfig(`${path} must be an object.`);
+  }
+
+  return {
+    title: assertNonEmptyString((value as { title?: unknown }).title, `${path}.title`),
+    body: assertNonEmptyString((value as { body?: unknown }).body, `${path}.body`),
+  };
+}
+
+function assertSectionContent(value: unknown, path: string): ToolPageSectionContent {
+  if (typeof value !== 'object' || value === null) {
+    failConfig(`${path} must be an object.`);
+  }
+
+  const cards = (value as { cards?: unknown }).cards;
+  if (!Array.isArray(cards) || cards.length === 0) {
+    failConfig(`${path}.cards must be a non-empty card array.`);
+  }
+
+  return {
+    title: assertNonEmptyString((value as { title?: unknown }).title, `${path}.title`),
+    description: assertNonEmptyString((value as { description?: unknown }).description, `${path}.description`),
+    cards: cards.map((card, index) => assertCardContent(card, `${path}.cards[${index}]`)),
+  };
+}
+
+function assertAdvancedSectionContent(value: unknown, path: string): ToolPageAdvancedSectionContent {
+  const section = assertSectionContent(value, path);
+
+  return {
+    ...section,
+    buttonLabel: assertNonEmptyString((value as { buttonLabel?: unknown }).buttonLabel, `${path}.buttonLabel`),
+    supportingText: assertNonEmptyString((value as { supportingText?: unknown }).supportingText, `${path}.supportingText`),
+  };
+}
+
+function validateLocalizedContent(path: string, value: unknown): ToolPageLocalizedContent {
+  if (typeof value !== 'object' || value === null) {
+    failConfig(`${path} must be an object.`);
+  }
+
+  const record = value as Record<string, unknown>;
+  return {
+    seo: assertSeoContent(record.seo, `${path}.seo`),
+    hero: assertHeroContent(record.hero, `${path}.hero`),
+    optimizerCta: assertOptimizerCtaContent(record.optimizerCta, `${path}.optimizerCta`),
+    faqEntries: assertFaqEntries(record.faqEntries, `${path}.faqEntries`),
+    chrome: assertChromeContent(record.chrome, `${path}.chrome`),
+    useCasesSection: assertSectionContent(record.useCasesSection, `${path}.useCasesSection`),
+    advancedSection: assertAdvancedSectionContent(record.advancedSection, `${path}.advancedSection`),
+  };
+}
+
+function validateDefinition(key: ToolPageKey, value: unknown): ToolPageDefinition {
   if (typeof value !== 'object' || value === null) {
     failConfig(`${key} must be an object.`);
   }
 
   const record = value as Record<string, unknown>;
-  const seo = record.seo;
-  const hero = record.hero;
-  const optimizerCta = record.optimizerCta;
   const experiment = record.experiment;
   const inventory = record.inventory;
-
-  if (typeof seo !== 'object' || seo === null) {
-    failConfig(`${key}.seo must be an object.`);
-  }
-
-  if (typeof hero !== 'object' || hero === null) {
-    failConfig(`${key}.hero must be an object.`);
-  }
-
-  if (typeof optimizerCta !== 'object' || optimizerCta === null) {
-    failConfig(`${key}.optimizerCta must be an object.`);
-  }
 
   if (typeof experiment !== 'object' || experiment === null) {
     failConfig(`${key}.experiment must be an object.`);
@@ -158,92 +229,134 @@ function validateToolPageConfig(key: ToolPageKey, value: unknown): ToolPageConfi
     failConfig(`${key}.inventory must be an object.`);
   }
 
-  return {
+  const definition: ToolPageDefinition = {
     key,
-    canonicalPath: assertNonEmptyString(record.canonicalPath, `${key}.canonicalPath`),
+    slug: key === 'home' ? '' : assertNonEmptyString(record.slug, `${key}.slug`),
     defaultPreset: assertPreset(record.defaultPreset, `${key}.defaultPreset`),
-    seo: {
-      title: assertNonEmptyString((seo as { title?: unknown }).title, `${key}.seo.title`),
-      description: assertNonEmptyString((seo as { description?: unknown }).description, `${key}.seo.description`),
-    },
-    hero: {
-      eyebrow: assertNonEmptyString((hero as { eyebrow?: unknown }).eyebrow, `${key}.hero.eyebrow`),
-      title: assertNonEmptyString((hero as { title?: unknown }).title, `${key}.hero.title`),
-      subhead: assertNonEmptyString((hero as { subhead?: unknown }).subhead, `${key}.hero.subhead`),
-      audienceSummary: assertNonEmptyString(
-        (hero as { audienceSummary?: unknown }).audienceSummary,
-        `${key}.hero.audienceSummary`,
-      ),
-      trustBullets: assertStringArray((hero as { trustBullets?: unknown }).trustBullets, `${key}.hero.trustBullets`),
-    },
-    optimizerCta: {
-      eyebrow: assertNonEmptyString(
-        (optimizerCta as { eyebrow?: unknown }).eyebrow,
-        `${key}.optimizerCta.eyebrow`,
-      ),
-      title: assertNonEmptyString((optimizerCta as { title?: unknown }).title, `${key}.optimizerCta.title`),
-      featureBullets: assertStringArray(
-        (optimizerCta as { featureBullets?: unknown }).featureBullets,
-        `${key}.optimizerCta.featureBullets`,
-      ),
-      buttonLabel: assertNonEmptyString(
-        (optimizerCta as { buttonLabel?: unknown }).buttonLabel,
-        `${key}.optimizerCta.buttonLabel`,
-      ),
-      supportingText: assertNonEmptyString(
-        (optimizerCta as { supportingText?: unknown }).supportingText,
-        `${key}.optimizerCta.supportingText`,
-      ),
-    },
-    faqEntries: assertFaqEntries(record.faqEntries, `${key}.faqEntries`),
+    liveLocales: assertLocaleList(record.liveLocales, `${key}.liveLocales`),
     experiment: {
       label: assertNonEmptyString((experiment as { label?: unknown }).label, `${key}.experiment.label`),
-      futureVariants: assertStringArray(
-        (experiment as { futureVariants?: unknown }).futureVariants,
-        `${key}.experiment.futureVariants`,
-      ),
+      futureVariants: assertStringArray((experiment as { futureVariants?: unknown }).futureVariants, `${key}.experiment.futureVariants`),
     },
     inventory: {
-      searchIntent: assertNonEmptyString(
-        (inventory as { searchIntent?: unknown }).searchIntent,
-        `${key}.inventory.searchIntent`,
-      ),
+      searchIntent: assertNonEmptyString((inventory as { searchIntent?: unknown }).searchIntent, `${key}.inventory.searchIntent`),
       audience: assertNonEmptyString((inventory as { audience?: unknown }).audience, `${key}.inventory.audience`),
       priority: assertPriority((inventory as { priority?: unknown }).priority, `${key}.inventory.priority`),
-      rolloutStage: assertRolloutStage(
-        (inventory as { rolloutStage?: unknown }).rolloutStage,
-        `${key}.inventory.rolloutStage`,
-      ),
+      rolloutStage: assertRolloutStage((inventory as { rolloutStage?: unknown }).rolloutStage, `${key}.inventory.rolloutStage`),
     },
   };
-}
 
-const RAW_TOOL_PAGE_CONFIGS = TOOL_PAGE_CONFIGS_DATA as Record<ToolPageKey, unknown>;
-
-export const TOOL_PAGE_CONFIGS = Object.fromEntries(
-  (Object.entries(RAW_TOOL_PAGE_CONFIGS) as Array<[ToolPageKey, unknown]>).map(([key, value]) => [
-    key,
-    validateToolPageConfig(key, value),
-  ]),
-) as Record<ToolPageKey, ToolPageConfig>;
-
-const seenCanonicalPaths = new Set<string>();
-for (const config of Object.values(TOOL_PAGE_CONFIGS)) {
-  if (seenCanonicalPaths.has(config.canonicalPath)) {
-    failConfig(`Duplicate canonicalPath detected: ${config.canonicalPath}`);
+  if (!definition.liveLocales.includes(DEFAULT_LOCALE)) {
+    failConfig(`${key}.liveLocales must include the default locale (${DEFAULT_LOCALE}).`);
   }
 
-  seenCanonicalPaths.add(config.canonicalPath);
+  return definition;
 }
 
-export const TOOL_PAGE_ROUTES = Object.values(TOOL_PAGE_CONFIGS).map(({ key, canonicalPath }) => ({
-  key,
-  path: canonicalPath,
-}));
+export function buildToolPagePath(locale: SupportedLocale, pageKey: ToolPageKey, slug?: string): string {
+  const resolvedSlug = slug ?? (pageKey === 'home' ? '' : pageKey);
+  const prefix = locale === DEFAULT_LOCALE ? '' : `/${locale}`;
+  return resolvedSlug ? `${prefix}/${resolvedSlug}` : prefix || '/';
+}
 
-export const TOOL_PAGE_INVENTORY = Object.values(TOOL_PAGE_CONFIGS).map(({ key, canonicalPath, inventory, experiment }) => ({
+export function getLocaleHomePath(locale: SupportedLocale): string {
+  return buildToolPagePath(locale, 'home', '');
+}
+
+const RAW_DEFINITIONS = TOOL_PAGE_DEFINITIONS_DATA as Record<ToolPageKey, unknown>;
+
+export const TOOL_PAGE_DEFINITIONS = Object.fromEntries(
+  (Object.entries(RAW_DEFINITIONS) as Array<[ToolPageKey, unknown]>).map(([key, value]) => [key, validateDefinition(key, value)]),
+) as Record<ToolPageKey, ToolPageDefinition>;
+
+const RAW_LOCALE_CONTENT: Record<SupportedLocale, Partial<Record<ToolPageKey, unknown>>> = {
+  en: EN_TOOL_PAGE_CONTENT,
+  es: ES_TOOL_PAGE_CONTENT,
+  fr: FR_TOOL_PAGE_CONTENT,
+};
+
+const VALIDATED_LOCALE_CONTENT = Object.fromEntries(
+  SUPPORTED_LOCALES.map((locale) => {
+    const localizedEntries = Object.entries(RAW_LOCALE_CONTENT[locale]).map(([key, value]) => [
+      key,
+      validateLocalizedContent(`${locale}.${key}`, value),
+    ]);
+
+    return [locale, Object.fromEntries(localizedEntries)];
+  }),
+) as Record<SupportedLocale, Partial<Record<ToolPageKey, ToolPageLocalizedContent>>>;
+
+function buildAlternates(definition: ToolPageDefinition): ToolPageAlternateLink[] {
+  const localizedAlternates = definition.liveLocales.map((locale) => ({
+    hreflang: locale,
+    canonicalPath: buildToolPagePath(locale, definition.key, definition.slug),
+  }));
+
+  return [
+    ...localizedAlternates,
+    {
+      hreflang: 'x-default',
+      canonicalPath: buildToolPagePath(DEFAULT_LOCALE, definition.key, definition.slug),
+    },
+  ];
+}
+
+const TOOL_PAGE_CONFIG_CACHE = new Map<string, ToolPageConfig>();
+
+export function getToolPageConfig(pageKey: ToolPageKey, locale: SupportedLocale = DEFAULT_LOCALE): ToolPageConfig {
+  const cacheKey = `${locale}:${pageKey}`;
+  const cached = TOOL_PAGE_CONFIG_CACHE.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const definition = TOOL_PAGE_DEFINITIONS[pageKey];
+  if (!definition.liveLocales.includes(locale)) {
+    failConfig(`${pageKey} is not live for locale ${locale}.`);
+  }
+
+  const localizedContent = VALIDATED_LOCALE_CONTENT[locale][pageKey];
+  if (!localizedContent) {
+    failConfig(`Missing localized landing content for ${locale}.${pageKey}.`);
+  }
+
+  const config: ToolPageConfig = {
+    ...definition,
+    ...localizedContent,
+    locale,
+    canonicalPath: buildToolPagePath(locale, pageKey, definition.slug),
+    alternates: buildAlternates(definition),
+  };
+
+  TOOL_PAGE_CONFIG_CACHE.set(cacheKey, config);
+  return config;
+}
+
+export const TOOL_PAGE_CONFIGS = Object.fromEntries(
+  (Object.keys(TOOL_PAGE_DEFINITIONS) as ToolPageKey[]).map((pageKey) => [pageKey, getToolPageConfig(pageKey, DEFAULT_LOCALE)]),
+) as Record<ToolPageKey, ToolPageConfig>;
+
+export const TOOL_PAGE_ROUTES = (Object.values(TOOL_PAGE_DEFINITIONS) as ToolPageDefinition[]).flatMap((definition) =>
+  definition.liveLocales.map((locale) => ({
+    key: definition.key,
+    locale,
+    path: buildToolPagePath(locale, definition.key, definition.slug),
+  } satisfies ToolPageRouteEntry)),
+);
+
+const seenCanonicalPaths = new Set<string>();
+for (const route of TOOL_PAGE_ROUTES) {
+  if (seenCanonicalPaths.has(route.path)) {
+    failConfig(`Duplicate canonicalPath detected: ${route.path}`);
+  }
+
+  seenCanonicalPaths.add(route.path);
+}
+
+export const TOOL_PAGE_INVENTORY = Object.values(TOOL_PAGE_DEFINITIONS).map(({ key, slug, inventory, experiment, liveLocales }) => ({
   key,
-  canonicalPath,
+  slug,
+  liveLocales,
   ...inventory,
   experimentLabel: experiment.label,
 }));
