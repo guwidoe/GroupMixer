@@ -169,6 +169,171 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
   };
 
   const { draft, participantCount, estimatedGroupCount, estimatedGroupSize } = controller;
+  const heroOrderClass = controller.result ? 'order-3 lg:order-1' : 'order-2 lg:order-1';
+  const resultsSection = controller.result ? (
+    <div
+      ref={resultsRef}
+      data-testid="landing-results-panel"
+      className="order-2 border-t pt-8 lg:order-3 lg:col-span-2"
+      style={{ borderColor: 'var(--border-primary)' }}
+    >
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold">Your groups</h2>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={controller.exportGroupsCsv}
+            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium"
+            style={{ borderColor: 'var(--border-primary)' }}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => openAdvancedWorkspace('results')}
+            className="btn-primary inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold"
+          >
+            Open in expert workspace
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {controller.errorMessage && (
+        <div className="mb-5 rounded-xl px-4 py-3 text-sm" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}>
+          {controller.errorMessage}
+        </div>
+      )}
+
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Result formats">
+          {(['cards', 'list', 'text', 'csv'] as ResultFormat[]).map((format) => (
+            <button
+              key={format}
+              type="button"
+              role="tab"
+              aria-selected={resultFormat === format}
+              onClick={() => setResultFormat(format)}
+              className="rounded-full border px-3 py-1.5 text-sm font-medium capitalize"
+              style={{
+                borderColor: resultFormat === format ? 'var(--color-accent)' : 'var(--border-primary)',
+                backgroundColor: resultFormat === format ? 'var(--bg-secondary)' : 'transparent',
+              }}
+            >
+              {format}
+            </button>
+          ))}
+        </div>
+
+        {(resultFormat === 'text' || resultFormat === 'csv') && (
+          <button
+            type="button"
+            onClick={async () => {
+              const formatToCopy = resultFormat;
+              await copyText(formatToCopy === 'csv' ? resultCsv : resultText);
+              setCopiedFormat(formatToCopy);
+              window.setTimeout(() => setCopiedFormat((current) => (current === formatToCopy ? null : current)), 1200);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium"
+            style={{ borderColor: 'var(--border-primary)' }}
+          >
+            <Copy className="h-3.5 w-3.5" />
+            {copiedFormat === resultFormat ? 'Copied' : `Copy ${resultFormat.toUpperCase()}`}
+          </button>
+        )}
+      </div>
+
+      {resultFormat === 'cards' && (
+        solvedSolution ? (
+          <ResultsScheduleGrid sessionData={sharedSessionData} />
+        ) : (
+          controller.result.sessions.map((session) => (
+            <div key={session.sessionNumber} className="mb-6">
+              <h3 className="mb-3 text-base font-semibold">Session {session.sessionNumber}</h3>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {session.groups.map((group) => (
+                  <div
+                    key={`${session.sessionNumber}-${group.id}`}
+                    className="rounded-xl border p-4"
+                    style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-sm font-semibold">{group.id}</span>
+                      <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        {group.members.length} people
+                      </span>
+                    </div>
+                    <ul className="space-y-1">
+                      {group.members.map((member) => (
+                        <li
+                          key={member.id}
+                          className="rounded-lg px-2.5 py-1.5 text-sm"
+                          style={{ backgroundColor: 'var(--bg-secondary)' }}
+                        >
+                          {member.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))
+        )
+      )}
+
+      {resultFormat === 'list' && (
+        <div className="space-y-5">
+          {displaySessions.map((session) => (
+            <div key={session.sessionNumber} className="rounded-xl border p-4" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
+              <h3 className="text-base font-semibold">Session {session.sessionNumber}</h3>
+              <div className="mt-3 space-y-3">
+                {session.groups.map((group) => (
+                  <div key={`${session.sessionNumber}-${group.id}`}>
+                    <div className="text-sm font-semibold">{group.id}</div>
+                    <div className="mt-1 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
+                      {group.members.join(', ') || 'No assignments'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {resultFormat === 'text' && (
+        <div className="space-y-3">
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Plain text format for easy copy/paste into chat, docs, or email.
+          </p>
+          <textarea
+            aria-label="Text results"
+            readOnly
+            value={resultText}
+            className="min-h-[260px] w-full rounded-xl border px-4 py-3 text-sm outline-none"
+            style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+          />
+        </div>
+      )}
+
+      {resultFormat === 'csv' && (
+        <div className="space-y-3">
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            CSV format for spreadsheets, docs, and quick manual editing.
+          </p>
+          <textarea
+            aria-label="CSV results"
+            readOnly
+            value={resultCsv}
+            className="min-h-[260px] w-full rounded-xl border px-4 py-3 font-mono text-sm outline-none"
+            style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+          />
+        </div>
+      )}
+    </div>
+  ) : null;
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
@@ -206,7 +371,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
       <main>
         <section className="px-4 pb-10 pt-8 sm:px-6 lg:pb-16 lg:pt-12">
           <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1fr_minmax(340px,420px)] lg:items-start lg:gap-12">
-            <div data-testid="landing-hero" className="order-2 max-w-xl pt-2 lg:order-1">
+            <div data-testid="landing-hero" className={`${heroOrderClass} max-w-xl pt-2`}>
               <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl lg:leading-[1.15]">
                 {config.h1}
               </h1>
@@ -436,170 +601,10 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
                 <QuickSetupAdvancedOptions controller={controller} />
               </div>
             </div>
+
+            {resultsSection}
           </div>
         </section>
-
-        {controller.result && (
-          <section ref={resultsRef} className="border-t px-4 pb-12 pt-8 sm:px-6" style={{ borderColor: 'var(--border-primary)' }}>
-            <div className="mx-auto max-w-6xl">
-              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-xl font-semibold">Your groups</h2>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={controller.exportGroupsCsv}
-                    className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium"
-                    style={{ borderColor: 'var(--border-primary)' }}
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    Export CSV
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openAdvancedWorkspace('results')}
-                    className="btn-primary inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold"
-                  >
-                    Open in expert workspace
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {controller.errorMessage && (
-                <div className="mb-5 rounded-xl px-4 py-3 text-sm" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}>
-                  {controller.errorMessage}
-                </div>
-              )}
-
-              <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
-                <div className="flex flex-wrap gap-2" role="tablist" aria-label="Result formats">
-                  {(['cards', 'list', 'text', 'csv'] as ResultFormat[]).map((format) => (
-                    <button
-                      key={format}
-                      type="button"
-                      role="tab"
-                      aria-selected={resultFormat === format}
-                      onClick={() => setResultFormat(format)}
-                      className="rounded-full border px-3 py-1.5 text-sm font-medium capitalize"
-                      style={{
-                        borderColor: resultFormat === format ? 'var(--color-accent)' : 'var(--border-primary)',
-                        backgroundColor: resultFormat === format ? 'var(--bg-secondary)' : 'transparent',
-                      }}
-                    >
-                      {format}
-                    </button>
-                  ))}
-                </div>
-
-                {(resultFormat === 'text' || resultFormat === 'csv') && (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const formatToCopy = resultFormat;
-                      await copyText(formatToCopy === 'csv' ? resultCsv : resultText);
-                      setCopiedFormat(formatToCopy);
-                      window.setTimeout(() => setCopiedFormat((current) => (current === formatToCopy ? null : current)), 1200);
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium"
-                    style={{ borderColor: 'var(--border-primary)' }}
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                    {copiedFormat === resultFormat ? 'Copied' : `Copy ${resultFormat.toUpperCase()}`}
-                  </button>
-                )}
-              </div>
-
-              {resultFormat === 'cards' && (
-                solvedSolution ? (
-                  <ResultsScheduleGrid sessionData={sharedSessionData} />
-                ) : (
-                  controller.result.sessions.map((session) => (
-                    <div key={session.sessionNumber} className="mb-6">
-                      <h3 className="mb-3 text-base font-semibold">Session {session.sessionNumber}</h3>
-                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        {session.groups.map((group) => (
-                          <div
-                            key={`${session.sessionNumber}-${group.id}`}
-                            className="rounded-xl border p-4"
-                            style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
-                          >
-                            <div className="mb-2 flex items-center justify-between">
-                              <span className="text-sm font-semibold">{group.id}</span>
-                              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                                {group.members.length} people
-                              </span>
-                            </div>
-                            <ul className="space-y-1">
-                              {group.members.map((member) => (
-                                <li
-                                  key={member.id}
-                                  className="rounded-lg px-2.5 py-1.5 text-sm"
-                                  style={{ backgroundColor: 'var(--bg-secondary)' }}
-                                >
-                                  {member.name}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                )
-              )}
-
-              {resultFormat === 'list' && (
-                <div className="space-y-5">
-                  {displaySessions.map((session) => (
-                    <div key={session.sessionNumber} className="rounded-xl border p-4" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
-                      <h3 className="text-base font-semibold">Session {session.sessionNumber}</h3>
-                      <div className="mt-3 space-y-3">
-                        {session.groups.map((group) => (
-                          <div key={`${session.sessionNumber}-${group.id}`}>
-                            <div className="text-sm font-semibold">{group.id}</div>
-                            <div className="mt-1 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
-                              {group.members.join(', ') || 'No assignments'}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {resultFormat === 'text' && (
-                <div className="space-y-3">
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    Plain text format for easy copy/paste into chat, docs, or email.
-                  </p>
-                  <textarea
-                    aria-label="Text results"
-                    readOnly
-                    value={resultText}
-                    className="min-h-[260px] w-full rounded-xl border px-4 py-3 text-sm outline-none"
-                    style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                  />
-                </div>
-              )}
-
-              {resultFormat === 'csv' && (
-                <div className="space-y-3">
-                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                    CSV format for spreadsheets, docs, and quick manual editing.
-                  </p>
-                  <textarea
-                    aria-label="CSV results"
-                    readOnly
-                    value={resultCsv}
-                    className="min-h-[260px] w-full rounded-xl border px-4 py-3 font-mono text-sm outline-none"
-                    style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                  />
-                </div>
-              )}
-            </div>
-          </section>
-        )}
 
         <section className="border-t px-4 pb-12 pt-10 sm:px-6" style={{ borderColor: 'var(--border-primary)' }}>
           <div className="mx-auto max-w-6xl">
