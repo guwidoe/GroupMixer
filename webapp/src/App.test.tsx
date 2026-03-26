@@ -113,4 +113,13 @@ describe("App routing", () => {
       await screen.findByText("Problem editor test stub")
     ).toBeInTheDocument();
   });
+
+  it("supports first-class problem setup subroutes like attributes", async () => {
+    renderWithRouter(<App />, { route: "/app/problem/attributes" });
+
+    expect(await screen.findByText("Main app shell")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Problem editor test stub")
+    ).toBeInTheDocument();
+  });
 });

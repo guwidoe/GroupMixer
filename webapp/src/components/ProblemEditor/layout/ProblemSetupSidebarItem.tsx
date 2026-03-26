@@ -19,6 +19,7 @@ export function ProblemSetupSidebarItem({
     <button
       type="button"
       onClick={() => onNavigate(section.id)}
+      aria-current={isActive ? 'page' : undefined}
       className="w-full rounded-lg border px-3 py-2 text-left transition-colors"
       style={{
         backgroundColor: isActive ? 'var(--bg-tertiary)' : 'transparent',
