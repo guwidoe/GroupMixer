@@ -19,4 +19,4 @@ solver-core = { path = "../backend/core" }
 uuid = { version = "1.22.0", features = ["v4"] }
 
 [dev-dependencies]
-tempfile = "3.14"
+tempfile = "3.27"

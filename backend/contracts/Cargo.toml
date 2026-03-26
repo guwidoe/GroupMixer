@@ -15,4 +15,4 @@ solver-core = { path = "../core" }
 
 [dev-dependencies]
 jsonschema = "0.29"
-tempfile = "3.14"
+tempfile = "3.27"
