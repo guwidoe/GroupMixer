@@ -12,6 +12,7 @@ import { ProblemEditorConstraintModals } from './ProblemEditorConstraintModals';
 import { ProblemEditorForms } from './ProblemEditorForms';
 import { ProblemEditorHeader } from './ProblemEditorHeader';
 import { ProblemEditorTabs } from './ProblemEditorTabs';
+import { isProblemSetupSectionId } from './navigation/problemSetupNav';
 import { createProblemEditorActions } from './problemEditorActions';
 import { ConstraintsSection } from './sections/ConstraintsSection';
 import { GroupsSection } from './sections/GroupsSection';
@@ -42,7 +43,8 @@ export function ProblemEditor() {
   } = useAppStore();
 
   const { section } = useParams<{ section: string }>();
-  const activeSection = section || 'people';
+  const activeSection =
+    section === 'constraints' || (section && isProblemSetupSectionId(section)) ? section : 'people';
   const navigate = useNavigate();
 
   const [sessionsCount, setSessionsCount] = useState(problem?.num_sessions || 3);
@@ -204,6 +206,7 @@ export function ProblemEditor() {
       <ProblemEditorTabs
         activeSection={activeSection}
         problem={problem ?? null}
+        attributeDefinitions={attributeDefinitions}
         objectiveCount={objectiveCount}
         onNavigate={(sectionId) => navigate(`/app/problem/${sectionId}`)}
       />
