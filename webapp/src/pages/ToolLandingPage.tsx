@@ -1,7 +1,7 @@
 /* eslint-disable max-lines */
 import { ArrowRight, ChevronDown, Copy, Download, RotateCcw, Sparkles, Users } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { QuickSetupAdvancedOptions } from '../components/LandingTool/QuickSetupAdvancedOptions';
 import { QuickSetupFaq } from '../components/LandingTool/QuickSetupFaq';
 import { useQuickSetup } from '../components/LandingTool/useQuickSetup';
@@ -10,7 +10,14 @@ import { ResultsScheduleGrid } from '../components/ResultsView/ResultsScheduleGr
 import { buildResultsSessionData } from '../components/results/buildResultsViewModel';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Seo } from '../components/Seo';
-import { trackLandingEvent } from '../services/landingInstrumentation';
+import {
+  buildTelemetryPayload,
+  buildTrackedAppPath,
+  canonicalPathToLandingSlug,
+  persistTelemetryAttribution,
+  readTelemetryAttributionFromSearch,
+  trackLandingEvent,
+} from '../services/landingInstrumentation';
 import { useAppStore } from '../store';
 import { TOOL_PAGE_CONFIGS, type ToolPageKey } from './toolPageConfigs';
 
@@ -85,18 +92,37 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
   const controller = useQuickSetup(config);
   const syncWorkspaceDraft = useAppStore((state) => state.syncWorkspaceDraft);
   const navigate = useNavigate();
+  const location = useLocation();
   const resultsRef = useRef<HTMLDivElement>(null);
   const hasScrolledToResultsRef = useRef(false);
   const [resultFormat, setResultFormat] = useState<ResultFormat>('cards');
   const [copiedFormat, setCopiedFormat] = useState<ResultFormat | null>(null);
+  const telemetryAttribution = useMemo(
+    () =>
+      readTelemetryAttributionFromSearch({
+        search: location.search,
+        fallbackLandingSlug: canonicalPathToLandingSlug(config.canonicalPath),
+      }),
+    [config.canonicalPath, location.search],
+  );
 
   useEffect(() => {
-    trackLandingEvent('landing_route_viewed', {
-      pageKey,
-      canonicalPath: config.canonicalPath,
-      preset: config.defaultPreset,
-    });
-  }, [config.canonicalPath, config.defaultPreset, pageKey]);
+    persistTelemetryAttribution(telemetryAttribution);
+  }, [telemetryAttribution]);
+
+  useEffect(() => {
+    trackLandingEvent(
+      'landing_view',
+      buildTelemetryPayload(
+        {
+          pageKey,
+          canonicalPath: config.canonicalPath,
+          preset: config.defaultPreset,
+        },
+        telemetryAttribution,
+      ),
+    );
+  }, [config.canonicalPath, config.defaultPreset, pageKey, telemetryAttribution]);
 
   const workspacePayload = controller.workspacePayload;
   const solvedSolution = workspacePayload.solution ?? null;
@@ -151,10 +177,16 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
   }, [controller.result]);
 
   const openAdvancedWorkspace = (target: 'results' | 'people') => {
-    trackLandingEvent('landing_open_advanced_workspace', {
-      hasResult: Boolean(controller.result),
-      source: 'landing_page',
-    });
+    trackLandingEvent(
+      'landing_open_advanced_workspace',
+      buildTelemetryPayload(
+        {
+          hasResult: Boolean(controller.result),
+          source: 'landing_page',
+        },
+        telemetryAttribution,
+      ),
+    );
 
     const syncedProblemId = syncWorkspaceDraft({
       ...workspacePayload,
@@ -169,7 +201,9 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
       }));
     }
 
-    navigate(target === 'results' ? '/app/results' : '/app/problem/people');
+    navigate(
+      buildTrackedAppPath(target === 'results' ? '/app/results' : '/app/problem/people', telemetryAttribution),
+    );
   };
 
   const { draft, participantCount, estimatedGroupCount, estimatedGroupSize } = controller;
@@ -715,7 +749,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
         </section>
       </main>
 
-      <LandingFooter />
+      <LandingFooter expertWorkspaceTo={buildTrackedAppPath('/app', telemetryAttribution)} />
     </div>
   );
 }

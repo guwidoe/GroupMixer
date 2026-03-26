@@ -1,6 +1,10 @@
 import { Link } from 'react-router-dom';
 
-export function LandingFooter() {
+interface LandingFooterProps {
+  expertWorkspaceTo?: string;
+}
+
+export function LandingFooter({ expertWorkspaceTo = '/app' }: LandingFooterProps) {
   return (
     <footer
       className="border-t px-4 py-8 sm:px-6"
@@ -13,7 +17,7 @@ export function LandingFooter() {
             <span>GroupMixer — Free random group generator</span>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
-            <Link to="/app" className="transition-colors hover:opacity-80">
+            <Link to={expertWorkspaceTo} className="transition-colors hover:opacity-80">
               Expert workspace
             </Link>
             <a

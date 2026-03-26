@@ -58,6 +58,8 @@ function createDeferred<T>() {
 describe("MainApp stateful integration routes", () => {
   beforeEach(() => {
     useAppStore.getState().reset();
+    window.sessionStorage.clear();
+    window.__groupmixerLandingEvents = [];
     vi.clearAllMocks();
     vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -65,6 +67,24 @@ describe("MainApp stateful integration routes", () => {
       initializeApp: vi.fn(),
       loadSavedProblems: vi.fn(),
     });
+  });
+
+  it("tracks app entry attribution from URL params on first app load", async () => {
+    renderAppRoute("/app/solver?lp=random-team-generator&exp=seo-hero-test&var=B");
+
+    expect(window.__groupmixerLandingEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'app_entry',
+          payload: expect.objectContaining({
+            entryPath: '/app/solver',
+            landingSlug: 'random-team-generator',
+            experiment: 'seo-hero-test',
+            variant: 'B',
+          }),
+        }),
+      ]),
+    );
   });
 
   it("renders the real /app/solver surface with loaded state, warm-start history, and auto-set success", async () => {

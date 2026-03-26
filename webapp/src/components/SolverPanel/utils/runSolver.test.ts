@@ -134,12 +134,18 @@ function createArgs(overrides: Partial<Parameters<typeof runSolver>[0]> = {}) {
 
 describe('runSolver', () => {
   beforeEach(() => {
+    window.sessionStorage.clear();
+    window.__groupmixerLandingEvents = [];
     vi.clearAllMocks();
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(useAppStore.getState).mockReturnValue({ currentProblemId: 'problem-1' } as { currentProblemId: string | null });
   });
 
-  it('uses the shared solve service and saves via the active store problem id', async () => {
+  it('uses the shared solve service, emits telemetry, and saves via the active store problem id', async () => {
+    window.sessionStorage.setItem(
+      'groupmixer-telemetry-attribution',
+      JSON.stringify({ landingSlug: 'random-team-generator', experiment: 'seo-hero-test', variant: 'B' }),
+    );
     const args = createArgs({ useRecommended: true, currentProblemId: null });
 
     await runSolver(args);
@@ -161,6 +167,28 @@ describe('runSolver', () => {
       args.__expected.solverSettings,
       undefined,
       expect.any(Object),
+    );
+    expect(window.__groupmixerLandingEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'solver_started',
+          payload: expect.objectContaining({
+            landingSlug: 'random-team-generator',
+            experiment: 'seo-hero-test',
+            variant: 'B',
+            mode: 'automatic',
+          }),
+        }),
+        expect.objectContaining({
+          name: 'solver_completed',
+          payload: expect.objectContaining({
+            landingSlug: 'random-team-generator',
+            experiment: 'seo-hero-test',
+            variant: 'B',
+            mode: 'automatic',
+          }),
+        }),
+      ]),
     );
   });
 

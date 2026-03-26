@@ -1,5 +1,6 @@
 import type { MutableRefObject } from 'react';
 import type { Problem, ProblemResult, SavedProblem, SolverSettings, SolverState, Solution, Notification } from '../../../types';
+import { buildTelemetryPayload, getPersistedTelemetryAttribution, trackLandingEvent } from '../../../services/landingInstrumentation';
 import { problemStorage } from '../../../services/problemStorage';
 import { solveProblem } from '../../../services/solver/solveProblem';
 import type { ProgressUpdate } from '../../../services/wasm/types';
@@ -128,6 +129,17 @@ export async function runSolver({
   try {
     cancelledRef.current = false;
     solverCompletedRef.current = false;
+
+    trackLandingEvent(
+      'solver_started',
+      buildTelemetryPayload(
+        {
+          entryPath: '/app/solver',
+          mode: useRecommended ? 'automatic' : 'custom',
+        },
+        getPersistedTelemetryAttribution(),
+      ),
+    );
 
     startSolver();
     addNotification({
@@ -260,6 +272,20 @@ export async function runSolver({
         title: 'Result Not Saved',
         message: 'The solver finished, but no current problem was available for saving the result.',
       });
+    }
+
+    if (!cancelledRef.current) {
+      trackLandingEvent(
+        'solver_completed',
+        buildTelemetryPayload(
+          {
+            entryPath: '/app/solver',
+            mode: useRecommended ? 'automatic' : 'custom',
+            resultSaved: Boolean(savedResult),
+          },
+          getPersistedTelemetryAttribution(),
+        ),
+      );
     }
 
     if (cancelledRef.current) {

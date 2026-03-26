@@ -38,7 +38,7 @@ beforeEach(() => {
 describe('ToolLandingPage SEO wiring', () => {
   it('renders route-specific copy and updates document metadata from config', async () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/random-team-generator?exp=seo-hero-test&var=B']}>
         <ToolLandingPage pageKey="random-team-generator" />
       </MemoryRouter>,
     );
@@ -67,8 +67,19 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(schema?.textContent).toContain('GroupMixer');
     expect(window.__groupmixerLandingEvents).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ name: 'landing_route_viewed' }),
+        expect.objectContaining({
+          name: 'landing_view',
+          payload: expect.objectContaining({
+            landingSlug: 'random-team-generator',
+            experiment: 'seo-hero-test',
+            variant: 'B',
+          }),
+        }),
       ]),
+    );
+    expect(screen.getByRole('link', { name: /expert workspace/i })).toHaveAttribute(
+      'href',
+      '/app?lp=random-team-generator&exp=seo-hero-test&var=B',
     );
   });
 

@@ -1,26 +1,44 @@
-import { useEffect } from 'react';
-import { Link, Outlet } from 'react-router-dom';
-import { useAppStore } from './store';
+import { useEffect, useRef } from 'react';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
+import { NotificationContainer } from './components/NotificationContainer';
 import { ProblemManager } from './components/ProblemManager';
 import { ResultComparison } from './components/ResultComparison';
-import { NotificationContainer } from './components/NotificationContainer';
+import { buildTelemetryPayload, getActiveTelemetryAttribution, trackLandingEvent } from './services/landingInstrumentation';
+import { useAppStore } from './store';
 
 function MainApp() {
   const { ui, problem, currentProblemId, initializeApp, setShowProblemManager } = useAppStore();
+  const location = useLocation();
+  const hasTrackedAppEntryRef = useRef(false);
 
-  // Initialize app on start
   useEffect(() => {
     initializeApp();
   }, [initializeApp]);
 
+  useEffect(() => {
+    if (hasTrackedAppEntryRef.current) {
+      return;
+    }
+
+    hasTrackedAppEntryRef.current = true;
+    const attribution = getActiveTelemetryAttribution(location.search);
+    trackLandingEvent(
+      'app_entry',
+      buildTelemetryPayload(
+        {
+          entryPath: location.pathname,
+        },
+        attribution,
+      ),
+    );
+  }, [location.pathname, location.search]);
+
   return (
     <div className="min-h-screen transition-colors" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-      {/* Header */}
       <Header />
-      
-      {/* Main Content */}
+
       <main className="container mx-auto px-4 py-6">
         {problem && !currentProblemId && (
           <div
@@ -45,30 +63,25 @@ function MainApp() {
           </div>
         )}
 
-        {/* Navigation */}
         <div className="mb-6">
           <Navigation />
         </div>
 
-        {/* Content Area */}
         <div className="animate-fade-in">
           <Outlet />
         </div>
       </main>
 
-      {/* Notifications */}
       <NotificationContainer />
 
-      {/* Problem Manager Modal */}
-      <ProblemManager 
-        isOpen={ui.showProblemManager} 
-        onClose={() => setShowProblemManager(false)} 
+      <ProblemManager
+        isOpen={ui.showProblemManager}
+        onClose={() => setShowProblemManager(false)}
       />
 
-      {/* Result Comparison Modal */}
       {ui.showResultComparison && <ResultComparison />}
     </div>
   );
 }
 
-export default MainApp; 
+export default MainApp;
