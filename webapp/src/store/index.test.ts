@@ -54,4 +54,36 @@ describe('useAppStore initialization', () => {
       expect.arrayContaining([{ key: 'team', values: ['A', 'B'] }]),
     );
   });
+
+  it('silently provisions and updates a synced workspace draft problem', () => {
+    const firstProblem = createSampleProblem({ num_sessions: 1 });
+    const secondProblem = createSampleProblem({ num_sessions: 3 });
+    const solution = createSampleSolution();
+
+    const createdId = useAppStore.getState().syncWorkspaceDraft({
+      problem: firstProblem,
+      solution: null,
+      attributeDefinitions: [{ key: 'team', values: ['A', 'B'] }],
+      problemName: 'Random Group Generator draft',
+    });
+
+    let state = useAppStore.getState();
+    expect(createdId).toBeTruthy();
+    expect(state.currentProblemId).toBe(createdId);
+    expect(state.savedProblems[createdId]?.name).toBe('Random Group Generator draft');
+    expect(state.savedProblems[createdId]?.problem.num_sessions).toBe(1);
+
+    const updatedId = useAppStore.getState().syncWorkspaceDraft({
+      problem: secondProblem,
+      solution,
+      currentProblemId: createdId,
+      problemName: 'Random Group Generator draft',
+    });
+
+    state = useAppStore.getState();
+    expect(updatedId).toBe(createdId);
+    expect(state.problem?.num_sessions).toBe(3);
+    expect(state.solution).toEqual(solution);
+    expect(state.savedProblems[createdId]?.problem.num_sessions).toBe(3);
+  });
 });

@@ -263,6 +263,66 @@ describe("SolverWorkerService", () => {
     await expect(recommendedPromise).resolves.toEqual(settings);
   });
 
+  it("exposes raw discovery and contract RPC helpers for browser agents", async () => {
+    const service = createService();
+    await initializeService(service);
+    const worker = FakeWorker.latest();
+
+    const capabilitiesPromise = service.capabilities();
+    expect(worker.postedMessages.at(-1)).toEqual({
+      type: "capabilities",
+      id: "2",
+      data: {},
+    });
+    worker.emit({
+      type: "RPC_SUCCESS",
+      id: "2",
+      data: { result: { bootstrap: { title: "GroupMixer solver contracts" } } },
+    });
+    await expect(capabilitiesPromise).resolves.toEqual({
+      bootstrap: { title: "GroupMixer solver contracts" },
+    });
+
+    const helpPromise = service.getOperationHelp("solve");
+    expect(worker.postedMessages.at(-1)).toEqual({
+      type: "get_operation_help",
+      id: "3",
+      data: { args: ["solve"] },
+    });
+    worker.emit({
+      type: "RPC_SUCCESS",
+      id: "3",
+      data: { result: { operation: { id: "solve" } } },
+    });
+    await expect(helpPromise).resolves.toEqual({ operation: { id: "solve" } });
+
+    const validatePromise = service.validateProblemContract({ problem: { people: [] } });
+    expect(worker.postedMessages.at(-1)).toEqual({
+      type: "validate_problem",
+      id: "4",
+      data: { problemPayload: { problem: { people: [] } } },
+    });
+    worker.emit({
+      type: "RPC_SUCCESS",
+      id: "4",
+      data: { result: { valid: true, issues: [] } },
+    });
+    await expect(validatePromise).resolves.toEqual({ valid: true, issues: [] });
+
+    const solvePromise = service.solveContract({ problem: { people: [] } });
+    expect(worker.postedMessages.at(-1)).toEqual({
+      type: "SOLVE",
+      id: "5",
+      data: { problemPayload: { problem: { people: [] } }, useProgress: false },
+    });
+    worker.emit({
+      type: "SOLVE_SUCCESS",
+      id: "5",
+      data: { result: { schedule: {}, final_score: 4 } },
+    });
+    await expect(solvePromise).resolves.toEqual({ schedule: {}, final_score: 4 });
+  });
+
   it("rejects pending calls on fatal worker errors", async () => {
     const service = createService();
     await initializeService(service);

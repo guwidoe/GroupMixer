@@ -1,9 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { isWasmContractModule, isWasmSolverModule } from "./module";
 
-describe("isWasmSolverModule", () => {
-  it("accepts a module with the required runtime surface", () => {
+describe("wasm module guards", () => {
+  it("accepts a module with the full contract-native runtime and discovery surface", () => {
     const module = {
+      capabilities: vi.fn(),
+      get_operation_help: vi.fn(),
+      list_schemas: vi.fn(),
+      get_schema: vi.fn(),
+      list_public_errors: vi.fn(),
+      get_public_error: vi.fn(),
       solve: vi.fn(),
       solve_with_progress: vi.fn(),
       validate_problem: vi.fn(),
@@ -41,7 +47,7 @@ describe("isWasmSolverModule", () => {
     expect(isWasmContractModule("not-an-object")).toBe(false);
   });
 
-  it("rejects modules missing the contract-native exports", () => {
+  it("rejects modules missing the discovery exports needed for external agents", () => {
     expect(
       isWasmContractModule({
         solve: vi.fn(),
@@ -50,6 +56,7 @@ describe("isWasmSolverModule", () => {
         get_default_solver_configuration: vi.fn(),
         recommend_settings: vi.fn(),
         evaluate_input: vi.fn(),
+        inspect_result: vi.fn(),
         default: vi.fn(),
       }),
     ).toBe(false);

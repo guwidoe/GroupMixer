@@ -144,8 +144,13 @@ export interface WorkspaceBridgeInput {
   currentProblemId?: string | null;
 }
 
+export interface WorkspaceDraftSyncInput extends WorkspaceBridgeInput {
+  problemName: string;
+}
+
 export interface WorkspaceActions {
   replaceWorkspace: (input: WorkspaceBridgeInput) => void;
+  syncWorkspaceDraft: (input: WorkspaceDraftSyncInput) => string;
 }
 
 export interface UtilityActions {

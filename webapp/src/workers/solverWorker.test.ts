@@ -23,13 +23,22 @@ describe("solverWorker runtime", () => {
   function createRuntime(overrides: Partial<Parameters<typeof createSolverWorkerRuntime>[0]> = {}) {
     const wasmInit = vi.fn(async () => undefined);
     const wasmModule = {
+      capabilities: vi.fn(() => ({ bootstrap: { title: "GroupMixer solver contracts" } })),
+      get_operation_help: vi.fn((operationId: string) => ({ operation: { id: operationId } })),
+      list_schemas: vi.fn(() => [{ id: "solve-request", version: "1.0.0" }]),
+      get_schema: vi.fn((schemaId: string) => ({ id: schemaId, version: "1.0.0", schema: {} })),
+      list_public_errors: vi.fn(() => [{ error: { code: "invalid-input", message: "bad input" } }]),
+      get_public_error: vi.fn((errorCode: string) => ({ error: { code: errorCode, message: "bad input" } })),
       init_panic_hook: vi.fn(),
       solve_with_progress: vi.fn((input: Record<string, unknown>, callback?: ((progress: Record<string, unknown>) => boolean) | null) => {
         callback?.({ iteration: 1, best_score: 3 });
         return { schedule: {}, final_score: 1, input };
       }),
+      validate_problem: vi.fn((input: Record<string, unknown>) => ({ valid: true, issues: [], input })),
       get_default_solver_configuration: vi.fn(() => ({ solver_type: "SimulatedAnnealing" })),
       recommend_settings: vi.fn((request: Record<string, unknown>) => ({ request })),
+      evaluate_input: vi.fn((input: Record<string, unknown>) => ({ schedule: {}, final_score: 2, input })),
+      inspect_result: vi.fn((result: Record<string, unknown>) => ({ final_score: result.final_score ?? 0 })),
     };
 
     const runtime = createSolverWorkerRuntime({
@@ -169,6 +178,44 @@ describe("solverWorker runtime", () => {
             },
           },
         },
+      },
+    ]);
+  });
+
+  it("returns discovery and contract inspection RPC responses", async () => {
+    const { runtime, wasmModule } = createRuntime();
+    await initializeRuntime(runtime);
+    postedMessages = [];
+
+    await runtime.handleMessage({ type: "capabilities", id: "2", data: {} });
+    await runtime.handleMessage({ type: "get_operation_help", id: "3", data: { args: ["solve"] } });
+    await runtime.handleMessage({ type: "validate_problem", id: "4", data: { problemPayload: { problem: { people: [] } } } });
+    await runtime.handleMessage({ type: "inspect_result", id: "5", data: { resultPayload: { schedule: {}, final_score: 7 } as never } });
+
+    expect(wasmModule.capabilities).toHaveBeenCalledTimes(1);
+    expect(wasmModule.get_operation_help).toHaveBeenCalledWith("solve");
+    expect(wasmModule.validate_problem).toHaveBeenCalledWith({ problem: { people: [] } });
+    expect(wasmModule.inspect_result).toHaveBeenCalledWith({ schedule: {}, final_score: 7 });
+    expect(postedMessages).toEqual([
+      {
+        type: "RPC_SUCCESS",
+        id: "2",
+        data: { result: { bootstrap: { title: "GroupMixer solver contracts" } } },
+      },
+      {
+        type: "RPC_SUCCESS",
+        id: "3",
+        data: { result: { operation: { id: "solve" } } },
+      },
+      {
+        type: "RPC_SUCCESS",
+        id: "4",
+        data: { result: { valid: true, issues: [], input: { problem: { people: [] } } } },
+      },
+      {
+        type: "RPC_SUCCESS",
+        id: "5",
+        data: { result: { final_score: 7 } },
       },
     ]);
   });

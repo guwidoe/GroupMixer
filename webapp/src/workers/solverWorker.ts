@@ -9,7 +9,9 @@ import {
   createRequestErrorMessage,
   createRpcSuccessMessage,
   createSolveSuccessMessage,
+  isSolverRpcMethod,
   type WorkerErrorData,
+  type RpcRequestMessage,
   type WorkerRequestMessage,
   type WorkerResponseMessage,
 } from "../services/solverWorker/protocol";
@@ -19,9 +21,18 @@ type WorkerConsole = Pick<Console, "warn" | "error">;
 
 type WorkerWasmModule = Partial<Pick<
   WasmContractModule,
+  | "capabilities"
+  | "get_operation_help"
+  | "list_schemas"
+  | "get_schema"
+  | "list_public_errors"
+  | "get_public_error"
   | "solve_with_progress"
+  | "validate_problem"
   | "get_default_solver_configuration"
   | "recommend_settings"
+  | "evaluate_input"
+  | "inspect_result"
 >> & {
   init_panic_hook?: () => void;
 };
@@ -89,6 +100,81 @@ export function createSolverWorkerRuntime({
     postMessage(createRequestErrorMessage(id, data));
   }
 
+  function requireMethod<K extends keyof WorkerWasmModule>(
+    key: K,
+  ): NonNullable<WorkerWasmModule[K]> {
+    const method = wasm[key];
+    if (typeof method !== "function") {
+      throw new Error(`WASM module is missing ${String(key)}`);
+    }
+
+    return method as NonNullable<WorkerWasmModule[K]>;
+  }
+
+  function requireStringArg(message: RpcRequestMessage, name: string): string {
+    const value = message.data.args?.[0];
+    if (typeof value !== "string" || value.length === 0) {
+      throw new Error(`Worker RPC ${message.type} requires ${name}`);
+    }
+    return value;
+  }
+
+  function handleRpcMessage(message: RpcRequestMessage): void {
+    const { id, type } = message;
+
+    if (!isSolverRpcMethod(type)) {
+      workerConsole.warn(`Unknown message type: ${type}`);
+      return;
+    }
+
+    let result: unknown;
+
+    switch (type) {
+      case "capabilities":
+        result = requireMethod("capabilities")();
+        break;
+      case "get_operation_help":
+        result = requireMethod("get_operation_help")(requireStringArg(message, "operationId"));
+        break;
+      case "list_schemas":
+        result = requireMethod("list_schemas")();
+        break;
+      case "get_schema":
+        result = requireMethod("get_schema")(requireStringArg(message, "schemaId"));
+        break;
+      case "list_public_errors":
+        result = requireMethod("list_public_errors")();
+        break;
+      case "get_public_error":
+        result = requireMethod("get_public_error")(requireStringArg(message, "errorCode"));
+        break;
+      case "validate_problem":
+        result = requireMethod("validate_problem")(message.data.problemPayload || {});
+        break;
+      case "get_default_solver_configuration":
+        result = requireMethod("get_default_solver_configuration")();
+        break;
+      case "recommend_settings":
+        result = requireMethod("recommend_settings")(
+          message.data.recommendRequest || {
+            problem_definition: {},
+            objectives: [],
+            constraints: [],
+            desired_runtime_seconds: 0,
+          },
+        );
+        break;
+      case "evaluate_input":
+        result = requireMethod("evaluate_input")(message.data.problemPayload || {});
+        break;
+      case "inspect_result":
+        result = requireMethod("inspect_result")(message.data.resultPayload || { schedule: {}, final_score: 0 });
+        break;
+    }
+
+    postMessage(createRpcSuccessMessage(id, result));
+  }
+
   async function handleMessage(message: WorkerRequestMessage): Promise<void> {
     const { type, id } = message;
 
@@ -137,57 +223,22 @@ export function createSolverWorkerRuntime({
           break;
         }
 
-        case "get_default_solver_configuration": {
-          try {
-            if (!isInitialized) throw new Error("WASM module not initialized.");
-            if (typeof wasm.get_default_solver_configuration !== "function") {
-              throw new Error("WASM module is missing get_default_solver_configuration");
-            }
-
-            const settings = wasm.get_default_solver_configuration();
-            postMessage(createRpcSuccessMessage(id, settings));
-          } catch (error) {
-            postMessage(
-              createRequestErrorMessage(
-                id,
-                { error: errorToMessage(error) },
-                "RPC_ERROR",
-              ),
-            );
-          }
-          break;
-        }
-
-        case "recommend_settings": {
-          try {
-            if (!isInitialized) throw new Error("WASM module not initialized.");
-            if (typeof wasm.recommend_settings !== "function") {
-              throw new Error("WASM module is missing recommend_settings");
-            }
-
-            const settings = wasm.recommend_settings(
-              message.data.recommendRequest || {
-                problem_definition: {},
-                objectives: [],
-                constraints: [],
-                desired_runtime_seconds: 0,
-              },
-            );
-            postMessage(createRpcSuccessMessage(id, settings));
-          } catch (error) {
-            postMessage(
-              createRequestErrorMessage(
-                id,
-                { error: errorToMessage(error) },
-                "RPC_ERROR",
-              ),
-            );
-          }
-          break;
-        }
-
         default:
-          workerConsole.warn(`Unknown message type: ${type}`);
+          try {
+            if (!isInitialized) {
+              throw new Error("WASM module not initialized.");
+            }
+
+            handleRpcMessage(message as RpcRequestMessage);
+          } catch (error) {
+            postMessage(
+              createRequestErrorMessage(
+                id,
+                { error: errorToMessage(error) },
+                "RPC_ERROR",
+              ),
+            );
+          }
       }
     } catch (error) {
       workerConsole.error("Worker error:", error);

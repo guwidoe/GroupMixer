@@ -163,21 +163,14 @@ pub fn with_solver_config(mut input: ApiInput, config: SolverConfiguration) -> A
 pub fn assert_capacity_respected(schedule: &[Vec<Vec<String>>], groups: &[Group]) {
     let _group_caps: HashMap<_, _> = groups.iter().map(|g| (&g.id, g.size)).collect();
 
-    for (session_idx, session) in schedule.iter().enumerate() {
+    for session in schedule {
         for (group_idx, group_members) in session.iter().enumerate() {
             // Note: schedule uses group indices, not IDs in the API result
             // The capacity check would need the actual group mapping
             let member_count = group_members.len() as u32;
             if group_idx < groups.len() {
                 let capacity = groups[group_idx].size;
-                assert!(
-                    member_count <= capacity,
-                    "Session {} group {} has {} members but capacity is {}",
-                    session_idx,
-                    group_idx,
-                    member_count,
-                    capacity
-                );
+                assert!(member_count <= capacity, "Capacity check failed");
             }
         }
     }
@@ -186,16 +179,11 @@ pub fn assert_capacity_respected(schedule: &[Vec<Vec<String>>], groups: &[Group]
 /// Verifies that no person appears twice in the same session.
 #[allow(dead_code)]
 pub fn assert_no_duplicate_assignments(schedule: &[Vec<Vec<String>>]) {
-    for (session_idx, session) in schedule.iter().enumerate() {
+    for session in schedule {
         let mut seen = std::collections::HashSet::new();
         for group in session {
             for person in group {
-                assert!(
-                    seen.insert(person),
-                    "Person {} appears multiple times in session {}",
-                    person,
-                    session_idx
-                );
+                assert!(seen.insert(person), "Duplicate assignment detected");
             }
         }
     }

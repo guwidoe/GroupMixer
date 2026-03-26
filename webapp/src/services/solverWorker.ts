@@ -16,7 +16,17 @@ import {
   buildWarmStartProblemPayload,
   parseRustSolutionResult,
 } from "./rustBoundary";
-import type { WasmRecommendSettingsRequest } from "./wasm/module";
+import type {
+  WasmBootstrapResponse,
+  WasmErrorLookupResponse,
+  WasmOperationHelpResponse,
+  WasmRecommendSettingsRequest,
+  WasmResultSummary,
+  WasmSchemaLookupResponse,
+  WasmSchemaSummary,
+  WasmValidateResponse,
+} from "./wasm/module";
+import type { RustResult } from "./wasm/types";
 
 function buildRecommendSettingsRequest(
   problem: Problem,
@@ -275,6 +285,15 @@ export class SolverWorkerService {
     return parseRustSolutionResult(result, null, this.lastProgressUpdate);
   }
 
+  async solveContract(problemPayload: Record<string, unknown>): Promise<RustResult> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    const { result } = await this.sendSolve(problemPayload, false);
+    return result;
+  }
+
   async solveWithProgress(
     problem: Problem,
     progressCallback?: ProgressCallback,
@@ -294,6 +313,17 @@ export class SolverWorkerService {
     const solution = parseRustSolutionResult(result, lastProgress, this.lastProgressUpdate);
 
     return { solution, lastProgress };
+  }
+
+  async solveContractWithProgress(
+    problemPayload: Record<string, unknown>,
+    progressCallback?: ProgressCallback,
+  ): Promise<{ result: RustResult; lastProgress: ProgressUpdate | null }> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    return this.sendSolve(problemPayload, true, progressCallback);
   }
 
   async solveWithProgressWarmStart(
@@ -365,6 +395,44 @@ export class SolverWorkerService {
     return this.callSolver<SolverSettings>("get_default_solver_configuration", {});
   }
 
+  public async capabilities(): Promise<WasmBootstrapResponse> {
+    return this.callSolver<WasmBootstrapResponse>("capabilities", {});
+  }
+
+  public async getOperationHelp(operationId: string): Promise<WasmOperationHelpResponse> {
+    return this.callSolver<WasmOperationHelpResponse>("get_operation_help", {
+      args: [operationId],
+    });
+  }
+
+  public async listSchemas(): Promise<WasmSchemaSummary[]> {
+    return this.callSolver<WasmSchemaSummary[]>("list_schemas", {});
+  }
+
+  public async getSchema(schemaId: string): Promise<WasmSchemaLookupResponse> {
+    return this.callSolver<WasmSchemaLookupResponse>("get_schema", {
+      args: [schemaId],
+    });
+  }
+
+  public async listPublicErrors(): Promise<WasmErrorLookupResponse[]> {
+    return this.callSolver<WasmErrorLookupResponse[]>("list_public_errors", {});
+  }
+
+  public async getPublicError(errorCode: string): Promise<WasmErrorLookupResponse> {
+    return this.callSolver<WasmErrorLookupResponse>("get_public_error", {
+      args: [errorCode],
+    });
+  }
+
+  public async validateProblemContract(
+    problemPayload: Record<string, unknown>,
+  ): Promise<WasmValidateResponse> {
+    return this.callSolver<WasmValidateResponse>("validate_problem", {
+      problemPayload,
+    });
+  }
+
   public async getDefaultSettings(): Promise<SolverSettings> {
     return this.getDefaultSolverConfiguration();
   }
@@ -375,6 +443,28 @@ export class SolverWorkerService {
   ): Promise<SolverSettings> {
     return this.callSolver<SolverSettings>("recommend_settings", {
       recommendRequest: buildRecommendSettingsRequest(problem, desiredRuntimeSeconds),
+    });
+  }
+
+  public async recommendSettingsContract(
+    recommendRequest: WasmRecommendSettingsRequest,
+  ): Promise<SolverSettings> {
+    return this.callSolver<SolverSettings>("recommend_settings", {
+      recommendRequest,
+    });
+  }
+
+  public async evaluateInputContract(
+    problemPayload: Record<string, unknown>,
+  ): Promise<RustResult> {
+    return this.callSolver<RustResult>("evaluate_input", {
+      problemPayload,
+    });
+  }
+
+  public async inspectResult(resultPayload: RustResult): Promise<WasmResultSummary> {
+    return this.callSolver<WasmResultSummary>("inspect_result", {
+      resultPayload,
     });
   }
 }
