@@ -2,23 +2,34 @@
 
 ## Purpose
 
-This document defines the go / no-go checkpoint for expanding beyond the current multilingual landing rollout.
+This document defines the operating policy for multilingual landing expansion **after** the currently approved locale set.
 
 Current shipped landing locales:
 
 - English (`/slug`)
 - Spanish (`/es/slug`) for selected high-value pages
 - French (`/fr/slug`) for selected high-value pages
+- Japanese (`/ja/slug`) for selected high-value pages
+- Hindi (`/hi/slug`) for selected high-value pages
+- Simplified Chinese (`/zh/slug`, hreflang `zh-Hans`) for selected high-value pages
 
-Not yet approved for implementation:
+## What is already approved
 
-- Japanese
-- Hindi
-- Chinese
+The following decisions are now implemented:
+
+- Japanese is approved and live on the shared landing engine
+- Hindi is approved and live on the shared landing engine
+- Chinese is approved specifically as **Simplified Chinese**
+- Chinese uses the shared `/zh/...` route prefix with hreflang `zh-Hans`
+- all of these locales reuse the same shared landing components and app/workspace architecture
+
+## What still requires a checkpoint
+
+Any further locale expansion beyond the current shipped set should still be evidence-driven.
 
 The rule is simple: **new locales ship only when demand, review quality, and operating constraints are all acceptable**.
 
-## Evidence required before a new locale ships
+## Evidence required before another locale ships
 
 A candidate locale should not move into implementation unless all of the following are true:
 
@@ -42,54 +53,28 @@ A candidate locale should not move into implementation unless all of the followi
    - basic QA can be performed after major landing changes
    - there is a plan for monitoring locale-specific traffic and conversions
 
-## Evaluation criteria by locale
+## Additional operating notes for current non-English locales
 
 ### Japanese
 
-Potentially viable if:
-
-- Search Console shows meaningful demand from Japanese queries or Japan-based traffic
-- the high-intent landing pages map cleanly to existing use cases
-- concise, natural Japanese copy can be reviewed by a competent speaker
-
-Specific concerns:
-
-- Japanese copy quality degrades quickly with literal translation
-- short headings / CTA text need human review for tone and clarity
-- we should not localize Japanese slugs first; keep the shared English slug structure until demand is proven
+- keep slugs shared with English unless there is a strong reason to localize them later
+- short headings and CTA text should be reviewed carefully for tone and clarity
+- avoid literal translations when shorter, more natural phrasing is better
 
 ### Hindi
 
-Potentially viable if:
+- watch for overly formal phrasing in future revisions
+- validate that usage demand justifies ongoing maintenance versus English usage overlap
+- prioritize clarity over word-for-word translation
 
-- there is measurable demand from Hindi-language search behavior rather than English usage in India
-- the target audience actually benefits from Hindi landing copy for the current product intent
-- we have a reviewer who can judge whether the copy sounds natural and useful
+### Simplified Chinese
 
-Specific concerns:
+- current Chinese support is **Simplified Chinese only**
+- if Traditional Chinese is ever considered, treat it as a separate locale decision
+- if mainland-China distribution becomes a goal, re-evaluate hosting / crawl / infrastructure assumptions explicitly
+- continue using the shared English slug structure unless there is strong evidence for changing it
 
-- English overlap may be high, so demand must justify the extra maintenance burden
-- machine-translated Hindi often sounds overly formal or unnatural for product landing pages
-- support / review capacity matters more than raw traffic alone
-
-### Chinese
-
-Chinese requires a **separate approval step** beyond normal locale demand.
-
-Potentially viable only if all of the following are addressed:
-
-- we decide whether the target is Simplified Chinese, Traditional Chinese, or both
-- we decide which search/distribution surface matters (Google-facing only vs broader China-facing distribution)
-- we review hosting / CDN / crawl constraints if mainland-China SEO is in scope
-- we confirm terminology review capacity for the chosen script variant
-
-Specific concerns:
-
-- “Chinese” is not one locale decision; script and market strategy matter
-- if mainland-China SEO is desired, distribution and infrastructure constraints are materially different
-- if we cannot commit to a distribution strategy, Chinese should remain in exploration
-
-## Go / no-go checklist
+## Go / no-go checklist for any future locale
 
 A locale moves from exploration to implementation only when the answer to every item below is **yes**:
 
@@ -98,7 +83,7 @@ A locale moves from exploration to implementation only when the answer to every 
 - Do we have a human reviewer for the locale?
 - Can we maintain and QA the locale after launch?
 - Do we understand any market-specific distribution constraints?
-- For Chinese specifically: has script + market scope been explicitly approved?
+- If script or market scope is ambiguous, has that ambiguity been resolved explicitly?
 
 If any answer is **no**, the locale stays in exploration.
 
