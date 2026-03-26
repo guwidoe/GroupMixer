@@ -24,24 +24,32 @@ export function ProblemEditorHeader({
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="space-y-0.5">
         <button
+          type="button"
           onClick={onLoadProblem}
-          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors btn-secondary focus-visible:outline-none"
-          style={{ outline: 'none', boxShadow: 'none' }}
+          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm font-medium transition-colors"
+          style={{ color: 'var(--text-secondary)' }}
         >
-          <Upload className="h-4 w-4 flex-shrink-0" />
-          <span>Load</span>
+          <Upload className="h-4 w-4 shrink-0" style={{ color: 'var(--text-tertiary)' }} />
+          <span className="truncate">Load</span>
         </button>
+
         <button
+          type="button"
           onClick={onSaveProblem}
-          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors btn-secondary focus-visible:outline-none"
-          style={{ outline: 'none', boxShadow: 'none' }}
+          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm font-medium transition-colors"
+          style={{ color: 'var(--text-secondary)' }}
         >
-          <Save className="h-4 w-4 flex-shrink-0" />
-          <span>Save</span>
+          <Save className="h-4 w-4 shrink-0" style={{ color: 'var(--text-tertiary)' }} />
+          <span className="truncate">Save</span>
         </button>
-        <DemoDataDropdown onDemoCaseClick={onDemoCaseClick} />
+
+        <DemoDataDropdown
+          onDemoCaseClick={onDemoCaseClick}
+          variant="sidebar"
+          placement="right"
+        />
       </div>
     </div>
   );

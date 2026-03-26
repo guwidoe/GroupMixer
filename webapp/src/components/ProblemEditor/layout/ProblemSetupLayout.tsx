@@ -44,7 +44,7 @@ export function ProblemSetupLayout({
         headerContent={sidebarHeader}
       />
 
-      <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
+      <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-0">
         <ProblemSetupSidebar
           groupedSections={groupedSections}
           activeSection={activeSection}

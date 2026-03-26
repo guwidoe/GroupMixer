@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Calendar, ChevronDown, Hash, Users, Zap } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronRight, Hash, Users, Zap } from 'lucide-react';
 import { useAppStore } from '../../store';
 import type { DemoCaseWithMetrics } from './types';
 import { useOutsideClick } from '../../hooks';
 
 interface DemoDataDropdownProps {
   onDemoCaseClick: (demoCaseId: string, demoCaseName: string) => void;
+  variant?: 'default' | 'sidebar';
+  placement?: 'bottom' | 'right';
 }
 
 interface DropdownPosition {
@@ -16,7 +18,11 @@ interface DropdownPosition {
   maxHeight: number;
 }
 
-export function DemoDataDropdown({ onDemoCaseClick }: DemoDataDropdownProps) {
+export function DemoDataDropdown({
+  onDemoCaseClick,
+  variant = 'default',
+  placement = 'bottom',
+}: DemoDataDropdownProps) {
   const { demoDropdownOpen, setDemoDropdownOpen, addNotification } = useAppStore();
   const demoDropdownRef = useRef<HTMLDivElement>(null);
   const dropdownMenuRef = useRef<HTMLDivElement>(null);
@@ -31,10 +37,32 @@ export function DemoDataDropdown({ onDemoCaseClick }: DemoDataDropdownProps) {
 
     const triggerRect = demoDropdownRef.current.getBoundingClientRect();
     const viewportPadding = 12;
-    const gap = 6;
-    const preferredWidth = 320;
+    const gap = 8;
+    const preferredWidth = placement === 'right' ? 360 : 320;
     const width = Math.min(preferredWidth, window.innerWidth - viewportPadding * 2);
     const measuredMenuHeight = dropdownMenuRef.current?.offsetHeight ?? 384;
+
+    if (placement === 'right') {
+      const availableRight = window.innerWidth - triggerRect.right - viewportPadding - gap;
+      const availableLeft = triggerRect.left - viewportPadding - gap;
+      const openLeft = availableRight < Math.min(width, preferredWidth) && availableLeft > availableRight;
+      const left = openLeft
+        ? Math.max(viewportPadding, triggerRect.left - width - gap)
+        : Math.min(triggerRect.right + gap, window.innerWidth - width - viewportPadding);
+      const maxHeight = Math.max(180, window.innerHeight - triggerRect.top - viewportPadding);
+      const top = Math.max(
+        viewportPadding,
+        Math.min(triggerRect.top, window.innerHeight - Math.min(measuredMenuHeight, maxHeight) - viewportPadding),
+      );
+
+      setDropdownPosition({
+        top,
+        left,
+        width,
+        maxHeight,
+      });
+      return;
+    }
 
     const left = Math.max(
       viewportPadding,
@@ -58,7 +86,7 @@ export function DemoDataDropdown({ onDemoCaseClick }: DemoDataDropdownProps) {
       width,
       maxHeight,
     });
-  }, []);
+  }, [placement]);
 
   useOutsideClick({
     refs: [demoDropdownRef, dropdownMenuRef],
@@ -118,24 +146,49 @@ export function DemoDataDropdown({ onDemoCaseClick }: DemoDataDropdownProps) {
     return () => window.cancelAnimationFrame(frame);
   }, [demoDropdownOpen, demoCasesWithMetrics.length, loadingDemoMetrics, updateDropdownPosition]);
 
+  const trigger = variant === 'sidebar' ? (
+    <button
+      type="button"
+      onClick={() => setDemoDropdownOpen(!demoDropdownOpen)}
+      className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm font-medium transition-colors"
+      style={{
+        backgroundColor: demoDropdownOpen ? 'var(--bg-tertiary)' : 'transparent',
+        color: demoDropdownOpen ? 'var(--color-accent)' : 'var(--text-secondary)',
+      }}
+      aria-expanded={demoDropdownOpen}
+      aria-haspopup="menu"
+    >
+      <Zap
+        className="h-4 w-4 shrink-0"
+        style={{ color: demoDropdownOpen ? 'var(--color-accent)' : 'var(--text-tertiary)' }}
+      />
+      <span className="truncate">Demo Data</span>
+      <ChevronRight className="ml-auto h-4 w-4 shrink-0" />
+    </button>
+  ) : (
+    <button
+      onClick={() => setDemoDropdownOpen(!demoDropdownOpen)}
+      className="flex items-center gap-1 sm:gap-2 justify-center px-1.5 sm:px-3 py-1.5 rounded-md font-medium transition-colors btn-secondary min-w-0 text-xs sm:text-sm focus-visible:outline-none"
+      style={{ outline: 'none', boxShadow: 'none' }}
+      aria-expanded={demoDropdownOpen}
+      aria-haspopup="menu"
+    >
+      <Zap className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+      <span>Demo Data</span>
+      <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+    </button>
+  );
+
   return (
     <>
       <div className="relative" ref={demoDropdownRef}>
-        <button
-          onClick={() => setDemoDropdownOpen(!demoDropdownOpen)}
-          className="flex items-center gap-1 sm:gap-2 justify-center px-1.5 sm:px-3 py-1.5 rounded-md font-medium transition-colors btn-secondary min-w-0 text-xs sm:text-sm focus-visible:outline-none"
-          style={{ outline: 'none', boxShadow: 'none' }}
-        >
-          <Zap className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-          <span>Demo Data</span>
-          <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-        </button>
+        {trigger}
       </div>
 
       {demoDropdownOpen && dropdownPosition && createPortal(
         <div
           ref={dropdownMenuRef}
-          className="fixed z-50 rounded-md border shadow-lg overflow-hidden overflow-y-auto"
+          className="fixed z-50 overflow-y-auto rounded-md border shadow-lg"
           style={{
             top: dropdownPosition.top,
             left: dropdownPosition.left,
@@ -144,6 +197,8 @@ export function DemoDataDropdown({ onDemoCaseClick }: DemoDataDropdownProps) {
             backgroundColor: 'var(--bg-primary)',
             borderColor: 'var(--border-primary)',
           }}
+          role="menu"
+          aria-label="Demo data cases"
         >
           {loadingDemoMetrics ? (
             <div className="p-4 text-center" style={{ color: 'var(--text-secondary)' }}>
@@ -162,7 +217,7 @@ export function DemoDataDropdown({ onDemoCaseClick }: DemoDataDropdownProps) {
                 return (
                   <div key={category}>
                     <div
-                      className="border-b px-3 py-2 text-xs font-medium text-gray-500 bg-gray-50"
+                      className="border-b bg-gray-50 px-3 py-2 text-xs font-medium text-gray-500"
                       style={{
                         backgroundColor: 'var(--bg-tertiary)',
                         borderColor: 'var(--border-primary)',
@@ -174,7 +229,10 @@ export function DemoDataDropdown({ onDemoCaseClick }: DemoDataDropdownProps) {
                     {casesInCategory.map((demoCase) => (
                       <button
                         key={demoCase.id}
-                        onClick={() => onDemoCaseClick(demoCase.id, demoCase.name)}
+                        onClick={() => {
+                          setDemoDropdownOpen(false);
+                          onDemoCaseClick(demoCase.id, demoCase.name);
+                        }}
                         className="flex w-full flex-col border-b px-3 py-3 text-left transition-colors last:border-b-0"
                         style={{
                           color: 'var(--text-primary)',
@@ -187,6 +245,7 @@ export function DemoDataDropdown({ onDemoCaseClick }: DemoDataDropdownProps) {
                         onMouseLeave={(e) => {
                           e.currentTarget.style.backgroundColor = 'transparent';
                         }}
+                        role="menuitem"
                       >
                         <div className="flex items-center justify-between gap-3">
                           <span className="font-medium text-sm">{demoCase.name}</span>
