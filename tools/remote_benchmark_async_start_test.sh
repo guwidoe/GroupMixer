@@ -9,6 +9,7 @@ tmpdir="$(mktemp -d)"
 machine_name="remote-start-test-$$-$(date +%s)"
 remote_stage_dir="${tmpdir}/remote-stage"
 payload_path="${tmpdir}/payload.json"
+rsync_log="${tmpdir}/rsync.log"
 mkdir -p "${tmpdir}/bin"
 
 cleanup() {
@@ -55,12 +56,18 @@ chmod +x "${tmpdir}/bin/ssh"
 cat > "${tmpdir}/bin/rsync" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
+echo "$*" >> __RSYNC_LOG__
 args=("$@")
 dst="${args[$(( ${#args[@]} - 1 ))]}"
 dst="${dst#*:}"
 mkdir -p "${dst}" "${dst}/benchmarking"
 EOF
 chmod +x "${tmpdir}/bin/rsync"
+python3 - <<PY
+from pathlib import Path
+path = Path(${tmpdir@Q}) / "bin" / "rsync"
+path.write_text(path.read_text().replace("__RSYNC_LOG__", ${rsync_log@Q}))
+PY
 
 cat > "${tmpdir}/remote_benchmark.env" <<EOF
 GROUPMIXER_REMOTE_SSH_TARGET=fake-host
@@ -88,3 +95,5 @@ assert payload['git_shortsha']
 assert payload['git_dirty_tree'] in {'true', 'false'}
 print('remote_benchmark_async start regression test passed')
 PY
+
+test "$(wc -l < "${rsync_log}" | tr -d ' ')" = "2"

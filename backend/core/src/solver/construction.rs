@@ -3,7 +3,9 @@
 //! This module contains the `State::new` constructor and constraint
 //! preprocessing logic that converts API input into the internal solver state.
 
-use super::{derive_phase_seed, CONSTRUCTION_SEED_SALT, Dsu, SolverError, State};
+use super::{
+    derive_phase_seed, CONSTRUCTION_SEED_SALT, Dsu, RepeatPenaltyFunction, SolverError, State,
+};
 use crate::models::{ApiInput, Constraint, PairMeetingMode};
 use rand::seq::SliceRandom;
 use rand::{rng, RngExt, SeedableRng};
@@ -268,13 +270,28 @@ impl State {
             w_contacts = objective.weight;
         }
 
-        let mut w_repetition = 0.0;
-        if let Some(Constraint::RepeatEncounter(params)) = input
+        let repeat_constraints: Vec<_> = input
             .constraints
             .iter()
-            .find(|c| matches!(c, Constraint::RepeatEncounter(_)))
-        {
+            .filter_map(|constraint| match constraint {
+                Constraint::RepeatEncounter(params) => Some(params),
+                _ => None,
+            })
+            .collect();
+        if repeat_constraints.len() > 1 {
+            return Err(SolverError::ValidationError(
+                "At most one RepeatEncounter constraint is supported".to_string(),
+            ));
+        }
+
+        let mut w_repetition = 0.0;
+        let mut repeat_encounter_limit = 1u32;
+        let mut repeat_penalty_function = RepeatPenaltyFunction::Squared;
+        if let Some(params) = repeat_constraints.first() {
             w_repetition = params.penalty_weight;
+            repeat_encounter_limit = params.max_allowed_encounters;
+            repeat_penalty_function = RepeatPenaltyFunction::parse(&params.penalty_function)
+                .map_err(SolverError::ValidationError)?;
         }
 
         let schedule = vec![vec![vec![]; group_count]; input.problem.num_sessions as usize];
@@ -347,6 +364,8 @@ impl State {
             immovable_violations: 0,
             w_contacts,
             w_repetition,
+            repeat_encounter_limit,
+            repeat_penalty_function,
 
             forbidden_pair_weights: Vec::new(),
             should_together_weights: Vec::new(),

@@ -9,6 +9,7 @@ tmpdir="$(mktemp -d)"
 machine_name="remote-bundle-test-$$-$(date +%s)"
 remote_stage_dir="${tmpdir}/remote-stage"
 ssh_log="${tmpdir}/ssh.log"
+rsync_log="${tmpdir}/rsync.log"
 payload_dir="${tmpdir}/payloads"
 mkdir -p "${tmpdir}/bin" "${payload_dir}"
 : > "${ssh_log}"
@@ -74,12 +75,18 @@ chmod +x "${tmpdir}/bin/ssh"
 cat > "${tmpdir}/bin/rsync" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
+echo "$*" >> __RSYNC_LOG__
 args=("$@")
 dst="${args[$(( ${#args[@]} - 1 ))]}"
 dst="${dst#*:}"
 mkdir -p "${dst}" "${dst}/benchmarking"
 EOF
 chmod +x "${tmpdir}/bin/rsync"
+python3 - <<PY
+from pathlib import Path
+path = Path(${tmpdir@Q}) / "bin" / "rsync"
+path.write_text(path.read_text().replace("__RSYNC_LOG__", ${rsync_log@Q}))
+PY
 
 remote_shared_refs="${remote_stage_dir}/groupmixer-benchmark/shared/benchmarking-artifacts/refs"
 mkdir -p "${remote_shared_refs}/features/setup-refactor/suites/representative/full_solve"
@@ -151,3 +158,5 @@ for start_file in start_files:
     assert start["machine_name"] == machine_name
 print("remote_benchmark_async bundle regression test passed")
 PY
+
+test "$(wc -l < "${rsync_log}" | tr -d ' ')" = "4"

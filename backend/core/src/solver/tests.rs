@@ -199,6 +199,115 @@ fn test_swap_updates_scores_correctly() {
 }
 
 #[test]
+fn test_repeat_encounter_limit_and_linear_penalty_affect_swap_delta() {
+    let mut input = create_test_input(4, vec![(2, 2)], 3);
+    input.constraints.push(Constraint::RepeatEncounter(
+        crate::models::RepeatEncounterParams {
+            max_allowed_encounters: 2,
+            penalty_function: "linear".to_string(),
+            penalty_weight: 7.0,
+        },
+    ));
+
+    let mut state = State::new(&input).unwrap();
+    state.schedule = vec![
+        vec![vec![0, 1], vec![2, 3]],
+        vec![vec![0, 1], vec![2, 3]],
+        vec![vec![0, 2], vec![1, 3]],
+    ];
+    state._recalculate_locations_from_schedule();
+    state._recalculate_scores();
+
+    assert_eq!(state.repetition_penalty, 0);
+
+    let cost_before = state.calculate_cost();
+    let delta = state.calculate_swap_cost_delta(2, 2, 1);
+    assert_eq!(delta, 14.0);
+
+    state.apply_swap(2, 2, 1);
+    state._recalculate_scores();
+
+    assert_eq!(state.repetition_penalty, 2);
+    let cost_after = state.calculate_cost();
+    assert_eq!(cost_after - cost_before, 14.0);
+}
+
+#[test]
+fn test_repeat_encounter_limit_and_linear_penalty_affect_transfer_delta() {
+    let mut input = create_test_input(4, vec![(2, 3)], 3);
+    input.constraints.push(Constraint::RepeatEncounter(
+        crate::models::RepeatEncounterParams {
+            max_allowed_encounters: 2,
+            penalty_function: "linear".to_string(),
+            penalty_weight: 7.0,
+        },
+    ));
+
+    let mut state = State::new(&input).unwrap();
+    state.schedule = vec![
+        vec![vec![0, 1], vec![2, 3]],
+        vec![vec![0, 1], vec![2, 3]],
+        vec![vec![0, 2], vec![1, 3]],
+    ];
+    state._recalculate_locations_from_schedule();
+    state._recalculate_scores();
+
+    assert_eq!(state.repetition_penalty, 0);
+
+    let cost_before = state.calculate_cost();
+    let delta = state.calculate_transfer_cost_delta(2, 2, 0, 1);
+    assert_eq!(delta, 7.0);
+
+    state.apply_transfer(2, 2, 0, 1);
+    state._recalculate_scores();
+
+    assert_eq!(state.repetition_penalty, 1);
+    let cost_after = state.calculate_cost();
+    assert_eq!(cost_after - cost_before, 7.0);
+}
+
+#[test]
+fn test_invalid_repeat_encounter_penalty_function_is_rejected() {
+    let mut input = create_test_input(4, vec![(2, 2)], 2);
+    input.constraints.push(Constraint::RepeatEncounter(
+        crate::models::RepeatEncounterParams {
+            max_allowed_encounters: 1,
+            penalty_function: "cubic".to_string(),
+            penalty_weight: 10.0,
+        },
+    ));
+
+    let error = State::new(&input).unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("Invalid RepeatEncounter penalty_function"));
+}
+
+#[test]
+fn test_multiple_repeat_encounter_constraints_are_rejected() {
+    let mut input = create_test_input(4, vec![(2, 2)], 2);
+    input.constraints.push(Constraint::RepeatEncounter(
+        crate::models::RepeatEncounterParams {
+            max_allowed_encounters: 1,
+            penalty_function: "squared".to_string(),
+            penalty_weight: 10.0,
+        },
+    ));
+    input.constraints.push(Constraint::RepeatEncounter(
+        crate::models::RepeatEncounterParams {
+            max_allowed_encounters: 2,
+            penalty_function: "linear".to_string(),
+            penalty_weight: 5.0,
+        },
+    ));
+
+    let error = State::new(&input).unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("At most one RepeatEncounter constraint is supported"));
+}
+
+#[test]
 fn test_clique_merging() {
     // Create two overlapping MustStayTogether constraints with different session sets
     // A: {p0, p1} active in sessions 0 and 1

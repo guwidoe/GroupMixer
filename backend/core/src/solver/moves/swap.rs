@@ -7,14 +7,6 @@ use super::super::State;
 use crate::models::PairMeetingMode;
 
 impl State {
-    fn repetition_penalty_for_contact_count(count: u32) -> i32 {
-        if count > 1 {
-            (count as i32 - 1).pow(2)
-        } else {
-            0
-        }
-    }
-
     fn contact_delta_for_membership_change(
         &self,
         day: usize,
@@ -36,8 +28,8 @@ impl State {
             }
 
             let new_count = if direction < 0 { count - 1 } else { count + 1 };
-            let old_penalty = Self::repetition_penalty_for_contact_count(count);
-            let new_penalty = Self::repetition_penalty_for_contact_count(new_count);
+            let old_penalty = self.repetition_penalty_for_contact_count(count);
+            let new_penalty = self.repetition_penalty_for_contact_count(new_count);
             delta_cost += self.w_repetition * (new_penalty - old_penalty) as f64;
 
             if direction < 0 && count == 1 {
@@ -571,15 +563,9 @@ impl State {
                     }
 
                     // Update repetition penalty
-                    if old_count > 1 {
-                        let old_penalty = (old_count as i32 - 1).pow(2);
-                        let new_penalty = if old_count > 1 {
-                            (old_count as i32 - 2).pow(2)
-                        } else {
-                            0
-                        };
-                        self.repetition_penalty += new_penalty - old_penalty;
-                    }
+                    let old_penalty = self.repetition_penalty_for_contact_count(old_count);
+                    let new_penalty = self.repetition_penalty_for_contact_count(old_count - 1);
+                    self.repetition_penalty += new_penalty - old_penalty;
                 }
             }
         }
@@ -626,15 +612,9 @@ impl State {
                     }
 
                     // Update repetition penalty
-                    if old_count > 1 {
-                        let old_penalty = (old_count as i32 - 1).pow(2);
-                        let new_penalty = if old_count > 1 {
-                            (old_count as i32 - 2).pow(2)
-                        } else {
-                            0
-                        };
-                        self.repetition_penalty += new_penalty - old_penalty;
-                    }
+                    let old_penalty = self.repetition_penalty_for_contact_count(old_count);
+                    let new_penalty = self.repetition_penalty_for_contact_count(old_count - 1);
+                    self.repetition_penalty += new_penalty - old_penalty;
                 }
             }
         }
@@ -652,17 +632,8 @@ impl State {
                 }
 
                 // Update repetition penalty
-                let old_penalty = if old_count > 1 {
-                    (old_count as i32 - 1).pow(2)
-                } else {
-                    0
-                };
-                let new_count = old_count + 1;
-                let new_penalty = if new_count > 1 {
-                    (new_count as i32 - 1).pow(2)
-                } else {
-                    0
-                };
+                let old_penalty = self.repetition_penalty_for_contact_count(old_count);
+                let new_penalty = self.repetition_penalty_for_contact_count(old_count + 1);
                 self.repetition_penalty += new_penalty - old_penalty;
             }
         }

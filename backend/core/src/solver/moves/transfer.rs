@@ -139,17 +139,8 @@ impl State {
             let count = self.contact_matrix[person_idx][member];
             if count > 0 {
                 // Repetition penalty change: (new_penalty - old_penalty)
-                let old_penalty = if count > 1 {
-                    (count as i32 - 1).pow(2)
-                } else {
-                    0
-                };
-                let new_count = count - 1;
-                let new_penalty = if new_count > 1 {
-                    (new_count as i32 - 1).pow(2)
-                } else {
-                    0
-                };
+                let old_penalty = self.repetition_penalty_for_contact_count(count);
+                let new_penalty = self.repetition_penalty_for_contact_count(count - 1);
                 delta_cost += self.w_repetition * (new_penalty - old_penalty) as f64;
 
                 if count == 1 {
@@ -168,17 +159,8 @@ impl State {
 
             let count = self.contact_matrix[person_idx][member];
             // Repetition penalty change: (new_penalty - old_penalty)
-            let old_penalty = if count > 1 {
-                (count as i32 - 1).pow(2)
-            } else {
-                0
-            };
-            let new_count = count + 1;
-            let new_penalty = if new_count > 1 {
-                (new_count as i32 - 1).pow(2)
-            } else {
-                0
-            };
+            let old_penalty = self.repetition_penalty_for_contact_count(count);
+            let new_penalty = self.repetition_penalty_for_contact_count(count + 1);
             delta_cost += self.w_repetition * (new_penalty - old_penalty) as f64;
 
             if count == 0 {
@@ -394,17 +376,8 @@ impl State {
                     }
 
                     // Update repetition penalty
-                    let old_penalty = if old_count > 1 {
-                        (old_count as i32 - 1).pow(2)
-                    } else {
-                        0
-                    };
-                    let new_count = old_count - 1;
-                    let new_penalty = if new_count > 1 {
-                        (new_count as i32 - 1).pow(2)
-                    } else {
-                        0
-                    };
+                    let old_penalty = self.repetition_penalty_for_contact_count(old_count);
+                    let new_penalty = self.repetition_penalty_for_contact_count(old_count - 1);
                     self.repetition_penalty += new_penalty - old_penalty;
                 }
             }
@@ -423,17 +396,8 @@ impl State {
                 }
 
                 // Update repetition penalty
-                let old_penalty = if old_count > 1 {
-                    (old_count as i32 - 1).pow(2)
-                } else {
-                    0
-                };
-                let new_count = old_count + 1;
-                let new_penalty = if new_count > 1 {
-                    (new_count as i32 - 1).pow(2)
-                } else {
-                    0
-                };
+                let old_penalty = self.repetition_penalty_for_contact_count(old_count);
+                let new_penalty = self.repetition_penalty_for_contact_count(old_count + 1);
                 self.repetition_penalty += new_penalty - old_penalty;
             }
         }

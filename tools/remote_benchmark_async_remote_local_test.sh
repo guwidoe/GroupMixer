@@ -9,10 +9,12 @@ tmpdir="$(mktemp -d)"
 remote_root="${tmpdir}/remote"
 runs_dir="${remote_root}/groupmixer-benchmark/runs"
 run_id="local-remote-helper-test"
+control_repo_dir="${remote_root}/GroupMixer"
 snapshot_repo_dir="${runs_dir}/${run_id}/snapshot/GroupMixer"
+shared_artifacts_dir="${remote_root}/groupmixer-benchmark/shared/benchmarking-artifacts"
 status_payload_path="${tmpdir}/status-payload.json"
 bench_log="${tmpdir}/bench.log"
-mkdir -p "${snapshot_repo_dir}/tools" "${tmpdir}/bin"
+mkdir -p "${control_repo_dir}/tools" "${shared_artifacts_dir}" "${tmpdir}/bin"
 
 cleanup() {
   rm -rf "${tmpdir}"
@@ -22,7 +24,7 @@ trap cleanup EXIT
 ln -s "$(command -v bash)" "${tmpdir}/bin/bash"
 ln -s "$(python3 -c 'import sys; print(sys.executable)')" "${tmpdir}/bin/python3"
 
-cat > "${snapshot_repo_dir}/tools/benchmark_workflow.sh" <<EOF
+cat > "${control_repo_dir}/tools/benchmark_workflow.sh" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
 {
@@ -34,22 +36,23 @@ set -euo pipefail
 } > $(printf '%q' "${bench_log}")
 exit 0
 EOF
-chmod +x "${snapshot_repo_dir}/tools/benchmark_workflow.sh"
+chmod +x "${control_repo_dir}/tools/benchmark_workflow.sh"
 
 make_payload() {
   local action="$1"
-  python3 - "$action" "${runs_dir}" "${remote_root}/groupmixer-benchmark/benchmark.lock" <<'PY'
+  python3 - "$action" "${runs_dir}" "${remote_root}/groupmixer-benchmark/benchmark.lock" "${control_repo_dir}" "${shared_artifacts_dir}" <<'PY'
 import base64
 import json
 import sys
 
-action, runs_dir, lock_file = sys.argv[1:4]
+action, runs_dir, lock_file, control_repo_dir, shared_artifacts_dir = sys.argv[1:6]
 payload = {
     "action": action,
     "run_id": "local-remote-helper-test",
     "bench_command": "record",
     "bench_args": ["--suite", "path"],
-    "remote_repo_dir": "IGNORED-FOR-START",
+    "remote_repo_dir": control_repo_dir,
+    "remote_shared_artifacts_dir": shared_artifacts_dir,
     "remote_runs_dir": runs_dir,
     "remote_lock_file": lock_file,
     "remote_env_file": "",

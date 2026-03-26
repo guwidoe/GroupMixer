@@ -87,6 +87,7 @@ cd webapp && npm run test:e2e
   - data-driven tests as the end-to-end solver contract
   - mutation testing/coverage work to verify the suite is actually protective
 - When changing solver behavior, add or update fixture cases in `backend/core/tests/test_cases/` whenever the change affects observable end-to-end behavior.
+- When touching solver hot paths (`backend/core/src/solver/**`, move preview/apply logic, construction, scoring, or search-driver performance-sensitive paths), query the remote same-machine benchmark lane after the change before handoff. For routine hotpath changes, an after-change remote benchmark is required; when the last baseline is stale or timing interpretation matters, query a before-change remote benchmark too.
 - `solver-server` is optional and localhost-oriented; treat it as a separate API surface worth testing independently of `solver-core`.
 - `webapp` consumes the Rust solver through WASM and browser workers; frontend regressions can come from services/store/conversion code as much as from React components.
 - Prefer repo-level docs updates when workflows, doctrine, or architecture assumptions change.

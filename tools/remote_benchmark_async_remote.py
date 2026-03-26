@@ -21,6 +21,7 @@ def decode_payload() -> dict:
 payload = decode_payload()
 action = payload["action"]
 remote_repo_dir = payload["remote_repo_dir"]
+remote_shared_artifacts_dir = payload.get("remote_shared_artifacts_dir", "")
 remote_runs_dir = payload["remote_runs_dir"]
 remote_lock_file = payload["remote_lock_file"]
 remote_env_file = payload.get("remote_env_file", "")
@@ -56,6 +57,45 @@ def bench_env() -> dict:
 
 def run_bash(command: str, cwd: str | None = None, env: dict | None = None, check: bool = True):
     return subprocess.run(["bash", "-lc", command], cwd=cwd, env=env, check=check, text=True, capture_output=True)
+
+
+def remove_path(path: Path) -> None:
+    if path.is_symlink() or path.is_file():
+        path.unlink()
+    elif path.exists():
+        shutil.rmtree(path)
+
+
+def stage_snapshot(control_repo_dir: Path, snapshot_repo_dir: Path, shared_artifacts_dir: Path | None) -> None:
+    if not control_repo_dir.exists():
+        raise FileNotFoundError(f"missing control checkout: {control_repo_dir}")
+
+    snapshot_repo_dir.parent.mkdir(parents=True, exist_ok=True)
+    remove_path(snapshot_repo_dir)
+
+    ignore = shutil.ignore_patterns("target", ".git", ".pi")
+    try:
+        shutil.copytree(
+            control_repo_dir,
+            snapshot_repo_dir,
+            symlinks=True,
+            copy_function=os.link,
+            ignore=ignore,
+        )
+    except Exception:
+        remove_path(snapshot_repo_dir)
+        shutil.copytree(
+            control_repo_dir,
+            snapshot_repo_dir,
+            symlinks=True,
+            ignore=ignore,
+        )
+
+    if shared_artifacts_dir is not None:
+        benchmark_artifacts_dir = snapshot_repo_dir / "benchmarking" / "artifacts"
+        remove_path(benchmark_artifacts_dir)
+        benchmark_artifacts_dir.parent.mkdir(parents=True, exist_ok=True)
+        benchmark_artifacts_dir.symlink_to(shared_artifacts_dir)
 
 
 def iso_now() -> str:
@@ -148,6 +188,8 @@ if not run_id:
 
 run_dir = runs_dir / run_id
 snapshot_repo_dir = run_dir / "snapshot" / "GroupMixer"
+control_repo_dir = Path(remote_repo_dir)
+shared_artifacts_dir = Path(remote_shared_artifacts_dir) if remote_shared_artifacts_dir else None
 meta_path = run_dir / "meta.json"
 
 if action == "start":
@@ -195,7 +237,9 @@ if action == "start":
             "machine_name": payload.get("machine_name"),
             "session_name": f"groupmixer-bench-{run_id}",
             "launcher": launcher,
+            "control_repo_dir": str(control_repo_dir),
             "remote_repo_dir": str(snapshot_repo_dir),
+            "remote_shared_artifacts_dir": str(shared_artifacts_dir) if shared_artifacts_dir else "",
             "remote_lock_file": remote_lock_file,
             "idle_max_load1": payload.get("idle_max_load1", ""),
             "idle_poll_seconds": payload.get("idle_poll_seconds", "30"),
@@ -205,8 +249,10 @@ if action == "start":
         }
         meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True) + "\n")
 
-    if not snapshot_repo_dir.exists():
-        print(json.dumps({"error": f"missing staged snapshot for run_id {run_id}"}))
+    try:
+        stage_snapshot(control_repo_dir, snapshot_repo_dir, shared_artifacts_dir)
+    except Exception as exc:
+        print(json.dumps({"error": f"failed to stage snapshot for run_id {run_id}: {exc}"}))
         raise SystemExit(2)
 
     runner_path = run_dir / "runner.py"
@@ -420,13 +466,13 @@ with lock_file.open("a+") as lock_handle:
         subprocess.run(
             ["tmux", "new-session", "-d", "-s", meta["session_name"], f"python3 {shlex.quote(str(runner_path))} >> {shlex.quote(str(wrapper_log_path))} 2>&1"],
             check=True,
-            cwd=snapshot_repo_dir,
+            cwd=control_repo_dir,
         )
     else:
         wrapper_log = wrapper_log_path.open("w")
         proc = subprocess.Popen(
             ["python3", str(runner_path)],
-            cwd=snapshot_repo_dir,
+            cwd=control_repo_dir,
             stdout=wrapper_log,
             stderr=subprocess.STDOUT,
             start_new_session=True,

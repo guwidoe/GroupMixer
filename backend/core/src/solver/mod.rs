@@ -52,6 +52,42 @@ pub enum SolverError {
     ValidationError(String),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RepeatPenaltyFunction {
+    Linear,
+    Squared,
+}
+
+impl RepeatPenaltyFunction {
+    pub(crate) fn parse(value: &str) -> Result<Self, String> {
+        match value {
+            "linear" => Ok(Self::Linear),
+            "squared" => Ok(Self::Squared),
+            other => Err(format!(
+                "Invalid RepeatEncounter penalty_function '{}'. Expected 'linear' or 'squared'",
+                other
+            )),
+        }
+    }
+
+    #[inline]
+    pub(crate) fn penalty_for_excess(self, excess_contacts: u32) -> i32 {
+        let excess = excess_contacts as i32;
+        match self {
+            Self::Linear => excess,
+            Self::Squared => excess * excess,
+        }
+    }
+
+    #[inline]
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::Linear => "linear",
+            Self::Squared => "squared",
+        }
+    }
+}
+
 /// The internal state of the solver, optimized for high-performance optimization.
 ///
 /// This struct represents the complete state of an optimization problem, including
@@ -239,6 +275,10 @@ pub struct State {
     pub w_contacts: f64,
     /// Weight for repeat encounter penalties (from constraints)
     pub w_repetition: f64,
+    /// Maximum allowed pair encounters before repetition penalties begin.
+    pub repeat_encounter_limit: u32,
+    /// Penalty function used once the repeat encounter limit is exceeded.
+    pub repeat_penalty_function: RepeatPenaltyFunction,
     // MustStayTogether is a hard constraint; no weights are tracked
     /// Penalty weight for each forbidden pair violation
     pub forbidden_pair_weights: Vec<f64>,
@@ -266,6 +306,12 @@ pub struct State {
 }
 
 impl State {
+    #[inline]
+    pub(crate) fn repetition_penalty_for_contact_count(&self, count: u32) -> i32 {
+        self.repeat_penalty_function
+            .penalty_for_excess(count.saturating_sub(self.repeat_encounter_limit))
+    }
+
     /// Returns a human-friendly identifier for a person index.
     /// If the person has a `name` attribute, this returns "{name} ({id})"; otherwise just the ID.
     pub fn display_person_by_idx(&self, person_idx: usize) -> String {
@@ -343,10 +389,8 @@ impl State {
         self.repetition_penalty = 0;
         for i in 0..people_count {
             for j in (i + 1)..people_count {
-                let contacts = self.contact_matrix[i][j] as i32;
-                if contacts > 1 {
-                    self.repetition_penalty += (contacts - 1).pow(2);
-                }
+                self.repetition_penalty +=
+                    self.repetition_penalty_for_contact_count(self.contact_matrix[i][j]);
             }
         }
 

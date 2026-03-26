@@ -183,6 +183,8 @@ Policy:
 
 For serious timing interpretation, use the designated remote benchmark lane.
 
+When a change touches solver hot paths (`backend/core/src/solver/**`, hot move preview/apply code, construction, scoring, or other performance-sensitive search paths), queue a remote same-machine benchmark before handoff. The default rule is after-change benchmarking; add a before-change run too when the previous baseline is stale or when you need an explicit fresh comparison point.
+
 ### Configure the machine once
 
 ```bash

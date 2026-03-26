@@ -208,6 +208,7 @@ build_payload_json() {
   REQUESTED_SUITE="${requested_suite}" \
   REQUESTED_SUITES_CSV="${requested_suites_csv}" \
   REMOTE_REPO_DIR="${REMOTE_REPO_DIR}" \
+  REMOTE_SHARED_ARTIFACTS_DIR="${REMOTE_SHARED_ARTIFACTS_DIR}" \
   REMOTE_RUNS_DIR="${REMOTE_RUNS_DIR}" \
   REMOTE_LOCK_FILE="${REMOTE_LOCK_FILE}" \
   REMOTE_ENV_FILE="${GROUPMIXER_REMOTE_ENV_FILE:-}" \
@@ -240,6 +241,7 @@ payload = {
     "bench_command": bench_command,
     "bench_args": bench_args,
     "remote_repo_dir": os.environ["REMOTE_REPO_DIR"],
+    "remote_shared_artifacts_dir": os.environ["REMOTE_SHARED_ARTIFACTS_DIR"],
     "remote_runs_dir": os.environ["REMOTE_RUNS_DIR"],
     "remote_lock_file": os.environ["REMOTE_LOCK_FILE"],
     "remote_env_file": os.environ.get("REMOTE_ENV_FILE", ""),
@@ -406,7 +408,7 @@ mirror_run() {
   local run_id="$1"
   mkdir -p "${LOCAL_RUNS_DIR}"
   if "${GROUPMIXER_REMOTE_SSH_BIN}" "${GROUPMIXER_REMOTE_SSH_TARGET}" "test -d '${REMOTE_RUNS_DIR}/${run_id}'"; then
-    "${GROUPMIXER_REMOTE_RSYNC_BIN}" -az -e "${GROUPMIXER_REMOTE_RSYNC_SSH}" \
+    "${GROUPMIXER_REMOTE_RSYNC_BIN}" -az --exclude snapshot/ -e "${GROUPMIXER_REMOTE_RSYNC_SSH}" \
       "${GROUPMIXER_REMOTE_SSH_TARGET}:${REMOTE_RUNS_DIR}/${run_id}/" \
       "${LOCAL_RUNS_DIR}/${run_id}/"
     echo "[groupmixer][remote] mirrored benchmark run to ${LOCAL_RUNS_DIR}/${run_id}"
@@ -501,7 +503,6 @@ start_run() {
 
   local run_id payload_json start_json effective_run_id
   run_id="$(generate_run_id "${bench_command}")"
-  stage_remote_run_snapshot "${run_id}"
   payload_json="$(build_payload_json start "${run_id}" "${bench_command}" "$@")"
   start_json="$(run_remote_action "${payload_json}")"
   effective_run_id="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["run_id"])' <<<"${start_json}")"
@@ -655,7 +656,6 @@ start_recording_bundle() {
   local run_id
   run_id="$(generate_run_id "${label}")"
   bundle_args+=(--recording-id "${run_id}")
-  stage_remote_run_snapshot "${run_id}"
   local payload_json start_json effective_run_id
   GROUPMIXER_REMOTE_PAYLOAD_BUNDLE_KIND="${bundle_kind}" \
   GROUPMIXER_REMOTE_PAYLOAD_FEATURE_NAME="${feature_name}" \

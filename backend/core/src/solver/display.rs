@@ -156,11 +156,13 @@ impl State {
     /// ```
     pub fn format_score_breakdown(&self) -> String {
         let mut breakdown = format!(
-            "Score Breakdown:\n  UniqueContacts: {} (weight: {:.1})\n  RepetitionPenalty: {} (weight: {:.1})\n  AttributeBalancePenalty: {:.2}\n  BaselineScore: {:.2}",
+            "Score Breakdown:\n  UniqueContacts: {} (weight: {:.1})\n  RepetitionPenalty: {} (weight: {:.1}, limit: {}, function: {})\n  AttributeBalancePenalty: {:.2}\n  BaselineScore: {:.2}",
             self.unique_contacts,
             self.w_contacts,
             self.repetition_penalty,
             self.w_repetition,
+            self.repeat_encounter_limit,
+            self.repeat_penalty_function.as_str(),
             self.attribute_balance_penalty,
             self.baseline_score
         );
