@@ -1,3 +1,4 @@
+export { AttributeDefinitionsSection } from './AttributeDefinitionsSection';
 export { ConstraintsSection } from './ConstraintsSection';
 export { GroupsSection } from './GroupsSection';
 export { HardConstraintsSection } from './HardConstraintsSection';

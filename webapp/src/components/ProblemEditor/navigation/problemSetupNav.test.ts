@@ -22,12 +22,12 @@ describe('problemSetupNav', () => {
     ]);
   });
 
-  it('keeps planned sections in the shared registry for future sidebar work', () => {
+  it('keeps sidebar-only sections in the shared registry for first-class setup concepts', () => {
     const sections = getProblemSetupSections({ includePlanned: true });
     const attributes = sections.find((section) => section.id === 'attributes');
 
     expect(attributes).toBeDefined();
-    expect(attributes?.status).toBe('planned');
+    expect(attributes?.status).toBe('available');
     expect(attributes?.surfaces).toEqual(['sidebar']);
   });
 

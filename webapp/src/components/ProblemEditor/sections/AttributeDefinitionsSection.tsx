@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Edit, Plus, Tag, Trash2 } from 'lucide-react';
-import type { AttributeDefinition } from '../../../../types';
+import type { AttributeDefinition } from '../../../types';
 
 interface AttributeDefinitionsSectionProps {
   attributeDefinitions: AttributeDefinition[];
@@ -25,7 +25,7 @@ export function AttributeDefinitionsSection({
       <div className="flex items-center justify-between gap-2">
         <button
           onClick={() => setShowAttributesSection(!showAttributesSection)}
-          className="flex items-center gap-2 text-left transition-colors min-w-0"
+          className="flex min-w-0 items-center gap-2 text-left transition-colors"
           style={{ flex: '1 1 0%' }}
         >
           {effectiveShowAttributes ? (
@@ -35,7 +35,7 @@ export function AttributeDefinitionsSection({
           )}
           <Tag className="w-5 h-5" style={{ color: 'var(--color-accent)' }} />
           <h3
-            className="text-base font-medium truncate"
+            className="truncate text-base font-medium"
             style={{ color: 'var(--text-primary)', maxWidth: '100%', fontSize: 'clamp(0.9rem, 4vw, 1.1rem)' }}
           >
             Attribute Definitions ({attributeDefinitions.length})
@@ -52,9 +52,9 @@ export function AttributeDefinitionsSection({
           className="rounded-lg border transition-colors"
           style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
         >
-          <div className="p-4 space-y-3">
+          <div className="space-y-3 p-4">
             <div
-              className="rounded-md p-3 border text-sm"
+              className="rounded-md border p-3 text-sm"
               style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-primary)' }}
             >
               <p style={{ color: 'var(--text-secondary)' }}>
@@ -65,23 +65,23 @@ export function AttributeDefinitionsSection({
 
             {attributeDefinitions.length ? (
               <div className="space-y-2">
-                {attributeDefinitions.map((def) => (
+                {attributeDefinitions.map((definition) => (
                   <div
-                    key={def.key}
+                    key={definition.key}
                     className="rounded-lg border p-3 transition-colors"
                     style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="font-medium capitalize text-sm" style={{ color: 'var(--text-primary)' }}>
-                          {def.key}
+                        <h4 className="text-sm font-medium capitalize" style={{ color: 'var(--text-primary)' }}>
+                          {definition.key}
                         </h4>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {def.values.map((value) => (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {definition.values.map((value) => (
                             <span
                               key={value}
                               style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}
-                              className="px-2 py-0.5 rounded-full text-xs font-medium"
+                              className="rounded-full px-2 py-0.5 text-xs font-medium"
                             >
                               {value}
                             </span>
@@ -90,14 +90,14 @@ export function AttributeDefinitionsSection({
                       </div>
                       <div className="flex gap-1">
                         <button
-                          onClick={() => onEditAttribute(def)}
-                          className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                          onClick={() => onEditAttribute(definition)}
+                          className="p-1 text-gray-400 transition-colors hover:text-blue-600"
                         >
                           <Edit className="w-3 h-3" />
                         </button>
                         <button
-                          onClick={() => onRemoveAttribute(def.key)}
-                          className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                          onClick={() => onRemoveAttribute(definition.key)}
+                          className="p-1 text-gray-400 transition-colors hover:text-red-600"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
@@ -107,8 +107,8 @@ export function AttributeDefinitionsSection({
                 ))}
               </div>
             ) : (
-              <div className="text-center py-6" style={{ color: 'var(--text-secondary)' }}>
-                <Tag className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--text-tertiary)' }} />
+              <div className="py-6 text-center" style={{ color: 'var(--text-secondary)' }}>
+                <Tag className="mx-auto mb-2 h-8 w-8" style={{ color: 'var(--text-tertiary)' }} />
                 <p className="text-sm">No attributes defined yet</p>
                 <p className="text-xs">Click "Add Attribute" to get started</p>
               </div>

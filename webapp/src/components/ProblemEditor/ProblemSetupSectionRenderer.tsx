@@ -1,6 +1,7 @@
 import React from 'react';
 import type { ProblemEditorController } from './useProblemEditorController';
 import {
+  AttributeDefinitionsSection,
   ConstraintsSection,
   GroupsSection,
   HardConstraintsSection,
@@ -37,9 +38,6 @@ export function ProblemSetupSectionRenderer({ controller }: ProblemSetupSectionR
           problem={problem ?? null}
           attributeDefinitions={attributeDefinitions}
           sessionsCount={sessionsCount}
-          onAddAttribute={() => entities.setShowAttributeForm(true)}
-          onEditAttribute={entities.handleEditAttribute}
-          onRemoveAttribute={removeAttributeDefinition}
           onAddPerson={() => entities.setShowPersonForm(true)}
           onEditPerson={entities.handleEditPerson}
           onDeletePerson={entities.handleDeletePerson}
@@ -49,6 +47,15 @@ export function ProblemSetupSectionRenderer({ controller }: ProblemSetupSectionR
           onTriggerExcelImport={() =>
             addNotification({ type: 'info', title: 'Coming Soon', message: 'Excel import is not yet implemented.' })
           }
+        />
+      );
+    case 'attributes':
+      return (
+        <AttributeDefinitionsSection
+          attributeDefinitions={attributeDefinitions}
+          onAddAttribute={() => entities.setShowAttributeForm(true)}
+          onEditAttribute={entities.handleEditAttribute}
+          onRemoveAttribute={removeAttributeDefinition}
         />
       );
     case 'groups':

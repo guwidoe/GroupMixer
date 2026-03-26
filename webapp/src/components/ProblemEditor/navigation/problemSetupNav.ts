@@ -75,7 +75,7 @@ export const PROBLEM_SETUP_SECTIONS: readonly ProblemSetupSectionDefinition[] = 
     group: 'model',
     order: 3,
     icon: Tag,
-    status: 'planned',
+    status: 'available',
     surfaces: ['sidebar'],
     count: ({ attributeDefinitions }) => attributeDefinitions.length,
   },
