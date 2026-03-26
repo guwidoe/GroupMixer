@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { ArrowRight, ChevronDown, Copy, Download, RotateCcw, Sparkles, Users } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -85,7 +86,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
   const syncWorkspaceDraft = useAppStore((state) => state.syncWorkspaceDraft);
   const navigate = useNavigate();
   const resultsRef = useRef<HTMLDivElement>(null);
-  const [hasScrolledToResults, setHasScrolledToResults] = useState(false);
+  const hasScrolledToResultsRef = useRef(false);
   const [resultFormat, setResultFormat] = useState<ResultFormat>('cards');
   const [copiedFormat, setCopiedFormat] = useState<ResultFormat | null>(null);
 
@@ -99,13 +100,18 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
 
   const workspacePayload = controller.workspacePayload;
   const solvedSolution = workspacePayload.solution ?? null;
-  const sharedSessionData = solvedSolution ? buildResultsSessionData(workspacePayload.problem, solvedSolution) : [];
+  const sharedSessionData = useMemo(
+    () => (solvedSolution ? buildResultsSessionData(workspacePayload.problem, solvedSolution) : []),
+    [solvedSolution, workspacePayload.problem],
+  );
   const displaySessions = useMemo(
     () => buildDisplaySessions(sharedSessionData, controller.result?.sessions ?? []),
     [controller.result?.sessions, sharedSessionData],
   );
   const resultText = useMemo(() => buildResultText(displaySessions), [displaySessions]);
   const resultCsv = useMemo(() => buildResultCsv(displaySessions), [displaySessions]);
+  const activeResultFormat = controller.result ? resultFormat : 'cards';
+  const activeCopiedFormat = controller.result ? copiedFormat : null;
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -133,16 +139,14 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
   ]);
 
   useEffect(() => {
-    if (controller.result && !hasScrolledToResults && resultsRef.current) {
-      setHasScrolledToResults(true);
-      resultsRef.current.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-    }
-  }, [controller.result, hasScrolledToResults]);
-
-  useEffect(() => {
     if (!controller.result) {
-      setResultFormat('cards');
-      setCopiedFormat(null);
+      hasScrolledToResultsRef.current = false;
+      return;
+    }
+
+    if (!hasScrolledToResultsRef.current && resultsRef.current) {
+      hasScrolledToResultsRef.current = true;
+      resultsRef.current.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
     }
   }, [controller.result]);
 
@@ -213,12 +217,12 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
               key={format}
               type="button"
               role="tab"
-              aria-selected={resultFormat === format}
+              aria-selected={activeResultFormat === format}
               onClick={() => setResultFormat(format)}
               className="rounded-full border px-3 py-1.5 text-sm font-medium capitalize"
               style={{
-                borderColor: resultFormat === format ? 'var(--color-accent)' : 'var(--border-primary)',
-                backgroundColor: resultFormat === format ? 'var(--bg-secondary)' : 'transparent',
+                borderColor: activeResultFormat === format ? 'var(--color-accent)' : 'var(--border-primary)',
+                backgroundColor: activeResultFormat === format ? 'var(--bg-secondary)' : 'transparent',
               }}
             >
               {format}
@@ -226,11 +230,11 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
           ))}
         </div>
 
-        {(resultFormat === 'text' || resultFormat === 'csv') && (
+        {(activeResultFormat === 'text' || activeResultFormat === 'csv') && (
           <button
             type="button"
             onClick={async () => {
-              const formatToCopy = resultFormat;
+              const formatToCopy = activeResultFormat;
               await copyText(formatToCopy === 'csv' ? resultCsv : resultText);
               setCopiedFormat(formatToCopy);
               window.setTimeout(() => setCopiedFormat((current) => (current === formatToCopy ? null : current)), 1200);
@@ -239,12 +243,12 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
             style={{ borderColor: 'var(--border-primary)' }}
           >
             <Copy className="h-3.5 w-3.5" />
-            {copiedFormat === resultFormat ? 'Copied' : `Copy ${resultFormat.toUpperCase()}`}
+            {activeCopiedFormat === activeResultFormat ? 'Copied' : `Copy ${activeResultFormat.toUpperCase()}`}
           </button>
         )}
       </div>
 
-      {resultFormat === 'cards' && (
+      {activeResultFormat === 'cards' && (
         solvedSolution ? (
           <ResultsScheduleGrid sessionData={sharedSessionData} />
         ) : (
@@ -283,7 +287,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
         )
       )}
 
-      {resultFormat === 'list' && (
+      {activeResultFormat === 'list' && (
         <div className="space-y-5">
           {displaySessions.map((session) => (
             <div key={session.sessionNumber} className="rounded-xl border p-4" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
@@ -303,7 +307,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
         </div>
       )}
 
-      {resultFormat === 'text' && (
+      {activeResultFormat === 'text' && (
         <div className="space-y-3">
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             Plain text format for easy copy/paste into chat, docs, or email.
@@ -318,7 +322,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
         </div>
       )}
 
-      {resultFormat === 'csv' && (
+      {activeResultFormat === 'csv' && (
         <div className="space-y-3">
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             CSV format for spreadsheets, docs, and quick manual editing.
