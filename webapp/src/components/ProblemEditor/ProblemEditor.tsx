@@ -17,18 +17,19 @@ export function ProblemEditor() {
 
   return (
     <div className="space-y-6">
-      <ProblemEditorHeader
-        onLoadProblem={controller.handleLoadProblem}
-        onSaveProblem={controller.handleSaveProblem}
-        onDemoCaseClick={controller.handleDemoCaseClick}
-      />
-
       <ProblemSetupLayout
         problem={controller.problem ?? null}
         attributeDefinitions={controller.attributeDefinitions}
         objectiveCount={controller.objectiveCount}
         activeSection={controller.navigationSection}
         onNavigate={controller.navigateToSection}
+        contentHeader={
+          <ProblemEditorHeader
+            onLoadProblem={controller.handleLoadProblem}
+            onSaveProblem={controller.handleSaveProblem}
+            onDemoCaseClick={controller.handleDemoCaseClick}
+          />
+        }
       >
         <ProblemSetupSectionRenderer controller={controller} />
       </ProblemSetupLayout>

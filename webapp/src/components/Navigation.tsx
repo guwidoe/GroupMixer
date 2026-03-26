@@ -48,14 +48,14 @@ export function Navigation() {
 
   return (
     <div
-      className="sticky top-0 z-30 -mx-4 border-b px-4 backdrop-blur"
+      className="sticky top-0 z-30 border-b"
       style={{
-        backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 92%, transparent)',
+        backgroundColor: 'var(--bg-primary)',
         borderColor: 'var(--border-primary)',
       }}
     >
       <nav aria-label="Primary app navigation">
-        <div className="flex min-w-0 gap-1 overflow-x-auto py-2">
+        <div className="flex min-w-0 gap-2 overflow-x-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon;
 
@@ -74,17 +74,19 @@ export function Navigation() {
                   }
                 }}
                 className={({ isActive }) =>
-                  `inline-flex min-w-fit items-center justify-center gap-2 rounded-md border-b-2 px-3 py-3 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
-                    isActive ? '' : 'hover:bg-[var(--bg-primary)]/50'
+                  `inline-flex min-w-fit items-center justify-center gap-2 border-r px-5 py-4 text-xs font-medium transition-colors sm:px-6 sm:text-sm ${
+                    isActive ? '' : ''
                   }`
                 }
                 style={({ isActive }) => ({
-                  color: isActive ? 'var(--color-accent)' : 'var(--text-secondary)',
-                  borderBottomColor: isActive ? 'var(--color-accent)' : 'transparent',
+                  color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  backgroundColor: isActive ? 'var(--bg-secondary)' : 'transparent',
+                  borderRightColor: 'var(--border-primary)',
+                  boxShadow: isActive ? 'inset 0 -2px 0 var(--color-accent)' : 'none',
                 })}
                 title={tab.description}
               >
-                <Icon className="h-4 w-4 flex-shrink-0" />
+                <Icon className="h-4 w-4 flex-shrink-0" style={{ color: 'currentColor' }} />
                 <span className="whitespace-nowrap">{tab.label}</span>
               </NavLink>
             );

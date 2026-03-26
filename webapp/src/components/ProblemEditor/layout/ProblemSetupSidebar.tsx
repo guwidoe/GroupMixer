@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import type { ProblemSetupResolvedSection } from '../navigation/problemSetupNav';
 import type { ProblemSetupSectionGroupDefinition, ProblemSetupSectionId } from '../navigation/problemSetupNavTypes';
 import { ProblemSetupSidebarGroup } from './ProblemSetupSidebarGroup';
@@ -24,31 +24,24 @@ export function ProblemSetupSidebar({
 }: ProblemSetupSidebarProps) {
   return (
     <aside
-      className={`hidden md:block md:flex-shrink-0 ${isCollapsed ? 'md:w-20' : 'md:w-64 lg:w-72'}`}
+      className={`hidden overflow-hidden border-r transition-[width] duration-200 ease-out md:flex md:flex-shrink-0 ${
+        isCollapsed ? 'md:w-14' : 'md:w-64 lg:w-72'
+      }`}
+      style={{ borderColor: 'var(--border-primary)' }}
       aria-label="Problem Setup navigation"
     >
-      <div
-        className="sticky top-20 h-[calc(100vh-6rem)] overflow-y-auto border-r pr-3"
-        style={{ borderColor: 'var(--border-primary)' }}
-      >
-        <div className={`mb-4 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-3'} pt-1`}>
+      <div className="sticky top-0 flex h-[calc(100vh-7rem)] w-full flex-col">
+        <div className={`flex items-center border-b px-2 py-2 ${isCollapsed ? 'justify-center' : 'justify-between'}`} style={{ borderColor: 'var(--border-primary)' }}>
           {!isCollapsed && (
-            <h2 className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
-              Problem Setup
-            </h2>
+            <div className="px-1">
+              <div className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
+                Sections
+              </div>
+            </div>
           )}
-          <button
-            type="button"
-            onClick={onToggleCollapsed}
-            className="rounded-md p-2 transition-colors hover:bg-[var(--bg-primary)]"
-            style={{ color: 'var(--text-secondary)' }}
-            aria-label={isCollapsed ? 'Expand problem setup sidebar' : 'Collapse problem setup sidebar'}
-          >
-            {isCollapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
-          </button>
         </div>
 
-        <div className="space-y-4">
+        <nav className="flex-1 overflow-y-auto px-2 py-1">
           {groupedSections.map(({ group, sections }) => (
             <ProblemSetupSidebarGroup
               key={group.id}
@@ -59,6 +52,19 @@ export function ProblemSetupSidebar({
               onNavigate={onNavigate}
             />
           ))}
+        </nav>
+
+        <div className="border-t p-2" style={{ borderColor: 'var(--border-primary)' }}>
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            className="flex w-full items-center justify-center rounded-md py-1.5 transition-colors"
+            style={{ color: 'var(--text-secondary)' }}
+            aria-label={isCollapsed ? 'Expand problem setup sidebar' : 'Collapse problem setup sidebar'}
+            title={isCollapsed ? 'Expand problem setup sidebar' : 'Collapse problem setup sidebar'}
+          >
+            {isCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </button>
         </div>
       </div>
     </aside>

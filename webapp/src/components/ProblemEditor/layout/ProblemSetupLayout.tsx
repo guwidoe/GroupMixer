@@ -11,6 +11,7 @@ interface ProblemSetupLayoutProps {
   objectiveCount: number;
   activeSection: ProblemSetupSectionId | null;
   onNavigate: (sectionId: ProblemSetupSectionId) => void;
+  contentHeader?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -20,6 +21,7 @@ export function ProblemSetupLayout({
   objectiveCount,
   activeSection,
   onNavigate,
+  contentHeader,
   children,
 }: ProblemSetupLayoutProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -41,7 +43,7 @@ export function ProblemSetupLayout({
         onNavigate={onNavigate}
       />
 
-      <div className="flex flex-col gap-6 md:flex-row md:items-start">
+      <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
         <ProblemSetupSidebar
           groupedSections={groupedSections}
           activeSection={activeSection}
@@ -50,7 +52,10 @@ export function ProblemSetupLayout({
           onNavigate={onNavigate}
         />
 
-        <div className="min-w-0 flex-1">{children}</div>
+        <div className="min-w-0 flex-1 space-y-6">
+          {contentHeader}
+          {children}
+        </div>
       </div>
     </div>
   );

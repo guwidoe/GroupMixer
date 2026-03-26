@@ -24,39 +24,39 @@ export function ProblemSetupSidebarItem({
       aria-current={isActive ? 'page' : undefined}
       aria-label={section.label}
       title={isCollapsed ? section.label : undefined}
-      className={`relative w-full rounded-lg transition-colors ${isCollapsed ? 'px-2 py-3' : 'px-3 py-2 text-left'}`}
+      className={`relative flex items-center gap-2.5 rounded-md py-2 text-sm font-medium transition-colors ${
+        isCollapsed ? 'w-full justify-center px-0' : 'w-full px-2.5 text-left'
+      }`}
       style={{
         backgroundColor: isActive ? 'var(--bg-tertiary)' : 'transparent',
         color: isActive ? 'var(--color-accent)' : 'var(--text-secondary)',
       }}
     >
-      <div className={`flex ${isCollapsed ? 'justify-center' : 'items-center justify-between gap-2'}`}>
-        <div className={`flex min-w-0 items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
-          <Icon className="h-4 w-4 flex-shrink-0" />
-          {!isCollapsed && (
-            <span className="truncate text-sm font-medium leading-5">{section.shortLabel ?? section.label}</span>
-          )}
-        </div>
+      <Icon
+        className="h-4 w-4 shrink-0"
+        style={{ color: isActive ? 'var(--color-accent)' : 'var(--text-tertiary)' }}
+      />
+      {!isCollapsed && <span className="truncate">{section.shortLabel ?? section.label}</span>}
 
-        {!isCollapsed && typeof section.resolvedCount === 'number' && (
-          <span
-            className="rounded-full px-1.5 py-0.5 text-xs font-semibold"
-            style={{
-              backgroundColor: 'var(--bg-primary)',
-              color: isActive ? 'var(--color-accent)' : 'var(--text-secondary)',
-            }}
-          >
-            {section.resolvedCount}
-          </span>
-        )}
-      </div>
-
-      {isCollapsed && typeof section.resolvedCount === 'number' && (
+      {typeof section.resolvedCount === 'number' && !isCollapsed && (
         <span
-          className="absolute right-1.5 top-1 rounded-full px-1 py-0 text-[10px] font-semibold leading-4"
+          className="ml-auto rounded-full px-1.5 py-0.5 text-xs font-semibold"
           style={{
             backgroundColor: 'var(--bg-primary)',
             color: isActive ? 'var(--color-accent)' : 'var(--text-secondary)',
+          }}
+        >
+          {section.resolvedCount}
+        </span>
+      )}
+
+      {typeof section.resolvedCount === 'number' && isCollapsed && (
+        <span
+          className="absolute right-0.5 top-0.5 min-w-[1rem] rounded-full px-1 py-0 text-center text-[10px] font-semibold leading-4"
+          style={{
+            backgroundColor: 'var(--bg-primary)',
+            color: isActive ? 'var(--color-accent)' : 'var(--text-secondary)',
+            border: '1px solid var(--border-primary)',
           }}
         >
           {section.resolvedCount}

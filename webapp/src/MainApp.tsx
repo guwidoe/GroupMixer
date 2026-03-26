@@ -15,6 +15,7 @@ function MainApp() {
   const location = useLocation();
   const hasTrackedAppEntryRef = useRef(false);
   const seo = getAppSeo(location.pathname);
+  const isProblemSetupRoute = location.pathname.startsWith('/app/problem');
 
   useEffect(() => {
     initializeApp();
@@ -49,34 +50,35 @@ function MainApp() {
       />
 
       <Header />
+      <Navigation />
 
-      <main className="container mx-auto px-4 py-6">
-        <Navigation />
-
+      <main className={isProblemSetupRoute ? 'pb-6' : 'container mx-auto px-4 py-6'}>
         {problem && !currentProblemId && (
-          <div
-            className="mb-6 mt-6 flex flex-col gap-3 rounded-2xl border px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
-            style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
-          >
-            <div>
-              <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                Scratchpad workspace
-              </div>
-              <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                This setup came from the landing tool and is not attached to an existing saved project yet.
-              </p>
-            </div>
-            <Link
-              to="/"
-              className="inline-flex items-center justify-center rounded-full border px-4 py-2 text-sm font-medium"
-              style={{ borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }}
+          <div className={isProblemSetupRoute ? 'px-4 pt-6' : ''}>
+            <div
+              className="mb-6 flex flex-col gap-3 rounded-2xl border px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+              style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
             >
-              Back to tool home
-            </Link>
+              <div>
+                <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Scratchpad workspace
+                </div>
+                <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  This setup came from the landing tool and is not attached to an existing saved project yet.
+                </p>
+              </div>
+              <Link
+                to="/"
+                className="inline-flex items-center justify-center rounded-full border px-4 py-2 text-sm font-medium"
+                style={{ borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }}
+              >
+                Back to tool home
+              </Link>
+            </div>
           </div>
         )}
 
-        <div className="animate-fade-in mt-6">
+        <div className={isProblemSetupRoute ? 'animate-fade-in' : 'animate-fade-in mt-6'}>
           <Outlet />
         </div>
       </main>

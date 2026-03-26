@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import type { ProblemSetupSectionGroupDefinition, ProblemSetupSectionId } from '../navigation/problemSetupNavTypes';
 import type { ProblemSetupResolvedSection } from '../navigation/problemSetupNav';
 import { ProblemSetupSidebarItem } from './ProblemSetupSidebarItem';
@@ -21,34 +21,45 @@ export function ProblemSetupSidebarGroup({
 }: ProblemSetupSidebarGroupProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
-  return (
-    <section className="space-y-1" aria-label={group.label}>
-      {!isRailCollapsed && (
-        <button
-          type="button"
-          onClick={() => setIsExpanded((value) => !value)}
-          className="flex w-full items-center justify-between px-3 py-2 text-left"
-          style={{ color: 'var(--text-tertiary)' }}
-          aria-expanded={isExpanded}
-          aria-controls={`problem-setup-group-${group.id}`}
-        >
-          <span className="text-xs font-semibold uppercase tracking-[0.12em]">{group.label}</span>
-          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-      )}
+  if (isRailCollapsed) {
+    return (
+      <section className="mt-3 flex flex-col gap-0.5" aria-label={group.label}>
+        <div className="mx-auto mb-1 h-px w-4" style={{ backgroundColor: 'var(--border-primary)' }} />
+        {sections.map((section) => (
+          <ProblemSetupSidebarItem
+            key={section.id}
+            section={section}
+            isActive={activeSection === section.id}
+            isCollapsed
+            onNavigate={onNavigate}
+          />
+        ))}
+      </section>
+    );
+  }
 
-      {(isRailCollapsed || isExpanded) && (
-        <div
-          id={`problem-setup-group-${group.id}`}
-          className={`space-y-1 ${isRailCollapsed ? 'border-l pl-2' : ''}`}
-          style={isRailCollapsed ? { borderColor: 'var(--border-primary)' } : undefined}
-        >
+  return (
+    <section className="mt-3" aria-label={group.label}>
+      <button
+        type="button"
+        onClick={() => setIsExpanded((value) => !value)}
+        className="flex w-full items-center justify-between px-2.5 py-1 text-left transition-colors"
+        style={{ color: 'var(--text-tertiary)' }}
+        aria-expanded={isExpanded}
+        aria-controls={`problem-setup-group-${group.id}`}
+      >
+        <span className="text-[10px] font-semibold uppercase tracking-[0.08em]">{group.label}</span>
+        <ChevronDown className={`h-3 w-3 transition-transform duration-150 ${isExpanded ? '' : '-rotate-90'}`} />
+      </button>
+
+      {isExpanded && (
+        <div id={`problem-setup-group-${group.id}`} className="mt-0.5 flex flex-col gap-0.5">
           {sections.map((section) => (
             <ProblemSetupSidebarItem
               key={section.id}
               section={section}
               isActive={activeSection === section.id}
-              isCollapsed={isRailCollapsed}
+              isCollapsed={false}
               onNavigate={onNavigate}
             />
           ))}
