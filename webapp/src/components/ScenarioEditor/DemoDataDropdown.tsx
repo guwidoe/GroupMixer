@@ -26,9 +26,10 @@ export function DemoDataDropdown({
   placement = 'bottom',
   collapsed = false,
 }: DemoDataDropdownProps) {
-  const { demoDropdownOpen, setDemoDropdownOpen, addNotification } = useAppStore();
+  const addNotification = useAppStore((state) => state.addNotification);
   const demoDropdownRef = useRef<HTMLDivElement>(null);
   const dropdownMenuRef = useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<DropdownPosition | null>(null);
   const [demoCasesWithMetrics, setDemoCasesWithMetrics] = useState<DemoCaseWithMetrics[]>([]);
   const [loadingDemoMetrics, setLoadingDemoMetrics] = useState(false);
@@ -93,12 +94,12 @@ export function DemoDataDropdown({
 
   useOutsideClick({
     refs: [demoDropdownRef, dropdownMenuRef],
-    onOutsideClick: () => setDemoDropdownOpen(false),
-    enabled: demoDropdownOpen,
+    onOutsideClick: () => setIsOpen(false),
+    enabled: isOpen,
   });
 
   useEffect(() => {
-    if (demoDropdownOpen && demoCasesWithMetrics.length === 0 && !loadingDemoMetrics) {
+    if (isOpen && demoCasesWithMetrics.length === 0 && !loadingDemoMetrics) {
       setLoadingDemoMetrics(true);
       import('../../services/demoDataService')
         .then((module) => module.loadDemoCasesWithMetrics())
@@ -117,10 +118,10 @@ export function DemoDataDropdown({
           setLoadingDemoMetrics(false);
         });
     }
-  }, [demoDropdownOpen, demoCasesWithMetrics.length, loadingDemoMetrics, addNotification]);
+  }, [isOpen, demoCasesWithMetrics.length, loadingDemoMetrics, addNotification]);
 
   useEffect(() => {
-    if (!demoDropdownOpen) {
+    if (!isOpen) {
       setDropdownPosition(null);
       return;
     }
@@ -135,10 +136,10 @@ export function DemoDataDropdown({
       window.removeEventListener('resize', handleViewportChange);
       window.removeEventListener('scroll', handleViewportChange, true);
     };
-  }, [demoDropdownOpen, updateDropdownPosition]);
+  }, [isOpen, updateDropdownPosition]);
 
   useEffect(() => {
-    if (!demoDropdownOpen) {
+    if (!isOpen) {
       return;
     }
 
@@ -147,26 +148,26 @@ export function DemoDataDropdown({
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [demoDropdownOpen, demoCasesWithMetrics.length, loadingDemoMetrics, updateDropdownPosition]);
+  }, [isOpen, demoCasesWithMetrics.length, loadingDemoMetrics, updateDropdownPosition]);
 
   const sidebarTrigger = (
     <button
       type="button"
-      onClick={() => setDemoDropdownOpen(!demoDropdownOpen)}
+      onClick={() => setIsOpen((open) => !open)}
       className={`flex w-full items-center rounded-md text-sm font-medium transition-colors hover:bg-[var(--bg-tertiary)] ${
         collapsed ? 'justify-center px-0 py-2' : 'gap-2.5 px-2.5 py-2 text-left'
       }`}
       style={{
-        backgroundColor: demoDropdownOpen ? 'var(--bg-tertiary)' : 'transparent',
-        color: demoDropdownOpen ? 'var(--color-accent)' : 'var(--text-secondary)',
+        backgroundColor: isOpen ? 'var(--bg-tertiary)' : 'transparent',
+        color: isOpen ? 'var(--color-accent)' : 'var(--text-secondary)',
       }}
-      aria-expanded={demoDropdownOpen}
+      aria-expanded={isOpen}
       aria-haspopup="menu"
       aria-label="Demo Data"
     >
       <Zap
         className="h-4 w-4 shrink-0"
-        style={{ color: demoDropdownOpen ? 'var(--color-accent)' : 'var(--text-tertiary)' }}
+        style={{ color: isOpen ? 'var(--color-accent)' : 'var(--text-tertiary)' }}
       />
       {!collapsed && <span className="truncate">Demo Data</span>}
       {!collapsed && <ChevronRight className="ml-auto h-4 w-4 shrink-0" />}
@@ -174,15 +175,15 @@ export function DemoDataDropdown({
   );
 
   const trigger = variant === 'sidebar' ? (
-    <Tooltip content="Demo Data" className="block w-full" placement="right" disabled={demoDropdownOpen}>
+    <Tooltip content="Demo Data" className="block w-full" placement="right" disabled={isOpen}>
       {sidebarTrigger}
     </Tooltip>
   ) : (
     <button
-      onClick={() => setDemoDropdownOpen(!demoDropdownOpen)}
+      onClick={() => setIsOpen((open) => !open)}
       className="flex items-center gap-1 sm:gap-2 justify-center px-1.5 sm:px-3 py-1.5 rounded-md font-medium transition-colors btn-secondary min-w-0 text-xs sm:text-sm focus-visible:outline-none"
       style={{ outline: 'none', boxShadow: 'none' }}
-      aria-expanded={demoDropdownOpen}
+      aria-expanded={isOpen}
       aria-haspopup="menu"
     >
       <Zap className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
@@ -197,7 +198,7 @@ export function DemoDataDropdown({
         {trigger}
       </div>
 
-      {demoDropdownOpen && dropdownPosition && createPortal(
+      {isOpen && dropdownPosition && createPortal(
         <div
           ref={dropdownMenuRef}
           className="fixed z-50 overflow-y-auto rounded-md border shadow-lg"
@@ -242,7 +243,7 @@ export function DemoDataDropdown({
                       <button
                         key={demoCase.id}
                         onClick={() => {
-                          setDemoDropdownOpen(false);
+                          setIsOpen(false);
                           onDemoCaseClick(demoCase.id, demoCase.name);
                         }}
                         className="flex w-full flex-col border-b px-3 py-3 text-left transition-colors last:border-b-0"
