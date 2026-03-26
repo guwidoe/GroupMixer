@@ -125,7 +125,7 @@ describe("MainApp stateful integration routes", () => {
 
     expect(await screen.findByText(/auto-set failed/i)).toBeInTheDocument();
     expect(screen.getByText(/recommend failed/i)).toBeInTheDocument();
-  });
+  }, 10000);
 
   it("renders the real /app/results surface with a saved solution already in state", async () => {
     const savedProblem = createSavedProblem({

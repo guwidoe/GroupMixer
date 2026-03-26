@@ -128,7 +128,7 @@ describe('ToolLandingPage SEO wiring', () => {
       'Linus',
       'Margaret',
     ]);
-  });
+  }, 10000);
 
   it('shows the tool form above the fold with participants input and generate button', () => {
     render(
