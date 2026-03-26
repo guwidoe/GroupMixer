@@ -87,6 +87,17 @@ describe("MainApp stateful integration routes", () => {
     );
   });
 
+  it("marks app routes as noindex and suppresses landing structured data", async () => {
+    renderAppRoute('/app/solver');
+
+    expect(document.title).toBe('Solver Workspace | GroupMixer App');
+    expect(document.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('noindex,nofollow');
+    expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
+      'https://www.groupmixer.app/app/solver',
+    );
+    expect(document.getElementById('groupmixer-route-schema')?.textContent ?? '').toBe('');
+  });
+
   it("renders the real /app/solver surface with loaded state, warm-start history, and auto-set success", async () => {
     const user = userEvent.setup();
     const savedProblem = createSavedProblem({

@@ -54,6 +54,7 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(
       'Free random team generator. Paste names and create balanced teams instantly. Add rules for skill balancing, keep-together, and keep-apart when needed.',
     );
+    expect(document.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('index,follow');
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
       'https://www.groupmixer.app/random-team-generator',
     );

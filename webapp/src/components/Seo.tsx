@@ -9,6 +9,8 @@ interface SeoProps {
   description: string;
   canonicalPath: string;
   faqEntries?: ToolPageFaqEntry[];
+  indexable?: boolean;
+  includeStructuredData?: boolean;
 }
 
 function ensureMeta(
@@ -52,7 +54,14 @@ function ensureJsonLdScript(): HTMLScriptElement {
   return script;
 }
 
-export function Seo({ title, description, canonicalPath, faqEntries = [] }: SeoProps) {
+export function Seo({
+  title,
+  description,
+  canonicalPath,
+  faqEntries = [],
+  indexable = true,
+  includeStructuredData = true,
+}: SeoProps) {
   useEffect(() => {
     const canonicalUrl = `${CANONICAL_ORIGIN}${canonicalPath === '/' ? '/' : canonicalPath}`;
 
@@ -70,9 +79,17 @@ export function Seo({ title, description, canonicalPath, faqEntries = [] }: SeoP
     ensureMeta('meta[name="twitter:description"]', 'name', 'twitter:description').content = description;
     ensureMeta('meta[name="twitter:image"]', 'name', 'twitter:image').content = DEFAULT_OG_IMAGE;
     ensureMeta('meta[name="twitter:url"]', 'name', 'twitter:url').content = canonicalUrl;
-    ensureMeta('meta[name="robots"]', 'name', 'robots').content = 'index,follow';
+    ensureMeta('meta[name="robots"]', 'name', 'robots').content = indexable ? 'index,follow' : 'noindex,nofollow';
 
     ensureCanonicalLink().href = canonicalUrl;
+
+    if (!includeStructuredData) {
+      const existingSchema = document.getElementById('groupmixer-route-schema');
+      if (existingSchema instanceof HTMLScriptElement) {
+        existingSchema.textContent = '';
+      }
+      return;
+    }
 
     const schemaNodes: Array<Record<string, unknown>> = [
       {
@@ -107,7 +124,7 @@ export function Seo({ title, description, canonicalPath, faqEntries = [] }: SeoP
     }
 
     ensureJsonLdScript().textContent = JSON.stringify(schemaNodes.length === 1 ? schemaNodes[0] : schemaNodes);
-  }, [canonicalPath, description, faqEntries, title]);
+  }, [canonicalPath, description, faqEntries, includeStructuredData, indexable, title]);
 
   return null;
 }
