@@ -6,8 +6,12 @@ export type ToolPageKey =
   | 'home'
   | 'random-group-generator'
   | 'random-team-generator'
+  | 'random-pair-generator'
+  | 'team-shuffle-generator'
   | 'breakout-room-generator'
+  | 'workshop-group-generator'
   | 'student-group-generator'
+  | 'icebreaker-group-generator'
   | 'speed-networking-generator'
   | 'group-generator-with-constraints';
 

@@ -193,6 +193,72 @@ export const TOOL_PAGE_CONFIGS_DATA = {
     experimentLabel: 'english-random-team-balance',
     futureVariants: ['team-fairness-hero', 'cta-balance-emphasis'],
   }),
+  'random-pair-generator': createToolPageConfig({
+    key: 'random-pair-generator',
+    canonicalPath: '/random-pair-generator',
+    title: 'Random Pair Generator — Make Pairs from a List of Names | GroupMixer',
+    metaDescription:
+      'Free random pair generator. Paste names, create random pairs instantly, and reshuffle in seconds. Great for classrooms, workshops, and partner activities.',
+    heroTitle: 'Random Pair Generator',
+    subhead:
+      'Paste names, create random pairs instantly, and reshuffle whenever you want a new partner mix.',
+    eyebrow: 'For partner work and pair rotations',
+    audienceSummary:
+      'Built for teachers, trainers, and facilitators who need fast partner assignments for practice rounds, peer feedback, and icebreakers.',
+    defaultPreset: 'random',
+    faqEntries: [
+      {
+        question: 'How do I make random pairs from a list of names?',
+        answer:
+          'Paste names into the text box, switch the grouping size to 2 people per group if needed, and click Generate. GroupMixer creates partner pairs instantly.',
+      },
+      {
+        question: 'Can I reshuffle pairs for a second round?',
+        answer:
+          'Yes. Generate again to reshuffle, or use multiple sessions with avoid-repeat pairings when you want fresh partners across rounds.',
+      },
+      FAQS.free,
+      FAQS.privacy,
+      FAQS.multiSession,
+    ],
+    searchIntent: 'random pair generator',
+    audience: 'teachers, trainers, and facilitators running partner activities',
+    experimentLabel: 'english-random-pair-partners',
+    futureVariants: ['pairing-speed-hero', 'rotation-proof-points'],
+  }),
+  'team-shuffle-generator': createToolPageConfig({
+    key: 'team-shuffle-generator',
+    canonicalPath: '/team-shuffle-generator',
+    title: 'Team Shuffle Generator — Reshuffle Teams Quickly and Fairly | GroupMixer',
+    metaDescription:
+      'Free team shuffle generator. Reshuffle a list of names into fresh teams in seconds. Useful for workshops, training cohorts, sports drills, and group exercises.',
+    heroTitle: 'Team Shuffle Generator',
+    subhead:
+      'Reshuffle people into fresh teams fast. Great when you want new combinations without rebuilding your setup from scratch.',
+    eyebrow: 'For fresh team mixes without the admin work',
+    audienceSummary:
+      'Best for facilitators, coaches, and team leads who regularly rotate groups and want a cleaner, more reviewable way to do it.',
+    defaultPreset: 'balanced',
+    faqEntries: [
+      {
+        question: 'What is a team shuffle generator?',
+        answer:
+          'It is a fast way to remix the same participants into new teams. Paste your names, choose the number of teams, and GroupMixer produces a fresh split instantly.',
+      },
+      {
+        question: 'Can I keep a reshuffle fair instead of fully random?',
+        answer:
+          'Yes. You can balance by attributes such as skill, role, or department so the reshuffled teams stay more even.',
+      },
+      FAQS.free,
+      FAQS.privacy,
+      FAQS.constraints,
+    ],
+    searchIntent: 'team shuffle generator',
+    audience: 'coaches, managers, and workshop facilitators',
+    experimentLabel: 'english-team-shuffle-remix',
+    futureVariants: ['remix-language-vs-balance-language', 'fairness-chip-order'],
+  }),
   'breakout-room-generator': createToolPageConfig({
     key: 'breakout-room-generator',
     canonicalPath: '/breakout-room-generator',
@@ -226,6 +292,39 @@ export const TOOL_PAGE_CONFIGS_DATA = {
     experimentLabel: 'english-breakout-room-rotation',
     futureVariants: ['remote-call-proof', 'multi-round-emphasis'],
   }),
+  'workshop-group-generator': createToolPageConfig({
+    key: 'workshop-group-generator',
+    canonicalPath: '/workshop-group-generator',
+    title: 'Workshop Group Generator — Create Small Groups for Sessions | GroupMixer',
+    metaDescription:
+      'Free workshop group generator. Split participants into small groups for activities, breakouts, and multi-round sessions. Add constraints when you need them.',
+    heroTitle: 'Workshop Group Generator',
+    subhead:
+      'Create workshop groups in seconds. Start simple, then add rounds, balancing, or pairing rules as your facilitation plan gets more complex.',
+    eyebrow: 'For facilitators running collaborative sessions',
+    audienceSummary:
+      'Made for workshops where group composition affects discussion quality, energy, and how often participants meet new people.',
+    defaultPreset: 'balanced',
+    faqEntries: [
+      {
+        question: 'How do I create workshop groups?',
+        answer:
+          'Paste participant names, set the number of groups or people per group, and click Generate. GroupMixer creates workshop-ready groups instantly.',
+      },
+      {
+        question: 'Can I rotate people between workshop rounds?',
+        answer:
+          'Yes. Use multiple sessions and avoid-repeat pairings to keep workshop participants meeting new people throughout the agenda.',
+      },
+      FAQS.free,
+      FAQS.privacy,
+      FAQS.constraints,
+    ],
+    searchIntent: 'workshop group generator',
+    audience: 'workshop facilitators and training teams',
+    experimentLabel: 'english-workshop-groups-facilitator',
+    futureVariants: ['workshop-outcomes-hero', 'multi-round-vs-constraint-copy'],
+  }),
   'student-group-generator': createToolPageConfig({
     key: 'student-group-generator',
     canonicalPath: '/student-group-generator',
@@ -258,6 +357,40 @@ export const TOOL_PAGE_CONFIGS_DATA = {
     audience: 'teachers and school staff',
     experimentLabel: 'english-student-group-teacher',
     futureVariants: ['teacher-proof-points', 'classroom-management-copy'],
+  }),
+  'icebreaker-group-generator': createToolPageConfig({
+    key: 'icebreaker-group-generator',
+    canonicalPath: '/icebreaker-group-generator',
+    title: 'Icebreaker Group Generator — Create Quick Small Groups for Activities | GroupMixer',
+    metaDescription:
+      'Free icebreaker group generator. Make quick small groups or pairs for workshops, classes, and events. Great for warm-ups, introductions, and networking starters.',
+    heroTitle: 'Icebreaker Group Generator',
+    subhead:
+      'Create fast small groups for introductions, warm-ups, and conversation starters without slowing down the room.',
+    eyebrow: 'For warm-ups, introductions, and energizers',
+    audienceSummary:
+      'Useful when you need low-friction group creation for the first minutes of a class, workshop, meetup, or team event.',
+    defaultPreset: 'networking',
+    faqEntries: [
+      {
+        question: 'How do I make groups for an icebreaker activity?',
+        answer:
+          'Paste names, choose the number of groups or people per group, and click Generate. GroupMixer gives you small groups that are ready for a quick activity.',
+      },
+      {
+        question: 'Can I use this for multiple icebreaker rounds?',
+        answer:
+          'Yes. Set multiple sessions and avoid repeat pairings so people meet different participants across short rounds.',
+      },
+      FAQS.free,
+      FAQS.privacy,
+      FAQS.multiSession,
+    ],
+    searchIntent: 'icebreaker group generator',
+    audience: 'facilitators, teachers, and event hosts',
+    priority: 'supporting',
+    experimentLabel: 'english-icebreaker-quick-groups',
+    futureVariants: ['warmup-language-vs-networking-language', 'short-vs-detailed-subhead'],
   }),
   'speed-networking-generator': createToolPageConfig({
     key: 'speed-networking-generator',

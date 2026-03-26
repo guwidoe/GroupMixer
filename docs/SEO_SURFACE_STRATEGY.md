@@ -34,6 +34,30 @@ That manifest drives:
 - sitemap generation
 - static landing prerender output
 
+## Current English landing inventory
+
+Current live rollout set on the shared landing engine:
+
+| Priority | Route | Search intent | Primary audience |
+| --- | --- | --- | --- |
+| primary | `/` | random group generator | broad classrooms / workshops / events |
+| primary | `/random-group-generator` | random group generator | facilitators and teachers |
+| primary | `/random-team-generator` | random team generator | coaches and team leads |
+| primary | `/random-pair-generator` | random pair generator | partner activities / classrooms |
+| primary | `/breakout-room-generator` | breakout room generator | remote workshops / trainings |
+| primary | `/workshop-group-generator` | workshop group generator | facilitators and training teams |
+| primary | `/student-group-generator` | student group generator | teachers and school staff |
+| primary | `/speed-networking-generator` | speed networking generator | event organizers |
+| supporting | `/team-shuffle-generator` | team shuffle generator | coaches / managers / facilitators |
+| supporting | `/icebreaker-group-generator` | icebreaker group generator | teachers / hosts / facilitators |
+| supporting | `/group-generator-with-constraints` | group generator with constraints | planners with assignment rules |
+
+Next candidates to evaluate before publishing more English pages:
+
+- classroom-focused synonym pages only if they add distinct search demand beyond `student-group-generator`
+- conference / summit networking pages only if event-specific copy outperforms generic networking pages
+- training / cohort-specific pages only if they can reuse the shared engine without functional divergence
+
 ## Build-time SEO artifacts
 
 Two scripts are now part of the workflow:

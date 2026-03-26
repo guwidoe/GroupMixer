@@ -73,6 +73,14 @@ describe("App routing", () => {
     ).toBeInTheDocument();
   });
 
+  it("registers newly added English rollout routes with the shared landing shell", async () => {
+    renderWithRouter(<App />, { route: "/random-pair-generator" });
+
+    expect(
+      await screen.findByText("Tool landing test stub: random-pair-generator")
+    ).toBeInTheDocument();
+  });
+
   it("renders nested /app routes inside the main shell", async () => {
     renderWithRouter(<App />, { route: "/app/problem/people" });
 

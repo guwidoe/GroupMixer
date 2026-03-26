@@ -10,10 +10,22 @@
     <loc>https://www.groupmixer.app/random-team-generator</loc>
   </url>
   <url>
+    <loc>https://www.groupmixer.app/random-pair-generator</loc>
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/team-shuffle-generator</loc>
+  </url>
+  <url>
     <loc>https://www.groupmixer.app/breakout-room-generator</loc>
   </url>
   <url>
+    <loc>https://www.groupmixer.app/workshop-group-generator</loc>
+  </url>
+  <url>
     <loc>https://www.groupmixer.app/student-group-generator</loc>
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/icebreaker-group-generator</loc>
   </url>
   <url>
     <loc>https://www.groupmixer.app/speed-networking-generator</loc>
