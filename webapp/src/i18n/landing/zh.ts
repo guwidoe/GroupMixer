@@ -160,8 +160,7 @@ export const ZH_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
     eyebrow: '适合课堂、工作坊和各类活动',
     heroTitle: '随机分组生成器',
     subhead: '粘贴名单、选择小组数量，立即生成分组。',
-    audienceSummary:
-      '先用简单的随机分组快速开始，等你需要时再增加平衡规则、约束条件和多轮优化。',
+    audienceSummary: '',
     faqEntries: [
       {
         question: '如何把一份名单随机分成小组？',

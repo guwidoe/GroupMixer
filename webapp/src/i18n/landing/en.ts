@@ -161,8 +161,7 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     heroTitle: 'Random Group Generator',
     subhead:
       'Paste names, choose the number of groups, and generate instantly.',
-    audienceSummary:
-      'Start with a simple random split, then add balancing, constraints, and multi-round optimization only when you need it.',
+    audienceSummary: '',
     faqEntries: [
       {
         question: 'How do I split a list of names into random groups?',

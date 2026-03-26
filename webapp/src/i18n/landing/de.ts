@@ -161,8 +161,7 @@ export const DE_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
     heroTitle: 'Zufalls-Gruppengenerator',
     subhead:
       'Namen einfügen, Anzahl der Gruppen wählen und sofort aufteilen.',
-    audienceSummary:
-      'Starte mit einer einfachen Zufallsaufteilung und ergänze Balance, Regeln oder mehrere Runden erst dann, wenn du sie brauchst.',
+    audienceSummary: '',
     faqEntries: [
       {
         question: 'Wie teile ich eine Namensliste zufällig in Gruppen auf?',

@@ -160,8 +160,7 @@ export const HI_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
     eyebrow: 'क्लासरूम, वर्कशॉप और इवेंट्स के लिए',
     heroTitle: 'रैंडम ग्रुप जनरेटर',
     subhead: 'नाम पेस्ट करें, ग्रुप्स की संख्या चुनें और तुरंत जनरेट करें।',
-    audienceSummary:
-      'एक आसान रैंडम स्प्लिट से शुरू करें, और balancing, constraints और multi-round optimization तभी जोड़ें जब उनकी ज़रूरत हो।',
+    audienceSummary: '',
     faqEntries: [
       {
         question: 'मैं नामों की सूची को रैंडम ग्रुप्स में कैसे बाँटूँ?',

@@ -494,9 +494,11 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
               <p className="mt-4 text-base leading-7 sm:text-lg sm:leading-8" style={{ color: 'var(--text-secondary)' }}>
                 {config.hero.subhead}
               </p>
-              <p className="mt-3 max-w-2xl text-sm leading-6 sm:text-base" style={{ color: 'var(--text-secondary)' }}>
-                {config.hero.audienceSummary}
-              </p>
+              {config.hero.audienceSummary && (
+                <p className="mt-3 max-w-2xl text-sm leading-6 sm:text-base" style={{ color: 'var(--text-secondary)' }}>
+                  {config.hero.audienceSummary}
+                </p>
+              )}
 
               <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
                 {config.hero.trustBullets.map((bullet) => (

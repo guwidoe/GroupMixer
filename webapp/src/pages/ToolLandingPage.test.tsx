@@ -54,7 +54,9 @@ describe('ToolLandingPage SEO wiring', () => {
     ).toBeInTheDocument();
 
     expect(screen.getByText(config.hero.eyebrow)).toBeInTheDocument();
-    expect(screen.getByText(config.hero.audienceSummary)).toBeInTheDocument();
+    if (config.hero.audienceSummary) {
+      expect(screen.getByText(config.hero.audienceSummary)).toBeInTheDocument();
+    }
     expect(document.title).toBe(config.seo.title);
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(config.seo.description);
     expect(document.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('index,follow');
@@ -269,8 +271,8 @@ describe('ToolLandingPage SEO wiring', () => {
 
     // Optimizer CTA fills the desktop dead-space under the hero copy
     expect(screen.getByText(/want to do better than random/i)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /try the full group optimizer/i })).toBeInTheDocument();
-    expect(screen.getByText(/your landing-page draft comes with you/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /use the full group optimizer/i })).toBeInTheDocument();
+    expect(screen.getByText(/your inputs from this page come with you/i)).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /open expert workspace/i })[0]).toHaveClass('btn-primary');
   }, 10000);
 

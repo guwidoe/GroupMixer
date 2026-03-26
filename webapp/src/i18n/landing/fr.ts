@@ -161,8 +161,7 @@ export const FR_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
     heroTitle: 'Générateur de Groupes Aléatoires',
     subhead:
       'Collez des noms, choisissez le nombre de groupes et générez instantanément.',
-    audienceSummary:
-      'Commencez par une répartition simple, puis ajoutez équilibrage, contraintes et plusieurs tours uniquement quand vous en avez besoin.',
+    audienceSummary: '',
     faqEntries: [
       {
         question: 'Comment répartir une liste de noms en groupes aléatoires ?',

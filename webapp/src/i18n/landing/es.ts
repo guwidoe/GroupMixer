@@ -161,8 +161,7 @@ export const ES_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
     heroTitle: 'Generador Aleatorio de Grupos',
     subhead:
       'Pega nombres, elige el número de grupos y genera al instante.',
-    audienceSummary:
-      'Empieza con una división aleatoria simple y añade equilibrio, restricciones y rondas múltiples solo cuando lo necesites.',
+    audienceSummary: '',
     faqEntries: [
       {
         question: '¿Cómo divido una lista de nombres en grupos aleatorios?',

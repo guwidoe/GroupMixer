@@ -42,6 +42,14 @@ function assertNonEmptyString(value: unknown, path: string): string {
   return value;
 }
 
+function assertString(value: unknown, path: string): string {
+  if (typeof value !== 'string') {
+    failConfig(`${path} must be a string.`);
+  }
+
+  return value;
+}
+
 function assertStringArray(value: unknown, path: string): string[] {
   if (!Array.isArray(value) || value.length === 0) {
     failConfig(`${path} must be a non-empty string array.`);
@@ -154,7 +162,7 @@ function assertHeroContent(value: unknown, path: string): ToolPageHeroContent {
     eyebrow: assertNonEmptyString((value as { eyebrow?: unknown }).eyebrow, `${path}.eyebrow`),
     title: assertNonEmptyString((value as { title?: unknown }).title, `${path}.title`),
     subhead: assertNonEmptyString((value as { subhead?: unknown }).subhead, `${path}.subhead`),
-    audienceSummary: assertNonEmptyString((value as { audienceSummary?: unknown }).audienceSummary, `${path}.audienceSummary`),
+    audienceSummary: assertString((value as { audienceSummary?: unknown }).audienceSummary, `${path}.audienceSummary`),
     trustBullets: assertStringArray((value as { trustBullets?: unknown }).trustBullets, `${path}.trustBullets`),
   };
 }

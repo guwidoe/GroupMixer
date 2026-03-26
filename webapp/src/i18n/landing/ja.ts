@@ -160,8 +160,7 @@ export const JA_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
     eyebrow: '授業・ワークショップ・イベント向け',
     heroTitle: 'ランダムグループ作成ツール',
     subhead: '名前を貼り付け、グループ数を選ぶだけですぐに分けられます。',
-    audienceSummary:
-      'まずはシンプルなランダム分けから始め、必要なときにだけバランス調整や制約、複数ラウンド最適化を追加できます。',
+    audienceSummary: '',
     faqEntries: [
       {
         question: '名前のリストをランダムにグループ分けするには？',
