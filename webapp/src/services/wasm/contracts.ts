@@ -136,7 +136,7 @@ export class WasmContractClient {
   private initializationFailed = false;
 
   constructor(
-    private readonly loadModule: WasmModuleLoader = () => import("virtual:wasm-solver"),
+    private readonly loadModule: WasmModuleLoader = () => import("./runtimeModule"),
   ) {}
 
   private async requireModule(): Promise<WasmContractModule> {

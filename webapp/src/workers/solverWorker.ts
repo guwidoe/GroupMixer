@@ -1,7 +1,7 @@
 // Module-based Web Worker for running the WASM solver off the main thread
 // Uses ESM imports instead of importScripts to work with wasm-pack --target web output
 
-import wasmInit, * as wasmModule from "virtual:wasm-solver";
+import wasmInit, * as wasmModule from "../services/wasm/runtimeModule";
 import type { WasmContractModule } from "../services/wasm/module";
 import {
   createFatalErrorMessage,
