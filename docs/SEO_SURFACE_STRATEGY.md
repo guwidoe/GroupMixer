@@ -107,3 +107,19 @@ The landing-page factory is intentionally split into:
   - rollout priority
 
 If a new search-intent page needs different functionality, treat that as product work first — not as an SEO-page fork.
+
+## Regression strategy for the landing-page factory
+
+When adding or editing landing pages:
+
+- keep deep behavioral coverage in the shared landing tests (`webapp/src/pages/ToolLandingPage.test.tsx`)
+- keep per-page checks lightweight in the route-inventory test (`webapp/src/pages/ToolLandingPage.routes.test.tsx`)
+- only add bespoke browser/E2E work if a page introduces real functional differences
+
+Expected workflow for a new page:
+
+1. add or update config data
+2. run the lightweight route-inventory test to verify title, canonical, key copy, and schema wiring
+3. rely on the shared landing behavior tests for generator/workspace/telemetry behavior
+
+This keeps page expansion reviewable and avoids turning every SEO route into its own app surface.
