@@ -85,7 +85,7 @@ export function QuickSetupAdvancedOptions({ controller }: QuickSetupAdvancedOpti
               id="avoidPairingsInput"
               value={draft.avoidPairingsInput}
               onChange={(event) => controller.updateDraft((current) => ({ ...current, avoidPairingsInput: event.target.value }))}
-              placeholder={'One pair per line\nAlex - Sam\nPriya - Jordan'}
+              placeholder={'One pair per line\nAlex, Sam\nPriya, Jordan'}
               className="min-h-[96px] w-full rounded-2xl border px-4 py-3 text-sm outline-none focus:ring-2"
               style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
             />
