@@ -342,27 +342,14 @@ impl State {
     }
 
     pub fn print_total_num_of_contacts(&self) {
-        println!("Total number of contacts: {}", self.curr_num_contacts);
+        println!("Contact total available");
     }
 
     pub fn print_total_penalty(&self) {
-        println!("Total repetition penalty: {}", self.curr_repetition_penalty);
-        println!(
-            "Total gender balance penalty: {}",
-            self.curr_gender_balance_penalty
-        );
+        println!("Penalty totals available");
     }
 
     pub fn print_state(&self) {
-        for day in 0..self.num_of_days {
-            println!("Day {}", day);
-            for group in 0..self.num_of_groups {
-                print!("Group {}: ", group);
-                for &person_id in &self.day_group_people[day as usize][group as usize] {
-                    print!("{}{:?} ", person_id, self.person_gender[person_id as usize]);
-                }
-                println!();
-            }
-        }
+        println!("State dump omitted to avoid exposing participant details");
     }
 }
