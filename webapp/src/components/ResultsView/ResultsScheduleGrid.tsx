@@ -1,4 +1,5 @@
 import React from 'react';
+import { interpolate } from '../../i18n/interpolate';
 import type { Person } from '../../types';
 import PersonCard from '../PersonCard';
 
@@ -16,9 +17,24 @@ interface SessionData {
 
 interface ResultsScheduleGridProps {
   sessionData: SessionData[];
+  labels?: {
+    sessionHeadingTemplate?: string;
+    peopleAssignedTemplate?: string;
+    groupPeopleCountTemplate?: string;
+    noAssignmentsLabel?: string;
+  };
 }
 
-export function ResultsScheduleGrid({ sessionData }: ResultsScheduleGridProps) {
+const DEFAULT_LABELS = {
+  sessionHeadingTemplate: 'Session {number}',
+  peopleAssignedTemplate: '{count} people assigned',
+  groupPeopleCountTemplate: '{count}/{size} people',
+  noAssignmentsLabel: 'No assignments',
+};
+
+export function ResultsScheduleGrid({ sessionData, labels }: ResultsScheduleGridProps) {
+  const localized = { ...DEFAULT_LABELS, ...labels };
+
   return (
     <div className="space-y-6">
       {sessionData.map(({ sessionIndex, groups, totalPeople }) => (
@@ -29,10 +45,10 @@ export function ResultsScheduleGrid({ sessionData }: ResultsScheduleGridProps) {
         >
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>
-              Session {sessionIndex + 1}
+              {interpolate(localized.sessionHeadingTemplate, { number: sessionIndex + 1 })}
             </h4>
             <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-              {totalPeople} people assigned
+              {interpolate(localized.peopleAssignedTemplate, { count: totalPeople })}
             </span>
           </div>
 
@@ -42,7 +58,10 @@ export function ResultsScheduleGrid({ sessionData }: ResultsScheduleGridProps) {
                 <div className="flex items-center justify-between mb-3">
                   <h5 className="font-medium" style={{ color: 'var(--text-primary)' }}>{group.id}</h5>
                   <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                    {group.people.length}/{group.size}
+                    {interpolate(localized.groupPeopleCountTemplate, {
+                      count: group.people.length,
+                      size: group.size,
+                    })}
                   </span>
                 </div>
                 <div className="space-y-2">
@@ -53,7 +72,7 @@ export function ResultsScheduleGrid({ sessionData }: ResultsScheduleGridProps) {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm italic" style={{ color: 'var(--text-tertiary)' }}>No assignments</p>
+                    <p className="text-sm italic" style={{ color: 'var(--text-tertiary)' }}>{localized.noAssignmentsLabel}</p>
                   )}
                 </div>
               </div>

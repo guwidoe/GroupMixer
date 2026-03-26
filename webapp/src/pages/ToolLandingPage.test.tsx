@@ -119,7 +119,30 @@ describe('ToolLandingPage SEO wiring', () => {
         }),
       ]),
     );
+    expect(screen.getByLabelText('Participantes')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Generar grupos' })).toBeInTheDocument();
   });
+
+  it('localizes the simplified tool and inline results view for Spanish landings', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter initialEntries={['/es/random-team-generator']}>
+        <ToolLandingPage pageKey="random-team-generator" locale="es" />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Generar grupos' }));
+
+    expect(await screen.findByRole('heading', { name: 'Tus grupos' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Tarjetas' })).toBeInTheDocument();
+    expect(screen.getByText('Sesión 1')).toBeInTheDocument();
+    expect(screen.getByText('8 personas asignadas')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Texto' }));
+    expect(screen.getByRole('textbox', { name: 'Resultados en texto' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copiar texto' })).toBeInTheDocument();
+  }, 10000);
 
   it('renders Simplified Chinese metadata with zh-Hans language tagging on the shared landing engine', async () => {
     const config = getToolPageConfig('random-team-generator', 'zh');

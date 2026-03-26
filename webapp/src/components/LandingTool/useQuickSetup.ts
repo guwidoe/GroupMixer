@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useLocalStorageState } from '../../hooks/useLocalStorageState';
+import { getLandingUiContent } from '../../i18n/landingUi';
 import type { ToolPageConfig } from '../../pages/toolPageConfigs';
+import type { ToolPageSharedUiContent } from '../../pages/toolPageTypes';
 import { solveProblem } from '../../services/solver/solveProblem';
 import { buildGroups, buildProblemFromDraft, parseParticipantInput } from '../../utils/quickSetup';
 import type { AttributeDefinition, Problem, Solution } from '../../types';
@@ -25,6 +27,7 @@ const SAMPLE_CSV = [
 ].join('\n');
 
 export interface QuickSetupController {
+  ui: ToolPageSharedUiContent;
   draft: QuickSetupDraft;
   analysis: QuickSetupAnalysis;
   participantCount: number;
@@ -392,6 +395,7 @@ function downloadBlob(filename: string, content: string, mimeType: string) {
 }
 
 export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController {
+  const ui = getLandingUiContent(pageConfig.locale);
   const storageKey = `groupmixer.quick-setup.${pageConfig.key}.v1`;
   const [draft, setDraft] = useLocalStorageState<QuickSetupDraft>(storageKey, defaultDraft(pageConfig));
   const [result, setResult] = useState<QuickSetupResult | null>(null);
@@ -470,7 +474,7 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
         setResult(quickSetupResultFromSolution(mapped.problem, solution, seed));
       } catch (error) {
         console.error('[QuickSetup] Falling back to local grouping after solve failure:', error);
-        setErrorMessage(error instanceof Error ? error.message : 'Unable to solve this setup right now. Showing a local draft grouping instead.');
+        setErrorMessage(ui.results.solverFallbackMessage);
         setLastSolvedProblem(null);
         setLastSolvedSolution(null);
         setLastSolvedAttributeDefinitions([]);
@@ -479,7 +483,7 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
         setIsSolving(false);
       }
     },
-    [analysis, canGenerate, draft],
+    [analysis, canGenerate, draft, ui.results.solverFallbackMessage],
   );
 
   const generateGroups = useCallback(() => {
@@ -527,6 +531,7 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
   }, [workspacePayload]);
 
   return {
+    ui,
     draft,
     analysis,
     participantCount,

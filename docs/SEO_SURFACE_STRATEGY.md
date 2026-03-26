@@ -36,7 +36,7 @@ That manifest drives:
 - sitemap generation
 - static landing prerender output
 
-Localized copy resources live in:
+Localized landing-page copy resources live in:
 
 - `webapp/src/i18n/landing/en.ts`
 - `webapp/src/i18n/landing/de.ts`
@@ -45,6 +45,10 @@ Localized copy resources live in:
 - `webapp/src/i18n/landing/ja.ts`
 - `webapp/src/i18n/landing/hi.ts`
 - `webapp/src/i18n/landing/zh.ts`
+
+Localized shared landing-tool and inline-results UI strings live in:
+
+- `webapp/src/i18n/landingUi.ts`
 
 ## Current English landing inventory
 
@@ -191,6 +195,8 @@ The landing-page factory is intentionally split into:
   - copy
   - metadata
   - FAQ/schema text
+  - shared landing-tool UI strings
+  - shared inline-results UI strings
   - audience framing
   - experiment labels
   - rollout priority

@@ -9,6 +9,8 @@ import { LandingFooter } from '../components/LandingPage/LandingFooter';
 import { LandingLanguageSelector } from '../components/LandingPage/LandingLanguageSelector';
 import { ResultsScheduleGrid } from '../components/ResultsView/ResultsScheduleGrid';
 import { buildResultsSessionData } from '../components/results/buildResultsViewModel';
+import { interpolate } from '../i18n/interpolate';
+import { getLandingUiContent } from '../i18n/landingUi';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Seo } from '../components/Seo';
 import {
@@ -66,19 +68,19 @@ function buildDisplaySessions(
   }));
 }
 
-function buildResultText(sessions: DisplaySession[]) {
+function buildResultText(sessions: DisplaySession[], labels: ReturnType<typeof getLandingUiContent>['results']) {
   return sessions
     .map((session) =>
       [
-        `Session ${session.sessionNumber}`,
-        ...session.groups.map((group) => `${group.id}: ${group.members.join(', ') || 'No assignments'}`),
+        interpolate(labels.sessionHeadingTemplate, { number: session.sessionNumber }),
+        ...session.groups.map((group) => `${group.id}: ${group.members.join(', ') || labels.noAssignmentsLabel}`),
       ].join('\n'),
     )
     .join('\n\n');
 }
 
-function buildResultCsv(sessions: DisplaySession[]) {
-  const lines = ['session,group,members'];
+function buildResultCsv(sessions: DisplaySession[], labels: ReturnType<typeof getLandingUiContent>['results']) {
+  const lines = [[labels.csvHeaderSession, labels.csvHeaderGroup, labels.csvHeaderMembers].join(',')];
   for (const session of sessions) {
     for (const group of session.groups) {
       lines.push(`${session.sessionNumber},${group.id},"${group.members.join(', ')}"`);
@@ -97,6 +99,7 @@ async function copyText(value: string) {
 
 export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProps) {
   const config = getToolPageConfig(pageKey, locale);
+  const ui = getLandingUiContent(locale);
   const controller = useQuickSetup(config);
   const syncWorkspaceDraft = useAppStore((state) => state.syncWorkspaceDraft);
   const navigate = useNavigate();
@@ -163,8 +166,8 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
     () => buildDisplaySessions(sharedSessionData, controller.result?.sessions ?? []),
     [controller.result?.sessions, sharedSessionData],
   );
-  const resultText = useMemo(() => buildResultText(displaySessions), [displaySessions]);
-  const resultCsv = useMemo(() => buildResultCsv(displaySessions), [displaySessions]);
+  const resultText = useMemo(() => buildResultText(displaySessions, ui.results), [displaySessions, ui.results]);
+  const resultCsv = useMemo(() => buildResultCsv(displaySessions, ui.results), [displaySessions, ui.results]);
   const activeResultFormat = controller.result ? resultFormat : 'cards';
   const activeCopiedFormat = controller.result ? copiedFormat : null;
 
@@ -245,7 +248,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       style={{ borderColor: 'var(--border-primary)' }}
     >
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold">Your groups</h2>
+        <h2 className="text-xl font-semibold">{ui.results.yourGroupsHeading}</h2>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -254,14 +257,14 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
             style={{ borderColor: 'var(--border-primary)' }}
           >
             <Download className="h-3.5 w-3.5" />
-            Export CSV
+            {ui.results.exportCsvLabel}
           </button>
           <button
             type="button"
             onClick={() => openAdvancedWorkspace('results')}
             className="btn-primary inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold"
           >
-            Open in expert workspace
+            {ui.results.openInExpertWorkspaceLabel}
             <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -274,7 +277,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       )}
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
-        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Result formats">
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label={ui.results.resultFormatsAriaLabel}>
           {(['cards', 'list', 'text', 'csv'] as ResultFormat[]).map((format) => (
             <button
               key={format}
@@ -288,7 +291,15 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                 backgroundColor: activeResultFormat === format ? 'var(--bg-secondary)' : 'transparent',
               }}
             >
-              {format}
+              {
+                format === 'cards'
+                  ? ui.results.cardsFormatLabel
+                  : format === 'list'
+                    ? ui.results.listFormatLabel
+                    : format === 'text'
+                      ? ui.results.textFormatLabel
+                      : ui.results.csvFormatLabel
+              }
             </button>
           ))}
         </div>
@@ -306,18 +317,32 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
             style={{ borderColor: 'var(--border-primary)' }}
           >
             <Copy className="h-3.5 w-3.5" />
-            {activeCopiedFormat === activeResultFormat ? 'Copied' : `Copy ${activeResultFormat.toUpperCase()}`}
+            {activeCopiedFormat === activeResultFormat
+              ? ui.results.copiedLabel
+              : activeResultFormat === 'csv'
+                ? ui.results.copyCsvLabel
+                : ui.results.copyTextLabel}
           </button>
         )}
       </div>
 
       {activeResultFormat === 'cards' && (
         solvedSolution ? (
-          <ResultsScheduleGrid sessionData={sharedSessionData} />
+          <ResultsScheduleGrid
+            sessionData={sharedSessionData}
+            labels={{
+              sessionHeadingTemplate: ui.results.sessionHeadingTemplate,
+              peopleAssignedTemplate: ui.results.peopleAssignedTemplate,
+              groupPeopleCountTemplate: ui.results.groupPeopleCountTemplate,
+              noAssignmentsLabel: ui.results.noAssignmentsLabel,
+            }}
+          />
         ) : (
           controller.result.sessions.map((session) => (
             <div key={session.sessionNumber} className="mb-6">
-              <h3 className="mb-3 text-base font-semibold">Session {session.sessionNumber}</h3>
+              <h3 className="mb-3 text-base font-semibold">
+                {interpolate(ui.results.sessionHeadingTemplate, { number: session.sessionNumber })}
+              </h3>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {session.groups.map((group) => (
                   <div
@@ -328,7 +353,10 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     <div className="mb-2 flex items-center justify-between">
                       <span className="text-sm font-semibold">{group.id}</span>
                       <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                        {group.members.length} people
+                        {interpolate(ui.results.groupPeopleCountTemplate, {
+                          count: group.members.length,
+                          size: group.members.length,
+                        })}
                       </span>
                     </div>
                     <ul className="space-y-1">
@@ -354,13 +382,15 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
         <div className="space-y-5">
           {displaySessions.map((session) => (
             <div key={session.sessionNumber} className="rounded-xl border p-4" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
-              <h3 className="text-base font-semibold">Session {session.sessionNumber}</h3>
+              <h3 className="text-base font-semibold">
+                {interpolate(ui.results.sessionHeadingTemplate, { number: session.sessionNumber })}
+              </h3>
               <div className="mt-3 space-y-3">
                 {session.groups.map((group) => (
                   <div key={`${session.sessionNumber}-${group.id}`}>
                     <div className="text-sm font-semibold">{group.id}</div>
                     <div className="mt-1 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
-                      {group.members.join(', ') || 'No assignments'}
+                      {group.members.join(', ') || ui.results.noAssignmentsLabel}
                     </div>
                   </div>
                 ))}
@@ -373,10 +403,10 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       {activeResultFormat === 'text' && (
         <div className="space-y-3">
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Plain text format for easy copy/paste into chat, docs, or email.
+            {ui.results.plainTextDescription}
           </p>
           <textarea
-            aria-label="Text results"
+            aria-label={ui.results.textResultsAriaLabel}
             readOnly
             value={resultText}
             className="min-h-[260px] w-full rounded-xl border px-4 py-3 text-sm outline-none"
@@ -388,10 +418,10 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       {activeResultFormat === 'csv' && (
         <div className="space-y-3">
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            CSV format for spreadsheets, docs, and quick manual editing.
+            {ui.results.csvDescription}
           </p>
           <textarea
-            aria-label="CSV results"
+            aria-label={ui.results.csvResultsAriaLabel}
             readOnly
             value={resultCsv}
             className="min-h-[260px] w-full rounded-xl border px-4 py-3 font-mono text-sm outline-none"
@@ -522,7 +552,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <label htmlFor="participantInput" className="text-sm font-medium">
-                    Participants
+                    {ui.quickSetup.participantsLabel}
                   </label>
                   <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
                     {draft.inputMode === 'names' ? (
@@ -537,7 +567,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                           }))
                         }
                       >
-                        Switch to CSV
+                        {ui.quickSetup.switchToCsvLabel}
                       </button>
                     ) : (
                       <button
@@ -551,16 +581,16 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                           }))
                         }
                       >
-                        Switch to names
+                        {ui.quickSetup.switchToNamesLabel}
                       </button>
                     )}
                     <span>·</span>
                     <button type="button" className="font-medium" onClick={controller.loadSampleData}>
-                      Sample
+                      {ui.quickSetup.sampleLabel}
                     </button>
                     <span>·</span>
                     <button type="button" className="font-medium" onClick={controller.resetDraft}>
-                      Reset
+                      {ui.quickSetup.resetLabel}
                     </button>
                   </div>
                 </div>
@@ -570,7 +600,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                   onChange={(event) =>
                     controller.updateDraft((current) => ({ ...current, participantInput: event.target.value }))
                   }
-                  placeholder={draft.inputMode === 'csv' ? 'name,team,role\nAlex,Blue,Engineer' : 'One name per line'}
+                  placeholder={draft.inputMode === 'csv' ? ui.quickSetup.csvPlaceholder : ui.quickSetup.namesPlaceholder}
                   className="min-h-[130px] w-full rounded-xl border px-3 py-2.5 text-sm leading-relaxed outline-none transition-shadow focus:ring-2"
                   style={{
                     borderColor: 'var(--border-primary)',
@@ -582,7 +612,9 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
 
               <div className="mt-4">
                 <label htmlFor="groupingValue" className="mb-1.5 block text-sm font-medium">
-                  {draft.groupingMode === 'groupCount' ? 'Number of groups' : 'People per group'}
+                  {draft.groupingMode === 'groupCount'
+                    ? ui.quickSetup.groupingValueGroupCountLabel
+                    : ui.quickSetup.groupingValueGroupSizeLabel}
                 </label>
                 <div className="flex items-center gap-2">
                   <input
@@ -614,22 +646,24 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                       }))
                     }
                   >
-                    {draft.groupingMode === 'groupCount' ? '→ use people per group' : '→ use group count'}
+                    {draft.groupingMode === 'groupCount'
+                      ? ui.quickSetup.groupingToggleToGroupSizeLabel
+                      : ui.quickSetup.groupingToggleToGroupCountLabel}
                   </button>
                 </div>
               </div>
 
               <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl px-3 py-2.5 text-center text-sm" style={{ backgroundColor: 'var(--bg-secondary)' }}>
                 <div>
-                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>People</div>
+                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ui.quickSetup.peopleStatLabel}</div>
                   <div className="text-lg font-semibold">{participantCount}</div>
                 </div>
                 <div>
-                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>Groups</div>
+                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ui.quickSetup.groupsStatLabel}</div>
                   <div className="text-lg font-semibold">{estimatedGroupCount}</div>
                 </div>
                 <div>
-                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>~Size</div>
+                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ui.quickSetup.approxSizeStatLabel}</div>
                   <div className="text-lg font-semibold">{estimatedGroupSize}</div>
                 </div>
               </div>
@@ -649,7 +683,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                   className="btn-primary inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Sparkles className="h-4 w-4" />
-                  {controller.isSolving ? 'Generating…' : 'Generate Groups'}
+                  {controller.isSolving ? ui.quickSetup.generatingLabel : ui.quickSetup.generateGroupsLabel}
                 </button>
                 {controller.result && (
                   <button
@@ -658,7 +692,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     disabled={controller.isSolving}
                     className="inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-3 text-sm font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
                     style={{ borderColor: 'var(--border-primary)' }}
-                    title="Reshuffle"
+                    title={ui.quickSetup.reshuffleLabel}
                   >
                     <RotateCcw className="h-4 w-4" />
                   </button>

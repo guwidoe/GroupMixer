@@ -7,6 +7,7 @@ interface QuickSetupAdvancedOptionsProps {
 
 export function QuickSetupAdvancedOptions({ controller }: QuickSetupAdvancedOptionsProps) {
   const { draft, analysis } = controller;
+  const labels = controller.ui.advancedOptions;
 
   return (
     <section className="rounded-3xl border p-5" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
@@ -22,13 +23,13 @@ export function QuickSetupAdvancedOptions({ controller }: QuickSetupAdvancedOpti
         className="flex w-full items-center justify-between gap-4 text-left"
       >
         <div>
-          <div className="text-sm font-semibold">Advanced options</div>
+          <div className="text-sm font-semibold">{labels.title}</div>
           <p className="mt-1 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
-            Keep together, avoid pairing, multiple sessions, and optional balancing controls.
+            {labels.description}
           </p>
         </div>
         <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-          {draft.advancedOpen ? 'Hide' : 'Show'}
+          {draft.advancedOpen ? labels.hideLabel : labels.showLabel}
         </span>
       </button>
 
@@ -36,7 +37,7 @@ export function QuickSetupAdvancedOptions({ controller }: QuickSetupAdvancedOpti
         <div className="mt-5 space-y-5 border-t pt-5" style={{ borderColor: 'var(--border-primary)' }}>
           <div>
             <label htmlFor="sessions" className="mb-2 block text-sm font-medium">
-              Sessions
+              {labels.sessionsLabel}
             </label>
             <input
               id="sessions"
@@ -56,22 +57,22 @@ export function QuickSetupAdvancedOptions({ controller }: QuickSetupAdvancedOpti
               onChange={(event) => controller.updateDraft((current) => ({ ...current, avoidRepeatPairings: event.target.checked }))}
             />
             <div>
-              <div className="text-sm font-medium">Avoid repeat pairings</div>
+              <div className="text-sm font-medium">{labels.avoidRepeatPairingsLabel}</div>
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                Spread people across sessions so the same pairs are less likely to repeat.
+                {labels.avoidRepeatPairingsDescription}
               </div>
             </div>
           </label>
 
           <div>
             <label htmlFor="keepTogetherInput" className="mb-2 block text-sm font-medium">
-              Keep together
+              {labels.keepTogetherLabel}
             </label>
             <textarea
               id="keepTogetherInput"
               value={draft.keepTogetherInput}
               onChange={(event) => controller.updateDraft((current) => ({ ...current, keepTogetherInput: event.target.value }))}
-              placeholder={'One group per line\nAlex, Sam\nPriya, Jordan, Mina'}
+              placeholder={labels.keepTogetherPlaceholder}
               className="min-h-[96px] w-full rounded-2xl border px-4 py-3 text-sm outline-none focus:ring-2"
               style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
             />
@@ -79,13 +80,13 @@ export function QuickSetupAdvancedOptions({ controller }: QuickSetupAdvancedOpti
 
           <div>
             <label htmlFor="avoidPairingsInput" className="mb-2 block text-sm font-medium">
-              Avoid pairing
+              {labels.avoidPairingLabel}
             </label>
             <textarea
               id="avoidPairingsInput"
               value={draft.avoidPairingsInput}
               onChange={(event) => controller.updateDraft((current) => ({ ...current, avoidPairingsInput: event.target.value }))}
-              placeholder={'One pair per line\nAlex, Sam\nPriya, Jordan'}
+              placeholder={labels.avoidPairingPlaceholder}
               className="min-h-[96px] w-full rounded-2xl border px-4 py-3 text-sm outline-none focus:ring-2"
               style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
             />
@@ -94,7 +95,7 @@ export function QuickSetupAdvancedOptions({ controller }: QuickSetupAdvancedOpti
           {draft.inputMode === 'csv' && analysis.availableBalanceKeys.length > 0 && (
             <div>
               <label htmlFor="balanceAttributeKey" className="mb-2 block text-sm font-medium">
-                Balance groups by attribute
+                {labels.balanceGroupsByAttributeLabel}
               </label>
               <select
                 id="balanceAttributeKey"
@@ -106,7 +107,7 @@ export function QuickSetupAdvancedOptions({ controller }: QuickSetupAdvancedOpti
                 className="w-full rounded-2xl border px-4 py-3 text-sm outline-none focus:ring-2"
                 style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
               >
-                <option value="">No balancing</option>
+                <option value="">{labels.noBalancingLabel}</option>
                 {analysis.availableBalanceKeys.map((key) => (
                   <option key={key} value={key}>
                     {key}
@@ -118,7 +119,7 @@ export function QuickSetupAdvancedOptions({ controller }: QuickSetupAdvancedOpti
 
           {analysis.ignoredConstraintNames.length > 0 && (
             <div className="rounded-2xl px-4 py-3 text-sm" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}>
-              Ignored names not found in the participant list: {analysis.ignoredConstraintNames.join(', ')}
+              {labels.ignoredNamesPrefix} {analysis.ignoredConstraintNames.join(', ')}
             </div>
           )}
         </div>

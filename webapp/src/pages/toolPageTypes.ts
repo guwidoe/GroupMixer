@@ -68,6 +68,75 @@ export interface ToolPageAdvancedSectionContent extends ToolPageSectionContent {
   supportingText: string;
 }
 
+export interface ToolPageQuickSetupUiContent {
+  participantsLabel: string;
+  switchToCsvLabel: string;
+  switchToNamesLabel: string;
+  sampleLabel: string;
+  resetLabel: string;
+  namesPlaceholder: string;
+  csvPlaceholder: string;
+  groupingValueGroupCountLabel: string;
+  groupingValueGroupSizeLabel: string;
+  groupingToggleToGroupSizeLabel: string;
+  groupingToggleToGroupCountLabel: string;
+  peopleStatLabel: string;
+  groupsStatLabel: string;
+  approxSizeStatLabel: string;
+  generateGroupsLabel: string;
+  generatingLabel: string;
+  reshuffleLabel: string;
+}
+
+export interface ToolPageAdvancedOptionsUiContent {
+  title: string;
+  description: string;
+  showLabel: string;
+  hideLabel: string;
+  sessionsLabel: string;
+  avoidRepeatPairingsLabel: string;
+  avoidRepeatPairingsDescription: string;
+  keepTogetherLabel: string;
+  keepTogetherPlaceholder: string;
+  avoidPairingLabel: string;
+  avoidPairingPlaceholder: string;
+  balanceGroupsByAttributeLabel: string;
+  noBalancingLabel: string;
+  ignoredNamesPrefix: string;
+}
+
+export interface ToolPageResultsUiContent {
+  yourGroupsHeading: string;
+  exportCsvLabel: string;
+  openInExpertWorkspaceLabel: string;
+  resultFormatsAriaLabel: string;
+  cardsFormatLabel: string;
+  listFormatLabel: string;
+  textFormatLabel: string;
+  csvFormatLabel: string;
+  copiedLabel: string;
+  copyTextLabel: string;
+  copyCsvLabel: string;
+  sessionHeadingTemplate: string;
+  peopleAssignedTemplate: string;
+  groupPeopleCountTemplate: string;
+  noAssignmentsLabel: string;
+  plainTextDescription: string;
+  csvDescription: string;
+  textResultsAriaLabel: string;
+  csvResultsAriaLabel: string;
+  csvHeaderSession: string;
+  csvHeaderGroup: string;
+  csvHeaderMembers: string;
+  solverFallbackMessage: string;
+}
+
+export interface ToolPageSharedUiContent {
+  quickSetup: ToolPageQuickSetupUiContent;
+  advancedOptions: ToolPageAdvancedOptionsUiContent;
+  results: ToolPageResultsUiContent;
+}
+
 export interface ToolPageLocalizedContent {
   seo: ToolPageSeoContent;
   hero: ToolPageHeroContent;
