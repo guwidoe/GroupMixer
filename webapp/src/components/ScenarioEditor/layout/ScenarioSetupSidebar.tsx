@@ -1,5 +1,6 @@
 import React from 'react';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { ScrollArea } from '../../ScrollArea';
 import { Tooltip } from '../../Tooltip';
 import type { ScenarioSetupResolvedSection } from '../navigation/scenarioSetupNav';
 import type { ScenarioSetupSectionGroupDefinition, ScenarioSetupSectionId } from '../navigation/scenarioSetupNavTypes';
@@ -48,7 +49,7 @@ export function ScenarioSetupSidebar({
           </div>
         )}
 
-        <div className="theme-scrollbar min-h-0 flex-1 overflow-y-auto">
+        <ScrollArea orientation="vertical" className="min-h-0 flex-1">
           <nav className="flex min-h-full flex-col px-0 pb-0 pt-2">
             {groupedSections.map(({ group, sections }) => (
               <ScenarioSetupSidebarGroup
@@ -61,7 +62,7 @@ export function ScenarioSetupSidebar({
               />
             ))}
           </nav>
-        </div>
+        </ScrollArea>
 
         <div className="shrink-0 border-t p-2" style={{ borderColor: 'var(--border-primary)' }}>
           <Tooltip

@@ -1,5 +1,6 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
+import { ScrollArea } from './ScrollArea';
 import { useAppStore } from '../store';
 
 export function Navigation() {
@@ -50,7 +51,7 @@ export function Navigation() {
       }}
     >
       <nav aria-label="Primary app navigation">
-        <div className="overflow-x-auto px-4 py-3">
+        <ScrollArea orientation="horizontal" className="px-4 py-3">
           <div className="mx-auto flex min-w-max items-center justify-start gap-2 md:justify-center">
             {tabs.map((tab, index) => (
               <div key={tab.id} className="flex items-center gap-2">
@@ -101,7 +102,7 @@ export function Navigation() {
               </div>
             ))}
           </div>
-        </div>
+        </ScrollArea>
       </nav>
     </div>
   );

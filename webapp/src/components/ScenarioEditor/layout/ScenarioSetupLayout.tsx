@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ScrollArea } from '../../ScrollArea';
 import type { AttributeDefinition, Scenario } from '../../../types';
 import { getResolvedScenarioSetupSectionsByGroup } from '../navigation/scenarioSetupNav';
 import type { ScenarioSetupSectionId } from '../navigation/scenarioSetupNavTypes';
@@ -57,7 +58,9 @@ export function ScenarioSetupLayout({
           collapsedHeaderContent={collapsedSidebarHeader}
         />
 
-        <div className="theme-scrollbar min-w-0 flex-1 p-4 md:h-full md:min-h-0 md:overflow-y-auto md:p-6">{children}</div>
+        <ScrollArea orientation="vertical" className="min-w-0 flex-1 p-4 md:h-full md:min-h-0 md:p-6">
+          {children}
+        </ScrollArea>
       </div>
     </div>
   );

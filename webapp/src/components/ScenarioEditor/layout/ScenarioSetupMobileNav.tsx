@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Menu, X } from 'lucide-react';
+import { ScrollArea } from '../../ScrollArea';
 import type { ScenarioSetupResolvedSection } from '../navigation/scenarioSetupNav';
 import type { ScenarioSetupSectionGroupDefinition, ScenarioSetupSectionId } from '../navigation/scenarioSetupNavTypes';
 import { ScenarioSetupSidebarGroup } from './ScenarioSetupSidebarGroup';
@@ -65,8 +66,9 @@ export function ScenarioSetupMobileNav({
             onClick={() => setIsOpen(false)}
           />
 
-          <div
-            className="theme-scrollbar absolute inset-y-0 left-0 w-[80vw] max-w-xs overflow-y-auto border-r shadow-xl"
+          <ScrollArea
+            orientation="vertical"
+            className="absolute inset-y-0 left-0 w-[80vw] max-w-xs border-r shadow-xl"
             style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
           >
             <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: 'var(--border-primary)' }}>
@@ -104,7 +106,7 @@ export function ScenarioSetupMobileNav({
                 />
               ))}
             </div>
-          </div>
+          </ScrollArea>
         </div>
       )}
     </div>
