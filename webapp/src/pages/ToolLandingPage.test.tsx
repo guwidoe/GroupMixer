@@ -176,6 +176,42 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByText(/how do i split a list of names into random groups/i)).toBeInTheDocument();
   });
 
+  it('keeps results above the hero content on mobile once groups are generated', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /generate groups/i }));
+
+    expect(await screen.findByTestId('landing-results-panel')).toHaveClass('order-2', 'lg:order-3', 'lg:col-span-2');
+    expect(screen.getByTestId('landing-hero')).toHaveClass('order-3', 'lg:order-1');
+  });
+
+  it('uses consistent comma-separated helper text for advanced constraint inputs', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /show/i }));
+
+    expect(screen.getByLabelText(/keep together/i)).toHaveAttribute(
+      'placeholder',
+      'One group per line\nAlex, Sam\nPriya, Jordan, Mina',
+    );
+    expect(screen.getByLabelText(/avoid pairing/i)).toHaveAttribute(
+      'placeholder',
+      'One pair per line\nAlex, Sam\nPriya, Jordan',
+    );
+  });
+
   it('offers multiple copy-friendly result formats after generating groups', async () => {
     const user = userEvent.setup();
 

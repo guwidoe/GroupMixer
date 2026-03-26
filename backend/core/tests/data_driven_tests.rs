@@ -327,12 +327,10 @@ fn assert_cliques_respected(input: &ApiInput, result: &SolverResult) {
 
             for session in applicable_sessions {
                 let session_key = format!("session_{}", session);
-                let session_schedule = result.schedule.get(&session_key).unwrap_or_else(|| {
-                    panic!(
-                        "Session {} not found in schedule for clique check",
-                        session_key
-                    )
-                });
+                let session_schedule = result
+                    .schedule
+                    .get(&session_key)
+                    .unwrap_or_else(|| panic!("Expected session missing during clique check"));
 
                 let mut clique_group_id = None;
                 for (group_id, members) in session_schedule {
@@ -344,21 +342,13 @@ fn assert_cliques_respected(input: &ApiInput, result: &SolverResult) {
 
                 assert!(
                     clique_group_id.is_some(),
-                    "Clique member {} not found in any group for session {}",
-                    people[0],
-                    session
+                    "Clique anchor not found in the expected session"
                 );
 
                 let group_members = session_schedule.get(clique_group_id.unwrap()).unwrap();
 
                 for person in people {
-                    assert!(
-                        group_members.contains(person),
-                        "Clique constraint violated: {} should be with {:?} in session {} but is not",
-                        person,
-                        people,
-                        session
-                    );
+                    assert!(group_members.contains(person), "Clique constraint violated");
                 }
             }
         }
@@ -378,12 +368,10 @@ fn assert_forbidden_pairs_respected(input: &ApiInput, result: &SolverResult) {
 
             for session in applicable_sessions {
                 let session_key = format!("session_{}", session);
-                let session_schedule = result.schedule.get(&session_key).unwrap_or_else(|| {
-                    panic!(
-                        "Session {} not found in schedule for forbidden pair check",
-                        session_key
-                    )
-                });
+                let session_schedule = result
+                    .schedule
+                    .get(&session_key)
+                    .unwrap_or_else(|| panic!("Expected session missing during forbidden-pair check"));
 
                 for members in session_schedule.values() {
                     let mut present_members = 0;
@@ -394,10 +382,7 @@ fn assert_forbidden_pairs_respected(input: &ApiInput, result: &SolverResult) {
                     }
                     assert!(
                         present_members <= 1,
-                        "Forbidden constraint violated: {:?} found together in session {} group: {:?}",
-                        people,
-                        session,
-                        members
+                        "Forbidden-pair constraint violated"
                     );
                 }
             }
@@ -418,12 +403,10 @@ fn assert_should_together_respected(input: &ApiInput, result: &SolverResult) {
 
             for session in applicable_sessions {
                 let session_key = format!("session_{}", session);
-                let session_schedule = result.schedule.get(&session_key).unwrap_or_else(|| {
-                    panic!(
-                        "Session {} not found in schedule for should-together check",
-                        session_key
-                    )
-                });
+                let session_schedule = result
+                    .schedule
+                    .get(&session_key)
+                    .unwrap_or_else(|| panic!("Expected session missing during should-together check"));
 
                 let mut group_id_opt: Option<&String> = None;
                 for (group_id, members) in session_schedule {
@@ -437,18 +420,11 @@ fn assert_should_together_respected(input: &ApiInput, result: &SolverResult) {
                     for p in people {
                         assert!(
                             members.contains(p),
-                            "ShouldStayTogether violated: {:?} not all in group {} for session {}",
-                            people,
-                            group_id,
-                            session
+                            "ShouldStayTogether constraint violated"
                         );
                     }
                 } else {
-                    panic!(
-                        "ShouldStayTogether: anchor person {} not found in any group for session {}",
-                        people[0],
-                        session
-                    );
+                    panic!("ShouldStayTogether anchor not found in the expected session");
                 }
             }
         }
@@ -473,10 +449,7 @@ fn assert_immovable_person_respected(input: &ApiInput, result: &SolverResult) {
         for &session in &sessions {
             let session_key = format!("session_{}", session);
             let session_schedule = result.schedule.get(&session_key).unwrap_or_else(|| {
-                panic!(
-                    "Session {} not found in schedule for immovable person check",
-                    session_key
-                )
+                panic!("Expected session missing during immovable-person check")
             });
 
             let person_group = session_schedule
@@ -485,17 +458,11 @@ fn assert_immovable_person_respected(input: &ApiInput, result: &SolverResult) {
 
             assert!(
                 person_group.is_some(),
-                "Immovable person {} not found in any group for session {}",
-                constraint.person_id,
-                session
+                "Immovable-person constraint anchor not found"
             );
 
             let (group_id, _members) = person_group.unwrap();
-            assert_eq!(
-                *group_id, constraint.group_id,
-                "Immovable person {} is in group {} instead of {} for session {}",
-                constraint.person_id, group_id, constraint.group_id, session
-            );
+            assert_eq!(*group_id, constraint.group_id, "Immovable-person constraint violated");
         }
     }
 }
@@ -513,7 +480,7 @@ fn assert_session_specific_constraints_respected(input: &ApiInput, result: &Solv
                 let session_schedule = result
                     .schedule
                     .get(&session_key)
-                    .unwrap_or_else(|| panic!("Session {} not found in schedule", session_key));
+                    .unwrap_or_else(|| panic!("Expected session missing during session-specific clique check"));
 
                 let mut clique_group_id = None;
                 for (group_id, members) in session_schedule {
@@ -525,9 +492,7 @@ fn assert_session_specific_constraints_respected(input: &ApiInput, result: &Solv
 
                 assert!(
                     clique_group_id.is_some(),
-                    "Clique member {} not found in any group for session {}",
-                    people[0],
-                    session
+                    "Clique anchor not found in the expected session"
                 );
 
                 let group_members = session_schedule.get(clique_group_id.unwrap()).unwrap();
@@ -535,10 +500,7 @@ fn assert_session_specific_constraints_respected(input: &ApiInput, result: &Solv
                 for person in people {
                     assert!(
                         group_members.contains(person),
-                        "Session-specific clique constraint violated: {} should be with {:?} in session {} but is not",
-                        person,
-                        people,
-                        session
+                        "Session-specific clique constraint violated"
                     );
                 }
             }
@@ -557,7 +519,7 @@ fn assert_session_specific_constraints_respected(input: &ApiInput, result: &Solv
                 let session_schedule = result
                     .schedule
                     .get(&session_key)
-                    .unwrap_or_else(|| panic!("Session {} not found in schedule", session_key));
+                    .unwrap_or_else(|| panic!("Expected session missing during session-specific forbidden-pair check"));
 
                 for members in session_schedule.values() {
                     let mut present_members = 0;
@@ -568,10 +530,7 @@ fn assert_session_specific_constraints_respected(input: &ApiInput, result: &Solv
                     }
                     assert!(
                         present_members <= 1,
-                        "Session-specific forbidden constraint violated: {:?} found together in session {} group: {:?}",
-                        people,
-                        session,
-                        members
+                        "Session-specific forbidden-pair constraint violated"
                     );
                 }
             }
@@ -602,13 +561,11 @@ fn assert_participation_patterns_respected(input: &ApiInput, result: &SolverResu
 
                 if should_participate && !person_found {
                     println!(
-                        "Warning: {} should participate in session {} but doesn't appear in schedule",
-                        person.id, session_idx
+                        "Warning: participation expectation not met for a scheduled attendee"
                     );
                 } else if !should_participate && person_found {
                     panic!(
-                        "Participation pattern violation: {} should NOT participate in session {} but appears in schedule",
-                        person.id, session_idx
+                        "Participation pattern violation: non-participating attendee appeared in the schedule"
                     );
                 }
             }
@@ -628,8 +585,7 @@ fn assert_participation_patterns_respected(input: &ApiInput, result: &SolverResu
 
                     if !person_sessions.contains(&session_idx) {
                         panic!(
-                            "Participation violation: {} appears in session {} but should not participate",
-                            person.id, session_idx
+                            "Participation violation: attendee appeared in a disallowed session"
                         );
                     }
                 }
