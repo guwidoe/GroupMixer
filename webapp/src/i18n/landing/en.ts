@@ -93,7 +93,7 @@ const FAQS = {
   privacy: {
     question: 'Does my data stay private?',
     answer:
-      'Yes. All processing happens locally in your browser. Your names and group data are never sent to a server.',
+      'Yes. All processing happens locally in your browser. Your names and group data are never sent to a server. You can use this page without internet connection once it is loaded.',
   },
   constraints: {
     question: 'Can I add rules like keep-together or keep-apart?',
@@ -140,10 +140,10 @@ function createContent({
     },
     optimizerCta: {
       eyebrow: 'Want to do better than random?',
-      title: 'Try the full group optimizer.',
+      title: 'Use the full group optimizer.',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: 'Open expert workspace',
-      supportingText: 'Your landing-page draft comes with you.',
+      supportingText: 'Your inputs from this page come with you.',
     },
     faqEntries,
     chrome: CHROME,
@@ -160,9 +160,9 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     eyebrow: 'For classrooms, workshops, and events',
     heroTitle: 'Random Group Generator',
     subhead:
-      'Paste names, choose the number of groups, and generate instantly. Private, and no sign-up needed.',
+      'Paste names, choose the number of groups, and generate instantly.',
     audienceSummary:
-      'Start with a simple random split, then add balancing, constraints, and multi-round optimization only when your session needs it.',
+      'Start with a simple random split, then add balancing, constraints, and multi-round optimization only when you need it.',
     faqEntries: [
       {
         question: 'How do I split a list of names into random groups?',

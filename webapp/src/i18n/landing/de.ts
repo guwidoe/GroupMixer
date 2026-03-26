@@ -93,7 +93,7 @@ const FAQS = {
   privacy: {
     question: 'Bleiben meine Daten privat?',
     answer:
-      'Ja. Alles wird lokal in deinem Browser verarbeitet. Namen und Gruppendaten werden nicht an einen Server gesendet.',
+      'Ja. Alles wird lokal in deinem Browser verarbeitet. Namen und Gruppendaten werden nicht an einen Server gesendet. Sobald die Seite geladen ist, kannst du sie auch ohne Internetverbindung nutzen.',
   },
   constraints: {
     question: 'Kann ich Regeln wie „zusammen halten“ oder „trennen“ hinzufügen?',
@@ -140,10 +140,10 @@ function createContent({
     },
     optimizerCta: {
       eyebrow: 'Mehr als nur Zufall gesucht?',
-      title: 'Probiere den vollständigen Gruppen-Optimierer aus.',
+      title: 'Nutze den vollständigen Gruppen-Optimierer.',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: 'Experten-Arbeitsbereich öffnen',
-      supportingText: 'Dein Entwurf von der Landingpage wird direkt übernommen.',
+      supportingText: 'Deine Eingaben von dieser Seite werden direkt übernommen.',
     },
     faqEntries,
     chrome: CHROME,
@@ -160,9 +160,9 @@ export const DE_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
     eyebrow: 'Für Unterricht, Workshops und Events',
     heroTitle: 'Zufalls-Gruppengenerator',
     subhead:
-      'Namen einfügen, Anzahl der Gruppen wählen und sofort aufteilen. Privat, schnell und ohne Anmeldung.',
+      'Namen einfügen, Anzahl der Gruppen wählen und sofort aufteilen.',
     audienceSummary:
-      'Starte mit einer einfachen Zufallsaufteilung und ergänze erst dann Balance, Regeln oder mehrere Runden, wenn du sie wirklich brauchst.',
+      'Starte mit einer einfachen Zufallsaufteilung und ergänze Balance, Regeln oder mehrere Runden erst dann, wenn du sie brauchst.',
     faqEntries: [
       {
         question: 'Wie teile ich eine Namensliste zufällig in Gruppen auf?',

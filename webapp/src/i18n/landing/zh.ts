@@ -93,7 +93,7 @@ const FAQS = {
   privacy: {
     question: '我的数据安全吗？',
     answer:
-      '是的。所有处理都在你的浏览器中本地完成，姓名和分组数据不会发送到服务器。',
+      '是的。所有处理都在你的浏览器中本地完成，姓名和分组数据不会发送到服务器。页面加载完成后，即使没有网络连接你也可以继续使用。',
   },
   constraints: {
     question: '我可以添加“必须同组”或“不能同组”之类的规则吗？',
@@ -140,10 +140,10 @@ function createContent({
     },
     optimizerCta: {
       eyebrow: '想要比随机更好的分组？',
-      title: '试试完整的分组优化器。',
+      title: '使用完整的分组优化器。',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: '打开专家工作区',
-      supportingText: '你在落地页中的草稿可以直接带到专家工作区。',
+      supportingText: '你在这个页面输入的内容可以直接带到专家工作区。',
     },
     faqEntries,
     chrome: CHROME,
@@ -159,7 +159,7 @@ export const ZH_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
       '免费随机分组生成器。粘贴名单、选择分组数量，几秒内生成更均衡的小组。无需注册，必要时还可以添加约束规则。',
     eyebrow: '适合课堂、工作坊和各类活动',
     heroTitle: '随机分组生成器',
-    subhead: '粘贴名单、选择小组数量，立即生成分组。无需注册，处理过程完全在浏览器中完成。',
+    subhead: '粘贴名单、选择小组数量，立即生成分组。',
     audienceSummary:
       '先用简单的随机分组快速开始，等你需要时再增加平衡规则、约束条件和多轮优化。',
     faqEntries: [

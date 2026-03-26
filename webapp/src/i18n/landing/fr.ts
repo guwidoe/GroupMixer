@@ -93,7 +93,7 @@ const FAQS = {
   privacy: {
     question: 'Mes données restent-elles privées ?',
     answer:
-      'Oui. Tout le traitement se fait localement dans votre navigateur. Vos noms et vos données de groupes ne sont jamais envoyés à un serveur.',
+      'Oui. Tout le traitement se fait localement dans votre navigateur. Vos noms et vos données de groupes ne sont jamais envoyés à un serveur. Une fois la page chargée, vous pouvez aussi l’utiliser hors ligne.',
   },
   constraints: {
     question: 'Puis-je ajouter des règles comme garder ensemble ou séparer certaines personnes ?',
@@ -140,10 +140,10 @@ function createContent({
     },
     optimizerCta: {
       eyebrow: 'Vous voulez mieux qu’un tirage aléatoire ?',
-      title: 'Essayez l’optimiseur complet de groupes.',
+      title: 'Utilisez l’optimiseur complet de groupes.',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: 'Ouvrir l’espace expert',
-      supportingText: 'Votre brouillon de la landing vous suit quand vous passez dans l’espace expert.',
+      supportingText: 'Les informations saisies sur cette page vous suivent dans l’espace expert.',
     },
     faqEntries,
     chrome: CHROME,
@@ -160,9 +160,9 @@ export const FR_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
     eyebrow: 'Pour les classes, ateliers et événements',
     heroTitle: 'Générateur de Groupes Aléatoires',
     subhead:
-      'Collez des noms, choisissez le nombre de groupes et générez instantanément. Privé et sans inscription.',
+      'Collez des noms, choisissez le nombre de groupes et générez instantanément.',
     audienceSummary:
-      'Commencez par une répartition simple, puis ajoutez équilibrage, contraintes et plusieurs tours uniquement lorsque votre session en a besoin.',
+      'Commencez par une répartition simple, puis ajoutez équilibrage, contraintes et plusieurs tours uniquement quand vous en avez besoin.',
     faqEntries: [
       {
         question: 'Comment répartir une liste de noms en groupes aléatoires ?',

@@ -93,7 +93,7 @@ const FAQS = {
   privacy: {
     question: '¿Mis datos se mantienen privados?',
     answer:
-      'Sí. Todo el procesamiento ocurre localmente en tu navegador. Tus nombres y datos de grupos no se envían a un servidor.',
+      'Sí. Todo el procesamiento ocurre localmente en tu navegador. Tus nombres y datos de grupos no se envían a un servidor. Puedes usar esta página sin conexión a internet una vez cargada.',
   },
   constraints: {
     question: '¿Puedo añadir reglas como mantener juntos o separar personas?',
@@ -140,10 +140,10 @@ function createContent({
     },
     optimizerCta: {
       eyebrow: '¿Quieres algo mejor que aleatorio?',
-      title: 'Prueba el optimizador completo de grupos.',
+      title: 'Usa el optimizador completo de grupos.',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: 'Abrir espacio de trabajo experto',
-      supportingText: 'Tu borrador de la landing se mantiene cuando entras.',
+      supportingText: 'Tus datos de esta página se mantienen cuando entras.',
     },
     faqEntries,
     chrome: CHROME,
@@ -160,9 +160,9 @@ export const ES_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
     eyebrow: 'Para aulas, talleres y eventos',
     heroTitle: 'Generador Aleatorio de Grupos',
     subhead:
-      'Pega nombres, elige el número de grupos y genera al instante. Privado y sin registro.',
+      'Pega nombres, elige el número de grupos y genera al instante.',
     audienceSummary:
-      'Empieza con una división aleatoria simple y añade equilibrio, restricciones y rondas múltiples solo cuando tu sesión lo necesite.',
+      'Empieza con una división aleatoria simple y añade equilibrio, restricciones y rondas múltiples solo cuando lo necesites.',
     faqEntries: [
       {
         question: '¿Cómo divido una lista de nombres en grupos aleatorios?',
