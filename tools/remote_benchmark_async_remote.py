@@ -8,6 +8,7 @@ import signal
 import subprocess
 import sys
 import time
+import traceback
 from pathlib import Path
 
 
@@ -122,6 +123,32 @@ def process_alive(pid: int | None) -> bool:
         return True
     except OSError:
         return False
+
+
+def finalize_abandoned_run(
+    run_dir: Path,
+    *,
+    done: bool,
+    exit_code: str | None,
+    started_at: str | None,
+    wrapper_alive: bool,
+    session_alive: bool,
+    bench_process_alive: bool,
+) -> tuple[bool, str | None, str | None]:
+    if done or not started_at or bench_process_alive or wrapper_alive or session_alive:
+        finished_at = (run_dir / "finished_at").read_text().strip() if (run_dir / "finished_at").exists() else None
+        return done, exit_code, finished_at
+
+    effective_exit_code = exit_code or "1"
+    finished_at = (run_dir / "finished_at").read_text().strip() if (run_dir / "finished_at").exists() else None
+    if finished_at is None:
+        finished_at = iso_now()
+        (run_dir / "finished_at").write_text(finished_at + "\n")
+    if exit_code is None:
+        (run_dir / "exit_code").write_text(effective_exit_code + "\n")
+    (run_dir / "abandoned").touch()
+    (run_dir / "done").touch()
+    return True, effective_exit_code, finished_at
 
 
 def existing_pending_run_for_same_job() -> tuple[str | None, dict | None]:
@@ -266,11 +293,12 @@ import shlex
 import signal
 import subprocess
 import time
+import traceback
 from pathlib import Path
 
 run_dir = Path({str(run_dir)!r})
 log_path = Path({str(log_path)!r})
-repo_dir = {str(snapshot_repo_dir)!r}
+repo_dir = Path({str(snapshot_repo_dir)!r})
 lock_file = Path({remote_lock_file!r})
 prefix = {prefix!r}
 bench_command = {payload['bench_command']!r}
@@ -452,7 +480,12 @@ with lock_file.open("a+") as lock_handle:
                 (run_dir / "timeout_seconds").write_text(str(bench_max_seconds) + "\\n")
                 break
         if exit_code == 0:
-            followup_exit = materialize_followup_comparisons(log)
+            try:
+                followup_exit = materialize_followup_comparisons(log)
+            except Exception:
+                traceback.print_exc(file=log)
+                log.flush()
+                followup_exit = 1
             if followup_exit != 0:
                 exit_code = followup_exit
     (run_dir / "load_finished.json").write_text(json.dumps(load_snapshot(), indent=2) + "\\n")
@@ -503,6 +536,15 @@ finished_at = (run_dir / "finished_at").read_text().strip() if (run_dir / "finis
 session_alive = launcher == "tmux" and bool(session_name) and shutil.which("tmux") is not None and subprocess.run(["tmux", "has-session", "-t", session_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
 wrapper_alive = launcher == "process" and process_alive(int(pid) if pid else None)
 bench_process_alive = process_alive(bench_pid)
+done, exit_code, finished_at = finalize_abandoned_run(
+    run_dir,
+    done=done,
+    exit_code=exit_code,
+    started_at=started_at,
+    wrapper_alive=wrapper_alive,
+    session_alive=session_alive,
+    bench_process_alive=bench_process_alive,
+)
 
 if action == "status":
     print(
