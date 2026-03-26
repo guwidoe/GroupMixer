@@ -5,9 +5,11 @@ import { Analytics } from '@vercel/analytics/react'
 import './index.css'
 import '@react-sigma/core/lib/style.css'
 import App from './App.tsx'
+import { registerOfflineSupport } from './offline/registerOfflineSupport'
 import { installBrowserAgentApi } from './services/browserAgentApi'
 
 installBrowserAgentApi(window)
+registerOfflineSupport()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

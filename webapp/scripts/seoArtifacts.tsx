@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
@@ -158,6 +159,161 @@ async function writeSitemap(targetDir: string) {
   await fs.writeFile(path.join(targetDir, 'sitemap.xml'), buildSitemapXml(), 'utf8');
 }
 
+async function collectDistAssetUrls(rootDir: string): Promise<string[]> {
+  const entries = await fs.readdir(rootDir, { withFileTypes: true });
+  const urls: string[] = [];
+
+  for (const entry of entries) {
+    if (entry.name.includes(':') || entry.name === '.gitignore' || entry.name === 'service-worker.js') {
+      continue;
+    }
+
+    const entryPath = path.join(rootDir, entry.name);
+    if (entry.isDirectory()) {
+      urls.push(...(await collectDistAssetUrls(entryPath)));
+      continue;
+    }
+
+    const relativePath = path.relative(distDir, entryPath).split(path.sep).join('/');
+    if (
+      relativePath.endsWith('.html')
+      || relativePath.endsWith('.d.ts')
+      || relativePath === 'index.js'
+      || relativePath === 'package.json'
+      || relativePath.endsWith('/package.json')
+      || relativePath === 'sitemap.xml'
+      || (relativePath.startsWith('solver_wasm') && !relativePath.startsWith('pkg/'))
+    ) {
+      continue;
+    }
+
+    urls.push(`/${relativePath}`);
+  }
+
+  return urls;
+}
+
+function buildOfflineRouteUrls(): string[] {
+  const landingRoutes = TOOL_PAGE_ROUTES.map(({ path: routePath }) => (routePath === '/' ? '/' : routePath));
+  return Array.from(new Set(['/', '/app', ...landingRoutes]));
+}
+
+function buildServiceWorkerScript({
+  version,
+  routeUrls,
+  assetUrls,
+}: {
+  version: string;
+  routeUrls: string[];
+  assetUrls: string[];
+}): string {
+  return `const CACHE_NAME = 'groupmixer-offline-${version}';
+const PRECACHE_ROUTES = ${JSON.stringify(routeUrls, null, 2)};
+const PRECACHE_ASSETS = ${JSON.stringify(assetUrls, null, 2)};
+const PRECACHE_URLS = [...new Set([...PRECACHE_ROUTES, ...PRECACHE_ASSETS])];
+
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(PRECACHE_URLS);
+  })());
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(
+      keys
+        .filter((key) => key.startsWith('groupmixer-offline-') && key !== CACHE_NAME)
+        .map((key) => caches.delete(key)),
+    );
+    await self.clients.claim();
+  })());
+});
+
+function normalizePathname(pathname) {
+  if (!pathname || pathname === '/') {
+    return '/';
+  }
+
+  return pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
+}
+
+async function matchOfflineNavigation(url) {
+  const normalizedPath = normalizePathname(url.pathname);
+  const cachedExact = await caches.match(normalizedPath);
+  if (cachedExact) {
+    return cachedExact;
+  }
+
+  if (normalizedPath.startsWith('/app')) {
+    const appShell = await caches.match('/app');
+    if (appShell) {
+      return appShell;
+    }
+  }
+
+  return caches.match('/');
+}
+
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  if (request.method !== 'GET') {
+    return;
+  }
+
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  const isNavigation = request.mode === 'navigate' || (request.headers.get('accept') || '').includes('text/html');
+  if (isNavigation) {
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(request);
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(normalizePathname(url.pathname), response.clone());
+        return response;
+      } catch {
+        return matchOfflineNavigation(url);
+      }
+    })());
+    return;
+  }
+
+  event.respondWith((async () => {
+    const normalizedPath = normalizePathname(url.pathname);
+    const cached = await caches.match(request, { ignoreSearch: true }) || await caches.match(normalizedPath);
+    if (cached) {
+      return cached;
+    }
+
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(normalizedPath, response.clone());
+    }
+    return response;
+  })());
+});
+`;
+}
+
+async function writeServiceWorker() {
+  const routeUrls = buildOfflineRouteUrls();
+  const assetUrls = await collectDistAssetUrls(distDir);
+  const version = crypto
+    .createHash('sha256')
+    .update(JSON.stringify({ routeUrls, assetUrls }))
+    .digest('hex')
+    .slice(0, 12);
+
+  const serviceWorkerScript = buildServiceWorkerScript({ version, routeUrls, assetUrls });
+  await fs.writeFile(path.join(distDir, 'service-worker.js'), serviceWorkerScript, 'utf8');
+}
+
 async function renderRouteMarkup(routePath: string): Promise<string> {
   installRenderGlobals();
   const { default: App } = await import('../src/App.tsx');
@@ -220,6 +376,7 @@ async function prerenderDistArtifacts() {
   await writeSitemap(distDir);
   await renderLandingPages(templateHtml);
   await renderAppShell(templateHtml);
+  await writeServiceWorker();
 }
 
 async function main() {
