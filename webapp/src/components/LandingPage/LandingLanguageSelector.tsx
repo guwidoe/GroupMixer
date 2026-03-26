@@ -38,7 +38,7 @@ export function LandingLanguageSelector({
             navigate(selected.to);
           }
         }}
-        className="appearance-none rounded-lg border py-2 pl-9 pr-8 text-sm outline-none transition-colors"
+        className="landing-action-button h-10 appearance-none rounded-lg border pl-9 pr-8 text-sm outline-none"
         style={{
           borderColor: 'var(--border-primary)',
           backgroundColor: 'var(--bg-primary)',

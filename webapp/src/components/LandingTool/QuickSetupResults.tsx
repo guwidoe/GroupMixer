@@ -58,9 +58,9 @@ export function QuickSetupResults({ controller }: QuickSetupResultsProps) {
             <button
               type="button"
               onClick={controller.exportGroupsCsv}
-              className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium"
-              style={{ borderColor: 'var(--border-primary)' }}
-            >
+            className="landing-action-button inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium"
+            style={{ borderColor: 'var(--border-primary)' }}
+          >
               <Download className="h-4 w-4" />
               Export CSV
             </button>
@@ -72,7 +72,7 @@ export function QuickSetupResults({ controller }: QuickSetupResultsProps) {
                 });
                 controller.exportProjectDraft();
               }}
-              className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium"
+              className="landing-action-button inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium"
               style={{ borderColor: 'var(--border-primary)' }}
             >
               <Save className="h-4 w-4" />

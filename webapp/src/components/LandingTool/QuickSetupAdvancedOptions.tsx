@@ -20,7 +20,7 @@ export function QuickSetupAdvancedOptions({ controller }: QuickSetupAdvancedOpti
           });
           controller.toggleAdvanced();
         }}
-        className="flex w-full items-center justify-between gap-4 text-left"
+        className="landing-action-button flex w-full items-center justify-between gap-4 rounded-2xl px-3 py-2 text-left"
       >
         <div>
           <div className="text-sm font-semibold">{labels.title}</div>

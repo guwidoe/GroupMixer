@@ -238,8 +238,21 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
     );
   };
 
-  const { draft, participantCount, estimatedGroupCount, estimatedGroupSize } = controller;
+  const { draft, participantCount, estimatedGroupCount, estimatedGroupSize, updateDraft } = controller;
+  const displayedGroupCount = Math.max(1, estimatedGroupCount);
+  const displayedPeoplePerGroup = Math.max(1, estimatedGroupSize || 0);
   const heroOrderClass = controller.result ? 'order-3 lg:order-1' : 'order-2 lg:order-1';
+
+  useEffect(() => {
+    if (draft.inputMode !== 'names') {
+      updateDraft((current) => ({
+        ...current,
+        inputMode: 'names',
+        balanceAttributeKey: null,
+      }));
+    }
+  }, [draft.inputMode, updateDraft]);
+
   const resultsSection = controller.result ? (
     <div
       ref={resultsRef}
@@ -253,7 +266,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
           <button
             type="button"
             onClick={controller.exportGroupsCsv}
-            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium"
+            className="landing-action-button inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium"
             style={{ borderColor: 'var(--border-primary)' }}
           >
             <Download className="h-3.5 w-3.5" />
@@ -285,7 +298,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
               role="tab"
               aria-selected={activeResultFormat === format}
               onClick={() => setResultFormat(format)}
-              className="rounded-full border px-3 py-1.5 text-sm font-medium capitalize"
+              className="landing-chip-button rounded-full border px-3 py-1.5 text-sm font-medium capitalize"
               style={{
                 borderColor: activeResultFormat === format ? 'var(--color-accent)' : 'var(--border-primary)',
                 backgroundColor: activeResultFormat === format ? 'var(--bg-secondary)' : 'transparent',
@@ -313,7 +326,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
               setCopiedFormat(formatToCopy);
               window.setTimeout(() => setCopiedFormat((current) => (current === formatToCopy ? null : current)), 1200);
             }}
-            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium"
+            className="landing-action-button inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium"
             style={{ borderColor: 'var(--border-primary)' }}
           >
             <Copy className="h-3.5 w-3.5" />
@@ -457,8 +470,8 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
             <button
               type="button"
               onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
-              className="hidden items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors sm:inline-flex"
-              style={{ color: 'var(--text-secondary)' }}
+              className="landing-action-button hidden h-10 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium sm:inline-flex"
+              style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-primary)' }}
             >
               {config.chrome.expertWorkspaceLabel}
               <ArrowRight className="h-3.5 w-3.5" />
@@ -555,41 +568,20 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     {ui.quickSetup.participantsLabel}
                   </label>
                   <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    {draft.inputMode === 'names' ? (
-                      <button
-                        type="button"
-                        className="font-medium"
-                        onClick={() =>
-                          controller.updateDraft((current) => ({
-                            ...current,
-                            inputMode: 'csv',
-                            balanceAttributeKey: null,
-                          }))
-                        }
-                      >
-                        {ui.quickSetup.switchToCsvLabel}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="font-medium"
-                        onClick={() =>
-                          controller.updateDraft((current) => ({
-                            ...current,
-                            inputMode: 'names',
-                            balanceAttributeKey: null,
-                          }))
-                        }
-                      >
-                        {ui.quickSetup.switchToNamesLabel}
-                      </button>
-                    )}
-                    <span>·</span>
-                    <button type="button" className="font-medium" onClick={controller.loadSampleData}>
+                    <button
+                      type="button"
+                      className="landing-action-button inline-flex items-center rounded-lg border px-2.5 py-1.5 font-medium"
+                      style={{ borderColor: 'var(--border-primary)' }}
+                      onClick={controller.loadSampleData}
+                    >
                       {ui.quickSetup.sampleLabel}
                     </button>
-                    <span>·</span>
-                    <button type="button" className="font-medium" onClick={controller.resetDraft}>
+                    <button
+                      type="button"
+                      className="landing-action-button inline-flex items-center rounded-lg border px-2.5 py-1.5 font-medium"
+                      style={{ borderColor: 'var(--border-primary)' }}
+                      onClick={controller.resetDraft}
+                    >
                       {ui.quickSetup.resetLabel}
                     </button>
                   </div>
@@ -600,7 +592,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                   onChange={(event) =>
                     controller.updateDraft((current) => ({ ...current, participantInput: event.target.value }))
                   }
-                  placeholder={draft.inputMode === 'csv' ? ui.quickSetup.csvPlaceholder : ui.quickSetup.namesPlaceholder}
+                  placeholder={ui.quickSetup.namesPlaceholder}
                   className="min-h-[130px] w-full rounded-xl border px-3 py-2.5 text-sm leading-relaxed outline-none transition-shadow focus:ring-2"
                   style={{
                     borderColor: 'var(--border-primary)',
@@ -610,46 +602,55 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                 />
               </div>
 
-              <div className="mt-4">
-                <label htmlFor="groupingValue" className="mb-1.5 block text-sm font-medium">
-                  {draft.groupingMode === 'groupCount'
-                    ? ui.quickSetup.groupingValueGroupCountLabel
-                    : ui.quickSetup.groupingValueGroupSizeLabel}
-                </label>
-                <div className="flex items-center gap-2">
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="groupCountValue" className="mb-1.5 block text-sm font-medium">
+                    {ui.quickSetup.groupingValueGroupCountLabel}
+                  </label>
                   <input
-                    id="groupingValue"
+                    id="groupCountValue"
                     type="number"
                     min={1}
-                    value={draft.groupingValue}
+                    value={displayedGroupCount}
                     onChange={(event) =>
                       controller.updateDraft((current) => ({
                         ...current,
+                        groupingMode: 'groupCount',
                         groupingValue: Math.max(1, Number(event.target.value) || 1),
                       }))
                     }
-                    className="w-24 rounded-xl border px-3 py-2 text-sm outline-none transition-shadow focus:ring-2"
+                    className="w-full rounded-xl border px-3 py-2 text-sm outline-none transition-shadow focus:ring-2"
                     style={{
                       borderColor: 'var(--border-primary)',
                       backgroundColor: 'var(--bg-secondary)',
                       color: 'var(--text-primary)',
                     }}
                   />
-                  <button
-                    type="button"
-                    className="rounded-lg px-2.5 py-2 text-xs font-medium"
-                    style={{ color: 'var(--text-secondary)' }}
-                    onClick={() =>
+                </div>
+
+                <div>
+                  <label htmlFor="peoplePerGroupValue" className="mb-1.5 block text-sm font-medium">
+                    {ui.quickSetup.groupingValueGroupSizeLabel}
+                  </label>
+                  <input
+                    id="peoplePerGroupValue"
+                    type="number"
+                    min={1}
+                    value={displayedPeoplePerGroup}
+                    onChange={(event) =>
                       controller.updateDraft((current) => ({
                         ...current,
-                        groupingMode: current.groupingMode === 'groupCount' ? 'groupSize' : 'groupCount',
+                        groupingMode: 'groupSize',
+                        groupingValue: Math.max(1, Number(event.target.value) || 1),
                       }))
                     }
-                  >
-                    {draft.groupingMode === 'groupCount'
-                      ? ui.quickSetup.groupingToggleToGroupSizeLabel
-                      : ui.quickSetup.groupingToggleToGroupCountLabel}
-                  </button>
+                    className="w-full rounded-xl border px-3 py-2 text-sm outline-none transition-shadow focus:ring-2"
+                    style={{
+                      borderColor: 'var(--border-primary)',
+                      backgroundColor: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                    }}
+                  />
                 </div>
               </div>
 
@@ -690,7 +691,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     type="button"
                     onClick={controller.reshuffle}
                     disabled={controller.isSolving}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-3 text-sm font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+                    className="landing-action-button inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-3 text-sm font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
                     style={{ borderColor: 'var(--border-primary)' }}
                     title={ui.quickSetup.reshuffleLabel}
                   >

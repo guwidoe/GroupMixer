@@ -41,7 +41,7 @@ export function QuickSetupPanel({ pageConfig }: QuickSetupPanelProps) {
           <button
             type="button"
             onClick={openAdvancedWorkspace}
-            className="hidden rounded-full border px-4 py-2 text-sm font-medium lg:inline-flex"
+            className="landing-action-button hidden rounded-full border px-4 py-2 text-sm font-medium lg:inline-flex"
             style={{ borderColor: 'var(--border-primary)' }}
           >
             Expert workspace

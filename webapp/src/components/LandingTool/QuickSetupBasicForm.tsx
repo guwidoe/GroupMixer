@@ -21,7 +21,7 @@ export function QuickSetupBasicForm({ controller }: QuickSetupBasicFormProps) {
             key={preset.value}
             type="button"
             onClick={() => controller.setPreset(preset.value as typeof draft.preset)}
-            className="rounded-full border px-3 py-1.5 text-sm font-medium"
+            className="landing-chip-button rounded-full border px-3 py-1.5 text-sm font-medium"
             style={{
               borderColor: draft.preset === preset.value ? 'var(--color-accent)' : 'var(--border-primary)',
               backgroundColor: draft.preset === preset.value ? 'var(--bg-tertiary)' : 'transparent',
@@ -38,11 +38,11 @@ export function QuickSetupBasicForm({ controller }: QuickSetupBasicFormProps) {
             Participants
           </label>
           <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-            <button type="button" onClick={controller.loadSampleData} className="font-medium">
+            <button type="button" onClick={controller.loadSampleData} className="landing-inline-button font-medium">
               Load sample
             </button>
             <span>•</span>
-            <button type="button" onClick={controller.resetDraft} className="font-medium">
+            <button type="button" onClick={controller.resetDraft} className="landing-inline-button font-medium">
               Reset
             </button>
           </div>
@@ -57,7 +57,7 @@ export function QuickSetupBasicForm({ controller }: QuickSetupBasicFormProps) {
               key={mode.value}
               type="button"
               onClick={() => controller.updateDraft((current) => ({ ...current, inputMode: mode.value as typeof current.inputMode, balanceAttributeKey: null }))}
-              className="rounded-full border px-3 py-1.5 text-xs font-medium uppercase tracking-[0.18em]"
+              className="landing-chip-button rounded-full border px-3 py-1.5 text-xs font-medium uppercase tracking-[0.18em]"
               style={{
                 borderColor: draft.inputMode === mode.value ? 'var(--color-accent)' : 'var(--border-primary)',
                 backgroundColor: draft.inputMode === mode.value ? 'var(--bg-tertiary)' : 'transparent',
@@ -166,7 +166,7 @@ export function QuickSetupBasicForm({ controller }: QuickSetupBasicFormProps) {
           type="button"
           onClick={controller.reshuffle}
           disabled={!controller.result || controller.isSolving}
-          className="inline-flex items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+          className="landing-action-button inline-flex items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
           style={{ borderColor: 'var(--border-primary)' }}
         >
           <RotateCcw className="h-4 w-4" />
