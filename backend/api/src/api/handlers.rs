@@ -6,7 +6,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Json, Response},
 };
-use schemars::schema::RootSchema;
+use schemars::Schema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use solver_contracts::{
     bootstrap::bootstrap_spec,
@@ -175,7 +175,7 @@ pub async fn schema_list_handler() -> Json<Vec<SchemaSummary>> {
     )
 }
 
-pub async fn schema_get_handler(Path(schema_id): Path<String>) -> Result<Json<RootSchema>, ApiError> {
+pub async fn schema_get_handler(Path(schema_id): Path<String>) -> Result<Json<Schema>, ApiError> {
     export_schema(&schema_id)
         .map(Json)
         .ok_or_else(|| unknown_schema_api_error(&schema_id))
