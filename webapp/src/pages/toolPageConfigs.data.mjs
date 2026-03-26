@@ -3,7 +3,7 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
     key: 'home',
     slug: '',
     defaultPreset: 'random',
-    liveLocales: ['en', 'es', 'fr'],
+    liveLocales: ['en', 'es', 'fr', 'ja', 'hi', 'zh'],
     experiment: {
       label: 'english-home-random-group',
       futureVariants: ['headline-problem-first', 'cta-tool-vs-optimizer'],
@@ -19,7 +19,7 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
     key: 'random-group-generator',
     slug: 'random-group-generator',
     defaultPreset: 'random',
-    liveLocales: ['en', 'es', 'fr'],
+    liveLocales: ['en', 'es', 'fr', 'ja', 'hi', 'zh'],
     experiment: {
       label: 'english-random-group-core',
       futureVariants: ['hero-speed-vs-fairness', 'faq-short-vs-long'],
@@ -35,7 +35,7 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
     key: 'random-team-generator',
     slug: 'random-team-generator',
     defaultPreset: 'balanced',
-    liveLocales: ['en', 'es', 'fr'],
+    liveLocales: ['en', 'es', 'fr', 'ja', 'hi', 'zh'],
     experiment: {
       label: 'english-random-team-balance',
       futureVariants: ['team-fairness-hero', 'cta-balance-emphasis'],
@@ -83,7 +83,7 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
     key: 'breakout-room-generator',
     slug: 'breakout-room-generator',
     defaultPreset: 'networking',
-    liveLocales: ['en', 'es', 'fr'],
+    liveLocales: ['en', 'es', 'fr', 'ja', 'hi', 'zh'],
     experiment: {
       label: 'english-breakout-room-rotation',
       futureVariants: ['remote-call-proof', 'multi-round-emphasis'],
@@ -99,7 +99,7 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
     key: 'workshop-group-generator',
     slug: 'workshop-group-generator',
     defaultPreset: 'balanced',
-    liveLocales: ['en', 'es', 'fr'],
+    liveLocales: ['en', 'es', 'fr', 'ja', 'hi', 'zh'],
     experiment: {
       label: 'english-workshop-groups-facilitator',
       futureVariants: ['workshop-outcomes-hero', 'multi-round-vs-constraint-copy'],
@@ -115,7 +115,7 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
     key: 'student-group-generator',
     slug: 'student-group-generator',
     defaultPreset: 'balanced',
-    liveLocales: ['en', 'es', 'fr'],
+    liveLocales: ['en', 'es', 'fr', 'ja', 'hi', 'zh'],
     experiment: {
       label: 'english-student-group-teacher',
       futureVariants: ['teacher-proof-points', 'classroom-management-copy'],
@@ -147,7 +147,7 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
     key: 'speed-networking-generator',
     slug: 'speed-networking-generator',
     defaultPreset: 'networking',
-    liveLocales: ['en', 'es', 'fr'],
+    liveLocales: ['en', 'es', 'fr', 'ja', 'hi', 'zh'],
     experiment: {
       label: 'english-speed-networking-rounds',
       futureVariants: ['repeat-pairing-emphasis', 'event-format-proof'],

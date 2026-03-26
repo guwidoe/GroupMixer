@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { CANONICAL_ORIGIN } from '../seo/seoDocument';
 import { useAppStore } from '../store';
 import ToolLandingPage from './ToolLandingPage';
-import { getToolPageConfig, TOOL_PAGE_ROUTES } from './toolPageConfigs';
+import { getLocaleHrefLang, getToolPageConfig, TOOL_PAGE_ROUTES } from './toolPageConfigs';
 
 const ROUTE_CASES = TOOL_PAGE_ROUTES.map((route) => ({
   route,
@@ -48,7 +48,7 @@ describe('ToolLandingPage route inventory', () => {
     expect(screen.getByText(config.hero.audienceSummary)).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: config.optimizerCta.title })).toBeInTheDocument();
     expect(document.title).toBe(config.seo.title);
-    expect(document.documentElement.lang).toBe(route.locale);
+    expect(document.documentElement.lang).toBe(getLocaleHrefLang(route.locale));
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(config.seo.description);
     expect(document.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('index,follow');
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(

@@ -23,13 +23,19 @@ describe('toolPageConfigs locale routing', () => {
     expect(buildToolPagePath('zh', 'random-team-generator', 'random-team-generator')).toBe('/zh/random-team-generator');
   });
 
-  it('adds Spanish and French prefixed routes only for the selected localized rollout pages', () => {
+  it('adds all approved locale-prefixed routes for the selected localized rollout pages', () => {
     expect(TOOL_PAGE_ROUTES).toEqual(
       expect.arrayContaining([
         { key: 'home', locale: 'es', path: '/es' },
         { key: 'home', locale: 'fr', path: '/fr' },
+        { key: 'home', locale: 'ja', path: '/ja' },
+        { key: 'home', locale: 'hi', path: '/hi' },
+        { key: 'home', locale: 'zh', path: '/zh' },
         { key: 'random-team-generator', locale: 'es', path: '/es/random-team-generator' },
         { key: 'random-team-generator', locale: 'fr', path: '/fr/random-team-generator' },
+        { key: 'random-team-generator', locale: 'ja', path: '/ja/random-team-generator' },
+        { key: 'random-team-generator', locale: 'hi', path: '/hi/random-team-generator' },
+        { key: 'random-team-generator', locale: 'zh', path: '/zh/random-team-generator' },
       ]),
     );
     expect(TOOL_PAGE_ROUTES).not.toEqual(
@@ -38,13 +44,16 @@ describe('toolPageConfigs locale routing', () => {
   });
 
   it('emits locale alternates plus x-default for localized pages', () => {
-    const config = getToolPageConfig('random-team-generator', 'es');
+    const config = getToolPageConfig('random-team-generator', 'zh');
 
-    expect(config.canonicalPath).toBe('/es/random-team-generator');
+    expect(config.canonicalPath).toBe('/zh/random-team-generator');
     expect(config.alternates).toEqual([
       { hreflang: 'en', canonicalPath: '/random-team-generator' },
       { hreflang: 'es', canonicalPath: '/es/random-team-generator' },
       { hreflang: 'fr', canonicalPath: '/fr/random-team-generator' },
+      { hreflang: 'ja', canonicalPath: '/ja/random-team-generator' },
+      { hreflang: 'hi', canonicalPath: '/hi/random-team-generator' },
+      { hreflang: 'zh-Hans', canonicalPath: '/zh/random-team-generator' },
       { hreflang: 'x-default', canonicalPath: '/random-team-generator' },
     ]);
   });

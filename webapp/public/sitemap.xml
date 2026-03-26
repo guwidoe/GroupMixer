@@ -5,6 +5,9 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/" />
   </url>
   <url>
@@ -12,6 +15,9 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/" />
   </url>
   <url>
@@ -19,6 +25,39 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/ja</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/hi</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/zh</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/" />
   </url>
   <url>
@@ -26,6 +65,9 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/random-group-generator" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/random-group-generator" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/random-group-generator" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/random-group-generator" />
   </url>
   <url>
@@ -33,6 +75,9 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/random-group-generator" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/random-group-generator" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/random-group-generator" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/random-group-generator" />
   </url>
   <url>
@@ -40,6 +85,39 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/random-group-generator" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/random-group-generator" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/random-group-generator" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/ja/random-group-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/random-group-generator" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/hi/random-group-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/random-group-generator" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/zh/random-group-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/random-group-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/random-group-generator" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/random-group-generator" />
   </url>
   <url>
@@ -47,6 +125,9 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/random-team-generator" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/random-team-generator" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/random-team-generator" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/random-team-generator" />
   </url>
   <url>
@@ -54,6 +135,9 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/random-team-generator" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/random-team-generator" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/random-team-generator" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/random-team-generator" />
   </url>
   <url>
@@ -61,6 +145,39 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/random-team-generator" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/random-team-generator" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/random-team-generator" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/ja/random-team-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/random-team-generator" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/hi/random-team-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/random-team-generator" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/zh/random-team-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/random-team-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/random-team-generator" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/random-team-generator" />
   </url>
   <url>
@@ -78,6 +195,9 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/breakout-room-generator" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/breakout-room-generator" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/breakout-room-generator" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/breakout-room-generator" />
   </url>
   <url>
@@ -85,6 +205,9 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/breakout-room-generator" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/breakout-room-generator" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/breakout-room-generator" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/breakout-room-generator" />
   </url>
   <url>
@@ -92,6 +215,39 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/breakout-room-generator" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/breakout-room-generator" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/breakout-room-generator" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/ja/breakout-room-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/breakout-room-generator" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/hi/breakout-room-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/breakout-room-generator" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/zh/breakout-room-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/breakout-room-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/breakout-room-generator" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/breakout-room-generator" />
   </url>
   <url>
@@ -99,6 +255,9 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/workshop-group-generator" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/workshop-group-generator" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/workshop-group-generator" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/workshop-group-generator" />
   </url>
   <url>
@@ -106,6 +265,9 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/workshop-group-generator" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/workshop-group-generator" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/workshop-group-generator" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/workshop-group-generator" />
   </url>
   <url>
@@ -113,6 +275,39 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/workshop-group-generator" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/workshop-group-generator" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/workshop-group-generator" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/ja/workshop-group-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/workshop-group-generator" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/hi/workshop-group-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/workshop-group-generator" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/zh/workshop-group-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/workshop-group-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/workshop-group-generator" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/workshop-group-generator" />
   </url>
   <url>
@@ -120,6 +315,9 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/student-group-generator" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/student-group-generator" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/student-group-generator" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/student-group-generator" />
   </url>
   <url>
@@ -127,6 +325,9 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/student-group-generator" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/student-group-generator" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/student-group-generator" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/student-group-generator" />
   </url>
   <url>
@@ -134,6 +335,39 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/student-group-generator" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/student-group-generator" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/student-group-generator" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/ja/student-group-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/student-group-generator" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/hi/student-group-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/student-group-generator" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/zh/student-group-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/student-group-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/student-group-generator" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/student-group-generator" />
   </url>
   <url>
@@ -146,6 +380,9 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/speed-networking-generator" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/speed-networking-generator" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/speed-networking-generator" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/speed-networking-generator" />
   </url>
   <url>
@@ -153,6 +390,9 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/speed-networking-generator" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/speed-networking-generator" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/speed-networking-generator" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/speed-networking-generator" />
   </url>
   <url>
@@ -160,6 +400,39 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/speed-networking-generator" />
     <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/speed-networking-generator" />
     <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/speed-networking-generator" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/ja/speed-networking-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/speed-networking-generator" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/hi/speed-networking-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/speed-networking-generator" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/zh/speed-networking-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://www.groupmixer.app/es/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://www.groupmixer.app/fr/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://www.groupmixer.app/ja/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="hi" href="https://www.groupmixer.app/hi/speed-networking-generator" />
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://www.groupmixer.app/zh/speed-networking-generator" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/speed-networking-generator" />
   </url>
   <url>

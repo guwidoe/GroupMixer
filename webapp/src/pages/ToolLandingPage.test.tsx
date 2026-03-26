@@ -121,6 +121,39 @@ describe('ToolLandingPage SEO wiring', () => {
     );
   });
 
+  it('renders Simplified Chinese metadata with zh-Hans language tagging on the shared landing engine', async () => {
+    const config = getToolPageConfig('random-team-generator', 'zh');
+
+    render(
+      <MemoryRouter initialEntries={['/zh/random-team-generator?exp=seo-zh-test&var=C']}>
+        <ToolLandingPage pageKey="random-team-generator" locale="zh" />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 1, name: config.hero.title })).toBeInTheDocument();
+    expect(screen.getByText(config.hero.eyebrow)).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe('zh-Hans');
+    expect(document.title).toBe(config.seo.title);
+    expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
+      'https://www.groupmixer.app/zh/random-team-generator',
+    );
+    expect(document.querySelector('link[rel="alternate"][hreflang="zh-Hans"]')?.getAttribute('href')).toBe(
+      'https://www.groupmixer.app/zh/random-team-generator',
+    );
+    expect(window.__groupmixerLandingEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'landing_view',
+          payload: expect.objectContaining({
+            pageKey: 'random-team-generator',
+            locale: 'zh',
+            landingSlug: 'random-team-generator',
+          }),
+        }),
+      ]),
+    );
+  });
+
   it('generates groups locally from the landing tool without leaving the page', async () => {
     const user = userEvent.setup();
 

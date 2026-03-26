@@ -89,6 +89,14 @@ describe("App routing", () => {
     ).toBeInTheDocument();
   });
 
+  it("registers newly approved Asian locale routes on the shared landing shell", async () => {
+    renderWithRouter(<App />, { route: "/zh/random-team-generator" });
+
+    expect(
+      await screen.findByText("Tool landing test stub: zh:random-team-generator")
+    ).toBeInTheDocument();
+  });
+
   it("renders nested /app routes inside the main shell", async () => {
     renderWithRouter(<App />, { route: "/app/problem/people" });
 
