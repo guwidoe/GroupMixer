@@ -9,7 +9,7 @@ path = "src/lib.rs"
 
 [dependencies]
 serde = { version = "1.0.190", features = ["derive"] }
-schemars = "0.8"
+schemars = "1.2"
 rand = { version = "0.10.0", features = ["std_rng"] }
 rand_chacha = "0.10.0"
 uuid = { version = "1.22.0", features = ["v4", "serde", "js"] }
