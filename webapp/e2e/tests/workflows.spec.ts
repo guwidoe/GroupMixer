@@ -5,14 +5,14 @@ import {
   expectSavedResultCount,
   openSolver,
   openApp,
-  openProblemManager,
+  openScenarioManager,
   runSolver,
-  saveCurrentProblem,
+  saveCurrentScenario,
   waitForAppShell,
 } from './helpers';
 
 test.describe('Workflow coverage', () => {
-  test('saves a problem, reloads the app, and loads it back from problem manager', async ({ page }) => {
+  test('saves a scenario, reloads the app, and loads it back from scenario manager', async ({ page }) => {
     await openApp(page);
 
     await addPerson(page, 'Alice');
@@ -21,30 +21,30 @@ test.describe('Workflow coverage', () => {
     await page.getByRole('button', { name: /groups/i }).click();
     await addGroup(page, 'Team Alpha', 2);
 
-    await saveCurrentProblem(page);
+    await saveCurrentScenario(page);
 
     await page.evaluate(() => {
-      window.localStorage.removeItem('people-distributor-current-problem');
+      window.localStorage.removeItem('people-distributor-current-scenario');
     });
     await page.reload();
     await page.waitForSelector('nav, header', { timeout: 15000 });
 
-    await openProblemManager(page);
-    await expect(page.getByRole('heading', { name: /problem manager/i })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Untitled Problem' })).toBeVisible();
+    await openScenarioManager(page);
+    await expect(page.getByRole('heading', { name: /scenario manager/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Untitled Scenario' })).toBeVisible();
     await expect(page.getByText('2 people', { exact: true })).toBeVisible();
     await expect(page.getByText('1 groups', { exact: true })).toBeVisible();
 
-    await page.getByRole('heading', { name: 'Untitled Problem' }).click();
-    await expect(page.getByText(/problem loaded/i).first()).toBeVisible();
-    await page.getByRole('button', { name: /close problem manager/i }).click();
+    await page.getByRole('heading', { name: 'Untitled Scenario' }).click();
+    await expect(page.getByText(/scenario loaded/i).first()).toBeVisible();
+    await page.getByRole('button', { name: /close scenario manager/i }).click();
 
     await page.getByRole('button', { name: /people/i }).click();
     await expect(page.getByRole('heading', { name: 'Alice' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Bob' })).toBeVisible();
   });
 
-  test('creates a problem from scratch, solves it, exports a result, and navigates through result views', async ({ page }) => {
+  test('creates a scenario from scratch, solves it, exports a result, and navigates through result views', async ({ page }) => {
     await openApp(page);
 
     for (const person of ['Alice', 'Bob', 'Cara', 'Dan']) {
@@ -61,7 +61,7 @@ test.describe('Workflow coverage', () => {
     await sessionInput.blur();
     await expect(sessionInput).toHaveValue('2');
 
-    await saveCurrentProblem(page);
+    await saveCurrentScenario(page);
     await runSolver(page);
     await expectSavedResultCount(page, 1);
 
@@ -106,7 +106,7 @@ test.describe('Workflow coverage', () => {
     await sessionInput.blur();
     await expect(sessionInput).toHaveValue('3');
 
-    await saveCurrentProblem(page);
+    await saveCurrentScenario(page);
     await openSolver(page);
 
     await page.getByRole('button', { name: /solve with custom settings/i }).click();
@@ -164,7 +164,7 @@ test.describe('Workflow coverage', () => {
     await page.getByRole('button', { name: /groups/i }).click();
     await addGroup(page, 'Team Alpha', 2);
     await addGroup(page, 'Team Beta', 2);
-    await saveCurrentProblem(page);
+    await saveCurrentScenario(page);
 
     await openSolver(page);
     await page.getByRole('button', { name: /start solver with automatic settings/i }).click();

@@ -11,15 +11,15 @@ import type { PlaybackState } from "./types";
 import { LoadingFallback } from "./components/LoadingFallback";
 
 export function Animated3DVisualization({ data }: VisualizationComponentProps) {
-  const problem = data.problem;
+  const scenario = data.scenario;
 
   // Normalize schedule data
   const schedule = useMemo(() => {
     if (data.kind === "final") {
-      return normalizeFromSolution(problem, data.solution);
+      return normalizeFromSolution(scenario, data.solution);
     }
-    return normalizeFromSnapshot(problem, data.schedule);
-  }, [data, problem]);
+    return normalizeFromSnapshot(scenario, data.schedule);
+  }, [data, scenario]);
 
   // Animation state management (uses refs for performance)
   const {
@@ -34,7 +34,7 @@ export function Animated3DVisualization({ data }: VisualizationComponentProps) {
     goToSession,
     reset,
     playbackState,
-  } = useAnimationState(problem, schedule);
+  } = useAnimationState(scenario, schedule);
 
   const sceneKey = useMemo(() => JSON.stringify(schedule.sessions), [schedule.sessions]);
 
@@ -134,7 +134,7 @@ export function Animated3DVisualization({ data }: VisualizationComponentProps) {
         <div className="text-white text-sm">
           <div className="font-semibold">3D Schedule Animation</div>
           <div className="text-white/70 text-xs mt-1">
-            {problem.people.length} people • {problem.groups.length} groups •{" "}
+            {scenario.people.length} people • {scenario.groups.length} groups •{" "}
             {schedule.sessionCount} sessions
           </div>
         </div>

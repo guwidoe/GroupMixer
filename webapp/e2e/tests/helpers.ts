@@ -2,7 +2,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 
 export async function waitForAppShell(page: Page) {
   await expect(page.locator('nav, header').first()).toBeVisible({ timeout: 15000 });
-  await expect(page.getByRole('link', { name: /problem setup/i })).toBeVisible();
+  await expect(page.getByRole('link', { name: /scenario setup/i })).toBeVisible();
 }
 
 export async function openApp(page: Page) {
@@ -37,9 +37,9 @@ export async function clickAndWaitForUrl(
   }
 }
 
-export async function openProblemManager(page: Page) {
+export async function openScenarioManager(page: Page) {
   const directManageButton = page.getByRole('button', {
-    name: /manage problems|\(manage\)/i,
+    name: /manage scenarios|\(manage\)/i,
   });
 
   if (await directManageButton.isVisible().catch(() => false)) {
@@ -52,7 +52,7 @@ export async function openProblemManager(page: Page) {
   await mobileMenuButton.click();
 
   const mobileManageButton = page.getByRole('button', {
-    name: /manage problems|\(manage\)/i,
+    name: /manage scenarios|\(manage\)/i,
   });
   await expect(mobileManageButton).toBeVisible();
   await mobileManageButton.click();
@@ -75,9 +75,9 @@ export async function addGroup(page: Page, id: string, size: number) {
   await expect(page.getByRole('heading', { name: id })).toBeVisible();
 }
 
-export async function saveCurrentProblem(page: Page) {
+export async function saveCurrentScenario(page: Page) {
   await page.getByRole('button', { name: /^save$/i }).click();
-  await expect(page.getByText(/problem saved|saved\./i).first()).toBeVisible();
+  await expect(page.getByText(/scenario saved|saved\./i).first()).toBeVisible();
 }
 
 export async function openSolver(page: Page) {
@@ -105,11 +105,11 @@ export async function expectSavedResultCount(page: Page, expectedCount: number) 
   await expect
     .poll(async () =>
       page.evaluate(() => {
-        const currentProblemId = window.localStorage.getItem('people-distributor-current-problem');
-        const rawProblems = window.localStorage.getItem('people-distributor-problems');
-        const savedProblems = rawProblems ? JSON.parse(rawProblems) as Record<string, { results?: unknown[] }> : {};
-        return currentProblemId && savedProblems[currentProblemId]
-          ? savedProblems[currentProblemId].results?.length ?? 0
+        const currentScenarioId = window.localStorage.getItem('people-distributor-current-scenario');
+        const rawScenarios = window.localStorage.getItem('people-distributor-scenarios');
+        const savedScenarios = rawScenarios ? JSON.parse(rawScenarios) as Record<string, { results?: unknown[] }> : {};
+        return currentScenarioId && savedScenarios[currentScenarioId]
+          ? savedScenarios[currentScenarioId].results?.length ?? 0
           : 0;
       }),
     )

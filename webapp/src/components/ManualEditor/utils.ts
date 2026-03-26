@@ -1,4 +1,4 @@
-import type { Assignment, Problem, ProblemSnapshot, SolverSettings } from '../../types';
+import type { Assignment, Scenario, ScenarioSnapshot, SolverSettings } from '../../types';
 import { buildScheduleMap } from '../../services/evaluator';
 
 export function cloneAssignments(assignments: Assignment[]): Assignment[] {
@@ -9,7 +9,7 @@ export function groupBySessionAndGroup(assignments: Assignment[]): Record<number
   return buildScheduleMap(assignments);
 }
 
-export function snapshotToProblem(snapshot: ProblemSnapshot, settings: SolverSettings): Problem {
+export function snapshotToScenario(snapshot: ScenarioSnapshot, settings: SolverSettings): Scenario {
   return {
     ...snapshot,
     settings,

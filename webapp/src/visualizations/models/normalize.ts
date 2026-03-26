@@ -1,4 +1,4 @@
-import type { Problem, Solution } from "../../types";
+import type { Scenario, Solution } from "../../types";
 import type { ScheduleSnapshot } from "../types";
 
 export interface NormalizedCell {
@@ -18,11 +18,11 @@ export interface NormalizedSchedule {
 }
 
 export function normalizeFromSolution(
-  problem: Problem,
+  scenario: Scenario,
   solution: Solution
 ): NormalizedSchedule {
-  const sessionCount = problem.num_sessions || 0;
-  const groupOrder = (problem.groups || []).map((g) => g.id);
+  const sessionCount = scenario.num_sessions || 0;
+  const groupOrder = (scenario.groups || []).map((g) => g.id);
 
   const bySessionGroup: Record<number, Record<string, string[]>> = {};
   for (const a of solution.assignments) {
@@ -33,7 +33,7 @@ export function normalizeFromSolution(
   }
 
   const groupCap: Record<string, number> = {};
-  for (const g of problem.groups) groupCap[g.id] = g.size;
+  for (const g of scenario.groups) groupCap[g.id] = g.size;
 
   const sessions = Array.from({ length: sessionCount }, (_, sessionIndex) => {
     const cellsByGroupId: Record<string, NormalizedCell> = {};
@@ -54,13 +54,13 @@ export function normalizeFromSolution(
 }
 
 export function normalizeFromSnapshot(
-  problem: Problem,
+  scenario: Scenario,
   snapshot: ScheduleSnapshot
 ): NormalizedSchedule {
-  const sessionCount = problem.num_sessions || 0;
-  const groupOrder = (problem.groups || []).map((g) => g.id);
+  const sessionCount = scenario.num_sessions || 0;
+  const groupOrder = (scenario.groups || []).map((g) => g.id);
   const groupCap: Record<string, number> = {};
-  for (const g of problem.groups) groupCap[g.id] = g.size;
+  for (const g of scenario.groups) groupCap[g.id] = g.size;
 
   const sessions = Array.from({ length: sessionCount }, (_, sessionIndex) => {
     const sessionKey = `session_${sessionIndex}`;

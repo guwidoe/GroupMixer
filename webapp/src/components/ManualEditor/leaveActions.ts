@@ -1,6 +1,6 @@
 import type { MutableRefObject } from 'react';
 import type { Location, NavigateFunction } from 'react-router-dom';
-import type { Assignment, Problem, Solution } from '../../types';
+import type { Assignment, Scenario, Solution } from '../../types';
 import { useAppStore } from '../../store';
 import { buildManualDraftSolution } from './draftSolution';
 
@@ -14,7 +14,7 @@ interface LeaveActionArgs {
 }
 
 interface SaveAndContinueArgs extends LeaveActionArgs {
-  effectiveProblem: Problem | null;
+  effectiveScenario: Scenario | null;
   draftAssignments: Assignment[];
   evaluated: Solution | null;
 }
@@ -45,7 +45,7 @@ export function discardAndContinue({
 }
 
 export function saveAndContinue({
-  effectiveProblem,
+  effectiveScenario,
   draftAssignments,
   evaluated,
   setShowLeaveConfirm,
@@ -55,13 +55,13 @@ export function saveAndContinue({
   location,
   pendingNextPath,
 }: SaveAndContinueArgs) {
-  if (effectiveProblem) {
+  if (effectiveScenario) {
     const draftSolution = buildManualDraftSolution({
       assignments: draftAssignments,
-      peopleCount: effectiveProblem.people.length || 1,
+      peopleCount: effectiveScenario.people.length || 1,
       evaluated,
     });
-    if (!useAppStore.getState().addResult(draftSolution, effectiveProblem.settings, 'Manual Draft', effectiveProblem)) {
+    if (!useAppStore.getState().addResult(draftSolution, effectiveScenario.settings, 'Manual Draft', effectiveScenario)) {
       return;
     }
   }

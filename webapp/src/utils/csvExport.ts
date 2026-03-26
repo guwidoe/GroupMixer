@@ -1,8 +1,8 @@
-import type { Problem, Solution } from "../types";
+import type { Scenario, Solution } from "../types";
 
-function getAttributeKeys(problem: Problem): string[] {
+function getAttributeKeys(scenario: Scenario): string[] {
   const attributeKeySet = new Set<string>();
-  (problem.people || []).forEach((person) => {
+  (scenario.people || []).forEach((person) => {
     Object.keys(person.attributes || {}).forEach((key) => {
       if (key !== "name") attributeKeySet.add(key);
     });
@@ -25,11 +25,11 @@ export interface GenerateAssignmentsCsvOptions {
 }
 
 export function generateAssignmentsCsv(
-  problem: Problem,
+  scenario: Scenario,
   solution: Solution,
   options?: GenerateAssignmentsCsvOptions
 ): string {
-  const attributeKeys = getAttributeKeys(problem);
+  const attributeKeys = getAttributeKeys(scenario);
 
   const headers = [
     "Person ID",
@@ -40,7 +40,7 @@ export function generateAssignmentsCsv(
   ];
 
   const rows = solution.assignments.map((assignment) => {
-    const person = problem.people.find((p) => p.id === assignment.person_id);
+    const person = scenario.people.find((p) => p.id === assignment.person_id);
     const personName = person?.attributes?.name || assignment.person_id;
     const attributeValues = attributeKeys.map(
       (key) => person?.attributes?.[key] ?? ""

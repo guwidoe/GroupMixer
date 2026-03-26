@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calculateMetrics, getColorClass } from "./metricCalculations";
-import { createSampleProblem, createSampleSolution } from "../test/fixtures";
+import { createSampleScenario, createSampleSolution } from "../test/fixtures";
 
 describe("getColorClass", () => {
   it("clamps ratios and maps them to color classes", () => {
@@ -17,8 +17,8 @@ describe("getColorClass", () => {
 });
 
 describe("calculateMetrics", () => {
-  it("derives theoretical and achieved metrics from a problem and solution", () => {
-    const metrics = calculateMetrics(createSampleProblem(), createSampleSolution());
+  it("derives theoretical and achieved metrics from a scenario and solution", () => {
+    const metrics = calculateMetrics(createSampleScenario(), createSampleSolution());
 
     expect(metrics.peopleCount).toBe(4);
     expect(metrics.numSessions).toBe(2);
@@ -31,9 +31,9 @@ describe("calculateMetrics", () => {
     expect(metrics.avgColorClass).toBe("text-green-600");
   });
 
-  it("uses safe minimum denominators for empty problems", () => {
+  it("uses safe minimum denominators for empty scenarios", () => {
     const metrics = calculateMetrics(
-      createSampleProblem({ people: [], groups: [], num_sessions: 0 }),
+      createSampleScenario({ people: [], groups: [], num_sessions: 0 }),
       createSampleSolution({ unique_contacts: 0 })
     );
 

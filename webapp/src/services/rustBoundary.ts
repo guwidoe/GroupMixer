@@ -1,33 +1,33 @@
-import type { Problem, Solution } from '../types';
-import { convertProblemToRustFormat, convertRustResultToSolution } from './wasm/conversions';
+import type { Scenario, Solution } from '../types';
+import { convertScenarioToRustFormat, convertRustResultToSolution } from './wasm/conversions';
 import type { ProgressUpdate, RustResult } from './wasm/types';
 
 export type WarmStartSchedule = Record<string, Record<string, string[]>>;
 
-export function buildRustProblemPayload(problem: Problem): Record<string, unknown> {
-  return convertProblemToRustFormat(problem);
+export function buildRustScenarioPayload(scenario: Scenario): Record<string, unknown> {
+  return convertScenarioToRustFormat(scenario);
 }
 
-export function buildRustProblemJson(problem: Problem): string {
-  return JSON.stringify(buildRustProblemPayload(problem));
+export function buildRustScenarioJson(scenario: Scenario): string {
+  return JSON.stringify(buildRustScenarioPayload(scenario));
 }
 
-export function buildWarmStartProblemPayload(
-  problem: Problem,
+export function buildWarmStartScenarioPayload(
+  scenario: Scenario,
   initialSchedule: WarmStartSchedule,
 ): Record<string, unknown> & { initial_schedule: WarmStartSchedule } {
-  const payload = buildRustProblemPayload(problem) as Record<string, unknown> & {
+  const payload = buildRustScenarioPayload(scenario) as Record<string, unknown> & {
     initial_schedule?: WarmStartSchedule;
   };
   payload.initial_schedule = initialSchedule;
   return payload as Record<string, unknown> & { initial_schedule: WarmStartSchedule };
 }
 
-export function buildWarmStartProblemJson(
-  problem: Problem,
+export function buildWarmStartScenarioJson(
+  scenario: Scenario,
   initialSchedule: WarmStartSchedule,
 ): string {
-  return JSON.stringify(buildWarmStartProblemPayload(problem, initialSchedule));
+  return JSON.stringify(buildWarmStartScenarioPayload(scenario, initialSchedule));
 }
 
 export function parseProgressUpdate(progressJson: string): ProgressUpdate {

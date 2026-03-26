@@ -1,4 +1,4 @@
-import type { Assignment, Constraint, Problem, Solution } from '../../types';
+import type { Assignment, Constraint, Scenario, Solution } from '../../types';
 import type { ProgressUpdate, RustResult, WasmRecordLike } from './types';
 
 function getRecordEntries<T>(value: WasmRecordLike<T> | null | undefined): Array<[string, T]> {
@@ -13,8 +13,8 @@ function getRecordEntries<T>(value: WasmRecordLike<T> | null | undefined): Array
   return Object.entries(value);
 }
 
-export function convertProblemToRustFormat(problem: Problem): Record<string, unknown> {
-  const solverSettings = { ...problem.settings };
+export function convertScenarioToRustFormat(scenario: Scenario): Record<string, unknown> {
+  const solverSettings = { ...scenario.settings };
 
   if (solverSettings.solver_params && typeof solverSettings.solver_params === 'object') {
     const solverType = solverSettings.solver_type;
@@ -33,7 +33,7 @@ export function convertProblemToRustFormat(problem: Problem): Record<string, unk
     }
   }
 
-  const cleanedConstraints = (problem.constraints || []).map((constraint: Constraint) => {
+  const cleanedConstraints = (scenario.constraints || []).map((constraint: Constraint) => {
     if (
       (constraint.type === 'ShouldStayTogether' || constraint.type === 'ShouldNotBeTogether') &&
       (constraint.penalty_weight === undefined || constraint.penalty_weight === null)
@@ -55,7 +55,7 @@ export function convertProblemToRustFormat(problem: Problem): Record<string, unk
     return constraint;
   });
 
-  const allSessions = Array.from({ length: problem.num_sessions }, (_, i) => i);
+  const allSessions = Array.from({ length: scenario.num_sessions }, (_, i) => i);
   const normalizedConstraints = cleanedConstraints.map((constraint: Constraint) => {
     if (constraint.type === 'ImmovablePeople') {
       const sessions = (constraint as unknown as { sessions?: number[] }).sessions;
@@ -75,8 +75,8 @@ export function convertProblemToRustFormat(problem: Problem): Record<string, unk
   });
 
   const objectives =
-    problem.objectives && problem.objectives.length > 0
-      ? problem.objectives
+    scenario.objectives && scenario.objectives.length > 0
+      ? scenario.objectives
       : [
           {
             type: 'maximize_unique_contacts',
@@ -86,9 +86,9 @@ export function convertProblemToRustFormat(problem: Problem): Record<string, unk
 
   return {
     problem: {
-      people: problem.people,
-      groups: problem.groups,
-      num_sessions: problem.num_sessions,
+      people: scenario.people,
+      groups: scenario.groups,
+      num_sessions: scenario.num_sessions,
     },
     objectives,
     constraints: normalizedConstraints,

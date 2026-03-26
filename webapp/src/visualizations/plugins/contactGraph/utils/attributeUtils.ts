@@ -1,6 +1,6 @@
-export function getAttributeKeys(problemPeople: Array<{ attributes?: Record<string, string> }>): string[] {
+export function getAttributeKeys(scenarioPeople: Array<{ attributes?: Record<string, string> }>): string[] {
   const keys = new Set<string>();
-  for (const p of problemPeople) {
+  for (const p of scenarioPeople) {
     const attrs = p.attributes || {};
     for (const k of Object.keys(attrs)) {
       if (k === "name") continue;

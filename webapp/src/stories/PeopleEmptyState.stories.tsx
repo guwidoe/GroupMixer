@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { PeopleEmptyState } from '../components/ProblemEditor/sections/people/PeopleEmptyState';
+import { PeopleEmptyState } from '../components/ScenarioEditor/sections/people/PeopleEmptyState';
 
 /**
- * PeopleEmptyState is shown when no people have been added to the problem.
+ * PeopleEmptyState is shown when no people have been added to the scenario.
  * The message varies based on whether attributes have been defined.
  */
 const meta: Meta<typeof PeopleEmptyState> = {

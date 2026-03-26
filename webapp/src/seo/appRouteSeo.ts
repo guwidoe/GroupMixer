@@ -7,7 +7,7 @@ export function getAppSeo(pathname: string): AppRouteSeoConfig {
   if (pathname.startsWith('/app/solver')) {
     return {
       title: 'Solver Workspace | GroupMixer App',
-      description: 'Advanced solver workspace for saved GroupMixer problems. This utility route is not intended for search indexing.',
+      description: 'Advanced solver workspace for saved GroupMixer scenarios. This utility route is not intended for search indexing.',
     };
   }
 
@@ -34,6 +34,6 @@ export function getAppSeo(pathname: string): AppRouteSeoConfig {
 
   return {
     title: 'Expert Workspace | GroupMixer App',
-    description: 'Advanced GroupMixer workspace for configuring, solving, and reviewing problems. This utility route is not intended for search indexing.',
+    description: 'Advanced GroupMixer workspace for configuring, solving, and reviewing scenarios. This utility route is not intended for search indexing.',
   };
 }

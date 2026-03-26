@@ -6,16 +6,16 @@ import { useAppStore } from '../store';
 import ToolLandingPage from './ToolLandingPage';
 import { getToolPageConfig, TOOL_PAGE_CONFIGS } from './toolPageConfigs';
 
-vi.mock('../services/solver/solveProblem', () => ({
-  solveProblem: vi.fn(async ({ problem }: { problem: { people: Array<{ id: string }>; groups: Array<{ id: string }>; num_sessions: number } }) => ({
-    selectedSettings: problem.settings,
-    runProblem: problem,
+vi.mock('../services/solver/solveScenario', () => ({
+  solveScenario: vi.fn(async ({ scenario }: { problem: { people: Array<{ id: string }>; groups: Array<{ id: string }>; num_sessions: number } }) => ({
+    selectedSettings: scenario.settings,
+    runScenario: scenario,
     lastProgress: null,
     solution: {
-      assignments: Array.from({ length: problem.num_sessions }).flatMap((_, sessionIndex) =>
-        problem.people.map((person, personIndex) => ({
+      assignments: Array.from({ length: scenario.num_sessions }).flatMap((_, sessionIndex) =>
+        scenario.people.map((person, personIndex) => ({
           person_id: person.id,
-          group_id: problem.groups[personIndex % problem.groups.length]?.id ?? problem.groups[0].id,
+          group_id: scenario.groups[personIndex % scenario.groups.length]?.id ?? scenario.groups[0].id,
           session_id: sessionIndex,
         })),
       ),
@@ -212,8 +212,8 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.click(screen.getByRole('button', { name: /open in expert workspace/i }));
 
     const state = useAppStore.getState();
-    expect(state.currentProblemId).toBeTruthy();
-    expect(state.problem).not.toBeNull();
+    expect(state.currentScenarioId).toBeTruthy();
+    expect(state.scenario).not.toBeNull();
     expect(state.solution).not.toBeNull();
     expect(state.ui.activeTab).toBe('results');
     expect(window.__groupmixerLandingEvents).toEqual(
@@ -224,7 +224,7 @@ describe('ToolLandingPage SEO wiring', () => {
     );
   }, 10000);
 
-  it('syncs a new expert-workspace problem in the background and carries edits into /app', async () => {
+  it('syncs a new expert-workspace scenario in the background and carries edits into /app', async () => {
     const user = userEvent.setup();
 
     render(
@@ -240,9 +240,9 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.click(screen.getAllByRole('button', { name: /expert workspace/i })[0]);
 
     const state = useAppStore.getState();
-    expect(state.currentProblemId).toBeTruthy();
-    expect(state.problem?.people.map((person) => person.id)).toEqual(['Ada', 'Grace', 'Linus', 'Margaret']);
-    expect(state.savedProblems[state.currentProblemId!]?.problem.people.map((person) => person.id)).toEqual([
+    expect(state.currentScenarioId).toBeTruthy();
+    expect(state.scenario?.people.map((person) => person.id)).toEqual(['Ada', 'Grace', 'Linus', 'Margaret']);
+    expect(state.savedScenarios[state.currentScenarioId!]?.scenario.people.map((person) => person.id)).toEqual([
       'Ada',
       'Grace',
       'Linus',

@@ -160,20 +160,20 @@ export interface WasmContractModule {
     input: WasmContractSolveInput,
     progressCallback?: WasmContractProgressCallback | null,
   ) => RustResult;
-  validate_problem: (input: WasmContractSolveInput) => WasmValidateResponse;
+  validate_scenario: (input: WasmContractSolveInput) => WasmValidateResponse;
   get_default_solver_configuration: () => SolverSettings;
   recommend_settings: (input: WasmRecommendSettingsRequest) => SolverSettings;
   evaluate_input: (input: WasmContractSolveInput) => RustResult;
   inspect_result: (result: RustResult) => WasmResultSummary;
-  solve_legacy_json?: (problemJson: string) => string;
+  solve_legacy_json?: (scenarioJson: string) => string;
   solve_with_progress_legacy_json?: (
-    problemJson: string,
+    scenarioJson: string,
     progressCallback?: WasmProgressJsonCallback | null,
   ) => string;
-  validate_problem_legacy_json?: (problemJson: string) => string;
+  validate_scenario_legacy_json?: (scenarioJson: string) => string;
   get_default_settings_legacy_json?: () => string;
   get_recommended_settings_legacy_json?: (
-    problemJson: string,
+    scenarioJson: string,
     desiredRuntimeSeconds: bigint,
   ) => string;
   init_panic_hook?: () => void;
@@ -205,7 +205,7 @@ export function isWasmContractModule(value: unknown): value is WasmContractModul
     "get_public_error",
     "solve",
     "solve_with_progress",
-    "validate_problem",
+    "validate_scenario",
     "get_default_solver_configuration",
     "recommend_settings",
     "evaluate_input",

@@ -10,8 +10,8 @@ interface ConstraintPersonChipProps {
 }
 
 // Renders a person chip inside a constraint card.
-// - If the person exists in the current problem, show normal accent styling
-// - If missing (person was deleted from problem), show red styling and allow removal
+// - If the person exists in the current scenario, show normal accent styling
+// - If missing (person was deleted from scenario), show red styling and allow removal
 // - Always shows a small "x" to remove the person from the constraint when onRemove is provided
 const ConstraintPersonChip: React.FC<ConstraintPersonChipProps> = ({ personId, people, onRemove }) => {
   const person = people.find(p => p.id === personId);

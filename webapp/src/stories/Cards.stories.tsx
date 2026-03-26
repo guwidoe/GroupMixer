@@ -105,7 +105,7 @@ export const GroupCardExample: Story = {
   ),
 };
 
-export const ProblemSummaryCard: Story = {
+export const ScenarioSummaryCard: Story = {
   render: () => (
     <Card className="max-w-md">
       <div className="flex items-start justify-between mb-4">

@@ -6,8 +6,8 @@ import { useState } from 'react';
 
 export function Header() {
   const assetBaseUrl = import.meta.env?.BASE_URL ?? '/';
-  const { currentProblemId, savedProblems, setShowProblemManager } = useAppStore();
-  const currentProblemName = currentProblemId ? savedProblems[currentProblemId]?.name : null;
+  const { currentScenarioId, savedScenarios, setShowScenarioManager } = useAppStore();
+  const currentScenarioName = currentScenarioId ? savedScenarios[currentScenarioId]?.name : null;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -41,25 +41,25 @@ export function Header() {
           
           {/* Desktop layout */}
           <div className="hidden sm:flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
-            {!currentProblemName && (
+            {!currentScenarioName && (
               <button
-                onClick={() => setShowProblemManager(true)}
+                onClick={() => setShowScenarioManager(true)}
                 className="btn-secondary flex items-center space-x-2 w-full sm:w-auto justify-center sm:justify-start"
-                title="Manage problems"
+                title="Manage scenarios"
               >
                 <FolderOpen className="h-4 w-4" />
-                <span className="hidden sm:inline">Manage Problems</span>
+                <span className="hidden sm:inline">Manage Scenarios</span>
                 <span className="sm:hidden">Manage</span>
               </button>
             )}
-            {currentProblemName && (
+            {currentScenarioName && (
               <div className="hidden sm:flex items-center space-x-2 text-sm p-2 rounded-md" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
                 <FolderOpen className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
                 <span className="hidden md:inline">
-                  Current: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{currentProblemName}</span>
+                  Current: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{currentScenarioName}</span>
                 </span>
                 <button
-                  onClick={() => setShowProblemManager(true)}
+                  onClick={() => setShowScenarioManager(true)}
                   className="ml-1 text-sm font-medium transition-colors hover:opacity-80"
                   style={{ color: 'var(--color-accent)' }}
                 >
@@ -89,28 +89,28 @@ export function Header() {
         {mobileMenuOpen && (
           <div className="sm:hidden mt-3 pt-3 border-t" style={{ borderColor: 'var(--border-primary)' }}>
             <div className="flex flex-col gap-2">
-              {!currentProblemName && (
+              {!currentScenarioName && (
                 <button
                   onClick={() => {
-                    setShowProblemManager(true);
+                    setShowScenarioManager(true);
                     setMobileMenuOpen(false);
                   }}
                   className="btn-secondary flex items-center space-x-2 w-full justify-start"
-                  title="Manage problems"
+                  title="Manage scenarios"
                 >
                   <FolderOpen className="h-4 w-4" />
-                  <span>Manage Problems</span>
+                  <span>Manage Scenarios</span>
                 </button>
               )}
-              {currentProblemName && (
+              {currentScenarioName && (
                 <div className="flex items-center space-x-2 text-sm p-2 rounded-md" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
                   <FolderOpen className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
                   <span>
-                    Current: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{currentProblemName}</span>
+                    Current: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{currentScenarioName}</span>
                   </span>
                   <button
                     onClick={() => {
-                      setShowProblemManager(true);
+                      setShowScenarioManager(true);
                       setMobileMenuOpen(false);
                     }}
                     className="ml-1 text-sm font-medium transition-colors hover:opacity-80"

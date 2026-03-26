@@ -1,6 +1,6 @@
-import type { ProblemResult } from '../../types';
-import { compareProblemConfigurations } from '../../services/problemStorage';
-import { snapshotToProblem } from '../../utils/problemSnapshot';
+import type { ScenarioResult } from '../../types';
+import { compareScenarioConfigurations } from '../../services/scenarioStorage';
+import { snapshotToScenario } from '../../utils/scenarioSnapshot';
 
 export function formatDate(timestamp: number) {
   return new Date(timestamp).toLocaleDateString('en-US', {
@@ -40,16 +40,16 @@ export function formatLargeNumber(num: number | undefined) {
   return num.toLocaleString();
 }
 
-export function isSameConfig(resultA: ProblemResult | null, resultB: ProblemResult | null): boolean {
+export function isSameConfig(resultA: ScenarioResult | null, resultB: ScenarioResult | null): boolean {
   if (!resultA || !resultB) return false;
-  if (!resultA.problemSnapshot || !resultB.problemSnapshot) return false;
-  const a = snapshotToProblem(resultA.problemSnapshot, resultA.solverSettings);
-  const b = snapshotToProblem(resultB.problemSnapshot, resultB.solverSettings);
-  const diff = compareProblemConfigurations(a, b);
+  if (!resultA.scenarioSnapshot || !resultB.scenarioSnapshot) return false;
+  const a = snapshotToScenario(resultA.scenarioSnapshot, resultA.solverSettings);
+  const b = snapshotToScenario(resultB.scenarioSnapshot, resultB.solverSettings);
+  const diff = compareScenarioConfigurations(a, b);
   return !diff.isDifferent;
 }
 
-export function getBestResult(results: ProblemResult[], mostRecentResult: ProblemResult | null) {
+export function getBestResult(results: ScenarioResult[], mostRecentResult: ScenarioResult | null) {
   if (!results.length || !mostRecentResult) return null;
   const comparableResults = results.filter(r => isSameConfig(r, mostRecentResult));
   if (!comparableResults.length) return null;
@@ -60,9 +60,9 @@ export function getBestResult(results: ProblemResult[], mostRecentResult: Proble
 
 export function getScoreColor(
   score: number,
-  result: ProblemResult,
-  results: ProblemResult[],
-  mostRecentResult: ProblemResult | null
+  result: ScenarioResult,
+  results: ScenarioResult[],
+  mostRecentResult: ScenarioResult | null
 ) {
   if (!results.length) return 'text-gray-600';
   const comparableResults = results.filter(r => isSameConfig(r, result));

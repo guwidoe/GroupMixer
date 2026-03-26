@@ -7,7 +7,7 @@ import { SolverPanel } from "./components/SolverPanel";
 import { ResultsView } from "./components/ResultsView";
 import { ResultsHistory } from "./components/ResultsHistory";
 import { useAppStore } from "./store";
-import { createSampleProblem, createSampleSolverSettings, createSavedProblem } from "./test/fixtures";
+import { createSampleScenario, createSampleSolverSettings, createSavedScenario } from "./test/fixtures";
 import { solverWorkerService } from "./services/solverWorker";
 
 vi.mock("./services/solverWorker", () => ({
@@ -65,7 +65,7 @@ describe("MainApp stateful integration routes", () => {
 
     useAppStore.setState({
       initializeApp: vi.fn(),
-      loadSavedProblems: vi.fn(),
+      loadSavedScenarios: vi.fn(),
     });
   });
 
@@ -100,19 +100,19 @@ describe("MainApp stateful integration routes", () => {
 
   it("renders the real /app/solver surface with loaded state, warm-start history, and auto-set success", async () => {
     const user = userEvent.setup();
-    const savedProblem = createSavedProblem({
-      id: "problem-1",
+    const savedScenario = createSavedScenario({
+      id: "scenario-1",
       name: "Workshop Plan",
-      problem: createSampleProblem({ settings: createSampleSolverSettings() }),
+      scenario: createSampleScenario({ settings: createSampleSolverSettings() }),
     });
     vi.mocked(solverWorkerService.getRecommendedSettings).mockResolvedValue(
       createSampleSolverSettings(),
     );
 
     useAppStore.setState({
-      problem: savedProblem.problem,
-      currentProblemId: savedProblem.id,
-      savedProblems: { [savedProblem.id]: savedProblem },
+      scenario: savedScenario.scenario,
+      currentScenarioId: savedScenario.id,
+      savedScenarios: { [savedScenario.id]: savedScenario },
     });
 
     renderAppRoute("/app/solver");
@@ -129,24 +129,24 @@ describe("MainApp stateful integration routes", () => {
 
     await user.click(screen.getByRole("button", { name: /auto-set/i }));
 
-    expect(solverWorkerService.getRecommendedSettings).toHaveBeenCalledWith(savedProblem.problem, 3);
+    expect(solverWorkerService.getRecommendedSettings).toHaveBeenCalledWith(savedScenario.scenario, 3);
     expect(await screen.findByText(/settings updated/i)).toBeInTheDocument();
   }, 10000);
 
   it("surfaces auto-set failures through the real /app/solver notification path", async () => {
     const user = userEvent.setup();
-    const savedProblem = createSavedProblem({
-      id: "problem-1",
-      problem: createSampleProblem(),
+    const savedScenario = createSavedScenario({
+      id: "scenario-1",
+      scenario: createSampleScenario(),
     });
     vi.mocked(solverWorkerService.getRecommendedSettings).mockRejectedValue(
       new Error("recommend failed"),
     );
 
     useAppStore.setState({
-      problem: savedProblem.problem,
-      currentProblemId: savedProblem.id,
-      savedProblems: { [savedProblem.id]: savedProblem },
+      scenario: savedScenario.scenario,
+      currentScenarioId: savedScenario.id,
+      savedScenarios: { [savedScenario.id]: savedScenario },
     });
 
     renderAppRoute("/app/solver");
@@ -159,16 +159,16 @@ describe("MainApp stateful integration routes", () => {
   }, 10000);
 
   it("renders the real /app/results surface with a saved solution already in state", async () => {
-    const savedProblem = createSavedProblem({
-      id: "problem-1",
-      problem: createSampleProblem(),
+    const savedScenario = createSavedScenario({
+      id: "scenario-1",
+      scenario: createSampleScenario(),
     });
 
     useAppStore.setState({
-      problem: savedProblem.problem,
-      solution: savedProblem.results[0].solution,
-      currentProblemId: savedProblem.id,
-      savedProblems: { [savedProblem.id]: savedProblem },
+      scenario: savedScenario.scenario,
+      solution: savedScenario.results[0].solution,
+      currentScenarioId: savedScenario.id,
+      savedScenarios: { [savedScenario.id]: savedScenario },
     });
 
     renderAppRoute("/app/results");
@@ -179,16 +179,16 @@ describe("MainApp stateful integration routes", () => {
 
   it("renders the real /app/history surface and can navigate into result details from persisted state", async () => {
     const user = userEvent.setup();
-    const savedProblem = createSavedProblem({
-      id: "problem-1",
-      problem: createSampleProblem(),
+    const savedScenario = createSavedScenario({
+      id: "scenario-1",
+      scenario: createSampleScenario(),
     });
 
     useAppStore.setState({
-      problem: savedProblem.problem,
-      solution: savedProblem.results[0].solution,
-      currentProblemId: savedProblem.id,
-      savedProblems: { [savedProblem.id]: savedProblem },
+      scenario: savedScenario.scenario,
+      solution: savedScenario.results[0].solution,
+      currentScenarioId: savedScenario.id,
+      savedScenarios: { [savedScenario.id]: savedScenario },
     });
 
     renderAppRoute("/app/history");
@@ -201,12 +201,12 @@ describe("MainApp stateful integration routes", () => {
 
   it("updates progress targets immediately when automatic settings choose a larger run budget", async () => {
     const user = userEvent.setup();
-    const savedProblem = createSavedProblem({
-      id: "problem-1",
-      problem: createSampleProblem({ settings: createSampleSolverSettings() }),
+    const savedScenario = createSavedScenario({
+      id: "scenario-1",
+      scenario: createSampleScenario({ settings: createSampleSolverSettings() }),
     });
     const deferred = createDeferred<{
-      solution: ReturnType<typeof createSavedProblem>["results"][number]["solution"];
+      solution: ReturnType<typeof createSavedScenario>["results"][number]["solution"];
       lastProgress: null;
     }>();
 
@@ -221,9 +221,9 @@ describe("MainApp stateful integration routes", () => {
     vi.mocked(solverWorkerService.solveWithProgress).mockReturnValue(deferred.promise);
 
     useAppStore.setState({
-      problem: savedProblem.problem,
-      currentProblemId: savedProblem.id,
-      savedProblems: { [savedProblem.id]: savedProblem },
+      scenario: savedScenario.scenario,
+      currentScenarioId: savedScenario.id,
+      savedScenarios: { [savedScenario.id]: savedScenario },
     });
 
     renderAppRoute("/app/solver");
@@ -235,7 +235,7 @@ describe("MainApp stateful integration routes", () => {
     expect(screen.getByText("0 / 243,243")).toBeInTheDocument();
 
     deferred.resolve({
-      solution: savedProblem.results[0].solution,
+      solution: savedScenario.results[0].solution,
       lastProgress: null,
     });
   });

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createSampleProblem, createSampleSolution } from '../test/fixtures';
+import { createSampleScenario, createSampleSolution } from '../test/fixtures';
 import { useAppStore } from './index';
 import { ATTRIBUTE_DEFS_KEY, DEFAULT_ATTRIBUTE_DEFINITIONS } from './slices';
 
@@ -20,12 +20,12 @@ describe('useAppStore initialization', () => {
     expect(useAppStore.getState().attributeDefinitions).toEqual(persistedDefinitions);
   });
 
-  it('replaces the workspace explicitly without clobbering a saved problem id', () => {
-    const problem = createSampleProblem();
+  it('replaces the workspace explicitly without clobbering a saved scenario id', () => {
+    const scenario = createSampleScenario();
     const solution = createSampleSolution();
 
     useAppStore.setState({
-      currentProblemId: 'saved-problem-1',
+      currentScenarioId: 'saved-scenario-1',
       selectedResultIds: ['result-a', 'result-b'],
       ui: {
         ...useAppStore.getState().ui,
@@ -35,15 +35,15 @@ describe('useAppStore initialization', () => {
     });
 
     useAppStore.getState().replaceWorkspace({
-      problem,
+      scenario,
       solution,
       attributeDefinitions: [{ key: 'team', values: ['A', 'B'] }],
     });
 
     const state = useAppStore.getState();
-    expect(state.problem).toEqual(problem);
+    expect(state.scenario).toEqual(scenario);
     expect(state.solution).toEqual(solution);
-    expect(state.currentProblemId).toBeNull();
+    expect(state.currentScenarioId).toBeNull();
     expect(state.selectedResultIds).toEqual([]);
     expect(state.ui.warmStartResultId).toBeNull();
     expect(state.ui.showResultComparison).toBe(false);
@@ -55,35 +55,35 @@ describe('useAppStore initialization', () => {
     );
   });
 
-  it('silently provisions and updates a synced workspace draft problem', () => {
-    const firstProblem = createSampleProblem({ num_sessions: 1 });
-    const secondProblem = createSampleProblem({ num_sessions: 3 });
+  it('silently provisions and updates a synced workspace draft scenario', () => {
+    const firstScenario = createSampleScenario({ num_sessions: 1 });
+    const secondScenario = createSampleScenario({ num_sessions: 3 });
     const solution = createSampleSolution();
 
     const createdId = useAppStore.getState().syncWorkspaceDraft({
-      problem: firstProblem,
+      scenario: firstScenario,
       solution: null,
       attributeDefinitions: [{ key: 'team', values: ['A', 'B'] }],
-      problemName: 'Random Group Generator draft',
+      scenarioName: 'Random Group Generator draft',
     });
 
     let state = useAppStore.getState();
     expect(createdId).toBeTruthy();
-    expect(state.currentProblemId).toBe(createdId);
-    expect(state.savedProblems[createdId]?.name).toBe('Random Group Generator draft');
-    expect(state.savedProblems[createdId]?.problem.num_sessions).toBe(1);
+    expect(state.currentScenarioId).toBe(createdId);
+    expect(state.savedScenarios[createdId]?.name).toBe('Random Group Generator draft');
+    expect(state.savedScenarios[createdId]?.scenario.num_sessions).toBe(1);
 
     const updatedId = useAppStore.getState().syncWorkspaceDraft({
-      problem: secondProblem,
+      scenario: secondScenario,
       solution,
-      currentProblemId: createdId,
-      problemName: 'Random Group Generator draft',
+      currentScenarioId: createdId,
+      scenarioName: 'Random Group Generator draft',
     });
 
     state = useAppStore.getState();
     expect(updatedId).toBe(createdId);
-    expect(state.problem?.num_sessions).toBe(3);
+    expect(state.scenario?.num_sessions).toBe(3);
     expect(state.solution).toEqual(solution);
-    expect(state.savedProblems[createdId]?.problem.num_sessions).toBe(3);
+    expect(state.savedScenarios[createdId]?.scenario.num_sessions).toBe(3);
   });
 });

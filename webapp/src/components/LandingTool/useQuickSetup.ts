@@ -3,9 +3,9 @@ import { useLocalStorageState } from '../../hooks/useLocalStorageState';
 import { getLandingUiContent } from '../../i18n/landingUi';
 import type { ToolPageConfig } from '../../pages/toolPageConfigs';
 import type { ToolPageSharedUiContent } from '../../pages/toolPageTypes';
-import { solveProblem } from '../../services/solver/solveProblem';
-import { buildGroups, buildProblemFromDraft, parseParticipantInput } from '../../utils/quickSetup';
-import type { AttributeDefinition, Problem, Solution } from '../../types';
+import { solveScenario } from '../../services/solver/solveScenario';
+import { buildGroups, buildScenarioFromDraft, parseParticipantInput } from '../../utils/quickSetup';
+import type { AttributeDefinition, Scenario, Solution } from '../../types';
 import type {
   QuickSetupAnalysis,
   QuickSetupDraft,
@@ -39,16 +39,16 @@ export interface QuickSetupController {
   canGenerate: boolean;
   draftStorageLabel: string;
   workspacePayload: {
-    problem: Problem;
+    scenario: Scenario;
     solution?: Solution | null;
     attributeDefinitions?: AttributeDefinition[];
-    currentProblemId?: string | null;
+    currentScenarioId?: string | null;
   };
   buildWorkspaceBridgePayload: () => {
-    problem: Problem;
+    scenario: Scenario;
     solution?: Solution | null;
     attributeDefinitions?: AttributeDefinition[];
-    currentProblemId?: string | null;
+    currentScenarioId?: string | null;
   };
   updateDraft: (updater: QuickSetupDraft | ((draft: QuickSetupDraft) => QuickSetupDraft)) => void;
   setPreset: (preset: QuickSetupDraft['preset']) => void;
@@ -74,7 +74,7 @@ function defaultDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
     inputMode: 'names',
     balanceAttributeKey: null,
     advancedOpen: false,
-    workspaceProblemId: null,
+    workspaceScenarioId: null,
   };
 }
 
@@ -344,9 +344,9 @@ function csvForResult(result: QuickSetupResult) {
   return lines.join('\n');
 }
 
-function quickSetupResultFromSolution(problem: ReturnType<typeof buildProblemFromDraft>['problem'], solution: { assignments: Array<{ person_id: string; group_id: string; session_id: number }> }, seed: number): QuickSetupResult {
+function quickSetupResultFromSolution(scenario: ReturnType<typeof buildScenarioFromDraft>['scenario'], solution: { assignments: Array<{ person_id: string; group_id: string; session_id: number }> }, seed: number): QuickSetupResult {
   const peopleById = new Map(
-    problem.people.map((person) => [
+    scenario.people.map((person) => [
       person.id,
       {
         id: person.id,
@@ -359,7 +359,7 @@ function quickSetupResultFromSolution(problem: ReturnType<typeof buildProblemFro
   const groupsBySession = new Map<number, Map<string, QuickSetupGroupResult>>();
   for (const assignment of solution.assignments) {
     if (!groupsBySession.has(assignment.session_id)) {
-      groupsBySession.set(assignment.session_id, new Map(problem.groups.map((group) => [group.id, { id: group.id, members: [] }] as const)));
+      groupsBySession.set(assignment.session_id, new Map(scenario.groups.map((group) => [group.id, { id: group.id, members: [] }] as const)));
     }
     groupsBySession.get(assignment.session_id)?.get(assignment.group_id)?.members.push(
       peopleById.get(assignment.person_id) ?? {
@@ -401,7 +401,7 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
   const [result, setResult] = useState<QuickSetupResult | null>(null);
   const [isSolving, setIsSolving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [lastSolvedProblem, setLastSolvedProblem] = useState<Problem | null>(null);
+  const [lastSolvedScenario, setLastSolvedScenario] = useState<Scenario | null>(null);
   const [lastSolvedSolution, setLastSolvedSolution] = useState<Solution | null>(null);
   const [lastSolvedAttributeDefinitions, setLastSolvedAttributeDefinitions] = useState<AttributeDefinition[]>([]);
 
@@ -413,23 +413,23 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
   const canGenerate = participantCount >= 2 && draft.groupingValue > 0;
 
   const workspacePayload = useMemo(() => {
-    if (lastSolvedProblem) {
+    if (lastSolvedScenario) {
       return {
-        problem: lastSolvedProblem,
+        scenario: lastSolvedScenario,
         solution: lastSolvedSolution,
         attributeDefinitions: lastSolvedAttributeDefinitions,
-        currentProblemId: draft.workspaceProblemId ?? null,
+        currentScenarioId: draft.workspaceScenarioId ?? null,
       };
     }
 
-    const mapped = buildProblemFromDraft(draft);
+    const mapped = buildScenarioFromDraft(draft);
     return {
-      problem: mapped.problem,
+      scenario: mapped.scenario,
       solution: null,
       attributeDefinitions: mapped.attributeDefinitions,
-      currentProblemId: draft.workspaceProblemId ?? null,
+      currentScenarioId: draft.workspaceScenarioId ?? null,
     };
-  }, [draft, lastSolvedAttributeDefinitions, lastSolvedProblem, lastSolvedSolution]);
+  }, [draft, lastSolvedAttributeDefinitions, lastSolvedScenario, lastSolvedSolution]);
 
   const updateDraft = useCallback(
     (updater: QuickSetupDraft | ((draft: QuickSetupDraft) => QuickSetupDraft)) => {
@@ -461,21 +461,21 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
       }
       setIsSolving(true);
       setErrorMessage(null);
-      const mapped = buildProblemFromDraft(draft);
+      const mapped = buildScenarioFromDraft(draft);
       try {
-        const { solution } = await solveProblem({
-          problem: mapped.problem,
+        const { solution } = await solveScenario({
+          scenario: mapped.scenario,
           useRecommendedSettings: true,
           desiredRuntimeSeconds: draft.preset === 'networking' ? 5 : 3,
         });
-        setLastSolvedProblem(mapped.problem);
+        setLastSolvedScenario(mapped.scenario);
         setLastSolvedSolution(solution);
         setLastSolvedAttributeDefinitions(mapped.attributeDefinitions);
-        setResult(quickSetupResultFromSolution(mapped.problem, solution, seed));
+        setResult(quickSetupResultFromSolution(mapped.scenario, solution, seed));
       } catch (error) {
         console.error('[QuickSetup] Falling back to local grouping after solve failure:', error);
         setErrorMessage(ui.results.solverFallbackMessage);
-        setLastSolvedProblem(null);
+        setLastSolvedScenario(null);
         setLastSolvedSolution(null);
         setLastSolvedAttributeDefinitions([]);
         setResult(generateSessions(draft, analysis, seed));
@@ -497,7 +497,7 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
   const resetDraft = useCallback(() => {
     setDraft(defaultDraft(pageConfig));
     setResult(null);
-    setLastSolvedProblem(null);
+    setLastSolvedScenario(null);
     setLastSolvedSolution(null);
     setLastSolvedAttributeDefinitions([]);
     setErrorMessage(null);
@@ -518,7 +518,7 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
   }, [result]);
 
   const exportProjectDraft = useCallback(() => {
-    const mapped = buildProblemFromDraft(draft);
+    const mapped = buildScenarioFromDraft(draft);
     downloadBlob(
       'groupmixer-quick-setup.json',
       JSON.stringify({ draft, pageKey: pageConfig.key, ...mapped }, null, 2),

@@ -5,7 +5,7 @@ import {
   findAssignedGroup,
   stagePersonMove,
 } from './dropPipeline';
-import { createSampleProblem, createSampleSolution } from '../../test/fixtures';
+import { createSampleScenario, createSampleSolution } from '../../test/fixtures';
 import { groupBySessionAndGroup } from './utils';
 import { wasmService } from '../../services/wasm';
 import { evaluateCompliance } from '../../services/evaluator';
@@ -51,7 +51,7 @@ describe('dropPipeline', () => {
   });
 
   it('builds an evaluated move baseline when runtime evaluation succeeds', async () => {
-    const problem = createSampleProblem();
+    const scenario = createSampleScenario();
     const draftAssignments = createSampleSolution().assignments;
     const compliance = [{ title: 'before', status: 'warn' }] as unknown as ReturnType<typeof evaluateCompliance>;
     vi.mocked(wasmService.evaluateSolution).mockResolvedValue(
@@ -64,9 +64,9 @@ describe('dropPipeline', () => {
       }),
     );
 
-    const result = await buildMoveBaseline(problem, draftAssignments, compliance);
+    const result = await buildMoveBaseline(scenario, draftAssignments, compliance);
 
-    expect(wasmService.evaluateSolution).toHaveBeenCalledWith(problem, draftAssignments);
+    expect(wasmService.evaluateSolution).toHaveBeenCalledWith(scenario, draftAssignments);
     expect(evaluateCompliance).toHaveBeenCalled();
     expect(result).toEqual({
       score: {
@@ -80,7 +80,7 @@ describe('dropPipeline', () => {
     });
   });
 
-  it('falls back to empty move-baseline scores when evaluation fails or no problem exists', async () => {
+  it('falls back to empty move-baseline scores when evaluation fails or no scenario exists', async () => {
     const draftAssignments = createSampleSolution().assignments;
     const compliance = [{ title: 'before', status: 'warn' }] as unknown as ReturnType<typeof evaluateCompliance>;
     vi.mocked(wasmService.evaluateSolution).mockRejectedValue(new Error('eval failed'));
@@ -96,7 +96,7 @@ describe('dropPipeline', () => {
       compliance,
     });
 
-    await expect(buildMoveBaseline(createSampleProblem(), draftAssignments, compliance)).resolves.toEqual({
+    await expect(buildMoveBaseline(createSampleScenario(), draftAssignments, compliance)).resolves.toEqual({
       score: {
         final_score: 0,
         unique_contacts: 0,
@@ -109,7 +109,7 @@ describe('dropPipeline', () => {
   });
 
   it('builds a before/after move report from evaluated assignments', async () => {
-    const problem = createSampleProblem();
+    const scenario = createSampleScenario();
     const beforeAssignments = createSampleSolution().assignments;
     const afterAssignments = stagePersonMove(beforeAssignments, 'p1', 'g2', 0);
 
@@ -118,7 +118,7 @@ describe('dropPipeline', () => {
       .mockResolvedValueOnce(createSampleSolution({ final_score: 7, unique_contacts: 6, constraint_penalty: 1 }));
 
     const report = await buildMoveReportData(
-      problem,
+      scenario,
       beforeAssignments,
       afterAssignments,
       [{ title: 'before', status: 'warn' }] as unknown as ReturnType<typeof evaluateCompliance>,
@@ -145,12 +145,12 @@ describe('dropPipeline', () => {
         },
         compliance: [{ title: 'ok', status: 'pass' }],
       },
-      people: problem.people,
+      people: scenario.people,
     });
   });
 
   it('returns null when the after-move evaluation fails', async () => {
-    const problem = createSampleProblem();
+    const scenario = createSampleScenario();
     const beforeAssignments = createSampleSolution().assignments;
     const afterAssignments = stagePersonMove(beforeAssignments, 'p1', 'g2', 0);
 
@@ -160,7 +160,7 @@ describe('dropPipeline', () => {
 
     await expect(
       buildMoveReportData(
-        problem,
+        scenario,
         beforeAssignments,
         afterAssignments,
         [{ title: 'before', status: 'warn' }] as unknown as ReturnType<typeof evaluateCompliance>,

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Problem } from "../../types";
-import { createSampleProblem, createSampleSolverSettings } from "../../test/fixtures";
-import { buildRustProblemPayload } from "../rustBoundary";
+import type { Scenario } from "../../types";
+import { createSampleScenario, createSampleSolverSettings } from "../../test/fixtures";
+import { buildRustScenarioPayload } from "../rustBoundary";
 import { convertRustResultToSolution } from "./conversions";
 import {
   normalizeContractError,
@@ -10,8 +10,8 @@ import {
 } from "./contracts";
 
 vi.mock("../rustBoundary", () => ({
-  buildRustProblemPayload: vi.fn(() => ({
-    problem: { people: [], groups: [], num_sessions: 2 },
+  buildRustScenarioPayload: vi.fn(() => ({
+    scenario: { people: [], groups: [], num_sessions: 2 },
     objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
     constraints: [],
     solver: { solver_type: "SimulatedAnnealing" },
@@ -40,21 +40,21 @@ type FakeContractModule = {
   get_public_error: ReturnType<typeof vi.fn>;
   solve: ReturnType<typeof vi.fn>;
   solve_with_progress: ReturnType<typeof vi.fn>;
-  validate_problem: ReturnType<typeof vi.fn>;
+  validate_scenario: ReturnType<typeof vi.fn>;
   get_default_solver_configuration: ReturnType<typeof vi.fn>;
   recommend_settings: ReturnType<typeof vi.fn>;
   evaluate_input: ReturnType<typeof vi.fn>;
   inspect_result: ReturnType<typeof vi.fn>;
   solve_legacy_json: ReturnType<typeof vi.fn>;
-  validate_problem_legacy_json: ReturnType<typeof vi.fn>;
+  validate_scenario_legacy_json: ReturnType<typeof vi.fn>;
   get_default_settings_legacy_json: ReturnType<typeof vi.fn>;
   get_recommended_settings_legacy_json: ReturnType<typeof vi.fn>;
   solve_with_progress_legacy_json: ReturnType<typeof vi.fn>;
   default: ReturnType<typeof vi.fn>;
 };
 
-function createProblem(): Problem {
-  return createSampleProblem();
+function createScenario(): Scenario {
+  return createSampleScenario();
 }
 
 function createContractModule(): FakeContractModule {
@@ -70,13 +70,13 @@ function createContractModule(): FakeContractModule {
       callback?.({ iteration: 5, elapsed_seconds: 1.5, best_score: 7 });
       return { schedule: {}, final_score: 9, unique_contacts: 1 };
     }),
-    validate_problem: vi.fn(() => ({ valid: true, issues: [] })),
+    validate_scenario: vi.fn(() => ({ valid: true, issues: [] })),
     get_default_solver_configuration: vi.fn(() => createSampleSolverSettings()),
     recommend_settings: vi.fn(() => createSampleSolverSettings()),
     evaluate_input: vi.fn(() => ({ schedule: {}, final_score: 6, unique_contacts: 2 })),
     inspect_result: vi.fn(() => ({ final_score: 9, unique_contacts: 1, repetition_penalty: 0, attribute_balance_penalty: 0, constraint_penalty: 0 })),
     solve_legacy_json: vi.fn(),
-    validate_problem_legacy_json: vi.fn(),
+    validate_scenario_legacy_json: vi.fn(),
     get_default_settings_legacy_json: vi.fn(),
     get_recommended_settings_legacy_json: vi.fn(),
     solve_with_progress_legacy_json: vi.fn(),
@@ -112,10 +112,10 @@ describe("WasmContractClient", () => {
   it("returns default solver configuration and runtime-aware recommendations", async () => {
     const wasmModule = createContractModule();
     const client = new WasmContractClient(async () => wasmModule);
-    const problem = createProblem();
+    const scenario = createScenario();
 
     await expect(client.getDefaultSolverConfiguration()).resolves.toEqual(createSampleSolverSettings());
-    await expect(client.recommendSettings(problem, 11)).resolves.toEqual(createSampleSolverSettings());
+    await expect(client.recommendSettings(scenario, 11)).resolves.toEqual(createSampleSolverSettings());
 
     expect(wasmModule.recommend_settings).toHaveBeenCalledWith({
       problem_definition: { people: [], groups: [], num_sessions: 2 },
@@ -156,11 +156,11 @@ describe("WasmContractClient", () => {
     const client = new WasmContractClient(async () => wasmModule);
     const progressCallback = vi.fn();
 
-    const result = await client.solveWithProgress(createProblem(), progressCallback);
+    const result = await client.solveWithProgress(createScenario(), progressCallback);
 
-    expect(buildRustProblemPayload).toHaveBeenCalled();
+    expect(buildRustScenarioPayload).toHaveBeenCalled();
     expect(wasmModule.solve_with_progress).toHaveBeenCalledWith(
-      expect.objectContaining({ problem: expect.any(Object) }),
+      expect.objectContaining({ scenario: expect.any(Object) }),
       expect.any(Function),
     );
     expect(progressCallback).toHaveBeenCalledWith({ iteration: 5, elapsed_seconds: 1.5, best_score: 7 });
@@ -175,10 +175,10 @@ describe("WasmContractClient", () => {
     const wasmModule = createContractModule();
     const client = new WasmContractClient(async () => wasmModule);
 
-    await client.solve(createProblem());
+    await client.solve(createScenario());
 
     expect(wasmModule.solve).toHaveBeenCalledWith(
-      expect.objectContaining({ problem: expect.any(Object) }),
+      expect.objectContaining({ scenario: expect.any(Object) }),
     );
   });
 
@@ -203,13 +203,13 @@ describe("WasmContractClient", () => {
     const wasmModule = createContractModule();
     const client = new WasmContractClient(async () => wasmModule);
 
-    await client.evaluateInput(createProblem(), [
+    await client.evaluateInput(createScenario(), [
       { person_id: "p1", group_id: "g1", session_id: 0 },
       { person_id: "p2", group_id: "g2", session_id: 1 },
     ]);
 
     expect(wasmModule.evaluate_input).toHaveBeenCalledWith({
-      problem: { people: [], groups: [], num_sessions: 2 },
+      scenario: { people: [], groups: [], num_sessions: 2 },
       objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
       constraints: [],
       solver: { solver_type: "SimulatedAnnealing" },
@@ -232,7 +232,7 @@ describe("WasmContractClient", () => {
     });
     const client = new WasmContractClient(async () => wasmModule);
 
-    await expect(client.recommendSettings(createProblem(), 5)).rejects.toThrow(
+    await expect(client.recommendSettings(createScenario(), 5)).rejects.toThrow(
       "Failed to recommend solver settings: invalid-input: recommendation request rejected",
     );
   });
@@ -244,14 +244,14 @@ describe("normalizeContractError", () => {
       {
         error: {
           code: "invalid-input",
-          message: "problem rejected",
+          message: "scenario rejected",
         },
       },
-      "Failed to solve problem",
+      "Failed to solve scenario",
     );
 
     expect(error).toBeInstanceOf(WasmContractClientError);
     expect(error.code).toBe("invalid-input");
-    expect(error.message).toBe("Failed to solve problem: invalid-input: problem rejected");
+    expect(error.message).toBe("Failed to solve scenario: invalid-input: scenario rejected");
   });
 });

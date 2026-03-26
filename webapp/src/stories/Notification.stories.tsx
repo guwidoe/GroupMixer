@@ -137,8 +137,8 @@ export const LongMessage: Story = {
     notification: {
       id: '5',
       type: 'info',
-      title: 'Problem Loaded',
-      message: 'Successfully loaded problem "Company Annual Retreat Planning 2024" with 45 people, 8 groups, and 6 sessions.',
+      title: 'Scenario Loaded',
+      message: 'Successfully loaded scenario "Company Annual Retreat Planning 2024" with 45 people, 8 groups, and 6 sessions.',
     },
     onDismiss: () => {},
   },

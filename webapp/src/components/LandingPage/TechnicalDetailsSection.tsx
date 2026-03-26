@@ -17,10 +17,10 @@ export function TechnicalDetailsSection() {
           <div className="card p-8">
             <div className="flex items-center mb-6">
               <Lightbulb className="w-8 h-8 text-accent mr-3" />
-              <h3 className="text-2xl font-semibold text-primary">The Social Golfer Problem</h3>
+              <h3 className="text-2xl font-semibold text-primary">The Social Golfer Scenario</h3>
             </div>
             <p className="text-secondary mb-4">
-              GroupMixer solves a classic problem in combinatorial optimization known as the "Social Golfer Problem."
+              GroupMixer solves a classic scenario in combinatorial optimization known as the "Social Golfer Scenario."
               This involves arranging people into groups across multiple sessions to maximize unique pairings.
             </p>
             <p className="text-secondary">

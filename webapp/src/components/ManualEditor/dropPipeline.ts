@@ -1,4 +1,4 @@
-import type { Assignment, Problem, Solution } from '../../types';
+import type { Assignment, Scenario, Solution } from '../../types';
 import { wasmService } from '../../services/wasm';
 import { evaluateCompliance } from '../../services/evaluator';
 import type { ChangeReportData } from '../ChangeReportModal';
@@ -44,7 +44,7 @@ function summarizeSolution(solution: Solution): ScoreSummary {
 }
 
 export async function buildMoveBaseline(
-  effectiveProblem: Problem | null,
+  effectiveScenario: Scenario | null,
   draftAssignments: Assignment[],
   compliance: ComplianceCardData[],
 ): Promise<{ score: ScoreSummary; compliance: ComplianceCardData[] }> {
@@ -56,15 +56,15 @@ export async function buildMoveBaseline(
     constraint_penalty: 0,
   };
 
-  if (!effectiveProblem) {
+  if (!effectiveScenario) {
     return { score: emptyScore, compliance };
   }
 
   try {
-    const evaluated = await wasmService.evaluateSolution(effectiveProblem, draftAssignments);
+    const evaluated = await wasmService.evaluateSolution(effectiveScenario, draftAssignments);
     return {
       score: summarizeSolution(evaluated),
-      compliance: evaluateCompliance(effectiveProblem, evaluated),
+      compliance: evaluateCompliance(effectiveScenario, evaluated),
     };
   } catch {
     return { score: emptyScore, compliance };
@@ -72,22 +72,22 @@ export async function buildMoveBaseline(
 }
 
 export async function buildMoveReportData(
-  effectiveProblem: Problem,
+  effectiveScenario: Scenario,
   beforeAssignments: Assignment[],
   afterAssignments: Assignment[],
   beforeCompliance: ComplianceCardData[],
 ): Promise<ChangeReportData | null> {
-  const before = await buildMoveBaseline(effectiveProblem, beforeAssignments, beforeCompliance);
+  const before = await buildMoveBaseline(effectiveScenario, beforeAssignments, beforeCompliance);
 
   try {
-    const afterEval = await wasmService.evaluateSolution(effectiveProblem, afterAssignments);
+    const afterEval = await wasmService.evaluateSolution(effectiveScenario, afterAssignments);
     return {
       before,
       after: {
         score: summarizeSolution(afterEval),
-        compliance: evaluateCompliance(effectiveProblem, afterEval),
+        compliance: evaluateCompliance(effectiveScenario, afterEval),
       },
-      people: effectiveProblem.people,
+      people: effectiveScenario.people,
     };
   } catch {
     return null;

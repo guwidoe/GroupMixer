@@ -1,9 +1,9 @@
-import type { Problem, Solution } from '../../types';
+import type { Scenario, Solution } from '../../types';
 
 export interface ResultsSessionGroup {
   id: string;
   size: number;
-  people: Array<Problem['people'][number]>;
+  people: Array<Scenario['people'][number]>;
 }
 
 export interface ResultsSessionData {
@@ -12,15 +12,15 @@ export interface ResultsSessionData {
   totalPeople: number;
 }
 
-export function buildResultsSessionData(problem: Problem, solution: Solution): ResultsSessionData[] {
-  return Array.from({ length: problem.num_sessions || 0 }, (_, sessionIndex) => {
+export function buildResultsSessionData(scenario: Scenario, solution: Solution): ResultsSessionData[] {
+  return Array.from({ length: scenario.num_sessions || 0 }, (_, sessionIndex) => {
     const sessionAssignments = solution.assignments.filter((assignment) => assignment.session_id === sessionIndex);
 
-    const groups = problem.groups.map((group) => {
+    const groups = scenario.groups.map((group) => {
       const groupAssignments = sessionAssignments.filter((assignment) => assignment.group_id === group.id);
       const people = groupAssignments
-        .map((assignment) => problem.people.find((person) => person.id === assignment.person_id))
-        .filter((person): person is Problem['people'][number] => Boolean(person));
+        .map((assignment) => scenario.people.find((person) => person.id === assignment.person_id))
+        .filter((person): person is Scenario['people'][number] => Boolean(person));
 
       return {
         ...group,

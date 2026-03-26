@@ -2,11 +2,11 @@ import { renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { useCompliance } from './useCompliance';
 import { evaluateCompliance } from '../../services/evaluator';
-import { createSampleProblem, createSampleSolution } from '../../test/fixtures';
-import type { Constraint, Problem, Solution } from '../../types';
+import { createSampleScenario, createSampleSolution } from '../../test/fixtures';
+import type { Constraint, Scenario, Solution } from '../../types';
 
-function normalizeCards(problem: Problem, solution: Solution) {
-  const { result } = renderHook(() => useCompliance(problem, solution));
+function normalizeCards(scenario: Scenario, solution: Solution) {
+  const { result } = renderHook(() => useCompliance(scenario, solution));
   return result.current.map(({ id, title, subtitle, adheres, violationsCount, details, type }) => ({
     id,
     type,
@@ -18,8 +18,8 @@ function normalizeCards(problem: Problem, solution: Solution) {
   }));
 }
 
-function normalizeEvaluator(problem: Problem, solution: Solution) {
-  return evaluateCompliance(problem, solution).map(({ id, title, subtitle, adheres, violationsCount, details, type }) => ({
+function normalizeEvaluator(scenario: Scenario, solution: Solution) {
+  return evaluateCompliance(scenario, solution).map(({ id, title, subtitle, adheres, violationsCount, details, type }) => ({
     id,
     type,
     title,
@@ -31,14 +31,14 @@ function normalizeEvaluator(problem: Problem, solution: Solution) {
 }
 
 function createCase(constraint: Constraint, solutionOverrides?: Partial<Solution>) {
-  const problem = createSampleProblem({ constraints: [constraint] });
+  const scenario = createSampleScenario({ constraints: [constraint] });
   const solution = createSampleSolution(solutionOverrides);
-  return { problem, solution };
+  return { scenario, solution };
 }
 
 describe('useCompliance parity with evaluateCompliance', () => {
   it('matches evaluator output for PairMeetingCount constraints', () => {
-    const { problem, solution } = createCase(
+    const { scenario, solution } = createCase(
       {
         type: 'PairMeetingCount',
         people: ['p1', 'p2'],
@@ -61,11 +61,11 @@ describe('useCompliance parity with evaluateCompliance', () => {
       },
     );
 
-    expect(normalizeCards(problem, solution)).toEqual(normalizeEvaluator(problem, solution));
+    expect(normalizeCards(scenario, solution)).toEqual(normalizeEvaluator(scenario, solution));
   });
 
   it('matches evaluator output for AttributeBalance constraints', () => {
-    const { problem, solution } = createCase(
+    const { scenario, solution } = createCase(
       {
         type: 'AttributeBalance',
         group_id: 'g1',
@@ -84,11 +84,11 @@ describe('useCompliance parity with evaluateCompliance', () => {
       },
     );
 
-    expect(normalizeCards(problem, solution)).toEqual(normalizeEvaluator(problem, solution));
+    expect(normalizeCards(scenario, solution)).toEqual(normalizeEvaluator(scenario, solution));
   });
 
   it('matches evaluator output for MustStayTogether constraints', () => {
-    const { problem, solution } = createCase(
+    const { scenario, solution } = createCase(
       {
         type: 'MustStayTogether',
         people: ['p1', 'p2', 'p3'],
@@ -108,6 +108,6 @@ describe('useCompliance parity with evaluateCompliance', () => {
       },
     );
 
-    expect(normalizeCards(problem, solution)).toEqual(normalizeEvaluator(problem, solution));
+    expect(normalizeCards(scenario, solution)).toEqual(normalizeEvaluator(scenario, solution));
   });
 });

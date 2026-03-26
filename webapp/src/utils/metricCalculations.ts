@@ -1,4 +1,4 @@
-import { Problem, Solution, ProblemSnapshot } from "../types";
+import { Scenario, Solution, ScenarioSnapshot } from "../types";
 
 export interface MetricCalculations {
   peopleCount: number;
@@ -29,20 +29,20 @@ export function getColorClass(ratio: number, invert: boolean = false): string {
   return "text-red-600";
 }
 
-// Calculate all metrics using a specific problem configuration
+// Calculate all metrics using a specific scenario configuration
 export function calculateMetrics(
-  problemConfig: Problem | ProblemSnapshot,
+  scenarioConfig: Scenario | ScenarioSnapshot,
   solution: Solution
 ): MetricCalculations {
-  const peopleCount = problemConfig.people.length || 1;
-  const numSessions = problemConfig.num_sessions || 0;
+  const peopleCount = scenarioConfig.people.length || 1;
+  const numSessions = scenarioConfig.num_sessions || 0;
   const maxUniqueTotalTheoretical = (peopleCount * (peopleCount - 1)) / 2;
   const maxAvgContactsTheoretical = peopleCount - 1;
 
   // Alternative bound based on sessions & largest group capacity
   const capacityBiggestGroup =
-    problemConfig.groups && problemConfig.groups.length > 0
-      ? Math.max(...problemConfig.groups.map((g) => g.size))
+    scenarioConfig.groups && scenarioConfig.groups.length > 0
+      ? Math.max(...scenarioConfig.groups.map((g) => g.size))
       : 0;
 
   const altMaxAvgContacts = numSessions * Math.max(0, capacityBiggestGroup - 1);

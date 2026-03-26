@@ -19,7 +19,7 @@ interface FormState {
 }
 
 export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
-  const { resolveProblem, attributeDefinitions, ui } = useAppStore();
+  const { resolveScenario, attributeDefinitions, ui } = useAppStore();
   
   const getInitialState = (): FormState => {
     if (ui.isLoading) {
@@ -33,7 +33,7 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
       };
     }
     
-    const problem = resolveProblem();
+    const scenario = resolveScenario();
     const editing = !!initial;
 
     if (editing && initial?.type === 'AttributeBalance') {
@@ -47,7 +47,7 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
       };
     }
     return {
-      group_id: problem.groups?.[0]?.id || '',
+      group_id: scenario.groups?.[0]?.id || '',
       attribute_key: attributeDefinitions?.[0]?.key || '',
       desired_values: {},
       penalty_weight: 10,
@@ -59,14 +59,14 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
   const [formState, setFormState] = useState<FormState>(getInitialState);
   const [validationError, setValidationError] = useState<string>('');
   
-  // Don't render until loading is complete to avoid creating new problems
+  // Don't render until loading is complete to avoid creating new scenarios
   if (ui.isLoading) {
     return null;
   }
   
-  const problem = resolveProblem();
+  const scenario = resolveScenario();
   const editing = !!initial;
-  const sessionsCount = problem.num_sessions || 0;
+  const sessionsCount = scenario.num_sessions || 0;
 
   // Validation function
   const isPenaltyWeightValid = (value: number | null) => {
@@ -162,7 +162,7 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
               onChange={e => setFormState(p => ({...p, group_id: e.target.value}))} 
               className="select w-full text-base py-3"
             >
-              {problem.groups?.map(g => (<option key={g.id} value={g.id}>{g.id}</option>))}
+              {scenario.groups?.map(g => (<option key={g.id} value={g.id}>{g.id}</option>))}
             </select>
           </div>
 

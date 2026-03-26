@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
-import type { Assignment, Problem, Solution } from '../../../types';
+import type { Assignment, Scenario, Solution } from '../../../types';
 import { wasmService } from '../../../services/wasm';
 import type { PreviewDelta } from '../types';
 
 interface UseManualEditorEvaluationArgs {
-  effectiveProblem: Problem | null;
+  effectiveScenario: Scenario | null;
   draftAssignments: Assignment[];
   solution: Solution | null;
   complianceViolationCount: number;
 }
 
 export function useManualEditorEvaluation({
-  effectiveProblem,
+  effectiveScenario,
   draftAssignments,
   solution,
   complianceViolationCount,
@@ -23,11 +23,11 @@ export function useManualEditorEvaluation({
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
-      if (!effectiveProblem) return;
+      if (!effectiveScenario) return;
       setEvalLoading(true);
       setEvalError(null);
       try {
-        const res = await wasmService.evaluateSolution(effectiveProblem, draftAssignments);
+        const res = await wasmService.evaluateSolution(effectiveScenario, draftAssignments);
         if (!cancelled) setEvaluated(res);
       } catch (e) {
         if (!cancelled) setEvalError(e instanceof Error ? e.message : String(e));
@@ -40,13 +40,13 @@ export function useManualEditorEvaluation({
       cancelled = true;
       clearTimeout(t);
     };
-  }, [effectiveProblem, draftAssignments]);
+  }, [effectiveScenario, draftAssignments]);
 
   const [previewKey, setPreviewKey] = useState<string | null>(null);
   const [previewDelta, setPreviewDelta] = useState<PreviewDelta | null>(null);
 
   const computePreview = async (personId: string, toGroupId: string, sessionId: number) => {
-    if (!effectiveProblem) return;
+    if (!effectiveScenario) return;
     const baseScore = evaluated?.final_score ?? (solution?.final_score ?? 0);
     const baseUnique = evaluated?.unique_contacts ?? (solution?.unique_contacts ?? 0);
     const baseConstraint = evaluated?.constraint_penalty ?? complianceViolationCount;
@@ -60,7 +60,7 @@ export function useManualEditorEvaluation({
     if (previewKey === key && previewDelta) return;
     setPreviewKey(key);
     try {
-      const res = await wasmService.evaluateSolution(effectiveProblem, hypothetic);
+      const res = await wasmService.evaluateSolution(effectiveScenario, hypothetic);
       setPreviewDelta({
         groupId: toGroupId,
         sessionId,

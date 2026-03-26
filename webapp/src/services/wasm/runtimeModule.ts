@@ -125,11 +125,11 @@ export function solve_with_progress_legacy_json(...args: unknown[]): unknown {
   return requireRuntimeFunction("solve_with_progress_legacy_json")(...args);
 }
 
-export function validate_problem(...args: unknown[]): unknown {
+export function validate_scenario(...args: unknown[]): unknown {
   return requireRuntimeFunction("validate_problem")(...args);
 }
 
-export function validate_problem_legacy_json(...args: unknown[]): unknown {
+export function validate_scenario_legacy_json(...args: unknown[]): unknown {
   return requireRuntimeFunction("validate_problem_legacy_json")(...args);
 }
 

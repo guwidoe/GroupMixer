@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3 } from 'lucide-react';
 import { useAppStore } from '../store';
-import type { Problem, ProblemResult } from '../types';
+import type { Scenario, ScenarioResult } from '../types';
 import { generateAssignmentsCsv } from '../utils/csvExport';
-import { snapshotToProblem } from '../utils/problemSnapshot';
+import { snapshotToScenario } from '../utils/scenarioSnapshot';
 import { ResultsHistoryHeader } from './ResultsHistory/ResultsHistoryHeader';
 import { ResultsHistorySummary } from './ResultsHistory/ResultsHistorySummary';
 import { ResultsHistoryList } from './ResultsHistory/ResultsHistoryList';
@@ -12,15 +12,15 @@ import { formatDuration, getBestResult } from './ResultsHistory/utils';
 
 export function ResultsHistory() {
   const {
-    currentProblemId,
-    savedProblems,
+    currentScenarioId,
+    savedScenarios,
     selectedResultIds,
     selectResultsForComparison,
     updateResultName,
     deleteResult,
     setShowResultComparison,
     setSolution,
-    restoreResultAsNewProblem,
+    restoreResultAsNewScenario,
   } = useAppStore();
   const navigate = useNavigate();
 
@@ -30,8 +30,8 @@ export function ResultsHistory() {
   const [exportDropdownOpenId, setExportDropdownOpenId] = useState<string | null>(null);
   const [configDetailsOpenId, setConfigDetailsOpenId] = useState<string | null>(null);
 
-  const currentProblem = currentProblemId ? savedProblems[currentProblemId] : null;
-  const results = useMemo(() => currentProblem?.results || [], [currentProblem?.results]);
+  const currentScenario = currentScenarioId ? savedScenarios[currentScenarioId] : null;
+  const results = useMemo(() => currentScenario?.results || [], [currentScenario?.results]);
   const allResultIds = results.map(r => r.id);
 
   const mostRecentResult = useMemo(
@@ -66,12 +66,12 @@ export function ResultsHistory() {
     }
   };
 
-  const handleOpenDetails = (result: ProblemResult) => {
+  const handleOpenDetails = (result: ScenarioResult) => {
     setSolution(result.solution);
     navigate('/app/results');
   };
 
-  const handleRename = (result: ProblemResult) => {
+  const handleRename = (result: ScenarioResult) => {
     setEditingId(result.id);
     setEditingName(result.name || `Result ${results.indexOf(result) + 1}`);
   };
@@ -126,27 +126,27 @@ export function ResultsHistory() {
     URL.revokeObjectURL(url);
   };
 
-  const generateCSV = (result: ProblemResult) => {
-    const problemForAttributes: Problem | null = result.problemSnapshot
-      ? snapshotToProblem(result.problemSnapshot, result.solverSettings)
-      : (currentProblem?.problem ?? null);
-    if (!problemForAttributes) return '';
+  const generateCSV = (result: ScenarioResult) => {
+    const scenarioForAttributes: Scenario | null = result.scenarioSnapshot
+      ? snapshotToScenario(result.scenarioSnapshot, result.solverSettings)
+      : (currentScenario?.scenario ?? null);
+    if (!scenarioForAttributes) return '';
 
-    return generateAssignmentsCsv(problemForAttributes, result.solution, {
+    return generateAssignmentsCsv(scenarioForAttributes, result.solution, {
       resultName: result.name || 'Unnamed Result',
       exportedAt: Date.now(),
       extraMetadata: [['Duration', formatDuration(result.duration)]],
     });
   };
 
-  const handleExportResult = (result: ProblemResult, format: 'json' | 'csv' | 'excel') => {
+  const handleExportResult = (result: ScenarioResult, format: 'json' | 'csv' | 'excel') => {
     const fileName = result.name?.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'result';
 
     if (format === 'json') {
       const exportData = {
         result,
-        currentProblem: currentProblem?.problem,
-        problemSnapshot: result.problemSnapshot,
+        currentScenario: currentScenario?.scenario,
+        scenarioSnapshot: result.scenarioSnapshot,
         exportedAt: Date.now(),
       };
 
@@ -167,13 +167,13 @@ export function ResultsHistory() {
     setExportDropdownOpenId(null);
   };
 
-  if (!currentProblem) {
+  if (!currentScenario) {
     return (
       <div className="text-center py-12">
         <BarChart3 className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>No Problem Selected</h3>
+        <h3 className="mt-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>No Scenario Selected</h3>
         <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Please select a problem to view its results history.
+          Please select a scenario to view its results history.
         </p>
       </div>
     );
@@ -183,7 +183,7 @@ export function ResultsHistory() {
     <div className="space-y-6">
       <ResultsHistoryHeader
         resultsCount={results.length}
-        currentProblemName={currentProblem.name}
+        currentScenarioName={currentScenario.name}
         selectedCount={selectedResultIds.length}
         totalCount={allResultIds.length}
         onSelectAll={handleSelectAll}
@@ -192,20 +192,20 @@ export function ResultsHistory() {
         onClearSelection={() => selectResultsForComparison([])}
       />
 
-      <ResultsHistorySummary currentProblem={currentProblem} bestResult={bestResult} />
+      <ResultsHistorySummary currentScenario={currentScenario} bestResult={bestResult} />
 
       {results.length === 0 ? (
         <div className="text-center py-12">
           <BarChart3 className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>No Results Yet</h3>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Run the solver to generate results for this problem.
+            Run the solver to generate results for this scenario.
           </p>
         </div>
       ) : (
         <ResultsHistoryList
           results={results}
-          currentProblem={currentProblem}
+          currentScenario={currentScenario}
           state={{
             selectedResultIds,
             expandedResults,
@@ -231,8 +231,8 @@ export function ResultsHistory() {
             onToggleConfigDetails: (resultId) => setConfigDetailsOpenId(configDetailsOpenId === resultId ? null : resultId),
             onCloseConfigDetails: () => setConfigDetailsOpenId(null),
             onRestoreConfig: (result) => {
-              const suggested = `${currentProblem?.name || 'Problem'} – ${result.name || 'Result'} (restored)`;
-              restoreResultAsNewProblem(result.id, suggested);
+              const suggested = `${currentScenario?.name || 'Scenario'} – ${result.name || 'Result'} (restored)`;
+              restoreResultAsNewScenario(result.id, suggested);
             },
           }}
         />

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import type { Problem, ProblemResult, SavedProblem, SolverSettings, SolverState, Solution, Notification } from '../../../types';
+import type { Scenario, ScenarioResult, SavedScenario, SolverSettings, SolverState, Solution, Notification } from '../../../types';
 import type { ProgressUpdate } from '../../../services/wasm/types';
 import type { ScheduleSnapshot } from '../../../visualizations/types';
 import { solverWorkerService } from '../../../services/solverWorker';
@@ -10,9 +10,9 @@ import { normalizeRecommendedSolverSettings } from '../utils/recommendedSettings
 type AddNotification = (notification: Omit<Notification, 'id'>) => void;
 
 interface UseSolverActionsArgs {
-  problem: Problem | null;
-  currentProblemId: string | null;
-  savedProblems: Record<string, SavedProblem>;
+  scenario: Scenario | null;
+  currentScenarioId: string | null;
+  savedScenarios: Record<string, SavedScenario>;
   warmStartResultId: string | null;
   setWarmStartFromResult: (id: string | null) => void;
   solverSettings: SolverSettings;
@@ -30,9 +30,9 @@ interface UseSolverActionsArgs {
     solution: Solution,
     solverSettings: SolverSettings,
     customName?: string,
-    snapshotProblemOverride?: Problem,
-  ) => ProblemResult | null;
-  ensureProblemExists: () => Problem;
+    snapshotScenarioOverride?: Scenario,
+  ) => ScenarioResult | null;
+  ensureScenarioExists: () => Scenario;
   handleSettingsChange: (settings: Partial<SolverSettings>) => void;
   setShowCancelConfirm: (value: boolean) => void;
 }
@@ -43,9 +43,9 @@ interface LiveVizState {
 }
 
 export function useSolverActions({
-  problem,
-  currentProblemId,
-  savedProblems,
+  scenario,
+  currentScenarioId,
+  savedScenarios,
   warmStartResultId,
   setWarmStartFromResult,
   solverSettings,
@@ -60,7 +60,7 @@ export function useSolverActions({
   setSolution,
   addNotification,
   addResult,
-  ensureProblemExists,
+  ensureScenarioExists,
   handleSettingsChange,
   setShowCancelConfirm,
 }: UseSolverActionsArgs) {
@@ -71,14 +71,14 @@ export function useSolverActions({
   const solverCompletedRef = useRef(false);
   const restartAfterSaveRef = useRef(false);
   const saveInProgressRef = useRef(false);
-  const runProblemSnapshotRef = useRef<Problem | null>(null);
+  const runScenarioSnapshotRef = useRef<Scenario | null>(null);
 
   const handleStartSolver = async (useRecommended: boolean = true) => {
     await runSolver({
       useRecommended,
-      problem,
-      currentProblemId,
-      savedProblems,
+      scenario,
+      currentScenarioId,
+      savedScenarios,
       warmStartResultId,
       setWarmStartFromResult,
       solverSettings,
@@ -90,11 +90,11 @@ export function useSolverActions({
       setSolution,
       addNotification,
       addResult,
-      ensureProblemExists,
+      ensureScenarioExists,
       setRunSettings,
       setLiveVizState,
       liveVizLastUiUpdateRef,
-      runProblemSnapshotRef,
+      runScenarioSnapshotRef,
       cancelledRef,
       solverCompletedRef,
       restartAfterSaveRef,
@@ -135,10 +135,10 @@ export function useSolverActions({
   const handleSaveBestSoFar = async () => {
     await saveBestSoFar({
       solverState,
-      problem,
+      scenario,
       runSettings,
       solverSettings,
-      runProblemSnapshotRef,
+      runScenarioSnapshotRef,
       addResult,
       addNotification,
       cancelledRef,
@@ -159,11 +159,11 @@ export function useSolverActions({
   };
 
   const handleAutoSetSettings = async () => {
-    const currentProblem = ensureProblemExists();
+    const currentScenario = ensureScenarioExists();
 
     try {
       const recommendedSettings = await solverWorkerService.getRecommendedSettings(
-        currentProblem,
+        currentScenario,
         desiredRuntimeSettings,
       );
 
@@ -190,7 +190,7 @@ export function useSolverActions({
   return {
     runSettings,
     liveVizState,
-    runProblemSnapshotRef,
+    runScenarioSnapshotRef,
     handleStartSolver,
     handleCancelDiscard,
     handleCancelSave,

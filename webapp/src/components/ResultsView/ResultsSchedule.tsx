@@ -1,6 +1,6 @@
 import React from 'react';
 import { BarChart3, Hash, LayoutGrid } from 'lucide-react';
-import type { Problem, Solution } from '../../types';
+import type { Scenario, Solution } from '../../types';
 import { ResultsScheduleGrid } from './ResultsScheduleGrid';
 import { ResultsScheduleList } from './ResultsScheduleList';
 import { ResultsScheduleVisualization } from './ResultsScheduleVisualization';
@@ -8,7 +8,7 @@ import { ResultsScheduleVisualization } from './ResultsScheduleVisualization';
 interface SessionGroup {
   id: string;
   size: number;
-  people: Array<Problem['people'][number]>;
+  people: Array<Scenario['people'][number]>;
 }
 
 interface SessionData {
@@ -21,7 +21,7 @@ interface ResultsScheduleProps {
   viewMode: 'grid' | 'list' | 'visualize';
   onViewModeChange: (mode: 'grid' | 'list' | 'visualize') => void;
   sessionData: SessionData[];
-  effectiveProblem: Problem;
+  effectiveScenario: Scenario;
   solution: Solution;
   vizPluginId: string;
   onVizPluginChange: (id: string) => void;
@@ -32,7 +32,7 @@ export function ResultsSchedule({
   viewMode,
   onViewModeChange,
   sessionData,
-  effectiveProblem,
+  effectiveScenario,
   solution,
   vizPluginId,
   onVizPluginChange,
@@ -118,13 +118,13 @@ export function ResultsSchedule({
         {viewMode === 'grid' ? (
           <ResultsScheduleGrid sessionData={sessionData} />
         ) : viewMode === 'list' ? (
-          <ResultsScheduleList effectiveProblem={effectiveProblem} solution={solution} />
+          <ResultsScheduleList effectiveScenario={effectiveScenario} solution={solution} />
         ) : (
           <ResultsScheduleVisualization
             vizExportRef={vizExportRef}
             vizPluginId={vizPluginId}
             onPluginChange={onVizPluginChange}
-            effectiveProblem={effectiveProblem}
+            effectiveScenario={effectiveScenario}
             solution={solution}
           />
         )}

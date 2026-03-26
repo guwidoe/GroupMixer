@@ -12,7 +12,7 @@ interface Props {
 }
 
 export function ImmovablePeopleModal({ sessionsCount, initial, onCancel, onSave }: Props) {
-  const { resolveProblem, ui } = useAppStore();
+  const { resolveScenario, ui } = useAppStore();
   
   const getInitialState = () => {
     if (ui.isLoading) {
@@ -24,10 +24,10 @@ export function ImmovablePeopleModal({ sessionsCount, initial, onCancel, onSave 
       };
     }
     
-    const problem = resolveProblem();
+    const scenario = resolveScenario();
     const editing = !!initial;
     const initPeople: string[] = editing && initial?.type === 'ImmovablePeople' ? initial.people : [];
-    const initGroup: string = editing && initial?.type === 'ImmovablePeople' ? initial.group_id : ((problem.groups && problem.groups.length > 0) ? problem.groups[0].id : '');
+    const initGroup: string = editing && initial?.type === 'ImmovablePeople' ? initial.group_id : ((scenario.groups && scenario.groups.length > 0) ? scenario.groups[0].id : '');
     const initSessions: number[] = (editing && initial?.type === 'ImmovablePeople' && initial.sessions) ? initial.sessions : [];
 
     return {
@@ -45,12 +45,12 @@ export function ImmovablePeopleModal({ sessionsCount, initial, onCancel, onSave 
   const [validationError, setValidationError] = useState<string>(initialState.validationError);
   const [personSearch, setPersonSearch] = useState<string>('');
   
-  // Don't render until loading is complete to avoid creating new problems
+  // Don't render until loading is complete to avoid creating new scenarios
   if (ui.isLoading) {
     return null;
   }
   
-  const problem = resolveProblem();
+  const scenario = resolveScenario();
   const editing = !!initial;
 
   const togglePerson = (pid: string) => {
@@ -68,13 +68,13 @@ export function ImmovablePeopleModal({ sessionsCount, initial, onCancel, onSave 
     setValidationError('');
     
     // Validation
-    if (!problem.people || problem.people.length === 0) {
-      setValidationError('No people available. Please add people to the problem first.');
+    if (!scenario.people || scenario.people.length === 0) {
+      setValidationError('No people available. Please add people to the scenario first.');
       return;
     }
     
-    if (!problem.groups || problem.groups.length === 0) {
-      setValidationError('No groups available. Please add groups to the problem first.');
+    if (!scenario.groups || scenario.groups.length === 0) {
+      setValidationError('No groups available. Please add groups to the scenario first.');
       return;
     }
     
@@ -126,7 +126,7 @@ export function ImmovablePeopleModal({ sessionsCount, initial, onCancel, onSave 
             <label className="block text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>People *</label>
             <div className="flex flex-wrap gap-2 mb-3">
               {selectedPeople.map(pid => {
-                const per = problem.people?.find(p => p.id === pid);
+                const per = scenario.people?.find(p => p.id === pid);
                 return per ? <PersonCard key={pid} person={per} /> : <span key={pid} className="text-xs px-2 py-0.5 rounded-full" style={{backgroundColor:'var(--bg-tertiary)', color:'var(--color-accent)'}}>{pid}</span>;
               })}
             </div>
@@ -138,8 +138,8 @@ export function ImmovablePeopleModal({ sessionsCount, initial, onCancel, onSave 
               className="input w-full text-base py-3 mb-3"
             />
             <div className="border rounded p-3 max-h-48 overflow-y-auto" style={{ borderColor:'var(--border-secondary)' }}>
-              {problem.people && problem.people.length > 0 ? (
-                problem.people
+              {scenario.people && scenario.people.length > 0 ? (
+                scenario.people
                   .filter(p => {
                     const q = personSearch.trim().toLowerCase();
                     if (!q) return true;
@@ -162,7 +162,7 @@ export function ImmovablePeopleModal({ sessionsCount, initial, onCancel, onSave 
               ) : (
                 <div className="text-center py-4" style={{ color: 'var(--text-tertiary)' }}>
                   <p className="text-sm">No people available</p>
-                  <p className="text-xs">Add people to the problem first</p>
+                  <p className="text-xs">Add people to the scenario first</p>
                 </div>
               )}
             </div>
@@ -171,18 +171,18 @@ export function ImmovablePeopleModal({ sessionsCount, initial, onCancel, onSave 
           {/* Group select */}
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Target Group *</label>
-            {problem.groups && problem.groups.length > 0 ? (
+            {scenario.groups && scenario.groups.length > 0 ? (
               <select 
                 value={groupId} 
                 onChange={e=>setGroupId(e.target.value)} 
                 className="select w-full text-base py-3"
               >
-                {problem.groups.map(g => (<option key={g.id} value={g.id}>{g.id}</option>))}
+                {scenario.groups.map(g => (<option key={g.id} value={g.id}>{g.id}</option>))}
               </select>
             ) : (
               <div className="border rounded p-3 text-center" style={{ borderColor:'var(--border-secondary)', backgroundColor: 'var(--bg-tertiary)' }}>
                 <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>No groups available</p>
-                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Add groups to the problem first</p>
+                <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Add groups to the scenario first</p>
               </div>
             )}
           </div>

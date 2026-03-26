@@ -159,8 +159,8 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const workspacePayload = controller.workspacePayload;
   const solvedSolution = workspacePayload.solution ?? null;
   const sharedSessionData = useMemo(
-    () => (solvedSolution ? buildResultsSessionData(workspacePayload.problem, solvedSolution) : []),
-    [solvedSolution, workspacePayload.problem],
+    () => (solvedSolution ? buildResultsSessionData(workspacePayload.scenario, solvedSolution) : []),
+    [solvedSolution, workspacePayload.scenario],
   );
   const displaySessions = useMemo(
     () => buildDisplaySessions(sharedSessionData, controller.result?.sessions ?? []),
@@ -173,16 +173,16 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
-      const syncedProblemId = syncWorkspaceDraft({
+      const syncedScenarioId = syncWorkspaceDraft({
         ...workspacePayload,
-        currentProblemId: controller.draft.workspaceProblemId,
-        problemName: `${config.hero.title} draft`,
+        currentScenarioId: controller.draft.workspaceScenarioId,
+        scenarioName: `${config.hero.title} draft`,
       });
 
-      if (syncedProblemId !== controller.draft.workspaceProblemId) {
+      if (syncedScenarioId !== controller.draft.workspaceScenarioId) {
         controller.updateDraft((current) => ({
           ...current,
-          workspaceProblemId: syncedProblemId,
+          workspaceScenarioId: syncedScenarioId,
         }));
       }
     }, 250);
@@ -191,7 +191,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   }, [
     config.hero.title,
     controller,
-    controller.draft.workspaceProblemId,
+    controller.draft.workspaceScenarioId,
     syncWorkspaceDraft,
     workspacePayload,
   ]);
@@ -220,21 +220,21 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       ),
     );
 
-    const syncedProblemId = syncWorkspaceDraft({
+    const syncedScenarioId = syncWorkspaceDraft({
       ...workspacePayload,
-      currentProblemId: controller.draft.workspaceProblemId,
-      problemName: `${config.hero.title} draft`,
+      currentScenarioId: controller.draft.workspaceScenarioId,
+      scenarioName: `${config.hero.title} draft`,
     });
 
-    if (syncedProblemId !== controller.draft.workspaceProblemId) {
+    if (syncedScenarioId !== controller.draft.workspaceScenarioId) {
       controller.updateDraft((current) => ({
         ...current,
-        workspaceProblemId: syncedProblemId,
+        workspaceScenarioId: syncedScenarioId,
       }));
     }
 
     navigate(
-      buildTrackedAppPath(target === 'results' ? '/app/results' : '/app/problem/people', telemetryAttribution),
+      buildTrackedAppPath(target === 'results' ? '/app/results' : '/app/scenario/people', telemetryAttribution),
     );
   };
 

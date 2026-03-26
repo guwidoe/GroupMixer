@@ -28,7 +28,7 @@ type WorkerWasmModule = Partial<Pick<
   | "list_public_errors"
   | "get_public_error"
   | "solve_with_progress"
-  | "validate_problem"
+  | "validate_scenario"
   | "get_default_solver_configuration"
   | "recommend_settings"
   | "evaluate_input"
@@ -148,8 +148,8 @@ export function createSolverWorkerRuntime({
       case "get_public_error":
         result = requireMethod("get_public_error")(requireStringArg(message, "errorCode"));
         break;
-      case "validate_problem":
-        result = requireMethod("validate_problem")(message.data.problemPayload || {});
+      case "validate_scenario":
+        result = requireMethod("validate_scenario")(message.data.scenarioPayload || {});
         break;
       case "get_default_solver_configuration":
         result = requireMethod("get_default_solver_configuration")();
@@ -165,7 +165,7 @@ export function createSolverWorkerRuntime({
         );
         break;
       case "evaluate_input":
-        result = requireMethod("evaluate_input")(message.data.problemPayload || {});
+        result = requireMethod("evaluate_input")(message.data.scenarioPayload || {});
         break;
       case "inspect_result":
         result = requireMethod("inspect_result")(message.data.resultPayload || { schedule: {}, final_score: 0 });
@@ -187,7 +187,7 @@ export function createSolverWorkerRuntime({
         }
 
         case "SOLVE": {
-          const { problemPayload, useProgress } = message.data;
+          const { scenarioPayload, useProgress } = message.data;
 
           if (!isInitialized) {
             await initWasm();
@@ -211,7 +211,7 @@ export function createSolverWorkerRuntime({
             : undefined;
 
           const result = wasm.solve_with_progress(
-            problemPayload || {},
+            scenarioPayload || {},
             progressCallback,
           ) as RustResult;
           postMessage(createSolveSuccessMessage(id, result, lastProgress));

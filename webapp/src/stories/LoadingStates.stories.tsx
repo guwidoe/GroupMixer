@@ -126,7 +126,7 @@ export const InlineLoading: Story = {
 export const PageLoading: Story = {
   render: () => (
     <div className="flex flex-col items-center justify-center min-h-[300px]">
-      <LoadingSpinner size="lg" text="Loading problem data..." />
+      <LoadingSpinner size="lg" text="Loading scenario data..." />
     </div>
   ),
 };

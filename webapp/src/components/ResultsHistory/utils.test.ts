@@ -1,23 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import type { ProblemResult } from '../../types';
-import { createSampleProblem, createSampleSolution } from '../../test/fixtures';
+import type { ScenarioResult } from '../../types';
+import { createSampleScenario, createSampleSolution } from '../../test/fixtures';
 import { formatDuration, formatLargeNumber, getBestResult, getScoreColor, isSameConfig } from './utils';
 
-function createResult(overrides: Partial<ProblemResult> = {}): ProblemResult {
-  const problem = createSampleProblem();
+function createResult(overrides: Partial<ScenarioResult> = {}): ScenarioResult {
+  const scenario = createSampleScenario();
 
   return {
     id: overrides.id ?? 'result',
     name: overrides.name ?? 'Result',
     solution: overrides.solution ?? createSampleSolution(),
-    solverSettings: overrides.solverSettings ?? problem.settings,
-    problemSnapshot:
-      overrides.problemSnapshot ?? {
-        people: problem.people,
-        groups: problem.groups,
-        num_sessions: problem.num_sessions,
-        objectives: problem.objectives,
-        constraints: problem.constraints,
+    solverSettings: overrides.solverSettings ?? scenario.settings,
+    scenarioSnapshot:
+      overrides.scenarioSnapshot ?? {
+        people: scenario.people,
+        groups: scenario.groups,
+        num_sessions: scenario.num_sessions,
+        objectives: scenario.objectives,
+        constraints: scenario.constraints,
       },
     timestamp: overrides.timestamp ?? 1000,
     duration: overrides.duration ?? 1200,
@@ -45,8 +45,8 @@ describe('ResultsHistory utils', () => {
     });
     const incomparable = createResult({
       id: 'other-config',
-      problemSnapshot: {
-        ...createResult().problemSnapshot!,
+      scenarioSnapshot: {
+        ...createResult().scenarioSnapshot!,
         groups: [{ id: 'g1', size: 4 }],
       },
       solution: createSampleSolution({ final_score: 1 }),
@@ -62,8 +62,8 @@ describe('ResultsHistory utils', () => {
     const recent = createResult({ id: 'recent', timestamp: 3000 });
     const incomparable = createResult({
       id: 'other-config',
-      problemSnapshot: {
-        ...recent.problemSnapshot!,
+      scenarioSnapshot: {
+        ...recent.scenarioSnapshot!,
         num_sessions: 3,
       },
       solution: createSampleSolution({ final_score: 2 }),

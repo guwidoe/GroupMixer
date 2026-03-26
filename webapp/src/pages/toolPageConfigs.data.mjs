@@ -6,7 +6,7 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
     liveLocales: ['en', 'de', 'es', 'fr', 'ja', 'hi', 'zh'],
     experiment: {
       label: 'english-home-random-group',
-      futureVariants: ['headline-problem-first', 'cta-tool-vs-optimizer'],
+      futureVariants: ['headline-scenario-first', 'cta-tool-vs-optimizer'],
     },
     inventory: {
       searchIntent: 'random group generator',

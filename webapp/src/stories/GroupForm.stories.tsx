@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
-import GroupForm from '../components/ProblemEditor/forms/GroupForm';
+import GroupForm from '../components/ScenarioEditor/forms/GroupForm';
 import type { GroupFormData } from '../types';
 
 /**

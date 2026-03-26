@@ -4,7 +4,7 @@ import type { Constraint, Person } from '../../types';
 // PersonCard removed in favor of ConstraintPersonChip
 import ConstraintPersonChip from '../ConstraintPersonChip';
 import { useAppStore } from '../../store';
-import { ConstraintFamilyPanel } from '../ProblemEditor/sections/constraints/ConstraintFamilyPanel';
+import { ConstraintFamilyPanel } from '../ScenarioEditor/sections/constraints/ConstraintFamilyPanel';
 import {
   removePersonFromPeopleConstraint,
   replaceConstraintsAtIndices,
@@ -31,16 +31,16 @@ function HardConstraintsPanel({ onAddConstraint, onEditConstraint, onDeleteConst
   const [showInfo, setShowInfo] = useState(false);
   const [filterText, setFilterText] = useState('');
   const [minMembers, setMinMembers] = useState<number | ''>('');
-  const { resolveProblem, setProblem, ui } = useAppStore();
+  const { resolveScenario, setScenario, ui } = useAppStore();
 
-  // Don't render until loading is complete to avoid creating new problems
+  // Don't render until loading is complete to avoid creating new scenarios
   if (ui.isLoading) {
     return <div className="space-y-4 pt-1 pl-0">Loading...</div>;
   }
 
-  const problem = resolveProblem();
+  const scenario = resolveScenario();
 
-  const constraintsByType = (problem.constraints || []).reduce((acc: Record<string, { constraint: Constraint; index: number }[]>, c, i) => {
+  const constraintsByType = (scenario.constraints || []).reduce((acc: Record<string, { constraint: Constraint; index: number }[]>, c, i) => {
     if (!acc[c.type]) acc[c.type] = [];
     acc[c.type].push({ constraint: c, index: i });
     return acc;
@@ -69,7 +69,7 @@ function HardConstraintsPanel({ onAddConstraint, onEditConstraint, onDeleteConst
         // Gather ids and names
         for (const pid of must.people) {
           textPool.push(pid.toLowerCase());
-          const per = problem.people.find((p: Person) => p.id === pid);
+          const per = scenario.people.find((p: Person) => p.id === pid);
           if (per && per.attributes && typeof per.attributes.name === 'string') {
             textPool.push(per.attributes.name.toLowerCase());
           }
@@ -215,17 +215,17 @@ function HardConstraintsPanel({ onAddConstraint, onEditConstraint, onDeleteConst
                             <React.Fragment key={pid}>
                               <ConstraintPersonChip
                                 personId={pid}
-                                people={problem.people}
+                                people={scenario.people}
                                 onRemove={(removeId) => {
                                   const newPeople = constraint.people.filter(p => p !== removeId);
                                   // ImmovablePeople requires at least 1 person to remain; if none, remove entire constraint
                                   const willBeInvalid = newPeople.length === 0;
                                   if (willBeInvalid) {
                                     if (!window.confirm('Removing this person will leave the constraint empty. Remove the entire constraint?')) return;
-                                    setProblem(removePersonFromPeopleConstraint(problem, index, removeId, 1));
+                                    setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, 1));
                                     return;
                                   }
-                                  setProblem(removePersonFromPeopleConstraint(problem, index, removeId, 1));
+                                  setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, 1));
                                 }}
                               />
                               {idx < constraint.people.length - 1 && <span></span>}
@@ -251,17 +251,17 @@ function HardConstraintsPanel({ onAddConstraint, onEditConstraint, onDeleteConst
                             <React.Fragment key={pid}>
                               <ConstraintPersonChip
                                 personId={pid}
-                                people={problem.people}
+                                people={scenario.people}
                                 onRemove={(removeId) => {
                                   const newPeople = constraint.people.filter(p => p !== removeId);
                                   // MustStayTogether requires at least 2 people; if <2, confirm deletion of entire constraint
                                   const willBeInvalid = newPeople.length < 2;
                                   if (willBeInvalid) {
                                     if (!window.confirm('Removing this person will leave the clique invalid (needs at least two people). Remove the entire constraint?')) return;
-                                    setProblem(removePersonFromPeopleConstraint(problem, index, removeId, 2));
+                                    setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, 2));
                                     return;
                                   }
-                                  setProblem(removePersonFromPeopleConstraint(problem, index, removeId, 2));
+                                  setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, 2));
                                 }}
                               />
                               {idx < constraint.people.length - 1 && <span></span>}
@@ -333,7 +333,7 @@ function HardConstraintsPanel({ onAddConstraint, onEditConstraint, onDeleteConst
                     return; // simple guard; could show validation
                   }
                   const weight = bulkWeight as number;
-                  setProblem(replaceConstraintsAtIndices(problem, selectedMustIndices, (constraint) => {
+                  setScenario(replaceConstraintsAtIndices(scenario, selectedMustIndices, (constraint) => {
                     if (constraint.type !== 'MustStayTogether') {
                       return [constraint];
                     }

@@ -1,23 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Problem } from "../types";
-import { createSampleProblem, createSampleSolution, createSampleSolverSettings } from "../test/fixtures";
+import type { Scenario } from "../types";
+import { createSampleScenario, createSampleSolution, createSampleSolverSettings } from "../test/fixtures";
 import { SolverWorkerService } from "./solverWorker";
 import type { ProgressUpdate } from "./wasm/types";
 import {
-  buildRustProblemPayload,
-  buildWarmStartProblemPayload,
+  buildRustScenarioPayload,
+  buildWarmStartScenarioPayload,
   parseRustSolutionResult,
 } from "./rustBoundary";
 
 vi.mock("./rustBoundary", () => ({
-  buildRustProblemPayload: vi.fn(() => ({
-    problem: { people: [], groups: [], num_sessions: 2 },
+  buildRustScenarioPayload: vi.fn(() => ({
+    scenario: { people: [], groups: [], num_sessions: 2 },
     objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
     constraints: [],
     solver: { solver_type: "SimulatedAnnealing" },
   })),
-  buildWarmStartProblemPayload: vi.fn(() => ({
-    problem: { people: [], groups: [], num_sessions: 2 },
+  buildWarmStartScenarioPayload: vi.fn(() => ({
+    scenario: { people: [], groups: [], num_sessions: 2 },
     objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
     constraints: [],
     solver: { solver_type: "SimulatedAnnealing" },
@@ -125,8 +125,8 @@ function initializeService(service: SolverWorkerService): Promise<void> {
   return initPromise;
 }
 
-function createProblem(): Problem {
-  return createSampleProblem({ settings: createSampleSolverSettings() });
+function createScenario(): Scenario {
+  return createSampleScenario({ settings: createSampleSolverSettings() });
 }
 
 describe("SolverWorkerService", () => {
@@ -167,16 +167,16 @@ describe("SolverWorkerService", () => {
     await initializeService(service);
     const callback = vi.fn();
 
-    const solvePromise = service.solveWithProgress(createProblem(), callback);
+    const solvePromise = service.solveWithProgress(createScenario(), callback);
     const worker = FakeWorker.latest();
 
-    expect(buildRustProblemPayload).toHaveBeenCalledWith(expect.objectContaining({ people: expect.any(Array) }));
+    expect(buildRustScenarioPayload).toHaveBeenCalledWith(expect.objectContaining({ people: expect.any(Array) }));
     expect(worker.postedMessages.at(-1)).toEqual({
       type: "SOLVE",
       id: "2",
       data: {
-        problemPayload: {
-          problem: { people: [], groups: [], num_sessions: 2 },
+        scenarioPayload: {
+          scenario: { people: [], groups: [], num_sessions: 2 },
           objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
           constraints: [],
           solver: { solver_type: "SimulatedAnnealing" },
@@ -205,10 +205,10 @@ describe("SolverWorkerService", () => {
     await initializeService(service);
     const initialSchedule = { session_0: { g1: ["p1"] } };
 
-    const solvePromise = service.solveWithProgressWarmStart(createProblem(), initialSchedule);
+    const solvePromise = service.solveWithProgressWarmStart(createScenario(), initialSchedule);
     const worker = FakeWorker.latest();
 
-    expect(buildWarmStartProblemPayload).toHaveBeenCalledWith(
+    expect(buildWarmStartScenarioPayload).toHaveBeenCalledWith(
       expect.objectContaining({ people: expect.any(Array) }),
       initialSchedule,
     );
@@ -216,8 +216,8 @@ describe("SolverWorkerService", () => {
       type: "SOLVE",
       id: "2",
       data: {
-        problemPayload: {
-          problem: { people: [], groups: [], num_sessions: 2 },
+        scenarioPayload: {
+          scenario: { people: [], groups: [], num_sessions: 2 },
           objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
           constraints: [],
           solver: { solver_type: "SimulatedAnnealing" },
@@ -246,7 +246,7 @@ describe("SolverWorkerService", () => {
     worker.emit({ type: "RPC_SUCCESS", id: "2", data: { result: settings } });
     await expect(defaultsPromise).resolves.toEqual(settings);
 
-    const recommendedPromise = service.getRecommendedSettings(createProblem(), 9);
+    const recommendedPromise = service.getRecommendedSettings(createScenario(), 9);
     expect(worker.postedMessages.at(-1)).toEqual({
       type: "recommend_settings",
       id: "3",
@@ -296,11 +296,11 @@ describe("SolverWorkerService", () => {
     });
     await expect(helpPromise).resolves.toEqual({ operation: { id: "solve" } });
 
-    const validatePromise = service.validateProblemContract({ problem: { people: [] } });
+    const validatePromise = service.validateScenarioContract({ problem: { people: [] } });
     expect(worker.postedMessages.at(-1)).toEqual({
-      type: "validate_problem",
+      type: "validate_scenario",
       id: "4",
-      data: { problemPayload: { problem: { people: [] } } },
+      data: { scenarioPayload: { problem: { people: [] } } },
     });
     worker.emit({
       type: "RPC_SUCCESS",
@@ -313,7 +313,7 @@ describe("SolverWorkerService", () => {
     expect(worker.postedMessages.at(-1)).toEqual({
       type: "SOLVE",
       id: "5",
-      data: { problemPayload: { problem: { people: [] } }, useProgress: false },
+      data: { scenarioPayload: { problem: { people: [] } }, useProgress: false },
     });
     worker.emit({
       type: "SOLVE_SUCCESS",
@@ -338,14 +338,14 @@ describe("SolverWorkerService", () => {
     const service = createService();
     await initializeService(service);
 
-    const solvePromise = service.solve(createProblem());
+    const solvePromise = service.solve(createScenario());
     const firstWorker = FakeWorker.latest();
     expect(firstWorker.postedMessages.at(-1)).toEqual({
       type: "SOLVE",
       id: "2",
       data: {
-        problemPayload: {
-          problem: { people: [], groups: [], num_sessions: 2 },
+        scenarioPayload: {
+          scenario: { people: [], groups: [], num_sessions: 2 },
           objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
           constraints: [],
           solver: { solver_type: "SimulatedAnnealing" },

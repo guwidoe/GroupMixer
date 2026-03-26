@@ -1,4 +1,4 @@
-import { Problem, SolverSettings, AttributeDefinition } from "../types";
+import { Scenario, SolverSettings, AttributeDefinition } from "../types";
 
 export interface DemoCase {
   id: string;
@@ -38,9 +38,9 @@ async function discoverTestCaseFiles(): Promise<string[]> {
   return [];
 }
 
-// Convert test case format to webapp's Problem format
+// Convert test case format to webapp's Scenario format
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function convertTestCaseToProblem(testCase: any): Problem {
+function convertTestCaseToScenario(testCase: any): Scenario {
   const input = testCase.input;
 
   // Convert solver settings
@@ -61,7 +61,7 @@ function convertTestCaseToProblem(testCase: any): Problem {
 
   // Ensure every person has a "name" attribute (treat names as attributes)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const peopleWithNames = input.problem.people.map((p: any) => {
+  const peopleWithNames = input.scenario.people.map((p: any) => {
     const attrs = { ...(p.attributes || {}) };
     if (!attrs.name) {
       attrs.name = p.id; // Fallback to id if name is missing
@@ -71,8 +71,8 @@ function convertTestCaseToProblem(testCase: any): Problem {
 
   return {
     people: peopleWithNames,
-    groups: input.problem.groups,
-    num_sessions: input.problem.num_sessions,
+    groups: input.scenario.groups,
+    num_sessions: input.scenario.num_sessions,
     constraints: input.constraints || [],
     settings,
   };
@@ -100,7 +100,7 @@ async function loadTestCaseFile(
     }
 
     const metadata = testCase.demo_metadata;
-    const problem = testCase.input.problem;
+    const scenario = testCase.input.scenario;
 
     const demoCase = {
       id: metadata.id,
@@ -108,9 +108,9 @@ async function loadTestCaseFile(
       description: metadata.description,
       category: metadata.category,
       filename: filename,
-      peopleCount: problem.people?.length || 0,
-      groupCount: problem.groups?.length || 0,
-      sessionCount: problem.num_sessions || 0,
+      peopleCount: scenario.people?.length || 0,
+      groupCount: scenario.groups?.length || 0,
+      sessionCount: scenario.num_sessions || 0,
     };
 
     return demoCase;
@@ -154,7 +154,7 @@ export async function loadDemoCasesWithMetrics(): Promise<
 }
 
 // Load a specific demo case by ID
-export async function loadDemoCase(demoCaseId: string): Promise<Problem> {
+export async function loadDemoCase(demoCaseId: string): Promise<Scenario> {
   // First, load all demo cases to find the one with matching ID
   const demoCases = await loadDemoCasesWithMetrics();
   const demoCase = demoCases.find((c) => c.id === demoCaseId);
@@ -170,7 +170,7 @@ export async function loadDemoCase(demoCaseId: string): Promise<Problem> {
     }
 
     const testCase = await response.json();
-    return convertTestCaseToProblem(testCase);
+    return convertTestCaseToScenario(testCase);
   } catch (error) {
     console.error(`Error loading demo case ${demoCase.name}:`, error);
 
@@ -184,7 +184,7 @@ export async function loadDemoCase(demoCaseId: string): Promise<Problem> {
 }
 
 // Fallback demo data (current implementation)
-function createFallbackDemo(): Problem {
+function createFallbackDemo(): Scenario {
   const demoGroups = [
     { id: "team-alpha", size: 4 },
     { id: "team-beta", size: 4 },
@@ -366,14 +366,14 @@ function createFallbackDemo(): Problem {
   };
 }
 
-// Extract all unique attributes and their values from a Problem
-export function extractAttributesFromProblem(
-  problem: Problem
+// Extract all unique attributes and their values from a Scenario
+export function extractAttributesFromScenario(
+  scenario: Scenario
 ): AttributeDefinition[] {
   const attributeMap = new Map<string, Set<string>>();
 
   // Extract attributes from all people
-  problem.people.forEach((person) => {
+  scenario.people.forEach((person) => {
     Object.entries(person.attributes).forEach(([key, value]) => {
       // Skip the 'name' attribute as it's not typically used for grouping/constraints
       if (key === "name") return;

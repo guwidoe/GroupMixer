@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Settings } from 'lucide-react';
 import { useAppStore } from '../store';
-import type { Problem, SolverSettings } from '../types';
+import type { Scenario, SolverSettings } from '../types';
 import { SettingsPanel } from './SolverPanel/index';
 import { SolverStatusCard } from './SolverPanel/SolverStatusCard';
 import { SolverCancelModal } from './SolverPanel/SolverCancelModal';
@@ -19,13 +19,13 @@ export function SolverPanel() {
     setSolution,
     addNotification,
     addResult,
-    updateProblem,
-    ensureProblemExists,
+    updateScenario,
+    ensureScenarioExists,
   } = useAppStore();
 
-  const problem = useAppStore((state) => state.problem);
-  const currentProblemId = useAppStore((state) => state.currentProblemId);
-  const savedProblems = useAppStore((state) => state.savedProblems);
+  const scenario = useAppStore((state) => state.scenario);
+  const currentScenarioId = useAppStore((state) => state.currentScenarioId);
+  const savedScenarios = useAppStore((state) => state.savedScenarios);
   const warmStartResultId = useAppStore((state) => state.ui.warmStartResultId);
   const setWarmStartFromResult = useAppStore((state) => state.setWarmStartFromResult);
 
@@ -127,13 +127,13 @@ export function SolverPanel() {
     },
   });
 
-  const solverSettings = problem?.settings || getDefaultSolverSettings();
+  const solverSettings = scenario?.settings || getDefaultSolverSettings();
   const [allowedSessionsLocal, setAllowedSessionsLocal] = useState<number[] | null>(null);
 
   const handleSettingsChange = (newSettings: Partial<SolverSettings>) => {
-    if (problem && currentProblemId) {
-      const updatedProblem = {
-        ...problem,
+    if (scenario && currentScenarioId) {
+      const updatedScenario = {
+        ...scenario,
         settings: {
           ...solverSettings,
           ...newSettings,
@@ -151,7 +151,7 @@ export function SolverPanel() {
           }),
         },
       };
-      updateProblem({ settings: updatedProblem.settings });
+      updateScenario({ settings: updatedScenario.settings });
     }
   };
 
@@ -170,7 +170,7 @@ export function SolverPanel() {
   const {
     runSettings,
     liveVizState,
-    runProblemSnapshotRef,
+    runScenarioSnapshotRef,
     handleStartSolver,
     handleCancelDiscard,
     handleCancelSave,
@@ -178,9 +178,9 @@ export function SolverPanel() {
     handleResetSolver,
     handleAutoSetSettings,
   } = useSolverActions({
-    problem,
-    currentProblemId,
-    savedProblems,
+    scenario,
+    currentScenarioId,
+    savedScenarios,
     warmStartResultId,
     setWarmStartFromResult,
     solverSettings,
@@ -195,15 +195,15 @@ export function SolverPanel() {
     setSolution,
     addNotification,
     addResult,
-    ensureProblemExists,
+    ensureScenarioExists,
     handleSettingsChange,
     setShowCancelConfirm,
   });
 
   const displaySettings = runSettings || solverSettings;
 
-  const getLiveVizProblem = (): Problem | null => {
-    const base = runProblemSnapshotRef.current || problem;
+  const getLiveVizScenario = (): Scenario | null => {
+    const base = runScenarioSnapshotRef.current || scenario;
     if (!base) return null;
     return {
       ...base,
@@ -226,7 +226,7 @@ export function SolverPanel() {
 
       <SolverStatusCard
         solverState={solverState}
-        problem={problem}
+        scenario={scenario}
         runtime={{
           solverFormInputs,
           setSolverFormInputs,
@@ -246,7 +246,7 @@ export function SolverPanel() {
           liveVizState,
           liveVizPluginId,
           onLiveVizPluginChange: handleLiveVizPluginChange,
-          getLiveVizProblem,
+          getLiveVizScenario,
         }}
         metrics={{
           showMetrics,
@@ -274,9 +274,9 @@ export function SolverPanel() {
           setDesiredRuntimeSettings={setDesiredRuntimeSettings}
           onAutoSetSettings={handleAutoSetSettings}
           onStartSolver={handleStartSolver}
-          problem={problem}
-          savedProblems={savedProblems}
-          currentProblemId={currentProblemId}
+          scenario={scenario}
+          savedScenarios={savedScenarios}
+          currentScenarioId={currentScenarioId}
           warmStartSelection={warmStartSelection}
           setWarmStartSelection={setWarmStartSelection}
           setWarmStartFromResult={setWarmStartFromResult}

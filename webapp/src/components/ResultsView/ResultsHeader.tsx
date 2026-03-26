@@ -1,7 +1,7 @@
 import React from 'react';
 import { Info } from 'lucide-react';
 import type { Solution } from '../../types';
-import type { ProblemConfigDifference } from '../../services/problemStorage';
+import type { ScenarioConfigDifference } from '../../services/scenarioStorage';
 import { Tooltip } from '../Tooltip';
 import { ConfigDiffBadge } from './ConfigDiffBadge';
 import { ResultsExportDropdown } from './ResultsExportDropdown';
@@ -9,7 +9,7 @@ import { ResultsExportDropdown } from './ResultsExportDropdown';
 interface ResultsHeaderProps {
   resultName?: string;
   solution: Solution;
-  configDiff: ProblemConfigDifference | null;
+  configDiff: ScenarioConfigDifference | null;
   configDetailsOpen: boolean;
   onToggleConfigDetails: () => void;
   onRestoreConfig: () => void;

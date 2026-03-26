@@ -12,7 +12,7 @@ interface Props {
 }
 
 export function ShouldStayTogetherModal({ sessionsCount, initial, onCancel, onSave }: Props) {
-  const { resolveProblem, ui } = useAppStore();
+  const { resolveScenario, ui } = useAppStore();
 
   const getInitialState = () => {
     if (ui.isLoading) {
@@ -48,10 +48,10 @@ export function ShouldStayTogetherModal({ sessionsCount, initial, onCancel, onSa
 
   if (ui.isLoading) return null;
 
-  const problem = resolveProblem();
+  const scenario = resolveScenario();
   const editing = !!initial;
 
-  const filteredPeople = problem.people.filter(p => {
+  const filteredPeople = scenario.people.filter(p => {
     const q = personSearch.toLowerCase();
     const id = p.id.toLowerCase();
     const name = (p.attributes?.name || '').toString().toLowerCase();

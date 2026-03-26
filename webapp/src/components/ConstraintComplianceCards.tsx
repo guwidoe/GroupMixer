@@ -1,18 +1,18 @@
 import React, { useMemo, useState } from 'react';
 import { CheckCircle, ChevronDown, ChevronUp, XCircle, Info } from 'lucide-react';
-import type { Constraint, Problem, Solution } from '../types';
+import type { Constraint, Scenario, Solution } from '../types';
 import ConstraintPersonChip from './ConstraintPersonChip';
 import { formatSessions, useCompliance } from './ConstraintComplianceCards/useCompliance';
 import type { CardData, ConstraintType, ViolationDetail } from './ConstraintComplianceCards/types';
 import { typeLabels } from './ConstraintComplianceCards/types';
 
 interface Props {
-  problem: Problem;
+  scenario: Scenario;
   solution: Solution;
 }
 
-const ConstraintComplianceCards: React.FC<Props> = ({ problem, solution }) => {
-  const cards = useCompliance(problem, solution);
+const ConstraintComplianceCards: React.FC<Props> = ({ scenario, solution }) => {
+  const cards = useCompliance(scenario, solution);
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [collapsed, setCollapsed] = useState<boolean>(true);
 
@@ -72,7 +72,7 @@ const ConstraintComplianceCards: React.FC<Props> = ({ problem, solution }) => {
           return (
             <div className="mt-1 flex flex-wrap gap-1">
               {people.map((pid) => (
-                <ConstraintPersonChip key={pid} personId={pid} people={problem.people} />
+                <ConstraintPersonChip key={pid} personId={pid} people={scenario.people} />
               ))}
             </div>
           );
@@ -108,12 +108,12 @@ const ConstraintComplianceCards: React.FC<Props> = ({ problem, solution }) => {
       return (
         <div key={key} className="text-sm" style={{ color: 'var(--text-secondary)' }}>
           <div className="flex flex-wrap items-center gap-2">
-            <ConstraintPersonChip personId={a} people={problem.people} />
+            <ConstraintPersonChip personId={a} people={scenario.people} />
             <span>&</span>
-            <ConstraintPersonChip personId={b} people={problem.people} />
+            <ConstraintPersonChip personId={b} people={scenario.people} />
             <span>
               Target {detail.target} ({detail.mode.replace('_', ' ')}) • Actual {detail.actual} •{' '}
-              {formatSessions(detail.sessions, problem.num_sessions)}
+              {formatSessions(detail.sessions, scenario.num_sessions)}
             </span>
           </div>
         </div>
@@ -139,9 +139,9 @@ const ConstraintComplianceCards: React.FC<Props> = ({ problem, solution }) => {
         return (
           <div key={key} className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             <div className="flex flex-wrap items-center gap-2">
-              <ConstraintPersonChip personId={a} people={problem.people} />
+              <ConstraintPersonChip personId={a} people={scenario.people} />
               <span>met with</span>
-              <ConstraintPersonChip personId={b} people={problem.people} />
+              <ConstraintPersonChip personId={b} people={scenario.people} />
               <span>
                 {detail.count} times (max {detail.maxAllowed}) • Sessions {detail.sessions.map((s) => s + 1).join(', ')}
               </span>
@@ -164,7 +164,7 @@ const ConstraintComplianceCards: React.FC<Props> = ({ problem, solution }) => {
         return (
           <div key={key} className="text-sm flex flex-wrap items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
             <span>Session {detail.session + 1}:</span>
-            <ConstraintPersonChip personId={detail.personId} people={problem.people} />
+            <ConstraintPersonChip personId={detail.personId} people={scenario.people} />
             <span>must be in</span>
             <span
               className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border"
@@ -195,7 +195,7 @@ const ConstraintComplianceCards: React.FC<Props> = ({ problem, solution }) => {
             <div className="mt-1 flex flex-wrap gap-2">
               {detail.people.map((p, idx) => (
                 <div key={idx} className="inline-flex items-center gap-2">
-                  <ConstraintPersonChip personId={p.personId} people={problem.people} />
+                  <ConstraintPersonChip personId={p.personId} people={scenario.people} />
                   <span className="text-xs">{p.groupId ? `in ${p.groupId}` : '(not assigned)'}</span>
                 </div>
               ))}
@@ -209,7 +209,7 @@ const ConstraintComplianceCards: React.FC<Props> = ({ problem, solution }) => {
             <div className="flex flex-wrap items-center gap-2">
               <span>Session {detail.session + 1}, group {detail.groupId} contains</span>
               {detail.people.map((pid, i) => (
-                <ConstraintPersonChip key={pid + i} personId={pid} people={problem.people} />
+                <ConstraintPersonChip key={pid + i} personId={pid} people={scenario.people} />
               ))}
             </div>
           </div>
@@ -249,7 +249,7 @@ const ConstraintComplianceCards: React.FC<Props> = ({ problem, solution }) => {
 
       {cards.length === 0 ? (
         <p className="text-sm italic" style={{ color: 'var(--text-tertiary)' }}>
-          No constraints defined for this problem.
+          No constraints defined for this scenario.
         </p>
       ) : collapsed ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">

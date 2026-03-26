@@ -20,11 +20,11 @@ Those layers own behavior correctness. Visual regression only owns appearance-se
 
 The current curated Playwright visual suite focuses on high-value, layout-sensitive states:
 - landing page shell
-- key problem-editor states and modal entry points
+- key scenario-editor states and modal entry points
 - populated constraints layouts
 - solver ready/custom-settings states
 - empty result/history/editor states
-- header/dropdown/problem-manager chrome
+- header/dropdown/scenario-manager chrome
 - one representative mobile populated state
 - representative dark-mode populated states
 

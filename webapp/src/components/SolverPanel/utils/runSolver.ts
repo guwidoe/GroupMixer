@@ -1,54 +1,54 @@
 import type { MutableRefObject } from 'react';
-import type { Problem, ProblemResult, SavedProblem, SolverSettings, SolverState, Solution, Notification } from '../../../types';
+import type { Scenario, ScenarioResult, SavedScenario, SolverSettings, SolverState, Solution, Notification } from '../../../types';
 import { buildTelemetryPayload, getPersistedTelemetryAttribution, trackLandingEvent } from '../../../services/landingInstrumentation';
-import { problemStorage } from '../../../services/problemStorage';
-import { solveProblem } from '../../../services/solver/solveProblem';
+import { scenarioStorage } from '../../../services/scenarioStorage';
+import { solveScenario } from '../../../services/solver/solveScenario';
 import type { ProgressUpdate } from '../../../services/wasm/types';
 import { solverWorkerService } from '../../../services/solverWorker';
 import { useAppStore } from '../../../store';
 import { reconcileResultToInitialSchedule } from '../../../utils/warmStart';
 import {
   createProgressCallback,
-  snapshotProblem,
-  validateProblemForSolve,
+  snapshotScenario,
+  validateScenarioForSolve,
 } from './runSolverHelpers';
 
 export type AddNotification = (notification: Omit<Notification, 'id'>) => void;
 
-function persistResultWithExplicitProblemId({
-  problemId,
+function persistResultWithExplicitScenarioId({
+  scenarioId,
   solution,
   selectedSettings,
-  snapshotProblem,
+  snapshotScenario,
   addNotification,
 }: {
-  problemId: string;
+  scenarioId: string;
   solution: Solution;
   selectedSettings: SolverSettings;
-  snapshotProblem?: Problem;
+  snapshotScenario?: Scenario;
   addNotification: AddNotification;
-}): ProblemResult | null {
+}): ScenarioResult | null {
   try {
-    const result = problemStorage.addResult(problemId, solution, selectedSettings, undefined, snapshotProblem);
-    const persistedProblem = problemStorage.getProblem(problemId);
+    const result = scenarioStorage.addResult(scenarioId, solution, selectedSettings, undefined, snapshotScenario);
+    const persistedScenario = scenarioStorage.getScenario(scenarioId);
 
     useAppStore.setState((state) => ({
-      currentProblemId: problemId,
-      savedProblems: persistedProblem
+      currentScenarioId: scenarioId,
+      savedScenarios: persistedScenario
         ? {
-            ...state.savedProblems,
-            [problemId]: {
-              ...persistedProblem,
-              problem: state.problem || persistedProblem.problem,
+            ...state.savedScenarios,
+            [scenarioId]: {
+              ...persistedScenario,
+              scenario: state.scenario || persistedScenario.scenario,
             },
           }
-        : state.savedProblems,
+        : state.savedScenarios,
     }));
 
     addNotification({
       type: 'success',
       title: 'Result Saved',
-      message: `Result "${result.name}" has been saved to the current problem.`,
+      message: `Result "${result.name}" has been saved to the current scenario.`,
     });
 
     return result;
@@ -64,9 +64,9 @@ function persistResultWithExplicitProblemId({
 
 interface RunSolverArgs {
   useRecommended: boolean;
-  problem: Problem | null;
-  currentProblemId: string | null;
-  savedProblems: Record<string, SavedProblem>;
+  scenario: Scenario | null;
+  currentScenarioId: string | null;
+  savedScenarios: Record<string, SavedScenario>;
   warmStartResultId: string | null;
   setWarmStartFromResult: (id: string | null) => void;
   solverSettings: SolverSettings;
@@ -81,13 +81,13 @@ interface RunSolverArgs {
     solution: Solution,
     solverSettings: SolverSettings,
     customName?: string,
-    snapshotProblemOverride?: Problem,
-  ) => ProblemResult | null;
-  ensureProblemExists: () => Problem;
+    snapshotScenarioOverride?: Scenario,
+  ) => ScenarioResult | null;
+  ensureScenarioExists: () => Scenario;
   setRunSettings: (settings: SolverSettings) => void;
   setLiveVizState: (value: { schedule: Record<string, Record<string, string[]>>; progress: ProgressUpdate | null } | null) => void;
   liveVizLastUiUpdateRef: MutableRefObject<number>;
-  runProblemSnapshotRef: MutableRefObject<Problem | null>;
+  runScenarioSnapshotRef: MutableRefObject<Scenario | null>;
   cancelledRef: MutableRefObject<boolean>;
   solverCompletedRef: MutableRefObject<boolean>;
   restartAfterSaveRef: MutableRefObject<boolean>;
@@ -96,9 +96,9 @@ interface RunSolverArgs {
 
 export async function runSolver({
   useRecommended,
-  problem,
-  currentProblemId,
-  savedProblems,
+  scenario,
+  currentScenarioId,
+  savedScenarios,
   warmStartResultId,
   setWarmStartFromResult,
   solverSettings,
@@ -110,19 +110,19 @@ export async function runSolver({
   setSolution,
   addNotification,
   addResult,
-  ensureProblemExists,
+  ensureScenarioExists,
   setRunSettings,
   setLiveVizState,
   liveVizLastUiUpdateRef,
-  runProblemSnapshotRef,
+  runScenarioSnapshotRef,
   cancelledRef,
   solverCompletedRef,
   restartAfterSaveRef,
   saveInProgressRef,
 }: RunSolverArgs) {
-  const currentProblem = ensureProblemExists();
+  const currentScenario = ensureScenarioExists();
 
-  if (!validateProblemForSolve(currentProblem, addNotification)) {
+  if (!validateScenarioForSolve(currentScenario, addNotification)) {
     return;
   }
 
@@ -151,7 +151,7 @@ export async function runSolver({
     setLiveVizState(null);
     liveVizLastUiUpdateRef.current = 0;
 
-    runProblemSnapshotRef.current = snapshotProblem(currentProblem);
+    runScenarioSnapshotRef.current = snapshotScenario(currentScenario);
 
     const progressCallback = createProgressCallback({
       showLiveVizRef,
@@ -165,12 +165,12 @@ export async function runSolver({
     let warmStartSchedule: Record<string, Record<string, string[]>> | undefined;
     if (warmStartResultId) {
       try {
-        const sourceProblem = currentProblemId ? savedProblems[currentProblemId] : null;
-        const result = sourceProblem?.results.find((savedResult) => savedResult.id === warmStartResultId);
+        const sourceScenario = currentScenarioId ? savedScenarios[currentScenarioId] : null;
+        const result = sourceScenario?.results.find((savedResult) => savedResult.id === warmStartResultId);
         if (!result) {
           throw new Error('Selected warm-start result not found');
         }
-        warmStartSchedule = reconcileResultToInitialSchedule(currentProblem, result);
+        warmStartSchedule = reconcileResultToInitialSchedule(currentScenario, result);
       } catch (error) {
         console.error('[SolverPanel] Warm-start failed, falling back to normal start:', error);
         addNotification({
@@ -183,9 +183,9 @@ export async function runSolver({
       }
     }
 
-    const { solution, lastProgress, selectedSettings, runProblem } = await solveProblem({
-      problem: {
-        ...currentProblem,
+    const { solution, lastProgress, selectedSettings, runScenario } = await solveScenario({
+      scenario: {
+        ...currentScenario,
         settings: solverSettings,
       },
       useRecommendedSettings: useRecommended,
@@ -193,8 +193,8 @@ export async function runSolver({
       progressCallback,
       warmStartSchedule,
       enableBestScheduleTelemetry: showLiveVizRef.current,
-      onRunProblemPrepared: (preparedRunProblem) => {
-        setRunSettings(preparedRunProblem.settings);
+      onRunScenarioPrepared: (preparedRunScenario) => {
+        setRunSettings(preparedRunScenario.settings);
       },
     });
 
@@ -235,34 +235,34 @@ export async function runSolver({
       });
     }
 
-    const storeProblemId = useAppStore.getState().currentProblemId;
-    const activeProblemId = currentProblemId ?? storeProblemId ?? problemStorage.getCurrentProblemId();
+    const storeScenarioId = useAppStore.getState().currentScenarioId;
+    const activeScenarioId = currentScenarioId ?? storeScenarioId ?? scenarioStorage.getCurrentScenarioId();
 
-    if (activeProblemId && storeProblemId !== activeProblemId) {
-      useAppStore.setState({ currentProblemId: activeProblemId });
+    if (activeScenarioId && storeScenarioId !== activeScenarioId) {
+      useAppStore.setState({ currentScenarioId: activeScenarioId });
     }
 
-    let savedResult: ProblemResult | null = null;
-    if (activeProblemId) {
-      const snapshotProblem = runProblemSnapshotRef.current || undefined;
-      if (storeProblemId && storeProblemId === activeProblemId) {
-        savedResult = addResult(solution, selectedSettings, undefined, snapshotProblem);
+    let savedResult: ScenarioResult | null = null;
+    if (activeScenarioId) {
+      const snapshotScenario = runScenarioSnapshotRef.current || undefined;
+      if (storeScenarioId && storeScenarioId === activeScenarioId) {
+        savedResult = addResult(solution, selectedSettings, undefined, snapshotScenario);
       } else {
-        savedResult = persistResultWithExplicitProblemId({
-          problemId: activeProblemId,
+        savedResult = persistResultWithExplicitScenarioId({
+          scenarioId: activeScenarioId,
           solution,
           selectedSettings,
-          snapshotProblem,
+          snapshotScenario,
           addNotification,
         });
       }
 
-      if (!savedResult && activeProblemId) {
-        savedResult = persistResultWithExplicitProblemId({
-          problemId: activeProblemId,
+      if (!savedResult && activeScenarioId) {
+        savedResult = persistResultWithExplicitScenarioId({
+          scenarioId: activeScenarioId,
           solution,
           selectedSettings,
-          snapshotProblem,
+          snapshotScenario,
           addNotification,
         });
       }
@@ -270,7 +270,7 @@ export async function runSolver({
       addNotification({
         type: 'warning',
         title: 'Result Not Saved',
-        message: 'The solver finished, but no current problem was available for saving the result.',
+        message: 'The solver finished, but no current scenario was available for saving the result.',
       });
     }
 
@@ -309,7 +309,7 @@ export async function runSolver({
           message: 'Best-so-far saved. Resuming with the same settings...',
         });
 
-        const resumeProblem = runProblem;
+        const resumeScenario = runScenario;
         const initialSchedule = solution.assignments.reduce<Record<string, Record<string, string[]>>>(
           (acc, a) => {
             const sessionKey = `session_${a.session_id}`;
@@ -324,14 +324,14 @@ export async function runSolver({
         startSolver();
         setTimeout(async () => {
           try {
-            await solverWorkerService.solveWithProgressWarmStart(resumeProblem, initialSchedule, progressCallback);
+            await solverWorkerService.solveWithProgressWarmStart(resumeScenario, initialSchedule, progressCallback);
           } catch (e) {
             console.error('[SolverPanel] Warm-start resume failed:', e);
               await runSolver({
                 useRecommended: false,
-                problem,
-                currentProblemId,
-                savedProblems,
+                scenario,
+                currentScenarioId,
+                savedScenarios,
                 warmStartResultId: null,
               setWarmStartFromResult,
               solverSettings,
@@ -343,11 +343,11 @@ export async function runSolver({
               setSolution,
               addNotification,
               addResult,
-              ensureProblemExists,
+              ensureScenarioExists,
               setRunSettings,
               setLiveVizState,
               liveVizLastUiUpdateRef,
-              runProblemSnapshotRef,
+              runScenarioSnapshotRef,
               cancelledRef,
               solverCompletedRef,
               restartAfterSaveRef,

@@ -12,7 +12,7 @@ interface Props {
 }
 
 export function MustStayTogetherModal({ sessionsCount, initial, onCancel, onSave }: Props) {
-  const { resolveProblem, ui } = useAppStore();
+  const { resolveScenario, ui } = useAppStore();
 
   const getInitialState = () => {
     if (ui.isLoading) {
@@ -40,12 +40,12 @@ export function MustStayTogetherModal({ sessionsCount, initial, onCancel, onSave
   const [validationError, setValidationError] = useState<string>(initialState.validationError);
   const [personSearch, setPersonSearch] = useState<string>('');
 
-  // Don't render until loading is complete to avoid creating new problems
+  // Don't render until loading is complete to avoid creating new scenarios
   if (ui.isLoading) {
     return null;
   }
 
-  const problem = resolveProblem();
+  const scenario = resolveScenario();
   const editing = !!initial;
 
   const togglePerson = (pid: string) => {
@@ -61,8 +61,8 @@ export function MustStayTogetherModal({ sessionsCount, initial, onCancel, onSave
   const handleSave = () => {
     setValidationError('');
 
-    if (!problem.people || problem.people.length === 0) {
-      setValidationError('No people available. Please add people to the problem first.');
+    if (!scenario.people || scenario.people.length === 0) {
+      setValidationError('No people available. Please add people to the scenario first.');
       return;
     }
 
@@ -97,7 +97,7 @@ export function MustStayTogetherModal({ sessionsCount, initial, onCancel, onSave
           <label className="block text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>People (select 2 or more) *</label>
           <div className="flex flex-wrap gap-2 mb-3">
             {selectedPeople.map(pid => {
-              const per = problem.people?.find(p => p.id === pid);
+              const per = scenario.people?.find(p => p.id === pid);
               return per ? <PersonCard key={pid} person={per} /> : <span key={pid} className="text-xs px-2 py-0.5 rounded-full" style={{backgroundColor:'var(--bg-tertiary)', color:'var(--color-accent)'}}>{pid}</span>;
             })}
           </div>
@@ -109,8 +109,8 @@ export function MustStayTogetherModal({ sessionsCount, initial, onCancel, onSave
             className="input w-full text-base py-3 mb-3"
           />
           <div className="border rounded p-3 max-h-48 overflow-y-auto" style={{ borderColor:'var(--border-secondary)' }}>
-            {problem.people && problem.people.length > 0 ? (
-              problem.people
+            {scenario.people && scenario.people.length > 0 ? (
+              scenario.people
                 .filter(p => {
                   const q = personSearch.trim().toLowerCase();
                   if (!q) return true;
@@ -133,7 +133,7 @@ export function MustStayTogetherModal({ sessionsCount, initial, onCancel, onSave
             ) : (
               <div className="text-center py-4" style={{ color: 'var(--text-tertiary)' }}>
                 <p className="text-sm">No people available</p>
-                <p className="text-xs">Add people to the problem first</p>
+                <p className="text-xs">Add people to the scenario first</p>
               </div>
             )}
           </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Edit, Trash2, Clock } from 'lucide-react';
 import type { Constraint } from '../../types';
 import { useAppStore } from '../../store';
-import { ConstraintFamilyPanel } from '../ProblemEditor/sections/constraints/ConstraintFamilyPanel';
+import { ConstraintFamilyPanel } from '../ScenarioEditor/sections/constraints/ConstraintFamilyPanel';
 import AttributeBalanceDashboard from '../AttributeBalanceDashboard';
 // PersonCard removed in favor of ConstraintPersonChip
 import ConstraintPersonChip from '../ConstraintPersonChip';
@@ -44,19 +44,19 @@ const constraintTypeLabels: Record<typeof SOFT_TABS[number], string> = {
 const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstraint, onDeleteConstraint }) => {
   const [activeTab, setActiveTab] = useState<typeof SOFT_TABS[number]>('RepeatEncounter');
   const [showInfo, setShowInfo] = useState(false);
-  const { resolveProblem, setProblem, ui } = useAppStore();
+  const { resolveScenario, setScenario, ui } = useAppStore();
   const [filterText, setFilterText] = useState('');
   const [selectedShouldIndices, setSelectedShouldIndices] = useState<number[]>([]);
   const [showPairConvert, setShowPairConvert] = useState(false);
 
-  // Don't render until loading is complete to avoid creating new problems
+  // Don't render until loading is complete to avoid creating new scenarios
   if (ui.isLoading) {
     return <div className="space-y-4 pt-1 pl-0">Loading...</div>;
   }
 
-  const problem = resolveProblem();
+  const scenario = resolveScenario();
 
-  const constraintsByType = (problem.constraints || []).reduce((acc: Record<string, { constraint: Constraint; index: number }[]>, c, i) => {
+  const constraintsByType = (scenario.constraints || []).reduce((acc: Record<string, { constraint: Constraint; index: number }[]>, c, i) => {
     if (!acc[c.type]) acc[c.type] = [];
     acc[c.type].push({ constraint: c, index: i });
     return acc;
@@ -160,7 +160,7 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
         <div>
           <AttributeBalanceDashboard 
             constraints={selectedItems.map(i => i.constraint as AttributeBalanceConstraint)} 
-            problem={problem} 
+            scenario={scenario} 
           />
         </div>
       )}
@@ -217,17 +217,17 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
                           <React.Fragment key={pid}>
                             <ConstraintPersonChip
                               personId={pid}
-                              people={problem.people}
+                              people={scenario.people}
                               onRemove={(removeId) => {
                                   const c = constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>;
                                   const newPeople = c.people.filter(p => p !== removeId);
                                   const willBeInvalid = newPeople.length < 2;
                                   if (willBeInvalid) {
                                     if (!window.confirm('Removing this person will leave the constraint invalid. Remove the entire constraint?')) return;
-                                    setProblem(removePersonFromPeopleConstraint(problem, index, removeId, 2));
+                                    setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, 2));
                                     return;
                                   }
-                                  setProblem(removePersonFromPeopleConstraint(problem, index, removeId, 2));
+                                  setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, 2));
                               }}
                             />
                             {idx < (constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>).people.length - 1 && <span></span>}
@@ -246,9 +246,9 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
                     <>
                       <div className="flex flex-wrap items-center gap-1">
                         <span>Pair:</span>
-                        <ConstraintPersonChip personId={(constraint as PairMeetingCountConstraint).people[0]} people={problem.people} />
+                        <ConstraintPersonChip personId={(constraint as PairMeetingCountConstraint).people[0]} people={scenario.people} />
                         <span>&</span>
-                        <ConstraintPersonChip personId={(constraint as PairMeetingCountConstraint).people[1]} people={problem.people} />
+                        <ConstraintPersonChip personId={(constraint as PairMeetingCountConstraint).people[1]} people={scenario.people} />
                       </div>
                       <div>
                         Target meetings: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{(constraint as PairMeetingCountConstraint).target_meetings}</span>
@@ -293,14 +293,14 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
       {showPairConvert && (
         <PairMeetingCountBulkConvertModal
           selectedCount={selectedShouldIndices.length}
-          totalSessions={problem.num_sessions}
-          people={problem.people}
+          totalSessions={scenario.num_sessions}
+          people={scenario.people}
           selectedConstraints={filteredShouldItems
             .filter(({ index }) => selectedShouldIndices.includes(index))
             .map(({ index, constraint }) => ({ index, people: constraint.people }))}
           onCancel={() => setShowPairConvert(false)}
           onConvert={({ retainOriginal, sessions, target, mode, useSourceWeight, overrideWeight, anchorsByIndex }) => {
-            setProblem(replaceConstraintsAtIndices(problem, selectedShouldIndices, (currentConstraint, index) => {
+            setScenario(replaceConstraintsAtIndices(scenario, selectedShouldIndices, (currentConstraint, index) => {
               if (currentConstraint.type !== 'ShouldStayTogether') {
                 return [currentConstraint];
               }

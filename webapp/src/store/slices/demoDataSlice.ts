@@ -2,9 +2,9 @@
  * Demo Data slice - handles loading and generating demo/sample data.
  */
 
-import type { Problem, Person, Group } from "../../types";
+import type { Scenario, Person, Group } from "../../types";
 import type { DemoDataState, DemoDataActions, StoreSlice } from "../types";
-import { problemStorage } from "../../services/problemStorage";
+import { scenarioStorage } from "../../services/scenarioStorage";
 
 export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = (
   set,
@@ -16,7 +16,7 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
 
   generateDemoData: async () => {
     try {
-      const { extractAttributesFromProblem, mergeAttributeDefinitions } =
+      const { extractAttributesFromScenario, mergeAttributeDefinitions } =
         await import("../../services/demoDataService");
 
       const demoGroups: Group[] = [
@@ -138,7 +138,7 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
         },
       ];
 
-      const demoProblem: Problem = {
+      const demoScenario: Scenario = {
         people: demoPeople,
         groups: demoGroups,
         num_sessions: 3,
@@ -199,8 +199,8 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
         },
       };
 
-      // Extract attributes from the demo problem
-      const extractedAttributes = extractAttributesFromProblem(demoProblem);
+      // Extract attributes from the demo scenario
+      const extractedAttributes = extractAttributesFromScenario(demoScenario);
 
       // Merge with existing attribute definitions
       const currentAttributes = get().attributeDefinitions;
@@ -209,10 +209,10 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
         extractedAttributes
       );
 
-      // Update the store with both the problem and the merged attributes
-      // Clear solution since it's no longer valid for the new problem
+      // Update the store with both the scenario and the merged attributes
+      // Clear solution since it's no longer valid for the new scenario
       set({
-        problem: demoProblem,
+        scenario: demoScenario,
         attributeDefinitions: mergedAttributes,
         solution: null,
       });
@@ -221,7 +221,7 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
         type: "success",
         title: "Demo Data Loaded",
         message:
-          "Generated sample problem with 12 people, 3 groups, and various constraints",
+          "Generated sample scenario with 12 people, 3 groups, and various constraints",
       });
     } catch (error) {
       console.error("Failed to generate demo data:", error);
@@ -237,16 +237,16 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
     try {
       const {
         loadDemoCase,
-        extractAttributesFromProblem,
+        extractAttributesFromScenario,
         mergeAttributeDefinitions,
       } = await import("../../services/demoDataService");
 
       set({ demoDropdownOpen: false });
 
-      const problem = await loadDemoCase(demoCaseId);
+      const scenario = await loadDemoCase(demoCaseId);
 
-      // Extract attributes from the loaded problem
-      const extractedAttributes = extractAttributesFromProblem(problem);
+      // Extract attributes from the loaded scenario
+      const extractedAttributes = extractAttributesFromScenario(scenario);
 
       // Merge with existing attribute definitions
       const currentAttributes = get().attributeDefinitions;
@@ -255,10 +255,10 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
         extractedAttributes
       );
 
-      // Update the store with both the problem and the merged attributes
-      // Clear solution since it's no longer valid for the new problem
+      // Update the store with both the scenario and the merged attributes
+      // Clear solution since it's no longer valid for the new scenario
       set({
-        problem,
+        scenario,
         attributeDefinitions: mergedAttributes,
         solution: null,
       });
@@ -273,7 +273,7 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
         )
         .map((attr) => attr.key);
 
-      let message = `Loaded demo case with ${problem.people.length} people and ${problem.groups.length} groups`;
+      let message = `Loaded demo case with ${scenario.people.length} people and ${scenario.groups.length} groups`;
       if (newAttributeKeys.length > 0) {
         message += `. Added new attributes: ${newAttributeKeys.join(", ")}`;
       }
@@ -300,14 +300,14 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
     try {
       const {
         loadDemoCase,
-        extractAttributesFromProblem,
+        extractAttributesFromScenario,
         mergeAttributeDefinitions,
       } = await import("../../services/demoDataService");
 
-      const problem = await loadDemoCase(demoCaseId);
+      const scenario = await loadDemoCase(demoCaseId);
 
-      // Extract attributes from the loaded problem
-      const extractedAttributes = extractAttributesFromProblem(problem);
+      // Extract attributes from the loaded scenario
+      const extractedAttributes = extractAttributesFromScenario(scenario);
 
       // Merge with existing attribute definitions
       const currentAttributes = get().attributeDefinitions;
@@ -316,10 +316,10 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
         extractedAttributes
       );
 
-      // Update the store with both the problem and the merged attributes
-      // Clear solution since it's no longer valid for the new problem
+      // Update the store with both the scenario and the merged attributes
+      // Clear solution since it's no longer valid for the new scenario
       set({
-        problem,
+        scenario,
         attributeDefinitions: mergedAttributes,
         solution: null,
       });
@@ -334,7 +334,7 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
         )
         .map((attr) => attr.key);
 
-      let message = `Overwrote current problem with demo case: ${problem.people.length} people and ${problem.groups.length} groups`;
+      let message = `Overwrote current scenario with demo case: ${scenario.people.length} people and ${scenario.groups.length} groups`;
       if (newAttributeKeys.length > 0) {
         message += `. Added new attributes: ${newAttributeKeys.join(", ")}`;
       }
@@ -355,18 +355,18 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
     }
   },
 
-  loadDemoCaseNewProblem: async (demoCaseId) => {
+  loadDemoCaseNewScenario: async (demoCaseId) => {
     try {
       const {
         loadDemoCase,
-        extractAttributesFromProblem,
+        extractAttributesFromScenario,
         mergeAttributeDefinitions,
       } = await import("../../services/demoDataService");
 
-      const demoProblem = await loadDemoCase(demoCaseId);
+      const demoScenario = await loadDemoCase(demoCaseId);
 
-      // Extract attributes from the loaded problem
-      const extractedAttributes = extractAttributesFromProblem(demoProblem);
+      // Extract attributes from the loaded scenario
+      const extractedAttributes = extractAttributesFromScenario(demoScenario);
 
       // Merge with existing attribute definitions
       const currentAttributes = get().attributeDefinitions;
@@ -375,53 +375,53 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
         extractedAttributes
       );
 
-      // Save current problem if it has content (keep its existing name)
-      const currentProblem = get().problem;
-      const currentProblemId = get().currentProblemId;
+      // Save current scenario if it has content (keep its existing name)
+      const currentScenario = get().scenario;
+      const currentScenarioId = get().currentScenarioId;
       if (
-        currentProblem &&
-        (currentProblem.people.length > 0 ||
-          currentProblem.groups.length > 0)
+        currentScenario &&
+        (currentScenario.people.length > 0 ||
+          currentScenario.groups.length > 0)
       ) {
         try {
-          // If current problem is already saved, just update it
-          if (currentProblemId) {
-            get().updateCurrentProblem(currentProblemId, currentProblem);
+          // If current scenario is already saved, just update it
+          if (currentScenarioId) {
+            get().updateCurrentScenario(currentScenarioId, currentScenario);
           } else {
-            // If not saved, create a new saved problem with a generic name
-            const savedProblem = problemStorage.createProblem(
-              "Untitled Problem",
-              currentProblem
+            // If not saved, create a new saved scenario with a generic name
+            const savedScenario = scenarioStorage.createScenario(
+              "Untitled Scenario",
+              currentScenario
             );
             set((state) => ({
-              savedProblems: {
-                ...state.savedProblems,
-                [savedProblem.id]: savedProblem,
+              savedScenarios: {
+                ...state.savedScenarios,
+                [savedScenario.id]: savedScenario,
               },
             }));
           }
         } catch (error) {
-          console.error("Failed to save current problem:", error);
+          console.error("Failed to save current scenario:", error);
         }
       }
 
-      // Create a new problem with the demo data
-      const newSavedProblem = problemStorage.createProblem(
-        "Unnamed Problem",
-        demoProblem
+      // Create a new scenario with the demo data
+      const newSavedScenario = scenarioStorage.createScenario(
+        "Unnamed Scenario",
+        demoScenario
       );
 
-      // Update the store with the new problem and merged attributes
-      const updatedSavedProblems = {
-        ...get().savedProblems,
-        [newSavedProblem.id]: newSavedProblem,
+      // Update the store with the new scenario and merged attributes
+      const updatedSavedScenarios = {
+        ...get().savedScenarios,
+        [newSavedScenario.id]: newSavedScenario,
       };
 
       set({
-        problem: demoProblem,
-        currentProblemId: newSavedProblem.id,
+        scenario: demoScenario,
+        currentScenarioId: newSavedScenario.id,
         attributeDefinitions: mergedAttributes,
-        savedProblems: updatedSavedProblems,
+        savedScenarios: updatedSavedScenarios,
         solution: null,
       });
 
@@ -435,19 +435,19 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
         )
         .map((attr) => attr.key);
 
-      let message = `Loaded demo case in new problem: ${demoProblem.people.length} people and ${demoProblem.groups.length} groups`;
+      let message = `Loaded demo case in new scenario: ${demoScenario.people.length} people and ${demoScenario.groups.length} groups`;
       if (newAttributeKeys.length > 0) {
         message += `. Added new attributes: ${newAttributeKeys.join(", ")}`;
       }
       if (
-        currentProblem &&
-        (currentProblem.people.length > 0 ||
-          currentProblem.groups.length > 0)
+        currentScenario &&
+        (currentScenario.people.length > 0 ||
+          currentScenario.groups.length > 0)
       ) {
-        if (currentProblemId) {
-          message += `. Current problem "${currentProblemId}" has been saved`;
+        if (currentScenarioId) {
+          message += `. Current scenario "${currentScenarioId}" has been saved`;
         } else {
-          message += `. Current problem saved as "Untitled Problem"`;
+          message += `. Current scenario saved as "Untitled Scenario"`;
         }
       }
 

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createSampleProblem } from '../test/fixtures';
+import { createSampleScenario } from '../test/fixtures';
 import {
-  buildRustProblemJson,
-  buildWarmStartProblemJson,
+  buildRustScenarioJson,
+  buildWarmStartScenarioJson,
   parseProgressUpdate,
   parseRustSolution,
 } from './rustBoundary';
@@ -54,19 +54,19 @@ const progress: ProgressUpdate = {
 
 describe('rustBoundary', () => {
   it('builds both standard and warm-start solver payloads', () => {
-    const problem = createSampleProblem();
-    const problemPayload = JSON.parse(buildRustProblemJson(problem)) as {
-      problem: { num_sessions: number };
+    const scenario = createSampleScenario();
+    const scenarioPayload = JSON.parse(buildRustScenarioJson(scenario)) as {
+      scenario: { num_sessions: number };
       initial_schedule?: unknown;
     };
     const warmStartPayload = JSON.parse(
-      buildWarmStartProblemJson(problem, { session_0: { g1: ['p1'] } }),
+      buildWarmStartScenarioJson(scenario, { session_0: { g1: ['p1'] } }),
     ) as {
       initial_schedule: Record<string, Record<string, string[]>>;
     };
 
-    expect(problemPayload.problem.num_sessions).toBe(problem.num_sessions);
-    expect(problemPayload.initial_schedule).toBeUndefined();
+    expect(scenarioPayload.scenario.num_sessions).toBe(scenario.num_sessions);
+    expect(scenarioPayload.initial_schedule).toBeUndefined();
     expect(warmStartPayload.initial_schedule).toEqual({ session_0: { g1: ['p1'] } });
   });
 

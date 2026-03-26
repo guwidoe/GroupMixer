@@ -1,4 +1,4 @@
-import type { Assignment, Problem, Solution, SolverSettings } from "../types";
+import type { Assignment, Scenario, Solution, SolverSettings } from "../types";
 import { WasmContractClient } from "./wasm/contracts";
 import type { WasmModuleLoader } from "./wasm/module";
 import type { ProgressCallback, ProgressUpdate } from "./wasm/types";
@@ -14,21 +14,21 @@ export class WasmService {
     await this.contractClient.initialize();
   }
 
-  async solve(problem: Problem): Promise<Solution> {
-    return this.contractClient.solve(problem);
+  async solve(scenario: Scenario): Promise<Solution> {
+    return this.contractClient.solve(scenario);
   }
 
   async solveWithProgress(
-    problem: Problem,
+    scenario: Scenario,
     progressCallback?: ProgressCallback,
   ): Promise<{ solution: Solution; lastProgress: ProgressUpdate | null }> {
-    return this.contractClient.solveWithProgress(problem, progressCallback);
+    return this.contractClient.solveWithProgress(scenario, progressCallback);
   }
 
-  async validateProblem(
-    problem: Problem,
+  async validateScenario(
+    scenario: Scenario,
   ): Promise<{ valid: boolean; errors: string[] }> {
-    const response = await this.contractClient.validateProblem(problem);
+    const response = await this.contractClient.validateScenario(scenario);
     return {
       valid: response.valid,
       errors: response.issues.map((issue) => issue.message),
@@ -40,10 +40,10 @@ export class WasmService {
   }
 
   async getRecommendedSettings(
-    problem: Problem,
+    scenario: Scenario,
     desiredRuntimeSeconds: number,
   ): Promise<SolverSettings> {
-    return this.contractClient.recommendSettings(problem, desiredRuntimeSeconds);
+    return this.contractClient.recommendSettings(scenario, desiredRuntimeSeconds);
   }
 
   isReady(): boolean {
@@ -59,10 +59,10 @@ export class WasmService {
   }
 
   async evaluateSolution(
-    problem: Problem,
+    scenario: Scenario,
     assignments: Assignment[],
   ): Promise<Solution> {
-    return this.contractClient.evaluateInput(problem, assignments);
+    return this.contractClient.evaluateInput(scenario, assignments);
   }
 }
 

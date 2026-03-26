@@ -4,9 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ResultsHeader } from "./ResultsHeader";
 import { createSampleSolution } from "../../test/fixtures";
-import type { ProblemConfigDifference } from "../../services/problemStorage";
+import type { ScenarioConfigDifference } from "../../services/scenarioStorage";
 
-const configDiff: ProblemConfigDifference = {
+const configDiff: ScenarioConfigDifference = {
   isDifferent: true,
   changes: { people: true },
   details: { people: "People configuration changed" },
@@ -66,7 +66,7 @@ describe("ResultsHeader", () => {
     );
 
     await user.click(screen.getByRole("button", { name: /different config/i }));
-    await user.click(screen.getByRole("button", { name: /restore this result's configuration as new problem/i }));
+    await user.click(screen.getByRole("button", { name: /restore this result's configuration as new scenario/i }));
     await user.click(screen.getByRole("button", { name: /^export$/i }));
     await user.click(screen.getByRole("button", { name: /export viz as png/i }));
     await user.click(screen.getByRole("button", { name: /export as csv/i }));

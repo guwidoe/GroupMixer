@@ -24,7 +24,7 @@ export function SolverAlgorithmInfo({ displaySettings }: SolverAlgorithmInfoProp
             <li>• Gradually cools to focus on local improvements</li>
             <li>• Can escape local optima</li>
             <li>• Optional reheat feature restarts exploration when stuck</li>
-            <li>• Well-suited for combinatorial problems</li>
+            <li>• Well-suited for combinatorial scenarios</li>
           </ul>
         </div>
         <div>

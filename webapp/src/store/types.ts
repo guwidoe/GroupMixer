@@ -1,23 +1,23 @@
 /**
  * Store-specific types for Zustand slices.
- * Core domain types (Person, Group, Problem, etc.) are in ../types/index.ts
+ * Core domain types (Person, Group, Scenario, etc.) are in ../types/index.ts
  */
 
 import type {
-  Problem,
-  ProblemResult,
+  Scenario,
+  ScenarioResult,
   Solution,
   SolverState,
   Notification,
   AttributeDefinition,
-  SavedProblem,
+  SavedScenario,
   SolverSettings,
 } from "../types";
 
 // === Slice State Types ===
 
-export interface ProblemState {
-  problem: Problem | null;
+export interface ScenarioState {
+  scenario: Scenario | null;
 }
 
 export interface SolutionState {
@@ -30,18 +30,18 @@ export interface SolverSliceState {
 
 export interface UIState {
   ui: {
-    activeTab: "problem" | "solver" | "results" | "manage";
+    activeTab: "scenario" | "solver" | "results" | "manage";
     isLoading: boolean;
     notifications: Notification[];
-    showProblemManager: boolean;
+    showScenarioManager: boolean;
     showResultComparison: boolean;
     warmStartResultId: string | null;
   };
 }
 
-export interface ProblemManagerState {
-  currentProblemId: string | null;
-  savedProblems: Record<string, SavedProblem>;
+export interface ScenarioManagerState {
+  currentScenarioId: string | null;
+  savedScenarios: Record<string, SavedScenario>;
   selectedResultIds: string[];
 }
 
@@ -60,12 +60,12 @@ export interface EditorState {
 
 // === Slice Action Types ===
 
-export interface ProblemActions {
-  setProblem: (problem: Problem) => void;
-  updateProblem: (updates: Partial<Problem>) => void;
-  updateCurrentProblem: (problemId: string, problem: Problem) => void;
-  resolveProblem: () => Problem;
-  ensureProblemExists: () => Problem;
+export interface ScenarioActions {
+  setScenario: (scenario: Scenario) => void;
+  updateScenario: (updates: Partial<Scenario>) => void;
+  updateCurrentScenario: (scenarioId: string, scenario: Scenario) => void;
+  resolveScenario: () => Scenario;
+  ensureScenarioExists: () => Scenario;
 }
 
 export interface SolutionActions {
@@ -82,40 +82,40 @@ export interface SolverActions {
 }
 
 export interface UIActions {
-  setActiveTab: (tab: "problem" | "solver" | "results" | "manage") => void;
+  setActiveTab: (tab: "scenario" | "solver" | "results" | "manage") => void;
   setLoading: (loading: boolean) => void;
   addNotification: (notification: Omit<Notification, "id">) => void;
   removeNotification: (id: string) => void;
   clearNotifications: () => void;
-  setShowProblemManager: (show: boolean) => void;
+  setShowScenarioManager: (show: boolean) => void;
   setShowResultComparison: (show: boolean) => void;
 }
 
-export interface ProblemManagerActions {
-  loadSavedProblems: () => void;
-  createNewProblem: (name: string, isTemplate?: boolean) => void;
-  loadProblem: (id: string) => void;
-  saveProblem: (name: string) => void;
-  deleteProblem: (id: string) => void;
-  duplicateProblem: (
+export interface ScenarioManagerActions {
+  loadSavedScenarios: () => void;
+  createNewScenario: (name: string, isTemplate?: boolean) => void;
+  loadScenario: (id: string) => void;
+  saveScenario: (name: string) => void;
+  deleteScenario: (id: string) => void;
+  duplicateScenario: (
     id: string,
     newName: string,
     includeResults?: boolean
   ) => void;
-  renameProblem: (id: string, newName: string) => void;
+  renameScenario: (id: string, newName: string) => void;
   toggleTemplate: (id: string) => void;
-  restoreResultAsNewProblem: (resultId: string, newName?: string) => void;
+  restoreResultAsNewScenario: (resultId: string, newName?: string) => void;
   addResult: (
     solution: Solution,
     solverSettings: SolverSettings,
     customName?: string,
-    snapshotProblemOverride?: Problem
-  ) => ProblemResult | null;
+    snapshotScenarioOverride?: Scenario
+  ) => ScenarioResult | null;
   updateResultName: (resultId: string, newName: string) => void;
   deleteResult: (resultId: string) => void;
   selectResultsForComparison: (resultIds: string[]) => void;
-  exportProblem: (id: string) => void;
-  importProblem: (file: File) => void;
+  exportScenario: (id: string) => void;
+  importScenario: (file: File) => void;
 }
 
 export interface AttributeActions {
@@ -128,7 +128,7 @@ export interface DemoDataActions {
   generateDemoData: () => Promise<void>;
   loadDemoCase: (demoCaseId: string) => Promise<void>;
   loadDemoCaseOverwrite: (demoCaseId: string) => Promise<void>;
-  loadDemoCaseNewProblem: (demoCaseId: string) => Promise<void>;
+  loadDemoCaseNewScenario: (demoCaseId: string) => Promise<void>;
   setDemoDropdownOpen: (open: boolean) => void;
 }
 
@@ -138,14 +138,14 @@ export interface EditorActions {
 }
 
 export interface WorkspaceBridgeInput {
-  problem: Problem;
+  scenario: Scenario;
   solution?: Solution | null;
   attributeDefinitions?: AttributeDefinition[];
-  currentProblemId?: string | null;
+  currentScenarioId?: string | null;
 }
 
 export interface WorkspaceDraftSyncInput extends WorkspaceBridgeInput {
-  problemName: string;
+  scenarioName: string;
 }
 
 export interface WorkspaceActions {
@@ -161,19 +161,19 @@ export interface UtilityActions {
 // === Combined Store Type ===
 
 export interface AppStore
-  extends ProblemState,
+  extends ScenarioState,
     SolutionState,
     SolverSliceState,
     UIState,
-    ProblemManagerState,
+    ScenarioManagerState,
     AttributeState,
     DemoDataState,
     EditorState,
-    ProblemActions,
+    ScenarioActions,
     SolutionActions,
     SolverActions,
     UIActions,
-    ProblemManagerActions,
+    ScenarioManagerActions,
     AttributeActions,
     DemoDataActions,
     EditorActions,

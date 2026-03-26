@@ -1,7 +1,7 @@
 import type {
   Constraint,
   Person,
-  Problem,
+  Scenario,
   Solution,
   Assignment,
 } from "../types";
@@ -67,17 +67,17 @@ function formatSessions(sessions: number[] | undefined, total: number): string {
 }
 
 export function evaluateCompliance(
-  problem: Problem,
+  scenario: Scenario,
   solution: Solution
 ): ComplianceCardData[] {
   const schedule = buildScheduleMap(solution.assignments);
   const personMap = new Map<string, Person>(
-    problem.people.map((p) => [p.id, p])
+    scenario.people.map((p) => [p.id, p])
   );
 
   const cards: ComplianceCardData[] = [];
 
-  problem.constraints.forEach((c, index) => {
+  scenario.constraints.forEach((c, index) => {
     switch (c.type) {
       case "PairMeetingCount": {
         const sessions = c.sessions;
@@ -86,7 +86,7 @@ export function evaluateCompliance(
         const subset =
           sessions && sessions.length > 0
             ? sessions
-            : Array.from({ length: problem.num_sessions }, (_, i) => i);
+            : Array.from({ length: scenario.num_sessions }, (_, i) => i);
         const perSession: Array<{
           session: number;
           together: boolean;
@@ -142,7 +142,7 @@ export function evaluateCompliance(
           title: `Pair Meeting Count (${mode.replace("_", " ")})`,
           subtitle: `${formatSessions(
             sessions,
-            problem.num_sessions
+            scenario.num_sessions
           )} • Target: ${target} • Weight: ${c.penalty_weight}`,
           adheres: deviation === 0,
           violationsCount: deviation,
@@ -209,7 +209,7 @@ export function evaluateCompliance(
       case "AttributeBalance": {
         const sessions =
           c.sessions ??
-          Array.from({ length: problem.num_sessions }, (_, i) => i);
+          Array.from({ length: scenario.num_sessions }, (_, i) => i);
         const details: ViolationDetail[] = [];
         let violations = 0;
         const mode = (c as unknown as { mode?: "exact" | "at_least" }).mode;
@@ -258,7 +258,7 @@ export function evaluateCompliance(
           subtitle:
             `${formatSessions(
               (c as unknown as { sessions?: number[] }).sessions,
-              problem.num_sessions
+              scenario.num_sessions
             )} • Weight: ${c.penalty_weight}` +
             (mode === "at_least" ? " • Mode: At least" : ""),
           adheres: violations === 0,
@@ -294,7 +294,7 @@ export function evaluateCompliance(
           title: "Immovable Person",
           subtitle: `${formatSessions(
             (c as unknown as { sessions?: number[] }).sessions,
-            problem.num_sessions
+            scenario.num_sessions
           )} • Group: ${c.group_id}`,
           adheres: violations === 0,
           violationsCount: violations,
@@ -305,7 +305,7 @@ export function evaluateCompliance(
       case "ImmovablePeople": {
         const sessions =
           c.sessions ??
-          Array.from({ length: problem.num_sessions }, (_, i) => i);
+          Array.from({ length: scenario.num_sessions }, (_, i) => i);
         const details: ViolationDetail[] = [];
         let violations = 0;
         sessions.forEach((session) => {
@@ -338,7 +338,7 @@ export function evaluateCompliance(
           title: "Immovable People",
           subtitle: `${formatSessions(
             (c as unknown as { sessions?: number[] }).sessions,
-            problem.num_sessions
+            scenario.num_sessions
           )} • Group: ${c.group_id}`,
           adheres: violations === 0,
           violationsCount: violations,
@@ -350,7 +350,7 @@ export function evaluateCompliance(
       case "ShouldStayTogether": {
         const sessions =
           (c as unknown as { sessions?: number[] }).sessions ??
-          Array.from({ length: problem.num_sessions }, (_, i) => i);
+          Array.from({ length: scenario.num_sessions }, (_, i) => i);
         const details: ViolationDetail[] = [];
         let violations = 0;
         sessions.forEach((session) => {
@@ -392,7 +392,7 @@ export function evaluateCompliance(
           title,
           subtitle: formatSessions(
             (c as unknown as { sessions?: number[] }).sessions,
-            problem.num_sessions
+            scenario.num_sessions
           ),
           adheres: violations === 0,
           violationsCount: violations,
@@ -403,7 +403,7 @@ export function evaluateCompliance(
       case "ShouldNotBeTogether": {
         const sessions =
           (c as unknown as { sessions?: number[] }).sessions ??
-          Array.from({ length: problem.num_sessions }, (_, i) => i);
+          Array.from({ length: scenario.num_sessions }, (_, i) => i);
         const details: ViolationDetail[] = [];
         let violations = 0;
         sessions.forEach((session) => {
@@ -430,7 +430,7 @@ export function evaluateCompliance(
           title: "Should Not Be Together",
           subtitle: `${formatSessions(
             (c as unknown as { sessions?: number[] }).sessions,
-            problem.num_sessions
+            scenario.num_sessions
           )} • Weight: ${
             (c as unknown as { penalty_weight?: number }).penalty_weight
           }`,

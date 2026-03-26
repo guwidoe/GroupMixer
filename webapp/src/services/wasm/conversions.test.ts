@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  convertProblemToRustFormat,
+  convertScenarioToRustFormat,
   convertRustResultToSolution,
 } from "./conversions";
-import { createSampleProblem } from "../../test/fixtures";
+import { createSampleScenario } from "../../test/fixtures";
 import type { ProgressUpdate, RustResult } from "./types";
 
 const progress: ProgressUpdate = {
@@ -68,8 +68,8 @@ const rustResult: RustResult = {
 
 describe("wasm conversions", () => {
   it("sanitizes solver params and fills in default weights/sessions", () => {
-    const rustProblem = convertProblemToRustFormat(
-      createSampleProblem({
+    const rustScenario = convertScenarioToRustFormat(
+      createSampleScenario({
         constraints: [
           {
             type: "ShouldStayTogether",
@@ -90,7 +90,7 @@ describe("wasm conversions", () => {
           },
         ],
         settings: {
-          ...createSampleProblem().settings,
+          ...createSampleScenario().settings,
           solver_params: {
             SimulatedAnnealing: {
               initial_temperature: Number.NaN,
@@ -109,16 +109,16 @@ describe("wasm conversions", () => {
       solver: { solver_params: Record<string, number | string> };
     };
 
-    expect(rustProblem.objectives).toEqual([
+    expect(rustScenario.objectives).toEqual([
       { type: "maximize_unique_contacts", weight: 1 },
     ]);
-    expect(rustProblem.constraints[0].penalty_weight).toBe(1000);
-    expect(rustProblem.constraints[1].sessions).toEqual([0, 1]);
-    expect(rustProblem.constraints[2].penalty_weight).toBe(1);
-    expect(rustProblem.solver.solver_params.initial_temperature).toBe(1);
-    expect(rustProblem.solver.solver_params.final_temperature).toBe(0.01);
-    expect(rustProblem.solver.solver_params.reheat_cycles).toBe(0);
-    expect(rustProblem.solver.solver_params.reheat_after_no_improvement).toBe(0);
+    expect(rustScenario.constraints[0].penalty_weight).toBe(1000);
+    expect(rustScenario.constraints[1].sessions).toEqual([0, 1]);
+    expect(rustScenario.constraints[2].penalty_weight).toBe(1);
+    expect(rustScenario.solver.solver_params.initial_temperature).toBe(1);
+    expect(rustScenario.solver.solver_params.final_temperature).toBe(0.01);
+    expect(rustScenario.solver.solver_params.reheat_cycles).toBe(0);
+    expect(rustScenario.solver.solver_params.reheat_after_no_improvement).toBe(0);
   });
 
   it("flattens Rust schedules into frontend assignments and timing", () => {

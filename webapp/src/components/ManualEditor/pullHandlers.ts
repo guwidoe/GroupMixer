@@ -1,17 +1,17 @@
-import type { Assignment, Constraint, Notification, Problem, SavedProblem, Solution } from '../../types';
+import type { Assignment, Constraint, Notification, Scenario, SavedScenario, Solution } from '../../types';
 
 type AddNotification = (notification: Omit<Notification, 'id'>) => void;
 
 interface PullNewPeopleArgs {
-  effectiveProblem: Problem | null;
+  effectiveScenario: Scenario | null;
   draftAssignments: Assignment[];
   addToStorage: (sessionId: number, personId: string) => void;
   addNotification: AddNotification;
 }
 
-export function pullNewPeople({ effectiveProblem, draftAssignments, addToStorage, addNotification }: PullNewPeopleArgs) {
-  if (!effectiveProblem) return;
-  const allSessions = Array.from({ length: effectiveProblem.num_sessions }, (_, i) => i);
+export function pullNewPeople({ effectiveScenario, draftAssignments, addToStorage, addNotification }: PullNewPeopleArgs) {
+  if (!effectiveScenario) return;
+  const allSessions = Array.from({ length: effectiveScenario.num_sessions }, (_, i) => i);
   const assignedBySession = new Map<number, Set<string>>();
   draftAssignments.forEach((a) => {
     if (!assignedBySession.has(a.session_id)) assignedBySession.set(a.session_id, new Set());
@@ -19,7 +19,7 @@ export function pullNewPeople({ effectiveProblem, draftAssignments, addToStorage
   });
 
   const assignedAny = new Set(draftAssignments.map((a) => a.person_id));
-  const newPeople = effectiveProblem.people.filter((p) => !assignedAny.has(p.id));
+  const newPeople = effectiveScenario.people.filter((p) => !assignedAny.has(p.id));
 
   let addedCount = 0;
   newPeople.forEach((p) => {
@@ -45,28 +45,28 @@ export function pullNewPeople({ effectiveProblem, draftAssignments, addToStorage
 }
 
 interface PullNewConstraintsArgs {
-  effectiveProblem: Problem | null;
+  effectiveScenario: Scenario | null;
   solution: Solution | null;
-  currentProblemId: string | null;
-  savedProblems: Record<string, SavedProblem>;
+  currentScenarioId: string | null;
+  savedScenarios: Record<string, SavedScenario>;
   setPulledConstraints: (constraints: Constraint[]) => void;
   addNotification: AddNotification;
 }
 
 export function pullNewConstraints({
-  effectiveProblem,
+  effectiveScenario,
   solution,
-  currentProblemId,
-  savedProblems,
+  currentScenarioId,
+  savedScenarios,
   setPulledConstraints,
   addNotification,
 }: PullNewConstraintsArgs) {
-  if (!effectiveProblem || !solution || !currentProblemId) return;
-  const currentSaved = savedProblems[currentProblemId];
+  if (!effectiveScenario || !solution || !currentScenarioId) return;
+  const currentSaved = savedScenarios[currentScenarioId];
   if (!currentSaved) return;
   const result = currentSaved.results.find((r) => r.solution === solution);
-  const snapshotConstraints = result?.problemSnapshot?.constraints ?? [];
-  const currentConstraints = effectiveProblem.constraints ?? [];
+  const snapshotConstraints = result?.scenarioSnapshot?.constraints ?? [];
+  const currentConstraints = effectiveScenario.constraints ?? [];
   const key = (c: Constraint) => JSON.stringify(c);
   const snapshotSet = new Set(snapshotConstraints.map(key));
   const newOnes = currentConstraints.filter((c) => !snapshotSet.has(key(c)));

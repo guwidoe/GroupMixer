@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createSampleProblem, createSampleSolution } from "../../../test/fixtures";
+import { createSampleScenario, createSampleSolution } from "../../../test/fixtures";
 import { wasmService } from "../../../services/wasm";
 import { useManualEditorEvaluation } from "./useManualEditorEvaluation";
 
@@ -22,14 +22,14 @@ describe("useManualEditorEvaluation", () => {
   });
 
   it("evaluates the current draft assignments after the debounce window", async () => {
-    const problem = createSampleProblem();
+    const scenario = createSampleScenario();
     const solution = createSampleSolution();
     const evaluated = createSampleSolution({ final_score: 9, unique_contacts: 5 });
     vi.mocked(wasmService.evaluateSolution).mockResolvedValue(evaluated);
 
     const { result } = renderHook(() =>
       useManualEditorEvaluation({
-        effectiveProblem: problem,
+        effectiveScenario: scenario,
         draftAssignments: solution.assignments,
         solution,
         complianceViolationCount: solution.constraint_penalty,
@@ -44,13 +44,13 @@ describe("useManualEditorEvaluation", () => {
 
     expect(result.current.evaluated?.final_score).toBe(9);
 
-    expect(wasmService.evaluateSolution).toHaveBeenCalledWith(problem, solution.assignments);
+    expect(wasmService.evaluateSolution).toHaveBeenCalledWith(scenario, solution.assignments);
     expect(result.current.evalError).toBeNull();
     expect(result.current.evalLoading).toBe(false);
   });
 
   it("computes preview deltas from evaluated state and caches repeated requests", async () => {
-    const problem = createSampleProblem();
+    const scenario = createSampleScenario();
     const solution = createSampleSolution({ final_score: 12, unique_contacts: 4, constraint_penalty: 1 });
     vi.mocked(wasmService.evaluateSolution)
       .mockResolvedValueOnce(createSampleSolution({ final_score: 10, unique_contacts: 5, constraint_penalty: 2 }))
@@ -58,7 +58,7 @@ describe("useManualEditorEvaluation", () => {
 
     const { result } = renderHook(() =>
       useManualEditorEvaluation({
-        effectiveProblem: problem,
+        effectiveScenario: scenario,
         draftAssignments: solution.assignments,
         solution,
         complianceViolationCount: solution.constraint_penalty,
@@ -97,7 +97,7 @@ describe("useManualEditorEvaluation", () => {
   });
 
   it("surfaces evaluation failures without crashing and clears preview on preview-eval failure", async () => {
-    const problem = createSampleProblem();
+    const scenario = createSampleScenario();
     const solution = createSampleSolution();
     vi.mocked(wasmService.evaluateSolution)
       .mockRejectedValueOnce(new Error("evaluation failed"))
@@ -107,7 +107,7 @@ describe("useManualEditorEvaluation", () => {
     const { result, rerender } = renderHook(
       ({ assignments }) =>
         useManualEditorEvaluation({
-          effectiveProblem: problem,
+          effectiveScenario: scenario,
           draftAssignments: assignments,
           solution,
           complianceViolationCount: solution.constraint_penalty,

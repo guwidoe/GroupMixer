@@ -1,8 +1,8 @@
 import React from 'react';
-import type { Problem, SolverSettings } from '../../../types';
+import type { Scenario, SolverSettings } from '../../../types';
 
 interface AllowedSessionsSelectorProps {
-  problem: Problem | null;
+  scenario: Scenario | null;
   solverSettings: SolverSettings;
   allowedSessionsLocal: number[] | null;
   setAllowedSessionsLocal: React.Dispatch<React.SetStateAction<number[] | null>>;
@@ -11,14 +11,14 @@ interface AllowedSessionsSelectorProps {
 }
 
 export function AllowedSessionsSelector({
-  problem,
+  scenario,
   solverSettings,
   allowedSessionsLocal,
   setAllowedSessionsLocal,
   handleSettingsChange,
   isRunning,
 }: AllowedSessionsSelectorProps) {
-  const availableSessions = Array.from({ length: problem?.num_sessions || 0 }, (_, i) => i);
+  const availableSessions = Array.from({ length: scenario?.num_sessions || 0 }, (_, i) => i);
 
   return (
     <div className="mb-4">

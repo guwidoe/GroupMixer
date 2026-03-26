@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  convertProblemToRustFormat,
+  convertScenarioToRustFormat,
   convertRustResultToSolution,
 } from "../wasm/conversions";
-import { createSampleProblem } from "../../test/fixtures";
+import { createSampleScenario } from "../../test/fixtures";
 import type { ProgressUpdate } from "../wasm/types";
 
 const progress: ProgressUpdate = {
@@ -52,8 +52,8 @@ const progress: ProgressUpdate = {
 
 describe("shared solver conversions", () => {
   it("preserves explicit objectives and normalizes immovable sessions", () => {
-    const rustProblem = convertProblemToRustFormat(
-      createSampleProblem({
+    const rustScenario = convertScenarioToRustFormat(
+      createSampleScenario({
         objectives: [{ type: "custom-objective", weight: 2 }],
         constraints: [
           {
@@ -76,9 +76,9 @@ describe("shared solver conversions", () => {
       constraints: Array<Record<string, unknown>>;
     };
 
-    expect(rustProblem.objectives).toEqual([{ type: "custom-objective", weight: 2 }]);
-    expect(rustProblem.constraints[0].sessions).toEqual([0, 1]);
-    expect(rustProblem.constraints[1].penalty_weight).toBe(50);
+    expect(rustScenario.objectives).toEqual([{ type: "custom-objective", weight: 2 }]);
+    expect(rustScenario.constraints[0].sessions).toEqual([0, 1]);
+    expect(rustScenario.constraints[1].penalty_weight).toBe(50);
   });
 
   it("uses the first available progress payload for iteration and elapsed time", () => {

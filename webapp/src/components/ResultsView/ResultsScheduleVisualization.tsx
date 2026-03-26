@@ -1,12 +1,12 @@
 import React from 'react';
-import type { Problem, Solution } from '../../types';
+import type { Scenario, Solution } from '../../types';
 import { VisualizationPanel } from '../../visualizations/VisualizationPanel';
 
 interface ResultsScheduleVisualizationProps {
   vizExportRef: React.RefObject<HTMLDivElement>;
   vizPluginId: string;
   onPluginChange: (id: string) => void;
-  effectiveProblem: Problem;
+  effectiveScenario: Scenario;
   solution: Solution;
 }
 
@@ -14,7 +14,7 @@ export function ResultsScheduleVisualization({
   vizExportRef,
   vizPluginId,
   onPluginChange,
-  effectiveProblem,
+  effectiveScenario,
   solution,
 }: ResultsScheduleVisualizationProps) {
   return (
@@ -22,7 +22,7 @@ export function ResultsScheduleVisualization({
       <VisualizationPanel
         pluginId={vizPluginId}
         onPluginChange={onPluginChange}
-        data={{ kind: 'final', problem: effectiveProblem, solution }}
+        data={{ kind: 'final', scenario: effectiveScenario, solution }}
       />
     </div>
   );

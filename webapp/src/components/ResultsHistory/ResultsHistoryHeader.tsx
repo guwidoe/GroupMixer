@@ -3,7 +3,7 @@ import { GitCompare, Trash2 } from 'lucide-react';
 
 interface ResultsHistoryHeaderProps {
   resultsCount: number;
-  currentProblemName: string;
+  currentScenarioName: string;
   selectedCount: number;
   totalCount: number;
   onSelectAll: () => void;
@@ -14,7 +14,7 @@ interface ResultsHistoryHeaderProps {
 
 export function ResultsHistoryHeader({
   resultsCount,
-  currentProblemName,
+  currentScenarioName,
   selectedCount,
   totalCount,
   onSelectAll,
@@ -27,7 +27,7 @@ export function ResultsHistoryHeader({
       <div>
         <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Results History</h2>
         <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
-          {resultsCount} result{resultsCount !== 1 ? 's' : ''} for "{currentProblemName}"
+          {resultsCount} result{resultsCount !== 1 ? 's' : ''} for "{currentScenarioName}"
         </p>
       </div>
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">

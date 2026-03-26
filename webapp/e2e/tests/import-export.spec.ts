@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { closeTransientUi, openApp, openProblemManager } from './helpers';
+import { closeTransientUi, openApp, openScenarioManager } from './helpers';
 
 test.describe('Import/Export and Demo Data', () => {
   test.beforeEach(async ({ page }) => {
@@ -31,11 +31,11 @@ test.describe('Import/Export and Demo Data', () => {
     await expect(loadButton).toBeVisible();
   });
 
-  test('manage problems modal can open', async ({ page }) => {
-    await openProblemManager(page);
+  test('manage scenarios modal can open', async ({ page }) => {
+    await openScenarioManager(page);
 
-    // Should open modal with Problem Manager title
-    await expect(page.getByRole('heading', { name: /Problem Manager/i })).toBeVisible();
+    // Should open modal with Scenario Manager title
+    await expect(page.getByRole('heading', { name: /Scenario Manager/i })).toBeVisible();
 
     // Close modal
     await page.keyboard.press('Escape');

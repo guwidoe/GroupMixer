@@ -1,5 +1,5 @@
-import type { Assignment, Problem, Solution, SolverSettings } from "../../types";
-import { buildRustProblemPayload } from "../rustBoundary";
+import type { Assignment, Scenario, Solution, SolverSettings } from "../../types";
+import { buildRustScenarioPayload } from "../rustBoundary";
 import { convertRustResultToSolution } from "./conversions";
 import {
   isWasmContractModule,
@@ -79,10 +79,10 @@ export function normalizeContractError(
 }
 
 function buildRecommendSettingsRequest(
-  problem: Problem,
+  scenario: Scenario,
   desiredRuntimeSeconds: number,
 ): WasmRecommendSettingsRequest {
-  const payload = buildRustProblemPayload(problem) as {
+  const payload = buildRustScenarioPayload(scenario) as {
     problem?: Record<string, unknown>;
     objectives?: unknown[];
     constraints?: unknown[];
@@ -111,17 +111,17 @@ function assignmentsToSchedule(
   return schedule;
 }
 
-function buildSolvePayload(problem: Problem): Record<string, unknown> {
-  return buildRustProblemPayload(problem);
+function buildSolvePayload(scenario: Scenario): Record<string, unknown> {
+  return buildRustScenarioPayload(scenario);
 }
 
 function buildEvaluatePayload(
-  problem: Problem,
+  scenario: Scenario,
   assignments: Assignment[],
 ): Record<string, unknown> & {
   initial_schedule: Record<string, Record<string, string[]>>;
 } {
-  const payload = buildSolvePayload(problem) as Record<string, unknown> & {
+  const payload = buildSolvePayload(scenario) as Record<string, unknown> & {
     initial_schedule?: Record<string, Record<string, string[]>>;
   };
   payload.initial_schedule = assignmentsToSchedule(assignments);
@@ -260,28 +260,28 @@ export class WasmContractClient {
   }
 
   async recommendSettings(
-    problem: Problem,
+    scenario: Scenario,
     desiredRuntimeSeconds: number,
   ): Promise<SolverSettings> {
     const module = await this.requireModule();
 
     try {
       return module.recommend_settings(
-        buildRecommendSettingsRequest(problem, desiredRuntimeSeconds),
+        buildRecommendSettingsRequest(scenario, desiredRuntimeSeconds),
       );
     } catch (error) {
       throw normalizeContractError(error, "Failed to recommend solver settings");
     }
   }
 
-  async solve(problem: Problem): Promise<Solution> {
+  async solve(scenario: Scenario): Promise<Solution> {
     const module = await this.requireModule();
 
     try {
-      const result = module.solve(buildSolvePayload(problem));
+      const result = module.solve(buildSolvePayload(scenario));
       return convertRustResultToSolution(result as RustResult);
     } catch (error) {
-      throw normalizeContractError(error, "Failed to solve problem");
+      throw normalizeContractError(error, "Failed to solve scenario");
     }
   }
 
@@ -291,12 +291,12 @@ export class WasmContractClient {
     try {
       return module.solve(input);
     } catch (error) {
-      throw normalizeContractError(error, "Failed to solve problem");
+      throw normalizeContractError(error, "Failed to solve scenario");
     }
   }
 
   async solveWithProgress(
-    problem: Problem,
+    scenario: Scenario,
     progressCallback?: ProgressCallback,
   ): Promise<{ solution: Solution; lastProgress: ProgressUpdate | null }> {
     const module = await this.requireModule();
@@ -304,7 +304,7 @@ export class WasmContractClient {
     try {
       let lastProgress: ProgressUpdate | null = null;
       const result = module.solve_with_progress(
-        buildSolvePayload(problem),
+        buildSolvePayload(scenario),
         progressCallback
           ? ((progress: ProgressUpdate) => {
               lastProgress = progress;
@@ -319,7 +319,7 @@ export class WasmContractClient {
         lastProgress,
       };
     } catch (error) {
-      throw normalizeContractError(error, "Failed to solve problem");
+      throw normalizeContractError(error, "Failed to solve scenario");
     }
   }
 
@@ -344,27 +344,27 @@ export class WasmContractClient {
 
       return { result: result as RustResult, lastProgress };
     } catch (error) {
-      throw normalizeContractError(error, "Failed to solve problem");
+      throw normalizeContractError(error, "Failed to solve scenario");
     }
   }
 
-  async validateProblem(problem: Problem): Promise<WasmValidateResponse> {
+  async validateScenario(scenario: Scenario): Promise<WasmValidateResponse> {
     const module = await this.requireModule();
 
     try {
-      return module.validate_problem(buildSolvePayload(problem));
+      return module.validate_scenario(buildSolvePayload(scenario));
     } catch (error) {
-      throw normalizeContractError(error, "Failed to validate problem");
+      throw normalizeContractError(error, "Failed to validate scenario");
     }
   }
 
-  async validateProblemContract(input: Record<string, unknown>): Promise<WasmValidateResponse> {
+  async validateScenarioContract(input: Record<string, unknown>): Promise<WasmValidateResponse> {
     const module = await this.requireModule();
 
     try {
-      return module.validate_problem(input);
+      return module.validate_scenario(input);
     } catch (error) {
-      throw normalizeContractError(error, "Failed to validate problem");
+      throw normalizeContractError(error, "Failed to validate scenario");
     }
   }
 
@@ -380,11 +380,11 @@ export class WasmContractClient {
     }
   }
 
-  async evaluateInput(problem: Problem, assignments: Assignment[]): Promise<Solution> {
+  async evaluateInput(scenario: Scenario, assignments: Assignment[]): Promise<Solution> {
     const module = await this.requireModule();
 
     try {
-      const result = module.evaluate_input(buildEvaluatePayload(problem, assignments));
+      const result = module.evaluate_input(buildEvaluatePayload(scenario, assignments));
       return convertRustResultToSolution(result as RustResult);
     } catch (error) {
       throw normalizeContractError(error, "Failed to evaluate input");

@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createSampleProblem, createSampleSolution, createSampleSolverSettings, createSavedProblem } from '../../../test/fixtures';
-import type { Problem, ProblemResult, SavedProblem, SolverState } from '../../../types';
-import { solveProblem } from '../../../services/solver/solveProblem';
-import { problemStorage } from '../../../services/problemStorage';
+import { createSampleScenario, createSampleSolution, createSampleSolverSettings, createSavedScenario } from '../../../test/fixtures';
+import type { Scenario, ScenarioResult, SavedScenario, SolverState } from '../../../types';
+import { solveScenario } from '../../../services/solver/solveScenario';
+import { scenarioStorage } from '../../../services/scenarioStorage';
 import { runSolver } from './runSolver';
 import { solverWorkerService } from '../../../services/solverWorker';
 import { useAppStore } from '../../../store';
 
-vi.mock('../../../services/solver/solveProblem', () => ({
-  solveProblem: vi.fn(),
+vi.mock('../../../services/solver/solveScenario', () => ({
+  solveScenario: vi.fn(),
 }));
 
 vi.mock('../../../services/solverWorker', () => ({
@@ -28,29 +28,29 @@ vi.mock('../../../store', () => ({
   },
 }));
 
-vi.mock('../../../services/problemStorage', () => ({
-  problemStorage: {
-    getCurrentProblemId: vi.fn(() => null),
+vi.mock('../../../services/scenarioStorage', () => ({
+  scenarioStorage: {
+    getCurrentScenarioId: vi.fn(() => null),
     addResult: vi.fn(),
-    getProblem: vi.fn(() => null),
+    getScenario: vi.fn(() => null),
   },
 }));
 
-function createSavedResult(name = 'Saved Result'): ProblemResult {
-  const problem = createSampleProblem();
+function createSavedResult(name = 'Saved Result'): ScenarioResult {
+  const scenario = createSampleScenario();
   const solution = createSampleSolution();
 
   return {
     id: 'saved-result',
     name,
     solution,
-    solverSettings: problem.settings,
-    problemSnapshot: {
-      people: problem.people,
-      groups: problem.groups,
-      num_sessions: problem.num_sessions,
-      objectives: problem.objectives,
-      constraints: problem.constraints,
+    solverSettings: scenario.settings,
+    scenarioSnapshot: {
+      people: scenario.people,
+      groups: scenario.groups,
+      num_sessions: scenario.num_sessions,
+      objectives: scenario.objectives,
+      constraints: scenario.constraints,
     },
     timestamp: 1000,
     duration: solution.elapsed_time_ms,
@@ -58,7 +58,7 @@ function createSavedResult(name = 'Saved Result'): ProblemResult {
 }
 
 function createArgs(overrides: Partial<Parameters<typeof runSolver>[0]> = {}) {
-  const problem = createSampleProblem();
+  const scenario = createSampleScenario();
   const solverSettings = createSampleSolverSettings();
   const solution = createSampleSolution();
   const lastProgress = {
@@ -83,23 +83,23 @@ function createArgs(overrides: Partial<Parameters<typeof runSolver>[0]> = {}) {
   const setSolution = vi.fn();
   const startSolver = vi.fn();
   const setWarmStartFromResult = vi.fn();
-  const ensureProblemExists = vi.fn(() => problem);
+  const ensureScenarioExists = vi.fn(() => scenario);
 
-  vi.mocked(solveProblem).mockResolvedValue({
+  vi.mocked(solveScenario).mockResolvedValue({
     solution,
     lastProgress,
     selectedSettings: solverSettings,
-    runProblem: {
-      ...problem,
+    runScenario: {
+      ...scenario,
       settings: solverSettings,
     },
   });
 
   return {
     useRecommended: false,
-    problem,
-    currentProblemId: 'problem-1',
-    savedProblems: { 'problem-1': createSavedProblem({ id: 'problem-1', results: [] }) } as Record<string, SavedProblem>,
+    scenario,
+    currentScenarioId: 'scenario-1',
+    savedScenarios: { 'scenario-1': createSavedScenario({ id: 'scenario-1', results: [] }) } as Record<string, SavedScenario>,
     warmStartResultId: null,
     setWarmStartFromResult,
     solverSettings,
@@ -118,11 +118,11 @@ function createArgs(overrides: Partial<Parameters<typeof runSolver>[0]> = {}) {
     setSolution,
     addNotification,
     addResult,
-    ensureProblemExists,
+    ensureScenarioExists,
     setRunSettings,
     setLiveVizState,
     liveVizLastUiUpdateRef: { current: 123 },
-    runProblemSnapshotRef: { current: null as Problem | null },
+    runScenarioSnapshotRef: { current: null as Scenario | null },
     cancelledRef: { current: false },
     solverCompletedRef: { current: false },
     restartAfterSaveRef: { current: false },
@@ -138,22 +138,22 @@ describe('runSolver', () => {
     window.__groupmixerLandingEvents = [];
     vi.clearAllMocks();
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.mocked(useAppStore.getState).mockReturnValue({ currentProblemId: 'problem-1' } as { currentProblemId: string | null });
+    vi.mocked(useAppStore.getState).mockReturnValue({ currentScenarioId: 'scenario-1' } as { currentScenarioId: string | null });
   });
 
-  it('uses the shared solve service, emits telemetry, and saves via the active store problem id', async () => {
+  it('uses the shared solve service, emits telemetry, and saves via the active store scenario id', async () => {
     window.sessionStorage.setItem(
       'groupmixer-telemetry-attribution',
       JSON.stringify({ landingSlug: 'random-team-generator', experiment: 'seo-hero-test', variant: 'B' }),
     );
-    const args = createArgs({ useRecommended: true, currentProblemId: null });
+    const args = createArgs({ useRecommended: true, currentScenarioId: null });
 
     await runSolver(args);
 
-    expect(args.ensureProblemExists).toHaveBeenCalled();
-    expect(solveProblem).toHaveBeenCalledWith(
+    expect(args.ensureScenarioExists).toHaveBeenCalled();
+    expect(solveScenario).toHaveBeenCalledWith(
       expect.objectContaining({
-        problem: expect.objectContaining({ settings: args.solverSettings }),
+        scenario: expect.objectContaining({ settings: args.solverSettings }),
         useRecommendedSettings: true,
         desiredRuntimeSeconds: 7,
         enableBestScheduleTelemetry: false,
@@ -196,12 +196,12 @@ describe('runSolver', () => {
     const args = createArgs({ useRecommended: true });
     const selectedSettings = createSampleSolverSettings();
     selectedSettings.stop_conditions.time_limit_seconds = 5;
-    vi.mocked(solveProblem).mockResolvedValue({
+    vi.mocked(solveScenario).mockResolvedValue({
       solution: args.__expected.solution,
       lastProgress: args.__expected.lastProgress,
       selectedSettings,
-      runProblem: {
-        ...args.problem,
+      runScenario: {
+        ...args.scenario,
         settings: selectedSettings,
       },
     });
@@ -220,15 +220,15 @@ describe('runSolver', () => {
   it('falls back to a normal solve when the selected warm-start result is missing', async () => {
     const args = createArgs({
       warmStartResultId: 'missing-result',
-      savedProblems: {
-        'problem-1': createSavedProblem({ id: 'problem-1', results: [] }),
+      savedScenarios: {
+        'scenario-1': createSavedScenario({ id: 'scenario-1', results: [] }),
       },
     });
 
     await runSolver(args);
 
     expect(solverWorkerService.solveWithProgressWarmStart).not.toHaveBeenCalled();
-    expect(solveProblem).toHaveBeenCalledWith(
+    expect(solveScenario).toHaveBeenCalledWith(
       expect.objectContaining({
         warmStartSchedule: undefined,
       }),
@@ -242,14 +242,14 @@ describe('runSolver', () => {
     );
   });
 
-  it('warns instead of saving when no active problem id exists in props or store state', async () => {
-    vi.mocked(useAppStore.getState).mockReturnValue({ currentProblemId: null } as { currentProblemId: string | null });
-    const args = createArgs({ currentProblemId: null });
+  it('warns instead of saving when no active scenario id exists in props or store state', async () => {
+    vi.mocked(useAppStore.getState).mockReturnValue({ currentScenarioId: null } as { currentScenarioId: string | null });
+    const args = createArgs({ currentScenarioId: null });
 
     await runSolver(args);
 
     expect(args.addResult).not.toHaveBeenCalled();
-    expect(problemStorage.addResult).not.toHaveBeenCalled();
+    expect(scenarioStorage.addResult).not.toHaveBeenCalled();
     expect(args.addNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'warning',
@@ -259,21 +259,21 @@ describe('runSolver', () => {
   });
 
   it('falls back to persisted storage when props and store state have not caught up yet', async () => {
-    vi.mocked(useAppStore.getState).mockReturnValue({ currentProblemId: null } as { currentProblemId: string | null });
-    vi.mocked(problemStorage.getCurrentProblemId).mockReturnValue('problem-1');
+    vi.mocked(useAppStore.getState).mockReturnValue({ currentScenarioId: null } as { currentScenarioId: string | null });
+    vi.mocked(scenarioStorage.getCurrentScenarioId).mockReturnValue('scenario-1');
     const persistedResult = createSavedResult('Result 1');
-    vi.mocked(problemStorage.addResult).mockReturnValue(persistedResult);
-    vi.mocked(problemStorage.getProblem).mockReturnValue(
-      createSavedProblem({ id: 'problem-1', results: [persistedResult] }),
+    vi.mocked(scenarioStorage.addResult).mockReturnValue(persistedResult);
+    vi.mocked(scenarioStorage.getScenario).mockReturnValue(
+      createSavedScenario({ id: 'scenario-1', results: [persistedResult] }),
     );
-    const args = createArgs({ currentProblemId: null });
+    const args = createArgs({ currentScenarioId: null });
 
     await runSolver(args);
 
-    expect(useAppStore.setState).toHaveBeenCalledWith({ currentProblemId: 'problem-1' });
+    expect(useAppStore.setState).toHaveBeenCalledWith({ currentScenarioId: 'scenario-1' });
     expect(args.addResult).not.toHaveBeenCalled();
-    expect(problemStorage.addResult).toHaveBeenCalledWith(
-      'problem-1',
+    expect(scenarioStorage.addResult).toHaveBeenCalledWith(
+      'scenario-1',
       args.__expected.solution,
       args.__expected.solverSettings,
       undefined,

@@ -33,10 +33,10 @@ describe("Navigation", () => {
         <Navigation />
         <LocationProbe />
       </>,
-      { route: "/app/problem" }
+      { route: "/app/scenario" }
     );
 
-    expect(screen.getByRole("link", { name: /problem setup/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /setup/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /solver/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /manual editor/i })).toBeInTheDocument();
     expect(container.firstChild).toHaveClass('sticky');

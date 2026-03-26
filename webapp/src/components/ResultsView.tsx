@@ -2,9 +2,9 @@ import React, { useMemo, useRef, useState } from 'react';
 import { BarChart3, Target } from 'lucide-react';
 import { useAppStore } from '../store';
 import { generateAssignmentsCsv } from '../utils/csvExport';
-import { compareProblemConfigurations } from '../services/problemStorage';
+import { compareScenarioConfigurations } from '../services/scenarioStorage';
 import { calculateMetrics, getColorClass } from '../utils/metricCalculations';
-import { snapshotToProblem } from '../utils/problemSnapshot';
+import { snapshotToScenario } from '../utils/scenarioSnapshot';
 import { useLocalStorageState, useOutsideClick } from '../hooks';
 import ConstraintComplianceCards from './ConstraintComplianceCards';
 import { buildResultsSessionData } from './results/buildResultsViewModel';
@@ -13,7 +13,7 @@ import { ResultsMetrics } from './ResultsView/ResultsMetrics';
 import { ResultsSchedule } from './ResultsView/ResultsSchedule';
 
 export function ResultsView() {
-  const { problem, solution, solverState, currentProblemId, savedProblems, restoreResultAsNewProblem } = useAppStore();
+  const { scenario, solution, solverState, currentScenarioId, savedScenarios, restoreResultAsNewScenario } = useAppStore();
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'visualize'>('grid');
   const [vizPluginId, setVizPluginId] = useLocalStorageState('resultsVisualizationPlugin', 'scheduleMatrix');
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
@@ -35,54 +35,54 @@ export function ResultsView() {
   });
 
   const currentResult = useMemo(() => {
-    if (!currentProblemId || !solution) return undefined;
-    const currentProblem = savedProblems[currentProblemId];
-    if (!currentProblem) return undefined;
-    return currentProblem.results.find(r => r.solution === solution);
-  }, [currentProblemId, savedProblems, solution]);
+    if (!currentScenarioId || !solution) return undefined;
+    const currentScenario = savedScenarios[currentScenarioId];
+    if (!currentScenario) return undefined;
+    return currentScenario.results.find(r => r.solution === solution);
+  }, [currentScenarioId, savedScenarios, solution]);
 
   const resultName = currentResult?.name;
 
-  const effectiveProblem = useMemo(() => {
-    if (currentResult?.problemSnapshot) {
-      return snapshotToProblem(currentResult.problemSnapshot, currentResult.solverSettings);
+  const effectiveScenario = useMemo(() => {
+    if (currentResult?.scenarioSnapshot) {
+      return snapshotToScenario(currentResult.scenarioSnapshot, currentResult.solverSettings);
     }
-    return problem;
-  }, [currentResult, problem]);
+    return scenario;
+  }, [currentResult, scenario]);
 
   const configDiff = useMemo(() => {
-    if (!problem || !currentResult?.problemSnapshot) return null;
-    const currentProblemData = savedProblems[currentProblemId!];
-    if (!currentProblemData) return null;
-    const mostRecentResult = currentProblemData.results
+    if (!scenario || !currentResult?.scenarioSnapshot) return null;
+    const currentScenarioData = savedScenarios[currentScenarioId!];
+    if (!currentScenarioData) return null;
+    const mostRecentResult = currentScenarioData.results
       .sort((a, b) => b.timestamp - a.timestamp)[0];
 
     if (currentResult.id === mostRecentResult?.id) {
-      return compareProblemConfigurations(
-        problem,
-        snapshotToProblem(currentResult.problemSnapshot, currentResult.solverSettings)
+      return compareScenarioConfigurations(
+        scenario,
+        snapshotToScenario(currentResult.scenarioSnapshot, currentResult.solverSettings)
       );
     }
 
-    if (mostRecentResult?.problemSnapshot) {
-      return compareProblemConfigurations(
-        snapshotToProblem(mostRecentResult.problemSnapshot, mostRecentResult.solverSettings),
-        snapshotToProblem(currentResult.problemSnapshot, currentResult.solverSettings)
+    if (mostRecentResult?.scenarioSnapshot) {
+      return compareScenarioConfigurations(
+        snapshotToScenario(mostRecentResult.scenarioSnapshot, mostRecentResult.solverSettings),
+        snapshotToScenario(currentResult.scenarioSnapshot, currentResult.solverSettings)
       );
     }
 
-    return compareProblemConfigurations(
-      problem,
-      snapshotToProblem(currentResult.problemSnapshot, currentResult.solverSettings)
+    return compareScenarioConfigurations(
+      scenario,
+      snapshotToScenario(currentResult.scenarioSnapshot, currentResult.solverSettings)
     );
-  }, [problem, currentResult, currentProblemId, savedProblems]);
+  }, [scenario, currentResult, currentScenarioId, savedScenarios]);
 
   const metrics = useMemo(() => {
     if (!solution) return null;
-    const problemConfig = currentResult?.problemSnapshot || problem;
-    if (!problemConfig) return null;
-    return calculateMetrics(problemConfig, solution);
-  }, [solution, currentResult, problem]);
+    const scenarioConfig = currentResult?.scenarioSnapshot || scenario;
+    if (!scenarioConfig) return null;
+    return calculateMetrics(scenarioConfig, solution);
+  }, [solution, currentResult, scenario]);
 
   const finalConstraintPenalty = solution?.weighted_constraint_penalty ?? solution?.constraint_penalty ?? 0;
   const baselineConstraintPenalty = useMemo(() => {
@@ -105,21 +105,21 @@ export function ResultsView() {
   };
 
   const generateCSV = () => {
-    if (!effectiveProblem || !solution) return '';
-    return generateAssignmentsCsv(effectiveProblem, solution, {
+    if (!effectiveScenario || !solution) return '';
+    return generateAssignmentsCsv(effectiveScenario, solution, {
       resultName: resultName || 'Current Result',
       exportedAt: Date.now(),
     });
   };
 
   const handleExportResult = (format: 'json' | 'csv' | 'excel') => {
-    if (!effectiveProblem || !solution) return;
+    if (!effectiveScenario || !solution) return;
 
     const fileName = (resultName || 'result').replace(/[^a-z0-9]/gi, '_').toLowerCase();
 
     if (format === 'json') {
       const exportData = {
-        problem: effectiveProblem,
+        scenario: effectiveScenario,
         solution,
         exportedAt: Date.now(),
       };
@@ -142,7 +142,7 @@ export function ResultsView() {
   };
 
   const handleExportVisualizationPng = async () => {
-    if (!effectiveProblem || !solution) return;
+    if (!effectiveScenario || !solution) return;
     if (viewMode !== 'visualize') return;
     if (!vizExportRef.current) return;
 
@@ -170,12 +170,12 @@ export function ResultsView() {
   };
 
   const sessionData = useMemo(() => {
-    if (!solution || !effectiveProblem) {
+    if (!solution || !effectiveScenario) {
       return [];
     }
 
-    return buildResultsSessionData(effectiveProblem, solution);
-  }, [solution, effectiveProblem]);
+    return buildResultsSessionData(effectiveScenario, solution);
+  }, [solution, effectiveScenario]);
 
   if (!solution) {
     return (
@@ -189,13 +189,13 @@ export function ResultsView() {
     );
   }
 
-  if (!effectiveProblem) {
+  if (!effectiveScenario) {
     return (
       <div className="text-center py-12">
         <BarChart3 className="mx-auto h-12 w-12 text-gray-400" />
         <h3 className="mt-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>No Results Available</h3>
         <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Run the solver to generate results for this problem.
+          Run the solver to generate results for this scenario.
         </p>
       </div>
     );
@@ -211,9 +211,9 @@ export function ResultsView() {
         onToggleConfigDetails={() => setConfigDetailsOpen(!configDetailsOpen)}
         onRestoreConfig={() => {
           if (!currentResult) return;
-          const sourceName = savedProblems[currentProblemId!]?.name || 'Problem';
+          const sourceName = savedScenarios[currentScenarioId!]?.name || 'Scenario';
           const suggested = `${sourceName} – ${currentResult.name || 'Result'} (restored)`;
-          restoreResultAsNewProblem(currentResult.id, suggested);
+          restoreResultAsNewScenario(currentResult.id, suggested);
         }}
         exportDropdownOpen={exportDropdownOpen}
         onToggleExportDropdown={() => setExportDropdownOpen(!exportDropdownOpen)}
@@ -232,13 +232,13 @@ export function ResultsView() {
         constraintColorClass={constraintColorClass}
       />
 
-      <ConstraintComplianceCards problem={effectiveProblem} solution={solution} />
+      <ConstraintComplianceCards scenario={effectiveScenario} solution={solution} />
 
       <ResultsSchedule
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         sessionData={sessionData}
-        effectiveProblem={effectiveProblem}
+        effectiveScenario={effectiveScenario}
         solution={solution}
         vizPluginId={vizPluginId}
         onVizPluginChange={setVizPluginId}

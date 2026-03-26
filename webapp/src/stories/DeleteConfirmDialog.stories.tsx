@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
-import { DeleteConfirmDialog } from '../components/ProblemManager/DeleteConfirmDialog';
+import { DeleteConfirmDialog } from '../components/ScenarioManager/DeleteConfirmDialog';
 
 /**
- * DeleteConfirmDialog is a confirmation modal for deleting a problem.
+ * DeleteConfirmDialog is a confirmation modal for deleting a scenario.
  * Shows a warning message and requires explicit confirmation.
  */
 const meta: Meta<typeof DeleteConfirmDialog> = {

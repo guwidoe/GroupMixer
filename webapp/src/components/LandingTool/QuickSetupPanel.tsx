@@ -22,7 +22,7 @@ export function QuickSetupPanel({ pageConfig }: QuickSetupPanelProps) {
       source: 'quick_setup_panel',
     });
     replaceWorkspace(controller.buildWorkspaceBridgePayload());
-    navigate('/app/problem/people');
+    navigate('/app/scenario/people');
   };
 
   return (

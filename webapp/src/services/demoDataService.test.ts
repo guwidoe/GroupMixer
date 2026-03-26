@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createSampleProblem } from '../test/fixtures';
+import { createSampleScenario } from '../test/fixtures';
 import {
-  extractAttributesFromProblem,
+  extractAttributesFromScenario,
   loadDemoCase,
   loadDemoCasesWithMetrics,
   mergeAttributeDefinitions,
@@ -42,7 +42,7 @@ describe('demoDataService', () => {
             category: 'Advanced',
           },
           input: {
-            problem: { people: [{ id: 'p1' }], groups: [{ id: 'g1' }], num_sessions: 3 },
+            scenario: { people: [{ id: 'p1' }], groups: [{ id: 'g1' }], num_sessions: 3 },
           },
         }),
       )
@@ -56,7 +56,7 @@ describe('demoDataService', () => {
             category: 'Simple',
           },
           input: {
-            problem: { people: [{ id: 'p1' }, { id: 'p2' }], groups: [{ id: 'g1' }], num_sessions: 2 },
+            scenario: { people: [{ id: 'p1' }, { id: 'p2' }], groups: [{ id: 'g1' }], num_sessions: 2 },
           },
         }),
       );
@@ -104,7 +104,7 @@ describe('demoDataService', () => {
               },
               logging: {},
             },
-            problem: { people: [], groups: [], num_sessions: 1 },
+            scenario: { people: [], groups: [], num_sessions: 1 },
             constraints: [],
           },
         }),
@@ -112,17 +112,17 @@ describe('demoDataService', () => {
       .mockResolvedValueOnce(jsonResponse({}, { ok: false, status: 500, statusText: 'Boom' }));
     vi.stubGlobal('fetch', fetchMock);
 
-    const problem = await loadDemoCase('ui-demo');
+    const scenario = await loadDemoCase('ui-demo');
 
-    expect(problem.people.length).toBeGreaterThan(0);
-    expect(problem.groups.length).toBeGreaterThan(0);
-    expect(problem.constraints.length).toBeGreaterThan(0);
-    expect(problem.settings.solver_type).toBe('SimulatedAnnealing');
+    expect(scenario.people.length).toBeGreaterThan(0);
+    expect(scenario.groups.length).toBeGreaterThan(0);
+    expect(scenario.constraints.length).toBeGreaterThan(0);
+    expect(scenario.settings.solver_type).toBe('SimulatedAnnealing');
   });
 
   it('extracts non-name attributes and sorts their values', () => {
-    const attributes = extractAttributesFromProblem(
-      createSampleProblem({
+    const attributes = extractAttributesFromScenario(
+      createSampleScenario({
         people: [
           { id: 'p1', attributes: { name: 'Alice', team: 'Blue', level: 'Senior' } },
           { id: 'p2', attributes: { name: 'Bob', team: 'Red', level: 'Junior' } },

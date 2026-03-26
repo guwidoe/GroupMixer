@@ -1,42 +1,42 @@
-import type { Problem, ProblemResult, Constraint, Person } from "../types";
+import type { Scenario, ScenarioResult, Constraint, Person } from "../types";
 
 type Schedule = Record<string, Record<string, string[]>>; // session_{i} -> group_id -> [person_id]
 
 function getActiveSessionsForPerson(
-  problem: Problem,
+  scenario: Scenario,
   person: Person
 ): number[] {
   if (Array.isArray(person.sessions) && person.sessions.length > 0) {
     return person.sessions.slice();
   }
-  return Array.from({ length: problem.num_sessions }, (_, i) => i);
+  return Array.from({ length: scenario.num_sessions }, (_, i) => i);
 }
 
-function* iterateSessions(problem: Problem): Generator<number> {
-  for (let s = 0; s < problem.num_sessions; s += 1) {
+function* iterateSessions(scenario: Scenario): Generator<number> {
+  for (let s = 0; s < scenario.num_sessions; s += 1) {
     yield s;
   }
 }
 
 function sessionsForConstraint(
-  problem: Problem,
+  scenario: Scenario,
   constraint: Constraint
 ): number[] {
-  const all = Array.from({ length: problem.num_sessions }, (_, i) => i);
+  const all = Array.from({ length: scenario.num_sessions }, (_, i) => i);
   const maybeSessions = (constraint as unknown as { sessions?: number[] })
     .sessions;
   if (Array.isArray(maybeSessions) && maybeSessions.length > 0) {
-    return maybeSessions.filter((s) => s >= 0 && s < problem.num_sessions);
+    return maybeSessions.filter((s) => s >= 0 && s < scenario.num_sessions);
   }
   return all;
 }
 
-function initEmptySchedule(problem: Problem): Schedule {
+function initEmptySchedule(scenario: Scenario): Schedule {
   const schedule: Schedule = {};
-  for (const s of iterateSessions(problem)) {
+  for (const s of iterateSessions(scenario)) {
     const sessionKey = `session_${s}`;
     schedule[sessionKey] = {};
-    for (const g of problem.groups) {
+    for (const g of scenario.groups) {
       schedule[sessionKey][g.id] = [];
     }
   }
@@ -44,12 +44,12 @@ function initEmptySchedule(problem: Problem): Schedule {
 }
 
 function buildCapacityMap(
-  problem: Problem
+  scenario: Scenario
 ): Record<number, Record<string, number>> {
   const caps: Record<number, Record<string, number>> = {};
-  for (const s of iterateSessions(problem)) {
+  for (const s of iterateSessions(scenario)) {
     caps[s] = {};
-    for (const g of problem.groups) {
+    for (const g of scenario.groups) {
       caps[s][g.id] = g.size;
     }
   }
@@ -95,7 +95,7 @@ function place(
 ) {
   const sessionKey = `session_${session}`;
   if (!(groupId in schedule[sessionKey])) {
-    throw new Error(`Group '${groupId}' does not exist in current problem`);
+    throw new Error(`Group '${groupId}' does not exist in current scenario`);
   }
   ensurePersonNotAlreadyAssigned(assigned, session, personId);
   decrementCapacity(caps, session, groupId, 1);
@@ -103,15 +103,15 @@ function place(
 }
 
 function getImmovableMap(
-  problem: Problem
+  scenario: Scenario
 ): Record<number, Record<string, string>> {
   // session -> person_id -> group_id
   const map: Record<number, Record<string, string>> = {};
-  for (const s of iterateSessions(problem)) map[s] = {};
+  for (const s of iterateSessions(scenario)) map[s] = {};
 
-  for (const c of problem.constraints) {
+  for (const c of scenario.constraints) {
     if (c.type !== "ImmovablePerson" && c.type !== "ImmovablePeople") continue;
-    const sessions = sessionsForConstraint(problem, c);
+    const sessions = sessionsForConstraint(scenario, c);
     if (c.type === "ImmovablePerson") {
       const personId = (c as unknown as { person_id: string }).person_id;
       const groupId = (c as unknown as { group_id: string }).group_id;
@@ -132,7 +132,7 @@ function getImmovableMap(
   return map;
 }
 
-function buildCliqueComponents(problem: Problem, session: number): string[][] {
+function buildCliqueComponents(scenario: Scenario, session: number): string[][] {
   // union-find over MustStayTogether constraints for a given session
   const parent: Record<string, string> = {};
   const find = (x: string): string => {
@@ -153,9 +153,9 @@ function buildCliqueComponents(problem: Problem, session: number): string[][] {
   };
 
   let hasAny = false;
-  for (const c of problem.constraints) {
+  for (const c of scenario.constraints) {
     if (c.type !== "MustStayTogether") continue;
-    const sessions = sessionsForConstraint(problem, c);
+    const sessions = sessionsForConstraint(scenario, c);
     if (!sessions.includes(session)) continue;
     const people = (c as unknown as { people: string[] }).people || [];
     if (people.length >= 2) {
@@ -176,30 +176,30 @@ function buildCliqueComponents(problem: Problem, session: number): string[][] {
 }
 
 export function reconcileResultToInitialSchedule(
-  currentProblem: Problem,
-  result: ProblemResult
+  currentScenario: Scenario,
+  result: ScenarioResult
 ): Schedule {
   // Base schedule and capacity
-  const schedule = initEmptySchedule(currentProblem);
-  const capacities = buildCapacityMap(currentProblem);
+  const schedule = initEmptySchedule(currentScenario);
+  const capacities = buildCapacityMap(currentScenario);
   const assigned: Record<number, Set<string>> = {};
-  for (const s of iterateSessions(currentProblem))
+  for (const s of iterateSessions(currentScenario))
     assigned[s] = new Set<string>();
 
   // Build quick lookup maps
   const peopleById = new Map(
-    currentProblem.people.map((p) => [p.id, p] as const)
+    currentScenario.people.map((p) => [p.id, p] as const)
   );
-  const groupIds = new Set(currentProblem.groups.map((g) => g.id));
+  const groupIds = new Set(currentScenario.groups.map((g) => g.id));
 
   // Build immovable map once
-  const immovableMap = getImmovableMap(currentProblem);
+  const immovableMap = getImmovableMap(currentScenario);
 
   // Preprocess result assignments per session -> person -> group
   const resultBySession: Record<number, Record<string, string>> = {};
-  for (const s of iterateSessions(currentProblem)) resultBySession[s] = {};
+  for (const s of iterateSessions(currentScenario)) resultBySession[s] = {};
   for (const a of result.solution.assignments) {
-    if (a.session_id < 0 || a.session_id >= currentProblem.num_sessions)
+    if (a.session_id < 0 || a.session_id >= currentScenario.num_sessions)
       continue; // drop out-of-range sessions
     if (!groupIds.has(a.group_id)) continue; // drop deleted groups
     if (!peopleById.has(a.person_id)) continue; // drop removed people
@@ -207,10 +207,10 @@ export function reconcileResultToInitialSchedule(
   }
 
   // Per-session placement
-  for (const s of iterateSessions(currentProblem)) {
+  for (const s of iterateSessions(currentScenario)) {
     // Active people this session
-    const activePeople = currentProblem.people.filter((p) =>
-      getActiveSessionsForPerson(currentProblem, p).includes(s)
+    const activePeople = currentScenario.people.filter((p) =>
+      getActiveSessionsForPerson(currentScenario, p).includes(s)
     );
     const activeSet = new Set(activePeople.map((p) => p.id));
 
@@ -228,7 +228,7 @@ export function reconcileResultToInitialSchedule(
     }
 
     // 2) MustStayTogether cliques → largest first, place into group with most spare capacity
-    const cliques = buildCliqueComponents(currentProblem, s)
+    const cliques = buildCliqueComponents(currentScenario, s)
       .map((members) => members.filter((pid) => activeSet.has(pid)))
       .filter((members) => members.length > 0)
       .sort((a, b) => b.length - a.length);
@@ -260,7 +260,7 @@ export function reconcileResultToInitialSchedule(
         }
       } else {
         // Choose group with max spare capacity that can fit all
-        const candidate = currentProblem.groups
+        const candidate = currentScenario.groups
           .map((g) => ({ id: g.id, spare: capacities[s][g.id] }))
           .filter((g) => g.spare >= unassigned.length)
           .sort((a, b) => b.spare - a.spare)[0];
@@ -302,7 +302,7 @@ export function reconcileResultToInitialSchedule(
       }
 
       // Choose the group with max spare capacity
-      const candidate = currentProblem.groups
+      const candidate = currentScenario.groups
         .map((g) => ({ id: g.id, spare: capacities[s][g.id] }))
         .filter((g) => g.spare > 0)
         .sort((a, b) => b.spare - a.spare)[0];

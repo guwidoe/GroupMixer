@@ -1,9 +1,9 @@
 import React from 'react';
 import { AlertTriangle, ChevronDown } from 'lucide-react';
-import type { ProblemConfigDifference } from '../../services/problemStorage';
+import type { ScenarioConfigDifference } from '../../services/scenarioStorage';
 
 interface ConfigDiffBadgeProps {
-  configDiff: ProblemConfigDifference;
+  configDiff: ScenarioConfigDifference;
   isOpen: boolean;
   onToggle: () => void;
   onRestoreConfig: () => void;
@@ -50,10 +50,10 @@ export function ConfigDiffBadge({
           <div className="space-y-2">
             <div className="flex items-center space-x-2 mb-2">
               <AlertTriangle className="h-4 w-4 text-red-500" />
-              <span className="font-medium text-red-600">Different Problem Configuration</span>
+              <span className="font-medium text-red-600">Different Scenario Configuration</span>
             </div>
             <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-              This result was created with a different problem setup than the most recent result and may not be directly comparable with the current configuration.
+              This result was created with a different scenario setup than the most recent result and may not be directly comparable with the current configuration.
             </p>
             <div className="mt-2 space-y-1">
               {Object.entries(configDiff.details).map(([key, detail]) => (
@@ -67,7 +67,7 @@ export function ConfigDiffBadge({
             </div>
             <div className="pt-2">
               <button className="btn-primary w-full text-xs" onClick={onRestoreConfig}>
-                Restore this result&apos;s configuration as new problem
+                Restore this result&apos;s configuration as new scenario
               </button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
-import AttributeForm from '../components/ProblemEditor/forms/AttributeForm';
+import AttributeForm from '../components/ScenarioEditor/forms/AttributeForm';
 
 /**
  * AttributeForm is a modal form for defining attribute types with their possible values.

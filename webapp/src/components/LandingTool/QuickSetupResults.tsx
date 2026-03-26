@@ -17,7 +17,7 @@ export function QuickSetupResults({ controller }: QuickSetupResultsProps) {
   const navigate = useNavigate();
   const workspacePayload = controller.buildWorkspaceBridgePayload();
   const solvedSolution = workspacePayload.solution ?? null;
-  const sharedSessionData = solvedSolution ? buildResultsSessionData(workspacePayload.problem, solvedSolution) : [];
+  const sharedSessionData = solvedSolution ? buildResultsSessionData(workspacePayload.scenario, solvedSolution) : [];
 
   const openAdvancedWorkspace = () => {
     trackLandingEvent('landing_open_advanced_workspace', {
@@ -25,7 +25,7 @@ export function QuickSetupResults({ controller }: QuickSetupResultsProps) {
       source: 'quick_setup_results',
     });
     replaceWorkspace(controller.buildWorkspaceBridgePayload());
-    navigate(result ? '/app/results' : '/app/problem/people');
+    navigate(result ? '/app/results' : '/app/scenario/people');
   };
 
   return (
@@ -95,7 +95,7 @@ export function QuickSetupResults({ controller }: QuickSetupResultsProps) {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <MetricCard title="Cost Score" value={solvedSolution.final_score.toFixed(1)} icon={Target} colorClass="text-green-600" />
                   <MetricCard title="Unique Contacts" value={solvedSolution.unique_contacts} icon={Users} colorClass="text-blue-600" />
-                  <MetricCard title="Sessions" value={workspacePayload.problem.num_sessions} icon={Layers3} colorClass="text-purple-600" />
+                  <MetricCard title="Sessions" value={workspacePayload.scenario.num_sessions} icon={Layers3} colorClass="text-purple-600" />
                 </div>
                 <div>
                   <div className="mb-3 flex items-center justify-between gap-3">

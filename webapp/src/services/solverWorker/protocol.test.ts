@@ -22,7 +22,7 @@ describe("solver worker protocol", () => {
       "get_schema",
       "list_public_errors",
       "get_public_error",
-      "validate_problem",
+      "validate_scenario",
       "get_default_solver_configuration",
       "recommend_settings",
       "evaluate_input",
@@ -34,7 +34,7 @@ describe("solver worker protocol", () => {
     expect(isSolverRpcMethod("get_schema")).toBe(true);
     expect(isSolverRpcMethod("list_public_errors")).toBe(true);
     expect(isSolverRpcMethod("get_public_error")).toBe(true);
-    expect(isSolverRpcMethod("validate_problem")).toBe(true);
+    expect(isSolverRpcMethod("validate_scenario")).toBe(true);
     expect(isSolverRpcMethod("get_default_solver_configuration")).toBe(true);
     expect(isSolverRpcMethod("recommend_settings")).toBe(true);
     expect(isSolverRpcMethod("evaluate_input")).toBe(true);
@@ -48,7 +48,7 @@ describe("solver worker protocol", () => {
     expect(createSolveRequestMessage("3", { problem: { people: [] } }, true)).toEqual({
       type: "SOLVE",
       id: "3",
-      data: { problemPayload: { problem: { people: [] } }, useProgress: true },
+      data: { scenarioPayload: { problem: { people: [] } }, useProgress: true },
     });
     expect(
       createRpcRequestMessage("recommend_settings", "4", {

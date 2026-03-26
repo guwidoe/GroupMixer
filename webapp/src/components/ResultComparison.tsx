@@ -11,19 +11,19 @@ import {
   Award,
   Settings
 } from 'lucide-react';
-import type { ProblemResult } from '../types';
+import type { ScenarioResult } from '../types';
 
 export function ResultComparison() {
   const {
-    currentProblemId,
-    savedProblems,
+    currentScenarioId,
+    savedScenarios,
     selectedResultIds,
     setShowResultComparison,
     selectResultsForComparison,
   } = useAppStore();
 
-  const currentProblem = currentProblemId ? savedProblems[currentProblemId] : null;
-  const results = currentProblem?.results || [];
+  const currentScenario = currentScenarioId ? savedScenarios[currentScenarioId] : null;
+  const results = currentScenario?.results || [];
   const selectedResults = results.filter(result => selectedResultIds.includes(result.id));
 
   const handleClose = () => {
@@ -78,7 +78,7 @@ export function ResultComparison() {
     );
   };
 
-  const getComparisonIcon = (current: ProblemResult, best: ProblemResult, worst: ProblemResult) => {
+  const getComparisonIcon = (current: ScenarioResult, best: ScenarioResult, worst: ScenarioResult) => {
     if (current.id === best.id) return <Award className="w-4 h-4 text-green-500" />;
     if (current.id === worst.id) return <TrendingDown className="w-4 h-4 text-red-500" />;
     return <Minus className="w-4 h-4 text-gray-400" />;
@@ -142,7 +142,7 @@ export function ResultComparison() {
               Result Comparison
             </h2>
             <p style={{ color: 'var(--text-secondary)' }}>
-              Comparing {selectedResults.length} results from "{currentProblem?.name}"
+              Comparing {selectedResults.length} results from "{currentScenario?.name}"
             </p>
           </div>
           <button

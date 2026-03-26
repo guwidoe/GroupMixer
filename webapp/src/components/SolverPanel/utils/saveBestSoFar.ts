@@ -1,5 +1,5 @@
 import type { MutableRefObject } from 'react';
-import type { Problem, ProblemResult, SolverSettings, SolverState, Solution, Notification } from '../../../types';
+import type { Scenario, ScenarioResult, SolverSettings, SolverState, Solution, Notification } from '../../../types';
 import { wasmService } from '../../../services/wasm';
 import { solverWorkerService } from '../../../services/solverWorker';
 
@@ -7,16 +7,16 @@ export type AddNotification = (notification: Omit<Notification, 'id'>) => void;
 
 interface SaveBestSoFarArgs {
   solverState: SolverState;
-  problem: Problem | null;
+  scenario: Scenario | null;
   runSettings: SolverSettings | null;
   solverSettings: SolverSettings;
-  runProblemSnapshotRef: MutableRefObject<Problem | null>;
+  runScenarioSnapshotRef: MutableRefObject<Scenario | null>;
   addResult: (
     solution: Solution,
     solverSettings: SolverSettings,
     customName?: string,
-    snapshotProblemOverride?: Problem,
-  ) => ProblemResult | null;
+    snapshotScenarioOverride?: Scenario,
+  ) => ScenarioResult | null;
   addNotification: AddNotification;
   cancelledRef: MutableRefObject<boolean>;
   restartAfterSaveRef: MutableRefObject<boolean>;
@@ -25,10 +25,10 @@ interface SaveBestSoFarArgs {
 
 export async function saveBestSoFar({
   solverState,
-  problem,
+  scenario,
   runSettings,
   solverSettings,
-  runProblemSnapshotRef,
+  runScenarioSnapshotRef,
   addResult,
   addNotification,
   cancelledRef,
@@ -60,17 +60,17 @@ export async function saveBestSoFar({
     });
 
     try {
-      const problemForEval = problem ? { ...problem, settings: runSettings || solverSettings } : undefined;
-      if (!problemForEval) throw new Error('No problem available for evaluation');
+      const scenarioForEval = scenario ? { ...scenario, settings: runSettings || solverSettings } : undefined;
+      if (!scenarioForEval) throw new Error('No scenario available for evaluation');
 
-      const evaluated = await wasmService.evaluateSolution(problemForEval, assignments);
+      const evaluated = await wasmService.evaluateSolution(scenarioForEval, assignments);
       const evaluatedWithRunMeta = {
         ...evaluated,
         iteration_count: lastProgress.iteration,
         elapsed_time_ms: lastProgress.elapsed_seconds * 1000,
       } as typeof evaluated;
       const settingsForSave = runSettings || solverSettings;
-      addResult(evaluatedWithRunMeta, settingsForSave, undefined, runProblemSnapshotRef.current || undefined);
+      addResult(evaluatedWithRunMeta, settingsForSave, undefined, runScenarioSnapshotRef.current || undefined);
     } catch (e) {
       console.error('[SolverPanel] Failed to evaluate snapshot metrics:', e);
       const fallbackSolution = {
@@ -86,7 +86,7 @@ export async function saveBestSoFar({
         weighted_constraint_penalty: 0,
       } as unknown as Solution;
       const settingsForSave = runSettings || solverSettings;
-      if (addResult(fallbackSolution, settingsForSave, undefined, runProblemSnapshotRef.current || undefined)) {
+      if (addResult(fallbackSolution, settingsForSave, undefined, runScenarioSnapshotRef.current || undefined)) {
         addNotification({
           type: 'warning',
           title: 'Saved Snapshot (Partial Metrics)',

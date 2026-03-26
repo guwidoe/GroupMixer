@@ -10,9 +10,9 @@ export function Navigation() {
 
   const tabs = [
     {
-      id: 'problem',
-      path: '/app/problem',
-      label: 'Problem Setup',
+      id: 'scenario',
+      path: '/app/scenario',
+      label: 'Setup',
       description: 'Configure people, sessions, and constraints',
     },
     {

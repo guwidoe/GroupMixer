@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { NormalizedSchedule } from "../../../models/normalize";
-import type { Problem } from "../../../../types/index";
+import type { Scenario } from "../../../../types/index";
 import type {
   GroupLayout,
   SessionTransition,
@@ -9,7 +9,7 @@ import type {
   PlaybackState,
 } from "../types";
 
-// Calculate group positions in a circle layout - SCALED based on problem size
+// Calculate group positions in a circle layout - SCALED based on scenario size
 function calculateGroupLayouts(
   groups: Array<{ id: string; size: number }>,
   totalPeople: number
@@ -187,14 +187,14 @@ export interface PersonSessionData {
 }
 
 function buildPersonSessionData(
-  problem: Problem,
+  scenario: Scenario,
   schedule: NormalizedSchedule,
   groupLayouts: Map<string, GroupLayout>
 ): PersonSessionData[] {
   const peopleMap = new Map<string, PersonSessionData>();
 
   // Initialize all people
-  for (const person of problem.people) {
+  for (const person of scenario.people) {
     const name = person.attributes?.name || person.id;
     peopleMap.set(person.id, {
       personId: person.id,
@@ -267,21 +267,21 @@ export interface AnimationStateResult {
 }
 
 export function useAnimationState(
-  problem: Problem,
+  scenario: Scenario,
   schedule: NormalizedSchedule
 ): AnimationStateResult {
-  const totalPeople = problem.people.length;
+  const totalPeople = scenario.people.length;
 
   // Memoize group layouts - now scaled
   const groupLayouts = useMemo(
-    () => calculateGroupLayouts(problem.groups, totalPeople),
-    [problem.groups, totalPeople]
+    () => calculateGroupLayouts(scenario.groups, totalPeople),
+    [scenario.groups, totalPeople]
   );
 
   // Calculate scene scale for camera
   const sceneScale = useMemo(
-    () => getSceneScale(totalPeople, problem.groups.length),
-    [totalPeople, problem.groups.length]
+    () => getSceneScale(totalPeople, scenario.groups.length),
+    [totalPeople, scenario.groups.length]
   );
 
   // Build transitions
@@ -289,8 +289,8 @@ export function useAnimationState(
 
   // Precompute all person positions for all sessions
   const personSessionData = useMemo(
-    () => buildPersonSessionData(problem, schedule, groupLayouts),
-    [problem, schedule, groupLayouts]
+    () => buildPersonSessionData(scenario, schedule, groupLayouts),
+    [scenario, schedule, groupLayouts]
   );
 
   const initialPlayback: PlaybackState = {

@@ -1,7 +1,7 @@
 export { buildAttributeDefinitions } from './buildAttributeDefinitions';
 export { buildConstraints } from './buildConstraints';
 export { buildGroups } from './buildGroups';
-export { buildProblemFromDraft } from './buildProblemFromDraft';
+export { buildScenarioFromDraft } from './buildScenarioFromDraft';
 export { parseParticipantInput } from './parseParticipantInput';
-export type { QuickSetupProblemBuildResult } from './buildProblemFromDraft';
+export type { QuickSetupScenarioBuildResult } from './buildScenarioFromDraft';
 export type { ParsedParticipantInput } from './parseParticipantInput';

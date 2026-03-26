@@ -4,7 +4,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ResultsSchedule } from "./ResultsSchedule";
-import { createSampleProblem, createSampleSolution } from "../../test/fixtures";
+import { createSampleScenario, createSampleSolution } from "../../test/fixtures";
 
 vi.mock("./ResultsScheduleGrid", () => ({
   ResultsScheduleGrid: ({ sessionData }: { sessionData: Array<{ sessionIndex: number }> }) => (
@@ -13,8 +13,8 @@ vi.mock("./ResultsScheduleGrid", () => ({
 }));
 
 vi.mock("./ResultsScheduleList", () => ({
-  ResultsScheduleList: ({ effectiveProblem }: { effectiveProblem: { people: Array<unknown> } }) => (
-    <div>list view ({effectiveProblem.people.length})</div>
+  ResultsScheduleList: ({ effectiveScenario }: { effectiveScenario: { people: Array<unknown> } }) => (
+    <div>list view ({effectiveScenario.people.length})</div>
   ),
 }));
 
@@ -24,7 +24,7 @@ vi.mock("./ResultsScheduleVisualization", () => ({
   ),
 }));
 
-const effectiveProblem = createSampleProblem();
+const effectiveScenario = createSampleScenario();
 const solution = createSampleSolution();
 const sessionData = [
   {
@@ -34,7 +34,7 @@ const sessionData = [
       {
         id: "g1",
         size: 2,
-        people: effectiveProblem.people.slice(0, 2),
+        people: effectiveScenario.people.slice(0, 2),
       },
     ],
   },
@@ -47,7 +47,7 @@ describe("ResultsSchedule", () => {
         viewMode="grid"
         onViewModeChange={vi.fn()}
         sessionData={sessionData}
-        effectiveProblem={effectiveProblem}
+        effectiveScenario={effectiveScenario}
         solution={solution}
         vizPluginId="contact-graph"
         onVizPluginChange={vi.fn()}
@@ -62,7 +62,7 @@ describe("ResultsSchedule", () => {
         viewMode="list"
         onViewModeChange={vi.fn()}
         sessionData={sessionData}
-        effectiveProblem={effectiveProblem}
+        effectiveScenario={effectiveScenario}
         solution={solution}
         vizPluginId="contact-graph"
         onVizPluginChange={vi.fn()}
@@ -76,7 +76,7 @@ describe("ResultsSchedule", () => {
         viewMode="visualize"
         onViewModeChange={vi.fn()}
         sessionData={sessionData}
-        effectiveProblem={effectiveProblem}
+        effectiveScenario={effectiveScenario}
         solution={solution}
         vizPluginId="contact-graph"
         onVizPluginChange={vi.fn()}
@@ -95,7 +95,7 @@ describe("ResultsSchedule", () => {
         viewMode="grid"
         onViewModeChange={onViewModeChange}
         sessionData={sessionData}
-        effectiveProblem={effectiveProblem}
+        effectiveScenario={effectiveScenario}
         solution={solution}
         vizPluginId="contact-graph"
         onVizPluginChange={vi.fn()}

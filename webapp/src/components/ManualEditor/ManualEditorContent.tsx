@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Target } from 'lucide-react';
 import { useAppStore } from '../../store';
-import type { Constraint, Problem, Solution } from '../../types';
+import type { Constraint, Scenario, Solution } from '../../types';
 import { calculateMetrics } from '../../utils/metricCalculations';
 import { computeUniqueContacts, evaluateCompliance } from '../../services/evaluator';
 import ChangeReportModal, { ChangeReportData } from '../ChangeReportModal';
@@ -15,7 +15,7 @@ import { ManualEditorStatusBar } from './ManualEditorStatusBar';
 import { ManualEditorNotReady } from './ManualEditorNotReady';
 import { ManualEditorLeaveConfirmModal } from './ManualEditorLeaveConfirmModal';
 import type { Mode, PendingMove } from './types';
-import { cloneAssignments, groupBySessionAndGroup, snapshotToProblem } from './utils';
+import { cloneAssignments, groupBySessionAndGroup, snapshotToScenario } from './utils';
 import { useManualEditorDraft } from './hooks/useManualEditorDraft';
 import { useManualEditorEvaluation } from './hooks/useManualEditorEvaluation';
 import { useManualEditorNavigationGuard } from './hooks/useManualEditorNavigationGuard';
@@ -28,12 +28,12 @@ import { buildMoveReportData, findAssignedGroup, stagePersonMove } from './dropP
 export function ManualEditorContent() {
   const navigate = useNavigate();
   const location = useLocation();
-  const problem = useAppStore((s) => s.problem);
+  const scenario = useAppStore((s) => s.scenario);
   const solution = useAppStore((s) => s.solution);
   const addNotification = useAppStore((s) => s.addNotification);
   const addResult = useAppStore((s) => s.addResult);
-  const currentProblemId = useAppStore((s) => s.currentProblemId);
-  const savedProblems = useAppStore((s) => s.savedProblems);
+  const currentScenarioId = useAppStore((s) => s.currentScenarioId);
+  const savedScenarios = useAppStore((s) => s.savedScenarios);
   const setGlobalUnsaved = useAppStore((s) => s.setManualEditorUnsaved);
   const setLeaveHook = useAppStore((s) => s.setManualEditorLeaveHook);
 
@@ -62,37 +62,37 @@ export function ManualEditorContent() {
   const draftSchedule = useMemo(() => groupBySessionAndGroup(draftAssignments), [draftAssignments]);
 
   const currentResult = useMemo(() => {
-    if (!currentProblemId || !solution) return undefined;
-    const saved = savedProblems[currentProblemId];
+    if (!currentScenarioId || !solution) return undefined;
+    const saved = savedScenarios[currentScenarioId];
     if (!saved) return undefined;
     return saved.results.find((r) => r.solution === solution);
-  }, [currentProblemId, savedProblems, solution]);
+  }, [currentScenarioId, savedScenarios, solution]);
 
-  const effectiveProblem: Problem | null = useMemo(() => {
-    if (currentResult?.problemSnapshot) {
-      return snapshotToProblem(currentResult.problemSnapshot, currentResult.solverSettings);
+  const effectiveScenario: Scenario | null = useMemo(() => {
+    if (currentResult?.scenarioSnapshot) {
+      return snapshotToScenario(currentResult.scenarioSnapshot, currentResult.solverSettings);
     }
-    return problem;
-  }, [currentResult, problem]);
+    return scenario;
+  }, [currentResult, scenario]);
 
   const baselineMetrics = useMemo(
-    () => (effectiveProblem && solution ? calculateMetrics(effectiveProblem, solution) : null),
-    [effectiveProblem, solution],
+    () => (effectiveScenario && solution ? calculateMetrics(effectiveScenario, solution) : null),
+    [effectiveScenario, solution],
   );
   const baselineCompliance = useMemo(
-    () => (effectiveProblem && solution ? evaluateCompliance(effectiveProblem, solution) : []),
-    [effectiveProblem, solution],
+    () => (effectiveScenario && solution ? evaluateCompliance(effectiveScenario, solution) : []),
+    [effectiveScenario, solution],
   );
 
   const compliance = useMemo(
-    () => (effectiveProblem ? evaluateCompliance(effectiveProblem, { assignments: draftAssignments } as Solution) : []),
-    [effectiveProblem, draftAssignments],
+    () => (effectiveScenario ? evaluateCompliance(effectiveScenario, { assignments: draftAssignments } as Solution) : []),
+    [effectiveScenario, draftAssignments],
   );
   const complianceViolationCount = compliance.reduce((acc, c) => acc + c.violationsCount, 0);
 
   const { evaluated, evalLoading, evalError, previewDelta, computePreview, clearPreview } =
     useManualEditorEvaluation({
-      effectiveProblem,
+      effectiveScenario,
       draftAssignments,
       solution,
       complianceViolationCount,
@@ -123,29 +123,29 @@ export function ManualEditorContent() {
         count += c.violationsCount;
       }
     });
-    if (effectiveProblem) {
-      const sessions = Array.from({ length: effectiveProblem.num_sessions }, (_, i) => i);
+    if (effectiveScenario) {
+      const sessions = Array.from({ length: effectiveScenario.num_sessions }, (_, i) => i);
       sessions.forEach((s) => {
         const groups = draftSchedule[s] || {};
-        effectiveProblem.groups.forEach((g) => {
+        effectiveScenario.groups.forEach((g) => {
           const ct = (groups[g.id] || []).length;
           if (ct > g.size) count += ct - g.size;
         });
       });
     }
     return count;
-  }, [compliance, draftSchedule, effectiveProblem]);
+  }, [compliance, draftSchedule, effectiveScenario]);
 
-  const notReady = !effectiveProblem || !solution || !draft;
+  const notReady = !effectiveScenario || !solution || !draft;
 
   const saveDraft = () => {
-    if (!effectiveProblem) return;
+    if (!effectiveScenario) return;
     const draftSolution = buildManualDraftSolution({
       assignments: draftAssignments,
-      peopleCount: effectiveProblem.people.length || 1,
+      peopleCount: effectiveScenario.people.length || 1,
     });
 
-    addResult(draftSolution, effectiveProblem.settings, 'Manual Draft', effectiveProblem);
+    addResult(draftSolution, effectiveScenario.settings, 'Manual Draft', effectiveScenario);
   };
 
   const isGroupLocked = (groupId: string) => lockedGroups.has(groupId);
@@ -172,7 +172,7 @@ export function ManualEditorContent() {
   const movePerson = (personId: string, _fromGroupId: string | undefined, toGroupId: string, sessionId: number) => {
     if (!draft) return;
     const check = canDrop({
-      effectiveProblem,
+      effectiveScenario,
       draftSchedule,
       lockedPeople,
       lockedGroups,
@@ -198,13 +198,13 @@ export function ManualEditorContent() {
     removeFromStorage(sessionId, personId);
   };
 
-  const handlePullNewPeople = () => pullNewPeople({ effectiveProblem, draftAssignments, addToStorage, addNotification });
+  const handlePullNewPeople = () => pullNewPeople({ effectiveScenario, draftAssignments, addToStorage, addNotification });
   const handlePullNewConstraints = () =>
     pullNewConstraints({
-      effectiveProblem,
+      effectiveScenario,
       solution,
-      currentProblemId,
-      savedProblems,
+      currentScenarioId,
+      savedScenarios,
       setPulledConstraints,
       addNotification,
     });
@@ -212,7 +212,7 @@ export function ManualEditorContent() {
   const handleDropPerson = async (personId: string, targetGroupId: string, sessionId: number) => {
     if (!draft) return;
     const check = canDrop({
-      effectiveProblem,
+      effectiveScenario,
       draftSchedule,
       lockedPeople,
       lockedGroups,
@@ -231,8 +231,8 @@ export function ManualEditorContent() {
     const staged = stagePersonMove(prevAssignments, personId, targetGroupId, sessionId);
 
     const shouldShowReport = mode === 'warn' || mode === 'strict';
-    if (shouldShowReport && effectiveProblem) {
-      const nextReportData = await buildMoveReportData(effectiveProblem, draftAssignments, staged, compliance);
+    if (shouldShowReport && effectiveScenario) {
+      const nextReportData = await buildMoveReportData(effectiveScenario, draftAssignments, staged, compliance);
       if (nextReportData) {
         setReportData(nextReportData);
         setPendingMove({ personId, fromGroupId, toGroupId: targetGroupId, sessionId, prevAssignments });
@@ -279,8 +279,8 @@ export function ManualEditorContent() {
   const deltaScore = draftScore - baseScore;
 
   const draftUnique = evaluated?.unique_contacts ?? (() => {
-    if (!effectiveProblem) return 0;
-    const pc = effectiveProblem.people.length || 1;
+    if (!effectiveScenario) return 0;
+    const pc = effectiveScenario.people.length || 1;
     return computeUniqueContacts(draftAssignments, pc).uniqueContacts;
   })();
   const baseUnique = solution?.unique_contacts || 0;
@@ -312,7 +312,7 @@ export function ManualEditorContent() {
 
   const handleSaveAndContinue = () =>
     saveAndContinue({
-      effectiveProblem,
+      effectiveScenario,
       draftAssignments,
       evaluated,
       setShowLeaveConfirm,
@@ -357,7 +357,7 @@ export function ManualEditorContent() {
               avgUniqueContacts={baselineMetrics ? baselineMetrics.avgUniqueContacts : null}
               totalViolations={totalViolations}
               hardViolationsCount={hardViolationsCount}
-              sessionCount={effectiveProblem ? effectiveProblem.num_sessions : 0}
+              sessionCount={effectiveScenario ? effectiveScenario.num_sessions : 0}
               activeSession={activeSession}
               onSelectSession={setActiveSession}
             />
@@ -365,7 +365,7 @@ export function ManualEditorContent() {
               <div className="flex-1 space-y-4">
                 <div className="flex-1">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {(effectiveProblem ? effectiveProblem.groups : []).map((group) => {
+                    {(effectiveScenario ? effectiveScenario.groups : []).map((group) => {
                       const peopleIds = draftSchedule[activeSession]?.[group.id] || [];
                       return (
                         <ManualEditorGroupColumn
@@ -373,7 +373,7 @@ export function ManualEditorContent() {
                           group={group}
                           activeSession={activeSession}
                           peopleIds={peopleIds}
-                          effectiveProblem={effectiveProblem}
+                          effectiveScenario={effectiveScenario}
                           draggingPerson={draggingPerson}
                           previewDelta={previewDelta}
                           isGroupLocked={isGroupLocked}
@@ -389,7 +389,7 @@ export function ManualEditorContent() {
                     })}
                   </div>
                 </div>
-                <ConstraintComplianceCards problem={effectiveProblem} solution={complianceSolution} />
+                <ConstraintComplianceCards scenario={effectiveScenario} solution={complianceSolution} />
                 <ManualEditorStatusBar
                   evalLoading={evalLoading}
                   evalError={evalError}
@@ -404,7 +404,7 @@ export function ManualEditorContent() {
               <ManualEditorStoragePanel
                 activeSession={activeSession}
                 storedIds={Array.from(getStorageSet(activeSession))}
-                effectiveProblem={effectiveProblem}
+                effectiveScenario={effectiveScenario}
                 pulledConstraints={pulledConstraints}
                 isPersonLocked={isPersonLocked}
                 onDropToStorage={handleDropToStorage}

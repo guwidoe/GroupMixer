@@ -1,30 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createResultActions } from './problemManagerSlice/resultActions';
+import { createResultActions } from './scenarioManagerSlice/resultActions';
 import type { AppStore } from '../types';
-import { createSampleProblem, createSampleSolution, createSampleSolverSettings, createSavedProblem } from '../../test/fixtures';
-import type { ProblemResult } from '../../types';
-import { problemStorage } from '../../services/problemStorage';
+import { createSampleScenario, createSampleSolution, createSampleSolverSettings, createSavedScenario } from '../../test/fixtures';
+import type { ScenarioResult } from '../../types';
+import { scenarioStorage } from '../../services/scenarioStorage';
 
-vi.mock('../../services/problemStorage', () => ({
-  problemStorage: {
+vi.mock('../../services/scenarioStorage', () => ({
+  scenarioStorage: {
     addResult: vi.fn(),
-    getProblem: vi.fn(),
+    getScenario: vi.fn(),
   },
 }));
 
 function createHarness(overrides: Partial<AppStore> = {}) {
   let state = {
-    problem: createSampleProblem(),
-    currentProblemId: 'problem-1',
-    savedProblems: {
-      'problem-1': createSavedProblem({ id: 'problem-1', results: [] }),
+    scenario: createSampleScenario(),
+    currentScenarioId: 'scenario-1',
+    savedScenarios: {
+      'scenario-1': createSavedScenario({ id: 'scenario-1', results: [] }),
     },
     selectedResultIds: [],
     ui: {
-      activeTab: 'problem',
+      activeTab: 'scenario',
       isLoading: false,
       notifications: [],
-      showProblemManager: false,
+      showScenarioManager: false,
       showResultComparison: false,
       warmStartResultId: null,
     },
@@ -35,7 +35,7 @@ function createHarness(overrides: Partial<AppStore> = {}) {
         duration: notification.duration ?? 5000,
       });
     }),
-    loadSavedProblems: vi.fn(),
+    loadSavedScenarios: vi.fn(),
     ...overrides,
   } as unknown as AppStore;
 
@@ -58,112 +58,112 @@ describe('createResultActions', () => {
   });
 
   it('returns the saved result and updates store state when persistence succeeds', () => {
-    const savedProblem = createSavedProblem({ id: 'problem-1', results: [] });
-    const persistedResult: ProblemResult = {
+    const savedScenario = createSavedScenario({ id: 'scenario-1', results: [] });
+    const persistedResult: ScenarioResult = {
       id: 'result-2',
       name: 'Result 1',
       solution: createSampleSolution(),
       solverSettings: createSampleSolverSettings(),
-      problemSnapshot: {
-        people: savedProblem.problem.people,
-        groups: savedProblem.problem.groups,
-        num_sessions: savedProblem.problem.num_sessions,
-        objectives: savedProblem.problem.objectives,
-        constraints: savedProblem.problem.constraints,
+      scenarioSnapshot: {
+        people: savedScenario.scenario.people,
+        groups: savedScenario.scenario.groups,
+        num_sessions: savedScenario.scenario.num_sessions,
+        objectives: savedScenario.scenario.objectives,
+        constraints: savedScenario.scenario.constraints,
       },
       timestamp: 123,
       duration: 456,
     };
-    vi.mocked(problemStorage.addResult).mockReturnValue(persistedResult);
-    vi.mocked(problemStorage.getProblem).mockReturnValue({
-      ...savedProblem,
+    vi.mocked(scenarioStorage.addResult).mockReturnValue(persistedResult);
+    vi.mocked(scenarioStorage.getScenario).mockReturnValue({
+      ...savedScenario,
       results: [persistedResult],
     });
 
     const harness = createHarness({
-      problem: savedProblem.problem,
-      savedProblems: { [savedProblem.id]: savedProblem },
-      currentProblemId: savedProblem.id,
+      scenario: savedScenario.scenario,
+      savedScenarios: { [savedScenario.id]: savedScenario },
+      currentScenarioId: savedScenario.id,
     });
 
     const result = harness.actions.addResult(
       createSampleSolution(),
       createSampleSolverSettings(),
       undefined,
-      savedProblem.problem,
+      savedScenario.scenario,
     );
 
     expect(result).toEqual(persistedResult);
-    expect(problemStorage.addResult).toHaveBeenCalledWith(
-      savedProblem.id,
+    expect(scenarioStorage.addResult).toHaveBeenCalledWith(
+      savedScenario.id,
       expect.any(Object),
       expect.any(Object),
       undefined,
-      savedProblem.problem,
+      savedScenario.scenario,
     );
-    expect(harness.getState().savedProblems[savedProblem.id].results).toEqual([persistedResult]);
+    expect(harness.getState().savedScenarios[savedScenario.id].results).toEqual([persistedResult]);
     expect(harness.getState().ui.notifications.at(-1)).toMatchObject({
       type: 'success',
       title: 'Result Saved',
     });
   });
 
-  it('prefers the persisted problem snapshot after saving so results are not duplicated in state', () => {
-    const existingResult: ProblemResult = {
+  it('prefers the persisted scenario snapshot after saving so results are not duplicated in state', () => {
+    const existingResult: ScenarioResult = {
       id: 'result-1',
       name: 'Older Result',
       solution: createSampleSolution({ final_score: 20 }),
       solverSettings: createSampleSolverSettings(),
-      problemSnapshot: undefined,
+      scenarioSnapshot: undefined,
       timestamp: 100,
       duration: 100,
     };
-    const savedProblem = createSavedProblem({ id: 'problem-1', results: [existingResult] });
-    const persistedResult: ProblemResult = {
+    const savedScenario = createSavedScenario({ id: 'scenario-1', results: [existingResult] });
+    const persistedResult: ScenarioResult = {
       id: 'result-2',
       name: 'Result 2',
       solution: createSampleSolution(),
       solverSettings: createSampleSolverSettings(),
-      problemSnapshot: {
-        people: savedProblem.problem.people,
-        groups: savedProblem.problem.groups,
-        num_sessions: savedProblem.problem.num_sessions,
-        objectives: savedProblem.problem.objectives,
-        constraints: savedProblem.problem.constraints,
+      scenarioSnapshot: {
+        people: savedScenario.scenario.people,
+        groups: savedScenario.scenario.groups,
+        num_sessions: savedScenario.scenario.num_sessions,
+        objectives: savedScenario.scenario.objectives,
+        constraints: savedScenario.scenario.constraints,
       },
       timestamp: 123,
       duration: 456,
     };
 
-    vi.mocked(problemStorage.addResult).mockReturnValue(persistedResult);
-    vi.mocked(problemStorage.getProblem).mockReturnValue({
-      ...savedProblem,
+    vi.mocked(scenarioStorage.addResult).mockReturnValue(persistedResult);
+    vi.mocked(scenarioStorage.getScenario).mockReturnValue({
+      ...savedScenario,
       results: [existingResult, persistedResult],
     });
 
     const harness = createHarness({
-      problem: savedProblem.problem,
-      savedProblems: { [savedProblem.id]: savedProblem },
-      currentProblemId: savedProblem.id,
+      scenario: savedScenario.scenario,
+      savedScenarios: { [savedScenario.id]: savedScenario },
+      currentScenarioId: savedScenario.id,
     });
 
-    harness.actions.addResult(createSampleSolution(), createSampleSolverSettings(), undefined, savedProblem.problem);
+    harness.actions.addResult(createSampleSolution(), createSampleSolverSettings(), undefined, savedScenario.scenario);
 
-    expect(harness.getState().savedProblems[savedProblem.id].results).toEqual([existingResult, persistedResult]);
+    expect(harness.getState().savedScenarios[savedScenario.id].results).toEqual([existingResult, persistedResult]);
   });
 
-  it('returns null and reports an error when there is no current problem id', () => {
+  it('returns null and reports an error when there is no current scenario id', () => {
     const harness = createHarness({
-      currentProblemId: null,
+      currentScenarioId: null,
     });
 
     const result = harness.actions.addResult(createSampleSolution(), createSampleSolverSettings());
 
     expect(result).toBeNull();
-    expect(problemStorage.addResult).not.toHaveBeenCalled();
+    expect(scenarioStorage.addResult).not.toHaveBeenCalled();
     expect(harness.getState().ui.notifications.at(-1)).toMatchObject({
       type: 'error',
-      title: 'No Current Problem',
+      title: 'No Current Scenario',
     });
   });
 });

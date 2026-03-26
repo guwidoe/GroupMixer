@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResultsView } from './ResultsView';
 import { useAppStore } from '../store';
-import { createSampleProblem, createSampleSolution, createSavedProblem } from '../test/fixtures';
+import { createSampleScenario, createSampleSolution, createSavedScenario } from '../test/fixtures';
 
 vi.mock('../hooks', async () => {
   const React = await import('react');
@@ -15,8 +15,8 @@ vi.mock('../hooks', async () => {
 });
 
 vi.mock('./ConstraintComplianceCards', () => ({
-  default: ({ problem, solution }: { problem: { people: unknown[] }; solution: { assignments: unknown[] } }) => (
-    <div>{`compliance:${problem.people.length}:${solution.assignments.length}`}</div>
+  default: ({ scenario, solution }: { problem: { people: unknown[] }; solution: { assignments: unknown[] } }) => (
+    <div>{`compliance:${scenario.people.length}:${solution.assignments.length}`}</div>
   ),
 }));
 
@@ -36,13 +36,13 @@ vi.mock('./ResultsView/ResultsMetrics', () => ({
 vi.mock('./ResultsView/ResultsSchedule', () => ({
   ResultsSchedule: ({
     sessionData,
-    effectiveProblem,
+    effectiveScenario,
     vizPluginId,
   }: {
     sessionData: Array<unknown>;
-    effectiveProblem: { groups: Array<{ id: string }> };
+    effectiveScenario: { groups: Array<{ id: string }> };
     vizPluginId: string;
-  }) => <div>{`schedule:${sessionData.length}:${effectiveProblem.groups[0]?.id ?? 'none'}:${vizPluginId}`}</div>,
+  }) => <div>{`schedule:${sessionData.length}:${effectiveScenario.groups[0]?.id ?? 'none'}:${vizPluginId}`}</div>,
 }));
 
 describe('ResultsView', () => {
@@ -56,7 +56,7 @@ describe('ResultsView', () => {
 
   it('shows the empty results state when no solution is selected', () => {
     useAppStore.setState({
-      problem: createSampleProblem(),
+      scenario: createSampleScenario(),
       solution: null,
     });
 
@@ -65,12 +65,12 @@ describe('ResultsView', () => {
     expect(screen.getByRole('heading', { name: /no results yet/i })).toBeInTheDocument();
   });
 
-  it('shows the missing-problem empty state when a solution exists without a recoverable problem', () => {
+  it('shows the missing-scenario empty state when a solution exists without a recoverable scenario', () => {
     useAppStore.setState({
-      problem: null,
+      scenario: null,
       solution: createSampleSolution(),
-      currentProblemId: null,
-      savedProblems: {},
+      currentScenarioId: null,
+      savedScenarios: {},
     });
 
     render(<ResultsView />);
@@ -80,32 +80,32 @@ describe('ResultsView', () => {
 
   it('hydrates child views from the saved result snapshot and restores that configuration', async () => {
     const user = userEvent.setup();
-    const savedProblem = createSavedProblem({
+    const savedScenario = createSavedScenario({
       name: 'Workshop',
-      problem: createSampleProblem({ groups: [{ id: 'live-group', size: 4 }], num_sessions: 1 }),
+      scenario: createSampleScenario({ groups: [{ id: 'live-group', size: 4 }], num_sessions: 1 }),
     });
-    savedProblem.results = [
+    savedScenario.results = [
       {
-        ...savedProblem.results[0],
+        ...savedScenario.results[0],
         name: 'Snapshot Result',
-        problemSnapshot: {
-          people: savedProblem.problem.people,
+        scenarioSnapshot: {
+          people: savedScenario.scenario.people,
           groups: [{ id: 'snap-group', size: 4 }],
           num_sessions: 2,
-          objectives: savedProblem.problem.objectives,
-          constraints: savedProblem.problem.constraints,
+          objectives: savedScenario.scenario.objectives,
+          constraints: savedScenario.scenario.constraints,
         },
       },
     ];
-    const restoreResultAsNewProblem = vi.fn();
+    const restoreResultAsNewScenario = vi.fn();
 
     useAppStore.setState({
-      problem: savedProblem.problem,
-      solution: savedProblem.results[0].solution,
+      scenario: savedScenario.scenario,
+      solution: savedScenario.results[0].solution,
       solverState: useAppStore.getState().solverState,
-      currentProblemId: savedProblem.id,
-      savedProblems: { [savedProblem.id]: savedProblem },
-      restoreResultAsNewProblem: restoreResultAsNewProblem as never,
+      currentScenarioId: savedScenario.id,
+      savedScenarios: { [savedScenario.id]: savedScenario },
+      restoreResultAsNewScenario: restoreResultAsNewScenario as never,
     });
 
     render(<ResultsView />);
@@ -117,8 +117,8 @@ describe('ResultsView', () => {
 
     await user.click(screen.getByRole('button', { name: /restore/i }));
 
-    expect(restoreResultAsNewProblem).toHaveBeenCalledWith(
-      savedProblem.results[0].id,
+    expect(restoreResultAsNewScenario).toHaveBeenCalledWith(
+      savedScenario.results[0].id,
       'Workshop – Snapshot Result (restored)',
     );
   });

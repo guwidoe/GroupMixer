@@ -3,7 +3,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
 import { NotificationContainer } from './components/NotificationContainer';
-import { ProblemManager } from './components/ProblemManager';
+import { ScenarioManager } from './components/ScenarioManager';
 import { ResultComparison } from './components/ResultComparison';
 import { Seo } from './components/Seo';
 import { buildTelemetryPayload, getActiveTelemetryAttribution, trackLandingEvent } from './services/landingInstrumentation';
@@ -11,11 +11,11 @@ import { getAppSeo } from './seo/appRouteSeo';
 import { useAppStore } from './store';
 
 function MainApp() {
-  const { ui, problem, currentProblemId, initializeApp, setShowProblemManager } = useAppStore();
+  const { ui, scenario, currentScenarioId, initializeApp, setShowScenarioManager } = useAppStore();
   const location = useLocation();
   const hasTrackedAppEntryRef = useRef(false);
   const seo = getAppSeo(location.pathname);
-  const isProblemSetupRoute = location.pathname.startsWith('/app/problem');
+  const isScenarioSetupRoute = location.pathname.startsWith('/app/scenario');
 
   useEffect(() => {
     initializeApp();
@@ -52,9 +52,9 @@ function MainApp() {
       <Header />
       <Navigation />
 
-      <main className={isProblemSetupRoute ? 'md:h-[calc(100vh-7.5rem)] md:overflow-hidden' : 'container mx-auto px-4 py-6'}>
-        {problem && !currentProblemId && (
-          <div className={isProblemSetupRoute ? 'px-4 pt-6' : ''}>
+      <main className={isScenarioSetupRoute ? 'md:h-[calc(100vh-7.5rem)] md:overflow-hidden' : 'container mx-auto px-4 py-6'}>
+        {scenario && !currentScenarioId && (
+          <div className={isScenarioSetupRoute ? 'px-4 pt-6' : ''}>
             <div
               className="mb-6 flex flex-col gap-3 rounded-2xl border px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
               style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
@@ -78,16 +78,16 @@ function MainApp() {
           </div>
         )}
 
-        <div className={isProblemSetupRoute ? 'animate-fade-in' : 'animate-fade-in mt-6'}>
+        <div className={isScenarioSetupRoute ? 'animate-fade-in' : 'animate-fade-in mt-6'}>
           <Outlet />
         </div>
       </main>
 
       <NotificationContainer />
 
-      <ProblemManager
-        isOpen={ui.showProblemManager}
-        onClose={() => setShowProblemManager(false)}
+      <ScenarioManager
+        isOpen={ui.showScenarioManager}
+        onClose={() => setShowScenarioManager(false)}
       />
 
       {ui.showResultComparison && <ResultComparison />}

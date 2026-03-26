@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Problem } from '../types';
+import type { Scenario } from '../types';
 
 interface AttributeBalanceConstraint {
   type: 'AttributeBalance';
@@ -12,14 +12,14 @@ interface AttributeBalanceConstraint {
 
 interface Props {
   constraints: AttributeBalanceConstraint[];
-  problem: Problem;
+  scenario: Scenario;
 }
 
-const AttributeBalanceDashboard: React.FC<Props> = ({ constraints, problem }) => {
+const AttributeBalanceDashboard: React.FC<Props> = ({ constraints, scenario }) => {
   // === Session filter state ===
   const [sessionFilter, setSessionFilter] = useState<number>(0); // default to first session
 
-  if (constraints.length === 0 || !problem) return null;
+  if (constraints.length === 0 || !scenario) return null;
 
   const filteredConstraints = constraints.filter(c => {
     // Include if constraint applies to current session
@@ -62,7 +62,7 @@ const AttributeBalanceDashboard: React.FC<Props> = ({ constraints, problem }) =>
 
   // Available counts from people
   const available: Record<string, Record<string, number>> = {};
-  problem.people.forEach((p) => {
+  scenario.people.forEach((p) => {
     Object.entries(p.attributes).forEach(([k, v]) => {
       if (!available[k]) available[k] = {};
       const val = String(v);
@@ -73,11 +73,11 @@ const AttributeBalanceDashboard: React.FC<Props> = ({ constraints, problem }) =>
   return (
     <div className="rounded-md border p-4 space-y-4" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}>
       {/* Session selector */}
-      {problem.num_sessions > 1 && (
+      {scenario.num_sessions > 1 && (
         <div className="flex items-center gap-2 mb-2" onWheel={(e)=>{
               e.preventDefault();
               const dir = e.deltaY > 0 ? 1 : -1;
-              setSessionFilter(prev => (prev + dir + problem.num_sessions) % problem.num_sessions);
+              setSessionFilter(prev => (prev + dir + scenario.num_sessions) % scenario.num_sessions);
             }}>
           <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Session:</span>
           <select
@@ -86,7 +86,7 @@ const AttributeBalanceDashboard: React.FC<Props> = ({ constraints, problem }) =>
             className="text-xs px-1 py-0.5 rounded border"
             style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', borderColor: 'var(--border-secondary)' }}
           >
-            {Array.from({length: problem.num_sessions},(_,i)=>i).map(s=>(
+            {Array.from({length: scenario.num_sessions},(_,i)=>i).map(s=>(
               <option key={s} value={s}>{s+1}</option>
             ))}
           </select>

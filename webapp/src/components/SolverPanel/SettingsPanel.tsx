@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import type { Problem, SavedProblem, SolverSettings } from '../../types';
+import type { Scenario, SavedScenario, SolverSettings } from '../../types';
 import type { SolverFormInputs } from './SettingsPanel/types';
 import { AutoConfigPanel } from './SettingsPanel/AutoConfigPanel';
 import { WarmStartSelector } from './SettingsPanel/WarmStartSelector';
@@ -21,9 +21,9 @@ interface SettingsPanelProps {
   setDesiredRuntimeSettings: React.Dispatch<React.SetStateAction<number>>;
   onAutoSetSettings: () => Promise<void>;
   onStartSolver: (useRecommended: boolean) => Promise<void>;
-  problem: Problem | null;
-  savedProblems: Record<string, SavedProblem>;
-  currentProblemId: string | null;
+  scenario: Scenario | null;
+  savedScenarios: Record<string, SavedScenario>;
+  currentScenarioId: string | null;
   warmStartSelection: string | null;
   setWarmStartSelection: React.Dispatch<React.SetStateAction<string | null>>;
   setWarmStartFromResult: (id: string | null) => void;
@@ -41,9 +41,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   setDesiredRuntimeSettings,
   onAutoSetSettings,
   onStartSolver,
-  problem,
-  savedProblems,
-  currentProblemId,
+  scenario,
+  savedScenarios,
+  currentScenarioId,
   warmStartSelection,
   setWarmStartSelection,
   setWarmStartFromResult,
@@ -67,15 +67,15 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
       </div>
 
       <WarmStartSelector
-        savedProblems={savedProblems}
-        currentProblemId={currentProblemId}
+        savedScenarios={savedScenarios}
+        currentScenarioId={currentScenarioId}
         warmStartSelection={warmStartSelection}
         setWarmStartSelection={setWarmStartSelection}
         setWarmStartFromResult={setWarmStartFromResult}
       />
 
       <AllowedSessionsSelector
-        problem={problem}
+        scenario={scenario}
         solverSettings={solverSettings}
         allowedSessionsLocal={allowedSessionsLocal}
         setAllowedSessionsLocal={setAllowedSessionsLocal}

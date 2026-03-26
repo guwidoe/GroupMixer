@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { Person, Problem, Solution } from '../../types';
+import type { Person, Scenario, Solution } from '../../types';
 import type { CardData, ViolationDetail } from './types';
 
 type ScheduleMap = Record<number, Record<string, string[]>>;
@@ -22,19 +22,19 @@ function useSchedule(solution: Solution): ScheduleMap {
   }, [solution]);
 }
 
-export function useCompliance(problem: Problem, solution: Solution): CardData[] {
+export function useCompliance(scenario: Scenario, solution: Solution): CardData[] {
   const schedule = useSchedule(solution);
-  const personMap = useMemo(() => new Map<string, Person>(problem.people.map((person) => [person.id, person])), [problem.people]);
+  const personMap = useMemo(() => new Map<string, Person>(scenario.people.map((person) => [person.id, person])), [scenario.people]);
 
   return useMemo(() => {
     const cards: CardData[] = [];
 
-    problem.constraints.forEach((constraint, index) => {
+    scenario.constraints.forEach((constraint, index) => {
       switch (constraint.type) {
         case 'PairMeetingCount': {
           const sessions = constraint.sessions;
           const [idA, idB] = constraint.people;
-          const subset = sessions && sessions.length > 0 ? sessions : Array.from({ length: problem.num_sessions }, (_, i) => i);
+          const subset = sessions && sessions.length > 0 ? sessions : Array.from({ length: scenario.num_sessions }, (_, i) => i);
 
           let count = 0;
           const perSession: Array<{ session: number; together: boolean; groupId?: string }> = [];
@@ -84,7 +84,7 @@ export function useCompliance(problem: Problem, solution: Solution): CardData[] 
             constraint,
             type: constraint.type,
             title: `Pair Meeting Count (${mode.replace('_', ' ')})`,
-            subtitle: `${formatSessions(sessions, problem.num_sessions)} • Target: ${target} • Weight: ${constraint.penalty_weight}`,
+            subtitle: `${formatSessions(sessions, scenario.num_sessions)} • Target: ${target} • Weight: ${constraint.penalty_weight}`,
             adheres: deviations === 0,
             violationsCount: deviations,
             details,
@@ -140,7 +140,7 @@ export function useCompliance(problem: Problem, solution: Solution): CardData[] 
           break;
         }
         case 'AttributeBalance': {
-          const sessions = constraint.sessions ?? Array.from({ length: problem.num_sessions }, (_, i) => i);
+          const sessions = constraint.sessions ?? Array.from({ length: scenario.num_sessions }, (_, i) => i);
           const details: ViolationDetail[] = [];
           let violations = 0;
           const mode = constraint.mode;
@@ -171,7 +171,7 @@ export function useCompliance(problem: Problem, solution: Solution): CardData[] 
             type: constraint.type,
             title: `Attribute Balance – ${constraint.group_id} (${constraint.attribute_key})`,
             subtitle:
-              `${formatSessions(constraint.sessions, problem.num_sessions)} • Weight: ${constraint.penalty_weight}` +
+              `${formatSessions(constraint.sessions, scenario.num_sessions)} • Weight: ${constraint.penalty_weight}` +
               (mode === 'at_least' ? ' • Mode: At least' : ''),
             adheres: violations === 0,
             violationsCount: violations,
@@ -204,7 +204,7 @@ export function useCompliance(problem: Problem, solution: Solution): CardData[] 
             constraint,
             type: constraint.type,
             title: 'Immovable Person',
-            subtitle: `${formatSessions(constraint.sessions, problem.num_sessions)} • Group: ${constraint.group_id}`,
+            subtitle: `${formatSessions(constraint.sessions, scenario.num_sessions)} • Group: ${constraint.group_id}`,
             adheres: violations === 0,
             violationsCount: violations,
             details,
@@ -212,7 +212,7 @@ export function useCompliance(problem: Problem, solution: Solution): CardData[] 
           break;
         }
         case 'ImmovablePeople': {
-          const sessions = constraint.sessions ?? Array.from({ length: problem.num_sessions }, (_, i) => i);
+          const sessions = constraint.sessions ?? Array.from({ length: scenario.num_sessions }, (_, i) => i);
           const details: ViolationDetail[] = [];
           let violations = 0;
           sessions.forEach((session) => {
@@ -229,7 +229,7 @@ export function useCompliance(problem: Problem, solution: Solution): CardData[] 
             constraint,
             type: constraint.type,
             title: 'Immovable People',
-            subtitle: `${formatSessions(constraint.sessions, problem.num_sessions)} • Group: ${constraint.group_id}`,
+            subtitle: `${formatSessions(constraint.sessions, scenario.num_sessions)} • Group: ${constraint.group_id}`,
             adheres: violations === 0,
             violationsCount: violations,
             details,
@@ -238,7 +238,7 @@ export function useCompliance(problem: Problem, solution: Solution): CardData[] 
         }
         case 'MustStayTogether':
         case 'ShouldStayTogether': {
-          const sessions = constraint.sessions ?? Array.from({ length: problem.num_sessions }, (_, i) => i);
+          const sessions = constraint.sessions ?? Array.from({ length: scenario.num_sessions }, (_, i) => i);
           const details: ViolationDetail[] = [];
           let violations = 0;
           sessions.forEach((session) => {
@@ -262,7 +262,7 @@ export function useCompliance(problem: Problem, solution: Solution): CardData[] 
             constraint,
             type: constraint.type,
             title: constraint.type === 'MustStayTogether' ? 'Must Stay Together' : 'Should Stay Together',
-            subtitle: formatSessions(constraint.sessions, problem.num_sessions),
+            subtitle: formatSessions(constraint.sessions, scenario.num_sessions),
             adheres: violations === 0,
             violationsCount: violations,
             details,
@@ -270,7 +270,7 @@ export function useCompliance(problem: Problem, solution: Solution): CardData[] 
           break;
         }
         case 'ShouldNotBeTogether': {
-          const sessions = constraint.sessions ?? Array.from({ length: problem.num_sessions }, (_, i) => i);
+          const sessions = constraint.sessions ?? Array.from({ length: scenario.num_sessions }, (_, i) => i);
           const details: ViolationDetail[] = [];
           let violations = 0;
           sessions.forEach((session) => {
@@ -288,7 +288,7 @@ export function useCompliance(problem: Problem, solution: Solution): CardData[] 
             constraint,
             type: constraint.type,
             title: 'Should Not Be Together',
-            subtitle: `${formatSessions(constraint.sessions, problem.num_sessions)} • Weight: ${constraint.penalty_weight}`,
+            subtitle: `${formatSessions(constraint.sessions, scenario.num_sessions)} • Weight: ${constraint.penalty_weight}`,
             adheres: violations === 0,
             violationsCount: violations,
             details,
@@ -310,5 +310,5 @@ export function useCompliance(problem: Problem, solution: Solution): CardData[] 
     });
 
     return cards;
-  }, [personMap, problem.constraints, problem.num_sessions, schedule]);
+  }, [personMap, scenario.constraints, scenario.num_sessions, schedule]);
 }

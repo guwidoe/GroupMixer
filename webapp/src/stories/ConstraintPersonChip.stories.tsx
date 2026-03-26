@@ -5,7 +5,7 @@ import type { Person } from '../types';
 
 /**
  * ConstraintPersonChip renders a person's name in a constraint context.
- * Shows warning styling when the referenced person no longer exists in the problem.
+ * Shows warning styling when the referenced person no longer exists in the scenario.
  */
 const meta: Meta<typeof ConstraintPersonChip> = {
   title: 'Components/ConstraintPersonChip',
@@ -55,7 +55,7 @@ export const MissingPerson: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'When a person referenced in a constraint has been deleted from the problem, the chip shows error styling.',
+        story: 'When a person referenced in a constraint has been deleted from the scenario, the chip shows error styling.',
       },
     },
   },

@@ -20,8 +20,8 @@ vi.mock("./MainApp", () => ({
   ),
 }));
 
-vi.mock("./components/ProblemEditor/ProblemEditor", () => ({
-  ProblemEditor: () => <div>Problem editor test stub</div>,
+vi.mock("./components/ScenarioEditor/ScenarioEditor", () => ({
+  ScenarioEditor: () => <div>Scenario editor test stub</div>,
 }));
 
 vi.mock("./components/SolverPanel", () => ({
@@ -106,20 +106,20 @@ describe("App routing", () => {
   });
 
   it("renders nested /app routes inside the main shell", async () => {
-    renderWithRouter(<App />, { route: "/app/problem/people" });
+    renderWithRouter(<App />, { route: "/app/scenario/people" });
 
     expect(await screen.findByText("Main app shell")).toBeInTheDocument();
     expect(
-      await screen.findByText("Problem editor test stub")
+      await screen.findByText("Scenario editor test stub")
     ).toBeInTheDocument();
   });
 
-  it("supports first-class problem setup subroutes like attributes", async () => {
-    renderWithRouter(<App />, { route: "/app/problem/attributes" });
+  it("supports first-class scenario setup subroutes like attributes", async () => {
+    renderWithRouter(<App />, { route: "/app/scenario/attributes" });
 
     expect(await screen.findByText("Main app shell")).toBeInTheDocument();
     expect(
-      await screen.findByText("Problem editor test stub")
+      await screen.findByText("Scenario editor test stub")
     ).toBeInTheDocument();
   });
 });

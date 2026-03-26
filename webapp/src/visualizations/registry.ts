@@ -10,7 +10,7 @@ export const visualizationPlugins: VisualizationPlugin[] = [
     label: "Schedule matrix",
     icon: LayoutGrid,
     capabilities: {
-      needsProblem: true,
+      needsScenario: true,
       supportsLive: true,
       supportsExportPng: true,
     },
@@ -21,7 +21,7 @@ export const visualizationPlugins: VisualizationPlugin[] = [
     label: "Contact network",
     icon: Share2,
     capabilities: {
-      needsProblem: true,
+      needsScenario: true,
       supportsLive: true,
       supportsExportPng: false,
     },
@@ -32,7 +32,7 @@ export const visualizationPlugins: VisualizationPlugin[] = [
     label: "3D Animation",
     icon: Box,
     capabilities: {
-      needsProblem: true,
+      needsScenario: true,
       supportsLive: false, // 3D animation works best with final results
       supportsExportPng: false,
     },

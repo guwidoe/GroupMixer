@@ -9,7 +9,7 @@ import {
   RotateCcw,
   TrendingUp,
 } from 'lucide-react';
-import type { Problem, SolverSettings, SolverState } from '../../types';
+import type { Scenario, SolverSettings, SolverState } from '../../types';
 import type { ProgressUpdate } from '../../services/wasm/types';
 import type { ScheduleSnapshot } from '../../visualizations/types';
 import { VisualizationPanel } from '../../visualizations/VisualizationPanel';
@@ -43,7 +43,7 @@ interface SolverLiveVizControls {
   liveVizState: LiveVizState | null;
   liveVizPluginId: string;
   onLiveVizPluginChange: (id: string) => void;
-  getLiveVizProblem: () => Problem | null;
+  getLiveVizScenario: () => Scenario | null;
 }
 
 interface SolverMetricsControls {
@@ -54,7 +54,7 @@ interface SolverMetricsControls {
 
 interface SolverStatusCardProps {
   solverState: SolverState;
-  problem: Problem | null;
+  scenario: Scenario | null;
   runtime: SolverRuntimeControls;
   actions: SolverActionControls;
   liveViz: SolverLiveVizControls;
@@ -63,7 +63,7 @@ interface SolverStatusCardProps {
 
 export function SolverStatusCard({
   solverState,
-  problem,
+  scenario,
   runtime,
   actions,
   liveViz,
@@ -115,7 +115,7 @@ export function SolverStatusCard({
           <button
             onClick={() => actions.onStartSolver(true)}
             className="btn-success flex-1 flex items-center justify-center space-x-2"
-            disabled={!problem}
+            disabled={!scenario}
           >
             <Play className="h-4 w-4" />
             <span>Start Solver with Automatic Settings</span>
@@ -229,8 +229,8 @@ export function SolverStatusCard({
           solverState.isRunning ? (
             liveViz.liveVizState ? (
               (() => {
-                const liveProblem = liveViz.getLiveVizProblem();
-                if (!liveProblem) return null;
+                const liveScenario = liveViz.getLiveVizScenario();
+                if (!liveScenario) return null;
                 return (
                   <div
                     className="rounded-lg border p-4"
@@ -244,7 +244,7 @@ export function SolverStatusCard({
                       onPluginChange={liveViz.onLiveVizPluginChange}
                       data={{
                         kind: 'live',
-                        problem: liveProblem,
+                        scenario: liveScenario,
                         progress: liveViz.liveVizState.progress,
                         schedule: liveViz.liveVizState.schedule,
                       }}

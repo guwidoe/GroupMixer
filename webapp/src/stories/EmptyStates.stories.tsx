@@ -55,7 +55,7 @@ export const NoPeople: Story = {
   args: {
     icon: Users,
     title: 'No people added yet',
-    description: 'Add people to get started with your optimization problem.',
+    description: 'Add people to get started with your optimization scenario.',
     actionLabel: 'Add Person',
     onAction: () => {},
   },

@@ -2,11 +2,11 @@
  * Main application store using Zustand slices pattern.
  *
  * The store is composed of multiple slices, each managing a specific domain:
- * - problemSlice: Current problem state and CRUD operations
+ * - scenarioSlice: Current scenario state and CRUD operations
  * - solutionSlice: Current solution state
  * - solverSlice: Solver execution state and progress
  * - uiSlice: UI state, notifications, modal visibility
- * - problemManagerSlice: Problem persistence, results management
+ * - scenarioManagerSlice: Scenario persistence, results management
  * - attributeSlice: Attribute definitions for person attributes
  * - demoDataSlice: Demo data loading functionality
  * - editorSlice: Manual editor state
@@ -15,17 +15,17 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { AppStore } from "./types";
-import type { AttributeDefinition, Problem, Solution } from "../types";
+import type { AttributeDefinition, Scenario, Solution } from "../types";
 import { mergeAttributeDefinitions } from "../services/demoDataService";
-import { problemStorage } from "../services/problemStorage";
+import { scenarioStorage } from "../services/scenarioStorage";
 
 import {
-  createProblemSlice,
+  createScenarioSlice,
   createSolutionSlice,
   createSolverSlice,
   createUISlice,
   createAttributeSlice,
-  createProblemManagerSlice,
+  createScenarioManagerSlice,
   createDemoDataSlice,
   createEditorSlice,
   initialSolverState,
@@ -37,7 +37,7 @@ import {
 // Re-export types for easier access
 export type {
   AppState,
-  Problem,
+  Scenario,
   Solution,
   SolverState,
   Notification,
@@ -51,11 +51,11 @@ export type { AppStore } from "./types";
 
 // Initial state for reset functionality
 const getInitialState = () => ({
-  problem: null,
+  scenario: null,
   solution: null,
   solverState: initialSolverState,
-  currentProblemId: null,
-  savedProblems: {},
+  currentScenarioId: null,
+  savedScenarios: {},
   selectedResultIds: [],
   ui: initialUIState,
   attributeDefinitions: DEFAULT_ATTRIBUTE_DEFINITIONS,
@@ -92,12 +92,12 @@ export const useAppStore = create<AppStore>()(
   devtools(
     (set, get) => ({
       // Combine all slices
-      ...createProblemSlice(set, get),
+      ...createScenarioSlice(set, get),
       ...createSolutionSlice(set, get),
       ...createSolverSlice(set, get),
       ...createUISlice(set, get),
       ...createAttributeSlice(set, get),
-      ...createProblemManagerSlice(set, get),
+      ...createScenarioManagerSlice(set, get),
       ...createDemoDataSlice(set, get),
       ...createEditorSlice(set, get),
 
@@ -105,29 +105,29 @@ export const useAppStore = create<AppStore>()(
       reset: () => set(getInitialState()),
 
       replaceWorkspace: ({
-        problem,
+        scenario,
         solution = null,
         attributeDefinitions,
-        currentProblemId = null,
+        currentScenarioId = null,
       }: {
-        problem: Problem;
+        scenario: Scenario;
         solution?: Solution | null;
         attributeDefinitions?: AttributeDefinition[];
-        currentProblemId?: string | null;
+        currentScenarioId?: string | null;
       }) =>
         set((state) => ({
-          problem,
+          scenario,
           solution,
-          currentProblemId,
+          currentScenarioId,
           selectedResultIds: [],
           solverState: solverStateFromWorkspaceSolution(solution),
           attributeDefinitions: mergeWorkspaceAttributes(state.attributeDefinitions, attributeDefinitions),
           ui: {
             ...state.ui,
-            activeTab: solution ? "results" : "problem",
+            activeTab: solution ? "results" : "scenario",
             warmStartResultId: null,
             showResultComparison: false,
-            showProblemManager: false,
+            showScenarioManager: false,
             isLoading: false,
           },
           manualEditorUnsaved: false,
@@ -135,56 +135,56 @@ export const useAppStore = create<AppStore>()(
         })),
 
       syncWorkspaceDraft: ({
-        problem,
+        scenario,
         solution = null,
         attributeDefinitions,
-        currentProblemId = null,
-        problemName,
+        currentScenarioId = null,
+        scenarioName,
       }) => {
-        let savedProblem = currentProblemId ? problemStorage.getProblem(currentProblemId) : null;
+        let savedScenario = currentScenarioId ? scenarioStorage.getScenario(currentScenarioId) : null;
 
-        if (savedProblem) {
-          savedProblem = {
-            ...savedProblem,
-            problem,
+        if (savedScenario) {
+          savedScenario = {
+            ...savedScenario,
+            scenario,
           };
-          problemStorage.saveProblem(savedProblem);
+          scenarioStorage.saveScenario(savedScenario);
         } else {
-          savedProblem = problemStorage.createProblem(problemName, problem);
-          currentProblemId = savedProblem.id;
+          savedScenario = scenarioStorage.createScenario(scenarioName, scenario);
+          currentScenarioId = savedScenario.id;
         }
 
-        problemStorage.setCurrentProblemId(savedProblem.id);
+        scenarioStorage.setCurrentScenarioId(savedScenario.id);
 
         set((state) => ({
-          problem,
+          scenario,
           solution,
-          currentProblemId: savedProblem.id,
-          savedProblems: {
-            ...state.savedProblems,
-            [savedProblem.id]: savedProblem,
+          currentScenarioId: savedScenario.id,
+          savedScenarios: {
+            ...state.savedScenarios,
+            [savedScenario.id]: savedScenario,
           },
           selectedResultIds: [],
           solverState: solverStateFromWorkspaceSolution(solution),
           attributeDefinitions: mergeWorkspaceAttributes(state.attributeDefinitions, attributeDefinitions),
           ui: {
             ...state.ui,
-            activeTab: solution ? "results" : "problem",
+            activeTab: solution ? "results" : "scenario",
             warmStartResultId: null,
             showResultComparison: false,
-            showProblemManager: false,
+            showScenarioManager: false,
             isLoading: false,
           },
           manualEditorUnsaved: false,
           manualEditorLeaveHook: null,
         }));
 
-        return savedProblem.id;
+        return savedScenario.id;
       },
 
       initializeApp: () => {
         set({ attributeDefinitions: loadAttributeDefinitions() });
-        get().loadSavedProblems();
+        get().loadSavedScenarios();
       },
     }),
     {

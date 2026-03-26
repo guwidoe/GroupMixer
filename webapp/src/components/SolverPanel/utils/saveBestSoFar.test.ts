@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createSampleProblem, createSampleSolution, createSampleSolverSettings } from '../../../test/fixtures';
+import { createSampleScenario, createSampleSolution, createSampleSolverSettings } from '../../../test/fixtures';
 import { saveBestSoFar } from './saveBestSoFar';
 import { wasmService } from '../../../services/wasm';
 import { solverWorkerService } from '../../../services/solverWorker';
@@ -17,7 +17,7 @@ vi.mock('../../../services/solverWorker', () => ({
 }));
 
 describe('saveBestSoFar', () => {
-  const problem = createSampleProblem();
+  const scenario = createSampleScenario();
   const solverSettings = createSampleSolverSettings();
 
   beforeEach(() => {
@@ -30,10 +30,10 @@ describe('saveBestSoFar', () => {
 
     await saveBestSoFar({
       solverState: { ...createSampleSolution(), isRunning: false, isComplete: false, currentIteration: 0, bestScore: 0, elapsedTime: 0, noImprovementCount: 0 } as never,
-      problem,
+      scenario,
       runSettings: null,
       solverSettings,
-      runProblemSnapshotRef: { current: problem },
+      runScenarioSnapshotRef: { current: scenario },
       addResult: vi.fn(),
       addNotification,
       cancelledRef: { current: false },
@@ -74,10 +74,10 @@ describe('saveBestSoFar', () => {
         elapsedTime: 0,
         noImprovementCount: 0,
       } as never,
-      problem,
+      scenario,
       runSettings: solverSettings,
       solverSettings,
-      runProblemSnapshotRef: { current: problem },
+      runScenarioSnapshotRef: { current: scenario },
       addResult,
       addNotification,
       cancelledRef: { current: false },
@@ -85,7 +85,7 @@ describe('saveBestSoFar', () => {
       saveInProgressRef: { current: false },
     });
 
-    expect(wasmService.evaluateSolution).toHaveBeenCalledWith(problem, [
+    expect(wasmService.evaluateSolution).toHaveBeenCalledWith(scenario, [
       { person_id: 'p1', group_id: 'g1', session_id: 0 },
       { person_id: 'p2', group_id: 'g1', session_id: 0 },
       { person_id: 'p3', group_id: 'g2', session_id: 1 },
@@ -99,7 +99,7 @@ describe('saveBestSoFar', () => {
       }),
       solverSettings,
       undefined,
-      problem,
+      scenario,
     );
     expect(addNotification).not.toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Saved Snapshot (Partial Metrics)' }),
@@ -128,10 +128,10 @@ describe('saveBestSoFar', () => {
         elapsedTime: 0,
         noImprovementCount: 0,
       } as never,
-      problem,
+      scenario,
       runSettings: null,
       solverSettings,
-      runProblemSnapshotRef: { current: problem },
+      runScenarioSnapshotRef: { current: scenario },
       addResult,
       addNotification,
       cancelledRef: { current: false },
@@ -148,7 +148,7 @@ describe('saveBestSoFar', () => {
       }),
       solverSettings,
       undefined,
-      problem,
+      scenario,
     );
     expect(addNotification).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -174,10 +174,10 @@ describe('saveBestSoFar', () => {
         elapsedTime: 0,
         noImprovementCount: 0,
       } as never,
-      problem,
+      scenario,
       runSettings: null,
       solverSettings,
-      runProblemSnapshotRef: { current: problem },
+      runScenarioSnapshotRef: { current: scenario },
       addResult: vi.fn(),
       addNotification,
       cancelledRef,

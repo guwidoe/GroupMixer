@@ -1,5 +1,5 @@
 import type { MutableRefObject } from 'react';
-import type { Problem, SavedProblem, SolverSettings, SolverState, Notification } from '../../../types';
+import type { Scenario, SavedScenario, SolverSettings, SolverState, Notification } from '../../../types';
 import type { ProgressUpdate } from '../../../services/wasm/types';
 import { solverWorkerService } from '../../../services/solverWorker';
 import { reconcileResultToInitialSchedule } from '../../../utils/warmStart';
@@ -7,21 +7,21 @@ import { normalizeRecommendedSolverSettings } from './recommendedSettings';
 
 export type AddNotification = (notification: Omit<Notification, 'id'>) => void;
 
-export function validateProblemForSolve(problem: Problem, addNotification: AddNotification): boolean {
-  if (!problem.people || problem.people.length === 0) {
+export function validateScenarioForSolve(scenario: Scenario, addNotification: AddNotification): boolean {
+  if (!scenario.people || scenario.people.length === 0) {
     addNotification({
       type: 'error',
       title: 'No People',
-      message: 'Please add people to the problem first',
+      message: 'Please add people to the scenario first',
     });
     return false;
   }
 
-  if (!problem.groups || problem.groups.length === 0) {
+  if (!scenario.groups || scenario.groups.length === 0) {
     addNotification({
       type: 'error',
       title: 'No Groups',
-      message: 'Please add groups to the problem first',
+      message: 'Please add groups to the scenario first',
     });
     return false;
   }
@@ -31,12 +31,12 @@ export function validateProblemForSolve(problem: Problem, addNotification: AddNo
 
 export async function selectSolverSettings({
   useRecommended,
-  currentProblem,
+  currentScenario,
   desiredRuntimeMain,
   solverSettings,
 }: {
   useRecommended: boolean;
-  currentProblem: Problem;
+  currentScenario: Scenario;
   desiredRuntimeMain: number | null;
   solverSettings: SolverSettings;
 }): Promise<SolverSettings> {
@@ -46,7 +46,7 @@ export async function selectSolverSettings({
 
   try {
     const rawSettings = await solverWorkerService.getRecommendedSettings(
-      currentProblem,
+      currentScenario,
       desiredRuntimeMain ?? 3,
     );
     return normalizeRecommendedSolverSettings(rawSettings as SolverSettings);
@@ -71,11 +71,11 @@ export function buildRunSettings(selectedSettings: SolverSettings, showLiveViz: 
   };
 }
 
-export function snapshotProblem(problem: Problem): Problem {
+export function snapshotScenario(scenario: Scenario): Scenario {
   try {
-    return JSON.parse(JSON.stringify(problem)) as Problem;
+    return JSON.parse(JSON.stringify(scenario)) as Scenario;
   } catch {
-    return { ...problem } as Problem;
+    return { ...scenario } as Scenario;
   }
 }
 
@@ -159,39 +159,39 @@ export function createProgressCallback({
 }
 
 export async function executeSolverRun({
-  currentProblem,
-  currentProblemId,
-  savedProblems,
+  currentScenario,
+  currentScenarioId,
+  savedScenarios,
   warmStartResultId,
   setWarmStartFromResult,
-  problemWithSettings,
+  scenarioWithSettings,
   progressCallback,
   addNotification,
 }: {
-  currentProblem: Problem;
-  currentProblemId: string | null;
-  savedProblems: Record<string, SavedProblem>;
+  currentScenario: Scenario;
+  currentScenarioId: string | null;
+  savedScenarios: Record<string, SavedScenario>;
   warmStartResultId: string | null;
   setWarmStartFromResult: (id: string | null) => void;
-  problemWithSettings: Problem;
+  scenarioWithSettings: Scenario;
   progressCallback: (progress: ProgressUpdate) => void;
   addNotification: AddNotification;
 }) {
   if (!warmStartResultId) {
-    return solverWorkerService.solveWithProgress(problemWithSettings, progressCallback);
+    return solverWorkerService.solveWithProgress(scenarioWithSettings, progressCallback);
   }
 
   try {
-    const sourceProblem = currentProblemId ? savedProblems[currentProblemId] : null;
-    const result = sourceProblem?.results.find((savedResult) => savedResult.id === warmStartResultId);
+    const sourceScenario = currentScenarioId ? savedScenarios[currentScenarioId] : null;
+    const result = sourceScenario?.results.find((savedResult) => savedResult.id === warmStartResultId);
     if (!result) {
       throw new Error('Selected warm-start result not found');
     }
 
-    const initialSchedule = reconcileResultToInitialSchedule(currentProblem, result);
+    const initialSchedule = reconcileResultToInitialSchedule(currentScenario, result);
     setWarmStartFromResult(null);
     return solverWorkerService.solveWithProgressWarmStart(
-      problemWithSettings,
+      scenarioWithSettings,
       initialSchedule,
       progressCallback,
     );
@@ -203,6 +203,6 @@ export async function executeSolverRun({
       message: error instanceof Error ? error.message : 'Falling back to default start',
     });
     setWarmStartFromResult(null);
-    return solverWorkerService.solveWithProgress(problemWithSettings, progressCallback);
+    return solverWorkerService.solveWithProgress(scenarioWithSettings, progressCallback);
   }
 }

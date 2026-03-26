@@ -1,7 +1,7 @@
 import type {
-  Problem,
-  ProblemResult,
-  SavedProblem,
+  Scenario,
+  ScenarioResult,
+  SavedScenario,
   Solution,
   SolverSettings,
 } from "../types";
@@ -26,7 +26,7 @@ export function createSampleSolverSettings(): SolverSettings {
   };
 }
 
-export function createSampleProblem(overrides: Partial<Problem> = {}): Problem {
+export function createSampleScenario(overrides: Partial<Scenario> = {}): Scenario {
   return {
     people: [
       { id: "p1", attributes: { name: "Alice", team: "A" } },
@@ -73,28 +73,28 @@ export function createSampleSolution(
   };
 }
 
-export function createSavedProblem(overrides: Partial<SavedProblem> = {}): SavedProblem {
-  const problem = overrides.problem ?? createSampleProblem();
-  const result: ProblemResult = {
+export function createSavedScenario(overrides: Partial<SavedScenario> = {}): SavedScenario {
+  const scenario = overrides.scenario ?? createSampleScenario();
+  const result: ScenarioResult = {
     id: "result-1",
     name: "Baseline",
     solution: createSampleSolution(),
-    solverSettings: problem.settings,
-    problemSnapshot: {
-      people: problem.people,
-      groups: problem.groups,
-      num_sessions: problem.num_sessions,
-      objectives: problem.objectives,
-      constraints: problem.constraints,
+    solverSettings: scenario.settings,
+    scenarioSnapshot: {
+      people: scenario.people,
+      groups: scenario.groups,
+      num_sessions: scenario.num_sessions,
+      objectives: scenario.objectives,
+      constraints: scenario.constraints,
     },
     timestamp: 1000,
     duration: 1234,
   };
 
   return {
-    id: "problem-1",
-    name: "Sample Problem",
-    problem,
+    id: "scenario-1",
+    name: "Sample Scenario",
+    scenario,
     results: [result],
     createdAt: 1000,
     updatedAt: 1000,

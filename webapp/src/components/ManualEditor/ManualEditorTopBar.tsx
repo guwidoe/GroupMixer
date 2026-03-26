@@ -68,7 +68,7 @@ export function ManualEditorTopBar({
         <button
           onClick={onPullNewPeople}
           className="px-2 py-1 rounded text-xs border inline-flex items-center gap-1"
-          title="Pull new people from current problem into storage for all relevant sessions"
+          title="Pull new people from current scenario into storage for all relevant sessions"
           style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-primary)' }}
         >
           <UserPlus className="w-4 h-4" /> Pull new people
@@ -76,7 +76,7 @@ export function ManualEditorTopBar({
         <button
           onClick={onPullNewConstraints}
           className="px-2 py-1 rounded text-xs border inline-flex items-center gap-1"
-          title="Pull new constraints from current problem"
+          title="Pull new constraints from current scenario"
           style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-primary)' }}
         >
           <Gavel className="w-4 h-4" /> Pull constraints

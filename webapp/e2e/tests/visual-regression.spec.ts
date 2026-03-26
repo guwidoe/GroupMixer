@@ -15,8 +15,8 @@ async function waitForPageReady(page: Page) {
 
 async function loadDemoData(page: Page, type: 'simple' | 'intermediate' = 'simple') {
   const currentUrl = page.url();
-  if (!currentUrl.includes('/app/problem')) {
-    await page.goto('/app/problem/people');
+  if (!currentUrl.includes('/app/scenario')) {
+    await page.goto('/app/scenario/people');
     await waitForPageReady(page);
     await page.keyboard.press('Escape');
     await page.waitForTimeout(200);
@@ -63,9 +63,9 @@ test.describe('Visual Regression - Landing Page', () => {
   });
 });
 
-test.describe('Visual Regression - Problem Editor', () => {
+test.describe('Visual Regression - Scenario Editor', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/app/problem/people');
+    await page.goto('/app/scenario/people');
     await waitForPageReady(page);
     await page.keyboard.press('Escape');
     await page.waitForTimeout(200);
@@ -132,7 +132,7 @@ test.describe('Visual Regression - Problem Editor', () => {
 
 test.describe('Visual Regression - Solver Panel', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/app/problem/people');
+    await page.goto('/app/scenario/people');
     await waitForPageReady(page);
     await loadDemoData(page, 'simple');
     await page.goto('/app/solver');
@@ -172,7 +172,7 @@ test.describe('Visual Regression - Empty result/history/editor states', () => {
 
 test.describe('Visual Regression - Shared chrome and dialogs', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/app/problem/people');
+    await page.goto('/app/scenario/people');
     await waitForPageReady(page);
     await page.keyboard.press('Escape');
     await page.waitForTimeout(200);
@@ -189,12 +189,12 @@ test.describe('Visual Regression - Shared chrome and dialogs', () => {
     await expect(page).toHaveScreenshot('header-demo-dropdown.png');
   });
 
-  test('problem manager modal', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'mobile-chrome', 'problem manager entry point is desktop-focused here');
-    await page.getByRole('button', { name: /Manage Problems/i }).click();
+  test('scenario manager modal', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile-chrome', 'scenario manager entry point is desktop-focused here');
+    await page.getByRole('button', { name: /Manage Scenarios/i }).click();
     await page.waitForSelector('.modal-content', { timeout: 5000 });
     await page.waitForTimeout(300);
-    await expect(page).toHaveScreenshot('problem-manager-modal.png');
+    await expect(page).toHaveScreenshot('scenario-manager-modal.png');
   });
 });
 
@@ -202,7 +202,7 @@ test.describe('Visual Regression - Mobile responsive', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'mobile snapshots are only meaningful on chromium');
 
   test('people populated - mobile', async ({ page }) => {
-    await page.goto('/app/problem/people');
+    await page.goto('/app/scenario/people');
     await waitForPageReady(page);
     await loadDemoData(page, 'simple');
     await expect(page).toHaveScreenshot('mobile-people-populated.png');
@@ -211,7 +211,7 @@ test.describe('Visual Regression - Mobile responsive', () => {
 
 test.describe('Visual Regression - Dark mode', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/app/problem/people');
+    await page.goto('/app/scenario/people');
     await waitForPageReady(page);
     await page.keyboard.press('Escape');
     await page.waitForTimeout(200);

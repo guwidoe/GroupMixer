@@ -31,17 +31,17 @@ declare module 'virtual:wasm-solver' {
   export function greet(): void;
   export function init_panic_hook(): void;
   export function recommend_settings(input: WasmRecommendSettingsRequest): SolverSettings;
-  export function get_recommended_settings_legacy_json(problem_json: string, desired_runtime_seconds: bigint): string;
+  export function get_recommended_settings_legacy_json(scenario_json: string, desired_runtime_seconds: bigint): string;
   export function solve(input: ContractSolveInput): RustResult;
-  export function solve_legacy_json(problem_json: string): string;
+  export function solve_legacy_json(scenario_json: string): string;
   export function solve_with_progress(input: ContractSolveInput, progress_callback?: WasmContractProgressCallback | null): RustResult;
-  export function solve_with_progress_legacy_json(problem_json: string, progress_callback?: WasmProgressCallback | null): string;
-  export function validate_problem(input: ContractSolveInput): WasmValidateResponse;
-  export function validate_problem_legacy_json(problem_json: string): string;
+  export function solve_with_progress_legacy_json(scenario_json: string, progress_callback?: WasmProgressCallback | null): string;
+  export function validate_scenario(input: ContractSolveInput): WasmValidateResponse;
+  export function validate_scenario_legacy_json(scenario_json: string): string;
   export function evaluate_input(input: ContractSolveInput): RustResult;
   export function evaluate_input_legacy_json(input_json: string): string;
   export function inspect_result(result: RustResult): WasmResultSummary;
-  export function test_callback_consistency(problem_json: string): string;
+  export function test_callback_consistency(scenario_json: string): string;
 
   export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
@@ -53,7 +53,7 @@ declare module 'virtual:wasm-solver' {
     readonly solve: (a: number, b: number) => [number, number, number, number];
     readonly solve_with_progress: (a: number, b: number, c: number) => [number, number, number, number];
     readonly test_callback_consistency: (a: number, b: number) => [number, number, number, number];
-    readonly validate_problem: (a: number, b: number) => [number, number, number, number];
+    readonly validate_scenario: (a: number, b: number) => [number, number, number, number];
     readonly init_panic_hook: () => void;
     readonly greet: () => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;

@@ -45,7 +45,7 @@ export interface BrowserAgentTransportApi {
     input: Record<string, unknown>,
     progressCallback?: ProgressCallback,
   ): Promise<{ result: RustResult; lastProgress: ProgressUpdate | null }>;
-  validateProblem(input: Record<string, unknown>): Promise<WasmValidateResponse>;
+  validateScenario(input: Record<string, unknown>): Promise<WasmValidateResponse>;
   getDefaultSolverConfiguration(): Promise<SolverSettings>;
   recommendSettings(input: WasmRecommendSettingsRequest): Promise<SolverSettings>;
   evaluateInput(input: Record<string, unknown>): Promise<RustResult>;
@@ -106,8 +106,8 @@ class WasmBrowserAgentTransport implements BrowserAgentTransportApi {
     return this.client.solveContractWithProgress(input, progressCallback);
   }
 
-  validateProblem(input: Record<string, unknown>): Promise<WasmValidateResponse> {
-    return this.client.validateProblemContract(input);
+  validateScenario(input: Record<string, unknown>): Promise<WasmValidateResponse> {
+    return this.client.validateScenarioContract(input);
   }
 
   getDefaultSolverConfiguration(): Promise<SolverSettings> {
@@ -169,8 +169,8 @@ class WorkerBrowserAgentTransport implements BrowserAgentTransportApi {
     return this.worker.solveContractWithProgress(input, progressCallback);
   }
 
-  validateProblem(input: Record<string, unknown>): Promise<WasmValidateResponse> {
-    return this.worker.validateProblemContract(input);
+  validateScenario(input: Record<string, unknown>): Promise<WasmValidateResponse> {
+    return this.worker.validateScenarioContract(input);
   }
 
   getDefaultSolverConfiguration(): Promise<SolverSettings> {

@@ -48,7 +48,7 @@ export const NoError: Story = {
 
 export const LongErrorMessage: Story = {
   args: {
-    error: 'The person "John Doe" could not be added because a person with the same ID already exists in this problem. Please use a unique identifier for each person.',
+    error: 'The person "John Doe" could not be added because a person with the same ID already exists in this scenario. Please use a unique identifier for each person.',
   },
 };
 

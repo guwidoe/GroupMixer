@@ -1,4 +1,4 @@
-import type { Problem, Solution } from "../../../types";
+import type { Scenario, Solution } from "../../../types";
 import type { ScheduleSnapshot } from "../../types";
 
 export type ContactEdgeKey = string; // "p1|p2" with p1<p2
@@ -36,10 +36,10 @@ function addMeeting(
 }
 
 export function computeContactsFromSolution(
-  problem: Problem,
+  scenario: Scenario,
   solution: Solution
 ): Map<ContactEdgeKey, ContactEdgeStats> {
-  const sessionCount = problem.num_sessions || 0;
+  const sessionCount = scenario.num_sessions || 0;
   // session -> group -> people
   const bySessionGroup = new Map<number, Map<string, string[]>>();
   for (const a of solution.assignments) {
@@ -67,10 +67,10 @@ export function computeContactsFromSolution(
 }
 
 export function computeContactsFromSnapshot(
-  problem: Problem,
+  scenario: Scenario,
   snapshot: ScheduleSnapshot
 ): Map<ContactEdgeKey, ContactEdgeStats> {
-  const sessionCount = problem.num_sessions || 0;
+  const sessionCount = scenario.num_sessions || 0;
   const edges = new Map<ContactEdgeKey, ContactEdgeStats>();
 
   for (let s = 0; s < sessionCount; s++) {

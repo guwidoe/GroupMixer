@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Problem } from "../types";
-import { createSampleProblem, createSampleSolution, createSampleSolverSettings } from "../test/fixtures";
+import type { Scenario } from "../types";
+import { createSampleScenario, createSampleSolution, createSampleSolverSettings } from "../test/fixtures";
 import { WasmService } from "./wasm";
 
 const contractClientMock = vi.hoisted(() => ({
   initialize: vi.fn(),
   solve: vi.fn(),
   solveWithProgress: vi.fn(),
-  validateProblem: vi.fn(),
+  validateScenario: vi.fn(),
   getDefaultSolverConfiguration: vi.fn(),
   recommendSettings: vi.fn(),
   evaluateInput: vi.fn(),
@@ -22,8 +22,8 @@ vi.mock("./wasm/contracts", () => ({
   }),
 }));
 
-function createProblem(): Problem {
-  return createSampleProblem();
+function createScenario(): Scenario {
+  return createSampleScenario();
 }
 
 describe("WasmService", () => {
@@ -51,8 +51,8 @@ describe("WasmService", () => {
       lastProgress: { iteration: 7 },
     });
 
-    await expect(service.solve(createProblem())).resolves.toEqual(solution);
-    await expect(service.solveWithProgress(createProblem(), vi.fn())).resolves.toEqual({
+    await expect(service.solve(createScenario())).resolves.toEqual(solution);
+    await expect(service.solveWithProgress(createScenario(), vi.fn())).resolves.toEqual({
       solution,
       lastProgress: { iteration: 7 },
     });
@@ -60,7 +60,7 @@ describe("WasmService", () => {
 
   it("maps shared validation issues into the legacy errors array shape", async () => {
     const service = new WasmService(async () => ({}));
-    contractClientMock.validateProblem.mockResolvedValue({
+    contractClientMock.validateScenario.mockResolvedValue({
       valid: false,
       issues: [
         { message: "No people defined" },
@@ -68,7 +68,7 @@ describe("WasmService", () => {
       ],
     });
 
-    await expect(service.validateProblem(createProblem())).resolves.toEqual({
+    await expect(service.validateScenario(createScenario())).resolves.toEqual({
       valid: false,
       errors: ["No people defined", "No groups defined"],
     });
@@ -77,23 +77,23 @@ describe("WasmService", () => {
   it("delegates default and recommended settings requests to the contract client", async () => {
     const service = new WasmService(async () => ({}));
     const settings = createSampleSolverSettings();
-    const problem = createProblem();
+    const scenario = createScenario();
     contractClientMock.getDefaultSolverConfiguration.mockResolvedValue(settings);
     contractClientMock.recommendSettings.mockResolvedValue(settings);
 
     await expect(service.getDefaultSettings()).resolves.toEqual(settings);
-    await expect(service.getRecommendedSettings(problem, 11)).resolves.toEqual(settings);
-    expect(contractClientMock.recommendSettings).toHaveBeenCalledWith(problem, 11);
+    await expect(service.getRecommendedSettings(scenario, 11)).resolves.toEqual(settings);
+    expect(contractClientMock.recommendSettings).toHaveBeenCalledWith(scenario, 11);
   });
 
   it("delegates structured evaluation to the contract client", async () => {
     const service = new WasmService(async () => ({}));
     const solution = createSampleSolution();
-    const problem = createProblem();
+    const scenario = createScenario();
     const assignments = solution.assignments.slice(0, 2);
     contractClientMock.evaluateInput.mockResolvedValue(solution);
 
-    await expect(service.evaluateSolution(problem, assignments)).resolves.toEqual(solution);
-    expect(contractClientMock.evaluateInput).toHaveBeenCalledWith(problem, assignments);
+    await expect(service.evaluateSolution(scenario, assignments)).resolves.toEqual(solution);
+    expect(contractClientMock.evaluateInput).toHaveBeenCalledWith(scenario, assignments);
   });
 });

@@ -1,12 +1,12 @@
 import React from 'react';
 import { Archive, LockOpen } from 'lucide-react';
-import type { Constraint, Problem } from '../../types';
+import type { Constraint, Scenario } from '../../types';
 import PersonCard from '../PersonCard';
 
 interface ManualEditorStoragePanelProps {
   activeSession: number;
   storedIds: string[];
-  effectiveProblem: Problem;
+  effectiveScenario: Scenario;
   pulledConstraints: Constraint[];
   isPersonLocked: (personId: string) => boolean;
   onDropToStorage: (personId: string) => void;
@@ -17,7 +17,7 @@ interface ManualEditorStoragePanelProps {
 export function ManualEditorStoragePanel({
   activeSession,
   storedIds,
-  effectiveProblem,
+  effectiveScenario,
   pulledConstraints,
   isPersonLocked,
   onDropToStorage,
@@ -62,7 +62,7 @@ export function ManualEditorStoragePanel({
           ) : (
             <div className="space-y-2">
               {storedIds.map((pid) => {
-                const person = effectiveProblem.people.find((p) => p.id === pid);
+                const person = effectiveScenario.people.find((p) => p.id === pid);
                 if (!person) return null;
                 const dragStart = (e: React.DragEvent) => {
                   if (isPersonLocked(pid)) {
@@ -124,7 +124,7 @@ export function ManualEditorStoragePanel({
           </div>
         )}
         <div className="mt-2 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
-          Pulled from current problem configuration compared to the result's snapshot.
+          Pulled from current scenario configuration compared to the result's snapshot.
         </div>
       </div>
     </div>

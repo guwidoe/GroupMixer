@@ -34,7 +34,7 @@ describe("solverWorker runtime", () => {
         callback?.({ iteration: 1, best_score: 3 });
         return { schedule: {}, final_score: 1, input };
       }),
-      validate_problem: vi.fn((input: Record<string, unknown>) => ({ valid: true, issues: [], input })),
+      validate_scenario: vi.fn((input: Record<string, unknown>) => ({ valid: true, issues: [], input })),
       get_default_solver_configuration: vi.fn(() => ({ solver_type: "SimulatedAnnealing" })),
       recommend_settings: vi.fn((request: Record<string, unknown>) => ({ request })),
       evaluate_input: vi.fn((input: Record<string, unknown>) => ({ schedule: {}, final_score: 2, input })),
@@ -91,7 +91,7 @@ describe("solverWorker runtime", () => {
     await runtime.handleMessage({
       type: "SOLVE",
       id: "1",
-      data: { problemPayload: { problem: { people: [] } }, useProgress: false },
+      data: { scenarioPayload: { problem: { people: [] } }, useProgress: false },
     });
 
     expect(wasmInit).toHaveBeenCalledTimes(1);
@@ -116,7 +116,7 @@ describe("solverWorker runtime", () => {
     await runtime.handleMessage({
       type: "SOLVE",
       id: "2",
-      data: { problemPayload: { problem: { people: [] } }, useProgress: true },
+      data: { scenarioPayload: { problem: { people: [] } }, useProgress: true },
     });
 
     expect(wasmModule.solve_with_progress).toHaveBeenCalledTimes(1);
@@ -189,12 +189,12 @@ describe("solverWorker runtime", () => {
 
     await runtime.handleMessage({ type: "capabilities", id: "2", data: {} });
     await runtime.handleMessage({ type: "get_operation_help", id: "3", data: { args: ["solve"] } });
-    await runtime.handleMessage({ type: "validate_problem", id: "4", data: { problemPayload: { problem: { people: [] } } } });
+    await runtime.handleMessage({ type: "validate_scenario", id: "4", data: { scenarioPayload: { problem: { people: [] } } } });
     await runtime.handleMessage({ type: "inspect_result", id: "5", data: { resultPayload: { schedule: {}, final_score: 7 } as never } });
 
     expect(wasmModule.capabilities).toHaveBeenCalledTimes(1);
     expect(wasmModule.get_operation_help).toHaveBeenCalledWith("solve");
-    expect(wasmModule.validate_problem).toHaveBeenCalledWith({ problem: { people: [] } });
+    expect(wasmModule.validate_scenario).toHaveBeenCalledWith({ problem: { people: [] } });
     expect(wasmModule.inspect_result).toHaveBeenCalledWith({ schedule: {}, final_score: 7 });
     expect(postedMessages).toEqual([
       {
@@ -242,7 +242,7 @@ describe("solverWorker runtime", () => {
     ]);
   });
 
-  it("posts solve errors without relying on legacy problem json context", async () => {
+  it("posts solve errors without relying on legacy scenario json context", async () => {
     const { runtime } = createRuntime({
       wasmModule: {
         solve_with_progress: vi.fn(() => {
@@ -256,7 +256,7 @@ describe("solverWorker runtime", () => {
     await runtime.handleMessage({
       type: "SOLVE",
       id: "2",
-      data: { problemPayload: { problem: { people: [] } }, useProgress: false },
+      data: { scenarioPayload: { problem: { people: [] } }, useProgress: false },
     });
 
     expect(postedMessages).toEqual([

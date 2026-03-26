@@ -11,10 +11,10 @@ function createHarness(overrides: Partial<AppStore> = {}) {
       error: "oops",
     },
     ui: {
-      activeTab: "problem",
+      activeTab: "scenario",
       isLoading: false,
       notifications: [],
-      showProblemManager: false,
+      showScenarioManager: false,
       showResultComparison: false,
       warmStartResultId: null,
     },

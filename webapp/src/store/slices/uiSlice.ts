@@ -6,10 +6,10 @@ import type { Notification } from "../../types";
 import type { UIState, UIActions, StoreSlice } from "../types";
 
 export const initialUIState: UIState["ui"] = {
-  activeTab: "problem",
+  activeTab: "scenario",
   isLoading: true, // Start with loading true
   notifications: [],
-  showProblemManager: false,
+  showScenarioManager: false,
   showResultComparison: false,
   warmStartResultId: null,
 };
@@ -64,9 +64,9 @@ export const createUISlice: StoreSlice<UIState & UIActions> = (set, get) => ({
       ui: { ...state.ui, notifications: [] },
     })),
 
-  setShowProblemManager: (show) =>
+  setShowScenarioManager: (show) =>
     set((state) => ({
-      ui: { ...state.ui, showProblemManager: show },
+      ui: { ...state.ui, showScenarioManager: show },
     })),
 
   setShowResultComparison: (show) =>

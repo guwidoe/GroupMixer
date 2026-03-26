@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createSampleProblem, createSampleSolution } from '../test/fixtures';
+import { createSampleScenario, createSampleSolution } from '../test/fixtures';
 import { buildScheduleMap, computeUniqueContacts, evaluateCompliance } from './evaluator';
 
 describe('evaluator', () => {
@@ -23,7 +23,7 @@ describe('evaluator', () => {
 
   it('reports direct repeat-encounter and separation violations', () => {
     const solution = createSampleSolution();
-    const problem = createSampleProblem({
+    const scenario = createSampleScenario({
       constraints: [
         {
           type: 'RepeatEncounter',
@@ -40,7 +40,7 @@ describe('evaluator', () => {
       ],
     });
 
-    const cards = evaluateCompliance(problem, solution);
+    const cards = evaluateCompliance(scenario, solution);
 
     expect(cards).toHaveLength(2);
     expect(cards[0]).toMatchObject({

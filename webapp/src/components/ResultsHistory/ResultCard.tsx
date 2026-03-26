@@ -20,9 +20,9 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import type { ProblemResult } from '../../types';
+import type { ScenarioResult } from '../../types';
 import type { MetricCalculations } from '../../utils/metricCalculations';
-import type { ProblemConfigDifference } from '../../services/problemStorage';
+import type { ScenarioConfigDifference } from '../../services/scenarioStorage';
 import { useOutsideClick } from '../../hooks';
 import { formatDate, formatDuration, formatLargeNumber, formatNumber } from './utils';
 
@@ -39,23 +39,23 @@ export interface ResultCardState {
 
 export interface ResultCardActions {
   onChangeEditingName: (value: string) => void;
-  onStartRename: (result: ProblemResult) => void;
+  onStartRename: (result: ScenarioResult) => void;
   onSaveRename: () => void;
   onCancelRename: () => void;
   onToggleSelected: (resultId: string) => void;
   onToggleExpanded: (resultId: string) => void;
-  onOpenDetails: (result: ProblemResult) => void;
+  onOpenDetails: (result: ScenarioResult) => void;
   onDelete: (resultId: string) => void;
-  onExport: (result: ProblemResult, format: 'json' | 'csv' | 'excel') => void;
+  onExport: (result: ScenarioResult, format: 'json' | 'csv' | 'excel') => void;
   onToggleExportDropdown: (resultId: string) => void;
   onCloseExportDropdown: () => void;
   onToggleConfigDetails: (resultId: string) => void;
   onCloseConfigDetails: () => void;
-  onRestoreConfig: (result: ProblemResult) => void;
+  onRestoreConfig: (result: ScenarioResult) => void;
 }
 
 export interface ResultCardMetrics {
-  configDiff: ProblemConfigDifference | null;
+  configDiff: ScenarioConfigDifference | null;
   metrics: MetricCalculations;
   scoreColorClass: string;
   repPenalty: number;
@@ -67,7 +67,7 @@ export interface ResultCardMetrics {
 }
 
 interface ResultCardProps {
-  result: ProblemResult;
+  result: ScenarioResult;
   state: ResultCardState;
   actions: ResultCardActions;
   metrics: ResultCardMetrics;
@@ -192,7 +192,7 @@ export function ResultCard({
                           borderColor: '#dc2626',
                           lineHeight: 1.2,
                         }}
-                        title="Different Problem Configuration - Click to see details"
+                        title="Different Scenario Configuration - Click to see details"
                       >
                         <AlertTriangle className="h-3 w-3" />
                         <span>Different Config</span>
@@ -211,10 +211,10 @@ export function ResultCard({
                           <div className="space-y-2">
                             <div className="flex items-center space-x-2 mb-2">
                               <AlertTriangle className="h-4 w-4 text-red-500" />
-                              <span className="font-medium text-red-600">Different Problem Configuration</span>
+                              <span className="font-medium text-red-600">Different Scenario Configuration</span>
                             </div>
                             <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                              This result was created with a different problem setup than the most recent result and may not be directly comparable with the current configuration.
+                              This result was created with a different scenario setup than the most recent result and may not be directly comparable with the current configuration.
                             </p>
                             <div className="mt-2 space-y-1">
                               {Object.entries(metrics.configDiff.details).map(([key, detail]) => (
@@ -234,7 +234,7 @@ export function ResultCard({
                                   actions.onRestoreConfig(result);
                                 }}
                               >
-                                Restore this result&apos;s configuration as new problem
+                                Restore this result&apos;s configuration as new scenario
                               </button>
                             </div>
                           </div>

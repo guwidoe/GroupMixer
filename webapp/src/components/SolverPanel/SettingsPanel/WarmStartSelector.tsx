@@ -1,18 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, Zap } from 'lucide-react';
-import type { SavedProblem } from '../../../types';
+import type { SavedScenario } from '../../../types';
 
 interface WarmStartSelectorProps {
-  savedProblems: Record<string, SavedProblem>;
-  currentProblemId: string | null;
+  savedScenarios: Record<string, SavedScenario>;
+  currentScenarioId: string | null;
   warmStartSelection: string | null;
   setWarmStartSelection: React.Dispatch<React.SetStateAction<string | null>>;
   setWarmStartFromResult: (id: string | null) => void;
 }
 
 export function WarmStartSelector({
-  savedProblems,
-  currentProblemId,
+  savedScenarios,
+  currentScenarioId,
   warmStartSelection,
   setWarmStartSelection,
   setWarmStartFromResult,
@@ -33,8 +33,8 @@ export function WarmStartSelector({
 
   const selectedLabel = (() => {
     if (!warmStartSelection) return 'Start from random (default)';
-    const result = currentProblemId
-      ? savedProblems[currentProblemId]?.results.find((item) => item.id === warmStartSelection)
+    const result = currentScenarioId
+      ? savedScenarios[currentScenarioId]?.results.find((item) => item.id === warmStartSelection)
       : undefined;
     return result ? `${result.name || 'Result'} • score ${result.solution.final_score.toFixed(2)}` : 'Start from random (default)';
   })();
@@ -80,7 +80,7 @@ export function WarmStartSelector({
               </button>
 
               {(() => {
-                const list = currentProblemId ? savedProblems[currentProblemId]?.results || [] : [];
+                const list = currentScenarioId ? savedScenarios[currentScenarioId]?.results || [] : [];
                 if (!list.length) {
                   return (
                     <div className="px-3 py-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>

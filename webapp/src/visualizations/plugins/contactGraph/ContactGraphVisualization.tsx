@@ -15,10 +15,10 @@ import { getAttributeKeys } from "./utils/attributeUtils";
 import type { CircleOrder, EdgeColorMode, EdgeInfo, HoveredItem, LayoutMode } from "./types";
 
 export function ContactGraphVisualization({ data }: VisualizationComponentProps) {
-  const problem = data.problem;
-  const sessionCount = problem.num_sessions || 0;
+  const scenario = data.scenario;
+  const sessionCount = scenario.num_sessions || 0;
 
-  const attributeKeys = useMemo(() => getAttributeKeys(problem.people), [problem.people]);
+  const attributeKeys = useMemo(() => getAttributeKeys(scenario.people), [scenario.people]);
   const [nodeColorAttr, setNodeColorAttr] = useState<string | null>(() => {
     return attributeKeys.length > 0 ? attributeKeys[0] : null;
   });
@@ -38,28 +38,28 @@ export function ContactGraphVisualization({ data }: VisualizationComponentProps)
 
   const labelById = useMemo(() => {
     const m = new Map<string, string>();
-    for (const p of problem.people) {
+    for (const p of scenario.people) {
       m.set(p.id, p.attributes?.name || p.id);
     }
     return m;
-  }, [problem.people]);
+  }, [scenario.people]);
 
   const people = useMemo(
     () =>
-      problem.people.map((p) => ({
+      scenario.people.map((p) => ({
         id: p.id,
         attributes: p.attributes || {},
       })),
-    [problem.people]
+    [scenario.people]
   );
 
   const edgeStats = useMemo(() => {
     const m =
       data.kind === "final"
-        ? computeContactsFromSolution(problem, data.solution)
-        : computeContactsFromSnapshot(problem, data.schedule);
+        ? computeContactsFromSolution(scenario, data.solution)
+        : computeContactsFromSnapshot(scenario, data.schedule);
     return Array.from(m.values());
-  }, [data, problem]);
+  }, [data, scenario]);
 
   const maxEdgeCountForUi = useMemo(() => {
     let max = 0;

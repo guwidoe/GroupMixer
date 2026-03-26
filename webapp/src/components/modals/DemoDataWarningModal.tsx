@@ -27,10 +27,10 @@ export function DemoDataWarningModal({
           </div>
           <div className="flex-1">
             <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Overwrite Current Problem?
+              Overwrite Current Scenario?
             </h3>
             <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-              Loading "{demoCaseName}" will overwrite your current problem settings, including all people, groups, and constraints.
+              Loading "{demoCaseName}" will overwrite your current scenario settings, including all people, groups, and constraints.
             </p>
           </div>
           <button
@@ -47,7 +47,7 @@ export function DemoDataWarningModal({
         <div className="space-y-3">
           <div className="rounded-md p-3 border" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-primary)' }}>
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              <strong>Current problem:</strong> {demoCaseName}
+              <strong>Current scenario:</strong> {demoCaseName}
             </p>
             <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
               This action cannot be undone. Your current settings will be lost.
@@ -71,7 +71,7 @@ export function DemoDataWarningModal({
               onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
               onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
             >
-              Load in New Problem
+              Load in New Scenario
             </button>
           </div>
           <button

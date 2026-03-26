@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { generateAssignmentsCsv } from "./csvExport";
-import { createSampleProblem, createSampleSolution } from "../test/fixtures";
+import { createSampleScenario, createSampleSolution } from "../test/fixtures";
 
 describe("generateAssignmentsCsv", () => {
   it("exports metadata, headers, rows, and escaped values", () => {
-    const problem = createSampleProblem({
+    const scenario = createSampleScenario({
       people: [
         { id: "p1", attributes: { name: 'Alice, "A"', team: "A" } },
         { id: "p2", attributes: { team: "B" } },
@@ -26,7 +26,7 @@ describe("generateAssignmentsCsv", () => {
       weighted_constraint_penalty: 0,
     });
 
-    const csv = generateAssignmentsCsv(problem, solution, {
+    const csv = generateAssignmentsCsv(scenario, solution, {
       resultName: "Result 1",
       extraMetadata: [["Scenario", "Demo"]],
       exportedAt: Date.UTC(2024, 0, 2, 3, 4, 5),

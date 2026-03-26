@@ -1,30 +1,30 @@
 import React from 'react';
 import { Calendar, Layers, Target, Users } from 'lucide-react';
-import type { ProblemResult, SavedProblem } from '../../types';
+import type { ScenarioResult, SavedScenario } from '../../types';
 import { formatDuration } from './utils';
 
 interface ResultsHistorySummaryProps {
-  currentProblem: SavedProblem;
-  bestResult: ProblemResult | null;
+  currentScenario: SavedScenario;
+  bestResult: ScenarioResult | null;
 }
 
-export function ResultsHistorySummary({ currentProblem, bestResult }: ResultsHistorySummaryProps) {
+export function ResultsHistorySummary({ currentScenario, bestResult }: ResultsHistorySummaryProps) {
   return (
     <div className="card">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0 mb-4">
-        <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Problem Overview</h3>
+        <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Scenario Overview</h3>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
           <div className="flex items-center space-x-1">
             <Users className="h-4 w-4" />
-            <span>{currentProblem.problem.people.length} people</span>
+            <span>{currentScenario.scenario.people.length} people</span>
           </div>
           <div className="flex items-center space-x-1">
             <Layers className="h-4 w-4" />
-            <span>{currentProblem.problem.groups.length} groups</span>
+            <span>{currentScenario.scenario.groups.length} groups</span>
           </div>
           <div className="flex items-center space-x-1">
             <Calendar className="h-4 w-4" />
-            <span>{currentProblem.problem.num_sessions} sessions</span>
+            <span>{currentScenario.scenario.num_sessions} sessions</span>
           </div>
         </div>
       </div>

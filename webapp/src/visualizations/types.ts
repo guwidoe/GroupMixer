@@ -1,5 +1,5 @@
 import type React from "react";
-import type { Problem, Solution } from "../types";
+import type { Scenario, Solution } from "../types";
 import type { ProgressUpdate } from "../services/wasm/types";
 
 export type ScheduleSnapshot = Record<string, Record<string, string[]>>;
@@ -7,18 +7,18 @@ export type ScheduleSnapshot = Record<string, Record<string, string[]>>;
 export type VisualizationData =
   | {
       kind: "final";
-      problem: Problem;
+      scenario: Scenario;
       solution: Solution;
     }
   | {
       kind: "live";
-      problem: Problem;
+      scenario: Scenario;
       progress: ProgressUpdate | null;
       schedule: ScheduleSnapshot;
     };
 
 export interface VisualizationCapabilities {
-  needsProblem: boolean;
+  needsScenario: boolean;
   supportsLive: boolean;
   supportsExportPng: boolean;
 }

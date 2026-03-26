@@ -1,8 +1,8 @@
-import type { Problem } from '../../types';
+import type { Scenario } from '../../types';
 import type { Mode } from './types';
 
 interface CanDropArgs {
-  effectiveProblem: Problem | null;
+  effectiveScenario: Scenario | null;
   draftSchedule: Record<number, Record<string, string[]>>;
   lockedPeople: Set<string>;
   lockedGroups: Set<string>;
@@ -13,7 +13,7 @@ interface CanDropArgs {
 }
 
 export function canDrop({
-  effectiveProblem,
+  effectiveScenario,
   draftSchedule,
   lockedPeople,
   lockedGroups,
@@ -22,13 +22,13 @@ export function canDrop({
   targetGroupId,
   sessionId,
 }: CanDropArgs): { ok: boolean; reason?: string } {
-  if (!effectiveProblem) return { ok: false, reason: 'No problem loaded' };
+  if (!effectiveScenario) return { ok: false, reason: 'No scenario loaded' };
   if (lockedPeople.has(personId)) return { ok: false, reason: 'Person is locked' };
   if (lockedGroups.has(targetGroupId)) return { ok: false, reason: 'Group is locked' };
 
   const groups = draftSchedule[sessionId] || {};
   const targetPeople = groups[targetGroupId] || [];
-  const groupDef = effectiveProblem.groups.find((g) => g.id === targetGroupId);
+  const groupDef = effectiveScenario.groups.find((g) => g.id === targetGroupId);
   if (groupDef) {
     const cap = groupDef.size;
     const currentCount = targetPeople.includes(personId) ? targetPeople.length : targetPeople.length + 1;
@@ -37,8 +37,8 @@ export function canDrop({
     }
   }
 
-  const personConstraints = effectiveProblem.constraints.filter((c) => {
-    const allSessions = Array.from({ length: effectiveProblem.num_sessions }, (_, i) => i);
+  const personConstraints = effectiveScenario.constraints.filter((c) => {
+    const allSessions = Array.from({ length: effectiveScenario.num_sessions }, (_, i) => i);
     if (c.type === 'ImmovablePerson') {
       const sessions = c.sessions ?? allSessions;
       return c.person_id === personId && sessions.includes(sessionId);

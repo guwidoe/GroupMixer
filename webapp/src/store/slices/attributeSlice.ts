@@ -2,7 +2,7 @@
  * Attribute slice - manages attribute definitions for person attributes.
  */
 
-import type { AttributeDefinition, Person, Problem } from "../../types";
+import type { AttributeDefinition, Person, Scenario } from "../../types";
 import type { AttributeState, AttributeActions, StoreSlice } from "../types";
 
 const ATTRIBUTE_DEFS_KEY = "people-distributor-attribute-definitions";
@@ -62,21 +62,21 @@ export const createAttributeSlice: StoreSlice<AttributeState & AttributeActions>
 
       saveAttributeDefinitions(updatedAttrDefs);
 
-      let updatedProblem = prev.problem;
-      if (updatedProblem) {
-        updatedProblem = {
-          ...updatedProblem,
-          people: updatedProblem.people.map((p) => {
+      let updatedScenario = prev.scenario;
+      if (updatedScenario) {
+        updatedScenario = {
+          ...updatedScenario,
+          people: updatedScenario.people.map((p) => {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { [key]: _removed, ...restAttrs } = p.attributes || {};
             return { ...p, attributes: { ...restAttrs } } as Person;
           }),
-        } as Problem;
+        } as Scenario;
       }
 
       return {
         attributeDefinitions: updatedAttrDefs,
-        problem: updatedProblem,
+        scenario: updatedScenario,
       };
     }),
 });

@@ -1,4 +1,4 @@
-import type { Problem, Solution, SolverSettings } from "../types";
+import type { Scenario, Solution, SolverSettings } from "../types";
 import type { ProgressUpdate, ProgressCallback } from "./wasm/types";
 import {
   createInitRequestMessage,
@@ -12,8 +12,8 @@ import {
   type WorkerResponseMessage,
 } from "./solverWorker/protocol";
 import {
-  buildRustProblemPayload,
-  buildWarmStartProblemPayload,
+  buildRustScenarioPayload,
+  buildWarmStartScenarioPayload,
   parseRustSolutionResult,
 } from "./rustBoundary";
 import type {
@@ -29,10 +29,10 @@ import type {
 import type { RustResult } from "./wasm/types";
 
 function buildRecommendSettingsRequest(
-  problem: Problem,
+  scenario: Scenario,
   desiredRuntimeSeconds: number,
 ): WasmRecommendSettingsRequest {
-  const payload = buildRustProblemPayload(problem) as {
+  const payload = buildRustScenarioPayload(scenario) as {
     problem?: Record<string, unknown>;
     objectives?: unknown[];
     constraints?: unknown[];
@@ -116,7 +116,7 @@ export class SolverWorkerService {
   private handleFatalWorkerError(messageData?: WorkerErrorData): void {
     const error = this.buildWorkerError(messageData);
     this.rejectAllPending(error);
-    if (messageData?.problemJson) {
+    if (messageData?.scenarioJson) {
       console.error("Worker error included solver input context.");
     }
   }
@@ -208,11 +208,11 @@ export class SolverWorkerService {
 
         case "PROBLEM_JSON":
           try {
-            (window as unknown as Record<string, unknown>).lastSolverProblemJson =
-              message.data.problemJson;
+            (window as unknown as Record<string, unknown>).lastSolverScenarioJson =
+              message.data.scenarioJson;
             window.dispatchEvent(
-              new CustomEvent("solver-problem-json", {
-                detail: message.data.problemJson,
+              new CustomEvent("solver-scenario-json", {
+                detail: message.data.scenarioJson,
               }),
             );
           } catch {
@@ -258,7 +258,7 @@ export class SolverWorkerService {
   }
 
   private sendSolve(
-    problemPayload: Record<string, unknown>,
+    scenarioPayload: Record<string, unknown>,
     useProgress: boolean,
     progressCallback?: ProgressCallback,
   ): Promise<SolverRunResult> {
@@ -270,42 +270,42 @@ export class SolverWorkerService {
         reject,
         progressCallback,
       });
-      this.postMessage(createSolveRequestMessage(id, problemPayload, useProgress));
+      this.postMessage(createSolveRequestMessage(id, scenarioPayload, useProgress));
     });
   }
 
-  async solve(problem: Problem): Promise<Solution> {
+  async solve(scenario: Scenario): Promise<Solution> {
     if (!this.isInitialized) {
       await this.initialize();
     }
 
-    const problemPayload = buildRustProblemPayload(problem);
+    const scenarioPayload = buildRustScenarioPayload(scenario);
 
-    const { result } = await this.sendSolve(problemPayload, false);
+    const { result } = await this.sendSolve(scenarioPayload, false);
     return parseRustSolutionResult(result, null, this.lastProgressUpdate);
   }
 
-  async solveContract(problemPayload: Record<string, unknown>): Promise<RustResult> {
+  async solveContract(scenarioPayload: Record<string, unknown>): Promise<RustResult> {
     if (!this.isInitialized) {
       await this.initialize();
     }
 
-    const { result } = await this.sendSolve(problemPayload, false);
+    const { result } = await this.sendSolve(scenarioPayload, false);
     return result;
   }
 
   async solveWithProgress(
-    problem: Problem,
+    scenario: Scenario,
     progressCallback?: ProgressCallback,
   ): Promise<{ solution: Solution; lastProgress: ProgressUpdate | null }> {
     if (!this.isInitialized) {
       await this.initialize();
     }
 
-    const problemPayload = buildRustProblemPayload(problem);
+    const scenarioPayload = buildRustScenarioPayload(scenario);
 
     const { result, lastProgress } = await this.sendSolve(
-      problemPayload,
+      scenarioPayload,
       true,
       progressCallback,
     );
@@ -316,18 +316,18 @@ export class SolverWorkerService {
   }
 
   async solveContractWithProgress(
-    problemPayload: Record<string, unknown>,
+    scenarioPayload: Record<string, unknown>,
     progressCallback?: ProgressCallback,
   ): Promise<{ result: RustResult; lastProgress: ProgressUpdate | null }> {
     if (!this.isInitialized) {
       await this.initialize();
     }
 
-    return this.sendSolve(problemPayload, true, progressCallback);
+    return this.sendSolve(scenarioPayload, true, progressCallback);
   }
 
   async solveWithProgressWarmStart(
-    problem: Problem,
+    scenario: Scenario,
     initialSchedule: Record<string, Record<string, string[]>>,
     progressCallback?: ProgressCallback,
   ): Promise<{ solution: Solution; lastProgress: ProgressUpdate | null }> {
@@ -335,10 +335,10 @@ export class SolverWorkerService {
       await this.initialize();
     }
 
-    const problemPayload = buildWarmStartProblemPayload(problem, initialSchedule);
+    const scenarioPayload = buildWarmStartScenarioPayload(scenario, initialSchedule);
 
     const { result, lastProgress } = await this.sendSolve(
-      problemPayload,
+      scenarioPayload,
       true,
       progressCallback,
     );
@@ -425,11 +425,11 @@ export class SolverWorkerService {
     });
   }
 
-  public async validateProblemContract(
-    problemPayload: Record<string, unknown>,
+  public async validateScenarioContract(
+    scenarioPayload: Record<string, unknown>,
   ): Promise<WasmValidateResponse> {
-    return this.callSolver<WasmValidateResponse>("validate_problem", {
-      problemPayload,
+    return this.callSolver<WasmValidateResponse>("validate_scenario", {
+      scenarioPayload,
     });
   }
 
@@ -438,11 +438,11 @@ export class SolverWorkerService {
   }
 
   public async getRecommendedSettings(
-    problem: Problem,
+    scenario: Scenario,
     desiredRuntimeSeconds: number,
   ): Promise<SolverSettings> {
     return this.callSolver<SolverSettings>("recommend_settings", {
-      recommendRequest: buildRecommendSettingsRequest(problem, desiredRuntimeSeconds),
+      recommendRequest: buildRecommendSettingsRequest(scenario, desiredRuntimeSeconds),
     });
   }
 
@@ -455,10 +455,10 @@ export class SolverWorkerService {
   }
 
   public async evaluateInputContract(
-    problemPayload: Record<string, unknown>,
+    scenarioPayload: Record<string, unknown>,
   ): Promise<RustResult> {
     return this.callSolver<RustResult>("evaluate_input", {
-      problemPayload,
+      scenarioPayload,
     });
   }
 

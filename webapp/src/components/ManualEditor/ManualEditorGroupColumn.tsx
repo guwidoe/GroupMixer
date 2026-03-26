@@ -1,6 +1,6 @@
 import React from 'react';
 import { Lock, LockOpen } from 'lucide-react';
-import type { Group, Problem } from '../../types';
+import type { Group, Scenario } from '../../types';
 import PersonCard from '../PersonCard';
 import type { PreviewDelta } from './types';
 
@@ -8,7 +8,7 @@ interface ManualEditorGroupColumnProps {
   group: Group;
   activeSession: number;
   peopleIds: string[];
-  effectiveProblem: Problem;
+  effectiveScenario: Scenario;
   draggingPerson: string | null;
   previewDelta: PreviewDelta | null;
   isGroupLocked: (groupId: string) => boolean;
@@ -25,7 +25,7 @@ export function ManualEditorGroupColumn({
   group,
   activeSession,
   peopleIds,
-  effectiveProblem,
+  effectiveScenario,
   draggingPerson,
   previewDelta,
   isGroupLocked,
@@ -127,7 +127,7 @@ export function ManualEditorGroupColumn({
       >
         <div className="space-y-2 select-none">
           {peopleIds.map((pid) => {
-            const person = effectiveProblem.people.find((p) => p.id === pid);
+            const person = effectiveScenario.people.find((p) => p.id === pid);
             if (!person) return null;
             const dragStart = (e: React.DragEvent) => {
               if (isPersonLocked(pid) || isGroupLocked(group.id)) {

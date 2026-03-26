@@ -81,13 +81,13 @@ export interface Objective {
   weight: number; // Relative importance of the objective
 }
 
-export interface Problem {
+export interface Scenario {
   people: Person[];
   groups: Group[];
   num_sessions: number; // Renamed from sessions_count to match solver-core
   /**
    * Optimization objectives to be maximized by the solver. If omitted or empty, the frontend will automatically inject a default
-   * "maximize_unique_contacts" objective with weight 1.0 when sending the problem to the solver.
+   * "maximize_unique_contacts" objective with weight 1.0 when sending the scenario to the solver.
    */
   objectives?: Objective[];
   constraints: Constraint[];
@@ -280,39 +280,39 @@ export interface SolverState {
   searchEfficiency?: number;
 }
 
-// Problem Management types
+// Scenario Management types
 
-// Snapshot of problem configuration when result was created
-export interface ProblemSnapshot {
+// Snapshot of scenario configuration when result was created
+export interface ScenarioSnapshot {
   people: Person[];
   groups: Group[];
   num_sessions: number;
   objectives?: Objective[];
   constraints: Constraint[];
-  // Note: settings are already stored separately in ProblemResult.solverSettings
+  // Note: settings are already stored separately in ScenarioResult.solverSettings
 }
 
-export interface ProblemResult {
+export interface ScenarioResult {
   id: string;
   name?: string; // Custom name or auto-generated
   solution: Solution;
   solverSettings: SolverSettings;
-  problemSnapshot?: ProblemSnapshot; // Optional for backwards compatibility
+  scenarioSnapshot?: ScenarioSnapshot; // Optional for backwards compatibility
   timestamp: number; // Unix timestamp when result was created
   duration: number; // Actual solve time in milliseconds
 }
 
-export interface SavedProblem {
+export interface SavedScenario {
   id: string;
   name: string;
-  problem: Problem;
-  results: ProblemResult[];
+  scenario: Scenario;
+  results: ScenarioResult[];
   createdAt: number;
   updatedAt: number;
   isTemplate?: boolean; // Mark as template for easy duplication
 }
 
-export interface ProblemSummary {
+export interface ScenarioSummary {
   id: string;
   name: string;
   peopleCount: number;
@@ -326,24 +326,24 @@ export interface ProblemSummary {
 
 // UI State types
 export interface AppState {
-  problem: Problem | null;
+  scenario: Scenario | null;
   solution: Solution | null;
   solverState: SolverState;
   attributeDefinitions: AttributeDefinition[];
 
-  // Problem Management
-  currentProblemId: string | null;
-  savedProblems: Record<string, SavedProblem>; // Keyed by problem ID
+  // Scenario Management
+  currentScenarioId: string | null;
+  savedScenarios: Record<string, SavedScenario>; // Keyed by scenario ID
   selectedResultIds: string[]; // For comparison
 
   // Demo data dropdown state
   demoDropdownOpen: boolean;
 
   ui: {
-    activeTab: "problem" | "solver" | "results" | "manage";
+    activeTab: "scenario" | "solver" | "results" | "manage";
     isLoading: boolean;
     notifications: Notification[];
-    showProblemManager: boolean;
+    showScenarioManager: boolean;
     showResultComparison: boolean;
     warmStartResultId?: string | null;
   };
@@ -375,9 +375,9 @@ export interface AttributeDefinition {
 }
 
 // Export/Import types
-export interface ExportedProblem {
+export interface ExportedScenario {
   version: string; // For future compatibility
-  problem: SavedProblem;
+  scenario: SavedScenario;
   attributeDefinitions?: AttributeDefinition[];
   exportedAt: number;
 }

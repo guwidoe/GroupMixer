@@ -8,7 +8,7 @@ export type SolverRpcMethod =
   | "get_schema"
   | "list_public_errors"
   | "get_public_error"
-  | "validate_problem"
+  | "validate_scenario"
   | "get_default_solver_configuration"
   | "recommend_settings"
   | "evaluate_input"
@@ -21,7 +21,7 @@ export const SOLVER_RPC_METHODS = [
   "get_schema",
   "list_public_errors",
   "get_public_error",
-  "validate_problem",
+  "validate_scenario",
   "get_default_solver_configuration",
   "recommend_settings",
   "evaluate_input",
@@ -33,7 +33,7 @@ export function isSolverRpcMethod(value: string): value is SolverRpcMethod {
 }
 
 export interface SolverMessageData {
-  problemPayload?: Record<string, unknown>;
+  scenarioPayload?: Record<string, unknown>;
   resultPayload?: RustResult;
   useProgress?: boolean;
   recommendRequest?: WasmRecommendSettingsRequest;
@@ -54,7 +54,7 @@ export interface SolveRequestMessage {
   type: "SOLVE";
   id: string;
   data: {
-    problemPayload: Record<string, unknown>;
+    scenarioPayload: Record<string, unknown>;
     useProgress?: boolean;
   };
 }
@@ -73,7 +73,7 @@ export type WorkerRequestMessage =
 
 export interface WorkerErrorData {
   error: string;
-  problemJson?: string;
+  scenarioJson?: string;
   filename?: string;
   lineno?: number;
   stack?: string;
@@ -129,11 +129,11 @@ export interface LogMessage {
   };
 }
 
-export interface ProblemJsonMessage {
+export interface ScenarioJsonMessage {
   type: "PROBLEM_JSON";
   id?: string;
   data: {
-    problemJson?: string;
+    scenarioJson?: string;
   };
 }
 
@@ -152,13 +152,13 @@ export function createCancelRequestMessage(id: string): CancelRequestMessage {
 
 export function createSolveRequestMessage(
   id: string,
-  problemPayload: Record<string, unknown>,
+  scenarioPayload: Record<string, unknown>,
   useProgress = false,
 ): SolveRequestMessage {
   return {
     type: "SOLVE",
     id,
-    data: { problemPayload, useProgress },
+    data: { scenarioPayload, useProgress },
   };
 }
 
@@ -235,7 +235,7 @@ export type WorkerResponseMessage =
   | RequestErrorMessage
   | RpcSuccessMessage
   | LogMessage
-  | ProblemJsonMessage
+  | ScenarioJsonMessage
   | FatalErrorMessage;
 
 export interface SolverRunResult {

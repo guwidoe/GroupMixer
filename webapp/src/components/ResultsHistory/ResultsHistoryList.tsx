@@ -1,7 +1,7 @@
 import React from 'react';
-import type { ProblemResult, SavedProblem } from '../../types';
+import type { ScenarioResult, SavedScenario } from '../../types';
 import { calculateMetrics, getColorClass } from '../../utils/metricCalculations';
-import { compareProblemConfigurations } from '../../services/problemStorage';
+import { compareScenarioConfigurations } from '../../services/scenarioStorage';
 import { ResultCard, type ResultCardActions, type ResultCardMetrics, type ResultCardState } from './ResultCard';
 import { getScoreColor } from './utils';
 
@@ -13,36 +13,36 @@ interface ResultsHistoryListState {
   exportDropdownOpenId: string | null;
   configDetailsOpenId: string | null;
   bestResultId?: string;
-  mostRecentResult: ProblemResult | null;
+  mostRecentResult: ScenarioResult | null;
 }
 
 interface ResultsHistoryListActions {
   onToggleSelected: (resultId: string) => void;
   onToggleExpanded: (resultId: string) => void;
-  onStartRename: (result: ProblemResult) => void;
+  onStartRename: (result: ScenarioResult) => void;
   onSaveRename: () => void;
   onCancelRename: () => void;
   onChangeEditingName: (value: string) => void;
-  onOpenDetails: (result: ProblemResult) => void;
+  onOpenDetails: (result: ScenarioResult) => void;
   onDelete: (resultId: string) => void;
-  onExport: (result: ProblemResult, format: 'json' | 'csv' | 'excel') => void;
+  onExport: (result: ScenarioResult, format: 'json' | 'csv' | 'excel') => void;
   onToggleExportDropdown: (resultId: string) => void;
   onCloseExportDropdown: () => void;
   onToggleConfigDetails: (resultId: string) => void;
   onCloseConfigDetails: () => void;
-  onRestoreConfig: (result: ProblemResult) => void;
+  onRestoreConfig: (result: ScenarioResult) => void;
 }
 
 interface ResultsHistoryListProps {
-  results: ProblemResult[];
-  currentProblem: SavedProblem;
+  results: ScenarioResult[];
+  currentScenario: SavedScenario;
   state: ResultsHistoryListState;
   actions: ResultsHistoryListActions;
 }
 
 export function ResultsHistoryList({
   results,
-  currentProblem,
+  currentScenario,
   state,
   actions,
 }: ResultsHistoryListProps) {
@@ -57,8 +57,8 @@ export function ResultsHistoryList({
           const isCurrent = result.id === state.mostRecentResult?.id;
 
           const metrics = (() => {
-            const problemConfig = result.problemSnapshot || currentProblem.problem;
-            return calculateMetrics(problemConfig, result.solution);
+            const scenarioConfig = result.scenarioSnapshot || currentScenario.scenario;
+            return calculateMetrics(scenarioConfig, result.solution);
           })();
 
           const repPenalty = result.solution.weighted_repetition_penalty ?? result.solution.repetition_penalty;
@@ -69,7 +69,7 @@ export function ResultsHistoryList({
           const balColorClass = getColorClass(balPenalty === 0 ? 0 : 1, true);
           const conColorClass = getColorClass(conPenalty === 0 ? 0 : 1, true);
 
-          const configDiff = compareProblemConfigurations(currentProblem.problem, result.problemSnapshot);
+          const configDiff = compareScenarioConfigurations(currentScenario.scenario, result.scenarioSnapshot);
           const scoreColorClass = getScoreColor(result.solution.final_score, result, results, state.mostRecentResult);
 
           return (

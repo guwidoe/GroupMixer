@@ -1,13 +1,13 @@
 import React from 'react';
 import { Users } from 'lucide-react';
-import type { Problem, Solution } from '../../types';
+import type { Scenario, Solution } from '../../types';
 
 interface ResultsScheduleListProps {
-  effectiveProblem: Problem;
+  effectiveScenario: Scenario;
   solution: Solution;
 }
 
-export function ResultsScheduleList({ effectiveProblem, solution }: ResultsScheduleListProps) {
+export function ResultsScheduleList({ effectiveScenario, solution }: ResultsScheduleListProps) {
   return (
     <div
       className="rounded-lg border overflow-hidden transition-colors"
@@ -20,7 +20,7 @@ export function ResultsScheduleList({ effectiveProblem, solution }: ResultsSched
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                 Person
               </th>
-              {Array.from({ length: effectiveProblem.num_sessions || 0 }, (_, i) => (
+              {Array.from({ length: effectiveScenario.num_sessions || 0 }, (_, i) => (
                 <th key={i} className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                   Session {i + 1}
                 </th>
@@ -28,7 +28,7 @@ export function ResultsScheduleList({ effectiveProblem, solution }: ResultsSched
             </tr>
           </thead>
           <tbody className="divide-y" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-secondary)' }}>
-            {effectiveProblem.people.map((person) => {
+            {effectiveScenario.people.map((person) => {
               const personAssignments = solution.assignments.filter(a => a.person_id === person.id);
               const displayName = person.attributes?.name || person.id;
 
@@ -46,7 +46,7 @@ export function ResultsScheduleList({ effectiveProblem, solution }: ResultsSched
                       <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{displayName}</span>
                     </div>
                   </td>
-                  {Array.from({ length: effectiveProblem.num_sessions || 0 }, (_, sessionIndex) => {
+                  {Array.from({ length: effectiveScenario.num_sessions || 0 }, (_, sessionIndex) => {
                     const assignment = personAssignments.find(a => a.session_id === sessionIndex);
                     return (
                       <td key={sessionIndex} className="px-6 py-4 whitespace-nowrap">

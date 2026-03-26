@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ManualEditor } from './components/ManualEditor';
-import { ProblemEditor } from './components/ProblemEditor/ProblemEditor';
+import { ScenarioEditor } from './components/ScenarioEditor/ScenarioEditor';
 import { ResultsHistory } from './components/ResultsHistory';
 import { ResultsView } from './components/ResultsView';
 import { SolverPanel } from './components/SolverPanel';
@@ -23,9 +23,11 @@ function App() {
         ))}
         <Route path="/landingpage" element={<Navigate to="/" replace />} />
         <Route path="/app" element={<MainApp />}>
-          <Route index element={<Navigate to="problem/people" replace />} />
-          <Route path="problem" element={<Navigate to="/app/problem/people" replace />} />
-          <Route path="problem/:section" element={<ProblemEditor />} />
+          <Route index element={<Navigate to="scenario/people" replace />} />
+          <Route path="problem" element={<Navigate to="/app/scenario/people" replace />} />
+          <Route path="problem/:section" element={<Navigate to="/app/scenario/people" replace />} />
+          <Route path="scenario" element={<Navigate to="/app/scenario/people" replace />} />
+          <Route path="scenario/:section" element={<ScenarioEditor />} />
           <Route path="solver" element={<SolverPanel />} />
           <Route path="results" element={<ResultsView />} />
           <Route path="editor" element={<ManualEditor />} />

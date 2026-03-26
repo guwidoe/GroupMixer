@@ -39,13 +39,13 @@ describe("createUISlice", () => {
 
     harness.slice.setActiveTab("solver");
     harness.slice.setLoading(false);
-    harness.slice.setShowProblemManager(true);
+    harness.slice.setShowScenarioManager(true);
     harness.slice.setShowResultComparison(true);
 
     expect(harness.getState().ui).toMatchObject({
       activeTab: "solver",
       isLoading: false,
-      showProblemManager: true,
+      showScenarioManager: true,
       showResultComparison: true,
     });
   });
@@ -56,7 +56,7 @@ describe("createUISlice", () => {
     harness.slice.addNotification({
       type: "info",
       title: "Saved",
-      message: "Problem saved",
+      message: "Scenario saved",
     });
 
     expect(harness.getState().ui.notifications).toEqual([

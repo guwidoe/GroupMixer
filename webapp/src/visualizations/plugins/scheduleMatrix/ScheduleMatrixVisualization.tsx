@@ -8,9 +8,9 @@ type ColorMode =
   | { type: "utilization" }
   | { type: "attribute"; attributeKey: string };
 
-function getAttributeKeys(problemPeople: Array<{ attributes?: Record<string, string> }>): string[] {
+function getAttributeKeys(scenarioPeople: Array<{ attributes?: Record<string, string> }>): string[] {
   const keys = new Set<string>();
-  for (const p of problemPeople) {
+  for (const p of scenarioPeople) {
     const attrs = p.attributes || {};
     for (const k of Object.keys(attrs)) {
       if (k === "name") continue;
@@ -21,16 +21,16 @@ function getAttributeKeys(problemPeople: Array<{ attributes?: Record<string, str
 }
 
 export function ScheduleMatrixVisualization({ data }: VisualizationComponentProps) {
-  const problem = data.problem;
+  const scenario = data.scenario;
 
   const normalized = useMemo(() => {
     if (data.kind === "final") {
-      return normalizeFromSolution(problem, data.solution);
+      return normalizeFromSolution(scenario, data.solution);
     }
-    return normalizeFromSnapshot(problem, data.schedule);
-  }, [data, problem]);
+    return normalizeFromSnapshot(scenario, data.schedule);
+  }, [data, scenario]);
 
-  const attributeKeys = useMemo(() => getAttributeKeys(problem.people), [problem.people]);
+  const attributeKeys = useMemo(() => getAttributeKeys(scenario.people), [scenario.people]);
 
   const [colorMode, setColorMode] = useState<ColorMode>(() => {
     if (attributeKeys.length > 0) {
@@ -41,17 +41,17 @@ export function ScheduleMatrixVisualization({ data }: VisualizationComponentProp
 
   const peopleById = useMemo(() => {
     const m = new Map<string, { id: string; attributes: Record<string, string> }>();
-    for (const p of problem.people) {
+    for (const p of scenario.people) {
       m.set(p.id, { id: p.id, attributes: p.attributes || {} });
     }
     return m;
-  }, [problem.people]);
+  }, [scenario.people]);
 
   const groupById = useMemo(() => {
     const m = new Map<string, { id: string; size: number }>();
-    for (const g of problem.groups) m.set(g.id, { id: g.id, size: g.size });
+    for (const g of scenario.groups) m.set(g.id, { id: g.id, size: g.size });
     return m;
-  }, [problem.groups]);
+  }, [scenario.groups]);
 
   const resolveCellStyle = (groupId: string, peopleIds: string[], capacity: number) => {
     if (colorMode.type === "none") {
