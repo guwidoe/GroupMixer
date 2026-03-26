@@ -1,5 +1,6 @@
 import React from 'react';
 import { Save, Upload } from 'lucide-react';
+import { Tooltip } from '../Tooltip';
 import { DemoDataDropdown } from './DemoDataDropdown';
 
 interface ScenarioEditorHeaderProps {
@@ -18,27 +19,29 @@ export function ScenarioEditorHeader({
   if (collapsed) {
     return (
       <div className="space-y-1">
-        <button
-          type="button"
-          onClick={onLoadScenario}
-          className="flex w-full items-center justify-center rounded-md py-2 transition-colors hover:bg-[var(--bg-tertiary)]"
-          style={{ color: 'var(--text-secondary)' }}
-          aria-label="Load"
-          title="Load"
-        >
-          <Upload className="h-4 w-4 shrink-0" style={{ color: 'var(--text-tertiary)' }} />
-        </button>
+        <Tooltip content="Load" className="block w-full" placement="right">
+          <button
+            type="button"
+            onClick={onLoadScenario}
+            className="flex w-full items-center justify-center rounded-md py-2 transition-colors hover:bg-[var(--bg-tertiary)]"
+            style={{ color: 'var(--text-secondary)' }}
+            aria-label="Load"
+          >
+            <Upload className="h-4 w-4 shrink-0" style={{ color: 'var(--text-tertiary)' }} />
+          </button>
+        </Tooltip>
 
-        <button
-          type="button"
-          onClick={onSaveScenario}
-          className="flex w-full items-center justify-center rounded-md py-2 transition-colors hover:bg-[var(--bg-tertiary)]"
-          style={{ color: 'var(--text-secondary)' }}
-          aria-label="Save"
-          title="Save"
-        >
-          <Save className="h-4 w-4 shrink-0" style={{ color: 'var(--text-tertiary)' }} />
-        </button>
+        <Tooltip content="Save" className="block w-full" placement="right">
+          <button
+            type="button"
+            onClick={onSaveScenario}
+            className="flex w-full items-center justify-center rounded-md py-2 transition-colors hover:bg-[var(--bg-tertiary)]"
+            style={{ color: 'var(--text-secondary)' }}
+            aria-label="Save"
+          >
+            <Save className="h-4 w-4 shrink-0" style={{ color: 'var(--text-tertiary)' }} />
+          </button>
+        </Tooltip>
 
         <DemoDataDropdown
           onDemoCaseClick={onDemoCaseClick}
@@ -52,25 +55,31 @@ export function ScenarioEditorHeader({
 
   return (
     <div className="space-y-0.5">
-      <button
-        type="button"
-        onClick={onLoadScenario}
-        className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm font-medium transition-colors hover:bg-[var(--bg-tertiary)]"
-        style={{ color: 'var(--text-secondary)' }}
-      >
-        <Upload className="h-4 w-4 shrink-0" style={{ color: 'var(--text-tertiary)' }} />
-        <span className="truncate">Load</span>
-      </button>
+      <Tooltip content="Load" className="block w-full" placement="right">
+        <button
+          type="button"
+          onClick={onLoadScenario}
+          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm font-medium transition-colors hover:bg-[var(--bg-tertiary)]"
+          style={{ color: 'var(--text-secondary)' }}
+          aria-label="Load"
+        >
+          <Upload className="h-4 w-4 shrink-0" style={{ color: 'var(--text-tertiary)' }} />
+          <span className="truncate">Load</span>
+        </button>
+      </Tooltip>
 
-      <button
-        type="button"
-        onClick={onSaveScenario}
-        className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm font-medium transition-colors hover:bg-[var(--bg-tertiary)]"
-        style={{ color: 'var(--text-secondary)' }}
-      >
-        <Save className="h-4 w-4 shrink-0" style={{ color: 'var(--text-tertiary)' }} />
-        <span className="truncate">Save</span>
-      </button>
+      <Tooltip content="Save" className="block w-full" placement="right">
+        <button
+          type="button"
+          onClick={onSaveScenario}
+          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm font-medium transition-colors hover:bg-[var(--bg-tertiary)]"
+          style={{ color: 'var(--text-secondary)' }}
+          aria-label="Save"
+        >
+          <Save className="h-4 w-4 shrink-0" style={{ color: 'var(--text-tertiary)' }} />
+          <span className="truncate">Save</span>
+        </button>
+      </Tooltip>
 
       <DemoDataDropdown
         onDemoCaseClick={onDemoCaseClick}

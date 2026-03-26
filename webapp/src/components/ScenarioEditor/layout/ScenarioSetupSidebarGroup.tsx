@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { Tooltip } from '../../Tooltip';
 import type { ScenarioSetupSectionGroupDefinition, ScenarioSetupSectionId } from '../navigation/scenarioSetupNavTypes';
 import type { ScenarioSetupResolvedSection } from '../navigation/scenarioSetupNav';
 import { ScenarioSetupSidebarItem } from './ScenarioSetupSidebarItem';
@@ -40,17 +41,20 @@ export function ScenarioSetupSidebarGroup({
 
   return (
     <section className="mt-3" aria-label={group.label}>
-      <button
-        type="button"
-        onClick={() => setIsExpanded((value) => !value)}
-        className="flex w-full items-center justify-between px-2.5 py-1 text-left transition-colors"
-        style={{ color: 'var(--text-tertiary)' }}
-        aria-expanded={isExpanded}
-        aria-controls={`scenario-setup-group-${group.id}`}
-      >
-        <span className="text-[10px] font-semibold uppercase tracking-[0.08em]">{group.label}</span>
-        <ChevronDown className={`h-3 w-3 transition-transform duration-150 ${isExpanded ? '' : '-rotate-90'}`} />
-      </button>
+      <Tooltip content={group.label} className="block w-full" placement="right">
+        <button
+          type="button"
+          onClick={() => setIsExpanded((value) => !value)}
+          className="flex w-full items-center justify-between px-2.5 py-1 text-left transition-colors"
+          style={{ color: 'var(--text-tertiary)' }}
+          aria-expanded={isExpanded}
+          aria-controls={`scenario-setup-group-${group.id}`}
+          aria-label={group.label}
+        >
+          <span className="truncate text-[10px] font-semibold uppercase tracking-[0.08em]">{group.label}</span>
+          <ChevronDown className={`h-3 w-3 shrink-0 transition-transform duration-150 ${isExpanded ? '' : '-rotate-90'}`} />
+        </button>
+      </Tooltip>
 
       {isExpanded && (
         <div id={`scenario-setup-group-${group.id}`} className="mt-0.5 flex flex-col gap-0.5">

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar, ChevronDown, ChevronRight, Hash, Users, Zap } from 'lucide-react';
 import { useAppStore } from '../../store';
+import { Tooltip } from '../Tooltip';
 import type { DemoCaseWithMetrics } from './types';
 import { useOutsideClick } from '../../hooks';
 
@@ -148,7 +149,7 @@ export function DemoDataDropdown({
     return () => window.cancelAnimationFrame(frame);
   }, [demoDropdownOpen, demoCasesWithMetrics.length, loadingDemoMetrics, updateDropdownPosition]);
 
-  const trigger = variant === 'sidebar' ? (
+  const sidebarTrigger = (
     <button
       type="button"
       onClick={() => setDemoDropdownOpen(!demoDropdownOpen)}
@@ -162,7 +163,6 @@ export function DemoDataDropdown({
       aria-expanded={demoDropdownOpen}
       aria-haspopup="menu"
       aria-label="Demo Data"
-      title={collapsed ? 'Demo Data' : undefined}
     >
       <Zap
         className="h-4 w-4 shrink-0"
@@ -171,6 +171,12 @@ export function DemoDataDropdown({
       {!collapsed && <span className="truncate">Demo Data</span>}
       {!collapsed && <ChevronRight className="ml-auto h-4 w-4 shrink-0" />}
     </button>
+  );
+
+  const trigger = variant === 'sidebar' ? (
+    <Tooltip content="Demo Data" className="block w-full" placement="right" disabled={demoDropdownOpen}>
+      {sidebarTrigger}
+    </Tooltip>
   ) : (
     <button
       onClick={() => setDemoDropdownOpen(!demoDropdownOpen)}

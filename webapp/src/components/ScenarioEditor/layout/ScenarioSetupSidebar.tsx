@@ -1,5 +1,6 @@
 import React from 'react';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Tooltip } from '../../Tooltip';
 import type { ScenarioSetupResolvedSection } from '../navigation/scenarioSetupNav';
 import type { ScenarioSetupSectionGroupDefinition, ScenarioSetupSectionId } from '../navigation/scenarioSetupNavTypes';
 import { ScenarioSetupSidebarGroup } from './ScenarioSetupSidebarGroup';
@@ -29,7 +30,7 @@ export function ScenarioSetupSidebar({
   return (
     <aside
       className={`hidden overflow-hidden border-r transition-[width] duration-200 ease-out md:flex md:flex-shrink-0 ${
-        isCollapsed ? 'md:w-14' : 'md:w-64'
+        isCollapsed ? 'md:w-14' : 'md:w-60'
       }`}
       style={{ borderColor: 'var(--border-primary)' }}
       aria-label="Scenario Setup navigation"
@@ -47,7 +48,7 @@ export function ScenarioSetupSidebar({
           </div>
         )}
 
-        <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
+        <nav className="min-h-0 flex-1 overflow-y-auto px-1.5 py-2">
           {groupedSections.map(({ group, sections }) => (
             <ScenarioSetupSidebarGroup
               key={group.id}
@@ -61,16 +62,21 @@ export function ScenarioSetupSidebar({
         </nav>
 
         <div className="border-t p-2" style={{ borderColor: 'var(--border-primary)' }}>
-          <button
-            type="button"
-            onClick={onToggleCollapsed}
-            className="flex w-full items-center justify-center rounded-md py-1.5 transition-colors"
-            style={{ color: 'var(--text-secondary)' }}
-            aria-label={isCollapsed ? 'Expand scenario setup sidebar' : 'Collapse scenario setup sidebar'}
-            title={isCollapsed ? 'Expand scenario setup sidebar' : 'Collapse scenario setup sidebar'}
+          <Tooltip
+            content={isCollapsed ? 'Expand scenario setup sidebar' : 'Collapse scenario setup sidebar'}
+            className="block w-full"
+            placement="right"
           >
-            {isCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-          </button>
+            <button
+              type="button"
+              onClick={onToggleCollapsed}
+              className="flex w-full items-center justify-center rounded-md py-1.5 transition-colors"
+              style={{ color: 'var(--text-secondary)' }}
+              aria-label={isCollapsed ? 'Expand scenario setup sidebar' : 'Collapse scenario setup sidebar'}
+            >
+              {isCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            </button>
+          </Tooltip>
         </div>
       </div>
     </aside>
