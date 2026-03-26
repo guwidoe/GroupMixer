@@ -16,7 +16,7 @@ export function ScenarioEditor() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 md:flex md:h-full md:min-h-0 md:flex-col md:space-y-0">
       <ScenarioSetupLayout
         scenario={controller.scenario ?? null}
         attributeDefinitions={controller.attributeDefinitions}

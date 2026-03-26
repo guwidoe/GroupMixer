@@ -38,7 +38,7 @@ export function ScenarioSetupLayout({
   );
 
   return (
-    <div className="space-y-4 md:h-full md:space-y-0">
+    <div className="space-y-4 md:flex md:h-full md:min-h-0 md:flex-col md:space-y-0">
       <ScenarioSetupMobileNav
         groupedSections={groupedSections}
         activeSection={activeSection}
@@ -46,7 +46,7 @@ export function ScenarioSetupLayout({
         headerContent={sidebarHeader}
       />
 
-      <div className="flex flex-col gap-6 md:h-full md:flex-row md:items-stretch md:gap-0">
+      <div className="flex flex-col gap-6 md:min-h-0 md:flex-1 md:flex-row md:items-stretch md:gap-0">
         <ScenarioSetupSidebar
           groupedSections={groupedSections}
           activeSection={activeSection}
@@ -57,7 +57,7 @@ export function ScenarioSetupLayout({
           collapsedHeaderContent={collapsedSidebarHeader}
         />
 
-        <div className="min-w-0 flex-1 p-4 md:h-full md:overflow-y-auto md:p-6">{children}</div>
+        <div className="min-w-0 flex-1 p-4 md:h-full md:min-h-0 md:overflow-y-auto md:p-6">{children}</div>
       </div>
     </div>
   );

@@ -214,14 +214,15 @@ export function Tooltip({
           id={tooltipId}
           role="tooltip"
           data-placement={position?.placement ?? placement}
-          className="pointer-events-none fixed z-[90] rounded-md px-2.5 py-2 text-xs font-medium shadow-lg"
+          className="pointer-events-none fixed z-[90] rounded-md border px-2.5 py-2 text-xs font-medium shadow-lg"
           style={{
             top: position?.top ?? -9999,
             left: position?.left ?? -9999,
             maxWidth: tooltipMaxWidth,
-            backgroundColor: 'rgba(15, 23, 42, 0.96)',
-            color: '#f8fafc',
-            boxShadow: '0 18px 36px rgba(15, 23, 42, 0.28)',
+            backgroundColor: 'var(--tooltip-bg)',
+            color: 'var(--tooltip-text)',
+            borderColor: 'var(--tooltip-border)',
+            boxShadow: 'var(--tooltip-shadow)',
             visibility: position ? 'visible' : 'hidden',
           }}
         >

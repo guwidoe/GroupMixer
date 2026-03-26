@@ -29,39 +29,41 @@ export function ScenarioSetupSidebar({
 }: ScenarioSetupSidebarProps) {
   return (
     <aside
-      className={`hidden overflow-hidden border-r transition-[width] duration-200 ease-out md:flex md:flex-shrink-0 ${
-        isCollapsed ? 'md:w-14' : 'md:w-60'
+      className={`hidden border-r transition-[width] duration-200 ease-out md:flex md:min-h-0 md:flex-shrink-0 ${
+        isCollapsed ? 'md:w-14' : 'md:w-56'
       }`}
       style={{ borderColor: 'var(--border-primary)' }}
       aria-label="Scenario Setup navigation"
     >
-      <div className="flex h-full min-h-0 w-full flex-col">
+      <div className="flex h-full min-h-0 max-h-full w-full flex-col overflow-hidden">
         {!isCollapsed && headerContent && (
-          <div className="border-b px-3 py-3" style={{ borderColor: 'var(--border-primary)' }}>
+          <div className="shrink-0 border-b px-3 py-3" style={{ borderColor: 'var(--border-primary)' }}>
             {headerContent}
           </div>
         )}
 
         {isCollapsed && collapsedHeaderContent && (
-          <div className="border-b px-1 py-2" style={{ borderColor: 'var(--border-primary)' }}>
+          <div className="shrink-0 border-b px-1 py-2" style={{ borderColor: 'var(--border-primary)' }}>
             {collapsedHeaderContent}
           </div>
         )}
 
-        <nav className="min-h-0 flex-1 overflow-y-auto px-1.5 py-2">
-          {groupedSections.map(({ group, sections }) => (
-            <ScenarioSetupSidebarGroup
-              key={group.id}
-              group={group}
-              sections={sections}
-              activeSection={activeSection}
-              isRailCollapsed={isCollapsed}
-              onNavigate={onNavigate}
-            />
-          ))}
-        </nav>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <nav className="flex min-h-full flex-col px-1 py-2">
+            {groupedSections.map(({ group, sections }) => (
+              <ScenarioSetupSidebarGroup
+                key={group.id}
+                group={group}
+                sections={sections}
+                activeSection={activeSection}
+                isRailCollapsed={isCollapsed}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </nav>
+        </div>
 
-        <div className="border-t p-2" style={{ borderColor: 'var(--border-primary)' }}>
+        <div className="shrink-0 border-t p-2" style={{ borderColor: 'var(--border-primary)' }}>
           <Tooltip
             content={isCollapsed ? 'Expand scenario setup sidebar' : 'Collapse scenario setup sidebar'}
             className="block w-full"

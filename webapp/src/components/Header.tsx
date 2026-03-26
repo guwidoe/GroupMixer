@@ -12,7 +12,7 @@ export function Header() {
 
   return (
     <header className="relative z-40 bg-white shadow-sm border-b border-gray-200 transition-colors" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
-      <div className="container mx-auto px-4 py-3">
+      <div className="w-full px-4 py-3 sm:px-6 lg:px-8">
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
           <div className="flex items-center justify-between">
@@ -40,7 +40,7 @@ export function Header() {
 
           
           {/* Desktop layout */}
-          <div className="hidden sm:flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+          <div className="hidden sm:ml-auto sm:flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
             {!currentScenarioName && (
               <button
                 onClick={() => setShowScenarioManager(true)}
@@ -69,11 +69,6 @@ export function Header() {
             )}
             
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Link to="/" className="flex items-center space-x-2 text-sm transition-colors p-2 rounded-md hover:bg-opacity-50 flex-1 sm:flex-none justify-center sm:justify-start" style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-tertiary)' }}>
-                <span className="hidden lg:inline">Tool Home</span>
-                <span className="lg:hidden">Home</span>
-              </Link>
-
               <a href="https://github.com/guwidoe/GroupMixer/issues" target="_blank" rel="noopener noreferrer" title="Report an issue or suggest a feature" className="flex items-center space-x-2 text-sm transition-colors p-2 rounded-md hover:bg-opacity-50 flex-1 sm:flex-none justify-center sm:justify-start" style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-tertiary)' }}>
                 <Bug className="h-4 w-4" />
                 <span className="hidden lg:inline">Report Issue</span>
@@ -122,15 +117,6 @@ export function Header() {
               )}
               
               <div className="flex items-center gap-2">
-                <Link
-                  to="/"
-                  className="flex items-center space-x-2 text-sm transition-colors p-2 rounded-md flex-1 justify-start"
-                  style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-tertiary)' }}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <span>Tool Home</span>
-                </Link>
-
                 <a 
                   href="https://github.com/guwidoe/GroupMixer/issues" 
                   target="_blank" 

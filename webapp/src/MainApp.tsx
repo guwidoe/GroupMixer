@@ -52,7 +52,11 @@ function MainApp() {
       <Header />
       <Navigation />
 
-      <main className={isScenarioSetupRoute ? 'md:h-[calc(100vh-7.5rem)] md:overflow-hidden' : 'container mx-auto px-4 py-6'}>
+      <main
+        className={isScenarioSetupRoute
+          ? 'px-4 py-4 md:flex md:h-[calc(100vh-7.5rem)] md:min-h-[34rem] md:flex-col'
+          : 'container mx-auto px-4 py-6'}
+      >
         {scenario && !currentScenarioId && (
           <div className={isScenarioSetupRoute ? 'px-4 pt-6' : ''}>
             <div
@@ -78,7 +82,7 @@ function MainApp() {
           </div>
         )}
 
-        <div className={isScenarioSetupRoute ? 'animate-fade-in' : 'animate-fade-in mt-6'}>
+        <div className={isScenarioSetupRoute ? 'animate-fade-in md:min-h-0 md:flex-1' : 'animate-fade-in mt-6'}>
           <Outlet />
         </div>
       </main>
