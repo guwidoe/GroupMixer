@@ -65,6 +65,13 @@ describe('ProblemSetupLayout', () => {
         objectiveCount={1}
         activeSection="attributes"
         onNavigate={vi.fn()}
+        collapsedSidebarHeader={
+          <div>
+            <button type="button" aria-label="Load">Load</button>
+            <button type="button" aria-label="Save">Save</button>
+            <button type="button" aria-label="Demo Data">Demo Data</button>
+          </div>
+        }
       >
         <div>Section content</div>
       </ProblemSetupLayout>,
@@ -75,6 +82,9 @@ describe('ProblemSetupLayout', () => {
 
     expect(screen.getByRole('button', { name: /expand problem setup sidebar/i })).toBeInTheDocument();
     expect(within(sidebar).queryByText('Problem Setup')).not.toBeInTheDocument();
+    expect(within(sidebar).getByRole('button', { name: /load/i })).toBeInTheDocument();
+    expect(within(sidebar).getByRole('button', { name: /save/i })).toBeInTheDocument();
+    expect(within(sidebar).getByRole('button', { name: /demo data/i })).toBeInTheDocument();
 
     const attributesButton = within(sidebar).getByRole('button', { name: /attribute definitions/i });
     expect(within(attributesButton).getByText('1')).toBeInTheDocument();

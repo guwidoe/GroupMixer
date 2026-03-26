@@ -12,6 +12,7 @@ interface ProblemSetupLayoutProps {
   activeSection: ProblemSetupSectionId | null;
   onNavigate: (sectionId: ProblemSetupSectionId) => void;
   sidebarHeader?: React.ReactNode;
+  collapsedSidebarHeader?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -22,6 +23,7 @@ export function ProblemSetupLayout({
   activeSection,
   onNavigate,
   sidebarHeader,
+  collapsedSidebarHeader,
   children,
 }: ProblemSetupLayoutProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -52,6 +54,7 @@ export function ProblemSetupLayout({
           onToggleCollapsed={() => setIsSidebarCollapsed((value) => !value)}
           onNavigate={onNavigate}
           headerContent={sidebarHeader}
+          collapsedHeaderContent={collapsedSidebarHeader}
         />
 
         <div className="min-w-0 flex-1 p-4 md:h-full md:overflow-y-auto md:p-6">{children}</div>

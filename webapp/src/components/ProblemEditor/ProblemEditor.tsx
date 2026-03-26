@@ -30,6 +30,14 @@ export function ProblemEditor() {
             onDemoCaseClick={controller.handleDemoCaseClick}
           />
         }
+        collapsedSidebarHeader={
+          <ProblemEditorHeader
+            onLoadProblem={controller.handleLoadProblem}
+            onSaveProblem={controller.handleSaveProblem}
+            onDemoCaseClick={controller.handleDemoCaseClick}
+            collapsed
+          />
+        }
       >
         <ProblemSetupSectionRenderer controller={controller} />
       </ProblemSetupLayout>

@@ -14,6 +14,7 @@ interface ProblemSetupSidebarProps {
   onToggleCollapsed: () => void;
   onNavigate: (sectionId: ProblemSetupSectionId) => void;
   headerContent?: React.ReactNode;
+  collapsedHeaderContent?: React.ReactNode;
 }
 
 export function ProblemSetupSidebar({
@@ -23,6 +24,7 @@ export function ProblemSetupSidebar({
   onToggleCollapsed,
   onNavigate,
   headerContent,
+  collapsedHeaderContent,
 }: ProblemSetupSidebarProps) {
   return (
     <aside
@@ -36,6 +38,12 @@ export function ProblemSetupSidebar({
         {!isCollapsed && headerContent && (
           <div className="border-b px-3 py-3" style={{ borderColor: 'var(--border-primary)' }}>
             {headerContent}
+          </div>
+        )}
+
+        {isCollapsed && collapsedHeaderContent && (
+          <div className="border-b px-1 py-2" style={{ borderColor: 'var(--border-primary)' }}>
+            {collapsedHeaderContent}
           </div>
         )}
 

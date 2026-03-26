@@ -9,6 +9,7 @@ interface DemoDataDropdownProps {
   onDemoCaseClick: (demoCaseId: string, demoCaseName: string) => void;
   variant?: 'default' | 'sidebar';
   placement?: 'bottom' | 'right';
+  collapsed?: boolean;
 }
 
 interface DropdownPosition {
@@ -22,6 +23,7 @@ export function DemoDataDropdown({
   onDemoCaseClick,
   variant = 'default',
   placement = 'bottom',
+  collapsed = false,
 }: DemoDataDropdownProps) {
   const { demoDropdownOpen, setDemoDropdownOpen, addNotification } = useAppStore();
   const demoDropdownRef = useRef<HTMLDivElement>(null);
@@ -150,20 +152,24 @@ export function DemoDataDropdown({
     <button
       type="button"
       onClick={() => setDemoDropdownOpen(!demoDropdownOpen)}
-      className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm font-medium transition-colors hover:bg-[var(--bg-tertiary)]"
+      className={`flex w-full items-center rounded-md text-sm font-medium transition-colors hover:bg-[var(--bg-tertiary)] ${
+        collapsed ? 'justify-center px-0 py-2' : 'gap-2.5 px-2.5 py-2 text-left'
+      }`}
       style={{
         backgroundColor: demoDropdownOpen ? 'var(--bg-tertiary)' : 'transparent',
         color: demoDropdownOpen ? 'var(--color-accent)' : 'var(--text-secondary)',
       }}
       aria-expanded={demoDropdownOpen}
       aria-haspopup="menu"
+      aria-label="Demo Data"
+      title={collapsed ? 'Demo Data' : undefined}
     >
       <Zap
         className="h-4 w-4 shrink-0"
         style={{ color: demoDropdownOpen ? 'var(--color-accent)' : 'var(--text-tertiary)' }}
       />
-      <span className="truncate">Demo Data</span>
-      <ChevronRight className="ml-auto h-4 w-4 shrink-0" />
+      {!collapsed && <span className="truncate">Demo Data</span>}
+      {!collapsed && <ChevronRight className="ml-auto h-4 w-4 shrink-0" />}
     </button>
   ) : (
     <button
