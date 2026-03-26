@@ -11,6 +11,10 @@ function getRuntimeSpecifier(): string {
     return new URL("../../../public/pkg/solver_wasm.js", import.meta.url).href;
   }
 
+  if (typeof globalThis.location?.href === "string") {
+    return new URL("/pkg/solver_wasm.js", globalThis.location.href).href;
+  }
+
   return "/pkg/solver_wasm.js";
 }
 
@@ -31,12 +35,12 @@ async function loadRuntimeModule(): Promise<RuntimeModule> {
 
 function requireRuntimeFunction(name: string): (...args: unknown[]) => unknown {
   if (!loadedRuntimeModule) {
-    throw new Error(`WASM runtime function \"${name}\" is unavailable before initialization.`);
+    throw new Error(`WASM runtime function "${name}" is unavailable before initialization.`);
   }
 
   const candidate = loadedRuntimeModule[name];
   if (typeof candidate !== "function") {
-    throw new Error(`WASM runtime does not expose \"${name}\".`);
+    throw new Error(`WASM runtime does not expose "${name}".`);
   }
 
   return candidate as (...args: unknown[]) => unknown;
