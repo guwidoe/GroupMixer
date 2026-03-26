@@ -44,6 +44,14 @@ function createStorage(): StorageShape {
   };
 }
 
+function defineGlobal(name: string, value: unknown) {
+  Object.defineProperty(globalThis, name, {
+    configurable: true,
+    writable: true,
+    value,
+  });
+}
+
 function installRenderGlobals() {
   const localStorage = createStorage();
   const sessionStorage = createStorage();
@@ -66,15 +74,13 @@ function installRenderGlobals() {
     location: { href: CANONICAL_ORIGIN },
   } as unknown as Window & typeof globalThis;
 
-  Object.assign(globalThis, {
-    window: windowLike,
-    localStorage,
-    sessionStorage,
-    navigator: windowLike.navigator,
-    React,
-    WebGLRenderingContext: class WebGLRenderingContext {},
-    WebGL2RenderingContext: class WebGL2RenderingContext {},
-  });
+  defineGlobal('window', windowLike);
+  defineGlobal('localStorage', localStorage);
+  defineGlobal('sessionStorage', sessionStorage);
+  defineGlobal('navigator', windowLike.navigator);
+  defineGlobal('React', React);
+  defineGlobal('WebGLRenderingContext', class WebGLRenderingContext {});
+  defineGlobal('WebGL2RenderingContext', class WebGL2RenderingContext {});
 }
 
 function escapeHtml(value: string): string {
