@@ -1,0 +1,107 @@
+import React, { useMemo, useState } from 'react';
+import { Menu, X } from 'lucide-react';
+import type { ProblemSetupResolvedSection } from '../navigation/problemSetupNav';
+import type { ProblemSetupSectionGroupDefinition, ProblemSetupSectionId } from '../navigation/problemSetupNavTypes';
+import { ProblemSetupSidebarGroup } from './ProblemSetupSidebarGroup';
+
+interface ProblemSetupMobileNavProps {
+  groupedSections: Array<{
+    group: ProblemSetupSectionGroupDefinition;
+    sections: ProblemSetupResolvedSection[];
+  }>;
+  activeSection: ProblemSetupSectionId | null;
+  onNavigate: (sectionId: ProblemSetupSectionId) => void;
+}
+
+export function ProblemSetupMobileNav({
+  groupedSections,
+  activeSection,
+  onNavigate,
+}: ProblemSetupMobileNavProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const activeLabel = useMemo(() => {
+    for (const entry of groupedSections) {
+      const match = entry.sections.find((section) => section.id === activeSection);
+      if (match) {
+        return match.label;
+      }
+    }
+    return 'Choose section';
+  }, [activeSection, groupedSections]);
+
+  return (
+    <div className="md:hidden">
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className="flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left"
+        style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+        aria-expanded={isOpen}
+        aria-label="Open problem setup navigation"
+      >
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
+            Problem Setup
+          </div>
+          <div className="mt-1 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+            {activeLabel}
+          </div>
+        </div>
+        <Menu className="h-5 w-5" style={{ color: 'var(--text-secondary)' }} />
+      </button>
+
+      {isOpen && (
+        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Problem Setup navigation drawer">
+          <button
+            type="button"
+            className="absolute inset-0"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.45)' }}
+            aria-label="Close problem setup navigation"
+            onClick={() => setIsOpen(false)}
+          />
+
+          <div
+            className="absolute inset-y-0 left-0 w-[88vw] max-w-sm overflow-y-auto border-r p-4 shadow-xl"
+            style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+          >
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Problem Setup
+                </h2>
+                <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  Navigate the model, rules, and goals.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="rounded-md border p-2"
+                style={{ borderColor: 'var(--border-primary)' }}
+                aria-label="Close problem setup navigation"
+              >
+                <X className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
+              </button>
+            </div>
+
+            <div className="space-y-5">
+              {groupedSections.map(({ group, sections }) => (
+                <ProblemSetupSidebarGroup
+                  key={group.id}
+                  group={group}
+                  sections={sections}
+                  activeSection={activeSection}
+                  onNavigate={(sectionId) => {
+                    onNavigate(sectionId);
+                    setIsOpen(false);
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

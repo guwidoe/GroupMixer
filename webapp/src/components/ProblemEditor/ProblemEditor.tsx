@@ -8,10 +8,10 @@ import { getDefaultSolverSettings } from './helpers';
 import { useProblemEditorBulk } from './hooks/useProblemEditorBulk';
 import { useProblemEditorConstraints } from './hooks/useProblemEditorConstraints';
 import { useProblemEditorEntities } from './hooks/useProblemEditorEntities';
+import { ProblemSetupLayout } from './layout/ProblemSetupLayout';
 import { ProblemEditorConstraintModals } from './ProblemEditorConstraintModals';
 import { ProblemEditorForms } from './ProblemEditorForms';
 import { ProblemEditorHeader } from './ProblemEditorHeader';
-import { ProblemEditorTabs } from './ProblemEditorTabs';
 import { isProblemSetupSectionId } from './navigation/problemSetupNav';
 import { createProblemEditorActions } from './problemEditorActions';
 import { ConstraintsSection } from './sections/ConstraintsSection';
@@ -45,6 +45,7 @@ export function ProblemEditor() {
   const { section } = useParams<{ section: string }>();
   const activeSection =
     section === 'constraints' || (section && isProblemSetupSectionId(section)) ? section : 'people';
+  const navigationSection = activeSection === 'constraints' ? null : activeSection;
   const navigate = useNavigate();
 
   const [sessionsCount, setSessionsCount] = useState(problem?.num_sessions || 3);
@@ -203,89 +204,89 @@ export function ProblemEditor() {
         onDemoCaseClick={handleDemoCaseClick}
       />
 
-      <ProblemEditorTabs
-        activeSection={activeSection}
+      <ProblemSetupLayout
         problem={problem ?? null}
         attributeDefinitions={attributeDefinitions}
         objectiveCount={objectiveCount}
+        activeSection={navigationSection}
         onNavigate={(sectionId) => navigate(`/app/problem/${sectionId}`)}
-      />
+      >
+        {activeSection === 'people' && (
+          <PeopleSection
+            problem={problem ?? null}
+            attributeDefinitions={attributeDefinitions}
+            sessionsCount={sessionsCount}
+            onAddAttribute={() => entities.setShowAttributeForm(true)}
+            onEditAttribute={entities.handleEditAttribute}
+            onRemoveAttribute={removeAttributeDefinition}
+            onAddPerson={() => entities.setShowPersonForm(true)}
+            onEditPerson={entities.handleEditPerson}
+            onDeletePerson={entities.handleDeletePerson}
+            onOpenBulkAddForm={bulk.addPeople.openForm}
+            onOpenBulkUpdateForm={bulk.updatePeople.openForm}
+            onTriggerCsvUpload={() => bulk.addPeople.csvFileInputRef.current?.click()}
+            onTriggerExcelImport={() =>
+              addNotification({ type: 'info', title: 'Coming Soon', message: 'Excel import is not yet implemented.' })
+            }
+          />
+        )}
 
-      {activeSection === 'people' && (
-        <PeopleSection
-          problem={problem ?? null}
-          attributeDefinitions={attributeDefinitions}
-          sessionsCount={sessionsCount}
-          onAddAttribute={() => entities.setShowAttributeForm(true)}
-          onEditAttribute={entities.handleEditAttribute}
-          onRemoveAttribute={removeAttributeDefinition}
-          onAddPerson={() => entities.setShowPersonForm(true)}
-          onEditPerson={entities.handleEditPerson}
-          onDeletePerson={entities.handleDeletePerson}
-          onOpenBulkAddForm={bulk.addPeople.openForm}
-          onOpenBulkUpdateForm={bulk.updatePeople.openForm}
-          onTriggerCsvUpload={() => bulk.addPeople.csvFileInputRef.current?.click()}
-          onTriggerExcelImport={() =>
-            addNotification({ type: 'info', title: 'Coming Soon', message: 'Excel import is not yet implemented.' })
-          }
-        />
-      )}
+        {activeSection === 'groups' && (
+          <GroupsSection
+            problem={problem ?? null}
+            onAddGroup={() => entities.setShowGroupForm(true)}
+            onEditGroup={entities.handleEditGroup}
+            onDeleteGroup={entities.handleDeleteGroup}
+            onOpenBulkAddForm={bulk.addGroups.openForm}
+            onTriggerCsvUpload={() => bulk.addGroups.csvFileInputRef.current?.click()}
+          />
+        )}
 
-      {activeSection === 'groups' && (
-        <GroupsSection
-          problem={problem ?? null}
-          onAddGroup={() => entities.setShowGroupForm(true)}
-          onEditGroup={entities.handleEditGroup}
-          onDeleteGroup={entities.handleDeleteGroup}
-          onOpenBulkAddForm={bulk.addGroups.openForm}
-          onTriggerCsvUpload={() => bulk.addGroups.csvFileInputRef.current?.click()}
-        />
-      )}
+        {activeSection === 'sessions' && (
+          <SessionsSection
+            sessionsCount={sessionsCount}
+            onChangeSessionsCount={handleSessionsCountChange}
+          />
+        )}
 
-      {activeSection === 'sessions' && (
-        <SessionsSection
-          sessionsCount={sessionsCount}
-          onChangeSessionsCount={handleSessionsCountChange}
-        />
-      )}
+        {activeSection === 'objectives' && (
+          <ObjectivesSection
+            currentWeight={getCurrentObjectiveWeight()}
+            onCommit={editorActions.handleObjectiveCommit}
+          />
+        )}
 
-      {activeSection === 'objectives' && (
-        <ObjectivesSection
-          currentWeight={getCurrentObjectiveWeight()}
-          onCommit={editorActions.handleObjectiveCommit}
-        />
-      )}
+        {activeSection === 'hard' && (
+          <HardConstraintsSection
+            onAdd={editorActions.handleHardConstraintAdd}
+            onEdit={editorActions.handleHardConstraintEdit}
+            onDelete={constraints.handleDeleteConstraint}
+          />
+        )}
 
-      {activeSection === 'hard' && (
-        <HardConstraintsSection
-          onAdd={editorActions.handleHardConstraintAdd}
-          onEdit={editorActions.handleHardConstraintEdit}
-          onDelete={constraints.handleDeleteConstraint}
-        />
-      )}
+        {activeSection === 'soft' && (
+          <SoftConstraintsSection
+            onAdd={editorActions.handleSoftConstraintAdd}
+            onEdit={editorActions.handleSoftConstraintEdit}
+            onDelete={constraints.handleDeleteConstraint}
+          />
+        )}
 
-      {activeSection === 'soft' && (
-        <SoftConstraintsSection
-          onAdd={editorActions.handleSoftConstraintAdd}
-          onEdit={editorActions.handleSoftConstraintEdit}
-          onDelete={constraints.handleDeleteConstraint}
-        />
-      )}
-
-      {activeSection === 'constraints' && (
-        <ConstraintsSection
-          problem={problem ?? null}
-          activeConstraintTab={constraints.activeConstraintTab}
-          constraintCategoryTab={constraints.constraintCategoryTab}
-          hardTypes={constraints.HARD_TYPES}
-          softTypes={constraints.SOFT_TYPES}
-          onChangeCategory={constraints.setConstraintCategoryTab}
-          onChangeTab={constraints.setActiveConstraintTab}
-          onAddConstraint={() => constraints.setShowConstraintForm(true)}
-          onEditConstraint={constraints.handleEditConstraint}
-          onDeleteConstraint={constraints.handleDeleteConstraint}
-        />
-      )}
+        {activeSection === 'constraints' && (
+          <ConstraintsSection
+            problem={problem ?? null}
+            activeConstraintTab={constraints.activeConstraintTab}
+            constraintCategoryTab={constraints.constraintCategoryTab}
+            hardTypes={constraints.HARD_TYPES}
+            softTypes={constraints.SOFT_TYPES}
+            onChangeCategory={constraints.setConstraintCategoryTab}
+            onChangeTab={constraints.setActiveConstraintTab}
+            onAddConstraint={() => constraints.setShowConstraintForm(true)}
+            onEditConstraint={constraints.handleEditConstraint}
+            onDeleteConstraint={constraints.handleDeleteConstraint}
+          />
+        )}
+      </ProblemSetupLayout>
 
       <ProblemEditorForms
         person={{

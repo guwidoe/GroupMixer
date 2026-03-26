@@ -7,6 +7,10 @@ import type {
   ProblemSetupSectionId,
 } from './problemSetupNavTypes';
 
+export interface ProblemSetupResolvedSection extends ProblemSetupSectionDefinition {
+  resolvedCount?: number;
+}
+
 const HARD_CONSTRAINT_TYPES = new Set(['ImmovablePeople', 'MustStayTogether']);
 const SOFT_CONSTRAINT_TYPES = new Set([
   'RepeatEncounter',
@@ -171,4 +175,20 @@ export function getProblemSetupSectionsByGroup(options?: {
       sections: sections.filter((section) => section.group === group.id),
     }))
     .filter((entry) => entry.sections.length > 0);
+}
+
+export function getResolvedProblemSetupSectionsByGroup(
+  context: ProblemSetupCountContext,
+  options?: {
+    surface?: ProblemSetupNavSurface;
+    includePlanned?: boolean;
+  },
+): Array<{ group: ProblemSetupSectionGroupDefinition; sections: ProblemSetupResolvedSection[] }> {
+  return getProblemSetupSectionsByGroup(options).map((entry) => ({
+    group: entry.group,
+    sections: entry.sections.map((section) => ({
+      ...section,
+      resolvedCount: getProblemSetupSectionCount(section, context),
+    })),
+  }));
 }
