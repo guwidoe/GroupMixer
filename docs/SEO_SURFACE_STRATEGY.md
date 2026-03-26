@@ -80,6 +80,10 @@ Spanish and French are now live on the shared landing engine for the highest-val
 
 Supporting English-only pages remain unprefixed for now until they justify localization demand and review effort.
 
+Future locale expansion policy for Japanese, Hindi, and Chinese is documented in:
+
+- `docs/MULTILINGUAL_LANDING_ROLLOUT.md`
+
 ## Build-time SEO artifacts
 
 Two scripts are now part of the workflow:
