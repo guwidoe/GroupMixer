@@ -42,6 +42,11 @@ async function discoverTestCaseFiles(): Promise<string[]> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function convertTestCaseToScenario(testCase: any): Scenario {
   const input = testCase.input;
+  const scenarioInput = input.scenario ?? input.problem;
+
+  if (!scenarioInput) {
+    throw new Error('Demo case is missing scenario/problem input data');
+  }
 
   // Convert solver settings
   const solverParams = input.solver.solver_params;
@@ -61,7 +66,7 @@ function convertTestCaseToScenario(testCase: any): Scenario {
 
   // Ensure every person has a "name" attribute (treat names as attributes)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const peopleWithNames = input.scenario.people.map((p: any) => {
+  const peopleWithNames = scenarioInput.people.map((p: any) => {
     const attrs = { ...(p.attributes || {}) };
     if (!attrs.name) {
       attrs.name = p.id; // Fallback to id if name is missing
@@ -71,8 +76,8 @@ function convertTestCaseToScenario(testCase: any): Scenario {
 
   return {
     people: peopleWithNames,
-    groups: input.scenario.groups,
-    num_sessions: input.scenario.num_sessions,
+    groups: scenarioInput.groups,
+    num_sessions: scenarioInput.num_sessions,
     constraints: input.constraints || [],
     settings,
   };
@@ -100,7 +105,12 @@ async function loadTestCaseFile(
     }
 
     const metadata = testCase.demo_metadata;
-    const scenario = testCase.input.scenario;
+    const scenario = testCase.input?.scenario ?? testCase.input?.problem;
+
+    if (!scenario) {
+      console.warn(`Skipping demo case without scenario/problem input: ${filename}`);
+      return null;
+    }
 
     const demoCase = {
       id: metadata.id,

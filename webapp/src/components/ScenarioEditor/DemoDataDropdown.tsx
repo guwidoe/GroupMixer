@@ -201,7 +201,7 @@ export function DemoDataDropdown({
       {isOpen && dropdownPosition && createPortal(
         <div
           ref={dropdownMenuRef}
-          className="fixed z-50 overflow-y-auto rounded-md border shadow-lg"
+          className="theme-scrollbar fixed z-50 overflow-y-auto rounded-md border shadow-lg"
           style={{
             top: dropdownPosition.top,
             left: dropdownPosition.left,

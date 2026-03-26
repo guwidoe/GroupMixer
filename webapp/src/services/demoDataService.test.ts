@@ -82,6 +82,58 @@ describe('demoDataService', () => {
     ]);
   });
 
+  it('supports legacy demo fixtures that still use input.problem', async () => {
+    const legacyFixture = {
+      demo_metadata: {
+        id: 'legacy-demo',
+        display_name: 'Legacy Demo',
+        description: 'Legacy problem fixture',
+        category: 'Simple',
+      },
+      input: {
+        solver: {
+          solver_type: 'SimulatedAnnealing',
+          stop_conditions: {},
+          solver_params: {
+            initial_temperature: 1,
+            final_temperature: 0.1,
+            cooling_schedule: 'geometric',
+          },
+          logging: {},
+        },
+        problem: {
+          people: [{ id: 'p1', attributes: {} }],
+          groups: [{ id: 'g1', size: 4 }],
+          num_sessions: 2,
+        },
+        constraints: [],
+      },
+    };
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ files: ['legacy.json'] }))
+      .mockResolvedValueOnce(jsonResponse(legacyFixture))
+      .mockResolvedValueOnce(jsonResponse({ files: ['legacy.json'] }))
+      .mockResolvedValueOnce(jsonResponse(legacyFixture))
+      .mockResolvedValueOnce(jsonResponse(legacyFixture));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const demoCases = await loadDemoCasesWithMetrics();
+    const scenario = await loadDemoCase('legacy-demo');
+
+    expect(demoCases).toEqual([
+      expect.objectContaining({
+        id: 'legacy-demo',
+        peopleCount: 1,
+        groupCount: 1,
+        sessionCount: 2,
+      }),
+    ]);
+    expect(scenario.people).toHaveLength(1);
+    expect(scenario.groups).toHaveLength(1);
+    expect(scenario.num_sessions).toBe(2);
+  });
+
   it('falls back to the built-in ui demo when the selected file cannot be fetched', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonResponse({ files: ['ui-demo.json'] }))
