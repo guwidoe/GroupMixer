@@ -40,7 +40,7 @@ function MainApp() {
   }, [location.pathname, location.search]);
 
   return (
-    <div className="min-h-screen transition-colors" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+    <div className="flex min-h-screen flex-col transition-colors" style={{ backgroundColor: 'var(--bg-secondary)' }}>
       <Seo
         title={seo.title}
         description={seo.description}
@@ -54,8 +54,8 @@ function MainApp() {
 
       <main
         className={isScenarioSetupRoute
-          ? 'px-4 py-4 md:flex md:h-[calc(100vh-7.5rem)] md:min-h-[20rem] md:flex-col md:overflow-hidden md:px-0 md:py-0'
-          : 'container mx-auto px-4 py-6'}
+          ? 'w-full px-4 py-4 md:flex md:min-h-[20rem] md:flex-1 md:flex-col md:overflow-hidden md:px-0 md:py-0'
+          : 'container mx-auto w-full flex-1 px-4 py-6'}
       >
         {scenario && !currentScenarioId && (
           <div className={isScenarioSetupRoute ? 'px-4 pt-6' : ''}>
