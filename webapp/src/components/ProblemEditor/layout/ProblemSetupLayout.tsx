@@ -1,8 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { AttributeDefinition, Problem } from '../../../types';
-import {
-  getResolvedProblemSetupSectionsByGroup,
-} from '../navigation/problemSetupNav';
+import { getResolvedProblemSetupSectionsByGroup } from '../navigation/problemSetupNav';
 import type { ProblemSetupSectionId } from '../navigation/problemSetupNavTypes';
 import { ProblemSetupMobileNav } from './ProblemSetupMobileNav';
 import { ProblemSetupSidebar } from './ProblemSetupSidebar';
@@ -24,6 +22,8 @@ export function ProblemSetupLayout({
   onNavigate,
   children,
 }: ProblemSetupLayoutProps) {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   const groupedSections = getResolvedProblemSetupSectionsByGroup(
     {
       problem,
@@ -45,12 +45,12 @@ export function ProblemSetupLayout({
         <ProblemSetupSidebar
           groupedSections={groupedSections}
           activeSection={activeSection}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapsed={() => setIsSidebarCollapsed((value) => !value)}
           onNavigate={onNavigate}
         />
 
-        <div className="min-w-0 flex-1">
-          {children}
-        </div>
+        <div className="min-w-0 flex-1">{children}</div>
       </div>
     </div>
   );

@@ -25,10 +25,10 @@ describe("Navigation", () => {
     mockStoreState.manualEditorLeaveHook = null;
   });
 
-  it("renders primary navigation tabs and allows normal navigation", async () => {
+  it("renders primary navigation tabs as sticky app chrome and allows normal navigation", async () => {
     const user = userEvent.setup();
 
-    renderWithRouter(
+    const { container } = renderWithRouter(
       <>
         <Navigation />
         <LocationProbe />
@@ -39,6 +39,7 @@ describe("Navigation", () => {
     expect(screen.getByRole("link", { name: /problem setup/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /solver/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /manual editor/i })).toBeInTheDocument();
+    expect(container.firstChild).toHaveClass('sticky');
 
     await user.click(screen.getByRole("link", { name: /solver/i }));
     expect(screen.getByTestId("location")).toHaveTextContent("/app/solver");

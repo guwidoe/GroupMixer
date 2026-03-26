@@ -51,9 +51,11 @@ function MainApp() {
       <Header />
 
       <main className="container mx-auto px-4 py-6">
+        <Navigation />
+
         {problem && !currentProblemId && (
           <div
-            className="mb-6 flex flex-col gap-3 rounded-2xl border px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+            className="mb-6 mt-6 flex flex-col gap-3 rounded-2xl border px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
             style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
           >
             <div>
@@ -74,11 +76,7 @@ function MainApp() {
           </div>
         )}
 
-        <div className="mb-6">
-          <Navigation />
-        </div>
-
-        <div className="animate-fade-in">
+        <div className="animate-fade-in mt-6">
           <Outlet />
         </div>
       </main>

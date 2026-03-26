@@ -29,7 +29,7 @@ function createProblem(): Problem {
 }
 
 describe('ProblemSetupLayout', () => {
-  it('renders grouped sidebar navigation with the active section highlighted', () => {
+  it('renders grouped compact sidebar navigation with the active section highlighted', () => {
     const onNavigate = vi.fn();
 
     render(
@@ -49,9 +49,35 @@ describe('ProblemSetupLayout', () => {
     expect(within(sidebar).getByText('Rules')).toBeInTheDocument();
     expect(within(sidebar).getByText('Goals')).toBeInTheDocument();
 
-    const activeItem = within(sidebar).getByRole('button', { name: /attributes/i });
+    const activeItem = within(sidebar).getByRole('button', { name: /attribute definitions/i });
     expect(activeItem).toHaveAttribute('aria-current', 'page');
     expect(within(activeItem).getByText('1')).toBeInTheDocument();
+    expect(within(sidebar).queryByText(/define the attribute schema/i)).not.toBeInTheDocument();
+  });
+
+  it('collapses the desktop sidebar into an icon rail while keeping count badges', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ProblemSetupLayout
+        problem={createProblem()}
+        attributeDefinitions={[{ key: 'role', values: ['dev', 'pm'] }]}
+        objectiveCount={1}
+        activeSection="attributes"
+        onNavigate={vi.fn()}
+      >
+        <div>Section content</div>
+      </ProblemSetupLayout>,
+    );
+
+    const sidebar = screen.getByLabelText('Problem Setup navigation');
+    await user.click(screen.getByRole('button', { name: /collapse problem setup sidebar/i }));
+
+    expect(screen.getByRole('button', { name: /expand problem setup sidebar/i })).toBeInTheDocument();
+    expect(within(sidebar).queryByText('Problem Setup')).not.toBeInTheDocument();
+
+    const attributesButton = within(sidebar).getByRole('button', { name: /attribute definitions/i });
+    expect(within(attributesButton).getByText('1')).toBeInTheDocument();
   });
 
   it('opens the mobile drawer and navigates via the shared section list', async () => {

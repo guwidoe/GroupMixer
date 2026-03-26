@@ -46,13 +46,16 @@ export function Navigation() {
     },
   ];
 
-
-
   return (
-    <div className="space-y-4">
-      {/* Navigation Tabs */}
-      <nav className="rounded-lg border p-1 transition-colors" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)', boxShadow: 'var(--shadow)' }}>
-        <div className="flex space-x-1 min-w-0">
+    <div
+      className="sticky top-0 z-30 -mx-4 border-b px-4 backdrop-blur"
+      style={{
+        backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 92%, transparent)',
+        borderColor: 'var(--border-primary)',
+      }}
+    >
+      <nav aria-label="Primary app navigation">
+        <div className="flex min-w-0 gap-1 overflow-x-auto py-2">
           {tabs.map((tab) => {
             const Icon = tab.icon;
 
@@ -71,21 +74,18 @@ export function Navigation() {
                   }
                 }}
                 className={({ isActive }) =>
-                  `flex-1 flex items-center justify-center space-x-1 sm:space-x-2 px-1 sm:px-2 md:px-4 py-3 rounded-md text-xs sm:text-sm font-medium transition-all duration-200 border min-w-0 ${
-                    isActive
-                      ? 'shadow-sm'
-                      : 'border-transparent hover:bg-opacity-50'
+                  `inline-flex min-w-fit items-center justify-center gap-2 rounded-md border-b-2 px-3 py-3 text-xs font-medium transition-colors sm:px-4 sm:text-sm ${
+                    isActive ? '' : 'hover:bg-[var(--bg-primary)]/50'
                   }`
                 }
                 style={({ isActive }) => ({
                   color: isActive ? 'var(--color-accent)' : 'var(--text-secondary)',
-                  backgroundColor: isActive ? 'var(--bg-tertiary)' : 'transparent',
-                  borderColor: isActive ? 'var(--color-accent)' : 'transparent'
+                  borderBottomColor: isActive ? 'var(--color-accent)' : 'transparent',
                 })}
                 title={tab.description}
               >
-                <Icon className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="truncate text-xs sm:text-sm">{tab.label}</span>
+                <Icon className="h-4 w-4 flex-shrink-0" />
+                <span className="whitespace-nowrap">{tab.label}</span>
               </NavLink>
             );
           })}
@@ -93,4 +93,4 @@ export function Navigation() {
       </nav>
     </div>
   );
-} 
+}
