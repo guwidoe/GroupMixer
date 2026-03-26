@@ -154,6 +154,17 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getAllByRole('button', { name: /open expert workspace/i })[0]).toHaveClass('btn-primary');
   }, 10000);
 
+  it('stacks the generator above the hero content on mobile while preserving desktop order classes', () => {
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('landing-tool-panel')).toHaveClass('order-1', 'lg:order-2');
+    expect(screen.getByTestId('landing-hero')).toHaveClass('order-2', 'lg:order-1');
+  });
+
   it('renders FAQ section for SEO', () => {
     render(
       <MemoryRouter>

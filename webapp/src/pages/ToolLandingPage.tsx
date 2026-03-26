@@ -206,7 +206,7 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
       <main>
         <section className="px-4 pb-10 pt-8 sm:px-6 lg:pb-16 lg:pt-12">
           <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1fr_minmax(340px,420px)] lg:items-start lg:gap-12">
-            <div className="max-w-xl pt-2">
+            <div data-testid="landing-hero" className="order-2 max-w-xl pt-2 lg:order-1">
               <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl lg:leading-[1.15]">
                 {config.h1}
               </h1>
@@ -282,7 +282,8 @@ export default function ToolLandingPage({ pageKey }: ToolLandingPageProps) {
             </div>
 
             <div
-              className="rounded-2xl border p-5 shadow-sm sm:p-6"
+              data-testid="landing-tool-panel"
+              className="order-1 rounded-2xl border p-5 shadow-sm sm:p-6 lg:order-2"
               style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
             >
               <div>
