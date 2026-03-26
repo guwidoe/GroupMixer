@@ -17,16 +17,28 @@ describe('toolPageConfigs locale routing', () => {
     expect(buildToolPagePath('fr', 'random-team-generator', 'random-team-generator')).toBe('/fr/random-team-generator');
   });
 
-  it('keeps the current live route inventory on the default locale until localized content is added', () => {
-    expect(TOOL_PAGE_ROUTES.every((route) => route.locale === 'en')).toBe(true);
+  it('adds Spanish and French prefixed routes only for the selected localized rollout pages', () => {
+    expect(TOOL_PAGE_ROUTES).toEqual(
+      expect.arrayContaining([
+        { key: 'home', locale: 'es', path: '/es' },
+        { key: 'home', locale: 'fr', path: '/fr' },
+        { key: 'random-team-generator', locale: 'es', path: '/es/random-team-generator' },
+        { key: 'random-team-generator', locale: 'fr', path: '/fr/random-team-generator' },
+      ]),
+    );
+    expect(TOOL_PAGE_ROUTES).not.toEqual(
+      expect.arrayContaining([{ key: 'team-shuffle-generator', locale: 'es', path: '/es/team-shuffle-generator' }]),
+    );
   });
 
-  it('emits self-canonical English alternates plus x-default for the current locale surface', () => {
-    const config = getToolPageConfig('random-team-generator', 'en');
+  it('emits locale alternates plus x-default for localized pages', () => {
+    const config = getToolPageConfig('random-team-generator', 'es');
 
-    expect(config.canonicalPath).toBe('/random-team-generator');
+    expect(config.canonicalPath).toBe('/es/random-team-generator');
     expect(config.alternates).toEqual([
       { hreflang: 'en', canonicalPath: '/random-team-generator' },
+      { hreflang: 'es', canonicalPath: '/es/random-team-generator' },
+      { hreflang: 'fr', canonicalPath: '/fr/random-team-generator' },
       { hreflang: 'x-default', canonicalPath: '/random-team-generator' },
     ]);
   });

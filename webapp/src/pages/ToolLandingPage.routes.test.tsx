@@ -48,6 +48,7 @@ describe('ToolLandingPage route inventory', () => {
     expect(screen.getByText(config.hero.audienceSummary)).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: config.optimizerCta.title })).toBeInTheDocument();
     expect(document.title).toBe(config.seo.title);
+    expect(document.documentElement.lang).toBe(route.locale);
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(config.seo.description);
     expect(document.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('index,follow');
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(

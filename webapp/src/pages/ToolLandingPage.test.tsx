@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { useAppStore } from '../store';
 import ToolLandingPage from './ToolLandingPage';
-import { TOOL_PAGE_CONFIGS } from './toolPageConfigs';
+import { getToolPageConfig, TOOL_PAGE_CONFIGS } from './toolPageConfigs';
 
 vi.mock('../services/solver/solveProblem', () => ({
   solveProblem: vi.fn(async ({ problem }: { problem: { people: Array<{ id: string }>; groups: Array<{ id: string }>; num_sessions: number } }) => ({
@@ -84,6 +84,40 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByRole('link', { name: /expert workspace/i })).toHaveAttribute(
       'href',
       '/app?lp=random-team-generator&exp=seo-hero-test&var=B',
+    );
+  });
+
+  it('renders localized Spanish metadata and hreflang wiring on the shared landing engine', async () => {
+    const config = getToolPageConfig('random-team-generator', 'es');
+
+    render(
+      <MemoryRouter initialEntries={['/es/random-team-generator?exp=seo-es-test&var=A']}>
+        <ToolLandingPage pageKey="random-team-generator" locale="es" />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 1, name: config.hero.title })).toBeInTheDocument();
+    expect(screen.getByText(config.hero.eyebrow)).toBeInTheDocument();
+    expect(screen.getByText(config.useCasesSection.title)).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe('es');
+    expect(document.title).toBe(config.seo.title);
+    expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
+      'https://www.groupmixer.app/es/random-team-generator',
+    );
+    expect(document.querySelector('link[rel="alternate"][hreflang="fr"]')?.getAttribute('href')).toBe(
+      'https://www.groupmixer.app/fr/random-team-generator',
+    );
+    expect(window.__groupmixerLandingEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'landing_view',
+          payload: expect.objectContaining({
+            pageKey: 'random-team-generator',
+            locale: 'es',
+            landingSlug: 'random-team-generator',
+          }),
+        }),
+      ]),
     );
   });
 

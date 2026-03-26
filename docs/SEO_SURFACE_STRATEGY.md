@@ -66,6 +66,20 @@ Next candidates to evaluate before publishing more English pages:
 - conference / summit networking pages only if event-specific copy outperforms generic networking pages
 - training / cohort-specific pages only if they can reuse the shared engine without functional divergence
 
+## Current multilingual rollout
+
+Spanish and French are now live on the shared landing engine for the highest-value landing pages:
+
+- `/` ↔ `/es` ↔ `/fr`
+- `/random-group-generator` ↔ `/es/random-group-generator` ↔ `/fr/random-group-generator`
+- `/random-team-generator` ↔ `/es/random-team-generator` ↔ `/fr/random-team-generator`
+- `/breakout-room-generator` ↔ `/es/breakout-room-generator` ↔ `/fr/breakout-room-generator`
+- `/workshop-group-generator` ↔ `/es/workshop-group-generator` ↔ `/fr/workshop-group-generator`
+- `/student-group-generator` ↔ `/es/student-group-generator` ↔ `/fr/student-group-generator`
+- `/speed-networking-generator` ↔ `/es/speed-networking-generator` ↔ `/fr/speed-networking-generator`
+
+Supporting English-only pages remain unprefixed for now until they justify localization demand and review effort.
+
 ## Build-time SEO artifacts
 
 Two scripts are now part of the workflow:
