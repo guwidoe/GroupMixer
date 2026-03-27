@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ScenarioStorageService,
+  buildScenarioDraftIdentityHash,
   compareScenarioConfigurations,
 } from "./scenarioStorage";
 import {
@@ -162,6 +163,29 @@ describe("ScenarioStorageService", () => {
     const diff = compareScenarioConfigurations(current, snapshot);
     expect(diff.isDifferent).toBe(true);
     expect(diff.changes.num_sessions).toBe(true);
+  });
+
+  it("builds the same draft identity hash only when both name and scenario match", () => {
+    const scenario = createSampleScenario();
+
+    expect(buildScenarioDraftIdentityHash("Workshop", scenario)).toBe(
+      buildScenarioDraftIdentityHash("Workshop", createSampleScenario())
+    );
+    expect(buildScenarioDraftIdentityHash("Workshop", scenario)).not.toBe(
+      buildScenarioDraftIdentityHash("Workshop copy", scenario)
+    );
+    expect(buildScenarioDraftIdentityHash("Workshop", scenario)).not.toBe(
+      buildScenarioDraftIdentityHash("Workshop", createSampleScenario({ num_sessions: 3 }))
+    );
+  });
+
+  it("finds an existing scenario by exact draft identity", () => {
+    const service = createService();
+    const exact = service.createScenario("Workshop", createSampleScenario());
+    service.createScenario("Workshop", createSampleScenario({ num_sessions: 3 }));
+    service.createScenario("Workshop copy", createSampleScenario());
+
+    expect(service.findScenarioByDraftIdentity("Workshop", createSampleScenario())?.id).toBe(exact.id);
   });
 
   it("tracks the current scenario id and can clear all persisted data", () => {

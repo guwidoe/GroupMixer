@@ -33,6 +33,7 @@ export function ManualEditorContent() {
   const addNotification = useAppStore((s) => s.addNotification);
   const addResult = useAppStore((s) => s.addResult);
   const currentScenarioId = useAppStore((s) => s.currentScenarioId);
+  const currentResultId = useAppStore((s) => s.currentResultId);
   const savedScenarios = useAppStore((s) => s.savedScenarios);
   const setGlobalUnsaved = useAppStore((s) => s.setManualEditorUnsaved);
   const setLeaveHook = useAppStore((s) => s.setManualEditorLeaveHook);
@@ -62,11 +63,11 @@ export function ManualEditorContent() {
   const draftSchedule = useMemo(() => groupBySessionAndGroup(draftAssignments), [draftAssignments]);
 
   const currentResult = useMemo(() => {
-    if (!currentScenarioId || !solution) return undefined;
+    if (!currentScenarioId || !currentResultId) return undefined;
     const saved = savedScenarios[currentScenarioId];
     if (!saved) return undefined;
-    return saved.results.find((r) => r.solution === solution);
-  }, [currentScenarioId, savedScenarios, solution]);
+    return saved.results.find((result) => result.id === currentResultId);
+  }, [currentResultId, currentScenarioId, savedScenarios]);
 
   const effectiveScenario: Scenario | null = useMemo(() => {
     if (currentResult?.scenarioSnapshot) {
@@ -204,6 +205,7 @@ export function ManualEditorContent() {
       effectiveScenario,
       solution,
       currentScenarioId,
+      currentResultId,
       savedScenarios,
       setPulledConstraints,
       addNotification,

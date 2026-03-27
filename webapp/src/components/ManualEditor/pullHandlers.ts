@@ -48,6 +48,7 @@ interface PullNewConstraintsArgs {
   effectiveScenario: Scenario | null;
   solution: Solution | null;
   currentScenarioId: string | null;
+  currentResultId: string | null;
   savedScenarios: Record<string, SavedScenario>;
   setPulledConstraints: (constraints: Constraint[]) => void;
   addNotification: AddNotification;
@@ -57,14 +58,15 @@ export function pullNewConstraints({
   effectiveScenario,
   solution,
   currentScenarioId,
+  currentResultId,
   savedScenarios,
   setPulledConstraints,
   addNotification,
 }: PullNewConstraintsArgs) {
-  if (!effectiveScenario || !solution || !currentScenarioId) return;
+  if (!effectiveScenario || !solution || !currentScenarioId || !currentResultId) return;
   const currentSaved = savedScenarios[currentScenarioId];
   if (!currentSaved) return;
-  const result = currentSaved.results.find((r) => r.solution === solution);
+  const result = currentSaved.results.find((entry) => entry.id === currentResultId);
   const snapshotConstraints = result?.scenarioSnapshot?.constraints ?? [];
   const currentConstraints = effectiveScenario.constraints ?? [];
   const key = (c: Constraint) => JSON.stringify(c);

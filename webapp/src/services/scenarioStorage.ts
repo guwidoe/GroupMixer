@@ -14,6 +14,39 @@ const STORAGE_KEY = "people-distributor-scenarios";
 const CURRENT_PROBLEM_KEY = "people-distributor-current-scenario";
 const VERSION = "1.0.0";
 
+function stableSerialize(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => stableSerialize(entry)).join(",")}]`;
+  }
+
+  const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) =>
+    left.localeCompare(right)
+  );
+
+  return `{${entries
+    .map(([key, entryValue]) => `${JSON.stringify(key)}:${stableSerialize(entryValue)}`)
+    .join(",")}}`;
+}
+
+function hashString(value: string): string {
+  let hash = 0x811c9dc5;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+export function buildScenarioDraftIdentityHash(name: string, scenario: Scenario): string {
+  return hashString(stableSerialize({ name, scenario }));
+}
+
 export class ScenarioStorageService {
   private autoSaveTimeout: number | null = null;
   private readonly autoSaveDelay = 2000; // 2 seconds
@@ -58,6 +91,19 @@ export class ScenarioStorageService {
   getScenario(id: string): SavedScenario | null {
     const scenarios = this.getAllScenarios();
     return scenarios[id] || null;
+  }
+
+  findScenarioByDraftIdentity(name: string, scenario: Scenario): SavedScenario | null {
+    const targetHash = buildScenarioDraftIdentityHash(name, scenario);
+    const allScenarios = Object.values(this.getAllScenarios()).sort(
+      (left, right) => right.updatedAt - left.updatedAt
+    );
+
+    return (
+      allScenarios.find(
+        (savedScenario) => buildScenarioDraftIdentityHash(savedScenario.name, savedScenario.scenario) === targetHash
+      ) ?? null
+    );
   }
 
   // Save or update a scenario

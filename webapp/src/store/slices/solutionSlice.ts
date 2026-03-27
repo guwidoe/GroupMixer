@@ -10,7 +10,7 @@ export const createSolutionSlice: StoreSlice<SolutionState & SolutionActions> = 
 ) => ({
   solution: null,
 
-  setSolution: (solution: Solution | null) => set({ solution }),
+  setSolution: (solution: Solution | null) => set({ solution, currentResultId: null }),
 
-  clearSolution: () => set({ solution: null }),
+  clearSolution: () => set({ solution: null, currentResultId: null }),
 });

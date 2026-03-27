@@ -333,6 +333,7 @@ export interface AppState {
 
   // Scenario Management
   currentScenarioId: string | null;
+  currentResultId: string | null;
   savedScenarios: Record<string, SavedScenario>; // Keyed by scenario ID
   selectedResultIds: string[]; // For comparison
 

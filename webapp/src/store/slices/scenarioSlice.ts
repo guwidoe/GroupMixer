@@ -5,6 +5,7 @@
 import type { Scenario } from "../../types";
 import type { ScenarioState, ScenarioActions, StoreSlice } from "../types";
 import { scenarioStorage } from "../../services/scenarioStorage";
+import { initialSolverState } from "./solverSlice";
 
 const DEFAULT_SETTINGS = {
   solver_type: "SimulatedAnnealing",
@@ -45,13 +46,45 @@ export const createScenarioSlice: StoreSlice<ScenarioState & ScenarioActions> = 
   updateScenario: (updates) => {
     const currentScenario = get().scenario;
     if (currentScenario) {
-      set({ scenario: { ...currentScenario, ...updates } });
+      const nextScenario = { ...currentScenario, ...updates };
+      const { currentScenarioId } = get();
+
+      if (currentScenarioId) {
+        scenarioStorage.updateScenario(currentScenarioId, nextScenario);
+      }
+
+      set((state) => ({
+        scenario: nextScenario,
+        savedScenarios:
+          currentScenarioId && state.savedScenarios[currentScenarioId]
+            ? {
+                ...state.savedScenarios,
+                [currentScenarioId]: {
+                  ...state.savedScenarios[currentScenarioId],
+                  scenario: nextScenario,
+                  updatedAt: Date.now(),
+                },
+              }
+            : state.savedScenarios,
+      }));
     }
   },
 
   updateCurrentScenario: (scenarioId, scenario) => {
     scenarioStorage.updateScenario(scenarioId, scenario);
-    set({ scenario });
+    set((state) => ({
+      scenario,
+      savedScenarios: state.savedScenarios[scenarioId]
+        ? {
+            ...state.savedScenarios,
+            [scenarioId]: {
+              ...state.savedScenarios[scenarioId],
+              scenario,
+              updatedAt: Date.now(),
+            },
+          }
+        : state.savedScenarios,
+    }));
   },
 
   resolveScenario: () => {
@@ -64,7 +97,7 @@ export const createScenarioSlice: StoreSlice<ScenarioState & ScenarioActions> = 
     const { currentScenarioId, savedScenarios } = get();
     if (currentScenarioId && savedScenarios[currentScenarioId]) {
       const savedScenario = savedScenarios[currentScenarioId];
-      set({ scenario: savedScenario.scenario });
+      set({ scenario: savedScenario.scenario, currentResultId: null, solution: null, solverState: initialSolverState });
       return savedScenario.scenario;
     }
 
@@ -76,6 +109,10 @@ export const createScenarioSlice: StoreSlice<ScenarioState & ScenarioActions> = 
       set({
         scenario: firstScenario.scenario,
         currentScenarioId: firstScenario.id,
+        currentResultId: null,
+        solution: null,
+        selectedResultIds: [],
+        solverState: initialSolverState,
       });
       return firstScenario.scenario;
     }
@@ -110,7 +147,7 @@ export const createScenarioSlice: StoreSlice<ScenarioState & ScenarioActions> = 
     const { currentScenarioId, savedScenarios } = get();
     if (currentScenarioId && savedScenarios[currentScenarioId]) {
       const savedScenario = savedScenarios[currentScenarioId];
-      set({ scenario: savedScenario.scenario });
+      set({ scenario: savedScenario.scenario, currentResultId: null, solution: null, solverState: initialSolverState });
       return savedScenario.scenario;
     }
 
@@ -122,6 +159,10 @@ export const createScenarioSlice: StoreSlice<ScenarioState & ScenarioActions> = 
       set({
         scenario: firstScenario.scenario,
         currentScenarioId: firstScenario.id,
+        currentResultId: null,
+        solution: null,
+        selectedResultIds: [],
+        solverState: initialSolverState,
       });
       return firstScenario.scenario;
     }
@@ -139,6 +180,7 @@ export const createScenarioSlice: StoreSlice<ScenarioState & ScenarioActions> = 
     set({
       scenario: emptyScenario,
       currentScenarioId: savedScenario.id,
+      currentResultId: null,
       savedScenarios: {
         ...get().savedScenarios,
         [savedScenario.id]: savedScenario,

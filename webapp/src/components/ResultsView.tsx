@@ -13,7 +13,7 @@ import { ResultsMetrics } from './ResultsView/ResultsMetrics';
 import { ResultsSchedule } from './ResultsView/ResultsSchedule';
 
 export function ResultsView() {
-  const { scenario, solution, solverState, currentScenarioId, savedScenarios, restoreResultAsNewScenario } = useAppStore();
+  const { scenario, solution, solverState, currentScenarioId, currentResultId, savedScenarios, restoreResultAsNewScenario } = useAppStore();
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'visualize'>('grid');
   const [vizPluginId, setVizPluginId] = useLocalStorageState('resultsVisualizationPlugin', 'scheduleMatrix');
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
@@ -35,11 +35,11 @@ export function ResultsView() {
   });
 
   const currentResult = useMemo(() => {
-    if (!currentScenarioId || !solution) return undefined;
+    if (!currentScenarioId || !currentResultId) return undefined;
     const currentScenario = savedScenarios[currentScenarioId];
     if (!currentScenario) return undefined;
-    return currentScenario.results.find(r => r.solution === solution);
-  }, [currentScenarioId, savedScenarios, solution]);
+    return currentScenario.results.find((result) => result.id === currentResultId);
+  }, [currentResultId, currentScenarioId, savedScenarios]);
 
   const resultName = currentResult?.name;
 

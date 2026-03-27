@@ -104,6 +104,7 @@ describe('ResultsView', () => {
       solution: savedScenario.results[0].solution,
       solverState: useAppStore.getState().solverState,
       currentScenarioId: savedScenario.id,
+      currentResultId: savedScenario.results[0].id,
       savedScenarios: { [savedScenario.id]: savedScenario },
       restoreResultAsNewScenario: restoreResultAsNewScenario as never,
     });

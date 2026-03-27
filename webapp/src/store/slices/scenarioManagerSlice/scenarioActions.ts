@@ -1,6 +1,7 @@
 import { scenarioStorage } from '../../../services/scenarioStorage';
 import { ATTRIBUTE_DEFS_KEY } from '../attributeSlice';
 import type { ScenarioManagerActions, ScenarioManagerState, StoreSlice } from '../../types';
+import { initialSolverState } from '../solverSlice';
 
 type SliceTools = Parameters<StoreSlice<ScenarioManagerState & ScenarioManagerActions>>;
 
@@ -31,10 +32,35 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
 
       const savedScenarios = scenarioStorage.getAllScenarios();
       const currentScenarioId = scenarioStorage.getCurrentScenarioId() || Object.keys(savedScenarios)[0];
+      const previousCurrentResultId = get().currentResultId;
+      const validCurrentResultId =
+        currentScenarioId && previousCurrentResultId && savedScenarios[currentScenarioId]?.results.some((result) => result.id === previousCurrentResultId)
+          ? previousCurrentResultId
+          : null;
+      const currentResult =
+        currentScenarioId && validCurrentResultId
+          ? savedScenarios[currentScenarioId]?.results.find((result) => result.id === validCurrentResultId) ?? null
+          : null;
       if (currentScenarioId) {
         scenarioStorage.setCurrentScenarioId(currentScenarioId);
       }
-      set({ savedScenarios, currentScenarioId });
+      set({
+        savedScenarios,
+        currentScenarioId,
+        currentResultId: validCurrentResultId,
+        solution: currentResult?.solution ?? null,
+        solverState: currentResult
+          ? {
+              ...initialSolverState,
+              isComplete: true,
+              currentIteration: currentResult.solution.iteration_count,
+              bestScore: currentResult.solution.final_score,
+              currentScore: currentResult.solution.final_score,
+              elapsedTime: currentResult.solution.elapsed_time_ms,
+              noImprovementCount: currentResult.solution.benchmark_telemetry?.no_improvement_count ?? 0,
+            }
+          : initialSolverState,
+      });
 
       if (currentScenarioId && savedScenarios[currentScenarioId]) {
         set({ scenario: savedScenarios[currentScenarioId].scenario });
@@ -66,6 +92,8 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
             [savedScenario.id]: savedScenario,
           },
           currentScenarioId: savedScenario.id,
+          currentResultId: null,
+          selectedResultIds: [],
         }));
 
         get().addNotification({
@@ -97,7 +125,10 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
       set({
         scenario: savedScenario.scenario,
         currentScenarioId: id,
+        currentResultId: null,
         solution: null,
+        selectedResultIds: [],
+        solverState: initialSolverState,
       });
 
       get().addNotification({
@@ -164,7 +195,11 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
           return {
             savedScenarios: newSavedScenarios,
             currentScenarioId: state.currentScenarioId === id ? null : state.currentScenarioId,
+            currentResultId: state.currentScenarioId === id ? null : state.currentResultId,
             scenario: state.currentScenarioId === id ? null : state.scenario,
+            solution: state.currentScenarioId === id ? null : state.solution,
+            selectedResultIds: state.currentScenarioId === id ? [] : state.selectedResultIds,
+            solverState: state.currentScenarioId === id ? initialSolverState : state.solverState,
           };
         });
 

@@ -18,8 +18,8 @@ export function ResultsHistory() {
     selectResultsForComparison,
     updateResultName,
     deleteResult,
+    selectCurrentResult,
     setShowResultComparison,
-    setSolution,
     restoreResultAsNewScenario,
   } = useAppStore();
   const navigate = useNavigate();
@@ -67,7 +67,7 @@ export function ResultsHistory() {
   };
 
   const handleOpenDetails = (result: ScenarioResult) => {
-    setSolution(result.solution);
+    selectCurrentResult(result.id);
     navigate('/app/results');
   };
 

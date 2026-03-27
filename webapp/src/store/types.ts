@@ -41,6 +41,7 @@ export interface UIState {
 
 export interface ScenarioManagerState {
   currentScenarioId: string | null;
+  currentResultId: string | null;
   savedScenarios: Record<string, SavedScenario>;
   selectedResultIds: string[];
 }
@@ -113,6 +114,7 @@ export interface ScenarioManagerActions {
   ) => ScenarioResult | null;
   updateResultName: (resultId: string, newName: string) => void;
   deleteResult: (resultId: string) => void;
+  selectCurrentResult: (resultId: string | null) => void;
   selectResultsForComparison: (resultIds: string[]) => void;
   exportScenario: (id: string) => void;
   importScenario: (file: File) => void;

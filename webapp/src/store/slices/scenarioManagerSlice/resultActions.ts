@@ -1,13 +1,27 @@
 import { scenarioStorage } from '../../../services/scenarioStorage';
 import type { Scenario, ScenarioResult, Solution, SolverSettings } from '../../../types';
 import type { ScenarioManagerActions, ScenarioManagerState, StoreSlice } from '../../types';
+import { initialSolverState } from '../solverSlice';
 
 type SliceTools = Parameters<StoreSlice<ScenarioManagerState & ScenarioManagerActions>>;
 
 type SetState = SliceTools[0];
 type GetState = SliceTools[1];
 
-type ResultActionKeys = 'addResult' | 'updateResultName' | 'deleteResult' | 'selectResultsForComparison';
+type ResultActionKeys = 'addResult' | 'updateResultName' | 'deleteResult' | 'selectCurrentResult' | 'selectResultsForComparison';
+
+function solverStateFromResult(result: ScenarioResult) {
+  return {
+    ...initialSolverState,
+    isRunning: false,
+    isComplete: true,
+    currentIteration: result.solution.iteration_count,
+    bestScore: result.solution.final_score,
+    currentScore: result.solution.final_score,
+    elapsedTime: result.solution.elapsed_time_ms,
+    noImprovementCount: result.solution.benchmark_telemetry?.no_improvement_count ?? 0,
+  };
+}
 
 export function createResultActions(set: SetState, get: GetState): Pick<ScenarioManagerActions, ResultActionKeys> {
   return {
@@ -63,6 +77,9 @@ export function createResultActions(set: SetState, get: GetState): Pick<Scenario
           }
 
           return {
+            scenario: scenario || currentScenario.scenario,
+            solution,
+            currentResultId: result.id,
             savedScenarios: {
               ...state.savedScenarios,
               [currentScenarioId]: persistedScenario
@@ -74,8 +91,9 @@ export function createResultActions(set: SetState, get: GetState): Pick<Scenario
                     ...currentScenario,
                     scenario: scenario || currentScenario.scenario,
                     results: [...(currentScenario.results || []), result],
-                  },
+                },
             },
+            solverState: solverStateFromResult(result),
           };
         });
 
@@ -118,12 +136,16 @@ export function createResultActions(set: SetState, get: GetState): Pick<Scenario
     },
 
     deleteResult: (resultId) => {
-      const { currentScenarioId } = get();
+      const { currentScenarioId, currentResultId } = get();
       if (!currentScenarioId) return;
 
       try {
         scenarioStorage.deleteResult(currentScenarioId, resultId);
         get().loadSavedScenarios();
+
+        if (currentResultId === resultId) {
+          set({ currentResultId: null, solution: null, solverState: initialSolverState });
+        }
 
         get().addNotification({
           type: 'success',
@@ -137,6 +159,41 @@ export function createResultActions(set: SetState, get: GetState): Pick<Scenario
           message: error instanceof Error ? error.message : 'Failed to delete result',
         });
       }
+    },
+
+    selectCurrentResult: (resultId) => {
+      const { currentScenarioId, savedScenarios } = get();
+
+      if (!currentScenarioId || !resultId) {
+        set({ currentResultId: null, solution: null, solverState: initialSolverState });
+        return;
+      }
+
+      const savedScenario = savedScenarios[currentScenarioId] ?? scenarioStorage.getScenario(currentScenarioId);
+      const result = savedScenario?.results.find((entry) => entry.id === resultId);
+
+      if (!savedScenario || !result) {
+        get().addNotification({
+          type: 'error',
+          title: 'Result Not Found',
+          message: 'The requested result could not be found in the current scenario.',
+        });
+        set({ currentResultId: null, solution: null, solverState: initialSolverState });
+        return;
+      }
+
+      set((state) => ({
+        scenario: savedScenario.scenario,
+        solution: result.solution,
+        currentResultId: result.id,
+        solverState: solverStateFromResult(result),
+        savedScenarios: state.savedScenarios[savedScenario.id]
+          ? state.savedScenarios
+          : {
+              ...state.savedScenarios,
+              [savedScenario.id]: savedScenario,
+            },
+      }));
     },
 
     selectResultsForComparison: (resultIds) => {

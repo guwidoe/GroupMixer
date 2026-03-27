@@ -55,6 +55,7 @@ const getInitialState = () => ({
   solution: null,
   solverState: initialSolverState,
   currentScenarioId: null,
+  currentResultId: null,
   savedScenarios: {},
   selectedResultIds: [],
   ui: initialUIState,
@@ -119,6 +120,7 @@ export const useAppStore = create<AppStore>()(
           scenario,
           solution,
           currentScenarioId,
+          currentResultId: null,
           selectedResultIds: [],
           solverState: solverStateFromWorkspaceSolution(solution),
           attributeDefinitions: mergeWorkspaceAttributes(state.attributeDefinitions, attributeDefinitions),
@@ -141,11 +143,15 @@ export const useAppStore = create<AppStore>()(
         currentScenarioId = null,
         scenarioName,
       }) => {
+        const matchingScenario = scenarioStorage.findScenarioByDraftIdentity(scenarioName, scenario);
         let savedScenario = currentScenarioId ? scenarioStorage.getScenario(currentScenarioId) : null;
 
-        if (savedScenario) {
+        if (matchingScenario) {
+          savedScenario = matchingScenario;
+        } else if (savedScenario) {
           savedScenario = {
             ...savedScenario,
+            name: scenarioName,
             scenario,
           };
           scenarioStorage.saveScenario(savedScenario);
@@ -160,6 +166,7 @@ export const useAppStore = create<AppStore>()(
           scenario,
           solution,
           currentScenarioId: savedScenario.id,
+          currentResultId: null,
           savedScenarios: {
             ...state.savedScenarios,
             [savedScenario.id]: savedScenario,

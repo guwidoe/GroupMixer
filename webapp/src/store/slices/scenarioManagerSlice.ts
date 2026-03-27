@@ -10,6 +10,7 @@ export const createScenarioManagerSlice: StoreSlice<
   ScenarioManagerState & ScenarioManagerActions
 > = (set, get) => ({
   currentScenarioId: null,
+  currentResultId: null,
   savedScenarios: {},
   selectedResultIds: [],
   ...createScenarioActions(set, get),

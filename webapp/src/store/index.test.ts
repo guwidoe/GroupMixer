@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createSampleScenario, createSampleSolution } from '../test/fixtures';
+import { scenarioStorage } from '../services/scenarioStorage';
+import { createSampleScenario, createSampleSolution, createSavedScenario } from '../test/fixtures';
 import { useAppStore } from './index';
 import { ATTRIBUTE_DEFS_KEY, DEFAULT_ATTRIBUTE_DEFINITIONS } from './slices';
 
@@ -85,5 +86,64 @@ describe('useAppStore initialization', () => {
     expect(state.scenario?.num_sessions).toBe(3);
     expect(state.solution).toEqual(solution);
     expect(state.savedScenarios[createdId]?.scenario.num_sessions).toBe(3);
+  });
+
+  it('reuses an existing exact draft instead of creating a duplicate scenario blob', () => {
+    const existing = scenarioStorage.createScenario(
+      'Random Group Generator draft',
+      createSampleScenario(),
+    );
+    scenarioStorage.addResult(existing.id, createSampleSolution(), createSampleScenario().settings, 'Run 1');
+
+    const syncedId = useAppStore.getState().syncWorkspaceDraft({
+      scenario: createSampleScenario(),
+      solution: null,
+      scenarioName: 'Random Group Generator draft',
+    });
+
+    const state = useAppStore.getState();
+    expect(syncedId).toBe(existing.id);
+    expect(state.currentScenarioId).toBe(existing.id);
+    expect(Object.keys(scenarioStorage.getAllScenarios())).toHaveLength(1);
+    expect(state.savedScenarios[existing.id]?.results).toHaveLength(1);
+  });
+
+  it('switches to an existing exact draft even when the current draft id points elsewhere', () => {
+    const staleDraft = scenarioStorage.createScenario(
+      'Random Group Generator draft',
+      createSampleScenario({ num_sessions: 4 }),
+    );
+    const matchingDraft = scenarioStorage.createScenario(
+      'Random Group Generator draft',
+      createSampleScenario({ num_sessions: 2 }),
+    );
+
+    const syncedId = useAppStore.getState().syncWorkspaceDraft({
+      scenario: createSampleScenario({ num_sessions: 2 }),
+      solution: null,
+      currentScenarioId: staleDraft.id,
+      scenarioName: 'Random Group Generator draft',
+    });
+
+    expect(syncedId).toBe(matchingDraft.id);
+    expect(useAppStore.getState().currentScenarioId).toBe(matchingDraft.id);
+    expect(scenarioStorage.getScenario(staleDraft.id)?.scenario.num_sessions).toBe(4);
+  });
+
+  it('selects a saved result as the active result blob within the current scenario', () => {
+    const savedScenario = createSavedScenario();
+
+    useAppStore.setState({
+      scenario: savedScenario.scenario,
+      currentScenarioId: savedScenario.id,
+      savedScenarios: { [savedScenario.id]: savedScenario },
+    });
+
+    useAppStore.getState().selectCurrentResult(savedScenario.results[0].id);
+
+    const state = useAppStore.getState();
+    expect(state.currentResultId).toBe(savedScenario.results[0].id);
+    expect(state.solution).toEqual(savedScenario.results[0].solution);
+    expect(state.solverState.isComplete).toBe(true);
   });
 });
