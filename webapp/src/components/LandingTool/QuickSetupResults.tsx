@@ -34,7 +34,7 @@ export function QuickSetupResults({ controller }: QuickSetupResultsProps) {
         <div>
           <h2 className="text-lg font-semibold">Generated groups</h2>
           <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Generate locally first, then continue into the expert workspace only if you want deeper controls.
+            Generate locally first, then continue into the advanced editor only if you want deeper controls.
           </p>
         </div>
         <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -85,7 +85,7 @@ export function QuickSetupResults({ controller }: QuickSetupResultsProps) {
               style={{ backgroundColor: 'var(--color-accent)' }}
             >
               <FolderOpen className="h-4 w-4" />
-              Open in advanced workspace
+              Open in advanced editor
             </button>
           </div>
 

@@ -17,7 +17,7 @@ const OPTIMIZER_FEATURES = [
 ];
 
 const CHROME = {
-  expertWorkspaceLabel: '专家工作区',
+  expertWorkspaceLabel: '高级编辑器',
   faqHeading: '常见问题',
   footerTagline: 'GroupMixer — 免费随机分组工具',
   feedbackLabel: '反馈',
@@ -79,9 +79,9 @@ const ADVANCED_SECTION = {
       body: '通过 CSV 按角色、技能、部门或任意自定义列来平衡每个小组。',
     },
   ],
-  buttonLabel: '打开专家工作区',
+  buttonLabel: '打开高级编辑器',
   supportingText:
-    '专家工作区可以完整控制轮次、约束、求解器设置以及更详细的结果分析。',
+    '高级编辑器可以完整控制轮次、约束、求解器设置以及更详细的结果分析。',
 };
 
 const FAQS = {
@@ -98,7 +98,7 @@ const FAQS = {
   constraints: {
     question: '我可以添加“必须同组”或“不能同组”之类的规则吗？',
     answer:
-      '可以。打开高级选项后，你可以添加同组规则、避免配对规则、多轮设置以及属性平衡。需要更多控制时，可以进入专家工作区。',
+      '可以。打开高级选项后，你可以添加同组规则、避免配对规则、多轮设置以及属性平衡。需要更多控制时，可以进入高级编辑器。',
   },
   multiSession: {
     question: '我可以为多轮活动生成分组吗？',
@@ -106,9 +106,9 @@ const FAQS = {
       '可以。在高级选项中设置轮次，并启用“避免重复搭配”，就能减少同样的人反复分在一起。',
   },
   workspace: {
-    question: '什么是专家工作区？',
+    question: '什么是高级编辑器？',
     answer:
-      '专家工作区提供更细致的控制，包括轮次、约束、求解器设置、基于历史结果继续优化，以及更完整的结果分析。',
+      '高级编辑器提供更细致的控制，包括轮次、约束、求解器设置、基于历史结果继续优化，以及更完整的结果分析。',
   },
 };
 
@@ -142,8 +142,8 @@ function createContent({
       eyebrow: '想要比随机更好的分组？',
       title: '使用完整的分组优化器。',
       featureBullets: OPTIMIZER_FEATURES,
-      buttonLabel: '打开专家工作区',
-      supportingText: '你在这个页面输入的内容可以直接带到专家工作区。',
+      buttonLabel: '打开高级编辑器',
+      supportingText: '你在这个页面输入的内容可以直接带到高级编辑器。',
     },
     faqEntries,
     chrome: CHROME,

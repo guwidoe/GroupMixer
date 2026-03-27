@@ -17,7 +17,7 @@ const OPTIMIZER_FEATURES = [
 ];
 
 const CHROME = {
-  expertWorkspaceLabel: 'एक्सपर्ट वर्कस्पेस',
+  expertWorkspaceLabel: 'एडवांस्ड एडिटर',
   faqHeading: 'अक्सर पूछे जाने वाले सवाल',
   footerTagline: 'GroupMixer — मुफ़्त रैंडम ग्रुप जनरेटर',
   feedbackLabel: 'फ़ीडबैक',
@@ -79,9 +79,9 @@ const ADVANCED_SECTION = {
       body: 'CSV मोड से रोल, स्किल, विभाग या किसी भी कस्टम कॉलम के आधार पर समूह संतुलित करें।',
     },
   ],
-  buttonLabel: 'एक्सपर्ट वर्कस्पेस खोलें',
+  buttonLabel: 'एडवांस्ड एडिटर खोलें',
   supportingText:
-    'एक्सपर्ट वर्कस्पेस में सेशंस, constraints, solver settings और detailed analysis पर पूरा नियंत्रण मिलता है।',
+    'एडवांस्ड एडिटर में सेशंस, constraints, solver settings और detailed analysis पर पूरा नियंत्रण मिलता है।',
 };
 
 const FAQS = {
@@ -98,7 +98,7 @@ const FAQS = {
   constraints: {
     question: 'क्या मैं ऐसे नियम जोड़ सकता हूँ जैसे कुछ लोगों को साथ रखना या अलग रखना?',
     answer:
-      'हाँ। एडवांस्ड ऑप्शंस में साथ रखने वाले ग्रुप्स, avoid pairing rules, multiple sessions और attribute balancing जोड़ सकते हैं। ज़्यादा नियंत्रण के लिए एक्सपर्ट वर्कस्पेस इस्तेमाल करें।',
+      'हाँ। एडवांस्ड ऑप्शंस में साथ रखने वाले ग्रुप्स, avoid pairing rules, multiple sessions और attribute balancing जोड़ सकते हैं। ज़्यादा नियंत्रण के लिए एडवांस्ड एडिटर इस्तेमाल करें।',
   },
   multiSession: {
     question: 'क्या मैं कई राउंड के लिए ग्रुप बना सकता हूँ?',
@@ -106,9 +106,9 @@ const FAQS = {
       'हाँ। एडवांस्ड ऑप्शंस में sessions सेट करें और "Avoid repeat pairings" चालू करें ताकि वही लोग बार-बार साथ न आएँ।',
   },
   workspace: {
-    question: 'एक्सपर्ट वर्कस्पेस क्या है?',
+    question: 'एडवांस्ड एडिटर क्या है?',
     answer:
-      'एक्सपर्ट वर्कस्पेस में sessions, constraints, solver settings, previous results का reuse और detailed result analysis मिलता है। यह वही शक्तिशाली solver engine इस्तेमाल करता है।',
+      'एडवांस्ड एडिटर में sessions, constraints, solver settings, previous results का reuse और detailed result analysis मिलता है। यह वही शक्तिशाली solver engine इस्तेमाल करता है।',
   },
 };
 
@@ -142,7 +142,7 @@ function createContent({
       eyebrow: 'सिर्फ़ रैंडम से बेहतर चाहिए?',
       title: 'पूरा ग्रुप ऑप्टिमाइज़र इस्तेमाल करें।',
       featureBullets: OPTIMIZER_FEATURES,
-      buttonLabel: 'एक्सपर्ट वर्कस्पेस खोलें',
+      buttonLabel: 'एडवांस्ड एडिटर खोलें',
       supportingText: 'इस पेज पर आपकी भरी हुई जानकारी साथ लेकर जाती है।',
     },
     faqEntries,

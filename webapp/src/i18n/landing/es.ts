@@ -17,7 +17,7 @@ const OPTIMIZER_FEATURES = [
 ];
 
 const CHROME = {
-  expertWorkspaceLabel: 'Espacio de trabajo experto',
+  expertWorkspaceLabel: 'Editor avanzado',
   faqHeading: 'Preguntas frecuentes',
   footerTagline: 'GroupMixer — Generador gratis de grupos aleatorios',
   feedbackLabel: 'Comentarios',
@@ -79,9 +79,9 @@ const ADVANCED_SECTION = {
       body: 'Usa CSV para equilibrar por rol, nivel, género, departamento o cualquier columna personalizada.',
     },
   ],
-  buttonLabel: 'Abrir espacio de trabajo experto',
+  buttonLabel: 'Abrir editor avanzado',
   supportingText:
-    'El espacio experto te da control total sobre sesiones, restricciones, configuración del solver y análisis detallado.',
+    'El editor avanzado te da control total sobre sesiones, restricciones, configuración del solver y análisis detallado.',
 };
 
 const FAQS = {
@@ -98,7 +98,7 @@ const FAQS = {
   constraints: {
     question: '¿Puedo añadir reglas como mantener juntos o separar personas?',
     answer:
-      'Sí. Abre las opciones avanzadas para añadir grupos que deben permanecer juntos, reglas para evitar emparejamientos, múltiples sesiones y equilibrio por atributos. O usa el espacio experto para control total.',
+      'Sí. Abre las opciones avanzadas para añadir grupos que deben permanecer juntos, reglas para evitar emparejamientos, múltiples sesiones y equilibrio por atributos. O usa el editor avanzado para control total.',
   },
   multiSession: {
     question: '¿Puedo crear grupos para varias rondas?',
@@ -106,9 +106,9 @@ const FAQS = {
       'Sí. Define el número de sesiones en las opciones avanzadas y activa "Evitar repeticiones" para reducir cuánto coinciden las mismas personas.',
   },
   workspace: {
-    question: '¿Qué es el espacio de trabajo experto?',
+    question: '¿Qué es el editor avanzado?',
     answer:
-      'El espacio experto te da control detallado sobre sesiones, restricciones, configuración del solver, reutilización de resultados anteriores y análisis completo. Usa el mismo motor potente.',
+      'El editor avanzado te da control detallado sobre sesiones, restricciones, configuración del solver, reutilización de resultados anteriores y análisis completo. Usa el mismo motor potente.',
   },
 };
 
@@ -142,7 +142,7 @@ function createContent({
       eyebrow: '¿Quieres algo mejor que aleatorio?',
       title: 'Usa el optimizador completo de grupos.',
       featureBullets: OPTIMIZER_FEATURES,
-      buttonLabel: 'Abrir espacio de trabajo experto',
+      buttonLabel: 'Abrir editor avanzado',
       supportingText: 'Tus datos de esta página se mantienen cuando entras.',
     },
     faqEntries,

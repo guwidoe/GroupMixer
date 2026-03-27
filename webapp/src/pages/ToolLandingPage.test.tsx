@@ -90,7 +90,7 @@ describe('ToolLandingPage SEO wiring', () => {
         }),
       ]),
     );
-    expect(screen.getByRole('link', { name: /expert workspace/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /advanced editor/i })).toHaveAttribute(
       'href',
       '/app?lp=random-team-generator&exp=seo-hero-test&var=B',
     );
@@ -219,8 +219,8 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(await screen.findByText(/results generated below/i)).toBeInTheDocument();
     expect(scrollIntoViewMock).toHaveBeenCalled();
 
-    // Can transition to expert workspace
-    await user.click(screen.getByRole('button', { name: /open in expert workspace/i }));
+    // Can transition to advanced editor
+    await user.click(screen.getByRole('button', { name: /open in advanced editor/i }));
 
     const state = useAppStore.getState();
     expect(state.currentScenarioId).toBeTruthy();
@@ -254,7 +254,7 @@ describe('ToolLandingPage SEO wiring', () => {
     await waitFor(() => expect(scrollIntoViewMock).toHaveBeenCalled());
   }, 10000);
 
-  it('syncs a new expert-workspace scenario in the background and carries edits into /app', async () => {
+  it('syncs a new advanced-editor scenario in the background and carries edits into /app', async () => {
     const user = userEvent.setup();
 
     render(
@@ -267,7 +267,7 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.clear(textarea);
     await user.type(textarea, 'Ada\nGrace\nLinus\nMargaret');
 
-    await user.click(screen.getAllByRole('button', { name: /expert workspace/i })[0]);
+    await user.click(screen.getAllByRole('button', { name: /advanced editor/i })[0]);
 
     const state = useAppStore.getState();
     expect(state.currentScenarioId).toBeTruthy();
@@ -301,7 +301,7 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByText(/want to do better than random/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /use the full group optimizer/i })).toBeInTheDocument();
     expect(screen.getByText(/your inputs from this page come with you/i)).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /open expert workspace/i })[0]).toHaveClass('btn-primary');
+    expect(screen.getAllByRole('button', { name: /open advanced editor/i })[0]).toHaveClass('btn-primary');
   }, 10000);
 
   it('stacks the generator above the hero content on mobile while preserving desktop order classes', () => {

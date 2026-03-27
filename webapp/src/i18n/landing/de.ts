@@ -17,7 +17,7 @@ const OPTIMIZER_FEATURES = [
 ];
 
 const CHROME = {
-  expertWorkspaceLabel: 'Experten-Arbeitsbereich',
+  expertWorkspaceLabel: 'Erweiterter Editor',
   faqHeading: 'Häufige Fragen',
   footerTagline: 'GroupMixer — Kostenloser Zufalls-Gruppengenerator',
   feedbackLabel: 'Feedback',
@@ -79,9 +79,9 @@ const ADVANCED_SECTION = {
       body: 'Nutze CSV-Eingaben, um Gruppen nach Rolle, Skill, Abteilung oder beliebigen Spalten auszugleichen.',
     },
   ],
-  buttonLabel: 'Experten-Arbeitsbereich öffnen',
+  buttonLabel: 'Erweiterten Editor öffnen',
   supportingText:
-    'Im Experten-Arbeitsbereich steuerst du Sessions, Regeln, Solver-Einstellungen und die Detailanalyse vollständig selbst.',
+    'Im erweiterten Editor steuerst du Sessions, Regeln, Solver-Einstellungen und die Detailanalyse vollständig selbst.',
 };
 
 const FAQS = {
@@ -98,7 +98,7 @@ const FAQS = {
   constraints: {
     question: 'Kann ich Regeln wie „zusammen halten“ oder „trennen“ hinzufügen?',
     answer:
-      'Ja. In den erweiterten Optionen kannst du Gruppen zusammenhalten, Paarungen vermeiden, mehrere Sessions planen und nach Attributen balancieren. Für noch mehr Kontrolle gibt es den Experten-Arbeitsbereich.',
+      'Ja. In den erweiterten Optionen kannst du Gruppen zusammenhalten, Paarungen vermeiden, mehrere Sessions planen und nach Attributen balancieren. Für noch mehr Kontrolle gibt es den erweiterten Editor.',
   },
   multiSession: {
     question: 'Kann ich Gruppen für mehrere Runden erstellen?',
@@ -106,9 +106,9 @@ const FAQS = {
       'Ja. Stelle in den erweiterten Optionen mehrere Sessions ein und aktiviere „Wiederholungen vermeiden“, damit dieselben Personen seltener erneut zusammenkommen.',
   },
   workspace: {
-    question: 'Was ist der Experten-Arbeitsbereich?',
+    question: 'Was ist der erweiterte Editor?',
     answer:
-      'Der Experten-Arbeitsbereich bietet detaillierte Kontrolle über Sessions, Regeln, Solver-Einstellungen, das Weiterarbeiten mit früheren Ergebnissen und die vollständige Ergebnisanalyse.',
+      'Der erweiterte Editor bietet detaillierte Kontrolle über Sessions, Regeln, Solver-Einstellungen, das Weiterarbeiten mit früheren Ergebnissen und die vollständige Ergebnisanalyse.',
   },
 };
 
@@ -142,7 +142,7 @@ function createContent({
       eyebrow: 'Mehr als nur Zufall gesucht?',
       title: 'Nutze den vollständigen Gruppen-Optimierer.',
       featureBullets: OPTIMIZER_FEATURES,
-      buttonLabel: 'Experten-Arbeitsbereich öffnen',
+      buttonLabel: 'Erweiterten Editor öffnen',
       supportingText: 'Deine Eingaben von dieser Seite werden direkt übernommen.',
     },
     faqEntries,

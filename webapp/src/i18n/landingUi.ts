@@ -41,7 +41,7 @@ const EN_LANDING_UI: ToolPageSharedUiContent = {
   results: {
     yourGroupsHeading: 'Your groups',
     exportCsvLabel: 'Export CSV',
-    openInExpertWorkspaceLabel: 'Open in expert workspace',
+    openInExpertWorkspaceLabel: 'Open in advanced editor',
     resultFormatsAriaLabel: 'Result formats',
     cardsFormatLabel: 'cards',
     listFormatLabel: 'list',
@@ -107,7 +107,7 @@ const DE_LANDING_UI: ToolPageSharedUiContent = {
   results: {
     yourGroupsHeading: 'Deine Gruppen',
     exportCsvLabel: 'CSV exportieren',
-    openInExpertWorkspaceLabel: 'Im Experten-Arbeitsbereich öffnen',
+    openInExpertWorkspaceLabel: 'Im erweiterten Editor öffnen',
     resultFormatsAriaLabel: 'Ergebnisformate',
     cardsFormatLabel: 'Karten',
     listFormatLabel: 'Liste',
@@ -173,7 +173,7 @@ const ES_LANDING_UI: ToolPageSharedUiContent = {
   results: {
     yourGroupsHeading: 'Tus grupos',
     exportCsvLabel: 'Exportar CSV',
-    openInExpertWorkspaceLabel: 'Abrir en el espacio experto',
+    openInExpertWorkspaceLabel: 'Abrir en el editor avanzado',
     resultFormatsAriaLabel: 'Formatos de resultado',
     cardsFormatLabel: 'Tarjetas',
     listFormatLabel: 'Lista',
@@ -239,7 +239,7 @@ const FR_LANDING_UI: ToolPageSharedUiContent = {
   results: {
     yourGroupsHeading: 'Vos groupes',
     exportCsvLabel: 'Exporter en CSV',
-    openInExpertWorkspaceLabel: 'Ouvrir dans l’espace expert',
+    openInExpertWorkspaceLabel: 'Ouvrir dans l’éditeur avancé',
     resultFormatsAriaLabel: 'Formats de résultat',
     cardsFormatLabel: 'Cartes',
     listFormatLabel: 'Liste',
@@ -305,7 +305,7 @@ const JA_LANDING_UI: ToolPageSharedUiContent = {
   results: {
     yourGroupsHeading: '作成されたグループ',
     exportCsvLabel: 'CSVを書き出す',
-    openInExpertWorkspaceLabel: 'エキスパート作業画面で開く',
+    openInExpertWorkspaceLabel: '高度なエディターで開く',
     resultFormatsAriaLabel: '結果形式',
     cardsFormatLabel: 'カード',
     listFormatLabel: '一覧',
@@ -371,7 +371,7 @@ const HI_LANDING_UI: ToolPageSharedUiContent = {
   results: {
     yourGroupsHeading: 'आपके समूह',
     exportCsvLabel: 'CSV निर्यात करें',
-    openInExpertWorkspaceLabel: 'विशेषज्ञ कार्यक्षेत्र में खोलें',
+    openInExpertWorkspaceLabel: 'एडवांस्ड एडिटर में खोलें',
     resultFormatsAriaLabel: 'परिणाम प्रारूप',
     cardsFormatLabel: 'कार्ड',
     listFormatLabel: 'सूची',
@@ -436,7 +436,7 @@ const ZH_LANDING_UI: ToolPageSharedUiContent = {
   results: {
     yourGroupsHeading: '你的分组',
     exportCsvLabel: '导出 CSV',
-    openInExpertWorkspaceLabel: '在专家工作区中打开',
+    openInExpertWorkspaceLabel: '在高级编辑器中打开',
     resultFormatsAriaLabel: '结果格式',
     cardsFormatLabel: '卡片',
     listFormatLabel: '列表',
