@@ -5,6 +5,7 @@ import type { SupportedLocale } from '../../pages/toolPageConfigs';
 interface LandingLanguageSelectorProps {
   currentLocale: SupportedLocale;
   ariaLabel?: string;
+  className?: string;
   options: Array<{
     locale: SupportedLocale;
     label: string;
@@ -15,6 +16,7 @@ interface LandingLanguageSelectorProps {
 export function LandingLanguageSelector({
   currentLocale,
   ariaLabel = 'Language',
+  className,
   options,
 }: LandingLanguageSelectorProps) {
   const navigate = useNavigate();
@@ -38,7 +40,7 @@ export function LandingLanguageSelector({
             navigate(selected.to);
           }
         }}
-        className="landing-action-button h-10 appearance-none rounded-lg border pl-9 pr-8 text-sm outline-none"
+        className={className ?? 'landing-action-button h-10 appearance-none rounded-lg border pl-9 pr-8 text-sm outline-none'}
         style={{
           borderColor: 'var(--border-primary)',
           backgroundColor: 'var(--bg-primary)',

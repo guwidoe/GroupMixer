@@ -1,7 +1,8 @@
 /* eslint-disable max-lines */
 import { ArrowRight, ChevronDown, Copy, Download, RotateCcw, Sparkles, Users } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { AppHeader } from '../components/AppHeader';
 import { QuickSetupAdvancedOptions } from '../components/LandingTool/QuickSetupAdvancedOptions';
 import { QuickSetupFaq } from '../components/LandingTool/QuickSetupFaq';
 import { useQuickSetup } from '../components/LandingTool/useQuickSetup';
@@ -11,7 +12,6 @@ import { ResultsScheduleGrid } from '../components/ResultsView/ResultsScheduleGr
 import { buildResultsSessionData } from '../components/results/buildResultsViewModel';
 import { interpolate } from '../i18n/interpolate';
 import { getLandingUiContent } from '../i18n/landingUi';
-import { ThemeToggle } from '../components/ThemeToggle';
 import { Seo } from '../components/Seo';
 import {
   buildTelemetryPayload,
@@ -105,7 +105,6 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const navigate = useNavigate();
   const location = useLocation();
   const resultsRef = useRef<HTMLDivElement>(null);
-  const assetBaseUrl = import.meta.env?.BASE_URL ?? '/';
   const [resultFormat, setResultFormat] = useState<ResultFormat>('cards');
   const [copiedFormat, setCopiedFormat] = useState<ResultFormat | null>(null);
   const languageOptions = useMemo(
@@ -461,30 +460,44 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
         alternates={config.alternates}
       />
 
-      <header
-        className="border-b"
-        style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
-      >
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link to={getLocaleHomePath(config.locale)} className="flex items-center gap-2.5">
-            <img src={assetBaseUrl + 'logo.svg'} alt="GroupMixer logo" className="h-8 w-8" />
-            <span className="text-lg font-semibold tracking-tight">GroupMixer</span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <LandingLanguageSelector currentLocale={config.locale} options={languageOptions} />
+      <AppHeader
+        homeTo={getLocaleHomePath(config.locale)}
+        logoAlt="GroupMixer logo"
+        renderDesktopActions={() => (
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <LandingLanguageSelector
+              currentLocale={config.locale}
+              options={languageOptions}
+              className="h-10 appearance-none rounded-md border pl-9 pr-8 text-sm font-medium outline-none transition-colors"
+            />
             <button
               type="button"
               onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
-              className="landing-action-button hidden h-10 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium sm:inline-flex"
-              style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-primary)' }}
+              className="btn-secondary hidden sm:inline-flex items-center gap-1.5"
             >
               {config.chrome.expertWorkspaceLabel}
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
-            <ThemeToggle size="md" />
           </div>
-        </div>
-      </header>
+        )}
+        renderMobileActions={() => (
+          <>
+            <LandingLanguageSelector
+              currentLocale={config.locale}
+              options={languageOptions}
+              className="h-10 w-full appearance-none rounded-md border pl-9 pr-8 text-sm font-medium outline-none transition-colors"
+            />
+            <button
+              type="button"
+              onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
+              className="btn-secondary flex items-center justify-center gap-1.5 w-full"
+            >
+              {config.chrome.expertWorkspaceLabel}
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </>
+        )}
+      />
 
       <main>
         <section className="px-4 pb-10 pt-8 sm:px-6 lg:pb-16 lg:pt-12">
