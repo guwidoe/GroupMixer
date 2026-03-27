@@ -5,15 +5,12 @@ import * as THREE from "three";
 import type { PersonSessionData } from "../hooks/useAnimationState";
 import type { AnimationCoordination, PlaybackState } from "../types";
 import { GLTFCharacter } from "./GLTFCharacter";
-import { ModelLoadError } from "./ModelLoadError";
-
-// Model URL
-const CHARACTER_MODEL_URL = "/models/character.glb";
 
 // Performance limit - GLTF characters are more expensive
 const MAX_GLTF_CHARACTERS = 40;
 
 interface GLTFHumanoidsProps {
+  modelUrl: string;
   personData: PersonSessionData[];
   playbackRef: React.MutableRefObject<PlaybackState>;
   sessionCount: number;
@@ -26,6 +23,7 @@ interface GLTFHumanoidsProps {
 
 // Main component
 export function GLTFHumanoids({
+  modelUrl,
   personData,
   playbackRef,
   sessionCount,
@@ -34,14 +32,8 @@ export function GLTFHumanoids({
   showLabels,
   playbackState,
 }: GLTFHumanoidsProps) {
-  const [modelError, setModelError] = useState(false);
-  
-  // Load model
-  const gltf = useGLTF(CHARACTER_MODEL_URL, true, true, (error) => {
-    console.error("Failed to load character model:", error);
-    setModelError(true);
-  });
-  
+  const gltf = useGLTF(modelUrl);
+
   const modelLoaded = Boolean(gltf.scene && gltf.animations);
 
   // Limit characters for performance
@@ -178,10 +170,6 @@ export function GLTFHumanoids({
     }
   });
 
-  if (modelError) {
-    return <ModelLoadError />;
-  }
-
   if (!modelLoaded) {
     return null;
   }
@@ -223,8 +211,3 @@ export function GLTFHumanoids({
     </Suspense>
   );
 }
-
-// Preload
-GLTFHumanoids.preload = () => {
-  useGLTF.preload(CHARACTER_MODEL_URL);
-};

@@ -5,10 +5,12 @@ import * as THREE from "three";
 import { SkeletonUtils } from "three-stdlib";
 import type { StorkProps, StorkState } from "./storkTypes";
 
-// Use flamingo model which has wing flapping animation
-const STORK_MODEL_URL = "/models/flamingo.glb?v=2";
+interface StorkModelProps extends StorkProps {
+  modelUrl: string;
+}
 
 export function StorkModel({
+  modelUrl,
   targetPosition,
   personName,
   personId,
@@ -17,11 +19,11 @@ export function StorkModel({
   onAnimationComplete,
   onPhaseChange,
   onPlaySound,
-}: StorkProps) {
+}: StorkModelProps) {
   const groupRef = useRef<THREE.Group>(null);
 
   // Load GLTF model
-  const { scene, animations } = useGLTF(STORK_MODEL_URL);
+  const { scene, animations } = useGLTF(modelUrl);
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const { actions, mixer } = useAnimations(animations, clone);
 
@@ -260,5 +262,3 @@ function easeInQuad(x: number): number {
   return x * x;
 }
 
-// Preload
-useGLTF.preload("/models/flamingo.glb");

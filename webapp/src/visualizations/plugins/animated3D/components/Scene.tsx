@@ -2,7 +2,7 @@ import { useMemo, useState, useCallback, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
-import { GLTFHumanoids } from "./GLTFHumanoids";
+import { Humanoids } from "./Humanoids";
 import { Dinosaur, type DinoState } from "./Dinosaur";
 import { Stork, type StorkState } from "./Stork";
 import { GroupPlatform } from "./GroupPlatform";
@@ -262,7 +262,7 @@ export function Scene({
         />
       ))}
 
-      <GLTFHumanoids
+      <Humanoids
         personData={personSessionData}
         playbackRef={playbackRef}
         sessionCount={schedule.sessionCount}

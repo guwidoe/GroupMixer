@@ -1,15 +1,18 @@
-import { Suspense } from "react";
 import { StorkModel } from "./StorkModel";
 import { ProceduralStork } from "./ProceduralStork";
 import type { StorkProps } from "./storkTypes";
+import { useOptionalModelAsset } from "./modelAssets";
+
+const STORK_MODEL_ASSET_PATH = "models/flamingo.glb?v=2";
 
 export type { StorkState } from "./storkTypes";
 
-// Main component with Suspense fallback
 export function Stork(props: StorkProps) {
-  return (
-    <Suspense fallback={<ProceduralStork {...props} />}>
-      <StorkModel {...props} />
-    </Suspense>
-  );
+  const { assetUrl, available } = useOptionalModelAsset(STORK_MODEL_ASSET_PATH);
+
+  if (!available) {
+    return <ProceduralStork {...props} />;
+  }
+
+  return <StorkModel {...props} modelUrl={assetUrl} />;
 }

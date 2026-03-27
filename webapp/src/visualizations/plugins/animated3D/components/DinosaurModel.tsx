@@ -5,8 +5,9 @@ import * as THREE from "three";
 import { SkeletonUtils } from "three-stdlib";
 import type { DinosaurProps, DinoState } from "./dinoTypes";
 
-// Add cache-busting parameter to force reload of model
-const DINOSAUR_MODEL_URL = "/models/dinosaur.glb?v=2";
+interface DinosaurModelProps extends DinosaurProps {
+  modelUrl: string;
+}
 
 const DINO_QUOTES = [
   "Snack time! 🦴",
@@ -27,6 +28,7 @@ const DINO_QUOTES = [
 ];
 
 export function DinosaurModel({
+  modelUrl,
   targetPosition,
   personName,
   personId,
@@ -35,11 +37,11 @@ export function DinosaurModel({
   onAnimationComplete,
   onPhaseChange,
   onPlaySound,
-}: DinosaurProps) {
+}: DinosaurModelProps) {
   const groupRef = useRef<THREE.Group>(null);
 
   // Load GLTF model
-  const { scene, animations } = useGLTF(DINOSAUR_MODEL_URL);
+  const { scene, animations } = useGLTF(modelUrl);
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const { actions, mixer } = useAnimations(animations, clone);
 
@@ -288,5 +290,3 @@ function easeInOutQuad(x: number): number {
   return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
 }
 
-// Preload
-useGLTF.preload("/models/dinosaur.glb");
