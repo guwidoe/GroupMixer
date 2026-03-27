@@ -19,6 +19,7 @@ const EN_LANDING_UI: ToolPageSharedUiContent = {
     generateGroupsLabel: 'Generate Groups',
     generatingLabel: 'Generating…',
     reshuffleLabel: 'Reshuffle',
+    resultsGeneratedHint: 'Results generated below — scroll down to view.',
   },
   advancedOptions: {
     title: 'Advanced options',
@@ -84,6 +85,7 @@ const DE_LANDING_UI: ToolPageSharedUiContent = {
     generateGroupsLabel: 'Gruppen erstellen',
     generatingLabel: 'Wird erstellt…',
     reshuffleLabel: 'Neu mischen',
+    resultsGeneratedHint: 'Ergebnisse wurden erstellt — bitte nach unten scrollen, um sie anzusehen.',
   },
   advancedOptions: {
     title: 'Erweiterte Optionen',
@@ -149,6 +151,7 @@ const ES_LANDING_UI: ToolPageSharedUiContent = {
     generateGroupsLabel: 'Generar grupos',
     generatingLabel: 'Generando…',
     reshuffleLabel: 'Mezclar de nuevo',
+    resultsGeneratedHint: 'Los resultados ya están listos abajo; desplázate hacia abajo para verlos.',
   },
   advancedOptions: {
     title: 'Opciones avanzadas',
@@ -214,6 +217,7 @@ const FR_LANDING_UI: ToolPageSharedUiContent = {
     generateGroupsLabel: 'Générer des groupes',
     generatingLabel: 'Génération…',
     reshuffleLabel: 'Mélanger à nouveau',
+    resultsGeneratedHint: 'Les résultats ont été générés ci-dessous — faites défiler vers le bas pour les voir.',
   },
   advancedOptions: {
     title: 'Options avancées',
@@ -279,6 +283,7 @@ const JA_LANDING_UI: ToolPageSharedUiContent = {
     generateGroupsLabel: 'グループを作成',
     generatingLabel: '作成中…',
     reshuffleLabel: '再シャッフル',
+    resultsGeneratedHint: '結果が下に生成されました。下へスクロールして確認してください。',
   },
   advancedOptions: {
     title: '詳細オプション',
@@ -344,6 +349,7 @@ const HI_LANDING_UI: ToolPageSharedUiContent = {
     generateGroupsLabel: 'समूह बनाएँ',
     generatingLabel: 'बनाया जा रहा है…',
     reshuffleLabel: 'फिर मिलाएँ',
+    resultsGeneratedHint: 'परिणाम नीचे तैयार हैं — उन्हें देखने के लिए नीचे स्क्रॉल करें।',
   },
   advancedOptions: {
     title: 'उन्नत विकल्प',
@@ -409,6 +415,7 @@ const ZH_LANDING_UI: ToolPageSharedUiContent = {
     generateGroupsLabel: '生成分组',
     generatingLabel: '生成中…',
     reshuffleLabel: '重新打乱',
+    resultsGeneratedHint: '结果已在下方生成，请向下滚动查看。',
   },
   advancedOptions: {
     title: '高级选项',

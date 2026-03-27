@@ -86,6 +86,7 @@ export interface ToolPageQuickSetupUiContent {
   generateGroupsLabel: string;
   generatingLabel: string;
   reshuffleLabel: string;
+  resultsGeneratedHint: string;
 }
 
 export interface ToolPageAdvancedOptionsUiContent {

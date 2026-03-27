@@ -1,10 +1,12 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { useAppStore } from '../store';
 import ToolLandingPage from './ToolLandingPage';
 import { getToolPageConfig, TOOL_PAGE_CONFIGS } from './toolPageConfigs';
+
+const scrollIntoViewMock = vi.fn();
 
 vi.mock('../services/solver/solveScenario', () => ({
   solveScenario: vi.fn(async ({ scenario }: { problem: { people: Array<{ id: string }>; groups: Array<{ id: string }>; num_sessions: number } }) => ({
@@ -31,6 +33,11 @@ vi.mock('../services/solver/solveScenario', () => ({
 }));
 
 beforeEach(() => {
+  scrollIntoViewMock.mockClear();
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    configurable: true,
+    value: scrollIntoViewMock,
+  });
   window.localStorage.clear();
   window.__groupmixerLandingEvents = [];
   useAppStore.getState().reset();
@@ -209,6 +216,8 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(await screen.findByRole('heading', { name: /your groups/i })).toBeInTheDocument();
     expect(await screen.findByText('Group 1')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /export csv/i })).toBeInTheDocument();
+    expect(await screen.findByText(/results generated below/i)).toBeInTheDocument();
+    expect(scrollIntoViewMock).toHaveBeenCalled();
 
     // Can transition to expert workspace
     await user.click(screen.getByRole('button', { name: /open in expert workspace/i }));
@@ -224,6 +233,25 @@ describe('ToolLandingPage SEO wiring', () => {
         expect.objectContaining({ name: 'landing_open_advanced_workspace' }),
       ]),
     );
+  }, 10000);
+
+  it('scrolls to the inline results each time groups are generated', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /generate groups/i }));
+    await screen.findByRole('heading', { name: /your groups/i });
+    await waitFor(() => expect(scrollIntoViewMock).toHaveBeenCalled());
+
+    scrollIntoViewMock.mockClear();
+
+    await user.click(screen.getByRole('button', { name: /generate groups/i }));
+    await waitFor(() => expect(scrollIntoViewMock).toHaveBeenCalled());
   }, 10000);
 
   it('syncs a new expert-workspace scenario in the background and carries edits into /app', async () => {

@@ -105,7 +105,6 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const navigate = useNavigate();
   const location = useLocation();
   const resultsRef = useRef<HTMLDivElement>(null);
-  const hasScrolledToResultsRef = useRef(false);
   const assetBaseUrl = import.meta.env?.BASE_URL ?? '/';
   const [resultFormat, setResultFormat] = useState<ResultFormat>('cards');
   const [copiedFormat, setCopiedFormat] = useState<ResultFormat | null>(null);
@@ -197,16 +196,22 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   ]);
 
   useEffect(() => {
-    if (!controller.result) {
-      hasScrolledToResultsRef.current = false;
+    if (!controller.result?.generatedAt) {
       return;
     }
 
-    if (!hasScrolledToResultsRef.current && resultsRef.current) {
-      hasScrolledToResultsRef.current = true;
-      resultsRef.current.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-    }
-  }, [controller.result]);
+    const scrollToResults = () => {
+      resultsRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    };
+
+    const animationFrameId = window.requestAnimationFrame(scrollToResults);
+    const timeoutId = window.setTimeout(scrollToResults, 250);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [controller.result?.generatedAt]);
 
   const openAdvancedWorkspace = (target: 'results' | 'people') => {
     trackLandingEvent(
@@ -701,6 +706,12 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                   </button>
                 )}
               </div>
+
+              {controller.result && (
+                <p className="mt-3 text-sm font-medium" style={{ color: 'var(--color-accent)' }}>
+                  {ui.quickSetup.resultsGeneratedHint}
+                </p>
+              )}
 
               <div className="mt-4">
                 <QuickSetupAdvancedOptions controller={controller} />
