@@ -1,5 +1,6 @@
 import type { Scenario } from '../../types';
 import type { Mode } from './types';
+import { getEffectiveGroupCapacity } from '../../utils/groupCapacities';
 
 interface CanDropArgs {
   effectiveScenario: Scenario | null;
@@ -30,7 +31,7 @@ export function canDrop({
   const targetPeople = groups[targetGroupId] || [];
   const groupDef = effectiveScenario.groups.find((g) => g.id === targetGroupId);
   if (groupDef) {
-    const cap = groupDef.size;
+    const cap = getEffectiveGroupCapacity(groupDef, sessionId);
     const currentCount = targetPeople.includes(personId) ? targetPeople.length : targetPeople.length + 1;
     if (currentCount > cap) {
       if (mode === 'strict') return { ok: false, reason: 'Capacity exceeded' };

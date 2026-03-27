@@ -1,4 +1,5 @@
 import { Scenario, Solution, ScenarioSnapshot } from "../types";
+import { getScenarioMaxGroupCapacity } from './groupCapacities';
 
 export interface MetricCalculations {
   peopleCount: number;
@@ -42,7 +43,7 @@ export function calculateMetrics(
   // Alternative bound based on sessions & largest group capacity
   const capacityBiggestGroup =
     scenarioConfig.groups && scenarioConfig.groups.length > 0
-      ? Math.max(...scenarioConfig.groups.map((g) => g.size))
+      ? getScenarioMaxGroupCapacity(scenarioConfig)
       : 0;
 
   const altMaxAvgContacts = numSessions * Math.max(0, capacityBiggestGroup - 1);

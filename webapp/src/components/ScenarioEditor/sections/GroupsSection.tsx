@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { ChevronDown, Edit, Hash, Plus, Table, Trash2, Upload } from 'lucide-react';
 import type { Group, Scenario } from '../../../types';
 import { useOutsideClick } from '../../../hooks';
+import { getGroupCapacityProfile, hasSessionSpecificGroupCapacities } from '../../../utils/groupCapacities';
 
 interface GroupsSectionProps {
   scenario: Scenario | null;
@@ -34,7 +35,14 @@ export function GroupsSection({
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <h4 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{group.id}</h4>
-          <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Capacity: {group.size} people per session</p>
+          <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+            Default capacity: {group.size} people per session
+          </p>
+          {scenario && hasSessionSpecificGroupCapacities(group, scenario.num_sessions) ? (
+            <p className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
+              Session capacities: {getGroupCapacityProfile(group, scenario.num_sessions).map((capacity, index) => `S${index + 1} ${capacity}`).join(' · ')}
+            </p>
+          ) : null}
         </div>
         <div className="flex gap-1">
           <button

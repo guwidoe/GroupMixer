@@ -16,6 +16,52 @@ interface UseScenarioEditorEntitiesArgs {
   setScenario: (scenario: Scenario) => void;
 }
 
+type GroupFormInputs = {
+  size?: string;
+  sessionSizes?: string[];
+};
+
+function resetGroupFormState() {
+  return {
+    form: { size: 4 } as GroupFormData,
+    inputs: {} as GroupFormInputs,
+  };
+}
+
+function parseSessionSizes(
+  rawValues: string[] | undefined,
+  fallbackSize: number,
+  sessionCount: number,
+): { ok: true; value?: number[] } | { ok: false; message: string } {
+  if (!rawValues || rawValues.length === 0) {
+    return { ok: true, value: undefined };
+  }
+
+  if (rawValues.length !== sessionCount) {
+    return {
+      ok: false,
+      message: `Please enter exactly ${sessionCount} session capacities`,
+    };
+  }
+
+  const parsed: number[] = [];
+  for (let index = 0; index < rawValues.length; index += 1) {
+    const parsedValue = Number.parseInt(rawValues[index] ?? '', 10);
+    if (Number.isNaN(parsedValue) || parsedValue < 0) {
+      return {
+        ok: false,
+        message: `Session ${index + 1} capacity must be 0 or greater`,
+      };
+    }
+    parsed.push(parsedValue);
+  }
+
+  return {
+    ok: true,
+    value: parsed.every((value) => value === fallbackSize) ? undefined : parsed,
+  };
+}
+
 export function useScenarioEditorEntities({
   scenario,
   addAttributeDefinition,
@@ -38,7 +84,7 @@ export function useScenarioEditorEntities({
   const [groupForm, setGroupForm] = useState<GroupFormData>({
     size: 4,
   });
-  const [groupFormInputs, setGroupFormInputs] = useState<{ size?: string }>({});
+  const [groupFormInputs, setGroupFormInputs] = useState<GroupFormInputs>({});
 
   const [newAttribute, setNewAttribute] = useState({ key: '', values: [''] });
 
@@ -164,9 +210,24 @@ export function useScenarioEditorEntities({
       return;
     }
 
+    const sessionSizesResult = parseSessionSizes(
+      groupFormInputs.sessionSizes,
+      size,
+      scenario?.num_sessions || 3,
+    );
+    if (!sessionSizesResult.ok) {
+      addNotification({
+        type: 'error',
+        title: 'Invalid Input',
+        message: sessionSizesResult.message,
+      });
+      return;
+    }
+
     const newGroup: Group = {
       id: groupForm.id,
       size,
+      session_sizes: sessionSizesResult.value,
     };
 
     const updatedScenario: Scenario = {
@@ -178,8 +239,9 @@ export function useScenarioEditorEntities({
     };
 
     setScenario(updatedScenario);
-    setGroupForm({ size: 4 });
-    setGroupFormInputs({});
+    const reset = resetGroupFormState();
+    setGroupForm(reset.form);
+    setGroupFormInputs(reset.inputs);
     setShowGroupForm(false);
 
     addNotification({
@@ -194,9 +256,11 @@ export function useScenarioEditorEntities({
     setGroupForm({
       id: group.id,
       size: group.size,
+      session_sizes: group.session_sizes,
     });
     setGroupFormInputs({
       size: group.size.toString(),
+      sessionSizes: group.session_sizes?.map((value) => value.toString()),
     });
     setShowGroupForm(true);
   };
@@ -215,9 +279,24 @@ export function useScenarioEditorEntities({
       return;
     }
 
+    const sessionSizesResult = parseSessionSizes(
+      groupFormInputs.sessionSizes,
+      size,
+      scenario?.num_sessions || 3,
+    );
+    if (!sessionSizesResult.ok) {
+      addNotification({
+        type: 'error',
+        title: 'Invalid Input',
+        message: sessionSizesResult.message,
+      });
+      return;
+    }
+
     const updatedGroup: Group = {
       id: groupForm.id,
       size,
+      session_sizes: sessionSizesResult.value,
     };
 
     const updatedScenario: Scenario = {
@@ -230,8 +309,9 @@ export function useScenarioEditorEntities({
 
     setScenario(updatedScenario);
     setEditingGroup(null);
-    setGroupForm({ size: 4 });
-    setGroupFormInputs({});
+    const reset = resetGroupFormState();
+    setGroupForm(reset.form);
+    setGroupFormInputs(reset.inputs);
     setShowGroupForm(false);
 
     addNotification({

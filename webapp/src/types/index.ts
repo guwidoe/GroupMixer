@@ -7,7 +7,8 @@ export interface Person {
 
 export interface Group {
   id: string;
-  size: number; // Fixed capacity - maximum number of people in this group per session
+  size: number; // Default capacity - maximum number of people in this group per session when no override is present
+  session_sizes?: number[]; // Optional per-session capacities overriding `size` by session index
 }
 
 // Constraint types matching solver-core exactly
@@ -368,6 +369,7 @@ export interface PersonFormData {
 export interface GroupFormData {
   id?: string;
   size: number;
+  session_sizes?: number[];
 }
 
 export interface AttributeDefinition {

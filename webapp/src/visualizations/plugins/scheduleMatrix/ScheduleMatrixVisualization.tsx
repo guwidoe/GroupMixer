@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import type { VisualizationComponentProps } from "../../types";
 import { normalizeFromSnapshot, normalizeFromSolution } from "../../models/normalize";
 import { hashToHsl, readableTextOn, utilizationToBg } from "../../models/colors";
+import { getMaxGroupCapacity } from '../../../utils/groupCapacities';
 
 type ColorMode =
   | { type: "none" }
@@ -49,9 +50,11 @@ export function ScheduleMatrixVisualization({ data }: VisualizationComponentProp
 
   const groupById = useMemo(() => {
     const m = new Map<string, { id: string; size: number }>();
-    for (const g of scenario.groups) m.set(g.id, { id: g.id, size: g.size });
+    for (const g of scenario.groups) {
+      m.set(g.id, { id: g.id, size: getMaxGroupCapacity(g, scenario.num_sessions) });
+    }
     return m;
-  }, [scenario.groups]);
+  }, [scenario.groups, scenario.num_sessions]);
 
   const resolveCellStyle = (groupId: string, peopleIds: string[], capacity: number) => {
     if (colorMode.type === "none") {

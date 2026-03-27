@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { NormalizedSchedule } from "../../../models/normalize";
 import type { Scenario } from "../../../../types/index";
+import { getMaxGroupCapacity } from '../../../../utils/groupCapacities';
 import type {
   GroupLayout,
   SessionTransition,
@@ -274,8 +275,14 @@ export function useAnimationState(
 
   // Memoize group layouts - now scaled
   const groupLayouts = useMemo(
-    () => calculateGroupLayouts(scenario.groups, totalPeople),
-    [scenario.groups, totalPeople]
+    () => calculateGroupLayouts(
+      scenario.groups.map((group) => ({
+        id: group.id,
+        size: getMaxGroupCapacity(group, scenario.num_sessions),
+      })),
+      totalPeople,
+    ),
+    [scenario.groups, scenario.num_sessions, totalPeople]
   );
 
   // Calculate scene scale for camera

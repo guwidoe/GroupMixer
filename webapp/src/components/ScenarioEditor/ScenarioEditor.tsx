@@ -62,6 +62,7 @@ export function ScenarioEditor() {
           setGroupForm: controller.entities.setGroupForm,
           groupFormInputs: controller.entities.groupFormInputs,
           setGroupFormInputs: controller.entities.setGroupFormInputs,
+          sessionsCount: controller.sessionsCount,
           onSaveGroup: controller.entities.handleAddGroup,
           onUpdateGroup: controller.entities.handleUpdateGroup,
           onCancelGroup: controller.editorActions.handleCancelGroupForm,

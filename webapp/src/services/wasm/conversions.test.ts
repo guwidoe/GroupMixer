@@ -121,6 +121,27 @@ describe("wasm conversions", () => {
     expect(rustScenario.solver.solver_params.reheat_after_no_improvement).toBe(0);
   });
 
+  it("passes session-specific group capacities through to Rust", () => {
+    const rustScenario = convertScenarioToRustFormat(
+      createSampleScenario({
+        num_sessions: 3,
+        groups: [
+          { id: 'g1', size: 4, session_sizes: [4, 0, 2] },
+          { id: 'g2', size: 3 },
+        ],
+      }),
+    ) as {
+      problem: {
+        groups: Array<{ id: string; size: number; session_sizes?: number[] }>;
+      };
+    };
+
+    expect(rustScenario.problem.groups).toEqual([
+      { id: 'g1', size: 4, session_sizes: [4, 0, 2] },
+      { id: 'g2', size: 3 },
+    ]);
+  });
+
   it("flattens Rust schedules into frontend assignments and timing", () => {
     const solution = convertRustResultToSolution(rustResult, progress);
 

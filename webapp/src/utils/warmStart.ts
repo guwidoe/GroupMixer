@@ -1,4 +1,5 @@
 import type { Scenario, ScenarioResult, Constraint, Person } from "../types";
+import { getEffectiveGroupCapacity } from './groupCapacities';
 
 type Schedule = Record<string, Record<string, string[]>>; // session_{i} -> group_id -> [person_id]
 
@@ -50,7 +51,7 @@ function buildCapacityMap(
   for (const s of iterateSessions(scenario)) {
     caps[s] = {};
     for (const g of scenario.groups) {
-      caps[s][g.id] = g.size;
+      caps[s][g.id] = getEffectiveGroupCapacity(g, s);
     }
   }
   return caps;

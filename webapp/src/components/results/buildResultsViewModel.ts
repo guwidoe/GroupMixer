@@ -1,4 +1,5 @@
 import type { Scenario, Solution } from '../../types';
+import { getEffectiveGroupCapacity } from '../../utils/groupCapacities';
 
 export interface ResultsSessionGroup {
   id: string;
@@ -23,7 +24,8 @@ export function buildResultsSessionData(scenario: Scenario, solution: Solution):
         .filter((person): person is Scenario['people'][number] => Boolean(person));
 
       return {
-        ...group,
+        id: group.id,
+        size: getEffectiveGroupCapacity(group, sessionIndex),
         people,
       };
     });

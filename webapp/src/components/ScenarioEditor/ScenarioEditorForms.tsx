@@ -21,8 +21,9 @@ interface GroupFormConfig {
   editingGroup: Group | null;
   groupForm: GroupFormData;
   setGroupForm: React.Dispatch<React.SetStateAction<GroupFormData>>;
-  groupFormInputs: { size?: string };
-  setGroupFormInputs: React.Dispatch<React.SetStateAction<{ size?: string }>>;
+  groupFormInputs: { size?: string; sessionSizes?: string[] };
+  setGroupFormInputs: React.Dispatch<React.SetStateAction<{ size?: string; sessionSizes?: string[] }>>;
+  sessionsCount: number;
   onSaveGroup: () => void;
   onUpdateGroup: () => void;
   onCancelGroup: () => void;
@@ -131,6 +132,7 @@ export function ScenarioEditorForms({
           setGroupForm={group.setGroupForm}
           groupFormInputs={group.groupFormInputs}
           setGroupFormInputs={group.setGroupFormInputs}
+          sessionsCount={group.sessionsCount}
           onSave={group.onSaveGroup}
           onUpdate={group.onUpdateGroup}
           onCancel={group.onCancelGroup}

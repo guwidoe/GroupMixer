@@ -13,6 +13,9 @@ const meta: Meta<typeof GroupForm> = {
   parameters: {
     layout: 'fullscreen',
   },
+  args: {
+    sessionsCount: 3,
+  },
   tags: ['autodocs'],
 };
 

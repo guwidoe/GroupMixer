@@ -3,6 +3,7 @@ import { Lock, LockOpen } from 'lucide-react';
 import type { Group, Scenario } from '../../types';
 import PersonCard from '../PersonCard';
 import type { PreviewDelta } from './types';
+import { getEffectiveGroupCapacity } from '../../utils/groupCapacities';
 
 interface ManualEditorGroupColumnProps {
   group: Group;
@@ -37,7 +38,8 @@ export function ManualEditorGroupColumn({
   onClearPreview,
   setDraggingPerson,
 }: ManualEditorGroupColumnProps) {
-  const overBy = Math.max(0, peopleIds.length - group.size);
+  const capacity = getEffectiveGroupCapacity(group, activeSession);
+  const overBy = Math.max(0, peopleIds.length - capacity);
   const headerColor = overBy > 0 ? 'text-red-600' : 'var(--text-primary)';
 
   const onDropHandler = (e: React.DragEvent<HTMLDivElement>) => {
@@ -81,7 +83,7 @@ export function ManualEditorGroupColumn({
             {group.id}
           </div>
           <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-            Capacity {peopleIds.length}/{group.size}
+            Capacity {peopleIds.length}/{capacity}
           </div>
         </div>
         <div className="flex items-center gap-2">

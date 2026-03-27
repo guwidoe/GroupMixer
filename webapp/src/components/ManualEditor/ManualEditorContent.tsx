@@ -24,6 +24,7 @@ import { canDrop } from './moveUtils';
 import { buildManualDraftSolution } from './draftSolution';
 import { discardAndContinue, saveAndContinue } from './leaveActions';
 import { buildMoveReportData, findAssignedGroup, stagePersonMove } from './dropPipeline';
+import { getEffectiveGroupCapacity } from '../../utils/groupCapacities';
 
 export function ManualEditorContent() {
   const navigate = useNavigate();
@@ -130,7 +131,8 @@ export function ManualEditorContent() {
         const groups = draftSchedule[s] || {};
         effectiveScenario.groups.forEach((g) => {
           const ct = (groups[g.id] || []).length;
-          if (ct > g.size) count += ct - g.size;
+          const capacity = getEffectiveGroupCapacity(g, s);
+          if (ct > capacity) count += ct - capacity;
         });
       });
     }

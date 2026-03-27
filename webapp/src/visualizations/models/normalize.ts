@@ -1,4 +1,5 @@
 import type { Scenario, Solution } from "../../types";
+import { getEffectiveGroupCapacity } from '../../utils/groupCapacities';
 import type { ScheduleSnapshot } from "../types";
 
 export interface NormalizedCell {
@@ -23,6 +24,7 @@ export function normalizeFromSolution(
 ): NormalizedSchedule {
   const sessionCount = scenario.num_sessions || 0;
   const groupOrder = (scenario.groups || []).map((g) => g.id);
+  const groupsById = new Map((scenario.groups || []).map((group) => [group.id, group] as const));
 
   const bySessionGroup: Record<number, Record<string, string[]>> = {};
   for (const a of solution.assignments) {
@@ -32,19 +34,17 @@ export function normalizeFromSolution(
     bySessionGroup[a.session_id][a.group_id].push(a.person_id);
   }
 
-  const groupCap: Record<string, number> = {};
-  for (const g of scenario.groups) groupCap[g.id] = g.size;
-
   const sessions = Array.from({ length: sessionCount }, (_, sessionIndex) => {
     const cellsByGroupId: Record<string, NormalizedCell> = {};
     for (const groupId of groupOrder) {
       const peopleIds =
         bySessionGroup[sessionIndex]?.[groupId]?.slice().sort() ?? [];
+      const group = groupsById.get(groupId);
       cellsByGroupId[groupId] = {
         sessionIndex,
         groupId,
         peopleIds,
-        capacity: groupCap[groupId] ?? 0,
+        capacity: group ? getEffectiveGroupCapacity(group, sessionIndex) : 0,
       };
     }
     return { sessionIndex, cellsByGroupId };
@@ -59,9 +59,7 @@ export function normalizeFromSnapshot(
 ): NormalizedSchedule {
   const sessionCount = scenario.num_sessions || 0;
   const groupOrder = (scenario.groups || []).map((g) => g.id);
-  const groupCap: Record<string, number> = {};
-  for (const g of scenario.groups) groupCap[g.id] = g.size;
-
+  const groupsById = new Map((scenario.groups || []).map((group) => [group.id, group] as const));
   const sessions = Array.from({ length: sessionCount }, (_, sessionIndex) => {
     const sessionKey = `session_${sessionIndex}`;
     const sessionMap = snapshot[sessionKey] || {};
@@ -69,11 +67,12 @@ export function normalizeFromSnapshot(
     const cellsByGroupId: Record<string, NormalizedCell> = {};
     for (const groupId of groupOrder) {
       const peopleIds = (sessionMap[groupId] || []).slice().sort();
+      const group = groupsById.get(groupId);
       cellsByGroupId[groupId] = {
         sessionIndex,
         groupId,
         peopleIds,
-        capacity: groupCap[groupId] ?? 0,
+        capacity: group ? getEffectiveGroupCapacity(group, sessionIndex) : 0,
       };
     }
     return { sessionIndex, cellsByGroupId };
