@@ -20,10 +20,12 @@ fn test_calculate_recommended_settings_initial_temp_above_one() {
         Group {
             id: "G1".into(),
             size: 4,
+            session_sizes: None,
         },
         Group {
             id: "G2".into(),
             size: 4,
+            session_sizes: None,
         },
     ];
 

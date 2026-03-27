@@ -48,10 +48,12 @@ fn driver_input() -> ApiInput {
                 Group {
                     id: "g0".to_string(),
                     size: 2,
+                    session_sizes: None,
                 },
                 Group {
                     id: "g1".to_string(),
                     size: 2,
+                    session_sizes: None,
                 },
             ],
             num_sessions: 3,
@@ -107,10 +109,14 @@ fn no_improvement_reheating_is_reported_in_benchmark_telemetry() {
         groups: vec![Group {
             id: "solo".to_string(),
             size: 2,
+            session_sizes: None,
         }],
         num_sessions: 1,
     };
-    input.initial_schedule = Some(make_initial_schedule(&["solo"], vec![vec![vec!["p0", "p1"]]]));
+    input.initial_schedule = Some(make_initial_schedule(
+        &["solo"],
+        vec![vec![vec!["p0", "p1"]]],
+    ));
     input.solver.stop_conditions.max_iterations = Some(10);
     input.solver.solver_params = SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
         initial_temperature: 1.0,
@@ -160,6 +166,9 @@ fn progress_callback_can_request_early_stop() {
 
     let result = run_solver_with_progress(&input, Some(&callback)).expect("solve should stop");
 
-    assert_eq!(result.stop_reason, Some(StopReason::ProgressCallbackRequestedStop));
+    assert_eq!(
+        result.stop_reason,
+        Some(StopReason::ProgressCallbackRequestedStop)
+    );
     assert!(*calls.lock().unwrap() >= 1);
 }

@@ -39,6 +39,7 @@ pub fn create_simple_input(
         .map(|i| Group {
             id: format!("g{}", i),
             size: group_size,
+            session_sizes: None,
         })
         .collect();
 
@@ -81,6 +82,7 @@ pub fn create_input_with_attributes(
         .map(|(id, size)| Group {
             id: id.to_string(),
             size,
+            session_sizes: None,
         })
         .collect();
 
@@ -286,7 +288,10 @@ pub fn assert_state_matches_full_recalculation(state: &State) {
         state.should_together_violations,
         recalculated.should_together_violations
     );
-    assert_eq!(state.immovable_violations, recalculated.immovable_violations);
+    assert_eq!(
+        state.immovable_violations,
+        recalculated.immovable_violations
+    );
     assert_eq!(state.pairmin_counts, recalculated.pairmin_counts);
     assert!(
         (state.attribute_balance_penalty - recalculated.attribute_balance_penalty).abs() < 1e-9,
@@ -323,7 +328,11 @@ pub fn assert_delta_matches_after(before: &State, after: &State, predicted_delta
 }
 
 #[allow(dead_code)]
-pub fn count_person_occurrences_in_session(state: &State, session: usize, person_id: &str) -> usize {
+pub fn count_person_occurrences_in_session(
+    state: &State,
+    session: usize,
+    person_id: &str,
+) -> usize {
     let person_idx = state.person_id_to_idx[person_id];
     state.schedule[session]
         .iter()

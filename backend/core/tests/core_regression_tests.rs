@@ -45,10 +45,12 @@ fn basic_input() -> ApiInput {
                 Group {
                     id: "g0".to_string(),
                     size: 2,
+                    session_sizes: None,
                 },
                 Group {
                     id: "g1".to_string(),
                     size: 2,
+                    session_sizes: None,
                 },
             ],
             num_sessions: 2,
@@ -120,6 +122,7 @@ fn transfer_input() -> ApiInput {
     input.problem.groups.push(Group {
         id: "g2".to_string(),
         size: 2,
+        session_sizes: None,
     });
     input
 }
@@ -148,10 +151,14 @@ fn insufficient_group_capacity_is_rejected_with_clear_error() {
     input.problem.groups = vec![Group {
         id: "tiny".to_string(),
         size: 2,
+        session_sizes: None,
     }];
 
     let error = State::new(&input).unwrap_err().to_string();
-    assert!(error.contains("Not enough group capacity for all people"), "{error}");
+    assert!(
+        error.contains("Not enough group capacity in session 0"),
+        "{error}"
+    );
     assert!(error.contains("People: 4"), "{error}");
     assert!(error.contains("Capacity: 2"), "{error}");
 }
@@ -237,7 +244,10 @@ fn progress_callback_can_stop_solver_early() {
     assert!(!captured.is_empty(), "callback should have been invoked");
     assert!(captured.iter().copied().max().unwrap() < 5_000);
     assert!(!result.schedule.is_empty());
-    assert_eq!(result.stop_reason, Some(StopReason::ProgressCallbackRequestedStop));
+    assert_eq!(
+        result.stop_reason,
+        Some(StopReason::ProgressCallbackRequestedStop)
+    );
 }
 
 #[test]
@@ -282,7 +292,10 @@ fn result_reports_no_improvement_stop_reason() {
     input.solver.stop_conditions.no_improvement_iterations = Some(1);
 
     let result = run_solver(&input).expect("solve should succeed");
-    assert_eq!(result.stop_reason, Some(StopReason::NoImprovementLimitReached));
+    assert_eq!(
+        result.stop_reason,
+        Some(StopReason::NoImprovementLimitReached)
+    );
 }
 
 #[test]
@@ -311,7 +324,11 @@ fn benchmark_observer_receives_started_and_completed_events() {
         .expect("solve with benchmark observer should succeed");
     let events = events.lock().unwrap().clone();
 
-    assert_eq!(events.len(), 2, "observer should receive start + completion");
+    assert_eq!(
+        events.len(),
+        2,
+        "observer should receive start + completion"
+    );
 
     match &events[0] {
         BenchmarkEvent::RunStarted(started) => {
@@ -333,7 +350,10 @@ fn benchmark_observer_receives_started_and_completed_events() {
     assert!(completed.initialization_seconds >= 0.0);
     assert!(completed.finalization_seconds >= 0.0);
     assert_eq!(
-        result.benchmark_telemetry.as_ref().expect("result telemetry"),
+        result
+            .benchmark_telemetry
+            .as_ref()
+            .expect("result telemetry"),
         completed
     );
 }
@@ -403,10 +423,22 @@ fn full_solver_run_is_deterministic_for_same_seed() {
         .as_ref()
         .expect("final result should include benchmark telemetry");
 
-    assert_eq!(telemetry_a.iterations_completed, telemetry_b.iterations_completed);
-    assert_eq!(telemetry_a.moves.swap.attempts, telemetry_b.moves.swap.attempts);
-    assert_eq!(telemetry_a.moves.swap.accepted, telemetry_b.moves.swap.accepted);
-    assert_eq!(telemetry_a.moves.transfer.attempts, telemetry_b.moves.transfer.attempts);
+    assert_eq!(
+        telemetry_a.iterations_completed,
+        telemetry_b.iterations_completed
+    );
+    assert_eq!(
+        telemetry_a.moves.swap.attempts,
+        telemetry_b.moves.swap.attempts
+    );
+    assert_eq!(
+        telemetry_a.moves.swap.accepted,
+        telemetry_b.moves.swap.accepted
+    );
+    assert_eq!(
+        telemetry_a.moves.transfer.attempts,
+        telemetry_b.moves.transfer.attempts
+    );
     assert_eq!(
         telemetry_a.moves.transfer.accepted,
         telemetry_b.moves.transfer.accepted
@@ -562,6 +594,7 @@ fn display_helpers_prefer_name_and_fallback_cleanly() {
             groups: vec![Group {
                 id: "g0".to_string(),
                 size: 2,
+                session_sizes: None,
             }],
             num_sessions: 1,
         },

@@ -4,7 +4,7 @@
 //! preprocessing logic that converts API input into the internal solver state.
 
 use super::{
-    derive_phase_seed, CONSTRUCTION_SEED_SALT, Dsu, RepeatPenaltyFunction, SolverError, State,
+    derive_phase_seed, Dsu, RepeatPenaltyFunction, SolverError, State, CONSTRUCTION_SEED_SALT,
 };
 use crate::models::{ApiInput, Constraint, PairMeetingMode};
 use rand::seq::SliceRandom;
@@ -16,7 +16,7 @@ impl State {
     /// Creates a new solver state from the API input configuration.
     ///
     /// This constructor performs several important tasks:
-    /// 1. **Validation**: Checks that the problem is solvable (sufficient group capacity)
+    /// 1. **Validation**: Checks that the problem is solvable (sufficient per-session group capacity)
     /// 2. **Preprocessing**: Converts string IDs to integer indices for performance
     /// 3. **Constraint Processing**: Merges overlapping constraints and validates compatibility
     /// 4. **Initialization**: Creates initial random schedule and calculates baseline scores
@@ -33,7 +33,7 @@ impl State {
     /// # Errors
     ///
     /// This function will return an error if:
-    /// - Total group capacity is insufficient for all people
+    /// - Per-session group capacity is insufficient for participating people
     /// - Person or group IDs are not unique
     /// - Referenced IDs in constraints don't exist
     /// - Cliques are too large to fit in any group
@@ -70,7 +70,11 @@ impl State {
     ///             },
     ///         ],
     ///         groups: vec![
-    ///             Group { id: "Team1".to_string(), size: 2 }
+    ///             Group {
+    ///                 id: "Team1".to_string(),
+    ///                 size: 2,
+    ///                 session_sizes: None,
+    ///             }
     ///         ],
     ///         num_sessions: 2,
     ///     },
@@ -113,15 +117,30 @@ impl State {
     pub fn new(input: &ApiInput) -> Result<Self, SolverError> {
         // --- Pre-validation ---
         let people_count = input.problem.people.len();
-        let total_capacity: u32 = input.problem.groups.iter().map(|g| g.size).sum();
-        if (people_count as u32) > total_capacity {
-            return Err(SolverError::ValidationError(format!(
-                "Not enough group capacity for all people. People: {}, Capacity: {}",
-                people_count, total_capacity
-            )));
-        }
-
         let group_count = input.problem.groups.len();
+        let num_sessions = input.problem.num_sessions as usize;
+
+        let person_participation = Self::build_person_participation(input)?;
+        let (
+            group_capacities,
+            effective_group_capacities,
+            session_total_capacities,
+            session_max_group_capacities,
+        ) = Self::build_effective_group_capacities(input)?;
+
+        for session_idx in 0..num_sessions {
+            let people_in_session = person_participation
+                .iter()
+                .filter(|sessions| sessions[session_idx])
+                .count();
+            let session_capacity = session_total_capacities[session_idx];
+            if people_in_session > session_capacity {
+                return Err(SolverError::ValidationError(format!(
+                    "Not enough group capacity in session {}. People: {}, Capacity: {}",
+                    session_idx, people_in_session, session_capacity
+                )));
+            }
+        }
 
         let effective_seed = input.solver.seed.unwrap_or_else(|| rng().random::<u64>());
         let move_policy = input
@@ -294,16 +313,8 @@ impl State {
                 .map_err(SolverError::ValidationError)?;
         }
 
-        let schedule = vec![vec![vec![]; group_count]; input.problem.num_sessions as usize];
-        let locations = vec![vec![(0, 0); people_count]; input.problem.num_sessions as usize];
-
-        // Store group capacities for quick lookup later (used by transfer probability, feasibility, etc.)
-        let group_capacities: Vec<usize> = input
-            .problem
-            .groups
-            .iter()
-            .map(|g| g.size as usize)
-            .collect();
+        let schedule = vec![vec![vec![]; group_count]; num_sessions];
+        let locations = vec![vec![(0, 0); people_count]; num_sessions];
 
         // Calculate baseline score to prevent negative scores from unique contacts metric
         // Maximum possible unique contacts = (n * (n-1)) / 2, multiplied by objective weight
@@ -313,7 +324,7 @@ impl State {
                 (people_count * (people_count - 1)) / 2,
                 (people_count
                     * input.problem.num_sessions as usize
-                    * (group_capacities.iter().max().unwrap_or(&1) - 1))
+                    * (session_max_group_capacities.iter().max().unwrap_or(&1) - 1))
                     / 2,
             )
         } else {
@@ -327,6 +338,9 @@ impl State {
             group_id_to_idx,
             group_idx_to_id,
             group_capacities,
+            effective_group_capacities,
+            session_total_capacities,
+            session_max_group_capacities,
             attr_key_to_idx,
             attr_val_to_idx,
             attr_idx_to_val,
@@ -349,7 +363,7 @@ impl State {
             clique_sessions: vec![], // To be populated by preprocessing
             forbidden_pair_sessions: vec![], // To be populated by preprocessing
             should_together_sessions: vec![], // To be populated by preprocessing
-            person_participation: vec![], // To be populated by preprocessing
+            person_participation,
             num_sessions: input.problem.num_sessions,
             allowed_sessions,
             contact_matrix: vec![vec![0; people_count]; people_count],
@@ -384,42 +398,80 @@ impl State {
         // If an initial schedule is supplied, warm-start from it; otherwise random initialize
         if let Some(ref initial_schedule) = input.initial_schedule {
             // Build mapping of group id -> index for quick lookup
-            let mut _day_idx = 0usize;
             // Expect keys like "session_0", iterate in sorted order by session index
             let mut sessions: Vec<(usize, &std::collections::HashMap<String, Vec<String>>)> =
                 initial_schedule
                     .iter()
-                    .filter_map(|(k, v)| {
-                        if let Some(s_idx_str) = k.split('_').next_back() {
-                            if let Ok(s_idx) = s_idx_str.parse::<usize>() {
-                                return Some((s_idx, v));
-                            }
+                    .map(|(key, value)| {
+                        let session_idx = key
+                            .strip_prefix("session_")
+                            .ok_or_else(|| {
+                                SolverError::ValidationError(format!(
+                                    "Initial schedule uses invalid session key '{}'",
+                                    key
+                                ))
+                            })?
+                            .parse::<usize>()
+                            .map_err(|_| {
+                                SolverError::ValidationError(format!(
+                                    "Initial schedule uses invalid session key '{}'",
+                                    key
+                                ))
+                            })?;
+                        if session_idx >= num_sessions {
+                            return Err(SolverError::ValidationError(format!(
+                                "Initial schedule references invalid session {} (max: {})",
+                                session_idx,
+                                num_sessions.saturating_sub(1)
+                            )));
                         }
-                        None
+                        Ok((session_idx, value))
                     })
-                    .collect();
+                    .collect::<Result<_, _>>()?;
             sessions.sort_by_key(|(s_idx, _)| *s_idx);
 
             for (s_idx, group_map) in sessions {
-                if s_idx >= state.schedule.len() {
-                    continue;
-                }
                 let day_schedule = &mut state.schedule[s_idx];
                 let mut placed: Vec<bool> = vec![false; people_count];
                 for (group_id, people_ids) in group_map.iter() {
-                    if let Some(&g_idx) = state.group_id_to_idx.get(group_id) {
-                        for pid in people_ids {
-                            if let Some(&p_idx) = state.person_id_to_idx.get(pid) {
-                                // Only place if participating this day and group has capacity
-                                let group_size = input.problem.groups[g_idx].size as usize;
-                                if state.person_participation[p_idx][s_idx]
-                                    && day_schedule[g_idx].len() < group_size
-                                {
-                                    day_schedule[g_idx].push(p_idx);
-                                    placed[p_idx] = true;
-                                }
-                            }
+                    let &g_idx = state.group_id_to_idx.get(group_id).ok_or_else(|| {
+                        SolverError::ValidationError(format!(
+                            "Initial schedule references unknown group '{}'",
+                            group_id
+                        ))
+                    })?;
+                    let group_capacity =
+                        state.effective_group_capacities[s_idx * group_count + g_idx];
+                    for pid in people_ids {
+                        let &p_idx = state.person_id_to_idx.get(pid).ok_or_else(|| {
+                            SolverError::ValidationError(format!(
+                                "Initial schedule references unknown person '{}'",
+                                pid
+                            ))
+                        })?;
+                        if !state.person_participation[p_idx][s_idx] {
+                            return Err(SolverError::ValidationError(format!(
+                                "Initial schedule assigns non-participating person {} in session {}",
+                                state.display_person_by_idx(p_idx),
+                                s_idx
+                            )));
                         }
+                        if placed[p_idx] {
+                            return Err(SolverError::ValidationError(format!(
+                                "Initial schedule assigns person {} multiple times in session {}",
+                                state.display_person_by_idx(p_idx),
+                                s_idx
+                            )));
+                        }
+                        if day_schedule[g_idx].len() >= group_capacity {
+                            return Err(SolverError::ValidationError(format!(
+                                "Initial schedule overfills group {} in session {}. Capacity: {}",
+                                state.group_idx_to_id[g_idx], s_idx, group_capacity
+                            )));
+                        }
+
+                        day_schedule[g_idx].push(p_idx);
+                        placed[p_idx] = true;
                     }
                 }
                 // Any unplaced participating people will be filled in by random initializer below
@@ -462,7 +514,7 @@ impl State {
                     continue;
                 } // Already placed as part of a clique
 
-                let group_size = input.problem.groups[group_idx].size as usize;
+                let group_size = state.effective_group_capacities[day * group_count + group_idx];
                 if group_cursors[group_idx] >= group_size {
                     return Err(SolverError::ValidationError(format!(
                         "Cannot place immovable person: group {} is full",
@@ -505,7 +557,8 @@ impl State {
                 potential_groups.shuffle(&mut rng);
 
                 for group_idx in potential_groups {
-                    let group_size = input.problem.groups[group_idx].size as usize;
+                    let group_size =
+                        state.effective_group_capacities[day * group_count + group_idx];
                     let available_space = group_size - group_cursors[group_idx];
 
                     if available_space >= clique.len() {
@@ -542,7 +595,8 @@ impl State {
                 let mut potential_groups: Vec<usize> = (0..group_count).collect();
                 potential_groups.shuffle(&mut rng);
                 for group_idx in potential_groups {
-                    let group_size = input.problem.groups[group_idx].size as usize;
+                    let group_size =
+                        state.effective_group_capacities[day * group_count + group_idx];
                     if group_cursors[group_idx] < group_size {
                         day_schedule[group_idx].push(person_idx);
                         group_cursors[group_idx] += 1;
@@ -565,6 +619,85 @@ impl State {
         Ok(state)
     }
 
+    fn build_person_participation(input: &ApiInput) -> Result<Vec<Vec<bool>>, SolverError> {
+        let people_count = input.problem.people.len();
+        let num_sessions = input.problem.num_sessions as usize;
+        let mut person_participation = vec![vec![false; num_sessions]; people_count];
+
+        for (person_idx, person) in input.problem.people.iter().enumerate() {
+            if let Some(ref sessions) = person.sessions {
+                for &session in sessions {
+                    let session_idx = session as usize;
+                    if session_idx < num_sessions {
+                        person_participation[person_idx][session_idx] = true;
+                    } else {
+                        return Err(SolverError::ValidationError(format!(
+                            "Person '{}' has invalid session index: {} (max: {})",
+                            person.id,
+                            session,
+                            num_sessions.saturating_sub(1)
+                        )));
+                    }
+                }
+            } else {
+                for session_idx in 0..num_sessions {
+                    person_participation[person_idx][session_idx] = true;
+                }
+            }
+        }
+
+        Ok(person_participation)
+    }
+
+    fn build_effective_group_capacities(
+        input: &ApiInput,
+    ) -> Result<(Vec<usize>, Vec<usize>, Vec<usize>, Vec<usize>), SolverError> {
+        let num_sessions = input.problem.num_sessions as usize;
+        let group_capacities: Vec<usize> = input
+            .problem
+            .groups
+            .iter()
+            .map(|group| group.size as usize)
+            .collect();
+
+        let mut effective_group_capacities = vec![0; input.problem.groups.len() * num_sessions];
+        let mut session_total_capacities = vec![0; num_sessions];
+        let mut session_max_group_capacities = vec![0; num_sessions];
+
+        for (group_idx, group) in input.problem.groups.iter().enumerate() {
+            if let Some(session_sizes) = &group.session_sizes {
+                if session_sizes.len() != num_sessions {
+                    return Err(SolverError::ValidationError(format!(
+                        "Group '{}' has {} session_sizes entries but problem has {} sessions",
+                        group.id,
+                        session_sizes.len(),
+                        num_sessions
+                    )));
+                }
+            }
+
+            for session_idx in 0..num_sessions {
+                let capacity = group
+                    .session_sizes
+                    .as_ref()
+                    .map(|sizes| sizes[session_idx] as usize)
+                    .unwrap_or(group.size as usize);
+                effective_group_capacities[session_idx * input.problem.groups.len() + group_idx] =
+                    capacity;
+                session_total_capacities[session_idx] += capacity;
+                session_max_group_capacities[session_idx] =
+                    session_max_group_capacities[session_idx].max(capacity);
+            }
+        }
+
+        Ok((
+            group_capacities,
+            effective_group_capacities,
+            session_total_capacities,
+            session_max_group_capacities,
+        ))
+    }
+
     fn _preprocess_and_validate_constraints(
         &mut self,
         input: &ApiInput,
@@ -573,31 +706,7 @@ impl State {
         let num_sessions = self.num_sessions as usize;
 
         // --- Initialize person participation matrix ---
-        self.person_participation = vec![vec![false; num_sessions]; people_count];
-
-        for (person_idx, person) in input.problem.people.iter().enumerate() {
-            if let Some(ref sessions) = person.sessions {
-                // Person only participates in specified sessions
-                for &session in sessions {
-                    let session_idx = session as usize;
-                    if session_idx < num_sessions {
-                        self.person_participation[person_idx][session_idx] = true;
-                    } else {
-                        return Err(SolverError::ValidationError(format!(
-                            "Person '{}' has invalid session index: {} (max: {})",
-                            person.id,
-                            session,
-                            num_sessions - 1
-                        )));
-                    }
-                }
-            } else {
-                // Person participates in all sessions (default behavior)
-                for session_idx in 0..num_sessions {
-                    self.person_participation[person_idx][session_idx] = true;
-                }
-            }
-        }
+        self.person_participation = Self::build_person_participation(input)?;
 
         // --- Process `MustStayTogether` (Cliques) and `ShouldNotBeTogether`/`ShouldStayTogether` (Pairs) ---
         // New session-aware preprocessing using per-session DSU ----------------------

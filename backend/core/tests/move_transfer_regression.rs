@@ -62,14 +62,17 @@ fn groups_3x2() -> Vec<Group> {
         Group {
             id: "g0".to_string(),
             size: 2,
+            session_sizes: None,
         },
         Group {
             id: "g1".to_string(),
             size: 2,
+            session_sizes: None,
         },
         Group {
             id: "g2".to_string(),
             size: 2,
+            session_sizes: None,
         },
     ]
 }
@@ -193,7 +196,10 @@ fn attribute_balance_transfer_delta_matches_apply_and_recalculation() {
     let before = state.clone();
     let p1 = state.person_id_to_idx["p1"];
     let delta = state.calculate_transfer_cost_delta(0, p1, 0, 1);
-    assert!(delta < 0.0, "expected transfer to improve target-group balance");
+    assert!(
+        delta < 0.0,
+        "expected transfer to improve target-group balance"
+    );
 
     state.apply_transfer(0, p1, 0, 1);
 
@@ -209,14 +215,17 @@ fn pair_meeting_transfer_delta_matches_apply_and_recalculation() {
         Group {
             id: "g0".to_string(),
             size: 3,
+            session_sizes: None,
         },
         Group {
             id: "g1".to_string(),
             size: 2,
+            session_sizes: None,
         },
         Group {
             id: "g2".to_string(),
             size: 2,
+            session_sizes: None,
         },
     ];
     let group_ids = groups
@@ -261,7 +270,10 @@ fn pair_meeting_transfer_delta_matches_apply_and_recalculation() {
     let before = state.clone();
     let p1 = state.person_id_to_idx["p1"];
     let delta = state.calculate_transfer_cost_delta(1, p1, 1, 0);
-    assert!(delta < 0.0, "expected transfer to satisfy pair meeting target");
+    assert!(
+        delta < 0.0,
+        "expected transfer to satisfy pair meeting target"
+    );
 
     state.apply_transfer(1, p1, 1, 0);
 

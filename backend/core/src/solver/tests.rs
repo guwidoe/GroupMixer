@@ -29,6 +29,7 @@ fn create_test_input(
             (0..*num_groups).map(move |j| Group {
                 id: format!("g{}_{}", i, j),
                 size: *size,
+                session_sizes: None,
             })
         })
         .collect();
@@ -230,6 +231,98 @@ fn test_repeat_encounter_limit_and_linear_penalty_affect_swap_delta() {
     assert_eq!(state.repetition_penalty, 2);
     let cost_after = state.calculate_cost();
     assert_eq!(cost_after - cost_before, 14.0);
+}
+
+#[test]
+fn test_group_session_sizes_length_must_match_num_sessions() {
+    let mut input = create_test_input(4, vec![(2, 2)], 2);
+    input.problem.groups[0].session_sizes = Some(vec![2]);
+
+    let error = State::new(&input).unwrap_err().to_string();
+    assert!(error.contains("session_sizes entries"), "{error}");
+    assert!(error.contains("problem has 2 sessions"), "{error}");
+}
+
+#[test]
+fn test_per_session_capacity_validation_uses_participation() {
+    let mut input = create_test_input(4, vec![(2, 2)], 2);
+    input.problem.groups[0].session_sizes = Some(vec![1, 2]);
+    input.problem.groups[1].session_sizes = Some(vec![1, 2]);
+
+    let error = State::new(&input).unwrap_err().to_string();
+    assert!(
+        error.contains("Not enough group capacity in session 0"),
+        "{error}"
+    );
+    assert!(error.contains("People: 4"), "{error}");
+    assert!(error.contains("Capacity: 2"), "{error}");
+}
+
+#[test]
+fn test_warm_start_overfill_uses_session_specific_capacity() {
+    let mut input = create_test_input(3, vec![(2, 2)], 2);
+    input.problem.groups[0].session_sizes = Some(vec![1, 2]);
+    input.initial_schedule = Some(HashMap::from([(
+        "session_0".to_string(),
+        HashMap::from([
+            ("g0_0".to_string(), vec!["p0".to_string(), "p1".to_string()]),
+            ("g0_1".to_string(), vec!["p2".to_string()]),
+        ]),
+    )]));
+
+    let error = State::new(&input).unwrap_err().to_string();
+    assert!(
+        error.contains("Initial schedule overfills group g0_0 in session 0"),
+        "{error}"
+    );
+    assert!(error.contains("Capacity: 1"), "{error}");
+}
+
+#[test]
+fn test_transfer_feasibility_respects_session_specific_capacity() {
+    let mut input = create_test_input(3, vec![(2, 2)], 2);
+    input.problem.groups[0].session_sizes = Some(vec![2, 1]);
+    input.initial_schedule = Some(HashMap::from([
+        (
+            "session_0".to_string(),
+            HashMap::from([
+                ("g0_0".to_string(), vec!["p0".to_string()]),
+                ("g0_1".to_string(), vec!["p1".to_string(), "p2".to_string()]),
+            ]),
+        ),
+        (
+            "session_1".to_string(),
+            HashMap::from([
+                ("g0_0".to_string(), vec!["p0".to_string()]),
+                ("g0_1".to_string(), vec!["p1".to_string(), "p2".to_string()]),
+            ]),
+        ),
+    ]));
+
+    let state = State::new(&input).unwrap();
+    let p1 = state.person_id_to_idx["p1"];
+
+    assert!(state.is_transfer_feasible(0, p1, 1, 0));
+    assert!(!state.is_transfer_feasible(1, p1, 1, 0));
+    assert!(state.calculate_transfer_probability(0) > 0.0);
+    assert_eq!(state.calculate_transfer_probability(1), 0.0);
+}
+
+#[test]
+fn test_clique_initialization_fails_when_no_session_group_can_fit_it() {
+    let mut input = create_test_input(4, vec![(3, 2)], 2);
+    for group in &mut input.problem.groups {
+        group.session_sizes = Some(vec![2, 1]);
+    }
+    input.problem.people[3].sessions = Some(vec![0]);
+    input.constraints.push(Constraint::MustStayTogether {
+        people: vec!["p0".to_string(), "p1".to_string()],
+        sessions: Some(vec![1]),
+    });
+
+    let error = State::new(&input).unwrap_err().to_string();
+    assert!(error.contains("Could not place clique"), "{error}");
+    assert!(error.contains("day 1"), "{error}");
 }
 
 #[test]
@@ -1215,10 +1308,12 @@ mod attribute_balance_tests {
                     Group {
                         id: "team1".to_string(),
                         size: 3,
+                        session_sizes: None,
                     },
                     Group {
                         id: "team2".to_string(),
                         size: 3,
+                        session_sizes: None,
                     },
                 ],
                 num_sessions: 1,
@@ -1312,10 +1407,12 @@ mod attribute_balance_tests {
                     Group {
                         id: "g1".to_string(),
                         size: 3,
+                        session_sizes: None,
                     },
                     Group {
                         id: "g2".to_string(),
                         size: 3,
+                        session_sizes: None,
                     },
                 ],
                 num_sessions: 1,

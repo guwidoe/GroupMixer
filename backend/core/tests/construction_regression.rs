@@ -42,14 +42,17 @@ fn construction_input() -> ApiInput {
                 Group {
                     id: "g0".to_string(),
                     size: 2,
+                    session_sizes: None,
                 },
                 Group {
                     id: "g1".to_string(),
                     size: 2,
+                    session_sizes: None,
                 },
                 Group {
                     id: "g2".to_string(),
                     size: 2,
+                    session_sizes: None,
                 },
             ],
             num_sessions: 2,

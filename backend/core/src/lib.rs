@@ -26,7 +26,11 @@
 //!             },
 //!         ],
 //!         groups: vec![
-//!             Group { id: "Team1".to_string(), size: 2 }
+//!             Group {
+//!                 id: "Team1".to_string(),
+//!                 size: 2,
+//!                 session_sizes: None,
+//!             }
 //!         ],
 //!         num_sessions: 2,
 //!     },
@@ -68,9 +72,9 @@
 use crate::algorithms::simulated_annealing::SimulatedAnnealing;
 use crate::algorithms::Solver;
 use crate::models::{
-    ApiInput, BenchmarkObserver, ProblemDefinition, ProgressCallback, ProgressUpdate,
-    LoggingOptions, SimulatedAnnealingParams, SolverConfiguration, SolverParams,
-    SolverResult, StopConditions,
+    ApiInput, BenchmarkObserver, LoggingOptions, ProblemDefinition, ProgressCallback,
+    ProgressUpdate, SimulatedAnnealingParams, SolverConfiguration, SolverParams, SolverResult,
+    StopConditions,
 };
 use crate::models::{Constraint, Objective};
 use crate::solver::{SolverError, State};
@@ -138,7 +142,11 @@ pub mod solver;
 ///             },
 ///         ],
 ///         groups: vec![
-///             Group { id: "Team1".to_string(), size: 2 },
+///             Group {
+///                 id: "Team1".to_string(),
+///                 size: 2,
+///                 session_sizes: None,
+///             },
 ///         ],
 ///         num_sessions: 3,
 ///     },
@@ -763,10 +771,12 @@ mod callback_tests {
             Group {
                 id: "group_1".to_string(),
                 size: 3,
+                session_sizes: None,
             },
             Group {
                 id: "group_2".to_string(),
                 size: 3,
+                session_sizes: None,
             },
         ];
 
@@ -839,14 +849,17 @@ mod callback_tests {
             Group {
                 id: "group_1".to_string(),
                 size: 4,
+                session_sizes: None,
             },
             Group {
                 id: "group_2".to_string(),
                 size: 4,
+                session_sizes: None,
             },
             Group {
                 id: "group_3".to_string(),
                 size: 4,
+                session_sizes: None,
             },
         ];
 

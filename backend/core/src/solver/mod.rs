@@ -17,8 +17,8 @@ mod tests;
 mod validation;
 
 use crate::models::{
-    AttributeBalanceParams, LoggingOptions, MovePolicy, PairMeetingMode,
-    SolverBenchmarkTelemetry, SolverResult, StopReason, TelemetryOptions,
+    AttributeBalanceParams, LoggingOptions, MovePolicy, PairMeetingMode, SolverBenchmarkTelemetry,
+    SolverResult, StopReason, TelemetryOptions,
 };
 use dsu::Dsu;
 use serde::Serialize;
@@ -29,7 +29,9 @@ pub(crate) const CONSTRUCTION_SEED_SALT: u64 = 0x6a09e667f3bcc909;
 pub(crate) const SEARCH_SEED_SALT: u64 = 0xbb67ae8584caa73b;
 
 pub(crate) fn derive_phase_seed(base_seed: u64, salt: u64) -> u64 {
-    let mut z = base_seed.wrapping_add(salt).wrapping_add(0x9e3779b97f4a7c15);
+    let mut z = base_seed
+        .wrapping_add(salt)
+        .wrapping_add(0x9e3779b97f4a7c15);
     z = (z ^ (z >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
     z = (z ^ (z >> 27)).wrapping_mul(0x94d049bb133111eb);
     z ^ (z >> 31)
@@ -177,8 +179,16 @@ pub struct State {
     pub group_id_to_idx: HashMap<String, usize>,
     /// Maps integer indices back to group ID strings for result formatting
     pub group_idx_to_id: Vec<String>,
-    /// Capacity (size limit) for each group, aligned with `group_idx_to_id`
+    /// Backwards-compatible default capacity for each group, aligned with
+    /// `group_idx_to_id`.
     pub group_capacities: Vec<usize>,
+    /// Effective capacity for each `(session, group)` pair stored in flat form:
+    /// `effective_group_capacities[session * group_count + group]`.
+    pub effective_group_capacities: Vec<usize>,
+    /// Total available capacity per session.
+    pub session_total_capacities: Vec<usize>,
+    /// Maximum single-group capacity per session.
+    pub session_max_group_capacities: Vec<usize>,
 
     // === ATTRIBUTE MAPPINGS ===
     // Efficient representation of person attributes for constraint evaluation
@@ -307,6 +317,11 @@ pub struct State {
 
 impl State {
     #[inline]
+    pub fn effective_group_capacity(&self, day: usize, group_idx: usize) -> usize {
+        self.effective_group_capacities[day * self.group_idx_to_id.len() + group_idx]
+    }
+
+    #[inline]
     pub(crate) fn repetition_penalty_for_contact_count(&self, count: u32) -> i32 {
         self.repeat_penalty_function
             .penalty_for_excess(count.saturating_sub(self.repeat_encounter_limit))
@@ -433,8 +448,7 @@ impl State {
         }
 
         for (idx, violations) in self.should_together_violations.iter().enumerate() {
-            weighted_constraint_penalty +=
-                *violations as f64 * self.should_together_weights[idx];
+            weighted_constraint_penalty += *violations as f64 * self.should_together_weights[idx];
         }
 
         for idx in 0..self.pairmin_pairs.len() {

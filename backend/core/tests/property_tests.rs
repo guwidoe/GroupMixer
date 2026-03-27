@@ -90,6 +90,7 @@ fn create_test_input(
         .map(|i| Group {
             id: format!("g{}", i),
             size: group_size,
+            session_sizes: None,
         })
         .collect();
 
@@ -145,6 +146,7 @@ fn create_test_input_with_sessions(
         .map(|i| Group {
             id: format!("g{}", i),
             size: group_size,
+            session_sizes: None,
         })
         .collect();
 
@@ -304,14 +306,16 @@ proptest! {
     fn group_capacities_respected(input in problem_strategy()) {
         let state = State::new(&input).unwrap();
 
-        for session in &state.schedule {
+        for (session_idx, session) in state.schedule.iter().enumerate() {
             for (group_idx, group) in session.iter().enumerate() {
+                let capacity = state.effective_group_capacity(session_idx, group_idx);
                 prop_assert!(
-                    group.len() <= state.group_capacities[group_idx],
-                    "Group {} exceeds capacity: {} > {}",
+                    group.len() <= capacity,
+                    "Group {} exceeds capacity in session {}: {} > {}",
                     group_idx,
+                    session_idx,
                     group.len(),
-                    state.group_capacities[group_idx]
+                    capacity
                 );
             }
         }
@@ -370,7 +374,7 @@ proptest! {
         for (session_idx, session) in state.schedule.iter().enumerate() {
             let mut seen = std::collections::HashSet::new();
             for (group_idx, group) in session.iter().enumerate() {
-                prop_assert!(group.len() <= state.group_capacities[group_idx]);
+                prop_assert!(group.len() <= state.effective_group_capacity(session_idx, group_idx));
                 for &person in group {
                     prop_assert!(
                         seen.insert(person),

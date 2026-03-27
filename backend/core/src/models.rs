@@ -31,7 +31,11 @@ use std::collections::HashMap;
 ///             }
 ///         ],
 ///         groups: vec![
-///             Group { id: "Team1".to_string(), size: 4 }
+///             Group {
+///                 id: "Team1".to_string(),
+///                 size: 4,
+///                 session_sizes: None,
+///             }
 ///         ],
 ///         num_sessions: 3,
 ///     },
@@ -147,8 +151,12 @@ pub struct Person {
 
 /// Represents a group that people can be assigned to.
 ///
-/// Each group has a unique identifier and a fixed capacity that limits
-/// how many people can be assigned to it in any single session.
+/// Each group has a unique identifier and a capacity that limits how many
+/// people can be assigned to it in any single session.
+///
+/// `size` remains the backwards-compatible default capacity for every session.
+/// When `session_sizes` is provided, it overrides that default on a
+/// per-session basis while keeping the same logical group ID across sessions.
 ///
 /// # Example
 ///
@@ -158,6 +166,7 @@ pub struct Person {
 /// let team = Group {
 ///     id: "Development Team".to_string(),
 ///     size: 6, // Can hold up to 6 people
+///     session_sizes: None,
 /// };
 /// ```
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
@@ -165,7 +174,16 @@ pub struct Group {
     /// Unique identifier for this group (must be unique across all groups)
     pub id: String,
     /// Maximum number of people that can be assigned to this group in any session
+    /// when `session_sizes` is not supplied.
     pub size: u32,
+    /// Optional per-session capacities for this group.
+    ///
+    /// When present, this vector must have exactly `problem.num_sessions`
+    /// entries. A value of `0` can be used to model a group that is closed in a
+    /// specific session while preserving stable group IDs across the whole
+    /// problem.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_sizes: Option<Vec<u32>>,
 }
 
 /// Defines an optimization objective with its weight.
@@ -544,7 +562,9 @@ pub struct SolverConfiguration {
 }
 
 /// Explicit move families supported by the simulated annealing search loop.
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(
+    Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum MoveFamily {
     Swap,
@@ -650,8 +670,7 @@ impl MovePolicy {
             MoveSelectionMode::Adaptive => {
                 if normalized.weights.is_some() {
                     return Err(
-                        "move_policy.weights requires move_policy.mode = 'weighted'"
-                            .to_string(),
+                        "move_policy.weights requires move_policy.mode = 'weighted'".to_string()
                     );
                 }
             }

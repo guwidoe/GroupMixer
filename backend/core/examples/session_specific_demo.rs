@@ -44,10 +44,12 @@ fn main() {
                 Group {
                     id: "Group1".to_string(),
                     size: 3,
+                    session_sizes: None,
                 },
                 Group {
                     id: "Group2".to_string(),
                     size: 3,
+                    session_sizes: None,
                 },
             ],
             num_sessions: 3,

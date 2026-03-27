@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
 use solver_core::models::{
-    ApiInput, AttributeBalanceMode, AttributeBalanceParams, Constraint, Group, ImmovablePersonParams,
-    MoveFamily, MovePolicy, MoveSelectionMode, Objective, PairMeetingCountParams,
-    PairMeetingMode, Person, ProblemDefinition, RepeatEncounterParams,
+    ApiInput, AttributeBalanceMode, AttributeBalanceParams, Constraint, Group,
+    ImmovablePersonParams, MoveFamily, MovePolicy, MoveSelectionMode, Objective,
+    PairMeetingCountParams, PairMeetingMode, Person, ProblemDefinition, RepeatEncounterParams,
     SimulatedAnnealingParams, SolverConfiguration, SolverParams, StopConditions,
 };
 use solver_core::solver::State;
@@ -203,8 +203,16 @@ pub fn construction_bench_input() -> ConstructionBenchInput {
     let warm_schedule = make_initial_schedule(
         &["g0", "g1", "g2"],
         vec![
-            vec![vec!["p0", "p1"], vec!["p2", "p3", "p7"], vec!["p4", "p5", "p6"]],
-            vec![vec!["p0", "p1", "p6"], vec!["p2", "p3"], vec!["p4", "p5", "p7"]],
+            vec![
+                vec!["p0", "p1"],
+                vec!["p2", "p3"],
+                vec!["p4", "p5", "p6"],
+            ],
+            vec![
+                vec!["p0", "p1", "p6"],
+                vec!["p2", "p3"],
+                vec!["p4", "p5", "p7"],
+            ],
             vec![vec!["p0", "p1"], vec!["p2", "p3", "p7"], vec!["p4", "p5"]],
         ],
     );
@@ -494,6 +502,7 @@ pub fn make_problem(num_people: u32, group_size: u32, num_sessions: u32) -> Prob
         .map(|i| Group {
             id: format!("g{i}"),
             size: group_size,
+            session_sizes: None,
         })
         .collect();
 
@@ -601,6 +610,7 @@ fn group(id: &str, size: u32) -> Group {
     Group {
         id: id.to_string(),
         size,
+        session_sizes: None,
     }
 }
 

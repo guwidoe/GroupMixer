@@ -46,10 +46,12 @@ fn valid_input() -> ApiInput {
                 Group {
                     id: "g0".to_string(),
                     size: 2,
+                    session_sizes: None,
                 },
                 Group {
                     id: "g1".to_string(),
                     size: 2,
+                    session_sizes: None,
                 },
             ],
             num_sessions: 2,
@@ -87,6 +89,7 @@ fn invalid_input() -> ApiInput {
     input.problem.groups = vec![Group {
         id: "g0".to_string(),
         size: 1,
+        session_sizes: None,
     }];
     input
 }

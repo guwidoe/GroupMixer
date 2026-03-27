@@ -1,8 +1,6 @@
 mod common;
 
-use common::{
-    assert_delta_matches_after, default_solver_config, make_initial_schedule,
-};
+use common::{assert_delta_matches_after, default_solver_config, make_initial_schedule};
 use solver_core::models::{
     ApiInput, AttributeBalanceMode, AttributeBalanceParams, Constraint, Group, Objective,
     PairMeetingCountParams, PairMeetingMode, Person, ProblemDefinition,
@@ -39,10 +37,12 @@ fn groups() -> Vec<Group> {
         Group {
             id: "g0".to_string(),
             size: 2,
+            session_sizes: None,
         },
         Group {
             id: "g1".to_string(),
             size: 2,
+            session_sizes: None,
         },
     ]
 }
@@ -146,7 +146,10 @@ fn forbidden_pair_delta_matches_apply_and_recalculation() {
     let p1 = state.person_id_to_idx["p1"];
     let p2 = state.person_id_to_idx["p2"];
     let delta = state.calculate_swap_cost_delta(0, p1, p2);
-    assert!(delta > 0.0, "expected forbidden-pair violation cost increase");
+    assert!(
+        delta > 0.0,
+        "expected forbidden-pair violation cost increase"
+    );
 
     state.apply_swap(0, p1, p2);
 
@@ -165,7 +168,10 @@ fn should_together_delta_matches_apply_and_recalculation() {
     let p1 = state.person_id_to_idx["p1"];
     let p2 = state.person_id_to_idx["p2"];
     let delta = state.calculate_swap_cost_delta(0, p1, p2);
-    assert!(delta > 0.0, "expected should-together separation cost increase");
+    assert!(
+        delta > 0.0,
+        "expected should-together separation cost increase"
+    );
 
     state.apply_swap(0, p1, p2);
 

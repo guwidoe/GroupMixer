@@ -27,7 +27,7 @@ impl State {
         let mut total_available_capacity = 0;
 
         for (group_idx, group_members) in self.schedule[day].iter().enumerate() {
-            let max_capacity = self.group_capacities[group_idx];
+            let max_capacity = self.effective_group_capacity(day, group_idx);
             let current_size = group_members.len();
 
             if current_size < max_capacity {
@@ -93,7 +93,7 @@ impl State {
         }
 
         // Target group must have capacity based on predefined limit
-        if self.schedule[day][to_group].len() >= self.group_capacities[to_group] {
+        if self.schedule[day][to_group].len() >= self.effective_group_capacity(day, to_group) {
             return false;
         }
 

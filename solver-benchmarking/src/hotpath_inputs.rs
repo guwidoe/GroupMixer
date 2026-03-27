@@ -1,8 +1,8 @@
 use solver_core::models::{
     ApiInput, AttributeBalanceMode, AttributeBalanceParams, Constraint, Group,
     ImmovablePersonParams, MoveFamily, MovePolicy, MoveSelectionMode, Objective,
-    PairMeetingCountParams, PairMeetingMode, Person, ProblemDefinition,
-    SimulatedAnnealingParams, SolverConfiguration, SolverParams, StopConditions,
+    PairMeetingCountParams, PairMeetingMode, Person, ProblemDefinition, SimulatedAnnealingParams,
+    SolverConfiguration, SolverParams, StopConditions,
 };
 use solver_core::solver::State;
 use std::collections::HashMap;
@@ -91,8 +91,16 @@ pub fn construction_bench_input() -> ConstructionBenchInput {
     let warm_schedule = make_initial_schedule(
         &["g0", "g1", "g2"],
         vec![
-            vec![vec!["p0", "p1"], vec!["p2", "p3", "p7"], vec!["p4", "p5", "p6"]],
-            vec![vec!["p0", "p1", "p6"], vec!["p2", "p3"], vec!["p4", "p5", "p7"]],
+            vec![
+                vec!["p0", "p1"],
+                vec!["p2", "p3"],
+                vec!["p4", "p5", "p6"],
+            ],
+            vec![
+                vec!["p0", "p1", "p6"],
+                vec!["p2", "p3"],
+                vec!["p4", "p5", "p7"],
+            ],
             vec![vec!["p0", "p1"], vec!["p2", "p3", "p7"], vec!["p4", "p5"]],
         ],
     );
@@ -474,6 +482,7 @@ fn group(id: &str, size: u32) -> Group {
     Group {
         id: id.to_string(),
         size,
+        session_sizes: None,
     }
 }
 
