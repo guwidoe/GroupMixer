@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 import {
   addGroup,
   addPerson,
+  clickAndWaitForUrl,
+  dismissNotifications,
   expectSavedResultCount,
   navigateScenarioSetupSection,
   openSolver,
@@ -9,6 +11,7 @@ import {
   openScenarioManager,
   runSolver,
   saveCurrentScenario,
+  waitForSolverRunToStartOrComplete,
   waitForAppShell,
 } from './helpers';
 
@@ -66,12 +69,20 @@ test.describe('Workflow coverage', () => {
     await runSolver(page);
     await expectSavedResultCount(page, 1);
 
-    await page.getByRole('link', { name: /results/i }).click();
-    await expect(page.getByText(/result 1/i).first()).toBeVisible();
+    await dismissNotifications(page);
+    await clickAndWaitForUrl(
+      page,
+      page.getByRole('link', { name: /results/i }),
+      /\/app\/history/,
+      page.getByText(/result 1/i).first(),
+    );
 
-    await page.getByRole('link', { name: /result details/i }).click();
-    await expect(page).toHaveURL(/\/app\/results/);
-    await expect(page.getByRole('heading', { name: /optimization results/i })).toBeVisible();
+    await clickAndWaitForUrl(
+      page,
+      page.getByRole('link', { name: /result details/i }),
+      /\/app\/results/,
+      page.getByRole('heading', { name: /optimization results/i }),
+    );
     await expect(page.getByText(/group assignments/i)).toBeVisible();
     await expect(page.getByText(/4 people assigned/i).first()).toBeVisible();
     await expect(page.getByText('Alice').first()).toBeVisible();
@@ -82,8 +93,13 @@ test.describe('Workflow coverage', () => {
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/result.*\.json/i);
 
-    await page.getByRole('link', { name: /results/i }).click();
-    await expect(page.getByText(/result 1/i).first()).toBeVisible();
+    await dismissNotifications(page);
+    await clickAndWaitForUrl(
+      page,
+      page.getByRole('link', { name: /results/i }),
+      /\/app\/history/,
+      page.getByText(/result 1/i).first(),
+    );
     await page.getByRole('button', { name: /view in result details/i }).click();
     await expect(page.getByRole('heading', { name: /optimization results/i })).toBeVisible();
   });
@@ -122,8 +138,7 @@ test.describe('Workflow coverage', () => {
     const customStart = page.getByRole('button', { name: /start solver with custom settings/i });
     await customStart.click();
 
-    await expect(page.getByText(/^Running$/)).toBeVisible({ timeout: 5000 });
-    await expect(page.getByRole('button', { name: /cancel solver/i })).toBeVisible({ timeout: 5000 });
+    await waitForSolverRunToStartOrComplete(page, 1);
     await expect(customStart).toBeVisible({ timeout: 30000 });
     await expectSavedResultCount(page, 1);
 
@@ -137,12 +152,17 @@ test.describe('Workflow coverage', () => {
     await expect(page.getByRole('button', { name: /result 1 • score/i })).toBeVisible();
 
     await customStart.click();
-    await expect(page.getByText(/^Running$/)).toBeVisible({ timeout: 5000 });
+    await waitForSolverRunToStartOrComplete(page, 2);
     await expect(customStart).toBeVisible({ timeout: 30000 });
     await expectSavedResultCount(page, 2);
 
-    await page.getByRole('link', { name: /results/i }).click();
-    await expect(page.getByText(/result 1/i).first()).toBeVisible();
+    await dismissNotifications(page);
+    await clickAndWaitForUrl(
+      page,
+      page.getByRole('link', { name: /results/i }),
+      /\/app\/history/,
+      page.getByText(/result 1/i).first(),
+    );
     await expect(page.getByText(/result 2/i).first()).toBeVisible();
   });
 

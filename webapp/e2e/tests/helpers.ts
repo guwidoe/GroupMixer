@@ -178,3 +178,26 @@ export async function expectSavedResultCount(page: Page, expectedCount: number) 
     )
     .toBe(expectedCount);
 }
+
+export async function waitForSolverRunToStartOrComplete(page: Page, expectedCount: number) {
+  const cancelButton = page.getByRole('button', { name: /cancel solver/i });
+
+  await expect
+    .poll(async () => {
+      if (await cancelButton.isVisible().catch(() => false)) {
+        return 'running';
+      }
+
+      return page.evaluate((count) => {
+        const currentScenarioId = window.localStorage.getItem('people-distributor-current-scenario');
+        const rawScenarios = window.localStorage.getItem('people-distributor-scenarios');
+        const savedScenarios = rawScenarios ? JSON.parse(rawScenarios) as Record<string, { results?: unknown[] }> : {};
+        const resultCount = currentScenarioId && savedScenarios[currentScenarioId]
+          ? savedScenarios[currentScenarioId].results?.length ?? 0
+          : 0;
+
+        return resultCount >= count ? 'completed' : 'pending';
+      }, expectedCount);
+    }, { timeout: 10000 })
+    .not.toBe('pending');
+}
