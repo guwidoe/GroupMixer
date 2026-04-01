@@ -1,5 +1,5 @@
 use crate::errors::{
-    INFEASIBLE_PROBLEM_ERROR, INTERNAL_ERROR, INVALID_INPUT_ERROR, UNKNOWN_ERROR_CODE_ERROR,
+    INFEASIBLE_SCENARIO_ERROR, INTERNAL_ERROR, INVALID_INPUT_ERROR, UNKNOWN_ERROR_CODE_ERROR,
     UNKNOWN_OPERATION_ERROR, UNKNOWN_SCHEMA_ERROR, UNSUPPORTED_CONSTRAINT_KIND_ERROR,
 };
 use crate::examples::{
@@ -18,7 +18,7 @@ use crate::types::{ErrorCode, ExampleId, OperationId, OperationKind, SchemaId};
 use serde::Serialize;
 
 pub const SOLVE_OPERATION_ID: &str = "solve";
-pub const VALIDATE_PROBLEM_OPERATION_ID: &str = "validate-problem";
+pub const VALIDATE_SCENARIO_OPERATION_ID: &str = "validate-scenario";
 pub const INSPECT_RESULT_OPERATION_ID: &str = "inspect-result";
 pub const GET_SCHEMA_OPERATION_ID: &str = "get-schema";
 pub const INSPECT_ERRORS_OPERATION_ID: &str = "inspect-errors";
@@ -59,12 +59,12 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         progress_schema_ids: &[PROGRESS_UPDATE_SCHEMA_ID],
         error_codes: &[
             INVALID_INPUT_ERROR,
-            INFEASIBLE_PROBLEM_ERROR,
+            INFEASIBLE_SCENARIO_ERROR,
             UNSUPPORTED_CONSTRAINT_KIND_ERROR,
             INTERNAL_ERROR,
         ],
         related_operation_ids: &[
-            VALIDATE_PROBLEM_OPERATION_ID,
+            VALIDATE_SCENARIO_OPERATION_ID,
             INSPECT_RESULT_OPERATION_ID,
             GET_SCHEMA_OPERATION_ID,
             INSPECT_ERRORS_OPERATION_ID,
@@ -74,9 +74,9 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         example_ids: &[SOLVE_HAPPY_PATH_EXAMPLE_ID, SOLVE_PROGRESS_UPDATE_EXAMPLE_ID],
     },
     OperationSpec {
-        id: VALIDATE_PROBLEM_OPERATION_ID,
-        summary: "Validate solver input without running optimization.",
-        description: "Check whether a solver input is structurally and semantically acceptable before invoking the solver.",
+        id: VALIDATE_SCENARIO_OPERATION_ID,
+        summary: "Validate a scenario input without running optimization.",
+        description: "Check whether a scenario request is structurally and semantically acceptable before invoking the solver.",
         kind: OperationKind::Inspect,
         family: "validation",
         input_schema_ids: &[VALIDATE_REQUEST_SCHEMA_ID],
@@ -85,7 +85,7 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         error_codes: &[
             INVALID_INPUT_ERROR,
             UNSUPPORTED_CONSTRAINT_KIND_ERROR,
-            INFEASIBLE_PROBLEM_ERROR,
+            INFEASIBLE_SCENARIO_ERROR,
             INTERNAL_ERROR,
         ],
         related_operation_ids: &[
@@ -111,7 +111,7 @@ const OPERATION_SPECS: &[OperationSpec] = &[
     OperationSpec {
         id: GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
         summary: "Get the canonical default solver configuration.",
-        description: "Return the baseline solver configuration that callers can use as a clean starting point before applying problem-aware tuning or manual edits.",
+        description: "Return the baseline solver configuration that callers can use as a clean starting point before applying scenario-aware tuning or manual edits.",
         kind: OperationKind::Read,
         family: "configuration",
         input_schema_ids: &[],
@@ -128,17 +128,17 @@ const OPERATION_SPECS: &[OperationSpec] = &[
     OperationSpec {
         id: RECOMMEND_SETTINGS_OPERATION_ID,
         summary: "Recommend solver settings from an explicit recommendation request.",
-        description: "Analyze a problem definition plus runtime target and return a recommended solver configuration without executing the main solve workflow.",
+        description: "Analyze a scenario definition plus runtime target and return a recommended solver configuration without executing the main solve workflow.",
         kind: OperationKind::Compute,
         family: "configuration",
         input_schema_ids: &[RECOMMEND_SETTINGS_REQUEST_SCHEMA_ID],
         output_schema_ids: &[SOLVER_CONFIGURATION_SCHEMA_ID],
         progress_schema_ids: &[],
-        error_codes: &[INVALID_INPUT_ERROR, INFEASIBLE_PROBLEM_ERROR, INTERNAL_ERROR],
+        error_codes: &[INVALID_INPUT_ERROR, INFEASIBLE_SCENARIO_ERROR, INTERNAL_ERROR],
         related_operation_ids: &[
             GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
             SOLVE_OPERATION_ID,
-            VALIDATE_PROBLEM_OPERATION_ID,
+            VALIDATE_SCENARIO_OPERATION_ID,
             GET_SCHEMA_OPERATION_ID,
         ],
         example_ids: &[RECOMMEND_SETTINGS_EXAMPLE_ID],
@@ -152,7 +152,7 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         input_schema_ids: &[SOLVE_REQUEST_SCHEMA_ID],
         output_schema_ids: &[SOLVE_RESPONSE_SCHEMA_ID],
         progress_schema_ids: &[],
-        error_codes: &[INVALID_INPUT_ERROR, INFEASIBLE_PROBLEM_ERROR, INTERNAL_ERROR],
+        error_codes: &[INVALID_INPUT_ERROR, INFEASIBLE_SCENARIO_ERROR, INTERNAL_ERROR],
         related_operation_ids: &[INSPECT_RESULT_OPERATION_ID, SOLVE_OPERATION_ID, GET_SCHEMA_OPERATION_ID],
         example_ids: &[EVALUATE_INPUT_EXAMPLE_ID],
     },
@@ -168,7 +168,7 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         error_codes: &[UNKNOWN_SCHEMA_ERROR, INTERNAL_ERROR],
         related_operation_ids: &[
             SOLVE_OPERATION_ID,
-            VALIDATE_PROBLEM_OPERATION_ID,
+            VALIDATE_SCENARIO_OPERATION_ID,
             INSPECT_RESULT_OPERATION_ID,
             GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
             RECOMMEND_SETTINGS_OPERATION_ID,
@@ -188,7 +188,7 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         error_codes: &[UNKNOWN_OPERATION_ERROR, UNKNOWN_ERROR_CODE_ERROR, INTERNAL_ERROR],
         related_operation_ids: &[
             SOLVE_OPERATION_ID,
-            VALIDATE_PROBLEM_OPERATION_ID,
+            VALIDATE_SCENARIO_OPERATION_ID,
             INSPECT_RESULT_OPERATION_ID,
             GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
             RECOMMEND_SETTINGS_OPERATION_ID,
@@ -209,7 +209,7 @@ pub fn operation_spec(id: &str) -> Option<&'static OperationSpec> {
 pub fn top_level_operation_ids() -> &'static [OperationId] {
     &[
         SOLVE_OPERATION_ID,
-        VALIDATE_PROBLEM_OPERATION_ID,
+        VALIDATE_SCENARIO_OPERATION_ID,
         INSPECT_RESULT_OPERATION_ID,
         GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
         RECOMMEND_SETTINGS_OPERATION_ID,
@@ -254,6 +254,6 @@ mod tests {
     fn local_help_returns_single_operation_scope() {
         let help = local_help("solve").expect("local help");
         assert_eq!(help.operation.id, "solve");
-        assert!(help.related_operations.contains(&"validate-problem"));
+        assert!(help.related_operations.contains(&"validate-scenario"));
     }
 }

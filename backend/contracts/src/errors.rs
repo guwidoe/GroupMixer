@@ -1,6 +1,6 @@
 use crate::operations::{
     GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID, INSPECT_RESULT_OPERATION_ID,
-    SOLVE_OPERATION_ID, VALIDATE_PROBLEM_OPERATION_ID,
+    SOLVE_OPERATION_ID, VALIDATE_SCENARIO_OPERATION_ID,
 };
 use crate::types::{ErrorCategory, ErrorCode, OperationId};
 use serde::Serialize;
@@ -9,7 +9,7 @@ pub const INVALID_INPUT_ERROR: &str = "invalid-input";
 pub const UNKNOWN_OPERATION_ERROR: &str = "unknown-operation";
 pub const UNKNOWN_SCHEMA_ERROR: &str = "unknown-schema";
 pub const UNKNOWN_ERROR_CODE_ERROR: &str = "unknown-error-code";
-pub const INFEASIBLE_PROBLEM_ERROR: &str = "infeasible-problem";
+pub const INFEASIBLE_SCENARIO_ERROR: &str = "infeasible-scenario";
 pub const UNSUPPORTED_CONSTRAINT_KIND_ERROR: &str = "unsupported-constraint-kind";
 pub const PERMISSION_DENIED_ERROR: &str = "permission-denied";
 pub const INTERNAL_ERROR: &str = "internal-error";
@@ -43,7 +43,7 @@ const ERROR_SPECS: &[PublicErrorSpec] = &[
         summary: "The provided request or payload shape is invalid.",
         why: "The caller supplied malformed JSON, a missing required field, or an unexpected value shape for the requested operation.",
         recovery: "Inspect the relevant input schema and local help for the targeted operation, then resend a valid request.",
-        related_help_operation_ids: &[VALIDATE_PROBLEM_OPERATION_ID, GET_SCHEMA_OPERATION_ID],
+        related_help_operation_ids: &[VALIDATE_SCENARIO_OPERATION_ID, GET_SCHEMA_OPERATION_ID],
     },
     PublicErrorSpec {
         code: UNKNOWN_OPERATION_ERROR,
@@ -51,7 +51,7 @@ const ERROR_SPECS: &[PublicErrorSpec] = &[
         summary: "The requested operation is not part of the public solver contract.",
         why: "The caller referenced an operation ID or affordance name that is not registered in the shared contracts graph.",
         recovery: "Start from bootstrap help, then choose one of the registered top-level operations.",
-        related_help_operation_ids: &[SOLVE_OPERATION_ID, VALIDATE_PROBLEM_OPERATION_ID, GET_SCHEMA_OPERATION_ID],
+        related_help_operation_ids: &[SOLVE_OPERATION_ID, VALIDATE_SCENARIO_OPERATION_ID, GET_SCHEMA_OPERATION_ID],
     },
     PublicErrorSpec {
         code: UNKNOWN_SCHEMA_ERROR,
@@ -70,12 +70,12 @@ const ERROR_SPECS: &[PublicErrorSpec] = &[
         related_help_operation_ids: &[INSPECT_ERRORS_OPERATION_ID],
     },
     PublicErrorSpec {
-        code: INFEASIBLE_PROBLEM_ERROR,
+        code: INFEASIBLE_SCENARIO_ERROR,
         category: ErrorCategory::Infeasible,
-        summary: "The problem definition is internally inconsistent or infeasible.",
-        why: "The solver cannot satisfy the required constraints, capacities, or session assignments for the provided input.",
-        recovery: "Validate the problem, inspect constraint settings, and adjust the input so a valid schedule is possible.",
-        related_help_operation_ids: &[VALIDATE_PROBLEM_OPERATION_ID, SOLVE_OPERATION_ID],
+        summary: "The scenario definition is internally inconsistent or infeasible.",
+        why: "The solver cannot satisfy the required constraints, capacities, or session assignments for the provided scenario input.",
+        recovery: "Validate the scenario, inspect constraint settings, and adjust the input so a valid schedule is possible.",
+        related_help_operation_ids: &[VALIDATE_SCENARIO_OPERATION_ID, SOLVE_OPERATION_ID],
     },
     PublicErrorSpec {
         code: UNSUPPORTED_CONSTRAINT_KIND_ERROR,
@@ -83,7 +83,7 @@ const ERROR_SPECS: &[PublicErrorSpec] = &[
         summary: "A constraint kind or similar enum-like value is not supported.",
         why: "The caller referenced a named domain feature that is not part of the currently supported public contract.",
         recovery: "Inspect the relevant schema and contract help, then replace the unsupported value with a supported one.",
-        related_help_operation_ids: &[VALIDATE_PROBLEM_OPERATION_ID, GET_SCHEMA_OPERATION_ID],
+        related_help_operation_ids: &[VALIDATE_SCENARIO_OPERATION_ID, GET_SCHEMA_OPERATION_ID],
     },
     PublicErrorSpec {
         code: PERMISSION_DENIED_ERROR,
@@ -91,7 +91,7 @@ const ERROR_SPECS: &[PublicErrorSpec] = &[
         summary: "The caller lacks permission for the requested operation.",
         why: "The current transport/runtime surface rejected the action under its active rights model.",
         recovery: "Use a permitted read-only affordance, obtain the required credentials/scope, or switch to an allowed workflow.",
-        related_help_operation_ids: &[SOLVE_OPERATION_ID, VALIDATE_PROBLEM_OPERATION_ID],
+        related_help_operation_ids: &[SOLVE_OPERATION_ID, VALIDATE_SCENARIO_OPERATION_ID],
     },
     PublicErrorSpec {
         code: INTERNAL_ERROR,
@@ -101,7 +101,7 @@ const ERROR_SPECS: &[PublicErrorSpec] = &[
         recovery: "Capture the error details, inspect local help for the attempted operation, and retry only if the failure is known to be transient.",
         related_help_operation_ids: &[
             SOLVE_OPERATION_ID,
-            VALIDATE_PROBLEM_OPERATION_ID,
+            VALIDATE_SCENARIO_OPERATION_ID,
             INSPECT_RESULT_OPERATION_ID,
             INSPECT_ERRORS_OPERATION_ID,
         ],

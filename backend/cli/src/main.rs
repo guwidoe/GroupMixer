@@ -5,9 +5,9 @@
 //!
 //! # Commands
 //!
-//! - `solve`: Run the solver on a problem file
-//! - `validate`: Validate a problem file without solving
-//! - `recommend`: Get recommended solver settings for a problem
+//! - `solve`: Run the solver on a scenario file
+//! - `validate`: Validate a scenario file without solving
+//! - `recommend`: Get recommended solver settings for a scenario
 //! - `evaluate`: Evaluate an existing schedule
 //! - `inspect-result`: Inspect a compact summary from a solver result
 //! - `benchmark`: Run / save / compare benchmark artifacts
@@ -32,7 +32,10 @@ use gm_contracts::{
     errors::{error_spec, error_specs},
     operations::operation_spec,
     schemas::{export_schema, schema_specs},
-    types::{RecommendSettingsRequest, ResultSummary, ValidateResponse, ValidationIssue},
+    types::{
+        RecommendSettingsRequest, ResultSummary, SolveRequest, ValidateRequest, ValidateResponse,
+        ValidationIssue,
+    },
 };
 use gm_core::models::{ApiInput, SolverResult};
 use gm_core::{calculate_recommended_settings, default_solver_configuration, run_solver};
@@ -53,7 +56,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Run the solver on a problem file
+    /// Run the solver on a scenario file
     Solve {
         /// Input JSON file path (use --stdin to read from stdin)
         #[arg(value_name = "FILE")]
@@ -72,7 +75,7 @@ enum Commands {
         pretty: bool,
     },
 
-    /// Validate a problem file without solving
+    /// Validate a scenario file without solving
     Validate {
         /// Input JSON file path
         #[arg(value_name = "FILE")]
@@ -91,7 +94,7 @@ enum Commands {
         pretty: bool,
     },
 
-    /// Get recommended solver settings for a problem
+    /// Get recommended solver settings for a scenario
     Recommend {
         /// Input JSON file path (recommend-settings-request)
         #[arg(value_name = "FILE")]
@@ -1141,7 +1144,7 @@ fn cmd_solve(
     pretty: bool,
 ) -> Result<()> {
     let json_str = read_input(input, stdin, "solve")?;
-    let api_input: ApiInput = serde_json::from_str(&json_str).map_err(|error| {
+    let solve_request: SolveRequest = serde_json::from_str(&json_str).map_err(|error| {
         public_errors::invalid_input_error(
             format!("Failed to parse input JSON: {}", error),
             Some(format!("line {}, column {}", error.line(), error.column())),
@@ -1149,6 +1152,7 @@ fn cmd_solve(
             vec!["solve-request".to_string()],
         )
     })?;
+    let api_input: ApiInput = solve_request.into();
 
     eprintln!("Running solver...");
     let result = run_solver(&api_input)
@@ -1176,16 +1180,17 @@ fn cmd_solve(
 }
 
 fn cmd_validate(input: Option<PathBuf>, stdin: bool) -> Result<()> {
-    let json_str = read_input(input, stdin, "validate-problem")?;
+    let json_str = read_input(input, stdin, "validate-scenario")?;
 
-    let api_input: ApiInput = serde_json::from_str(&json_str).map_err(|error| {
+    let validate_request: ValidateRequest = serde_json::from_str(&json_str).map_err(|error| {
         public_errors::invalid_input_error(
             format!("Failed to parse input JSON: {}", error),
             Some(format!("line {}, column {}", error.line(), error.column())),
-            "validate-problem",
+            "validate-scenario",
             vec!["validate-request".to_string()],
         )
     })?;
+    let api_input: ApiInput = validate_request.into();
 
     use gm_core::solver::State;
     match State::new(&api_input) {
@@ -1209,7 +1214,7 @@ fn cmd_validate(input: Option<PathBuf>, stdin: bool) -> Result<()> {
                 }
             } else {
                 ValidationIssue {
-                    code: Some("infeasible-problem".to_string()),
+                    code: Some("infeasible-scenario".to_string()),
                     message: error_text,
                     path: None,
                 }
@@ -1245,8 +1250,10 @@ fn cmd_recommend(input: Option<PathBuf>, stdin: bool, pretty: bool) -> Result<()
         recommendation_input.desired_runtime_seconds
     );
 
+    let scenario_definition: gm_core::models::ProblemDefinition =
+        (&recommendation_input.scenario).into();
     let recommended = calculate_recommended_settings(
-        &recommendation_input.problem_definition,
+        &scenario_definition,
         &recommendation_input.objectives,
         &recommendation_input.constraints,
         recommendation_input.desired_runtime_seconds,
@@ -1267,7 +1274,7 @@ fn cmd_recommend(input: Option<PathBuf>, stdin: bool, pretty: bool) -> Result<()
 
 fn cmd_evaluate(input: Option<PathBuf>, stdin: bool, pretty: bool) -> Result<()> {
     let json_str = read_input(input, stdin, "evaluate-input")?;
-    let api_input: ApiInput = serde_json::from_str(&json_str).map_err(|error| {
+    let solve_request: SolveRequest = serde_json::from_str(&json_str).map_err(|error| {
         public_errors::invalid_input_error(
             format!("Failed to parse input JSON: {}", error),
             Some(format!("line {}, column {}", error.line(), error.column())),
@@ -1275,6 +1282,7 @@ fn cmd_evaluate(input: Option<PathBuf>, stdin: bool, pretty: bool) -> Result<()>
             vec!["solve-request".to_string()],
         )
     })?;
+    let api_input: ApiInput = solve_request.into();
 
     if api_input.initial_schedule.is_none() {
         return Err(public_errors::invalid_input_error(
@@ -1496,22 +1504,23 @@ fn resolve_schema_alias(schema_id: String) -> String {
     match schema_id.as_str() {
         "input" => "solve-request".to_string(),
         "output" => "solve-response".to_string(),
-        "problem" => "problem-definition".to_string(),
+        "scenario" => "scenario-definition".to_string(),
         other => other.to_string(),
     }
 }
 
 fn parse_recommend_input(json_str: &str) -> Result<RecommendSettingsRequest> {
-    let error = serde_json::from_str::<RecommendSettingsRequest>(json_str).unwrap_err();
-    Err(public_errors::invalid_input_error(
-        format!(
-            "Failed to parse recommend input as recommend-settings-request JSON: {}",
-            error
-        ),
-        Some(format!("line {}, column {}", error.line(), error.column())),
-        "recommend-settings",
-        vec!["recommend-settings-request".to_string()],
-    ))
+    serde_json::from_str::<RecommendSettingsRequest>(json_str).map_err(|error| {
+        public_errors::invalid_input_error(
+            format!(
+                "Failed to parse recommend input as recommend-settings-request JSON: {}",
+                error
+            ),
+            Some(format!("line {}, column {}", error.line(), error.column())),
+            "recommend-settings",
+            vec!["recommend-settings-request".to_string()],
+        )
+    })
 }
 
 fn known_schema_ids() -> Vec<&'static str> {
@@ -1570,7 +1579,7 @@ mod tests {
         fs::write(
             &input_path,
             r#"{
-  "problem": {"people": [], "groups": [], "num_sessions": 1},
+  "scenario": {"people": [], "groups": [], "num_sessions": 1},
   "initial_schedule": null,
   "objectives": [],
   "constraints": [],

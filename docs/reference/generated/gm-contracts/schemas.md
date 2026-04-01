@@ -22,10 +22,10 @@
 - version: `v1`
 - artifact: `schemas/validate-response.schema.json`
 
-## `problem-definition`
+## `scenario-definition`
 
 - version: `v1`
-- artifact: `schemas/problem-definition.schema.json`
+- artifact: `schemas/scenario-definition.schema.json`
 
 ## `recommend-settings-request`
 

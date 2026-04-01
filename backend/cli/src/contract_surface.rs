@@ -1,7 +1,7 @@
 use gm_contracts::operations::{
     EVALUATE_INPUT_OPERATION_ID, GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
     GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID, INSPECT_RESULT_OPERATION_ID,
-    RECOMMEND_SETTINGS_OPERATION_ID, SOLVE_OPERATION_ID, VALIDATE_PROBLEM_OPERATION_ID,
+    RECOMMEND_SETTINGS_OPERATION_ID, SOLVE_OPERATION_ID, VALIDATE_SCENARIO_OPERATION_ID,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,7 +27,7 @@ const CLI_BINDINGS: &[CliContractBinding] = &[
     },
     CliContractBinding {
         command_name: "validate",
-        operation_id: Some(VALIDATE_PROBLEM_OPERATION_ID),
+        operation_id: Some(VALIDATE_SCENARIO_OPERATION_ID),
         scope: CliSurfaceScope::PublicContract,
         note: "Public validation workflow for solver input.",
     },

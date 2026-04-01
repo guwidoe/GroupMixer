@@ -1,7 +1,7 @@
 #![allow(clippy::result_large_err)]
 
 use crate::public_errors::{
-    evaluate_requires_initial_schedule_error, infeasible_problem_error, internal_error,
+    evaluate_requires_initial_schedule_error, infeasible_scenario_error, internal_error,
     parse_error, public_error_to_js_value,
 };
 use gm_contracts::types::{
@@ -90,9 +90,9 @@ pub fn solve_with_progress_js(
 }
 
 pub fn validate_scenario_contract_js(input: JsValue) -> Result<JsValue, JsValue> {
-    let request = parse_wasm_scenario_input(input, "validate-problem", &["validate-request"])?;
+    let request = parse_wasm_scenario_input(input, "validate-scenario", &["validate-request"])?;
     let response = validate_scenario_contract(&request);
-    serialize_output(&response, "validate-problem")
+    serialize_output(&response, "validate-scenario")
 }
 
 pub fn get_default_solver_configuration_js() -> Result<JsValue, JsValue> {
@@ -126,7 +126,7 @@ pub fn inspect_result_contract_js(result: JsValue) -> Result<JsValue, JsValue> {
 
 pub fn solve_contract(request: &ApiInput) -> Result<SolverResult, PublicErrorEnvelope> {
     let adjusted = ensure_browser_safe_seed(request)?;
-    run_solver(&adjusted).map_err(|error| infeasible_problem_error("solve", error.to_string()))
+    run_solver(&adjusted).map_err(|error| infeasible_scenario_error("solve", error.to_string()))
 }
 
 pub fn solve_with_progress_contract(
@@ -162,9 +162,9 @@ pub fn solve_with_progress_contract(
             unsafe { std::mem::transmute(rust_callback) };
 
         run_solver_with_progress(&adjusted, Some(&rust_callback))
-            .map_err(|error| infeasible_problem_error("solve", error.to_string()))
+            .map_err(|error| infeasible_scenario_error("solve", error.to_string()))
     } else {
-        run_solver(&adjusted).map_err(|error| infeasible_problem_error("solve", error.to_string()))
+        run_solver(&adjusted).map_err(|error| infeasible_scenario_error("solve", error.to_string()))
     }
 }
 
@@ -177,7 +177,7 @@ pub fn validate_scenario_contract(request: &ApiInput) -> ValidateResponse {
         Err(error) => ValidateResponse {
             valid: false,
             issues: vec![ValidationIssue {
-                code: Some("infeasible-problem".to_string()),
+                code: Some("infeasible-scenario".to_string()),
                 message: error.to_string(),
                 path: None,
             }],
@@ -192,13 +192,14 @@ pub fn get_default_solver_configuration() -> SolverConfiguration {
 pub fn recommend_settings_contract(
     request: &RecommendSettingsRequest,
 ) -> Result<SolverConfiguration, PublicErrorEnvelope> {
+    let scenario_definition: ProblemDefinition = (&request.scenario).into();
     calculate_recommended_settings(
-        &request.problem_definition,
+        &scenario_definition,
         &request.objectives,
         &request.constraints,
         request.desired_runtime_seconds,
     )
-    .map_err(|error| infeasible_problem_error("recommend-settings", error.to_string()))
+    .map_err(|error| infeasible_scenario_error("recommend-settings", error.to_string()))
 }
 
 pub fn evaluate_input_contract(request: &ApiInput) -> Result<SolverResult, PublicErrorEnvelope> {
@@ -209,7 +210,7 @@ pub fn evaluate_input_contract(request: &ApiInput) -> Result<SolverResult, Publi
     }
 
     let mut state = State::new(&adjusted)
-        .map_err(|error| infeasible_problem_error("evaluate-input", error.to_string()))?;
+        .map_err(|error| infeasible_scenario_error("evaluate-input", error.to_string()))?;
     state._recalculate_locations_from_schedule();
     state._recalculate_scores();
     Ok(state.to_solver_result(state.current_cost, 0))
@@ -289,11 +290,12 @@ impl From<WasmScenarioRecommendSettingsRequest> for RecommendSettingsRequest {
         } = value;
 
         RecommendSettingsRequest {
-            problem_definition: ProblemDefinition {
+            scenario: ProblemDefinition {
                 people: scenario.people,
                 groups: scenario.groups,
                 num_sessions: scenario.num_sessions,
-            },
+            }
+            .into(),
             objectives: default_objectives(scenario.objectives),
             constraints: scenario.constraints,
             desired_runtime_seconds,
@@ -429,7 +431,7 @@ mod tests {
     fn recommend_settings_contract_uses_explicit_runtime_request() {
         let input = valid_input();
         let request = RecommendSettingsRequest {
-            problem_definition: input.problem,
+            scenario: input.problem.into(),
             objectives: input.objectives,
             constraints: input.constraints,
             desired_runtime_seconds: 11,

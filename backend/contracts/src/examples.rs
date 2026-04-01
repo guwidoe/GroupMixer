@@ -2,7 +2,7 @@ use crate::errors::supported_constraint_kind_names;
 use crate::operations::{
     EVALUATE_INPUT_OPERATION_ID, GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
     GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID, INSPECT_RESULT_OPERATION_ID,
-    RECOMMEND_SETTINGS_OPERATION_ID, SOLVE_OPERATION_ID, VALIDATE_PROBLEM_OPERATION_ID,
+    RECOMMEND_SETTINGS_OPERATION_ID, SOLVE_OPERATION_ID, VALIDATE_SCENARIO_OPERATION_ID,
 };
 use crate::schemas::{
     PROGRESS_UPDATE_SCHEMA_ID, PUBLIC_ERROR_ENVELOPE_SCHEMA_ID,
@@ -54,7 +54,7 @@ const SOLVE_HAPPY_PATH_SNIPPETS: &[ReferenceSnippet] = &[
         format: ReferenceSnippetFormat::Json,
         schema_id: Some(SOLVE_REQUEST_SCHEMA_ID),
         content: r#"{
-  "problem": {
+  "scenario": {
     "people": [
       {"id": "alice", "attributes": {"department": "eng"}},
       {"id": "bob", "attributes": {"department": "design"}}
@@ -229,7 +229,7 @@ const VALIDATE_INVALID_CONSTRAINT_SNIPPETS: &[ReferenceSnippet] = &[
         label: "http recovery",
         format: ReferenceSnippetFormat::Http,
         schema_id: None,
-        content: "GET /help?operation=validate-problem then GET /schemas/solve-request",
+        content: "GET /help?operation=validate-scenario then GET /schemas/solve-request",
     },
 ];
 
@@ -307,7 +307,7 @@ const RECOMMEND_SETTINGS_SNIPPETS: &[ReferenceSnippet] = &[
         format: ReferenceSnippetFormat::Json,
         schema_id: Some(RECOMMEND_SETTINGS_REQUEST_SCHEMA_ID),
         content: r#"{
-  "problem_definition": {
+  "scenario": {
     "people": [
       {"id": "alice", "attributes": {}},
       {"id": "bob", "attributes": {}}
@@ -352,7 +352,7 @@ const RECOMMEND_SETTINGS_SNIPPETS: &[ReferenceSnippet] = &[
         label: "cli invocation",
         format: ReferenceSnippetFormat::Shell,
         schema_id: None,
-        content: "gm-cli recommend problem.json --runtime 30 --pretty",
+        content: "gm-cli recommend scenario.json --pretty",
     },
 ];
 
@@ -407,7 +407,7 @@ static EXAMPLE_SPECS: LazyLock<Vec<ExampleSpec>> = LazyLock::new(|| {
         },
         ExampleSpec {
             id: VALIDATE_INVALID_CONSTRAINT_EXAMPLE_ID,
-            operation_id: VALIDATE_PROBLEM_OPERATION_ID,
+            operation_id: VALIDATE_SCENARIO_OPERATION_ID,
             summary: "Validation failure for an unsupported constraint kind.",
             description: "Demonstrates a negative path where the caller gets a precise validation issue and recovery pointers.",
             snippets: VALIDATE_INVALID_CONSTRAINT_SNIPPETS,
@@ -444,7 +444,7 @@ static EXAMPLE_SPECS: LazyLock<Vec<ExampleSpec>> = LazyLock::new(|| {
             id: RECOMMEND_SETTINGS_EXAMPLE_ID,
             operation_id: RECOMMEND_SETTINGS_OPERATION_ID,
             summary: "Recommend solver settings from an explicit runtime-aware request.",
-            description: "Shows a minimal recommend-settings request carrying a problem definition plus desired runtime and a representative recommended solver configuration.",
+            description: "Shows a minimal recommend-settings request carrying a scenario definition plus desired runtime and a representative recommended solver configuration.",
             snippets: RECOMMEND_SETTINGS_SNIPPETS,
         },
         ExampleSpec {
@@ -475,7 +475,7 @@ fn render_public_error_lookup_snippet() -> String {
 {valid_alternatives}
     ],
     "recovery": "Inspect the relevant schema/help and replace the unsupported constraint kind.",
-    "related_help": ["validate-problem", "get-schema"]
+    "related_help": ["validate-scenario", "get-schema"]
   }}
 }}"#
     )

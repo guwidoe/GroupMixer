@@ -23,12 +23,13 @@
         "$ref": "#/$defs/Objective"
       }
     },
-    "problem_definition": {
-      "$ref": "#/$defs/ProblemDefinition"
+    "scenario": {
+      "description": "The scenario definition to analyze for runtime-aware recommendation.",
+      "$ref": "#/$defs/ScenarioDefinitionContract"
     }
   },
   "required": [
-    "problem_definition",
+    "scenario",
     "desired_runtime_seconds"
   ],
   "$defs": {
@@ -502,37 +503,6 @@
         "attributes"
       ]
     },
-    "ProblemDefinition": {
-      "description": "Defines the core optimization problem: people, groups, and sessions.\n\nThis structure specifies the fundamental elements that need to be scheduled:\nthe list of people to be assigned, the groups they can be assigned to,\nand how many scheduling sessions will occur.",
-      "type": "object",
-      "properties": {
-        "groups": {
-          "description": "List of all available groups with their capacity limits",
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Group"
-          }
-        },
-        "num_sessions": {
-          "description": "Total number of scheduling sessions (time periods)",
-          "type": "integer",
-          "format": "uint32",
-          "minimum": 0
-        },
-        "people": {
-          "description": "List of all people to be scheduled into groups",
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Person"
-          }
-        }
-      },
-      "required": [
-        "people",
-        "groups",
-        "num_sessions"
-      ]
-    },
     "RepeatEncounterParams": {
       "description": "Parameters for the RepeatEncounter constraint.\n\nThis constraint limits how often people can be paired together across sessions,\npromoting social diversity by ensuring people meet new individuals rather than\nalways being grouped with the same people.\n\n# Example\n\n```no_run\nuse gm_core::models::RepeatEncounterParams;\n\n// Allow at most 1 encounter, with squared penalty for violations\nlet params = RepeatEncounterParams {\n    max_allowed_encounters: 1,\n    penalty_function: \"squared\".to_string(),\n    penalty_weight: 100.0,\n};\n```",
       "type": "object",
@@ -557,6 +527,37 @@
         "max_allowed_encounters",
         "penalty_function",
         "penalty_weight"
+      ]
+    },
+    "ScenarioDefinitionContract": {
+      "description": "Public scenario-definition shape shared across solver-facing contract surfaces.",
+      "type": "object",
+      "properties": {
+        "groups": {
+          "description": "List of all available groups with their capacity limits.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Group"
+          }
+        },
+        "num_sessions": {
+          "description": "Total number of scheduling sessions.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "people": {
+          "description": "List of all people to be scheduled into groups.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Person"
+          }
+        }
+      },
+      "required": [
+        "people",
+        "groups",
+        "num_sessions"
       ]
     }
   }

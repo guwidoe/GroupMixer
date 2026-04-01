@@ -270,7 +270,7 @@ The following should each have exactly one authoritative home:
 Examples:
 
 - `solve`
-- `validate-problem`
+- `validate-scenario`
 - `inspect-result`
 - `list-constraints`
 
@@ -378,9 +378,9 @@ Every help response should point to adjacent affordances.
 
 Examples:
 
-- `solve` points to `validate-problem`, `inspect-result`, `list-constraints`
+- `solve` points to `validate-scenario`, `inspect-result`, `list-constraints`
 - `inspect-result` points to `solve` and result-schema help
-- `validate-problem` points to relevant schema help and constraint inspection
+- `validate-scenario` points to relevant schema help and constraint inspection
 
 This is the anti-duplication mechanism at the interface level:
 
@@ -583,7 +583,7 @@ The intended public/browser-local execution surface is:
 
 - `solve(request)`
 - `solve_with_progress(request, progress_callback?)`
-- `validate_problem(request)`
+- `validate_scenario(request)`
 - `get_default_solver_configuration()`
 - `recommend_settings(recommend_settings_request)`
 - `evaluate_input(request)`
@@ -594,7 +594,7 @@ explicitly named as support-only shims such as:
 
 - `solve_legacy_json(...)`
 - `solve_with_progress_legacy_json(...)`
-- `validate_problem_legacy_json(...)`
+- `validate_scenario_legacy_json(...)`
 - `get_default_settings_legacy_json()`
 - `get_recommended_settings_legacy_json(...)`
 - `evaluate_input_legacy_json(...)`

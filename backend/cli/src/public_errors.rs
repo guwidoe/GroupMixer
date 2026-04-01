@@ -2,7 +2,7 @@ use crate::contract_surface::binding_for_operation_id;
 use anyhow::anyhow;
 use anyhow::Error;
 use gm_contracts::errors::{
-    error_spec, supported_constraint_kind_alternatives, INFEASIBLE_PROBLEM_ERROR, INTERNAL_ERROR,
+    error_spec, supported_constraint_kind_alternatives, INFEASIBLE_SCENARIO_ERROR, INTERNAL_ERROR,
     INVALID_INPUT_ERROR, UNKNOWN_ERROR_CODE_ERROR, UNKNOWN_SCHEMA_ERROR,
     UNSUPPORTED_CONSTRAINT_KIND_ERROR, UNSUPPORTED_CONSTRAINT_KIND_PATH,
 };
@@ -42,9 +42,9 @@ pub fn unknown_error_code_error(error_code: &str, valid_error_codes: Vec<String>
     )
 }
 
-pub fn infeasible_problem_error(message: impl Into<String>, related_operation_id: &str) -> Error {
+pub fn infeasible_scenario_error(message: impl Into<String>, related_operation_id: &str) -> Error {
     public_error(
-        INFEASIBLE_PROBLEM_ERROR,
+        INFEASIBLE_SCENARIO_ERROR,
         message,
         None,
         Vec::new(),
@@ -86,7 +86,7 @@ pub fn map_solver_error(message: impl Into<String>, related_operation_id: &str) 
         );
     }
 
-    infeasible_problem_error(message, related_operation_id)
+    infeasible_scenario_error(message, related_operation_id)
 }
 
 fn public_error(

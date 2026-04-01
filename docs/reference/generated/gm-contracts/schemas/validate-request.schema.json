@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "ApiInput",
-  "description": "Complete input specification for the optimization solver.\n\nThis is the root structure that contains all information needed to run\nan optimization: the problem definition (people, groups, sessions),\noptimization objectives, constraints to satisfy, and solver configuration.\n\n# Example\n\n```no_run\nuse gm_core::models::*;\nuse std::collections::HashMap;\n\nlet input = ApiInput {\n    initial_schedule: None,\n    problem: ProblemDefinition {\n        people: vec![\n            Person {\n                id: \"Alice\".to_string(),\n                attributes: HashMap::new(),\n                sessions: None,\n            }\n        ],\n        groups: vec![\n            Group {\n                id: \"Team1\".to_string(),\n                size: 4,\n                session_sizes: None,\n            }\n        ],\n        num_sessions: 3,\n    },\n    objectives: vec![\n        Objective {\n            r#type: \"maximize_unique_contacts\".to_string(),\n            weight: 1.0,\n        }\n    ],\n    constraints: vec![],\n    solver: SolverConfiguration {\n        solver_type: \"SimulatedAnnealing\".to_string(),\n        stop_conditions: StopConditions {\n            max_iterations: Some(10_000),\n            time_limit_seconds: None,\n            no_improvement_iterations: None,\n        },\n        solver_params: SolverParams::SimulatedAnnealing(\n            SimulatedAnnealingParams {\n                initial_temperature: 100.0,\n                final_temperature: 0.1,\n                cooling_schedule: \"geometric\".to_string(),\n                reheat_after_no_improvement: Some(0),\n                reheat_cycles: Some(0),\n            }\n        ),\n        logging: LoggingOptions::default(),\n        telemetry: Default::default(),\n        seed: None,\n        move_policy: None,\n        allowed_sessions: None,\n    },\n};\n```",
+  "title": "SolveRequest",
+  "description": "The canonical solve request uses explicit public DTOs with `scenario`\nterminology at the contract boundary.",
   "type": "object",
   "properties": {
     "constraints": {
@@ -13,7 +13,7 @@
       }
     },
     "initial_schedule": {
-      "description": "Optional initial schedule to warm-start the solver. If provided, the solver\ninitializes the internal state from this schedule instead of a random one.\nFormat: schedule[\"session_{i}\"][group_id] = [person_ids]",
+      "description": "Optional initial schedule to warm-start the solver.",
       "type": [
         "object",
         "null"
@@ -37,9 +37,9 @@
         "$ref": "#/$defs/Objective"
       }
     },
-    "problem": {
-      "description": "The core problem definition: people, groups, and sessions",
-      "$ref": "#/$defs/ProblemDefinition"
+    "scenario": {
+      "description": "The scenario definition: people, groups, and sessions.",
+      "$ref": "#/$defs/ScenarioDefinitionContract"
     },
     "solver": {
       "description": "Solver algorithm configuration and parameters",
@@ -47,7 +47,7 @@
     }
   },
   "required": [
-    "problem",
+    "scenario",
     "solver"
   ],
   "$defs": {
@@ -670,37 +670,6 @@
         "attributes"
       ]
     },
-    "ProblemDefinition": {
-      "description": "Defines the core optimization problem: people, groups, and sessions.\n\nThis structure specifies the fundamental elements that need to be scheduled:\nthe list of people to be assigned, the groups they can be assigned to,\nand how many scheduling sessions will occur.",
-      "type": "object",
-      "properties": {
-        "groups": {
-          "description": "List of all available groups with their capacity limits",
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Group"
-          }
-        },
-        "num_sessions": {
-          "description": "Total number of scheduling sessions (time periods)",
-          "type": "integer",
-          "format": "uint32",
-          "minimum": 0
-        },
-        "people": {
-          "description": "List of all people to be scheduled into groups",
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Person"
-          }
-        }
-      },
-      "required": [
-        "people",
-        "groups",
-        "num_sessions"
-      ]
-    },
     "RepeatEncounterParams": {
       "description": "Parameters for the RepeatEncounter constraint.\n\nThis constraint limits how often people can be paired together across sessions,\npromoting social diversity by ensuring people meet new individuals rather than\nalways being grouped with the same people.\n\n# Example\n\n```no_run\nuse gm_core::models::RepeatEncounterParams;\n\n// Allow at most 1 encounter, with squared penalty for violations\nlet params = RepeatEncounterParams {\n    max_allowed_encounters: 1,\n    penalty_function: \"squared\".to_string(),\n    penalty_weight: 100.0,\n};\n```",
       "type": "object",
@@ -725,6 +694,37 @@
         "max_allowed_encounters",
         "penalty_function",
         "penalty_weight"
+      ]
+    },
+    "ScenarioDefinitionContract": {
+      "description": "Public scenario-definition shape shared across solver-facing contract surfaces.",
+      "type": "object",
+      "properties": {
+        "groups": {
+          "description": "List of all available groups with their capacity limits.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Group"
+          }
+        },
+        "num_sessions": {
+          "description": "Total number of scheduling sessions.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "people": {
+          "description": "List of all people to be scheduled into groups.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Person"
+          }
+        }
+      },
+      "required": [
+        "people",
+        "groups",
+        "num_sessions"
       ]
     },
     "SimulatedAnnealingParams": {

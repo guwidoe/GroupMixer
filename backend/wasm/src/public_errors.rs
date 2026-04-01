@@ -1,7 +1,7 @@
 use gm_contracts::{
     bootstrap::bootstrap_spec,
     errors::{
-        error_spec, error_specs, supported_constraint_kind_alternatives, INFEASIBLE_PROBLEM_ERROR,
+        error_spec, error_specs, supported_constraint_kind_alternatives, INFEASIBLE_SCENARIO_ERROR,
         INTERNAL_ERROR, INVALID_INPUT_ERROR, UNKNOWN_ERROR_CODE_ERROR, UNKNOWN_OPERATION_ERROR,
         UNKNOWN_SCHEMA_ERROR, UNSUPPORTED_CONSTRAINT_KIND_ERROR, UNSUPPORTED_CONSTRAINT_KIND_PATH,
     },
@@ -42,7 +42,7 @@ pub fn unsupported_constraint_kind_error(message: impl Into<String>) -> PublicEr
         Some(UNSUPPORTED_CONSTRAINT_KIND_PATH.to_string()),
         supported_constraint_kind_alternatives(),
         Some(vec![
-            "validate-problem".to_string(),
+            "validate-scenario".to_string(),
             "get-schema".to_string(),
         ]),
     )
@@ -88,18 +88,18 @@ pub fn unknown_error_code_error(error_code: &str) -> PublicErrorEnvelope {
     )
 }
 
-pub fn infeasible_problem_error(
+pub fn infeasible_scenario_error(
     operation_id: &str,
     message: impl Into<String>,
 ) -> PublicErrorEnvelope {
     api_error(
-        INFEASIBLE_PROBLEM_ERROR,
+        INFEASIBLE_SCENARIO_ERROR,
         message,
         None,
         Vec::new(),
         Some(vec![
             operation_id.to_string(),
-            "validate-problem".to_string(),
+            "validate-scenario".to_string(),
         ]),
     )
 }

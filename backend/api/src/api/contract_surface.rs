@@ -37,8 +37,8 @@ const HTTP_BINDINGS: &[HttpContractBinding] = &[
     },
     HttpContractBinding {
         method: "POST",
-        route_path: "/api/v1/validate-problem",
-        operation_id: Some("validate-problem"),
+        route_path: "/api/v1/validate-scenario",
+        operation_id: Some("validate-scenario"),
         scope: HttpSurfaceScope::PublicContract,
         note: "Input validation endpoint for the public solver contract.",
     },

@@ -1,24 +1,24 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "ProblemDefinition",
-  "description": "Defines the core optimization problem: people, groups, and sessions.\n\nThis structure specifies the fundamental elements that need to be scheduled:\nthe list of people to be assigned, the groups they can be assigned to,\nand how many scheduling sessions will occur.",
+  "title": "ScenarioDefinitionContract",
+  "description": "Public scenario-definition shape shared across solver-facing contract surfaces.",
   "type": "object",
   "properties": {
     "groups": {
-      "description": "List of all available groups with their capacity limits",
+      "description": "List of all available groups with their capacity limits.",
       "type": "array",
       "items": {
         "$ref": "#/$defs/Group"
       }
     },
     "num_sessions": {
-      "description": "Total number of scheduling sessions (time periods)",
+      "description": "Total number of scheduling sessions.",
       "type": "integer",
       "format": "uint32",
       "minimum": 0
     },
     "people": {
-      "description": "List of all people to be scheduled into groups",
+      "description": "List of all people to be scheduled into groups.",
       "type": "array",
       "items": {
         "$ref": "#/$defs/Person"

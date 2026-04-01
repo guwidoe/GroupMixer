@@ -1,6 +1,9 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+pub type InitialScheduleContract =
+    std::collections::HashMap<String, std::collections::HashMap<String, Vec<String>>>;
+
 /// Stable identifier for a public operation exposed by solver-facing surfaces.
 pub type OperationId = &'static str;
 
@@ -13,21 +16,41 @@ pub type ExampleId = &'static str;
 /// Stable identifier for a public error code exposed by solver-facing surfaces.
 pub type ErrorCode = &'static str;
 
-/// The canonical solve request currently reuses `gm-core`'s public input model.
-///
-/// This is an explicit boundary decision: until a stricter external DTO split is
-/// needed, the contracts layer treats `gm_core::models::ApiInput` as the
-/// public request shape for solving and validation.
-pub type SolveRequest = gm_core::models::ApiInput;
+/// Public scenario-definition shape shared across solver-facing contract surfaces.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct ScenarioDefinitionContract {
+    /// List of all people to be scheduled into groups.
+    pub people: Vec<gm_core::models::Person>,
+    /// List of all available groups with their capacity limits.
+    pub groups: Vec<gm_core::models::Group>,
+    /// Total number of scheduling sessions.
+    pub num_sessions: u32,
+}
+
+/// The canonical solve request uses explicit public DTOs with `scenario`
+/// terminology at the contract boundary.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SolveRequest {
+    /// The scenario definition: people, groups, and sessions.
+    pub scenario: ScenarioDefinitionContract,
+    /// Optional initial schedule to warm-start the solver.
+    #[serde(default)]
+    pub initial_schedule: Option<InitialScheduleContract>,
+    /// Optimization objectives (defaults to empty list if not specified)
+    #[serde(default)]
+    pub objectives: Vec<gm_core::models::Objective>,
+    /// Constraints that must be satisfied or penalized (defaults to empty list)
+    #[serde(default)]
+    pub constraints: Vec<gm_core::models::Constraint>,
+    /// Solver algorithm configuration and parameters
+    pub solver: SolverConfigurationContract,
+}
 
 /// The canonical solve response currently reuses `gm-core`'s public result model.
 pub type SolveResponse = gm_core::models::SolverResult;
 
 /// Validation currently accepts the same request shape as a solve operation.
 pub type ValidateRequest = SolveRequest;
-
-/// Public problem-definition shape currently reuses the core domain model.
-pub type ProblemDefinitionContract = gm_core::models::ProblemDefinition;
 
 /// Public solver-configuration shape currently reuses the core solver config model.
 pub type SolverConfigurationContract = gm_core::models::SolverConfiguration;
@@ -38,7 +61,8 @@ pub type ProgressUpdateContract = gm_core::models::ProgressUpdate;
 /// Canonical request shape for runtime-aware solver setting recommendations.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RecommendSettingsRequest {
-    pub problem_definition: ProblemDefinitionContract,
+    /// The scenario definition to analyze for runtime-aware recommendation.
+    pub scenario: ScenarioDefinitionContract,
     #[serde(default)]
     pub objectives: Vec<gm_core::models::Objective>,
     #[serde(default)]
@@ -121,6 +145,94 @@ pub struct PublicError {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct PublicErrorEnvelope {
     pub error: PublicError,
+}
+
+impl From<SolveRequest> for gm_core::models::ApiInput {
+    fn from(value: SolveRequest) -> Self {
+        Self {
+            problem: value.scenario.into(),
+            initial_schedule: value.initial_schedule,
+            objectives: value.objectives,
+            constraints: value.constraints,
+            solver: value.solver,
+        }
+    }
+}
+
+impl From<&SolveRequest> for gm_core::models::ApiInput {
+    fn from(value: &SolveRequest) -> Self {
+        Self {
+            problem: value.scenario.clone().into(),
+            initial_schedule: value.initial_schedule.clone(),
+            objectives: value.objectives.clone(),
+            constraints: value.constraints.clone(),
+            solver: value.solver.clone(),
+        }
+    }
+}
+
+impl From<gm_core::models::ApiInput> for SolveRequest {
+    fn from(value: gm_core::models::ApiInput) -> Self {
+        Self {
+            scenario: value.problem.into(),
+            initial_schedule: value.initial_schedule,
+            objectives: value.objectives,
+            constraints: value.constraints,
+            solver: value.solver,
+        }
+    }
+}
+
+impl From<&gm_core::models::ApiInput> for SolveRequest {
+    fn from(value: &gm_core::models::ApiInput) -> Self {
+        Self {
+            scenario: value.problem.clone().into(),
+            initial_schedule: value.initial_schedule.clone(),
+            objectives: value.objectives.clone(),
+            constraints: value.constraints.clone(),
+            solver: value.solver.clone(),
+        }
+    }
+}
+
+impl From<ScenarioDefinitionContract> for gm_core::models::ProblemDefinition {
+    fn from(value: ScenarioDefinitionContract) -> Self {
+        Self {
+            people: value.people,
+            groups: value.groups,
+            num_sessions: value.num_sessions,
+        }
+    }
+}
+
+impl From<&ScenarioDefinitionContract> for gm_core::models::ProblemDefinition {
+    fn from(value: &ScenarioDefinitionContract) -> Self {
+        Self {
+            people: value.people.clone(),
+            groups: value.groups.clone(),
+            num_sessions: value.num_sessions,
+        }
+    }
+}
+
+impl From<gm_core::models::ProblemDefinition> for ScenarioDefinitionContract {
+    fn from(value: gm_core::models::ProblemDefinition) -> Self {
+        Self {
+            people: value.people,
+            groups: value.groups,
+            num_sessions: value.num_sessions,
+        }
+    }
+}
+
+impl From<&gm_core::models::ProblemDefinition> for ScenarioDefinitionContract {
+    fn from(value: &gm_core::models::ProblemDefinition) -> Self {
+        Self {
+            people: value.people.clone(),
+            groups: value.groups.clone(),
+            num_sessions: value.num_sessions,
+        }
+    }
 }
 
 impl From<&SolveResponse> for ResultSummary {

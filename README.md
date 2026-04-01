@@ -39,21 +39,22 @@ The heart of the system, providing:
 
 A modern, full-featured React application that provides:
 
-- **Intuitive web interface** for problem setup and visualization
+- **Intuitive web interface** for scenario setup and visualization
 - **React 19 + TypeScript** with Vite for fast development
 - **Tailwind CSS** for beautiful, responsive design
 - **WebAssembly integration** for client-side optimization
 - **No data transmission** - everything runs locally in your browser
-- **Problem management** with save/load functionality
+- **Scenario management** with save/load functionality
 - **Real-time solving** with progress visualization
 - **Results export** to CSV and JSON formats
 - **Demo cases** with pre-configured examples
+- **Browser agent API** via `window.GroupMixerAgent` for agent/operator integrations
 - **Vercel deployment** for production hosting
 
 Key features:
 
 - Landing page with feature overview and use cases
-- Interactive problem editor for people, groups, and constraints
+- Interactive scenario editor for people, groups, and constraints
 - Advanced solver configuration panel
 - Results visualization with detailed score breakdowns
 - History tracking and result comparison
@@ -99,9 +100,9 @@ WebAssembly compilation of the core solver for:
 - **No installation required** - runs entirely in your browser
 - **Modern, responsive design** built with React and Tailwind CSS
 - **Real-time optimization** with progress tracking
-- **Interactive problem setup** with validation and error handling
+- **Interactive scenario setup** with validation and error handling
 - **Results visualization** with exportable schedules
-- **Problem templates** and demo cases for quick start
+- **Scenario templates** and demo cases for quick start
 
 ### Production Ready
 
@@ -119,7 +120,7 @@ The easiest way to get started is with the web application:
 
 1. **Visit the deployed app** at [GroupMixer](https://groupmixer.app)
 2. **Try a demo case** from the dropdown to see the tool in action
-3. **Create your own problem** by defining people, groups, and constraints
+3. **Create your own scenario** by defining people, groups, and constraints
 4. **Run the solver** and view optimized results
 5. **Export schedules** in CSV or JSON format
 
@@ -141,6 +142,28 @@ npm run dev
 
 The webapp will be available at `http://localhost:5173`
 
+### 🤖 Browser Agent API
+
+The webapp exposes a browser-side agent/operator surface for local integrations.
+
+- global: `window.GroupMixerAgent`
+- ready event: `groupmixer:agent-ready`
+- preferred transport: `worker`
+- available transports: `worker`, `wasm`
+- bootstrap entrypoint: `capabilities()`
+
+Example:
+
+```js
+window.addEventListener('groupmixer:agent-ready', async () => {
+  const api = window.GroupMixerAgent;
+  const capabilities = await api.worker.capabilities();
+  console.log(capabilities.top_level_operations);
+});
+```
+
+Implementation lives in `webapp/src/services/browserAgentApi.ts`.
+
 ### 🔧 Using the Web Server
 
 1. **Start the server:**
@@ -150,10 +173,10 @@ The webapp will be available at `http://localhost:5173`
    cargo run
    ```
 
-2. **Create a job via HTTP POST to `http://localhost:3000/api/v1/jobs`:**
+2. **Call the contract-native solve endpoint via HTTP POST to `http://localhost:3000/api/v1/solve`:**
    ```json
    {
-     "problem": {
+     "scenario": {
        "people": [
          { "id": "Alice", "attributes": { "gender": "female" } },
          { "id": "Bob", "attributes": { "gender": "male" } }
@@ -186,7 +209,7 @@ The webapp will be available at `http://localhost:5173`
    }
    ```
 
-3. **Poll job status via `GET /api/v1/jobs/{job_id}/status` and fetch the result from `GET /api/v1/jobs/{job_id}/result`.**
+3. **Use `POST /api/v1/validate-scenario` to validate the same request body without running optimization, or `GET /api/v1/help` to discover the rest of the public contract surface.**
 
 ### 📚 Using the Core Library
 

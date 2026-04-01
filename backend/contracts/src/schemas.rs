@@ -1,7 +1,7 @@
 use crate::types::{
-    ProblemDefinitionContract, ProgressUpdateContract, PublicErrorEnvelope,
-    RecommendSettingsRequest, ResultSummary, SchemaId, SolveRequest, SolveResponse,
-    SolverConfigurationContract, ValidateRequest, ValidateResponse,
+    ProgressUpdateContract, PublicErrorEnvelope, RecommendSettingsRequest, ResultSummary,
+    ScenarioDefinitionContract, SchemaId, SolveRequest, SolveResponse, SolverConfigurationContract,
+    ValidateRequest, ValidateResponse,
 };
 use schemars::{schema_for, Schema};
 
@@ -11,7 +11,7 @@ pub const SOLVE_REQUEST_SCHEMA_ID: &str = "solve-request";
 pub const SOLVE_RESPONSE_SCHEMA_ID: &str = "solve-response";
 pub const VALIDATE_REQUEST_SCHEMA_ID: &str = "validate-request";
 pub const VALIDATE_RESPONSE_SCHEMA_ID: &str = "validate-response";
-pub const PROBLEM_DEFINITION_SCHEMA_ID: &str = "problem-definition";
+pub const SCENARIO_DEFINITION_SCHEMA_ID: &str = "scenario-definition";
 pub const RECOMMEND_SETTINGS_REQUEST_SCHEMA_ID: &str = "recommend-settings-request";
 pub const SOLVER_CONFIGURATION_SCHEMA_ID: &str = "solver-configuration";
 pub const PROGRESS_UPDATE_SCHEMA_ID: &str = "progress-update";
@@ -47,9 +47,9 @@ const SCHEMA_SPECS: &[SchemaSpec] = &[
         export: export_validate_response_schema,
     },
     SchemaSpec {
-        id: PROBLEM_DEFINITION_SCHEMA_ID,
+        id: SCENARIO_DEFINITION_SCHEMA_ID,
         version: SCHEMA_VERSION_V1,
-        export: export_problem_definition_schema,
+        export: export_scenario_definition_schema,
     },
     SchemaSpec {
         id: RECOMMEND_SETTINGS_REQUEST_SCHEMA_ID,
@@ -106,8 +106,8 @@ fn export_validate_response_schema() -> Schema {
     schema_for!(ValidateResponse)
 }
 
-fn export_problem_definition_schema() -> Schema {
-    schema_for!(ProblemDefinitionContract)
+fn export_scenario_definition_schema() -> Schema {
+    schema_for!(ScenarioDefinitionContract)
 }
 
 fn export_recommend_settings_request_schema() -> Schema {

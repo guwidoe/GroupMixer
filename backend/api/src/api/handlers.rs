@@ -12,7 +12,7 @@ use gm_contracts::{
     bootstrap::bootstrap_spec,
     errors::{
         error_spec, error_specs, supported_constraint_kind_alternatives, PublicErrorSpec,
-        INFEASIBLE_PROBLEM_ERROR, INVALID_INPUT_ERROR, UNKNOWN_ERROR_CODE_ERROR,
+        INFEASIBLE_SCENARIO_ERROR, INVALID_INPUT_ERROR, UNKNOWN_ERROR_CODE_ERROR,
         UNKNOWN_OPERATION_ERROR, UNKNOWN_SCHEMA_ERROR, UNSUPPORTED_CONSTRAINT_KIND_ERROR,
         UNSUPPORTED_CONSTRAINT_KIND_PATH,
     },
@@ -20,8 +20,8 @@ use gm_contracts::{
     operations::{local_help, operation_spec, OperationSpec},
     schemas::{export_schema, schema_specs},
     types::{
-        PublicError, PublicErrorEnvelope, RecommendSettingsRequest, ResultSummary,
-        ValidateResponse, ValidationIssue,
+        PublicError, PublicErrorEnvelope, RecommendSettingsRequest, ResultSummary, SolveRequest,
+        ValidateRequest, ValidateResponse, ValidationIssue,
     },
 };
 use gm_core::{
@@ -206,14 +206,17 @@ pub async fn error_get_handler(
 }
 
 pub async fn solve_handler(body: Bytes) -> Result<Json<SolverResult>, ApiError> {
-    let payload: ApiInput = parse_json_body(&body, "solve", &["solve-request"])?;
+    let payload: SolveRequest = parse_json_body(&body, "solve", &["solve-request"])?;
+    let payload: ApiInput = payload.into();
     let result =
         run_solver(&payload).map_err(|error| map_solver_error(format!("{:?}", error), "solve"))?;
     Ok(Json(result))
 }
 
-pub async fn validate_problem_handler(body: Bytes) -> Result<Json<ValidateResponse>, ApiError> {
-    let payload: ApiInput = parse_json_body(&body, "validate-problem", &["validate-request"])?;
+pub async fn validate_scenario_handler(body: Bytes) -> Result<Json<ValidateResponse>, ApiError> {
+    let payload: ValidateRequest =
+        parse_json_body(&body, "validate-scenario", &["validate-request"])?;
+    let payload: ApiInput = payload.into();
     use gm_core::solver::State;
     let response = match State::new(&payload) {
         Ok(_) => ValidateResponse {
@@ -223,7 +226,7 @@ pub async fn validate_problem_handler(body: Bytes) -> Result<Json<ValidateRespon
         Err(error) => ValidateResponse {
             valid: false,
             issues: vec![ValidationIssue {
-                code: Some("infeasible-problem".to_string()),
+                code: Some("infeasible-scenario".to_string()),
                 message: format!("{:?}", error),
                 path: None,
             }],
@@ -241,8 +244,9 @@ pub async fn recommend_settings_handler(
 ) -> Result<Json<SolverConfiguration>, ApiError> {
     let request: RecommendSettingsRequest =
         parse_json_body(&body, "recommend-settings", &["recommend-settings-request"])?;
+    let scenario_definition: gm_core::models::ProblemDefinition = (&request.scenario).into();
     let recommended = calculate_recommended_settings(
-        &request.problem_definition,
+        &scenario_definition,
         &request.objectives,
         &request.constraints,
         request.desired_runtime_seconds,
@@ -252,7 +256,8 @@ pub async fn recommend_settings_handler(
 }
 
 pub async fn evaluate_input_handler(body: Bytes) -> Result<Json<SolverResult>, ApiError> {
-    let mut payload: ApiInput = parse_json_body(&body, "evaluate-input", &["solve-request"])?;
+    let payload: SolveRequest = parse_json_body(&body, "evaluate-input", &["solve-request"])?;
+    let mut payload: ApiInput = payload.into();
     if payload.initial_schedule.is_none() {
         return Err(api_error(
             INVALID_INPUT_ERROR,
@@ -323,7 +328,10 @@ fn parse_json_body<T: DeserializeOwned>(
                 message,
                 Some(UNSUPPORTED_CONSTRAINT_KIND_PATH.to_string()),
                 supported_constraint_kind_alternatives(),
-                Some(vec![help_path("validate-problem"), help_path("get-schema")]),
+                Some(vec![
+                    help_path("validate-scenario"),
+                    help_path("get-schema"),
+                ]),
             );
         }
 
@@ -419,17 +427,23 @@ fn map_solver_error(message: String, operation_id: &str) -> ApiError {
             message,
             Some(UNSUPPORTED_CONSTRAINT_KIND_PATH.to_string()),
             supported_constraint_kind_alternatives(),
-            Some(vec![help_path("validate-problem"), help_path("get-schema")]),
+            Some(vec![
+                help_path("validate-scenario"),
+                help_path("get-schema"),
+            ]),
         );
     }
 
     api_error(
-        INFEASIBLE_PROBLEM_ERROR,
+        INFEASIBLE_SCENARIO_ERROR,
         StatusCode::UNPROCESSABLE_ENTITY,
         message,
         None,
         Vec::new(),
-        Some(vec![help_path(operation_id), help_path("validate-problem")]),
+        Some(vec![
+            help_path(operation_id),
+            help_path("validate-scenario"),
+        ]),
     )
 }
 

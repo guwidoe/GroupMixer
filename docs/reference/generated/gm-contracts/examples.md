@@ -17,7 +17,7 @@
 
 ```
 {
-  "problem": {
+  "scenario": {
     "people": [
       {"id": "alice", "attributes": {"department": "eng"}},
       {"id": "bob", "attributes": {"department": "design"}}
@@ -185,7 +185,7 @@ Solve-capable transports may emit progress-update payloads while a solve is runn
 
 ## `validate-invalid-constraint`
 
-- operation: `validate-problem`
+- operation: `validate-scenario`
 - summary: Validation failure for an unsupported constraint kind.
 - description: Demonstrates a negative path where the caller gets a precise validation issue and recovery pointers.
 
@@ -222,7 +222,7 @@ gm-cli validate input.json && gm-cli schema input
 - format: `http`
 
 ```
-GET /help?operation=validate-problem then GET /schemas/solve-request
+GET /help?operation=validate-scenario then GET /schemas/solve-request
 ```
 
 ## `inspect-result-summary`
@@ -281,7 +281,7 @@ GET /help?operation=validate-problem then GET /schemas/solve-request
       "PairMeetingCount"
     ],
     "recovery": "Inspect the relevant schema/help and replace the unsupported constraint kind.",
-    "related_help": ["validate-problem", "get-schema"]
+    "related_help": ["validate-scenario", "get-schema"]
   }
 }
 ```
@@ -354,7 +354,7 @@ gm-cli schema solve-request
 
 - operation: `recommend-settings`
 - summary: Recommend solver settings from an explicit runtime-aware request.
-- description: Shows a minimal recommend-settings request carrying a problem definition plus desired runtime and a representative recommended solver configuration.
+- description: Shows a minimal recommend-settings request carrying a scenario definition plus desired runtime and a representative recommended solver configuration.
 
 ### Snippets
 
@@ -365,7 +365,7 @@ gm-cli schema solve-request
 
 ```
 {
-  "problem_definition": {
+  "scenario": {
     "people": [
       {"id": "alice", "attributes": {}},
       {"id": "bob", "attributes": {}}
@@ -415,7 +415,7 @@ gm-cli schema solve-request
 - format: `shell`
 
 ```
-gm-cli recommend problem.json --runtime 30 --pretty
+gm-cli recommend scenario.json --pretty
 ```
 
 ## `evaluate-input-minimal`

@@ -235,7 +235,7 @@ mod tests {
     fn root_help_uses_contract_summaries() {
         let help = render_root_help();
         assert!(help.contains("Run the solver for a complete optimization input."));
-        assert!(help.contains("Validate solver input without running optimization."));
+        assert!(help.contains("Validate a scenario input without running optimization."));
         assert!(help.contains("recommend"));
         assert!(help.contains("default-config"));
         assert!(help.contains("benchmark"));
@@ -245,7 +245,7 @@ mod tests {
     fn solve_help_contains_contract_examples_and_related_affordances() {
         let help = render_command_help("solve", "solve");
         assert!(help.contains("gm-cli solve input.json --pretty"));
-        assert!(help.contains("validate-problem"));
+        assert!(help.contains("validate-scenario"));
         assert!(help.contains("solve-request"));
     }
 

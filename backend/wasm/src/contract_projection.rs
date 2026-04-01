@@ -288,7 +288,7 @@ mod tests {
         assert!(response
             .related_operations
             .iter()
-            .any(|operation| operation.operation_id == "validate-problem"));
+            .any(|operation| operation.operation_id == "validate-scenario"));
     }
 
     #[test]

@@ -6,7 +6,9 @@ use gm_api::api::{
     handlers::{AppState, CreateJobResponse},
 };
 use gm_api::jobs::manager::{Job, JobManager, JobStatus};
-use gm_contracts::types::{RecommendSettingsRequest, ResultSummary, ValidateResponse};
+use gm_contracts::types::{
+    RecommendSettingsRequest, ResultSummary, SolveRequest, ValidateResponse,
+};
 use gm_core::models::{
     ApiInput, Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams,
     SolverConfiguration, SolverParams, StopConditions,
@@ -95,6 +97,10 @@ fn invalid_input() -> ApiInput {
         session_sizes: None,
     }];
     input
+}
+
+fn valid_request() -> SolveRequest {
+    SolveRequest::from(valid_input())
 }
 
 async fn json_response<T: DeserializeOwned>(response: axum::response::Response) -> T {
@@ -320,7 +326,7 @@ async fn bootstrap_help_and_schema_endpoints_are_discoverable() {
         .as_array()
         .unwrap()
         .iter()
-        .any(|entry| entry["help_path"] == "/api/v1/help/validate-problem"));
+        .any(|entry| entry["help_path"] == "/api/v1/help/validate-scenario"));
 
     let schema_list_response = app
         .clone()
@@ -353,7 +359,7 @@ async fn bootstrap_help_and_schema_endpoints_are_discoverable() {
         .unwrap();
     assert_eq!(schema_response.status(), StatusCode::OK);
     let schema_json: serde_json::Value = json_response(schema_response).await;
-    assert_eq!(schema_json["title"], "ApiInput");
+    assert_eq!(schema_json["title"], "SolveRequest");
 }
 
 #[tokio::test]
@@ -369,7 +375,7 @@ async fn contract_solver_endpoints_return_public_shapes() {
                 .method("POST")
                 .uri("/api/v1/solve")
                 .header("content-type", "application/json")
-                .body(Body::from(serde_json::to_vec(&valid_input()).unwrap()))
+                .body(Body::from(serde_json::to_vec(&valid_request()).unwrap()))
                 .unwrap(),
         )
         .await
@@ -383,9 +389,9 @@ async fn contract_solver_endpoints_return_public_shapes() {
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri("/api/v1/validate-problem")
+                .uri("/api/v1/validate-scenario")
                 .header("content-type", "application/json")
-                .body(Body::from(serde_json::to_vec(&valid_input()).unwrap()))
+                .body(Body::from(serde_json::to_vec(&valid_request()).unwrap()))
                 .unwrap(),
         )
         .await
@@ -422,7 +428,7 @@ async fn contract_solver_endpoints_return_public_shapes() {
                 .header("content-type", "application/json")
                 .body(Body::from(
                     serde_json::to_vec(&RecommendSettingsRequest {
-                        problem_definition: valid_input().problem,
+                        scenario: valid_input().problem.into(),
                         objectives: Vec::new(),
                         constraints: Vec::new(),
                         desired_runtime_seconds: 11,
@@ -440,7 +446,7 @@ async fn contract_solver_endpoints_return_public_shapes() {
     assert_eq!(recommend_body.stop_conditions.time_limit_seconds, Some(11));
 
     let evaluate_input = {
-        let mut input = valid_input();
+        let mut input = valid_request();
         input.initial_schedule = Some(
             serde_json::from_value(json!({"session_0": {"g0": ["p0", "p1"], "g1": ["p2", "p3"]}, "session_1": {"g0": ["p0", "p2"], "g1": ["p1", "p3"]}})).unwrap(),
         );
@@ -531,7 +537,7 @@ async fn contract_endpoints_emit_canonical_error_envelopes() {
                 .method("POST")
                 .uri("/api/v1/solve")
                 .header("content-type", "application/json")
-                .body(Body::from(r#"{"problem": "#))
+                .body(Body::from(r#"{"scenario": "#))
                 .unwrap(),
         )
         .await
@@ -549,7 +555,7 @@ async fn contract_endpoints_emit_canonical_error_envelopes() {
         .any(|value| value == "/api/v1/help/solve"));
 
     let unsupported_constraint_input = json!({
-        "problem": {
+        "scenario": {
             "people": [
                 {"id": "alice", "attributes": {}},
                 {"id": "bob", "attributes": {}}
@@ -603,7 +609,7 @@ async fn contract_endpoints_emit_canonical_error_envelopes() {
         .as_array()
         .unwrap()
         .iter()
-        .any(|value| value == "/api/v1/help/validate-problem"));
+        .any(|value| value == "/api/v1/help/validate-scenario"));
 
     let unknown_schema_response = app
         .clone()

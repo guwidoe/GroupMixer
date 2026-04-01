@@ -3,7 +3,7 @@ use super::handlers::{
     error_get_handler, error_list_handler, evaluate_input_handler, get_job_result_handler,
     get_job_status_handler, inspect_result_handler, operation_help_handler,
     recommend_settings_handler, schema_get_handler, schema_list_handler, solve_handler,
-    validate_problem_handler, AppState,
+    validate_scenario_handler, AppState,
 };
 use axum::{
     routing::{get, post},
@@ -15,7 +15,7 @@ pub fn create_router(app_state: AppState) -> Router {
         .route("/api/v1/help", get(bootstrap_help_handler))
         .route("/api/v1/help/{operation_id}", get(operation_help_handler))
         .route("/api/v1/solve", post(solve_handler))
-        .route("/api/v1/validate-problem", post(validate_problem_handler))
+        .route("/api/v1/validate-scenario", post(validate_scenario_handler))
         .route(
             "/api/v1/default-solver-configuration",
             get(default_solver_configuration_handler),

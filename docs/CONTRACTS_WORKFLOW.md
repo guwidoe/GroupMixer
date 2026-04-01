@@ -175,7 +175,7 @@ Canonical browser-facing WASM exports are now the clean structured names:
 
 - `solve`
 - `solve_with_progress`
-- `validate_problem`
+- `validate_scenario`
 - `get_default_solver_configuration`
 - `recommend_settings`
 - `evaluate_input`
