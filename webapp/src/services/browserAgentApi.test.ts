@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { createSampleScenario } from '../test/fixtures';
 import {
   BROWSER_AGENT_GLOBAL,
   BROWSER_AGENT_READY_EVENT,
@@ -55,7 +56,7 @@ describe('browserAgentApi', () => {
     expect(await api.wasm.capabilities()).toEqual({ bootstrap: { title: 'GroupMixer solver contracts' } });
     expect(await api.worker.capabilities()).toEqual({ bootstrap: { title: 'GroupMixer solver contracts' } });
     expect(await api.worker.getOperationHelp('solve')).toEqual({ operation: { id: 'solve' } });
-    expect(await api.worker.solve({ problem: { people: [] } })).toEqual({ schedule: {}, final_score: 1 });
+    expect(await api.worker.solve({ scenario: createSampleScenario() })).toEqual({ schedule: {}, final_score: 1 });
   });
 
   it('installs the browser agent API on window and emits a ready event', async () => {

@@ -9,7 +9,7 @@ import { getToolPageConfig, TOOL_PAGE_CONFIGS } from './toolPageConfigs';
 const scrollIntoViewMock = vi.fn();
 
 vi.mock('../services/solver/solveScenario', () => ({
-  solveScenario: vi.fn(async ({ scenario }: { problem: { people: Array<{ id: string }>; groups: Array<{ id: string }>; num_sessions: number } }) => ({
+  solveScenario: vi.fn(async ({ scenario }: { scenario: { people: Array<{ id: string }>; groups: Array<{ id: string }>; num_sessions: number } }) => ({
     selectedSettings: scenario.settings,
     runScenario: scenario,
     lastProgress: null,

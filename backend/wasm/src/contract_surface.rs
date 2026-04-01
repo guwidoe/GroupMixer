@@ -68,7 +68,7 @@ const WASM_BINDINGS: &[WasmContractBinding] = &[
         note: "Contract-native solve export returning structured JS values with optional progress callbacks.",
     },
     WasmContractBinding {
-        export_name: "validate_problem",
+        export_name: "validate_scenario",
         operation_id: Some(VALIDATE_PROBLEM_OPERATION_ID),
         scope: WasmSurfaceScope::PublicContract,
         note: "Contract-native validation export returning the shared validation shape.",
@@ -122,7 +122,7 @@ const WASM_BINDINGS: &[WasmContractBinding] = &[
         note: "Legacy JSON-string progress solve export retained for compatibility during the WASM contract rollout.",
     },
     WasmContractBinding {
-        export_name: "validate_problem_legacy_json",
+        export_name: "validate_scenario_legacy_json",
         operation_id: None,
         scope: WasmSurfaceScope::OutOfScopeSupport,
         note: "Legacy JSON-string validation export retained for compatibility during the WASM contract rollout.",
@@ -226,7 +226,7 @@ mod tests {
         for export_name in [
             "solve_legacy_json",
             "solve_with_progress_legacy_json",
-            "validate_problem_legacy_json",
+            "validate_scenario_legacy_json",
             "get_default_settings_legacy_json",
             "evaluate_input_legacy_json",
             "get_recommended_settings_legacy_json",

@@ -11,16 +11,24 @@ import {
 
 vi.mock("./rustBoundary", () => ({
   buildRustScenarioPayload: vi.fn(() => ({
-    problem: { people: [], groups: [], num_sessions: 2 },
-    objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
-    constraints: [],
-    solver: { solver_type: "SimulatedAnnealing" },
+    scenario: {
+      people: [],
+      groups: [],
+      num_sessions: 2,
+      objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
+      constraints: [],
+      settings: { solver_type: "SimulatedAnnealing" },
+    },
   })),
   buildWarmStartScenarioPayload: vi.fn(() => ({
-    problem: { people: [], groups: [], num_sessions: 2 },
-    objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
-    constraints: [],
-    solver: { solver_type: "SimulatedAnnealing" },
+    scenario: {
+      people: [],
+      groups: [],
+      num_sessions: 2,
+      objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
+      constraints: [],
+      settings: { solver_type: "SimulatedAnnealing" },
+    },
     initial_schedule: { session_0: { g1: ["p1"] } },
   })),
   parseRustSolutionResult: vi.fn(() => createSampleSolution()),
@@ -176,10 +184,14 @@ describe("SolverWorkerService", () => {
       id: "2",
       data: {
         scenarioPayload: {
-          problem: { people: [], groups: [], num_sessions: 2 },
-          objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
-          constraints: [],
-          solver: { solver_type: "SimulatedAnnealing" },
+          scenario: {
+            people: [],
+            groups: [],
+            num_sessions: 2,
+            objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
+            constraints: [],
+            settings: { solver_type: "SimulatedAnnealing" },
+          },
         },
         useProgress: true,
       },
@@ -217,10 +229,14 @@ describe("SolverWorkerService", () => {
       id: "2",
       data: {
         scenarioPayload: {
-          problem: { people: [], groups: [], num_sessions: 2 },
-          objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
-          constraints: [],
-          solver: { solver_type: "SimulatedAnnealing" },
+          scenario: {
+            people: [],
+            groups: [],
+            num_sessions: 2,
+            objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
+            constraints: [],
+            settings: { solver_type: "SimulatedAnnealing" },
+          },
           initial_schedule: { session_0: { g1: ["p1"] } },
         },
         useProgress: true,
@@ -252,9 +268,11 @@ describe("SolverWorkerService", () => {
       id: "3",
       data: {
         recommendRequest: {
-          problem_definition: { people: [], groups: [], num_sessions: 2 },
-          objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
-          constraints: [],
+          scenario: expect.objectContaining({
+            people: expect.any(Array),
+            groups: expect.any(Array),
+            num_sessions: 2,
+          }),
           desired_runtime_seconds: 9,
         },
       },
@@ -296,11 +314,11 @@ describe("SolverWorkerService", () => {
     });
     await expect(helpPromise).resolves.toEqual({ operation: { id: "solve" } });
 
-    const validatePromise = service.validateScenarioContract({ problem: { people: [] } });
+    const validatePromise = service.validateScenarioContract({ scenario: createScenario() });
     expect(worker.postedMessages.at(-1)).toEqual({
       type: "validate_scenario",
       id: "4",
-      data: { scenarioPayload: { problem: { people: [] } } },
+      data: { scenarioPayload: { scenario: createScenario() } },
     });
     worker.emit({
       type: "RPC_SUCCESS",
@@ -309,11 +327,11 @@ describe("SolverWorkerService", () => {
     });
     await expect(validatePromise).resolves.toEqual({ valid: true, issues: [] });
 
-    const solvePromise = service.solveContract({ problem: { people: [] } });
+    const solvePromise = service.solveContract({ scenario: createScenario() });
     expect(worker.postedMessages.at(-1)).toEqual({
       type: "SOLVE",
       id: "5",
-      data: { scenarioPayload: { problem: { people: [] } }, useProgress: false },
+      data: { scenarioPayload: { scenario: createScenario() }, useProgress: false },
     });
     worker.emit({
       type: "SOLVE_SUCCESS",
@@ -345,10 +363,14 @@ describe("SolverWorkerService", () => {
       id: "2",
       data: {
         scenarioPayload: {
-          problem: { people: [], groups: [], num_sessions: 2 },
-          objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
-          constraints: [],
-          solver: { solver_type: "SimulatedAnnealing" },
+          scenario: {
+            people: [],
+            groups: [],
+            num_sessions: 2,
+            objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
+            constraints: [],
+            settings: { solver_type: "SimulatedAnnealing" },
+          },
         },
         useProgress: false,
       },

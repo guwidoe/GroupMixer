@@ -91,19 +91,56 @@ describe("solverWorker runtime", () => {
     await runtime.handleMessage({
       type: "SOLVE",
       id: "1",
-      data: { scenarioPayload: { problem: { people: [] } }, useProgress: false },
+      data: {
+        scenarioPayload: {
+          scenario: {
+            people: [],
+            groups: [],
+            num_sessions: 1,
+            objectives: [],
+            constraints: [],
+            settings: { solver_type: "SimulatedAnnealing", stop_conditions: {}, solver_params: {} },
+          },
+        },
+        useProgress: false,
+      },
     });
 
     expect(wasmInit).toHaveBeenCalledTimes(1);
     expect(wasmModule.solve_with_progress).toHaveBeenCalledWith(
-      { problem: { people: [] } },
+      {
+        scenario: {
+          people: [],
+          groups: [],
+          num_sessions: 1,
+          objectives: [],
+          constraints: [],
+          settings: { solver_type: "SimulatedAnnealing", stop_conditions: {}, solver_params: {} },
+        },
+      },
       undefined,
     );
     expect(postedMessages).toEqual([
       {
         type: "SOLVE_SUCCESS",
         id: "1",
-        data: { result: { schedule: {}, final_score: 1, input: { problem: { people: [] } } }, lastProgress: null },
+        data: {
+          result: {
+            schedule: {},
+            final_score: 1,
+            input: {
+              scenario: {
+                people: [],
+                groups: [],
+                num_sessions: 1,
+                objectives: [],
+                constraints: [],
+                settings: { solver_type: "SimulatedAnnealing", stop_conditions: {}, solver_params: {} },
+              },
+            },
+          },
+          lastProgress: null,
+        },
       },
     ]);
   });
@@ -116,7 +153,19 @@ describe("solverWorker runtime", () => {
     await runtime.handleMessage({
       type: "SOLVE",
       id: "2",
-      data: { scenarioPayload: { problem: { people: [] } }, useProgress: true },
+      data: {
+        scenarioPayload: {
+          scenario: {
+            people: [],
+            groups: [],
+            num_sessions: 1,
+            objectives: [],
+            constraints: [],
+            settings: { solver_type: "SimulatedAnnealing", stop_conditions: {}, solver_params: {} },
+          },
+        },
+        useProgress: true,
+      },
     });
 
     expect(wasmModule.solve_with_progress).toHaveBeenCalledTimes(1);
@@ -126,7 +175,20 @@ describe("solverWorker runtime", () => {
         type: "SOLVE_SUCCESS",
         id: "2",
         data: {
-          result: { schedule: {}, final_score: 1, input: { problem: { people: [] } } },
+          result: {
+            schedule: {},
+            final_score: 1,
+            input: {
+              scenario: {
+                people: [],
+                groups: [],
+                num_sessions: 1,
+                objectives: [],
+                constraints: [],
+                settings: { solver_type: "SimulatedAnnealing", stop_conditions: {}, solver_params: {} },
+              },
+            },
+          },
           lastProgress: { iteration: 1, best_score: 3 },
         },
       },
@@ -144,9 +206,14 @@ describe("solverWorker runtime", () => {
       id: "3",
       data: {
         recommendRequest: {
-          problem_definition: { people: [] },
-          objectives: [],
-          constraints: [],
+          scenario: {
+            people: [],
+            groups: [],
+            num_sessions: 1,
+            objectives: [],
+            constraints: [],
+            settings: { solver_type: "SimulatedAnnealing", stop_conditions: {}, solver_params: {} },
+          },
           desired_runtime_seconds: 11,
         },
       },
@@ -154,9 +221,14 @@ describe("solverWorker runtime", () => {
 
     expect(wasmModule.get_default_solver_configuration).toHaveBeenCalledTimes(1);
     expect(wasmModule.recommend_settings).toHaveBeenCalledWith({
-      problem_definition: { people: [] },
-      objectives: [],
-      constraints: [],
+      scenario: {
+        people: [],
+        groups: [],
+        num_sessions: 1,
+        objectives: [],
+        constraints: [],
+        settings: { solver_type: "SimulatedAnnealing", stop_conditions: {}, solver_params: {} },
+      },
       desired_runtime_seconds: 11,
     });
     expect(postedMessages).toEqual([
@@ -171,9 +243,14 @@ describe("solverWorker runtime", () => {
         data: {
           result: {
             request: {
-              problem_definition: { people: [] },
-              objectives: [],
-              constraints: [],
+              scenario: {
+                people: [],
+                groups: [],
+                num_sessions: 1,
+                objectives: [],
+                constraints: [],
+                settings: { solver_type: "SimulatedAnnealing", stop_conditions: {}, solver_params: {} },
+              },
               desired_runtime_seconds: 11,
             },
           },
@@ -189,12 +266,36 @@ describe("solverWorker runtime", () => {
 
     await runtime.handleMessage({ type: "capabilities", id: "2", data: {} });
     await runtime.handleMessage({ type: "get_operation_help", id: "3", data: { args: ["solve"] } });
-    await runtime.handleMessage({ type: "validate_scenario", id: "4", data: { scenarioPayload: { problem: { people: [] } } } });
+    await runtime.handleMessage({
+      type: "validate_scenario",
+      id: "4",
+      data: {
+        scenarioPayload: {
+          scenario: {
+            people: [],
+            groups: [],
+            num_sessions: 1,
+            objectives: [],
+            constraints: [],
+            settings: { solver_type: "SimulatedAnnealing", stop_conditions: {}, solver_params: {} },
+          },
+        },
+      },
+    });
     await runtime.handleMessage({ type: "inspect_result", id: "5", data: { resultPayload: { schedule: {}, final_score: 7 } as never } });
 
     expect(wasmModule.capabilities).toHaveBeenCalledTimes(1);
     expect(wasmModule.get_operation_help).toHaveBeenCalledWith("solve");
-    expect(wasmModule.validate_scenario).toHaveBeenCalledWith({ problem: { people: [] } });
+    expect(wasmModule.validate_scenario).toHaveBeenCalledWith({
+      scenario: {
+        people: [],
+        groups: [],
+        num_sessions: 1,
+        objectives: [],
+        constraints: [],
+        settings: { solver_type: "SimulatedAnnealing", stop_conditions: {}, solver_params: {} },
+      },
+    });
     expect(wasmModule.inspect_result).toHaveBeenCalledWith({ schedule: {}, final_score: 7 });
     expect(postedMessages).toEqual([
       {
@@ -210,7 +311,22 @@ describe("solverWorker runtime", () => {
       {
         type: "RPC_SUCCESS",
         id: "4",
-        data: { result: { valid: true, issues: [], input: { problem: { people: [] } } } },
+        data: {
+          result: {
+            valid: true,
+            issues: [],
+            input: {
+              scenario: {
+                people: [],
+                groups: [],
+                num_sessions: 1,
+                objectives: [],
+                constraints: [],
+                settings: { solver_type: "SimulatedAnnealing", stop_conditions: {}, solver_params: {} },
+              },
+            },
+          },
+        },
       },
       {
         type: "RPC_SUCCESS",
@@ -256,7 +372,19 @@ describe("solverWorker runtime", () => {
     await runtime.handleMessage({
       type: "SOLVE",
       id: "2",
-      data: { scenarioPayload: { problem: { people: [] } }, useProgress: false },
+      data: {
+        scenarioPayload: {
+          scenario: {
+            people: [],
+            groups: [],
+            num_sessions: 1,
+            objectives: [],
+            constraints: [],
+            settings: { solver_type: "SimulatedAnnealing", stop_conditions: {}, solver_params: {} },
+          },
+        },
+        useProgress: false,
+      },
     });
 
     expect(postedMessages).toEqual([

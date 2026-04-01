@@ -16,8 +16,10 @@ import {
   buildWarmStartScenarioPayload,
   parseRustSolutionResult,
 } from "./rustBoundary";
+import { buildWasmRecommendSettingsRequest } from "./wasm/scenarioContract";
 import type {
   WasmBootstrapResponse,
+  WasmContractSolveInput,
   WasmErrorLookupResponse,
   WasmOperationHelpResponse,
   WasmRecommendSettingsRequest,
@@ -27,24 +29,6 @@ import type {
   WasmValidateResponse,
 } from "./wasm/module";
 import type { RustResult } from "./wasm/types";
-
-function buildRecommendSettingsRequest(
-  scenario: Scenario,
-  desiredRuntimeSeconds: number,
-): WasmRecommendSettingsRequest {
-  const payload = buildRustScenarioPayload(scenario) as {
-    problem?: Record<string, unknown>;
-    objectives?: unknown[];
-    constraints?: unknown[];
-  };
-
-  return {
-    problem_definition: payload.problem ?? {},
-    objectives: payload.objectives ?? [],
-    constraints: payload.constraints ?? [],
-    desired_runtime_seconds: desiredRuntimeSeconds,
-  };
-}
 
 type PendingMessage =
   | {
@@ -258,7 +242,7 @@ export class SolverWorkerService {
   }
 
   private sendSolve(
-    scenarioPayload: Record<string, unknown>,
+    scenarioPayload: WasmContractSolveInput,
     useProgress: boolean,
     progressCallback?: ProgressCallback,
   ): Promise<SolverRunResult> {
@@ -285,7 +269,7 @@ export class SolverWorkerService {
     return parseRustSolutionResult(result, null, this.lastProgressUpdate);
   }
 
-  async solveContract(scenarioPayload: Record<string, unknown>): Promise<RustResult> {
+  async solveContract(scenarioPayload: WasmContractSolveInput): Promise<RustResult> {
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -316,7 +300,7 @@ export class SolverWorkerService {
   }
 
   async solveContractWithProgress(
-    scenarioPayload: Record<string, unknown>,
+    scenarioPayload: WasmContractSolveInput,
     progressCallback?: ProgressCallback,
   ): Promise<{ result: RustResult; lastProgress: ProgressUpdate | null }> {
     if (!this.isInitialized) {
@@ -426,7 +410,7 @@ export class SolverWorkerService {
   }
 
   public async validateScenarioContract(
-    scenarioPayload: Record<string, unknown>,
+    scenarioPayload: WasmContractSolveInput,
   ): Promise<WasmValidateResponse> {
     return this.callSolver<WasmValidateResponse>("validate_scenario", {
       scenarioPayload,
@@ -442,7 +426,7 @@ export class SolverWorkerService {
     desiredRuntimeSeconds: number,
   ): Promise<SolverSettings> {
     return this.callSolver<SolverSettings>("recommend_settings", {
-      recommendRequest: buildRecommendSettingsRequest(scenario, desiredRuntimeSeconds),
+      recommendRequest: buildWasmRecommendSettingsRequest(scenario, desiredRuntimeSeconds),
     });
   }
 
@@ -455,7 +439,7 @@ export class SolverWorkerService {
   }
 
   public async evaluateInputContract(
-    scenarioPayload: Record<string, unknown>,
+    scenarioPayload: WasmContractSolveInput,
   ): Promise<RustResult> {
     return this.callSolver<RustResult>("evaluate_input", {
       scenarioPayload,

@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  convertScenarioToRustFormat,
-  convertRustResultToSolution,
-} from "./conversions";
+import { convertRustResultToSolution } from "./conversions";
+import { normalizeScenarioForWasm } from "./scenarioContract";
 import { createSampleScenario } from "../../test/fixtures";
 import type { ProgressUpdate, RustResult } from "./types";
 
@@ -68,7 +66,7 @@ const rustResult: RustResult = {
 
 describe("wasm conversions", () => {
   it("sanitizes solver params and fills in default weights/sessions", () => {
-    const rustScenario = convertScenarioToRustFormat(
+    const rustScenario = normalizeScenarioForWasm(
       createSampleScenario({
         constraints: [
           {
@@ -106,7 +104,7 @@ describe("wasm conversions", () => {
     ) as {
       objectives: Array<{ type: string; weight: number }>;
       constraints: Array<Record<string, unknown>>;
-      solver: { solver_params: Record<string, number | string> };
+      settings: { solver_params: Record<string, number | string> };
     };
 
     expect(rustScenario.objectives).toEqual([
@@ -115,14 +113,14 @@ describe("wasm conversions", () => {
     expect(rustScenario.constraints[0].penalty_weight).toBe(1000);
     expect(rustScenario.constraints[1].sessions).toEqual([0, 1]);
     expect(rustScenario.constraints[2].penalty_weight).toBe(1);
-    expect(rustScenario.solver.solver_params.initial_temperature).toBe(1);
-    expect(rustScenario.solver.solver_params.final_temperature).toBe(0.01);
-    expect(rustScenario.solver.solver_params.reheat_cycles).toBe(0);
-    expect(rustScenario.solver.solver_params.reheat_after_no_improvement).toBe(0);
+    expect(rustScenario.settings.solver_params.initial_temperature).toBe(1);
+    expect(rustScenario.settings.solver_params.final_temperature).toBe(0.01);
+    expect(rustScenario.settings.solver_params.reheat_cycles).toBe(0);
+    expect(rustScenario.settings.solver_params.reheat_after_no_improvement).toBe(0);
   });
 
   it("passes session-specific group capacities through to Rust", () => {
-    const rustScenario = convertScenarioToRustFormat(
+    const rustScenario = normalizeScenarioForWasm(
       createSampleScenario({
         num_sessions: 3,
         groups: [
@@ -131,12 +129,10 @@ describe("wasm conversions", () => {
         ],
       }),
     ) as {
-      problem: {
-        groups: Array<{ id: string; size: number; session_sizes?: number[] }>;
-      };
+      groups: Array<{ id: string; size: number; session_sizes?: number[] }>;
     };
 
-    expect(rustScenario.problem.groups).toEqual([
+    expect(rustScenario.groups).toEqual([
       { id: 'g1', size: 4, session_sizes: [4, 0, 2] },
       { id: 'g2', size: 3 },
     ]);

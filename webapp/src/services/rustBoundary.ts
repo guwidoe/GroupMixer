@@ -1,11 +1,15 @@
 import type { Scenario, Solution } from '../types';
-import { convertScenarioToRustFormat, convertRustResultToSolution } from './wasm/conversions';
+import { convertRustResultToSolution } from './wasm/conversions';
+import {
+  buildWasmScenarioInput,
+  buildWasmWarmStartInput,
+  type WarmStartSchedule,
+} from './wasm/scenarioContract';
+import type { WasmContractSolveInput } from './wasm/module';
 import type { ProgressUpdate, RustResult } from './wasm/types';
 
-export type WarmStartSchedule = Record<string, Record<string, string[]>>;
-
-export function buildRustScenarioPayload(scenario: Scenario): Record<string, unknown> {
-  return convertScenarioToRustFormat(scenario);
+export function buildRustScenarioPayload(scenario: Scenario): WasmContractSolveInput {
+  return buildWasmScenarioInput(scenario);
 }
 
 export function buildRustScenarioJson(scenario: Scenario): string {
@@ -15,12 +19,8 @@ export function buildRustScenarioJson(scenario: Scenario): string {
 export function buildWarmStartScenarioPayload(
   scenario: Scenario,
   initialSchedule: WarmStartSchedule,
-): Record<string, unknown> & { initial_schedule: WarmStartSchedule } {
-  const payload = buildRustScenarioPayload(scenario) as Record<string, unknown> & {
-    initial_schedule?: WarmStartSchedule;
-  };
-  payload.initial_schedule = initialSchedule;
-  return payload as Record<string, unknown> & { initial_schedule: WarmStartSchedule };
+): WasmContractSolveInput & { initial_schedule: WarmStartSchedule } {
+  return buildWasmWarmStartInput(scenario, initialSchedule);
 }
 
 export function buildWarmStartScenarioJson(

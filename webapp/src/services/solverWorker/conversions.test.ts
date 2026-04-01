@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  convertScenarioToRustFormat,
-  convertRustResultToSolution,
-} from "../wasm/conversions";
+import { convertRustResultToSolution } from "../wasm/conversions";
+import { normalizeScenarioForWasm } from "../wasm/scenarioContract";
 import { createSampleScenario } from "../../test/fixtures";
 import type { ProgressUpdate } from "../wasm/types";
 
@@ -52,7 +50,7 @@ const progress: ProgressUpdate = {
 
 describe("shared solver conversions", () => {
   it("preserves explicit objectives and normalizes immovable sessions", () => {
-    const rustScenario = convertScenarioToRustFormat(
+    const rustScenario = normalizeScenarioForWasm(
       createSampleScenario({
         objectives: [{ type: "custom-objective", weight: 2 }],
         constraints: [

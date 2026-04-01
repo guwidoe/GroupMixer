@@ -1,15 +1,18 @@
-import type { SolverSettings } from "../../types";
+import type { Scenario, SolverSettings } from "../../types";
 import type { ProgressUpdate, RustResult } from "./types";
+import type { WarmStartSchedule } from "./scenarioContract";
 
 export type WasmProgressJsonCallback = (progressJson: string) => boolean;
 export type WasmContractProgressCallback = (progress: ProgressUpdate) => boolean;
-export type WasmContractSolveInput = Record<string, unknown>;
 export type WasmModuleLoader = () => Promise<WasmContractModule>;
 
+export interface WasmContractSolveInput {
+  scenario: Scenario;
+  initial_schedule?: WarmStartSchedule;
+}
+
 export interface WasmRecommendSettingsRequest {
-  problem_definition: Record<string, unknown>;
-  objectives: unknown[];
-  constraints: unknown[];
+  scenario: Scenario;
   desired_runtime_seconds: number;
 }
 
@@ -211,14 +214,14 @@ export const WASM_RUNTIME_EXPORT_NAMES = {
   get_public_error: "get_public_error",
   solve: "solve",
   solve_with_progress: "solve_with_progress",
-  validate_scenario: "validate_problem",
+  validate_scenario: "validate_scenario",
   get_default_solver_configuration: "get_default_solver_configuration",
   recommend_settings: "recommend_settings",
   evaluate_input: "evaluate_input",
   inspect_result: "inspect_result",
   solve_legacy_json: "solve_legacy_json",
   solve_with_progress_legacy_json: "solve_with_progress_legacy_json",
-  validate_scenario_legacy_json: "validate_problem_legacy_json",
+  validate_scenario_legacy_json: "validate_scenario_legacy_json",
   get_default_settings_legacy_json: "get_default_settings_legacy_json",
   get_recommended_settings_legacy_json: "get_recommended_settings_legacy_json",
   init_panic_hook: "init_panic_hook",

@@ -9,15 +9,47 @@ use gm_contracts::types::{
 };
 use gm_core::{
     calculate_recommended_settings, default_solver_configuration,
-    models::{ApiInput, ProgressUpdate, SolverConfiguration, SolverResult},
+    models::{
+        ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, ProgressUpdate,
+        SolverConfiguration, SolverResult,
+    },
     run_solver, run_solver_with_progress,
     solver::State,
 };
 use serde::de::DeserializeOwned;
+use serde::Deserialize;
 use serde::Serialize;
 use wasm_bindgen::JsValue;
 
 const MAX_SAFE_JS_INTEGER: u64 = 9_007_199_254_740_991;
+
+type WasmInitialSchedule =
+    std::collections::HashMap<String, std::collections::HashMap<String, Vec<String>>>;
+
+#[derive(Debug, Clone, Deserialize)]
+struct WasmScenarioContractInput {
+    scenario: WasmScenario,
+    #[serde(default)]
+    initial_schedule: Option<WasmInitialSchedule>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct WasmScenarioRecommendSettingsRequest {
+    scenario: WasmScenario,
+    desired_runtime_seconds: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct WasmScenario {
+    people: Vec<Person>,
+    groups: Vec<Group>,
+    num_sessions: u32,
+    #[serde(default)]
+    objectives: Vec<Objective>,
+    #[serde(default)]
+    constraints: Vec<Constraint>,
+    settings: SolverConfiguration,
+}
 
 fn random_js_safe_seed() -> Result<u64, PublicErrorEnvelope> {
     let mut bytes = [0_u8; 8];
@@ -42,7 +74,7 @@ fn ensure_browser_safe_seed(request: &ApiInput) -> Result<ApiInput, PublicErrorE
 }
 
 pub fn solve_contract_js(input: JsValue) -> Result<JsValue, JsValue> {
-    let request: ApiInput = parse_js_value(input, "solve", &["solve-request"])?;
+    let request = parse_wasm_scenario_input(input, "solve", &["solve-request"])?;
     let result = solve_contract(&request).map_err(|error| public_error_to_js_value(&error))?;
     serialize_output(&result, "solve")
 }
@@ -51,15 +83,15 @@ pub fn solve_with_progress_js(
     input: JsValue,
     progress_callback: Option<js_sys::Function>,
 ) -> Result<JsValue, JsValue> {
-    let request: ApiInput = parse_js_value(input, "solve", &["solve-request"])?;
+    let request = parse_wasm_scenario_input(input, "solve", &["solve-request"])?;
     let result = solve_with_progress_contract(&request, progress_callback)
         .map_err(|error| public_error_to_js_value(&error))?;
     serialize_output(&result, "solve")
 }
 
-pub fn validate_problem_contract_js(input: JsValue) -> Result<JsValue, JsValue> {
-    let request: ApiInput = parse_js_value(input, "validate-problem", &["validate-request"])?;
-    let response = validate_problem_contract(&request);
+pub fn validate_scenario_contract_js(input: JsValue) -> Result<JsValue, JsValue> {
+    let request = parse_wasm_scenario_input(input, "validate-problem", &["validate-request"])?;
+    let response = validate_scenario_contract(&request);
     serialize_output(&response, "validate-problem")
 }
 
@@ -69,15 +101,18 @@ pub fn get_default_solver_configuration_js() -> Result<JsValue, JsValue> {
 }
 
 pub fn recommend_settings_js(input: JsValue) -> Result<JsValue, JsValue> {
-    let request: RecommendSettingsRequest =
-        parse_js_value(input, "recommend-settings", &["recommend-settings-request"])?;
+    let request = parse_wasm_recommend_settings_request(
+        input,
+        "recommend-settings",
+        &["recommend-settings-request"],
+    )?;
     let settings =
         recommend_settings_contract(&request).map_err(|error| public_error_to_js_value(&error))?;
     serialize_output(&settings, "recommend-settings")
 }
 
 pub fn evaluate_input_contract_js(input: JsValue) -> Result<JsValue, JsValue> {
-    let request: ApiInput = parse_js_value(input, "evaluate-input", &["solve-request"])?;
+    let request = parse_wasm_scenario_input(input, "evaluate-input", &["solve-request"])?;
     let result =
         evaluate_input_contract(&request).map_err(|error| public_error_to_js_value(&error))?;
     serialize_output(&result, "evaluate-input")
@@ -133,7 +168,7 @@ pub fn solve_with_progress_contract(
     }
 }
 
-pub fn validate_problem_contract(request: &ApiInput) -> ValidateResponse {
+pub fn validate_scenario_contract(request: &ApiInput) -> ValidateResponse {
     match State::new(request) {
         Ok(_) => ValidateResponse {
             valid: true,
@@ -198,6 +233,23 @@ fn parse_js_value<T: DeserializeOwned>(
     })
 }
 
+fn parse_wasm_scenario_input(
+    value: JsValue,
+    operation_id: &str,
+    schema_ids: &[&str],
+) -> Result<ApiInput, JsValue> {
+    parse_js_value::<WasmScenarioContractInput>(value, operation_id, schema_ids).map(Into::into)
+}
+
+fn parse_wasm_recommend_settings_request(
+    value: JsValue,
+    operation_id: &str,
+    schema_ids: &[&str],
+) -> Result<RecommendSettingsRequest, JsValue> {
+    parse_js_value::<WasmScenarioRecommendSettingsRequest>(value, operation_id, schema_ids)
+        .map(Into::into)
+}
+
 fn serialize_output<T: Serialize>(value: &T, operation_id: &str) -> Result<JsValue, JsValue> {
     serde_wasm_bindgen::to_value(value).map_err(|error| {
         public_error_to_js_value(&internal_error(
@@ -207,12 +259,65 @@ fn serialize_output<T: Serialize>(value: &T, operation_id: &str) -> Result<JsVal
     })
 }
 
+impl WasmScenario {
+    fn into_api_input(self, initial_schedule: Option<WasmInitialSchedule>) -> ApiInput {
+        ApiInput {
+            problem: ProblemDefinition {
+                people: self.people,
+                groups: self.groups,
+                num_sessions: self.num_sessions,
+            },
+            initial_schedule,
+            objectives: default_objectives(self.objectives),
+            constraints: self.constraints,
+            solver: self.settings,
+        }
+    }
+}
+
+impl From<WasmScenarioContractInput> for ApiInput {
+    fn from(value: WasmScenarioContractInput) -> Self {
+        value.scenario.into_api_input(value.initial_schedule)
+    }
+}
+
+impl From<WasmScenarioRecommendSettingsRequest> for RecommendSettingsRequest {
+    fn from(value: WasmScenarioRecommendSettingsRequest) -> Self {
+        let WasmScenarioRecommendSettingsRequest {
+            scenario,
+            desired_runtime_seconds,
+        } = value;
+
+        RecommendSettingsRequest {
+            problem_definition: ProblemDefinition {
+                people: scenario.people,
+                groups: scenario.groups,
+                num_sessions: scenario.num_sessions,
+            },
+            objectives: default_objectives(scenario.objectives),
+            constraints: scenario.constraints,
+            desired_runtime_seconds,
+        }
+    }
+}
+
+fn default_objectives(objectives: Vec<Objective>) -> Vec<Objective> {
+    if objectives.is_empty() {
+        vec![Objective {
+            r#type: "maximize_unique_contacts".to_string(),
+            weight: 1.0,
+        }]
+    } else {
+        objectives
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         evaluate_input_contract, get_default_solver_configuration, inspect_result_contract,
         recommend_settings_contract, solve_contract, solve_with_progress_contract,
-        validate_problem_contract, MAX_SAFE_JS_INTEGER,
+        validate_scenario_contract, MAX_SAFE_JS_INTEGER,
     };
     use gm_contracts::types::RecommendSettingsRequest;
     use gm_core::models::{
@@ -307,7 +412,7 @@ mod tests {
 
     #[test]
     fn validate_contract_returns_shared_validation_shape() {
-        let response = validate_problem_contract(&valid_input());
+        let response = validate_scenario_contract(&valid_input());
         assert!(response.valid);
         assert!(response.issues.is_empty());
     }

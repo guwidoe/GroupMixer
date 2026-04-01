@@ -15,7 +15,7 @@ vi.mock('../hooks', async () => {
 });
 
 vi.mock('./ConstraintComplianceCards', () => ({
-  default: ({ scenario, solution }: { problem: { people: unknown[] }; solution: { assignments: unknown[] } }) => (
+  default: ({ scenario, solution }: { scenario: { people: unknown[] }; solution: { assignments: unknown[] } }) => (
     <div>{`compliance:${scenario.people.length}:${solution.assignments.length}`}</div>
   ),
 }));

@@ -77,9 +77,9 @@ pub fn solve(input: JsValue) -> Result<JsValue, JsValue> {
 }
 
 #[wasm_bindgen]
-pub fn validate_problem(input: JsValue) -> Result<JsValue, JsValue> {
+pub fn validate_scenario(input: JsValue) -> Result<JsValue, JsValue> {
     init_panic_hook();
-    contract_runtime::validate_problem_contract_js(input)
+    contract_runtime::validate_scenario_contract_js(input)
 }
 
 #[wasm_bindgen]
@@ -107,12 +107,12 @@ pub fn inspect_result(result: JsValue) -> Result<JsValue, JsValue> {
 }
 
 #[wasm_bindgen]
-pub fn solve_legacy_json(problem_json: &str) -> Result<String, JsValue> {
+pub fn solve_legacy_json(scenario_json: &str) -> Result<String, JsValue> {
     init_panic_hook();
 
-    let api_input: ApiInput = serde_json::from_str(problem_json).map_err(|e| {
+    let api_input: ApiInput = serde_json::from_str(scenario_json).map_err(|e| {
         JsValue::from(js_sys::Error::new(&format!(
-            "Failed to parse problem: {}",
+            "Failed to parse scenario: {}",
             e
         )))
     })?;
@@ -141,14 +141,14 @@ pub fn solve_with_progress(
 
 #[wasm_bindgen]
 pub fn solve_with_progress_legacy_json(
-    problem_json: &str,
+    scenario_json: &str,
     progress_callback: Option<js_sys::Function>,
 ) -> Result<String, JsValue> {
     init_panic_hook();
 
-    let api_input: ApiInput = serde_json::from_str(problem_json).map_err(|e| {
+    let api_input: ApiInput = serde_json::from_str(scenario_json).map_err(|e| {
         JsValue::from(js_sys::Error::new(&format!(
-            "Failed to parse problem: {}",
+            "Failed to parse scenario: {}",
             e
         )))
     })?;
@@ -198,12 +198,12 @@ pub fn solve_with_progress_legacy_json(
 }
 
 #[wasm_bindgen]
-pub fn validate_problem_legacy_json(problem_json: &str) -> Result<String, JsValue> {
+pub fn validate_scenario_legacy_json(scenario_json: &str) -> Result<String, JsValue> {
     init_panic_hook();
 
-    let api_input: ApiInput = serde_json::from_str(problem_json).map_err(|e| {
+    let api_input: ApiInput = serde_json::from_str(scenario_json).map_err(|e| {
         JsValue::from(js_sys::Error::new(&format!(
-            "Failed to parse problem: {}",
+            "Failed to parse scenario: {}",
             e
         )))
     })?;
@@ -276,7 +276,7 @@ pub fn get_default_settings_legacy_json() -> Result<String, JsValue> {
 
 /// Evaluate a provided input (including an optional initial schedule) without running the solver.
 ///
-/// Expects the same JSON shape as `models::ApiInput` (problem, objectives, constraints, solver),
+/// Expects the same JSON shape as `models::ApiInput` (scenario/problem payload plus solver fields),
 /// and optionally `initial_schedule` in the `{"session_0": {"group_id": ["person_id", ...]}, ...}` format.
 /// Returns a `SolverResult` JSON with score breakdown computed from the provided schedule.
 #[wasm_bindgen]
@@ -310,12 +310,12 @@ pub fn evaluate_input_legacy_json(input_json: &str) -> Result<String, JsValue> {
 }
 
 #[wasm_bindgen]
-pub fn test_callback_consistency(problem_json: &str) -> Result<String, JsValue> {
+pub fn test_callback_consistency(scenario_json: &str) -> Result<String, JsValue> {
     init_panic_hook();
 
-    let api_input: ApiInput = serde_json::from_str(problem_json).map_err(|e| {
+    let api_input: ApiInput = serde_json::from_str(scenario_json).map_err(|e| {
         JsValue::from(js_sys::Error::new(&format!(
-            "Failed to parse problem: {}",
+            "Failed to parse scenario: {}",
             e
         )))
     })?;
@@ -405,13 +405,13 @@ pub fn test_callback_consistency(problem_json: &str) -> Result<String, JsValue> 
 
 #[wasm_bindgen]
 pub fn get_recommended_settings_legacy_json(
-    problem_json: &str,
+    scenario_json: &str,
     desired_runtime_seconds: u64,
 ) -> Result<String, JsValue> {
     init_panic_hook();
 
     #[derive(serde::Deserialize)]
-    struct ProblemWrapper {
+    struct ScenarioWrapper {
         people: Vec<gm_core::models::Person>,
         groups: Vec<gm_core::models::Group>,
         num_sessions: u32,
@@ -421,11 +421,11 @@ pub fn get_recommended_settings_legacy_json(
         objectives: Vec<gm_core::models::Objective>,
     }
 
-    let wrapper: ProblemWrapper = match serde_json::from_str(problem_json) {
+    let wrapper: ScenarioWrapper = match serde_json::from_str(scenario_json) {
         Ok(p) => p,
         Err(e) => {
             return Err(JsValue::from(js_sys::Error::new(&format!(
-                "Failed to parse problem JSON: {}",
+                "Failed to parse scenario JSON: {}",
                 e
             ))))
         }
@@ -638,8 +638,8 @@ mod tests {
     }
 
     #[wasm_bindgen_test]
-    fn validate_problem_reports_expected_shape() {
-        let result_json = validate_problem_legacy_json(&invalid_problem_json())
+    fn validate_scenario_reports_expected_shape() {
+        let result_json = validate_scenario_legacy_json(&invalid_problem_json())
             .expect("validation should succeed");
         let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
 

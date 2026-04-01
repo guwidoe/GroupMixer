@@ -157,9 +157,14 @@ export function createSolverWorkerRuntime({
       case "recommend_settings":
         result = requireMethod("recommend_settings")(
           message.data.recommendRequest || {
-            problem_definition: {},
-            objectives: [],
-            constraints: [],
+            scenario: {
+              people: [],
+              groups: [],
+              num_sessions: 0,
+              objectives: [],
+              constraints: [],
+              settings: { solver_type: "SimulatedAnnealing", stop_conditions: {}, solver_params: {} },
+            },
             desired_runtime_seconds: 0,
           },
         );

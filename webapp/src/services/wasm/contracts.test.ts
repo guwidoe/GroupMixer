@@ -1,20 +1,50 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Scenario } from "../../types";
 import { createSampleScenario, createSampleSolverSettings } from "../../test/fixtures";
-import { buildRustScenarioPayload } from "../rustBoundary";
 import { convertRustResultToSolution } from "./conversions";
+import {
+  buildWasmRecommendSettingsRequest,
+  buildWasmScenarioInput,
+  buildWasmWarmStartInput,
+} from "./scenarioContract";
 import {
   normalizeContractError,
   WasmContractClient,
   WasmContractClientError,
 } from "./contracts";
 
-vi.mock("../rustBoundary", () => ({
-  buildRustScenarioPayload: vi.fn(() => ({
-    problem: { people: [], groups: [], num_sessions: 2 },
-    objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
-    constraints: [],
-    solver: { solver_type: "SimulatedAnnealing" },
+vi.mock("./scenarioContract", () => ({
+  buildWasmScenarioInput: vi.fn(() => ({
+    scenario: {
+      people: [],
+      groups: [],
+      num_sessions: 2,
+      objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
+      constraints: [],
+      settings: { solver_type: "SimulatedAnnealing" },
+    },
+  })),
+  buildWasmWarmStartInput: vi.fn((_: unknown, initial_schedule: unknown) => ({
+    scenario: {
+      people: [],
+      groups: [],
+      num_sessions: 2,
+      objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
+      constraints: [],
+      settings: { solver_type: "SimulatedAnnealing" },
+    },
+    initial_schedule,
+  })),
+  buildWasmRecommendSettingsRequest: vi.fn(() => ({
+    scenario: {
+      people: [],
+      groups: [],
+      num_sessions: 2,
+      objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
+      constraints: [],
+      settings: { solver_type: "SimulatedAnnealing" },
+    },
+    desired_runtime_seconds: 11,
   })),
 }));
 
@@ -117,10 +147,15 @@ describe("WasmContractClient", () => {
     await expect(client.getDefaultSolverConfiguration()).resolves.toEqual(createSampleSolverSettings());
     await expect(client.recommendSettings(scenario, 11)).resolves.toEqual(createSampleSolverSettings());
 
+    expect(buildWasmRecommendSettingsRequest).toHaveBeenCalledWith(scenario, 11);
     expect(wasmModule.recommend_settings).toHaveBeenCalledWith({
-      problem_definition: { people: [], groups: [], num_sessions: 2 },
-      objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
-      constraints: [],
+      scenario: expect.objectContaining({
+        people: [],
+        groups: [],
+        num_sessions: 2,
+        objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
+        constraints: [],
+      }),
       desired_runtime_seconds: 11,
     });
   });
@@ -158,9 +193,9 @@ describe("WasmContractClient", () => {
 
     const result = await client.solveWithProgress(createScenario(), progressCallback);
 
-    expect(buildRustScenarioPayload).toHaveBeenCalled();
+    expect(buildWasmScenarioInput).toHaveBeenCalled();
     expect(wasmModule.solve_with_progress).toHaveBeenCalledWith(
-      expect.objectContaining({ problem: expect.any(Object) }),
+      expect.objectContaining({ scenario: expect.any(Object) }),
       expect.any(Function),
     );
     expect(progressCallback).toHaveBeenCalledWith({ iteration: 5, elapsed_seconds: 1.5, best_score: 7 });
@@ -178,7 +213,7 @@ describe("WasmContractClient", () => {
     await client.solve(createScenario());
 
     expect(wasmModule.solve).toHaveBeenCalledWith(
-      expect.objectContaining({ problem: expect.any(Object) }),
+      expect.objectContaining({ scenario: expect.any(Object) }),
     );
   });
 
@@ -186,13 +221,13 @@ describe("WasmContractClient", () => {
     const wasmModule = createContractModule();
     const client = new WasmContractClient(async () => wasmModule);
 
-    await expect(client.solveContract({ problem: { people: [] } })).resolves.toEqual({
+    await expect(client.solveContract({ scenario: createScenario() })).resolves.toEqual({
       schedule: {},
       final_score: 8,
       unique_contacts: 2,
     });
     await expect(
-      client.solveContractWithProgress({ problem: { people: [] } }),
+      client.solveContractWithProgress({ scenario: createScenario() }),
     ).resolves.toEqual({
       result: { schedule: {}, final_score: 9, unique_contacts: 1 },
       lastProgress: null,
@@ -203,16 +238,24 @@ describe("WasmContractClient", () => {
     const wasmModule = createContractModule();
     const client = new WasmContractClient(async () => wasmModule);
 
-    await client.evaluateInput(createScenario(), [
+    const scenario = createScenario();
+    await client.evaluateInput(scenario, [
       { person_id: "p1", group_id: "g1", session_id: 0 },
       { person_id: "p2", group_id: "g2", session_id: 1 },
     ]);
 
+    expect(buildWasmWarmStartInput).toHaveBeenCalledWith(scenario, {
+      session_0: { g1: ["p1"] },
+      session_1: { g2: ["p2"] },
+    });
     expect(wasmModule.evaluate_input).toHaveBeenCalledWith({
-      problem: { people: [], groups: [], num_sessions: 2 },
-      objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
-      constraints: [],
-      solver: { solver_type: "SimulatedAnnealing" },
+      scenario: expect.objectContaining({
+        people: [],
+        groups: [],
+        num_sessions: 2,
+        objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
+        constraints: [],
+      }),
       initial_schedule: {
         session_0: { g1: ["p1"] },
         session_1: { g2: ["p2"] },

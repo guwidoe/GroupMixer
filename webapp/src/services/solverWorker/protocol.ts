@@ -1,4 +1,4 @@
-import type { WasmRecommendSettingsRequest } from "../wasm/module";
+import type { WasmContractSolveInput, WasmRecommendSettingsRequest } from "../wasm/module";
 import type { ProgressUpdate, RustResult } from "../wasm/types";
 
 export type SolverRpcMethod =
@@ -33,7 +33,7 @@ export function isSolverRpcMethod(value: string): value is SolverRpcMethod {
 }
 
 export interface SolverMessageData {
-  scenarioPayload?: Record<string, unknown>;
+  scenarioPayload?: WasmContractSolveInput;
   resultPayload?: RustResult;
   useProgress?: boolean;
   recommendRequest?: WasmRecommendSettingsRequest;
@@ -54,7 +54,7 @@ export interface SolveRequestMessage {
   type: "SOLVE";
   id: string;
   data: {
-    scenarioPayload: Record<string, unknown>;
+    scenarioPayload: WasmContractSolveInput;
     useProgress?: boolean;
   };
 }
@@ -152,7 +152,7 @@ export function createCancelRequestMessage(id: string): CancelRequestMessage {
 
 export function createSolveRequestMessage(
   id: string,
-  scenarioPayload: Record<string, unknown>,
+  scenarioPayload: WasmContractSolveInput,
   useProgress = false,
 ): SolveRequestMessage {
   return {

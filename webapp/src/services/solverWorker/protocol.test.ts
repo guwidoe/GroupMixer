@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createSampleScenario } from "../../test/fixtures";
 import {
   SOLVER_RPC_METHODS,
   createCancelRequestMessage,
@@ -45,17 +46,16 @@ describe("solver worker protocol", () => {
   it("builds request messages with the expected boundary shape", () => {
     expect(createInitRequestMessage("1")).toEqual({ type: "INIT", id: "1" });
     expect(createCancelRequestMessage("2")).toEqual({ type: "CANCEL", id: "2" });
-    expect(createSolveRequestMessage("3", { problem: { people: [] } }, true)).toEqual({
+    const scenario = createSampleScenario();
+    expect(createSolveRequestMessage("3", { scenario }, true)).toEqual({
       type: "SOLVE",
       id: "3",
-      data: { scenarioPayload: { problem: { people: [] } }, useProgress: true },
+      data: { scenarioPayload: { scenario }, useProgress: true },
     });
     expect(
       createRpcRequestMessage("recommend_settings", "4", {
         recommendRequest: {
-          problem_definition: { people: [] },
-          objectives: [],
-          constraints: [],
+          scenario,
           desired_runtime_seconds: 9,
         },
       }),
@@ -64,9 +64,7 @@ describe("solver worker protocol", () => {
       id: "4",
       data: {
         recommendRequest: {
-          problem_definition: { people: [] },
-          objectives: [],
-          constraints: [],
+          scenario,
           desired_runtime_seconds: 9,
         },
       },

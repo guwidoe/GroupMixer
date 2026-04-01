@@ -1,9 +1,14 @@
 import type { Assignment, Scenario, Solution, SolverSettings } from "../../types";
-import { buildRustScenarioPayload } from "../rustBoundary";
 import { convertRustResultToSolution } from "./conversions";
+import {
+  buildWasmRecommendSettingsRequest,
+  buildWasmScenarioInput,
+  buildWasmWarmStartInput,
+} from "./scenarioContract";
 import {
   isWasmContractModule,
   type WasmContractModule,
+  type WasmContractSolveInput,
   type WasmBootstrapResponse,
   type WasmErrorLookupResponse,
   type WasmPublicErrorEnvelope,
@@ -78,24 +83,6 @@ export function normalizeContractError(
   );
 }
 
-function buildRecommendSettingsRequest(
-  scenario: Scenario,
-  desiredRuntimeSeconds: number,
-): WasmRecommendSettingsRequest {
-  const payload = buildRustScenarioPayload(scenario) as {
-    problem?: Record<string, unknown>;
-    objectives?: unknown[];
-    constraints?: unknown[];
-  };
-
-  return {
-    problem_definition: payload.problem ?? {},
-    objectives: payload.objectives ?? [],
-    constraints: payload.constraints ?? [],
-    desired_runtime_seconds: desiredRuntimeSeconds,
-  };
-}
-
 function assignmentsToSchedule(
   assignments: Assignment[],
 ): Record<string, Record<string, string[]>> {
@@ -111,23 +98,17 @@ function assignmentsToSchedule(
   return schedule;
 }
 
-function buildSolvePayload(scenario: Scenario): Record<string, unknown> {
-  return buildRustScenarioPayload(scenario);
+function buildSolvePayload(scenario: Scenario): WasmContractSolveInput {
+  return buildWasmScenarioInput(scenario);
 }
 
 function buildEvaluatePayload(
   scenario: Scenario,
   assignments: Assignment[],
-): Record<string, unknown> & {
+): WasmContractSolveInput & {
   initial_schedule: Record<string, Record<string, string[]>>;
 } {
-  const payload = buildSolvePayload(scenario) as Record<string, unknown> & {
-    initial_schedule?: Record<string, Record<string, string[]>>;
-  };
-  payload.initial_schedule = assignmentsToSchedule(assignments);
-  return payload as Record<string, unknown> & {
-    initial_schedule: Record<string, Record<string, string[]>>;
-  };
+  return buildWasmWarmStartInput(scenario, assignmentsToSchedule(assignments));
 }
 
 export class WasmContractClient {
@@ -267,7 +248,7 @@ export class WasmContractClient {
 
     try {
       return module.recommend_settings(
-        buildRecommendSettingsRequest(scenario, desiredRuntimeSeconds),
+        buildWasmRecommendSettingsRequest(scenario, desiredRuntimeSeconds),
       );
     } catch (error) {
       throw normalizeContractError(error, "Failed to recommend solver settings");
@@ -285,7 +266,7 @@ export class WasmContractClient {
     }
   }
 
-  async solveContract(input: Record<string, unknown>): Promise<RustResult> {
+  async solveContract(input: WasmContractSolveInput): Promise<RustResult> {
     const module = await this.requireModule();
 
     try {
@@ -324,7 +305,7 @@ export class WasmContractClient {
   }
 
   async solveContractWithProgress(
-    input: Record<string, unknown>,
+    input: WasmContractSolveInput,
     progressCallback?: ProgressCallback,
   ): Promise<{ result: RustResult; lastProgress: ProgressUpdate | null }> {
     const module = await this.requireModule();
@@ -358,7 +339,7 @@ export class WasmContractClient {
     }
   }
 
-  async validateScenarioContract(input: Record<string, unknown>): Promise<WasmValidateResponse> {
+  async validateScenarioContract(input: WasmContractSolveInput): Promise<WasmValidateResponse> {
     const module = await this.requireModule();
 
     try {
@@ -391,7 +372,7 @@ export class WasmContractClient {
     }
   }
 
-  async evaluateInputContract(input: Record<string, unknown>): Promise<RustResult> {
+  async evaluateInputContract(input: WasmContractSolveInput): Promise<RustResult> {
     const module = await this.requireModule();
 
     try {
