@@ -1,4 +1,14 @@
-import type { Constraint, Scenario } from '../../types';
+import type {
+  AttributeBalanceParams,
+  Constraint,
+  Group,
+  ImmovablePeopleParams,
+  ImmovablePersonParams,
+  Objective,
+  Person,
+  Scenario,
+  SolverSettings,
+} from '../../types';
 
 export type WarmStartSchedule = Record<string, Record<string, string[]>>;
 
@@ -12,6 +22,157 @@ export interface WasmScenarioRecommendSettingsRequest {
   desired_runtime_seconds: number;
 }
 
+function cloneOptionalNumberArray(values?: number[]): number[] | undefined {
+  return Array.isArray(values) ? [...values] : undefined;
+}
+
+function clonePeople(people: Person[]): Person[] {
+  return people.map((person) => ({
+    ...person,
+    attributes: { ...person.attributes },
+    sessions: cloneOptionalNumberArray(person.sessions),
+  }));
+}
+
+function cloneGroups(groups: Group[]): Group[] {
+  return groups.map((group) => ({
+    ...group,
+    session_sizes: cloneOptionalNumberArray(group.session_sizes),
+  }));
+}
+
+function normalizeObjectivesForWasm(objectives?: Objective[]): Objective[] {
+  if (objectives && objectives.length > 0) {
+    return objectives.map((objective) => ({ ...objective }));
+  }
+
+  return [
+    {
+      type: 'maximize_unique_contacts',
+      weight: 1.0,
+    },
+  ];
+}
+
+function sanitizeNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function normalizeSolverSettingsForWasm(settings: SolverSettings): SolverSettings {
+  const movePolicy = settings.move_policy
+    ? {
+        ...settings.move_policy,
+        allowed_families: settings.move_policy.allowed_families
+          ? [...settings.move_policy.allowed_families]
+          : settings.move_policy.allowed_families,
+        weights: settings.move_policy.weights
+          ? { ...settings.move_policy.weights }
+          : settings.move_policy.weights,
+      }
+    : settings.move_policy;
+
+  let solverParams = settings.solver_params;
+
+  if (solverParams && typeof solverParams === 'object') {
+    if (settings.solver_type === 'SimulatedAnnealing' && 'SimulatedAnnealing' in solverParams) {
+      const rawParams =
+        (solverParams.SimulatedAnnealing as unknown as Record<string, unknown> | undefined) ?? {};
+
+      solverParams = {
+        solver_type: settings.solver_type,
+        ...rawParams,
+        initial_temperature: sanitizeNumber(rawParams.initial_temperature, 1.0),
+        final_temperature: sanitizeNumber(rawParams.final_temperature, 0.01),
+        reheat_cycles: sanitizeNumber(rawParams.reheat_cycles, 0),
+        reheat_after_no_improvement: sanitizeNumber(rawParams.reheat_after_no_improvement, 0),
+      } as unknown as SolverSettings['solver_params'];
+    } else {
+      solverParams = { ...solverParams };
+    }
+  }
+
+  return {
+    ...settings,
+    stop_conditions: { ...settings.stop_conditions },
+    solver_params: solverParams,
+    logging: settings.logging ? { ...settings.logging } : settings.logging,
+    telemetry: settings.telemetry ? { ...settings.telemetry } : settings.telemetry,
+    move_policy: movePolicy,
+    allowed_sessions: cloneOptionalNumberArray(settings.allowed_sessions),
+  };
+}
+
+function normalizeSessionsForConstraint(
+  sessions: number[] | undefined,
+  allSessions: number[],
+): number[] {
+  return Array.isArray(sessions) && sessions.length > 0 ? [...sessions] : [...allSessions];
+}
+
+function normalizeConstraintForWasm(constraint: Constraint, allSessions: number[]): Constraint {
+  switch (constraint.type) {
+    case 'RepeatEncounter':
+      return {
+        ...constraint,
+        penalty_weight: constraint.penalty_weight ?? 1,
+      };
+    case 'AttributeBalance': {
+      const normalized: Constraint = {
+        ...constraint,
+        desired_values: { ...(constraint as AttributeBalanceParams).desired_values },
+        sessions: cloneOptionalNumberArray((constraint as AttributeBalanceParams).sessions),
+        penalty_weight: constraint.penalty_weight ?? 50,
+      };
+      return normalized;
+    }
+    case 'ImmovablePerson': {
+      const immovable = constraint as Extract<Constraint, { type: 'ImmovablePerson' }> &
+        ImmovablePersonParams;
+      return {
+        ...immovable,
+        sessions: normalizeSessionsForConstraint(immovable.sessions, allSessions),
+      };
+    }
+    case 'ImmovablePeople': {
+      const immovable = constraint as Extract<Constraint, { type: 'ImmovablePeople' }> &
+        ImmovablePeopleParams;
+      return {
+        ...immovable,
+        people: [...immovable.people],
+        sessions: normalizeSessionsForConstraint(immovable.sessions, allSessions),
+      };
+    }
+    case 'MustStayTogether':
+      return {
+        ...constraint,
+        people: [...constraint.people],
+        sessions: cloneOptionalNumberArray(constraint.sessions),
+      };
+    case 'ShouldStayTogether':
+      return {
+        ...constraint,
+        people: [...constraint.people],
+        sessions: cloneOptionalNumberArray(constraint.sessions),
+        penalty_weight: constraint.penalty_weight ?? 1000,
+      };
+    case 'ShouldNotBeTogether':
+      return {
+        ...constraint,
+        people: [...constraint.people],
+        sessions: cloneOptionalNumberArray(constraint.sessions),
+        penalty_weight: constraint.penalty_weight ?? 1000,
+      };
+    case 'PairMeetingCount':
+      return {
+        ...constraint,
+        people: [...constraint.people] as [string, string],
+        sessions: [...constraint.sessions],
+      };
+    default:
+      return constraint;
+  }
+}
+
 /**
  * Canonical browser→WASM boundary.
  *
@@ -21,81 +182,17 @@ export interface WasmScenarioRecommendSettingsRequest {
  * and browser-agent usage.
  */
 export function normalizeScenarioForWasm(scenario: Scenario): Scenario {
-  const solverSettings = { ...scenario.settings };
-
-  if (solverSettings.solver_params && typeof solverSettings.solver_params === 'object') {
-    const solverType = solverSettings.solver_type;
-    if (solverType === 'SimulatedAnnealing' && 'SimulatedAnnealing' in solverSettings.solver_params) {
-      const params = solverSettings.solver_params.SimulatedAnnealing as unknown as Record<string, unknown>;
-      const sanitizeNumber = (v: unknown, d: number) => (typeof v === 'number' && !isNaN(v) ? v : d);
-      params.initial_temperature = sanitizeNumber(params.initial_temperature, 1.0);
-      params.final_temperature = sanitizeNumber(params.final_temperature, 0.01);
-      params.reheat_cycles = sanitizeNumber(params.reheat_cycles, 0);
-      params.reheat_after_no_improvement = sanitizeNumber(params.reheat_after_no_improvement, 0);
-
-      (solverSettings.solver_params as unknown as Record<string, unknown>) = {
-        solver_type: solverType,
-        ...solverSettings.solver_params.SimulatedAnnealing,
-      };
-    }
-  }
-
-  const cleanedConstraints = (scenario.constraints || []).map((constraint: Constraint) => {
-    if (
-      (constraint.type === 'ShouldStayTogether' || constraint.type === 'ShouldNotBeTogether') &&
-      (constraint.penalty_weight === undefined || constraint.penalty_weight === null)
-    ) {
-      return { ...constraint, penalty_weight: 1000 };
-    }
-    if (
-      constraint.type === 'AttributeBalance' &&
-      (constraint.penalty_weight === undefined || constraint.penalty_weight === null)
-    ) {
-      return { ...constraint, penalty_weight: 50 };
-    }
-    if (
-      constraint.type === 'RepeatEncounter' &&
-      (constraint.penalty_weight === undefined || constraint.penalty_weight === null)
-    ) {
-      return { ...constraint, penalty_weight: 1 };
-    }
-    return constraint;
-  });
-
   const allSessions = Array.from({ length: scenario.num_sessions }, (_, i) => i);
-  const normalizedConstraints = cleanedConstraints.map((constraint: Constraint) => {
-    if (constraint.type === 'ImmovablePeople') {
-      const sessions = (constraint as unknown as { sessions?: number[] }).sessions;
-      return {
-        ...constraint,
-        sessions: Array.isArray(sessions) && sessions.length > 0 ? sessions : allSessions,
-      } as Constraint;
-    }
-    if (constraint.type === 'ImmovablePerson') {
-      const sessions = (constraint as unknown as { sessions?: number[] }).sessions;
-      return {
-        ...constraint,
-        sessions: Array.isArray(sessions) && sessions.length > 0 ? sessions : allSessions,
-      } as Constraint;
-    }
-    return constraint;
-  });
-
-  const objectives =
-    scenario.objectives && scenario.objectives.length > 0
-      ? scenario.objectives
-      : [
-          {
-            type: 'maximize_unique_contacts',
-            weight: 1.0,
-          },
-        ];
 
   return {
     ...scenario,
-    objectives,
-    constraints: normalizedConstraints,
-    settings: solverSettings,
+    people: clonePeople(scenario.people),
+    groups: cloneGroups(scenario.groups),
+    objectives: normalizeObjectivesForWasm(scenario.objectives),
+    constraints: (scenario.constraints || []).map((constraint) =>
+      normalizeConstraintForWasm(constraint, allSessions),
+    ),
+    settings: normalizeSolverSettingsForWasm(scenario.settings),
   };
 }
 
