@@ -1,4 +1,4 @@
-//! Data models and types for the solver-core API.
+//! Data models and types for the gm-core API.
 //!
 //! This module contains all the public data structures used to define optimization
 //! problems, configure the solver, and receive results. The API is designed to be
@@ -17,7 +17,7 @@ use std::collections::HashMap;
 /// # Example
 ///
 /// ```no_run
-/// use solver_core::models::*;
+/// use gm_core::models::*;
 /// use std::collections::HashMap;
 ///
 /// let input = ApiInput {
@@ -114,7 +114,7 @@ pub struct ProblemDefinition {
 /// # Example
 ///
 /// ```no_run
-/// use solver_core::models::Person;
+/// use gm_core::models::Person;
 /// use std::collections::HashMap;
 ///
 /// // Person participating in all sessions
@@ -161,7 +161,7 @@ pub struct Person {
 /// # Example
 ///
 /// ```no_run
-/// use solver_core::models::Group;
+/// use gm_core::models::Group;
 ///
 /// let team = Group {
 ///     id: "Development Team".to_string(),
@@ -198,7 +198,7 @@ pub struct Group {
 /// # Example
 ///
 /// ```no_run
-/// use solver_core::models::Objective;
+/// use gm_core::models::Objective;
 ///
 /// let objective = Objective {
 ///     r#type: "maximize_unique_contacts".to_string(),
@@ -234,7 +234,7 @@ pub struct Objective {
 /// # Examples
 ///
 /// ```no_run
-/// use solver_core::models::*;
+/// use gm_core::models::*;
 /// use std::collections::HashMap;
 ///
 /// // Limit repeat encounters
@@ -365,7 +365,7 @@ pub struct PairMeetingCountParams {
 /// # Example
 ///
 /// ```no_run
-/// use solver_core::models::RepeatEncounterParams;
+/// use gm_core::models::RepeatEncounterParams;
 ///
 /// // Allow at most 1 encounter, with squared penalty for violations
 /// let params = RepeatEncounterParams {
@@ -393,8 +393,8 @@ pub struct RepeatEncounterParams {
 /// # Example
 ///
 /// ```no_run
-/// use solver_core::models::AttributeBalanceParams;
-/// use solver_core::models::AttributeBalanceMode;
+/// use gm_core::models::AttributeBalanceParams;
+/// use gm_core::models::AttributeBalanceMode;
 /// use std::collections::HashMap;
 ///
 /// // Maintain 2 males and 2 females in "Team1"
@@ -451,7 +451,7 @@ pub enum AttributeBalanceMode {
 /// # Example
 ///
 /// ```no_run
-/// use solver_core::models::ImmovablePersonParams;
+/// use gm_core::models::ImmovablePersonParams;
 ///
 /// // Fix "TeamLeader" to "Team1" for specific sessions
 /// let params = ImmovablePersonParams {
@@ -497,7 +497,7 @@ pub struct ImmovablePeopleParams {
 /// # Example
 ///
 /// ```no_run
-/// use solver_core::models::*;
+/// use gm_core::models::*;
 ///
 /// let config = SolverConfiguration {
 ///     solver_type: "SimulatedAnnealing".to_string(),
@@ -767,7 +767,7 @@ impl Default for TelemetryOptions {
 /// # Example
 ///
 /// ```no_run
-/// use solver_core::models::StopConditions;
+/// use gm_core::models::StopConditions;
 ///
 /// // Stop after 10,000 iterations OR 30 seconds OR 1,000 iterations without improvement
 /// let conditions = StopConditions {
@@ -806,7 +806,7 @@ pub enum SolverParams {
 /// # Example
 ///
 /// ```no_run
-/// use solver_core::models::SimulatedAnnealingParams;
+/// use gm_core::models::SimulatedAnnealingParams;
 ///
 /// // Standard configuration with geometric cooling
 /// let params = SimulatedAnnealingParams {
@@ -855,7 +855,7 @@ pub struct SimulatedAnnealingParams {
 /// # Example
 ///
 /// ```no_run
-/// use solver_core::models::LoggingOptions;
+/// use gm_core::models::LoggingOptions;
 ///
 /// // Comprehensive logging for debugging
 /// let logging = LoggingOptions {
@@ -1143,7 +1143,7 @@ pub type BenchmarkObserver = Box<dyn Fn(&BenchmarkEvent) + Send>;
 /// # Example
 ///
 /// ```no_run
-/// use solver_core::{run_solver, models::*};
+/// use gm_core::{run_solver, models::*};
 /// use std::collections::HashMap;
 ///
 /// // ... create input configuration ...
@@ -1243,7 +1243,7 @@ impl SolverResult {
     /// # Example
     ///
     /// ```no_run
-    /// use solver_core::{run_solver, models::*};
+    /// use gm_core::{run_solver, models::*};
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
     /// #     initial_schedule: None,

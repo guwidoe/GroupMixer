@@ -808,6 +808,106 @@ dependencies = [
 ]
 
 [[package]]
+name = "gm-api"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "dashmap",
+ "gm-cli",
+ "gm-contracts",
+ "gm-core",
+ "gm-wasm",
+ "http-body-util",
+ "rand 0.10.0",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower",
+ "uuid",
+]
+
+[[package]]
+name = "gm-benchmarking"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "gm-core",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sha2",
+ "tempfile",
+ "uuid",
+]
+
+[[package]]
+name = "gm-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "gm-benchmarking",
+ "gm-contracts",
+ "gm-core",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
+name = "gm-contracts"
+version = "0.1.0"
+dependencies = [
+ "gm-core",
+ "jsonschema",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
+name = "gm-core"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "getrandom 0.3.4",
+ "getrandom 0.4.2",
+ "js-sys",
+ "log",
+ "proptest",
+ "rand 0.10.0",
+ "rand_chacha 0.10.0",
+ "schemars",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "uuid",
+]
+
+[[package]]
+name = "gm-wasm"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "getrandom 0.4.2",
+ "gm-contracts",
+ "gm-core",
+ "js-sys",
+ "schemars",
+ "serde",
+ "serde-wasm-bindgen",
+ "serde_json",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-bindgen-test",
+ "web-sys",
+]
+
+[[package]]
 name = "h2"
 version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2229,106 +2329,6 @@ checksum = "3a766e1110788c36f4fa1c2b71b387a7815aa65f88ce0229841826633d93723e"
 dependencies = [
  "libc",
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "solver-benchmarking"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "rusqlite",
- "serde",
- "serde_json",
- "serde_yaml",
- "sha2",
- "solver-core",
- "tempfile",
- "uuid",
-]
-
-[[package]]
-name = "solver-cli"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "serde",
- "serde_json",
- "solver-benchmarking",
- "solver-contracts",
- "solver-core",
- "tempfile",
-]
-
-[[package]]
-name = "solver-contracts"
-version = "0.1.0"
-dependencies = [
- "jsonschema",
- "schemars",
- "serde",
- "serde_json",
- "solver-core",
- "tempfile",
-]
-
-[[package]]
-name = "solver-core"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "getrandom 0.3.4",
- "getrandom 0.4.2",
- "js-sys",
- "log",
- "proptest",
- "rand 0.10.0",
- "rand_chacha 0.10.0",
- "schemars",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "uuid",
-]
-
-[[package]]
-name = "solver-server"
-version = "0.1.0"
-dependencies = [
- "axum",
- "dashmap",
- "http-body-util",
- "rand 0.10.0",
- "schemars",
- "serde",
- "serde_json",
- "solver-cli",
- "solver-contracts",
- "solver-core",
- "solver-wasm",
- "tokio",
- "tower",
- "uuid",
-]
-
-[[package]]
-name = "solver-wasm"
-version = "0.1.0"
-dependencies = [
- "console_error_panic_hook",
- "getrandom 0.4.2",
- "js-sys",
- "schemars",
- "serde",
- "serde-wasm-bindgen",
- "serde_json",
- "solver-contracts",
- "solver-core",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "wasm-bindgen-test",
- "web-sys",
 ]
 
 [[package]]

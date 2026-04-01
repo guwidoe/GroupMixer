@@ -1,11 +1,11 @@
 mod common;
 
 use common::{default_solver_config, make_initial_schedule};
-use solver_core::models::{
+use gm_core::models::{
     ApiInput, Group, Objective, Person, ProblemDefinition, ProgressCallback,
     SimulatedAnnealingParams, SolverParams, StopReason,
 };
-use solver_core::{run_solver, run_solver_with_progress};
+use gm_core::{run_solver, run_solver_with_progress};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 

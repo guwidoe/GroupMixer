@@ -1,10 +1,10 @@
 mod common;
 
 use common::{count_person_occurrences_in_session, default_solver_config};
-use solver_core::models::{
+use gm_core::models::{
     ApiInput, Constraint, Group, ImmovablePersonParams, Objective, Person, ProblemDefinition,
 };
-use solver_core::solver::State;
+use gm_core::solver::State;
 use std::collections::HashMap;
 
 fn person(id: &str) -> Person {

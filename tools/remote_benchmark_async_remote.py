@@ -359,7 +359,7 @@ def run_followup_compare(log, *, suite_name: str, mode: str, current_run_report:
             "compare-prev",
             "--suite", suite_name,
             "--mode", mode,
-            "--artifacts-dir", "benchmarking/artifacts",
+            "--artifacts-dir", "backend/benchmarking/artifacts",
             "--summary-output", str(summary_path),
         ])
         if branch:
@@ -369,7 +369,7 @@ def run_followup_compare(log, *, suite_name: str, mode: str, current_run_report:
             "compare",
             "--run", str(current_run_report),
             "--baseline-run", str(baseline_run_report),
-            "--artifacts-dir", "benchmarking/artifacts",
+            "--artifacts-dir", "backend/benchmarking/artifacts",
             "--summary-output", str(summary_path),
         ])
     command = prefix + " ".join(shlex.quote(part) for part in cmd_parts)

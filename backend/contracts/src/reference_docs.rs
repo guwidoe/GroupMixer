@@ -9,8 +9,8 @@ use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub const DEFAULT_REFERENCE_OUTPUT_DIR: &str = "docs/reference/generated/solver-contracts";
-const GENERATED_NOTICE: &str = "> Generated from `solver-contracts`. Do not edit by hand. Regenerate with `cargo run -p solver-contracts --bin generate-reference`.";
+pub const DEFAULT_REFERENCE_OUTPUT_DIR: &str = "docs/reference/generated/gm-contracts";
+const GENERATED_NOTICE: &str = "> Generated from `gm-contracts`. Do not edit by hand. Regenerate with `cargo run -p gm-contracts --bin generate-reference`.";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratedArtifact {
@@ -156,7 +156,7 @@ pub fn write_or_check_reference_artifacts(
 fn render_readme() -> String {
     let bootstrap = bootstrap_spec();
     format!(
-        "# Solver Contracts Reference\n\n{GENERATED_NOTICE}\n\nThis directory contains generated reference material derived from `solver-contracts`, the transport-neutral semantic source of truth for GroupMixer's public solver interfaces.\n\n## Bootstrap\n\n- title: `{}`\n- summary: {}\n- discovery note: {}\n\n## Files\n\n- `operations.md` — operation catalog and local-help graph\n- `schemas.md` — schema registry plus per-schema JSON artifacts under `schemas/`\n- `errors.md` — public error taxonomy and recovery guidance\n- `examples.md` — canonical examples and snippets\n- `catalog.json` — machine-readable aggregate export\n\n## Regeneration\n\n```bash\ncargo run -p solver-contracts --bin generate-reference\n```\n\n## Freshness check\n\n```bash\ncargo run -p solver-contracts --bin generate-reference -- --check\n```\n",
+        "# Solver Contracts Reference\n\n{GENERATED_NOTICE}\n\nThis directory contains generated reference material derived from `gm-contracts`, the transport-neutral semantic source of truth for GroupMixer's public solver interfaces.\n\n## Bootstrap\n\n- title: `{}`\n- summary: {}\n- discovery note: {}\n\n## Files\n\n- `operations.md` — operation catalog and local-help graph\n- `schemas.md` — schema registry plus per-schema JSON artifacts under `schemas/`\n- `errors.md` — public error taxonomy and recovery guidance\n- `examples.md` — canonical examples and snippets\n- `catalog.json` — machine-readable aggregate export\n\n## Regeneration\n\n```bash\ncargo run -p gm-contracts --bin generate-reference\n```\n\n## Freshness check\n\n```bash\ncargo run -p gm-contracts --bin generate-reference -- --check\n```\n",
         bootstrap.title, bootstrap.summary, bootstrap.discovery_note
     )
 }
@@ -349,7 +349,7 @@ mod tests {
             .any(|path| path.starts_with("schemas/") && path.ends_with(".schema.json")));
         assert_eq!(
             DEFAULT_REFERENCE_OUTPUT_DIR,
-            "docs/reference/generated/solver-contracts"
+            "docs/reference/generated/gm-contracts"
         );
     }
 

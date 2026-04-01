@@ -1,0 +1,33 @@
+/* tslint:disable */
+/* eslint-disable */
+export const memory: WebAssembly.Memory;
+export const capabilities: () => [number, number, number];
+export const evaluate_input: (a: any) => [number, number, number];
+export const evaluate_input_legacy_json: (a: number, b: number) => [number, number, number, number];
+export const get_default_settings_legacy_json: () => [number, number, number, number];
+export const get_default_solver_configuration: () => [number, number, number];
+export const get_operation_help: (a: number, b: number) => [number, number, number];
+export const get_public_error: (a: number, b: number) => [number, number, number];
+export const get_recommended_settings_legacy_json: (a: number, b: number, c: bigint) => [number, number, number, number];
+export const get_schema: (a: number, b: number) => [number, number, number];
+export const inspect_result: (a: any) => [number, number, number];
+export const list_public_errors: () => [number, number, number];
+export const list_schemas: () => [number, number, number];
+export const recommend_settings: (a: any) => [number, number, number];
+export const solve: (a: any) => [number, number, number];
+export const solve_legacy_json: (a: number, b: number) => [number, number, number, number];
+export const solve_with_progress: (a: any, b: number) => [number, number, number];
+export const solve_with_progress_legacy_json: (a: number, b: number, c: number) => [number, number, number, number];
+export const test_callback_consistency: (a: number, b: number) => [number, number, number, number];
+export const validate_problem: (a: any) => [number, number, number];
+export const validate_problem_legacy_json: (a: number, b: number) => [number, number, number, number];
+export const init_panic_hook: () => void;
+export const greet: () => void;
+export const __wbindgen_malloc: (a: number, b: number) => number;
+export const __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
+export const __wbindgen_exn_store: (a: number) => void;
+export const __externref_table_alloc: () => number;
+export const __wbindgen_externrefs: WebAssembly.Table;
+export const __wbindgen_free: (a: number, b: number, c: number) => void;
+export const __externref_table_dealloc: (a: number) => void;
+export const __wbindgen_start: () => void;

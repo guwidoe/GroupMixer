@@ -1,14 +1,14 @@
 {
-  "name": "solver-wasm",
+  "name": "gm-wasm",
   "type": "module",
   "version": "0.1.0",
   "files": [
-    "solver_wasm_bg.wasm",
-    "solver_wasm.js",
-    "solver_wasm.d.ts"
+    "gm_wasm_bg.wasm",
+    "gm_wasm.js",
+    "gm_wasm.d.ts"
   ],
-  "main": "solver_wasm.js",
-  "types": "solver_wasm.d.ts",
+  "main": "gm_wasm.js",
+  "types": "gm_wasm.d.ts",
   "sideEffects": [
     "./snippets/*"
   ]

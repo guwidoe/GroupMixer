@@ -1,4 +1,4 @@
-use solver_contracts::{
+use gm_contracts::{
     bootstrap::bootstrap_spec,
     errors::{
         error_spec, error_specs, INFEASIBLE_PROBLEM_ERROR, INTERNAL_ERROR, INVALID_INPUT_ERROR,

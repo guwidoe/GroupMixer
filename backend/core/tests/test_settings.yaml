@@ -3,9 +3,9 @@
 # The data-driven harness no longer depends on editing this file to select cases.
 # Use normal cargo test filtering instead, for example:
 #
-#   cargo test -p solver-core --test data_driven_tests basic_clique_test
-#   cargo test -p solver-core --test data_driven_tests constraints__
-#   cargo test -p solver-core --test data_driven_tests -- --ignored
+#   cargo test -p gm-core --test data_driven_tests basic_clique_test
+#   cargo test -p gm-core --test data_driven_tests constraints__
+#   cargo test -p gm-core --test data_driven_tests -- --ignored
 #
 # This file is kept only as a pointer for older workflows.
 mode: "all"

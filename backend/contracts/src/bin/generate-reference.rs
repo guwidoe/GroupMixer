@@ -1,4 +1,4 @@
-use solver_contracts::reference_docs::{
+use gm_contracts::reference_docs::{
     write_or_check_reference_artifacts, ReferenceArtifactsResult, WriteMode,
     DEFAULT_REFERENCE_OUTPUT_DIR,
 };
@@ -44,7 +44,7 @@ fn main() {
             for mismatch in mismatches {
                 eprintln!("- {}: {}", mismatch.path.display(), mismatch.reason);
             }
-            eprintln!("regenerate with: cargo run -p solver-contracts --bin generate-reference");
+            eprintln!("regenerate with: cargo run -p gm-contracts --bin generate-reference");
             std::process::exit(1);
         }
     }

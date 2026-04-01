@@ -34,9 +34,9 @@ mkdir -p target/coverage
 COMMON_ARGS=(
   --workspace
   --all-features
-  --exclude solver-benchmarking
-  --exclude solver-wasm
-  --exclude solver-cli
+  --exclude gm-benchmarking
+  --exclude gm-wasm
+  --exclude gm-cli
   --ignore-filename-regex '.*/src/main.rs|.*/src/bin/generate-reference.rs'
 )
 

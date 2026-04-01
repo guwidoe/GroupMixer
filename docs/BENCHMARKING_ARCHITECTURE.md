@@ -28,9 +28,9 @@ This architecture was informed by an earlier snapshot/recording benchmark
 workflow used in another repo, but that external system is only historical
 inspiration.
 
-For GroupMixer, the normative sources are this document and the repo-local
-materials under `benchmarking/` plus the implementation in
-`solver-benchmarking/`.
+For GroupMixer, the normative sources are this document, the human docs under
+`docs/benchmarking/`, and the implementation plus machine-readable assets under
+`backend/benchmarking/`.
 
 The goal is not to "simplify" the operational model away. GroupMixer still
 wants a remote snapshot/recording/queue system adapted to **GroupMixer's**
@@ -74,13 +74,13 @@ yet have the full remote benchmark operations layer.
   - local state/scoring tests
 - `backend/core/benches/solver_perf.rs`
   - Criterion smoke performance coverage
-- `solver-benchmarking/`
+- `backend/benchmarking/`
   - suite manifests
   - schema-versioned run/baseline/comparison artifacts
   - comparison summaries and explicit comparability reporting
-- `solver-cli benchmark ...`
+- `gm-cli benchmark ...`
   - run / compare / baseline save / baseline list commands
-- `benchmarking/WORKFLOW.md`
+- `docs/benchmarking/WORKFLOW.md`
   - local workflow and CI lane guidance
 
 ### Current gaps
@@ -211,8 +211,8 @@ New tests and fixtures in:
 - `backend/core/tests/move_*.rs`
 - `backend/core/tests/search_driver_regression.rs`
 - `backend/core/tests/construction_regression.rs`
-- `benchmarking/cases/path/`
-- `benchmarking/path-matrix.yaml`
+- `backend/benchmarking/cases/path/`
+- `backend/benchmarking/path-matrix.yaml`
 
 ### What it should prove
 
@@ -251,11 +251,11 @@ Compare real solver runs across representative, stretch, and adversarial workloa
 
 ### Primary location
 
-A new dedicated surface:
+Dedicated benchmark surfaces:
 
 ```text
-benchmarking/
-solver-benchmarking/
+docs/benchmarking/
+backend/benchmarking/
 ```
 
 ### What it should do
@@ -316,11 +316,13 @@ Criterion remains important, but as the **microbench layer**, not as the entire 
 ## New documentation and spec surface
 
 ```text
-benchmarking/
+docs/benchmarking/
   README.md
   SPEC.md
   SCHEMAS.md
   TOOLING.md
+
+backend/benchmarking/
   path-matrix.yaml
   suites/
     path.yaml
@@ -342,7 +344,7 @@ benchmarking/
 ## New implementation surface
 
 ```text
-solver-benchmarking/
+backend/benchmarking/
   Cargo.toml
   src/
     lib.rs
@@ -552,7 +554,7 @@ The benchmark system should maintain a path matrix as an explicit artifact.
 
 Suggested location:
 
-- `benchmarking/path-matrix.yaml`
+- `backend/benchmarking/path-matrix.yaml`
 
 ### Purpose
 
@@ -909,7 +911,7 @@ history if a suite changes materially.
 #### Recording store layout target
 
 ```text
-benchmarking/artifacts/
+backend/benchmarking/artifacts/
   recordings/
     <recording-id>/
       meta.json
@@ -982,7 +984,7 @@ under a machine-scoped subtree.
 Desired local shape:
 
 ```text
-benchmarking/artifacts/
+backend/benchmarking/artifacts/
   remotes/
     <machine-id>/
       benchmark-runs/
@@ -1019,7 +1021,7 @@ by itself for the remote recording workflow.
 
 GroupMixer should therefore add recordable hotpath benchmark modes that can be:
 
-- executed through `solver-cli benchmark ...`
+- executed through `gm-cli benchmark ...`
 - stored as structured artifacts
 - bundled into recordings
 - compared across remote same-machine history
@@ -1089,13 +1091,13 @@ Target shape:
 The CLI should grow from the current run/compare/baseline commands into a fuller
 recording/history surface, including:
 
-- `solver-cli benchmark record ...`
-- `solver-cli benchmark record-bundle ...`
-- `solver-cli benchmark compare-prev ...`
-- `solver-cli benchmark recordings list`
-- `solver-cli benchmark recordings show ...`
-- `solver-cli benchmark refs list`
-- `solver-cli benchmark refs show ...`
+- `gm-cli benchmark record ...`
+- `gm-cli benchmark record-bundle ...`
+- `gm-cli benchmark compare-prev ...`
+- `gm-cli benchmark recordings list`
+- `gm-cli benchmark recordings show ...`
+- `gm-cli benchmark refs list`
+- `gm-cli benchmark refs show ...`
 
 ### Remote bundle policy
 
@@ -1153,16 +1155,16 @@ It is "put Criterion in the right layer".
 
 ---
 
-## `solver-cli` role
+## `gm-cli` role
 
 The repo should eventually expose benchmark operations through a thin CLI surface.
 
 Suggested future commands:
 
-- `solver-cli benchmark run ...`
-- `solver-cli benchmark compare ...`
-- `solver-cli benchmark baseline save ...`
-- `solver-cli benchmark baseline list ...`
+- `gm-cli benchmark run ...`
+- `gm-cli benchmark compare ...`
+- `gm-cli benchmark baseline save ...`
+- `gm-cli benchmark baseline list ...`
 
 This gives the benchmark system a real non-UI control surface and aligns with the repo doctrine.
 
@@ -1228,7 +1230,7 @@ Goal:
 
 Deliverables:
 
-- `solver-benchmarking/` crate
+- `backend/benchmarking/` crate
 - manifest parser
 - run-report generation
 - baseline save/load
@@ -1255,7 +1257,7 @@ Goal:
 
 Deliverables:
 
-- `solver-cli benchmark ...` commands
+- `gm-cli benchmark ...` commands
 - workflow docs
 - CI/same-machine policy
 - cleanup of legacy perf assertions as needed

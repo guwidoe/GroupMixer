@@ -14,7 +14,7 @@ mkdir -p "${tmpdir}/bin"
 
 cleanup() {
   rm -rf "${tmpdir}"
-  rm -rf "${REPO_DIR}/benchmarking/artifacts/remotes/${machine_name}"
+  rm -rf "${REPO_DIR}/backend/benchmarking/artifacts/remotes/${machine_name}"
 }
 trap cleanup EXIT
 

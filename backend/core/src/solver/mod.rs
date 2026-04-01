@@ -126,27 +126,27 @@ impl RepeatPenaltyFunction {
 /// # Example
 ///
 /// ```no_run
-/// use solver_core::models::ApiInput;
-/// use solver_core::solver::State;
+/// use gm_core::models::ApiInput;
+/// use gm_core::solver::State;
 ///
 /// // Create state from API input (normally done by run_solver)
 /// # let input = ApiInput {
 /// #     initial_schedule: None,
-/// #     problem: solver_core::models::ProblemDefinition {
+/// #     problem: gm_core::models::ProblemDefinition {
 /// #         people: vec![], groups: vec![], num_sessions: 1
 /// #     },
 /// #     objectives: vec![], constraints: vec![],
-/// #     solver: solver_core::models::SolverConfiguration {
+/// #     solver: gm_core::models::SolverConfiguration {
 /// #         solver_type: "SimulatedAnnealing".to_string(),
-/// #         stop_conditions: solver_core::models::StopConditions {
+/// #         stop_conditions: gm_core::models::StopConditions {
 /// #             max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None
 /// #         },
-/// #         solver_params: solver_core::models::SolverParams::SimulatedAnnealing(
-/// #             solver_core::models::SimulatedAnnealingParams {
+/// #         solver_params: gm_core::models::SolverParams::SimulatedAnnealing(
+/// #             gm_core::models::SimulatedAnnealingParams {
 /// #                 initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0)
 /// #             }
 /// #         ),
-/// #         logging: solver_core::models::LoggingOptions::default(),
+/// #         logging: gm_core::models::LoggingOptions::default(),
 /// #         telemetry: Default::default(),
 /// #         seed: None,
 /// #         move_policy: None,
@@ -165,7 +165,7 @@ impl RepeatPenaltyFunction {
 ///
 /// // Get detailed score breakdown
 /// println!("Score breakdown:\n{}", state.format_score_breakdown());
-/// # Ok::<(), solver_core::solver::SolverError>(())
+/// # Ok::<(), gm_core::solver::SolverError>(())
 /// ```
 #[derive(Debug, Clone)]
 pub struct State {
@@ -504,8 +504,8 @@ impl State {
     /// # Example
     ///
     /// ```no_run
-    /// # use solver_core::solver::State;
-    /// # use solver_core::models::*;
+    /// # use gm_core::solver::State;
+    /// # use gm_core::models::*;
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
     /// #     initial_schedule: None,
@@ -536,7 +536,7 @@ impl State {
     ///         println!("{}: {:?}", group_name, people);
     ///     }
     /// }
-    /// # Ok::<(), solver_core::solver::SolverError>(())
+    /// # Ok::<(), gm_core::solver::SolverError>(())
     /// ```
     pub fn to_solver_result(&self, final_score: f64, no_improvement_count: u64) -> SolverResult {
         self.to_solver_result_with_metadata(final_score, no_improvement_count, None, None)

@@ -3,15 +3,15 @@ use crate::public_errors::{
     internal_error, public_error_to_js_value, unknown_error_code_error, unknown_operation_error,
     unknown_schema_error,
 };
-use schemars::Schema;
-use serde::Serialize;
-use solver_contracts::{
+use gm_contracts::{
     bootstrap::{bootstrap_spec, BootstrapSpec},
     errors::{error_spec, error_specs, PublicErrorSpec},
     examples::example_spec,
     operations::{local_help, operation_spec, OperationSpec},
     schemas::{export_schema, schema_spec, schema_specs},
 };
+use schemars::Schema;
+use serde::Serialize;
 use wasm_bindgen::JsValue;
 
 #[derive(Debug, Clone, Serialize)]
@@ -19,7 +19,7 @@ pub struct WasmCapabilityOperationSummary {
     pub operation_id: &'static str,
     pub summary: &'static str,
     pub family: &'static str,
-    pub kind: solver_contracts::types::OperationKind,
+    pub kind: gm_contracts::types::OperationKind,
     pub help_export_name: &'static str,
     #[serde(default)]
     pub export_name: Option<&'static str>,
@@ -246,7 +246,7 @@ mod tests {
         build_capabilities_response, build_error_catalog, build_error_lookup_response,
         build_operation_help_response, build_schema_lookup_response, build_schema_summaries,
     };
-    use solver_contracts::{bootstrap::bootstrap_spec, errors::error_specs, schemas::schema_specs};
+    use gm_contracts::{bootstrap::bootstrap_spec, errors::error_specs, schemas::schema_specs};
     use std::collections::HashSet;
 
     #[test]

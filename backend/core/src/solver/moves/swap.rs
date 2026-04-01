@@ -98,8 +98,8 @@ impl State {
     /// # Example
     ///
     /// ```no_run
-    /// # use solver_core::solver::State;
-    /// # use solver_core::models::*;
+    /// # use gm_core::solver::State;
+    /// # use gm_core::models::*;
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
     /// #     initial_schedule: None,
@@ -130,7 +130,7 @@ impl State {
     /// } else {
     ///     println!("Swap has no effect (probably same group)");
     /// }
-    /// # Ok::<(), solver_core::solver::SolverError>(())
+    /// # Ok::<(), gm_core::solver::SolverError>(())
     /// ```
     ///
     /// # Algorithm Details
@@ -437,8 +437,8 @@ impl State {
     /// # Example
     ///
     /// ```no_run
-    /// # use solver_core::solver::State;
-    /// # use solver_core::models::*;
+    /// # use gm_core::solver::State;
+    /// # use gm_core::models::*;
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
     /// #     initial_schedule: None,   
@@ -464,7 +464,7 @@ impl State {
     ///     state.apply_swap(0, 0, 1);
     ///     println!("Applied beneficial swap, expected improvement: {}", -delta);
     /// }
-    /// # Ok::<(), solver_core::solver::SolverError>(())
+    /// # Ok::<(), gm_core::solver::SolverError>(())
     /// ```
     ///
     /// # Algorithm Steps
@@ -489,8 +489,8 @@ impl State {
     /// # Typical Usage Pattern
     ///
     /// ```no_run
-    /// # use solver_core::solver::State;
-    /// # use solver_core::models::*;
+    /// # use gm_core::solver::State;
+    /// # use gm_core::models::*;
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
     /// #     initial_schedule: None,
@@ -526,7 +526,7 @@ impl State {
     ///         state.apply_swap(day, p1, p2);
     ///     }
     /// }
-    /// # Ok::<(), solver_core::solver::SolverError>(())
+    /// # Ok::<(), gm_core::solver::SolverError>(())
     /// ```
     pub fn apply_swap(&mut self, day: usize, p1_idx: usize, p2_idx: usize) {
         // Verify both people are participating in this session

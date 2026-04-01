@@ -1,21 +1,21 @@
 use axum::{extract::Path, Json};
-use solver_cli::{
-    contract_surface::{
-        binding_for_operation_id as cli_binding_for_operation_id, public_cli_contract_bindings,
-    },
-    projected_error_codes, projected_schema_ids,
-};
-use solver_contracts::{
-    bootstrap::bootstrap_spec, errors::error_specs, operations::operation_spec,
-    schemas::schema_specs,
-};
-use solver_server::api::{
+use gm_api::api::{
     contract_surface::public_contract_bindings as public_http_contract_bindings,
     handlers::{
         bootstrap_help_handler, error_list_handler, operation_help_handler, schema_list_handler,
     },
 };
-use solver_wasm::{
+use gm_cli::{
+    contract_surface::{
+        binding_for_operation_id as cli_binding_for_operation_id, public_cli_contract_bindings,
+    },
+    projected_error_codes, projected_schema_ids,
+};
+use gm_contracts::{
+    bootstrap::bootstrap_spec, errors::error_specs, operations::operation_spec,
+    schemas::schema_specs,
+};
+use gm_wasm::{
     contract_projection::{
         build_capabilities_response, build_error_catalog, build_operation_help_response,
         build_schema_summaries,
@@ -37,7 +37,7 @@ fn operation_ids_match_across_cli_server_wasm_and_contracts() {
         .collect();
     assert_eq!(
         cli_operation_ids, contract_operation_ids,
-        "CLI operation ids drifted from solver-contracts"
+        "CLI operation ids drifted from gm-contracts"
     );
 
     let http_operation_ids: HashSet<_> = public_http_contract_bindings()
@@ -45,7 +45,7 @@ fn operation_ids_match_across_cli_server_wasm_and_contracts() {
         .collect();
     assert_eq!(
         http_operation_ids, contract_operation_ids,
-        "HTTP operation ids drifted from solver-contracts"
+        "HTTP operation ids drifted from gm-contracts"
     );
 
     let wasm_operation_ids: HashSet<_> = public_wasm_contract_bindings()
@@ -53,7 +53,7 @@ fn operation_ids_match_across_cli_server_wasm_and_contracts() {
         .collect();
     assert_eq!(
         wasm_operation_ids, contract_operation_ids,
-        "WASM operation ids drifted from solver-contracts"
+        "WASM operation ids drifted from gm-contracts"
     );
 }
 
@@ -65,7 +65,7 @@ async fn schema_ids_and_error_codes_match_across_surfaces() {
     let cli_schema_ids: HashSet<_> = projected_schema_ids().into_iter().collect();
     assert_eq!(
         cli_schema_ids, contract_schema_ids,
-        "CLI schema ids drifted from solver-contracts"
+        "CLI schema ids drifted from gm-contracts"
     );
 
     let Json(server_schemas) = schema_list_handler().await;
@@ -73,7 +73,7 @@ async fn schema_ids_and_error_codes_match_across_surfaces() {
         server_schemas.into_iter().map(|schema| schema.id).collect();
     assert_eq!(
         server_schema_ids, contract_schema_ids,
-        "HTTP schema ids drifted from solver-contracts"
+        "HTTP schema ids drifted from gm-contracts"
     );
 
     let wasm_schema_ids: HashSet<_> = build_schema_summaries()
@@ -82,13 +82,13 @@ async fn schema_ids_and_error_codes_match_across_surfaces() {
         .collect();
     assert_eq!(
         wasm_schema_ids, contract_schema_ids,
-        "WASM schema ids drifted from solver-contracts"
+        "WASM schema ids drifted from gm-contracts"
     );
 
     let cli_error_codes: HashSet<_> = projected_error_codes().into_iter().collect();
     assert_eq!(
         cli_error_codes, contract_error_codes,
-        "CLI error codes drifted from solver-contracts"
+        "CLI error codes drifted from gm-contracts"
     );
 
     let Json(server_errors) = error_list_handler().await;
@@ -96,7 +96,7 @@ async fn schema_ids_and_error_codes_match_across_surfaces() {
         server_errors.into_iter().map(|error| error.code).collect();
     assert_eq!(
         server_error_codes, contract_error_codes,
-        "HTTP error codes drifted from solver-contracts"
+        "HTTP error codes drifted from gm-contracts"
     );
 
     let wasm_error_codes: HashSet<_> = build_error_catalog()
@@ -105,7 +105,7 @@ async fn schema_ids_and_error_codes_match_across_surfaces() {
         .collect();
     assert_eq!(
         wasm_error_codes, contract_error_codes,
-        "WASM error codes drifted from solver-contracts"
+        "WASM error codes drifted from gm-contracts"
     );
 }
 
@@ -124,7 +124,7 @@ async fn related_help_targets_resolve_consistently_across_surfaces() {
         .collect();
     assert_eq!(
         server_bootstrap_ids, contract_operation_ids,
-        "HTTP bootstrap drifted from solver-contracts"
+        "HTTP bootstrap drifted from gm-contracts"
     );
 
     let wasm_bootstrap = build_capabilities_response();
@@ -135,7 +135,7 @@ async fn related_help_targets_resolve_consistently_across_surfaces() {
         .collect();
     assert_eq!(
         wasm_bootstrap_ids, contract_operation_ids,
-        "WASM bootstrap drifted from solver-contracts"
+        "WASM bootstrap drifted from gm-contracts"
     );
 
     for operation_id in bootstrap_spec().top_level_operation_ids {

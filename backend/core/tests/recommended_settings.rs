@@ -1,5 +1,5 @@
-use solver_core::calculate_recommended_settings;
-use solver_core::models::{Group, Person, ProblemDefinition, SolverParams};
+use gm_core::calculate_recommended_settings;
+use gm_core::models::{Group, Person, ProblemDefinition, SolverParams};
 use std::collections::HashMap;
 
 #[test]

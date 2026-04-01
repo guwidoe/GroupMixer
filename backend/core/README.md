@@ -1,10 +1,10 @@
 # Solver-Core: Advanced Group Distribution Optimization Engine
 
-The `solver-core` is a high-performance Rust library that implements sophisticated optimization algorithms for solving the social group scheduling problem. It distributes people into groups across multiple sessions while maximizing social interactions and respecting complex constraints.
+The `gm-core` is a high-performance Rust library that implements sophisticated optimization algorithms for solving the social group scheduling problem. It distributes people into groups across multiple sessions while maximizing social interactions and respecting complex constraints.
 
 ## 🎯 Purpose & Problem Domain
 
-The solver-core addresses the **Social Group Scheduling Problem**: given a set of people, groups with specific capacities, and multiple sessions, optimally assign people to groups to:
+The gm-core addresses the **Social Group Scheduling Problem**: given a set of people, groups with specific capacities, and multiple sessions, optimally assign people to groups to:
 
 - **Maximize unique social contacts** between participants
 - **Minimize repeat encounters** to promote diversity
@@ -123,7 +123,7 @@ fn calculate_cost(&self) -> f64 {
 ### Basic Usage
 
 ```rust
-use solver_core::{run_solver, models::*};
+use gm_core::{run_solver, models::*};
 use std::collections::HashMap;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -590,4 +590,4 @@ pub struct Objective {
 
 ## 📞 Support & Contribution
 
-For questions, bug reports, or feature requests, please refer to the main project repository. The solver-core is designed to be extensible and welcomes contributions in optimization algorithms, constraint types, and performance improvements.
+For questions, bug reports, or feature requests, please refer to the main project repository. The gm-core is designed to be extensible and welcomes contributions in optimization algorithms, constraint types, and performance improvements.

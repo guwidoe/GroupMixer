@@ -2,7 +2,7 @@ use crate::contract_surface::{
     binding_for_command, cli_contract_bindings, public_cli_contract_bindings,
 };
 use anyhow::Result;
-use solver_contracts::{bootstrap::bootstrap_spec, examples::example_spec, operations::local_help};
+use gm_contracts::{bootstrap::bootstrap_spec, examples::example_spec, operations::local_help};
 
 pub fn try_print_contract_help(args: &[String]) -> Result<bool> {
     if is_root_help(args) {
@@ -50,7 +50,7 @@ pub fn render_root_help() -> String {
     out.push_str(&format!("{}\n", bootstrap.summary));
     out.push('\n');
     out.push_str("USAGE:\n");
-    out.push_str("  solver-cli <COMMAND> [OPTIONS]\n");
+    out.push_str("  gm-cli <COMMAND> [OPTIONS]\n");
     out.push('\n');
     out.push_str("PUBLIC SOLVER COMMANDS (shared contract):\n");
     for binding in public_cli_contract_bindings().filter(|binding| {
@@ -68,9 +68,9 @@ pub fn render_root_help() -> String {
     }
     out.push('\n');
     out.push_str("CONTRACT INSPECTION COMMANDS:\n");
-    out.push_str("  capabilities  Inspect bootstrap capabilities derived from solver-contracts\n");
-    out.push_str("  schema        Inspect one named public schema from solver-contracts\n");
-    out.push_str("  errors        Inspect canonical public error codes from solver-contracts\n");
+    out.push_str("  capabilities  Inspect bootstrap capabilities derived from gm-contracts\n");
+    out.push_str("  schema        Inspect one named public schema from gm-contracts\n");
+    out.push_str("  errors        Inspect canonical public error codes from gm-contracts\n");
     out.push('\n');
     out.push_str("ADDITIONAL COMMANDS (not part of the public solver contract):\n");
     for binding in cli_contract_bindings()
@@ -84,9 +84,9 @@ pub fn render_root_help() -> String {
     }
     out.push('\n');
     out.push_str("DISCOVERY:\n");
-    out.push_str("  solver-cli --help\n");
-    out.push_str("  solver-cli <command> --help\n");
-    out.push_str("  solver-cli capabilities\n");
+    out.push_str("  gm-cli --help\n");
+    out.push_str("  gm-cli <command> --help\n");
+    out.push_str("  gm-cli capabilities\n");
     out.push('\n');
     out.push_str("NOTE:\n");
     out.push_str(&format!("  {}\n", bootstrap.discovery_note));
@@ -96,7 +96,7 @@ pub fn render_root_help() -> String {
 pub fn render_command_help(command_name: &str, operation_id: &str) -> String {
     let help = local_help(operation_id).expect("registered operation help");
     let mut out = String::new();
-    out.push_str(&format!("solver-cli {}\n", command_name));
+    out.push_str(&format!("gm-cli {}\n", command_name));
     out.push('\n');
     out.push_str(&format!("{}\n", help.operation.summary));
     out.push('\n');
@@ -129,7 +129,7 @@ pub fn render_command_help(command_name: &str, operation_id: &str) -> String {
                 if let Some(shell_snippet) = example.snippets.iter().find(|snippet| {
                     matches!(
                         snippet.format,
-                        solver_contracts::examples::ReferenceSnippetFormat::Shell
+                        gm_contracts::examples::ReferenceSnippetFormat::Shell
                     )
                 }) {
                     out.push_str(&format!("    {}\n", shell_snippet.content));
@@ -153,29 +153,29 @@ pub fn render_command_help(command_name: &str, operation_id: &str) -> String {
         out.push('\n');
     }
     out.push_str("DISCOVERY:\n");
-    out.push_str("  solver-cli capabilities\n");
-    out.push_str("  solver-cli schema <schema-id>\n");
-    out.push_str("  solver-cli errors\n");
+    out.push_str("  gm-cli capabilities\n");
+    out.push_str("  gm-cli schema <schema-id>\n");
+    out.push_str("  gm-cli errors\n");
     out
 }
 
 fn render_bootstrap_command_help(command_name: &str) -> String {
     let mut out = String::new();
-    out.push_str(&format!("solver-cli {}\n\n", command_name));
-    out.push_str("Inspect the shared solver-contracts bootstrap surface from the CLI.\n\n");
+    out.push_str(&format!("gm-cli {}\n\n", command_name));
+    out.push_str("Inspect the shared gm-contracts bootstrap surface from the CLI.\n\n");
     out.push_str("USAGE:\n");
-    out.push_str("  solver-cli capabilities [--json]\n\n");
+    out.push_str("  gm-cli capabilities [--json]\n\n");
     out.push_str("DISCOVERY:\n");
-    out.push_str("  solver-cli schema <schema-id>\n");
-    out.push_str("  solver-cli errors\n");
+    out.push_str("  gm-cli schema <schema-id>\n");
+    out.push_str("  gm-cli errors\n");
     out
 }
 
 fn render_usage_and_options(command_name: &str) -> String {
     match command_name {
         "solve" => concat!(
-            "  solver-cli solve <FILE> [--output <FILE>] [--pretty]\n",
-            "  solver-cli solve --stdin [--output <FILE>] [--pretty]\n",
+            "  gm-cli solve <FILE> [--output <FILE>] [--pretty]\n",
+            "  gm-cli solve --stdin [--output <FILE>] [--pretty]\n",
             "\nOPTIONS:\n",
             "  --stdin           Read input JSON from stdin\n",
             "  -o, --output      Write result JSON to a file instead of stdout\n",
@@ -183,47 +183,47 @@ fn render_usage_and_options(command_name: &str) -> String {
         )
         .to_string(),
         "validate" => concat!(
-            "  solver-cli validate <FILE>\n",
-            "  solver-cli validate --stdin\n",
+            "  gm-cli validate <FILE>\n",
+            "  gm-cli validate --stdin\n",
             "\nOPTIONS:\n",
             "  --stdin           Read input JSON from stdin\n"
         )
         .to_string(),
         "default-config" => concat!(
-            "  solver-cli default-config [--pretty]\n",
+            "  gm-cli default-config [--pretty]\n",
             "\nOPTIONS:\n",
             "  --pretty          Pretty-print JSON output\n"
         )
         .to_string(),
         "recommend" => concat!(
-            "  solver-cli recommend <FILE> [--pretty]\n",
-            "  solver-cli recommend --stdin [--pretty]\n",
+            "  gm-cli recommend <FILE> [--pretty]\n",
+            "  gm-cli recommend --stdin [--pretty]\n",
             "\nOPTIONS:\n",
             "  --stdin           Read recommend-settings-request JSON from stdin\n",
             "  --pretty          Pretty-print JSON output\n"
         )
         .to_string(),
         "evaluate" => concat!(
-            "  solver-cli evaluate <FILE> [--pretty]\n",
-            "  solver-cli evaluate --stdin [--pretty]\n",
+            "  gm-cli evaluate <FILE> [--pretty]\n",
+            "  gm-cli evaluate --stdin [--pretty]\n",
             "\nOPTIONS:\n",
             "  --stdin           Read input JSON from stdin\n",
             "  --pretty          Pretty-print JSON output\n"
         )
         .to_string(),
         "schema" => concat!(
-            "  solver-cli schema [<SCHEMA_ID>] [--json]\n",
+            "  gm-cli schema [<SCHEMA_ID>] [--json]\n",
             "\nOPTIONS:\n",
             "  --json            Emit machine-readable JSON instead of text\n"
         )
         .to_string(),
         "errors" => concat!(
-            "  solver-cli errors [<ERROR_CODE>] [--json]\n",
+            "  gm-cli errors [<ERROR_CODE>] [--json]\n",
             "\nOPTIONS:\n",
             "  --json            Emit machine-readable JSON instead of text\n"
         )
         .to_string(),
-        _ => "  solver-cli <command> --help\n".to_string(),
+        _ => "  gm-cli <command> --help\n".to_string(),
     }
 }
 
@@ -244,7 +244,7 @@ mod tests {
     #[test]
     fn solve_help_contains_contract_examples_and_related_affordances() {
         let help = render_command_help("solve", "solve");
-        assert!(help.contains("solver-cli solve input.json --pretty"));
+        assert!(help.contains("gm-cli solve input.json --pretty"));
         assert!(help.contains("validate-problem"));
         assert!(help.contains("solve-request"));
     }
@@ -261,7 +261,7 @@ mod tests {
     fn schema_help_points_back_to_contract_discovery() {
         let help = render_command_help("schema", "get-schema");
         assert!(help.contains("get-schema-solve-request") || help.contains("solve-request"));
-        assert!(help.contains("solver-cli errors"));
-        assert!(help.contains("solver-cli schema <schema-id>"));
+        assert!(help.contains("gm-cli errors"));
+        assert!(help.contains("gm-cli schema <schema-id>"));
     }
 }

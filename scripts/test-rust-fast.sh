@@ -6,4 +6,4 @@ if ! command -v cargo-nextest >/dev/null 2>&1; then
   exit 1
 fi
 
-cargo nextest run --workspace --exclude solver-wasm "$@"
+cargo nextest run --workspace --exclude gm-wasm "$@"

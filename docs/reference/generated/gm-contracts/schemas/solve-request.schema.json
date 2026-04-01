@@ -1,0 +1,927 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ApiInput",
+  "description": "Complete input specification for the optimization solver.\n\nThis is the root structure that contains all information needed to run\nan optimization: the problem definition (people, groups, sessions),\noptimization objectives, constraints to satisfy, and solver configuration.\n\n# Example\n\n```no_run\nuse gm_core::models::*;\nuse std::collections::HashMap;\n\nlet input = ApiInput {\n    initial_schedule: None,\n    problem: ProblemDefinition {\n        people: vec![\n            Person {\n                id: \"Alice\".to_string(),\n                attributes: HashMap::new(),\n                sessions: None,\n            }\n        ],\n        groups: vec![\n            Group {\n                id: \"Team1\".to_string(),\n                size: 4,\n                session_sizes: None,\n            }\n        ],\n        num_sessions: 3,\n    },\n    objectives: vec![\n        Objective {\n            r#type: \"maximize_unique_contacts\".to_string(),\n            weight: 1.0,\n        }\n    ],\n    constraints: vec![],\n    solver: SolverConfiguration {\n        solver_type: \"SimulatedAnnealing\".to_string(),\n        stop_conditions: StopConditions {\n            max_iterations: Some(10_000),\n            time_limit_seconds: None,\n            no_improvement_iterations: None,\n        },\n        solver_params: SolverParams::SimulatedAnnealing(\n            SimulatedAnnealingParams {\n                initial_temperature: 100.0,\n                final_temperature: 0.1,\n                cooling_schedule: \"geometric\".to_string(),\n                reheat_after_no_improvement: Some(0),\n                reheat_cycles: Some(0),\n            }\n        ),\n        logging: LoggingOptions::default(),\n        telemetry: Default::default(),\n        seed: None,\n        move_policy: None,\n        allowed_sessions: None,\n    },\n};\n```",
+  "type": "object",
+  "properties": {
+    "constraints": {
+      "description": "Constraints that must be satisfied or penalized (defaults to empty list)",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Constraint"
+      }
+    },
+    "initial_schedule": {
+      "description": "Optional initial schedule to warm-start the solver. If provided, the solver\ninitializes the internal state from this schedule instead of a random one.\nFormat: schedule[\"session_{i}\"][group_id] = [person_ids]",
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "default": null
+    },
+    "objectives": {
+      "description": "Optimization objectives (defaults to empty list if not specified)",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Objective"
+      }
+    },
+    "problem": {
+      "description": "The core problem definition: people, groups, and sessions",
+      "$ref": "#/$defs/ProblemDefinition"
+    },
+    "solver": {
+      "description": "Solver algorithm configuration and parameters",
+      "$ref": "#/$defs/SolverConfiguration"
+    }
+  },
+  "required": [
+    "problem",
+    "solver"
+  ],
+  "$defs": {
+    "AttributeBalanceMode": {
+      "description": "Mode for evaluating attribute balance targets.",
+      "oneOf": [
+        {
+          "description": "Penalize absolute deviation from the desired count (current behavior)",
+          "type": "string",
+          "const": "exact"
+        },
+        {
+          "description": "Penalize only when actual < desired; overshooting is allowed without penalty",
+          "type": "string",
+          "const": "at_least"
+        }
+      ]
+    },
+    "AttributeBalanceParams": {
+      "description": "Parameters for the AttributeBalance constraint.\n\nThis constraint maintains desired distributions of person attributes within\nspecific groups. For example, it can ensure gender balance or department\nrepresentation within teams.\n\n# Example\n\n```no_run\nuse gm_core::models::AttributeBalanceParams;\nuse gm_core::models::AttributeBalanceMode;\nuse std::collections::HashMap;\n\n// Maintain 2 males and 2 females in \"Team1\"\nlet params = AttributeBalanceParams {\n    group_id: \"Team1\".to_string(),\n    attribute_key: \"gender\".to_string(),\n    desired_values: {\n        let mut values = HashMap::new();\n        values.insert(\"male\".to_string(), 2);\n        values.insert(\"female\".to_string(), 2);\n        values\n    },\n    penalty_weight: 50.0,\n    sessions: None,\n    mode: AttributeBalanceMode::Exact,\n};\n```",
+      "type": "object",
+      "properties": {
+        "attribute_key": {
+          "description": "The attribute key to balance (e.g., \"gender\", \"department\")",
+          "type": "string"
+        },
+        "desired_values": {
+          "description": "Desired count for each attribute value (e.g., {\"male\": 2, \"female\": 2})",
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0
+          }
+        },
+        "group_id": {
+          "description": "ID of the group where this balance constraint applies",
+          "type": "string"
+        },
+        "mode": {
+          "description": "How to interpret desired counts. `Exact` penalizes deviation in either direction,\n`AtLeast` penalizes only shortfalls (overshoot is not penalized).",
+          "$ref": "#/$defs/AttributeBalanceMode",
+          "default": "exact"
+        },
+        "penalty_weight": {
+          "description": "Weight of the penalty applied for balance violations",
+          "type": "number",
+          "format": "double"
+        },
+        "sessions": {
+          "description": "Optional list of session indices in which this constraint is active. If `None`, the constraint applies to all sessions.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "default": null,
+          "items": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0
+          }
+        }
+      },
+      "required": [
+        "group_id",
+        "attribute_key",
+        "desired_values",
+        "penalty_weight"
+      ]
+    },
+    "Constraint": {
+      "description": "Represents a constraint that must be satisfied or penalized during optimization.\n\nConstraints define rules that the scheduler should follow. They can be either\nhard constraints (with very high penalty weights) or soft constraints (with\nlower penalty weights that represent preferences).\n\nAll constraints support optional session-specific application, meaning they\ncan be applied to all sessions or only to specific sessions.\n\n# Constraint Types\n\n- **RepeatEncounter**: Limits how often people can be paired together\n- **AttributeBalance**: Maintains desired attribute distributions within groups\n- **ImmovablePerson**: Fixes specific people to specific groups in specific sessions\n- **MustStayTogether**: Keeps certain people in the same group\n- **ShouldStayTogether**: Prefers certain people to be in the same group (soft)\n- **ShouldNotBeTogether**: Prevents certain people from being in the same group\n\n# Examples\n\n```no_run\nuse gm_core::models::*;\nuse std::collections::HashMap;\n\n// Limit repeat encounters\nlet repeat_constraint = Constraint::RepeatEncounter(RepeatEncounterParams {\n    max_allowed_encounters: 1,\n    penalty_function: \"squared\".to_string(),\n    penalty_weight: 100.0,\n});\n\n// Maintain gender balance in a specific group\nlet balance_constraint = Constraint::AttributeBalance(AttributeBalanceParams {\n    group_id: \"Team1\".to_string(),\n    attribute_key: \"gender\".to_string(),\n    desired_values: {\n        let mut values = HashMap::new();\n        values.insert(\"male\".to_string(), 2);\n        values.insert(\"female\".to_string(), 2);\n        values\n    },\n    penalty_weight: 50.0,\n    sessions: None,\n    mode: AttributeBalanceMode::Exact,\n});\n\n// Keep two people together (only in sessions 0 and 1)\nlet together_constraint = Constraint::MustStayTogether {\n    people: vec![\"Alice\".to_string(), \"Bob\".to_string()],\n    sessions: Some(vec![0, 1]),\n};\n\n// Prevent two people from being together\nlet apart_constraint = Constraint::ShouldNotBeTogether {\n    people: vec![\"Charlie\".to_string(), \"Diana\".to_string()],\n    penalty_weight: 500.0,\n    sessions: None, // Applies to all sessions\n};\n```",
+      "oneOf": [
+        {
+          "description": "Limits how often people can encounter each other across sessions",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "RepeatEncounter"
+            }
+          },
+          "$ref": "#/$defs/RepeatEncounterParams",
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "description": "Maintains desired attribute distributions within specific groups",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "AttributeBalance"
+            }
+          },
+          "$ref": "#/$defs/AttributeBalanceParams",
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "description": "Fixes specific people to specific groups in specific sessions",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "ImmovablePerson"
+            }
+          },
+          "$ref": "#/$defs/ImmovablePersonParams",
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "description": "Keeps specified people in the same group",
+          "type": "object",
+          "properties": {
+            "people": {
+              "description": "List of person IDs that must stay together",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "sessions": {
+              "description": "Optional list of session indices where this constraint applies.\nIf `None`, applies to all sessions.",
+              "type": [
+                "array",
+                "null"
+              ],
+              "default": null,
+              "items": {
+                "type": "integer",
+                "format": "uint32",
+                "minimum": 0
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "MustStayTogether"
+            }
+          },
+          "required": [
+            "type",
+            "people"
+          ]
+        },
+        {
+          "description": "Prefers specified people to be in the same group (soft constraint)",
+          "type": "object",
+          "properties": {
+            "penalty_weight": {
+              "description": "Penalty weight when the people are not together",
+              "type": "number",
+              "format": "double",
+              "default": 1000.0
+            },
+            "people": {
+              "description": "List of person IDs that should be together",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "sessions": {
+              "description": "Optional list of session indices where this constraint applies.\nIf `None`, applies to all sessions.",
+              "type": [
+                "array",
+                "null"
+              ],
+              "default": null,
+              "items": {
+                "type": "integer",
+                "format": "uint32",
+                "minimum": 0
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "ShouldStayTogether"
+            }
+          },
+          "required": [
+            "type",
+            "people"
+          ]
+        },
+        {
+          "description": "Prevents specified people from being in the same group",
+          "type": "object",
+          "properties": {
+            "penalty_weight": {
+              "description": "Penalty weight for violations (higher = more important)",
+              "type": "number",
+              "format": "double",
+              "default": 1000.0
+            },
+            "people": {
+              "description": "List of person IDs that should not be together",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "sessions": {
+              "description": "Optional list of session indices where this constraint applies.\nIf `None`, applies to all sessions.",
+              "type": [
+                "array",
+                "null"
+              ],
+              "default": null,
+              "items": {
+                "type": "integer",
+                "format": "uint32",
+                "minimum": 0
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "ShouldNotBeTogether"
+            }
+          },
+          "required": [
+            "type",
+            "people"
+          ]
+        },
+        {
+          "description": "Fixes a *set* of people to a specific group in specific sessions (hard constraint)",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "ImmovablePeople"
+            }
+          },
+          "$ref": "#/$defs/ImmovablePeopleParams",
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "description": "Constrains a pair's meeting count across a fixed subset of sessions",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "PairMeetingCount"
+            }
+          },
+          "$ref": "#/$defs/PairMeetingCountParams",
+          "required": [
+            "type"
+          ]
+        }
+      ]
+    },
+    "Group": {
+      "description": "Represents a group that people can be assigned to.\n\nEach group has a unique identifier and a capacity that limits how many\npeople can be assigned to it in any single session.\n\n`size` remains the backwards-compatible default capacity for every session.\nWhen `session_sizes` is provided, it overrides that default on a\nper-session basis while keeping the same logical group ID across sessions.\n\n# Example\n\n```no_run\nuse gm_core::models::Group;\n\nlet team = Group {\n    id: \"Development Team\".to_string(),\n    size: 6, // Can hold up to 6 people\n    session_sizes: None,\n};\n```",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Unique identifier for this group (must be unique across all groups)",
+          "type": "string"
+        },
+        "session_sizes": {
+          "description": "Optional per-session capacities for this group.\n\nWhen present, this vector must have exactly `problem.num_sessions`\nentries. A value of `0` can be used to model a group that is closed in a\nspecific session while preserving stable group IDs across the whole\nproblem.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0
+          }
+        },
+        "size": {
+          "description": "Maximum number of people that can be assigned to this group in any session\nwhen `session_sizes` is not supplied.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "id",
+        "size"
+      ]
+    },
+    "ImmovablePeopleParams": {
+      "description": "Fixes multiple people to a specific group in specific sessions (hard constraint).\n\nThis is the multi-person analogue of `ImmovablePersonParams` and is now the\npreferred format. The solver treats these as hard constraints; therefore no\npenalty weight is necessary.",
+      "type": "object",
+      "properties": {
+        "group_id": {
+          "description": "ID of the group where these people must be placed",
+          "type": "string"
+        },
+        "people": {
+          "description": "IDs of the people who must be fixed in place",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sessions": {
+          "description": "List of session indices where these people must be in the specified group.\nIf `None`, applies to all sessions.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "default": null,
+          "items": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0
+          }
+        }
+      },
+      "required": [
+        "people",
+        "group_id"
+      ]
+    },
+    "ImmovablePersonParams": {
+      "description": "Parameters for the ImmovablePerson constraint.\n\nThis constraint fixes specific people to specific groups in specific sessions,\nensuring they cannot be moved during optimization. Useful for people with\nspecial roles or requirements.\n\n# Example\n\n```no_run\nuse gm_core::models::ImmovablePersonParams;\n\n// Fix \"TeamLeader\" to \"Team1\" for specific sessions\nlet params = ImmovablePersonParams {\n    person_id: \"TeamLeader\".to_string(),\n    group_id: \"Team1\".to_string(),\n    sessions: Some(vec![0, 1, 2]), // Sessions 0, 1, and 2\n};\n```",
+      "type": "object",
+      "properties": {
+        "group_id": {
+          "description": "ID of the group where this person must be placed",
+          "type": "string"
+        },
+        "person_id": {
+          "description": "ID of the person who must be fixed in place",
+          "type": "string"
+        },
+        "sessions": {
+          "description": "List of session indices where this person must be in the specified group.\nIf `None`, applies to all sessions.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "default": null,
+          "items": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0
+          }
+        }
+      },
+      "required": [
+        "person_id",
+        "group_id"
+      ]
+    },
+    "LoggingOptions": {
+      "description": "Configuration options for logging and output during optimization.\n\nThese options control what information is displayed during and after\nthe optimization process. Useful for debugging, monitoring progress,\nand understanding the solver's behavior.\n\n# Example\n\n```no_run\nuse gm_core::models::LoggingOptions;\n\n// Comprehensive logging for debugging\nlet logging = LoggingOptions {\n    log_frequency: Some(1000),           // Log every 1000 iterations\n    log_initial_state: true,             // Show starting configuration\n    log_duration_and_score: true,        // Show final timing and score\n    display_final_schedule: true,        // Show the final schedule\n    log_initial_score_breakdown: true,   // Detailed initial scoring\n    log_final_score_breakdown: true,     // Detailed final scoring\n    log_stop_condition: true,            // Show why optimization stopped\n    debug_validate_invariants: true,     // Validate invariants after each move\n    debug_dump_invariant_context: true,  // Include detailed context in invariant violation errors\n};\n\n// Minimal logging for production\nlet minimal_logging = LoggingOptions {\n    display_final_schedule: true,\n    log_final_score_breakdown: true,\n    ..Default::default()\n};\n```",
+      "type": "object",
+      "properties": {
+        "debug_dump_invariant_context": {
+          "description": "When enabled alongside `debug_validate_invariants`, the solver will include\ndetailed context (attempted move description and before/after schedules)\nin any invariant violation error.",
+          "type": "boolean",
+          "default": false
+        },
+        "debug_validate_invariants": {
+          "description": "When enabled, the solver performs invariant checks after each applied move.\nThis is expensive and intended only for debugging.",
+          "type": "boolean",
+          "default": false
+        },
+        "display_final_schedule": {
+          "description": "Whether to display the final schedule in a human-readable format",
+          "type": "boolean",
+          "default": false
+        },
+        "log_duration_and_score": {
+          "description": "Whether to log the total optimization time and final score",
+          "type": "boolean",
+          "default": false
+        },
+        "log_final_score_breakdown": {
+          "description": "Whether to log a detailed breakdown of the final score",
+          "type": "boolean",
+          "default": false
+        },
+        "log_frequency": {
+          "description": "How often to log progress (every N iterations). `None` disables progress logging.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "default": null,
+          "minimum": 0
+        },
+        "log_initial_score_breakdown": {
+          "description": "Whether to log a detailed breakdown of the initial score",
+          "type": "boolean",
+          "default": false
+        },
+        "log_initial_state": {
+          "description": "Whether to log the initial state and configuration",
+          "type": "boolean",
+          "default": false
+        },
+        "log_stop_condition": {
+          "description": "Whether to log the reason why optimization stopped",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "MoveFamily": {
+      "description": "Explicit move families supported by the simulated annealing search loop.",
+      "type": "string",
+      "enum": [
+        "swap",
+        "transfer",
+        "clique_swap"
+      ]
+    },
+    "MoveFamilyWeights": {
+      "description": "Explicit weights for each move family when `MoveSelectionMode::Weighted` is used.",
+      "type": "object",
+      "properties": {
+        "clique_swap": {
+          "type": "number",
+          "format": "double"
+        },
+        "swap": {
+          "type": "number",
+          "format": "double"
+        },
+        "transfer": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "swap",
+        "transfer",
+        "clique_swap"
+      ]
+    },
+    "MovePolicy": {
+      "description": "Controls which move families are allowed in a run and how the solver chooses between them.",
+      "type": "object",
+      "properties": {
+        "allowed_families": {
+          "description": "Optional allow-list of move families for this run.\n\nWhen omitted, all move families are allowed.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "default": null,
+          "items": {
+            "$ref": "#/$defs/MoveFamily"
+          }
+        },
+        "forced_family": {
+          "description": "Optional single-family override used for path tests and diagnostics.\n\nWhen present, the search loop will only attempt the specified move family.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MoveFamily"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "mode": {
+          "description": "Selection mode for mixed-family runs.",
+          "$ref": "#/$defs/MoveSelectionMode",
+          "default": "adaptive"
+        },
+        "weights": {
+          "description": "Optional explicit family weights used when `mode` is `weighted`.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MoveFamilyWeights"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      }
+    },
+    "MoveSelectionMode": {
+      "description": "Selection mode for mixed move-family search.",
+      "oneOf": [
+        {
+          "description": "Preserve the current solver behavior, where transfer / clique swap probabilities\nare derived from the current state.",
+          "type": "string",
+          "const": "adaptive"
+        },
+        {
+          "description": "Use caller-provided explicit weights instead of the adaptive heuristics.",
+          "type": "string",
+          "const": "weighted"
+        }
+      ]
+    },
+    "Objective": {
+      "description": "Defines an optimization objective with its weight.\n\nObjectives specify what the solver should optimize for. Multiple objectives\ncan be specified with different weights to create a multi-objective optimization.\n\n# Supported Objective Types\n\n- `\"maximize_unique_contacts\"`: Maximize the number of unique person-to-person interactions\n\n# Example\n\n```no_run\nuse gm_core::models::Objective;\n\nlet objective = Objective {\n    r#type: \"maximize_unique_contacts\".to_string(),\n    weight: 1.0,\n};\n```",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "The type of objective to optimize for",
+          "type": "string"
+        },
+        "weight": {
+          "description": "Weight of this objective in the overall optimization function",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "type",
+        "weight"
+      ]
+    },
+    "PairMeetingCountParams": {
+      "description": "Soft constraint on how often a pair should meet within a subset of sessions.",
+      "type": "object",
+      "properties": {
+        "mode": {
+          "description": "Penalty mode: at_least (default), exact, or at_most",
+          "$ref": "#/$defs/PairMeetingMode",
+          "default": "at_least"
+        },
+        "penalty_weight": {
+          "description": "Linear penalty weight",
+          "type": "number",
+          "format": "double",
+          "default": 1000.0
+        },
+        "people": {
+          "description": "Exactly two person IDs involved in the constraint",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sessions": {
+          "description": "Sessions to consider for counting meetings (must be within problem.sessions)",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0
+          }
+        },
+        "target_meetings": {
+          "description": "Target number of meetings within the provided sessions (0..=sessions.len())",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "people",
+        "sessions",
+        "target_meetings"
+      ]
+    },
+    "PairMeetingMode": {
+      "description": "Modes for how to penalize deviations from the target meeting count.",
+      "oneOf": [
+        {
+          "description": "Penalize only shortfalls: weight * max(0, target - actual)",
+          "type": "string",
+          "const": "at_least"
+        },
+        {
+          "description": "Penalize absolute deviation: weight * |target - actual|",
+          "type": "string",
+          "const": "exact"
+        },
+        {
+          "description": "Penalize only excess: weight * max(0, actual - target)",
+          "type": "string",
+          "const": "at_most"
+        }
+      ]
+    },
+    "Person": {
+      "description": "Represents a person who can be scheduled into groups.\n\nEach person has a unique identifier, optional attributes for constraint\nhandling (e.g., gender, department), and can optionally specify which\nsessions they will participate in.\n\n# Example\n\n```no_run\nuse gm_core::models::Person;\nuse std::collections::HashMap;\n\n// Person participating in all sessions\nlet alice = Person {\n    id: \"Alice\".to_string(),\n    attributes: {\n        let mut attrs = HashMap::new();\n        attrs.insert(\"gender\".to_string(), \"female\".to_string());\n        attrs.insert(\"department\".to_string(), \"engineering\".to_string());\n        attrs\n    },\n    sessions: None, // Participates in all sessions\n};\n\n// Person with limited participation (late arrival/early departure)\nlet bob = Person {\n    id: \"Bob\".to_string(),\n    attributes: HashMap::new(),\n    sessions: Some(vec![1, 2]), // Only participates in sessions 1 and 2\n};\n```",
+      "type": "object",
+      "properties": {
+        "attributes": {
+          "description": "Key-value attributes used for constraint evaluation (e.g., \"gender\" -> \"female\")",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "id": {
+          "description": "Unique identifier for this person (must be unique across all people)",
+          "type": "string"
+        },
+        "sessions": {
+          "description": "Optional list of session indices this person participates in.\nIf `None`, the person participates in all sessions.\nSession indices are 0-based (first session is 0).",
+          "type": [
+            "array",
+            "null"
+          ],
+          "default": null,
+          "items": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0
+          }
+        }
+      },
+      "required": [
+        "id",
+        "attributes"
+      ]
+    },
+    "ProblemDefinition": {
+      "description": "Defines the core optimization problem: people, groups, and sessions.\n\nThis structure specifies the fundamental elements that need to be scheduled:\nthe list of people to be assigned, the groups they can be assigned to,\nand how many scheduling sessions will occur.",
+      "type": "object",
+      "properties": {
+        "groups": {
+          "description": "List of all available groups with their capacity limits",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Group"
+          }
+        },
+        "num_sessions": {
+          "description": "Total number of scheduling sessions (time periods)",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "people": {
+          "description": "List of all people to be scheduled into groups",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Person"
+          }
+        }
+      },
+      "required": [
+        "people",
+        "groups",
+        "num_sessions"
+      ]
+    },
+    "RepeatEncounterParams": {
+      "description": "Parameters for the RepeatEncounter constraint.\n\nThis constraint limits how often people can be paired together across sessions,\npromoting social diversity by ensuring people meet new individuals rather than\nalways being grouped with the same people.\n\n# Example\n\n```no_run\nuse gm_core::models::RepeatEncounterParams;\n\n// Allow at most 1 encounter, with squared penalty for violations\nlet params = RepeatEncounterParams {\n    max_allowed_encounters: 1,\n    penalty_function: \"squared\".to_string(),\n    penalty_weight: 100.0,\n};\n```",
+      "type": "object",
+      "properties": {
+        "max_allowed_encounters": {
+          "description": "Maximum number of times two people can be in the same group",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "penalty_function": {
+          "description": "Penalty function type: \"squared\" for quadratic penalties, \"linear\" for linear penalties",
+          "type": "string"
+        },
+        "penalty_weight": {
+          "description": "Weight of the penalty applied for constraint violations",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "required": [
+        "max_allowed_encounters",
+        "penalty_function",
+        "penalty_weight"
+      ]
+    },
+    "SimulatedAnnealingParams": {
+      "description": "Parameters specific to the Simulated Annealing algorithm.\n\nSimulated Annealing uses a temperature-based approach where the algorithm\nstarts with high randomness (high temperature) and gradually becomes more\nselective (lower temperature) as it progresses.\n\n# Example\n\n```no_run\nuse gm_core::models::SimulatedAnnealingParams;\n\n// Standard configuration with geometric cooling\nlet params = SimulatedAnnealingParams {\n    initial_temperature: 100.0,   // Start with high exploration\n    final_temperature: 0.1,       // End with focused local search\n    cooling_schedule: \"geometric\".to_string(), // Exponential temperature decay\n    reheat_after_no_improvement: Some(0), // Reheat after 1000 iterations without improvement (0 = no reheat)\n    reheat_cycles: Some(0), // Reheat after 1000 iterations without improvement (0 = no reheat)\n};\n```",
+      "type": "object",
+      "properties": {
+        "cooling_schedule": {
+          "description": "Temperature reduction schedule: \"geometric\" for exponential decay, \"linear\" for linear decay",
+          "type": "string"
+        },
+        "final_temperature": {
+          "description": "Ending temperature (lower values focus on local improvements)",
+          "type": "number",
+          "format": "double"
+        },
+        "initial_temperature": {
+          "description": "Starting temperature (higher values allow more random moves initially)",
+          "type": "number",
+          "format": "double"
+        },
+        "reheat_after_no_improvement": {
+          "description": "Optional reheat threshold: number of iterations without improvement before reheating.\nWhen reached, temperature is reset to initial_temperature and the cooling schedule is recalculated\nfor the remaining iterations.\n\nSemantics:\n- `Some(0)`: disable reheating explicitly\n- `Some(N>0)`: reheat after N iterations without improvement\n- `None` (unspecified): default to the smaller of `max_iterations/10` or `no_improvement_iterations/2` (if set)",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "default": null,
+          "minimum": 0
+        },
+        "reheat_cycles": {
+          "description": "Fixed reheat cycles: split the total iterations into this many cycles.\nFor each cycle, temperature cools from `initial_temperature` down to `final_temperature`,\nthen reheats to `initial_temperature` at the cycle boundary.\n\nSemantics:\n- `Some(0)` or `None`: disabled (use default behavior)\n- `Some(N>0)`: enable cycle-based reheating with N cycles across `max_iterations`",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "default": null,
+          "minimum": 0
+        }
+      },
+      "required": [
+        "initial_temperature",
+        "final_temperature",
+        "cooling_schedule"
+      ]
+    },
+    "SolverConfiguration": {
+      "description": "Complete configuration for the optimization solver.\n\nThis structure specifies which algorithm to use, when to stop optimization,\nalgorithm-specific parameters, and logging preferences.\n\n# Example\n\n```no_run\nuse gm_core::models::*;\n\nlet config = SolverConfiguration {\n    solver_type: \"SimulatedAnnealing\".to_string(),\n    stop_conditions: StopConditions {\n        max_iterations: Some(50_000),\n        time_limit_seconds: Some(60),\n        no_improvement_iterations: Some(5_000),\n    },\n    solver_params: SolverParams::SimulatedAnnealing(\n        SimulatedAnnealingParams {\n            initial_temperature: 100.0,\n            final_temperature: 0.1,\n            cooling_schedule: \"geometric\".to_string(),\n            reheat_after_no_improvement: Some(0),\n            reheat_cycles: Some(0),\n        }\n    ),\n    logging: LoggingOptions {\n        log_frequency: Some(1000),\n        display_final_schedule: true,\n        log_final_score_breakdown: true,\n        ..Default::default()\n    },\n    telemetry: Default::default(),\n    seed: None,\n    move_policy: None,\n    allowed_sessions: None,\n};\n```",
+      "type": "object",
+      "properties": {
+        "allowed_sessions": {
+          "description": "Optional allow-list of session indices that the solver is allowed to modify during iterations.\nIf present, the solver will only generate moves within these sessions, leaving others unchanged.\nSession indices are 0-based.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "default": null,
+          "items": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0
+          }
+        },
+        "logging": {
+          "description": "Logging and output preferences (defaults to minimal logging)",
+          "$ref": "#/$defs/LoggingOptions",
+          "default": {
+            "debug_dump_invariant_context": false,
+            "debug_validate_invariants": false,
+            "display_final_schedule": false,
+            "log_duration_and_score": false,
+            "log_final_score_breakdown": false,
+            "log_frequency": null,
+            "log_initial_score_breakdown": false,
+            "log_initial_state": false,
+            "log_stop_condition": false
+          }
+        },
+        "move_policy": {
+          "description": "Optional move-policy override controlling which move families may run and how they are selected.\n\nWhen omitted, the solver preserves the current adaptive mixed-search behavior.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MovePolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "seed": {
+          "description": "Optional seed used to make solver runs reproducible.\n\nWhen omitted, the solver derives a fresh random seed for the run and reports the\neffective seed in solver results / benchmark telemetry.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "default": null,
+          "minimum": 0
+        },
+        "solver_params": {
+          "description": "Algorithm-specific parameters",
+          "$ref": "#/$defs/SolverParams"
+        },
+        "solver_type": {
+          "description": "Type of solver algorithm to use (currently \"SimulatedAnnealing\")",
+          "type": "string"
+        },
+        "stop_conditions": {
+          "description": "Conditions that determine when to stop optimization",
+          "$ref": "#/$defs/StopConditions"
+        },
+        "telemetry": {
+          "description": "Telemetry options controlling what is emitted via progress updates.\n\nDefaults to disabled to avoid any performance overhead unless explicitly requested.",
+          "$ref": "#/$defs/TelemetryOptions",
+          "default": {
+            "best_schedule_every_n_callbacks": 5,
+            "emit_best_schedule": false
+          }
+        }
+      },
+      "required": [
+        "solver_type",
+        "stop_conditions",
+        "solver_params"
+      ]
+    },
+    "SolverParams": {
+      "description": "Algorithm-specific parameters for different solver types.\n\nThis enum allows different algorithms to have their own parameter structures\nwhile maintaining a unified API.",
+      "oneOf": [
+        {
+          "description": "Parameters for the Simulated Annealing algorithm",
+          "type": "object",
+          "properties": {
+            "solver_type": {
+              "type": "string",
+              "const": "SimulatedAnnealing"
+            }
+          },
+          "$ref": "#/$defs/SimulatedAnnealingParams",
+          "required": [
+            "solver_type"
+          ]
+        }
+      ]
+    },
+    "StopConditions": {
+      "description": "Defines when the optimization process should stop.\n\nMultiple stop conditions can be specified, and the solver will stop when\nthe first condition is met. This allows for flexible control over optimization\nduration vs. quality trade-offs.\n\n# Example\n\n```no_run\nuse gm_core::models::StopConditions;\n\n// Stop after 10,000 iterations OR 30 seconds OR 1,000 iterations without improvement\nlet conditions = StopConditions {\n    max_iterations: Some(10_000),\n    time_limit_seconds: Some(30),\n    no_improvement_iterations: Some(1_000),\n};\n```",
+      "type": "object",
+      "properties": {
+        "max_iterations": {
+          "description": "Maximum number of optimization iterations before stopping",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "no_improvement_iterations": {
+          "description": "Stop if no improvement found for this many iterations",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "time_limit_seconds": {
+          "description": "Maximum time in seconds before stopping",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        }
+      }
+    },
+    "TelemetryOptions": {
+      "description": "Controls optional telemetry emitted during solver execution.\n\nThis is intentionally separate from `LoggingOptions` so that progress/visualization features\ncan be enabled independently of stdout logging.",
+      "type": "object",
+      "properties": {
+        "best_schedule_every_n_callbacks": {
+          "description": "Include a schedule snapshot every N progress callbacks (when enabled).\n\nValues <= 1 mean \\\"every callback\\\".",
+          "type": "integer",
+          "format": "uint64",
+          "default": 0,
+          "minimum": 0
+        },
+        "emit_best_schedule": {
+          "description": "When true, include a `best_schedule` snapshot in some progress updates.\n\nThis can be expensive for large problems (it clones and serializes schedules), so it is\ndisabled by default.",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    }
+  }
+}

@@ -112,7 +112,7 @@ Use this before merging a substantial refactor or after touching multiple surfac
 ```bash
 ./scripts/test-rust-fast.sh
 ./scripts/coverage-rust.sh
-./scripts/mutation-solver-core.sh
+./scripts/mutation-gm-core.sh
 ```
 
 ### Frontend
@@ -139,7 +139,7 @@ Run at minimum:
 Before considering it done, also run:
 
 ```bash
-./scripts/mutation-solver-core.sh
+./scripts/mutation-gm-core.sh
 ```
 
 Why:

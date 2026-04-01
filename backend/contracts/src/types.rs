@@ -13,36 +13,36 @@ pub type ExampleId = &'static str;
 /// Stable identifier for a public error code exposed by solver-facing surfaces.
 pub type ErrorCode = &'static str;
 
-/// The canonical solve request currently reuses `solver-core`'s public input model.
+/// The canonical solve request currently reuses `gm-core`'s public input model.
 ///
 /// This is an explicit boundary decision: until a stricter external DTO split is
-/// needed, the contracts layer treats `solver_core::models::ApiInput` as the
+/// needed, the contracts layer treats `gm_core::models::ApiInput` as the
 /// public request shape for solving and validation.
-pub type SolveRequest = solver_core::models::ApiInput;
+pub type SolveRequest = gm_core::models::ApiInput;
 
-/// The canonical solve response currently reuses `solver-core`'s public result model.
-pub type SolveResponse = solver_core::models::SolverResult;
+/// The canonical solve response currently reuses `gm-core`'s public result model.
+pub type SolveResponse = gm_core::models::SolverResult;
 
 /// Validation currently accepts the same request shape as a solve operation.
 pub type ValidateRequest = SolveRequest;
 
 /// Public problem-definition shape currently reuses the core domain model.
-pub type ProblemDefinitionContract = solver_core::models::ProblemDefinition;
+pub type ProblemDefinitionContract = gm_core::models::ProblemDefinition;
 
 /// Public solver-configuration shape currently reuses the core solver config model.
-pub type SolverConfigurationContract = solver_core::models::SolverConfiguration;
+pub type SolverConfigurationContract = gm_core::models::SolverConfiguration;
 
 /// Public progress-update shape currently reuses the core progress telemetry model.
-pub type ProgressUpdateContract = solver_core::models::ProgressUpdate;
+pub type ProgressUpdateContract = gm_core::models::ProgressUpdate;
 
 /// Canonical request shape for runtime-aware solver setting recommendations.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct RecommendSettingsRequest {
     pub problem_definition: ProblemDefinitionContract,
     #[serde(default)]
-    pub objectives: Vec<solver_core::models::Objective>,
+    pub objectives: Vec<gm_core::models::Objective>,
     #[serde(default)]
-    pub constraints: Vec<solver_core::models::Constraint>,
+    pub constraints: Vec<gm_core::models::Constraint>,
     pub desired_runtime_seconds: u64,
 }
 

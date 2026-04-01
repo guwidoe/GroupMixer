@@ -1,5 +1,5 @@
+use gm_core::models::{ApiInput, SolverResult};
 use serde::Deserialize;
-use solver_core::models::{ApiInput, SolverResult};
 use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
@@ -131,18 +131,18 @@ fn run_fixture_case(path: &Path) {
         );
     }
 
-    let last_progress: Arc<Mutex<Option<solver_core::models::ProgressUpdate>>> =
+    let last_progress: Arc<Mutex<Option<gm_core::models::ProgressUpdate>>> =
         Arc::new(Mutex::new(None));
     let progress_clone = last_progress.clone();
 
-    let progress_cb: solver_core::models::ProgressCallback =
-        Box::new(move |p: &solver_core::models::ProgressUpdate| {
+    let progress_cb: gm_core::models::ProgressCallback =
+        Box::new(move |p: &gm_core::models::ProgressUpdate| {
             *progress_clone.lock().unwrap() = Some(p.clone());
             true
         });
 
     let start_time = Instant::now();
-    let result = solver_core::run_solver_with_progress(&test_case.input, Some(&progress_cb));
+    let result = gm_core::run_solver_with_progress(&test_case.input, Some(&progress_cb));
     let elapsed_ms = start_time.elapsed().as_millis() as u64;
 
     match result {
@@ -200,7 +200,7 @@ fn format_fixture_mode(metadata: &FixtureMetadata) -> &'static str {
 fn run_assertions(
     test_case: &TestCase,
     result: SolverResult,
-    last_progress: &Arc<Mutex<Option<solver_core::models::ProgressUpdate>>>,
+    last_progress: &Arc<Mutex<Option<gm_core::models::ProgressUpdate>>>,
     loop_count: u32,
     elapsed_ms: u64,
 ) {
@@ -316,7 +316,7 @@ fn run_assertions(
 
 fn assert_cliques_respected(input: &ApiInput, result: &SolverResult) {
     for constraint in &input.constraints {
-        if let solver_core::models::Constraint::MustStayTogether {
+        if let gm_core::models::Constraint::MustStayTogether {
             people, sessions, ..
         } = constraint
         {
@@ -357,7 +357,7 @@ fn assert_cliques_respected(input: &ApiInput, result: &SolverResult) {
 
 fn assert_forbidden_pairs_respected(input: &ApiInput, result: &SolverResult) {
     for constraint in &input.constraints {
-        if let solver_core::models::Constraint::ShouldNotBeTogether {
+        if let gm_core::models::Constraint::ShouldNotBeTogether {
             people, sessions, ..
         } = constraint
         {
@@ -388,7 +388,7 @@ fn assert_forbidden_pairs_respected(input: &ApiInput, result: &SolverResult) {
 
 fn assert_should_together_respected(input: &ApiInput, result: &SolverResult) {
     for constraint in &input.constraints {
-        if let solver_core::models::Constraint::ShouldStayTogether {
+        if let gm_core::models::Constraint::ShouldStayTogether {
             people, sessions, ..
         } = constraint
         {
@@ -431,7 +431,7 @@ fn assert_immovable_person_respected(input: &ApiInput, result: &SolverResult) {
         .constraints
         .iter()
         .filter_map(|c| match c {
-            solver_core::models::Constraint::ImmovablePerson(params) => Some(params),
+            gm_core::models::Constraint::ImmovablePerson(params) => Some(params),
             _ => None,
         })
         .collect();
@@ -467,7 +467,7 @@ fn assert_immovable_person_respected(input: &ApiInput, result: &SolverResult) {
 
 fn assert_session_specific_constraints_respected(input: &ApiInput, result: &SolverResult) {
     for constraint in &input.constraints {
-        if let solver_core::models::Constraint::MustStayTogether {
+        if let gm_core::models::Constraint::MustStayTogether {
             people,
             sessions: Some(session_list),
             ..
@@ -505,7 +505,7 @@ fn assert_session_specific_constraints_respected(input: &ApiInput, result: &Solv
     }
 
     for constraint in &input.constraints {
-        if let solver_core::models::Constraint::ShouldNotBeTogether {
+        if let gm_core::models::Constraint::ShouldNotBeTogether {
             people,
             sessions: Some(session_list),
             ..

@@ -6,7 +6,7 @@
 #
 # Scanned languages:
 #   - javascript-typescript: webapp frontend code
-#   - rust: solver-core, solver-wasm, solver-server
+#   - rust: gm-core, gm-wasm, gm-api
 #   - actions: GitHub workflow files
 #
 # Not scanned (legacy/non-production code):
@@ -47,7 +47,7 @@ jobs:
           # TypeScript/JavaScript frontend (webapp/)
           - language: javascript-typescript
             build-mode: none
-          # Rust solver code (solver-core/, solver-wasm/, solver-server/)
+          # Rust solver code (gm-core/, gm-wasm/, gm-api/)
           # Note: Rust only supports 'none' build mode in CodeQL
           - language: rust
             build-mode: none

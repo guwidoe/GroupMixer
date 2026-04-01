@@ -6,7 +6,7 @@ For the day-to-day contributor workflow, see [`docs/TEST_PYRAMID_AND_REFACTOR_WO
 
 The goal is **refactor safety**, not just a single percentage. For this repository, **100% line coverage is a floor for the most important code paths, not the full strategy**. Confidence comes from multiple layers working together:
 
-For benchmark lane selection and operator workflow, see [`benchmarking/WORKFLOW.md`](../benchmarking/WORKFLOW.md).
+For benchmark lane selection and operator workflow, see [`docs/benchmarking/WORKFLOW.md`](./benchmarking/WORKFLOW.md).
 
 - narrow unit tests for branch-heavy logic
 - data-driven integration tests for end-to-end solver behavior
@@ -15,11 +15,11 @@ For benchmark lane selection and operator workflow, see [`benchmarking/WORKFLOW.
 - frontend logic and component tests for refactor-safe UI behavior
 - Playwright workflow tests for browser-level regressions
 - visual regression tests for layout/styling safety
-- mutation testing for solver-core logic quality
+- mutation testing for gm-core logic quality
 
 ## Test layers by surface
 
-### `solver-core`
+### `gm-core`
 Primary business-critical surface.
 
 Required layers:
@@ -28,21 +28,21 @@ Required layers:
 - property/invariant tests in `backend/core/tests/property_tests.rs`
 - mutation testing with `cargo-mutants`
 
-### `solver-server`
+### `gm-api`
 Separate API surface.
 
 Required layers:
 - route/integration tests through Axum router
 - job manager lifecycle tests
 
-### `solver-wasm`
+### `gm-wasm`
 Wrapper/interoperability layer.
 
 Required layers:
 - `wasm-bindgen-test` / `wasm-pack test` coverage of exported functions
 - explicit tests for JSON parsing, result serialization, callback behavior, and wrapper errors
 
-Important: `solver-wasm` is reported separately so it does not dilute or duplicate `solver-core` business-logic coverage.
+Important: `gm-wasm` is reported separately so it does not dilute or duplicate `gm-core` business-logic coverage.
 
 ### `webapp`
 Frontend confidence stack.
@@ -111,7 +111,7 @@ Excluded or tracked separately:
 #### Rust
 ```bash
 ./scripts/test-rust-fast.sh
-# equivalent cargo command: cargo nextest run --workspace --exclude solver-wasm
+# equivalent cargo command: cargo nextest run --workspace --exclude gm-wasm
 ```
 
 #### Frontend logic
@@ -132,9 +132,9 @@ npm run test:e2e:workflows
 ```bash
 ./scripts/coverage-rust.sh
 # or individually:
-# cargo llvm-cov --workspace --all-features --exclude solver-wasm --exclude solver-cli --ignore-filename-regex '.*/src/main.rs' --summary-only
-# cargo llvm-cov --workspace --all-features --exclude solver-wasm --exclude solver-cli --ignore-filename-regex '.*/src/main.rs' --html --output-dir target/coverage/rust-html
-# cargo llvm-cov --workspace --all-features --exclude solver-wasm --exclude solver-cli --ignore-filename-regex '.*/src/main.rs' --lcov --output-path target/coverage/rust.lcov
+# cargo llvm-cov --workspace --all-features --exclude gm-wasm --exclude gm-cli --ignore-filename-regex '.*/src/main.rs' --summary-only
+# cargo llvm-cov --workspace --all-features --exclude gm-wasm --exclude gm-cli --ignore-filename-regex '.*/src/main.rs' --html --output-dir target/coverage/rust-html
+# cargo llvm-cov --workspace --all-features --exclude gm-wasm --exclude gm-cli --ignore-filename-regex '.*/src/main.rs' --lcov --output-path target/coverage/rust.lcov
 ```
 
 This script now also writes `target/coverage/rust-summary.txt` for CI summaries/review.
@@ -142,16 +142,16 @@ This script now also writes `target/coverage/rust-summary.txt` for CI summaries/
 #### Optional native secondary coverage
 ```bash
 ./scripts/coverage-rust-tarpaulin.sh
-# equivalent cargo command: cargo tarpaulin -p solver-core --engine llvm --out Html --tests --all-features
+# equivalent cargo command: cargo tarpaulin -p gm-core --engine llvm --out Html --tests --all-features
 ```
 
 #### Solver mutation testing
 ```bash
-./scripts/mutation-solver-core.sh
-# equivalent cargo command: cargo mutants -p solver-core
+./scripts/mutation-gm-core.sh
+# equivalent cargo command: cargo mutants -p gm-core
 ```
 
-Mutation testing is an on-demand local and protected-branch/nightly confidence layer for `solver-core`, not an every-edit command.
+Mutation testing is an on-demand local and protected-branch/nightly confidence layer for `gm-core`, not an every-edit command.
 
 #### WASM wrapper tests
 ```bash
@@ -224,7 +224,7 @@ The threshold and gate implementation should follow these rules:
 These are **ratchet floors**, not the final target:
 
 #### Rust (`cargo llvm-cov` gate)
-- denominator: `solver-core` + `solver-server` coverage, excluding `solver-cli`, `solver-wasm`, and binary `src/main.rs` glue
+- denominator: `gm-core` + `gm-api` coverage, excluding `gm-cli`, `gm-wasm`, and binary `src/main.rs` glue
 - enforced in CI via `RUST_COVERAGE_FAIL_UNDER_*`
 - current floor:
   - lines: `78%`
@@ -280,8 +280,8 @@ Heavier layers remain intentionally separate today:
 Benchmarking is split across three different surfaces with different trust levels:
 
 - **path / regression tests**: semantic correctness for specific move families and solver branches
-- **solve-level benchmark runner** (`solver-cli benchmark ...`): structured run/baseline/comparison workflow for representative runtime + quality interpretation
-- **Criterion microbenches** (`cargo bench -p solver-core --bench solver_perf ...`): repeated hot-kernel timing for low-level forensics
+- **solve-level benchmark runner** (`gm-cli benchmark ...`): structured run/baseline/comparison workflow for representative runtime + quality interpretation
+- **Criterion microbenches** (`cargo bench -p gm-core --bench solver_perf ...`): repeated hot-kernel timing for low-level forensics
 
 Policy:
 
@@ -305,6 +305,6 @@ Rust tooling helpers live in `scripts/`:
 - `./scripts/test-rust-fast.sh`
 - `./scripts/coverage-rust.sh`
 - `./scripts/coverage-rust-tarpaulin.sh`
-- `./scripts/mutation-solver-core.sh`
+- `./scripts/mutation-gm-core.sh`
 
 This document should be updated whenever the testing stack, coverage denominator, or required confidence workflow changes.

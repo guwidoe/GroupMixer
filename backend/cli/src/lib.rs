@@ -1,14 +1,14 @@
 pub mod contract_surface;
 
 pub fn projected_schema_ids() -> Vec<&'static str> {
-    solver_contracts::schemas::schema_specs()
+    gm_contracts::schemas::schema_specs()
         .iter()
         .map(|spec| spec.id)
         .collect()
 }
 
 pub fn projected_error_codes() -> Vec<&'static str> {
-    solver_contracts::errors::error_specs()
+    gm_contracts::errors::error_specs()
         .iter()
         .map(|spec| spec.code)
         .collect()

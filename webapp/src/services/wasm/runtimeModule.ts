@@ -13,14 +13,14 @@ let runtimeModulePromise: Promise<RuntimeModule> | null = null;
 
 function getRuntimeSpecifier(): string {
   if (import.meta.env?.VITEST) {
-    return new URL("../../../public/pkg/solver_wasm.js", import.meta.url).href;
+    return new URL("../../../public/pkg/gm_wasm.js", import.meta.url).href;
   }
 
   if (typeof globalThis.location?.href === "string") {
-    return new URL("/pkg/solver_wasm.js", globalThis.location.href).href;
+    return new URL("/pkg/gm_wasm.js", globalThis.location.href).href;
   }
 
-  return "/pkg/solver_wasm.js";
+  return "/pkg/gm_wasm.js";
 }
 
 async function loadRuntimeModule(): Promise<RuntimeModule> {

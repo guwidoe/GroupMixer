@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 repo_dir = Path(__file__).resolve().parent.parent
-release_bin = repo_dir / "target" / "release" / "solver-cli"
+release_bin = repo_dir / "target" / "release" / "gm-cli"
 build_jobs = os.environ.get("GROUPMIXER_BENCH_BUILD_JOBS", "1")
 
 env = os.environ.copy()
@@ -20,9 +20,9 @@ def build_release() -> None:
             "--release",
             "-q",
             "-p",
-            "solver-cli",
+            "gm-cli",
             "--bin",
-            "solver-cli",
+            "gm-cli",
         ],
         cwd=repo_dir,
         env=env,

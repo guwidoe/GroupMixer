@@ -1,5 +1,5 @@
-use solver_core::models::*;
-use solver_core::solver::State;
+use gm_core::models::*;
+use gm_core::solver::State;
 use std::collections::HashMap;
 
 fn main() {

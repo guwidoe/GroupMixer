@@ -3,12 +3,12 @@
 //! These tests use proptest to verify invariants hold across randomly generated
 //! problem configurations and operations.
 
-use proptest::prelude::*;
-use solver_core::models::{
+use gm_core::models::{
     ApiInput, Group, Person, ProblemDefinition, SimulatedAnnealingParams, SolverConfiguration,
     SolverParams, StopConditions,
 };
-use solver_core::solver::State;
+use gm_core::solver::State;
+use proptest::prelude::*;
 use std::collections::HashMap;
 
 /// Strategy for generating a valid problem configuration.

@@ -8,9 +8,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Json, Response},
 };
-use schemars::Schema;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use solver_contracts::{
+use gm_contracts::{
     bootstrap::bootstrap_spec,
     errors::{
         error_spec, error_specs, PublicErrorSpec, INFEASIBLE_PROBLEM_ERROR, INVALID_INPUT_ERROR,
@@ -25,11 +23,13 @@ use solver_contracts::{
         ValidateResponse, ValidationIssue,
     },
 };
-use solver_core::{
+use gm_core::{
     calculate_recommended_settings, default_solver_configuration,
     models::{ApiInput, SolverConfiguration, SolverResult},
     run_solver,
 };
+use schemars::Schema;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use uuid::Uuid;
 
 // The shared state that holds our JobManager
@@ -213,7 +213,7 @@ pub async fn solve_handler(body: Bytes) -> Result<Json<SolverResult>, ApiError> 
 
 pub async fn validate_problem_handler(body: Bytes) -> Result<Json<ValidateResponse>, ApiError> {
     let payload: ApiInput = parse_json_body(&body, "validate-problem", &["validate-request"])?;
-    use solver_core::solver::State;
+    use gm_core::solver::State;
     let response = match State::new(&payload) {
         Ok(_) => ValidateResponse {
             valid: true,

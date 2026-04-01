@@ -1,10 +1,10 @@
 [package]
-name = "solver-core"
+name = "gm-core"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "solver_core"
+name = "gm_core"
 path = "src/lib.rs"
 
 [dependencies]

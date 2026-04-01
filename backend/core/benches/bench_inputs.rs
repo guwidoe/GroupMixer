@@ -1,12 +1,12 @@
 #![allow(dead_code)]
 
-use solver_core::models::{
+use gm_core::models::{
     ApiInput, AttributeBalanceMode, AttributeBalanceParams, Constraint, Group,
     ImmovablePersonParams, MoveFamily, MovePolicy, MoveSelectionMode, Objective,
     PairMeetingCountParams, PairMeetingMode, Person, ProblemDefinition, RepeatEncounterParams,
     SimulatedAnnealingParams, SolverConfiguration, SolverParams, StopConditions,
 };
-use solver_core::solver::State;
+use gm_core::solver::State;
 use std::collections::HashMap;
 
 #[derive(Clone)]

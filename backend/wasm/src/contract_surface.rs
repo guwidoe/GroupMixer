@@ -1,4 +1,4 @@
-use solver_contracts::operations::{
+use gm_contracts::operations::{
     EVALUATE_INPUT_OPERATION_ID, GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
     GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID, INSPECT_RESULT_OPERATION_ID,
     RECOMMEND_SETTINGS_OPERATION_ID, SOLVE_OPERATION_ID, VALIDATE_PROBLEM_OPERATION_ID,
@@ -23,37 +23,37 @@ const WASM_BINDINGS: &[WasmContractBinding] = &[
         export_name: "capabilities",
         operation_id: None,
         scope: WasmSurfaceScope::PublicContract,
-        note: "Bootstrap capability listing derived from solver-contracts.",
+        note: "Bootstrap capability listing derived from gm-contracts.",
     },
     WasmContractBinding {
         export_name: "get_operation_help",
         operation_id: None,
         scope: WasmSurfaceScope::PublicContract,
-        note: "Local help lookup for a single operation from solver-contracts.",
+        note: "Local help lookup for a single operation from gm-contracts.",
     },
     WasmContractBinding {
         export_name: "list_schemas",
         operation_id: Some(GET_SCHEMA_OPERATION_ID),
         scope: WasmSurfaceScope::PublicContract,
-        note: "Schema listing derived from solver-contracts.",
+        note: "Schema listing derived from gm-contracts.",
     },
     WasmContractBinding {
         export_name: "get_schema",
         operation_id: Some(GET_SCHEMA_OPERATION_ID),
         scope: WasmSurfaceScope::PublicContract,
-        note: "Schema lookup derived from solver-contracts.",
+        note: "Schema lookup derived from gm-contracts.",
     },
     WasmContractBinding {
         export_name: "list_public_errors",
         operation_id: Some(INSPECT_ERRORS_OPERATION_ID),
         scope: WasmSurfaceScope::PublicContract,
-        note: "Public error catalog listing derived from solver-contracts.",
+        note: "Public error catalog listing derived from gm-contracts.",
     },
     WasmContractBinding {
         export_name: "get_public_error",
         operation_id: Some(INSPECT_ERRORS_OPERATION_ID),
         scope: WasmSurfaceScope::PublicContract,
-        note: "Public error lookup derived from solver-contracts.",
+        note: "Public error lookup derived from gm-contracts.",
     },
     WasmContractBinding {
         export_name: "solve",
@@ -180,7 +180,7 @@ mod tests {
     use super::{
         binding_for_export, public_contract_bindings, wasm_contract_bindings, WasmSurfaceScope,
     };
-    use solver_contracts::{bootstrap::bootstrap_spec, operations::operation_spec};
+    use gm_contracts::{bootstrap::bootstrap_spec, operations::operation_spec};
     use std::collections::HashSet;
 
     #[test]

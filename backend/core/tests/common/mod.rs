@@ -1,13 +1,13 @@
-//! Shared test utilities for solver-core integration tests.
+//! Shared test utilities for gm-core integration tests.
 //!
 //! This module provides common helper functions for creating test inputs
 //! and verifying solver results across different test files.
 
-use solver_core::models::{
+use gm_core::models::{
     ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams,
     SolverConfiguration, SolverParams, StopConditions,
 };
-use solver_core::solver::State;
+use gm_core::solver::State;
 use std::collections::HashMap;
 
 /// Creates a simple test input with the specified configuration.

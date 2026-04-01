@@ -1,7 +1,7 @@
-//! `solver-contracts` is the transport-neutral semantic source of truth for
+//! `gm-contracts` is the transport-neutral semantic source of truth for
 //! GroupMixer's public solver interfaces.
 //!
-//! It exists so that `solver-cli`, `solver-server`, and `solver-wasm` can expose
+//! It exists so that `gm-cli`, `gm-api`, and `gm-wasm` can expose
 //! the same operation names, schemas, examples, help graph, and public error
 //! meanings without maintaining competing copies.
 //!

@@ -4,17 +4,17 @@ use crate::public_errors::{
     evaluate_requires_initial_schedule_error, infeasible_problem_error, internal_error,
     parse_error, public_error_to_js_value,
 };
-use serde::de::DeserializeOwned;
-use serde::Serialize;
-use solver_contracts::types::{
+use gm_contracts::types::{
     PublicErrorEnvelope, RecommendSettingsRequest, ResultSummary, ValidateResponse, ValidationIssue,
 };
-use solver_core::{
+use gm_core::{
     calculate_recommended_settings, default_solver_configuration,
     models::{ApiInput, ProgressUpdate, SolverConfiguration, SolverResult},
     run_solver, run_solver_with_progress,
     solver::State,
 };
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use wasm_bindgen::JsValue;
 
 const MAX_SAFE_JS_INTEGER: u64 = 9_007_199_254_740_991;
@@ -214,15 +214,15 @@ mod tests {
         recommend_settings_contract, solve_contract, solve_with_progress_contract,
         validate_problem_contract, MAX_SAFE_JS_INTEGER,
     };
-    use solver_contracts::types::RecommendSettingsRequest;
-    use solver_core::models::{
+    use gm_contracts::types::RecommendSettingsRequest;
+    use gm_core::models::{
         Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams, SolverConfiguration,
         SolverParams, StopConditions,
     };
     use std::collections::HashMap;
 
-    fn valid_input() -> solver_core::models::ApiInput {
-        solver_core::models::ApiInput {
+    fn valid_input() -> gm_core::models::ApiInput {
+        gm_core::models::ApiInput {
             initial_schedule: None,
             problem: ProblemDefinition {
                 people: vec![
@@ -351,7 +351,7 @@ mod tests {
 
     #[test]
     fn inspect_result_contract_returns_summary_shape() {
-        let solve_result = solver_core::run_solver(&valid_input()).expect("solve result");
+        let solve_result = gm_core::run_solver(&valid_input()).expect("solve result");
         let summary = inspect_result_contract(&solve_result);
         assert!(summary.final_score.is_finite());
         assert!(summary.unique_contacts >= 0);

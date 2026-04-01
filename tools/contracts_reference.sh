@@ -10,7 +10,7 @@ Usage:
   ./tools/contracts_reference.sh check
 
 Commands:
-  generate  Regenerate docs/reference/generated/solver-contracts from solver-contracts
+  generate  Regenerate docs/reference/generated/gm-contracts from gm-contracts
   check     Fail if generated contract reference artifacts are stale or missing
 EOF
 }
@@ -18,10 +18,10 @@ EOF
 cmd="${1:-}"
 case "$cmd" in
   generate)
-    cargo run -p solver-contracts --bin generate-reference
+    cargo run -p gm-contracts --bin generate-reference
     ;;
   check)
-    cargo run -p solver-contracts --bin generate-reference -- --check
+    cargo run -p gm-contracts --bin generate-reference -- --check
     ;;
   ""|-h|--help|help)
     usage

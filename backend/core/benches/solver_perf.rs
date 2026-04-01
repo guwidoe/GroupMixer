@@ -1,9 +1,9 @@
-//! Performance benchmarks for solver-core.
+//! Performance benchmarks for gm-core.
 //!
-//! Run with: `cargo bench -p solver-core --bench solver_perf`
+//! Run with: `cargo bench -p gm-core --bench solver_perf`
 //!
 //! This file is the Layer 4 Criterion microbench surface. The solve-level
-//! artifact/baseline workflow lives in `solver-benchmarking/`.
+//! artifact/baseline workflow lives in `backend/benchmarking/`.
 
 mod bench_inputs;
 
@@ -12,9 +12,9 @@ use bench_inputs::{
     transfer_bench_input,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion, Throughput};
-use solver_core::algorithms::simulated_annealing::SimulatedAnnealing;
-use solver_core::algorithms::Solver;
-use solver_core::solver::State;
+use gm_core::algorithms::simulated_annealing::SimulatedAnnealing;
+use gm_core::algorithms::Solver;
+use gm_core::solver::State;
 use std::hint::black_box;
 
 fn bench_construction(c: &mut Criterion) {

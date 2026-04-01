@@ -3,8 +3,8 @@ mod contract_runtime;
 pub mod contract_surface;
 mod public_errors;
 
+use gm_core::models::{ApiInput, ProblemDefinition, ProgressUpdate};
 use serde::Serialize;
-use solver_core::models::{ApiInput, ProblemDefinition, ProgressUpdate};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -14,7 +14,7 @@ extern "C" {
 
 #[wasm_bindgen]
 pub fn greet() {
-    alert("Hello, solver-wasm!");
+    alert("Hello, gm-wasm!");
 }
 
 // When the `console_error_panic_hook` feature is enabled, we can call the
@@ -117,7 +117,7 @@ pub fn solve_legacy_json(problem_json: &str) -> Result<String, JsValue> {
         )))
     })?;
 
-    let result = solver_core::run_solver(&api_input)
+    let result = gm_core::run_solver(&api_input)
         .map_err(|e| JsValue::from(js_sys::Error::new(&format!("Solver error: {}", e))))?;
 
     let result_json = serde_json::to_string(&result).map_err(|e| {
@@ -180,10 +180,10 @@ pub fn solve_with_progress_legacy_json(
         let rust_callback: Box<dyn Fn(&ProgressUpdate) -> bool + Send> =
             unsafe { std::mem::transmute(rust_callback) };
 
-        solver_core::run_solver_with_progress(&api_input, Some(&rust_callback))
+        gm_core::run_solver_with_progress(&api_input, Some(&rust_callback))
             .map_err(|e| JsValue::from(js_sys::Error::new(&format!("Solver error: {}", e))))?
     } else {
-        solver_core::run_solver(&api_input)
+        gm_core::run_solver(&api_input)
             .map_err(|e| JsValue::from(js_sys::Error::new(&format!("Solver error: {}", e))))?
     };
 
@@ -262,7 +262,7 @@ pub fn validate_problem_legacy_json(problem_json: &str) -> Result<String, JsValu
 pub fn get_default_settings_legacy_json() -> Result<String, JsValue> {
     init_panic_hook();
 
-    let settings = solver_core::default_solver_configuration();
+    let settings = gm_core::default_solver_configuration();
 
     let settings_json = serde_json::to_string(&settings).map_err(|e| {
         JsValue::from(js_sys::Error::new(&format!(
@@ -291,7 +291,7 @@ pub fn evaluate_input_legacy_json(input_json: &str) -> Result<String, JsValue> {
     })?;
 
     // Construct internal state and force full score recomputation from the provided schedule
-    let mut state = solver_core::solver::State::new(&api_input)
+    let mut state = gm_core::solver::State::new(&api_input)
         .map_err(|e| JsValue::from(js_sys::Error::new(&format!("State init error: {}", e))))?;
 
     // Ensure derived structures and scores match the schedule
@@ -337,7 +337,7 @@ pub fn test_callback_consistency(problem_json: &str) -> Result<String, JsValue> 
     let rust_callback: Box<dyn Fn(&ProgressUpdate) -> bool + Send> =
         unsafe { std::mem::transmute(rust_callback) };
 
-    let result = solver_core::run_solver_with_progress(&api_input, Some(&rust_callback))
+    let result = gm_core::run_solver_with_progress(&api_input, Some(&rust_callback))
         .map_err(|e| JsValue::from(js_sys::Error::new(&format!("Solver error: {}", e))))?;
 
     let final_result_score = result.final_score;
@@ -412,13 +412,13 @@ pub fn get_recommended_settings_legacy_json(
 
     #[derive(serde::Deserialize)]
     struct ProblemWrapper {
-        people: Vec<solver_core::models::Person>,
-        groups: Vec<solver_core::models::Group>,
+        people: Vec<gm_core::models::Person>,
+        groups: Vec<gm_core::models::Group>,
         num_sessions: u32,
         #[serde(default)]
-        constraints: Vec<solver_core::models::Constraint>,
+        constraints: Vec<gm_core::models::Constraint>,
         #[serde(default)]
-        objectives: Vec<solver_core::models::Objective>,
+        objectives: Vec<gm_core::models::Objective>,
     }
 
     let wrapper: ProblemWrapper = match serde_json::from_str(problem_json) {
@@ -437,7 +437,7 @@ pub fn get_recommended_settings_legacy_json(
         num_sessions: wrapper.num_sessions,
     };
 
-    match solver_core::calculate_recommended_settings(
+    match gm_core::calculate_recommended_settings(
         &problem_def,
         &wrapper.objectives,
         &wrapper.constraints,
@@ -462,7 +462,7 @@ pub fn get_recommended_settings_legacy_json(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use solver_core::models::{
+    use gm_core::models::{
         Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams, SolverConfiguration,
         SolverParams, StopConditions,
     };

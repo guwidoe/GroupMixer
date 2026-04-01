@@ -2,7 +2,7 @@
 
 ## What is this?
 
-GroupMixer is a web application for distributing people into groups based on constraints and preferences. It has a Rust backend (solver-core, solver-server, solver-wasm) and TypeScript frontend (webapp).
+GroupMixer is a web application for distributing people into groups based on constraints and preferences. It has a Rust backend (gm-core, gm-api, gm-wasm) and TypeScript frontend (webapp).
 
 ## Goals
 
@@ -35,7 +35,7 @@ Make the entire application end-to-end testable by AI agents without human inter
 
 ## Current State
 
-- Rust backend with solver-core, solver-server, solver-wasm
+- Rust backend with gm-core, gm-api, gm-wasm
 - TypeScript webapp frontend
 - Existing CLAUDE.md for coding conventions
 - No comprehensive AI-friendly testing infrastructure yet

@@ -2,9 +2,9 @@
 
 This document describes how GroupMixer should adopt the **agent-first static discovery** principle across:
 
-- `solver-cli`
-- `solver-server`
-- `solver-wasm`
+- `gm-cli`
+- `gm-api`
+- `gm-wasm`
 
 without duplicating semantics, help text, schemas, or error behavior.
 
@@ -41,7 +41,7 @@ The system should avoid three bad outcomes:
 
 ## Architectural direction
 
-Keep `solver-core` as the authoritative domain and execution layer.
+Keep `gm-core` as the authoritative domain and execution layer.
 Do **not** push CLI, HTTP, or JS transport semantics into it.
 
 Instead, introduce a **shared interface-contract layer** as a peer to the
@@ -49,7 +49,7 @@ transport adapters.
 
 Recommended name:
 
-- `solver-contracts`
+- `gm-contracts`
 
 This crate becomes the single source of truth for the agent-usable interface
 model.
@@ -62,13 +62,13 @@ Why:
 
 - it proves the semantic boundary before introducing filesystem churn
 - it avoids mixing naming/package moves with meaning changes in one step
-- it lets `solver-cli`, `solver-server`, and `solver-wasm` converge on one
+- it lets `gm-cli`, `gm-api`, and `gm-wasm` converge on one
   contract model while paths are still familiar
 - it makes the later package move largely mechanical
 
 Recommended order:
 
-1. introduce `solver-contracts` in the current workspace layout
+1. introduce `gm-contracts` in the current workspace layout
 2. migrate shared operation/schema/error/help truth into it
 3. make CLI/server/WASM consume it
 4. generate reference docs from it
@@ -83,18 +83,18 @@ backend/
   wasm/
 ```
 
-If the repo is later reorganized, renaming `solver-server` to `api` is a good
+If the repo is later reorganized, renaming `gm-api` to `api` is a good
 fit because it describes the role more clearly.
 
 ## Proposed structure
 
 ```mermaid
 flowchart LR
-    Core[solver-core<br/>Domain models<br/>Validation<br/>Solve engine]:::core
-    Contracts[solver-contracts<br/>Operation catalog<br/>Versioned schemas<br/>Error taxonomy<br/>Help graph<br/>Examples]:::contracts
-    CLI[solver-cli<br/>CLI adapter<br/>--help renderer<br/>error renderer]:::surface
-    Server[solver-server<br/>HTTP adapter<br/>/help + OPTIONS + ?help=1<br/>error envelope renderer]:::surface
-    WASM[solver-wasm<br/>JS/WASM adapter<br/>help metadata<br/>browser-side error renderer]:::surface
+    Core[gm-core<br/>Domain models<br/>Validation<br/>Solve engine]:::core
+    Contracts[gm-contracts<br/>Operation catalog<br/>Versioned schemas<br/>Error taxonomy<br/>Help graph<br/>Examples]:::contracts
+    CLI[gm-cli<br/>CLI adapter<br/>--help renderer<br/>error renderer]:::surface
+    Server[gm-api<br/>HTTP adapter<br/>/help + OPTIONS + ?help=1<br/>error envelope renderer]:::surface
+    WASM[gm-wasm<br/>JS/WASM adapter<br/>help metadata<br/>browser-side error renderer]:::surface
     Docs[Generated docs<br/>reference pages<br/>examples<br/>capability index]:::docs
 
     Core --> CLI
@@ -118,7 +118,7 @@ flowchart LR
 
 ## Responsibilities by layer
 
-### 1. `solver-core`
+### 1. `gm-core`
 
 Owns:
 
@@ -137,9 +137,9 @@ Must **not** own:
 - JS-specific docstrings
 - per-surface error formatting
 
-`solver-core` remains the engine, not the operator-facing affordance catalog.
+`gm-core` remains the engine, not the operator-facing affordance catalog.
 
-### 2. `solver-contracts`
+### 2. `gm-contracts`
 
 This is the crucial new layer.
 
@@ -195,7 +195,7 @@ Example conceptual contents:
 
 This layer should be descriptive, not transport-bound.
 
-### 3. `solver-cli`
+### 3. `gm-cli`
 
 Should become a thin CLI projection of the shared contracts.
 
@@ -210,7 +210,7 @@ It should:
 It should **not** hand-author a separate semantic manual if the information is
 already present in the contracts layer.
 
-### 4. `solver-server`
+### 4. `gm-api`
 
 Should become a thin HTTP projection of the same shared contracts.
 
@@ -232,7 +232,7 @@ Examples:
 
 These are not separate semantics; they are HTTP renderings of the same catalog.
 
-### 5. `solver-wasm`
+### 5. `gm-wasm`
 
 Should become a thin JS/WASM projection of the same shared contracts.
 
@@ -297,8 +297,8 @@ Preferred implementation:
 - derive `Serialize`, `Deserialize`, and `JsonSchema`
 - register them under stable schema IDs and versions
 
-If `solver-core` types are not a good public boundary, define public DTOs in
-`solver-contracts` and convert at the edges.
+If `gm-core` types are not a good public boundary, define public DTOs in
+`gm-contracts` and convert at the edges.
 
 ### Errors
 
@@ -342,7 +342,7 @@ Bootstrap should reveal only top-level affordances.
 
 Examples:
 
-- CLI: `solver-cli --help`
+- CLI: `gm-cli --help`
 - HTTP: `GET /help`
 - WASM: `groupmixer.help()`
 
@@ -358,7 +358,7 @@ Every operation should expose local help.
 
 Examples:
 
-- CLI: `solver-cli solve --help`
+- CLI: `gm-cli solve --help`
 - HTTP: `GET /solve?help=1`
 - WASM: `groupmixer.help("solve")`
 
@@ -415,7 +415,7 @@ error[unknown-constraint]: unsupported constraint kind "ShouldBeTogether"
 where: constraints[2].kind
 why: the solver only supports RepeatEncounter, AttributeBalance, MustStayTogether, ShouldStayTogether, ShouldNotBeTogether, ImmovablePerson, ImmovablePeople, PairMeetingCount
 how_to_fix: replace the kind or consult the constraint catalog
-see: solver-cli list-constraints --help
+see: gm-cli list-constraints --help
 ```
 
 #### HTTP
@@ -462,7 +462,7 @@ meaning. They only own rendering and invocation.
 
 ### Shared once
 
-Define once in `solver-contracts`:
+Define once in `gm-contracts`:
 
 - operation graph
 - schemas
@@ -474,9 +474,9 @@ Define once in `solver-contracts`:
 
 Render many times in:
 
-- `solver-cli`
-- `solver-server`
-- `solver-wasm`
+- `gm-cli`
+- `gm-api`
+- `gm-wasm`
 - generated docs
 
 ### Keep transport-specific code thin
@@ -486,21 +486,21 @@ Each transport layer should only own:
 - argument/route/binding wiring
 - native presentation details
 - conversion to/from the canonical contract model
-- conversion to/from `solver-core`
+- conversion to/from `gm-core`
 
 ## Recommended dependency direction
 
 ```text
-solver-core                  # engine and domain truth
-solver-contracts             # public affordance + schema + error truth
-solver-cli                   # CLI projection of contracts + core
-solver-server                # HTTP projection of contracts + core
-solver-wasm                  # JS/WASM projection of contracts + core
+gm-core                  # engine and domain truth
+gm-contracts             # public affordance + schema + error truth
+gm-cli                   # CLI projection of contracts + core
+gm-api                # HTTP projection of contracts + core
+gm-wasm                  # JS/WASM projection of contracts + core
 ```
 
 Recommended rule:
 
-- `solver-core` should not depend on transport crates
+- `gm-core` should not depend on transport crates
 - transport crates should not define competing semantic contracts
 - docs should not be the semantic source of truth when a contract can be generated
 
@@ -520,7 +520,7 @@ Introduce the shared crate and move into it:
 Use this phase to prove the shape of the contract model before moving packages
 around.
 
-### Phase 2 — Make `solver-cli` the first consumer
+### Phase 2 — Make `gm-cli` the first consumer
 
 Use CLI as the proving ground for:
 
@@ -529,7 +529,7 @@ Use CLI as the proving ground for:
 - consistent errors
 - related-command guidance
 
-### Phase 3 — Project the same model into `solver-server`
+### Phase 3 — Project the same model into `gm-api`
 
 Expose the same affordances over HTTP with:
 
@@ -538,18 +538,18 @@ Expose the same affordances over HTTP with:
 - schema exposure
 - stable error envelopes
 
-### Phase 4 — Project the same model into `solver-wasm`
+### Phase 4 — Project the same model into `gm-wasm`
 
 Expose browser-local help/capabilities APIs from the same registry.
 
 #### Concrete WASM rollout plan
 
-The `solver-wasm` projection should be implemented in five explicit steps so the
+The `gm-wasm` projection should be implemented in five explicit steps so the
 browser surface stays thin and contract-driven:
 
 1. **Inventory and binding table**
    - enumerate exported WASM affordances
-   - map public solver-facing exports onto stable `solver-contracts`
+   - map public solver-facing exports onto stable `gm-contracts`
      operation IDs
    - mark legacy/support-only exports as explicitly out of scope rather than
      letting them silently masquerade as contract surfaces
@@ -568,7 +568,7 @@ browser surface stays thin and contract-driven:
      not generic external-doc pointers
 5. **Parity tests**
    - add wasm/unit tests that fail when exported operation IDs, schema IDs,
-     error codes, or related-help edges drift from `solver-contracts`
+     error codes, or related-help edges drift from `gm-contracts`
 
 The intended public/browser-local discovery surface is:
 
@@ -599,7 +599,7 @@ explicitly named as support-only shims such as:
 - `get_recommended_settings_legacy_json(...)`
 - `evaluate_input_legacy_json(...)`
 
-These should be exported as thin JS/WASM projections of `solver-contracts`, not
+These should be exported as thin JS/WASM projections of `gm-contracts`, not
 as a second handwritten semantic registry.
 
 ### Phase 5 — Generate reference docs
@@ -608,12 +608,12 @@ Generate Markdown or JSON reference output from the same contract layer.
 
 #### Concrete docs/parity rollout plan
 
-Once CLI, server, and WASM consume `solver-contracts`, the repo should add a
+Once CLI, server, and WASM consume `gm-contracts`, the repo should add a
 single derived-reference workflow with three parts:
 
 1. **Generate deterministic reference artifacts**
    - materialize operations, schemas, errors, and examples into a stable docs
-     location under `docs/reference/generated/solver-contracts/`
+     location under `docs/reference/generated/gm-contracts/`
    - generate both review-friendly Markdown and machine-readable JSON index
      artifacts
 2. **Add stale-output guardrails**
@@ -621,17 +621,17 @@ single derived-reference workflow with three parts:
    - provide one repo command that fails if checked-in generated outputs are
      stale or missing
 3. **Add cross-surface parity checks**
-   - compare `solver-contracts` against the public projections in:
-     - `solver-cli`
-     - `solver-server`
-     - `solver-wasm`
+   - compare `gm-contracts` against the public projections in:
+     - `gm-cli`
+     - `gm-api`
+     - `gm-wasm`
    - prove parity for operation IDs, schema IDs, error codes, and related-help
      targets where representable
 
 Contributor workflow should be explicit:
 
-1. change `solver-contracts`
-2. update transport projections (`solver-cli`, `solver-server`, `solver-wasm`)
+1. change `gm-contracts`
+2. update transport projections (`gm-cli`, `gm-api`, `gm-wasm`)
 3. regenerate derived reference artifacts
 4. run parity/freshness checks
 
@@ -672,12 +672,12 @@ conceptually.
 When changing a public solver-facing semantic fact, contributors should use the
 following order:
 
-1. update `solver-contracts`
+1. update `gm-contracts`
 2. update the relevant projection(s):
-   - `solver-cli`
-   - `solver-server`
-   - `solver-wasm`
-3. regenerate `docs/reference/generated/solver-contracts/`
+   - `gm-cli`
+   - `gm-api`
+   - `gm-wasm`
+3. regenerate `docs/reference/generated/gm-contracts/`
 4. run contract freshness and parity checks
 
 Primary local commands:
@@ -685,10 +685,10 @@ Primary local commands:
 ```bash
 ./tools/contracts_reference.sh generate
 ./tools/contracts_reference.sh check
-cargo test -p solver-contracts
-cargo test -p solver-cli
-cargo test -p solver-server -- --nocapture
-cargo test -p solver-wasm
+cargo test -p gm-contracts
+cargo test -p gm-cli
+cargo test -p gm-api -- --nocapture
+cargo test -p gm-wasm
 ```
 
 See `docs/CONTRACTS_WORKFLOW.md` for the concrete contributor workflow.
@@ -697,9 +697,9 @@ See `docs/CONTRACTS_WORKFLOW.md` for the concrete contributor workflow.
 
 The elegant architecture is:
 
-- `solver-core` stays the engine
+- `gm-core` stays the engine
 - a new shared contract layer defines the public affordance graph once
-- `solver-cli`, `solver-server`, and `solver-wasm` become thin projections of that graph
+- `gm-cli`, `gm-api`, and `gm-wasm` become thin projections of that graph
 - generated docs derive from the same source
 
 That gives GroupMixer:

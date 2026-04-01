@@ -51,8 +51,8 @@ case "\${command}" in
       esac
     done
     [[ -n "\${recording_id}" ]]
-    mkdir -p "benchmarking/artifacts/recordings/\${recording_id}" "benchmarking/artifacts/runs/path-run"
-    cat > "benchmarking/artifacts/recordings/\${recording_id}/meta.json" <<META
+    mkdir -p "backend/benchmarking/artifacts/recordings/\${recording_id}" "backend/benchmarking/artifacts/runs/path-run"
+    cat > "backend/benchmarking/artifacts/recordings/\${recording_id}/meta.json" <<META
 {
   "suite_runs": [
     {
@@ -63,7 +63,7 @@ case "\${command}" in
   ]
 }
 META
-    cat > "benchmarking/artifacts/runs/path-run/run-report.json" <<'REPORT'
+    cat > "backend/benchmarking/artifacts/runs/path-run/run-report.json" <<'REPORT'
 {"ok": true}
 REPORT
     printf 'bundle-recording-id=%s\n' "\${recording_id}" > $(printf '%q' "${bench_log_bundle}")

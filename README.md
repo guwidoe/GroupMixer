@@ -20,7 +20,7 @@ GroupMixer solves the social group scheduling problem using advanced optimizatio
 
 The project is organized as a Rust workspace with four main components:
 
-### 🧠 `solver-core` - Core Optimization Engine
+### 🧠 `gm-core` - Core Optimization Engine
 
 The heart of the system, providing:
 
@@ -59,7 +59,7 @@ Key features:
 - History tracking and result comparison
 - Dark/light theme support
 
-### 🌐 `solver-server` - Web API Server
+### 🌐 `gm-api` - Web API Server
 
 A high-performance HTTP server built with Axum that provides:
 
@@ -68,7 +68,7 @@ A high-performance HTTP server built with Axum that provides:
 - **Real-time job status tracking**
 - **JSON-based input/output** for easy integration
 
-### ⚡ `solver-wasm` - WebAssembly Module
+### ⚡ `gm-wasm` - WebAssembly Module
 
 WebAssembly compilation of the core solver for:
 
@@ -191,7 +191,7 @@ The webapp will be available at `http://localhost:5173`
 ### 📚 Using the Core Library
 
 ```rust
-use solver_core::{run_solver, models::ApiInput};
+use gm_core::{run_solver, models::ApiInput};
 
 let input = ApiInput {
     // ... configuration

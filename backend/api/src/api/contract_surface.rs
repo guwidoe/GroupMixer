@@ -140,7 +140,7 @@ pub fn public_contract_bindings() -> impl Iterator<Item = &'static HttpContractB
 #[cfg(test)]
 mod tests {
     use super::{http_contract_bindings, public_contract_bindings, HttpSurfaceScope};
-    use solver_contracts::operations::operation_spec;
+    use gm_contracts::operations::operation_spec;
     use std::collections::HashSet;
 
     #[test]

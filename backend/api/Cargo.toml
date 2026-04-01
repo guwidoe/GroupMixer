@@ -1,10 +1,10 @@
 [package]
-name = "solver-server"
+name = "gm-api"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "solver-server"
+name = "gm-api"
 path = "src/main.rs"
 
 [dependencies]
@@ -17,12 +17,12 @@ uuid = { version = "1.22.0", features = ["v4", "serde"] }
 rand = "0.10.0"
 dashmap = "6.1.0"
 
-solver-core = { path = "../core" }
-solver-contracts = { path = "../contracts" }
+gm-core = { path = "../core" }
+gm-contracts = { path = "../contracts" }
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
-solver-cli = { path = "../cli" }
-solver-wasm = { path = "../wasm" }
+gm-cli = { path = "../cli" }
+gm-wasm = { path = "../wasm" }
  

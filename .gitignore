@@ -32,8 +32,8 @@ x86/
 [Aa][Rr][Mm]64/
 bld/
 [Bb]in/
-!solver-contracts/src/bin/
-!solver-contracts/src/bin/generate-reference.rs
+!gm-contracts/src/bin/
+!gm-contracts/src/bin/generate-reference.rs
 [Oo]bj/
 [Oo]ut/
 [Ll]og/

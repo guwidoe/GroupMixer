@@ -6,20 +6,20 @@ This document explains how to extend GroupMixer's **public solver-facing semanti
 
 Public semantic changes must flow in this order:
 
-1. `solver-contracts`
+1. `gm-contracts`
 2. interface projections
-   - `solver-cli`
-   - `solver-server`
-   - `solver-wasm`
+   - `gm-cli`
+   - `gm-api`
+   - `gm-wasm`
 3. generated reference artifacts
-   - `docs/reference/generated/solver-contracts/`
+   - `docs/reference/generated/gm-contracts/`
 4. parity / freshness verification
 
 If a change starts by editing a transport surface first, that change is backwards.
 
 ## Source-of-truth order
 
-### 1. `solver-contracts`
+### 1. `gm-contracts`
 
 This crate owns the canonical definitions of:
 
@@ -34,11 +34,11 @@ If a semantic fact is public and solver-facing, it should be declared here first
 
 ### 2. Transport projections
 
-After `solver-contracts` changes, project those semantics into:
+After `gm-contracts` changes, project those semantics into:
 
-- `solver-cli`
-- `solver-server`
-- `solver-wasm`
+- `gm-cli`
+- `gm-api`
+- `gm-wasm`
 
 Transport layers should stay thin. They may add native presentation details, but they must not invent different operation names, schema IDs, error codes, or recovery meanings.
 
@@ -54,13 +54,13 @@ Regenerate derived reference artifacts after semantic updates:
 
 This updates the generated contract reference under:
 
-- `docs/reference/generated/solver-contracts/README.md`
-- `docs/reference/generated/solver-contracts/operations.md`
-- `docs/reference/generated/solver-contracts/schemas.md`
-- `docs/reference/generated/solver-contracts/errors.md`
-- `docs/reference/generated/solver-contracts/examples.md`
-- `docs/reference/generated/solver-contracts/catalog.json`
-- `docs/reference/generated/solver-contracts/schemas/*.schema.json`
+- `docs/reference/generated/gm-contracts/README.md`
+- `docs/reference/generated/gm-contracts/operations.md`
+- `docs/reference/generated/gm-contracts/schemas.md`
+- `docs/reference/generated/gm-contracts/errors.md`
+- `docs/reference/generated/gm-contracts/examples.md`
+- `docs/reference/generated/gm-contracts/catalog.json`
+- `docs/reference/generated/gm-contracts/schemas/*.schema.json`
 
 ## How to add or change a public operation
 
@@ -122,15 +122,15 @@ This updates the generated contract reference under:
 ### Validate contract registries
 
 ```bash
-cargo test -p solver-contracts
+cargo test -p gm-contracts
 ```
 
 ### Validate cross-surface parity
 
 ```bash
-cargo test -p solver-cli
-cargo test -p solver-server -- --nocapture
-cargo test -p solver-wasm
+cargo test -p gm-cli
+cargo test -p gm-api -- --nocapture
+cargo test -p gm-wasm
 ```
 
 ### Validate the real browser consumer path
@@ -164,7 +164,7 @@ and the Rust test phase exercises the cross-surface parity tests.
 
 A public semantic change is not complete until:
 
-- `solver-contracts` is updated
+- `gm-contracts` is updated
 - the affected projection(s) are updated
 - generated reference artifacts are refreshed
 - freshness/parity checks pass
@@ -187,4 +187,4 @@ support shims with `*_legacy_json` names.
 ## Related docs
 
 - `docs/AGENT_INTERFACE_ARCHITECTURE.md`
-- `docs/reference/generated/solver-contracts/README.md`
+- `docs/reference/generated/gm-contracts/README.md`

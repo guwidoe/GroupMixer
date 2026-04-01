@@ -1,19 +1,19 @@
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
-use http_body_util::BodyExt;
-use serde::de::DeserializeOwned;
-use serde_json::json;
-use solver_contracts::types::{RecommendSettingsRequest, ResultSummary, ValidateResponse};
-use solver_core::models::{
-    ApiInput, Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams,
-    SolverConfiguration, SolverParams, StopConditions,
-};
-use solver_server::api::routes::create_router;
-use solver_server::api::{
+use gm_api::api::routes::create_router;
+use gm_api::api::{
     contract_surface::public_contract_bindings,
     handlers::{AppState, CreateJobResponse},
 };
-use solver_server::jobs::manager::{Job, JobManager, JobStatus};
+use gm_api::jobs::manager::{Job, JobManager, JobStatus};
+use gm_contracts::types::{RecommendSettingsRequest, ResultSummary, ValidateResponse};
+use gm_core::models::{
+    ApiInput, Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams,
+    SolverConfiguration, SolverParams, StopConditions,
+};
+use http_body_util::BodyExt;
+use serde::de::DeserializeOwned;
+use serde_json::json;
 use std::collections::HashMap;
 use std::time::Duration;
 use tower::util::ServiceExt;
@@ -375,7 +375,7 @@ async fn contract_solver_endpoints_return_public_shapes() {
         .await
         .unwrap();
     assert_eq!(solve_response.status(), StatusCode::OK);
-    let solve_body: solver_core::models::SolverResult = json_response(solve_response).await;
+    let solve_body: gm_core::models::SolverResult = json_response(solve_response).await;
     assert!(solve_body.schedule.contains_key("session_0"));
 
     let validate_response = app
@@ -406,7 +406,7 @@ async fn contract_solver_endpoints_return_public_shapes() {
         .await
         .unwrap();
     assert_eq!(default_config_response.status(), StatusCode::OK);
-    let default_config_body: solver_core::models::SolverConfiguration =
+    let default_config_body: gm_core::models::SolverConfiguration =
         json_response(default_config_response).await;
     assert_eq!(
         default_config_body.stop_conditions.time_limit_seconds,
@@ -434,7 +434,7 @@ async fn contract_solver_endpoints_return_public_shapes() {
         .await
         .unwrap();
     assert_eq!(recommend_response.status(), StatusCode::OK);
-    let recommend_body: solver_core::models::SolverConfiguration =
+    let recommend_body: gm_core::models::SolverConfiguration =
         json_response(recommend_response).await;
     assert_eq!(recommend_body.solver_type, "SimulatedAnnealing");
     assert_eq!(recommend_body.stop_conditions.time_limit_seconds, Some(11));
@@ -459,7 +459,7 @@ async fn contract_solver_endpoints_return_public_shapes() {
         .await
         .unwrap();
     assert_eq!(evaluate_response.status(), StatusCode::OK);
-    let evaluate_body: solver_core::models::SolverResult = json_response(evaluate_response).await;
+    let evaluate_body: gm_core::models::SolverResult = json_response(evaluate_response).await;
     assert!(evaluate_body.schedule.contains_key("session_0"));
 
     let inspect_response = app

@@ -21,7 +21,7 @@ fi
 
 # 1. Rust tests (release mode for performance testing)
 echo -e "${YELLOW}[1/4] Running Rust tests (release mode)...${NC}"
-if cargo test -p solver-core --release 2>&1; then
+if cargo test -p gm-core --release 2>&1; then
     echo -e "${GREEN}✓ Rust tests passed${NC}"
 else
     echo -e "${RED}✗ Rust tests failed${NC}"
@@ -31,7 +31,7 @@ echo ""
 
 # 2. CLI smoke test
 echo -e "${YELLOW}[2/4] Running CLI smoke test...${NC}"
-if cargo run -p solver-cli --release -- solve backend/cli/test_cases/simple_test.json > /dev/null 2>&1; then
+if cargo run -p gm-cli --release -- solve backend/cli/test_cases/simple_test.json > /dev/null 2>&1; then
     echo -e "${GREEN}✓ CLI smoke test passed${NC}"
 else
     echo -e "${RED}✗ CLI smoke test failed${NC}"
@@ -43,7 +43,7 @@ echo ""
 if [[ "$QUICK_MODE" == false ]]; then
     echo -e "${YELLOW}[3/4] Running performance benchmarks...${NC}"
     echo "Note: Benchmarks are stored in target/criterion/ for historical comparison."
-    if cargo bench -p solver-core --bench solver_perf -- --noplot 2>&1 | tail -30; then
+    if cargo bench -p gm-core --bench solver_perf -- --noplot 2>&1 | tail -30; then
         echo -e "${GREEN}✓ Benchmarks completed${NC}"
     else
         echo -e "${RED}✗ Benchmarks failed${NC}"

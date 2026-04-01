@@ -182,7 +182,7 @@ async function collectDistAssetUrls(rootDir: string): Promise<string[]> {
       || relativePath === 'package.json'
       || relativePath.endsWith('/package.json')
       || relativePath === 'sitemap.xml'
-      || (relativePath.startsWith('solver_wasm') && !relativePath.startsWith('pkg/'))
+      || (relativePath.startsWith('gm_wasm') && !relativePath.startsWith('pkg/'))
     ) {
       continue;
     }

@@ -1,4 +1,4 @@
-# solver-core test suite
+# gm-core test suite
 
 `backend/core/tests/data_driven_tests.rs` is the main end-to-end integration contract for the solver.
 
@@ -43,8 +43,8 @@ These files intentionally cover move-family and driver branches called out in `d
 
 The explicit catalog for those paths now lives in:
 
-- `benchmarking/path-matrix.yaml`
-- `benchmarking/cases/path/`
+- `backend/benchmarking/path-matrix.yaml`
+- `backend/benchmarking/cases/path/`
 
 Use these targeted tests when changing delta logic, move application, construction behavior, reheating/stop logic, or allowed-session handling. Keep the data-driven harness as the main end-to-end contract, and use the path-regression layer when you need to prove that a specific solver branch still activates and still reconciles with a full recalculation.
 
@@ -53,39 +53,39 @@ Use these targeted tests when changing delta logic, move application, constructi
 Run the default correctness suite:
 
 ```bash
-cargo test -p solver-core --test data_driven_tests
+cargo test -p gm-core --test data_driven_tests
 ```
 
 Run one fixture by generated test name or file stem:
 
 ```bash
-cargo test -p solver-core --test data_driven_tests basic_clique_test
+cargo test -p gm-core --test data_driven_tests basic_clique_test
 ```
 
 Run a tagged subset by matching the generated name prefix:
 
 ```bash
-cargo test -p solver-core --test data_driven_tests constraints__
-cargo test -p solver-core --test data_driven_tests stop_conditions__
+cargo test -p gm-core --test data_driven_tests constraints__
+cargo test -p gm-core --test data_driven_tests stop_conditions__
 ```
 
 Run ignored performance fixtures:
 
 ```bash
-cargo test -p solver-core --test data_driven_tests -- --ignored
+cargo test -p gm-core --test data_driven_tests -- --ignored
 ```
 
 Run one ignored performance fixture:
 
 ```bash
-cargo test -p solver-core --test data_driven_tests benchmark_unconstrained -- --ignored
+cargo test -p gm-core --test data_driven_tests benchmark_unconstrained -- --ignored
 ```
 
-Run mutation testing for solver-core:
+Run mutation testing for gm-core:
 
 ```bash
-./scripts/mutation-solver-core.sh
-# or: cargo mutants -p solver-core
+./scripts/mutation-gm-core.sh
+# or: cargo mutants -p gm-core
 ```
 
 Suggested workflow:

@@ -118,7 +118,7 @@ const SOLVE_HAPPY_PATH_SNIPPETS: &[ReferenceSnippet] = &[
         label: "cli invocation",
         format: ReferenceSnippetFormat::Shell,
         schema_id: None,
-        content: "solver-cli solve input.json --pretty",
+        content: "gm-cli solve input.json --pretty",
     },
     ReferenceSnippet {
         label: "http invocation",
@@ -221,7 +221,7 @@ const VALIDATE_INVALID_CONSTRAINT_SNIPPETS: &[ReferenceSnippet] = &[
         label: "cli recovery",
         format: ReferenceSnippetFormat::Shell,
         schema_id: None,
-        content: "solver-cli validate input.json && solver-cli schema input",
+        content: "gm-cli validate input.json && gm-cli schema input",
     },
     ReferenceSnippet {
         label: "http recovery",
@@ -276,7 +276,7 @@ const GET_SCHEMA_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
     label: "schema lookup",
     format: ReferenceSnippetFormat::Shell,
     schema_id: Some(SOLVE_REQUEST_SCHEMA_ID),
-    content: "solver-cli schema solve-request",
+    content: "gm-cli schema solve-request",
 }];
 
 const DEFAULT_SOLVER_CONFIGURATION_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
@@ -367,7 +367,7 @@ const RECOMMEND_SETTINGS_SNIPPETS: &[ReferenceSnippet] = &[
         label: "cli invocation",
         format: ReferenceSnippetFormat::Shell,
         schema_id: None,
-        content: "solver-cli recommend problem.json --runtime 30 --pretty",
+        content: "gm-cli recommend problem.json --runtime 30 --pretty",
     },
 ];
 
@@ -376,7 +376,7 @@ const EVALUATE_INPUT_SNIPPETS: &[ReferenceSnippet] = &[
         label: "evaluate invocation",
         format: ReferenceSnippetFormat::Shell,
         schema_id: None,
-        content: "solver-cli evaluate scheduled-input.json --pretty",
+        content: "gm-cli evaluate scheduled-input.json --pretty",
     },
     ReferenceSnippet {
         label: "evaluate result json",

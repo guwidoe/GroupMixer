@@ -1,4 +1,4 @@
-//! Optimization algorithms for the solver-core.
+//! Optimization algorithms for the gm-core.
 //!
 //! This module contains different optimization algorithms that can be used
 //! to solve the social group scheduling problem. All algorithms implement
@@ -19,9 +19,9 @@
 //! 4. Update the `SolverParams` enum in `models.rs` if algorithm-specific parameters are needed
 //!
 //! ```no_run
-//! use solver_core::algorithms::Solver;
-//! use solver_core::models::{BenchmarkObserver, ProgressCallback, SolverConfiguration, SolverResult};
-//! use solver_core::solver::{SolverError, State};
+//! use gm_core::algorithms::Solver;
+//! use gm_core::models::{BenchmarkObserver, ProgressCallback, SolverConfiguration, SolverResult};
+//! use gm_core::solver::{SolverError, State};
 //!
 //! pub struct MyAlgorithm {
 //!     // algorithm parameters
@@ -80,9 +80,9 @@ pub mod simulated_annealing;
 /// # Example Implementation
 ///
 /// ```no_run
-/// use solver_core::algorithms::Solver;
-/// use solver_core::models::{BenchmarkObserver, ProgressCallback, SolverResult};
-/// use solver_core::solver::{SolverError, State};
+/// use gm_core::algorithms::Solver;
+/// use gm_core::models::{BenchmarkObserver, ProgressCallback, SolverResult};
+/// use gm_core::solver::{SolverError, State};
 ///
 /// struct SimpleHillClimbing;
 ///

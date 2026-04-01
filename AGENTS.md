@@ -16,8 +16,8 @@ This repo adopts `docs/reference/principles/AGENTIC_ENGINEERING_PRINCIPLES.md` a
 
 ## Stack
 
-- Rust workspace members live under `backend/` plus `solver-benchmarking/`
-- Main Rust crates: `solver-core`, `solver-contracts`, `solver-wasm`, `solver-server`, `solver-cli`, `solver-benchmarking`
+- Rust workspace members live under `backend/` plus `backend/benchmarking/`
+- Main Rust crates: `gm-core`, `gm-contracts`, `gm-wasm`, `gm-api`, `gm-cli`, `gm-benchmarking`
 - React 19 + TypeScript + Vite in `webapp/`
 - WebAssembly via `wasm-pack`
 - Zustand for frontend state
@@ -48,7 +48,7 @@ cargo test --workspace
 cd backend/wasm && wasm-pack build --target web --out-dir ../../webapp/public/pkg
 
 # Run server
-cargo run -p solver-server
+cargo run -p gm-api
 
 # Webapp local dev
 cd webapp && npm ci && npm run dev
@@ -80,7 +80,7 @@ cd webapp && npm run test:e2e
 
 ## Notes
 
-- The existing `solver-core` **data-driven test harness is the main integration-testing surface for the solver**. Preserve and improve it rather than replacing it with a weaker or more ad hoc approach.
+- The existing `gm-core` **data-driven test harness is the main integration-testing surface for the solver**. Preserve and improve it rather than replacing it with a weaker or more ad hoc approach.
 - For solver work, prefer a layered test strategy:
   - narrow unit tests for local logic/branches
   - property tests for invariants
@@ -88,6 +88,6 @@ cd webapp && npm run test:e2e
   - mutation testing/coverage work to verify the suite is actually protective
 - When changing solver behavior, add or update fixture cases in `backend/core/tests/test_cases/` whenever the change affects observable end-to-end behavior.
 - When touching solver hot paths (`backend/core/src/solver/**`, move preview/apply logic, construction, scoring, or search-driver performance-sensitive paths), query the remote same-machine benchmark lane after the change before handoff. For routine hotpath changes, an after-change remote benchmark is required; when the last baseline is stale or timing interpretation matters, query a before-change remote benchmark too.
-- `solver-server` is optional and localhost-oriented; treat it as a separate API surface worth testing independently of `solver-core`.
+- `gm-api` is optional and localhost-oriented; treat it as a separate API surface worth testing independently of `gm-core`.
 - `webapp` consumes the Rust solver through WASM and browser workers; frontend regressions can come from services/store/conversion code as much as from React components.
 - Prefer repo-level docs updates when workflows, doctrine, or architecture assumptions change.

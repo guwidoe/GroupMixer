@@ -52,7 +52,7 @@ print_success "Contract reference artifacts OK"
 # WASM build
 # ============================================
 
-print_step "WASM: Building solver-wasm"
+print_step "WASM: Building gm-wasm"
 cd backend/wasm
 wasm-pack build --target web --out-dir ../../webapp/public/pkg
 cd ../..

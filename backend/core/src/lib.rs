@@ -7,7 +7,7 @@
 //! ## Quick Example
 //!
 //! ```no_run
-//! use solver_core::{run_solver, models::*};
+//! use gm_core::{run_solver, models::*};
 //! use std::collections::HashMap;
 //!
 //! let input = ApiInput {
@@ -85,7 +85,7 @@ pub mod solver;
 
 /// Runs the optimization solver with the given input configuration.
 ///
-/// This is the main entry point for the solver-core library. It takes a complete
+/// This is the main entry point for the gm-core library. It takes a complete
 /// problem definition with constraints and solver configuration, then returns an
 /// optimized schedule that maximizes unique social contacts while respecting all
 /// specified constraints.
@@ -115,7 +115,7 @@ pub mod solver;
 /// # Example
 ///
 /// ```no_run
-/// use solver_core::{run_solver, models::*};
+/// use gm_core::{run_solver, models::*};
 /// use std::collections::HashMap;
 ///
 /// let input = ApiInput {
@@ -241,7 +241,7 @@ pub fn run_solver(input: &ApiInput) -> Result<SolverResult, SolverError> {
 /// # Example
 ///
 /// ```no_run
-/// use solver_core::{run_solver_with_progress, models::*};
+/// use gm_core::{run_solver_with_progress, models::*};
 /// use std::collections::HashMap;
 ///
 /// # let input = ApiInput {

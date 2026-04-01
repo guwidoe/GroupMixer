@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DEFAULT_ENV_FILE="${SCRIPT_DIR}/remote_benchmark.env"
-LOCAL_REMOTE_DIR="${REPO_DIR}/benchmarking/artifacts/remotes"
+LOCAL_REMOTE_DIR="${REPO_DIR}/backend/benchmarking/artifacts/remotes"
 DEFAULT_WAIT_POLL_SECONDS=10
 STATUS_LOCAL_TTL_SECONDS=""
 
@@ -33,7 +33,7 @@ Defaults:
 Notes:
   - benchmark jobs are serialized remotely behind a single exclusive lock
   - repeated `start` requests for the same commit/command/args dedupe to one active run
-  - remote benchmark state is mirrored locally under benchmarking/artifacts/remotes/<machine>/
+  - remote benchmark state is mirrored locally under backend/benchmarking/artifacts/remotes/<machine>/
 EOF
 }
 
@@ -152,7 +152,7 @@ stage_remote() {
     "mkdir -p '${REMOTE_REPO_DIR}' '${REMOTE_RUNS_DIR}' '${REMOTE_SHARED_ARTIFACTS_DIR}'"
   "${GROUPMIXER_REMOTE_RSYNC_BIN}" -az --delete -e "${GROUPMIXER_REMOTE_RSYNC_SSH}" \
     --exclude target \
-    --exclude benchmarking/artifacts \
+    --exclude backend/benchmarking/artifacts \
     --exclude .git \
     --exclude .pi \
     "${REPO_DIR}/" \
@@ -168,13 +168,13 @@ stage_remote_run_snapshot() {
     "mkdir -p '${snapshot_repo_dir}' '${REMOTE_SHARED_ARTIFACTS_DIR}'"
   "${GROUPMIXER_REMOTE_RSYNC_BIN}" -az --delete -e "${GROUPMIXER_REMOTE_RSYNC_SSH}" \
     --exclude target \
-    --exclude benchmarking/artifacts \
+    --exclude backend/benchmarking/artifacts \
     --exclude .git \
     --exclude .pi \
     "${REPO_DIR}/" \
     "${GROUPMIXER_REMOTE_SSH_TARGET}:${snapshot_repo_dir}/"
   "${GROUPMIXER_REMOTE_SSH_BIN}" "${GROUPMIXER_REMOTE_SSH_TARGET}" \
-    "rm -rf '${snapshot_repo_dir}/benchmarking/artifacts' && ln -s '${REMOTE_SHARED_ARTIFACTS_DIR}' '${snapshot_repo_dir}/benchmarking/artifacts'"
+    "rm -rf '${snapshot_repo_dir}/backend/benchmarking/artifacts' && ln -s '${REMOTE_SHARED_ARTIFACTS_DIR}' '${snapshot_repo_dir}/backend/benchmarking/artifacts'"
 }
 
 extract_suite_args() {
@@ -286,7 +286,7 @@ suite_manifest_path() {
   if [[ -f "${suite_ref}" ]]; then
     printf '%s\n' "${suite_ref}"
   else
-    printf '%s\n' "${REPO_DIR}/benchmarking/suites/${suite_ref}.yaml"
+    printf '%s\n' "${REPO_DIR}/backend/benchmarking/suites/${suite_ref}.yaml"
   fi
 }
 

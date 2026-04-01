@@ -455,10 +455,10 @@ fn sample_move_family(
 /// # Example Usage
 ///
 /// ```no_run
-/// use solver_core::algorithms::simulated_annealing::SimulatedAnnealing;
-/// use solver_core::algorithms::Solver;
-/// use solver_core::models::*;
-/// use solver_core::solver::State;
+/// use gm_core::algorithms::simulated_annealing::SimulatedAnnealing;
+/// use gm_core::algorithms::Solver;
+/// use gm_core::models::*;
+/// use gm_core::solver::State;
 /// use std::collections::HashMap;
 ///
 /// // Configure the algorithm
@@ -508,7 +508,7 @@ fn sample_move_family(
 ///
 /// println!("Final score: {}", result.final_score);
 /// println!("Unique contacts: {}", result.unique_contacts);
-/// # Ok::<(), solver_core::solver::SolverError>(())
+/// # Ok::<(), gm_core::solver::SolverError>(())
 /// ```
 ///
 /// # Performance Characteristics
@@ -569,8 +569,8 @@ impl SimulatedAnnealing {
     /// # Example
     ///
     /// ```no_run
-    /// use solver_core::algorithms::simulated_annealing::SimulatedAnnealing;
-    /// use solver_core::models::*;
+    /// use gm_core::algorithms::simulated_annealing::SimulatedAnnealing;
+    /// use gm_core::models::*;
     ///
     /// let config = SolverConfiguration {
     ///     solver_type: "SimulatedAnnealing".to_string(),
@@ -720,10 +720,10 @@ impl Solver for SimulatedAnnealing {
     /// # Example Usage
     ///
     /// ```no_run
-    /// use solver_core::algorithms::simulated_annealing::SimulatedAnnealing;
-    /// use solver_core::algorithms::Solver;
-    /// use solver_core::models::*;
-    /// use solver_core::solver::State;
+    /// use gm_core::algorithms::simulated_annealing::SimulatedAnnealing;
+    /// use gm_core::algorithms::Solver;
+    /// use gm_core::models::*;
+    /// use gm_core::solver::State;
     /// use std::collections::HashMap;
     ///
     /// # let input = ApiInput {
@@ -760,7 +760,7 @@ impl Solver for SimulatedAnnealing {
     ///         println!("  {}: {:?}", group_name, people);
     ///     }
     /// }
-    /// # Ok::<(), solver_core::solver::SolverError>(())
+    /// # Ok::<(), gm_core::solver::SolverError>(())
     /// ```
     ///
     /// # Algorithm Details

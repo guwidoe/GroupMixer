@@ -1,0 +1,22 @@
+[package]
+name = "gm-benchmarking"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "gm_benchmarking"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow = "1.0"
+chrono = { version = "0.4", features = ["clock", "serde"] }
+rusqlite = { version = "0.39", features = ["bundled"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+sha2 = "0.11"
+gm-core = { path = "../core" }
+uuid = { version = "1.22.0", features = ["v4"] }
+
+[dev-dependencies]
+tempfile = "3.27"

@@ -1,4 +1,4 @@
-// Core data structures matching the Rust solver-core backend exactly
+// Core data structures matching the Rust gm-core backend exactly
 export interface Person {
   id: string;
   attributes: Record<string, string>; // Key-value attributes (e.g., {"gender": "female", "department": "engineering"})
@@ -11,7 +11,7 @@ export interface Group {
   session_sizes?: number[]; // Optional per-session capacities overriding `size` by session index
 }
 
-// Constraint types matching solver-core exactly
+// Constraint types matching gm-core exactly
 export interface RepeatEncounterParams {
   max_allowed_encounters: number;
   penalty_function: "linear" | "squared";
@@ -45,7 +45,7 @@ export interface ImmovablePeopleParams {
   sessions: number[];
 }
 
-// Constraint union type matching solver-core's tagged enum structure
+// Constraint union type matching gm-core's tagged enum structure
 export type Constraint =
   | ({ type: "RepeatEncounter" } & RepeatEncounterParams)
   | ({ type: "AttributeBalance" } & AttributeBalanceParams)
@@ -85,7 +85,7 @@ export interface Objective {
 export interface Scenario {
   people: Person[];
   groups: Group[];
-  num_sessions: number; // Renamed from sessions_count to match solver-core
+  num_sessions: number; // Renamed from sessions_count to match gm-core
   /**
    * Optimization objectives to be maximized by the solver. If omitted or empty, the frontend will automatically inject a default
    * "maximize_unique_contacts" objective with weight 1.0 when sending the scenario to the solver.

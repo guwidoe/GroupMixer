@@ -51,6 +51,6 @@ npm run build
 
 ## Build contract
 
-- Vite resolves `virtual:wasm-solver` to `public/pkg/solver_wasm.js`
+- Vite resolves `virtual:wasm-solver` to `public/pkg/gm_wasm.js`
 - `npm run build-wasm` must run before first local dev/build if generated files are absent
 - generated WASM artifacts are not the source of truth; `backend/wasm/` is

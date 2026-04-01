@@ -25,11 +25,11 @@ Usage:
   tools/benchmark_workflow.sh refs <list|show ...> [benchmark-args...]
 
 Conventions:
-  - `run` maps to `solver-cli benchmark run ...`
-  - `save <name>` maps to `solver-cli benchmark run --save-baseline <name> ...`
-  - `compare <name>` maps to `solver-cli benchmark compare --baseline <name> ...`
-  - `list` maps to `solver-cli benchmark baseline list ...`
-  - `history` maps to `solver-cli benchmark recordings list ...`
+  - `run` maps to `gm-cli benchmark run ...`
+  - `save <name>` maps to `gm-cli benchmark run --save-baseline <name> ...`
+  - `compare <name>` maps to `gm-cli benchmark compare --baseline <name> ...`
+  - `list` maps to `gm-cli benchmark baseline list ...`
+  - `history` maps to `gm-cli benchmark recordings list ...`
 
 Safety knobs:
   - GROUPMIXER_BENCH_BUILD_JOBS=1 keeps release builds memory-bounded by default
@@ -80,7 +80,7 @@ print_doctor() {
   local python_bin resolved release_bin
   python_bin="$(resolve_python_bin)"
   resolved="$(python_path "${python_bin}")"
-  release_bin="${REPO_DIR}/target/release/solver-cli"
+  release_bin="${REPO_DIR}/target/release/gm-cli"
 
   echo "repo_dir=${REPO_DIR}"
   echo "runner=${RUNNER}"

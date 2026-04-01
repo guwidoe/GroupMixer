@@ -1,4 +1,4 @@
-use solver_contracts::operations::{
+use gm_contracts::operations::{
     EVALUATE_INPUT_OPERATION_ID, GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
     GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID, INSPECT_RESULT_OPERATION_ID,
     RECOMMEND_SETTINGS_OPERATION_ID, SOLVE_OPERATION_ID, VALIDATE_PROBLEM_OPERATION_ID,
@@ -71,7 +71,7 @@ const CLI_BINDINGS: &[CliContractBinding] = &[
         command_name: "capabilities",
         operation_id: None,
         scope: CliSurfaceScope::PublicContract,
-        note: "Public bootstrap/capability listing derived from solver-contracts.",
+        note: "Public bootstrap/capability listing derived from gm-contracts.",
     },
     CliContractBinding {
         command_name: "benchmark",
@@ -108,7 +108,7 @@ mod tests {
     use super::{
         binding_for_command, cli_contract_bindings, public_cli_contract_bindings, CliSurfaceScope,
     };
-    use solver_contracts::{bootstrap::bootstrap_spec, operations::operation_spec};
+    use gm_contracts::{bootstrap::bootstrap_spec, operations::operation_spec};
     use std::collections::HashSet;
 
     #[test]

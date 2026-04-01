@@ -1,17 +1,17 @@
 [package]
-name = "solver-contracts"
+name = "gm-contracts"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "solver_contracts"
+name = "gm_contracts"
 path = "src/lib.rs"
 
 [dependencies]
 schemars = "1.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-solver-core = { path = "../core" }
+gm-core = { path = "../core" }
 
 [dev-dependencies]
 jsonschema = "0.45"

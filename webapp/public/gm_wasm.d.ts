@@ -1,0 +1,111 @@
+/* tslint:disable */
+/* eslint-disable */
+
+export function capabilities(): any;
+
+export function evaluate_input(input: any): any;
+
+/**
+ * Evaluate a provided input (including an optional initial schedule) without running the solver.
+ *
+ * Expects the same JSON shape as `models::ApiInput` (problem, objectives, constraints, solver),
+ * and optionally `initial_schedule` in the `{"session_0": {"group_id": ["person_id", ...]}, ...}` format.
+ * Returns a `SolverResult` JSON with score breakdown computed from the provided schedule.
+ */
+export function evaluate_input_legacy_json(input_json: string): string;
+
+export function get_default_settings_legacy_json(): string;
+
+export function get_default_solver_configuration(): any;
+
+export function get_operation_help(operation_id: string): any;
+
+export function get_public_error(error_code: string): any;
+
+export function get_recommended_settings_legacy_json(problem_json: string, desired_runtime_seconds: bigint): string;
+
+export function get_schema(schema_id: string): any;
+
+export function greet(): void;
+
+export function init_panic_hook(): void;
+
+export function inspect_result(result: any): any;
+
+export function list_public_errors(): any;
+
+export function list_schemas(): any;
+
+export function recommend_settings(input: any): any;
+
+export function solve(input: any): any;
+
+export function solve_legacy_json(problem_json: string): string;
+
+export function solve_with_progress(input: any, progress_callback?: Function | null): any;
+
+export function solve_with_progress_legacy_json(problem_json: string, progress_callback?: Function | null): string;
+
+export function test_callback_consistency(problem_json: string): string;
+
+export function validate_problem(input: any): any;
+
+export function validate_problem_legacy_json(problem_json: string): string;
+
+export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
+
+export interface InitOutput {
+    readonly memory: WebAssembly.Memory;
+    readonly capabilities: () => [number, number, number];
+    readonly evaluate_input: (a: any) => [number, number, number];
+    readonly evaluate_input_legacy_json: (a: number, b: number) => [number, number, number, number];
+    readonly get_default_settings_legacy_json: () => [number, number, number, number];
+    readonly get_default_solver_configuration: () => [number, number, number];
+    readonly get_operation_help: (a: number, b: number) => [number, number, number];
+    readonly get_public_error: (a: number, b: number) => [number, number, number];
+    readonly get_recommended_settings_legacy_json: (a: number, b: number, c: bigint) => [number, number, number, number];
+    readonly get_schema: (a: number, b: number) => [number, number, number];
+    readonly inspect_result: (a: any) => [number, number, number];
+    readonly list_public_errors: () => [number, number, number];
+    readonly list_schemas: () => [number, number, number];
+    readonly recommend_settings: (a: any) => [number, number, number];
+    readonly solve: (a: any) => [number, number, number];
+    readonly solve_legacy_json: (a: number, b: number) => [number, number, number, number];
+    readonly solve_with_progress: (a: any, b: number) => [number, number, number];
+    readonly solve_with_progress_legacy_json: (a: number, b: number, c: number) => [number, number, number, number];
+    readonly test_callback_consistency: (a: number, b: number) => [number, number, number, number];
+    readonly validate_problem: (a: any) => [number, number, number];
+    readonly validate_problem_legacy_json: (a: number, b: number) => [number, number, number, number];
+    readonly init_panic_hook: () => void;
+    readonly greet: () => void;
+    readonly __wbindgen_malloc: (a: number, b: number) => number;
+    readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
+    readonly __wbindgen_exn_store: (a: number) => void;
+    readonly __externref_table_alloc: () => number;
+    readonly __wbindgen_externrefs: WebAssembly.Table;
+    readonly __wbindgen_free: (a: number, b: number, c: number) => void;
+    readonly __externref_table_dealloc: (a: number) => void;
+    readonly __wbindgen_start: () => void;
+}
+
+export type SyncInitInput = BufferSource | WebAssembly.Module;
+
+/**
+ * Instantiates the given `module`, which can either be bytes or
+ * a precompiled `WebAssembly.Module`.
+ *
+ * @param {{ module: SyncInitInput }} module - Passing `SyncInitInput` directly is deprecated.
+ *
+ * @returns {InitOutput}
+ */
+export function initSync(module: { module: SyncInitInput } | SyncInitInput): InitOutput;
+
+/**
+ * If `module_or_path` is {RequestInfo} or {URL}, makes a request and
+ * for everything else, calls `WebAssembly.instantiate` directly.
+ *
+ * @param {{ module_or_path: InitInput | Promise<InitInput> }} module_or_path - Passing `InitInput` directly is deprecated.
+ *
+ * @returns {Promise<InitOutput>}
+ */
+export default function __wbg_init (module_or_path?: { module_or_path: InitInput | Promise<InitInput> } | InitInput | Promise<InitInput>): Promise<InitOutput>;

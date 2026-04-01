@@ -1,5 +1,5 @@
-use solver_server::api::{handlers::AppState, routes::create_router};
-use solver_server::jobs::manager::JobManager;
+use gm_api::api::{handlers::AppState, routes::create_router};
+use gm_api::jobs::manager::JobManager;
 use std::net::SocketAddr;
 
 #[tokio::main]

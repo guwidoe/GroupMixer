@@ -1,7 +1,7 @@
 use crate::contract_surface::binding_for_operation_id;
 use anyhow::anyhow;
 use anyhow::Error;
-use solver_contracts::errors::{
+use gm_contracts::errors::{
     error_spec, INFEASIBLE_PROBLEM_ERROR, INTERNAL_ERROR, INVALID_INPUT_ERROR,
     UNKNOWN_ERROR_CODE_ERROR, UNKNOWN_SCHEMA_ERROR, UNSUPPORTED_CONSTRAINT_KIND_ERROR,
 };
@@ -127,7 +127,7 @@ fn public_error(
         rendered.push_str("see:\n");
         for operation_id in related_operations {
             if let Some(binding) = binding_for_operation_id(&operation_id) {
-                rendered.push_str(&format!("  - solver-cli {} --help\n", binding.command_name));
+                rendered.push_str(&format!("  - gm-cli {} --help\n", binding.command_name));
             } else {
                 rendered.push_str(&format!("  - {}\n", operation_id));
             }

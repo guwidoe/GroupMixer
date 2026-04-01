@@ -1,4 +1,4 @@
-//! solver-cli: Command-line interface for GroupMixer solver
+//! gm-cli: Command-line interface for GroupMixer solver
 //!
 //! This CLI enables AI agents and developers to exercise solver functionality
 //! without requiring the web interface.
@@ -19,8 +19,7 @@ mod public_errors;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
-use serde::Serialize;
-use solver_benchmarking::{
+use gm_benchmarking::{
     compare_run_to_baseline, create_recording_for_run, create_recording_for_runs,
     find_recording_suite_runs, list_recordings, list_refs, load_baseline_snapshot, load_recording,
     load_ref, load_run_report, persist_comparison_report, persist_run_report,
@@ -28,21 +27,22 @@ use solver_benchmarking::{
     save_baseline_snapshot, BaselineDescriptor, BenchmarkStorage, RecordingOptions, RecordingQuery,
     RecordingRunInput, RunnerOptions, FULL_SOLVE_BENCHMARK_MODE,
 };
-use solver_contracts::{
+use gm_contracts::{
     bootstrap::bootstrap_spec,
     errors::{error_spec, error_specs},
     operations::operation_spec,
     schemas::{export_schema, schema_specs},
     types::{RecommendSettingsRequest, ResultSummary, ValidateResponse, ValidationIssue},
 };
-use solver_core::models::{ApiInput, SolverResult};
-use solver_core::{calculate_recommended_settings, default_solver_configuration, run_solver};
+use gm_core::models::{ApiInput, SolverResult};
+use gm_core::{calculate_recommended_settings, default_solver_configuration, run_solver};
+use serde::Serialize;
 use std::fs;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
-#[command(name = "solver-cli")]
+#[command(name = "gm-cli")]
 #[command(author = "GroupMixer")]
 #[command(version = "0.1.0")]
 #[command(about = "GroupMixer solver CLI - AI-testable optimization", long_about = None)]
@@ -154,14 +154,14 @@ enum Commands {
         json: bool,
     },
 
-    /// List bootstrap capabilities from solver-contracts
+    /// List bootstrap capabilities from gm-contracts
     Capabilities {
         /// Emit machine-readable JSON
         #[arg(long)]
         json: bool,
     },
 
-    /// Inspect canonical public error codes from solver-contracts
+    /// Inspect canonical public error codes from gm-contracts
     Errors {
         /// Specific error code to inspect (defaults to listing known codes)
         #[arg(value_name = "ERROR_CODE")]
@@ -185,7 +185,7 @@ enum BenchmarkCommands {
         #[arg(long, value_name = "FILE")]
         manifest: Option<PathBuf>,
 
-        /// Override artifact root (defaults to GROUPMIXER_BENCHMARK_ARTIFACTS_DIR or benchmarking/artifacts)
+        /// Override artifact root (defaults to GROUPMIXER_BENCHMARK_ARTIFACTS_DIR or backend/benchmarking/artifacts)
         #[arg(long, value_name = "DIR")]
         artifacts_dir: Option<PathBuf>,
 
@@ -212,7 +212,7 @@ enum BenchmarkCommands {
         #[arg(long, value_name = "FILE", conflicts_with = "baseline")]
         baseline_run: Option<PathBuf>,
 
-        /// Override artifact root (defaults to GROUPMIXER_BENCHMARK_ARTIFACTS_DIR or benchmarking/artifacts)
+        /// Override artifact root (defaults to GROUPMIXER_BENCHMARK_ARTIFACTS_DIR or backend/benchmarking/artifacts)
         #[arg(long, value_name = "DIR")]
         artifacts_dir: Option<PathBuf>,
 
@@ -387,14 +387,14 @@ enum BenchmarkBaselineCommands {
         #[arg(long, value_name = "NAME")]
         name: String,
 
-        /// Override artifact root (defaults to GROUPMIXER_BENCHMARK_ARTIFACTS_DIR or benchmarking/artifacts)
+        /// Override artifact root (defaults to GROUPMIXER_BENCHMARK_ARTIFACTS_DIR or backend/benchmarking/artifacts)
         #[arg(long, value_name = "DIR")]
         artifacts_dir: Option<PathBuf>,
     },
 
     /// List known baselines in artifact storage
     List {
-        /// Override artifact root (defaults to GROUPMIXER_BENCHMARK_ARTIFACTS_DIR or benchmarking/artifacts)
+        /// Override artifact root (defaults to GROUPMIXER_BENCHMARK_ARTIFACTS_DIR or backend/benchmarking/artifacts)
         #[arg(long, value_name = "DIR")]
         artifacts_dir: Option<PathBuf>,
 
@@ -706,8 +706,8 @@ fn cmd_benchmark_compare(
     } else if let Some(baseline_run_path) = baseline_run {
         let baseline_run_report = load_run_report(&baseline_run_path)?;
         (
-            solver_benchmarking::BaselineSnapshot {
-                schema_version: solver_benchmarking::BASELINE_SNAPSHOT_SCHEMA_VERSION,
+            gm_benchmarking::BaselineSnapshot {
+                schema_version: gm_benchmarking::BASELINE_SNAPSHOT_SCHEMA_VERSION,
                 baseline_name: baseline_run_report.run.run_id.clone(),
                 created_at: baseline_run_report.run.generated_at.clone(),
                 source_run_path: Some(baseline_run_path.display().to_string()),
@@ -762,7 +762,7 @@ fn cmd_benchmark_record(
         &RecordingOptions {
             recording_id,
             purpose,
-            source: "solver-cli benchmark record".to_string(),
+            source: "gm-cli benchmark record".to_string(),
             feature_name,
         },
     )?;
@@ -811,7 +811,7 @@ fn cmd_benchmark_record_bundle(
         &RecordingOptions {
             recording_id,
             purpose,
-            source: "solver-cli benchmark record-bundle".to_string(),
+            source: "gm-cli benchmark record-bundle".to_string(),
             feature_name,
         },
     )?;
@@ -861,8 +861,8 @@ fn cmd_benchmark_compare_prev(
         storage.root(),
         &previous.suite_run.run_report_path,
     ))?;
-    let synthetic_baseline = solver_benchmarking::BaselineSnapshot {
-        schema_version: solver_benchmarking::BASELINE_SNAPSHOT_SCHEMA_VERSION,
+    let synthetic_baseline = gm_benchmarking::BaselineSnapshot {
+        schema_version: gm_benchmarking::BASELINE_SNAPSHOT_SCHEMA_VERSION,
         baseline_name: format!("previous-{}", previous.recording.recording_id),
         created_at: previous.recording.recorded_at.clone(),
         source_run_path: Some(previous.suite_run.run_report_path.clone()),
@@ -1000,7 +1000,7 @@ fn cmd_benchmark_latest_or_previous(
         return Ok(());
     }
 
-    let recordings = solver_benchmarking::list_recording_metadatas(storage.root())?;
+    let recordings = gm_benchmarking::list_recording_metadatas(storage.root())?;
     let Some(recording) = recordings.get(index) else {
         anyhow::bail!("no recording found at position {}", index);
     };
@@ -1071,8 +1071,12 @@ fn benchmark_storage(artifacts_dir: Option<PathBuf>) -> BenchmarkStorage {
 }
 
 fn resolve_suite_manifest_path(suite: &BenchmarkSuiteArg, manifest: Option<PathBuf>) -> PathBuf {
-    manifest
-        .unwrap_or_else(|| PathBuf::from(format!("benchmarking/suites/{}.yaml", suite.as_str())))
+    manifest.unwrap_or_else(|| {
+        PathBuf::from(format!(
+            "backend/benchmarking/suites/{}.yaml",
+            suite.as_str()
+        ))
+    })
 }
 
 fn resolve_bundle_manifest_paths(
@@ -1183,7 +1187,7 @@ fn cmd_validate(input: Option<PathBuf>, stdin: bool) -> Result<()> {
         )
     })?;
 
-    use solver_core::solver::State;
+    use gm_core::solver::State;
     match State::new(&api_input) {
         Ok(_) => {
             let response = ValidateResponse {
@@ -1522,7 +1526,7 @@ mod tests {
     #[test]
     fn suite_manifest_defaults_to_builtin_path_manifest() {
         let path = resolve_suite_manifest_path(&BenchmarkSuiteArg::Path, None);
-        assert_eq!(path, PathBuf::from("benchmarking/suites/path.yaml"));
+        assert_eq!(path, PathBuf::from("backend/benchmarking/suites/path.yaml"));
     }
 
     #[test]
@@ -1547,7 +1551,7 @@ mod tests {
             .expect_err("unknown schema should fail")
             .to_string();
         assert!(error.contains("error[unknown-schema]"));
-        assert!(error.contains("solver-cli schema --help"));
+        assert!(error.contains("gm-cli schema --help"));
     }
 
     #[test]
@@ -1556,7 +1560,7 @@ mod tests {
             .expect_err("unknown error code should fail")
             .to_string();
         assert!(error.contains("error[unknown-error-code]"));
-        assert!(error.contains("solver-cli errors --help"));
+        assert!(error.contains("gm-cli errors --help"));
     }
 
     #[test]
@@ -1589,6 +1593,6 @@ mod tests {
             .to_string();
         assert!(error.contains("error[invalid-input]"));
         assert!(error.contains("initial_schedule"));
-        assert!(error.contains("solver-cli evaluate --help"));
+        assert!(error.contains("gm-cli evaluate --help"));
     }
 }

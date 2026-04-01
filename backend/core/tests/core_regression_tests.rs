@@ -1,14 +1,14 @@
 mod common;
 
 use common::default_solver_config;
-use solver_core::algorithms::simulated_annealing::SimulatedAnnealing;
-use solver_core::models::{
+use gm_core::algorithms::simulated_annealing::SimulatedAnnealing;
+use gm_core::models::{
     ApiInput, BenchmarkEvent, Constraint, Group, LoggingOptions, MoveFamily, MovePolicy,
     MoveSelectionMode, Objective, Person, ProblemDefinition, RepeatEncounterParams,
     SimulatedAnnealingParams, SolverConfiguration, SolverParams, StopConditions, StopReason,
 };
-use solver_core::solver::State;
-use solver_core::{
+use gm_core::solver::State;
+use gm_core::{
     run_solver, run_solver_with_benchmark_observer, run_solver_with_callbacks,
     run_solver_with_progress,
 };
@@ -232,7 +232,7 @@ fn progress_callback_can_stop_solver_early() {
 
     let iterations = Arc::new(Mutex::new(Vec::new()));
     let iterations_clone = Arc::clone(&iterations);
-    let callback: solver_core::models::ProgressCallback = Box::new(move |progress| {
+    let callback: gm_core::models::ProgressCallback = Box::new(move |progress| {
         iterations_clone.lock().unwrap().push(progress.iteration);
         false
     });
@@ -257,7 +257,7 @@ fn final_progress_update_includes_stop_reason() {
 
     let last_progress = Arc::new(Mutex::new(None));
     let last_progress_clone = Arc::clone(&last_progress);
-    let callback: solver_core::models::ProgressCallback = Box::new(move |progress| {
+    let callback: gm_core::models::ProgressCallback = Box::new(move |progress| {
         *last_progress_clone.lock().unwrap() = Some(progress.clone());
         false
     });
@@ -316,7 +316,7 @@ fn benchmark_observer_receives_started_and_completed_events() {
 
     let events = Arc::new(Mutex::new(Vec::new()));
     let events_clone = Arc::clone(&events);
-    let observer: solver_core::models::BenchmarkObserver = Box::new(move |event| {
+    let observer: gm_core::models::BenchmarkObserver = Box::new(move |event| {
         events_clone.lock().unwrap().push(event.clone());
     });
 
@@ -364,14 +364,14 @@ fn progress_callback_and_benchmark_observer_can_run_together() {
 
     let progress_count = Arc::new(Mutex::new(0usize));
     let progress_count_clone = Arc::clone(&progress_count);
-    let progress_callback: solver_core::models::ProgressCallback = Box::new(move |_| {
+    let progress_callback: gm_core::models::ProgressCallback = Box::new(move |_| {
         *progress_count_clone.lock().unwrap() += 1;
         true
     });
 
     let benchmark_count = Arc::new(Mutex::new(0usize));
     let benchmark_count_clone = Arc::clone(&benchmark_count);
-    let observer: solver_core::models::BenchmarkObserver = Box::new(move |_| {
+    let observer: gm_core::models::BenchmarkObserver = Box::new(move |_| {
         *benchmark_count_clone.lock().unwrap() += 1;
     });
 

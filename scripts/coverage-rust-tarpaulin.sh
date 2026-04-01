@@ -9,7 +9,7 @@ fi
 mkdir -p target/coverage/tarpaulin
 
 cargo tarpaulin \
-  -p solver-core \
+  -p gm-core \
   --engine llvm \
   --tests \
   --all-features \

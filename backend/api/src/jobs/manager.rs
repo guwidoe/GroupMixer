@@ -1,6 +1,6 @@
 use dashmap::DashMap;
+use gm_core::{models::ApiInput, run_solver};
 use serde::{Deserialize, Serialize};
-use solver_core::{models::ApiInput, run_solver};
 use std::sync::{Arc, Mutex};
 use tokio::task;
 use uuid::Uuid;

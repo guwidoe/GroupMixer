@@ -49,8 +49,8 @@ impl State {
     /// # Example
     ///
     /// ```no_run
-    /// # use solver_core::solver::State;
-    /// # use solver_core::models::*;
+    /// # use gm_core::solver::State;
+    /// # use gm_core::models::*;
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
     /// #     initial_schedule: None,
@@ -83,7 +83,7 @@ impl State {
     /// // ... apply some moves ...
     /// let score_after = state.format_score_breakdown();
     /// println!("Before:\n{}\nAfter:\n{}", score_before, score_after);
-    /// # Ok::<(), solver_core::solver::SolverError>(())
+    /// # Ok::<(), gm_core::solver::SolverError>(())
     /// ```
     ///
     /// # Use Cases
@@ -118,8 +118,8 @@ impl State {
     /// # Typical Usage in Algorithms
     ///
     /// ```no_run
-    /// # use solver_core::solver::State;
-    /// # use solver_core::models::*;
+    /// # use gm_core::solver::State;
+    /// # use gm_core::models::*;
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
     /// #     initial_schedule: None,
@@ -152,7 +152,7 @@ impl State {
     /// if state.logging.log_final_score_breakdown {
     ///     println!("Final state:\n{}", state.format_score_breakdown());
     /// }
-    /// # Ok::<(), solver_core::solver::SolverError>(())
+    /// # Ok::<(), gm_core::solver::SolverError>(())
     /// ```
     pub fn format_score_breakdown(&self) -> String {
         let mut breakdown = format!(

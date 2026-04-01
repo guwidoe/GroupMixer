@@ -1,0 +1,559 @@
+{
+  "bootstrap": {
+    "title": "GroupMixer solver contracts",
+    "summary": "Static bootstrap for the public solver affordance graph shared by CLI, HTTP, and WASM projections.",
+    "discovery_note": "The surface is static and self-describing. Start from a top-level operation, then request local help for that operation and follow its related affordances.",
+    "top_level_operation_ids": [
+      "solve",
+      "validate-problem",
+      "inspect-result",
+      "get-default-solver-configuration",
+      "recommend-settings",
+      "evaluate-input",
+      "get-schema",
+      "inspect-errors"
+    ]
+  },
+  "operations": [
+    {
+      "id": "solve",
+      "summary": "Run the solver for a complete optimization input.",
+      "description": "Accept a full solver input, execute the optimization engine, and return the resulting schedule plus final metrics.",
+      "kind": "compute",
+      "family": "solver",
+      "input_schema_ids": [
+        "solve-request"
+      ],
+      "output_schema_ids": [
+        "solve-response"
+      ],
+      "progress_schema_ids": [
+        "progress-update"
+      ],
+      "error_codes": [
+        "invalid-input",
+        "infeasible-problem",
+        "unsupported-constraint-kind",
+        "internal-error"
+      ],
+      "related_operation_ids": [
+        "validate-problem",
+        "inspect-result",
+        "get-schema",
+        "inspect-errors",
+        "get-default-solver-configuration",
+        "recommend-settings"
+      ],
+      "example_ids": [
+        "solve-happy-path",
+        "solve-progress-update"
+      ]
+    },
+    {
+      "id": "validate-problem",
+      "summary": "Validate solver input without running optimization.",
+      "description": "Check whether a solver input is structurally and semantically acceptable before invoking the solver.",
+      "kind": "inspect",
+      "family": "validation",
+      "input_schema_ids": [
+        "validate-request"
+      ],
+      "output_schema_ids": [
+        "validate-response"
+      ],
+      "progress_schema_ids": [],
+      "error_codes": [
+        "invalid-input",
+        "unsupported-constraint-kind",
+        "infeasible-problem",
+        "internal-error"
+      ],
+      "related_operation_ids": [
+        "solve",
+        "get-schema",
+        "inspect-errors"
+      ],
+      "example_ids": [
+        "validate-invalid-constraint"
+      ]
+    },
+    {
+      "id": "inspect-result",
+      "summary": "Inspect lightweight metadata for an existing solver result.",
+      "description": "Return summary-level result fields that are useful for follow-up inspection and discovery without requiring a full schedule walk.",
+      "kind": "inspect",
+      "family": "results",
+      "input_schema_ids": [
+        "solve-response"
+      ],
+      "output_schema_ids": [
+        "result-summary"
+      ],
+      "progress_schema_ids": [],
+      "error_codes": [
+        "invalid-input",
+        "internal-error"
+      ],
+      "related_operation_ids": [
+        "solve",
+        "get-schema",
+        "inspect-errors"
+      ],
+      "example_ids": [
+        "inspect-result-summary"
+      ]
+    },
+    {
+      "id": "get-default-solver-configuration",
+      "summary": "Get the canonical default solver configuration.",
+      "description": "Return the baseline solver configuration that callers can use as a clean starting point before applying problem-aware tuning or manual edits.",
+      "kind": "read",
+      "family": "configuration",
+      "input_schema_ids": [],
+      "output_schema_ids": [
+        "solver-configuration"
+      ],
+      "progress_schema_ids": [],
+      "error_codes": [
+        "internal-error"
+      ],
+      "related_operation_ids": [
+        "recommend-settings",
+        "solve",
+        "get-schema"
+      ],
+      "example_ids": [
+        "default-solver-configuration"
+      ]
+    },
+    {
+      "id": "recommend-settings",
+      "summary": "Recommend solver settings from an explicit recommendation request.",
+      "description": "Analyze a problem definition plus runtime target and return a recommended solver configuration without executing the main solve workflow.",
+      "kind": "compute",
+      "family": "configuration",
+      "input_schema_ids": [
+        "recommend-settings-request"
+      ],
+      "output_schema_ids": [
+        "solver-configuration"
+      ],
+      "progress_schema_ids": [],
+      "error_codes": [
+        "invalid-input",
+        "infeasible-problem",
+        "internal-error"
+      ],
+      "related_operation_ids": [
+        "get-default-solver-configuration",
+        "solve",
+        "validate-problem",
+        "get-schema"
+      ],
+      "example_ids": [
+        "recommend-settings-minimal"
+      ]
+    },
+    {
+      "id": "evaluate-input",
+      "summary": "Evaluate an existing scheduled input without running search.",
+      "description": "Accept a solve request that already includes an initial schedule, recompute scores, and return the resulting solver result payload.",
+      "kind": "inspect",
+      "family": "results",
+      "input_schema_ids": [
+        "solve-request"
+      ],
+      "output_schema_ids": [
+        "solve-response"
+      ],
+      "progress_schema_ids": [],
+      "error_codes": [
+        "invalid-input",
+        "infeasible-problem",
+        "internal-error"
+      ],
+      "related_operation_ids": [
+        "inspect-result",
+        "solve",
+        "get-schema"
+      ],
+      "example_ids": [
+        "evaluate-input-minimal"
+      ]
+    },
+    {
+      "id": "get-schema",
+      "summary": "Inspect a named public schema from the contract registry.",
+      "description": "Return machine-readable schema metadata for one stable schema identifier.",
+      "kind": "read",
+      "family": "introspection",
+      "input_schema_ids": [],
+      "output_schema_ids": [],
+      "progress_schema_ids": [],
+      "error_codes": [
+        "unknown-schema",
+        "internal-error"
+      ],
+      "related_operation_ids": [
+        "solve",
+        "validate-problem",
+        "inspect-result",
+        "get-default-solver-configuration",
+        "recommend-settings",
+        "inspect-errors"
+      ],
+      "example_ids": [
+        "get-schema-solve-request"
+      ]
+    },
+    {
+      "id": "inspect-errors",
+      "summary": "Inspect the canonical public error catalog.",
+      "description": "Return the stable error-code catalog so callers can understand failure meanings and follow related-help pointers.",
+      "kind": "read",
+      "family": "introspection",
+      "input_schema_ids": [],
+      "output_schema_ids": [
+        "public-error-envelope"
+      ],
+      "progress_schema_ids": [],
+      "error_codes": [
+        "unknown-operation",
+        "unknown-error-code",
+        "internal-error"
+      ],
+      "related_operation_ids": [
+        "solve",
+        "validate-problem",
+        "inspect-result",
+        "get-default-solver-configuration",
+        "recommend-settings",
+        "get-schema"
+      ],
+      "example_ids": [
+        "inspect-errors-public-error"
+      ]
+    }
+  ],
+  "schemas": [
+    {
+      "id": "solve-request",
+      "version": "v1"
+    },
+    {
+      "id": "solve-response",
+      "version": "v1"
+    },
+    {
+      "id": "validate-request",
+      "version": "v1"
+    },
+    {
+      "id": "validate-response",
+      "version": "v1"
+    },
+    {
+      "id": "problem-definition",
+      "version": "v1"
+    },
+    {
+      "id": "recommend-settings-request",
+      "version": "v1"
+    },
+    {
+      "id": "solver-configuration",
+      "version": "v1"
+    },
+    {
+      "id": "progress-update",
+      "version": "v1"
+    },
+    {
+      "id": "result-summary",
+      "version": "v1"
+    },
+    {
+      "id": "public-error-envelope",
+      "version": "v1"
+    }
+  ],
+  "errors": [
+    {
+      "code": "invalid-input",
+      "category": "invalid_input",
+      "summary": "The provided request or payload shape is invalid.",
+      "why": "The caller supplied malformed JSON, a missing required field, or an unexpected value shape for the requested operation.",
+      "recovery": "Inspect the relevant input schema and local help for the targeted operation, then resend a valid request.",
+      "related_help_operation_ids": [
+        "validate-problem",
+        "get-schema"
+      ]
+    },
+    {
+      "code": "unknown-operation",
+      "category": "unsupported",
+      "summary": "The requested operation is not part of the public solver contract.",
+      "why": "The caller referenced an operation ID or affordance name that is not registered in the shared contracts graph.",
+      "recovery": "Start from bootstrap help, then choose one of the registered top-level operations.",
+      "related_help_operation_ids": [
+        "solve",
+        "validate-problem",
+        "get-schema"
+      ]
+    },
+    {
+      "code": "unknown-schema",
+      "category": "unsupported",
+      "summary": "The requested schema ID is not registered.",
+      "why": "The caller requested a schema identifier that does not exist in the contract registry.",
+      "recovery": "Inspect the schema lookup/help affordance and request one of the registered schema IDs.",
+      "related_help_operation_ids": [
+        "get-schema"
+      ]
+    },
+    {
+      "code": "unknown-error-code",
+      "category": "unsupported",
+      "summary": "The requested public error code is not registered.",
+      "why": "The caller requested an error code identifier that does not exist in the contract registry.",
+      "recovery": "Inspect the error-catalog help affordance and request one of the registered public error codes.",
+      "related_help_operation_ids": [
+        "inspect-errors"
+      ]
+    },
+    {
+      "code": "infeasible-problem",
+      "category": "infeasible",
+      "summary": "The problem definition is internally inconsistent or infeasible.",
+      "why": "The solver cannot satisfy the required constraints, capacities, or session assignments for the provided input.",
+      "recovery": "Validate the problem, inspect constraint settings, and adjust the input so a valid schedule is possible.",
+      "related_help_operation_ids": [
+        "validate-problem",
+        "solve"
+      ]
+    },
+    {
+      "code": "unsupported-constraint-kind",
+      "category": "unsupported",
+      "summary": "A constraint kind or similar enum-like value is not supported.",
+      "why": "The caller referenced a named domain feature that is not part of the currently supported public contract.",
+      "recovery": "Inspect the relevant schema and contract help, then replace the unsupported value with a supported one.",
+      "related_help_operation_ids": [
+        "validate-problem",
+        "get-schema"
+      ]
+    },
+    {
+      "code": "permission-denied",
+      "category": "permission",
+      "summary": "The caller lacks permission for the requested operation.",
+      "why": "The current transport/runtime surface rejected the action under its active rights model.",
+      "recovery": "Use a permitted read-only affordance, obtain the required credentials/scope, or switch to an allowed workflow.",
+      "related_help_operation_ids": [
+        "solve",
+        "validate-problem"
+      ]
+    },
+    {
+      "code": "internal-error",
+      "category": "internal",
+      "summary": "An unexpected internal failure occurred.",
+      "why": "The operation failed for a reason outside the normal public validation and feasibility model.",
+      "recovery": "Capture the error details, inspect local help for the attempted operation, and retry only if the failure is known to be transient.",
+      "related_help_operation_ids": [
+        "solve",
+        "validate-problem",
+        "inspect-result",
+        "inspect-errors"
+      ]
+    }
+  ],
+  "examples": [
+    {
+      "id": "solve-happy-path",
+      "operation_id": "solve",
+      "summary": "Minimal successful solve request/response pair.",
+      "description": "Shows the smallest complete optimization input and a representative successful result plus transport-specific invocation snippets.",
+      "snippets": [
+        {
+          "label": "solve request json",
+          "format": "Json",
+          "schema_id": "solve-request",
+          "content": "{\n  \"problem\": {\n    \"people\": [\n      {\"id\": \"alice\", \"attributes\": {\"department\": \"eng\"}},\n      {\"id\": \"bob\", \"attributes\": {\"department\": \"design\"}}\n    ],\n    \"groups\": [\n      {\"id\": \"team-1\", \"size\": 2}\n    ],\n    \"num_sessions\": 1\n  },\n  \"initial_schedule\": null,\n  \"objectives\": [\n    {\"type\": \"maximize_unique_contacts\", \"weight\": 1.0}\n  ],\n  \"constraints\": [],\n  \"solver\": {\n    \"solver_type\": \"SimulatedAnnealing\",\n    \"stop_conditions\": {\n      \"max_iterations\": 100,\n      \"time_limit_seconds\": null,\n      \"no_improvement_iterations\": null\n    },\n    \"solver_params\": {\n      \"solver_type\": \"SimulatedAnnealing\",\n      \"initial_temperature\": 10.0,\n      \"final_temperature\": 0.1,\n      \"cooling_schedule\": \"geometric\",\n      \"reheat_after_no_improvement\": 0,\n      \"reheat_cycles\": 0\n    },\n    \"logging\": {},\n    \"telemetry\": {},\n    \"seed\": 7,\n    \"move_policy\": null,\n    \"allowed_sessions\": null\n  }\n}"
+        },
+        {
+          "label": "solve response json",
+          "format": "Json",
+          "schema_id": "solve-response",
+          "content": "{\n  \"final_score\": 1.0,\n  \"schedule\": {\n    \"session_0\": {\n      \"team-1\": [\"alice\", \"bob\"]\n    }\n  },\n  \"unique_contacts\": 1,\n  \"repetition_penalty\": 0,\n  \"attribute_balance_penalty\": 0,\n  \"constraint_penalty\": 0,\n  \"no_improvement_count\": 0,\n  \"weighted_repetition_penalty\": 0.0,\n  \"weighted_constraint_penalty\": 0.0,\n  \"effective_seed\": 7,\n  \"move_policy\": null,\n  \"stop_reason\": \"max_iterations_reached\",\n  \"benchmark_telemetry\": null\n}"
+        },
+        {
+          "label": "cli invocation",
+          "format": "Shell",
+          "schema_id": null,
+          "content": "gm-cli solve input.json --pretty"
+        },
+        {
+          "label": "http invocation",
+          "format": "Http",
+          "schema_id": null,
+          "content": "POST /solve with the solve request JSON body"
+        },
+        {
+          "label": "js invocation",
+          "format": "JavaScript",
+          "schema_id": null,
+          "content": "await groupmixer.solve(request)"
+        }
+      ]
+    },
+    {
+      "id": "solve-progress-update",
+      "operation_id": "solve",
+      "summary": "Representative progress update emitted while solve is running.",
+      "description": "Shows the stable progress payload shape that solve-capable transports can emit during execution.",
+      "snippets": [
+        {
+          "label": "progress update json",
+          "format": "Json",
+          "schema_id": "progress-update",
+          "content": "{\n  \"iteration\": 250,\n  \"max_iterations\": 1000,\n  \"temperature\": 12.5,\n  \"current_score\": 18.0,\n  \"best_score\": 14.0,\n  \"current_contacts\": 22,\n  \"best_contacts\": 24,\n  \"repetition_penalty\": 2,\n  \"elapsed_seconds\": 1.75,\n  \"no_improvement_count\": 40,\n  \"clique_swaps_tried\": 12,\n  \"clique_swaps_accepted\": 4,\n  \"clique_swaps_rejected\": 8,\n  \"transfers_tried\": 80,\n  \"transfers_accepted\": 21,\n  \"transfers_rejected\": 59,\n  \"swaps_tried\": 158,\n  \"swaps_accepted\": 44,\n  \"swaps_rejected\": 114,\n  \"overall_acceptance_rate\": 0.276,\n  \"recent_acceptance_rate\": 0.31,\n  \"avg_attempted_move_delta\": -0.42,\n  \"avg_accepted_move_delta\": -1.15,\n  \"biggest_accepted_increase\": 3.0,\n  \"biggest_attempted_increase\": 7.0,\n  \"current_repetition_penalty\": 2.0,\n  \"current_balance_penalty\": 0.0,\n  \"current_constraint_penalty\": 0.0,\n  \"best_repetition_penalty\": 1.0,\n  \"best_balance_penalty\": 0.0,\n  \"best_constraint_penalty\": 0.0,\n  \"reheats_performed\": 0,\n  \"iterations_since_last_reheat\": 250,\n  \"local_optima_escapes\": 6,\n  \"avg_time_per_iteration_ms\": 0.45,\n  \"cooling_progress\": 0.25,\n  \"clique_swap_success_rate\": 0.3333333333333333,\n  \"transfer_success_rate\": 0.2625,\n  \"swap_success_rate\": 0.27848101265822783,\n  \"score_variance\": 1.8,\n  \"search_efficiency\": 5.7,\n  \"best_schedule\": {\n    \"session_0\": {\n      \"team-1\": [\"alice\", \"bob\"],\n      \"team-2\": [\"carol\", \"dave\"]\n    }\n  },\n  \"effective_seed\": 7,\n  \"move_policy\": null,\n  \"stop_reason\": null\n}"
+        },
+        {
+          "label": "transport note",
+          "format": "JavaScript",
+          "schema_id": null,
+          "content": "Solve-capable transports may emit progress-update payloads while a solve is running."
+        }
+      ]
+    },
+    {
+      "id": "validate-invalid-constraint",
+      "operation_id": "validate-problem",
+      "summary": "Validation failure for an unsupported constraint kind.",
+      "description": "Demonstrates a negative path where the caller gets a precise validation issue and recovery pointers.",
+      "snippets": [
+        {
+          "label": "validation response json",
+          "format": "Json",
+          "schema_id": "validate-response",
+          "content": "{\n  \"valid\": false,\n  \"issues\": [\n    {\n      \"code\": \"unsupported-constraint-kind\",\n      \"message\": \"Constraint kind 'ShouldBeTogether' is not supported.\",\n      \"path\": \"constraints[0].type\"\n    }\n  ]\n}"
+        },
+        {
+          "label": "cli recovery",
+          "format": "Shell",
+          "schema_id": null,
+          "content": "gm-cli validate input.json && gm-cli schema input"
+        },
+        {
+          "label": "http recovery",
+          "format": "Http",
+          "schema_id": null,
+          "content": "GET /help?operation=validate-problem then GET /schemas/solve-request"
+        }
+      ]
+    },
+    {
+      "id": "inspect-result-summary",
+      "operation_id": "inspect-result",
+      "summary": "Inspect a lightweight result summary.",
+      "description": "Shows the compact result metadata shape used by result-inspection affordances.",
+      "snippets": [
+        {
+          "label": "result summary json",
+          "format": "Json",
+          "schema_id": "result-summary",
+          "content": "{\n  \"final_score\": 1.0,\n  \"unique_contacts\": 1,\n  \"repetition_penalty\": 0,\n  \"attribute_balance_penalty\": 0,\n  \"constraint_penalty\": 0,\n  \"effective_seed\": 7,\n  \"stop_reason\": \"max_iterations_reached\"\n}"
+        }
+      ]
+    },
+    {
+      "id": "inspect-errors-public-error",
+      "operation_id": "inspect-errors",
+      "summary": "Canonical public error example.",
+      "description": "Shows the structured public error envelope shape shared across projections.",
+      "snippets": [
+        {
+          "label": "public error envelope",
+          "format": "Json",
+          "schema_id": "public-error-envelope",
+          "content": "{\n  \"error\": {\n    \"code\": \"unsupported-constraint-kind\",\n    \"message\": \"Constraint kind 'ShouldBeTogether' is not supported.\",\n    \"where_path\": \"constraints[0].type\",\n    \"why\": \"The caller referenced a constraint type outside the supported public contract.\",\n    \"valid_alternatives\": [\n      \"RepeatEncounter\",\n      \"AttributeBalance\",\n      \"MustStayTogether\",\n      \"ShouldStayTogether\",\n      \"ShouldNotBeTogether\",\n      \"ImmovablePerson\",\n      \"ImmovablePeople\",\n      \"PairMeetingCount\"\n    ],\n    \"recovery\": \"Inspect the relevant schema/help and replace the unsupported constraint kind.\",\n    \"related_help\": [\"validate-problem\", \"get-schema\"]\n  }\n}"
+        }
+      ]
+    },
+    {
+      "id": "get-schema-solve-request",
+      "operation_id": "get-schema",
+      "summary": "Schema lookup example.",
+      "description": "Shows a transport-specific invocation that targets the solve-request schema.",
+      "snippets": [
+        {
+          "label": "schema lookup",
+          "format": "Shell",
+          "schema_id": "solve-request",
+          "content": "gm-cli schema solve-request"
+        }
+      ]
+    },
+    {
+      "id": "default-solver-configuration",
+      "operation_id": "get-default-solver-configuration",
+      "summary": "Read the canonical default solver configuration.",
+      "description": "Shows the baseline solver configuration callers can start from before applying runtime-aware recommendation or manual tuning.",
+      "snippets": [
+        {
+          "label": "default solver configuration",
+          "format": "Json",
+          "schema_id": "solver-configuration",
+          "content": "{\n  \"solver_type\": \"SimulatedAnnealing\",\n  \"stop_conditions\": {\n    \"max_iterations\": 10000,\n    \"time_limit_seconds\": 30,\n    \"no_improvement_iterations\": 5000\n  },\n  \"solver_params\": {\n    \"solver_type\": \"SimulatedAnnealing\",\n    \"initial_temperature\": 1.0,\n    \"final_temperature\": 0.01,\n    \"cooling_schedule\": \"geometric\",\n    \"reheat_cycles\": 0,\n    \"reheat_after_no_improvement\": 0\n  },\n  \"logging\": {\n    \"log_frequency\": 1000,\n    \"log_initial_state\": true,\n    \"log_duration_and_score\": true,\n    \"display_final_schedule\": true,\n    \"log_initial_score_breakdown\": true,\n    \"log_final_score_breakdown\": true,\n    \"log_stop_condition\": true,\n    \"debug_validate_invariants\": false,\n    \"debug_dump_invariant_context\": false\n  },\n  \"telemetry\": {},\n  \"seed\": null,\n  \"move_policy\": null,\n  \"allowed_sessions\": null\n}"
+        }
+      ]
+    },
+    {
+      "id": "recommend-settings-minimal",
+      "operation_id": "recommend-settings",
+      "summary": "Recommend solver settings from an explicit runtime-aware request.",
+      "description": "Shows a minimal recommend-settings request carrying a problem definition plus desired runtime and a representative recommended solver configuration.",
+      "snippets": [
+        {
+          "label": "recommend settings request",
+          "format": "Json",
+          "schema_id": "recommend-settings-request",
+          "content": "{\n  \"problem_definition\": {\n    \"people\": [\n      {\"id\": \"alice\", \"attributes\": {}},\n      {\"id\": \"bob\", \"attributes\": {}}\n    ],\n    \"groups\": [\n      {\"id\": \"team-1\", \"size\": 2}\n    ],\n    \"num_sessions\": 1\n  },\n  \"objectives\": [],\n  \"constraints\": [],\n  \"desired_runtime_seconds\": 30\n}"
+        },
+        {
+          "label": "recommended solver configuration",
+          "format": "Json",
+          "schema_id": "solver-configuration",
+          "content": "{\n  \"solver_type\": \"SimulatedAnnealing\",\n  \"stop_conditions\": {\n    \"max_iterations\": 1000,\n    \"time_limit_seconds\": 30,\n    \"no_improvement_iterations\": 500\n  },\n  \"solver_params\": {\n    \"solver_type\": \"SimulatedAnnealing\",\n    \"initial_temperature\": 100.0,\n    \"final_temperature\": 0.1,\n    \"cooling_schedule\": \"geometric\",\n    \"reheat_cycles\": 0,\n    \"reheat_after_no_improvement\": 0\n  },\n  \"logging\": {},\n  \"telemetry\": {},\n  \"seed\": null,\n  \"move_policy\": null,\n  \"allowed_sessions\": null\n}"
+        },
+        {
+          "label": "cli invocation",
+          "format": "Shell",
+          "schema_id": null,
+          "content": "gm-cli recommend problem.json --runtime 30 --pretty"
+        }
+      ]
+    },
+    {
+      "id": "evaluate-input-minimal",
+      "operation_id": "evaluate-input",
+      "summary": "Evaluate a scheduled input without running search.",
+      "description": "Shows the shape of a representative evaluation result for an input that already includes an initial schedule.",
+      "snippets": [
+        {
+          "label": "evaluate invocation",
+          "format": "Shell",
+          "schema_id": null,
+          "content": "gm-cli evaluate scheduled-input.json --pretty"
+        },
+        {
+          "label": "evaluate result json",
+          "format": "Json",
+          "schema_id": "solve-response",
+          "content": "{\n  \"final_score\": 1.0,\n  \"schedule\": {\n    \"session_0\": {\n      \"team-1\": [\"alice\", \"bob\"]\n    }\n  },\n  \"unique_contacts\": 1,\n  \"repetition_penalty\": 0,\n  \"attribute_balance_penalty\": 0,\n  \"constraint_penalty\": 0,\n  \"no_improvement_count\": 0,\n  \"weighted_repetition_penalty\": 0.0,\n  \"weighted_constraint_penalty\": 0.0,\n  \"effective_seed\": null,\n  \"move_policy\": null,\n  \"stop_reason\": \"max_iterations_reached\",\n  \"benchmark_telemetry\": null\n}"
+        }
+      ]
+    }
+  ]
+}
