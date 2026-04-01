@@ -16,7 +16,8 @@ This repo adopts `docs/reference/principles/AGENTIC_ENGINEERING_PRINCIPLES.md` a
 
 ## Stack
 
-- Rust workspace: `solver-core`, `solver-wasm`, `solver-server`, `solver-cli`
+- Rust workspace members live under `backend/` plus `solver-benchmarking/`
+- Main Rust crates: `solver-core`, `solver-contracts`, `solver-wasm`, `solver-server`, `solver-cli`, `solver-benchmarking`
 - React 19 + TypeScript + Vite in `webapp/`
 - WebAssembly via `wasm-pack`
 - Zustand for frontend state
@@ -44,7 +45,7 @@ cargo test --workspace
 ./gate.sh
 
 # Build wasm into the webapp public output
-cd backend/wasm && wasm-pack build --target web --out-dir ../webapp/public/pkg
+cd backend/wasm && wasm-pack build --target web --out-dir ../../webapp/public/pkg
 
 # Run server
 cargo run -p solver-server
@@ -62,7 +63,6 @@ cd webapp && npm run test:e2e
 ## Key Files
 
 - `docs/reference/principles/AGENTIC_ENGINEERING_PRINCIPLES.md` — repo doctrine; normative reference
-- `docs/CODEBASE_MAP.md` — high-level architecture map of the repo
 - `gate.sh` — current whole-repo verification script
 - `backend/core/src/lib.rs` — public Rust API entry points
 - `backend/core/src/models.rs` — serialized domain model and solver-facing types
