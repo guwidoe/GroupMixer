@@ -1,9 +1,9 @@
 use gm_contracts::{
     bootstrap::bootstrap_spec,
     errors::{
-        error_spec, error_specs, INFEASIBLE_PROBLEM_ERROR, INTERNAL_ERROR, INVALID_INPUT_ERROR,
-        UNKNOWN_ERROR_CODE_ERROR, UNKNOWN_OPERATION_ERROR, UNKNOWN_SCHEMA_ERROR,
-        UNSUPPORTED_CONSTRAINT_KIND_ERROR,
+        error_spec, error_specs, supported_constraint_kind_alternatives, INFEASIBLE_PROBLEM_ERROR,
+        INTERNAL_ERROR, INVALID_INPUT_ERROR, UNKNOWN_ERROR_CODE_ERROR, UNKNOWN_OPERATION_ERROR,
+        UNKNOWN_SCHEMA_ERROR, UNSUPPORTED_CONSTRAINT_KIND_ERROR, UNSUPPORTED_CONSTRAINT_KIND_PATH,
     },
     schemas::schema_specs,
     types::{PublicError, PublicErrorEnvelope},
@@ -39,8 +39,8 @@ pub fn unsupported_constraint_kind_error(message: impl Into<String>) -> PublicEr
     api_error(
         UNSUPPORTED_CONSTRAINT_KIND_ERROR,
         message,
-        Some("constraints[*].type".to_string()),
-        supported_constraint_kinds(),
+        Some(UNSUPPORTED_CONSTRAINT_KIND_PATH.to_string()),
+        supported_constraint_kind_alternatives(),
         Some(vec![
             "validate-problem".to_string(),
             "get-schema".to_string(),
@@ -165,19 +165,6 @@ fn api_error(
             }),
         },
     }
-}
-
-fn supported_constraint_kinds() -> Vec<String> {
-    vec![
-        "RepeatEncounter".to_string(),
-        "AttributeBalance".to_string(),
-        "MustStayTogether".to_string(),
-        "ShouldStayTogether".to_string(),
-        "ShouldNotBeTogether".to_string(),
-        "ImmovablePerson".to_string(),
-        "ImmovablePeople".to_string(),
-        "PairMeetingCount".to_string(),
-    ]
 }
 
 #[cfg(test)]

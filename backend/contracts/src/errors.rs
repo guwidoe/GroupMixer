@@ -13,6 +13,18 @@ pub const INFEASIBLE_PROBLEM_ERROR: &str = "infeasible-problem";
 pub const UNSUPPORTED_CONSTRAINT_KIND_ERROR: &str = "unsupported-constraint-kind";
 pub const PERMISSION_DENIED_ERROR: &str = "permission-denied";
 pub const INTERNAL_ERROR: &str = "internal-error";
+pub const UNSUPPORTED_CONSTRAINT_KIND_PATH: &str = "constraints[*].type";
+
+const SUPPORTED_CONSTRAINT_KIND_NAMES: &[&str] = &[
+    "RepeatEncounter",
+    "AttributeBalance",
+    "MustStayTogether",
+    "ShouldStayTogether",
+    "ShouldNotBeTogether",
+    "ImmovablePerson",
+    "ImmovablePeople",
+    "PairMeetingCount",
+];
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct PublicErrorSpec {
@@ -104,9 +116,20 @@ pub fn error_spec(code: &str) -> Option<&'static PublicErrorSpec> {
     ERROR_SPECS.iter().find(|spec| spec.code == code)
 }
 
+pub fn supported_constraint_kind_names() -> &'static [&'static str] {
+    SUPPORTED_CONSTRAINT_KIND_NAMES
+}
+
+pub fn supported_constraint_kind_alternatives() -> Vec<String> {
+    supported_constraint_kind_names()
+        .iter()
+        .map(|value| (*value).to_string())
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{error_spec, error_specs};
+    use super::{error_spec, error_specs, supported_constraint_kind_names};
     use crate::operations::operation_spec;
     use std::collections::HashSet;
 
@@ -132,5 +155,11 @@ mod tests {
     fn lookup_returns_registered_error() {
         let spec = error_spec("invalid-input").expect("registered error");
         assert_eq!(spec.code, "invalid-input");
+    }
+
+    #[test]
+    fn supported_constraint_kinds_are_unique() {
+        let kinds: HashSet<_> = supported_constraint_kind_names().iter().copied().collect();
+        assert_eq!(kinds.len(), supported_constraint_kind_names().len());
     }
 }

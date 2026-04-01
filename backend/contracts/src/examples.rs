@@ -1,3 +1,4 @@
+use crate::errors::supported_constraint_kind_names;
 use crate::operations::{
     EVALUATE_INPUT_OPERATION_ID, GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
     GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID, INSPECT_RESULT_OPERATION_ID,
@@ -10,6 +11,7 @@ use crate::schemas::{
 };
 use crate::types::{ExampleId, OperationId, SchemaId};
 use serde::Serialize;
+use std::sync::LazyLock;
 
 pub const SOLVE_HAPPY_PATH_EXAMPLE_ID: &str = "solve-happy-path";
 pub const VALIDATE_INVALID_CONSTRAINT_EXAMPLE_ID: &str = "validate-invalid-constraint";
@@ -246,31 +248,14 @@ const INSPECT_RESULT_SUMMARY_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet 
 }"#,
 }];
 
-const PUBLIC_ERROR_LOOKUP_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
-    label: "public error envelope",
-    format: ReferenceSnippetFormat::Json,
-    schema_id: Some(PUBLIC_ERROR_ENVELOPE_SCHEMA_ID),
-    content: r#"{
-  "error": {
-    "code": "unsupported-constraint-kind",
-    "message": "Constraint kind 'ShouldBeTogether' is not supported.",
-    "where_path": "constraints[0].type",
-    "why": "The caller referenced a constraint type outside the supported public contract.",
-    "valid_alternatives": [
-      "RepeatEncounter",
-      "AttributeBalance",
-      "MustStayTogether",
-      "ShouldStayTogether",
-      "ShouldNotBeTogether",
-      "ImmovablePerson",
-      "ImmovablePeople",
-      "PairMeetingCount"
-    ],
-    "recovery": "Inspect the relevant schema/help and replace the unsupported constraint kind.",
-    "related_help": ["validate-problem", "get-schema"]
-  }
-}"#,
-}];
+static PUBLIC_ERROR_LOOKUP_SNIPPETS: LazyLock<Vec<ReferenceSnippet>> = LazyLock::new(|| {
+    vec![ReferenceSnippet {
+        label: "public error envelope",
+        format: ReferenceSnippetFormat::Json,
+        schema_id: Some(PUBLIC_ERROR_ENVELOPE_SCHEMA_ID),
+        content: Box::leak(render_public_error_lookup_snippet().into_boxed_str()),
+    }]
+});
 
 const GET_SCHEMA_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
     label: "schema lookup",
@@ -404,74 +389,100 @@ const EVALUATE_INPUT_SNIPPETS: &[ReferenceSnippet] = &[
     },
 ];
 
-const EXAMPLE_SPECS: &[ExampleSpec] = &[
-    ExampleSpec {
-        id: SOLVE_HAPPY_PATH_EXAMPLE_ID,
-        operation_id: SOLVE_OPERATION_ID,
-        summary: "Minimal successful solve request/response pair.",
-        description: "Shows the smallest complete optimization input and a representative successful result plus transport-specific invocation snippets.",
-        snippets: SOLVE_HAPPY_PATH_SNIPPETS,
-    },
-    ExampleSpec {
-        id: SOLVE_PROGRESS_UPDATE_EXAMPLE_ID,
-        operation_id: SOLVE_OPERATION_ID,
-        summary: "Representative progress update emitted while solve is running.",
-        description: "Shows the stable progress payload shape that solve-capable transports can emit during execution.",
-        snippets: SOLVE_PROGRESS_UPDATE_SNIPPETS,
-    },
-    ExampleSpec {
-        id: VALIDATE_INVALID_CONSTRAINT_EXAMPLE_ID,
-        operation_id: VALIDATE_PROBLEM_OPERATION_ID,
-        summary: "Validation failure for an unsupported constraint kind.",
-        description: "Demonstrates a negative path where the caller gets a precise validation issue and recovery pointers.",
-        snippets: VALIDATE_INVALID_CONSTRAINT_SNIPPETS,
-    },
-    ExampleSpec {
-        id: INSPECT_RESULT_SUMMARY_EXAMPLE_ID,
-        operation_id: INSPECT_RESULT_OPERATION_ID,
-        summary: "Inspect a lightweight result summary.",
-        description: "Shows the compact result metadata shape used by result-inspection affordances.",
-        snippets: INSPECT_RESULT_SUMMARY_SNIPPETS,
-    },
-    ExampleSpec {
-        id: PUBLIC_ERROR_LOOKUP_EXAMPLE_ID,
-        operation_id: INSPECT_ERRORS_OPERATION_ID,
-        summary: "Canonical public error example.",
-        description: "Shows the structured public error envelope shape shared across projections.",
-        snippets: PUBLIC_ERROR_LOOKUP_SNIPPETS,
-    },
-    ExampleSpec {
-        id: GET_SCHEMA_EXAMPLE_ID,
-        operation_id: GET_SCHEMA_OPERATION_ID,
-        summary: "Schema lookup example.",
-        description: "Shows a transport-specific invocation that targets the solve-request schema.",
-        snippets: GET_SCHEMA_SNIPPETS,
-    },
-    ExampleSpec {
-        id: DEFAULT_SOLVER_CONFIGURATION_EXAMPLE_ID,
-        operation_id: GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
-        summary: "Read the canonical default solver configuration.",
-        description: "Shows the baseline solver configuration callers can start from before applying runtime-aware recommendation or manual tuning.",
-        snippets: DEFAULT_SOLVER_CONFIGURATION_SNIPPETS,
-    },
-    ExampleSpec {
-        id: RECOMMEND_SETTINGS_EXAMPLE_ID,
-        operation_id: RECOMMEND_SETTINGS_OPERATION_ID,
-        summary: "Recommend solver settings from an explicit runtime-aware request.",
-        description: "Shows a minimal recommend-settings request carrying a problem definition plus desired runtime and a representative recommended solver configuration.",
-        snippets: RECOMMEND_SETTINGS_SNIPPETS,
-    },
-    ExampleSpec {
-        id: EVALUATE_INPUT_EXAMPLE_ID,
-        operation_id: EVALUATE_INPUT_OPERATION_ID,
-        summary: "Evaluate a scheduled input without running search.",
-        description: "Shows the shape of a representative evaluation result for an input that already includes an initial schedule.",
-        snippets: EVALUATE_INPUT_SNIPPETS,
-    },
-];
+static EXAMPLE_SPECS: LazyLock<Vec<ExampleSpec>> = LazyLock::new(|| {
+    vec![
+        ExampleSpec {
+            id: SOLVE_HAPPY_PATH_EXAMPLE_ID,
+            operation_id: SOLVE_OPERATION_ID,
+            summary: "Minimal successful solve request/response pair.",
+            description: "Shows the smallest complete optimization input and a representative successful result plus transport-specific invocation snippets.",
+            snippets: SOLVE_HAPPY_PATH_SNIPPETS,
+        },
+        ExampleSpec {
+            id: SOLVE_PROGRESS_UPDATE_EXAMPLE_ID,
+            operation_id: SOLVE_OPERATION_ID,
+            summary: "Representative progress update emitted while solve is running.",
+            description: "Shows the stable progress payload shape that solve-capable transports can emit during execution.",
+            snippets: SOLVE_PROGRESS_UPDATE_SNIPPETS,
+        },
+        ExampleSpec {
+            id: VALIDATE_INVALID_CONSTRAINT_EXAMPLE_ID,
+            operation_id: VALIDATE_PROBLEM_OPERATION_ID,
+            summary: "Validation failure for an unsupported constraint kind.",
+            description: "Demonstrates a negative path where the caller gets a precise validation issue and recovery pointers.",
+            snippets: VALIDATE_INVALID_CONSTRAINT_SNIPPETS,
+        },
+        ExampleSpec {
+            id: INSPECT_RESULT_SUMMARY_EXAMPLE_ID,
+            operation_id: INSPECT_RESULT_OPERATION_ID,
+            summary: "Inspect a lightweight result summary.",
+            description: "Shows the compact result metadata shape used by result-inspection affordances.",
+            snippets: INSPECT_RESULT_SUMMARY_SNIPPETS,
+        },
+        ExampleSpec {
+            id: PUBLIC_ERROR_LOOKUP_EXAMPLE_ID,
+            operation_id: INSPECT_ERRORS_OPERATION_ID,
+            summary: "Canonical public error example.",
+            description: "Shows the structured public error envelope shape shared across projections.",
+            snippets: PUBLIC_ERROR_LOOKUP_SNIPPETS.as_slice(),
+        },
+        ExampleSpec {
+            id: GET_SCHEMA_EXAMPLE_ID,
+            operation_id: GET_SCHEMA_OPERATION_ID,
+            summary: "Schema lookup example.",
+            description: "Shows a transport-specific invocation that targets the solve-request schema.",
+            snippets: GET_SCHEMA_SNIPPETS,
+        },
+        ExampleSpec {
+            id: DEFAULT_SOLVER_CONFIGURATION_EXAMPLE_ID,
+            operation_id: GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
+            summary: "Read the canonical default solver configuration.",
+            description: "Shows the baseline solver configuration callers can start from before applying runtime-aware recommendation or manual tuning.",
+            snippets: DEFAULT_SOLVER_CONFIGURATION_SNIPPETS,
+        },
+        ExampleSpec {
+            id: RECOMMEND_SETTINGS_EXAMPLE_ID,
+            operation_id: RECOMMEND_SETTINGS_OPERATION_ID,
+            summary: "Recommend solver settings from an explicit runtime-aware request.",
+            description: "Shows a minimal recommend-settings request carrying a problem definition plus desired runtime and a representative recommended solver configuration.",
+            snippets: RECOMMEND_SETTINGS_SNIPPETS,
+        },
+        ExampleSpec {
+            id: EVALUATE_INPUT_EXAMPLE_ID,
+            operation_id: EVALUATE_INPUT_OPERATION_ID,
+            summary: "Evaluate a scheduled input without running search.",
+            description: "Shows the shape of a representative evaluation result for an input that already includes an initial schedule.",
+            snippets: EVALUATE_INPUT_SNIPPETS,
+        },
+    ]
+});
+
+fn render_public_error_lookup_snippet() -> String {
+    let valid_alternatives = supported_constraint_kind_names()
+        .iter()
+        .map(|kind| format!("      \"{kind}\""))
+        .collect::<Vec<_>>()
+        .join(",\n");
+
+    format!(
+        r#"{{
+  "error": {{
+    "code": "unsupported-constraint-kind",
+    "message": "Constraint kind 'ShouldBeTogether' is not supported.",
+    "where_path": "constraints[0].type",
+    "why": "The caller referenced a constraint type outside the supported public contract.",
+    "valid_alternatives": [
+{valid_alternatives}
+    ],
+    "recovery": "Inspect the relevant schema/help and replace the unsupported constraint kind.",
+    "related_help": ["validate-problem", "get-schema"]
+  }}
+}}"#
+    )
+}
 
 pub fn example_specs() -> &'static [ExampleSpec] {
-    EXAMPLE_SPECS
+    &EXAMPLE_SPECS
 }
 
 pub fn example_spec(id: &str) -> Option<&'static ExampleSpec> {

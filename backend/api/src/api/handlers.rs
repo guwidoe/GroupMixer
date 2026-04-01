@@ -11,9 +11,10 @@ use axum::{
 use gm_contracts::{
     bootstrap::bootstrap_spec,
     errors::{
-        error_spec, error_specs, PublicErrorSpec, INFEASIBLE_PROBLEM_ERROR, INVALID_INPUT_ERROR,
-        UNKNOWN_ERROR_CODE_ERROR, UNKNOWN_OPERATION_ERROR, UNKNOWN_SCHEMA_ERROR,
-        UNSUPPORTED_CONSTRAINT_KIND_ERROR,
+        error_spec, error_specs, supported_constraint_kind_alternatives, PublicErrorSpec,
+        INFEASIBLE_PROBLEM_ERROR, INVALID_INPUT_ERROR, UNKNOWN_ERROR_CODE_ERROR,
+        UNKNOWN_OPERATION_ERROR, UNKNOWN_SCHEMA_ERROR, UNSUPPORTED_CONSTRAINT_KIND_ERROR,
+        UNSUPPORTED_CONSTRAINT_KIND_PATH,
     },
     examples::example_spec,
     operations::{local_help, operation_spec, OperationSpec},
@@ -320,17 +321,8 @@ fn parse_json_body<T: DeserializeOwned>(
                 UNSUPPORTED_CONSTRAINT_KIND_ERROR,
                 StatusCode::UNPROCESSABLE_ENTITY,
                 message,
-                Some("constraints[*].type".to_string()),
-                vec![
-                    "RepeatEncounter".to_string(),
-                    "AttributeBalance".to_string(),
-                    "MustStayTogether".to_string(),
-                    "ShouldStayTogether".to_string(),
-                    "ShouldNotBeTogether".to_string(),
-                    "ImmovablePerson".to_string(),
-                    "ImmovablePeople".to_string(),
-                    "PairMeetingCount".to_string(),
-                ],
+                Some(UNSUPPORTED_CONSTRAINT_KIND_PATH.to_string()),
+                supported_constraint_kind_alternatives(),
                 Some(vec![help_path("validate-problem"), help_path("get-schema")]),
             );
         }
@@ -425,17 +417,8 @@ fn map_solver_error(message: String, operation_id: &str) -> ApiError {
             UNSUPPORTED_CONSTRAINT_KIND_ERROR,
             StatusCode::UNPROCESSABLE_ENTITY,
             message,
-            Some("constraints[*].type".to_string()),
-            vec![
-                "RepeatEncounter".to_string(),
-                "AttributeBalance".to_string(),
-                "MustStayTogether".to_string(),
-                "ShouldStayTogether".to_string(),
-                "ShouldNotBeTogether".to_string(),
-                "ImmovablePerson".to_string(),
-                "ImmovablePeople".to_string(),
-                "PairMeetingCount".to_string(),
-            ],
+            Some(UNSUPPORTED_CONSTRAINT_KIND_PATH.to_string()),
+            supported_constraint_kind_alternatives(),
             Some(vec![help_path("validate-problem"), help_path("get-schema")]),
         );
     }

@@ -2,8 +2,9 @@ use crate::contract_surface::binding_for_operation_id;
 use anyhow::anyhow;
 use anyhow::Error;
 use gm_contracts::errors::{
-    error_spec, INFEASIBLE_PROBLEM_ERROR, INTERNAL_ERROR, INVALID_INPUT_ERROR,
-    UNKNOWN_ERROR_CODE_ERROR, UNKNOWN_SCHEMA_ERROR, UNSUPPORTED_CONSTRAINT_KIND_ERROR,
+    error_spec, supported_constraint_kind_alternatives, INFEASIBLE_PROBLEM_ERROR, INTERNAL_ERROR,
+    INVALID_INPUT_ERROR, UNKNOWN_ERROR_CODE_ERROR, UNKNOWN_SCHEMA_ERROR,
+    UNSUPPORTED_CONSTRAINT_KIND_ERROR, UNSUPPORTED_CONSTRAINT_KIND_PATH,
 };
 
 pub fn invalid_input_error(
@@ -80,17 +81,8 @@ pub fn map_solver_error(message: impl Into<String>, related_operation_id: &str) 
     if message.contains("unknown variant") || message.contains("expected one of") {
         return unsupported_constraint_kind_error(
             message,
-            Some("constraints[*].type".to_string()),
-            vec![
-                "RepeatEncounter".to_string(),
-                "AttributeBalance".to_string(),
-                "MustStayTogether".to_string(),
-                "ShouldStayTogether".to_string(),
-                "ShouldNotBeTogether".to_string(),
-                "ImmovablePerson".to_string(),
-                "ImmovablePeople".to_string(),
-                "PairMeetingCount".to_string(),
-            ],
+            Some(UNSUPPORTED_CONSTRAINT_KIND_PATH.to_string()),
+            supported_constraint_kind_alternatives(),
         );
     }
 
