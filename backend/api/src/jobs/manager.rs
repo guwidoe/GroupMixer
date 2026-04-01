@@ -26,6 +26,12 @@ pub struct JobManager {
     jobs: Arc<DashMap<Uuid, Arc<Mutex<Job>>>>,
 }
 
+impl Default for JobManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl JobManager {
     pub fn new() -> Self {
         Self {

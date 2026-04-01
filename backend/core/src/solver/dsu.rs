@@ -10,30 +10,6 @@ pub struct Dsu {
     parent: Vec<usize>,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::Dsu;
-
-    #[test]
-    fn union_connects_components_and_find_compresses_paths() {
-        let mut dsu = Dsu::new(5);
-        dsu.union(0, 1);
-        dsu.union(1, 2);
-        dsu.union(3, 4);
-
-        let root_0 = dsu.find(0);
-        let root_1 = dsu.find(1);
-        let root_2 = dsu.find(2);
-        let root_3 = dsu.find(3);
-        let root_4 = dsu.find(4);
-
-        assert_eq!(root_0, root_1);
-        assert_eq!(root_1, root_2);
-        assert_eq!(root_3, root_4);
-        assert_ne!(root_0, root_3);
-    }
-}
-
 impl Dsu {
     /// Creates a new DSU with `n` elements, each in its own set.
     pub fn new(n: usize) -> Self {
@@ -60,5 +36,29 @@ impl Dsu {
         if root_i != root_j {
             self.parent[root_i] = root_j;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Dsu;
+
+    #[test]
+    fn union_connects_components_and_find_compresses_paths() {
+        let mut dsu = Dsu::new(5);
+        dsu.union(0, 1);
+        dsu.union(1, 2);
+        dsu.union(3, 4);
+
+        let root_0 = dsu.find(0);
+        let root_1 = dsu.find(1);
+        let root_2 = dsu.find(2);
+        let root_3 = dsu.find(3);
+        let root_4 = dsu.find(4);
+
+        assert_eq!(root_0, root_1);
+        assert_eq!(root_1, root_2);
+        assert_eq!(root_3, root_4);
+        assert_ne!(root_0, root_3);
     }
 }

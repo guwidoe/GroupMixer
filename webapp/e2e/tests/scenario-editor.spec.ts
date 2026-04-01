@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForModal } from './helpers';
+import { navigateScenarioSetupSection, openApp, openScenarioSetupControls, waitForModal } from './helpers';
 
 test.describe('Scenario Editor', () => {
   test.beforeEach(async ({ page }) => {
@@ -7,6 +7,8 @@ test.describe('Scenario Editor', () => {
   });
 
   test('displays scenario editor with tabs', async ({ page }) => {
+    await openScenarioSetupControls(page);
+
     // Check all section tabs are visible
     await expect(page.getByRole('button', { name: /People/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Groups/i })).toBeVisible();
@@ -17,8 +19,7 @@ test.describe('Scenario Editor', () => {
   });
 
   test('can add an attribute definition', async ({ page }) => {
-    const attributeHeader = page.locator('text=Attribute Definitions');
-    await attributeHeader.click();
+    await navigateScenarioSetupSection(page, /attribute definitions|attributes/i);
     await page.locator('button').filter({ hasText: /Add Attribute/i }).click();
     await waitForModal(page);
 
@@ -68,15 +69,14 @@ test.describe('Scenario Editor', () => {
   });
 
   test('can navigate to groups section', async ({ page }) => {
-    // Click Groups tab
-    await page.getByRole('button', { name: /Groups/i }).click();
+    await navigateScenarioSetupSection(page, /Groups/i);
 
     // Verify we're on groups section - should see Add Group button
     await expect(page.getByRole('button', { name: /Add Group/i })).toBeVisible();
   });
 
   test('can add a group', async ({ page }) => {
-    await page.getByRole('button', { name: /Groups/i }).click();
+    await navigateScenarioSetupSection(page, /Groups/i);
     await expect(page.getByRole('button', { name: /Add Group/i })).toBeVisible();
 
     await page.locator('button').filter({ hasText: /^Add Group$/ }).click();
@@ -95,8 +95,7 @@ test.describe('Scenario Editor', () => {
   });
 
   test('can navigate to sessions section and set session count', async ({ page }) => {
-    // Click Sessions tab
-    await page.getByRole('button', { name: /Sessions/i }).click();
+    await navigateScenarioSetupSection(page, /Sessions/i);
 
     // Find session count input
     const sessionInput = page.locator('input[type="number"]').first();
@@ -111,8 +110,7 @@ test.describe('Scenario Editor', () => {
   });
 
   test('can navigate to objectives section', async ({ page }) => {
-    // Click Objectives tab
-    await page.getByRole('button', { name: /Objectives/i }).click();
+    await navigateScenarioSetupSection(page, /Objectives/i);
 
     // Should see objective weight configuration
     await expect(page.getByText(/Maximize Unique Contacts|Weight/i)).toBeVisible();
@@ -169,7 +167,7 @@ test.describe('Scenario Editor', () => {
   });
 
   test('bulk add groups from CSV text mode without switching to grid (fixes #7)', async ({ page }) => {
-    await page.getByRole('button', { name: /Groups/i }).click();
+    await navigateScenarioSetupSection(page, /Groups/i);
     await expect(page.getByRole('button', { name: /Add Group/i })).toBeVisible();
 
     await page.locator('button').filter({ hasText: /Bulk Add/i }).first().click();

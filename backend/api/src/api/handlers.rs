@@ -1,4 +1,6 @@
-use crate::api::contract_surface::{binding_for_operation_id, public_contract_bindings, HttpContractBinding};
+use crate::api::contract_surface::{
+    binding_for_operation_id, public_contract_bindings, HttpContractBinding,
+};
 use crate::jobs::manager::JobManager;
 use axum::{
     body::Bytes,
@@ -10,15 +12,21 @@ use schemars::Schema;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use solver_contracts::{
     bootstrap::bootstrap_spec,
-    errors::{error_spec, error_specs, PublicErrorSpec, INFEASIBLE_PROBLEM_ERROR, INVALID_INPUT_ERROR, UNKNOWN_ERROR_CODE_ERROR, UNKNOWN_OPERATION_ERROR, UNKNOWN_SCHEMA_ERROR, UNSUPPORTED_CONSTRAINT_KIND_ERROR},
+    errors::{
+        error_spec, error_specs, PublicErrorSpec, INFEASIBLE_PROBLEM_ERROR, INVALID_INPUT_ERROR,
+        UNKNOWN_ERROR_CODE_ERROR, UNKNOWN_OPERATION_ERROR, UNKNOWN_SCHEMA_ERROR,
+        UNSUPPORTED_CONSTRAINT_KIND_ERROR,
+    },
     examples::example_spec,
     operations::{local_help, operation_spec, OperationSpec},
     schemas::{export_schema, schema_specs},
-    types::{PublicError, PublicErrorEnvelope, RecommendSettingsRequest, ResultSummary, ValidateResponse, ValidationIssue},
+    types::{
+        PublicError, PublicErrorEnvelope, RecommendSettingsRequest, ResultSummary,
+        ValidateResponse, ValidationIssue,
+    },
 };
 use solver_core::{
-    calculate_recommended_settings,
-    default_solver_configuration,
+    calculate_recommended_settings, default_solver_configuration,
     models::{ApiInput, SolverConfiguration, SolverResult},
     run_solver,
 };
@@ -127,8 +135,8 @@ pub async fn bootstrap_help_handler() -> Json<BootstrapHelpResponse> {
 pub async fn operation_help_handler(
     Path(operation_id): Path<String>,
 ) -> Result<Json<OperationHelpResponse>, ApiError> {
-    let help = local_help(&operation_id)
-        .ok_or_else(|| unknown_operation_api_error(&operation_id))?;
+    let help =
+        local_help(&operation_id).ok_or_else(|| unknown_operation_api_error(&operation_id))?;
     let examples = help
         .operation
         .example_ids
@@ -198,13 +206,12 @@ pub async fn error_get_handler(
 
 pub async fn solve_handler(body: Bytes) -> Result<Json<SolverResult>, ApiError> {
     let payload: ApiInput = parse_json_body(&body, "solve", &["solve-request"])?;
-    let result = run_solver(&payload).map_err(|error| map_solver_error(format!("{:?}", error), "solve"))?;
+    let result =
+        run_solver(&payload).map_err(|error| map_solver_error(format!("{:?}", error), "solve"))?;
     Ok(Json(result))
 }
 
-pub async fn validate_problem_handler(
-    body: Bytes,
-) -> Result<Json<ValidateResponse>, ApiError> {
+pub async fn validate_problem_handler(body: Bytes) -> Result<Json<ValidateResponse>, ApiError> {
     let payload: ApiInput = parse_json_body(&body, "validate-problem", &["validate-request"])?;
     use solver_core::solver::State;
     let response = match State::new(&payload) {
@@ -231,25 +238,19 @@ pub async fn default_solver_configuration_handler() -> Json<SolverConfiguration>
 pub async fn recommend_settings_handler(
     body: Bytes,
 ) -> Result<Json<SolverConfiguration>, ApiError> {
-    let request: RecommendSettingsRequest = parse_json_body(
-        &body,
-        "recommend-settings",
-        &["recommend-settings-request"],
-    )?;
-    let recommended =
-        calculate_recommended_settings(
-            &request.problem_definition,
-            &request.objectives,
-            &request.constraints,
-            request.desired_runtime_seconds,
-        )
-        .map_err(|error| map_solver_error(format!("{:?}", error), "recommend-settings"))?;
+    let request: RecommendSettingsRequest =
+        parse_json_body(&body, "recommend-settings", &["recommend-settings-request"])?;
+    let recommended = calculate_recommended_settings(
+        &request.problem_definition,
+        &request.objectives,
+        &request.constraints,
+        request.desired_runtime_seconds,
+    )
+    .map_err(|error| map_solver_error(format!("{:?}", error), "recommend-settings"))?;
     Ok(Json(recommended))
 }
 
-pub async fn evaluate_input_handler(
-    body: Bytes,
-) -> Result<Json<SolverResult>, ApiError> {
+pub async fn evaluate_input_handler(body: Bytes) -> Result<Json<SolverResult>, ApiError> {
     let mut payload: ApiInput = parse_json_body(&body, "evaluate-input", &["solve-request"])?;
     if payload.initial_schedule.is_none() {
         return Err(api_error(
@@ -262,13 +263,12 @@ pub async fn evaluate_input_handler(
         ));
     }
     payload.solver.stop_conditions.max_iterations = Some(0);
-    let result = run_solver(&payload).map_err(|error| map_solver_error(format!("{:?}", error), "evaluate-input"))?;
+    let result = run_solver(&payload)
+        .map_err(|error| map_solver_error(format!("{:?}", error), "evaluate-input"))?;
     Ok(Json(result))
 }
 
-pub async fn inspect_result_handler(
-    body: Bytes,
-) -> Result<Json<ResultSummary>, ApiError> {
+pub async fn inspect_result_handler(body: Bytes) -> Result<Json<ResultSummary>, ApiError> {
     let result: SolverResult = parse_json_body(&body, "inspect-result", &["solve-response"])?;
     Ok(Json(ResultSummary::from(&result)))
 }
@@ -307,6 +307,7 @@ fn help_path(operation_id: &str) -> String {
     format!("/api/v1/help/{operation_id}")
 }
 
+#[allow(clippy::result_large_err)]
 fn parse_json_body<T: DeserializeOwned>(
     body: &Bytes,
     operation_id: &str,
@@ -381,7 +382,10 @@ fn unknown_schema_api_error(schema_id: &str) -> ApiError {
         StatusCode::NOT_FOUND,
         format!("Unknown schema id '{}'", schema_id),
         Some("schema_id".to_string()),
-        schema_specs().iter().map(|spec| spec.id.to_string()).collect(),
+        schema_specs()
+            .iter()
+            .map(|spec| spec.id.to_string())
+            .collect(),
         Some(vec![help_path("get-schema")]),
     )
 }
@@ -392,7 +396,10 @@ fn unknown_error_code_api_error(error_code: &str) -> ApiError {
         StatusCode::NOT_FOUND,
         format!("Unknown error code '{}'", error_code),
         Some("error_code".to_string()),
-        error_specs().iter().map(|spec| spec.code.to_string()).collect(),
+        error_specs()
+            .iter()
+            .map(|spec| spec.code.to_string())
+            .collect(),
         Some(vec![help_path("inspect-errors")]),
     )
 }

@@ -1,30 +1,27 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ValidateResponse",
   "description": "Canonical transport-neutral validation response shape.",
   "type": "object",
-  "required": [
-    "valid"
-  ],
   "properties": {
     "issues": {
-      "default": [],
       "type": "array",
+      "default": [],
       "items": {
-        "$ref": "#/definitions/ValidationIssue"
+        "$ref": "#/$defs/ValidationIssue"
       }
     },
     "valid": {
       "type": "boolean"
     }
   },
-  "definitions": {
+  "required": [
+    "valid"
+  ],
+  "$defs": {
     "ValidationIssue": {
       "description": "A lightweight validation issue shape suitable for transport-neutral reporting.",
       "type": "object",
-      "required": [
-        "message"
-      ],
       "properties": {
         "code": {
           "type": [
@@ -36,13 +33,16 @@
           "type": "string"
         },
         "path": {
-          "default": null,
           "type": [
             "string",
             "null"
-          ]
+          ],
+          "default": null
         }
-      }
+      },
+      "required": [
+        "message"
+      ]
     }
   }
 }

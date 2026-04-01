@@ -364,8 +364,9 @@ fn sample_move_family(
                 let weight = match family {
                     MoveFamily::CliqueSwap => clique_swap_probability.max(0.0),
                     MoveFamily::Transfer => transfer_probability.max(0.0),
-                    MoveFamily::Swap => (1.0 - clique_swap_probability - transfer_probability)
-                        .max(0.0),
+                    MoveFamily::Swap => {
+                        (1.0 - clique_swap_probability - transfer_probability).max(0.0)
+                    }
                 };
 
                 choices.push(WeightedMoveChoice { family, weight });
@@ -809,10 +810,8 @@ impl Solver for SimulatedAnnealing {
         benchmark_observer: Option<&BenchmarkObserver>,
     ) -> Result<SolverResult, SolverError> {
         let start_time = get_start_time();
-        let mut rng = ChaCha12Rng::seed_from_u64(derive_phase_seed(
-            state.effective_seed,
-            SEARCH_SEED_SALT,
-        ));
+        let mut rng =
+            ChaCha12Rng::seed_from_u64(derive_phase_seed(state.effective_seed, SEARCH_SEED_SALT));
         let mut current_state = state.clone();
         let mut best_state = state.clone();
         let mut best_cost = state.calculate_cost();
@@ -1297,10 +1296,8 @@ impl Solver for SimulatedAnnealing {
                         if move_accepted {
                             let apply_started_at = get_current_time();
                             current_state.apply_transfer(day, person_idx, from_group, to_group);
-                            telemetry.apply_seconds += get_elapsed_seconds_between(
-                                apply_started_at,
-                                get_current_time(),
-                            );
+                            telemetry.apply_seconds +=
+                                get_elapsed_seconds_between(apply_started_at, get_current_time());
 
                             current_state.current_cost = next_cost;
 
@@ -1454,10 +1451,8 @@ impl Solver for SimulatedAnnealing {
                         current_state._recalculate_scores();
                         let verified_cost = current_state.calculate_cost();
                         telemetry.full_recalculation_count += 1;
-                        telemetry.full_recalculation_seconds += get_elapsed_seconds_between(
-                            recalc_started_at,
-                            get_current_time(),
-                        );
+                        telemetry.full_recalculation_seconds +=
+                            get_elapsed_seconds_between(recalc_started_at, get_current_time());
                         if verified_cost < best_cost {
                             best_cost = verified_cost;
                             best_state = current_state.clone();
@@ -1548,12 +1543,9 @@ impl Solver for SimulatedAnnealing {
         let finalization_finished_at = get_current_time();
         let initialization_seconds =
             get_elapsed_seconds_between(start_time, initialization_finished_at);
-        let search_seconds =
-            get_elapsed_seconds_between(search_started_at, search_finished_at);
-        let finalization_seconds = get_elapsed_seconds_between(
-            search_finished_at,
-            finalization_finished_at,
-        );
+        let search_seconds = get_elapsed_seconds_between(search_started_at, search_finished_at);
+        let finalization_seconds =
+            get_elapsed_seconds_between(search_finished_at, finalization_finished_at);
         let total_seconds = get_elapsed_seconds_between(start_time, finalization_finished_at);
         let benchmark_telemetry = SolverBenchmarkTelemetry {
             effective_seed: state.effective_seed,

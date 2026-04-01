@@ -21,14 +21,20 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use serde::Serialize;
 use solver_benchmarking::{
-    compare_run_to_baseline, load_baseline_snapshot, load_run_report, persist_comparison_report,
-    persist_run_report, render_comparison_summary, run_suite_from_manifest, save_baseline_snapshot,
-    create_recording_for_run, create_recording_for_runs, find_recording_suite_runs,
-    list_recordings, list_refs, load_recording, load_ref, resolve_artifact_path,
-    BaselineDescriptor, BenchmarkStorage, RecordingOptions, RecordingQuery, RecordingRunInput,
-    RunnerOptions, FULL_SOLVE_BENCHMARK_MODE,
+    compare_run_to_baseline, create_recording_for_run, create_recording_for_runs,
+    find_recording_suite_runs, list_recordings, list_refs, load_baseline_snapshot, load_recording,
+    load_ref, load_run_report, persist_comparison_report, persist_run_report,
+    render_comparison_summary, resolve_artifact_path, run_suite_from_manifest,
+    save_baseline_snapshot, BaselineDescriptor, BenchmarkStorage, RecordingOptions, RecordingQuery,
+    RecordingRunInput, RunnerOptions, FULL_SOLVE_BENCHMARK_MODE,
 };
-use solver_contracts::{bootstrap::bootstrap_spec, errors::{error_spec, error_specs}, operations::operation_spec, schemas::{export_schema, schema_specs}, types::{RecommendSettingsRequest, ResultSummary, ValidateResponse, ValidationIssue}};
+use solver_contracts::{
+    bootstrap::bootstrap_spec,
+    errors::{error_spec, error_specs},
+    operations::operation_spec,
+    schemas::{export_schema, schema_specs},
+    types::{RecommendSettingsRequest, ResultSummary, ValidateResponse, ValidationIssue},
+};
 use solver_core::models::{ApiInput, SolverResult};
 use solver_core::{calculate_recommended_settings, default_solver_configuration, run_solver};
 use std::fs;
@@ -616,28 +622,14 @@ fn cmd_benchmark(command: BenchmarkCommands) -> Result<()> {
             mode,
             machine_id,
             branch,
-        } => cmd_benchmark_latest_or_previous(
-            artifacts_dir,
-            suite,
-            mode,
-            machine_id,
-            branch,
-            0,
-        ),
+        } => cmd_benchmark_latest_or_previous(artifacts_dir, suite, mode, machine_id, branch, 0),
         BenchmarkCommands::Previous {
             artifacts_dir,
             suite,
             mode,
             machine_id,
             branch,
-        } => cmd_benchmark_latest_or_previous(
-            artifacts_dir,
-            suite,
-            mode,
-            machine_id,
-            branch,
-            1,
-        ),
+        } => cmd_benchmark_latest_or_previous(artifacts_dir, suite, mode, machine_id, branch, 1),
         BenchmarkCommands::Baseline { command } => match command {
             BenchmarkBaselineCommands::Save {
                 run,
@@ -707,7 +699,10 @@ fn cmd_benchmark_compare(
     let run_report = load_run_report(&run_path)?;
     let (baseline_snapshot, baseline_source) = if let Some(baseline_name) = baseline {
         let baseline_path = storage.resolve_baseline_path(&baseline_name, Some(&run_report))?;
-        (load_baseline_snapshot(&baseline_path)?, baseline_path.display().to_string())
+        (
+            load_baseline_snapshot(&baseline_path)?,
+            baseline_path.display().to_string(),
+        )
     } else if let Some(baseline_run_path) = baseline_run {
         let baseline_run_report = load_run_report(&baseline_run_path)?;
         (
@@ -858,8 +853,14 @@ fn cmd_benchmark_compare_prev(
 
     let current = &matches[0];
     let previous = &matches[1];
-    let current_run = load_run_report(resolve_artifact_path(storage.root(), &current.suite_run.run_report_path))?;
-    let baseline_run = load_run_report(resolve_artifact_path(storage.root(), &previous.suite_run.run_report_path))?;
+    let current_run = load_run_report(resolve_artifact_path(
+        storage.root(),
+        &current.suite_run.run_report_path,
+    ))?;
+    let baseline_run = load_run_report(resolve_artifact_path(
+        storage.root(),
+        &previous.suite_run.run_report_path,
+    ))?;
     let synthetic_baseline = solver_benchmarking::BaselineSnapshot {
         schema_version: solver_benchmarking::BASELINE_SNAPSHOT_SCHEMA_VERSION,
         baseline_name: format!("previous-{}", previous.recording.recording_id),
@@ -917,7 +918,10 @@ fn cmd_benchmark_recordings_list(artifacts_dir: Option<PathBuf>) -> Result<()> {
     Ok(())
 }
 
-fn cmd_benchmark_recordings_show(recording_id: String, artifacts_dir: Option<PathBuf>) -> Result<()> {
+fn cmd_benchmark_recordings_show(
+    recording_id: String,
+    artifacts_dir: Option<PathBuf>,
+) -> Result<()> {
     let storage = benchmark_storage(artifacts_dir);
     storage.ensure_layout()?;
     let recording = load_recording(storage.root(), &recording_id)?;
@@ -978,7 +982,10 @@ fn cmd_benchmark_latest_or_previous(
             },
         )?;
         let Some(entry) = matches.get(index) else {
-            anyhow::bail!("no matching recording found for requested lane position {}", index);
+            anyhow::bail!(
+                "no matching recording found for requested lane position {}",
+                index
+            );
         };
         println!(
             "recording_id={} suite={} mode={} run_id={} recorded_at={} machine={} branch={}",
@@ -1063,13 +1070,9 @@ fn benchmark_storage(artifacts_dir: Option<PathBuf>) -> BenchmarkStorage {
         .unwrap_or_else(BenchmarkStorage::from_env_or_default)
 }
 
-fn resolve_suite_manifest_path(
-    suite: &BenchmarkSuiteArg,
-    manifest: Option<PathBuf>,
-) -> PathBuf {
-    manifest.unwrap_or_else(|| {
-        PathBuf::from(format!("benchmarking/suites/{}.yaml", suite.as_str()))
-    })
+fn resolve_suite_manifest_path(suite: &BenchmarkSuiteArg, manifest: Option<PathBuf>) -> PathBuf {
+    manifest
+        .unwrap_or_else(|| PathBuf::from(format!("benchmarking/suites/{}.yaml", suite.as_str())))
 }
 
 fn resolve_bundle_manifest_paths(
@@ -1103,13 +1106,20 @@ fn print_json_pretty<T: serde::Serialize>(value: &T) -> Result<()> {
 fn read_input(file: Option<PathBuf>, use_stdin: bool, operation_id: &str) -> Result<String> {
     if use_stdin {
         let mut buffer = String::new();
-        io::stdin()
-            .read_to_string(&mut buffer)
-            .map_err(|error| public_errors::internal_error(format!("Failed to read from stdin: {error}"), operation_id))?;
+        io::stdin().read_to_string(&mut buffer).map_err(|error| {
+            public_errors::internal_error(
+                format!("Failed to read from stdin: {error}"),
+                operation_id,
+            )
+        })?;
         Ok(buffer)
     } else if let Some(path) = file {
-        fs::read_to_string(&path)
-            .map_err(|error| public_errors::internal_error(format!("Failed to read file {:?}: {}", path, error), operation_id))
+        fs::read_to_string(&path).map_err(|error| {
+            public_errors::internal_error(
+                format!("Failed to read file {:?}: {}", path, error),
+                operation_id,
+            )
+        })
     } else {
         Err(public_errors::invalid_input_error(
             "Either provide an input file or use --stdin",
@@ -1147,8 +1157,12 @@ fn cmd_solve(
     };
 
     if let Some(output_path) = output {
-        fs::write(&output_path, &output_json)
-            .map_err(|error| public_errors::internal_error(format!("Failed to write output to {:?}: {}", output_path, error), "solve"))?;
+        fs::write(&output_path, &output_json).map_err(|error| {
+            public_errors::internal_error(
+                format!("Failed to write output to {:?}: {}", output_path, error),
+                "solve",
+            )
+        })?;
         eprintln!("Result written to {:?}", output_path);
     } else {
         println!("{}", output_json);
@@ -1181,7 +1195,9 @@ fn cmd_validate(input: Option<PathBuf>, stdin: bool) -> Result<()> {
         }
         Err(e) => {
             let error_text = format!("{:?}", e);
-            let issue = if error_text.contains("unknown variant") || error_text.contains("expected one of") {
+            let issue = if error_text.contains("unknown variant")
+                || error_text.contains("expected one of")
+            {
                 ValidationIssue {
                     code: Some("unsupported-constraint-kind".to_string()),
                     message: error_text,
@@ -1231,7 +1247,9 @@ fn cmd_recommend(input: Option<PathBuf>, stdin: bool, pretty: bool) -> Result<()
         &recommendation_input.constraints,
         recommendation_input.desired_runtime_seconds,
     )
-    .map_err(|error| public_errors::map_solver_error(format!("{:?}", error), "recommend-settings"))?;
+    .map_err(|error| {
+        public_errors::map_solver_error(format!("{:?}", error), "recommend-settings")
+    })?;
 
     let output_json = if pretty {
         serde_json::to_string_pretty(&recommended)?
@@ -1266,8 +1284,9 @@ fn cmd_evaluate(input: Option<PathBuf>, stdin: bool, pretty: bool) -> Result<()>
     let mut eval_input = api_input.clone();
     eval_input.solver.stop_conditions.max_iterations = Some(0);
 
-    let result = run_solver(&eval_input)
-        .map_err(|error| public_errors::map_solver_error(format!("{:?}", error), "evaluate-input"))?;
+    let result = run_solver(&eval_input).map_err(|error| {
+        public_errors::map_solver_error(format!("{:?}", error), "evaluate-input")
+    })?;
 
     let output_json = if pretty {
         serde_json::to_string_pretty(&result)?
@@ -1416,7 +1435,10 @@ fn cmd_capabilities(json: bool) -> Result<()> {
                 println!("  input schemas: {}", operation.input_schema_ids.join(", "));
             }
             if !operation.output_schema_ids.is_empty() {
-                println!("  output schemas: {}", operation.output_schema_ids.join(", "));
+                println!(
+                    "  output schemas: {}",
+                    operation.output_schema_ids.join(", ")
+                );
             }
             if !operation.related_operation_ids.is_empty() {
                 println!("  related: {}", operation.related_operation_ids.join(", "));
@@ -1457,7 +1479,10 @@ fn cmd_errors(error_code: Option<String>, json: bool) -> Result<()> {
         println!("why: {}", spec.why);
         println!("recovery: {}", spec.recovery);
         if !spec.related_help_operation_ids.is_empty() {
-            println!("related help: {}", spec.related_help_operation_ids.join(", "));
+            println!(
+                "related help: {}",
+                spec.related_help_operation_ids.join(", ")
+            );
         }
         Ok(())
     }

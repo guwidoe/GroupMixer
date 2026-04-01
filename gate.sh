@@ -54,8 +54,8 @@ print_success "Contract reference artifacts OK"
 
 print_step "WASM: Building solver-wasm"
 cd backend/wasm
-wasm-pack build --target web --out-dir ../webapp/public/pkg
-cd ..
+wasm-pack build --target web --out-dir ../../webapp/public/pkg
+cd ../..
 print_success "WASM build OK"
 
 # ============================================
@@ -67,9 +67,17 @@ cd webapp
 npm ci
 print_success "npm ci OK"
 
+print_step "Frontend: TypeScript compile check"
+npx tsc --noEmit
+print_success "TypeScript compile OK"
+
 print_step "Frontend: Running ESLint"
 npm run lint
 print_success "ESLint OK"
+
+print_step "Frontend: Running runtime-safety unit tests"
+npm run test:runtime-safety:unit
+print_success "Runtime-safety unit tests OK"
 
 print_step "Frontend: Running E2E tests"
 npm run test:e2e

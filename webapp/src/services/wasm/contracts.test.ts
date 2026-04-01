@@ -11,7 +11,7 @@ import {
 
 vi.mock("../rustBoundary", () => ({
   buildRustScenarioPayload: vi.fn(() => ({
-    scenario: { people: [], groups: [], num_sessions: 2 },
+    problem: { people: [], groups: [], num_sessions: 2 },
     objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
     constraints: [],
     solver: { solver_type: "SimulatedAnnealing" },
@@ -160,7 +160,7 @@ describe("WasmContractClient", () => {
 
     expect(buildRustScenarioPayload).toHaveBeenCalled();
     expect(wasmModule.solve_with_progress).toHaveBeenCalledWith(
-      expect.objectContaining({ scenario: expect.any(Object) }),
+      expect.objectContaining({ problem: expect.any(Object) }),
       expect.any(Function),
     );
     expect(progressCallback).toHaveBeenCalledWith({ iteration: 5, elapsed_seconds: 1.5, best_score: 7 });
@@ -178,7 +178,7 @@ describe("WasmContractClient", () => {
     await client.solve(createScenario());
 
     expect(wasmModule.solve).toHaveBeenCalledWith(
-      expect.objectContaining({ scenario: expect.any(Object) }),
+      expect.objectContaining({ problem: expect.any(Object) }),
     );
   });
 
@@ -209,7 +209,7 @@ describe("WasmContractClient", () => {
     ]);
 
     expect(wasmModule.evaluate_input).toHaveBeenCalledWith({
-      scenario: { people: [], groups: [], num_sessions: 2 },
+      problem: { people: [], groups: [], num_sessions: 2 },
       objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
       constraints: [],
       solver: { solver_type: "SimulatedAnnealing" },

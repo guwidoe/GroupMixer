@@ -1,16 +1,18 @@
+#![allow(clippy::result_large_err)]
+
 use crate::public_errors::{
     evaluate_requires_initial_schedule_error, infeasible_problem_error, internal_error,
     parse_error, public_error_to_js_value,
 };
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use solver_contracts::types::{
-    PublicErrorEnvelope, RecommendSettingsRequest, ResultSummary, ValidateResponse,
-    ValidationIssue,
+    PublicErrorEnvelope, RecommendSettingsRequest, ResultSummary, ValidateResponse, ValidationIssue,
 };
 use solver_core::{
-    calculate_recommended_settings, default_solver_configuration, run_solver, run_solver_with_progress,
+    calculate_recommended_settings, default_solver_configuration,
     models::{ApiInput, ProgressUpdate, SolverConfiguration, SolverResult},
+    run_solver, run_solver_with_progress,
     solver::State,
 };
 use wasm_bindgen::JsValue;
@@ -67,20 +69,17 @@ pub fn get_default_solver_configuration_js() -> Result<JsValue, JsValue> {
 }
 
 pub fn recommend_settings_js(input: JsValue) -> Result<JsValue, JsValue> {
-    let request: RecommendSettingsRequest = parse_js_value(
-        input,
-        "recommend-settings",
-        &["recommend-settings-request"],
-    )?;
-    let settings = recommend_settings_contract(&request)
-        .map_err(|error| public_error_to_js_value(&error))?;
+    let request: RecommendSettingsRequest =
+        parse_js_value(input, "recommend-settings", &["recommend-settings-request"])?;
+    let settings =
+        recommend_settings_contract(&request).map_err(|error| public_error_to_js_value(&error))?;
     serialize_output(&settings, "recommend-settings")
 }
 
 pub fn evaluate_input_contract_js(input: JsValue) -> Result<JsValue, JsValue> {
     let request: ApiInput = parse_js_value(input, "evaluate-input", &["solve-request"])?;
-    let result = evaluate_input_contract(&request)
-        .map_err(|error| public_error_to_js_value(&error))?;
+    let result =
+        evaluate_input_contract(&request).map_err(|error| public_error_to_js_value(&error))?;
     serialize_output(&result, "evaluate-input")
 }
 
@@ -167,9 +166,7 @@ pub fn recommend_settings_contract(
     .map_err(|error| infeasible_problem_error("recommend-settings", error.to_string()))
 }
 
-pub fn evaluate_input_contract(
-    request: &ApiInput,
-) -> Result<SolverResult, PublicErrorEnvelope> {
+pub fn evaluate_input_contract(request: &ApiInput) -> Result<SolverResult, PublicErrorEnvelope> {
     let adjusted = ensure_browser_safe_seed(request)?;
 
     if request.initial_schedule.is_none() {
@@ -215,13 +212,12 @@ mod tests {
     use super::{
         evaluate_input_contract, get_default_solver_configuration, inspect_result_contract,
         recommend_settings_contract, solve_contract, solve_with_progress_contract,
-        validate_problem_contract,
-        MAX_SAFE_JS_INTEGER,
+        validate_problem_contract, MAX_SAFE_JS_INTEGER,
     };
     use solver_contracts::types::RecommendSettingsRequest;
     use solver_core::models::{
-        Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams,
-        SolverConfiguration, SolverParams, StopConditions,
+        Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams, SolverConfiguration,
+        SolverParams, StopConditions,
     };
     use std::collections::HashMap;
 
@@ -339,10 +335,18 @@ mod tests {
 
     #[test]
     fn evaluate_contract_requires_initial_schedule() {
-        let envelope = evaluate_input_contract(&valid_input()).expect_err("missing schedule errors");
+        let envelope =
+            evaluate_input_contract(&valid_input()).expect_err("missing schedule errors");
         assert_eq!(envelope.error.code, "invalid-input");
-        assert_eq!(envelope.error.where_path.as_deref(), Some("initial_schedule"));
-        assert!(envelope.error.related_help.iter().any(|target| target == "evaluate-input"));
+        assert_eq!(
+            envelope.error.where_path.as_deref(),
+            Some("initial_schedule")
+        );
+        assert!(envelope
+            .error
+            .related_help
+            .iter()
+            .any(|target| target == "evaluate-input"));
     }
 
     #[test]

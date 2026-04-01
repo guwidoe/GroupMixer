@@ -1,19 +1,8 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SolverResult",
-  "description": "The result returned by the optimization solver.\n\nContains the optimized schedule along with detailed scoring information that shows how well the solution satisfies the objectives and constraints. The schedule format uses nested HashMaps for easy programmatic access.\n\n# Schedule Format\n\nThe schedule is structured as: ```text schedule[\"session_0\"][\"Group1\"] = [\"Alice\", \"Bob\", \"Charlie\"] schedule[\"session_0\"][\"Group2\"] = [\"Diana\", \"Eve\", \"Frank\"] schedule[\"session_1\"][\"Group1\"] = [\"Alice\", \"Diana\", \"Grace\"] ... ```\n\n# Example\n\n```no_run use solver_core::{run_solver, models::*}; use std::collections::HashMap;\n\n// ... create input configuration ... # let input = ApiInput { #     initial_schedule: None, #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 }, #     objectives: vec![], constraints: vec![], #     solver: SolverConfiguration { #         solver_type: \"SimulatedAnnealing\".to_string(), #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None }, #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: \"geometric\".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }), #         logging: LoggingOptions::default(), #         telemetry: Default::default(), #         seed: None, #         move_policy: None, #         allowed_sessions: None, #     }, # };\n\nmatch run_solver(&input) { Ok(result) => { println!(\"Final score: {}\", result.final_score); println!(\"Unique contacts: {}\", result.unique_contacts); println!(\"Repetition penalty: {}\", result.repetition_penalty);\n\n// Display the schedule println!(\"Schedule:\\n{}\", result.display());\n\n// Access specific assignments programmatically if let Some(session_0) = result.schedule.get(\"session_0\") { if let Some(group_1) = session_0.get(\"Group1\") { println!(\"Group1 in session 0: {:?}\", group_1); } } } Err(e) => eprintln!(\"Error: {:?}\", e), } ```",
+  "description": "The result returned by the optimization solver.\n\nContains the optimized schedule along with detailed scoring information\nthat shows how well the solution satisfies the objectives and constraints.\nThe schedule format uses nested HashMaps for easy programmatic access.\n\n# Schedule Format\n\nThe schedule is structured as:\n```text\nschedule[\"session_0\"][\"Group1\"] = [\"Alice\", \"Bob\", \"Charlie\"]\nschedule[\"session_0\"][\"Group2\"] = [\"Diana\", \"Eve\", \"Frank\"]\nschedule[\"session_1\"][\"Group1\"] = [\"Alice\", \"Diana\", \"Grace\"]\n...\n```\n\n# Example\n\n```no_run\nuse solver_core::{run_solver, models::*};\nuse std::collections::HashMap;\n\n// ... create input configuration ...\n# let input = ApiInput {\n#     initial_schedule: None,\n#     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },\n#     objectives: vec![], constraints: vec![],\n#     solver: SolverConfiguration {\n#         solver_type: \"SimulatedAnnealing\".to_string(),\n#         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },\n#         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: \"geometric\".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),\n#         logging: LoggingOptions::default(),\n#         telemetry: Default::default(),\n#         seed: None,\n#         move_policy: None,\n#         allowed_sessions: None,\n#     },\n# };\n\nmatch run_solver(&input) {\n    Ok(result) => {\n        println!(\"Final score: {}\", result.final_score);\n        println!(\"Unique contacts: {}\", result.unique_contacts);\n        println!(\"Repetition penalty: {}\", result.repetition_penalty);\n        \n        // Display the schedule\n        println!(\"Schedule:\\n{}\", result.display());\n        \n        // Access specific assignments programmatically\n        if let Some(session_0) = result.schedule.get(\"session_0\") {\n            if let Some(group_1) = session_0.get(\"Group1\") {\n                println!(\"Group1 in session 0: {:?}\", group_1);\n            }\n        }\n    }\n    Err(e) => eprintln!(\"Error: {:?}\", e),\n}\n```",
   "type": "object",
-  "required": [
-    "attribute_balance_penalty",
-    "constraint_penalty",
-    "final_score",
-    "no_improvement_count",
-    "repetition_penalty",
-    "schedule",
-    "unique_contacts",
-    "weighted_constraint_penalty",
-    "weighted_repetition_penalty"
-  ],
   "properties": {
     "attribute_balance_penalty": {
       "description": "Penalty points for attribute balance violations",
@@ -22,15 +11,15 @@
     },
     "benchmark_telemetry": {
       "description": "Benchmark-oriented end-of-run telemetry.",
-      "default": null,
       "anyOf": [
         {
-          "$ref": "#/definitions/SolverBenchmarkTelemetry"
+          "$ref": "#/$defs/SolverBenchmarkTelemetry"
         },
         {
           "type": "null"
         }
-      ]
+      ],
+      "default": null
     },
     "constraint_penalty": {
       "description": "Total penalty points for constraint violations (unweighted for backwards compatibility)",
@@ -39,13 +28,13 @@
     },
     "effective_seed": {
       "description": "Effective seed used for this run.",
-      "default": null,
       "type": [
         "integer",
         "null"
       ],
       "format": "uint64",
-      "minimum": 0.0
+      "default": null,
+      "minimum": 0
     },
     "final_score": {
       "description": "Overall optimization score (higher is better)",
@@ -54,21 +43,21 @@
     },
     "move_policy": {
       "description": "Effective move policy used for this run.",
-      "default": null,
       "anyOf": [
         {
-          "$ref": "#/definitions/MovePolicy"
+          "$ref": "#/$defs/MovePolicy"
         },
         {
           "type": "null"
         }
-      ]
+      ],
+      "default": null
     },
     "no_improvement_count": {
       "description": "Number of iterations without improvement at the end of the run",
       "type": "integer",
       "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     },
     "repetition_penalty": {
       "description": "Penalty points for exceeding repeat encounter limits (unweighted for backwards compatibility)",
@@ -90,15 +79,15 @@
     },
     "stop_reason": {
       "description": "Explicit stop reason for this run.",
-      "default": null,
       "anyOf": [
         {
-          "$ref": "#/definitions/StopReason"
+          "$ref": "#/$defs/StopReason"
         },
         {
           "type": "null"
         }
-      ]
+      ],
+      "default": null
     },
     "unique_contacts": {
       "description": "Number of unique person-to-person contacts achieved",
@@ -116,7 +105,18 @@
       "format": "double"
     }
   },
-  "definitions": {
+  "required": [
+    "final_score",
+    "schedule",
+    "unique_contacts",
+    "repetition_penalty",
+    "attribute_balance_penalty",
+    "constraint_penalty",
+    "no_improvement_count",
+    "weighted_repetition_penalty",
+    "weighted_constraint_penalty"
+  ],
+  "$defs": {
     "MoveFamily": {
       "description": "Explicit move families supported by the simulated annealing search loop.",
       "type": "string",
@@ -131,43 +131,43 @@
       "type": "object",
       "properties": {
         "accepted": {
-          "default": 0,
           "type": "integer",
           "format": "uint64",
-          "minimum": 0.0
+          "default": 0,
+          "minimum": 0
         },
         "apply_seconds": {
-          "default": 0.0,
           "type": "number",
-          "format": "double"
+          "format": "double",
+          "default": 0.0
         },
         "attempts": {
-          "default": 0,
           "type": "integer",
           "format": "uint64",
-          "minimum": 0.0
+          "default": 0,
+          "minimum": 0
         },
         "full_recalculation_count": {
-          "default": 0,
           "type": "integer",
           "format": "uint64",
-          "minimum": 0.0
+          "default": 0,
+          "minimum": 0
         },
         "full_recalculation_seconds": {
-          "default": 0.0,
           "type": "number",
-          "format": "double"
+          "format": "double",
+          "default": 0.0
         },
         "preview_seconds": {
-          "default": 0.0,
           "type": "number",
-          "format": "double"
+          "format": "double",
+          "default": 0.0
         },
         "rejected": {
-          "default": 0,
           "type": "integer",
           "format": "uint64",
-          "minimum": 0.0
+          "default": 0,
+          "minimum": 0
         }
       }
     },
@@ -176,6 +176,7 @@
       "type": "object",
       "properties": {
         "clique_swap": {
+          "$ref": "#/$defs/MoveFamilyBenchmarkTelemetry",
           "default": {
             "accepted": 0,
             "apply_seconds": 0.0,
@@ -184,14 +185,10 @@
             "full_recalculation_seconds": 0.0,
             "preview_seconds": 0.0,
             "rejected": 0
-          },
-          "allOf": [
-            {
-              "$ref": "#/definitions/MoveFamilyBenchmarkTelemetry"
-            }
-          ]
+          }
         },
         "swap": {
+          "$ref": "#/$defs/MoveFamilyBenchmarkTelemetry",
           "default": {
             "accepted": 0,
             "apply_seconds": 0.0,
@@ -200,14 +197,10 @@
             "full_recalculation_seconds": 0.0,
             "preview_seconds": 0.0,
             "rejected": 0
-          },
-          "allOf": [
-            {
-              "$ref": "#/definitions/MoveFamilyBenchmarkTelemetry"
-            }
-          ]
+          }
         },
         "transfer": {
+          "$ref": "#/$defs/MoveFamilyBenchmarkTelemetry",
           "default": {
             "accepted": 0,
             "apply_seconds": 0.0,
@@ -216,23 +209,13 @@
             "full_recalculation_seconds": 0.0,
             "preview_seconds": 0.0,
             "rejected": 0
-          },
-          "allOf": [
-            {
-              "$ref": "#/definitions/MoveFamilyBenchmarkTelemetry"
-            }
-          ]
+          }
         }
       }
     },
     "MoveFamilyWeights": {
       "description": "Explicit weights for each move family when `MoveSelectionMode::Weighted` is used.",
       "type": "object",
-      "required": [
-        "clique_swap",
-        "swap",
-        "transfer"
-      ],
       "properties": {
         "clique_swap": {
           "type": "number",
@@ -246,7 +229,12 @@
           "type": "number",
           "format": "double"
         }
-      }
+      },
+      "required": [
+        "swap",
+        "transfer",
+        "clique_swap"
+      ]
     },
     "MovePolicy": {
       "description": "Controls which move families are allowed in a run and how the solver chooses between them.",
@@ -254,47 +242,43 @@
       "properties": {
         "allowed_families": {
           "description": "Optional allow-list of move families for this run.\n\nWhen omitted, all move families are allowed.",
-          "default": null,
           "type": [
             "array",
             "null"
           ],
+          "default": null,
           "items": {
-            "$ref": "#/definitions/MoveFamily"
+            "$ref": "#/$defs/MoveFamily"
           }
         },
         "forced_family": {
           "description": "Optional single-family override used for path tests and diagnostics.\n\nWhen present, the search loop will only attempt the specified move family.",
-          "default": null,
           "anyOf": [
             {
-              "$ref": "#/definitions/MoveFamily"
+              "$ref": "#/$defs/MoveFamily"
             },
             {
               "type": "null"
             }
-          ]
+          ],
+          "default": null
         },
         "mode": {
           "description": "Selection mode for mixed-family runs.",
-          "default": "adaptive",
-          "allOf": [
-            {
-              "$ref": "#/definitions/MoveSelectionMode"
-            }
-          ]
+          "$ref": "#/$defs/MoveSelectionMode",
+          "default": "adaptive"
         },
         "weights": {
           "description": "Optional explicit family weights used when `mode` is `weighted`.",
-          "default": null,
           "anyOf": [
             {
-              "$ref": "#/definitions/MoveFamilyWeights"
+              "$ref": "#/$defs/MoveFamilyWeights"
             },
             {
               "type": "null"
             }
-          ]
+          ],
+          "default": null
         }
       }
     },
@@ -302,40 +286,20 @@
       "description": "Selection mode for mixed move-family search.",
       "oneOf": [
         {
-          "description": "Preserve the current solver behavior, where transfer / clique swap probabilities are derived from the current state.",
+          "description": "Preserve the current solver behavior, where transfer / clique swap probabilities\nare derived from the current state.",
           "type": "string",
-          "enum": [
-            "adaptive"
-          ]
+          "const": "adaptive"
         },
         {
           "description": "Use caller-provided explicit weights instead of the adaptive heuristics.",
           "type": "string",
-          "enum": [
-            "weighted"
-          ]
+          "const": "weighted"
         }
       ]
     },
     "SolverBenchmarkTelemetry": {
       "description": "End-of-run benchmark telemetry intended for regression / benchmark artifacts.",
       "type": "object",
-      "required": [
-        "best_score",
-        "effective_seed",
-        "final_score",
-        "finalization_seconds",
-        "initial_score",
-        "initialization_seconds",
-        "iterations_completed",
-        "move_policy",
-        "moves",
-        "no_improvement_count",
-        "reheats_performed",
-        "search_seconds",
-        "stop_reason",
-        "total_seconds"
-      ],
       "properties": {
         "best_score": {
           "type": "number",
@@ -344,7 +308,7 @@
         "effective_seed": {
           "type": "integer",
           "format": "uint64",
-          "minimum": 0.0
+          "minimum": 0
         },
         "final_score": {
           "type": "number",
@@ -365,36 +329,52 @@
         "iterations_completed": {
           "type": "integer",
           "format": "uint64",
-          "minimum": 0.0
+          "minimum": 0
         },
         "move_policy": {
-          "$ref": "#/definitions/MovePolicy"
+          "$ref": "#/$defs/MovePolicy"
         },
         "moves": {
-          "$ref": "#/definitions/MoveFamilyBenchmarkTelemetrySummary"
+          "$ref": "#/$defs/MoveFamilyBenchmarkTelemetrySummary"
         },
         "no_improvement_count": {
           "type": "integer",
           "format": "uint64",
-          "minimum": 0.0
+          "minimum": 0
         },
         "reheats_performed": {
           "type": "integer",
           "format": "uint64",
-          "minimum": 0.0
+          "minimum": 0
         },
         "search_seconds": {
           "type": "number",
           "format": "double"
         },
         "stop_reason": {
-          "$ref": "#/definitions/StopReason"
+          "$ref": "#/$defs/StopReason"
         },
         "total_seconds": {
           "type": "number",
           "format": "double"
         }
-      }
+      },
+      "required": [
+        "effective_seed",
+        "move_policy",
+        "stop_reason",
+        "iterations_completed",
+        "no_improvement_count",
+        "reheats_performed",
+        "initial_score",
+        "best_score",
+        "final_score",
+        "initialization_seconds",
+        "search_seconds",
+        "finalization_seconds",
+        "total_seconds",
+        "moves"
+      ]
     },
     "StopReason": {
       "description": "Explicit reason why a solver run stopped.",

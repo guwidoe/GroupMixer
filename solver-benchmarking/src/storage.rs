@@ -100,16 +100,26 @@ impl BenchmarkStorage {
             .join(sanitize(suite_id))
     }
 
-    pub fn baseline_snapshot_path(&self, machine_id: &str, suite_id: &str, baseline_name: &str) -> PathBuf {
+    pub fn baseline_snapshot_path(
+        &self,
+        machine_id: &str,
+        suite_id: &str,
+        baseline_name: &str,
+    ) -> PathBuf {
         self.baseline_dir(machine_id, suite_id)
             .join(format!("{}.json", sanitize(baseline_name)))
     }
 
     pub fn machine_record_path(&self, machine_id: &str) -> PathBuf {
-        self.machines_dir().join(format!("{}.json", sanitize(machine_id)))
+        self.machines_dir()
+            .join(format!("{}.json", sanitize(machine_id)))
     }
 
-    pub fn persist_machine_record(&self, machine: &MachineIdentity, seen_at: &str) -> Result<Option<PathBuf>> {
+    pub fn persist_machine_record(
+        &self,
+        machine: &MachineIdentity,
+        seen_at: &str,
+    ) -> Result<Option<PathBuf>> {
         let machine_id = machine
             .benchmark_machine_id
             .clone()
@@ -140,9 +150,11 @@ impl BenchmarkStorage {
         let run = current_run.context(
             "baseline name lookup requires a current run report to infer suite and machine identity",
         )?;
-        let machine_id = machine_identity_label(&run.run.machine)
-            .context("cannot resolve baseline by name because current run lacks machine identity")?;
-        let baseline_path = self.baseline_snapshot_path(&machine_id, &run.suite.suite_id, requested);
+        let machine_id = machine_identity_label(&run.run.machine).context(
+            "cannot resolve baseline by name because current run lacks machine identity",
+        )?;
+        let baseline_path =
+            self.baseline_snapshot_path(&machine_id, &run.suite.suite_id, requested);
         if baseline_path.exists() {
             Ok(baseline_path)
         } else {
@@ -181,7 +193,10 @@ impl BenchmarkStorage {
             }
 
             for suite_entry in fs::read_dir(&machine_path).with_context(|| {
-                format!("failed to read machine baseline dir {}", machine_path.display())
+                format!(
+                    "failed to read machine baseline dir {}",
+                    machine_path.display()
+                )
             })? {
                 let suite_entry = suite_entry?;
                 let suite_path = suite_entry.path();
@@ -219,8 +234,11 @@ impl BenchmarkStorage {
         }
 
         baselines.sort_by(|a, b| {
-            (&a.machine_id, &a.suite_id, &a.baseline_name)
-                .cmp(&(&b.machine_id, &b.suite_id, &b.baseline_name))
+            (&a.machine_id, &a.suite_id, &a.baseline_name).cmp(&(
+                &b.machine_id,
+                &b.suite_id,
+                &b.baseline_name,
+            ))
         });
         Ok(baselines)
     }
@@ -242,7 +260,8 @@ fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
         fs::create_dir_all(parent)
             .with_context(|| format!("failed to create parent dir {}", parent.display()))?;
     }
-    let contents = serde_json::to_string_pretty(value).context("failed to serialize benchmark json")?;
+    let contents =
+        serde_json::to_string_pretty(value).context("failed to serialize benchmark json")?;
     fs::write(path, contents).with_context(|| format!("failed to write {}", path.display()))
 }
 
@@ -260,7 +279,7 @@ fn sanitize(value: &str) -> String {
 mod tests {
     use super::*;
     use crate::artifacts::{MachineIdentity, RunMetadata, RunSuiteMetadata, RunTotals};
-    use crate::{RunReport, BenchmarkSuiteClass};
+    use crate::{BenchmarkSuiteClass, RunReport};
     use tempfile::TempDir;
 
     #[test]
@@ -276,7 +295,9 @@ mod tests {
         fs::write(&first, "{}").expect("write first");
         fs::write(&second, "{}").expect("write second");
 
-        let list = storage.list_baselines(Some("benchbox"), None).expect("list baselines");
+        let list = storage
+            .list_baselines(Some("benchbox"), None)
+            .expect("list baselines");
         assert_eq!(list.len(), 2);
         assert_eq!(list[0].machine_id, "benchbox");
     }

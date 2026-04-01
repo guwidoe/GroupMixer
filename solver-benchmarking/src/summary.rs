@@ -34,14 +34,26 @@ pub fn render_comparison_summary(report: &ComparisonReport) -> String {
         }
     }
 
-    append_section(&mut lines, "Top runtime regressions", &report.suspects.top_runtime_regressions);
-    append_section(&mut lines, "Top quality regressions", &report.suspects.top_quality_regressions);
+    append_section(
+        &mut lines,
+        "Top runtime regressions",
+        &report.suspects.top_runtime_regressions,
+    );
+    append_section(
+        &mut lines,
+        "Top quality regressions",
+        &report.suspects.top_quality_regressions,
+    );
     append_section(
         &mut lines,
         "Top move-family regressions",
         &report.suspects.top_move_family_regressions,
     );
-    append_section(&mut lines, "Top improvements", &report.suspects.top_improvements);
+    append_section(
+        &mut lines,
+        "Top improvements",
+        &report.suspects.top_improvements,
+    );
 
     lines.join("\n")
 }
@@ -83,14 +95,11 @@ mod tests {
         };
         let report = run_suite_from_manifest("../benchmarking/suites/path.yaml", &options)
             .expect("run path suite");
-        let baseline_path = save_baseline_snapshot(
-            &report,
-            "path-baseline",
-            &options.artifacts_dir,
-            None,
-        )
-        .expect("save baseline");
-        let baseline = crate::runner::load_baseline_snapshot(&baseline_path).expect("load baseline");
+        let baseline_path =
+            save_baseline_snapshot(&report, "path-baseline", &options.artifacts_dir, None)
+                .expect("save baseline");
+        let baseline =
+            crate::runner::load_baseline_snapshot(&baseline_path).expect("load baseline");
         let comparison = compare_run_to_baseline(&report, &baseline);
 
         let summary = render_comparison_summary(&comparison);

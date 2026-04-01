@@ -76,7 +76,11 @@ pub fn create_recording_for_run(
     run_report_path: PathBuf,
     options: &RecordingOptions,
 ) -> Result<RecordingMetadata> {
-    create_recording_for_runs(root, vec![RecordingRunInput::from_report(report, run_report_path)], options)
+    create_recording_for_runs(
+        root,
+        vec![RecordingRunInput::from_report(report, run_report_path)],
+        options,
+    )
 }
 
 pub fn create_recording_for_runs(
@@ -119,7 +123,12 @@ pub fn create_recording_for_runs(
         feature_name: options.feature_name.clone(),
         source: options.source.clone(),
         git: RecordingGitIdentity {
-            branch: first.run.git.branch.clone().unwrap_or_else(|| "unknown".to_string()),
+            branch: first
+                .run
+                .git
+                .branch
+                .clone()
+                .unwrap_or_else(|| "unknown".to_string()),
             commit_sha: first
                 .run
                 .git
@@ -233,7 +242,12 @@ pub fn find_recording_suite_runs(
             .recording
             .recorded_at
             .cmp(&left.recording.recorded_at)
-            .then_with(|| right.recording.recording_id.cmp(&left.recording.recording_id))
+            .then_with(|| {
+                right
+                    .recording
+                    .recording_id
+                    .cmp(&left.recording.recording_id)
+            })
             .then_with(|| right.suite_run.suite_name.cmp(&left.suite_run.suite_name))
     });
 
@@ -293,20 +307,22 @@ fn ensure_same_machine_identity(first: &RunReport, current: &RunReport) -> Resul
 }
 
 fn default_recording_id(report: &RunReport) -> String {
-    sanitize(&format!(
-        "{}-{}",
-        report.run.run_id, report.suite.suite_id
-    ))
+    sanitize(&format!("{}-{}", report.run.run_id, report.suite.suite_id))
 }
 
 fn write_json<T: serde::Serialize>(path: &Path, value: &T) -> Result<()> {
-    let contents = serde_json::to_string_pretty(value).context("failed to serialize recording json")?;
+    let contents =
+        serde_json::to_string_pretty(value).context("failed to serialize recording json")?;
     fs::write(path, contents).with_context(|| format!("failed to write {}", path.display()))
 }
 
 fn sha256_file(path: &Path) -> Result<String> {
-    let contents = fs::read(path)
-        .with_context(|| format!("failed to read suite manifest for hashing {}", path.display()))?;
+    let contents = fs::read(path).with_context(|| {
+        format!(
+            "failed to read suite manifest for hashing {}",
+            path.display()
+        )
+    })?;
     let digest = Sha256::digest(contents);
     Ok(digest.iter().map(|byte| format!("{byte:02x}")).collect())
 }
@@ -384,8 +400,11 @@ mod tests {
         let temp = TempDir::new().expect("temp dir");
         let suite_manifest = temp.path().join("benchmarking/suites/representative.yaml");
         fs::create_dir_all(suite_manifest.parent().unwrap()).expect("mk suite dir");
-        fs::write(&suite_manifest, "schema_version: 1\nsuite_id: representative\nclass: representative\ncases: []\n")
-            .expect("write suite manifest");
+        fs::write(
+            &suite_manifest,
+            "schema_version: 1\nsuite_id: representative\nclass: representative\ncases: []\n",
+        )
+        .expect("write suite manifest");
         let run_report_path = temp
             .path()
             .join("runs/representative-run-1/run-report.json");
@@ -417,10 +436,16 @@ mod tests {
         let suite_a = temp.path().join("benchmarking/suites/representative.yaml");
         let suite_b = temp.path().join("benchmarking/suites/stretch.yaml");
         fs::create_dir_all(suite_a.parent().unwrap()).expect("mk suite dir");
-        fs::write(&suite_a, "schema_version: 1\nsuite_id: representative\nclass: representative\ncases: []\n")
-            .expect("write suite a");
-        fs::write(&suite_b, "schema_version: 1\nsuite_id: stretch\nclass: stretch\ncases: []\n")
-            .expect("write suite b");
+        fs::write(
+            &suite_a,
+            "schema_version: 1\nsuite_id: representative\nclass: representative\ncases: []\n",
+        )
+        .expect("write suite a");
+        fs::write(
+            &suite_b,
+            "schema_version: 1\nsuite_id: stretch\nclass: stretch\ncases: []\n",
+        )
+        .expect("write suite b");
 
         let run_a_path = temp.path().join("runs/run-a/run-report.json");
         let run_b_path = temp.path().join("runs/run-b/run-report.json");
@@ -436,7 +461,10 @@ mod tests {
                     sample_report("representative", &suite_a, "run-a"),
                     run_a_path,
                 ),
-                RecordingRunInput::full_solve(sample_report("stretch", &suite_b, "run-b"), run_b_path),
+                RecordingRunInput::full_solve(
+                    sample_report("stretch", &suite_b, "run-b"),
+                    run_b_path,
+                ),
             ],
             &RecordingOptions {
                 recording_id: Some("bundle-1".to_string()),
@@ -456,7 +484,9 @@ mod tests {
     #[test]
     fn create_recording_for_run_preserves_hotpath_benchmark_mode() {
         let temp = TempDir::new().expect("temp dir");
-        let suite = temp.path().join("benchmarking/suites/hotpath-swap-preview.yaml");
+        let suite = temp
+            .path()
+            .join("benchmarking/suites/hotpath-swap-preview.yaml");
         fs::create_dir_all(suite.parent().unwrap()).expect("mk suite dir");
         fs::write(
             &suite,

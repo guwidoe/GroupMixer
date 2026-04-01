@@ -13,6 +13,35 @@ async function waitForPageReady(page: Page) {
   await page.waitForTimeout(500);
 }
 
+async function openScenarioSetupDrawerIfNeeded(page: Page): Promise<boolean> {
+  const drawer = page.getByRole('dialog', { name: /scenario setup navigation drawer/i });
+  if (await drawer.isVisible().catch(() => false)) {
+    return true;
+  }
+
+  const openDrawerButton = page.getByRole('button', { name: /open scenario setup navigation/i });
+  if (!(await openDrawerButton.isVisible().catch(() => false))) {
+    return false;
+  }
+
+  await openDrawerButton.click();
+  await expect(drawer).toBeVisible({ timeout: 5000 });
+  return true;
+}
+
+async function navigateScenarioSetupSection(page: Page, name: RegExp) {
+  const usedDrawer = await openScenarioSetupDrawerIfNeeded(page);
+  await page.getByRole('button', { name }).click();
+
+  if (usedDrawer) {
+    await expect(
+      page.getByRole('dialog', { name: /scenario setup navigation drawer/i }),
+    ).toBeHidden({ timeout: 5000 });
+  }
+
+  await waitForPageReady(page);
+}
+
 async function loadDemoData(page: Page, type: 'simple' | 'intermediate' = 'simple') {
   const currentUrl = page.url();
   if (!currentUrl.includes('/app/scenario')) {
@@ -21,6 +50,8 @@ async function loadDemoData(page: Page, type: 'simple' | 'intermediate' = 'simpl
     await page.keyboard.press('Escape');
     await page.waitForTimeout(200);
   }
+
+  await openScenarioSetupDrawerIfNeeded(page);
 
   const demoButton = page.getByRole('button', { name: /demo data/i });
   await expect(demoButton).toBeVisible({ timeout: 10000 });
@@ -88,11 +119,7 @@ test.describe('Visual Regression - Scenario Editor', () => {
   });
 
   test('people section - add attribute modal', async ({ page }) => {
-    const attributeHeader = page.locator('text=Attribute Definitions');
-    if (await attributeHeader.isVisible()) {
-      await attributeHeader.click();
-      await page.waitForTimeout(300);
-    }
+    await navigateScenarioSetupSection(page, /attribute definitions|attributes/i);
     await page.locator('button').filter({ hasText: /Add Attribute/i }).click();
     await page.waitForSelector('.modal-content', { timeout: 5000 });
     await page.waitForTimeout(300);
@@ -101,14 +128,12 @@ test.describe('Visual Regression - Scenario Editor', () => {
 
   test('groups section - populated', async ({ page }) => {
     await loadDemoData(page, 'simple');
-    await page.getByRole('button', { name: /Groups/i }).click();
-    await waitForPageReady(page);
+    await navigateScenarioSetupSection(page, /groups/i);
     await expect(page).toHaveScreenshot('groups-populated.png');
   });
 
   test('groups section - add group modal', async ({ page }) => {
-    await page.getByRole('button', { name: /Groups/i }).click();
-    await page.waitForTimeout(500);
+    await navigateScenarioSetupSection(page, /groups/i);
     await page.locator('button').filter({ hasText: /^Add Group$/ }).click();
     await page.waitForSelector('.modal-content', { timeout: 5000 });
     await page.waitForTimeout(300);
@@ -117,15 +142,13 @@ test.describe('Visual Regression - Scenario Editor', () => {
 
   test('constraints - hard populated state', async ({ page }) => {
     await loadDemoData(page, 'intermediate');
-    await page.getByRole('button', { name: /Hard Constraints/i }).click();
-    await waitForPageReady(page);
+    await navigateScenarioSetupSection(page, /hard constraints/i);
     await expect(page).toHaveScreenshot('constraints-hard-populated.png');
   });
 
   test('constraints - soft populated state', async ({ page }) => {
     await loadDemoData(page, 'intermediate');
-    await page.getByRole('button', { name: /Soft Constraints/i }).click();
-    await waitForPageReady(page);
+    await navigateScenarioSetupSection(page, /soft constraints/i);
     await expect(page).toHaveScreenshot('constraints-soft-populated.png');
   });
 });
@@ -184,6 +207,7 @@ test.describe('Visual Regression - Shared chrome and dialogs', () => {
   });
 
   test('demo data dropdown', async ({ page }) => {
+    await openScenarioSetupDrawerIfNeeded(page);
     await page.getByRole('button', { name: /Demo Data/i }).click();
     await page.waitForTimeout(300);
     await expect(page).toHaveScreenshot('header-demo-dropdown.png');

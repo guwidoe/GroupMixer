@@ -1,6 +1,6 @@
-pub mod contract_surface;
 pub mod contract_projection;
 mod contract_runtime;
+pub mod contract_surface;
 mod public_errors;
 
 use serde::Serialize;
@@ -171,9 +171,7 @@ pub fn solve_with_progress_legacy_json(
             match js_callback.call1(&this, &json_value) {
                 Ok(result) => result.as_bool().unwrap_or(true),
                 Err(e) => {
-                    web_sys::console::error_1(
-                        &format!("Progress callback error: {:?}", e).into(),
-                    );
+                    web_sys::console::error_1(&format!("Progress callback error: {:?}", e).into());
                     true
                 }
             }
@@ -577,7 +575,8 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn solve_returns_valid_serialized_result() {
-        let result_value = solve(JsValue::from_str(&valid_input_json()).into()).expect("solve should succeed");
+        let result_value =
+            solve(JsValue::from_str(&valid_input_json())).expect("solve should succeed");
         let result: serde_json::Value = serde_wasm_bindgen::from_value(result_value).unwrap();
 
         assert!(result.get("schedule").is_some());
@@ -586,9 +585,12 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn solve_rejects_invalid_json_with_js_error() {
-        let error = solve(JsValue::from_str("{not-json").into()).expect_err("invalid JSON should error");
+        let error = solve(JsValue::from_str("{not-json")).expect_err("invalid JSON should error");
         let message = js_error_message(error);
-        assert!(message.contains("Failed to parse request payload"), "{message}");
+        assert!(
+            message.contains("Failed to parse request payload"),
+            "{message}"
+        );
     }
 
     #[wasm_bindgen_test]
@@ -610,7 +612,8 @@ mod tests {
             .as_ref()
             .unchecked_ref::<js_sys::Function>()
             .clone();
-        let result_json = solve_with_progress_legacy_json(&valid_input_json(), Some(function)).unwrap();
+        let result_json =
+            solve_with_progress_legacy_json(&valid_input_json(), Some(function)).unwrap();
         let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
 
         assert!(*calls.borrow() >= 1);
@@ -626,8 +629,9 @@ mod tests {
         let throwing_callback =
             js_sys::Function::new_with_args("payload", "throw new Error(`boom:${payload.length}`)");
 
-        let result_json = solve_with_progress_legacy_json(&valid_input_json(), Some(throwing_callback))
-            .expect("callback exceptions should not break solving");
+        let result_json =
+            solve_with_progress_legacy_json(&valid_input_json(), Some(throwing_callback))
+                .expect("callback exceptions should not break solving");
         let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
 
         assert!(result.get("schedule").is_some());
@@ -635,8 +639,8 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn validate_problem_reports_expected_shape() {
-        let result_json =
-            validate_problem_legacy_json(&invalid_problem_json()).expect("validation should succeed");
+        let result_json = validate_problem_legacy_json(&invalid_problem_json())
+            .expect("validation should succeed");
         let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
 
         assert_eq!(result["valid"], serde_json::Value::Bool(false));
@@ -645,7 +649,8 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn get_default_settings_returns_serialized_solver_configuration() {
-        let settings_json = get_default_settings_legacy_json().expect("default settings should serialize");
+        let settings_json =
+            get_default_settings_legacy_json().expect("default settings should serialize");
         let settings: serde_json::Value = serde_json::from_str(&settings_json).unwrap();
 
         assert_eq!(

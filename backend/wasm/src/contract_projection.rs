@@ -122,7 +122,8 @@ pub fn build_capabilities_response() -> WasmBootstrapResponse {
                 family: operation.family,
                 kind: operation.kind,
                 help_export_name: "get_operation_help",
-                export_name: binding_for_operation_id(operation.id).map(|binding| binding.export_name),
+                export_name: binding_for_operation_id(operation.id)
+                    .map(|binding| binding.export_name),
                 help_target: operation.id,
             })
         })
@@ -139,7 +140,9 @@ pub fn build_capabilities_response() -> WasmBootstrapResponse {
     }
 }
 
-pub fn build_operation_help_response(operation_id: &str) -> Result<WasmOperationHelpResponse, JsValue> {
+pub fn build_operation_help_response(
+    operation_id: &str,
+) -> Result<WasmOperationHelpResponse, JsValue> {
     let help = local_help(operation_id)
         .ok_or_else(|| public_error_to_js_value(&unknown_operation_error(operation_id)))?;
     let examples = help
@@ -162,7 +165,8 @@ pub fn build_operation_help_response(operation_id: &str) -> Result<WasmOperation
                 operation_id: operation.id,
                 summary: operation.summary,
                 help_export_name: "get_operation_help",
-                export_name: binding_for_operation_id(operation.id).map(|binding| binding.export_name),
+                export_name: binding_for_operation_id(operation.id)
+                    .map(|binding| binding.export_name),
                 help_target: operation.id,
             })
         })
@@ -228,20 +232,19 @@ pub fn build_error_lookup_response(error_code: &str) -> Result<WasmErrorLookupRe
 }
 
 fn to_js_value<T: Serialize>(value: &T) -> Result<JsValue, JsValue> {
-    serde_wasm_bindgen::to_value(value)
-        .map_err(|error| {
-            public_error_to_js_value(&internal_error(
-                "get-schema",
-                format!("Failed to serialize JS value: {}", error),
-            ))
-        })
+    serde_wasm_bindgen::to_value(value).map_err(|error| {
+        public_error_to_js_value(&internal_error(
+            "get-schema",
+            format!("Failed to serialize JS value: {}", error),
+        ))
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        build_capabilities_response, build_error_lookup_response, build_operation_help_response,
-        build_schema_lookup_response, build_schema_summaries, build_error_catalog,
+        build_capabilities_response, build_error_catalog, build_error_lookup_response,
+        build_operation_help_response, build_schema_lookup_response, build_schema_summaries,
     };
     use solver_contracts::{bootstrap::bootstrap_spec, errors::error_specs, schemas::schema_specs};
     use std::collections::HashSet;
@@ -250,10 +253,22 @@ mod tests {
     fn capabilities_response_exposes_bootstrap_and_top_level_bindings() {
         let response = build_capabilities_response();
         assert_eq!(response.help_export_name, "get_operation_help");
-        assert!(response.top_level_operations.iter().any(|operation| operation.operation_id == "solve"));
-        assert!(response.top_level_operations.iter().any(|operation| operation.export_name == Some("solve")));
-        assert!(response.top_level_operations.iter().any(|operation| operation.operation_id == "get-default-solver-configuration"));
-        assert!(response.top_level_operations.iter().all(|operation| operation.help_export_name == "get_operation_help"));
+        assert!(response
+            .top_level_operations
+            .iter()
+            .any(|operation| operation.operation_id == "solve"));
+        assert!(response
+            .top_level_operations
+            .iter()
+            .any(|operation| operation.export_name == Some("solve")));
+        assert!(response
+            .top_level_operations
+            .iter()
+            .any(|operation| operation.operation_id == "get-default-solver-configuration"));
+        assert!(response
+            .top_level_operations
+            .iter()
+            .all(|operation| operation.help_export_name == "get_operation_help"));
     }
 
     #[test]
@@ -262,9 +277,18 @@ mod tests {
         assert_eq!(response.operation.id, "solve");
         assert_eq!(response.help_export_name, "get_operation_help");
         assert_eq!(response.export_name, Some("solve"));
-        assert!(response.examples.iter().any(|example| example.id == "solve-happy-path"));
-        assert!(response.examples.iter().any(|example| example.id == "solve-progress-update"));
-        assert!(response.related_operations.iter().any(|operation| operation.operation_id == "validate-problem"));
+        assert!(response
+            .examples
+            .iter()
+            .any(|example| example.id == "solve-happy-path"));
+        assert!(response
+            .examples
+            .iter()
+            .any(|example| example.id == "solve-progress-update"));
+        assert!(response
+            .related_operations
+            .iter()
+            .any(|operation| operation.operation_id == "validate-problem"));
     }
 
     #[test]
@@ -291,9 +315,12 @@ mod tests {
         let schemas = build_schema_summaries();
         assert!(schemas.iter().any(|schema| schema.id == "solve-request"));
 
-        let solve_schema = build_schema_lookup_response("solve-request").expect("solve-request schema");
+        let solve_schema =
+            build_schema_lookup_response("solve-request").expect("solve-request schema");
         assert_eq!(solve_schema.id, "solve-request");
-        assert!(solve_schema.schema.as_object().is_some() || solve_schema.schema.as_bool().is_some());
+        assert!(
+            solve_schema.schema.as_object().is_some() || solve_schema.schema.as_bool().is_some()
+        );
     }
 
     #[test]
@@ -303,21 +330,27 @@ mod tests {
             .into_iter()
             .map(|operation| operation.operation_id)
             .collect();
-        let bootstrap_ids: HashSet<_> = bootstrap_spec().top_level_operation_ids.iter().copied().collect();
+        let bootstrap_ids: HashSet<_> = bootstrap_spec()
+            .top_level_operation_ids
+            .iter()
+            .copied()
+            .collect();
         assert_eq!(capability_ids, bootstrap_ids);
 
         let schema_ids: HashSet<_> = build_schema_summaries()
             .into_iter()
             .map(|schema| schema.id)
             .collect();
-        let registered_schema_ids: HashSet<_> = schema_specs().iter().map(|schema| schema.id).collect();
+        let registered_schema_ids: HashSet<_> =
+            schema_specs().iter().map(|schema| schema.id).collect();
         assert_eq!(schema_ids, registered_schema_ids);
 
         let error_codes: HashSet<_> = build_error_catalog()
             .into_iter()
             .map(|error| error.error.code)
             .collect();
-        let registered_error_codes: HashSet<_> = error_specs().iter().map(|error| error.code).collect();
+        let registered_error_codes: HashSet<_> =
+            error_specs().iter().map(|error| error.code).collect();
         assert_eq!(error_codes, registered_error_codes);
     }
 }

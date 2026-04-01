@@ -11,13 +11,13 @@ import {
 
 vi.mock("./rustBoundary", () => ({
   buildRustScenarioPayload: vi.fn(() => ({
-    scenario: { people: [], groups: [], num_sessions: 2 },
+    problem: { people: [], groups: [], num_sessions: 2 },
     objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
     constraints: [],
     solver: { solver_type: "SimulatedAnnealing" },
   })),
   buildWarmStartScenarioPayload: vi.fn(() => ({
-    scenario: { people: [], groups: [], num_sessions: 2 },
+    problem: { people: [], groups: [], num_sessions: 2 },
     objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
     constraints: [],
     solver: { solver_type: "SimulatedAnnealing" },
@@ -176,7 +176,7 @@ describe("SolverWorkerService", () => {
       id: "2",
       data: {
         scenarioPayload: {
-          scenario: { people: [], groups: [], num_sessions: 2 },
+          problem: { people: [], groups: [], num_sessions: 2 },
           objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
           constraints: [],
           solver: { solver_type: "SimulatedAnnealing" },
@@ -217,7 +217,7 @@ describe("SolverWorkerService", () => {
       id: "2",
       data: {
         scenarioPayload: {
-          scenario: { people: [], groups: [], num_sessions: 2 },
+          problem: { people: [], groups: [], num_sessions: 2 },
           objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
           constraints: [],
           solver: { solver_type: "SimulatedAnnealing" },
@@ -345,7 +345,7 @@ describe("SolverWorkerService", () => {
       id: "2",
       data: {
         scenarioPayload: {
-          scenario: { people: [], groups: [], num_sessions: 2 },
+          problem: { people: [], groups: [], num_sessions: 2 },
           objectives: [{ type: "maximize_unique_contacts", weight: 1 }],
           constraints: [],
           solver: { solver_type: "SimulatedAnnealing" },

@@ -1,7 +1,7 @@
 use crate::artifacts::{
-    ComparisonReport, ComparisonStatus, ComparabilityReport, IntegerDelta, MoveFamilyComparison,
-    NumericDelta, RegressionSuspect, RegressionSuspectKind, RegressionSuspectSummary,
-    ClassRollupComparison, CaseComparison, COMPARISON_REPORT_SCHEMA_VERSION,
+    CaseComparison, ClassRollupComparison, ComparabilityReport, ComparisonReport, ComparisonStatus,
+    IntegerDelta, MoveFamilyComparison, NumericDelta, RegressionSuspect, RegressionSuspectKind,
+    RegressionSuspectSummary, COMPARISON_REPORT_SCHEMA_VERSION,
 };
 use crate::manifest::BenchmarkSuiteClass;
 use crate::storage::BenchmarkStorage;
@@ -13,7 +13,10 @@ use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub fn compare_run_to_baseline(current: &RunReport, baseline: &BaselineSnapshot) -> ComparisonReport {
+pub fn compare_run_to_baseline(
+    current: &RunReport,
+    baseline: &BaselineSnapshot,
+) -> ComparisonReport {
     let mut reasons = Vec::new();
     if current.schema_version != baseline.run_report.schema_version {
         reasons.push(format!(
@@ -28,7 +31,8 @@ pub fn compare_run_to_baseline(current: &RunReport, baseline: &BaselineSnapshot)
         ));
     }
 
-    let same_benchmark_mode = current.suite.benchmark_mode == baseline.run_report.suite.benchmark_mode;
+    let same_benchmark_mode =
+        current.suite.benchmark_mode == baseline.run_report.suite.benchmark_mode;
     if !same_benchmark_mode {
         reasons.push(format!(
             "benchmark mode mismatch: current={} baseline={}",
@@ -38,7 +42,8 @@ pub fn compare_run_to_baseline(current: &RunReport, baseline: &BaselineSnapshot)
 
     let same_machine = same_machine_identity(current, &baseline.run_report);
     if !same_machine {
-        reasons.push("machine identity mismatch; runtime comparison is not trustworthy".to_string());
+        reasons
+            .push("machine identity mismatch; runtime comparison is not trustworthy".to_string());
     }
 
     let baseline_cases: HashMap<_, _> = baseline
@@ -111,7 +116,9 @@ pub fn persist_comparison_report(
 ) -> Result<PathBuf> {
     let storage = BenchmarkStorage::new(artifacts_dir.as_ref());
     storage.ensure_layout()?;
-    let comparison_dir = storage.comparisons_dir().join(sanitize_filename(&report.suite_id));
+    let comparison_dir = storage
+        .comparisons_dir()
+        .join(sanitize_filename(&report.suite_id));
     fs::create_dir_all(&comparison_dir).with_context(|| {
         format!(
             "failed to create benchmark comparison dir {}",
@@ -125,8 +132,8 @@ pub fn persist_comparison_report(
         sanitize_filename(&report.current_run_id)
     );
     let path = comparison_dir.join(filename);
-    let contents = serde_json::to_string_pretty(report)
-        .context("failed to serialize comparison report")?;
+    let contents =
+        serde_json::to_string_pretty(report).context("failed to serialize comparison report")?;
     fs::write(&path, contents)
         .with_context(|| format!("failed to write comparison report {}", path.display()))?;
     Ok(path)
@@ -134,11 +141,7 @@ pub fn persist_comparison_report(
 
 fn compare_case(current: &CaseRunArtifact, baseline: &CaseRunArtifact) -> CaseComparison {
     let move_family_deltas = vec![
-        compare_move_family(
-            "swap",
-            &current.moves.swap,
-            &baseline.moves.swap,
-        ),
+        compare_move_family("swap", &current.moves.swap, &baseline.moves.swap),
         compare_move_family(
             "transfer",
             &current.moves.transfer,
@@ -182,12 +185,18 @@ fn compare_class_rollups(
 
     for class in baseline_rollups.keys() {
         if !current_rollups.contains_key(class) {
-            reasons.push(format!("class rollup missing in current run: {}", class.as_str()));
+            reasons.push(format!(
+                "class rollup missing in current run: {}",
+                class.as_str()
+            ));
         }
     }
     for class in current_rollups.keys() {
         if !baseline_rollups.contains_key(class) {
-            reasons.push(format!("class rollup missing in baseline run: {}", class.as_str()));
+            reasons.push(format!(
+                "class rollup missing in baseline run: {}",
+                class.as_str()
+            ));
         }
     }
 
@@ -265,7 +274,12 @@ fn build_suspect_summary(case_comparisons: &[CaseComparison]) -> RegressionSuspe
 
     let mut quality_regressions: Vec<_> = case_comparisons
         .iter()
-        .filter_map(|comparison| comparison.final_score.as_ref().map(|delta| (comparison, delta)))
+        .filter_map(|comparison| {
+            comparison
+                .final_score
+                .as_ref()
+                .map(|delta| (comparison, delta))
+        })
         .filter(|(_, delta)| delta.absolute < 0.0)
         .map(|(comparison, delta)| RegressionSuspect {
             kind: RegressionSuspectKind::CaseQuality,
@@ -362,12 +376,11 @@ fn build_suspect_summary(case_comparisons: &[CaseComparison]) -> RegressionSuspe
 }
 
 fn same_machine_identity(current: &RunReport, baseline: &RunReport) -> bool {
-    let current_id = current
+    let current_id = current.run.machine.benchmark_machine_id.as_ref().or(current
         .run
         .machine
-        .benchmark_machine_id
-        .as_ref()
-        .or(current.run.machine.hostname.as_ref());
+        .hostname
+        .as_ref());
     let baseline_id = baseline
         .run
         .machine
@@ -420,7 +433,8 @@ fn format_percent(value: Option<f64>) -> String {
 }
 
 fn sanitize_filename(value: &str) -> String {
-    value.chars()
+    value
+        .chars()
         .map(|ch| match ch {
             'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' => ch,
             _ => '_',
@@ -431,7 +445,9 @@ fn sanitize_filename(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::runner::{persist_run_report, run_suite_from_manifest, save_baseline_snapshot, RunnerOptions};
+    use crate::runner::{
+        persist_run_report, run_suite_from_manifest, save_baseline_snapshot, RunnerOptions,
+    };
     use tempfile::TempDir;
 
     #[test]
@@ -443,7 +459,8 @@ mod tests {
         };
         let report = run_suite_from_manifest("../benchmarking/suites/path.yaml", &options)
             .expect("run path suite");
-        let run_path = persist_run_report(&report, &options.artifacts_dir).expect("persist run report");
+        let run_path =
+            persist_run_report(&report, &options.artifacts_dir).expect("persist run report");
         let baseline_path = save_baseline_snapshot(
             &report,
             "path-baseline",
@@ -451,10 +468,14 @@ mod tests {
             Some(run_path),
         )
         .expect("save baseline");
-        let baseline = crate::runner::load_baseline_snapshot(&baseline_path).expect("load baseline");
+        let baseline =
+            crate::runner::load_baseline_snapshot(&baseline_path).expect("load baseline");
 
         let comparison = compare_run_to_baseline(&report, &baseline);
-        assert_eq!(comparison.comparability.status, ComparisonStatus::Comparable);
+        assert_eq!(
+            comparison.comparability.status,
+            ComparisonStatus::Comparable
+        );
         assert_eq!(comparison.case_comparisons.len(), report.cases.len());
 
         let comparison_path = persist_comparison_report(&comparison, &options.artifacts_dir)
@@ -471,22 +492,20 @@ mod tests {
         };
         let path_report = run_suite_from_manifest("../benchmarking/suites/path.yaml", &options)
             .expect("run path suite");
-        let representative_report = run_suite_from_manifest(
-            "../benchmarking/suites/representative.yaml",
-            &options,
-        )
-        .expect("run representative suite");
-        let baseline_path = save_baseline_snapshot(
-            &path_report,
-            "path-baseline",
-            &options.artifacts_dir,
-            None,
-        )
-        .expect("save baseline");
-        let baseline = crate::runner::load_baseline_snapshot(&baseline_path).expect("load baseline");
+        let representative_report =
+            run_suite_from_manifest("../benchmarking/suites/representative.yaml", &options)
+                .expect("run representative suite");
+        let baseline_path =
+            save_baseline_snapshot(&path_report, "path-baseline", &options.artifacts_dir, None)
+                .expect("save baseline");
+        let baseline =
+            crate::runner::load_baseline_snapshot(&baseline_path).expect("load baseline");
 
         let comparison = compare_run_to_baseline(&representative_report, &baseline);
-        assert_eq!(comparison.comparability.status, ComparisonStatus::NotComparable);
+        assert_eq!(
+            comparison.comparability.status,
+            ComparisonStatus::NotComparable
+        );
         assert!(comparison
             .comparability
             .reasons
@@ -503,14 +522,11 @@ mod tests {
         };
         let mut report = run_suite_from_manifest("../benchmarking/suites/path.yaml", &options)
             .expect("run path suite");
-        let baseline_path = save_baseline_snapshot(
-            &report,
-            "path-baseline",
-            &options.artifacts_dir,
-            None,
-        )
-        .expect("save baseline");
-        let baseline = crate::runner::load_baseline_snapshot(&baseline_path).expect("load baseline");
+        let baseline_path =
+            save_baseline_snapshot(&report, "path-baseline", &options.artifacts_dir, None)
+                .expect("save baseline");
+        let baseline =
+            crate::runner::load_baseline_snapshot(&baseline_path).expect("load baseline");
 
         report.suite.benchmark_mode = "swap_preview".to_string();
         for case in &mut report.cases {
@@ -518,7 +534,10 @@ mod tests {
         }
 
         let comparison = compare_run_to_baseline(&report, &baseline);
-        assert_eq!(comparison.comparability.status, ComparisonStatus::NotComparable);
+        assert_eq!(
+            comparison.comparability.status,
+            ComparisonStatus::NotComparable
+        );
         assert!(!comparison.comparability.same_benchmark_mode);
         assert!(comparison
             .comparability

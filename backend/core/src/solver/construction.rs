@@ -12,6 +12,8 @@ use rand::{rng, RngExt, SeedableRng};
 use rand_chacha::ChaCha12Rng;
 use std::collections::HashMap;
 
+type EffectiveGroupCapacitySummary = (Vec<usize>, Vec<usize>, Vec<usize>, Vec<usize>);
+
 impl State {
     /// Creates a new solver state from the API input configuration.
     ///
@@ -640,8 +642,11 @@ impl State {
                     }
                 }
             } else {
-                for session_idx in 0..num_sessions {
-                    person_participation[person_idx][session_idx] = true;
+                for participates in person_participation[person_idx]
+                    .iter_mut()
+                    .take(num_sessions)
+                {
+                    *participates = true;
                 }
             }
         }
@@ -651,7 +656,7 @@ impl State {
 
     fn build_effective_group_capacities(
         input: &ApiInput,
-    ) -> Result<(Vec<usize>, Vec<usize>, Vec<usize>, Vec<usize>), SolverError> {
+    ) -> Result<EffectiveGroupCapacitySummary, SolverError> {
         let num_sessions = input.problem.num_sessions as usize;
         let group_capacities: Vec<usize> = input
             .problem

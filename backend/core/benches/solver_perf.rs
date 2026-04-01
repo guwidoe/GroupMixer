@@ -21,7 +21,7 @@ fn bench_construction(c: &mut Criterion) {
     let input = construction_bench_input();
     let mut group = c.benchmark_group("construction");
     group.throughput(Throughput::Elements(
-        input.cold_input.problem.people.len() as u64,
+        input.cold_input.problem.people.len() as u64
     ));
 
     group.bench_function("cold_seeded_state_new", |b| {
@@ -63,11 +63,11 @@ fn bench_swap(c: &mut Criterion) {
 
     group.bench_function("preview_delta", |b| {
         b.iter(|| {
-            black_box(input.state.calculate_swap_cost_delta(
-                input.day,
-                input.p1_idx,
-                input.p2_idx,
-            ))
+            black_box(
+                input
+                    .state
+                    .calculate_swap_cost_delta(input.day, input.p1_idx, input.p2_idx),
+            )
         })
     });
 
@@ -163,18 +163,22 @@ fn bench_search_loop(c: &mut Criterion) {
     for input in search_loop_bench_inputs() {
         let solver = SimulatedAnnealing::new(&input.input.solver);
         group.throughput(Throughput::Elements(input.iterations));
-        group.bench_with_input(BenchmarkId::new("solve", input.id), &input.base_state, |b, _| {
-            b.iter_batched(
-                || input.base_state.clone(),
-                |mut state| {
-                    let result = solver
-                        .solve(&mut state, None, None)
-                        .expect("search loop benchmark should solve");
-                    black_box(result.final_score)
-                },
-                BatchSize::LargeInput,
-            )
-        });
+        group.bench_with_input(
+            BenchmarkId::new("solve", input.id),
+            &input.base_state,
+            |b, _| {
+                b.iter_batched(
+                    || input.base_state.clone(),
+                    |mut state| {
+                        let result = solver
+                            .solve(&mut state, None, None)
+                            .expect("search loop benchmark should solve");
+                        black_box(result.final_score)
+                    },
+                    BatchSize::LargeInput,
+                )
+            },
+        );
     }
 
     group.finish();

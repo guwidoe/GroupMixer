@@ -1,8 +1,10 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
 export async function waitForAppShell(page: Page) {
+  await expect(page).toHaveURL(/\/app(?:\/.*)?$/);
   await expect(page.locator('nav, header').first()).toBeVisible({ timeout: 15000 });
-  await expect(page.getByRole('link', { name: /scenario setup/i })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: /primary app navigation/i })).toBeVisible();
+  await expect(page.getByRole('link', { name: /setup|scenario setup/i })).toBeVisible();
 }
 
 export async function openApp(page: Page) {
@@ -13,11 +15,66 @@ export async function openApp(page: Page) {
   });
   await page.reload();
   await waitForAppShell(page);
+  await expect(page).toHaveURL(/\/app\/scenario\/people$/);
 }
 
 export async function closeTransientUi(page: Page) {
   await page.keyboard.press('Escape');
   await expect(page.locator('.modal-content')).toHaveCount(0);
+}
+
+export async function dismissNotifications(page: Page) {
+  const notificationCloseButtons = page.locator('.fixed.top-4.right-4.z-50 button');
+  const count = await notificationCloseButtons.count();
+  for (let index = 0; index < count; index += 1) {
+    const button = notificationCloseButtons.nth(index);
+    if (await button.isVisible().catch(() => false)) {
+      await button.click().catch(() => {});
+    }
+  }
+}
+
+export async function openScenarioSetupControls(page: Page): Promise<boolean> {
+  const drawer = page.getByRole('dialog', { name: /scenario setup navigation drawer/i });
+  if (await drawer.isVisible().catch(() => false)) {
+    return true;
+  }
+
+  const openButton = page.getByRole('button', { name: /open scenario setup navigation/i });
+  if (!(await openButton.isVisible().catch(() => false))) {
+    return false;
+  }
+
+  await openButton.click();
+  await expect(drawer).toBeVisible({ timeout: 5000 });
+  return true;
+}
+
+export async function closeScenarioSetupControls(page: Page) {
+  const drawer = page.getByRole('dialog', { name: /scenario setup navigation drawer/i });
+  if (!(await drawer.isVisible().catch(() => false))) {
+    return;
+  }
+
+  const closeButton = drawer.getByRole('button', { name: /close scenario setup navigation/i }).last();
+  if (await closeButton.isVisible().catch(() => false)) {
+    await closeButton.click();
+  } else {
+    await page.keyboard.press('Escape');
+  }
+
+  await expect(drawer).toBeHidden({ timeout: 5000 });
+}
+
+export async function navigateScenarioSetupSection(page: Page, name: RegExp) {
+  const usedDrawer = await openScenarioSetupControls(page);
+  await page.getByRole('button', { name }).click();
+
+  if (usedDrawer) {
+    await expect(
+      page.getByRole('dialog', { name: /scenario setup navigation drawer/i }),
+    ).toBeHidden({ timeout: 5000 });
+  }
 }
 
 export async function waitForModal(page: Page) {
@@ -30,6 +87,8 @@ export async function clickAndWaitForUrl(
   url: RegExp,
   ready?: Locator,
 ) {
+  await dismissNotifications(page);
+  await closeScenarioSetupControls(page);
   await trigger.click();
   await expect(page).toHaveURL(url);
   if (ready) {
@@ -76,14 +135,18 @@ export async function addGroup(page: Page, id: string, size: number) {
 }
 
 export async function saveCurrentScenario(page: Page) {
+  await openScenarioSetupControls(page);
   await page.getByRole('button', { name: /^save$/i }).click();
   await expect(page.getByText(/scenario saved|saved\./i).first()).toBeVisible();
+  await closeScenarioSetupControls(page);
+  await dismissNotifications(page);
+  await closeTransientUi(page);
 }
 
 export async function openSolver(page: Page) {
   await clickAndWaitForUrl(
     page,
-    page.getByRole('link', { name: /^solver$/i }),
+    page.getByRole('link', { name: /solver/i }),
     /\/app\/solver/,
     page.getByRole('button', { name: /start solver with automatic settings/i }),
   );

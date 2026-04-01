@@ -1107,6 +1107,7 @@ pub struct SolverBenchmarkTelemetry {
 /// Benchmark observer lifecycle events.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(tag = "event", content = "payload", rename_all = "snake_case")]
+#[allow(clippy::large_enum_variant)]
 pub enum BenchmarkEvent {
     RunStarted(BenchmarkRunStarted),
     RunCompleted(SolverBenchmarkTelemetry),

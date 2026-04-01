@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -6,6 +6,7 @@ import MainApp from "./MainApp";
 import { SolverPanel } from "./components/SolverPanel";
 import { ResultsView } from "./components/ResultsView";
 import { ResultsHistory } from "./components/ResultsHistory";
+import { scenarioStorage } from "./services/scenarioStorage";
 import { useAppStore } from "./store";
 import { createSampleScenario, createSampleSolverSettings, createSavedScenario } from "./test/fixtures";
 import { solverWorkerService } from "./services/solverWorker";
@@ -58,6 +59,7 @@ function createDeferred<T>() {
 describe("MainApp stateful integration routes", () => {
   beforeEach(() => {
     useAppStore.getState().reset();
+    window.localStorage.clear();
     window.sessionStorage.clear();
     window.__groupmixerLandingEvents = [];
     vi.clearAllMocks();
@@ -105,9 +107,24 @@ describe("MainApp stateful integration routes", () => {
       name: "Workshop Plan",
       scenario: createSampleScenario({ settings: createSampleSolverSettings() }),
     });
+    const recommendedSettings = {
+      ...createSampleSolverSettings(),
+      stop_conditions: {
+        max_iterations: 777,
+        time_limit_seconds: 3,
+        no_improvement_iterations: 111,
+      },
+      solver_params: {
+        SimulatedAnnealing: {
+          ...createSampleSolverSettings().solver_params.SimulatedAnnealing,
+          reheat_cycles: 2,
+        },
+      },
+    };
     vi.mocked(solverWorkerService.getRecommendedSettings).mockResolvedValue(
-      createSampleSolverSettings(),
+      recommendedSettings,
     );
+    scenarioStorage.saveScenario(savedScenario);
 
     useAppStore.setState({
       scenario: savedScenario.scenario,
@@ -130,7 +147,9 @@ describe("MainApp stateful integration routes", () => {
     await user.click(screen.getByRole("button", { name: /auto-set/i }));
 
     expect(solverWorkerService.getRecommendedSettings).toHaveBeenCalledWith(savedScenario.scenario, 3);
-    expect(await screen.findByText(/settings updated/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(useAppStore.getState().scenario?.settings).toEqual(recommendedSettings);
+    });
   }, 10000);
 
   it("surfaces auto-set failures through the real /app/solver notification path", async () => {

@@ -1,15 +1,8 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ResultSummary",
-  "description": "Lightweight inspect/result metadata for discovery surfaces that need a stable summary without the full schedule payload.",
+  "description": "Lightweight inspect/result metadata for discovery surfaces that need a stable\nsummary without the full schedule payload.",
   "type": "object",
-  "required": [
-    "attribute_balance_penalty",
-    "constraint_penalty",
-    "final_score",
-    "repetition_penalty",
-    "unique_contacts"
-  ],
   "properties": {
     "attribute_balance_penalty": {
       "type": "integer",
@@ -20,13 +13,13 @@
       "format": "int32"
     },
     "effective_seed": {
-      "default": null,
       "type": [
         "integer",
         "null"
       ],
       "format": "uint64",
-      "minimum": 0.0
+      "default": null,
+      "minimum": 0
     },
     "final_score": {
       "type": "number",
@@ -37,15 +30,22 @@
       "format": "int32"
     },
     "stop_reason": {
-      "default": null,
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "default": null
     },
     "unique_contacts": {
       "type": "integer",
       "format": "int32"
     }
-  }
+  },
+  "required": [
+    "final_score",
+    "unique_contacts",
+    "repetition_penalty",
+    "attribute_balance_penalty",
+    "constraint_penalty"
+  ]
 }

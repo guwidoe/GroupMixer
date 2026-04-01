@@ -16,8 +16,14 @@ pub fn create_router(app_state: AppState) -> Router {
         .route("/api/v1/help/{operation_id}", get(operation_help_handler))
         .route("/api/v1/solve", post(solve_handler))
         .route("/api/v1/validate-problem", post(validate_problem_handler))
-        .route("/api/v1/default-solver-configuration", get(default_solver_configuration_handler))
-        .route("/api/v1/recommend-settings", post(recommend_settings_handler))
+        .route(
+            "/api/v1/default-solver-configuration",
+            get(default_solver_configuration_handler),
+        )
+        .route(
+            "/api/v1/recommend-settings",
+            post(recommend_settings_handler),
+        )
         .route("/api/v1/evaluate-input", post(evaluate_input_handler))
         .route("/api/v1/inspect-result", post(inspect_result_handler))
         .route("/api/v1/schemas", get(schema_list_handler))

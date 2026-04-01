@@ -35,8 +35,10 @@ pub fn capture_machine_identity(cargo_profile: Option<&str>) -> MachineIdentity 
 pub fn capture_git_identity() -> GitIdentity {
     GitIdentity {
         commit_sha: env_string(GIT_COMMIT_SHA_ENV).or_else(|| git_output(&["rev-parse", "HEAD"])),
-        short_sha: env_string(GIT_SHORT_SHA_ENV).or_else(|| git_output(&["rev-parse", "--short", "HEAD"])),
-        branch: env_string(GIT_BRANCH_ENV).or_else(|| git_output(&["rev-parse", "--abbrev-ref", "HEAD"])),
+        short_sha: env_string(GIT_SHORT_SHA_ENV)
+            .or_else(|| git_output(&["rev-parse", "--short", "HEAD"])),
+        branch: env_string(GIT_BRANCH_ENV)
+            .or_else(|| git_output(&["rev-parse", "--abbrev-ref", "HEAD"])),
         dirty_tree: env_bool(GIT_DIRTY_TREE_ENV).or_else(|| git_status_dirty().ok()),
     }
 }
@@ -59,7 +61,9 @@ fn git_output(args: &[&str]) -> Option<String> {
 }
 
 fn git_status_dirty() -> Result<bool> {
-    let output = Command::new("git").args(["status", "--porcelain"]).output()?;
+    let output = Command::new("git")
+        .args(["status", "--porcelain"])
+        .output()?;
     Ok(!String::from_utf8_lossy(&output.stdout).trim().is_empty())
 }
 
@@ -86,7 +90,10 @@ fn command_output(command: &str, args: &[&str]) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{capture_git_identity, GIT_BRANCH_ENV, GIT_COMMIT_SHA_ENV, GIT_DIRTY_TREE_ENV, GIT_SHORT_SHA_ENV};
+    use super::{
+        capture_git_identity, GIT_BRANCH_ENV, GIT_COMMIT_SHA_ENV, GIT_DIRTY_TREE_ENV,
+        GIT_SHORT_SHA_ENV,
+    };
     use std::env;
     use std::sync::{Mutex, OnceLock};
 

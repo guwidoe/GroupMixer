@@ -11,8 +11,9 @@ pub fn db_path(root: &Path) -> PathBuf {
 fn open_db(root: &Path) -> Result<Connection> {
     let path = db_path(root);
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)
-            .with_context(|| format!("failed to create benchmark index dir {}", parent.display()))?;
+        fs::create_dir_all(parent).with_context(|| {
+            format!("failed to create benchmark index dir {}", parent.display())
+        })?;
     }
     let conn = Connection::open(&path)
         .with_context(|| format!("failed to open benchmark index {}", path.display()))?;
@@ -71,7 +72,11 @@ fn open_db(root: &Path) -> Result<Connection> {
     Ok(conn)
 }
 
-pub fn upsert_recording(root: &Path, recording: &RecordingMetadata, recording_path: &str) -> Result<()> {
+pub fn upsert_recording(
+    root: &Path,
+    recording: &RecordingMetadata,
+    recording_path: &str,
+) -> Result<()> {
     let conn = open_db(root)?;
     conn.execute(
         r#"
@@ -213,8 +218,9 @@ pub fn upsert_ref(root: &Path, benchmark_ref: &BenchmarkRef, ref_path: &str) -> 
 
 pub fn list_recordings(root: &Path) -> Result<Vec<RecordingIndexRow>> {
     let conn = open_db(root)?;
-    let mut stmt = conn.prepare(
-        r#"
+    let mut stmt = conn
+        .prepare(
+            r#"
         SELECT
             r.recording_id,
             r.recorded_at,
@@ -236,8 +242,8 @@ pub fn list_recordings(root: &Path) -> Result<Vec<RecordingIndexRow>> {
             r.machine_id
         ORDER BY r.recorded_at DESC, r.recording_id DESC
         "#,
-    )
-    .context("failed to prepare recordings list query")?;
+        )
+        .context("failed to prepare recordings list query")?;
     let rows = stmt
         .query_map([], |row| {
             Ok(RecordingIndexRow {
@@ -258,14 +264,15 @@ pub fn list_recordings(root: &Path) -> Result<Vec<RecordingIndexRow>> {
 
 pub fn list_refs(root: &Path) -> Result<Vec<RefIndexRow>> {
     let conn = open_db(root)?;
-    let mut stmt = conn.prepare(
-        r#"
+    let mut stmt = conn
+        .prepare(
+            r#"
         SELECT ref_name, target_recording_id, target_suite_name, target_benchmark_mode, updated_at
         FROM refs
         ORDER BY ref_name ASC
         "#,
-    )
-    .context("failed to prepare refs list query")?;
+        )
+        .context("failed to prepare refs list query")?;
     let rows = stmt
         .query_map([], |row| {
             Ok(RefIndexRow {
@@ -282,7 +289,11 @@ pub fn list_refs(root: &Path) -> Result<Vec<RefIndexRow>> {
 }
 
 fn bool_to_i64(value: bool) -> i64 {
-    if value { 1 } else { 0 }
+    if value {
+        1
+    } else {
+        0
+    }
 }
 
 #[cfg(test)]
@@ -363,8 +374,7 @@ mod tests {
             },
         };
 
-        upsert_ref(temp.path(), &benchmark_ref, "refs/recordings/latest.json")
-            .expect("upsert ref");
+        upsert_ref(temp.path(), &benchmark_ref, "refs/recordings/latest.json").expect("upsert ref");
 
         let rows = list_refs(temp.path()).expect("list refs");
         assert_eq!(rows.len(), 1);

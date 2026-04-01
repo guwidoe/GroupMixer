@@ -3,6 +3,7 @@ import {
   addGroup,
   addPerson,
   expectSavedResultCount,
+  navigateScenarioSetupSection,
   openSolver,
   openApp,
   openScenarioManager,
@@ -18,7 +19,7 @@ test.describe('Workflow coverage', () => {
     await addPerson(page, 'Alice');
     await addPerson(page, 'Bob');
 
-    await page.getByRole('button', { name: /groups/i }).click();
+    await navigateScenarioSetupSection(page, /groups/i);
     await addGroup(page, 'Team Alpha', 2);
 
     await saveCurrentScenario(page);
@@ -39,7 +40,7 @@ test.describe('Workflow coverage', () => {
     await expect(page.getByText(/scenario loaded/i).first()).toBeVisible();
     await page.getByRole('button', { name: /close scenario manager/i }).click();
 
-    await page.getByRole('button', { name: /people/i }).click();
+    await navigateScenarioSetupSection(page, /people/i);
     await expect(page.getByRole('heading', { name: 'Alice' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Bob' })).toBeVisible();
   });
@@ -51,11 +52,11 @@ test.describe('Workflow coverage', () => {
       await addPerson(page, person);
     }
 
-    await page.getByRole('button', { name: /groups/i }).click();
+    await navigateScenarioSetupSection(page, /groups/i);
     await addGroup(page, 'Team Alpha', 2);
     await addGroup(page, 'Team Beta', 2);
 
-    await page.getByRole('button', { name: /sessions/i }).click();
+    await navigateScenarioSetupSection(page, /sessions/i);
     const sessionInput = page.locator('input[type="number"]').first();
     await sessionInput.fill('2');
     await sessionInput.blur();
@@ -65,7 +66,7 @@ test.describe('Workflow coverage', () => {
     await runSolver(page);
     await expectSavedResultCount(page, 1);
 
-    await page.getByRole('link', { name: /^results$/i }).click();
+    await page.getByRole('link', { name: /results/i }).click();
     await expect(page.getByText(/result 1/i).first()).toBeVisible();
 
     await page.getByRole('link', { name: /result details/i }).click();
@@ -81,7 +82,7 @@ test.describe('Workflow coverage', () => {
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/result.*\.json/i);
 
-    await page.getByRole('link', { name: /^results$/i }).click();
+    await page.getByRole('link', { name: /results/i }).click();
     await expect(page.getByText(/result 1/i).first()).toBeVisible();
     await page.getByRole('button', { name: /view in result details/i }).click();
     await expect(page.getByRole('heading', { name: /optimization results/i })).toBeVisible();
@@ -96,11 +97,11 @@ test.describe('Workflow coverage', () => {
       await addPerson(page, person);
     }
 
-    await page.getByRole('button', { name: /groups/i }).click();
+    await navigateScenarioSetupSection(page, /groups/i);
     await addGroup(page, 'Team Alpha', 3);
     await addGroup(page, 'Team Beta', 3);
 
-    await page.getByRole('button', { name: /sessions/i }).click();
+    await navigateScenarioSetupSection(page, /sessions/i);
     const sessionInput = page.locator('input[type="number"]').first();
     await sessionInput.fill('3');
     await sessionInput.blur();
@@ -114,7 +115,9 @@ test.describe('Workflow coverage', () => {
     await desiredRuntime.fill('2');
     await desiredRuntime.blur();
     await page.getByRole('button', { name: /auto-set/i }).click();
-    await expect(page.getByText(/settings updated/i).first()).toBeVisible();
+    await expect(
+      page.getByText(/algorithm settings have been automatically configured\./i).first(),
+    ).toBeVisible();
 
     const customStart = page.getByRole('button', { name: /start solver with custom settings/i });
     await customStart.click();
@@ -138,7 +141,7 @@ test.describe('Workflow coverage', () => {
     await expect(customStart).toBeVisible({ timeout: 30000 });
     await expectSavedResultCount(page, 2);
 
-    await page.getByRole('link', { name: /^results$/i }).click();
+    await page.getByRole('link', { name: /results/i }).click();
     await expect(page.getByText(/result 1/i).first()).toBeVisible();
     await expect(page.getByText(/result 2/i).first()).toBeVisible();
   });
@@ -161,7 +164,7 @@ test.describe('Workflow coverage', () => {
       await addPerson(page, person);
     }
 
-    await page.getByRole('button', { name: /groups/i }).click();
+    await navigateScenarioSetupSection(page, /groups/i);
     await addGroup(page, 'Team Alpha', 2);
     await addGroup(page, 'Team Beta', 2);
     await saveCurrentScenario(page);

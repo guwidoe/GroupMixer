@@ -1,51 +1,8 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ProgressUpdate",
-  "description": "Progress update sent during solver execution.\n\nContains comprehensive metrics about the current state of optimization, including detailed move statistics, acceptance rates, and performance metrics. This information is valuable for algorithm tuning and providing rich user feedback.",
+  "description": "Progress update sent during solver execution.\n\nContains comprehensive metrics about the current state of optimization,\nincluding detailed move statistics, acceptance rates, and performance metrics.\nThis information is valuable for algorithm tuning and providing rich user feedback.",
   "type": "object",
-  "required": [
-    "avg_accepted_move_delta",
-    "avg_attempted_move_delta",
-    "avg_time_per_iteration_ms",
-    "best_balance_penalty",
-    "best_constraint_penalty",
-    "best_contacts",
-    "best_repetition_penalty",
-    "best_score",
-    "biggest_accepted_increase",
-    "biggest_attempted_increase",
-    "clique_swap_success_rate",
-    "clique_swaps_accepted",
-    "clique_swaps_rejected",
-    "clique_swaps_tried",
-    "cooling_progress",
-    "current_balance_penalty",
-    "current_constraint_penalty",
-    "current_contacts",
-    "current_repetition_penalty",
-    "current_score",
-    "elapsed_seconds",
-    "iteration",
-    "iterations_since_last_reheat",
-    "local_optima_escapes",
-    "max_iterations",
-    "no_improvement_count",
-    "overall_acceptance_rate",
-    "recent_acceptance_rate",
-    "reheats_performed",
-    "repetition_penalty",
-    "score_variance",
-    "search_efficiency",
-    "swap_success_rate",
-    "swaps_accepted",
-    "swaps_rejected",
-    "swaps_tried",
-    "temperature",
-    "transfer_success_rate",
-    "transfers_accepted",
-    "transfers_rejected",
-    "transfers_tried"
-  ],
   "properties": {
     "avg_accepted_move_delta": {
       "description": "Average score change for accepted moves",
@@ -84,7 +41,6 @@
     },
     "best_schedule": {
       "description": "Best-known schedule at the time of the update (if included)",
-      "default": null,
       "type": [
         "object",
         "null"
@@ -97,7 +53,8 @@
             "type": "string"
           }
         }
-      }
+      },
+      "default": null
     },
     "best_score": {
       "description": "Best solution cost/score found so far",
@@ -123,19 +80,19 @@
       "description": "Number of clique swap moves accepted",
       "type": "integer",
       "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     },
     "clique_swaps_rejected": {
       "description": "Number of clique swap moves rejected",
       "type": "integer",
       "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     },
     "clique_swaps_tried": {
       "description": "Number of clique swap moves attempted",
       "type": "integer",
       "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     },
     "cooling_progress": {
       "description": "Progress through cooling schedule (0.0 to 1.0)",
@@ -169,13 +126,13 @@
     },
     "effective_seed": {
       "description": "Effective seed used for the current run.",
-      "default": null,
       "type": [
         "integer",
         "null"
       ],
       "format": "uint64",
-      "minimum": 0.0
+      "default": null,
+      "minimum": 0
     },
     "elapsed_seconds": {
       "description": "Time elapsed since solver started (in seconds)",
@@ -186,43 +143,43 @@
       "description": "Current iteration number (0-based)",
       "type": "integer",
       "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     },
     "iterations_since_last_reheat": {
       "description": "Iterations since last reheat",
       "type": "integer",
       "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     },
     "local_optima_escapes": {
       "description": "Number of local optima escapes (accepted worse moves)",
       "type": "integer",
       "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     },
     "max_iterations": {
       "description": "Total number of iterations planned",
       "type": "integer",
       "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     },
     "move_policy": {
       "description": "Effective move policy used for the current run.",
-      "default": null,
       "anyOf": [
         {
-          "$ref": "#/definitions/MovePolicy"
+          "$ref": "#/$defs/MovePolicy"
         },
         {
           "type": "null"
         }
-      ]
+      ],
+      "default": null
     },
     "no_improvement_count": {
       "description": "Number of iterations without improvement",
       "type": "integer",
       "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     },
     "overall_acceptance_rate": {
       "description": "Overall acceptance rate (accepted moves / total moves)",
@@ -238,7 +195,7 @@
       "description": "Number of reheats performed so far",
       "type": "integer",
       "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     },
     "repetition_penalty": {
       "description": "Current repetition penalty",
@@ -257,15 +214,15 @@
     },
     "stop_reason": {
       "description": "Explicit stop reason. Present on final progress updates and absent on intermediate updates.",
-      "default": null,
       "anyOf": [
         {
-          "$ref": "#/definitions/StopReason"
+          "$ref": "#/$defs/StopReason"
         },
         {
           "type": "null"
         }
-      ]
+      ],
+      "default": null
     },
     "swap_success_rate": {
       "description": "Success rate for swap moves (accepted/tried)",
@@ -276,19 +233,19 @@
       "description": "Number of regular person swap moves accepted",
       "type": "integer",
       "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     },
     "swaps_rejected": {
       "description": "Number of regular person swap moves rejected",
       "type": "integer",
       "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     },
     "swaps_tried": {
       "description": "Number of regular person swap moves attempted",
       "type": "integer",
       "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     },
     "temperature": {
       "description": "Current temperature (for simulated annealing)",
@@ -304,22 +261,65 @@
       "description": "Number of single person transfer moves accepted",
       "type": "integer",
       "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     },
     "transfers_rejected": {
       "description": "Number of single person transfer moves rejected",
       "type": "integer",
       "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     },
     "transfers_tried": {
       "description": "Number of single person transfer moves attempted",
       "type": "integer",
       "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     }
   },
-  "definitions": {
+  "required": [
+    "iteration",
+    "max_iterations",
+    "temperature",
+    "current_score",
+    "best_score",
+    "current_contacts",
+    "best_contacts",
+    "repetition_penalty",
+    "elapsed_seconds",
+    "no_improvement_count",
+    "clique_swaps_tried",
+    "clique_swaps_accepted",
+    "clique_swaps_rejected",
+    "transfers_tried",
+    "transfers_accepted",
+    "transfers_rejected",
+    "swaps_tried",
+    "swaps_accepted",
+    "swaps_rejected",
+    "overall_acceptance_rate",
+    "recent_acceptance_rate",
+    "avg_attempted_move_delta",
+    "avg_accepted_move_delta",
+    "biggest_accepted_increase",
+    "biggest_attempted_increase",
+    "current_repetition_penalty",
+    "current_balance_penalty",
+    "current_constraint_penalty",
+    "best_repetition_penalty",
+    "best_balance_penalty",
+    "best_constraint_penalty",
+    "reheats_performed",
+    "iterations_since_last_reheat",
+    "local_optima_escapes",
+    "avg_time_per_iteration_ms",
+    "cooling_progress",
+    "clique_swap_success_rate",
+    "transfer_success_rate",
+    "swap_success_rate",
+    "score_variance",
+    "search_efficiency"
+  ],
+  "$defs": {
     "MoveFamily": {
       "description": "Explicit move families supported by the simulated annealing search loop.",
       "type": "string",
@@ -332,11 +332,6 @@
     "MoveFamilyWeights": {
       "description": "Explicit weights for each move family when `MoveSelectionMode::Weighted` is used.",
       "type": "object",
-      "required": [
-        "clique_swap",
-        "swap",
-        "transfer"
-      ],
       "properties": {
         "clique_swap": {
           "type": "number",
@@ -350,7 +345,12 @@
           "type": "number",
           "format": "double"
         }
-      }
+      },
+      "required": [
+        "swap",
+        "transfer",
+        "clique_swap"
+      ]
     },
     "MovePolicy": {
       "description": "Controls which move families are allowed in a run and how the solver chooses between them.",
@@ -358,47 +358,43 @@
       "properties": {
         "allowed_families": {
           "description": "Optional allow-list of move families for this run.\n\nWhen omitted, all move families are allowed.",
-          "default": null,
           "type": [
             "array",
             "null"
           ],
+          "default": null,
           "items": {
-            "$ref": "#/definitions/MoveFamily"
+            "$ref": "#/$defs/MoveFamily"
           }
         },
         "forced_family": {
           "description": "Optional single-family override used for path tests and diagnostics.\n\nWhen present, the search loop will only attempt the specified move family.",
-          "default": null,
           "anyOf": [
             {
-              "$ref": "#/definitions/MoveFamily"
+              "$ref": "#/$defs/MoveFamily"
             },
             {
               "type": "null"
             }
-          ]
+          ],
+          "default": null
         },
         "mode": {
           "description": "Selection mode for mixed-family runs.",
-          "default": "adaptive",
-          "allOf": [
-            {
-              "$ref": "#/definitions/MoveSelectionMode"
-            }
-          ]
+          "$ref": "#/$defs/MoveSelectionMode",
+          "default": "adaptive"
         },
         "weights": {
           "description": "Optional explicit family weights used when `mode` is `weighted`.",
-          "default": null,
           "anyOf": [
             {
-              "$ref": "#/definitions/MoveFamilyWeights"
+              "$ref": "#/$defs/MoveFamilyWeights"
             },
             {
               "type": "null"
             }
-          ]
+          ],
+          "default": null
         }
       }
     },
@@ -406,18 +402,14 @@
       "description": "Selection mode for mixed move-family search.",
       "oneOf": [
         {
-          "description": "Preserve the current solver behavior, where transfer / clique swap probabilities are derived from the current state.",
+          "description": "Preserve the current solver behavior, where transfer / clique swap probabilities\nare derived from the current state.",
           "type": "string",
-          "enum": [
-            "adaptive"
-          ]
+          "const": "adaptive"
         },
         {
           "description": "Use caller-provided explicit weights instead of the adaptive heuristics.",
           "type": "string",
-          "enum": [
-            "weighted"
-          ]
+          "const": "weighted"
         }
       ]
     },

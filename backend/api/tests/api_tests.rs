@@ -3,13 +3,16 @@ use axum::http::{Request, StatusCode};
 use http_body_util::BodyExt;
 use serde::de::DeserializeOwned;
 use serde_json::json;
+use solver_contracts::types::{RecommendSettingsRequest, ResultSummary, ValidateResponse};
 use solver_core::models::{
     ApiInput, Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams,
     SolverConfiguration, SolverParams, StopConditions,
 };
-use solver_contracts::types::{RecommendSettingsRequest, ResultSummary, ValidateResponse};
-use solver_server::api::{contract_surface::public_contract_bindings, handlers::{AppState, CreateJobResponse}};
 use solver_server::api::routes::create_router;
+use solver_server::api::{
+    contract_surface::public_contract_bindings,
+    handlers::{AppState, CreateJobResponse},
+};
 use solver_server::jobs::manager::{Job, JobManager, JobStatus};
 use std::collections::HashMap;
 use std::time::Duration;
@@ -288,7 +291,11 @@ async fn bootstrap_help_and_schema_endpoints_are_discoverable() {
     assert_eq!(help_response.status(), StatusCode::OK);
     let help_json: serde_json::Value = json_response(help_response).await;
     assert_eq!(help_json["title"], "GroupMixer solver contracts");
-    assert!(help_json["operations"].as_array().unwrap().iter().any(|entry| entry["operation_id"] == "solve"));
+    assert!(help_json["operations"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|entry| entry["operation_id"] == "solve"));
 
     let operation_help_response = app
         .clone()
@@ -304,9 +311,16 @@ async fn bootstrap_help_and_schema_endpoints_are_discoverable() {
     assert_eq!(operation_help_response.status(), StatusCode::OK);
     let operation_help_json: serde_json::Value = json_response(operation_help_response).await;
     assert_eq!(operation_help_json["operation"]["id"], "solve");
-    assert!(operation_help_json["examples"].as_array().unwrap().len() >= 1);
+    assert!(!operation_help_json["examples"]
+        .as_array()
+        .unwrap()
+        .is_empty());
     assert_eq!(operation_help_json["help_path"], "/api/v1/help/solve");
-    assert!(operation_help_json["related_operations"].as_array().unwrap().iter().any(|entry| entry["help_path"] == "/api/v1/help/validate-problem"));
+    assert!(operation_help_json["related_operations"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|entry| entry["help_path"] == "/api/v1/help/validate-problem"));
 
     let schema_list_response = app
         .clone()
@@ -321,7 +335,11 @@ async fn bootstrap_help_and_schema_endpoints_are_discoverable() {
         .unwrap();
     assert_eq!(schema_list_response.status(), StatusCode::OK);
     let schemas_json: serde_json::Value = json_response(schema_list_response).await;
-    assert!(schemas_json.as_array().unwrap().iter().any(|entry| entry["id"] == "solve-request"));
+    assert!(schemas_json
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|entry| entry["id"] == "solve-request"));
 
     let schema_response = app
         .oneshot(
@@ -390,7 +408,10 @@ async fn contract_solver_endpoints_return_public_shapes() {
     assert_eq!(default_config_response.status(), StatusCode::OK);
     let default_config_body: solver_core::models::SolverConfiguration =
         json_response(default_config_response).await;
-    assert_eq!(default_config_body.stop_conditions.time_limit_seconds, Some(30));
+    assert_eq!(
+        default_config_body.stop_conditions.time_limit_seconds,
+        Some(30)
+    );
 
     let recommend_response = app
         .clone()
@@ -413,7 +434,8 @@ async fn contract_solver_endpoints_return_public_shapes() {
         .await
         .unwrap();
     assert_eq!(recommend_response.status(), StatusCode::OK);
-    let recommend_body: solver_core::models::SolverConfiguration = json_response(recommend_response).await;
+    let recommend_body: solver_core::models::SolverConfiguration =
+        json_response(recommend_response).await;
     assert_eq!(recommend_body.solver_type, "SimulatedAnnealing");
     assert_eq!(recommend_body.stop_conditions.time_limit_seconds, Some(11));
 
@@ -475,7 +497,11 @@ async fn error_catalog_endpoints_are_available() {
         .unwrap();
     assert_eq!(errors_response.status(), StatusCode::OK);
     let errors_json: serde_json::Value = json_response(errors_response).await;
-    assert!(errors_json.as_array().unwrap().iter().any(|entry| entry["code"] == "invalid-input"));
+    assert!(errors_json
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|entry| entry["code"] == "invalid-input"));
 
     let error_response = app
         .oneshot(
@@ -510,7 +536,10 @@ async fn contract_endpoints_emit_canonical_error_envelopes() {
         )
         .await
         .unwrap();
-    assert_eq!(invalid_json_response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        invalid_json_response.status(),
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
     let invalid_json_body: serde_json::Value = json_response(invalid_json_response).await;
     assert_eq!(invalid_json_body["error"]["code"], "invalid-input");
     assert!(invalid_json_body["error"]["related_help"]
@@ -553,14 +582,23 @@ async fn contract_endpoints_emit_canonical_error_envelopes() {
                 .method("POST")
                 .uri("/api/v1/solve")
                 .header("content-type", "application/json")
-                .body(Body::from(serde_json::to_vec(&unsupported_constraint_input).unwrap()))
+                .body(Body::from(
+                    serde_json::to_vec(&unsupported_constraint_input).unwrap(),
+                ))
                 .unwrap(),
         )
         .await
         .unwrap();
-    assert_eq!(unsupported_constraint_response.status(), StatusCode::UNPROCESSABLE_ENTITY);
-    let unsupported_constraint_body: serde_json::Value = json_response(unsupported_constraint_response).await;
-    assert_eq!(unsupported_constraint_body["error"]["code"], "unsupported-constraint-kind");
+    assert_eq!(
+        unsupported_constraint_response.status(),
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    let unsupported_constraint_body: serde_json::Value =
+        json_response(unsupported_constraint_response).await;
+    assert_eq!(
+        unsupported_constraint_body["error"]["code"],
+        "unsupported-constraint-kind"
+    );
     assert!(unsupported_constraint_body["error"]["related_help"]
         .as_array()
         .unwrap()
@@ -581,7 +619,10 @@ async fn contract_endpoints_emit_canonical_error_envelopes() {
     assert_eq!(unknown_schema_response.status(), StatusCode::NOT_FOUND);
     let unknown_schema_body: serde_json::Value = json_response(unknown_schema_response).await;
     assert_eq!(unknown_schema_body["error"]["code"], "unknown-schema");
-    assert!(unknown_schema_body["error"]["valid_alternatives"].as_array().unwrap().len() >= 1);
+    assert!(!unknown_schema_body["error"]["valid_alternatives"]
+        .as_array()
+        .unwrap()
+        .is_empty());
 
     let unknown_operation_response = app
         .clone()
@@ -646,7 +687,12 @@ async fn help_and_error_navigation_targets_resolve_locally() {
             )
             .await
             .unwrap();
-        assert_eq!(response.status(), StatusCode::OK, "related help path should resolve: {}", help_path);
+        assert_eq!(
+            response.status(),
+            StatusCode::OK,
+            "related help path should resolve: {}",
+            help_path
+        );
     }
 
     let bad_schema_response = app
@@ -674,7 +720,12 @@ async fn help_and_error_navigation_targets_resolve_locally() {
             )
             .await
             .unwrap();
-        assert_eq!(response.status(), StatusCode::OK, "error related help path should resolve: {}", help_path);
+        assert_eq!(
+            response.status(),
+            StatusCode::OK,
+            "error related help path should resolve: {}",
+            help_path
+        );
     }
 }
 
@@ -703,6 +754,11 @@ async fn public_contract_routes_stay_in_parity_with_contract_registry() {
             )
             .await
             .unwrap();
-        assert_eq!(response.status(), StatusCode::OK, "help route missing for operation {}", operation_id);
+        assert_eq!(
+            response.status(),
+            StatusCode::OK,
+            "help route missing for operation {}",
+            operation_id
+        );
     }
 }

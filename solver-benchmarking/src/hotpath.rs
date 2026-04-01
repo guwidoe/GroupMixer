@@ -36,7 +36,8 @@ pub fn run_hotpath_case_artifact(
 ) -> CaseRunArtifact {
     match run_hotpath_case(suite, case) {
         Ok(execution) => {
-            let runtime_seconds = execution.metrics.setup_seconds + execution.metrics.measurement_seconds;
+            let runtime_seconds =
+                execution.metrics.setup_seconds + execution.metrics.measurement_seconds;
             CaseRunArtifact {
                 schema_version: CASE_RUN_SCHEMA_VERSION,
                 run_id: run_id.to_string(),
@@ -118,11 +119,12 @@ fn run_hotpath_case(
     suite: &LoadedBenchmarkSuite,
     case: &LoadedBenchmarkCase,
 ) -> Result<HotPathExecutionContext, String> {
-    let preset = case
-        .manifest
-        .hotpath_preset
-        .clone()
-        .ok_or_else(|| format!("hotpath case {} is missing hotpath_preset", case.manifest.id))?;
+    let preset = case.manifest.hotpath_preset.clone().ok_or_else(|| {
+        format!(
+            "hotpath case {} is missing hotpath_preset",
+            case.manifest.id
+        )
+    })?;
     let benchmark_mode = suite.manifest.benchmark_mode.as_str();
     let iterations = case
         .overrides
@@ -139,421 +141,478 @@ fn run_hotpath_case(
         .unwrap_or(4);
 
     let prepared_started = Instant::now();
-    let (mut metrics, effective_seed, effective_budget, effective_move_policy) = match benchmark_mode {
-        CONSTRUCTION_BENCHMARK_MODE => {
-            let input = construction_bench_input();
-            let effective_seed = input.cold_input.solver.seed;
-            let effective_budget = stop_budget(&input.cold_input);
-            let effective_move_policy = input.cold_input.solver.move_policy.clone();
-            for _ in 0..warmup_iterations {
-                black_box(solver_core::solver::State::new(&input.cold_input)
-                    .map_err(|error| error.to_string())?);
+    let (mut metrics, effective_seed, effective_budget, effective_move_policy) =
+        match benchmark_mode {
+            CONSTRUCTION_BENCHMARK_MODE => {
+                let input = construction_bench_input();
+                let effective_seed = input.cold_input.solver.seed;
+                let effective_budget = stop_budget(&input.cold_input);
+                let effective_move_policy = input.cold_input.solver.move_policy.clone();
+                for _ in 0..warmup_iterations {
+                    black_box(
+                        solver_core::solver::State::new(&input.cold_input)
+                            .map_err(|error| error.to_string())?,
+                    );
+                }
+                let mut checksum = 0i64;
+                let started = Instant::now();
+                let mut construction_seconds = 0.0;
+                for _ in 0..iterations {
+                    let op_started = Instant::now();
+                    let state = solver_core::solver::State::new(&input.cold_input)
+                        .map_err(|error| error.to_string())?;
+                    construction_seconds += op_started.elapsed().as_secs_f64();
+                    checksum =
+                        checksum.wrapping_add(black_box(state.current_cost.to_bits() as i64));
+                }
+                (
+                    HotPathMetrics {
+                        benchmark_mode: benchmark_mode.to_string(),
+                        preset: Some(preset),
+                        iterations,
+                        warmup_iterations,
+                        measured_operations: iterations,
+                        average_runtime_seconds: average_runtime(
+                            started.elapsed().as_secs_f64(),
+                            iterations,
+                        ),
+                        ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
+                        checksum,
+                        measurement_seconds: started.elapsed().as_secs_f64(),
+                        setup_seconds: 0.0,
+                        construction_seconds,
+                        preview_seconds: 0.0,
+                        apply_seconds: 0.0,
+                        full_recalculation_seconds: 0.0,
+                        search_seconds: 0.0,
+                    },
+                    effective_seed,
+                    effective_budget,
+                    effective_move_policy,
+                )
             }
-            let mut checksum = 0i64;
-            let started = Instant::now();
-            let mut construction_seconds = 0.0;
-            for _ in 0..iterations {
-                let op_started = Instant::now();
-                let state = solver_core::solver::State::new(&input.cold_input)
-                    .map_err(|error| error.to_string())?;
-                construction_seconds += op_started.elapsed().as_secs_f64();
-                checksum = checksum.wrapping_add(black_box(state.current_cost.to_bits() as i64));
+            FULL_RECALCULATION_BENCHMARK_MODE => {
+                let input = construction_bench_input();
+                let effective_seed = input.warm_input.solver.seed;
+                let effective_budget = stop_budget(&input.warm_input);
+                let effective_move_policy = input.warm_input.solver.move_policy.clone();
+                for _ in 0..warmup_iterations {
+                    let mut state = input.recalc_state.clone();
+                    state._recalculate_scores();
+                    black_box(state.current_cost);
+                }
+                let started = Instant::now();
+                let mut checksum = 0i64;
+                let mut full_recalculation_seconds = 0.0;
+                for _ in 0..iterations {
+                    let mut state = input.recalc_state.clone();
+                    let op_started = Instant::now();
+                    state._recalculate_scores();
+                    full_recalculation_seconds += op_started.elapsed().as_secs_f64();
+                    checksum =
+                        checksum.wrapping_add(black_box(state.current_cost.to_bits() as i64));
+                }
+                (
+                    HotPathMetrics {
+                        benchmark_mode: benchmark_mode.to_string(),
+                        preset: Some(preset),
+                        iterations,
+                        warmup_iterations,
+                        measured_operations: iterations,
+                        average_runtime_seconds: average_runtime(
+                            started.elapsed().as_secs_f64(),
+                            iterations,
+                        ),
+                        ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
+                        checksum,
+                        measurement_seconds: started.elapsed().as_secs_f64(),
+                        setup_seconds: 0.0,
+                        construction_seconds: 0.0,
+                        preview_seconds: 0.0,
+                        apply_seconds: 0.0,
+                        full_recalculation_seconds,
+                        search_seconds: 0.0,
+                    },
+                    effective_seed,
+                    effective_budget,
+                    effective_move_policy,
+                )
             }
-            (
-                HotPathMetrics {
-                    benchmark_mode: benchmark_mode.to_string(),
-                    preset: Some(preset),
-                    iterations,
-                    warmup_iterations,
-                    measured_operations: iterations,
-                    average_runtime_seconds: average_runtime(started.elapsed().as_secs_f64(), iterations),
-                    ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
-                    checksum,
-                    measurement_seconds: started.elapsed().as_secs_f64(),
-                    setup_seconds: 0.0,
-                    construction_seconds,
-                    preview_seconds: 0.0,
-                    apply_seconds: 0.0,
-                    full_recalculation_seconds: 0.0,
-                    search_seconds: 0.0,
-                },
-                effective_seed,
-                effective_budget,
-                effective_move_policy,
-            )
-        }
-        FULL_RECALCULATION_BENCHMARK_MODE => {
-            let input = construction_bench_input();
-            let effective_seed = input.warm_input.solver.seed;
-            let effective_budget = stop_budget(&input.warm_input);
-            let effective_move_policy = input.warm_input.solver.move_policy.clone();
-            for _ in 0..warmup_iterations {
-                let mut state = input.recalc_state.clone();
-                state._recalculate_scores();
-                black_box(state.current_cost);
+            SWAP_PREVIEW_BENCHMARK_MODE => {
+                let input = swap_bench_input();
+                let effective_seed = input.state.effective_seed.into();
+                let effective_budget = EffectiveBenchmarkBudget::default();
+                let effective_move_policy = Some(input.state.move_policy.clone());
+                for _ in 0..warmup_iterations {
+                    black_box(input.state.calculate_swap_cost_delta(
+                        input.day,
+                        input.p1_idx,
+                        input.p2_idx,
+                    ));
+                }
+                let started = Instant::now();
+                let mut checksum = 0i64;
+                let mut preview_seconds = 0.0;
+                for _ in 0..iterations {
+                    let op_started = Instant::now();
+                    let delta = input.state.calculate_swap_cost_delta(
+                        input.day,
+                        input.p1_idx,
+                        input.p2_idx,
+                    );
+                    preview_seconds += op_started.elapsed().as_secs_f64();
+                    checksum = checksum.wrapping_add(black_box(delta.to_bits() as i64));
+                }
+                (
+                    HotPathMetrics {
+                        benchmark_mode: benchmark_mode.to_string(),
+                        preset: Some(preset),
+                        iterations,
+                        warmup_iterations,
+                        measured_operations: iterations,
+                        average_runtime_seconds: average_runtime(
+                            started.elapsed().as_secs_f64(),
+                            iterations,
+                        ),
+                        ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
+                        checksum,
+                        measurement_seconds: started.elapsed().as_secs_f64(),
+                        setup_seconds: 0.0,
+                        construction_seconds: 0.0,
+                        preview_seconds,
+                        apply_seconds: 0.0,
+                        full_recalculation_seconds: 0.0,
+                        search_seconds: 0.0,
+                    },
+                    effective_seed,
+                    effective_budget,
+                    effective_move_policy,
+                )
             }
-            let started = Instant::now();
-            let mut checksum = 0i64;
-            let mut full_recalculation_seconds = 0.0;
-            for _ in 0..iterations {
-                let mut state = input.recalc_state.clone();
-                let op_started = Instant::now();
-                state._recalculate_scores();
-                full_recalculation_seconds += op_started.elapsed().as_secs_f64();
-                checksum = checksum.wrapping_add(black_box(state.current_cost.to_bits() as i64));
+            SWAP_APPLY_BENCHMARK_MODE => {
+                let input = swap_bench_input();
+                let effective_seed = input.state.effective_seed.into();
+                let effective_budget = EffectiveBenchmarkBudget::default();
+                let effective_move_policy = Some(input.state.move_policy.clone());
+                for _ in 0..warmup_iterations {
+                    let mut state = input.state.clone();
+                    state.apply_swap(input.day, input.p1_idx, input.p2_idx);
+                    black_box(state.current_cost);
+                }
+                let started = Instant::now();
+                let mut checksum = 0i64;
+                let mut apply_seconds = 0.0;
+                for _ in 0..iterations {
+                    let mut state = input.state.clone();
+                    let op_started = Instant::now();
+                    state.apply_swap(input.day, input.p1_idx, input.p2_idx);
+                    apply_seconds += op_started.elapsed().as_secs_f64();
+                    checksum =
+                        checksum.wrapping_add(black_box(state.current_cost.to_bits() as i64));
+                }
+                (
+                    HotPathMetrics {
+                        benchmark_mode: benchmark_mode.to_string(),
+                        preset: Some(preset),
+                        iterations,
+                        warmup_iterations,
+                        measured_operations: iterations,
+                        average_runtime_seconds: average_runtime(
+                            started.elapsed().as_secs_f64(),
+                            iterations,
+                        ),
+                        ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
+                        checksum,
+                        measurement_seconds: started.elapsed().as_secs_f64(),
+                        setup_seconds: 0.0,
+                        construction_seconds: 0.0,
+                        preview_seconds: 0.0,
+                        apply_seconds,
+                        full_recalculation_seconds: 0.0,
+                        search_seconds: 0.0,
+                    },
+                    effective_seed,
+                    effective_budget,
+                    effective_move_policy,
+                )
             }
-            (
-                HotPathMetrics {
-                    benchmark_mode: benchmark_mode.to_string(),
-                    preset: Some(preset),
-                    iterations,
-                    warmup_iterations,
-                    measured_operations: iterations,
-                    average_runtime_seconds: average_runtime(started.elapsed().as_secs_f64(), iterations),
-                    ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
-                    checksum,
-                    measurement_seconds: started.elapsed().as_secs_f64(),
-                    setup_seconds: 0.0,
-                    construction_seconds: 0.0,
-                    preview_seconds: 0.0,
-                    apply_seconds: 0.0,
-                    full_recalculation_seconds,
-                    search_seconds: 0.0,
-                },
-                effective_seed,
-                effective_budget,
-                effective_move_policy,
-            )
-        }
-        SWAP_PREVIEW_BENCHMARK_MODE => {
-            let input = swap_bench_input();
-            let effective_seed = input.state.effective_seed.into();
-            let effective_budget = EffectiveBenchmarkBudget::default();
-            let effective_move_policy = Some(input.state.move_policy.clone());
-            for _ in 0..warmup_iterations {
-                black_box(input.state.calculate_swap_cost_delta(input.day, input.p1_idx, input.p2_idx));
+            TRANSFER_PREVIEW_BENCHMARK_MODE => {
+                let input = transfer_bench_input();
+                let effective_seed = input.state.effective_seed.into();
+                let effective_budget = EffectiveBenchmarkBudget::default();
+                let effective_move_policy = Some(input.state.move_policy.clone());
+                for _ in 0..warmup_iterations {
+                    black_box(input.state.calculate_transfer_cost_delta(
+                        input.day,
+                        input.person_idx,
+                        input.from_group,
+                        input.to_group,
+                    ));
+                }
+                let started = Instant::now();
+                let mut checksum = 0i64;
+                let mut preview_seconds = 0.0;
+                for _ in 0..iterations {
+                    let op_started = Instant::now();
+                    let delta = input.state.calculate_transfer_cost_delta(
+                        input.day,
+                        input.person_idx,
+                        input.from_group,
+                        input.to_group,
+                    );
+                    preview_seconds += op_started.elapsed().as_secs_f64();
+                    checksum = checksum.wrapping_add(black_box(delta.to_bits() as i64));
+                }
+                (
+                    HotPathMetrics {
+                        benchmark_mode: benchmark_mode.to_string(),
+                        preset: Some(preset),
+                        iterations,
+                        warmup_iterations,
+                        measured_operations: iterations,
+                        average_runtime_seconds: average_runtime(
+                            started.elapsed().as_secs_f64(),
+                            iterations,
+                        ),
+                        ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
+                        checksum,
+                        measurement_seconds: started.elapsed().as_secs_f64(),
+                        setup_seconds: 0.0,
+                        construction_seconds: 0.0,
+                        preview_seconds,
+                        apply_seconds: 0.0,
+                        full_recalculation_seconds: 0.0,
+                        search_seconds: 0.0,
+                    },
+                    effective_seed,
+                    effective_budget,
+                    effective_move_policy,
+                )
             }
-            let started = Instant::now();
-            let mut checksum = 0i64;
-            let mut preview_seconds = 0.0;
-            for _ in 0..iterations {
-                let op_started = Instant::now();
-                let delta = input.state.calculate_swap_cost_delta(input.day, input.p1_idx, input.p2_idx);
-                preview_seconds += op_started.elapsed().as_secs_f64();
-                checksum = checksum.wrapping_add(black_box(delta.to_bits() as i64));
+            TRANSFER_APPLY_BENCHMARK_MODE => {
+                let input = transfer_bench_input();
+                let effective_seed = input.state.effective_seed.into();
+                let effective_budget = EffectiveBenchmarkBudget::default();
+                let effective_move_policy = Some(input.state.move_policy.clone());
+                for _ in 0..warmup_iterations {
+                    let mut state = input.state.clone();
+                    state.apply_transfer(
+                        input.day,
+                        input.person_idx,
+                        input.from_group,
+                        input.to_group,
+                    );
+                    black_box(state.current_cost);
+                }
+                let started = Instant::now();
+                let mut checksum = 0i64;
+                let mut apply_seconds = 0.0;
+                for _ in 0..iterations {
+                    let mut state = input.state.clone();
+                    let op_started = Instant::now();
+                    state.apply_transfer(
+                        input.day,
+                        input.person_idx,
+                        input.from_group,
+                        input.to_group,
+                    );
+                    apply_seconds += op_started.elapsed().as_secs_f64();
+                    checksum =
+                        checksum.wrapping_add(black_box(state.current_cost.to_bits() as i64));
+                }
+                (
+                    HotPathMetrics {
+                        benchmark_mode: benchmark_mode.to_string(),
+                        preset: Some(preset),
+                        iterations,
+                        warmup_iterations,
+                        measured_operations: iterations,
+                        average_runtime_seconds: average_runtime(
+                            started.elapsed().as_secs_f64(),
+                            iterations,
+                        ),
+                        ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
+                        checksum,
+                        measurement_seconds: started.elapsed().as_secs_f64(),
+                        setup_seconds: 0.0,
+                        construction_seconds: 0.0,
+                        preview_seconds: 0.0,
+                        apply_seconds,
+                        full_recalculation_seconds: 0.0,
+                        search_seconds: 0.0,
+                    },
+                    effective_seed,
+                    effective_budget,
+                    effective_move_policy,
+                )
             }
-            (
-                HotPathMetrics {
-                    benchmark_mode: benchmark_mode.to_string(),
-                    preset: Some(preset),
-                    iterations,
-                    warmup_iterations,
-                    measured_operations: iterations,
-                    average_runtime_seconds: average_runtime(started.elapsed().as_secs_f64(), iterations),
-                    ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
-                    checksum,
-                    measurement_seconds: started.elapsed().as_secs_f64(),
-                    setup_seconds: 0.0,
-                    construction_seconds: 0.0,
-                    preview_seconds,
-                    apply_seconds: 0.0,
-                    full_recalculation_seconds: 0.0,
-                    search_seconds: 0.0,
-                },
-                effective_seed,
-                effective_budget,
-                effective_move_policy,
-            )
-        }
-        SWAP_APPLY_BENCHMARK_MODE => {
-            let input = swap_bench_input();
-            let effective_seed = input.state.effective_seed.into();
-            let effective_budget = EffectiveBenchmarkBudget::default();
-            let effective_move_policy = Some(input.state.move_policy.clone());
-            for _ in 0..warmup_iterations {
-                let mut state = input.state.clone();
-                state.apply_swap(input.day, input.p1_idx, input.p2_idx);
-                black_box(state.current_cost);
+            CLIQUE_SWAP_PREVIEW_BENCHMARK_MODE => {
+                let input = clique_swap_bench_input();
+                let effective_seed = input.state.effective_seed.into();
+                let effective_budget = EffectiveBenchmarkBudget::default();
+                let effective_move_policy = Some(input.state.move_policy.clone());
+                for _ in 0..warmup_iterations {
+                    black_box(input.state.calculate_clique_swap_cost_delta(
+                        input.day,
+                        input.clique_idx,
+                        input.from_group,
+                        input.to_group,
+                        &input.target_people,
+                    ));
+                }
+                let started = Instant::now();
+                let mut checksum = 0i64;
+                let mut preview_seconds = 0.0;
+                for _ in 0..iterations {
+                    let op_started = Instant::now();
+                    let delta = input.state.calculate_clique_swap_cost_delta(
+                        input.day,
+                        input.clique_idx,
+                        input.from_group,
+                        input.to_group,
+                        &input.target_people,
+                    );
+                    preview_seconds += op_started.elapsed().as_secs_f64();
+                    checksum = checksum.wrapping_add(black_box(delta.to_bits() as i64));
+                }
+                (
+                    HotPathMetrics {
+                        benchmark_mode: benchmark_mode.to_string(),
+                        preset: Some(preset),
+                        iterations,
+                        warmup_iterations,
+                        measured_operations: iterations,
+                        average_runtime_seconds: average_runtime(
+                            started.elapsed().as_secs_f64(),
+                            iterations,
+                        ),
+                        ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
+                        checksum,
+                        measurement_seconds: started.elapsed().as_secs_f64(),
+                        setup_seconds: 0.0,
+                        construction_seconds: 0.0,
+                        preview_seconds,
+                        apply_seconds: 0.0,
+                        full_recalculation_seconds: 0.0,
+                        search_seconds: 0.0,
+                    },
+                    effective_seed,
+                    effective_budget,
+                    effective_move_policy,
+                )
             }
-            let started = Instant::now();
-            let mut checksum = 0i64;
-            let mut apply_seconds = 0.0;
-            for _ in 0..iterations {
-                let mut state = input.state.clone();
-                let op_started = Instant::now();
-                state.apply_swap(input.day, input.p1_idx, input.p2_idx);
-                apply_seconds += op_started.elapsed().as_secs_f64();
-                checksum = checksum.wrapping_add(black_box(state.current_cost.to_bits() as i64));
+            CLIQUE_SWAP_APPLY_BENCHMARK_MODE => {
+                let input = clique_swap_bench_input();
+                let effective_seed = input.state.effective_seed.into();
+                let effective_budget = EffectiveBenchmarkBudget::default();
+                let effective_move_policy = Some(input.state.move_policy.clone());
+                for _ in 0..warmup_iterations {
+                    let mut state = input.state.clone();
+                    state.apply_clique_swap(
+                        input.day,
+                        input.clique_idx,
+                        input.from_group,
+                        input.to_group,
+                        &input.target_people,
+                    );
+                    black_box(state.current_cost);
+                }
+                let started = Instant::now();
+                let mut checksum = 0i64;
+                let mut apply_seconds = 0.0;
+                for _ in 0..iterations {
+                    let mut state = input.state.clone();
+                    let op_started = Instant::now();
+                    state.apply_clique_swap(
+                        input.day,
+                        input.clique_idx,
+                        input.from_group,
+                        input.to_group,
+                        &input.target_people,
+                    );
+                    apply_seconds += op_started.elapsed().as_secs_f64();
+                    checksum =
+                        checksum.wrapping_add(black_box(state.current_cost.to_bits() as i64));
+                }
+                (
+                    HotPathMetrics {
+                        benchmark_mode: benchmark_mode.to_string(),
+                        preset: Some(preset),
+                        iterations,
+                        warmup_iterations,
+                        measured_operations: iterations,
+                        average_runtime_seconds: average_runtime(
+                            started.elapsed().as_secs_f64(),
+                            iterations,
+                        ),
+                        ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
+                        checksum,
+                        measurement_seconds: started.elapsed().as_secs_f64(),
+                        setup_seconds: 0.0,
+                        construction_seconds: 0.0,
+                        preview_seconds: 0.0,
+                        apply_seconds,
+                        full_recalculation_seconds: 0.0,
+                        search_seconds: 0.0,
+                    },
+                    effective_seed,
+                    effective_budget,
+                    effective_move_policy,
+                )
             }
-            (
-                HotPathMetrics {
-                    benchmark_mode: benchmark_mode.to_string(),
-                    preset: Some(preset),
-                    iterations,
-                    warmup_iterations,
-                    measured_operations: iterations,
-                    average_runtime_seconds: average_runtime(started.elapsed().as_secs_f64(), iterations),
-                    ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
-                    checksum,
-                    measurement_seconds: started.elapsed().as_secs_f64(),
-                    setup_seconds: 0.0,
-                    construction_seconds: 0.0,
-                    preview_seconds: 0.0,
-                    apply_seconds,
-                    full_recalculation_seconds: 0.0,
-                    search_seconds: 0.0,
-                },
-                effective_seed,
-                effective_budget,
-                effective_move_policy,
-            )
-        }
-        TRANSFER_PREVIEW_BENCHMARK_MODE => {
-            let input = transfer_bench_input();
-            let effective_seed = input.state.effective_seed.into();
-            let effective_budget = EffectiveBenchmarkBudget::default();
-            let effective_move_policy = Some(input.state.move_policy.clone());
-            for _ in 0..warmup_iterations {
-                black_box(input.state.calculate_transfer_cost_delta(
-                    input.day,
-                    input.person_idx,
-                    input.from_group,
-                    input.to_group,
-                ));
+            SEARCH_ITERATION_BENCHMARK_MODE => {
+                let input = search_loop_bench_input(&preset)
+                    .ok_or_else(|| format!("unknown hotpath preset {preset}"))?;
+                let effective_seed = input.input.solver.seed;
+                let effective_budget = EffectiveBenchmarkBudget {
+                    max_iterations: Some(1),
+                    time_limit_seconds: input.input.solver.stop_conditions.time_limit_seconds,
+                    no_improvement_iterations: input
+                        .input
+                        .solver
+                        .stop_conditions
+                        .no_improvement_iterations,
+                };
+                let effective_move_policy = input.input.solver.move_policy.clone();
+                for _ in 0..warmup_iterations {
+                    black_box(run_search_iteration(&input)?);
+                }
+                let started = Instant::now();
+                let mut checksum = 0i64;
+                let mut search_seconds = 0.0;
+                for _ in 0..iterations {
+                    let op_started = Instant::now();
+                    checksum = checksum.wrapping_add(black_box(run_search_iteration(&input)?));
+                    search_seconds += op_started.elapsed().as_secs_f64();
+                }
+                (
+                    HotPathMetrics {
+                        benchmark_mode: benchmark_mode.to_string(),
+                        preset: Some(preset),
+                        iterations,
+                        warmup_iterations,
+                        measured_operations: iterations,
+                        average_runtime_seconds: average_runtime(
+                            started.elapsed().as_secs_f64(),
+                            iterations,
+                        ),
+                        ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
+                        checksum,
+                        measurement_seconds: started.elapsed().as_secs_f64(),
+                        setup_seconds: 0.0,
+                        construction_seconds: 0.0,
+                        preview_seconds: 0.0,
+                        apply_seconds: 0.0,
+                        full_recalculation_seconds: 0.0,
+                        search_seconds,
+                    },
+                    effective_seed,
+                    effective_budget,
+                    effective_move_policy,
+                )
             }
-            let started = Instant::now();
-            let mut checksum = 0i64;
-            let mut preview_seconds = 0.0;
-            for _ in 0..iterations {
-                let op_started = Instant::now();
-                let delta = input.state.calculate_transfer_cost_delta(
-                    input.day,
-                    input.person_idx,
-                    input.from_group,
-                    input.to_group,
-                );
-                preview_seconds += op_started.elapsed().as_secs_f64();
-                checksum = checksum.wrapping_add(black_box(delta.to_bits() as i64));
-            }
-            (
-                HotPathMetrics {
-                    benchmark_mode: benchmark_mode.to_string(),
-                    preset: Some(preset),
-                    iterations,
-                    warmup_iterations,
-                    measured_operations: iterations,
-                    average_runtime_seconds: average_runtime(started.elapsed().as_secs_f64(), iterations),
-                    ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
-                    checksum,
-                    measurement_seconds: started.elapsed().as_secs_f64(),
-                    setup_seconds: 0.0,
-                    construction_seconds: 0.0,
-                    preview_seconds,
-                    apply_seconds: 0.0,
-                    full_recalculation_seconds: 0.0,
-                    search_seconds: 0.0,
-                },
-                effective_seed,
-                effective_budget,
-                effective_move_policy,
-            )
-        }
-        TRANSFER_APPLY_BENCHMARK_MODE => {
-            let input = transfer_bench_input();
-            let effective_seed = input.state.effective_seed.into();
-            let effective_budget = EffectiveBenchmarkBudget::default();
-            let effective_move_policy = Some(input.state.move_policy.clone());
-            for _ in 0..warmup_iterations {
-                let mut state = input.state.clone();
-                state.apply_transfer(input.day, input.person_idx, input.from_group, input.to_group);
-                black_box(state.current_cost);
-            }
-            let started = Instant::now();
-            let mut checksum = 0i64;
-            let mut apply_seconds = 0.0;
-            for _ in 0..iterations {
-                let mut state = input.state.clone();
-                let op_started = Instant::now();
-                state.apply_transfer(input.day, input.person_idx, input.from_group, input.to_group);
-                apply_seconds += op_started.elapsed().as_secs_f64();
-                checksum = checksum.wrapping_add(black_box(state.current_cost.to_bits() as i64));
-            }
-            (
-                HotPathMetrics {
-                    benchmark_mode: benchmark_mode.to_string(),
-                    preset: Some(preset),
-                    iterations,
-                    warmup_iterations,
-                    measured_operations: iterations,
-                    average_runtime_seconds: average_runtime(started.elapsed().as_secs_f64(), iterations),
-                    ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
-                    checksum,
-                    measurement_seconds: started.elapsed().as_secs_f64(),
-                    setup_seconds: 0.0,
-                    construction_seconds: 0.0,
-                    preview_seconds: 0.0,
-                    apply_seconds,
-                    full_recalculation_seconds: 0.0,
-                    search_seconds: 0.0,
-                },
-                effective_seed,
-                effective_budget,
-                effective_move_policy,
-            )
-        }
-        CLIQUE_SWAP_PREVIEW_BENCHMARK_MODE => {
-            let input = clique_swap_bench_input();
-            let effective_seed = input.state.effective_seed.into();
-            let effective_budget = EffectiveBenchmarkBudget::default();
-            let effective_move_policy = Some(input.state.move_policy.clone());
-            for _ in 0..warmup_iterations {
-                black_box(input.state.calculate_clique_swap_cost_delta(
-                    input.day,
-                    input.clique_idx,
-                    input.from_group,
-                    input.to_group,
-                    &input.target_people,
-                ));
-            }
-            let started = Instant::now();
-            let mut checksum = 0i64;
-            let mut preview_seconds = 0.0;
-            for _ in 0..iterations {
-                let op_started = Instant::now();
-                let delta = input.state.calculate_clique_swap_cost_delta(
-                    input.day,
-                    input.clique_idx,
-                    input.from_group,
-                    input.to_group,
-                    &input.target_people,
-                );
-                preview_seconds += op_started.elapsed().as_secs_f64();
-                checksum = checksum.wrapping_add(black_box(delta.to_bits() as i64));
-            }
-            (
-                HotPathMetrics {
-                    benchmark_mode: benchmark_mode.to_string(),
-                    preset: Some(preset),
-                    iterations,
-                    warmup_iterations,
-                    measured_operations: iterations,
-                    average_runtime_seconds: average_runtime(started.elapsed().as_secs_f64(), iterations),
-                    ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
-                    checksum,
-                    measurement_seconds: started.elapsed().as_secs_f64(),
-                    setup_seconds: 0.0,
-                    construction_seconds: 0.0,
-                    preview_seconds,
-                    apply_seconds: 0.0,
-                    full_recalculation_seconds: 0.0,
-                    search_seconds: 0.0,
-                },
-                effective_seed,
-                effective_budget,
-                effective_move_policy,
-            )
-        }
-        CLIQUE_SWAP_APPLY_BENCHMARK_MODE => {
-            let input = clique_swap_bench_input();
-            let effective_seed = input.state.effective_seed.into();
-            let effective_budget = EffectiveBenchmarkBudget::default();
-            let effective_move_policy = Some(input.state.move_policy.clone());
-            for _ in 0..warmup_iterations {
-                let mut state = input.state.clone();
-                state.apply_clique_swap(
-                    input.day,
-                    input.clique_idx,
-                    input.from_group,
-                    input.to_group,
-                    &input.target_people,
-                );
-                black_box(state.current_cost);
-            }
-            let started = Instant::now();
-            let mut checksum = 0i64;
-            let mut apply_seconds = 0.0;
-            for _ in 0..iterations {
-                let mut state = input.state.clone();
-                let op_started = Instant::now();
-                state.apply_clique_swap(
-                    input.day,
-                    input.clique_idx,
-                    input.from_group,
-                    input.to_group,
-                    &input.target_people,
-                );
-                apply_seconds += op_started.elapsed().as_secs_f64();
-                checksum = checksum.wrapping_add(black_box(state.current_cost.to_bits() as i64));
-            }
-            (
-                HotPathMetrics {
-                    benchmark_mode: benchmark_mode.to_string(),
-                    preset: Some(preset),
-                    iterations,
-                    warmup_iterations,
-                    measured_operations: iterations,
-                    average_runtime_seconds: average_runtime(started.elapsed().as_secs_f64(), iterations),
-                    ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
-                    checksum,
-                    measurement_seconds: started.elapsed().as_secs_f64(),
-                    setup_seconds: 0.0,
-                    construction_seconds: 0.0,
-                    preview_seconds: 0.0,
-                    apply_seconds,
-                    full_recalculation_seconds: 0.0,
-                    search_seconds: 0.0,
-                },
-                effective_seed,
-                effective_budget,
-                effective_move_policy,
-            )
-        }
-        SEARCH_ITERATION_BENCHMARK_MODE => {
-            let input = search_loop_bench_input(&preset)
-                .ok_or_else(|| format!("unknown hotpath preset {preset}"))?;
-            let effective_seed = input.input.solver.seed;
-            let effective_budget = EffectiveBenchmarkBudget {
-                max_iterations: Some(1),
-                time_limit_seconds: input.input.solver.stop_conditions.time_limit_seconds,
-                no_improvement_iterations: input.input.solver.stop_conditions.no_improvement_iterations,
-            };
-            let effective_move_policy = input.input.solver.move_policy.clone();
-            for _ in 0..warmup_iterations {
-                black_box(run_search_iteration(&input)?);
-            }
-            let started = Instant::now();
-            let mut checksum = 0i64;
-            let mut search_seconds = 0.0;
-            for _ in 0..iterations {
-                let op_started = Instant::now();
-                checksum = checksum.wrapping_add(black_box(run_search_iteration(&input)?));
-                search_seconds += op_started.elapsed().as_secs_f64();
-            }
-            (
-                HotPathMetrics {
-                    benchmark_mode: benchmark_mode.to_string(),
-                    preset: Some(preset),
-                    iterations,
-                    warmup_iterations,
-                    measured_operations: iterations,
-                    average_runtime_seconds: average_runtime(started.elapsed().as_secs_f64(), iterations),
-                    ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
-                    checksum,
-                    measurement_seconds: started.elapsed().as_secs_f64(),
-                    setup_seconds: 0.0,
-                    construction_seconds: 0.0,
-                    preview_seconds: 0.0,
-                    apply_seconds: 0.0,
-                    full_recalculation_seconds: 0.0,
-                    search_seconds,
-                },
-                effective_seed,
-                effective_budget,
-                effective_move_policy,
-            )
-        }
-        other => return Err(format!("unsupported hotpath benchmark_mode {other}")),
-    };
+            other => return Err(format!("unsupported hotpath benchmark_mode {other}")),
+        };
 
     metrics.setup_seconds = prepared_started.elapsed().as_secs_f64() - metrics.measurement_seconds;
     Ok(HotPathExecutionContext {
@@ -564,7 +623,9 @@ fn run_hotpath_case(
     })
 }
 
-fn run_search_iteration(input: &crate::hotpath_inputs::SearchLoopBenchInput) -> Result<i64, String> {
+fn run_search_iteration(
+    input: &crate::hotpath_inputs::SearchLoopBenchInput,
+) -> Result<i64, String> {
     let mut state = input.base_state.clone();
     let mut config = input.input.solver.clone();
     config.stop_conditions.max_iterations = Some(1);

@@ -126,7 +126,9 @@ pub fn http_contract_bindings() -> &'static [HttpContractBinding] {
 }
 
 pub fn binding_for_operation_id(operation_id: &str) -> Option<&'static HttpContractBinding> {
-    HTTP_BINDINGS.iter().find(|binding| binding.operation_id == Some(operation_id))
+    HTTP_BINDINGS
+        .iter()
+        .find(|binding| binding.operation_id == Some(operation_id))
 }
 
 pub fn public_contract_bindings() -> impl Iterator<Item = &'static HttpContractBinding> {
@@ -165,7 +167,10 @@ mod tests {
     fn public_contract_route_operation_ids_resolve_when_present() {
         for binding in public_contract_bindings() {
             if let Some(operation_id) = binding.operation_id {
-                assert!(operation_spec(operation_id).is_some(), "missing op: {operation_id}");
+                assert!(
+                    operation_spec(operation_id).is_some(),
+                    "missing op: {operation_id}"
+                );
             }
         }
     }

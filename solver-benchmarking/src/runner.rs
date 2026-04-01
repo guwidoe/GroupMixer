@@ -1,13 +1,15 @@
 use crate::artifacts::{
     BaselineSnapshot, BenchmarkArtifactKind, CaseRunArtifact, CaseRunStatus, ClassRollup,
     EffectiveBenchmarkBudget, RunMetadata, RunReport, RunSuiteMetadata, RunTotals,
-    SolveTimingBreakdown,
-    BASELINE_SNAPSHOT_SCHEMA_VERSION, CASE_RUN_SCHEMA_VERSION, RUN_REPORT_SCHEMA_VERSION,
+    SolveTimingBreakdown, BASELINE_SNAPSHOT_SCHEMA_VERSION, CASE_RUN_SCHEMA_VERSION,
+    RUN_REPORT_SCHEMA_VERSION,
 };
 use crate::benchmark_mode::FULL_SOLVE_BENCHMARK_MODE;
 use crate::hotpath::run_hotpath_case_artifact;
 use crate::machine::{capture_git_identity, capture_machine_identity};
-use crate::manifest::{load_suite_manifest, BenchmarkSuiteClass, LoadedBenchmarkCase, LoadedBenchmarkSuite};
+use crate::manifest::{
+    load_suite_manifest, BenchmarkSuiteClass, LoadedBenchmarkCase, LoadedBenchmarkSuite,
+};
 use crate::storage::{machine_identity_label, BenchmarkStorage};
 use anyhow::{Context, Result};
 use chrono::Utc;
@@ -42,7 +44,10 @@ pub fn run_suite_from_manifest(
     run_loaded_suite(&suite, options)
 }
 
-pub fn run_loaded_suite(suite: &LoadedBenchmarkSuite, options: &RunnerOptions) -> Result<RunReport> {
+pub fn run_loaded_suite(
+    suite: &LoadedBenchmarkSuite,
+    options: &RunnerOptions,
+) -> Result<RunReport> {
     let run_id = format!(
         "{}-{}-{}",
         suite.manifest.suite_id,
@@ -55,25 +60,27 @@ pub fn run_loaded_suite(suite: &LoadedBenchmarkSuite, options: &RunnerOptions) -
 
     let mut cases = Vec::with_capacity(suite.cases.len());
     for case in &suite.cases {
-        cases.push(if suite.manifest.benchmark_mode == FULL_SOLVE_BENCHMARK_MODE {
-            run_case(
-                &run_id,
-                &generated_at,
-                suite,
-                case,
-                git.clone(),
-                machine.clone(),
-            )
-        } else {
-            run_hotpath_case_artifact(
-                &run_id,
-                &generated_at,
-                suite,
-                case,
-                git.clone(),
-                machine.clone(),
-            )
-        });
+        cases.push(
+            if suite.manifest.benchmark_mode == FULL_SOLVE_BENCHMARK_MODE {
+                run_case(
+                    &run_id,
+                    &generated_at,
+                    suite,
+                    case,
+                    git.clone(),
+                    machine.clone(),
+                )
+            } else {
+                run_hotpath_case_artifact(
+                    &run_id,
+                    &generated_at,
+                    suite,
+                    case,
+                    git.clone(),
+                    machine.clone(),
+                )
+            },
+        );
     }
 
     let totals = build_totals(&cases);
@@ -230,7 +237,9 @@ fn run_case(
                 initial_score: telemetry.as_ref().map(|telemetry| telemetry.initial_score),
                 final_score: Some(result.final_score),
                 best_score: telemetry.as_ref().map(|telemetry| telemetry.best_score),
-                iteration_count: telemetry.as_ref().map(|telemetry| telemetry.iterations_completed),
+                iteration_count: telemetry
+                    .as_ref()
+                    .map(|telemetry| telemetry.iterations_completed),
                 no_improvement_count: Some(result.no_improvement_count),
                 unique_contacts: Some(result.unique_contacts),
                 weighted_repetition_penalty: Some(result.weighted_repetition_penalty),
@@ -280,7 +289,10 @@ fn run_case(
     }
 }
 
-fn apply_effective_overrides(suite: &LoadedBenchmarkSuite, case: &LoadedBenchmarkCase) -> solver_core::models::ApiInput {
+fn apply_effective_overrides(
+    suite: &LoadedBenchmarkSuite,
+    case: &LoadedBenchmarkCase,
+) -> solver_core::models::ApiInput {
     let mut input = case
         .manifest
         .input
@@ -387,13 +399,15 @@ fn write_json<T: serde::Serialize>(path: &Path, value: &T) -> Result<()> {
         fs::create_dir_all(parent)
             .with_context(|| format!("failed to create benchmark dir {}", parent.display()))?;
     }
-    let contents = serde_json::to_string_pretty(value).context("failed to serialize benchmark artifact")?;
+    let contents =
+        serde_json::to_string_pretty(value).context("failed to serialize benchmark artifact")?;
     fs::write(path, contents)
         .with_context(|| format!("failed to write benchmark artifact {}", path.display()))
 }
 
 fn sanitize_filename(value: &str) -> String {
-    value.chars()
+    value
+        .chars()
         .map(|ch| match ch {
             'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' => ch,
             _ => '_',
@@ -422,7 +436,8 @@ mod tests {
         assert!(report.totals.total_cases >= 5);
         assert_eq!(report.totals.failed_cases, 0);
 
-        let run_path = persist_run_report(&report, &options.artifacts_dir).expect("persist run report");
+        let run_path =
+            persist_run_report(&report, &options.artifacts_dir).expect("persist run report");
         assert!(run_path.exists());
 
         let baseline_path = save_baseline_snapshot(
@@ -487,10 +502,14 @@ mod tests {
             cargo_profile: "test".to_string(),
         };
 
-        let report = run_suite_from_manifest(&suite_path, &options).expect("hotpath suite should run");
+        let report =
+            run_suite_from_manifest(&suite_path, &options).expect("hotpath suite should run");
         assert_eq!(report.suite.benchmark_mode, "swap_preview");
         assert_eq!(report.totals.total_cases, 1);
-        assert_eq!(report.cases[0].artifact_kind, BenchmarkArtifactKind::HotPath);
+        assert_eq!(
+            report.cases[0].artifact_kind,
+            BenchmarkArtifactKind::HotPath
+        );
         let metrics = report.cases[0]
             .hotpath_metrics
             .as_ref()
@@ -500,9 +519,13 @@ mod tests {
         assert_eq!(metrics.iterations, 8);
         assert!(metrics.preview_seconds > 0.0);
 
-        let run_path = persist_run_report(&report, &options.artifacts_dir).expect("persist run report");
+        let run_path =
+            persist_run_report(&report, &options.artifacts_dir).expect("persist run report");
         let reloaded = load_run_report(&run_path).expect("reload run report");
         assert_eq!(reloaded.suite.benchmark_mode, "swap_preview");
-        assert_eq!(reloaded.cases[0].artifact_kind, BenchmarkArtifactKind::HotPath);
+        assert_eq!(
+            reloaded.cases[0].artifact_kind,
+            BenchmarkArtifactKind::HotPath
+        );
     }
 }

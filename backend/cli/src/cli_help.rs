@@ -1,4 +1,6 @@
-use crate::contract_surface::{binding_for_command, cli_contract_bindings, public_cli_contract_bindings};
+use crate::contract_surface::{
+    binding_for_command, cli_contract_bindings, public_cli_contract_bindings,
+};
 use anyhow::Result;
 use solver_contracts::{bootstrap::bootstrap_spec, examples::example_spec, operations::local_help};
 
@@ -44,35 +46,48 @@ pub fn render_root_help() -> String {
     let bootstrap = bootstrap_spec();
     let mut out = String::new();
     out.push_str("GroupMixer solver CLI\n");
-    out.push_str("\n");
+    out.push('\n');
     out.push_str(&format!("{}\n", bootstrap.summary));
-    out.push_str("\n");
+    out.push('\n');
     out.push_str("USAGE:\n");
     out.push_str("  solver-cli <COMMAND> [OPTIONS]\n");
-    out.push_str("\n");
+    out.push('\n');
     out.push_str("PUBLIC SOLVER COMMANDS (shared contract):\n");
-    for binding in public_cli_contract_bindings().filter(|binding| binding.command_name != "capabilities" && binding.command_name != "errors") {
-        let Some(operation_id) = binding.operation_id else { continue };
+    for binding in public_cli_contract_bindings().filter(|binding| {
+        binding.command_name != "capabilities" && binding.command_name != "errors"
+    }) {
+        let Some(operation_id) = binding.operation_id else {
+            continue;
+        };
         if let Some(help) = local_help(operation_id) {
-            out.push_str(&format!("  {:<12} {}\n", binding.command_name, help.operation.summary));
+            out.push_str(&format!(
+                "  {:<12} {}\n",
+                binding.command_name, help.operation.summary
+            ));
         }
     }
-    out.push_str("\n");
+    out.push('\n');
     out.push_str("CONTRACT INSPECTION COMMANDS:\n");
     out.push_str("  capabilities  Inspect bootstrap capabilities derived from solver-contracts\n");
     out.push_str("  schema        Inspect one named public schema from solver-contracts\n");
     out.push_str("  errors        Inspect canonical public error codes from solver-contracts\n");
-    out.push_str("\n");
+    out.push('\n');
     out.push_str("ADDITIONAL COMMANDS (not part of the public solver contract):\n");
-    for binding in cli_contract_bindings().iter().filter(|binding| binding.command_name == "benchmark") {
-        out.push_str(&format!("  {:<12} {}\n", binding.command_name, binding.note));
+    for binding in cli_contract_bindings()
+        .iter()
+        .filter(|binding| binding.command_name == "benchmark")
+    {
+        out.push_str(&format!(
+            "  {:<12} {}\n",
+            binding.command_name, binding.note
+        ));
     }
-    out.push_str("\n");
+    out.push('\n');
     out.push_str("DISCOVERY:\n");
     out.push_str("  solver-cli --help\n");
     out.push_str("  solver-cli <command> --help\n");
     out.push_str("  solver-cli capabilities\n");
-    out.push_str("\n");
+    out.push('\n');
     out.push_str("NOTE:\n");
     out.push_str(&format!("  {}\n", bootstrap.discovery_note));
     out
@@ -82,53 +97,60 @@ pub fn render_command_help(command_name: &str, operation_id: &str) -> String {
     let help = local_help(operation_id).expect("registered operation help");
     let mut out = String::new();
     out.push_str(&format!("solver-cli {}\n", command_name));
-    out.push_str("\n");
+    out.push('\n');
     out.push_str(&format!("{}\n", help.operation.summary));
-    out.push_str("\n");
+    out.push('\n');
     out.push_str(&format!("{}\n", help.operation.description));
-    out.push_str("\n");
+    out.push('\n');
     out.push_str("USAGE:\n");
     out.push_str(&render_usage_and_options(command_name));
-    out.push_str("\n");
+    out.push('\n');
     if !help.operation.input_schema_ids.is_empty() || !help.operation.output_schema_ids.is_empty() {
         out.push_str("SCHEMAS:\n");
         if !help.operation.input_schema_ids.is_empty() {
-            out.push_str(&format!("  input:  {}\n", help.operation.input_schema_ids.join(", ")));
+            out.push_str(&format!(
+                "  input:  {}\n",
+                help.operation.input_schema_ids.join(", ")
+            ));
         }
         if !help.operation.output_schema_ids.is_empty() {
-            out.push_str(&format!("  output: {}\n", help.operation.output_schema_ids.join(", ")));
+            out.push_str(&format!(
+                "  output: {}\n",
+                help.operation.output_schema_ids.join(", ")
+            ));
         }
-        out.push_str("\n");
+        out.push('\n');
     }
     if !help.operation.example_ids.is_empty() {
         out.push_str("EXAMPLES:\n");
         for example_id in help.operation.example_ids {
             if let Some(example) = example_spec(example_id) {
                 out.push_str(&format!("  - {}\n", example.summary));
-                if let Some(shell_snippet) = example
-                    .snippets
-                    .iter()
-                    .find(|snippet| matches!(snippet.format, solver_contracts::examples::ReferenceSnippetFormat::Shell))
-                {
+                if let Some(shell_snippet) = example.snippets.iter().find(|snippet| {
+                    matches!(
+                        snippet.format,
+                        solver_contracts::examples::ReferenceSnippetFormat::Shell
+                    )
+                }) {
                     out.push_str(&format!("    {}\n", shell_snippet.content));
                 }
             }
         }
-        out.push_str("\n");
+        out.push('\n');
     }
     if !help.related_operations.is_empty() {
         out.push_str("RELATED CONTRACT AFFORDANCES:\n");
         for related in help.related_operations {
             out.push_str(&format!("  - {}\n", related));
         }
-        out.push_str("\n");
+        out.push('\n');
     }
     if !help.operation.error_codes.is_empty() {
         out.push_str("ERROR CODES:\n");
         for code in help.operation.error_codes {
             out.push_str(&format!("  - {}\n", code));
         }
-        out.push_str("\n");
+        out.push('\n');
     }
     out.push_str("DISCOVERY:\n");
     out.push_str("  solver-cli capabilities\n");

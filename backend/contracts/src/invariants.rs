@@ -73,7 +73,9 @@ fn every_example_schema_reference_resolves() {
 fn bootstrap_only_references_top_level_registered_operations() {
     for operation_id in bootstrap::bootstrap_spec().top_level_operation_ids {
         assert!(
-            operation_specs().iter().any(|spec| spec.id == *operation_id),
+            operation_specs()
+                .iter()
+                .any(|spec| spec.id == *operation_id),
             "bootstrap references missing operation '{}'",
             operation_id
         );

@@ -177,7 +177,9 @@ pub fn binding_for_operation_id(operation_id: &str) -> Option<&'static WasmContr
 
 #[cfg(test)]
 mod tests {
-    use super::{binding_for_export, public_contract_bindings, wasm_contract_bindings, WasmSurfaceScope};
+    use super::{
+        binding_for_export, public_contract_bindings, wasm_contract_bindings, WasmSurfaceScope,
+    };
     use solver_contracts::{bootstrap::bootstrap_spec, operations::operation_spec};
     use std::collections::HashSet;
 
@@ -194,17 +196,27 @@ mod tests {
     fn public_contract_bindings_resolve_registered_operations_when_present() {
         for binding in public_contract_bindings() {
             if let Some(operation_id) = binding.operation_id {
-                assert!(operation_spec(operation_id).is_some(), "missing op: {operation_id}");
+                assert!(
+                    operation_spec(operation_id).is_some(),
+                    "missing op: {operation_id}"
+                );
             }
         }
     }
 
     #[test]
     fn bootstrap_style_public_exports_stay_within_top_level_contract_graph() {
-        let top_level: HashSet<_> = bootstrap_spec().top_level_operation_ids.iter().copied().collect();
+        let top_level: HashSet<_> = bootstrap_spec()
+            .top_level_operation_ids
+            .iter()
+            .copied()
+            .collect();
         for binding in public_contract_bindings() {
             if let Some(operation_id) = binding.operation_id {
-                assert!(top_level.contains(operation_id), "{operation_id} not in bootstrap top-level ops");
+                assert!(
+                    top_level.contains(operation_id),
+                    "{operation_id} not in bootstrap top-level ops"
+                );
             }
         }
     }

@@ -368,10 +368,9 @@ fn assert_forbidden_pairs_respected(input: &ApiInput, result: &SolverResult) {
 
             for session in applicable_sessions {
                 let session_key = format!("session_{}", session);
-                let session_schedule = result
-                    .schedule
-                    .get(&session_key)
-                    .unwrap_or_else(|| panic!("Expected session missing during forbidden-pair check"));
+                let session_schedule = result.schedule.get(&session_key).unwrap_or_else(|| {
+                    panic!("Expected session missing during forbidden-pair check")
+                });
 
                 for members in session_schedule.values() {
                     let mut present_members = 0;
@@ -380,10 +379,7 @@ fn assert_forbidden_pairs_respected(input: &ApiInput, result: &SolverResult) {
                             present_members += 1;
                         }
                     }
-                    assert!(
-                        present_members <= 1,
-                        "Forbidden-pair constraint violated"
-                    );
+                    assert!(present_members <= 1, "Forbidden-pair constraint violated");
                 }
             }
         }
@@ -403,10 +399,9 @@ fn assert_should_together_respected(input: &ApiInput, result: &SolverResult) {
 
             for session in applicable_sessions {
                 let session_key = format!("session_{}", session);
-                let session_schedule = result
-                    .schedule
-                    .get(&session_key)
-                    .unwrap_or_else(|| panic!("Expected session missing during should-together check"));
+                let session_schedule = result.schedule.get(&session_key).unwrap_or_else(|| {
+                    panic!("Expected session missing during should-together check")
+                });
 
                 let mut group_id_opt: Option<&String> = None;
                 for (group_id, members) in session_schedule {
@@ -462,7 +457,10 @@ fn assert_immovable_person_respected(input: &ApiInput, result: &SolverResult) {
             );
 
             let (group_id, _members) = person_group.unwrap();
-            assert_eq!(*group_id, constraint.group_id, "Immovable-person constraint violated");
+            assert_eq!(
+                *group_id, constraint.group_id,
+                "Immovable-person constraint violated"
+            );
         }
     }
 }
@@ -477,10 +475,9 @@ fn assert_session_specific_constraints_respected(input: &ApiInput, result: &Solv
         {
             for session in session_list {
                 let session_key = format!("session_{}", session);
-                let session_schedule = result
-                    .schedule
-                    .get(&session_key)
-                    .unwrap_or_else(|| panic!("Expected session missing during session-specific clique check"));
+                let session_schedule = result.schedule.get(&session_key).unwrap_or_else(|| {
+                    panic!("Expected session missing during session-specific clique check")
+                });
 
                 let mut clique_group_id = None;
                 for (group_id, members) in session_schedule {
@@ -516,10 +513,9 @@ fn assert_session_specific_constraints_respected(input: &ApiInput, result: &Solv
         {
             for session in session_list {
                 let session_key = format!("session_{}", session);
-                let session_schedule = result
-                    .schedule
-                    .get(&session_key)
-                    .unwrap_or_else(|| panic!("Expected session missing during session-specific forbidden-pair check"));
+                let session_schedule = result.schedule.get(&session_key).unwrap_or_else(|| {
+                    panic!("Expected session missing during session-specific forbidden-pair check")
+                });
 
                 for members in session_schedule.values() {
                     let mut present_members = 0;
@@ -560,9 +556,7 @@ fn assert_participation_patterns_respected(input: &ApiInput, result: &SolverResu
                 }
 
                 if should_participate && !person_found {
-                    println!(
-                        "Warning: participation expectation not met for a scheduled attendee"
-                    );
+                    println!("Warning: participation expectation not met for a scheduled attendee");
                 } else if !should_participate && person_found {
                     panic!(
                         "Participation pattern violation: non-participating attendee appeared in the schedule"

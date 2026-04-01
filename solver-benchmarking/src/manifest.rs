@@ -1,4 +1,6 @@
-use crate::benchmark_mode::{default_benchmark_mode, is_hotpath_benchmark_mode, is_supported_benchmark_mode};
+use crate::benchmark_mode::{
+    default_benchmark_mode, is_hotpath_benchmark_mode, is_supported_benchmark_mode,
+};
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use solver_core::models::{ApiInput, MovePolicy};
@@ -127,7 +129,10 @@ pub fn load_suite_manifest(path: impl AsRef<Path>) -> Result<LoadedBenchmarkSuit
         .with_context(|| format!("failed to read benchmark suite manifest {}", path.display()))?;
     let manifest: BenchmarkSuiteManifest =
         serde_yaml::from_str(&suite_contents).with_context(|| {
-            format!("failed to parse benchmark suite manifest {}", path.display())
+            format!(
+                "failed to parse benchmark suite manifest {}",
+                path.display()
+            )
         })?;
 
     validate_suite_manifest(path, &manifest)?;
@@ -161,7 +166,11 @@ pub fn load_suite_manifest(path: impl AsRef<Path>) -> Result<LoadedBenchmarkSuit
             }
         }
         if is_hotpath_benchmark_mode(&manifest.benchmark_mode) {
-            if case_manifest.hotpath_preset.as_deref().is_none_or(str::is_empty) {
+            if case_manifest
+                .hotpath_preset
+                .as_deref()
+                .is_none_or(str::is_empty)
+            {
                 bail!(
                     "hotpath suite {} requires case {} to define hotpath_preset",
                     manifest.suite_id,
@@ -183,7 +192,10 @@ pub fn load_suite_manifest(path: impl AsRef<Path>) -> Result<LoadedBenchmarkSuit
     }
 
     if cases.is_empty() {
-        bail!("benchmark suite {} does not enable any cases", manifest.suite_id);
+        bail!(
+            "benchmark suite {} does not enable any cases",
+            manifest.suite_id
+        );
     }
 
     Ok(LoadedBenchmarkSuite {
@@ -213,7 +225,10 @@ fn validate_suite_manifest(path: &Path, manifest: &BenchmarkSuiteManifest) -> Re
         );
     }
     if manifest.suite_id.trim().is_empty() {
-        bail!("benchmark suite manifest {} is missing suite_id", path.display());
+        bail!(
+            "benchmark suite manifest {} is missing suite_id",
+            path.display()
+        );
     }
     if !is_supported_benchmark_mode(&manifest.benchmark_mode) {
         bail!(
@@ -286,6 +301,11 @@ mod tests {
 
         assert_eq!(case.class, BenchmarkSuiteClass::Representative);
         assert_eq!(case.id, "representative.small-workshop-balanced");
-        assert!(!case.input.expect("input should exist").problem.people.is_empty());
+        assert!(!case
+            .input
+            .expect("input should exist")
+            .problem
+            .people
+            .is_empty());
     }
 }

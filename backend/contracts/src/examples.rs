@@ -5,9 +5,8 @@ use crate::operations::{
 };
 use crate::schemas::{
     PROGRESS_UPDATE_SCHEMA_ID, PUBLIC_ERROR_ENVELOPE_SCHEMA_ID,
-    RECOMMEND_SETTINGS_REQUEST_SCHEMA_ID, RESULT_SUMMARY_SCHEMA_ID,
-    SOLVE_REQUEST_SCHEMA_ID, SOLVE_RESPONSE_SCHEMA_ID, SOLVER_CONFIGURATION_SCHEMA_ID,
-    VALIDATE_RESPONSE_SCHEMA_ID,
+    RECOMMEND_SETTINGS_REQUEST_SCHEMA_ID, RESULT_SUMMARY_SCHEMA_ID, SOLVER_CONFIGURATION_SCHEMA_ID,
+    SOLVE_REQUEST_SCHEMA_ID, SOLVE_RESPONSE_SCHEMA_ID, VALIDATE_RESPONSE_SCHEMA_ID,
 };
 use crate::types::{ExampleId, OperationId, SchemaId};
 use serde::Serialize;
@@ -197,7 +196,8 @@ const SOLVE_PROGRESS_UPDATE_SNIPPETS: &[ReferenceSnippet] = &[
         label: "transport note",
         format: ReferenceSnippetFormat::JavaScript,
         schema_id: None,
-        content: "Solve-capable transports may emit progress-update payloads while a solve is running.",
+        content:
+            "Solve-capable transports may emit progress-update payloads while a solve is running.",
     },
 ];
 
@@ -231,12 +231,11 @@ const VALIDATE_INVALID_CONSTRAINT_SNIPPETS: &[ReferenceSnippet] = &[
     },
 ];
 
-const INSPECT_RESULT_SUMMARY_SNIPPETS: &[ReferenceSnippet] = &[
-    ReferenceSnippet {
-        label: "result summary json",
-        format: ReferenceSnippetFormat::Json,
-        schema_id: Some(RESULT_SUMMARY_SCHEMA_ID),
-        content: r#"{
+const INSPECT_RESULT_SUMMARY_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
+    label: "result summary json",
+    format: ReferenceSnippetFormat::Json,
+    schema_id: Some(RESULT_SUMMARY_SCHEMA_ID),
+    content: r#"{
   "final_score": 1.0,
   "unique_contacts": 1,
   "repetition_penalty": 0,
@@ -245,15 +244,13 @@ const INSPECT_RESULT_SUMMARY_SNIPPETS: &[ReferenceSnippet] = &[
   "effective_seed": 7,
   "stop_reason": "max_iterations_reached"
 }"#,
-    },
-];
+}];
 
-const PUBLIC_ERROR_LOOKUP_SNIPPETS: &[ReferenceSnippet] = &[
-    ReferenceSnippet {
-        label: "public error envelope",
-        format: ReferenceSnippetFormat::Json,
-        schema_id: Some(PUBLIC_ERROR_ENVELOPE_SCHEMA_ID),
-        content: r#"{
+const PUBLIC_ERROR_LOOKUP_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
+    label: "public error envelope",
+    format: ReferenceSnippetFormat::Json,
+    schema_id: Some(PUBLIC_ERROR_ENVELOPE_SCHEMA_ID),
+    content: r#"{
   "error": {
     "code": "unsupported-constraint-kind",
     "message": "Constraint kind 'ShouldBeTogether' is not supported.",
@@ -273,24 +270,20 @@ const PUBLIC_ERROR_LOOKUP_SNIPPETS: &[ReferenceSnippet] = &[
     "related_help": ["validate-problem", "get-schema"]
   }
 }"#,
-    },
-];
+}];
 
-const GET_SCHEMA_SNIPPETS: &[ReferenceSnippet] = &[
-    ReferenceSnippet {
-        label: "schema lookup",
-        format: ReferenceSnippetFormat::Shell,
-        schema_id: Some(SOLVE_REQUEST_SCHEMA_ID),
-        content: "solver-cli schema solve-request",
-    },
-];
+const GET_SCHEMA_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
+    label: "schema lookup",
+    format: ReferenceSnippetFormat::Shell,
+    schema_id: Some(SOLVE_REQUEST_SCHEMA_ID),
+    content: "solver-cli schema solve-request",
+}];
 
-const DEFAULT_SOLVER_CONFIGURATION_SNIPPETS: &[ReferenceSnippet] = &[
-    ReferenceSnippet {
-        label: "default solver configuration",
-        format: ReferenceSnippetFormat::Json,
-        schema_id: Some(SOLVER_CONFIGURATION_SCHEMA_ID),
-        content: r#"{
+const DEFAULT_SOLVER_CONFIGURATION_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
+    label: "default solver configuration",
+    format: ReferenceSnippetFormat::Json,
+    schema_id: Some(SOLVER_CONFIGURATION_SCHEMA_ID),
+    content: r#"{
   "solver_type": "SimulatedAnnealing",
   "stop_conditions": {
     "max_iterations": 10000,
@@ -321,8 +314,7 @@ const DEFAULT_SOLVER_CONFIGURATION_SNIPPETS: &[ReferenceSnippet] = &[
   "move_policy": null,
   "allowed_sessions": null
 }"#,
-    },
-];
+}];
 
 const RECOMMEND_SETTINGS_SNIPPETS: &[ReferenceSnippet] = &[
     ReferenceSnippet {
@@ -527,9 +519,7 @@ mod tests {
                 if let Err(error) = validator.validate(&instance) {
                     panic!(
                         "example '{}' snippet '{}' does not validate against schema '{}': {error}",
-                        example.id,
-                        snippet.label,
-                        schema_id
+                        example.id, snippet.label, schema_id
                     );
                 }
             }

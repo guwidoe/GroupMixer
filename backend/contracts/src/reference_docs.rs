@@ -170,14 +170,35 @@ fn render_operations_markdown() -> String {
         output.push_str(&format!("## `{}`\n\n", operation.id));
         output.push_str(&format!("- summary: {}\n", operation.summary));
         output.push_str(&format!("- family: `{}`\n", operation.family));
-        output.push_str(&format!("- kind: `{}`\n", serde_json::to_string(&operation.kind).unwrap()));
+        output.push_str(&format!(
+            "- kind: `{}`\n",
+            serde_json::to_string(&operation.kind).unwrap()
+        ));
         output.push_str(&format!("- description: {}\n", operation.description));
-        output.push_str(&format!("- input schemas: {}\n", join_or_none(operation.input_schema_ids)));
-        output.push_str(&format!("- output schemas: {}\n", join_or_none(operation.output_schema_ids)));
-        output.push_str(&format!("- progress schemas: {}\n", join_or_none(operation.progress_schema_ids)));
-        output.push_str(&format!("- error codes: {}\n", join_or_none(operation.error_codes)));
-        output.push_str(&format!("- related operations: {}\n", join_or_none(operation.related_operation_ids)));
-        output.push_str(&format!("- examples: {}\n\n", join_or_none(operation.example_ids)));
+        output.push_str(&format!(
+            "- input schemas: {}\n",
+            join_or_none(operation.input_schema_ids)
+        ));
+        output.push_str(&format!(
+            "- output schemas: {}\n",
+            join_or_none(operation.output_schema_ids)
+        ));
+        output.push_str(&format!(
+            "- progress schemas: {}\n",
+            join_or_none(operation.progress_schema_ids)
+        ));
+        output.push_str(&format!(
+            "- error codes: {}\n",
+            join_or_none(operation.error_codes)
+        ));
+        output.push_str(&format!(
+            "- related operations: {}\n",
+            join_or_none(operation.related_operation_ids)
+        ));
+        output.push_str(&format!(
+            "- examples: {}\n\n",
+            join_or_none(operation.example_ids)
+        ));
     }
 
     output
@@ -207,7 +228,10 @@ fn render_errors_markdown() -> String {
 
     for error in error_specs() {
         output.push_str(&format!("## `{}`\n\n", error.code));
-        output.push_str(&format!("- category: `{}`\n", serde_json::to_string(&error.category).unwrap()));
+        output.push_str(&format!(
+            "- category: `{}`\n",
+            serde_json::to_string(&error.category).unwrap()
+        ));
         output.push_str(&format!("- summary: {}\n", error.summary));
         output.push_str(&format!("- why: {}\n", error.why));
         output.push_str(&format!("- recovery: {}\n", error.recovery));
@@ -233,7 +257,10 @@ fn render_examples_markdown() -> String {
         output.push_str("### Snippets\n\n");
         for snippet in example.snippets {
             output.push_str(&format!("#### {}\n\n", snippet.label));
-            output.push_str(&format!("- format: `{}`\n", snippet_format_name(snippet.format)));
+            output.push_str(&format!(
+                "- format: `{}`\n",
+                snippet_format_name(snippet.format)
+            ));
             if let Some(schema_id) = snippet.schema_id {
                 output.push_str(&format!("- schema: `{}`\n", schema_id));
             }
@@ -297,8 +324,8 @@ fn snippet_format_name(format: ReferenceSnippetFormat) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        generate_reference_artifacts, write_or_check_reference_artifacts,
-        ReferenceArtifactsResult, WriteMode, DEFAULT_REFERENCE_OUTPUT_DIR,
+        generate_reference_artifacts, write_or_check_reference_artifacts, ReferenceArtifactsResult,
+        WriteMode, DEFAULT_REFERENCE_OUTPUT_DIR,
     };
     use std::fs;
     use tempfile::tempdir;
@@ -317,8 +344,13 @@ mod tests {
         assert!(paths.contains(&"errors.md".to_string()));
         assert!(paths.contains(&"examples.md".to_string()));
         assert!(paths.contains(&"catalog.json".to_string()));
-        assert!(paths.iter().any(|path| path.starts_with("schemas/") && path.ends_with(".schema.json")));
-        assert_eq!(DEFAULT_REFERENCE_OUTPUT_DIR, "docs/reference/generated/solver-contracts");
+        assert!(paths
+            .iter()
+            .any(|path| path.starts_with("schemas/") && path.ends_with(".schema.json")));
+        assert_eq!(
+            DEFAULT_REFERENCE_OUTPUT_DIR,
+            "docs/reference/generated/solver-contracts"
+        );
     }
 
     #[test]
@@ -344,10 +376,13 @@ mod tests {
         let temp = tempdir().expect("temp dir");
         write_or_check_reference_artifacts(temp.path(), WriteMode::Write)
             .expect("write generated artifacts");
-        fs::write(temp.path().join("operations.md"), "stale artifact\n").expect("overwrite artifact");
+        fs::write(temp.path().join("operations.md"), "stale artifact\n")
+            .expect("overwrite artifact");
 
         let mismatches = write_or_check_reference_artifacts(temp.path(), WriteMode::Check)
             .expect_err("stale outputs should fail check");
-        assert!(mismatches.iter().any(|mismatch| mismatch.path == std::path::PathBuf::from("operations.md")));
+        assert!(mismatches
+            .iter()
+            .any(|mismatch| mismatch.path.as_path() == std::path::Path::new("operations.md")));
     }
 }

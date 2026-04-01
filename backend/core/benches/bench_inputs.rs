@@ -203,11 +203,7 @@ pub fn construction_bench_input() -> ConstructionBenchInput {
     let warm_schedule = make_initial_schedule(
         &["g0", "g1", "g2"],
         vec![
-            vec![
-                vec!["p0", "p1"],
-                vec!["p2", "p3"],
-                vec!["p4", "p5", "p6"],
-            ],
+            vec![vec!["p0", "p1"], vec!["p2", "p3"], vec!["p4", "p5", "p6"]],
             vec![
                 vec!["p0", "p1", "p6"],
                 vec!["p2", "p3"],
