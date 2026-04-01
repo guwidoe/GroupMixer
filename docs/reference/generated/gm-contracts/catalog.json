@@ -379,7 +379,7 @@
           "label": "solve request json",
           "format": "Json",
           "schema_id": "solve-request",
-          "content": "{\n  \"problem\": {\n    \"people\": [\n      {\"id\": \"alice\", \"attributes\": {\"department\": \"eng\"}},\n      {\"id\": \"bob\", \"attributes\": {\"department\": \"design\"}}\n    ],\n    \"groups\": [\n      {\"id\": \"team-1\", \"size\": 2}\n    ],\n    \"num_sessions\": 1\n  },\n  \"initial_schedule\": null,\n  \"objectives\": [\n    {\"type\": \"maximize_unique_contacts\", \"weight\": 1.0}\n  ],\n  \"constraints\": [],\n  \"solver\": {\n    \"solver_type\": \"SimulatedAnnealing\",\n    \"stop_conditions\": {\n      \"max_iterations\": 100,\n      \"time_limit_seconds\": null,\n      \"no_improvement_iterations\": null\n    },\n    \"solver_params\": {\n      \"solver_type\": \"SimulatedAnnealing\",\n      \"initial_temperature\": 10.0,\n      \"final_temperature\": 0.1,\n      \"cooling_schedule\": \"geometric\",\n      \"reheat_after_no_improvement\": 0,\n      \"reheat_cycles\": 0\n    },\n    \"logging\": {},\n    \"telemetry\": {},\n    \"seed\": 7,\n    \"move_policy\": null,\n    \"allowed_sessions\": null\n  }\n}"
+          "content": "{\n  \"problem\": {\n    \"people\": [\n      {\"id\": \"alice\", \"attributes\": {\"department\": \"eng\"}},\n      {\"id\": \"bob\", \"attributes\": {\"department\": \"design\"}}\n    ],\n    \"groups\": [\n      {\"id\": \"team-1\", \"size\": 2, \"session_sizes\": [2]}\n    ],\n    \"num_sessions\": 1\n  },\n  \"initial_schedule\": null,\n  \"objectives\": [\n    {\"type\": \"maximize_unique_contacts\", \"weight\": 1.0}\n  ],\n  \"constraints\": [],\n  \"solver\": {\n    \"solver_type\": \"SimulatedAnnealing\",\n    \"stop_conditions\": {\n      \"max_iterations\": 100,\n      \"time_limit_seconds\": null,\n      \"no_improvement_iterations\": null\n    },\n    \"solver_params\": {\n      \"solver_type\": \"SimulatedAnnealing\",\n      \"initial_temperature\": 10.0,\n      \"final_temperature\": 0.1,\n      \"cooling_schedule\": \"geometric\",\n      \"reheat_after_no_improvement\": 0,\n      \"reheat_cycles\": 0\n    },\n    \"logging\": {},\n    \"telemetry\": {},\n    \"seed\": 7,\n    \"move_policy\": null,\n    \"allowed_sessions\": null\n  }\n}"
         },
         {
           "label": "solve response json",
@@ -519,7 +519,7 @@
           "label": "recommend settings request",
           "format": "Json",
           "schema_id": "recommend-settings-request",
-          "content": "{\n  \"problem_definition\": {\n    \"people\": [\n      {\"id\": \"alice\", \"attributes\": {}},\n      {\"id\": \"bob\", \"attributes\": {}}\n    ],\n    \"groups\": [\n      {\"id\": \"team-1\", \"size\": 2}\n    ],\n    \"num_sessions\": 1\n  },\n  \"objectives\": [],\n  \"constraints\": [],\n  \"desired_runtime_seconds\": 30\n}"
+          "content": "{\n  \"problem_definition\": {\n    \"people\": [\n      {\"id\": \"alice\", \"attributes\": {}},\n      {\"id\": \"bob\", \"attributes\": {}}\n    ],\n    \"groups\": [\n      {\"id\": \"team-1\", \"size\": 2, \"session_sizes\": [2]}\n    ],\n    \"num_sessions\": 1\n  },\n  \"objectives\": [],\n  \"constraints\": [],\n  \"desired_runtime_seconds\": 30\n}"
         },
         {
           "label": "recommended solver configuration",

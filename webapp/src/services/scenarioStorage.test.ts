@@ -98,7 +98,15 @@ describe("ScenarioStorageService", () => {
 
   it("exports, imports, and regenerates ids for imported results", () => {
     const service = createService();
-    const saved = service.createScenario("Workshop", createSampleScenario());
+    const saved = service.createScenario(
+      "Workshop",
+      createSampleScenario({
+        groups: [
+          { id: 'g1', size: 4, session_sizes: [4, 0, 2] },
+          { id: 'g2', size: 3 },
+        ],
+      }),
+    );
     service.addResult(saved.id, createSampleSolution(), createSampleSolverSettings());
     const savedWithResult = service.getScenario(saved.id)!;
 
@@ -108,6 +116,14 @@ describe("ScenarioStorageService", () => {
     expect(imported.id).not.toBe(saved.id);
     expect(imported.name).toBe("Imported Workshop");
     expect(imported.results[0].id).not.toBe(savedWithResult.results[0].id);
+    expect(imported.scenario.groups).toEqual([
+      { id: 'g1', size: 4, session_sizes: [4, 0, 2] },
+      { id: 'g2', size: 3 },
+    ]);
+    expect(imported.results[0].scenarioSnapshot?.groups).toEqual([
+      { id: 'g1', size: 4, session_sizes: [4, 0, 2] },
+      { id: 'g2', size: 3 },
+    ]);
   });
 
   it("surfaces a helpful error when persistence hits storage limits", () => {

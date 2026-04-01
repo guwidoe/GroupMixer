@@ -23,7 +23,7 @@
       {"id": "bob", "attributes": {"department": "design"}}
     ],
     "groups": [
-      {"id": "team-1", "size": 2}
+      {"id": "team-1", "size": 2, "session_sizes": [2]}
     ],
     "num_sessions": 1
   },
@@ -371,7 +371,7 @@ gm-cli schema solve-request
       {"id": "bob", "attributes": {}}
     ],
     "groups": [
-      {"id": "team-1", "size": 2}
+      {"id": "team-1", "size": 2, "session_sizes": [2]}
     ],
     "num_sessions": 1
   },

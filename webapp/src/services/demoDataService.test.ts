@@ -103,7 +103,7 @@ describe('demoDataService', () => {
         },
         problem: {
           people: [{ id: 'p1', attributes: {} }],
-          groups: [{ id: 'g1', size: 4 }],
+          groups: [{ id: 'g1', size: 4, session_sizes: [4, 2] }],
           num_sessions: 2,
         },
         constraints: [],
@@ -130,7 +130,7 @@ describe('demoDataService', () => {
       }),
     ]);
     expect(scenario.people).toHaveLength(1);
-    expect(scenario.groups).toHaveLength(1);
+    expect(scenario.groups).toEqual([{ id: 'g1', size: 4, session_sizes: [4, 2] }]);
     expect(scenario.num_sessions).toBe(2);
   });
 

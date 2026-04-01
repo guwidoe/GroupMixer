@@ -54,9 +54,14 @@ const progress: ProgressUpdate = {
 
 describe('rustBoundary', () => {
   it('builds both standard and warm-start solver payloads', () => {
-    const scenario = createSampleScenario();
+    const scenario = createSampleScenario({
+      groups: [
+        { id: 'g1', size: 2, session_sizes: [2, 1] },
+        { id: 'g2', size: 2 },
+      ],
+    });
     const scenarioPayload = JSON.parse(buildRustScenarioJson(scenario)) as {
-      scenario: { num_sessions: number };
+      scenario: { num_sessions: number; groups: Array<{ id: string; size: number; session_sizes?: number[] }> };
       initial_schedule?: unknown;
     };
     const warmStartPayload = JSON.parse(
@@ -66,6 +71,10 @@ describe('rustBoundary', () => {
     };
 
     expect(scenarioPayload.scenario.num_sessions).toBe(scenario.num_sessions);
+    expect(scenarioPayload.scenario.groups).toEqual([
+      { id: 'g1', size: 2, session_sizes: [2, 1] },
+      { id: 'g2', size: 2 },
+    ]);
     expect(scenarioPayload.initial_schedule).toBeUndefined();
     expect(warmStartPayload.initial_schedule).toEqual({ session_0: { g1: ['p1'] } });
   });

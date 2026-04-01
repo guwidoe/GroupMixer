@@ -60,7 +60,7 @@ const SOLVE_HAPPY_PATH_SNIPPETS: &[ReferenceSnippet] = &[
       {"id": "bob", "attributes": {"department": "design"}}
     ],
     "groups": [
-      {"id": "team-1", "size": 2}
+      {"id": "team-1", "size": 2, "session_sizes": [2]}
     ],
     "num_sessions": 1
   },
@@ -313,7 +313,7 @@ const RECOMMEND_SETTINGS_SNIPPETS: &[ReferenceSnippet] = &[
       {"id": "bob", "attributes": {}}
     ],
     "groups": [
-      {"id": "team-1", "size": 2}
+      {"id": "team-1", "size": 2, "session_sizes": [2]}
     ],
     "num_sessions": 1
   },
