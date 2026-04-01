@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ScenarioSetupSectionRenderer } from './ScenarioSetupSectionRenderer';
 import type { ScenarioEditorController } from './useScenarioEditorController';
@@ -17,15 +16,11 @@ function createController(): ScenarioEditorController {
 }
 
 describe('ScenarioSetupSectionRenderer', () => {
-  it('renders Attribute Definitions as a first-class section', async () => {
-    const user = userEvent.setup();
-
+  it('renders Attribute Definitions as a first-class section', () => {
     render(<ScenarioSetupSectionRenderer controller={createController()} />);
 
-    expect(screen.getByText(/attribute definitions/i)).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: /attribute definitions/i }));
-
+    expect(screen.getByRole('heading', { name: /attribute definitions/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add attribute/i })).toBeInTheDocument();
     expect(screen.getByText(/attributes are key-value pairs/i)).toBeInTheDocument();
   });
 });

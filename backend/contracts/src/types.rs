@@ -248,3 +248,139 @@ impl From<&SolveResponse> for ResultSummary {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{ResultSummary, ScenarioDefinitionContract, SolveRequest};
+    use gm_core::models::{
+        ApiInput, Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams,
+        SolverConfiguration, SolverParams, SolverResult, StopConditions, StopReason,
+    };
+    use std::collections::HashMap;
+
+    fn sample_problem_definition() -> ProblemDefinition {
+        ProblemDefinition {
+            people: vec![
+                Person {
+                    id: "p1".to_string(),
+                    attributes: HashMap::from([("team".to_string(), "A".to_string())]),
+                    sessions: None,
+                },
+                Person {
+                    id: "p2".to_string(),
+                    attributes: HashMap::from([("team".to_string(), "B".to_string())]),
+                    sessions: Some(vec![0]),
+                },
+            ],
+            groups: vec![
+                Group {
+                    id: "g1".to_string(),
+                    size: 2,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g2".to_string(),
+                    size: 2,
+                    session_sizes: Some(vec![2, 2]),
+                },
+            ],
+            num_sessions: 2,
+        }
+    }
+
+    fn sample_solver_configuration() -> SolverConfiguration {
+        SolverConfiguration {
+            solver_type: "SimulatedAnnealing".to_string(),
+            stop_conditions: StopConditions {
+                max_iterations: Some(100),
+                time_limit_seconds: Some(5),
+                no_improvement_iterations: Some(25),
+            },
+            solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
+                initial_temperature: 1.0,
+                final_temperature: 0.01,
+                cooling_schedule: "geometric".to_string(),
+                reheat_after_no_improvement: Some(0),
+                reheat_cycles: Some(0),
+            }),
+            logging: Default::default(),
+            telemetry: Default::default(),
+            seed: Some(7),
+            move_policy: None,
+            allowed_sessions: Some(vec![0, 1]),
+        }
+    }
+
+    fn sample_api_input() -> ApiInput {
+        ApiInput {
+            problem: sample_problem_definition(),
+            initial_schedule: Some(HashMap::from([(
+                "session_0".to_string(),
+                HashMap::from([("g1".to_string(), vec!["p1".to_string(), "p2".to_string()])]),
+            )])),
+            objectives: vec![Objective {
+                r#type: "maximize_unique_contacts".to_string(),
+                weight: 1.0,
+            }],
+            constraints: vec![],
+            solver: sample_solver_configuration(),
+        }
+    }
+
+    #[test]
+    fn solve_request_round_trips_api_input_by_reference() {
+        let api_input = sample_api_input();
+
+        let request = SolveRequest::from(&api_input);
+        let round_tripped = ApiInput::from(&request);
+
+        assert_eq!(request.scenario.num_sessions, 2);
+        assert_eq!(request.objectives.len(), 1);
+        assert_eq!(round_tripped.problem.num_sessions, api_input.problem.num_sessions);
+        assert_eq!(round_tripped.initial_schedule, api_input.initial_schedule);
+        assert_eq!(round_tripped.objectives.len(), api_input.objectives.len());
+        assert_eq!(round_tripped.objectives[0].r#type, api_input.objectives[0].r#type);
+        assert_eq!(round_tripped.objectives[0].weight, api_input.objectives[0].weight);
+        assert_eq!(round_tripped.solver.seed, api_input.solver.seed);
+    }
+
+    #[test]
+    fn scenario_definition_contract_round_trips_problem_definition_by_reference() {
+        let problem = sample_problem_definition();
+
+        let contract = ScenarioDefinitionContract::from(&problem);
+        let round_tripped = ProblemDefinition::from(&contract);
+
+        assert_eq!(contract.people.len(), problem.people.len());
+        assert_eq!(contract.groups.len(), problem.groups.len());
+        assert_eq!(round_tripped.num_sessions, problem.num_sessions);
+        assert_eq!(round_tripped.people[1].sessions, problem.people[1].sessions);
+        assert_eq!(round_tripped.groups[1].session_sizes, problem.groups[1].session_sizes);
+    }
+
+    #[test]
+    fn result_summary_preserves_seed_and_stop_reason() {
+        let result = SolverResult {
+            final_score: 1.5,
+            schedule: HashMap::new(),
+            unique_contacts: 4,
+            repetition_penalty: 1,
+            attribute_balance_penalty: 0,
+            constraint_penalty: 0,
+            no_improvement_count: 12,
+            weighted_repetition_penalty: 2.0,
+            weighted_constraint_penalty: 0.0,
+            effective_seed: Some(123),
+            move_policy: None,
+            stop_reason: Some(StopReason::TimeLimitReached),
+            benchmark_telemetry: None,
+        };
+
+        let summary = ResultSummary::from(&result);
+
+        assert_eq!(summary.final_score, 1.5);
+        assert_eq!(summary.unique_contacts, 4);
+        assert_eq!(summary.effective_seed, Some(123));
+        assert_eq!(summary.stop_reason.as_deref(), Some("TimeLimitReached"));
+    }
+}

@@ -79,6 +79,10 @@ describe('scenarioContract', () => {
     expect(normalized.settings.solver_params.final_temperature).toBe(0.01);
     expect(normalized.settings.solver_params.reheat_cycles).toBe(0);
     expect(normalized.settings.solver_params.reheat_after_no_improvement).toBe(0);
+    expect(Object.hasOwn(normalized.settings, 'logging')).toBe(false);
+    expect(Object.hasOwn(normalized.settings, 'telemetry')).toBe(false);
+    expect(Object.hasOwn(normalized.people[0], 'sessions')).toBe(false);
+    expect(Object.hasOwn(normalized.groups[0], 'session_sizes')).toBe(false);
 
     expect(scenario.objectives).toEqual([]);
     expect(scenario.constraints[0]).toMatchObject({

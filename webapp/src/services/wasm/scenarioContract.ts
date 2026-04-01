@@ -27,18 +27,34 @@ function cloneOptionalNumberArray(values?: number[]): number[] | undefined {
 }
 
 function clonePeople(people: Person[]): Person[] {
-  return people.map((person) => ({
-    ...person,
-    attributes: { ...person.attributes },
-    sessions: cloneOptionalNumberArray(person.sessions),
-  }));
+  return people.map((person) => {
+    const clonedPerson: Person = {
+      ...person,
+      attributes: { ...person.attributes },
+    };
+
+    const sessions = cloneOptionalNumberArray(person.sessions);
+    if (sessions !== undefined) {
+      clonedPerson.sessions = sessions;
+    }
+
+    return clonedPerson;
+  });
 }
 
 function cloneGroups(groups: Group[]): Group[] {
-  return groups.map((group) => ({
-    ...group,
-    session_sizes: cloneOptionalNumberArray(group.session_sizes),
-  }));
+  return groups.map((group) => {
+    const clonedGroup: Group = {
+      ...group,
+    };
+
+    const sessionSizes = cloneOptionalNumberArray(group.session_sizes);
+    if (sessionSizes !== undefined) {
+      clonedGroup.session_sizes = sessionSizes;
+    }
+
+    return clonedGroup;
+  });
 }
 
 function normalizeObjectivesForWasm(objectives?: Objective[]): Objective[] {
@@ -91,15 +107,35 @@ function normalizeSolverSettingsForWasm(settings: SolverSettings): SolverSetting
     }
   }
 
-  return {
+  const normalizedSettings: SolverSettings = {
     ...settings,
     stop_conditions: { ...settings.stop_conditions },
     solver_params: solverParams,
-    logging: settings.logging ? { ...settings.logging } : settings.logging,
-    telemetry: settings.telemetry ? { ...settings.telemetry } : settings.telemetry,
     move_policy: movePolicy,
-    allowed_sessions: cloneOptionalNumberArray(settings.allowed_sessions),
   };
+
+  if (settings.logging) {
+    normalizedSettings.logging = { ...settings.logging };
+  }
+
+  if (settings.telemetry) {
+    normalizedSettings.telemetry = { ...settings.telemetry };
+  }
+
+  if (movePolicy) {
+    normalizedSettings.move_policy = movePolicy;
+  } else {
+    delete normalizedSettings.move_policy;
+  }
+
+  const allowedSessions = cloneOptionalNumberArray(settings.allowed_sessions);
+  if (allowedSessions !== undefined) {
+    normalizedSettings.allowed_sessions = allowedSessions;
+  } else {
+    delete normalizedSettings.allowed_sessions;
+  }
+
+  return normalizedSettings;
 }
 
 function normalizeSessionsForConstraint(
@@ -120,9 +156,14 @@ function normalizeConstraintForWasm(constraint: Constraint, allSessions: number[
       const normalized: Constraint = {
         ...constraint,
         desired_values: { ...(constraint as AttributeBalanceParams).desired_values },
-        sessions: cloneOptionalNumberArray((constraint as AttributeBalanceParams).sessions),
         penalty_weight: constraint.penalty_weight ?? 50,
       };
+
+      const sessions = cloneOptionalNumberArray((constraint as AttributeBalanceParams).sessions);
+      if (sessions !== undefined) {
+        (normalized as AttributeBalanceParams).sessions = sessions;
+      }
+
       return normalized;
     }
     case 'ImmovablePerson': {
@@ -146,20 +187,20 @@ function normalizeConstraintForWasm(constraint: Constraint, allSessions: number[
       return {
         ...constraint,
         people: [...constraint.people],
-        sessions: cloneOptionalNumberArray(constraint.sessions),
+        ...(constraint.sessions ? { sessions: [...constraint.sessions] } : {}),
       };
     case 'ShouldStayTogether':
       return {
         ...constraint,
         people: [...constraint.people],
-        sessions: cloneOptionalNumberArray(constraint.sessions),
+        ...(constraint.sessions ? { sessions: [...constraint.sessions] } : {}),
         penalty_weight: constraint.penalty_weight ?? 1000,
       };
     case 'ShouldNotBeTogether':
       return {
         ...constraint,
         people: [...constraint.people],
-        sessions: cloneOptionalNumberArray(constraint.sessions),
+        ...(constraint.sessions ? { sessions: [...constraint.sessions] } : {}),
         penalty_weight: constraint.penalty_weight ?? 1000,
       };
     case 'PairMeetingCount':
