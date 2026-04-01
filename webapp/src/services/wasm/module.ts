@@ -144,6 +144,8 @@ export type WasmInitInput =
   | BufferSource
   | WebAssembly.Module;
 
+export type WasmSyncInitInput = BufferSource | WebAssembly.Module;
+
 export interface WasmInitOutput {
   readonly memory: WebAssembly.Memory;
 }
@@ -176,9 +178,54 @@ export interface WasmContractModule {
     scenarioJson: string,
     desiredRuntimeSeconds: bigint,
   ) => string;
+  evaluate_input_legacy_json?: (inputJson: string) => string;
+  greet?: () => void;
   init_panic_hook?: () => void;
+  test_callback_consistency?: (scenarioJson: string) => string;
   default: (moduleOrPath?: WasmInitInput | Promise<WasmInitInput>) => Promise<WasmInitOutput>;
 }
+
+export const REQUIRED_WASM_CONTRACT_METHODS = [
+  "capabilities",
+  "get_operation_help",
+  "list_schemas",
+  "get_schema",
+  "list_public_errors",
+  "get_public_error",
+  "solve",
+  "solve_with_progress",
+  "validate_scenario",
+  "get_default_solver_configuration",
+  "recommend_settings",
+  "evaluate_input",
+  "inspect_result",
+  "default",
+] as const satisfies ReadonlyArray<keyof WasmContractModule>;
+
+export const WASM_RUNTIME_EXPORT_NAMES = {
+  capabilities: "capabilities",
+  get_operation_help: "get_operation_help",
+  list_schemas: "list_schemas",
+  get_schema: "get_schema",
+  list_public_errors: "list_public_errors",
+  get_public_error: "get_public_error",
+  solve: "solve",
+  solve_with_progress: "solve_with_progress",
+  validate_scenario: "validate_problem",
+  get_default_solver_configuration: "get_default_solver_configuration",
+  recommend_settings: "recommend_settings",
+  evaluate_input: "evaluate_input",
+  inspect_result: "inspect_result",
+  solve_legacy_json: "solve_legacy_json",
+  solve_with_progress_legacy_json: "solve_with_progress_legacy_json",
+  validate_scenario_legacy_json: "validate_problem_legacy_json",
+  get_default_settings_legacy_json: "get_default_settings_legacy_json",
+  get_recommended_settings_legacy_json: "get_recommended_settings_legacy_json",
+  init_panic_hook: "init_panic_hook",
+  greet: "greet",
+  test_callback_consistency: "test_callback_consistency",
+  initSync: "initSync",
+} as const;
 
 export type WasmSolverModule = WasmContractModule;
 
@@ -196,22 +243,7 @@ export function isWasmContractModule(value: unknown): value is WasmContractModul
 
   const module = value as Partial<WasmContractModule>;
 
-  return [
-    "capabilities",
-    "get_operation_help",
-    "list_schemas",
-    "get_schema",
-    "list_public_errors",
-    "get_public_error",
-    "solve",
-    "solve_with_progress",
-    "validate_scenario",
-    "get_default_solver_configuration",
-    "recommend_settings",
-    "evaluate_input",
-    "inspect_result",
-    "default",
-  ].every((key) => hasRequiredContractMethod(module, key as keyof WasmContractModule));
+  return REQUIRED_WASM_CONTRACT_METHODS.every((key) => hasRequiredContractMethod(module, key));
 }
 
 export function isWasmSolverModule(value: unknown): value is WasmSolverModule {

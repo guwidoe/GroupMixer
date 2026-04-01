@@ -2,6 +2,7 @@ import { SolverWorkerService } from './solverWorker';
 import { WasmContractClient } from './wasm/contracts';
 import type {
   WasmBootstrapResponse,
+  WasmContractSolveInput,
   WasmErrorLookupResponse,
   WasmOperationHelpResponse,
   WasmRecommendSettingsRequest,
@@ -40,15 +41,15 @@ export interface BrowserAgentTransportApi {
   getSchema(schemaId: string): Promise<WasmSchemaLookupResponse>;
   listPublicErrors(): Promise<WasmErrorLookupResponse[]>;
   getPublicError(errorCode: string): Promise<WasmErrorLookupResponse>;
-  solve(input: Record<string, unknown>): Promise<RustResult>;
+  solve(input: WasmContractSolveInput): Promise<RustResult>;
   solveWithProgress(
-    input: Record<string, unknown>,
+    input: WasmContractSolveInput,
     progressCallback?: ProgressCallback,
   ): Promise<{ result: RustResult; lastProgress: ProgressUpdate | null }>;
-  validateScenario(input: Record<string, unknown>): Promise<WasmValidateResponse>;
+  validateScenario(input: WasmContractSolveInput): Promise<WasmValidateResponse>;
   getDefaultSolverConfiguration(): Promise<SolverSettings>;
   recommendSettings(input: WasmRecommendSettingsRequest): Promise<SolverSettings>;
-  evaluateInput(input: Record<string, unknown>): Promise<RustResult>;
+  evaluateInput(input: WasmContractSolveInput): Promise<RustResult>;
   inspectResult(result: RustResult): Promise<WasmResultSummary>;
 }
 
@@ -95,18 +96,18 @@ class WasmBrowserAgentTransport implements BrowserAgentTransportApi {
     return this.client.getPublicError(errorCode);
   }
 
-  solve(input: Record<string, unknown>): Promise<RustResult> {
+  solve(input: WasmContractSolveInput): Promise<RustResult> {
     return this.client.solveContract(input);
   }
 
   solveWithProgress(
-    input: Record<string, unknown>,
+    input: WasmContractSolveInput,
     progressCallback?: ProgressCallback,
   ): Promise<{ result: RustResult; lastProgress: ProgressUpdate | null }> {
     return this.client.solveContractWithProgress(input, progressCallback);
   }
 
-  validateScenario(input: Record<string, unknown>): Promise<WasmValidateResponse> {
+  validateScenario(input: WasmContractSolveInput): Promise<WasmValidateResponse> {
     return this.client.validateScenarioContract(input);
   }
 
@@ -118,7 +119,7 @@ class WasmBrowserAgentTransport implements BrowserAgentTransportApi {
     return this.client.recommendSettingsContract(input);
   }
 
-  evaluateInput(input: Record<string, unknown>): Promise<RustResult> {
+  evaluateInput(input: WasmContractSolveInput): Promise<RustResult> {
     return this.client.evaluateInputContract(input);
   }
 
@@ -158,18 +159,18 @@ class WorkerBrowserAgentTransport implements BrowserAgentTransportApi {
     return this.worker.getPublicError(errorCode);
   }
 
-  solve(input: Record<string, unknown>): Promise<RustResult> {
+  solve(input: WasmContractSolveInput): Promise<RustResult> {
     return this.worker.solveContract(input);
   }
 
   solveWithProgress(
-    input: Record<string, unknown>,
+    input: WasmContractSolveInput,
     progressCallback?: ProgressCallback,
   ): Promise<{ result: RustResult; lastProgress: ProgressUpdate | null }> {
     return this.worker.solveContractWithProgress(input, progressCallback);
   }
 
-  validateScenario(input: Record<string, unknown>): Promise<WasmValidateResponse> {
+  validateScenario(input: WasmContractSolveInput): Promise<WasmValidateResponse> {
     return this.worker.validateScenarioContract(input);
   }
 
@@ -181,7 +182,7 @@ class WorkerBrowserAgentTransport implements BrowserAgentTransportApi {
     return this.worker.recommendSettingsContract(input);
   }
 
-  evaluateInput(input: Record<string, unknown>): Promise<RustResult> {
+  evaluateInput(input: WasmContractSolveInput): Promise<RustResult> {
     return this.worker.evaluateInputContract(input);
   }
 

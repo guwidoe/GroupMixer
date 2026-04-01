@@ -1,3 +1,8 @@
+import {
+  WASM_RUNTIME_EXPORT_NAMES,
+  type WasmContractModule,
+} from "./module";
+
 type RuntimeModule = {
   default?: (...args: unknown[]) => Promise<unknown>;
   [key: string]: unknown;
@@ -46,6 +51,15 @@ function requireRuntimeFunction(name: string): (...args: unknown[]) => unknown {
   return candidate as (...args: unknown[]) => unknown;
 }
 
+function bindRuntimeFunction<K extends keyof WasmContractModule>(
+  name: K,
+): NonNullable<WasmContractModule[K]> {
+  return ((...args: unknown[]) =>
+    requireRuntimeFunction(WASM_RUNTIME_EXPORT_NAMES[name])(...args)) as NonNullable<
+    WasmContractModule[K]
+  >;
+}
+
 export default async function init(...args: unknown[]): Promise<unknown> {
   const runtimeModule = await loadRuntimeModule();
   const initialize = runtimeModule.default;
@@ -57,94 +71,41 @@ export default async function init(...args: unknown[]): Promise<unknown> {
   return initialize(...args);
 }
 
-export function initSync(...args: unknown[]): unknown {
-  return requireRuntimeFunction("initSync")(...args);
-}
-
-export function capabilities(...args: unknown[]): unknown {
-  return requireRuntimeFunction("capabilities")(...args);
-}
-
-export function get_operation_help(...args: unknown[]): unknown {
-  return requireRuntimeFunction("get_operation_help")(...args);
-}
-
-export function list_schemas(...args: unknown[]): unknown {
-  return requireRuntimeFunction("list_schemas")(...args);
-}
-
-export function get_schema(...args: unknown[]): unknown {
-  return requireRuntimeFunction("get_schema")(...args);
-}
-
-export function list_public_errors(...args: unknown[]): unknown {
-  return requireRuntimeFunction("list_public_errors")(...args);
-}
-
-export function get_public_error(...args: unknown[]): unknown {
-  return requireRuntimeFunction("get_public_error")(...args);
-}
-
-export function get_default_solver_configuration(...args: unknown[]): unknown {
-  return requireRuntimeFunction("get_default_solver_configuration")(...args);
-}
-
-export function get_default_settings_legacy_json(...args: unknown[]): unknown {
-  return requireRuntimeFunction("get_default_settings_legacy_json")(...args);
-}
-
-export function greet(...args: unknown[]): unknown {
-  return requireRuntimeFunction("greet")(...args);
-}
-
-export function init_panic_hook(...args: unknown[]): unknown {
-  return requireRuntimeFunction("init_panic_hook")(...args);
-}
-
-export function recommend_settings(...args: unknown[]): unknown {
-  return requireRuntimeFunction("recommend_settings")(...args);
-}
-
-export function get_recommended_settings_legacy_json(...args: unknown[]): unknown {
-  return requireRuntimeFunction("get_recommended_settings_legacy_json")(...args);
-}
-
-export function solve(...args: unknown[]): unknown {
-  return requireRuntimeFunction("solve")(...args);
-}
-
-export function solve_legacy_json(...args: unknown[]): unknown {
-  return requireRuntimeFunction("solve_legacy_json")(...args);
-}
-
-export function solve_with_progress(...args: unknown[]): unknown {
-  return requireRuntimeFunction("solve_with_progress")(...args);
-}
-
-export function solve_with_progress_legacy_json(...args: unknown[]): unknown {
-  return requireRuntimeFunction("solve_with_progress_legacy_json")(...args);
-}
-
-export function validate_scenario(...args: unknown[]): unknown {
-  return requireRuntimeFunction("validate_problem")(...args);
-}
-
-export function validate_scenario_legacy_json(...args: unknown[]): unknown {
-  return requireRuntimeFunction("validate_problem_legacy_json")(...args);
-}
-
-export function evaluate_input(...args: unknown[]): unknown {
-  return requireRuntimeFunction("evaluate_input")(...args);
-}
-
-export function evaluate_input_legacy_json(...args: unknown[]): unknown {
-  return requireRuntimeFunction("evaluate_input_legacy_json")(...args);
-}
-
-export function inspect_result(...args: unknown[]): unknown {
-  return requireRuntimeFunction("inspect_result")(...args);
-}
-
-export function test_callback_consistency(...args: unknown[]): unknown {
-  return requireRuntimeFunction("test_callback_consistency")(...args);
-}
+export const initSync =
+  ((...args: unknown[]) => requireRuntimeFunction(WASM_RUNTIME_EXPORT_NAMES.initSync)(...args));
+export const capabilities = bindRuntimeFunction("capabilities");
+export const get_operation_help = bindRuntimeFunction("get_operation_help");
+export const list_schemas = bindRuntimeFunction("list_schemas");
+export const get_schema = bindRuntimeFunction("get_schema");
+export const list_public_errors = bindRuntimeFunction("list_public_errors");
+export const get_public_error = bindRuntimeFunction("get_public_error");
+export const get_default_solver_configuration = bindRuntimeFunction(
+  "get_default_solver_configuration",
+);
+export const get_default_settings_legacy_json = bindRuntimeFunction(
+  "get_default_settings_legacy_json",
+);
+export const greet = bindRuntimeFunction("greet");
+export const init_panic_hook = bindRuntimeFunction("init_panic_hook");
+export const recommend_settings = bindRuntimeFunction("recommend_settings");
+export const get_recommended_settings_legacy_json = bindRuntimeFunction(
+  "get_recommended_settings_legacy_json",
+);
+export const solve = bindRuntimeFunction("solve");
+export const solve_legacy_json = bindRuntimeFunction("solve_legacy_json");
+export const solve_with_progress = bindRuntimeFunction("solve_with_progress");
+export const solve_with_progress_legacy_json = bindRuntimeFunction(
+  "solve_with_progress_legacy_json",
+);
+export const validate_scenario = bindRuntimeFunction("validate_scenario");
+export const validate_scenario_legacy_json = bindRuntimeFunction(
+  "validate_scenario_legacy_json",
+);
+export const evaluate_input = bindRuntimeFunction("evaluate_input");
+export const evaluate_input_legacy_json = bindRuntimeFunction(
+  "evaluate_input_legacy_json",
+);
+export const inspect_result = bindRuntimeFunction("inspect_result");
+export const test_callback_consistency = bindRuntimeFunction(
+  "test_callback_consistency",
+);

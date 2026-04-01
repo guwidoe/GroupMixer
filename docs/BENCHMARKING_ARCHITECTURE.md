@@ -24,15 +24,17 @@ The solver needs a benchmarking system that is strong enough to support architec
 - hot-path performance
 - visibility into *why* a regression happened
 
-The intended system is inspired by the benchmark architecture in:
+This architecture was informed by an earlier snapshot/recording benchmark
+workflow used in another repo, but that external system is only historical
+inspiration.
 
-- `/home/ralph/wwd-repos/production-planning/backend/internal/benchmark`
-- `/home/ralph/wwd-repos/production-planning/backend/workers/metaheuristic-rs/benchmarking`
+For GroupMixer, the normative sources are this document and the repo-local
+materials under `benchmarking/` plus the implementation in
+`solver-benchmarking/`.
 
-The goal is not to "simplify" that reference workflow away. The operational
-model we want for GroupMixer is intentionally very close to the remote
-snapshot/recording/queue system used there, adapted to **GroupMixer's** solver
-surfaces, doctrine, and test strategy.
+The goal is not to "simplify" the operational model away. GroupMixer still
+wants a remote snapshot/recording/queue system adapted to **GroupMixer's**
+solver surfaces, doctrine, and test strategy.
 
 This document is the architectural reference for that adaptation.
 
@@ -822,10 +824,9 @@ Cross-machine runtime comparisons should never be presented as equally trustwort
 The next architectural step is to make same-machine runtime comparison
 **operationally real** on a designated remote benchmark machine.
 
-This repo should adopt the same core operating model already proven in:
-
-- `/home/ralph/wwd-repos/production-planning/backend/workers/metaheuristic-rs/benchmarking`
-- `/home/ralph/wwd-repos/production-planning/backend/workers/metaheuristic-rs/tools/remote_benchmark_async.sh`
+This repo should adopt the same class of operating model already proven in
+earlier internal work: immutable snapshots, serialized same-machine execution,
+durable recordings, async control operations, and mirrored artifacts.
 
 That means GroupMixer should support:
 
