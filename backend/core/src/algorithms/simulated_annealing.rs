@@ -79,6 +79,31 @@ fn get_elapsed_seconds_between(start: Instant, end: Instant) -> f64 {
     end.duration_since(start).as_secs_f64()
 }
 
+fn select_clique_source_group(state: &State, clique: &[usize], day: usize) -> Option<usize> {
+    let num_groups = state.group_idx_to_id.len();
+    let mut group_counts = vec![0usize; num_groups];
+
+    for &member in clique {
+        if state.person_participation[member][day] {
+            let group_idx = state.locations[day][member].0;
+            if group_idx < num_groups {
+                group_counts[group_idx] += 1;
+            }
+        }
+    }
+
+    let mut best_group = None;
+    let mut best_count = 0usize;
+    for (group_idx, &count) in group_counts.iter().enumerate() {
+        if count > best_count {
+            best_count = count;
+            best_group = Some(group_idx);
+        }
+    }
+
+    best_group
+}
+
 #[cfg(target_arch = "wasm32")]
 fn get_elapsed_seconds_between(start: f64, end: f64) -> f64 {
     (end - start) / 1000.0 // Convert milliseconds to seconds
@@ -1099,29 +1124,15 @@ impl Solver for SimulatedAnnealing {
                 let clique_idx = rng.random_range(0..current_state.cliques.len());
                 let clique = &current_state.cliques[clique_idx];
 
-                // Determine a source group containing the majority of active (participating) members
-                // of this clique for the selected day
-                let mut group_counts: std::collections::HashMap<usize, usize> =
-                    std::collections::HashMap::new();
-                let mut first_participating_group: Option<usize> = None;
-                for &m in clique.iter() {
-                    if current_state.person_participation[m][day] {
-                        let g = current_state.locations[day][m].0;
-                        *group_counts.entry(g).or_insert(0) += 1;
-                        if first_participating_group.is_none() {
-                            first_participating_group = Some(g);
-                        }
-                    }
-                }
-
-                let current_group =
-                    if let Some((&g, _)) = group_counts.iter().max_by_key(|(_, &cnt)| cnt) {
-                        g
-                    } else if let Some(g) = first_participating_group {
-                        g
-                    } else {
-                        continue; // No active members this day
-                    };
+                // Determine a source group containing the majority of active (participating)
+                // members of this clique for the selected day. Tie-breaking is deterministic.
+                let current_group = if let Some(group_idx) =
+                    select_clique_source_group(&current_state, clique, day)
+                {
+                    group_idx
+                } else {
+                    continue; // No active members this day
+                };
 
                 // Count active members actually in current_group
                 let active_count = clique
@@ -1736,5 +1747,95 @@ impl Solver for SimulatedAnnealing {
         // Algorithm metrics are now available through the progress callback system
 
         Ok(result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::select_clique_source_group;
+    use crate::models::{
+        ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
+        SimulatedAnnealingParams, SolverConfiguration, SolverParams, StopConditions,
+    };
+    use crate::solver::State;
+    use std::collections::HashMap;
+
+    fn person(id: &str) -> Person {
+        Person {
+            id: id.to_string(),
+            attributes: HashMap::new(),
+            sessions: None,
+        }
+    }
+
+    fn deterministic_solver_config() -> SolverConfiguration {
+        SolverConfiguration {
+            solver_type: "SimulatedAnnealing".to_string(),
+            stop_conditions: StopConditions {
+                max_iterations: Some(1),
+                time_limit_seconds: None,
+                no_improvement_iterations: Some(0),
+            },
+            solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
+                initial_temperature: 10.0,
+                final_temperature: 0.1,
+                cooling_schedule: "geometric".to_string(),
+                reheat_after_no_improvement: Some(0),
+                reheat_cycles: Some(0),
+            }),
+            logging: Default::default(),
+            telemetry: Default::default(),
+            seed: Some(17),
+            move_policy: None,
+            allowed_sessions: None,
+        }
+    }
+
+    #[test]
+    fn clique_source_group_prefers_lowest_group_on_tie() {
+        let input = ApiInput {
+            initial_schedule: None,
+            problem: ProblemDefinition {
+                people: vec![person("p0"), person("p1"), person("p2"), person("p3")],
+                groups: vec![
+                    Group {
+                        id: "g0".to_string(),
+                        size: 2,
+                        session_sizes: None,
+                    },
+                    Group {
+                        id: "g1".to_string(),
+                        size: 2,
+                        session_sizes: None,
+                    },
+                ],
+                num_sessions: 1,
+            },
+            objectives: vec![Objective {
+                r#type: "maximize_unique_contacts".to_string(),
+                weight: 1.0,
+            }],
+            constraints: vec![Constraint::MustStayTogether {
+                people: vec!["p0".to_string(), "p1".to_string()],
+                sessions: None,
+            }],
+            solver: deterministic_solver_config(),
+        };
+
+        let mut state = State::new(&input).expect("state should build");
+        let p0 = state.person_id_to_idx["p0"];
+        let p1 = state.person_id_to_idx["p1"];
+        let p2 = state.person_id_to_idx["p2"];
+        let p3 = state.person_id_to_idx["p3"];
+
+        state.schedule[0][0] = vec![p0, p2];
+        state.schedule[0][1] = vec![p1, p3];
+        state.locations[0][p0] = (0, 0);
+        state.locations[0][p2] = (0, 1);
+        state.locations[0][p1] = (1, 0);
+        state.locations[0][p3] = (1, 1);
+
+        let clique = &state.cliques[0];
+        assert_eq!(select_clique_source_group(&state, clique, 0), Some(0));
     }
 }
