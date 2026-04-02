@@ -857,6 +857,7 @@ name = "gm-core"
 version = "0.1.0"
 dependencies = [
  "criterion",
+ "getrandom 0.3.4",
  "getrandom 0.4.2",
  "js-sys",
  "log",

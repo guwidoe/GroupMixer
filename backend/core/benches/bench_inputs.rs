@@ -325,11 +325,21 @@ pub fn transfer_bench_input() -> TransferBenchInput {
         ],
     ));
     let state = State::new(&warm).expect("transfer state should build");
+    let day = 1;
+    let person_idx = state.person_id_to_idx["p1"];
+    let from_group = state.group_id_to_idx["g1"];
+    let to_group = state.group_id_to_idx["g0"];
+
+    assert!(
+        state.is_transfer_feasible(day, person_idx, from_group, to_group),
+        "transfer benchmark input must be feasible"
+    );
+
     TransferBenchInput {
-        day: 1,
-        person_idx: state.person_id_to_idx["p3"],
-        from_group: state.group_id_to_idx["g2"],
-        to_group: state.group_id_to_idx["g0"],
+        day,
+        person_idx,
+        from_group,
+        to_group,
         state,
     }
 }

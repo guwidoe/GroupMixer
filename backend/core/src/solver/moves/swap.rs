@@ -498,12 +498,26 @@ impl State {
             return; // Same group, no swap needed
         }
 
-        // === UPDATE CONTACT MATRIX ===
-        let g1_members = &self.schedule[day][g1_idx].clone();
-        let g2_members = &self.schedule[day][g2_idx].clone();
+        // === TAKE OWNERSHIP OF AFFECTED GROUPS ===
+        let (mut old_g1_members, mut old_g2_members) = {
+            let day_schedule = &mut self.schedule[day];
+            if g1_idx < g2_idx {
+                let (left, right) = day_schedule.split_at_mut(g2_idx);
+                (
+                    std::mem::take(&mut left[g1_idx]),
+                    std::mem::take(&mut right[0]),
+                )
+            } else {
+                let (left, right) = day_schedule.split_at_mut(g1_idx);
+                (
+                    std::mem::take(&mut right[0]),
+                    std::mem::take(&mut left[g2_idx]),
+                )
+            }
+        };
 
         // Remove old contacts for p1 with participating members in g1
-        for &member in g1_members {
+        for &member in &old_g1_members {
             if member != p1_idx && self.person_participation[member][day] {
                 let old_count = self.contact_matrix[p1_idx][member];
                 if old_count > 0 {
@@ -524,7 +538,7 @@ impl State {
         }
 
         // Add new contacts for p1 with participating members in g2
-        for &member in g2_members {
+        for &member in &old_g2_members {
             if member != p2_idx && self.person_participation[member][day] {
                 let old_count = self.contact_matrix[p1_idx][member];
                 self.contact_matrix[p1_idx][member] += 1;
@@ -543,7 +557,7 @@ impl State {
         }
 
         // Remove old contacts for p2 with participating members in g2
-        for &member in g2_members {
+        for &member in &old_g2_members {
             if member != p2_idx && self.person_participation[member][day] {
                 let old_count = self.contact_matrix[p2_idx][member];
                 if old_count > 0 {
@@ -564,7 +578,7 @@ impl State {
         }
 
         // Add new contacts for p2 with participating members in g1
-        for &member in g1_members {
+        for &member in &old_g1_members {
             if member != p1_idx && self.person_participation[member][day] {
                 let old_count = self.contact_matrix[p2_idx][member];
                 self.contact_matrix[p2_idx][member] += 1;
@@ -582,9 +596,35 @@ impl State {
             }
         }
 
+        let g1_attr_constraints = self
+            .attribute_balance_constraint_indices_for_group_session(day, g1_idx)
+            .to_vec();
+        let g2_attr_constraints = self
+            .attribute_balance_constraint_indices_for_group_session(day, g2_idx)
+            .to_vec();
+
+        let mut g1_attr_deltas = Vec::with_capacity(g1_attr_constraints.len());
+        for &constraint_idx in &g1_attr_constraints {
+            let old_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
+                &old_g1_members,
+                constraint_idx,
+            );
+            g1_attr_deltas.push((constraint_idx, old_penalty));
+        }
+        let mut g2_attr_deltas = Vec::with_capacity(g2_attr_constraints.len());
+        for &constraint_idx in &g2_attr_constraints {
+            let old_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
+                &old_g2_members,
+                constraint_idx,
+            );
+            g2_attr_deltas.push((constraint_idx, old_penalty));
+        }
+
         // === UPDATE SCHEDULE AND LOCATIONS ===
-        self.schedule[day][g1_idx][g1_vec_idx] = p2_idx;
-        self.schedule[day][g2_idx][g2_vec_idx] = p1_idx;
+        old_g1_members[g1_vec_idx] = p2_idx;
+        old_g2_members[g2_vec_idx] = p1_idx;
+        self.schedule[day][g1_idx] = old_g1_members;
+        self.schedule[day][g2_idx] = old_g2_members;
         self.locations[day][p1_idx] = (g2_idx, g2_vec_idx);
         self.locations[day][p2_idx] = (g1_idx, g1_vec_idx);
 
@@ -597,14 +637,7 @@ impl State {
             );
         }
 
-        let g1_attr_constraints = self
-            .attribute_balance_constraint_indices_for_group_session(day, g1_idx)
-            .to_vec();
-        for constraint_idx in g1_attr_constraints {
-            let old_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
-                g1_members,
-                constraint_idx,
-            );
+        for (constraint_idx, old_penalty) in g1_attr_deltas {
             let new_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
                 &self.schedule[day][g1_idx],
                 constraint_idx,
@@ -626,14 +659,7 @@ impl State {
 
             self.attribute_balance_penalty += delta_penalty;
         }
-        let g2_attr_constraints = self
-            .attribute_balance_constraint_indices_for_group_session(day, g2_idx)
-            .to_vec();
-        for constraint_idx in g2_attr_constraints {
-            let old_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
-                g2_members,
-                constraint_idx,
-            );
+        for (constraint_idx, old_penalty) in g2_attr_deltas {
             let new_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
                 &self.schedule[day][g2_idx],
                 constraint_idx,

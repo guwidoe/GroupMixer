@@ -318,12 +318,12 @@ impl State {
             return;
         }
 
-        // === UPDATE CONTACT MATRIX ===
-        let from_group_members = self.schedule[day][from_group].clone();
-        let to_group_members = self.schedule[day][to_group].clone();
+        // === TAKE OWNERSHIP OF AFFECTED GROUPS ===
+        let old_from = std::mem::take(&mut self.schedule[day][from_group]);
+        let old_to = std::mem::take(&mut self.schedule[day][to_group]);
 
         // Remove contacts with old group members
-        for &member in from_group_members.iter() {
+        for &member in &old_from {
             if member != person_idx && self.person_participation[member][day] {
                 let old_count = self.contact_matrix[person_idx][member];
                 if old_count > 0 {
@@ -344,7 +344,7 @@ impl State {
         }
 
         // Add contacts with new group members
-        for &member in to_group_members.iter() {
+        for &member in &old_to {
             if self.person_participation[member][day] {
                 let old_count = self.contact_matrix[person_idx][member];
                 self.contact_matrix[person_idx][member] += 1;
@@ -362,11 +362,35 @@ impl State {
             }
         }
 
+        let from_attr_constraints = self
+            .attribute_balance_constraint_indices_for_group_session(day, from_group)
+            .to_vec();
+        let to_attr_constraints = self
+            .attribute_balance_constraint_indices_for_group_session(day, to_group)
+            .to_vec();
+
+        let mut from_attr_deltas = Vec::with_capacity(from_attr_constraints.len());
+        for &constraint_idx in &from_attr_constraints {
+            let old_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
+                &old_from,
+                constraint_idx,
+            );
+            from_attr_deltas.push((constraint_idx, old_penalty));
+        }
+        let mut to_attr_deltas = Vec::with_capacity(to_attr_constraints.len());
+        for &constraint_idx in &to_attr_constraints {
+            let old_penalty = self
+                .calculate_group_attribute_penalty_for_constraint_members(&old_to, constraint_idx);
+            to_attr_deltas.push((constraint_idx, old_penalty));
+        }
+
         // === UPDATE SCHEDULE AND LOCATIONS ===
         // Deterministic rebuild to avoid duplicates
-        let old_from = std::mem::take(&mut self.schedule[day][from_group]);
-        let old_to = std::mem::take(&mut self.schedule[day][to_group]);
-        let new_from: Vec<usize> = old_from.into_iter().filter(|&p| p != person_idx).collect();
+        let new_from: Vec<usize> = old_from
+            .iter()
+            .copied()
+            .filter(|&p| p != person_idx)
+            .collect();
         let mut new_to = old_to;
         new_to.push(person_idx);
 
@@ -403,30 +427,31 @@ impl State {
             self.locations[day][pid] = (to_group, pos);
         }
 
+        let before_group_of = |other_person: usize| {
+            if other_person == person_idx {
+                from_group
+            } else {
+                self.locations[day][other_person].0
+            }
+        };
+        let after_group_of = |other_person: usize| {
+            if other_person == person_idx {
+                to_group
+            } else {
+                self.locations[day][other_person].0
+            }
+        };
+
         // === UPDATE ATTRIBUTE BALANCE PENALTY ===
         // Recalculate attribute balance penalty for affected groups
-        let from_attr_constraints = self
-            .attribute_balance_constraint_indices_for_group_session(day, from_group)
-            .to_vec();
-        for constraint_idx in from_attr_constraints {
-            let old_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
-                &from_group_members,
-                constraint_idx,
-            );
+        for (constraint_idx, old_penalty) in from_attr_deltas {
             let new_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
                 &self.schedule[day][from_group],
                 constraint_idx,
             );
             self.attribute_balance_penalty += new_penalty - old_penalty;
         }
-        let to_attr_constraints = self
-            .attribute_balance_constraint_indices_for_group_session(day, to_group)
-            .to_vec();
-        for constraint_idx in to_attr_constraints {
-            let old_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
-                &to_group_members,
-                constraint_idx,
-            );
+        for (constraint_idx, old_penalty) in to_attr_deltas {
             let new_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
                 &self.schedule[day][to_group],
                 constraint_idx,
@@ -456,8 +481,8 @@ impl State {
                 continue;
             }
 
-            let were_together = from_group_members.contains(&other_person);
-            let are_together = to_group_members.contains(&other_person);
+            let were_together = before_group_of(person_idx) == before_group_of(other_person);
+            let are_together = after_group_of(person_idx) == after_group_of(other_person);
 
             if were_together && !are_together {
                 self.forbidden_pair_violations[pair_idx] -= 1;
@@ -483,8 +508,8 @@ impl State {
                 continue;
             }
 
-            let was_violation = !from_group_members.contains(&other_person);
-            let is_violation = !to_group_members.contains(&other_person);
+            let was_violation = before_group_of(person_idx) != before_group_of(other_person);
+            let is_violation = after_group_of(person_idx) != after_group_of(other_person);
 
             if was_violation && !is_violation {
                 self.should_together_violations[pair_idx] -= 1;
@@ -503,10 +528,8 @@ impl State {
             if !self.person_participation[other][day] {
                 continue;
             }
-            // Before: together if other was in from_group
-            let were_same = from_group_members.contains(&other);
-            // After: together if other is now in to_group (person moved there)
-            let are_same = self.schedule[day][to_group].contains(&other);
+            let were_same = before_group_of(person_idx) == before_group_of(other);
+            let are_same = after_group_of(person_idx) == after_group_of(other);
             if were_same == are_same {
                 continue;
             }
