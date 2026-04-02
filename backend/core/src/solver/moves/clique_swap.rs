@@ -50,6 +50,93 @@ impl State {
             .collect()
     }
 
+    fn active_clique_members_for_group(
+        &self,
+        day: usize,
+        clique_idx: usize,
+        from_group: usize,
+    ) -> Vec<usize> {
+        self.cliques[clique_idx]
+            .iter()
+            .copied()
+            .filter(|&member| self.person_participation[member][day])
+            .filter(|&member| self.locations[day][member].0 == from_group)
+            .collect()
+    }
+
+    fn clique_swap_targets_are_valid(
+        &self,
+        day: usize,
+        from_group: usize,
+        to_group: usize,
+        active_members: &[usize],
+        target_people: &[usize],
+    ) -> bool {
+        if active_members.is_empty() || active_members.len() != target_people.len() {
+            return false;
+        }
+
+        for &member in active_members {
+            if let Some(&required_group) = self.immovable_people.get(&(member, day)) {
+                if required_group != to_group {
+                    return false;
+                }
+            }
+        }
+
+        let mut seen_targets = std::collections::HashSet::with_capacity(target_people.len());
+        for &person in target_people {
+            if !seen_targets.insert(person)
+                || active_members.contains(&person)
+                || !self.person_participation[person][day]
+                || self.locations[day][person].0 != to_group
+                || self.person_to_clique_id[day][person].is_some()
+            {
+                return false;
+            }
+
+            if let Some(&required_group) = self.immovable_people.get(&(person, day)) {
+                if required_group != from_group {
+                    return false;
+                }
+            }
+        }
+
+        true
+    }
+
+    fn update_contact_cache_for_clique_swap_pair(&mut self, person_a: usize, person_b: usize, delta: i32) {
+        let old_count = self.contact_matrix[person_a][person_b];
+
+        if delta < 0 {
+            if old_count == 0 {
+                return;
+            }
+
+            self.contact_matrix[person_a][person_b] -= 1;
+            self.contact_matrix[person_b][person_a] -= 1;
+
+            if old_count == 1 {
+                self.unique_contacts -= 1;
+            }
+
+            let old_penalty = self.repetition_penalty_for_contact_count(old_count);
+            let new_penalty = self.repetition_penalty_for_contact_count(old_count - 1);
+            self.repetition_penalty += new_penalty - old_penalty;
+        } else {
+            self.contact_matrix[person_a][person_b] += 1;
+            self.contact_matrix[person_b][person_a] += 1;
+
+            if old_count == 0 {
+                self.unique_contacts += 1;
+            }
+
+            let old_penalty = self.repetition_penalty_for_contact_count(old_count);
+            let new_penalty = self.repetition_penalty_for_contact_count(old_count + 1);
+            self.repetition_penalty += new_penalty - old_penalty;
+        }
+    }
+
     /// Check if a clique swap is feasible between two groups
     pub fn is_clique_swap_feasible(
         &self,
@@ -66,14 +153,7 @@ impl State {
             }
         }
 
-        let clique = &self.cliques[clique_idx];
-        // Active members are those participating this day and currently in from_group
-        let active_members: Vec<usize> = clique
-            .iter()
-            .cloned()
-            .filter(|&m| self.person_participation[m][day])
-            .filter(|&m| self.locations[day][m].0 == from_group)
-            .collect();
+        let active_members = self.active_clique_members_for_group(day, clique_idx, from_group);
 
         if active_members.is_empty() {
             return false;
@@ -87,7 +167,6 @@ impl State {
             return false;
         }
 
-        // Hard guard: do not allow moving a clique if any active member is immovable to a different group
         for &member in &active_members {
             if let Some(&required_group) = self.immovable_people.get(&(member, day)) {
                 if required_group != to_group {
@@ -117,54 +196,15 @@ impl State {
             }
         }
 
-        let clique = &self.cliques[clique_idx];
-        // Active members are participating and currently in from_group
-        let active_members: Vec<usize> = clique
-            .iter()
-            .cloned()
-            .filter(|&member| self.person_participation[member][day])
-            .filter(|&member| self.locations[day][member].0 == from_group)
-            .collect();
-
-        if active_members.is_empty() {
-            return f64::INFINITY; // No participating clique members
-        }
-
-        if target_people.len() != active_members.len() {
+        let active_members = self.active_clique_members_for_group(day, clique_idx, from_group);
+        if !self.clique_swap_targets_are_valid(
+            day,
+            from_group,
+            to_group,
+            &active_members,
+            target_people,
+        ) {
             return f64::INFINITY;
-        }
-
-        // Check if target people are all participating
-        if !target_people
-            .iter()
-            .all(|&person| self.person_participation[person][day])
-        {
-            return f64::INFINITY; // Some target people not participating
-        }
-
-        if !target_people
-            .iter()
-            .all(|&person| self.locations[day][person].0 == to_group)
-        {
-            return f64::INFINITY;
-        }
-
-        // Hard guard: do not allow moving a clique if any active member is immovable to a different group
-        for &member in &active_members {
-            if let Some(&required_group) = self.immovable_people.get(&(member, day)) {
-                if required_group != to_group {
-                    return f64::INFINITY;
-                }
-            }
-        }
-
-        // Hard guard: do not allow swapping in any target person who is immovable to a different group
-        for &person in target_people {
-            if let Some(&required_group) = self.immovable_people.get(&(person, day)) {
-                if required_group != from_group {
-                    return f64::INFINITY;
-                }
-            }
         }
 
         let previous_cost = self.current_cost;
@@ -366,55 +406,61 @@ impl State {
             }
         }
 
-        let clique_all = self.cliques[clique_idx].clone();
-        // Determine active clique members for this day located in from_group
-        let active_members: Vec<usize> = clique_all
-            .iter()
-            .cloned()
-            .filter(|&m| self.person_participation[m][day])
-            .filter(|&m| self.locations[day][m].0 == from_group)
-            .collect();
-
-        if active_members.is_empty() {
+        let active_members = self.active_clique_members_for_group(day, clique_idx, from_group);
+        if !self.clique_swap_targets_are_valid(
+            day,
+            from_group,
+            to_group,
+            &active_members,
+            target_people,
+        ) {
             return;
         }
 
-        if active_members.len() != target_people.len() {
-            return; // sizes must match
-        }
-
-        // Hard guard: do not move if any active member is immovable to a different group
-        for &member in &active_members {
-            if let Some(&required_group) = self.immovable_people.get(&(member, day)) {
-                if required_group != to_group {
-                    return;
-                }
-            }
-        }
-
-        // Hard guard: do not move if any target person is immovable to a different group
-        for &person in target_people {
-            if let Some(&required_group) = self.immovable_people.get(&(person, day)) {
-                if required_group != from_group {
-                    return;
-                }
-            }
-        }
-
-        // Rebuild groups deterministically to avoid duplicates
         let old_from = self.schedule[day][from_group].clone();
         let old_to = self.schedule[day][to_group].clone();
 
-        let mut new_from: Vec<usize> = old_from
-            .into_iter()
-            .filter(|p| !active_members.contains(p))
+        let source_remaining: Vec<usize> = old_from
+            .iter()
+            .copied()
+            .filter(|person| !active_members.contains(person))
             .collect();
+        let target_remaining: Vec<usize> = old_to
+            .iter()
+            .copied()
+            .filter(|person| !target_people.contains(person))
+            .collect();
+
+        for &member in &active_members {
+            for &other in &source_remaining {
+                if self.person_participation[other][day] {
+                    self.update_contact_cache_for_clique_swap_pair(member, other, -1);
+                }
+            }
+            for &other in &target_remaining {
+                if self.person_participation[other][day] {
+                    self.update_contact_cache_for_clique_swap_pair(member, other, 1);
+                }
+            }
+        }
+
+        for &person in target_people {
+            for &other in &target_remaining {
+                if self.person_participation[other][day] {
+                    self.update_contact_cache_for_clique_swap_pair(person, other, -1);
+                }
+            }
+            for &other in &source_remaining {
+                if self.person_participation[other][day] {
+                    self.update_contact_cache_for_clique_swap_pair(person, other, 1);
+                }
+            }
+        }
+
+        let mut new_from = source_remaining.clone();
         new_from.extend_from_slice(target_people);
 
-        let mut new_to: Vec<usize> = old_to
-            .into_iter()
-            .filter(|p| !target_people.contains(p))
-            .collect();
+        let mut new_to = target_remaining.clone();
         new_to.extend_from_slice(&active_members);
 
         #[cfg(feature = "debug-invariant-checks")]
@@ -465,8 +511,11 @@ impl State {
             self.locations[day][pid] = (to_group, pos);
         }
 
-        // Recalculate scores (clique swap touches many structures)
-        self._recalculate_scores();
+        self._recalculate_attribute_balance_penalty();
+        self._recalculate_constraint_penalty();
+        self.recalculate_pairmin_counts();
+        self._update_constraint_penalty_total();
+        self.refresh_cost_from_caches();
 
         #[cfg(feature = "debug-invariant-checks")]
         {

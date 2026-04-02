@@ -490,24 +490,7 @@ impl State {
         // Recalculate constraint penalties
         self._recalculate_constraint_penalty();
 
-        // Initialize PairMinMeetings counts from current schedule
-        for count in &mut self.pairmin_counts {
-            *count = 0;
-        }
-        for (idx, &(a, b)) in self.pairmin_pairs.iter().enumerate() {
-            let sessions = &self.pairmin_sessions[idx];
-            let mut cnt = 0u32;
-            for &day in sessions {
-                if self.person_participation[a][day] && self.person_participation[b][day] {
-                    let (ga, _) = self.locations[day][a];
-                    let (gb, _) = self.locations[day][b];
-                    if ga == gb {
-                        cnt += 1;
-                    }
-                }
-            }
-            self.pairmin_counts[idx] = cnt;
-        }
+        self.recalculate_pairmin_counts();
 
         // Keep the legacy unweighted constraint counter consistent with calculate_cost()
         self._update_constraint_penalty_total();
@@ -546,6 +529,26 @@ impl State {
             + self.weighted_constraint_penalty
             - (self.unique_contacts as f64 * self.w_contacts)
             + self.baseline_score;
+    }
+
+    pub(crate) fn recalculate_pairmin_counts(&mut self) {
+        for count in &mut self.pairmin_counts {
+            *count = 0;
+        }
+        for (idx, &(a, b)) in self.pairmin_pairs.iter().enumerate() {
+            let sessions = &self.pairmin_sessions[idx];
+            let mut cnt = 0u32;
+            for &day in sessions {
+                if self.person_participation[a][day] && self.person_participation[b][day] {
+                    let (ga, _) = self.locations[day][a];
+                    let (gb, _) = self.locations[day][b];
+                    if ga == gb {
+                        cnt += 1;
+                    }
+                }
+            }
+            self.pairmin_counts[idx] = cnt;
+        }
     }
 
     /// Converts the current state to an API result format.

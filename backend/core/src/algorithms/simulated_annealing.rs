@@ -1192,10 +1192,7 @@ impl Solver for SimulatedAnnealing {
                             let apply_seconds =
                                 get_elapsed_seconds_between(apply_started_at, apply_finished_at);
                             telemetry.apply_seconds += apply_seconds;
-                            telemetry.full_recalculation_count += 1;
-                            telemetry.full_recalculation_seconds += apply_seconds;
 
-                            // Since apply_clique_swap does a full recalculation, we need to get the actual cost
                             let actual_current_cost = current_state.current_cost;
                             recorded_delta = actual_current_cost - prev_cost;
 
