@@ -529,6 +529,9 @@ impl State {
     /// # Ok::<(), gm_core::solver::SolverError>(())
     /// ```
     pub fn apply_swap(&mut self, day: usize, p1_idx: usize, p2_idx: usize) {
+        #[cfg(feature = "debug-attr-balance-tracing")]
+        let debug_attr_balance = std::env::var_os("DEBUG_ATTR_BALANCE").is_some();
+
         // Verify both people are participating in this session
         if !self.person_participation[p1_idx][day] || !self.person_participation[p2_idx][day] {
             eprintln!(
@@ -636,7 +639,8 @@ impl State {
         self.locations[day][p2_idx] = (g1_idx, g1_vec_idx);
 
         // === UPDATE ATTRIBUTE BALANCE PENALTY ===
-        if std::env::var("DEBUG_ATTR_BALANCE").is_ok() {
+        #[cfg(feature = "debug-attr-balance-tracing")]
+        if debug_attr_balance {
             println!(
                 "DEBUG: apply_swap - before attribute balance update: {}",
                 self.attribute_balance_penalty
@@ -689,7 +693,8 @@ impl State {
             let delta_penalty =
                 (new_penalty_g1 + new_penalty_g2) - (old_penalty_g1 + old_penalty_g2);
 
-            if std::env::var("DEBUG_ATTR_BALANCE").is_ok() && delta_penalty.abs() > 0.001 {
+            #[cfg(feature = "debug-attr-balance-tracing")]
+            if debug_attr_balance && delta_penalty.abs() > 0.001 {
                 println!(
                         "DEBUG: apply_swap - specific constraint '{}' on group '{}' (applies_to_g1={}, applies_to_g2={}):",
                         ac.attribute_key, ac.group_id, applies_to_g1, applies_to_g2
@@ -709,7 +714,8 @@ impl State {
             self.attribute_balance_penalty += delta_penalty;
         }
 
-        if std::env::var("DEBUG_ATTR_BALANCE").is_ok() {
+        #[cfg(feature = "debug-attr-balance-tracing")]
+        if debug_attr_balance {
             println!(
                 "DEBUG: apply_swap - after attribute balance update: {}",
                 self.attribute_balance_penalty

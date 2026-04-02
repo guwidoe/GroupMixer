@@ -10,6 +10,7 @@ path = "src/lib.rs"
 [features]
 default = []
 cache-drift-assertions = []
+debug-attr-balance-tracing = []
 
 [dependencies]
 serde = { version = "1.0.190", features = ["derive"] }
