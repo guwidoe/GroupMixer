@@ -138,7 +138,7 @@ cargo test -p gm-wasm
 The canonical browser/WASM surface is now consumed through the webapp adapter in:
 
 - `webapp/src/services/wasm/contracts.ts`
-- compatibility facade: `webapp/src/services/wasm.ts`
+- thin app-facing evaluation adapter: `webapp/src/services/wasm.ts`
 - worker/runtime path: `webapp/src/services/solverWorker.ts` and `webapp/src/workers/solverWorker.ts`
 
 Recommended local checks when changing the browser surface:
