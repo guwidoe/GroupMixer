@@ -33,7 +33,8 @@ Separate API surface.
 
 Required layers:
 - route/integration tests through Axum router
-- job manager lifecycle tests
+- contract help/schema/error surface tests
+- canonical error-envelope tests for the public HTTP endpoints
 
 ### `gm-wasm`
 Wrapper/interoperability layer.
@@ -268,7 +269,7 @@ Heavier layers remain intentionally separate today:
 - **Data-driven solver tests**: realistic end-to-end solver contract behavior
 - **Property tests**: invariants that must hold across broad input spaces
 - **Mutation tests**: whether solver tests actually fail on logic changes
-- **Server integration tests**: routing, HTTP status, serialization, job lifecycle
+- **Server integration tests**: routing, HTTP status, serialization, discovery/help, and canonical error envelopes
 - **WASM tests**: parse/serialize/callback/wrapper correctness at the JS boundary
 - **Frontend logic tests**: store actions, services, conversions, persistence, utility logic
 - **Component tests**: interaction and rendering behavior of critical UI surfaces

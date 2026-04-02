@@ -551,8 +551,8 @@ browser surface stays thin and contract-driven:
    - enumerate exported WASM affordances
    - map public solver-facing exports onto stable `gm-contracts`
      operation IDs
-   - mark legacy/support-only exports as explicitly out of scope rather than
-     letting them silently masquerade as contract surfaces
+   - delete obsolete compatibility exports instead of letting them linger
+     beside the canonical contract surface
 2. **Bootstrap + local help + schema accessors**
    - expose a minimal browser-local bootstrap surface such as capabilities/help
    - expose local help for one operation at a time
@@ -589,18 +589,9 @@ The intended public/browser-local execution surface is:
 - `evaluate_input(request)`
 - `inspect_result(result)`
 
-Legacy JSON-string compatibility exports, if they remain temporarily, should be
-explicitly named as support-only shims such as:
-
-- `solve_legacy_json(...)`
-- `solve_with_progress_legacy_json(...)`
-- `validate_scenario_legacy_json(...)`
-- `get_default_settings_legacy_json()`
-- `get_recommended_settings_legacy_json(...)`
-- `evaluate_input_legacy_json(...)`
-
-These should be exported as thin JS/WASM projections of `gm-contracts`, not
-as a second handwritten semantic registry.
+The WASM surface should remain contract-native only. Avoid reintroducing any
+parallel JSON-string compatibility layer or second handwritten semantic
+registry.
 
 ### Phase 5 — Generate reference docs
 

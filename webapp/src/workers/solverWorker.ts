@@ -16,6 +16,10 @@ import {
   type WorkerResponseMessage,
 } from "../services/solverWorker/protocol";
 import type { ProgressUpdate, RustResult } from "../services/wasm/types";
+import type {
+  WasmContractSolveInput,
+  WasmRecommendSettingsRequest,
+} from "../services/wasm/module";
 
 type WorkerConsole = Pick<Console, "warn" | "error">;
 
@@ -119,6 +123,30 @@ export function createSolverWorkerRuntime({
     return value;
   }
 
+  function requireScenarioPayload(message: RpcRequestMessage | WorkerRequestMessage): WasmContractSolveInput {
+    const value = "data" in message ? message.data?.scenarioPayload : undefined;
+    if (!value) {
+      throw new Error(`Worker RPC ${message.type} requires scenarioPayload`);
+    }
+    return value;
+  }
+
+  function requireRecommendRequest(message: RpcRequestMessage): WasmRecommendSettingsRequest {
+    const value = message.data.recommendRequest;
+    if (!value) {
+      throw new Error(`Worker RPC ${message.type} requires recommendRequest`);
+    }
+    return value;
+  }
+
+  function requireResultPayload(message: RpcRequestMessage): RustResult {
+    const value = message.data.resultPayload;
+    if (!value) {
+      throw new Error(`Worker RPC ${message.type} requires resultPayload`);
+    }
+    return value;
+  }
+
   function handleRpcMessage(message: RpcRequestMessage): void {
     const { id, type } = message;
 
@@ -149,31 +177,19 @@ export function createSolverWorkerRuntime({
         result = requireMethod("get_public_error")(requireStringArg(message, "errorCode"));
         break;
       case "validate_scenario":
-        result = requireMethod("validate_scenario")(message.data.scenarioPayload || {});
+        result = requireMethod("validate_scenario")(requireScenarioPayload(message));
         break;
       case "get_default_solver_configuration":
         result = requireMethod("get_default_solver_configuration")();
         break;
       case "recommend_settings":
-        result = requireMethod("recommend_settings")(
-          message.data.recommendRequest || {
-            scenario: {
-              people: [],
-              groups: [],
-              num_sessions: 0,
-              objectives: [],
-              constraints: [],
-              settings: { solver_type: "SimulatedAnnealing", stop_conditions: {}, solver_params: {} },
-            },
-            desired_runtime_seconds: 0,
-          },
-        );
+        result = requireMethod("recommend_settings")(requireRecommendRequest(message));
         break;
       case "evaluate_input":
-        result = requireMethod("evaluate_input")(message.data.scenarioPayload || {});
+        result = requireMethod("evaluate_input")(requireScenarioPayload(message));
         break;
       case "inspect_result":
-        result = requireMethod("inspect_result")(message.data.resultPayload || { schedule: {}, final_score: 0 });
+        result = requireMethod("inspect_result")(requireResultPayload(message));
         break;
     }
 
@@ -192,7 +208,8 @@ export function createSolverWorkerRuntime({
         }
 
         case "SOLVE": {
-          const { scenarioPayload, useProgress } = message.data;
+          const { useProgress } = message.data;
+          const scenarioPayload = requireScenarioPayload(message);
 
           if (!isInitialized) {
             await initWasm();
@@ -215,10 +232,7 @@ export function createSolverWorkerRuntime({
               }
             : undefined;
 
-          const result = wasm.solve_with_progress(
-            scenarioPayload || {},
-            progressCallback,
-          ) as RustResult;
+          const result = wasm.solve_with_progress(scenarioPayload, progressCallback) as RustResult;
           postMessage(createSolveSuccessMessage(id, result, lastProgress));
           break;
         }

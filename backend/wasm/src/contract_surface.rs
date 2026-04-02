@@ -5,16 +5,9 @@ use gm_contracts::operations::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum WasmSurfaceScope {
-    PublicContract,
-    OutOfScopeSupport,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WasmContractBinding {
     pub export_name: &'static str,
     pub operation_id: Option<&'static str>,
-    pub scope: WasmSurfaceScope,
     pub note: &'static str,
 }
 
@@ -22,134 +15,72 @@ const WASM_BINDINGS: &[WasmContractBinding] = &[
     WasmContractBinding {
         export_name: "capabilities",
         operation_id: None,
-        scope: WasmSurfaceScope::PublicContract,
         note: "Bootstrap capability listing derived from gm-contracts.",
     },
     WasmContractBinding {
         export_name: "get_operation_help",
         operation_id: None,
-        scope: WasmSurfaceScope::PublicContract,
         note: "Local help lookup for a single operation from gm-contracts.",
     },
     WasmContractBinding {
         export_name: "list_schemas",
         operation_id: Some(GET_SCHEMA_OPERATION_ID),
-        scope: WasmSurfaceScope::PublicContract,
         note: "Schema listing derived from gm-contracts.",
     },
     WasmContractBinding {
         export_name: "get_schema",
         operation_id: Some(GET_SCHEMA_OPERATION_ID),
-        scope: WasmSurfaceScope::PublicContract,
         note: "Schema lookup derived from gm-contracts.",
     },
     WasmContractBinding {
         export_name: "list_public_errors",
         operation_id: Some(INSPECT_ERRORS_OPERATION_ID),
-        scope: WasmSurfaceScope::PublicContract,
         note: "Public error catalog listing derived from gm-contracts.",
     },
     WasmContractBinding {
         export_name: "get_public_error",
         operation_id: Some(INSPECT_ERRORS_OPERATION_ID),
-        scope: WasmSurfaceScope::PublicContract,
         note: "Public error lookup derived from gm-contracts.",
     },
     WasmContractBinding {
         export_name: "solve",
         operation_id: Some(SOLVE_OPERATION_ID),
-        scope: WasmSurfaceScope::PublicContract,
         note: "Primary contract-native solve export returning structured JS values.",
     },
     WasmContractBinding {
         export_name: "solve_with_progress",
         operation_id: Some(SOLVE_OPERATION_ID),
-        scope: WasmSurfaceScope::PublicContract,
         note: "Contract-native solve export returning structured JS values with optional progress callbacks.",
     },
     WasmContractBinding {
         export_name: "validate_scenario",
         operation_id: Some(VALIDATE_SCENARIO_OPERATION_ID),
-        scope: WasmSurfaceScope::PublicContract,
         note: "Contract-native validation export returning the shared validation shape.",
     },
     WasmContractBinding {
         export_name: "get_default_solver_configuration",
         operation_id: Some(GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID),
-        scope: WasmSurfaceScope::PublicContract,
         note: "Contract-native default configuration export returning structured JS values.",
     },
     WasmContractBinding {
         export_name: "recommend_settings",
         operation_id: Some(RECOMMEND_SETTINGS_OPERATION_ID),
-        scope: WasmSurfaceScope::PublicContract,
         note: "Contract-native recommendation export returning structured JS values.",
     },
     WasmContractBinding {
         export_name: "evaluate_input",
         operation_id: Some(EVALUATE_INPUT_OPERATION_ID),
-        scope: WasmSurfaceScope::PublicContract,
         note: "Contract-native evaluation export returning structured JS values.",
     },
     WasmContractBinding {
         export_name: "inspect_result",
         operation_id: Some(INSPECT_RESULT_OPERATION_ID),
-        scope: WasmSurfaceScope::PublicContract,
         note: "Contract-native result inspection export returning shared summaries.",
-    },
-    WasmContractBinding {
-        export_name: "greet",
-        operation_id: None,
-        scope: WasmSurfaceScope::OutOfScopeSupport,
-        note: "Example/demo export; not part of the public solver contract.",
     },
     WasmContractBinding {
         export_name: "init_panic_hook",
         operation_id: None,
-        scope: WasmSurfaceScope::OutOfScopeSupport,
-        note: "Runtime support export; not part of the public solver contract.",
-    },
-    WasmContractBinding {
-        export_name: "solve_legacy_json",
-        operation_id: None,
-        scope: WasmSurfaceScope::OutOfScopeSupport,
-        note: "Legacy JSON-string solve export retained for compatibility during the WASM contract rollout.",
-    },
-    WasmContractBinding {
-        export_name: "solve_with_progress_legacy_json",
-        operation_id: None,
-        scope: WasmSurfaceScope::OutOfScopeSupport,
-        note: "Legacy JSON-string progress solve export retained for compatibility during the WASM contract rollout.",
-    },
-    WasmContractBinding {
-        export_name: "validate_scenario_legacy_json",
-        operation_id: None,
-        scope: WasmSurfaceScope::OutOfScopeSupport,
-        note: "Legacy JSON-string validation export retained for compatibility during the WASM contract rollout.",
-    },
-    WasmContractBinding {
-        export_name: "get_default_settings_legacy_json",
-        operation_id: None,
-        scope: WasmSurfaceScope::OutOfScopeSupport,
-        note: "Legacy convenience export outside the public contract registry.",
-    },
-    WasmContractBinding {
-        export_name: "evaluate_input_legacy_json",
-        operation_id: None,
-        scope: WasmSurfaceScope::OutOfScopeSupport,
-        note: "Legacy JSON-string evaluation export retained for compatibility during the WASM contract rollout.",
-    },
-    WasmContractBinding {
-        export_name: "test_callback_consistency",
-        operation_id: None,
-        scope: WasmSurfaceScope::OutOfScopeSupport,
-        note: "Diagnostic export outside the public solver contract.",
-    },
-    WasmContractBinding {
-        export_name: "get_recommended_settings_legacy_json",
-        operation_id: None,
-        scope: WasmSurfaceScope::OutOfScopeSupport,
-        note: "Legacy JSON-string recommendation export retained for compatibility during the WASM contract rollout.",
+        note: "Runtime support export required for browser-facing panic diagnostics.",
     },
 ];
 
@@ -158,9 +89,7 @@ pub fn wasm_contract_bindings() -> &'static [WasmContractBinding] {
 }
 
 pub fn public_contract_bindings() -> impl Iterator<Item = &'static WasmContractBinding> {
-    WASM_BINDINGS
-        .iter()
-        .filter(|binding| binding.scope == WasmSurfaceScope::PublicContract)
+    WASM_BINDINGS.iter()
 }
 
 pub fn binding_for_export(export_name: &str) -> Option<&'static WasmContractBinding> {
@@ -177,9 +106,7 @@ pub fn binding_for_operation_id(operation_id: &str) -> Option<&'static WasmContr
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        binding_for_export, public_contract_bindings, wasm_contract_bindings, WasmSurfaceScope,
-    };
+    use super::{binding_for_export, public_contract_bindings, wasm_contract_bindings};
     use gm_contracts::{bootstrap::bootstrap_spec, operations::operation_spec};
     use std::collections::HashSet;
 
@@ -222,18 +149,8 @@ mod tests {
     }
 
     #[test]
-    fn legacy_and_compatibility_exports_are_explicitly_out_of_scope() {
-        for export_name in [
-            "solve_legacy_json",
-            "solve_with_progress_legacy_json",
-            "validate_scenario_legacy_json",
-            "get_default_settings_legacy_json",
-            "evaluate_input_legacy_json",
-            "get_recommended_settings_legacy_json",
-        ] {
-            let binding = binding_for_export(export_name).expect("legacy binding");
-            assert_eq!(binding.scope, WasmSurfaceScope::OutOfScopeSupport);
-            assert!(binding.operation_id.is_none());
-        }
+    fn runtime_support_exports_are_explicit() {
+        let binding = binding_for_export("init_panic_hook").expect("runtime binding");
+        assert!(binding.operation_id.is_none());
     }
 }

@@ -181,8 +181,8 @@ Canonical browser-facing WASM exports are now the clean structured names:
 - `evaluate_input`
 - `inspect_result`
 
-Legacy JSON-string compatibility exports, where still retained, must be explicit
-support shims with `*_legacy_json` names.
+The browser-facing WASM surface is contract-native only. Do not add `*_legacy_json`
+compatibility shims or parallel browser APIs.
 
 ## Related docs
 

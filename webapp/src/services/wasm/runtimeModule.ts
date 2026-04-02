@@ -82,30 +82,10 @@ export const get_public_error = bindRuntimeFunction("get_public_error");
 export const get_default_solver_configuration = bindRuntimeFunction(
   "get_default_solver_configuration",
 );
-export const get_default_settings_legacy_json = bindRuntimeFunction(
-  "get_default_settings_legacy_json",
-);
-export const greet = bindRuntimeFunction("greet");
 export const init_panic_hook = bindRuntimeFunction("init_panic_hook");
 export const recommend_settings = bindRuntimeFunction("recommend_settings");
-export const get_recommended_settings_legacy_json = bindRuntimeFunction(
-  "get_recommended_settings_legacy_json",
-);
 export const solve = bindRuntimeFunction("solve");
-export const solve_legacy_json = bindRuntimeFunction("solve_legacy_json");
 export const solve_with_progress = bindRuntimeFunction("solve_with_progress");
-export const solve_with_progress_legacy_json = bindRuntimeFunction(
-  "solve_with_progress_legacy_json",
-);
 export const validate_scenario = bindRuntimeFunction("validate_scenario");
-export const validate_scenario_legacy_json = bindRuntimeFunction(
-  "validate_scenario_legacy_json",
-);
 export const evaluate_input = bindRuntimeFunction("evaluate_input");
-export const evaluate_input_legacy_json = bindRuntimeFunction(
-  "evaluate_input_legacy_json",
-);
 export const inspect_result = bindRuntimeFunction("inspect_result");
-export const test_callback_consistency = bindRuntimeFunction(
-  "test_callback_consistency",
-);

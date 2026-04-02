@@ -1,11 +1,7 @@
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
+use gm_api::api::contract_surface::public_contract_bindings;
 use gm_api::api::routes::create_router;
-use gm_api::api::{
-    contract_surface::public_contract_bindings,
-    handlers::{AppState, CreateJobResponse},
-};
-use gm_api::jobs::manager::{Job, JobManager, JobStatus};
 use gm_contracts::types::{
     RecommendSettingsRequest, ResultSummary, SolveRequest, ValidateResponse,
 };
@@ -17,9 +13,7 @@ use http_body_util::BodyExt;
 use serde::de::DeserializeOwned;
 use serde_json::json;
 use std::collections::HashMap;
-use std::time::Duration;
 use tower::util::ServiceExt;
-use uuid::Uuid;
 
 fn valid_input() -> ApiInput {
     ApiInput {
@@ -89,16 +83,6 @@ fn valid_input() -> ApiInput {
     }
 }
 
-fn invalid_input() -> ApiInput {
-    let mut input = valid_input();
-    input.problem.groups = vec![Group {
-        id: "g0".to_string(),
-        size: 1,
-        session_sizes: None,
-    }];
-    input
-}
-
 fn valid_request() -> SolveRequest {
     SolveRequest::from(valid_input())
 }
@@ -108,180 +92,9 @@ async fn json_response<T: DeserializeOwned>(response: axum::response::Response) 
     serde_json::from_slice(&bytes).unwrap()
 }
 
-async fn wait_for_terminal_job(manager: &JobManager, job_id: Uuid) -> Job {
-    for _ in 0..100 {
-        if let Some(job) = manager.get_job(job_id) {
-            match job.status {
-                JobStatus::Completed | JobStatus::Failed => return job,
-                JobStatus::Pending | JobStatus::Running => {}
-            }
-        }
-        tokio::time::sleep(Duration::from_millis(20)).await;
-    }
-
-    panic!("job {job_id} did not reach a terminal state in time");
-}
-
-#[tokio::test]
-async fn router_creates_jobs_and_serves_status_and_result() {
-    let job_manager = JobManager::new();
-    let app_state = AppState {
-        job_manager: job_manager.clone(),
-    };
-    let app = create_router(app_state);
-
-    let create_request = Request::builder()
-        .method("POST")
-        .uri("/api/v1/jobs")
-        .header("content-type", "application/json")
-        .body(Body::from(serde_json::to_vec(&valid_input()).unwrap()))
-        .unwrap();
-
-    let create_response = app.clone().oneshot(create_request).await.unwrap();
-    assert_eq!(create_response.status(), StatusCode::CREATED);
-
-    let create_body: CreateJobResponse = json_response(create_response).await;
-    let completed_job = wait_for_terminal_job(&job_manager, create_body.job_id).await;
-    assert_eq!(completed_job.status, JobStatus::Completed);
-    assert!(completed_job
-        .result
-        .as_deref()
-        .is_some_and(|result| result.contains("schedule")));
-
-    let status_request = Request::builder()
-        .method("GET")
-        .uri(format!("/api/v1/jobs/{}/status", create_body.job_id))
-        .body(Body::empty())
-        .unwrap();
-    let status_response = app.clone().oneshot(status_request).await.unwrap();
-    assert_eq!(status_response.status(), StatusCode::OK);
-    let status_job: Job = json_response(status_response).await;
-    assert_eq!(status_job.status, JobStatus::Completed);
-    assert_eq!(status_job.id, create_body.job_id);
-
-    let result_request = Request::builder()
-        .method("GET")
-        .uri(format!("/api/v1/jobs/{}/result", create_body.job_id))
-        .body(Body::empty())
-        .unwrap();
-    let result_response = app.oneshot(result_request).await.unwrap();
-    assert_eq!(result_response.status(), StatusCode::OK);
-    let result_job: Job = json_response(result_response).await;
-    assert_eq!(result_job.status, JobStatus::Completed);
-    assert_eq!(result_job.id, create_body.job_id);
-    assert_eq!(result_job.result, status_job.result);
-}
-
-#[tokio::test]
-async fn router_rejects_invalid_json_and_unknown_jobs() {
-    let app = create_router(AppState {
-        job_manager: JobManager::new(),
-    });
-
-    let invalid_json_request = Request::builder()
-        .method("POST")
-        .uri("/api/v1/jobs")
-        .header("content-type", "application/json")
-        .body(Body::from(r#"{"problem":"nope"}"#))
-        .unwrap();
-    let invalid_json_response = app.clone().oneshot(invalid_json_request).await.unwrap();
-    assert_eq!(
-        invalid_json_response.status(),
-        StatusCode::UNPROCESSABLE_ENTITY
-    );
-
-    let missing_id = Uuid::new_v4();
-    let status_request = Request::builder()
-        .method("GET")
-        .uri(format!("/api/v1/jobs/{missing_id}/status"))
-        .body(Body::empty())
-        .unwrap();
-    let status_response = app.clone().oneshot(status_request).await.unwrap();
-    assert_eq!(status_response.status(), StatusCode::NOT_FOUND);
-
-    let result_request = Request::builder()
-        .method("GET")
-        .uri(format!("/api/v1/jobs/{missing_id}/result"))
-        .body(Body::empty())
-        .unwrap();
-    let result_response = app.oneshot(result_request).await.unwrap();
-    assert_eq!(result_response.status(), StatusCode::NOT_FOUND);
-}
-
-#[tokio::test]
-async fn job_manager_tracks_success_failure_and_multiple_jobs() {
-    let manager = JobManager::new();
-
-    let ok_job_id = manager.create_job(valid_input());
-    let failed_job_id = manager.create_job(invalid_input());
-    let second_ok_job_id = manager.create_job(valid_input());
-
-    assert_ne!(ok_job_id, failed_job_id);
-    assert_ne!(ok_job_id, second_ok_job_id);
-    assert_ne!(failed_job_id, second_ok_job_id);
-
-    let ok_job = wait_for_terminal_job(&manager, ok_job_id).await;
-    let failed_job = wait_for_terminal_job(&manager, failed_job_id).await;
-    let second_ok_job = wait_for_terminal_job(&manager, second_ok_job_id).await;
-
-    assert_eq!(ok_job.status, JobStatus::Completed);
-    assert_eq!(second_ok_job.status, JobStatus::Completed);
-    assert_eq!(failed_job.status, JobStatus::Failed);
-
-    assert!(ok_job
-        .result
-        .as_deref()
-        .is_some_and(|result| result.contains("schedule")));
-    assert!(failed_job.result.as_deref().is_some_and(
-        |result| result.contains("ValidationError") || result.contains("Constraint violation")
-    ));
-}
-
-#[tokio::test]
-async fn job_status_progresses_beyond_pending_after_creation() {
-    let manager = JobManager::new();
-    let job_id = manager.create_job(valid_input());
-
-    let mut saw_non_pending = false;
-    for _ in 0..50 {
-        let job = manager.get_job(job_id).expect("job should exist");
-        if job.status != JobStatus::Pending {
-            saw_non_pending = true;
-            break;
-        }
-        tokio::time::sleep(Duration::from_millis(10)).await;
-    }
-
-    assert!(saw_non_pending, "job should progress past Pending");
-}
-
-#[tokio::test]
-async fn create_job_route_returns_parseable_uuid_payload() {
-    let app = create_router(AppState {
-        job_manager: JobManager::new(),
-    });
-
-    let request = Request::builder()
-        .method("POST")
-        .uri("/api/v1/jobs")
-        .header("content-type", "application/json")
-        .body(Body::from(serde_json::to_vec(&valid_input()).unwrap()))
-        .unwrap();
-
-    let response = app.oneshot(request).await.unwrap();
-    assert_eq!(response.status(), StatusCode::CREATED);
-
-    let body: serde_json::Value = json_response(response).await;
-    assert!(body.get("job_id").is_some());
-    assert!(Uuid::parse_str(body.get("job_id").unwrap().as_str().unwrap()).is_ok());
-    assert_eq!(body, json!({ "job_id": body["job_id"].clone() }));
-}
-
 #[tokio::test]
 async fn bootstrap_help_and_schema_endpoints_are_discoverable() {
-    let app = create_router(AppState {
-        job_manager: JobManager::new(),
-    });
+    let app = create_router();
 
     let help_response = app
         .clone()
@@ -364,9 +177,7 @@ async fn bootstrap_help_and_schema_endpoints_are_discoverable() {
 
 #[tokio::test]
 async fn contract_solver_endpoints_return_public_shapes() {
-    let app = create_router(AppState {
-        job_manager: JobManager::new(),
-    });
+    let app = create_router();
 
     let solve_response = app
         .clone()
@@ -486,9 +297,7 @@ async fn contract_solver_endpoints_return_public_shapes() {
 
 #[tokio::test]
 async fn error_catalog_endpoints_are_available() {
-    let app = create_router(AppState {
-        job_manager: JobManager::new(),
-    });
+    let app = create_router();
 
     let errors_response = app
         .clone()
@@ -526,9 +335,7 @@ async fn error_catalog_endpoints_are_available() {
 
 #[tokio::test]
 async fn contract_endpoints_emit_canonical_error_envelopes() {
-    let app = create_router(AppState {
-        job_manager: JobManager::new(),
-    });
+    let app = create_router();
 
     let invalid_json_response = app
         .clone()
@@ -662,9 +469,7 @@ async fn contract_endpoints_emit_canonical_error_envelopes() {
 
 #[tokio::test]
 async fn help_and_error_navigation_targets_resolve_locally() {
-    let app = create_router(AppState {
-        job_manager: JobManager::new(),
-    });
+    let app = create_router();
 
     let solve_help_response = app
         .clone()
@@ -737,9 +542,7 @@ async fn help_and_error_navigation_targets_resolve_locally() {
 
 #[tokio::test]
 async fn public_contract_routes_stay_in_parity_with_contract_registry() {
-    let app = create_router(AppState {
-        job_manager: JobManager::new(),
-    });
+    let app = create_router();
 
     let binding_operation_ids: Vec<_> = public_contract_bindings()
         .filter_map(|binding| binding.operation_id)

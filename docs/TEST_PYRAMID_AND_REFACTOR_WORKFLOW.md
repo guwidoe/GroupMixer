@@ -39,7 +39,7 @@ So the real safety net is a stack of layers, not one number.
    - best for high-risk solver scoring/validation logic
 
 5. **Server integration tests**
-   - route wiring, job lifecycle, serialization, status/result endpoints
+   - route wiring, discovery/help surfaces, serialization, and canonical HTTP error behavior
 
 6. **WASM interop tests**
    - JS boundary, parsing, callback handling, exported wrapper behavior
@@ -158,7 +158,7 @@ RUST_COVERAGE_FAIL_UNDER_LINES=78 RUST_COVERAGE_FAIL_UNDER_FUNCTIONS=87 ./script
 
 Pay special attention to:
 - route syntax/wiring
-- job creation/status/result flows
+- contract discovery/help/schema/error flows
 - error payloads and status codes
 
 ### 3) WASM wrapper / browser boundary refactor

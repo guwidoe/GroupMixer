@@ -2,7 +2,6 @@ import type { Scenario, SolverSettings } from "../../types";
 import type { ProgressUpdate, RustResult } from "./types";
 import type { WarmStartSchedule } from "./scenarioContract";
 
-export type WasmProgressJsonCallback = (progressJson: string) => boolean;
 export type WasmContractProgressCallback = (progress: ProgressUpdate) => boolean;
 export type WasmModuleLoader = () => Promise<WasmContractModule>;
 
@@ -170,21 +169,7 @@ export interface WasmContractModule {
   recommend_settings: (input: WasmRecommendSettingsRequest) => SolverSettings;
   evaluate_input: (input: WasmContractSolveInput) => RustResult;
   inspect_result: (result: RustResult) => WasmResultSummary;
-  solve_legacy_json?: (scenarioJson: string) => string;
-  solve_with_progress_legacy_json?: (
-    scenarioJson: string,
-    progressCallback?: WasmProgressJsonCallback | null,
-  ) => string;
-  validate_scenario_legacy_json?: (scenarioJson: string) => string;
-  get_default_settings_legacy_json?: () => string;
-  get_recommended_settings_legacy_json?: (
-    scenarioJson: string,
-    desiredRuntimeSeconds: bigint,
-  ) => string;
-  evaluate_input_legacy_json?: (inputJson: string) => string;
-  greet?: () => void;
   init_panic_hook?: () => void;
-  test_callback_consistency?: (scenarioJson: string) => string;
   default: (moduleOrPath?: WasmInitInput | Promise<WasmInitInput>) => Promise<WasmInitOutput>;
 }
 
@@ -219,14 +204,7 @@ export const WASM_RUNTIME_EXPORT_NAMES = {
   recommend_settings: "recommend_settings",
   evaluate_input: "evaluate_input",
   inspect_result: "inspect_result",
-  solve_legacy_json: "solve_legacy_json",
-  solve_with_progress_legacy_json: "solve_with_progress_legacy_json",
-  validate_scenario_legacy_json: "validate_scenario_legacy_json",
-  get_default_settings_legacy_json: "get_default_settings_legacy_json",
-  get_recommended_settings_legacy_json: "get_recommended_settings_legacy_json",
   init_panic_hook: "init_panic_hook",
-  greet: "greet",
-  test_callback_consistency: "test_callback_consistency",
   initSync: "initSync",
 } as const;
 

@@ -358,6 +358,34 @@ describe("solverWorker runtime", () => {
     ]);
   });
 
+  it("fails loudly when canonical RPC payloads are missing", async () => {
+    const { runtime } = createRuntime();
+    await initializeRuntime(runtime);
+    postedMessages = [];
+
+    await runtime.handleMessage({ type: "recommend_settings", id: "2", data: {} });
+    await runtime.handleMessage({ type: "validate_scenario", id: "3", data: {} });
+    await runtime.handleMessage({ type: "inspect_result", id: "4", data: {} });
+
+    expect(postedMessages).toEqual([
+      {
+        type: "RPC_ERROR",
+        id: "2",
+        data: { error: "Worker RPC recommend_settings requires recommendRequest" },
+      },
+      {
+        type: "RPC_ERROR",
+        id: "3",
+        data: { error: "Worker RPC validate_scenario requires scenarioPayload" },
+      },
+      {
+        type: "RPC_ERROR",
+        id: "4",
+        data: { error: "Worker RPC inspect_result requires resultPayload" },
+      },
+    ]);
+  });
+
   it("posts solve errors without relying on legacy scenario json context", async () => {
     const { runtime } = createRuntime({
       wasmModule: {
@@ -392,6 +420,22 @@ describe("solverWorker runtime", () => {
         type: "ERROR",
         id: "2",
         data: { error: "solve boom" },
+      },
+    ]);
+  });
+
+  it("rejects solve requests that omit scenarioPayload", async () => {
+    const { runtime } = createRuntime();
+    await initializeRuntime(runtime);
+    postedMessages = [];
+
+    await runtime.handleMessage({ type: "SOLVE", id: "2", data: { useProgress: false } as never });
+
+    expect(postedMessages).toEqual([
+      {
+        type: "ERROR",
+        id: "2",
+        data: { error: "Worker RPC SOLVE requires scenarioPayload" },
       },
     ]);
   });

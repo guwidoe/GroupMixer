@@ -3,19 +3,7 @@ mod contract_runtime;
 pub mod contract_surface;
 mod public_errors;
 
-use gm_core::models::{ApiInput, ProblemDefinition, ProgressUpdate};
-use serde::Serialize;
 use wasm_bindgen::prelude::*;
-
-#[wasm_bindgen]
-extern "C" {
-    fn alert(s: &str);
-}
-
-#[wasm_bindgen]
-pub fn greet() {
-    alert("Hello, gm-wasm!");
-}
 
 // When the `console_error_panic_hook` feature is enabled, we can call the
 // `set_panic_hook` function at least once during initialization, and then
@@ -77,6 +65,15 @@ pub fn solve(input: JsValue) -> Result<JsValue, JsValue> {
 }
 
 #[wasm_bindgen]
+pub fn solve_with_progress(
+    input: JsValue,
+    progress_callback: Option<js_sys::Function>,
+) -> Result<JsValue, JsValue> {
+    init_panic_hook();
+    contract_runtime::solve_with_progress_js(input, progress_callback)
+}
+
+#[wasm_bindgen]
 pub fn validate_scenario(input: JsValue) -> Result<JsValue, JsValue> {
     init_panic_hook();
     contract_runtime::validate_scenario_contract_js(input)
@@ -106,365 +103,12 @@ pub fn inspect_result(result: JsValue) -> Result<JsValue, JsValue> {
     contract_runtime::inspect_result_contract_js(result)
 }
 
-#[wasm_bindgen]
-pub fn solve_legacy_json(scenario_json: &str) -> Result<String, JsValue> {
-    init_panic_hook();
-
-    let api_input: ApiInput = serde_json::from_str(scenario_json).map_err(|e| {
-        JsValue::from(js_sys::Error::new(&format!(
-            "Failed to parse scenario: {}",
-            e
-        )))
-    })?;
-
-    let result = gm_core::run_solver(&api_input)
-        .map_err(|e| JsValue::from(js_sys::Error::new(&format!("Solver error: {}", e))))?;
-
-    let result_json = serde_json::to_string(&result).map_err(|e| {
-        JsValue::from(js_sys::Error::new(&format!(
-            "Failed to serialize result: {}",
-            e
-        )))
-    })?;
-
-    Ok(result_json)
-}
-
-#[wasm_bindgen]
-pub fn solve_with_progress(
-    input: JsValue,
-    progress_callback: Option<js_sys::Function>,
-) -> Result<JsValue, JsValue> {
-    init_panic_hook();
-    contract_runtime::solve_with_progress_js(input, progress_callback)
-}
-
-#[wasm_bindgen]
-pub fn solve_with_progress_legacy_json(
-    scenario_json: &str,
-    progress_callback: Option<js_sys::Function>,
-) -> Result<String, JsValue> {
-    init_panic_hook();
-
-    let api_input: ApiInput = serde_json::from_str(scenario_json).map_err(|e| {
-        JsValue::from(js_sys::Error::new(&format!(
-            "Failed to parse scenario: {}",
-            e
-        )))
-    })?;
-
-    let result = if let Some(js_callback) = progress_callback {
-        let rust_callback = Box::new(move |progress: &ProgressUpdate| -> bool {
-            let progress_json = match serde_json::to_string(progress) {
-                Ok(json) => json,
-                Err(e) => {
-                    web_sys::console::error_1(
-                        &format!("Failed to serialize progress: {}", e).into(),
-                    );
-                    return true;
-                }
-            };
-
-            let this = JsValue::null();
-            let json_value = JsValue::from_str(&progress_json);
-
-            match js_callback.call1(&this, &json_value) {
-                Ok(result) => result.as_bool().unwrap_or(true),
-                Err(e) => {
-                    web_sys::console::error_1(&format!("Progress callback error: {:?}", e).into());
-                    true
-                }
-            }
-        }) as Box<dyn Fn(&ProgressUpdate) -> bool>;
-
-        let rust_callback: Box<dyn Fn(&ProgressUpdate) -> bool + Send> =
-            unsafe { std::mem::transmute(rust_callback) };
-
-        gm_core::run_solver_with_progress(&api_input, Some(&rust_callback))
-            .map_err(|e| JsValue::from(js_sys::Error::new(&format!("Solver error: {}", e))))?
-    } else {
-        gm_core::run_solver(&api_input)
-            .map_err(|e| JsValue::from(js_sys::Error::new(&format!("Solver error: {}", e))))?
-    };
-
-    let result_json = serde_json::to_string(&result).map_err(|e| {
-        JsValue::from(js_sys::Error::new(&format!(
-            "Failed to serialize result: {}",
-            e
-        )))
-    })?;
-
-    Ok(result_json)
-}
-
-#[wasm_bindgen]
-pub fn validate_scenario_legacy_json(scenario_json: &str) -> Result<String, JsValue> {
-    init_panic_hook();
-
-    let api_input: ApiInput = serde_json::from_str(scenario_json).map_err(|e| {
-        JsValue::from(js_sys::Error::new(&format!(
-            "Failed to parse scenario: {}",
-            e
-        )))
-    })?;
-
-    // Basic validation
-    let mut errors = Vec::new();
-
-    if api_input.problem.people.is_empty() {
-        errors.push("No people defined".to_string());
-    }
-
-    if api_input.problem.groups.is_empty() {
-        errors.push("No groups defined".to_string());
-    }
-
-    if api_input.problem.num_sessions == 0 {
-        errors.push("Number of sessions must be greater than 0".to_string());
-    }
-
-    // Check if people have valid session participation
-    for person in &api_input.problem.people {
-        if let Some(sessions) = &person.sessions {
-            for &session_id in sessions {
-                if session_id >= api_input.problem.num_sessions {
-                    errors.push(format!(
-                        "Person {} is assigned to invalid session {} (max: {})",
-                        person.id,
-                        session_id,
-                        api_input.problem.num_sessions - 1
-                    ));
-                }
-            }
-        }
-    }
-
-    let valid = errors.is_empty();
-
-    #[derive(Serialize)]
-    struct ValidationResult {
-        valid: bool,
-        errors: Vec<String>,
-    }
-
-    let result = ValidationResult { valid, errors };
-    let result_json = serde_json::to_string(&result).map_err(|e| {
-        JsValue::from(js_sys::Error::new(&format!(
-            "Failed to serialize validation result: {}",
-            e
-        )))
-    })?;
-
-    Ok(result_json)
-}
-
-#[wasm_bindgen]
-pub fn get_default_settings_legacy_json() -> Result<String, JsValue> {
-    init_panic_hook();
-
-    let settings = gm_core::default_solver_configuration();
-
-    let settings_json = serde_json::to_string(&settings).map_err(|e| {
-        JsValue::from(js_sys::Error::new(&format!(
-            "Failed to serialize settings: {}",
-            e
-        )))
-    })?;
-
-    Ok(settings_json)
-}
-
-/// Evaluate a provided input (including an optional initial schedule) without running the solver.
-///
-/// Expects the same JSON shape as `models::ApiInput` (scenario/problem payload plus solver fields),
-/// and optionally `initial_schedule` in the `{"session_0": {"group_id": ["person_id", ...]}, ...}` format.
-/// Returns a `SolverResult` JSON with score breakdown computed from the provided schedule.
-#[wasm_bindgen]
-pub fn evaluate_input_legacy_json(input_json: &str) -> Result<String, JsValue> {
-    init_panic_hook();
-
-    let api_input: ApiInput = serde_json::from_str(input_json).map_err(|e| {
-        JsValue::from(js_sys::Error::new(&format!(
-            "Failed to parse input for evaluation: {}",
-            e
-        )))
-    })?;
-
-    // Construct internal state and force full score recomputation from the provided schedule
-    let mut state = gm_core::solver::State::new(&api_input)
-        .map_err(|e| JsValue::from(js_sys::Error::new(&format!("State init error: {}", e))))?;
-
-    // Ensure derived structures and scores match the schedule
-    state._recalculate_locations_from_schedule();
-    state._recalculate_scores();
-
-    let result = state.to_solver_result(state.current_cost, 0);
-    let result_json = serde_json::to_string(&result).map_err(|e| {
-        JsValue::from(js_sys::Error::new(&format!(
-            "Failed to serialize evaluation result: {}",
-            e
-        )))
-    })?;
-
-    Ok(result_json)
-}
-
-#[wasm_bindgen]
-pub fn test_callback_consistency(scenario_json: &str) -> Result<String, JsValue> {
-    init_panic_hook();
-
-    let api_input: ApiInput = serde_json::from_str(scenario_json).map_err(|e| {
-        JsValue::from(js_sys::Error::new(&format!(
-            "Failed to parse scenario: {}",
-            e
-        )))
-    })?;
-
-    // Capture all progress updates using Arc<Mutex<>> for thread safety
-    use std::sync::{Arc, Mutex};
-    let captured_updates = Arc::new(Mutex::new(Vec::new()));
-    let captured_updates_clone = Arc::clone(&captured_updates);
-
-    let rust_callback = Box::new(move |progress: &ProgressUpdate| -> bool {
-        captured_updates_clone
-            .lock()
-            .unwrap()
-            .push(progress.clone());
-        true // Continue optimization
-    }) as Box<dyn Fn(&ProgressUpdate) -> bool>;
-
-    // SAFETY: WASM is single-threaded, so we can safely transmute to add Send
-    let rust_callback: Box<dyn Fn(&ProgressUpdate) -> bool + Send> =
-        unsafe { std::mem::transmute(rust_callback) };
-
-    let result = gm_core::run_solver_with_progress(&api_input, Some(&rust_callback))
-        .map_err(|e| JsValue::from(js_sys::Error::new(&format!("Solver error: {}", e))))?;
-
-    let final_result_score = result.final_score;
-    let captured_updates = captured_updates.lock().unwrap();
-
-    // Analyze the results
-    let mut analysis = serde_json::Map::new();
-
-    if let Some(final_update) = captured_updates.last() {
-        analysis.insert(
-            "final_callback_score".to_string(),
-            serde_json::Value::Number(
-                serde_json::Number::from_f64(final_update.current_score).unwrap(),
-            ),
-        );
-        analysis.insert(
-            "final_result_score".to_string(),
-            serde_json::Value::Number(serde_json::Number::from_f64(final_result_score).unwrap()),
-        );
-        analysis.insert(
-            "scores_match".to_string(),
-            serde_json::Value::Bool(
-                (final_update.current_score - final_result_score).abs() < 0.001,
-            ),
-        );
-        analysis.insert(
-            "total_updates".to_string(),
-            serde_json::Value::Number(serde_json::Number::from(captured_updates.len())),
-        );
-
-        // Check for score consistency throughout
-        let mut score_jumps = Vec::new();
-        for i in 1..captured_updates.len() {
-            let prev_best = captured_updates[i - 1].best_score;
-            let curr_best = captured_updates[i].best_score;
-            if curr_best > prev_best + 0.001 {
-                score_jumps.push(serde_json::json!({
-                    "iteration": captured_updates[i].iteration,
-                    "from": prev_best,
-                    "to": curr_best,
-                    "jump": curr_best - prev_best
-                }));
-            }
-        }
-        analysis.insert(
-            "score_jumps".to_string(),
-            serde_json::Value::Array(score_jumps),
-        );
-    } else {
-        analysis.insert(
-            "error".to_string(),
-            serde_json::Value::String("No progress updates captured".to_string()),
-        );
-    }
-
-    let analysis_json = serde_json::to_string(&analysis).map_err(|e| {
-        JsValue::from(js_sys::Error::new(&format!(
-            "Failed to serialize analysis: {}",
-            e
-        )))
-    })?;
-
-    Ok(analysis_json)
-}
-
-#[wasm_bindgen]
-pub fn get_recommended_settings_legacy_json(
-    scenario_json: &str,
-    desired_runtime_seconds: u64,
-) -> Result<String, JsValue> {
-    init_panic_hook();
-
-    #[derive(serde::Deserialize)]
-    struct ScenarioWrapper {
-        people: Vec<gm_core::models::Person>,
-        groups: Vec<gm_core::models::Group>,
-        num_sessions: u32,
-        #[serde(default)]
-        constraints: Vec<gm_core::models::Constraint>,
-        #[serde(default)]
-        objectives: Vec<gm_core::models::Objective>,
-    }
-
-    let wrapper: ScenarioWrapper = match serde_json::from_str(scenario_json) {
-        Ok(p) => p,
-        Err(e) => {
-            return Err(JsValue::from(js_sys::Error::new(&format!(
-                "Failed to parse scenario JSON: {}",
-                e
-            ))))
-        }
-    };
-
-    let problem_def = ProblemDefinition {
-        people: wrapper.people,
-        groups: wrapper.groups,
-        num_sessions: wrapper.num_sessions,
-    };
-
-    match gm_core::calculate_recommended_settings(
-        &problem_def,
-        &wrapper.objectives,
-        &wrapper.constraints,
-        desired_runtime_seconds,
-    ) {
-        Ok(settings) => {
-            let settings_json = serde_json::to_string(&settings).map_err(|e| {
-                JsValue::from(js_sys::Error::new(&format!(
-                    "Failed to serialize settings: {}",
-                    e
-                )))
-            })?;
-            Ok(settings_json)
-        }
-        Err(e) => Err(JsValue::from(js_sys::Error::new(&format!(
-            "Failed to calculate settings: {}",
-            e
-        )))),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use gm_core::models::{
-        Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams, SolverConfiguration,
-        SolverParams, StopConditions,
+        ApiInput, Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams,
+        SolverConfiguration, SolverParams, StopConditions,
     };
     use std::cell::RefCell;
     use std::collections::HashMap;
@@ -541,32 +185,32 @@ mod tests {
         }
     }
 
-    fn valid_input_json() -> String {
-        serde_json::to_string(&valid_input()).unwrap()
+    fn valid_input_js() -> JsValue {
+        serde_wasm_bindgen::to_value(&serde_json::json!({
+            "scenario": {
+                "people": valid_input().problem.people,
+                "groups": valid_input().problem.groups,
+                "num_sessions": valid_input().problem.num_sessions,
+                "objectives": valid_input().objectives,
+                "constraints": valid_input().constraints,
+                "settings": valid_input().solver,
+            }
+        }))
+        .unwrap()
     }
 
-    fn invalid_problem_json() -> String {
-        serde_json::json!({
-            "problem": {
+    fn invalid_problem_js() -> JsValue {
+        serde_wasm_bindgen::to_value(&serde_json::json!({
+            "scenario": {
                 "people": [],
                 "groups": [],
-                "num_sessions": 0
-            },
-            "objectives": [],
-            "constraints": [],
-            "solver": {
-                "solver_type": "SimulatedAnnealing",
-                "stop_conditions": { "max_iterations": 10 },
-                "solver_params": {
-                    "solver_type": "SimulatedAnnealing",
-                    "initial_temperature": 1.0,
-                    "final_temperature": 0.1,
-                    "cooling_schedule": "geometric"
-                },
-                "logging": {}
+                "num_sessions": 0,
+                "objectives": [],
+                "constraints": [],
+                "settings": valid_input().solver,
             }
-        })
-        .to_string()
+        }))
+        .unwrap()
     }
 
     fn js_error_message(error: JsValue) -> String {
@@ -574,9 +218,8 @@ mod tests {
     }
 
     #[wasm_bindgen_test]
-    fn solve_returns_valid_serialized_result() {
-        let result_value =
-            solve(JsValue::from_str(&valid_input_json())).expect("solve should succeed");
+    fn solve_returns_structured_result() {
+        let result_value = solve(valid_input_js()).expect("solve should succeed");
         let result: serde_json::Value = serde_wasm_bindgen::from_value(result_value).unwrap();
 
         assert!(result.get("schedule").is_some());
@@ -584,8 +227,9 @@ mod tests {
     }
 
     #[wasm_bindgen_test]
-    fn solve_rejects_invalid_json_with_js_error() {
-        let error = solve(JsValue::from_str("{not-json")).expect_err("invalid JSON should error");
+    fn solve_rejects_invalid_payload_with_public_error() {
+        let error =
+            solve(JsValue::from_str("{not-json")).expect_err("invalid payload should error");
         let message = js_error_message(error);
         assert!(
             message.contains("Failed to parse request payload"),
@@ -594,17 +238,17 @@ mod tests {
     }
 
     #[wasm_bindgen_test]
-    fn solve_with_progress_invokes_callback_and_honors_false_return() {
+    fn solve_with_progress_invokes_callback_with_structured_updates() {
         let calls = Rc::new(RefCell::new(0usize));
-        let payloads = Rc::new(RefCell::new(Vec::<String>::new()));
+        let payloads = Rc::new(RefCell::new(Vec::<serde_json::Value>::new()));
 
         let calls_clone = Rc::clone(&calls);
         let payloads_clone = Rc::clone(&payloads);
-        let callback = Closure::wrap(Box::new(move |progress_json: JsValue| -> JsValue {
+        let callback = Closure::wrap(Box::new(move |progress: JsValue| -> JsValue {
             *calls_clone.borrow_mut() += 1;
             payloads_clone
                 .borrow_mut()
-                .push(progress_json.as_string().unwrap());
+                .push(serde_wasm_bindgen::from_value(progress).unwrap());
             JsValue::from_bool(false)
         }) as Box<dyn FnMut(JsValue) -> JsValue>);
 
@@ -612,46 +256,32 @@ mod tests {
             .as_ref()
             .unchecked_ref::<js_sys::Function>()
             .clone();
-        let result_json =
-            solve_with_progress_legacy_json(&valid_input_json(), Some(function)).unwrap();
-        let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
+        let result_value = solve_with_progress(valid_input_js(), Some(function)).unwrap();
+        let result: serde_json::Value = serde_wasm_bindgen::from_value(result_value).unwrap();
 
         assert!(*calls.borrow() >= 1);
         assert!(payloads
             .borrow()
             .iter()
-            .all(|payload| payload.contains("iteration")));
-        assert!(result.get("schedule").is_some());
-    }
-
-    #[wasm_bindgen_test]
-    fn solve_with_progress_survives_callback_exceptions() {
-        let throwing_callback =
-            js_sys::Function::new_with_args("payload", "throw new Error(`boom:${payload.length}`)");
-
-        let result_json =
-            solve_with_progress_legacy_json(&valid_input_json(), Some(throwing_callback))
-                .expect("callback exceptions should not break solving");
-        let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
-
+            .all(|payload| payload.get("iteration").is_some()));
         assert!(result.get("schedule").is_some());
     }
 
     #[wasm_bindgen_test]
     fn validate_scenario_reports_expected_shape() {
-        let result_json = validate_scenario_legacy_json(&invalid_problem_json())
-            .expect("validation should succeed");
-        let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
+        let result_value =
+            validate_scenario(invalid_problem_js()).expect("validation should succeed");
+        let result: serde_json::Value = serde_wasm_bindgen::from_value(result_value).unwrap();
 
         assert_eq!(result["valid"], serde_json::Value::Bool(false));
-        assert!(result["errors"].as_array().unwrap().len() >= 3);
+        assert!(!result["issues"].as_array().unwrap().is_empty());
     }
 
     #[wasm_bindgen_test]
-    fn get_default_settings_returns_serialized_solver_configuration() {
-        let settings_json =
-            get_default_settings_legacy_json().expect("default settings should serialize");
-        let settings: serde_json::Value = serde_json::from_str(&settings_json).unwrap();
+    fn get_default_solver_configuration_returns_structured_settings() {
+        let settings_value =
+            get_default_solver_configuration().expect("default settings should serialize");
+        let settings: serde_json::Value = serde_wasm_bindgen::from_value(settings_value).unwrap();
 
         assert_eq!(
             settings["solver_type"],
@@ -669,27 +299,30 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn evaluate_input_returns_structured_result_for_supplied_schedule() {
-        let mut input = valid_input();
-        input.initial_schedule = Some(HashMap::from([
-            (
-                "session_0".to_string(),
-                HashMap::from([
-                    ("g0".to_string(), vec!["p0".to_string(), "p1".to_string()]),
-                    ("g1".to_string(), vec!["p2".to_string(), "p3".to_string()]),
-                ]),
-            ),
-            (
-                "session_1".to_string(),
-                HashMap::from([
-                    ("g0".to_string(), vec!["p0".to_string(), "p2".to_string()]),
-                    ("g1".to_string(), vec!["p1".to_string(), "p3".to_string()]),
-                ]),
-            ),
-        ]));
+        let input = serde_wasm_bindgen::to_value(&serde_json::json!({
+            "scenario": {
+                "people": valid_input().problem.people,
+                "groups": valid_input().problem.groups,
+                "num_sessions": valid_input().problem.num_sessions,
+                "objectives": valid_input().objectives,
+                "constraints": valid_input().constraints,
+                "settings": valid_input().solver,
+            },
+            "initial_schedule": {
+                "session_0": {
+                    "g0": ["p0", "p1"],
+                    "g1": ["p2", "p3"]
+                },
+                "session_1": {
+                    "g0": ["p0", "p2"],
+                    "g1": ["p1", "p3"]
+                }
+            }
+        }))
+        .unwrap();
 
-        let result_json = evaluate_input_legacy_json(&serde_json::to_string(&input).unwrap())
-            .expect("evaluate_input should succeed");
-        let result: serde_json::Value = serde_json::from_str(&result_json).unwrap();
+        let result_value = evaluate_input(input).expect("evaluate_input should succeed");
+        let result: serde_json::Value = serde_wasm_bindgen::from_value(result_value).unwrap();
 
         assert_eq!(
             result["schedule"]["session_0"]["g0"][0],

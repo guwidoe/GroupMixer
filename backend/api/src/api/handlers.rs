@@ -1,10 +1,9 @@
 use crate::api::contract_surface::{
     binding_for_operation_id, public_contract_bindings, HttpContractBinding,
 };
-use crate::jobs::manager::JobManager;
 use axum::{
     body::Bytes,
-    extract::{Path, State},
+    extract::Path,
     http::StatusCode,
     response::{IntoResponse, Json, Response},
 };
@@ -30,19 +29,7 @@ use gm_core::{
     run_solver,
 };
 use schemars::Schema;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use uuid::Uuid;
-
-// The shared state that holds our JobManager
-#[derive(Clone)]
-pub struct AppState {
-    pub job_manager: JobManager,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct CreateJobResponse {
-    pub job_id: Uuid,
-}
+use serde::{de::DeserializeOwned, Serialize};
 
 #[derive(Serialize)]
 pub struct HelpOperationSummary {
@@ -98,15 +85,6 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         (self.status, Json(self.body)).into_response()
     }
-}
-
-pub async fn create_job_handler(
-    State(state): State<AppState>,
-    Json(payload): Json<ApiInput>,
-) -> (StatusCode, Json<CreateJobResponse>) {
-    let job_id = state.job_manager.create_job(payload);
-    let response = CreateJobResponse { job_id };
-    (StatusCode::CREATED, Json(response))
 }
 
 pub async fn bootstrap_help_handler() -> Json<BootstrapHelpResponse> {
@@ -277,32 +255,6 @@ pub async fn evaluate_input_handler(body: Bytes) -> Result<Json<SolverResult>, A
 pub async fn inspect_result_handler(body: Bytes) -> Result<Json<ResultSummary>, ApiError> {
     let result: SolverResult = parse_json_body(&body, "inspect-result", &["solve-response"])?;
     Ok(Json(ResultSummary::from(&result)))
-}
-
-#[axum::debug_handler]
-pub async fn get_job_status_handler(
-    State(state): State<AppState>,
-    Path(job_id): Path<Uuid>,
-) -> Result<Json<crate::jobs::manager::Job>, StatusCode> {
-    if let Some(job) = state.job_manager.get_job(job_id) {
-        Ok(Json(job))
-    } else {
-        Err(StatusCode::NOT_FOUND)
-    }
-}
-
-#[axum::debug_handler]
-pub async fn get_job_result_handler(
-    State(state): State<AppState>,
-    Path(job_id): Path<Uuid>,
-) -> Result<Json<crate::jobs::manager::Job>, StatusCode> {
-    // For now, this is the same as the status handler.
-    // In the future, it might return more detailed results.
-    if let Some(job) = state.job_manager.get_job(job_id) {
-        Ok(Json(job))
-    } else {
-        Err(StatusCode::NOT_FOUND)
-    }
 }
 
 fn route_for_operation(operation_id: &str) -> Option<RouteRef> {

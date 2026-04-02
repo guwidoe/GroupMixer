@@ -18,7 +18,7 @@ GroupMixer solves the social group scheduling problem using advanced optimizatio
 
 ## Architecture
 
-The project is organized as a Rust workspace with four main components:
+The project is organized as a Rust workspace plus a web application with six main components:
 
 ### 🧠 `gm-core` - Core Optimization Engine
 
@@ -64,10 +64,27 @@ Key features:
 
 A high-performance HTTP server built with Axum that provides:
 
-- **RESTful API** for submitting optimization jobs
-- **Asynchronous job processing** with background task management
-- **Real-time job status tracking**
-- **JSON-based input/output** for easy integration
+- **Contract-native HTTP API** for solve/validate/recommend/evaluate flows
+- **Local discovery/help endpoints** derived from `gm-contracts`
+- **JSON-based request/response payloads** for easy integration
+- **Canonical public error envelopes** shared with other surfaces
+
+### 📜 `gm-contracts` - Shared Contract Registry
+
+The transport-neutral semantic registry that defines:
+
+- **Operation IDs and help metadata**
+- **Shared schemas and examples**
+- **Canonical public errors**
+- **Generated reference documentation**
+
+### 🖥️ `gm-cli` - Command-Line Interface
+
+A CLI projection of the same shared contract surface for:
+
+- **Local solver execution**
+- **Schema/help/error inspection**
+- **Operator-friendly scripting and automation**
 
 ### ⚡ `gm-wasm` - WebAssembly Module
 
@@ -76,7 +93,7 @@ WebAssembly compilation of the core solver for:
 - **Client-side optimization** in web browsers
 - **Offline processing capabilities**
 - **Integration with the webapp frontend**
-- **Cross-platform deployment**
+- **Contract-native browser discovery and execution APIs**
 
 ## Key Features
 

@@ -75,11 +75,6 @@ type FakeContractModule = {
   recommend_settings: ReturnType<typeof vi.fn>;
   evaluate_input: ReturnType<typeof vi.fn>;
   inspect_result: ReturnType<typeof vi.fn>;
-  solve_legacy_json: ReturnType<typeof vi.fn>;
-  validate_scenario_legacy_json: ReturnType<typeof vi.fn>;
-  get_default_settings_legacy_json: ReturnType<typeof vi.fn>;
-  get_recommended_settings_legacy_json: ReturnType<typeof vi.fn>;
-  solve_with_progress_legacy_json: ReturnType<typeof vi.fn>;
   default: ReturnType<typeof vi.fn>;
 };
 
@@ -105,11 +100,6 @@ function createContractModule(): FakeContractModule {
     recommend_settings: vi.fn(() => createSampleSolverSettings()),
     evaluate_input: vi.fn(() => ({ schedule: {}, final_score: 6, unique_contacts: 2 })),
     inspect_result: vi.fn(() => ({ final_score: 9, unique_contacts: 1, repetition_penalty: 0, attribute_balance_penalty: 0, constraint_penalty: 0 })),
-    solve_legacy_json: vi.fn(),
-    validate_scenario_legacy_json: vi.fn(),
-    get_default_settings_legacy_json: vi.fn(),
-    get_recommended_settings_legacy_json: vi.fn(),
-    solve_with_progress_legacy_json: vi.fn(),
     default: vi.fn(async () => ({ memory: {} })),
   };
 }

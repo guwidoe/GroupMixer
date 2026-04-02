@@ -17,11 +17,6 @@ describe("wasm module guards", () => {
       recommend_settings: vi.fn(),
       evaluate_input: vi.fn(),
       inspect_result: vi.fn(),
-      solve_legacy_json: vi.fn(),
-      solve_with_progress_legacy_json: vi.fn(),
-      validate_scenario_legacy_json: vi.fn(),
-      get_default_settings_legacy_json: vi.fn(),
-      get_recommended_settings_legacy_json: vi.fn(),
       init_panic_hook: vi.fn(),
       default: vi.fn(),
     };
