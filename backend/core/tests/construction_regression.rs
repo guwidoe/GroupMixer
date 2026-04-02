@@ -117,3 +117,75 @@ fn construction_omits_non_participants_from_inactive_sessions() {
     assert!(state.person_participation[state.person_id_to_idx["p5"]][0]);
     assert!(!state.person_participation[state.person_id_to_idx["p5"]][1]);
 }
+
+#[test]
+fn construction_assigns_clique_ids_in_sorted_member_order() {
+    let mut solver = default_solver_config(1);
+    solver.seed = Some(99);
+
+    let input = ApiInput {
+        initial_schedule: None,
+        problem: ProblemDefinition {
+            people: vec![
+                person("p0"),
+                person("p1"),
+                person("p2"),
+                person("p3"),
+                person("p4"),
+                person("p5"),
+            ],
+            groups: vec![
+                Group {
+                    id: "g0".to_string(),
+                    size: 2,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".to_string(),
+                    size: 2,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g2".to_string(),
+                    size: 2,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 1,
+        },
+        objectives: vec![Objective {
+            r#type: "maximize_unique_contacts".to_string(),
+            weight: 1.0,
+        }],
+        constraints: vec![
+            Constraint::MustStayTogether {
+                people: vec!["p4".to_string(), "p5".to_string()],
+                sessions: None,
+            },
+            Constraint::MustStayTogether {
+                people: vec!["p0".to_string(), "p1".to_string()],
+                sessions: None,
+            },
+            Constraint::MustStayTogether {
+                people: vec!["p2".to_string(), "p3".to_string()],
+                sessions: None,
+            },
+        ],
+        solver,
+    };
+
+    let state = State::new(&input).expect("state should build");
+
+    let p0 = state.person_id_to_idx["p0"];
+    let p1 = state.person_id_to_idx["p1"];
+    let p2 = state.person_id_to_idx["p2"];
+    let p3 = state.person_id_to_idx["p3"];
+    let p4 = state.person_id_to_idx["p4"];
+    let p5 = state.person_id_to_idx["p5"];
+
+    assert_eq!(state.cliques, vec![vec![p0, p1], vec![p2, p3], vec![p4, p5]]);
+    assert_eq!(state.person_to_clique_id[0][p0], Some(0));
+    assert_eq!(state.person_to_clique_id[0][p2], Some(1));
+    assert_eq!(state.person_to_clique_id[0][p4], Some(2));
+    assert_eq!(state.person_to_clique_id[0][p5], Some(2));
+}

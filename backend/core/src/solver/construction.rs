@@ -753,20 +753,26 @@ impl State {
                 }
             }
 
-            // collect buckets
+            // collect buckets, then sort clique member lists explicitly so global clique ids are
+            // deterministic across processes regardless of hash-map iteration order.
             let mut root_to_members: HashMap<usize, Vec<usize>> = HashMap::new();
             for p in 0..people_count {
                 let r = dsu.find(p);
                 root_to_members.entry(r).or_default().push(p);
             }
 
-            for members in root_to_members.values() {
-                if members.len() < 2 {
-                    continue;
-                }
+            let mut clique_members = root_to_members
+                .into_values()
+                .filter(|members| members.len() >= 2)
+                .map(|mut members| {
+                    members.sort_unstable();
+                    members
+                })
+                .collect::<Vec<_>>();
+            clique_members.sort_unstable();
 
-                let mut key = members.clone();
-                key.sort_unstable();
+            for members in clique_members {
+                let key = members.clone();
 
                 let cid = match members_to_id.entry(key.clone()) {
                     Entry::Occupied(e) => *e.get(),
@@ -785,7 +791,7 @@ impl State {
                     }
                 }
 
-                for &m in members {
+                for &m in &members {
                     if self.person_to_clique_id[session_idx][m].is_some() {
                         return Err(SolverError::ValidationError(format!(
                             "Person {} is part of multiple cliques in session {}.",
