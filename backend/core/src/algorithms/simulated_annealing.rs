@@ -30,7 +30,6 @@ use crate::models::{
     SolverConfiguration, SolverParams, SolverResult, StopReason,
 };
 use crate::solver::{derive_phase_seed, SolverError, State, SEARCH_SEED_SALT};
-use rand::seq::SliceRandom;
 use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha12Rng;
 #[cfg(not(target_arch = "wasm32"))]
@@ -155,6 +154,74 @@ fn choose_swap_partner_in_different_group(
         .iter()
         .copied()
         .find(|&candidate| candidate != p1_idx && state.locations[day][candidate].0 != p1_group)
+}
+
+fn static_move_candidates_for_day(state: &State, day: usize) -> Vec<usize> {
+    (0..state.person_idx_to_id.len())
+        .filter(|&person_idx| state.person_participation[person_idx][day])
+        .filter(|&person_idx| !state.immovable_people.contains_key(&(person_idx, day)))
+        .filter(|&person_idx| state.person_to_clique_id[day][person_idx].is_none())
+        .collect()
+}
+
+fn choose_target_group(
+    num_groups: usize,
+    excluded_group: usize,
+    rng: &mut ChaCha12Rng,
+    mut predicate: impl FnMut(usize) -> bool,
+) -> Option<usize> {
+    let mut selected = None;
+    let mut seen = 0u32;
+
+    for group_idx in 0..num_groups {
+        if group_idx == excluded_group || !predicate(group_idx) {
+            continue;
+        }
+
+        seen += 1;
+        if rng.random_range(0..seen) == 0 {
+            selected = Some(group_idx);
+        }
+    }
+
+    selected
+}
+
+fn sample_non_clique_swap_targets(
+    state: &State,
+    day: usize,
+    group_idx: usize,
+    required_count: usize,
+    rng: &mut ChaCha12Rng,
+) -> Option<Vec<usize>> {
+    if required_count == 0 {
+        return Some(Vec::new());
+    }
+
+    let mut selected = Vec::with_capacity(required_count);
+    let mut seen = 0u32;
+
+    for &person_idx in &state.schedule[day][group_idx] {
+        if !state.person_participation[person_idx][day]
+            || state.person_to_clique_id[day][person_idx].is_some()
+            || state.immovable_people.contains_key(&(person_idx, day))
+        {
+            continue;
+        }
+
+        seen += 1;
+        if selected.len() < required_count {
+            selected.push(person_idx);
+            continue;
+        }
+
+        let slot = rng.random_range(0..seen);
+        if (slot as usize) < required_count {
+            selected[slot as usize] = person_idx;
+        }
+    }
+
+    (selected.len() == required_count).then_some(selected)
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -417,74 +484,126 @@ impl BenchmarkMoveTelemetry {
     }
 }
 
-#[derive(Debug, Clone)]
-struct WeightedMoveChoice {
-    family: MoveFamily,
-    weight: f64,
+#[derive(Debug, Clone, Copy)]
+struct MoveFamilySelector {
+    forced_family: Option<MoveFamily>,
+    mode: MoveSelectionMode,
+    allow_swap: bool,
+    allow_transfer: bool,
+    allow_clique_swap: bool,
+    weighted_swap: f64,
+    weighted_transfer: f64,
+    weighted_clique_swap: f64,
 }
 
-fn sample_move_family(
-    move_policy: &MovePolicy,
-    clique_swap_probability: f64,
-    transfer_probability: f64,
-    rng: &mut ChaCha12Rng,
-) -> MoveFamily {
-    if let Some(forced_family) = move_policy.forced_family {
-        return forced_family;
-    }
+impl MoveFamilySelector {
+    fn new(move_policy: &MovePolicy) -> Self {
+        let allow_swap = move_policy
+            .allowed_families
+            .as_ref()
+            .is_none_or(|families| families.contains(&MoveFamily::Swap));
+        let allow_transfer = move_policy
+            .allowed_families
+            .as_ref()
+            .is_none_or(|families| families.contains(&MoveFamily::Transfer));
+        let allow_clique_swap = move_policy
+            .allowed_families
+            .as_ref()
+            .is_none_or(|families| families.contains(&MoveFamily::CliqueSwap));
 
-    let allowed_families = move_policy.allowed_families();
-    let mut choices = Vec::with_capacity(allowed_families.len());
-
-    match move_policy.mode {
-        MoveSelectionMode::Adaptive => {
-            for family in allowed_families {
-                let weight = match family {
-                    MoveFamily::CliqueSwap => clique_swap_probability.max(0.0),
-                    MoveFamily::Transfer => transfer_probability.max(0.0),
-                    MoveFamily::Swap => {
-                        (1.0 - clique_swap_probability - transfer_probability).max(0.0)
-                    }
-                };
-
-                choices.push(WeightedMoveChoice { family, weight });
+        let (weighted_swap, weighted_transfer, weighted_clique_swap) = match move_policy.mode {
+            MoveSelectionMode::Adaptive => (0.0, 0.0, 0.0),
+            MoveSelectionMode::Weighted => {
+                let weights = move_policy
+                    .weights
+                    .as_ref()
+                    .expect("weighted policy should have been validated before solve");
+                (weights.swap, weights.transfer, weights.clique_swap)
             }
-        }
-        MoveSelectionMode::Weighted => {
-            let weights = move_policy
-                .weights
-                .as_ref()
-                .expect("weighted policy should have been validated before solve");
+        };
 
-            for family in allowed_families {
-                choices.push(WeightedMoveChoice {
-                    family,
-                    weight: weights.weight_for(family),
-                });
+        Self {
+            forced_family: move_policy.forced_family,
+            mode: move_policy.mode,
+            allow_swap,
+            allow_transfer,
+            allow_clique_swap,
+            weighted_swap,
+            weighted_transfer,
+            weighted_clique_swap,
+        }
+    }
+
+    fn sample(
+        self,
+        clique_swap_probability: f64,
+        transfer_probability: f64,
+        rng: &mut ChaCha12Rng,
+    ) -> MoveFamily {
+        if let Some(forced_family) = self.forced_family {
+            return forced_family;
+        }
+
+        let (swap_weight, transfer_weight, clique_swap_weight) = match self.mode {
+            MoveSelectionMode::Adaptive => (
+                if self.allow_swap {
+                    (1.0 - clique_swap_probability - transfer_probability).max(0.0)
+                } else {
+                    0.0
+                },
+                if self.allow_transfer {
+                    transfer_probability.max(0.0)
+                } else {
+                    0.0
+                },
+                if self.allow_clique_swap {
+                    clique_swap_probability.max(0.0)
+                } else {
+                    0.0
+                },
+            ),
+            MoveSelectionMode::Weighted => (
+                if self.allow_swap {
+                    self.weighted_swap
+                } else {
+                    0.0
+                },
+                if self.allow_transfer {
+                    self.weighted_transfer
+                } else {
+                    0.0
+                },
+                if self.allow_clique_swap {
+                    self.weighted_clique_swap
+                } else {
+                    0.0
+                },
+            ),
+        };
+
+        let total_weight = swap_weight + transfer_weight + clique_swap_weight;
+        if total_weight <= 0.0 {
+            if self.allow_swap {
+                return MoveFamily::Swap;
             }
+            if self.allow_transfer {
+                return MoveFamily::Transfer;
+            }
+            if self.allow_clique_swap {
+                return MoveFamily::CliqueSwap;
+            }
+            return MoveFamily::Swap;
         }
-    }
 
-    let total_weight = choices.iter().map(|choice| choice.weight).sum::<f64>();
-    if total_weight <= 0.0 {
-        return choices
-            .first()
-            .map(|choice| choice.family)
-            .unwrap_or(MoveFamily::Swap);
-    }
-
-    let mut selection = rng.random::<f64>() * total_weight;
-    for choice in &choices {
-        if selection < choice.weight {
-            return choice.family;
+        let selection = rng.random::<f64>() * total_weight;
+        if selection < swap_weight {
+            return MoveFamily::Swap;
         }
-        selection -= choice.weight;
+        if selection < swap_weight + transfer_weight {
+            return MoveFamily::Transfer;
+        }
+        MoveFamily::CliqueSwap
     }
-
-    choices
-        .last()
-        .map(|choice| choice.family)
-        .unwrap_or(MoveFamily::Swap)
 }
 
 /// Simulated Annealing solver for the Social Group Scheduling Problem.
@@ -913,8 +1032,12 @@ impl Solver for SimulatedAnnealing {
             .collect();
 
         let clique_swap_probabilities: Vec<f64> = current_state.calculate_clique_swap_probability();
+        let move_family_selector = MoveFamilySelector::new(&state.move_policy);
         let active_cliques_by_day: Vec<Vec<usize>> = (0..current_state.num_sessions as usize)
             .map(|day| active_clique_indices_for_day(&current_state, day))
+            .collect();
+        let movable_people_by_day: Vec<Vec<usize>> = (0..current_state.num_sessions as usize)
+            .map(|day| static_move_candidates_for_day(&current_state, day))
             .collect();
 
         // Track reheating state
@@ -1167,8 +1290,7 @@ impl Solver for SimulatedAnnealing {
             // Use pre-calculated move probabilities for performance
             let transfer_probability = transfer_probabilities[day];
             let clique_swap_probability = clique_swap_probabilities[day];
-            let chosen_family = sample_move_family(
-                &state.move_policy,
+            let chosen_family = move_family_selector.sample(
                 clique_swap_probability,
                 transfer_probability,
                 &mut rng,
@@ -1207,25 +1329,24 @@ impl Solver for SimulatedAnnealing {
 
                 // Find a different group to swap with
                 let num_groups = current_state.group_idx_to_id.len();
-                let possible_target_groups: Vec<usize> = (0..num_groups)
-                    .filter(|&g| g != current_group)
-                    .filter(|&g| {
-                        current_state.is_clique_swap_feasible(day, clique_idx, current_group, g)
-                    })
-                    .collect();
+                let maybe_target_group =
+                    choose_target_group(num_groups, current_group, &mut rng, |group_idx| {
+                        current_state.is_clique_swap_feasible(
+                            day,
+                            clique_idx,
+                            current_group,
+                            group_idx,
+                        )
+                    });
 
-                if !possible_target_groups.is_empty() {
-                    let target_group =
-                        possible_target_groups[rng.random_range(0..possible_target_groups.len())];
-                    let mut non_clique_people =
-                        current_state.find_non_clique_movable_people(day, target_group);
-
-                    if non_clique_people.len() >= active_count {
-                        // Randomly select exactly active_count people to swap
-                        non_clique_people.shuffle(&mut rng);
-                        let target_people: Vec<usize> =
-                            non_clique_people.into_iter().take(active_count).collect();
-
+                if let Some(target_group) = maybe_target_group {
+                    if let Some(target_people) = sample_non_clique_swap_targets(
+                        &current_state,
+                        day,
+                        target_group,
+                        active_count,
+                        &mut rng,
+                    ) {
                         // Calculate delta cost for clique swap
                         let preview_started_at = get_current_time();
                         let delta_cost = current_state.calculate_clique_swap_cost_delta(
@@ -1329,11 +1450,7 @@ impl Solver for SimulatedAnnealing {
                 }
             } else if chosen_family == MoveFamily::Transfer {
                 // === SINGLE PERSON TRANSFER ===
-                let transferable_people: Vec<usize> = (0..current_state.person_idx_to_id.len())
-                    .filter(|&p_idx| current_state.person_participation[p_idx][day])
-                    .filter(|&p_idx| !current_state.immovable_people.contains_key(&(p_idx, day)))
-                    .filter(|&p_idx| current_state.person_to_clique_id[day][p_idx].is_none())
-                    .collect();
+                let transferable_people = &movable_people_by_day[day];
 
                 if !transferable_people.is_empty() {
                     let person_idx =
@@ -1342,17 +1459,13 @@ impl Solver for SimulatedAnnealing {
 
                     // Find potential target groups
                     let num_groups = current_state.group_idx_to_id.len();
-                    let possible_target_groups: Vec<usize> = (0..num_groups)
-                        .filter(|&g| g != from_group)
-                        .filter(|&g| {
-                            current_state.is_transfer_feasible(day, person_idx, from_group, g)
-                        })
-                        .collect();
+                    let maybe_to_group =
+                        choose_target_group(num_groups, from_group, &mut rng, |group_idx| {
+                            current_state
+                                .is_transfer_feasible(day, person_idx, from_group, group_idx)
+                        });
 
-                    if !possible_target_groups.is_empty() {
-                        let to_group = possible_target_groups
-                            [rng.random_range(0..possible_target_groups.len())];
-
+                    if let Some(to_group) = maybe_to_group {
                         // Calculate delta cost for transfer
                         let preview_started_at = get_current_time();
                         let delta_cost = current_state
@@ -1450,11 +1563,7 @@ impl Solver for SimulatedAnnealing {
                 }
             } else {
                 // === REGULAR PERSON SWAP ===
-                let swappable_people: Vec<usize> = (0..current_state.person_idx_to_id.len())
-                    .filter(|&p_idx| current_state.person_participation[p_idx][day])
-                    .filter(|&p_idx| !current_state.immovable_people.contains_key(&(p_idx, day)))
-                    .filter(|&p_idx| current_state.person_to_clique_id[day][p_idx].is_none())
-                    .collect();
+                let swappable_people = &movable_people_by_day[day];
 
                 if swappable_people.len() < 2 {
                     continue;
