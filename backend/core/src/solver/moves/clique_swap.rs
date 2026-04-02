@@ -5,6 +5,7 @@
 //! members from the target group.
 
 use super::super::State;
+use crate::models::PairMeetingMode;
 
 impl State {
     /// Returns, for each session, the probability of attempting a clique-swap move.
@@ -105,7 +106,12 @@ impl State {
         true
     }
 
-    fn update_contact_cache_for_clique_swap_pair(&mut self, person_a: usize, person_b: usize, delta: i32) {
+    fn update_contact_cache_for_clique_swap_pair(
+        &mut self,
+        person_a: usize,
+        person_b: usize,
+        delta: i32,
+    ) {
         let old_count = self.contact_matrix[person_a][person_b];
 
         if delta < 0 {
@@ -135,6 +141,61 @@ impl State {
             let new_penalty = self.repetition_penalty_for_contact_count(old_count + 1);
             self.repetition_penalty += new_penalty - old_penalty;
         }
+    }
+
+    fn clique_swap_group_members_after(
+        old_from: &[usize],
+        old_to: &[usize],
+        active_members: &[usize],
+        target_people: &[usize],
+    ) -> (Vec<usize>, Vec<usize>, Vec<usize>, Vec<usize>) {
+        let source_remaining: Vec<usize> = old_from
+            .iter()
+            .copied()
+            .filter(|person| !active_members.contains(person))
+            .collect();
+        let target_remaining: Vec<usize> = old_to
+            .iter()
+            .copied()
+            .filter(|person| !target_people.contains(person))
+            .collect();
+
+        let mut new_from = source_remaining.clone();
+        new_from.extend_from_slice(target_people);
+
+        let mut new_to = target_remaining.clone();
+        new_to.extend_from_slice(active_members);
+
+        (source_remaining, target_remaining, new_from, new_to)
+    }
+
+    fn contact_delta_for_clique_swap_pair(
+        &self,
+        person_a: usize,
+        person_b: usize,
+        direction: i32,
+    ) -> f64 {
+        let count = self.contact_matrix[person_a][person_b];
+
+        if direction < 0 && count == 0 {
+            return 0.0;
+        }
+
+        let new_count = if direction < 0 { count - 1 } else { count + 1 };
+        let old_penalty = self.repetition_penalty_for_contact_count(count);
+        let new_penalty = self.repetition_penalty_for_contact_count(new_count);
+
+        let mut delta_cost = self.w_repetition * (new_penalty - old_penalty) as f64;
+
+        if direction < 0 && count == 1 {
+            delta_cost += self.w_contacts;
+        }
+
+        if direction > 0 && count == 0 {
+            delta_cost -= self.w_contacts;
+        }
+
+        delta_cost
     }
 
     /// Check if a clique swap is feasible between two groups
@@ -207,187 +268,208 @@ impl State {
             return f64::INFINITY;
         }
 
-        let previous_cost = self.current_cost;
-        let mut trial_state = self.clone();
-        trial_state.apply_clique_swap(day, clique_idx, from_group, to_group, target_people);
-        trial_state.current_cost - previous_cost
-    }
+        let old_from = &self.schedule[day][from_group];
+        let old_to = &self.schedule[day][to_group];
+        let (source_remaining, target_remaining, new_from, new_to) =
+            Self::clique_swap_group_members_after(old_from, old_to, &active_members, target_people);
 
-    /// Calculate constraint penalty delta for clique swaps
-    #[allow(dead_code)]
-    fn calculate_clique_swap_constraint_penalty_delta(
-        &self,
-        day: usize,
-        clique: &[usize],
-        target_people: &[usize],
-        from_group: usize,
-        to_group: usize,
-    ) -> f64 {
-        let mut delta = 0.0;
+        let mut delta_cost = 0.0;
 
-        // Get the affected group memberships before and after the swap
-        let from_group_members = &self.schedule[day][from_group];
-        let to_group_members = &self.schedule[day][to_group];
-
-        // Calculate new group compositions after swap
-        let mut new_from_members: Vec<usize> = from_group_members
-            .iter()
-            .filter(|&&p| !clique.contains(&p))
-            .cloned()
-            .collect();
-        new_from_members.extend_from_slice(target_people);
-
-        let mut new_to_members: Vec<usize> = to_group_members
-            .iter()
-            .filter(|&&p| !target_people.contains(&p))
-            .cloned()
-            .collect();
-        new_to_members.extend_from_slice(clique);
-
-        // Check ShouldNotBeTogether constraints
-        for (pair_idx, &(person1, person2)) in self.forbidden_pairs.iter().enumerate() {
-            let pair_weight = self.forbidden_pair_weights[pair_idx];
-
-            // Old constraint penalty contributions
-            let old_penalty = if (from_group_members.contains(&person1)
-                && from_group_members.contains(&person2))
-                || (to_group_members.contains(&person1) && to_group_members.contains(&person2))
-            {
-                pair_weight // Constraint violated in current state
-            } else {
-                0.0 // Constraint satisfied in current state
-            };
-
-            // New constraint penalty contributions
-            let new_penalty = if (new_from_members.contains(&person1)
-                && new_from_members.contains(&person2))
-                || (new_to_members.contains(&person1) && new_to_members.contains(&person2))
-            {
-                pair_weight // Constraint violated in new state
-            } else {
-                0.0 // Constraint satisfied in new state
-            };
-
-            delta += new_penalty - old_penalty;
-        }
-
-        // Check ShouldStayTogether pairs
-        for (pair_idx, &(person1, person2)) in self.should_together_pairs.iter().enumerate() {
-            let pair_weight = self.should_together_weights[pair_idx];
-
-            // Old penalty: they are separated if each group contains exactly one of them
-            let old_penalty = if (from_group_members.contains(&person1)
-                && !from_group_members.contains(&person2)
-                && to_group_members.contains(&person2))
-                || (from_group_members.contains(&person2)
-                    && !from_group_members.contains(&person1)
-                    && to_group_members.contains(&person1))
-            {
-                pair_weight
-            } else {
-                0.0
-            };
-
-            // New penalty after swap-like move
-            let new_from_has_p1 = new_from_members.contains(&person1);
-            let new_from_has_p2 = new_from_members.contains(&person2);
-            let new_to_has_p1 = new_to_members.contains(&person1);
-            let new_to_has_p2 = new_to_members.contains(&person2);
-            let new_penalty =
-                if (new_from_has_p1 && new_to_has_p2) || (new_from_has_p2 && new_to_has_p1) {
-                    pair_weight
-                } else {
-                    0.0
-                };
-
-            delta += new_penalty - old_penalty;
-        }
-
-        // Check ImmovablePerson constraints for the affected people
-        for &person in clique.iter().chain(target_people.iter()) {
-            if let Some(&required_group) = self.immovable_people.get(&(person, day)) {
-                let current_group = self.locations[day][person].0;
-                let new_group = if clique.contains(&person) {
-                    to_group
-                } else {
-                    from_group
-                };
-
-                // Old penalty (using default weight for immovable person constraints)
-                let old_penalty = if current_group != required_group {
-                    1000.0 // Default hard constraint weight for immovable people
-                } else {
-                    0.0
-                };
-
-                // New penalty
-                let new_penalty = if new_group != required_group {
-                    1000.0 // Default hard constraint weight for immovable people
-                } else {
-                    0.0
-                };
-
-                delta += new_penalty - old_penalty;
+        for &member in &active_members {
+            for &other in &source_remaining {
+                if self.person_participation[other][day] {
+                    delta_cost += self.contact_delta_for_clique_swap_pair(member, other, -1);
+                }
+            }
+            for &other in &target_remaining {
+                if self.person_participation[other][day] {
+                    delta_cost += self.contact_delta_for_clique_swap_pair(member, other, 1);
+                }
             }
         }
 
-        delta
-    }
+        for &person in target_people {
+            for &other in &target_remaining {
+                if self.person_participation[other][day] {
+                    delta_cost += self.contact_delta_for_clique_swap_pair(person, other, -1);
+                }
+            }
+            for &other in &source_remaining {
+                if self.person_participation[other][day] {
+                    delta_cost += self.contact_delta_for_clique_swap_pair(person, other, 1);
+                }
+            }
+        }
 
-    /// Simplified attribute balance delta calculation for clique swaps
-    #[allow(dead_code)]
-    fn calculate_attribute_balance_delta_for_groups(
-        &self,
-        day: usize,
-        from_group: usize,
-        to_group: usize,
-        clique: &[usize],
-        target_people: &[usize],
-    ) -> f64 {
-        let mut delta = 0.0;
+        let moved_person_group_after = |person: usize| {
+            if active_members.contains(&person) {
+                to_group
+            } else if target_people.contains(&person) {
+                from_group
+            } else {
+                self.locations[day][person].0
+            }
+        };
 
-        for ac in &self.attribute_balance_constraints {
-            // Only consider constraints that apply to these groups
-            if ac.group_id != self.group_idx_to_id[from_group]
-                && ac.group_id != self.group_idx_to_id[to_group]
+        for (pair_idx, &(person_a, person_b)) in self.forbidden_pairs.iter().enumerate() {
+            if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
+                if !sessions.contains(&day) {
+                    continue;
+                }
+            }
+
+            if !self.person_participation[person_a][day]
+                || !self.person_participation[person_b][day]
             {
                 continue;
             }
 
-            let from_group_members = &self.schedule[day][from_group];
-            let to_group_members = &self.schedule[day][to_group];
+            if !active_members.contains(&person_a)
+                && !active_members.contains(&person_b)
+                && !target_people.contains(&person_a)
+                && !target_people.contains(&person_b)
+            {
+                continue;
+            }
 
-            // Calculate old penalties
-            let old_from_penalty =
-                self.calculate_group_attribute_penalty_for_members(from_group_members, ac);
-            let old_to_penalty =
-                self.calculate_group_attribute_penalty_for_members(to_group_members, ac);
+            let were_together = self.locations[day][person_a].0 == self.locations[day][person_b].0;
+            let are_together =
+                moved_person_group_after(person_a) == moved_person_group_after(person_b);
 
-            // Calculate new group compositions
-            let mut new_from_members: Vec<usize> = from_group_members
-                .iter()
-                .filter(|&&p| !clique.contains(&p))
-                .cloned()
-                .collect();
-            new_from_members.extend_from_slice(target_people);
-
-            let mut new_to_members: Vec<usize> = to_group_members
-                .iter()
-                .filter(|&&p| !target_people.contains(&p))
-                .cloned()
-                .collect();
-            new_to_members.extend_from_slice(clique);
-
-            // Calculate new penalties
-            let new_from_penalty =
-                self.calculate_group_attribute_penalty_for_members(&new_from_members, ac);
-            let new_to_penalty =
-                self.calculate_group_attribute_penalty_for_members(&new_to_members, ac);
-
-            delta += (new_from_penalty + new_to_penalty) - (old_from_penalty + old_to_penalty);
+            if were_together && !are_together {
+                delta_cost -= self.forbidden_pair_weights[pair_idx];
+            } else if !were_together && are_together {
+                delta_cost += self.forbidden_pair_weights[pair_idx];
+            }
         }
 
-        delta
+        for (pair_idx, &(person_a, person_b)) in self.should_together_pairs.iter().enumerate() {
+            if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
+                if !sessions.contains(&day) {
+                    continue;
+                }
+            }
+
+            if !self.person_participation[person_a][day]
+                || !self.person_participation[person_b][day]
+            {
+                continue;
+            }
+
+            if !active_members.contains(&person_a)
+                && !active_members.contains(&person_b)
+                && !target_people.contains(&person_a)
+                && !target_people.contains(&person_b)
+            {
+                continue;
+            }
+
+            let was_violation = self.locations[day][person_a].0 != self.locations[day][person_b].0;
+            let is_violation =
+                moved_person_group_after(person_a) != moved_person_group_after(person_b);
+
+            if was_violation && !is_violation {
+                delta_cost -= self.should_together_weights[pair_idx];
+            } else if !was_violation && is_violation {
+                delta_cost += self.should_together_weights[pair_idx];
+            }
+        }
+
+        for (pair_idx, &(person_a, person_b)) in self.pairmin_pairs.iter().enumerate() {
+            if !self.pairmin_sessions[pair_idx].contains(&day) {
+                continue;
+            }
+
+            if !self.person_participation[person_a][day]
+                || !self.person_participation[person_b][day]
+            {
+                continue;
+            }
+
+            if !active_members.contains(&person_a)
+                && !active_members.contains(&person_b)
+                && !target_people.contains(&person_a)
+                && !target_people.contains(&person_b)
+            {
+                continue;
+            }
+
+            let were_together = self.locations[day][person_a].0 == self.locations[day][person_b].0;
+            let are_together =
+                moved_person_group_after(person_a) == moved_person_group_after(person_b);
+
+            if were_together == are_together {
+                continue;
+            }
+
+            let have_before = self.pairmin_counts[pair_idx] as i32;
+            let have_after = if are_together {
+                have_before + 1
+            } else {
+                have_before - 1
+            };
+            let target = self.pairmin_required[pair_idx] as i32;
+            let weight = self.pairmin_weights[pair_idx];
+
+            let (before_penalty, after_penalty) = match self.pairmin_modes[pair_idx] {
+                PairMeetingMode::AtLeast => (
+                    (target - have_before).max(0) as f64 * weight,
+                    (target - have_after).max(0) as f64 * weight,
+                ),
+                PairMeetingMode::Exact => (
+                    (have_before - target).abs() as f64 * weight,
+                    (have_after - target).abs() as f64 * weight,
+                ),
+                PairMeetingMode::AtMost => (
+                    (have_before - target).max(0) as f64 * weight,
+                    (have_after - target).max(0) as f64 * weight,
+                ),
+            };
+
+            delta_cost += after_penalty - before_penalty;
+        }
+
+        let from_group_id = &self.group_idx_to_id[from_group];
+        let to_group_id = &self.group_idx_to_id[to_group];
+
+        for ac in &self.attribute_balance_constraints {
+            if !self.attribute_balance_constraint_applies(ac, day) {
+                continue;
+            }
+
+            let applies_to_from = ac.group_id == *from_group_id;
+            let applies_to_to = ac.group_id == *to_group_id;
+
+            if !applies_to_from && !applies_to_to {
+                continue;
+            }
+
+            let old_penalty_from = if applies_to_from {
+                self.calculate_group_attribute_penalty_for_members(old_from, ac)
+            } else {
+                0.0
+            };
+            let old_penalty_to = if applies_to_to {
+                self.calculate_group_attribute_penalty_for_members(old_to, ac)
+            } else {
+                0.0
+            };
+
+            let new_penalty_from = if applies_to_from {
+                self.calculate_group_attribute_penalty_for_members(&new_from, ac)
+            } else {
+                0.0
+            };
+            let new_penalty_to = if applies_to_to {
+                self.calculate_group_attribute_penalty_for_members(&new_to, ac)
+            } else {
+                0.0
+            };
+
+            delta_cost += (new_penalty_from + new_penalty_to) - (old_penalty_from + old_penalty_to);
+        }
+
+        delta_cost
     }
 
     /// Apply a clique swap, moving the clique to a new group and swapping with target people
@@ -420,16 +502,13 @@ impl State {
         let old_from = self.schedule[day][from_group].clone();
         let old_to = self.schedule[day][to_group].clone();
 
-        let source_remaining: Vec<usize> = old_from
-            .iter()
-            .copied()
-            .filter(|person| !active_members.contains(person))
-            .collect();
-        let target_remaining: Vec<usize> = old_to
-            .iter()
-            .copied()
-            .filter(|person| !target_people.contains(person))
-            .collect();
+        let (source_remaining, target_remaining, new_from, new_to) =
+            Self::clique_swap_group_members_after(
+                &old_from,
+                &old_to,
+                &active_members,
+                target_people,
+            );
 
         let current_groups: Vec<usize> = self.locations[day]
             .iter()
@@ -478,7 +557,8 @@ impl State {
                 }
             }
 
-            if !self.person_participation[person_a][day] || !self.person_participation[person_b][day]
+            if !self.person_participation[person_a][day]
+                || !self.person_participation[person_b][day]
             {
                 continue;
             }
@@ -492,7 +572,8 @@ impl State {
             }
 
             let were_together = self.locations[day][person_a].0 == self.locations[day][person_b].0;
-            let are_together = moved_person_group_after(person_a) == moved_person_group_after(person_b);
+            let are_together =
+                moved_person_group_after(person_a) == moved_person_group_after(person_b);
 
             if were_together && !are_together {
                 self.forbidden_pair_violations[pair_idx] -= 1;
@@ -508,7 +589,8 @@ impl State {
                 }
             }
 
-            if !self.person_participation[person_a][day] || !self.person_participation[person_b][day]
+            if !self.person_participation[person_a][day]
+                || !self.person_participation[person_b][day]
             {
                 continue;
             }
@@ -522,7 +604,8 @@ impl State {
             }
 
             let was_violation = self.locations[day][person_a].0 != self.locations[day][person_b].0;
-            let is_violation = moved_person_group_after(person_a) != moved_person_group_after(person_b);
+            let is_violation =
+                moved_person_group_after(person_a) != moved_person_group_after(person_b);
 
             if was_violation && !is_violation {
                 self.should_together_violations[pair_idx] -= 1;
@@ -536,7 +619,8 @@ impl State {
                 continue;
             }
 
-            if !self.person_participation[person_a][day] || !self.person_participation[person_b][day]
+            if !self.person_participation[person_a][day]
+                || !self.person_participation[person_b][day]
             {
                 continue;
             }
@@ -550,7 +634,8 @@ impl State {
             }
 
             let were_together = self.locations[day][person_a].0 == self.locations[day][person_b].0;
-            let are_together = moved_person_group_after(person_a) == moved_person_group_after(person_b);
+            let are_together =
+                moved_person_group_after(person_a) == moved_person_group_after(person_b);
 
             if were_together == are_together {
                 continue;
@@ -562,12 +647,6 @@ impl State {
                 self.pairmin_counts[pair_idx] -= 1;
             }
         }
-
-        let mut new_from = source_remaining.clone();
-        new_from.extend_from_slice(target_people);
-
-        let mut new_to = target_remaining.clone();
-        new_to.extend_from_slice(&active_members);
 
         #[cfg(feature = "debug-invariant-checks")]
         {
@@ -597,7 +676,8 @@ impl State {
                 // Expect cardinality preserved
                 debug_assert_eq!(
                     new_from.len(),
-                    self.schedule[day][from_group].len() - active_members.len() + target_people.len()
+                    self.schedule[day][from_group].len() - active_members.len()
+                        + target_people.len()
                 );
                 debug_assert_eq!(
                     new_to.len(),
@@ -644,12 +724,18 @@ impl State {
             };
 
             let new_penalty_from = if applies_to_from {
-                self.calculate_group_attribute_penalty_for_members(&self.schedule[day][from_group], ac)
+                self.calculate_group_attribute_penalty_for_members(
+                    &self.schedule[day][from_group],
+                    ac,
+                )
             } else {
                 0.0
             };
             let new_penalty_to = if applies_to_to {
-                self.calculate_group_attribute_penalty_for_members(&self.schedule[day][to_group], ac)
+                self.calculate_group_attribute_penalty_for_members(
+                    &self.schedule[day][to_group],
+                    ac,
+                )
             } else {
                 0.0
             };

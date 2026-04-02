@@ -58,7 +58,9 @@ fn clique_state_with_group_sizes(
     let mut solver = default_solver_config(1);
     solver.seed = Some(31);
 
-    let group_ids: Vec<String> = (0..group_sizes.len()).map(|idx| format!("g{idx}")).collect();
+    let group_ids: Vec<String> = (0..group_sizes.len())
+        .map(|idx| format!("g{idx}"))
+        .collect();
     let group_id_refs: Vec<&str> = group_ids.iter().map(String::as_str).collect();
 
     let input = ApiInput {
@@ -79,7 +81,11 @@ fn clique_state_with_group_sizes(
     State::new(&input).expect("state should build")
 }
 
-fn richer_clique_state(people: Vec<Person>, constraints: Vec<Constraint>, num_sessions: u32) -> State {
+fn richer_clique_state(
+    people: Vec<Person>,
+    constraints: Vec<Constraint>,
+    num_sessions: u32,
+) -> State {
     let sessions = if num_sessions == 1 {
         vec![vec![vec!["p0", "p1", "p4"], vec!["p2", "p3", "p5"], vec![]]]
     } else {
@@ -411,11 +417,72 @@ fn attribute_balance_clique_swap_matches_apply_and_recalculation() {
 
     let before = state.clone();
     let delta = state.calculate_clique_swap_cost_delta(0, 0, 0, 1, &[2, 3]);
-    assert!(delta < 0.0, "expected clique swap to improve attribute balance");
+    assert!(
+        delta < 0.0,
+        "expected clique swap to improve attribute balance"
+    );
 
     state.apply_clique_swap(0, 0, 0, 1, &[2, 3]);
 
     assert!(state.attribute_balance_penalty < before.attribute_balance_penalty);
+    assert_delta_matches_after(&before, &state, delta);
+}
+
+#[test]
+fn mixed_constraint_clique_swap_preview_matches_apply_and_recalculation() {
+    let mut desired_values = HashMap::new();
+    desired_values.insert("red".to_string(), 1);
+    desired_values.insert("blue".to_string(), 2);
+
+    let mut state = richer_clique_state(
+        vec![
+            person_with_attribute("p0", "team", "red"),
+            person_with_attribute("p1", "team", "red"),
+            person_with_attribute("p2", "team", "blue"),
+            person_with_attribute("p3", "team", "blue"),
+            person_with_attribute("p4", "team", "red"),
+            person_with_attribute("p5", "team", "blue"),
+        ],
+        vec![
+            Constraint::MustStayTogether {
+                people: vec!["p0".to_string(), "p1".to_string()],
+                sessions: None,
+            },
+            Constraint::ShouldNotBeTogether {
+                people: vec!["p0".to_string(), "p5".to_string()],
+                penalty_weight: 25.0,
+                sessions: None,
+            },
+            Constraint::ShouldStayTogether {
+                people: vec!["p1".to_string(), "p4".to_string()],
+                penalty_weight: 30.0,
+                sessions: None,
+            },
+            Constraint::PairMeetingCount(PairMeetingCountParams {
+                people: vec!["p0".to_string(), "p5".to_string()],
+                sessions: vec![0, 1],
+                target_meetings: 1,
+                mode: PairMeetingMode::AtLeast,
+                penalty_weight: 17.0,
+            }),
+            Constraint::AttributeBalance(AttributeBalanceParams {
+                group_id: "g0".to_string(),
+                attribute_key: "team".to_string(),
+                desired_values,
+                penalty_weight: 12.0,
+                sessions: None,
+                mode: AttributeBalanceMode::Exact,
+            }),
+        ],
+        2,
+    );
+
+    let before = state.clone();
+    let delta = state.calculate_clique_swap_cost_delta(0, 0, 0, 1, &[2, 3]);
+    assert!(delta.is_finite());
+
+    state.apply_clique_swap(0, 0, 0, 1, &[2, 3]);
+
     assert_delta_matches_after(&before, &state, delta);
 }
 
@@ -450,4 +517,43 @@ fn sequential_clique_swaps_do_not_drift_caches() {
 
     state.apply_clique_swap(0, 0, 1, 2, &[4, 5]);
     assert_state_matches_full_recalculation(&state);
+}
+
+#[test]
+fn sequential_clique_swap_previews_match_apply_and_recalculation() {
+    let mut state = sequential_clique_state(vec![
+        Constraint::MustStayTogether {
+            people: vec!["p0".to_string(), "p1".to_string()],
+            sessions: None,
+        },
+        Constraint::ShouldNotBeTogether {
+            people: vec!["p0".to_string(), "p5".to_string()],
+            penalty_weight: 20.0,
+            sessions: None,
+        },
+        Constraint::ShouldStayTogether {
+            people: vec!["p1".to_string(), "p4".to_string()],
+            penalty_weight: 15.0,
+            sessions: None,
+        },
+        Constraint::PairMeetingCount(PairMeetingCountParams {
+            people: vec!["p0".to_string(), "p5".to_string()],
+            sessions: vec![0],
+            target_meetings: 1,
+            mode: PairMeetingMode::AtLeast,
+            penalty_weight: 11.0,
+        }),
+    ]);
+
+    let before_first = state.clone();
+    let first_delta = state.calculate_clique_swap_cost_delta(0, 0, 0, 1, &[2, 3]);
+    assert!(first_delta.is_finite());
+    state.apply_clique_swap(0, 0, 0, 1, &[2, 3]);
+    assert_delta_matches_after(&before_first, &state, first_delta);
+
+    let before_second = state.clone();
+    let second_delta = state.calculate_clique_swap_cost_delta(0, 0, 1, 2, &[4, 5]);
+    assert!(second_delta.is_finite());
+    state.apply_clique_swap(0, 0, 1, 2, &[4, 5]);
+    assert_delta_matches_after(&before_second, &state, second_delta);
 }
