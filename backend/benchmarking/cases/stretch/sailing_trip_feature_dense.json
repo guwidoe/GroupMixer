@@ -1,0 +1,774 @@
+{
+  "schema_version": 1,
+  "id": "stretch.sailing-trip-feature-dense",
+  "class": "stretch",
+  "tags": [
+    "stretch",
+    "demo-derived",
+    "sailing",
+    "feature-dense",
+    "partial-attendance"
+  ],
+  "title": "Sailing trip feature-dense stretch",
+  "description": "Sailing-trip-derived mixed workload with partial attendance, session-aware capacities, pair constraints, attribute balance, and crew-placement pressure.",
+  "input": {
+    "initial_schedule": null,
+    "problem": {
+      "people": [
+        {
+          "id": "person_aphix38e",
+          "attributes": {
+            "name": "Gray Scott",
+            "Role": "Organiser",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "yes",
+            "Has VHF License": "Yes"
+          }
+        },
+        {
+          "id": "person_k6896t8m",
+          "attributes": {
+            "name": "Cameron Patel",
+            "Role": "Organiser",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "yes",
+            "Has VHF License": "Yes"
+          }
+        },
+        {
+          "id": "person_epqigqvk",
+          "attributes": {
+            "name": "Taylor Nolan",
+            "Role": "Organiser",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "yes",
+            "Has VHF License": "Yes"
+          }
+        },
+        {
+          "id": "person_m2kaj648",
+          "attributes": {
+            "name": "Shawn Hale",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_5e3t3dui",
+          "attributes": {
+            "name": "Kendall Lane",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_sfvtj0gp",
+          "attributes": {
+            "name": "Sage Usman",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_lknh631c",
+          "attributes": {
+            "name": "Reese Quincy",
+            "Role": "Skipper",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_q41p2hyz",
+          "attributes": {
+            "name": "Lane Vaughn",
+            "Role": "Skipper",
+            "First Language": "Polish",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_uc10ubkg",
+          "attributes": {
+            "name": "Winter Yamada",
+            "Role": "Guest",
+            "First Language": "Spanish",
+            "Gender": "male",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "no"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "id": "person_0wd3l70n",
+          "attributes": {
+            "name": "Kiran Hughes",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_ywfp8avz",
+          "attributes": {
+            "name": "Casey Ortega",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_xf66mzvc",
+          "attributes": {
+            "name": "Taylor Keller",
+            "Role": "Co-Skipper",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_u9hb2rwd",
+          "attributes": {
+            "name": "Finley Lane",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_la1a2kx5",
+          "attributes": {
+            "name": "Lane Kim",
+            "Role": "Skipper",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "5",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_tyt98xbj",
+          "attributes": {
+            "name": "Indigo Sawyer",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_uksidonh",
+          "attributes": {
+            "name": "Robin Young",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_t4mxdht1",
+          "attributes": {
+            "name": "Taylor Dawson",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "no"
+          }
+        },
+        {
+          "id": "person_nhjr3mzo",
+          "attributes": {
+            "name": "Oakley Scott",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_jbekvapv",
+          "attributes": {
+            "name": "Jamie Ellis",
+            "Role": "Guest",
+            "First Language": "Italian",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "no"
+          },
+          "sessions": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_e6pjrzbl",
+          "attributes": {
+            "name": "Cameron Campbell",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "2",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_e7eyno7f",
+          "attributes": {
+            "name": "Jamie Vaughn",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "4",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_z0yv6rld",
+          "attributes": {
+            "name": "Casey Griffin",
+            "Role": "Videographer",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "no"
+          },
+          "sessions": [
+            0,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_9cu1c173",
+          "attributes": {
+            "name": "Val Carter",
+            "Role": "Guest",
+            "First Language": "German",
+            "Gender": "male",
+            "Sailing Experience": "3",
+            "Arrives on Time for Shopping": "yes"
+          }
+        },
+        {
+          "id": "person_r100cwye",
+          "attributes": {
+            "name": "Jules Wong",
+            "Role": "Guest",
+            "First Language": "French",
+            "Gender": "male",
+            "Sailing Experience": "1",
+            "Arrives on Time for Shopping": "no"
+          },
+          "sessions": [
+            0,
+            1,
+            3,
+            4
+          ]
+        }
+      ],
+      "groups": [
+        {
+          "id": "Flambuoyant",
+          "size": 6,
+          "session_sizes": [
+            6,
+            6,
+            5,
+            6,
+            6
+          ]
+        },
+        {
+          "id": "Funsinkable",
+          "size": 6,
+          "session_sizes": [
+            6,
+            6,
+            6,
+            6,
+            5
+          ]
+        },
+        {
+          "id": "Foamidable",
+          "size": 6,
+          "session_sizes": [
+            6,
+            6,
+            6,
+            6,
+            6
+          ]
+        },
+        {
+          "id": "Failboat",
+          "size": 6,
+          "session_sizes": [
+            6,
+            5,
+            6,
+            6,
+            6
+          ]
+        }
+      ],
+      "num_sessions": 5
+    },
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "constraints": [
+      {
+        "type": "RepeatEncounter",
+        "max_allowed_encounters": 1,
+        "penalty_function": "squared",
+        "penalty_weight": 1
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_aphix38e"
+        ],
+        "group_id": "Failboat"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_epqigqvk"
+        ],
+        "group_id": "Foamidable"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_la1a2kx5"
+        ],
+        "group_id": "Flambuoyant"
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_uksidonh",
+          "person_la1a2kx5"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_epqigqvk",
+          "person_tyt98xbj"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_sfvtj0gp",
+          "person_uc10ubkg"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_jbekvapv",
+          "person_9cu1c173"
+        ],
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_tyt98xbj",
+          "person_epqigqvk"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_la1a2kx5",
+          "person_uksidonh"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_jbekvapv",
+          "person_m2kaj648",
+          "person_9cu1c173"
+        ],
+        "sessions": [
+          0
+        ],
+        "penalty_weight": 5
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_tyt98xbj",
+          "person_uc10ubkg"
+        ],
+        "penalty_weight": 10
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_sfvtj0gp",
+          "person_xf66mzvc"
+        ],
+        "penalty_weight": 10
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_lknh631c",
+          "person_5e3t3dui"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_uc10ubkg",
+          "person_sfvtj0gp"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_tyt98xbj",
+          "person_epqigqvk"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_e6pjrzbl",
+          "person_m2kaj648"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_k6896t8m",
+          "person_sfvtj0gp"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_e7eyno7f",
+          "person_ywfp8avz"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_la1a2kx5",
+          "person_uksidonh"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_jbekvapv",
+          "person_m2kaj648"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_jbekvapv",
+          "person_9cu1c173"
+        ],
+        "sessions": [],
+        "target_meetings": 1,
+        "mode": "at_least",
+        "penalty_weight": 5
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Flambuoyant",
+        "attribute_key": "First Language",
+        "desired_values": {
+          "French": 2,
+          "German": 1
+        },
+        "mode": "at_least",
+        "penalty_weight": 8
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Flambuoyant",
+        "attribute_key": "Sailing Experience",
+        "desired_values": {
+          "5": 1,
+          "4": 1
+        },
+        "mode": "at_least",
+        "penalty_weight": 10
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Flambuoyant",
+        "attribute_key": "Arrives on Time for Shopping",
+        "desired_values": {
+          "yes": 3
+        },
+        "mode": "at_least",
+        "penalty_weight": 7,
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Funsinkable",
+        "attribute_key": "First Language",
+        "desired_values": {
+          "French": 2,
+          "German": 1
+        },
+        "mode": "at_least",
+        "penalty_weight": 8
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Funsinkable",
+        "attribute_key": "Sailing Experience",
+        "desired_values": {
+          "5": 1,
+          "4": 1
+        },
+        "mode": "at_least",
+        "penalty_weight": 10
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Funsinkable",
+        "attribute_key": "Arrives on Time for Shopping",
+        "desired_values": {
+          "yes": 3
+        },
+        "mode": "at_least",
+        "penalty_weight": 7,
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Foamidable",
+        "attribute_key": "First Language",
+        "desired_values": {
+          "French": 2,
+          "German": 1
+        },
+        "mode": "at_least",
+        "penalty_weight": 8
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Foamidable",
+        "attribute_key": "Sailing Experience",
+        "desired_values": {
+          "5": 1,
+          "4": 1
+        },
+        "mode": "at_least",
+        "penalty_weight": 10
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Foamidable",
+        "attribute_key": "Arrives on Time for Shopping",
+        "desired_values": {
+          "yes": 3
+        },
+        "mode": "at_least",
+        "penalty_weight": 7,
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Failboat",
+        "attribute_key": "First Language",
+        "desired_values": {
+          "French": 2,
+          "German": 1
+        },
+        "mode": "at_least",
+        "penalty_weight": 8
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Failboat",
+        "attribute_key": "Sailing Experience",
+        "desired_values": {
+          "5": 1,
+          "4": 1
+        },
+        "mode": "at_least",
+        "penalty_weight": 10
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Failboat",
+        "attribute_key": "Arrives on Time for Shopping",
+        "desired_values": {
+          "yes": 3
+        },
+        "mode": "at_least",
+        "penalty_weight": 7,
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Flambuoyant",
+        "attribute_key": "Has VHF License",
+        "desired_values": {
+          "Yes": 1
+        },
+        "mode": "at_least",
+        "penalty_weight": 25
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Foamidable",
+        "attribute_key": "Has VHF License",
+        "desired_values": {
+          "Yes": 1
+        },
+        "mode": "at_least",
+        "penalty_weight": 25
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Failboat",
+        "attribute_key": "Has VHF License",
+        "desired_values": {
+          "Yes": 1
+        },
+        "mode": "at_least",
+        "penalty_weight": 25
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 120,
+        "time_limit_seconds": null,
+        "no_improvement_iterations": 40
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 8.0,
+        "final_temperature": 0.2,
+        "cooling_schedule": "geometric",
+        "reheat_after_no_improvement": 8,
+        "reheat_cycles": 1
+      },
+      "logging": {},
+      "telemetry": {},
+      "seed": 408,
+      "move_policy": null,
+      "allowed_sessions": null
+    }
+  }
+}

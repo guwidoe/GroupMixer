@@ -337,7 +337,8 @@ fn run_hotpath_case(
                 )
             }
             TRANSFER_PREVIEW_BENCHMARK_MODE => {
-                let input = transfer_bench_input();
+                let input = transfer_bench_input(&preset)
+                    .ok_or_else(|| format!("unsupported transfer hotpath preset {preset}"))?;
                 let effective_seed = input.state.effective_seed.into();
                 let effective_budget = EffectiveBenchmarkBudget::default();
                 let effective_move_policy = Some(input.state.move_policy.clone());
@@ -390,7 +391,8 @@ fn run_hotpath_case(
                 )
             }
             TRANSFER_APPLY_BENCHMARK_MODE => {
-                let input = transfer_bench_input();
+                let input = transfer_bench_input(&preset)
+                    .ok_or_else(|| format!("unsupported transfer hotpath preset {preset}"))?;
                 let effective_seed = input.state.effective_seed.into();
                 let effective_budget = EffectiveBenchmarkBudget::default();
                 let effective_move_policy = Some(input.state.move_policy.clone());

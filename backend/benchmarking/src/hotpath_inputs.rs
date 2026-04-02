@@ -171,7 +171,15 @@ pub fn swap_bench_input() -> SwapBenchInput {
     }
 }
 
-pub fn transfer_bench_input() -> TransferBenchInput {
+pub fn transfer_bench_input(id: &str) -> Option<TransferBenchInput> {
+    match id {
+        "transfer_default" => Some(transfer_default_bench_input()),
+        "transfer_pair_constraints_heavy" => Some(transfer_pair_constraints_heavy_bench_input()),
+        _ => None,
+    }
+}
+
+fn transfer_default_bench_input() -> TransferBenchInput {
     let input = make_api_input(
         ProblemDefinition {
             people: vec![
@@ -193,9 +201,9 @@ pub fn transfer_bench_input() -> TransferBenchInput {
                 penalty_weight: 13.0,
             }),
             Constraint::AttributeBalance(AttributeBalanceParams {
-                group_id: "g2".to_string(),
+                group_id: "g0".to_string(),
                 attribute_key: "role".to_string(),
-                desired_values: hashmap_counts(&[("eng", 1), ("pm", 1)]),
+                desired_values: hashmap_counts(&[("eng", 2), ("pm", 1)]),
                 penalty_weight: 9.0,
                 mode: AttributeBalanceMode::Exact,
                 sessions: None,
@@ -215,9 +223,160 @@ pub fn transfer_bench_input() -> TransferBenchInput {
     let state = State::new(&warm).expect("transfer state should build");
     TransferBenchInput {
         day: 1,
-        person_idx: state.person_id_to_idx["p3"],
-        from_group: state.group_id_to_idx["g2"],
+        person_idx: state.person_id_to_idx["p1"],
+        from_group: state.group_id_to_idx["g1"],
         to_group: state.group_id_to_idx["g0"],
+        state,
+    }
+}
+
+fn transfer_pair_constraints_heavy_bench_input() -> TransferBenchInput {
+    let mut constraints = vec![
+        Constraint::PairMeetingCount(PairMeetingCountParams {
+            people: vec!["p0".to_string(), "p13".to_string()],
+            sessions: vec![0, 1, 2],
+            target_meetings: 1,
+            mode: PairMeetingMode::AtLeast,
+            penalty_weight: 6.0,
+        }),
+        Constraint::AttributeBalance(AttributeBalanceParams {
+            group_id: "g2".to_string(),
+            attribute_key: "role".to_string(),
+            desired_values: hashmap_counts(&[("eng", 2), ("design", 1), ("pm", 1), ("qa", 1)]),
+            penalty_weight: 9.0,
+            mode: AttributeBalanceMode::Exact,
+            sessions: None,
+        }),
+        Constraint::ShouldStayTogether {
+            people: vec!["p0".to_string(), "p1".to_string(), "p2".to_string()],
+            penalty_weight: 12.0,
+            sessions: None,
+        },
+        Constraint::ShouldStayTogether {
+            people: vec!["p0".to_string(), "p9".to_string(), "p10".to_string()],
+            penalty_weight: 10.0,
+            sessions: None,
+        },
+        Constraint::ShouldNotBeTogether {
+            people: vec!["p0".to_string(), "p3".to_string()],
+            penalty_weight: 11.0,
+            sessions: None,
+        },
+        Constraint::ShouldNotBeTogether {
+            people: vec!["p0".to_string(), "p4".to_string()],
+            penalty_weight: 10.0,
+            sessions: None,
+        },
+        Constraint::ShouldNotBeTogether {
+            people: vec!["p0".to_string(), "p11".to_string()],
+            penalty_weight: 10.0,
+            sessions: None,
+        },
+        Constraint::ShouldNotBeTogether {
+            people: vec!["p0".to_string(), "p12".to_string()],
+            penalty_weight: 9.0,
+            sessions: None,
+        },
+    ];
+
+    for people in [
+        ["p5", "p6", "p7"],
+        ["p8", "p13", "p14"],
+        ["p10", "p15", "p16"],
+        ["p11", "p14", "p17"],
+    ] {
+        constraints.push(Constraint::ShouldStayTogether {
+            people: people.iter().map(|person| (*person).to_string()).collect(),
+            penalty_weight: 7.0,
+            sessions: None,
+        });
+    }
+
+    for (left, right) in [
+        ("p5", "p8"),
+        ("p6", "p9"),
+        ("p7", "p10"),
+        ("p8", "p11"),
+        ("p13", "p16"),
+        ("p14", "p15"),
+        ("p2", "p5"),
+        ("p6", "p12"),
+        ("p7", "p15"),
+        ("p10", "p14"),
+        ("p1", "p16"),
+        ("p4", "p17"),
+    ] {
+        constraints.push(Constraint::ShouldNotBeTogether {
+            people: vec![left.to_string(), right.to_string()],
+            penalty_weight: 6.0,
+            sessions: None,
+        });
+    }
+
+    let input = make_api_input(
+        ProblemDefinition {
+            people: vec![
+                person_with_attr("p0", "role", "eng"),
+                person_with_attr("p1", "role", "eng"),
+                person_with_attr("p2", "role", "design"),
+                person_with_attr("p3", "role", "design"),
+                person_with_attr("p4", "role", "pm"),
+                person_with_attr("p5", "role", "eng"),
+                person_with_attr("p6", "role", "design"),
+                person_with_attr("p7", "role", "pm"),
+                person_with_attr("p8", "role", "qa"),
+                person_with_attr("p9", "role", "eng"),
+                person_with_attr("p10", "role", "design"),
+                person_with_attr("p11", "role", "pm"),
+                person_with_attr("p12", "role", "qa"),
+                person_with_attr("p13", "role", "eng"),
+                person_with_attr("p14", "role", "design"),
+                person_with_attr("p15", "role", "pm"),
+                person_with_attr("p16", "role", "qa"),
+                person_with_attr("p17", "role", "eng"),
+            ],
+            groups: vec![
+                group("g0", 5),
+                group("g1", 4),
+                group("g2", 5),
+                group("g3", 5),
+            ],
+            num_sessions: 3,
+        },
+        constraints,
+        120,
+        62,
+    );
+    let mut warm = input.clone();
+    warm.initial_schedule = Some(make_initial_schedule(
+        &["g0", "g1", "g2", "g3"],
+        vec![
+            vec![
+                vec!["p0", "p5", "p9", "p13", "p17"],
+                vec!["p1", "p6", "p10", "p14"],
+                vec!["p2", "p7", "p11", "p15"],
+                vec!["p3", "p4", "p8", "p12", "p16"],
+            ],
+            vec![
+                vec!["p0", "p1", "p2", "p3", "p4"],
+                vec!["p5", "p6", "p7", "p8"],
+                vec!["p9", "p10", "p11", "p12"],
+                vec!["p13", "p14", "p15", "p16", "p17"],
+            ],
+            vec![
+                vec!["p0", "p6", "p11", "p14", "p17"],
+                vec!["p1", "p4", "p8", "p15"],
+                vec!["p2", "p5", "p9", "p12", "p16"],
+                vec!["p3", "p7", "p10", "p13"],
+            ],
+        ],
+    ));
+    let state = State::new(&warm).expect("pair-constraint-heavy transfer state should build");
+    TransferBenchInput {
+        day: 1,
+        person_idx: state.person_id_to_idx["p0"],
+        from_group: state.group_id_to_idx["g0"],
+        to_group: state.group_id_to_idx["g2"],
         state,
     }
 }

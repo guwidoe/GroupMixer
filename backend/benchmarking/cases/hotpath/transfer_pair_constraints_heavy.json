@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "hotpath.transfer.pair-constraints-heavy",
+  "class": "representative",
+  "family": "transfer",
+  "paths": ["transfer_preview", "transfer_apply"],
+  "title": "Hotpath transfer pair-constraints heavy",
+  "description": "Deterministic transfer kernel lane that stresses should-together and should-not-be-together cache maintenance.",
+  "tags": ["hotpath", "transfer", "pair-constraints", "targeted"],
+  "hotpath_preset": "transfer_pair_constraints_heavy"
+}

@@ -8,3 +8,4 @@ default_iterations: 64
 default_warmup_iterations: 4
 cases:
   - manifest: ../cases/hotpath/transfer_default.json
+  - manifest: ../cases/hotpath/transfer_pair_constraints_heavy.json
