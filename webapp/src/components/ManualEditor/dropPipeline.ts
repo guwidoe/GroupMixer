@@ -1,5 +1,5 @@
 import type { Assignment, Scenario, Solution } from '../../types';
-import { wasmService } from '../../services/wasm';
+import { getRuntime } from '../../services/runtime';
 import { evaluateCompliance } from '../../services/evaluator';
 import type { ChangeReportData } from '../ChangeReportModal';
 import type { ComplianceCardData } from '../../services/evaluator';
@@ -61,7 +61,10 @@ export async function buildMoveBaseline(
   }
 
   try {
-    const evaluated = await wasmService.evaluateSolution(effectiveScenario, draftAssignments);
+    const evaluated = await getRuntime().evaluateSolution({
+      scenario: effectiveScenario,
+      assignments: draftAssignments,
+    });
     return {
       score: summarizeSolution(evaluated),
       compliance: evaluateCompliance(effectiveScenario, evaluated),
@@ -80,7 +83,10 @@ export async function buildMoveReportData(
   const before = await buildMoveBaseline(effectiveScenario, beforeAssignments, beforeCompliance);
 
   try {
-    const afterEval = await wasmService.evaluateSolution(effectiveScenario, afterAssignments);
+    const afterEval = await getRuntime().evaluateSolution({
+      scenario: effectiveScenario,
+      assignments: afterAssignments,
+    });
     return {
       before,
       after: {

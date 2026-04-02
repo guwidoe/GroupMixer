@@ -1,7 +1,6 @@
 import type { MutableRefObject } from 'react';
 import type { Scenario, ScenarioResult, SolverSettings, SolverState, Solution, Notification } from '../../../types';
-import { wasmService } from '../../../services/wasm';
-import { solverWorkerService } from '../../../services/solverWorker';
+import { getRuntime } from '../../../services/runtime';
 
 export type AddNotification = (notification: Omit<Notification, 'id'>) => void;
 
@@ -35,6 +34,8 @@ export async function saveBestSoFar({
   restartAfterSaveRef,
   saveInProgressRef,
 }: SaveBestSoFarArgs) {
+  const runtime = getRuntime();
+
   if (!solverState.isRunning) {
     addNotification({
       type: 'warning',
@@ -47,10 +48,13 @@ export async function saveBestSoFar({
     return;
   }
 
-  const lastProgress = solverWorkerService.getLastProgressUpdate();
-  if (lastProgress && lastProgress.best_schedule) {
+  const activeSolve = runtime.getActiveSolveSnapshot?.() ?? null;
+  const bestSchedule = activeSolve?.bestSchedule ?? activeSolve?.latestProgress?.best_schedule ?? null;
+  const lastProgress = activeSolve?.latestProgress ?? null;
+  const settingsForSave = activeSolve?.selectedSettings ?? runSettings ?? solverSettings;
+
+  if (bestSchedule && lastProgress) {
     saveInProgressRef.current = true;
-    const bestSchedule = lastProgress.best_schedule;
     const assignments: { person_id: string; group_id: string; session_id: number }[] = [];
     Object.entries(bestSchedule).forEach(([sessionKey, groups]) => {
       const sId = parseInt(sessionKey.replace('session_', ''));
@@ -60,16 +64,15 @@ export async function saveBestSoFar({
     });
 
     try {
-      const scenarioForEval = scenario ? { ...scenario, settings: runSettings || solverSettings } : undefined;
+      const scenarioForEval = activeSolve?.runScenario ?? (scenario ? { ...scenario, settings: settingsForSave } : undefined);
       if (!scenarioForEval) throw new Error('No scenario available for evaluation');
 
-      const evaluated = await wasmService.evaluateSolution(scenarioForEval, assignments);
+      const evaluated = await runtime.evaluateSolution({ scenario: scenarioForEval, assignments });
       const evaluatedWithRunMeta = {
         ...evaluated,
         iteration_count: lastProgress.iteration,
         elapsed_time_ms: lastProgress.elapsed_seconds * 1000,
       } as typeof evaluated;
-      const settingsForSave = runSettings || solverSettings;
       addResult(evaluatedWithRunMeta, settingsForSave, undefined, runScenarioSnapshotRef.current || undefined);
     } catch (e) {
       console.error('[SolverPanel] Failed to evaluate snapshot metrics:', e);
@@ -85,7 +88,6 @@ export async function saveBestSoFar({
         weighted_repetition_penalty: 0,
         weighted_constraint_penalty: 0,
       } as unknown as Solution;
-      const settingsForSave = runSettings || solverSettings;
       if (addResult(fallbackSolution, settingsForSave, undefined, runScenarioSnapshotRef.current || undefined)) {
         addNotification({
           type: 'warning',

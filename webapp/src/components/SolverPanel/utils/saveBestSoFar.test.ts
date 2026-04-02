@@ -1,28 +1,59 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSampleScenario, createSampleSolution, createSampleSolverSettings } from '../../../test/fixtures';
 import { saveBestSoFar } from './saveBestSoFar';
-import { wasmService } from '../../../services/wasm';
-import { solverWorkerService } from '../../../services/solverWorker';
+import { setRuntimeForTests, type SolverRuntime } from '../../../services/runtime';
 
-vi.mock('../../../services/wasm', () => ({
-  wasmService: {
-    evaluateSolution: vi.fn(),
-  },
-}));
-
-vi.mock('../../../services/solverWorker', () => ({
-  solverWorkerService: {
-    getLastProgressUpdate: vi.fn(),
-  },
-}));
+function createRuntimeMock(overrides: Partial<SolverRuntime> = {}): SolverRuntime {
+  return {
+    initialize: vi.fn(async () => undefined),
+    getCapabilities: vi.fn(async () => ({
+      runtimeId: 'test',
+      executionModel: 'local-browser',
+      lifecycle: 'local-active-solve',
+      supportsStreamingProgress: true,
+      supportsWarmStart: true,
+      supportsCancellation: true,
+      supportsEvaluation: true,
+      supportsRecommendedSettings: true,
+      supportsActiveSolveInspection: true,
+    })),
+    getDefaultSolverSettings: vi.fn(async () => createSampleSolverSettings()),
+    validateScenario: vi.fn(async () => ({ valid: true, issues: [] })),
+    recommendSettings: vi.fn(async () => createSampleSolverSettings()),
+    solveWithProgress: vi.fn(async () => ({
+      selectedSettings: createSampleSolverSettings(),
+      runScenario: createSampleScenario(),
+      solution: createSampleSolution(),
+      lastProgress: null,
+    })),
+    solveWarmStart: vi.fn(async () => ({
+      selectedSettings: createSampleSolverSettings(),
+      runScenario: createSampleScenario(),
+      solution: createSampleSolution(),
+      lastProgress: null,
+    })),
+    evaluateSolution: vi.fn(async () => createSampleSolution()),
+    cancel: vi.fn(async () => undefined),
+    getActiveSolveSnapshot: vi.fn(() => null),
+    hasActiveSolveSnapshot: vi.fn(() => false),
+    ...overrides,
+  };
+}
 
 describe('saveBestSoFar', () => {
   const scenario = createSampleScenario();
   const solverSettings = createSampleSolverSettings();
+  let runtime: SolverRuntime;
 
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    runtime = createRuntimeMock();
+    setRuntimeForTests(runtime);
+  });
+
+  afterEach(() => {
+    setRuntimeForTests(null);
   });
 
   it('warns when the solver is not currently running', async () => {
@@ -52,18 +83,31 @@ describe('saveBestSoFar', () => {
   it('evaluates the best schedule snapshot and saves it with run metadata', async () => {
     const addResult = vi.fn();
     const addNotification = vi.fn();
-    vi.mocked(solverWorkerService.getLastProgressUpdate).mockReturnValue({
-      iteration: 17,
-      elapsed_seconds: 3,
-      best_score: 8,
-      best_schedule: {
-        session_0: { g1: ['p1', 'p2'] },
-        session_1: { g2: ['p3', 'p4'] },
-      },
-    } as never);
-    vi.mocked(wasmService.evaluateSolution).mockResolvedValue(
-      createSampleSolution({ final_score: 8, unique_contacts: 6, iteration_count: 0, elapsed_time_ms: 0 }),
-    );
+    runtime = createRuntimeMock({
+      getActiveSolveSnapshot: vi.fn(() => ({
+        runScenario: scenario,
+        selectedSettings: solverSettings,
+        startedAtMs: 0,
+        latestProgress: {
+          iteration: 17,
+          elapsed_seconds: 3,
+          best_score: 8,
+          best_schedule: {
+            session_0: { g1: ['p1', 'p2'] },
+            session_1: { g2: ['p3', 'p4'] },
+          },
+        } as never,
+        bestSchedule: {
+          session_0: { g1: ['p1', 'p2'] },
+          session_1: { g2: ['p3', 'p4'] },
+        },
+        latestSolution: null,
+      })),
+      evaluateSolution: vi.fn(async () =>
+        createSampleSolution({ final_score: 8, unique_contacts: 6, iteration_count: 0, elapsed_time_ms: 0 }),
+      ),
+    });
+    setRuntimeForTests(runtime);
 
     await saveBestSoFar({
       solverState: {
@@ -85,12 +129,15 @@ describe('saveBestSoFar', () => {
       saveInProgressRef: { current: false },
     });
 
-    expect(wasmService.evaluateSolution).toHaveBeenCalledWith(scenario, [
-      { person_id: 'p1', group_id: 'g1', session_id: 0 },
-      { person_id: 'p2', group_id: 'g1', session_id: 0 },
-      { person_id: 'p3', group_id: 'g2', session_id: 1 },
-      { person_id: 'p4', group_id: 'g2', session_id: 1 },
-    ]);
+    expect(runtime.evaluateSolution).toHaveBeenCalledWith({
+      scenario,
+      assignments: [
+        { person_id: 'p1', group_id: 'g1', session_id: 0 },
+        { person_id: 'p2', group_id: 'g1', session_id: 0 },
+        { person_id: 'p3', group_id: 'g2', session_id: 1 },
+        { person_id: 'p4', group_id: 'g2', session_id: 1 },
+      ],
+    });
     expect(addResult).toHaveBeenCalledWith(
       expect.objectContaining({
         final_score: 8,
@@ -109,15 +156,29 @@ describe('saveBestSoFar', () => {
   it('falls back to partial metrics when evaluation of the best schedule fails', async () => {
     const addResult = vi.fn(() => ({ id: 'saved-result' }));
     const addNotification = vi.fn();
-    vi.mocked(solverWorkerService.getLastProgressUpdate).mockReturnValue({
-      iteration: 12,
-      elapsed_seconds: 2,
-      best_score: 7,
-      best_schedule: {
-        session_0: { g1: ['p1'] },
-      },
-    } as never);
-    vi.mocked(wasmService.evaluateSolution).mockRejectedValue(new Error('eval failed'));
+    runtime = createRuntimeMock({
+      getActiveSolveSnapshot: vi.fn(() => ({
+        runScenario: scenario,
+        selectedSettings: solverSettings,
+        startedAtMs: 0,
+        latestProgress: {
+          iteration: 12,
+          elapsed_seconds: 2,
+          best_score: 7,
+          best_schedule: {
+            session_0: { g1: ['p1'] },
+          },
+        } as never,
+        bestSchedule: {
+          session_0: { g1: ['p1'] },
+        },
+        latestSolution: null,
+      })),
+      evaluateSolution: vi.fn(async () => {
+        throw new Error('eval failed');
+      }),
+    });
+    setRuntimeForTests(runtime);
 
     await saveBestSoFar({
       solverState: {
@@ -163,7 +224,10 @@ describe('saveBestSoFar', () => {
     const cancelledRef = { current: false };
     const restartAfterSaveRef = { current: false };
     const saveInProgressRef = { current: false };
-    vi.mocked(solverWorkerService.getLastProgressUpdate).mockReturnValue(null);
+    runtime = createRuntimeMock({
+      getActiveSolveSnapshot: vi.fn(() => null),
+    });
+    setRuntimeForTests(runtime);
 
     await saveBestSoFar({
       solverState: {

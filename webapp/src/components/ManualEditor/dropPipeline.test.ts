@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildMoveBaseline,
   buildMoveReportData,
@@ -7,14 +7,43 @@ import {
 } from './dropPipeline';
 import { createSampleScenario, createSampleSolution } from '../../test/fixtures';
 import { groupBySessionAndGroup } from './utils';
-import { wasmService } from '../../services/wasm';
+import { setRuntimeForTests, type SolverRuntime } from '../../services/runtime';
 import { evaluateCompliance } from '../../services/evaluator';
 
-vi.mock('../../services/wasm', () => ({
-  wasmService: {
-    evaluateSolution: vi.fn(),
-  },
-}));
+function createRuntimeMock(overrides: Partial<SolverRuntime> = {}): SolverRuntime {
+  return {
+    initialize: vi.fn(async () => undefined),
+    getCapabilities: vi.fn(async () => ({
+      runtimeId: 'test',
+      executionModel: 'local-browser',
+      lifecycle: 'local-active-solve',
+      supportsStreamingProgress: true,
+      supportsWarmStart: true,
+      supportsCancellation: true,
+      supportsEvaluation: true,
+      supportsRecommendedSettings: true,
+      supportsActiveSolveInspection: true,
+    })),
+    getDefaultSolverSettings: vi.fn(async () => createSampleScenario().settings),
+    validateScenario: vi.fn(async () => ({ valid: true, issues: [] })),
+    recommendSettings: vi.fn(async () => createSampleScenario().settings),
+    solveWithProgress: vi.fn(async () => ({
+      selectedSettings: createSampleScenario().settings,
+      runScenario: createSampleScenario(),
+      solution: createSampleSolution(),
+      lastProgress: null,
+    })),
+    solveWarmStart: vi.fn(async () => ({
+      selectedSettings: createSampleScenario().settings,
+      runScenario: createSampleScenario(),
+      solution: createSampleSolution(),
+      lastProgress: null,
+    })),
+    evaluateSolution: vi.fn(async () => createSampleSolution()),
+    cancel: vi.fn(async () => undefined),
+    ...overrides,
+  };
+}
 
 vi.mock('../../services/evaluator', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../services/evaluator')>();
@@ -27,6 +56,11 @@ vi.mock('../../services/evaluator', async (importOriginal) => {
 describe('dropPipeline', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setRuntimeForTests(createRuntimeMock());
+  });
+
+  afterEach(() => {
+    setRuntimeForTests(null);
   });
 
   it('finds the currently assigned group for a person in a session', () => {
@@ -54,19 +88,22 @@ describe('dropPipeline', () => {
     const scenario = createSampleScenario();
     const draftAssignments = createSampleSolution().assignments;
     const compliance = [{ title: 'before', status: 'warn' }] as unknown as ReturnType<typeof evaluateCompliance>;
-    vi.mocked(wasmService.evaluateSolution).mockResolvedValue(
-      createSampleSolution({
-        final_score: 8,
-        unique_contacts: 6,
-        repetition_penalty: 1,
-        attribute_balance_penalty: 2,
-        constraint_penalty: 3,
-      }),
-    );
+    const runtime = createRuntimeMock({
+      evaluateSolution: vi.fn(async () =>
+        createSampleSolution({
+          final_score: 8,
+          unique_contacts: 6,
+          repetition_penalty: 1,
+          attribute_balance_penalty: 2,
+          constraint_penalty: 3,
+        }),
+      ),
+    });
+    setRuntimeForTests(runtime);
 
     const result = await buildMoveBaseline(scenario, draftAssignments, compliance);
 
-    expect(wasmService.evaluateSolution).toHaveBeenCalledWith(scenario, draftAssignments);
+    expect(runtime.evaluateSolution).toHaveBeenCalledWith({ scenario, assignments: draftAssignments });
     expect(evaluateCompliance).toHaveBeenCalled();
     expect(result).toEqual({
       score: {
@@ -83,7 +120,12 @@ describe('dropPipeline', () => {
   it('falls back to empty move-baseline scores when evaluation fails or no scenario exists', async () => {
     const draftAssignments = createSampleSolution().assignments;
     const compliance = [{ title: 'before', status: 'warn' }] as unknown as ReturnType<typeof evaluateCompliance>;
-    vi.mocked(wasmService.evaluateSolution).mockRejectedValue(new Error('eval failed'));
+    const runtime = createRuntimeMock({
+      evaluateSolution: vi.fn(async () => {
+        throw new Error('eval failed');
+      }),
+    });
+    setRuntimeForTests(runtime);
 
     await expect(buildMoveBaseline(null, draftAssignments, compliance)).resolves.toEqual({
       score: {
@@ -113,9 +155,12 @@ describe('dropPipeline', () => {
     const beforeAssignments = createSampleSolution().assignments;
     const afterAssignments = stagePersonMove(beforeAssignments, 'p1', 'g2', 0);
 
-    vi.mocked(wasmService.evaluateSolution)
-      .mockResolvedValueOnce(createSampleSolution({ final_score: 10, unique_contacts: 4, constraint_penalty: 2 }))
-      .mockResolvedValueOnce(createSampleSolution({ final_score: 7, unique_contacts: 6, constraint_penalty: 1 }));
+    const runtime = createRuntimeMock({
+      evaluateSolution: vi.fn()
+        .mockResolvedValueOnce(createSampleSolution({ final_score: 10, unique_contacts: 4, constraint_penalty: 2 }))
+        .mockResolvedValueOnce(createSampleSolution({ final_score: 7, unique_contacts: 6, constraint_penalty: 1 })),
+    });
+    setRuntimeForTests(runtime);
 
     const report = await buildMoveReportData(
       scenario,
@@ -154,9 +199,12 @@ describe('dropPipeline', () => {
     const beforeAssignments = createSampleSolution().assignments;
     const afterAssignments = stagePersonMove(beforeAssignments, 'p1', 'g2', 0);
 
-    vi.mocked(wasmService.evaluateSolution)
-      .mockResolvedValueOnce(createSampleSolution())
-      .mockRejectedValueOnce(new Error('after failed'));
+    const runtime = createRuntimeMock({
+      evaluateSolution: vi.fn()
+        .mockResolvedValueOnce(createSampleSolution())
+        .mockRejectedValueOnce(new Error('after failed')),
+    });
+    setRuntimeForTests(runtime);
 
     await expect(
       buildMoveReportData(

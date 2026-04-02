@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Assignment, Scenario, Solution } from '../../../types';
-import { wasmService } from '../../../services/wasm';
+import { getRuntime } from '../../../services/runtime';
 import type { PreviewDelta } from '../types';
 
 interface UseManualEditorEvaluationArgs {
@@ -22,12 +22,16 @@ export function useManualEditorEvaluation({
 
   useEffect(() => {
     let cancelled = false;
+    const runtime = getRuntime();
     const run = async () => {
       if (!effectiveScenario) return;
       setEvalLoading(true);
       setEvalError(null);
       try {
-        const res = await wasmService.evaluateSolution(effectiveScenario, draftAssignments);
+        const res = await runtime.evaluateSolution({
+          scenario: effectiveScenario,
+          assignments: draftAssignments,
+        });
         if (!cancelled) setEvaluated(res);
       } catch (e) {
         if (!cancelled) setEvalError(e instanceof Error ? e.message : String(e));
@@ -47,6 +51,7 @@ export function useManualEditorEvaluation({
 
   const computePreview = async (personId: string, toGroupId: string, sessionId: number) => {
     if (!effectiveScenario) return;
+    const runtime = getRuntime();
     const baseScore = evaluated?.final_score ?? (solution?.final_score ?? 0);
     const baseUnique = evaluated?.unique_contacts ?? (solution?.unique_contacts ?? 0);
     const baseConstraint = evaluated?.constraint_penalty ?? complianceViolationCount;
@@ -60,7 +65,10 @@ export function useManualEditorEvaluation({
     if (previewKey === key && previewDelta) return;
     setPreviewKey(key);
     try {
-      const res = await wasmService.evaluateSolution(effectiveScenario, hypothetic);
+      const res = await runtime.evaluateSolution({
+        scenario: effectiveScenario,
+        assignments: hypothetic,
+      });
       setPreviewDelta({
         groupId: toGroupId,
         sessionId,
