@@ -65,7 +65,7 @@
     "@types/three": "^0.183.1",
     "@vitejs/plugin-react": "^5.2.0",
     "@vitest/browser-playwright": "^4.1.1",
-    "@vitest/coverage-v8": "^4.1.1",
+    "@vitest/coverage-v8": "^4.1.2",
     "autoprefixer": "^10.4.27",
     "eslint": "9.39.4",
     "eslint-plugin-react": "^7.37.5",
