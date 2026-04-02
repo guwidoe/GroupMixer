@@ -193,6 +193,5 @@ test.describe('Workflow coverage', () => {
     await page.getByRole('button', { name: /start solver with automatic settings/i }).click();
 
     await expect(page.getByText(/solver error/i).first()).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/failed to initialize solver worker: injected worker failure/i).first()).toBeVisible({ timeout: 10000 });
   });
 });

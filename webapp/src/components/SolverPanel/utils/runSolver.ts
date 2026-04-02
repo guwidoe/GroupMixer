@@ -1,11 +1,15 @@
 import type { MutableRefObject } from 'react';
 import type { Scenario, ScenarioResult, SavedScenario, SolverSettings, SolverState, Solution, Notification } from '../../../types';
 import { buildTelemetryPayload, getPersistedTelemetryAttribution, trackLandingEvent } from '../../../services/landingInstrumentation';
-import { getRuntime, isRuntimeCancelledError, type RuntimeProgressUpdate } from '../../../services/runtime';
-import { scenarioStorage } from '../../../services/scenarioStorage';
+import { isRuntimeCancelledError, type RuntimeProgressUpdate } from '../../../services/runtime';
 import { solveScenario } from '../../../services/solver/solveScenario';
-import { useAppStore } from '../../../store';
 import { reconcileResultToInitialSchedule } from '../../../utils/warmStart';
+import {
+  finalizeCancelledRun,
+  persistCompletedRunResult,
+  resolveActiveScenarioId,
+  trackCompletedRun,
+} from './runSolverCompletion';
 import {
   createProgressCallback,
   snapshotScenario,
@@ -13,53 +17,6 @@ import {
 } from './runSolverHelpers';
 
 export type AddNotification = (notification: Omit<Notification, 'id'>) => void;
-
-function persistResultWithExplicitScenarioId({
-  scenarioId,
-  solution,
-  selectedSettings,
-  snapshotScenario,
-  addNotification,
-}: {
-  scenarioId: string;
-  solution: Solution;
-  selectedSettings: SolverSettings;
-  snapshotScenario?: Scenario;
-  addNotification: AddNotification;
-}): ScenarioResult | null {
-  try {
-    const result = scenarioStorage.addResult(scenarioId, solution, selectedSettings, undefined, snapshotScenario);
-    const persistedScenario = scenarioStorage.getScenario(scenarioId);
-
-    useAppStore.setState((state) => ({
-      currentScenarioId: scenarioId,
-      savedScenarios: persistedScenario
-        ? {
-            ...state.savedScenarios,
-            [scenarioId]: {
-              ...persistedScenario,
-              scenario: state.scenario || persistedScenario.scenario,
-            },
-          }
-        : state.savedScenarios,
-    }));
-
-    addNotification({
-      type: 'success',
-      title: 'Result Saved',
-      message: `Result "${result.name}" has been saved to the current scenario.`,
-    });
-
-    return result;
-  } catch (error) {
-    addNotification({
-      type: 'error',
-      title: 'Save Result Failed',
-      message: error instanceof Error ? error.message : 'Failed to save result',
-    });
-    return null;
-  }
-}
 
 interface RunSolverArgs {
   useRecommended: boolean;
@@ -276,238 +233,6 @@ function applyCompletedSolverState({
   }
 }
 
-function resolveActiveScenarioId(currentScenarioId: string | null): string | null {
-  const storeScenarioId = useAppStore.getState().currentScenarioId;
-  const activeScenarioId = currentScenarioId ?? storeScenarioId ?? scenarioStorage.getCurrentScenarioId();
-
-  if (activeScenarioId && storeScenarioId !== activeScenarioId) {
-    useAppStore.setState({ currentScenarioId: activeScenarioId });
-  }
-
-  return activeScenarioId;
-}
-
-function persistCompletedRunResult({
-  activeScenarioId,
-  solution,
-  selectedSettings,
-  runScenarioSnapshotRef,
-  addResult,
-  addNotification,
-}: Pick<RunSolverArgs, 'addResult' | 'addNotification' | 'runScenarioSnapshotRef'> & {
-  activeScenarioId: string | null;
-  solution: Solution;
-  selectedSettings: SolverSettings;
-}): ScenarioResult | null {
-  const storeScenarioId = useAppStore.getState().currentScenarioId;
-
-  if (!activeScenarioId) {
-    addNotification({
-      type: 'warning',
-      title: 'Result Not Saved',
-      message: 'The solver finished, but no current scenario was available for saving the result.',
-    });
-    return null;
-  }
-
-  const snapshotScenario = runScenarioSnapshotRef.current || undefined;
-
-  if (storeScenarioId && storeScenarioId === activeScenarioId) {
-    const directSave = addResult(solution, selectedSettings, undefined, snapshotScenario);
-    if (directSave) {
-      return directSave;
-    }
-  }
-
-  return persistResultWithExplicitScenarioId({
-    scenarioId: activeScenarioId,
-    solution,
-    selectedSettings,
-    snapshotScenario,
-    addNotification,
-  });
-}
-
-function buildInitialScheduleFromSolution(solution: Solution): Record<string, Record<string, string[]>> {
-  return solution.assignments.reduce<Record<string, Record<string, string[]>>>(
-    (acc, assignment) => {
-      const sessionKey = `session_${assignment.session_id}`;
-      if (!acc[sessionKey]) acc[sessionKey] = {};
-      if (!acc[sessionKey][assignment.group_id]) acc[sessionKey][assignment.group_id] = [];
-      acc[sessionKey][assignment.group_id].push(assignment.person_id);
-      return acc;
-    },
-    {},
-  );
-}
-
-async function resumeCancelledSolve({
-  args,
-  runScenario,
-  solution,
-  progressCallback,
-  savedResult,
-}: {
-  args: RunSolverArgs;
-  runScenario: Scenario;
-  solution: Solution;
-  progressCallback: (progress: RuntimeProgressUpdate) => void;
-  savedResult: ScenarioResult | null;
-}): Promise<boolean> {
-  const {
-    scenario,
-    currentScenarioId,
-    savedScenarios,
-    setWarmStartFromResult,
-    solverSettings,
-    solverState,
-    desiredRuntimeMain,
-    showLiveVizRef,
-    startSolver,
-    setSolverState,
-    setSolution,
-    addNotification,
-    addResult,
-    ensureScenarioExists,
-    setRunSettings,
-    setLiveVizState,
-    liveVizLastUiUpdateRef,
-    runScenarioSnapshotRef,
-    cancelledRef,
-    solverCompletedRef,
-    restartAfterSaveRef,
-    saveInProgressRef,
-  } = args;
-
-  restartAfterSaveRef.current = false;
-  saveInProgressRef.current = false;
-  cancelledRef.current = false;
-
-  if (!savedResult) {
-    addNotification({
-      type: 'warning',
-      title: 'Resume Skipped',
-      message: 'Best-so-far could not be saved, so the solver was left stopped.',
-    });
-    return true;
-  }
-
-  addNotification({
-    type: 'info',
-    title: 'Resuming Solver',
-    message: 'Best-so-far saved. Resuming with the same settings...',
-  });
-
-  const initialSchedule = buildInitialScheduleFromSolution(solution);
-  solverCompletedRef.current = false;
-  startSolver();
-
-  setTimeout(async () => {
-    try {
-      await getRuntime().solveWarmStart({
-        scenario: runScenario,
-        initialSchedule,
-        progressCallback,
-      });
-    } catch (error) {
-      console.error('[SolverPanel] Warm-start resume failed:', error);
-      await runSolver({
-        useRecommended: false,
-        scenario,
-        currentScenarioId,
-        savedScenarios,
-        warmStartResultId: null,
-        setWarmStartFromResult,
-        solverSettings,
-        solverState,
-        desiredRuntimeMain,
-        showLiveVizRef,
-        startSolver,
-        setSolverState,
-        setSolution,
-        addNotification,
-        addResult,
-        ensureScenarioExists,
-        setRunSettings,
-        setLiveVizState,
-        liveVizLastUiUpdateRef,
-        runScenarioSnapshotRef,
-        cancelledRef,
-        solverCompletedRef,
-        restartAfterSaveRef,
-        saveInProgressRef,
-      });
-    }
-  }, 0);
-
-  return true;
-}
-
-async function finalizeCancelledRun({
-  args,
-  runScenario,
-  solution,
-  progressCallback,
-  savedResult,
-}: {
-  args: RunSolverArgs;
-  runScenario: Scenario;
-  solution: Solution;
-  progressCallback: (progress: RuntimeProgressUpdate) => void;
-  savedResult: ScenarioResult | null;
-}): Promise<boolean> {
-  const { addNotification, cancelledRef, restartAfterSaveRef, saveInProgressRef } = args;
-
-  if (restartAfterSaveRef.current) {
-    return resumeCancelledSolve({
-      args,
-      runScenario,
-      solution,
-      progressCallback,
-      savedResult,
-    });
-  }
-
-  cancelledRef.current = false;
-  saveInProgressRef.current = false;
-
-  if (!savedResult) {
-    addNotification({
-      type: 'warning',
-      title: 'Best-So-Far Not Saved',
-      message: 'The solver stopped, but the best-so-far snapshot could not be saved.',
-    });
-  }
-
-  return true;
-}
-
-function trackCompletedRun({
-  cancelled,
-  useRecommended,
-  savedResult,
-}: {
-  cancelled: boolean;
-  useRecommended: boolean;
-  savedResult: ScenarioResult | null;
-}): void {
-  if (cancelled) {
-    return;
-  }
-
-  trackLandingEvent(
-    'solver_completed',
-    buildTelemetryPayload(
-      {
-        entryPath: '/app/solver',
-        mode: useRecommended ? 'automatic' : 'custom',
-        resultSaved: Boolean(savedResult),
-      },
-      getPersistedTelemetryAttribution(),
-    ),
-  );
-}
-
 function handleRunError({
   error,
   setSolverState,
@@ -615,6 +340,7 @@ export async function runSolver(args: RunSolverArgs) {
         solution,
         progressCallback,
         savedResult,
+        restartFallbackRun: runSolver,
       });
       return;
     }
