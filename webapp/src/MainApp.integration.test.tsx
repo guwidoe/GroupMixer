@@ -7,18 +7,46 @@ import { SolverPanel } from "./components/SolverPanel";
 import { ResultsView } from "./components/ResultsView";
 import { ResultsHistory } from "./components/ResultsHistory";
 import { scenarioStorage } from "./services/scenarioStorage";
+import { setRuntimeForTests, type SolverRuntime } from "./services/runtime";
 import { useAppStore } from "./store";
 import { createSampleScenario, createSampleSolverSettings, createSavedScenario } from "./test/fixtures";
-import { solverWorkerService } from "./services/solverWorker";
 
-vi.mock("./services/solverWorker", () => ({
-  solverWorkerService: {
-    getRecommendedSettings: vi.fn(),
-    solveWithProgress: vi.fn(),
-    solveWithProgressWarmStart: vi.fn(),
-    cancel: vi.fn(),
-  },
-}));
+function createRuntimeMock(overrides: Partial<SolverRuntime> = {}): SolverRuntime {
+  return {
+    initialize: vi.fn(async () => undefined),
+    getCapabilities: vi.fn(async () => ({
+      runtimeId: 'test',
+      executionModel: 'local-browser',
+      lifecycle: 'local-active-solve',
+      supportsStreamingProgress: true,
+      supportsWarmStart: true,
+      supportsCancellation: true,
+      supportsEvaluation: true,
+      supportsRecommendedSettings: true,
+      supportsActiveSolveInspection: true,
+    })),
+    getDefaultSolverSettings: vi.fn(async () => createSampleSolverSettings()),
+    validateScenario: vi.fn(async () => ({ valid: true, issues: [] })),
+    recommendSettings: vi.fn(async () => createSampleSolverSettings()),
+    solveWithProgress: vi.fn(async ({ scenario }) => ({
+      selectedSettings: scenario.settings,
+      runScenario: scenario,
+      solution: createSavedScenario().results[0].solution,
+      lastProgress: null,
+    })),
+    solveWarmStart: vi.fn(async ({ scenario }) => ({
+      selectedSettings: scenario.settings,
+      runScenario: scenario,
+      solution: createSavedScenario().results[0].solution,
+      lastProgress: null,
+    })),
+    evaluateSolution: vi.fn(async () => createSavedScenario().results[0].solution),
+    cancel: vi.fn(async () => undefined),
+    getActiveSolveSnapshot: vi.fn(() => null),
+    hasActiveSolveSnapshot: vi.fn(() => false),
+    ...overrides,
+  };
+}
 
 vi.mock("./visualizations/VisualizationPanel", () => ({
   VisualizationPanel: () => <div>Visualization panel test stub</div>,
@@ -69,6 +97,12 @@ describe("MainApp stateful integration routes", () => {
       initializeApp: vi.fn(),
       loadSavedScenarios: vi.fn(),
     });
+
+    setRuntimeForTests(createRuntimeMock());
+  });
+
+  afterEach(() => {
+    setRuntimeForTests(null);
   });
 
   it("tracks app entry attribution from URL params on first app load", async () => {
@@ -121,9 +155,10 @@ describe("MainApp stateful integration routes", () => {
         },
       },
     };
-    vi.mocked(solverWorkerService.getRecommendedSettings).mockResolvedValue(
-      recommendedSettings,
-    );
+    const runtime = createRuntimeMock({
+      recommendSettings: vi.fn(async () => recommendedSettings),
+    });
+    setRuntimeForTests(runtime);
     scenarioStorage.saveScenario(savedScenario);
 
     useAppStore.setState({
@@ -146,7 +181,10 @@ describe("MainApp stateful integration routes", () => {
 
     await user.click(screen.getByRole("button", { name: /auto-set/i }));
 
-    expect(solverWorkerService.getRecommendedSettings).toHaveBeenCalledWith(savedScenario.scenario, 3);
+    expect(runtime.recommendSettings).toHaveBeenCalledWith({
+      scenario: savedScenario.scenario,
+      desiredRuntimeSeconds: 3,
+    });
     await waitFor(() => {
       expect(useAppStore.getState().scenario?.settings).toEqual(recommendedSettings);
     });
@@ -158,9 +196,12 @@ describe("MainApp stateful integration routes", () => {
       id: "scenario-1",
       scenario: createSampleScenario(),
     });
-    vi.mocked(solverWorkerService.getRecommendedSettings).mockRejectedValue(
-      new Error("recommend failed"),
-    );
+    const runtime = createRuntimeMock({
+      recommendSettings: vi.fn(async () => {
+        throw new Error("recommend failed");
+      }),
+    });
+    setRuntimeForTests(runtime);
 
     useAppStore.setState({
       scenario: savedScenario.scenario,
@@ -225,19 +266,25 @@ describe("MainApp stateful integration routes", () => {
       scenario: createSampleScenario({ settings: createSampleSolverSettings() }),
     });
     const deferred = createDeferred<{
+      selectedSettings: ReturnType<typeof createSampleSolverSettings>;
+      runScenario: ReturnType<typeof createSavedScenario>["scenario"];
       solution: ReturnType<typeof createSavedScenario>["results"][number]["solution"];
       lastProgress: null;
     }>();
-
-    vi.mocked(solverWorkerService.getRecommendedSettings).mockResolvedValue({
+    const recommendedSettings = {
       ...createSampleSolverSettings(),
       stop_conditions: {
         max_iterations: 486486,
         time_limit_seconds: 2,
         no_improvement_iterations: 243243,
       },
+    };
+
+    const runtime = createRuntimeMock({
+      recommendSettings: vi.fn(async () => recommendedSettings),
+      solveWithProgress: vi.fn(() => deferred.promise),
     });
-    vi.mocked(solverWorkerService.solveWithProgress).mockReturnValue(deferred.promise);
+    setRuntimeForTests(runtime);
 
     useAppStore.setState({
       scenario: savedScenario.scenario,
@@ -254,6 +301,11 @@ describe("MainApp stateful integration routes", () => {
     expect(screen.getByText("0 / 243,243")).toBeInTheDocument();
 
     deferred.resolve({
+      selectedSettings: recommendedSettings,
+      runScenario: {
+        ...savedScenario.scenario,
+        settings: recommendedSettings,
+      },
       solution: savedScenario.results[0].solution,
       lastProgress: null,
     });
