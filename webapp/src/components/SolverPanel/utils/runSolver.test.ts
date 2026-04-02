@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSampleScenario, createSampleSolution, createSampleSolverSettings, createSavedScenario } from '../../../test/fixtures';
 import type { Scenario, ScenarioResult, SavedScenario, SolverState } from '../../../types';
+import { RuntimeCancelledError, setRuntimeForTests, type SolverRuntime } from '../../../services/runtime';
 import { solveScenario } from '../../../services/solver/solveScenario';
 import { scenarioStorage } from '../../../services/scenarioStorage';
 import { runSolver } from './runSolver';
@@ -47,6 +48,41 @@ function createSavedResult(name = 'Saved Result'): ScenarioResult {
     },
     timestamp: 1000,
     duration: solution.elapsed_time_ms,
+  };
+}
+
+function createRuntimeMock(overrides: Partial<SolverRuntime> = {}): SolverRuntime {
+  return {
+    initialize: vi.fn(async () => undefined),
+    getCapabilities: vi.fn(async () => ({
+      runtimeId: 'test',
+      executionModel: 'local-browser',
+      lifecycle: 'local-active-solve',
+      supportsStreamingProgress: true,
+      supportsWarmStart: true,
+      supportsCancellation: true,
+      supportsEvaluation: true,
+      supportsRecommendedSettings: true,
+      supportsActiveSolveInspection: true,
+    })),
+    getDefaultSolverSettings: vi.fn(async () => createSampleSolverSettings()),
+    validateScenario: vi.fn(async () => ({ valid: true, issues: [] })),
+    recommendSettings: vi.fn(async () => createSampleSolverSettings()),
+    solveWithProgress: vi.fn(async () => ({
+      selectedSettings: createSampleSolverSettings(),
+      runScenario: createSampleScenario(),
+      solution: createSampleSolution(),
+      lastProgress: null,
+    })),
+    solveWarmStart: vi.fn(async () => ({
+      selectedSettings: createSampleSolverSettings(),
+      runScenario: createSampleScenario(),
+      solution: createSampleSolution(),
+      lastProgress: null,
+    })),
+    evaluateSolution: vi.fn(async () => createSampleSolution()),
+    cancel: vi.fn(async () => undefined),
+    ...overrides,
   };
 }
 
@@ -131,7 +167,12 @@ describe('runSolver', () => {
     window.__groupmixerLandingEvents = [];
     vi.clearAllMocks();
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    setRuntimeForTests(createRuntimeMock());
     vi.mocked(useAppStore.getState).mockReturnValue({ currentScenarioId: 'scenario-1' } as { currentScenarioId: string | null });
+  });
+
+  afterEach(() => {
+    setRuntimeForTests(null);
   });
 
   it('uses the shared solve service, emits telemetry, and saves via the active store scenario id', async () => {
@@ -277,5 +318,66 @@ describe('runSolver', () => {
         title: 'Result Saved',
       }),
     );
+  });
+
+  it('uses typed runtime cancellation semantics for cancelled solves', async () => {
+    const args = createArgs();
+    vi.mocked(solveScenario).mockRejectedValue(new RuntimeCancelledError());
+
+    await runSolver(args);
+
+    expect(args.setSolverState).toHaveBeenCalledWith({ isRunning: false, isComplete: false });
+    expect(args.addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'warning',
+        title: 'Solver Cancelled',
+      }),
+    );
+  });
+
+  it('resumes via the runtime warm-start path after a save-and-resume completion', async () => {
+    vi.useFakeTimers();
+    const runtime = createRuntimeMock({
+      solveWarmStart: vi.fn(async () => ({
+        selectedSettings: createSampleSolverSettings(),
+        runScenario: createSampleScenario(),
+        solution: createSampleSolution(),
+        lastProgress: null,
+      })),
+    });
+    setRuntimeForTests(runtime);
+    const args = createArgs();
+    vi.mocked(solveScenario).mockImplementation(async () => {
+      args.cancelledRef.current = true;
+      args.restartAfterSaveRef.current = true;
+      args.saveInProgressRef.current = true;
+      return {
+        solution: args.__expected.solution,
+        lastProgress: args.__expected.lastProgress,
+        selectedSettings: args.__expected.solverSettings,
+        runScenario: {
+          ...args.scenario,
+          settings: args.__expected.solverSettings,
+        },
+      };
+    });
+
+    const runPromise = runSolver(args);
+    await vi.runAllTimersAsync();
+    await runPromise;
+    await vi.runAllTimersAsync();
+
+    expect(runtime.solveWarmStart).toHaveBeenCalledWith({
+      scenario: expect.any(Object),
+      initialSchedule: expect.any(Object),
+      progressCallback: expect.any(Function),
+    });
+    expect(args.addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'info',
+        title: 'Resuming Solver',
+      }),
+    );
+    vi.useRealTimers();
   });
 });

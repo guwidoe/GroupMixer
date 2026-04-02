@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createSampleScenario, createSampleSolution, createSampleSolverSettings } from '../../test/fixtures';
 import type { SolverContractTransport } from '../runtimeAdapters/contractTransport';
+import { defineSolverRuntimeContractTests } from './contractTests';
 import type { RuntimeProgressUpdate } from './types';
 import { LocalWasmRuntime } from './localWasmRuntime';
 import { RuntimeCancelledError } from './runtime';
@@ -52,38 +53,28 @@ function createRustResultFromSolution() {
   };
 }
 
+function createRuntimeHarness(overrides: {
+  workerTransport?: Partial<SolverContractTransport>;
+  wasmTransport?: Partial<SolverContractTransport>;
+} = {}) {
+  const scenario = createSampleScenario();
+  const solution = createSampleSolution();
+  const workerTransport = createBaseTransport(overrides.workerTransport);
+  const wasmTransport = createBaseTransport(overrides.wasmTransport);
+  const runtime = new LocalWasmRuntime({ workerTransport, wasmTransport });
+
+  return {
+    runtime,
+    workerTransport,
+    wasmTransport,
+    scenario,
+    solution,
+  };
+}
+
+defineSolverRuntimeContractTests('LocalWasmRuntime', createRuntimeHarness);
+
 describe('LocalWasmRuntime', () => {
-  it('normalizes recommended settings returned by the worker transport', async () => {
-    const scenario = createSampleScenario();
-    const rawRecommended = {
-      ...createSampleSolverSettings(),
-      solver_params: {
-        solver_type: 'SimulatedAnnealing',
-        initial_temperature: 10,
-        final_temperature: 0.1,
-        cooling_schedule: 'exponential',
-        reheat_cycles: 2,
-        reheat_after_no_improvement: 100,
-      },
-    };
-    const workerTransport = createBaseTransport({
-      recommendSettings: vi.fn(async () => rawRecommended),
-    });
-    const runtime = new LocalWasmRuntime({ workerTransport, wasmTransport: createBaseTransport() });
-
-    const result = await runtime.recommendSettings({ scenario, desiredRuntimeSeconds: 3 });
-
-    expect(result.solver_params).toEqual({
-      SimulatedAnnealing: {
-        initial_temperature: 10,
-        final_temperature: 0.1,
-        cooling_schedule: 'exponential',
-        reheat_cycles: 2,
-        reheat_after_no_improvement: 100,
-      },
-    });
-  });
-
   it('tracks active solve snapshots during worker progress and clears them after completion', async () => {
     const scenario = createSampleScenario();
     const progress: RuntimeProgressUpdate = {
