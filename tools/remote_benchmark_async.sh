@@ -228,6 +228,7 @@ build_payload_json() {
   BUNDLE_KIND_VALUE="${GROUPMIXER_REMOTE_PAYLOAD_BUNDLE_KIND:-}" \
   FEATURE_NAME_VALUE="${GROUPMIXER_REMOTE_PAYLOAD_FEATURE_NAME:-}" \
   FEATURE_PREVIOUS_TARGETS_JSON_VALUE="${GROUPMIXER_REMOTE_PAYLOAD_FEATURE_PREVIOUS_TARGETS_JSON:-}" \
+  MAINLINE_PREVIOUS_TARGETS_JSON_VALUE="${GROUPMIXER_REMOTE_PAYLOAD_MAINLINE_PREVIOUS_TARGETS_JSON:-}" \
   python3 - "$action" "$run_id" "$bench_command" "$@" <<'PY'
 import json
 import os
@@ -263,6 +264,7 @@ payload = {
     "bundle_kind": os.environ.get("BUNDLE_KIND_VALUE", ""),
     "feature_name": os.environ.get("FEATURE_NAME_VALUE", ""),
     "feature_previous_targets": json.loads(os.environ.get("FEATURE_PREVIOUS_TARGETS_JSON_VALUE", "{}") or "{}"),
+    "mainline_previous_targets": json.loads(os.environ.get("MAINLINE_PREVIOUS_TARGETS_JSON_VALUE", "{}") or "{}"),
 }
 print(json.dumps(payload))
 PY
@@ -349,6 +351,39 @@ PY
 )"
     fi
   done
+  printf '%s\n' "${targets_json}"
+}
+
+collect_mainline_previous_targets_json() {
+  local targets_json="{}"
+  local branch_name sanitized_branch_name suite suite_id suite_mode target ref_name
+  branch_name="$(local_git_branch)"
+  sanitized_branch_name="$(sanitize_name "${branch_name}")"
+
+  for suite in "$@"; do
+    suite_id="$(suite_manifest_id "${suite}")"
+    suite_mode="$(suite_manifest_benchmark_mode "${suite}")"
+
+    ref_name="main/suites/${suite_id}/${suite_mode}/latest"
+    target="$(remote_ref_target_run_report "${ref_name}")"
+    if [[ -z "${target}" ]]; then
+      ref_name="branches/${sanitized_branch_name}/suites/${suite_id}/${suite_mode}/latest"
+      target="$(remote_ref_target_run_report "${ref_name}")"
+    fi
+
+    if [[ -n "${target}" ]]; then
+      targets_json="$(TARGETS_JSON="${targets_json}" SUITE_NAME="${suite_id}" TARGET_PATH="${target}" python3 - <<'PY'
+import json
+import os
+
+mapping = json.loads(os.environ["TARGETS_JSON"])
+mapping[os.environ["SUITE_NAME"]] = os.environ["TARGET_PATH"]
+print(json.dumps(mapping))
+PY
+)"
+    fi
+  done
+
   printf '%s\n' "${targets_json}"
 }
 
@@ -649,8 +684,10 @@ start_recording_bundle() {
   done
 
   local feature_previous_targets_json="{}"
+  local mainline_previous_targets_json="{}"
   if [[ "${bundle_kind}" == "feature" ]]; then
     feature_previous_targets_json="$(collect_feature_previous_targets_json "${feature_name}" "${suites[@]}")"
+    mainline_previous_targets_json="$(collect_mainline_previous_targets_json "${suites[@]}")"
   fi
 
   local run_id
@@ -660,6 +697,7 @@ start_recording_bundle() {
   GROUPMIXER_REMOTE_PAYLOAD_BUNDLE_KIND="${bundle_kind}" \
   GROUPMIXER_REMOTE_PAYLOAD_FEATURE_NAME="${feature_name}" \
   GROUPMIXER_REMOTE_PAYLOAD_FEATURE_PREVIOUS_TARGETS_JSON="${feature_previous_targets_json}" \
+  GROUPMIXER_REMOTE_PAYLOAD_MAINLINE_PREVIOUS_TARGETS_JSON="${mainline_previous_targets_json}" \
     payload_json="$(build_payload_json start "${run_id}" "record-bundle" "${bundle_args[@]}")"
   start_json="$(run_remote_action "${payload_json}")"
   effective_run_id="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["run_id"])' <<<"${start_json}")"

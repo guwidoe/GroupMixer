@@ -93,7 +93,7 @@ def stage_snapshot(control_repo_dir: Path, snapshot_repo_dir: Path, shared_artif
         )
 
     if shared_artifacts_dir is not None:
-        benchmark_artifacts_dir = snapshot_repo_dir / "benchmarking" / "artifacts"
+        benchmark_artifacts_dir = snapshot_repo_dir / "backend" / "benchmarking" / "artifacts"
         remove_path(benchmark_artifacts_dir)
         benchmark_artifacts_dir.parent.mkdir(parents=True, exist_ok=True)
         benchmark_artifacts_dir.symlink_to(shared_artifacts_dir)
@@ -123,6 +123,12 @@ def process_alive(pid: int | None) -> bool:
         return True
     except OSError:
         return False
+
+
+def sanitize_ref_component(value: str) -> str:
+    return "".join(
+        ch if (ch.isalnum() or ch in {"-", "_"}) else "_" for ch in value
+    )
 
 
 def finalize_abandoned_run(
@@ -253,6 +259,7 @@ if action == "start":
             "bundle_kind": payload.get("bundle_kind", ""),
             "feature_name": payload.get("feature_name", ""),
             "feature_previous_targets": payload.get("feature_previous_targets", {}),
+            "mainline_previous_targets": payload.get("mainline_previous_targets", {}),
             "requested_suite": payload.get("requested_suite"),
             "requested_suites": payload.get("requested_suites", []),
             "remote_python_bin": payload.get("remote_python_bin", ""),
@@ -306,6 +313,7 @@ bench_args = {payload.get('bench_args', [])!r}
 bundle_kind = {payload.get('bundle_kind', '')!r}
 feature_name = {payload.get('feature_name', '')!r}
 feature_previous_targets = {payload.get('feature_previous_targets', {})!r}
+mainline_previous_targets = {payload.get('mainline_previous_targets', {})!r}
 idle_max_load1 = {payload.get('idle_max_load1', '')!r}
 idle_poll_seconds = int({payload.get('idle_poll_seconds', '30')!r})
 idle_streak_required = int({payload.get('idle_streak', '1')!r})
@@ -317,6 +325,9 @@ if {payload.get('remote_python_bin', '')!r}:
 
 def iso_now():
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+def sanitize_ref_component(value: str) -> str:
+    return "".join(ch if (ch.isalnum() or ch in {"-", "_"}) else "_" for ch in value)
 
 def load_snapshot():
     load1, load5, load15 = os.getloadavg()
@@ -332,20 +343,31 @@ def resolve_stored_path(stored_path: str) -> Path:
     path = Path(stored_path)
     if path.is_absolute():
         return path
-    return repo_dir / "benchmarking" / "artifacts" / path
+    return repo_dir / "backend" / "benchmarking" / "artifacts" / path
 
 def load_recording_suite_runs() -> list[dict]:
-    recording_meta_path = repo_dir / "benchmarking" / "artifacts" / "recordings" / run_dir.name / "meta.json"
+    recording_meta_path = repo_dir / "backend" / "benchmarking" / "artifacts" / "recordings" / run_dir.name / "meta.json"
     if not recording_meta_path.exists():
         return []
     return json.loads(recording_meta_path.read_text()).get("suite_runs", [])
 
 def load_ref_target_run_report(ref_name: str) -> str | None:
-    ref_path = repo_dir / "benchmarking" / "artifacts" / "refs" / f"{{ref_name}}.json"
+    ref_path = repo_dir / "backend" / "benchmarking" / "artifacts" / "refs" / f"{{ref_name}}.json"
     if not ref_path.exists():
         return None
     data = json.loads(ref_path.read_text())
     return data.get("target", {{}}).get("run_report_path")
+
+def load_mainline_target_run_report(suite_name: str, mode: str) -> str | None:
+    main_latest = load_ref_target_run_report(f"main/suites/{{suite_name}}/{{mode}}/latest")
+    if main_latest:
+        return main_latest
+
+    branch = sanitize_ref_component({payload.get('git_branch', '')!r})
+    if not branch:
+        return None
+
+    return load_ref_target_run_report(f"branches/{{branch}}/suites/{{suite_name}}/{{mode}}/latest")
 
 def run_followup_compare(log, *, suite_name: str, mode: str, current_run_report: Path, compare_label: str, baseline_run_report: Path | None = None, branch: str | None = None) -> int:
     summary_dir = run_dir / "comparisons" / suite_name
@@ -403,7 +425,7 @@ def materialize_followup_comparisons(log) -> int:
             )
             overall = overall or rc
         elif bundle_kind == "feature":
-            main_latest = load_ref_target_run_report(f"main/suites/{{suite_name}}/{{mode}}/latest")
+            main_latest = mainline_previous_targets.get(suite_name) or load_mainline_target_run_report(suite_name, mode)
             if main_latest:
                 rc = run_followup_compare(
                     log,

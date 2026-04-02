@@ -12,6 +12,7 @@ shared_artifacts_dir="${remote_root}/groupmixer-benchmark/shared/benchmarking-ar
 status_payload_path="${tmpdir}/status-payload.json"
 bench_log_record="${tmpdir}/bench-record.log"
 bench_log_bundle="${tmpdir}/bench-bundle.log"
+compare_log_bundle="${tmpdir}/compare-bundle.log"
 mkdir -p "${control_repo_dir}/tools" "${shared_artifacts_dir}" "${tmpdir}/bin"
 
 cleanup() {
@@ -77,6 +78,32 @@ exit 0
 EOF
 chmod +x "${control_repo_dir}/tools/benchmark_workflow.sh"
 
+cat > "${control_repo_dir}/tools/benchmark_runner.py" <<EOF
+#!/usr/bin/env python3
+import pathlib
+import sys
+
+args = sys.argv[1:]
+pathlib.Path(${compare_log_bundle@Q}).write_text(" ".join(args) + "\n")
+if "--summary-output" in args:
+    summary_path = pathlib.Path(args[args.index("--summary-output") + 1])
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
+    summary_path.write_text("ok\n")
+EOF
+chmod +x "${control_repo_dir}/tools/benchmark_runner.py"
+
+mkdir -p \
+  "${shared_artifacts_dir}/refs/branches/test-branch/suites/path/full_solve" \
+  "${shared_artifacts_dir}/runs/mainline-path-run"
+cat > "${shared_artifacts_dir}/refs/branches/test-branch/suites/path/full_solve/latest.json" <<'EOF_BRANCH_REF'
+{
+  "target": { "run_report_path": "runs/mainline-path-run/run-report.json" }
+}
+EOF_BRANCH_REF
+cat > "${shared_artifacts_dir}/runs/mainline-path-run/run-report.json" <<'EOF_MAIN_REPORT'
+{"baseline": true}
+EOF_MAIN_REPORT
+
 make_payload() {
   local action="$1"
   local run_id="$2"
@@ -124,6 +151,7 @@ payload = {
     "bundle_kind": bundle_kind,
     "feature_name": feature_name,
     "feature_previous_targets": {},
+    "mainline_previous_targets": {"path": "runs/mainline-path-run/run-report.json"} if bench_command == "record-bundle" else {},
 }
 print(base64.b64encode(json.dumps(payload).encode()).decode())
 PY
@@ -184,15 +212,27 @@ start_payload_b64="$(make_payload start "${bundle_run_id}" record-bundle feature
 PATH="${tmpdir}/bin:${PATH}" GROUPMIXER_REMOTE_PAYLOAD_B64="${start_payload_b64}" python3 "${TARGET_SCRIPT}" > "${tmpdir}/start-bundle.json"
 poll_until_done "${bundle_run_id}" record-bundle feature bundle-feature "${status_payload_path}"
 
-python3 - "${status_payload_path}" "${bench_log_bundle}" <<'PY'
+python3 - "${status_payload_path}" "${bench_log_bundle}" "${compare_log_bundle}" "${shared_artifacts_dir}" "${bundle_run_id}" <<'PY'
 import json
 import pathlib
 import sys
 status = json.loads(pathlib.Path(sys.argv[1]).read_text())
 bench_log = pathlib.Path(sys.argv[2])
+compare_log = pathlib.Path(sys.argv[3])
+shared_artifacts_dir = pathlib.Path(sys.argv[4])
+bundle_run_id = sys.argv[5]
 assert status.get("done") is True, status
 assert str(status.get("exit_code")) == "0", status
 assert bench_log.read_text().strip() == "bundle-recording-id=local-remote-helper-bundle"
+compare_args = compare_log.read_text().strip().split()
+assert compare_args[0] == "compare", compare_args
+assert compare_args[1] == "--run", compare_args
+assert compare_args[3] == "--baseline-run", compare_args
+assert compare_args[5] == "--artifacts-dir", compare_args
+assert compare_args[6] == "backend/benchmarking/artifacts", compare_args
+summary_path = pathlib.Path(compare_args[8])
+assert summary_path.read_text().strip() == "ok"
+assert shared_artifacts_dir.joinpath("recordings", bundle_run_id, "meta.json").exists()
 PY
 
 # Scenario 3: orphaned unfinished runs are finalized on status checks.

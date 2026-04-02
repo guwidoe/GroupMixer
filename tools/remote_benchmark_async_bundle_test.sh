@@ -91,12 +91,24 @@ PY
 remote_shared_refs="${remote_stage_dir}/groupmixer-benchmark/shared/benchmarking-artifacts/refs"
 mkdir -p "${remote_shared_refs}/features/setup-refactor/suites/representative/full_solve"
 mkdir -p "${remote_shared_refs}/features/setup-refactor/suites/hotpath-swap-preview/swap_preview"
+mkdir -p "${remote_shared_refs}/branches/master/suites/representative/full_solve"
+mkdir -p "${remote_shared_refs}/branches/master/suites/hotpath-swap-preview/swap_preview"
 cat > "${remote_shared_refs}/features/setup-refactor/suites/representative/full_solve/latest.json" <<'JSON'
 {
   "target": { "run_report_path": "runs/representative-prev/run-report.json" }
 }
 JSON
 cat > "${remote_shared_refs}/features/setup-refactor/suites/hotpath-swap-preview/swap_preview/latest.json" <<'JSON'
+{
+  "target": { "run_report_path": "runs/hotpath-prev/run-report.json" }
+}
+JSON
+cat > "${remote_shared_refs}/branches/master/suites/representative/full_solve/latest.json" <<'JSON'
+{
+  "target": { "run_report_path": "runs/representative-prev/run-report.json" }
+}
+JSON
+cat > "${remote_shared_refs}/branches/master/suites/hotpath-swap-preview/swap_preview/latest.json" <<'JSON'
 {
   "target": { "run_report_path": "runs/hotpath-prev/run-report.json" }
 }
@@ -145,12 +157,16 @@ assert feature_payload["feature_previous_targets"] == {
     "representative": "runs/representative-prev/run-report.json",
     "hotpath-swap-preview": "runs/hotpath-prev/run-report.json",
 }
+assert feature_payload["mainline_previous_targets"] == {
+    "representative": "runs/representative-prev/run-report.json",
+    "hotpath-swap-preview": "runs/hotpath-prev/run-report.json",
+}
 assert "--feature-name" in feature_payload["bench_args"]
 assert feature_payload["bench_args"][feature_payload["bench_args"].index("--feature-name") + 1] == "setup-refactor"
 assert feature_payload["bench_args"].count("--suite") == 2
 assert "hotpath-swap-preview" in feature_payload["bench_args"]
 
-remote_local_dir = repo_dir / "benchmarking" / "artifacts" / "remotes" / machine_name / "benchmark-runs"
+remote_local_dir = repo_dir / "backend" / "benchmarking" / "artifacts" / "remotes" / machine_name / "benchmark-runs"
 start_files = sorted(remote_local_dir.glob('*/start.json'))
 assert len(start_files) == 2, start_files
 for start_file in start_files:
