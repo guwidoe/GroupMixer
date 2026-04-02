@@ -431,6 +431,20 @@ impl State {
             .filter(|person| !target_people.contains(person))
             .collect();
 
+        let current_groups: Vec<usize> = self.locations[day]
+            .iter()
+            .map(|&(group_idx, _)| group_idx)
+            .collect();
+        let moved_person_group_after = |person: usize| {
+            if active_members.contains(&person) {
+                to_group
+            } else if target_people.contains(&person) {
+                from_group
+            } else {
+                current_groups[person]
+            }
+        };
+
         for &member in &active_members {
             for &other in &source_remaining {
                 if self.person_participation[other][day] {
@@ -454,6 +468,98 @@ impl State {
                 if self.person_participation[other][day] {
                     self.update_contact_cache_for_clique_swap_pair(person, other, 1);
                 }
+            }
+        }
+
+        for (pair_idx, &(person_a, person_b)) in self.forbidden_pairs.iter().enumerate() {
+            if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
+                if !sessions.contains(&day) {
+                    continue;
+                }
+            }
+
+            if !self.person_participation[person_a][day] || !self.person_participation[person_b][day]
+            {
+                continue;
+            }
+
+            if !active_members.contains(&person_a)
+                && !active_members.contains(&person_b)
+                && !target_people.contains(&person_a)
+                && !target_people.contains(&person_b)
+            {
+                continue;
+            }
+
+            let were_together = self.locations[day][person_a].0 == self.locations[day][person_b].0;
+            let are_together = moved_person_group_after(person_a) == moved_person_group_after(person_b);
+
+            if were_together && !are_together {
+                self.forbidden_pair_violations[pair_idx] -= 1;
+            } else if !were_together && are_together {
+                self.forbidden_pair_violations[pair_idx] += 1;
+            }
+        }
+
+        for (pair_idx, &(person_a, person_b)) in self.should_together_pairs.iter().enumerate() {
+            if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
+                if !sessions.contains(&day) {
+                    continue;
+                }
+            }
+
+            if !self.person_participation[person_a][day] || !self.person_participation[person_b][day]
+            {
+                continue;
+            }
+
+            if !active_members.contains(&person_a)
+                && !active_members.contains(&person_b)
+                && !target_people.contains(&person_a)
+                && !target_people.contains(&person_b)
+            {
+                continue;
+            }
+
+            let was_violation = self.locations[day][person_a].0 != self.locations[day][person_b].0;
+            let is_violation = moved_person_group_after(person_a) != moved_person_group_after(person_b);
+
+            if was_violation && !is_violation {
+                self.should_together_violations[pair_idx] -= 1;
+            } else if !was_violation && is_violation {
+                self.should_together_violations[pair_idx] += 1;
+            }
+        }
+
+        for (pair_idx, &(person_a, person_b)) in self.pairmin_pairs.iter().enumerate() {
+            if !self.pairmin_sessions[pair_idx].contains(&day) {
+                continue;
+            }
+
+            if !self.person_participation[person_a][day] || !self.person_participation[person_b][day]
+            {
+                continue;
+            }
+
+            if !active_members.contains(&person_a)
+                && !active_members.contains(&person_b)
+                && !target_people.contains(&person_a)
+                && !target_people.contains(&person_b)
+            {
+                continue;
+            }
+
+            let were_together = self.locations[day][person_a].0 == self.locations[day][person_b].0;
+            let are_together = moved_person_group_after(person_a) == moved_person_group_after(person_b);
+
+            if were_together == are_together {
+                continue;
+            }
+
+            if are_together {
+                self.pairmin_counts[pair_idx] += 1;
+            } else {
+                self.pairmin_counts[pair_idx] -= 1;
             }
         }
 
@@ -512,8 +618,6 @@ impl State {
         }
 
         self._recalculate_attribute_balance_penalty();
-        self._recalculate_constraint_penalty();
-        self.recalculate_pairmin_counts();
         self._update_constraint_penalty_total();
         self.refresh_cost_from_caches();
 
