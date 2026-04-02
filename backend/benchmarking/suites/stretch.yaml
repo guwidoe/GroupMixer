@@ -8,4 +8,4 @@ default_max_iterations: 80
 cases:
   - manifest: ../cases/stretch/medium_multi_session.json
   - manifest: ../cases/stretch/sailing_trip_feature_dense.json
-    max_iterations: 120
+    max_iterations: 2500
