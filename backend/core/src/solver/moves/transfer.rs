@@ -410,6 +410,7 @@ impl State {
         let mut new_to = old_to;
         new_to.push(person_idx);
 
+        #[cfg(feature = "debug-invariant-checks")]
         if self.logging.debug_validate_invariants && self.logging.debug_dump_invariant_context {
             let mut seen = std::collections::HashSet::new();
             for &p in &new_from {
@@ -573,19 +574,22 @@ impl State {
         self._update_constraint_penalty_total();
         self.refresh_cost_from_caches();
 
-        // Debug-only final invariant check for the whole session
-        if self.logging.debug_validate_invariants {
-            if let Err(e) = self.validate_no_duplicate_assignments() {
-                if self.logging.debug_dump_invariant_context {
-                    eprintln!(
-                        "[DEBUG] Invariant failed after transfer day={} person={} from={} to={}",
-                        day,
-                        self.display_person_by_idx(person_idx),
-                        self.group_idx_to_id[from_group],
-                        self.group_idx_to_id[to_group]
-                    );
+        #[cfg(feature = "debug-invariant-checks")]
+        {
+            // Debug-only final invariant check for the whole session
+            if self.logging.debug_validate_invariants {
+                if let Err(e) = self.validate_no_duplicate_assignments() {
+                    if self.logging.debug_dump_invariant_context {
+                        eprintln!(
+                            "[DEBUG] Invariant failed after transfer day={} person={} from={} to={}",
+                            day,
+                            self.display_person_by_idx(person_idx),
+                            self.group_idx_to_id[from_group],
+                            self.group_idx_to_id[to_group]
+                        );
+                    }
+                    let _ = e;
                 }
-                let _ = e;
             }
         }
 
