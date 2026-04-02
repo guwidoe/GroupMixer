@@ -223,24 +223,13 @@ impl State {
         // No clique weight based delta; cliques are enforced by move feasibility
 
         // Constraint Delta - Forbidden Pairs
-        for (pair_idx, &(p1, p2)) in self.forbidden_pairs.iter().enumerate() {
-            // Check if this forbidden pair applies to this session
-            if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
-                if !sessions.contains(&day) {
-                    continue; // Skip this constraint for this session
-                }
-            }
-
-            // Check if both people are participating in this session
+        let forbidden_pair_indices = self.merged_unique_constraint_indices(
+            self.forbidden_pair_indices_for_person_session(day, p1_idx),
+            self.forbidden_pair_indices_for_person_session(day, p2_idx),
+        );
+        for pair_idx in forbidden_pair_indices {
+            let (p1, p2) = self.forbidden_pairs[pair_idx];
             if !self.person_participation[p1][day] || !self.person_participation[p2][day] {
-                continue; // Skip if either person is not participating
-            }
-
-            let p1_is_swapped = p1_idx == p1 || p2_idx == p1;
-            let p2_is_swapped = p1_idx == p2 || p2_idx == p2;
-
-            // If the pair is not involved in the swap, no change
-            if !p1_is_swapped && !p2_is_swapped {
                 continue;
             }
 
@@ -264,18 +253,15 @@ impl State {
         }
 
         // Constraint Delta - ShouldStayTogether pairs
-        for (pair_idx, &(person1, person2)) in self.should_together_pairs.iter().enumerate() {
-            // Check if this should-together pair applies to this session
-            if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
-                if !sessions.contains(&day) {
-                    continue; // Skip this constraint for this session
-                }
-            }
-
-            // Check if both people are participating in this session
+        let should_together_indices = self.merged_unique_constraint_indices(
+            self.should_together_indices_for_person_session(day, p1_idx),
+            self.should_together_indices_for_person_session(day, p2_idx),
+        );
+        for pair_idx in should_together_indices {
+            let (person1, person2) = self.should_together_pairs[pair_idx];
             if !self.person_participation[person1][day] || !self.person_participation[person2][day]
             {
-                continue; // Skip if either person is not participating
+                continue;
             }
 
             let pair_weight = self.should_together_weights[pair_idx];
@@ -306,14 +292,12 @@ impl State {
         }
 
         // Constraint Delta - PairMeetingCount
-        for (cidx, &(a, b)) in self.pairmin_pairs.iter().enumerate() {
-            if !self.pairmin_sessions[cidx].contains(&day) {
-                continue;
-            }
-            // Only if swap involves either endpoint at this day
-            if a != p1_idx && a != p2_idx && b != p1_idx && b != p2_idx {
-                continue;
-            }
+        let pairmin_indices = self.merged_unique_constraint_indices(
+            self.pairmin_indices_for_person_session(day, p1_idx),
+            self.pairmin_indices_for_person_session(day, p2_idx),
+        );
+        for cidx in pairmin_indices {
+            let (a, b) = self.pairmin_pairs[cidx];
             // Determine before-after sameness for the pair on this day
             let (a_g_before, _) = self.locations[day][a];
             let (b_g_before, _) = self.locations[day][b];
@@ -686,86 +670,66 @@ impl State {
         // === UPDATE CONSTRAINT PENALTIES (THIS WAS MISSING!) ===
 
         // Update forbidden pair violations
-        for (pair_idx, &(person_a, person_b)) in self.forbidden_pairs.iter().enumerate() {
-            // Check if this forbidden pair applies to this session
-            if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
-                if !sessions.contains(&day) {
-                    continue; // Skip this constraint for this session
-                }
-            }
-
-            // Check if both people are participating in this session
-            if !self.person_participation[person_a][day]
-                || !self.person_participation[person_b][day]
-            {
-                continue; // Skip if either person is not participating
-            }
-
-            // Check if this swap affects this forbidden pair
-            if (person_a == p1_idx || person_a == p2_idx)
-                || (person_b == p1_idx || person_b == p2_idx)
-            {
-                // Check if they were together before the swap (use original group assignments)
-                let a_group_before = if person_a == p1_idx {
-                    g1_idx
-                } else if person_a == p2_idx {
-                    g2_idx
-                } else {
-                    self.locations[day][person_a].0
-                };
-                let b_group_before = if person_b == p1_idx {
-                    g1_idx
-                } else if person_b == p2_idx {
-                    g2_idx
-                } else {
-                    self.locations[day][person_b].0
-                };
-                let were_together_before = a_group_before == b_group_before;
-
-                // Check if they are together after the swap (use new group assignments)
-                let a_group_after = if person_a == p1_idx {
-                    g2_idx
-                } else if person_a == p2_idx {
-                    g1_idx
-                } else {
-                    self.locations[day][person_a].0
-                };
-                let b_group_after = if person_b == p1_idx {
-                    g2_idx
-                } else if person_b == p2_idx {
-                    g1_idx
-                } else {
-                    self.locations[day][person_b].0
-                };
-                let are_together_after = a_group_after == b_group_after;
-
-                // Update the violation count
-                if were_together_before && !are_together_after {
-                    // They were together before but not after - violation removed
-                    self.forbidden_pair_violations[pair_idx] -= 1;
-                } else if !were_together_before && are_together_after {
-                    // They were not together before but are after - violation added
-                    self.forbidden_pair_violations[pair_idx] += 1;
-                }
-            }
-        }
-
-        // Update should-together violations
-        for (pair_idx, &(person_a, person_b)) in self.should_together_pairs.iter().enumerate() {
-            // Check if this should-together pair applies to this session
-            if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
-                if !sessions.contains(&day) {
-                    continue;
-                }
-            }
-            // Only count when both participate
+        let forbidden_pair_indices = self.merged_unique_constraint_indices(
+            self.forbidden_pair_indices_for_person_session(day, p1_idx),
+            self.forbidden_pair_indices_for_person_session(day, p2_idx),
+        );
+        for pair_idx in forbidden_pair_indices {
+            let (person_a, person_b) = self.forbidden_pairs[pair_idx];
             if !self.person_participation[person_a][day]
                 || !self.person_participation[person_b][day]
             {
                 continue;
             }
-            // Only if one endpoint moved
-            if person_a != p1_idx && person_a != p2_idx && person_b != p1_idx && person_b != p2_idx
+
+            let a_group_before = if person_a == p1_idx {
+                g1_idx
+            } else if person_a == p2_idx {
+                g2_idx
+            } else {
+                self.locations[day][person_a].0
+            };
+            let b_group_before = if person_b == p1_idx {
+                g1_idx
+            } else if person_b == p2_idx {
+                g2_idx
+            } else {
+                self.locations[day][person_b].0
+            };
+            let were_together_before = a_group_before == b_group_before;
+
+            let a_group_after = if person_a == p1_idx {
+                g2_idx
+            } else if person_a == p2_idx {
+                g1_idx
+            } else {
+                self.locations[day][person_a].0
+            };
+            let b_group_after = if person_b == p1_idx {
+                g2_idx
+            } else if person_b == p2_idx {
+                g1_idx
+            } else {
+                self.locations[day][person_b].0
+            };
+            let are_together_after = a_group_after == b_group_after;
+
+            if were_together_before && !are_together_after {
+                self.forbidden_pair_violations[pair_idx] -= 1;
+            } else if !were_together_before && are_together_after {
+                self.forbidden_pair_violations[pair_idx] += 1;
+            }
+        }
+
+        // Update should-together violations
+        let should_together_indices = self.merged_unique_constraint_indices(
+            self.should_together_indices_for_person_session(day, p1_idx),
+            self.should_together_indices_for_person_session(day, p2_idx),
+        );
+        for pair_idx in should_together_indices {
+            let (person_a, person_b) = self.should_together_pairs[pair_idx];
+            if !self.person_participation[person_a][day]
+                || !self.person_participation[person_b][day]
             {
                 continue;
             }
@@ -894,15 +858,13 @@ impl State {
         }
 
         // Update PairMinMeetings counts for this day if relevant
-        for (cidx, &(a, b)) in self.pairmin_pairs.iter().enumerate() {
-            if !self.pairmin_sessions[cidx].contains(&day) {
-                continue;
-            }
+        let pairmin_indices = self.merged_unique_constraint_indices(
+            self.pairmin_indices_for_person_session(day, p1_idx),
+            self.pairmin_indices_for_person_session(day, p2_idx),
+        );
+        for cidx in pairmin_indices {
+            let (a, b) = self.pairmin_pairs[cidx];
             if !self.person_participation[a][day] || !self.person_participation[b][day] {
-                continue;
-            }
-            // Check if either endpoint moved
-            if a != p1_idx && a != p2_idx && b != p1_idx && b != p2_idx {
                 continue;
             }
             // Before swap groups for a and b (use original group assignments for swapped people)

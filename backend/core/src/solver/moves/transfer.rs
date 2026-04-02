@@ -208,21 +208,9 @@ impl State {
 
         // === CONSTRAINT PENALTY DELTA ===
         // Check forbidden pairs
-        for (pair_idx, &(person1, person2)) in self.forbidden_pairs.iter().enumerate() {
-            // Check if this constraint applies to this session
-            if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
-                if !sessions.contains(&day) {
-                    continue;
-                }
-            }
-
+        for &pair_idx in self.forbidden_pair_indices_for_person_session(day, person_idx) {
+            let (person1, person2) = self.forbidden_pairs[pair_idx];
             let pair_weight = self.forbidden_pair_weights[pair_idx];
-
-            // Check if the transferring person is part of this forbidden pair
-            if person_idx != person1 && person_idx != person2 {
-                continue;
-            }
-
             let other_person = if person_idx == person1 {
                 person2
             } else {
@@ -242,21 +230,9 @@ impl State {
         }
 
         // Check should-stay-together pairs
-        for (pair_idx, &(other1, other2)) in self.should_together_pairs.iter().enumerate() {
-            // Check if this constraint applies to this session
-            if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
-                if !sessions.contains(&day) {
-                    continue;
-                }
-            }
-
+        for &pair_idx in self.should_together_indices_for_person_session(day, person_idx) {
+            let (other1, other2) = self.should_together_pairs[pair_idx];
             let weight = self.should_together_weights[pair_idx];
-
-            // Only consider if moving person is part of this pair
-            if person_idx != other1 && person_idx != other2 {
-                continue;
-            }
-
             let other_person = if person_idx == other1 { other2 } else { other1 };
 
             // Check current separation state
@@ -270,14 +246,8 @@ impl State {
         }
 
         // Check PairMeetingCount constraints (only those including this day and where moving person is one endpoint)
-        for (cidx, &(a, b)) in self.pairmin_pairs.iter().enumerate() {
-            if !self.pairmin_sessions[cidx].contains(&day) {
-                continue;
-            }
-            // Moving person must be one endpoint
-            if person_idx != a && person_idx != b {
-                continue;
-            }
+        for &cidx in self.pairmin_indices_for_person_session(day, person_idx) {
+            let (a, b) = self.pairmin_pairs[cidx];
             // Identify the other endpoint
             let other = if person_idx == a { b } else { a };
 
@@ -466,16 +436,11 @@ impl State {
         // change here.
 
         // Update forbidden pair violations incrementally.
-        for (pair_idx, &(person_a, person_b)) in self.forbidden_pairs.iter().enumerate() {
-            if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
-                if !sessions.contains(&day) {
-                    continue;
-                }
-            }
-
-            if person_idx != person_a && person_idx != person_b {
-                continue;
-            }
+        for pair_idx in self
+            .forbidden_pair_indices_for_person_session(day, person_idx)
+            .to_vec()
+        {
+            let (person_a, person_b) = self.forbidden_pairs[pair_idx];
 
             let other_person = if person_idx == person_a {
                 person_b
@@ -498,16 +463,11 @@ impl State {
         }
 
         // Update should-together violations incrementally.
-        for (pair_idx, &(person_a, person_b)) in self.should_together_pairs.iter().enumerate() {
-            if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
-                if !sessions.contains(&day) {
-                    continue;
-                }
-            }
-
-            if person_idx != person_a && person_idx != person_b {
-                continue;
-            }
+        for pair_idx in self
+            .should_together_indices_for_person_session(day, person_idx)
+            .to_vec()
+        {
+            let (person_a, person_b) = self.should_together_pairs[pair_idx];
 
             let other_person = if person_idx == person_a {
                 person_b
@@ -530,14 +490,11 @@ impl State {
         }
 
         // === UPDATE PairMeetingCount counts incrementally ===
-        for (cidx, &(a, b)) in self.pairmin_pairs.clone().iter().enumerate() {
-            if !self.pairmin_sessions[cidx].contains(&day) {
-                continue;
-            }
-            // Only if moving person is one endpoint
-            if person_idx != a && person_idx != b {
-                continue;
-            }
+        for cidx in self
+            .pairmin_indices_for_person_session(day, person_idx)
+            .to_vec()
+        {
+            let (a, b) = self.pairmin_pairs[cidx];
             let other = if person_idx == a { b } else { a };
             if !self.person_participation[other][day] {
                 continue;

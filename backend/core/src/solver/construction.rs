@@ -371,6 +371,12 @@ impl State {
             clique_sessions: vec![], // To be populated by preprocessing
             forbidden_pair_sessions: vec![], // To be populated by preprocessing
             should_together_sessions: vec![], // To be populated by preprocessing
+            forbidden_pairs_by_person_session: Vec::new(),
+            should_together_by_person_session: Vec::new(),
+            pairmin_by_person_session: Vec::new(),
+            forbidden_pairs_by_session: Vec::new(),
+            should_together_by_session: Vec::new(),
+            pairmin_by_session: Vec::new(),
             person_participation,
             num_sessions: input.problem.num_sessions,
             allowed_sessions,
@@ -403,6 +409,7 @@ impl State {
 
         state._preprocess_and_validate_constraints(input)?;
         state.build_attribute_balance_constraint_indexes()?;
+        state.build_pair_constraint_indexes();
 
         // If an initial schedule is supplied, warm-start from it; otherwise random initialize
         if let Some(ref initial_schedule) = input.initial_schedule {
@@ -784,6 +791,82 @@ impl State {
         }
 
         Ok(())
+    }
+
+    fn build_pair_constraint_indexes(&mut self) {
+        let people_count = self.person_idx_to_id.len();
+        let num_sessions = self.num_sessions as usize;
+
+        self.forbidden_pairs_by_person_session = vec![Vec::new(); people_count * num_sessions];
+        self.should_together_by_person_session = vec![Vec::new(); people_count * num_sessions];
+        self.pairmin_by_person_session = vec![Vec::new(); people_count * num_sessions];
+        self.forbidden_pairs_by_session = vec![Vec::new(); num_sessions];
+        self.should_together_by_session = vec![Vec::new(); num_sessions];
+        self.pairmin_by_session = vec![Vec::new(); num_sessions];
+
+        for (pair_idx, &(person_a, person_b)) in self.forbidden_pairs.iter().enumerate() {
+            match &self.forbidden_pair_sessions[pair_idx] {
+                Some(sessions) => {
+                    for &day in sessions {
+                        self.forbidden_pairs_by_session[day].push(pair_idx);
+                        self.forbidden_pairs_by_person_session
+                            [flat_slot(people_count, day, person_a)]
+                        .push(pair_idx);
+                        self.forbidden_pairs_by_person_session
+                            [flat_slot(people_count, day, person_b)]
+                        .push(pair_idx);
+                    }
+                }
+                None => {
+                    for day in 0..num_sessions {
+                        self.forbidden_pairs_by_session[day].push(pair_idx);
+                        self.forbidden_pairs_by_person_session
+                            [flat_slot(people_count, day, person_a)]
+                        .push(pair_idx);
+                        self.forbidden_pairs_by_person_session
+                            [flat_slot(people_count, day, person_b)]
+                        .push(pair_idx);
+                    }
+                }
+            }
+        }
+
+        for (pair_idx, &(person_a, person_b)) in self.should_together_pairs.iter().enumerate() {
+            match &self.should_together_sessions[pair_idx] {
+                Some(sessions) => {
+                    for &day in sessions {
+                        self.should_together_by_session[day].push(pair_idx);
+                        self.should_together_by_person_session
+                            [flat_slot(people_count, day, person_a)]
+                        .push(pair_idx);
+                        self.should_together_by_person_session
+                            [flat_slot(people_count, day, person_b)]
+                        .push(pair_idx);
+                    }
+                }
+                None => {
+                    for day in 0..num_sessions {
+                        self.should_together_by_session[day].push(pair_idx);
+                        self.should_together_by_person_session
+                            [flat_slot(people_count, day, person_a)]
+                        .push(pair_idx);
+                        self.should_together_by_person_session
+                            [flat_slot(people_count, day, person_b)]
+                        .push(pair_idx);
+                    }
+                }
+            }
+        }
+
+        for (constraint_idx, &(person_a, person_b)) in self.pairmin_pairs.iter().enumerate() {
+            for &day in &self.pairmin_sessions[constraint_idx] {
+                self.pairmin_by_session[day].push(constraint_idx);
+                self.pairmin_by_person_session[flat_slot(people_count, day, person_a)]
+                    .push(constraint_idx);
+                self.pairmin_by_person_session[flat_slot(people_count, day, person_b)]
+                    .push(constraint_idx);
+            }
+        }
     }
 
     fn _preprocess_and_validate_constraints(
