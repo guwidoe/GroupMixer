@@ -44,12 +44,16 @@ impl State {
     }
 
     pub(crate) fn _recalculate_attribute_balance_penalty(&mut self) {
-        if std::env::var("DEBUG_ATTR_BALANCE").is_ok() {
+        #[cfg(feature = "debug-attr-balance-tracing")]
+        let debug_attr_balance = std::env::var_os("DEBUG_ATTR_BALANCE").is_some();
+
+        #[cfg(feature = "debug-attr-balance-tracing")]
+        if debug_attr_balance {
             println!("DEBUG: _recalculate_attribute_balance_penalty - starting recalculation");
         }
 
         self.attribute_balance_penalty = 0.0;
-        for (day_idx, day_schedule) in self.schedule.iter().enumerate() {
+        for (_day_idx, day_schedule) in self.schedule.iter().enumerate() {
             for (group_idx, group_people) in day_schedule.iter().enumerate() {
                 let group_id = &self.group_idx_to_id[group_idx];
 
@@ -76,9 +80,10 @@ impl State {
                         let weighted_penalty =
                             self.calculate_penalty_from_counts(&value_counts, ac);
 
-                        if std::env::var("DEBUG_ATTR_BALANCE").is_ok() && weighted_penalty > 0.001 {
+                        #[cfg(feature = "debug-attr-balance-tracing")]
+                        if debug_attr_balance && weighted_penalty > 0.001 {
                             println!("DEBUG: _recalculate - day {}, group {} ({}), constraint '{}' on '{}':", 
-                                    day_idx, group_idx, group_id, ac.attribute_key, ac.group_id);
+                                    _day_idx, group_idx, group_id, ac.attribute_key, ac.group_id);
                             println!("  group_people: {:?}", group_people);
                             println!("  value_counts: {:?}", value_counts);
                             println!("  weighted_penalty: {}", weighted_penalty);
@@ -90,7 +95,8 @@ impl State {
             }
         }
 
-        if std::env::var("DEBUG_ATTR_BALANCE").is_ok() {
+        #[cfg(feature = "debug-attr-balance-tracing")]
+        if debug_attr_balance {
             println!(
                 "DEBUG: _recalculate_attribute_balance_penalty - final result: {}",
                 self.attribute_balance_penalty
