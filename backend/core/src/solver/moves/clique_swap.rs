@@ -617,7 +617,47 @@ impl State {
             self.locations[day][pid] = (to_group, pos);
         }
 
-        self._recalculate_attribute_balance_penalty();
+        let from_group_id = &self.group_idx_to_id[from_group];
+        let to_group_id = &self.group_idx_to_id[to_group];
+
+        for ac in &self.attribute_balance_constraints {
+            if !self.attribute_balance_constraint_applies(ac, day) {
+                continue;
+            }
+
+            let applies_to_from = ac.group_id == *from_group_id;
+            let applies_to_to = ac.group_id == *to_group_id;
+
+            if !applies_to_from && !applies_to_to {
+                continue;
+            }
+
+            let old_penalty_from = if applies_to_from {
+                self.calculate_group_attribute_penalty_for_members(&old_from, ac)
+            } else {
+                0.0
+            };
+            let old_penalty_to = if applies_to_to {
+                self.calculate_group_attribute_penalty_for_members(&old_to, ac)
+            } else {
+                0.0
+            };
+
+            let new_penalty_from = if applies_to_from {
+                self.calculate_group_attribute_penalty_for_members(&self.schedule[day][from_group], ac)
+            } else {
+                0.0
+            };
+            let new_penalty_to = if applies_to_to {
+                self.calculate_group_attribute_penalty_for_members(&self.schedule[day][to_group], ac)
+            } else {
+                0.0
+            };
+
+            self.attribute_balance_penalty +=
+                (new_penalty_from + new_penalty_to) - (old_penalty_from + old_penalty_to);
+        }
+
         self._update_constraint_penalty_total();
         self.refresh_cost_from_caches();
 
