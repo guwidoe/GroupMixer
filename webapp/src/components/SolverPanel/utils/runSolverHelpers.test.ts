@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { ProgressUpdate } from '../../../services/wasm/types';
+import type { RuntimeProgressUpdate } from '../../../services/runtime';
 import { mapProgressToSolverState } from './runSolverHelpers';
 
-function createProgress(overrides: Partial<ProgressUpdate> = {}): ProgressUpdate {
+function createProgress(overrides: Partial<RuntimeProgressUpdate> = {}): RuntimeProgressUpdate {
   return {
     iteration: 0,
     max_iterations: 100,

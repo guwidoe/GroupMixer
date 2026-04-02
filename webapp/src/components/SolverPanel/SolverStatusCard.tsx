@@ -10,7 +10,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import type { Scenario, SolverSettings, SolverState } from '../../types';
-import type { ProgressUpdate } from '../../services/wasm/types';
+import type { RuntimeProgressUpdate } from '../../services/runtime';
 import type { ScheduleSnapshot } from '../../visualizations/types';
 import { VisualizationPanel } from '../../visualizations/VisualizationPanel';
 import { Tooltip } from '../Tooltip';
@@ -19,7 +19,7 @@ import type { SolverFormInputs } from './types';
 
 interface LiveVizState {
   schedule: ScheduleSnapshot;
-  progress: ProgressUpdate | null;
+  progress: RuntimeProgressUpdate | null;
 }
 
 interface SolverRuntimeControls {

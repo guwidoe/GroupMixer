@@ -1,6 +1,6 @@
 import type React from "react";
 import type { Scenario, Solution } from "../types";
-import type { ProgressUpdate } from "../services/wasm/types";
+import type { RuntimeProgressUpdate } from "../services/runtime";
 
 export type ScheduleSnapshot = Record<string, Record<string, string[]>>;
 
@@ -13,7 +13,7 @@ export type VisualizationData =
   | {
       kind: "live";
       scenario: Scenario;
-      progress: ProgressUpdate | null;
+      progress: RuntimeProgressUpdate | null;
       schedule: ScheduleSnapshot;
     };
 
