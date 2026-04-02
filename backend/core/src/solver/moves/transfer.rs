@@ -474,7 +474,73 @@ impl State {
         }
 
         // === UPDATE CONSTRAINT PENALTIES ===
-        self._recalculate_constraint_penalty();
+        // Transfer feasibility guarantees the moved person is neither immovable nor
+        // part of a clique for this session, so only pair-based soft constraints can
+        // change here.
+
+        // Update forbidden pair violations incrementally.
+        for (pair_idx, &(person_a, person_b)) in self.forbidden_pairs.iter().enumerate() {
+            if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
+                if !sessions.contains(&day) {
+                    continue;
+                }
+            }
+
+            if person_idx != person_a && person_idx != person_b {
+                continue;
+            }
+
+            let other_person = if person_idx == person_a {
+                person_b
+            } else {
+                person_a
+            };
+
+            if !self.person_participation[other_person][day] {
+                continue;
+            }
+
+            let were_together = from_group_members.contains(&other_person);
+            let are_together = to_group_members.contains(&other_person);
+
+            if were_together && !are_together {
+                self.forbidden_pair_violations[pair_idx] -= 1;
+            } else if !were_together && are_together {
+                self.forbidden_pair_violations[pair_idx] += 1;
+            }
+        }
+
+        // Update should-together violations incrementally.
+        for (pair_idx, &(person_a, person_b)) in self.should_together_pairs.iter().enumerate() {
+            if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
+                if !sessions.contains(&day) {
+                    continue;
+                }
+            }
+
+            if person_idx != person_a && person_idx != person_b {
+                continue;
+            }
+
+            let other_person = if person_idx == person_a {
+                person_b
+            } else {
+                person_a
+            };
+
+            if !self.person_participation[other_person][day] {
+                continue;
+            }
+
+            let was_violation = !from_group_members.contains(&other_person);
+            let is_violation = !to_group_members.contains(&other_person);
+
+            if was_violation && !is_violation {
+                self.should_together_violations[pair_idx] -= 1;
+            } else if !was_violation && is_violation {
+                self.should_together_violations[pair_idx] += 1;
+            }
+        }
 
         // === UPDATE PairMeetingCount counts incrementally ===
         for (cidx, &(a, b)) in self.pairmin_pairs.clone().iter().enumerate() {
