@@ -1199,37 +1199,43 @@ impl Solver for SimulatedAnnealing {
                             let actual_current_cost = current_state.current_cost;
                             recorded_delta = actual_current_cost - prev_cost;
 
-                            // Optional invariant check after applying move
-                            if state.logging.debug_validate_invariants {
-                                if let Err(e) = current_state.validate_no_duplicate_assignments() {
-                                    if state.logging.debug_dump_invariant_context {
-                                        println!("INVARIANT VIOLATION CONTEXT:");
-                                        println!("  Iteration: {}", i);
-                                        println!("  Move: CLIQUE_SWAP day={} clique_idx={} from_group={} to_group={} swapped_out={}",
-                                            day,
-                                            clique_idx,
-                                            state.group_idx_to_id[current_group].clone(),
-                                            state.group_idx_to_id[target_group].clone(),
-                                            target_people.len()
-                                        );
-                                        for (g_idx, g) in
-                                            current_state.schedule[day].iter().enumerate().take(4)
-                                        {
-                                            let names: Vec<String> = g
-                                                .iter()
-                                                .map(|&pid| {
-                                                    current_state.display_person_by_idx(pid)
-                                                })
-                                                .collect();
-                                            println!(
-                                                "    group {} ({}): {:?}",
-                                                g_idx,
-                                                current_state.group_idx_to_id[g_idx].clone(),
-                                                names
+                            #[cfg(feature = "debug-invariant-checks")]
+                            {
+                                // Optional invariant check after applying move
+                                if state.logging.debug_validate_invariants {
+                                    if let Err(e) = current_state.validate_no_duplicate_assignments()
+                                    {
+                                        if state.logging.debug_dump_invariant_context {
+                                            println!("INVARIANT VIOLATION CONTEXT:");
+                                            println!("  Iteration: {}", i);
+                                            println!("  Move: CLIQUE_SWAP day={} clique_idx={} from_group={} to_group={} swapped_out={}",
+                                                day,
+                                                clique_idx,
+                                                state.group_idx_to_id[current_group].clone(),
+                                                state.group_idx_to_id[target_group].clone(),
+                                                target_people.len()
                                             );
+                                            for (g_idx, g) in current_state.schedule[day]
+                                                .iter()
+                                                .enumerate()
+                                                .take(4)
+                                            {
+                                                let names: Vec<String> = g
+                                                    .iter()
+                                                    .map(|&pid| {
+                                                        current_state.display_person_by_idx(pid)
+                                                    })
+                                                    .collect();
+                                                println!(
+                                                    "    group {} ({}): {:?}",
+                                                    g_idx,
+                                                    current_state.group_idx_to_id[g_idx].clone(),
+                                                    names
+                                                );
+                                            }
                                         }
+                                        return Err(e);
                                     }
-                                    return Err(e);
                                 }
                             }
 
@@ -1301,37 +1307,43 @@ impl Solver for SimulatedAnnealing {
 
                             current_state.current_cost = next_cost;
 
-                            // Optional invariant check after applying move
-                            if state.logging.debug_validate_invariants {
-                                if let Err(e) = current_state.validate_no_duplicate_assignments() {
-                                    if state.logging.debug_dump_invariant_context {
-                                        println!("INVARIANT VIOLATION CONTEXT:");
-                                        println!("  Iteration: {}", i);
-                                        println!(
-                                            "  Move: TRANSFER day={} person={} from={} to={}",
-                                            day,
-                                            current_state.display_person_by_idx(person_idx),
-                                            state.group_idx_to_id[from_group].clone(),
-                                            state.group_idx_to_id[to_group].clone()
-                                        );
-                                        for (g_idx, g) in
-                                            current_state.schedule[day].iter().enumerate().take(4)
-                                        {
-                                            let names: Vec<String> = g
-                                                .iter()
-                                                .map(|&pid| {
-                                                    current_state.display_person_by_idx(pid)
-                                                })
-                                                .collect();
+                            #[cfg(feature = "debug-invariant-checks")]
+                            {
+                                // Optional invariant check after applying move
+                                if state.logging.debug_validate_invariants {
+                                    if let Err(e) = current_state.validate_no_duplicate_assignments()
+                                    {
+                                        if state.logging.debug_dump_invariant_context {
+                                            println!("INVARIANT VIOLATION CONTEXT:");
+                                            println!("  Iteration: {}", i);
                                             println!(
-                                                "    group {} ({}): {:?}",
-                                                g_idx,
-                                                current_state.group_idx_to_id[g_idx].clone(),
-                                                names
+                                                "  Move: TRANSFER day={} person={} from={} to={}",
+                                                day,
+                                                current_state.display_person_by_idx(person_idx),
+                                                state.group_idx_to_id[from_group].clone(),
+                                                state.group_idx_to_id[to_group].clone()
                                             );
+                                            for (g_idx, g) in current_state.schedule[day]
+                                                .iter()
+                                                .enumerate()
+                                                .take(4)
+                                            {
+                                                let names: Vec<String> = g
+                                                    .iter()
+                                                    .map(|&pid| {
+                                                        current_state.display_person_by_idx(pid)
+                                                    })
+                                                    .collect();
+                                                println!(
+                                                    "    group {} ({}): {:?}",
+                                                    g_idx,
+                                                    current_state.group_idx_to_id[g_idx].clone(),
+                                                    names
+                                                );
+                                            }
                                         }
+                                        return Err(e);
                                     }
-                                    return Err(e);
                                 }
                             }
 
@@ -1412,35 +1424,38 @@ impl Solver for SimulatedAnnealing {
                         get_elapsed_seconds_between(apply_started_at, get_current_time());
                     current_state.current_cost = next_cost;
 
-                    // Optional invariant check after applying move
-                    if state.logging.debug_validate_invariants {
-                        if let Err(e) = current_state.validate_no_duplicate_assignments() {
-                            if state.logging.debug_dump_invariant_context {
-                                println!("INVARIANT VIOLATION CONTEXT:");
-                                println!("  Iteration: {}", i);
-                                println!(
-                                    "  Move: SWAP day={} p1={} p2={}",
-                                    day,
-                                    current_state.display_person_by_idx(p1_idx),
-                                    current_state.display_person_by_idx(p2_idx)
-                                );
-                                println!("  After move (first 3 groups of day):");
-                                for (g_idx, g) in
-                                    current_state.schedule[day].iter().enumerate().take(3)
-                                {
-                                    let names: Vec<String> = g
-                                        .iter()
-                                        .map(|&pid| current_state.display_person_by_idx(pid))
-                                        .collect();
+                    #[cfg(feature = "debug-invariant-checks")]
+                    {
+                        // Optional invariant check after applying move
+                        if state.logging.debug_validate_invariants {
+                            if let Err(e) = current_state.validate_no_duplicate_assignments() {
+                                if state.logging.debug_dump_invariant_context {
+                                    println!("INVARIANT VIOLATION CONTEXT:");
+                                    println!("  Iteration: {}", i);
                                     println!(
-                                        "    group {} ({}): {:?}",
-                                        g_idx,
-                                        current_state.group_idx_to_id[g_idx].clone(),
-                                        names
+                                        "  Move: SWAP day={} p1={} p2={}",
+                                        day,
+                                        current_state.display_person_by_idx(p1_idx),
+                                        current_state.display_person_by_idx(p2_idx)
                                     );
+                                    println!("  After move (first 3 groups of day):");
+                                    for (g_idx, g) in
+                                        current_state.schedule[day].iter().enumerate().take(3)
+                                    {
+                                        let names: Vec<String> = g
+                                            .iter()
+                                            .map(|&pid| current_state.display_person_by_idx(pid))
+                                            .collect();
+                                        println!(
+                                            "    group {} ({}): {:?}",
+                                            g_idx,
+                                            current_state.group_idx_to_id[g_idx].clone(),
+                                            names
+                                        );
+                                    }
                                 }
+                                return Err(e);
                             }
-                            return Err(e);
                         }
                     }
 
