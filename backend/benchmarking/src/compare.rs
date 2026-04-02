@@ -274,27 +274,9 @@ fn build_suspect_summary(case_comparisons: &[CaseComparison]) -> RegressionSuspe
 
     let mut quality_regressions: Vec<_> = case_comparisons
         .iter()
-        .filter_map(|comparison| {
-            comparison
-                .final_score
-                .as_ref()
-                .map(|delta| (comparison, delta))
-        })
-        .filter(|(_, delta)| delta.absolute < 0.0)
-        .map(|(comparison, delta)| RegressionSuspect {
-            kind: RegressionSuspectKind::CaseQuality,
-            id: comparison.case_id.clone(),
-            summary: format!(
-                "{} final score decreased by {:.4} ({})",
-                comparison.case_id,
-                delta.absolute,
-                format_percent(delta.percent)
-            ),
-            absolute_delta: delta.absolute,
-            percent_delta: delta.percent,
-        })
+        .filter_map(|comparison| quality_regression_suspect(comparison))
         .collect();
-    quality_regressions.sort_by(|a, b| a.absolute_delta.total_cmp(&b.absolute_delta));
+    quality_regressions.sort_by(|a, b| b.absolute_delta.total_cmp(&a.absolute_delta));
     quality_regressions.truncate(5);
 
     let mut move_family_totals: BTreeMap<String, (f64, f64)> = BTreeMap::new();
@@ -342,25 +324,8 @@ fn build_suspect_summary(case_comparisons: &[CaseComparison]) -> RegressionSuspe
                     absolute_delta: comparison.runtime_seconds.absolute,
                     percent_delta: comparison.runtime_seconds.percent,
                 })
-            } else if let Some(final_score) = &comparison.final_score {
-                if final_score.absolute > 0.0 {
-                    Some(RegressionSuspect {
-                        kind: RegressionSuspectKind::CaseQuality,
-                        id: comparison.case_id.clone(),
-                        summary: format!(
-                            "{} final score improved by {:.4} ({})",
-                            comparison.case_id,
-                            final_score.absolute,
-                            format_percent(final_score.percent)
-                        ),
-                        absolute_delta: final_score.absolute,
-                        percent_delta: final_score.percent,
-                    })
-                } else {
-                    None
-                }
             } else {
-                None
+                quality_improvement_suspect(comparison)
             }
         })
         .collect();
@@ -373,6 +338,54 @@ fn build_suspect_summary(case_comparisons: &[CaseComparison]) -> RegressionSuspe
         top_move_family_regressions: move_family_regressions,
         top_improvements: improvements,
     }
+}
+
+fn preferred_quality_delta<'a>(comparison: &'a CaseComparison) -> Option<(&'static str, &'a NumericDelta)> {
+    comparison
+        .final_score
+        .as_ref()
+        .map(|delta| ("final score", delta))
+        .or_else(|| comparison.best_score.as_ref().map(|delta| ("best score", delta)))
+}
+
+fn quality_regression_suspect(comparison: &CaseComparison) -> Option<RegressionSuspect> {
+    let (label, delta) = preferred_quality_delta(comparison)?;
+    if delta.absolute <= 0.0 {
+        return None;
+    }
+
+    Some(RegressionSuspect {
+        kind: RegressionSuspectKind::CaseQuality,
+        id: comparison.case_id.clone(),
+        summary: format!(
+            "{} {label} increased by {:.4} ({})",
+            comparison.case_id,
+            delta.absolute,
+            format_percent(delta.percent)
+        ),
+        absolute_delta: delta.absolute,
+        percent_delta: delta.percent,
+    })
+}
+
+fn quality_improvement_suspect(comparison: &CaseComparison) -> Option<RegressionSuspect> {
+    let (label, delta) = preferred_quality_delta(comparison)?;
+    if delta.absolute >= 0.0 {
+        return None;
+    }
+
+    Some(RegressionSuspect {
+        kind: RegressionSuspectKind::CaseQuality,
+        id: comparison.case_id.clone(),
+        summary: format!(
+            "{} {label} decreased by {:.4} ({})",
+            comparison.case_id,
+            delta.absolute.abs(),
+            format_percent(delta.percent.map(f64::abs))
+        ),
+        absolute_delta: delta.absolute,
+        percent_delta: delta.percent,
+    })
 }
 
 fn same_machine_identity(current: &RunReport, baseline: &RunReport) -> bool {
@@ -445,10 +458,31 @@ fn sanitize_filename(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::artifacts::{CaseComparison, MoveFamilyComparison, NumericDelta};
+    use crate::manifest::BenchmarkSuiteClass;
     use crate::runner::{
         persist_run_report, run_suite_from_manifest, save_baseline_snapshot, RunnerOptions,
     };
     use tempfile::TempDir;
+
+    fn sample_case_comparison() -> CaseComparison {
+        CaseComparison {
+            case_id: "stretch.sailing-trip-feature-dense".to_string(),
+            class: BenchmarkSuiteClass::Stretch,
+            runtime_seconds: NumericDelta {
+                baseline: 1.0,
+                current: 1.0,
+                absolute: 0.0,
+                percent: Some(0.0),
+            },
+            final_score: None,
+            best_score: None,
+            iteration_count: None,
+            stop_reason_baseline: None,
+            stop_reason_current: None,
+            move_family_deltas: Vec::<MoveFamilyComparison>::new(),
+        }
+    }
 
     #[test]
     fn comparing_run_to_matching_baseline_is_comparable() {
@@ -542,5 +576,58 @@ mod tests {
             .reasons
             .iter()
             .any(|reason| reason.contains("benchmark mode mismatch")));
+    }
+
+    #[test]
+    fn quality_regression_uses_higher_scores_as_worse() {
+        let mut comparison = sample_case_comparison();
+        comparison.final_score = Some(NumericDelta {
+            baseline: 186.0,
+            current: 188.0,
+            absolute: 2.0,
+            percent: Some(1.0752688172043012),
+        });
+
+        let suspects = build_suspect_summary(&[comparison]);
+        assert_eq!(suspects.top_quality_regressions.len(), 1);
+        assert!(suspects.top_quality_regressions[0]
+            .summary
+            .contains("final score increased by 2.0000"));
+        assert!(suspects.top_improvements.is_empty());
+    }
+
+    #[test]
+    fn quality_improvement_uses_lower_scores_as_better() {
+        let mut comparison = sample_case_comparison();
+        comparison.final_score = Some(NumericDelta {
+            baseline: 188.0,
+            current: 186.0,
+            absolute: -2.0,
+            percent: Some(-1.0638297872340425),
+        });
+
+        let suspects = build_suspect_summary(&[comparison]);
+        assert!(suspects.top_quality_regressions.is_empty());
+        assert_eq!(suspects.top_improvements.len(), 1);
+        assert!(suspects.top_improvements[0]
+            .summary
+            .contains("final score decreased by 2.0000"));
+    }
+
+    #[test]
+    fn best_score_is_used_when_final_score_is_unavailable() {
+        let mut comparison = sample_case_comparison();
+        comparison.best_score = Some(NumericDelta {
+            baseline: 120.0,
+            current: 123.0,
+            absolute: 3.0,
+            percent: Some(2.5),
+        });
+
+        let suspects = build_suspect_summary(&[comparison]);
+        assert_eq!(suspects.top_quality_regressions.len(), 1);
+        assert!(suspects.top_quality_regressions[0]
+            .summary
+            .contains("best score increased by 3.0000"));
     }
 }
