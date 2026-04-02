@@ -1,11 +1,9 @@
 import { useRef, useState } from 'react';
 import type { Scenario, ScenarioResult, SavedScenario, SolverSettings, SolverState, Solution, Notification } from '../../../types';
-import type { ProgressUpdate } from '../../../services/wasm/types';
+import { getRuntime, type RuntimeProgressUpdate } from '../../../services/runtime';
 import type { ScheduleSnapshot } from '../../../visualizations/types';
-import { solverWorkerService } from '../../../services/solverWorker';
 import { runSolver } from '../utils/runSolver';
 import { saveBestSoFar } from '../utils/saveBestSoFar';
-import { normalizeRecommendedSolverSettings } from '../utils/recommendedSettings';
 
 type AddNotification = (notification: Omit<Notification, 'id'>) => void;
 
@@ -39,7 +37,7 @@ interface UseSolverActionsArgs {
 
 interface LiveVizState {
   schedule: ScheduleSnapshot;
-  progress: ProgressUpdate | null;
+  progress: RuntimeProgressUpdate | null;
 }
 
 export function useSolverActions({
@@ -115,7 +113,7 @@ export function useSolverActions({
     });
 
     try {
-      await solverWorkerService.cancel();
+      await getRuntime().cancel();
     } catch (error) {
       console.error('Cancellation error:', error);
     }
@@ -162,12 +160,10 @@ export function useSolverActions({
     const currentScenario = ensureScenarioExists();
 
     try {
-      const recommendedSettings = await solverWorkerService.getRecommendedSettings(
-        currentScenario,
-        desiredRuntimeSettings,
-      );
-
-      const uiSettings = normalizeRecommendedSolverSettings(recommendedSettings as SolverSettings);
+      const uiSettings = await getRuntime().recommendSettings({
+        scenario: currentScenario,
+        desiredRuntimeSeconds: desiredRuntimeSettings,
+      });
 
       handleSettingsChange(uiSettings);
       addNotification({

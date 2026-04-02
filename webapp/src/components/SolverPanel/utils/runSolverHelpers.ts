@@ -1,9 +1,6 @@
 import type { MutableRefObject } from 'react';
-import type { Scenario, SavedScenario, SolverSettings, SolverState, Notification } from '../../../types';
-import type { ProgressUpdate } from '../../../services/wasm/types';
-import { solverWorkerService } from '../../../services/solverWorker';
-import { reconcileResultToInitialSchedule } from '../../../utils/warmStart';
-import { normalizeRecommendedSolverSettings } from './recommendedSettings';
+import type { Scenario, SolverSettings, SolverState, Notification } from '../../../types';
+import type { RuntimeProgressUpdate } from '../../../services/runtime';
 
 export type AddNotification = (notification: Omit<Notification, 'id'>) => void;
 
@@ -27,33 +24,6 @@ export function validateScenarioForSolve(scenario: Scenario, addNotification: Ad
   }
 
   return true;
-}
-
-export async function selectSolverSettings({
-  useRecommended,
-  currentScenario,
-  desiredRuntimeMain,
-  solverSettings,
-}: {
-  useRecommended: boolean;
-  currentScenario: Scenario;
-  desiredRuntimeMain: number | null;
-  solverSettings: SolverSettings;
-}): Promise<SolverSettings> {
-  if (!useRecommended) {
-    return solverSettings;
-  }
-
-  try {
-    const rawSettings = await solverWorkerService.getRecommendedSettings(
-      currentScenario,
-      desiredRuntimeMain ?? 3,
-    );
-    return normalizeRecommendedSolverSettings(rawSettings as SolverSettings);
-  } catch (error) {
-    console.error('[SolverPanel] Failed to fetch recommended settings – falling back to existing settings', error);
-    return solverSettings;
-  }
 }
 
 export function buildRunSettings(selectedSettings: SolverSettings, showLiveViz: boolean): SolverSettings {
@@ -83,7 +53,7 @@ function finiteNumber(value: number | undefined): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
 
-export function mapProgressToSolverState(progress: ProgressUpdate): Partial<SolverState> {
+export function mapProgressToSolverState(progress: RuntimeProgressUpdate): Partial<SolverState> {
   return {
     ...(progress.iteration === 0 && { initialConstraintPenalty: finiteNumber(progress.current_constraint_penalty) }),
     currentIteration: finiteNumber(progress.iteration),
@@ -135,10 +105,10 @@ export function createProgressCallback({
   solverCompletedRef: MutableRefObject<boolean>;
   cancelledRef: MutableRefObject<boolean>;
   setSolverState: (partial: Partial<SolverState>) => void;
-  setLiveVizState: (value: { schedule: Record<string, Record<string, string[]>>; progress: ProgressUpdate | null } | null) => void;
+  setLiveVizState: (value: { schedule: Record<string, Record<string, string[]>>; progress: RuntimeProgressUpdate | null } | null) => void;
   liveVizLastUiUpdateRef: MutableRefObject<number>;
 }) {
-  return (progress: ProgressUpdate): void => {
+  return (progress: RuntimeProgressUpdate): void => {
     if (solverCompletedRef.current || cancelledRef.current) {
       return;
     }
@@ -156,53 +126,4 @@ export function createProgressCallback({
       }
     }
   };
-}
-
-export async function executeSolverRun({
-  currentScenario,
-  currentScenarioId,
-  savedScenarios,
-  warmStartResultId,
-  setWarmStartFromResult,
-  scenarioWithSettings,
-  progressCallback,
-  addNotification,
-}: {
-  currentScenario: Scenario;
-  currentScenarioId: string | null;
-  savedScenarios: Record<string, SavedScenario>;
-  warmStartResultId: string | null;
-  setWarmStartFromResult: (id: string | null) => void;
-  scenarioWithSettings: Scenario;
-  progressCallback: (progress: ProgressUpdate) => void;
-  addNotification: AddNotification;
-}) {
-  if (!warmStartResultId) {
-    return solverWorkerService.solveWithProgress(scenarioWithSettings, progressCallback);
-  }
-
-  try {
-    const sourceScenario = currentScenarioId ? savedScenarios[currentScenarioId] : null;
-    const result = sourceScenario?.results.find((savedResult) => savedResult.id === warmStartResultId);
-    if (!result) {
-      throw new Error('Selected warm-start result not found');
-    }
-
-    const initialSchedule = reconcileResultToInitialSchedule(currentScenario, result);
-    setWarmStartFromResult(null);
-    return solverWorkerService.solveWithProgressWarmStart(
-      scenarioWithSettings,
-      initialSchedule,
-      progressCallback,
-    );
-  } catch (error) {
-    console.error('[SolverPanel] Warm-start failed, falling back to normal start:', error);
-    addNotification({
-      type: 'warning',
-      title: 'Warm Start Failed',
-      message: error instanceof Error ? error.message : 'Falling back to default start',
-    });
-    setWarmStartFromResult(null);
-    return solverWorkerService.solveWithProgress(scenarioWithSettings, progressCallback);
-  }
 }

@@ -1,10 +1,9 @@
 import type { MutableRefObject } from 'react';
 import type { Scenario, ScenarioResult, SavedScenario, SolverSettings, SolverState, Solution, Notification } from '../../../types';
 import { buildTelemetryPayload, getPersistedTelemetryAttribution, trackLandingEvent } from '../../../services/landingInstrumentation';
+import { getRuntime, isRuntimeCancelledError, type RuntimeProgressUpdate } from '../../../services/runtime';
 import { scenarioStorage } from '../../../services/scenarioStorage';
 import { solveScenario } from '../../../services/solver/solveScenario';
-import type { ProgressUpdate } from '../../../services/wasm/types';
-import { solverWorkerService } from '../../../services/solverWorker';
 import { useAppStore } from '../../../store';
 import { reconcileResultToInitialSchedule } from '../../../utils/warmStart';
 import {
@@ -85,7 +84,7 @@ interface RunSolverArgs {
   ) => ScenarioResult | null;
   ensureScenarioExists: () => Scenario;
   setRunSettings: (settings: SolverSettings) => void;
-  setLiveVizState: (value: { schedule: Record<string, Record<string, string[]>>; progress: ProgressUpdate | null } | null) => void;
+  setLiveVizState: (value: { schedule: Record<string, Record<string, string[]>>; progress: RuntimeProgressUpdate | null } | null) => void;
   liveVizLastUiUpdateRef: MutableRefObject<number>;
   runScenarioSnapshotRef: MutableRefObject<Scenario | null>;
   cancelledRef: MutableRefObject<boolean>;
@@ -95,12 +94,12 @@ interface RunSolverArgs {
 }
 
 interface RunSetup {
-  progressCallback: (progress: ProgressUpdate) => void;
+  progressCallback: (progress: RuntimeProgressUpdate) => void;
 }
 
 interface SolveExecutionResult {
   solution: Solution;
-  lastProgress: ProgressUpdate | null;
+  lastProgress: RuntimeProgressUpdate | null;
   selectedSettings: SolverSettings;
   runScenario: Scenario;
 }
@@ -207,10 +206,11 @@ async function executeSolvePhase({
   solverSettings: SolverSettings;
   useRecommended: boolean;
   desiredRuntimeMain: number | null;
-  progressCallback: (progress: ProgressUpdate) => void;
+  progressCallback: (progress: RuntimeProgressUpdate) => void;
   warmStartSchedule?: Record<string, Record<string, string[]>>;
   showLiveViz: boolean;
   setRunSettings: (settings: SolverSettings) => void;
+  addNotification: AddNotification;
 }): Promise<SolveExecutionResult> {
   const result = await solveScenario({
     scenario: {
@@ -222,6 +222,15 @@ async function executeSolvePhase({
     progressCallback,
     warmStartSchedule,
     enableBestScheduleTelemetry: showLiveViz,
+    recommendationFailurePolicy: 'use-current-settings',
+    onRecommendedSettingsFailure: (error) => {
+      console.error('[SolverPanel] Failed to fetch recommended settings – falling back to existing settings', error);
+      addNotification({
+        type: 'warning',
+        title: 'Recommended Settings Unavailable',
+        message: 'Falling back to the current solver settings for this run.',
+      });
+    },
     onRunScenarioPrepared: (preparedRunScenario) => {
       setRunSettings(preparedRunScenario.settings);
     },
@@ -241,7 +250,7 @@ function applyCompletedSolverState({
 }: {
   cancelled: boolean;
   solution: Solution;
-  lastProgress: ProgressUpdate | null;
+  lastProgress: RuntimeProgressUpdate | null;
   solverState: SolverState;
   setSolverState: (partial: Partial<SolverState>) => void;
   addNotification: AddNotification;
@@ -342,7 +351,7 @@ async function resumeCancelledSolve({
   args: RunSolverArgs;
   runScenario: Scenario;
   solution: Solution;
-  progressCallback: (progress: ProgressUpdate) => void;
+  progressCallback: (progress: RuntimeProgressUpdate) => void;
   savedResult: ScenarioResult | null;
 }): Promise<boolean> {
   const {
@@ -395,7 +404,11 @@ async function resumeCancelledSolve({
 
   setTimeout(async () => {
     try {
-      await solverWorkerService.solveWithProgressWarmStart(runScenario, initialSchedule, progressCallback);
+      await getRuntime().solveWarmStart({
+        scenario: runScenario,
+        initialSchedule,
+        progressCallback,
+      });
     } catch (error) {
       console.error('[SolverPanel] Warm-start resume failed:', error);
       await runSolver({
@@ -440,7 +453,7 @@ async function finalizeCancelledRun({
   args: RunSolverArgs;
   runScenario: Scenario;
   solution: Solution;
-  progressCallback: (progress: ProgressUpdate) => void;
+  progressCallback: (progress: RuntimeProgressUpdate) => void;
   savedResult: ScenarioResult | null;
 }): Promise<boolean> {
   const { addNotification, cancelledRef, restartAfterSaveRef, saveInProgressRef } = args;
@@ -502,9 +515,7 @@ function handleRunError({
 }: Pick<RunSolverArgs, 'setSolverState' | 'addNotification'> & {
   error: unknown;
 }): void {
-  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-  if (errorMessage.includes('cancelled')) {
+  if (isRuntimeCancelledError(error)) {
     setSolverState({ isRunning: false, isComplete: false });
     addNotification({
       type: 'warning',
@@ -513,6 +524,8 @@ function handleRunError({
     });
     return;
   }
+
+  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
   setSolverState({ isRunning: false, error: errorMessage });
   addNotification({
@@ -562,6 +575,7 @@ export async function runSolver(args: RunSolverArgs) {
       warmStartSchedule,
       showLiveViz: args.showLiveVizRef.current,
       setRunSettings: args.setRunSettings,
+      addNotification: args.addNotification,
     });
 
     args.solverCompletedRef.current = true;

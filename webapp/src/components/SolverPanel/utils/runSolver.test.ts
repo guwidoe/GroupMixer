@@ -4,17 +4,10 @@ import type { Scenario, ScenarioResult, SavedScenario, SolverState } from '../..
 import { solveScenario } from '../../../services/solver/solveScenario';
 import { scenarioStorage } from '../../../services/scenarioStorage';
 import { runSolver } from './runSolver';
-import { solverWorkerService } from '../../../services/solverWorker';
 import { useAppStore } from '../../../store';
 
 vi.mock('../../../services/solver/solveScenario', () => ({
   solveScenario: vi.fn(),
-}));
-
-vi.mock('../../../services/solverWorker', () => ({
-  solverWorkerService: {
-    solveWithProgressWarmStart: vi.fn(),
-  },
 }));
 
 vi.mock('../../../utils/warmStart', () => ({
@@ -227,7 +220,6 @@ describe('runSolver', () => {
 
     await runSolver(args);
 
-    expect(solverWorkerService.solveWithProgressWarmStart).not.toHaveBeenCalled();
     expect(solveScenario).toHaveBeenCalledWith(
       expect.objectContaining({
         warmStartSchedule: undefined,
