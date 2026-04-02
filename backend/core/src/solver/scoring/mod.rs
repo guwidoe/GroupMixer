@@ -262,6 +262,33 @@ impl State {
         self.calculate_penalty_from_resolved_counts(&counts, constraint_idx)
     }
 
+    pub(crate) fn calculate_group_attribute_penalty_for_constraint_members_with_edit(
+        &self,
+        group_members: &[usize],
+        constraint_idx: usize,
+        removed_person: Option<usize>,
+        added_person: Option<usize>,
+    ) -> f64 {
+        let constraint = &self.resolved_attribute_balance_constraints[constraint_idx];
+        let mut counts = self.get_attribute_counts(group_members, constraint.attr_idx);
+
+        if let Some(person_idx) = removed_person {
+            let value_idx = self.person_attributes[person_idx][constraint.attr_idx];
+            if value_idx != usize::MAX {
+                counts[value_idx] -= 1;
+            }
+        }
+
+        if let Some(person_idx) = added_person {
+            let value_idx = self.person_attributes[person_idx][constraint.attr_idx];
+            if value_idx != usize::MAX {
+                counts[value_idx] += 1;
+            }
+        }
+
+        self.calculate_penalty_from_resolved_counts(&counts, constraint_idx)
+    }
+
     #[inline]
     pub(crate) fn attribute_balance_constraint_indices_for_group_session(
         &self,

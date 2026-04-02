@@ -170,6 +170,14 @@ impl State {
         }
 
         // === ATTRIBUTE BALANCE DELTA ===
+        let group_after_transfer = |other_person: usize| {
+            if other_person == person_idx {
+                to_group
+            } else {
+                self.locations[day][other_person].0
+            }
+        };
+
         let from_attr_constraints = self
             .attribute_balance_constraint_indices_for_group_session(day, from_group)
             .to_vec();
@@ -178,15 +186,13 @@ impl State {
                 from_group_members,
                 constraint_idx,
             );
-            let next_from_members: Vec<usize> = from_group_members
-                .iter()
-                .filter(|&&p| p != person_idx)
-                .cloned()
-                .collect();
-            let new_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
-                &next_from_members,
-                constraint_idx,
-            );
+            let new_penalty = self
+                .calculate_group_attribute_penalty_for_constraint_members_with_edit(
+                    from_group_members,
+                    constraint_idx,
+                    Some(person_idx),
+                    None,
+                );
             delta_cost += new_penalty - old_penalty;
         }
         let to_attr_constraints = self
@@ -197,12 +203,13 @@ impl State {
                 to_group_members,
                 constraint_idx,
             );
-            let mut next_to_members = to_group_members.clone();
-            next_to_members.push(person_idx);
-            let new_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
-                &next_to_members,
-                constraint_idx,
-            );
+            let new_penalty = self
+                .calculate_group_attribute_penalty_for_constraint_members_with_edit(
+                    to_group_members,
+                    constraint_idx,
+                    None,
+                    Some(person_idx),
+                );
             delta_cost += new_penalty - old_penalty;
         }
 
@@ -217,11 +224,10 @@ impl State {
                 person1
             };
 
-            // Check current violation state
-            let currently_together = from_group_members.contains(&other_person);
-
-            // Check future violation state
-            let will_be_together = to_group_members.contains(&other_person);
+            let currently_together =
+                self.locations[day][person_idx].0 == self.locations[day][other_person].0;
+            let will_be_together =
+                group_after_transfer(person_idx) == group_after_transfer(other_person);
 
             let old_penalty = if currently_together { pair_weight } else { 0.0 };
             let new_penalty = if will_be_together { pair_weight } else { 0.0 };
@@ -235,10 +241,10 @@ impl State {
             let weight = self.should_together_weights[pair_idx];
             let other_person = if person_idx == other1 { other2 } else { other1 };
 
-            // Check current separation state
-            let currently_together = from_group_members.contains(&other_person);
-            // After transfer, person moves to `to_group`
-            let will_be_together = to_group_members.contains(&other_person);
+            let currently_together =
+                self.locations[day][person_idx].0 == self.locations[day][other_person].0;
+            let will_be_together =
+                group_after_transfer(person_idx) == group_after_transfer(other_person);
 
             let old_penalty = if currently_together { 0.0 } else { weight };
             let new_penalty = if will_be_together { 0.0 } else { weight };
@@ -256,10 +262,8 @@ impl State {
                 continue;
             }
 
-            // Before: together if other is in from_group
-            let before_same = from_group_members.contains(&other);
-            // After: together if other is in to_group
-            let after_same = to_group_members.contains(&other);
+            let before_same = self.locations[day][person_idx].0 == self.locations[day][other].0;
+            let after_same = group_after_transfer(person_idx) == group_after_transfer(other);
 
             if before_same == after_same {
                 continue;

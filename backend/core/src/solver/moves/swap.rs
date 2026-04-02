@@ -43,20 +43,6 @@ impl State {
         delta_cost
     }
 
-    fn swapped_group_members(
-        members: &[usize],
-        person_to_remove: usize,
-        person_to_add: usize,
-    ) -> Vec<usize> {
-        let mut next_members: Vec<usize> = members
-            .iter()
-            .filter(|&&person| person != person_to_remove)
-            .copied()
-            .collect();
-        next_members.push(person_to_add);
-        next_members
-    }
-
     /// Calculates the change in the total cost function if a swap were to be performed.
     ///
     /// This is the core method for evaluating potential moves during optimization.
@@ -183,13 +169,20 @@ impl State {
         // --- Contact/Repetition Delta ---
         let g1_members = &self.schedule[day][g1_idx];
         let g2_members = &self.schedule[day][g2_idx];
-        let next_g1_members = Self::swapped_group_members(g1_members, p1_idx, p2_idx);
-        let next_g2_members = Self::swapped_group_members(g2_members, p2_idx, p1_idx);
-
         delta_cost += self.contact_delta_for_membership_change(day, p1_idx, g1_members, p1_idx, -1);
         delta_cost += self.contact_delta_for_membership_change(day, p1_idx, g2_members, p2_idx, 1);
         delta_cost += self.contact_delta_for_membership_change(day, p2_idx, g2_members, p2_idx, -1);
         delta_cost += self.contact_delta_for_membership_change(day, p2_idx, g1_members, p1_idx, 1);
+
+        let group_after_swap = |person_idx: usize| {
+            if person_idx == p1_idx {
+                g2_idx
+            } else if person_idx == p2_idx {
+                g1_idx
+            } else {
+                self.locations[day][person_idx].0
+            }
+        };
 
         // Attribute Balance Delta
         for &constraint_idx in
@@ -199,10 +192,13 @@ impl State {
                 g1_members,
                 constraint_idx,
             );
-            let new_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
-                &next_g1_members,
-                constraint_idx,
-            );
+            let new_penalty = self
+                .calculate_group_attribute_penalty_for_constraint_members_with_edit(
+                    g1_members,
+                    constraint_idx,
+                    Some(p1_idx),
+                    Some(p2_idx),
+                );
             delta_cost += new_penalty - old_penalty;
         }
         for &constraint_idx in
@@ -212,10 +208,13 @@ impl State {
                 g2_members,
                 constraint_idx,
             );
-            let new_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
-                &next_g2_members,
-                constraint_idx,
-            );
+            let new_penalty = self
+                .calculate_group_attribute_penalty_for_constraint_members_with_edit(
+                    g2_members,
+                    constraint_idx,
+                    Some(p2_idx),
+                    Some(p1_idx),
+                );
             delta_cost += new_penalty - old_penalty;
         }
 
@@ -235,19 +234,12 @@ impl State {
 
             let pair_weight = self.forbidden_pair_weights[pair_idx];
 
-            // Penalty before swap
-            if g1_members.contains(&p1) && g1_members.contains(&p2) {
-                delta_cost -= pair_weight;
-            }
-            if g2_members.contains(&p1) && g2_members.contains(&p2) {
-                delta_cost -= pair_weight;
-            }
+            let were_together = self.locations[day][p1].0 == self.locations[day][p2].0;
+            let are_together = group_after_swap(p1) == group_after_swap(p2);
 
-            // Penalty after swap
-            if next_g1_members.contains(&p1) && next_g1_members.contains(&p2) {
-                delta_cost += pair_weight;
-            }
-            if next_g2_members.contains(&p1) && next_g2_members.contains(&p2) {
+            if were_together && !are_together {
+                delta_cost -= pair_weight;
+            } else if !were_together && are_together {
                 delta_cost += pair_weight;
             }
         }
@@ -266,23 +258,13 @@ impl State {
 
             let pair_weight = self.should_together_weights[pair_idx];
 
-            // Old penalty: separated across g1 and g2
-            let p1_in_g1 = g1_members.contains(&person1);
-            let p1_in_g2 = g2_members.contains(&person1);
-            let p2_in_g1 = g1_members.contains(&person2);
-            let p2_in_g2 = g2_members.contains(&person2);
-            let old_penalty = if (p1_in_g1 && p2_in_g2) || (p1_in_g2 && p2_in_g1) {
+            let old_penalty = if self.locations[day][person1].0 != self.locations[day][person2].0 {
                 pair_weight
             } else {
                 0.0
             };
 
-            // New penalty after swap
-            let new_p1_in_g1 = next_g1_members.contains(&person1);
-            let new_p1_in_g2 = next_g2_members.contains(&person1);
-            let new_p2_in_g1 = next_g1_members.contains(&person2);
-            let new_p2_in_g2 = next_g2_members.contains(&person2);
-            let new_penalty = if (new_p1_in_g1 && new_p2_in_g2) || (new_p1_in_g2 && new_p2_in_g1) {
+            let new_penalty = if group_after_swap(person1) != group_after_swap(person2) {
                 pair_weight
             } else {
                 0.0
