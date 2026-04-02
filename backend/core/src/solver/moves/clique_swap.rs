@@ -417,38 +417,41 @@ impl State {
             .collect();
         new_to.extend_from_slice(&active_members);
 
-        // In debug mode, assert sizes preserved and no duplicates within each group
-        if self.logging.debug_validate_invariants {
-            if self.logging.debug_dump_invariant_context {
-                // Check for duplicates within groups
-                let mut seen = std::collections::HashSet::new();
-                for &p in &new_from {
-                    if !seen.insert(p) {
-                        eprintln!(
-                            "[DEBUG] Duplicate in new_from: {}",
-                            self.display_person_by_idx(p)
-                        );
+        #[cfg(feature = "debug-invariant-checks")]
+        {
+            // In debug mode, assert sizes preserved and no duplicates within each group
+            if self.logging.debug_validate_invariants {
+                if self.logging.debug_dump_invariant_context {
+                    // Check for duplicates within groups
+                    let mut seen = std::collections::HashSet::new();
+                    for &p in &new_from {
+                        if !seen.insert(p) {
+                            eprintln!(
+                                "[DEBUG] Duplicate in new_from: {}",
+                                self.display_person_by_idx(p)
+                            );
+                        }
+                    }
+                    seen.clear();
+                    for &p in &new_to {
+                        if !seen.insert(p) {
+                            eprintln!(
+                                "[DEBUG] Duplicate in new_to: {}",
+                                self.display_person_by_idx(p)
+                            );
+                        }
                     }
                 }
-                seen.clear();
-                for &p in &new_to {
-                    if !seen.insert(p) {
-                        eprintln!(
-                            "[DEBUG] Duplicate in new_to: {}",
-                            self.display_person_by_idx(p)
-                        );
-                    }
-                }
+                // Expect cardinality preserved
+                debug_assert_eq!(
+                    new_from.len(),
+                    self.schedule[day][from_group].len() - active_members.len() + target_people.len()
+                );
+                debug_assert_eq!(
+                    new_to.len(),
+                    self.schedule[day][to_group].len() - target_people.len() + active_members.len()
+                );
             }
-            // Expect cardinality preserved
-            debug_assert_eq!(
-                new_from.len(),
-                self.schedule[day][from_group].len() - active_members.len() + target_people.len()
-            );
-            debug_assert_eq!(
-                new_to.len(),
-                self.schedule[day][to_group].len() - target_people.len() + active_members.len()
-            );
         }
 
         self.schedule[day][from_group] = new_from;
@@ -465,21 +468,24 @@ impl State {
         // Recalculate scores (clique swap touches many structures)
         self._recalculate_scores();
 
-        // Session-wide invariant check (debug only)
-        if self.logging.debug_validate_invariants {
-            if let Err(e) = self.validate_no_duplicate_assignments() {
-                if self.logging.debug_dump_invariant_context {
-                    eprintln!(
-                        "[DEBUG] Invariant failed after clique swap day={} from={} to={} moved_clique_size={} target_size={}",
-                        day,
-                        self.group_idx_to_id[from_group],
-                        self.group_idx_to_id[to_group],
-                        active_members.len(),
-                        target_people.len()
-                    );
+        #[cfg(feature = "debug-invariant-checks")]
+        {
+            // Session-wide invariant check (debug only)
+            if self.logging.debug_validate_invariants {
+                if let Err(e) = self.validate_no_duplicate_assignments() {
+                    if self.logging.debug_dump_invariant_context {
+                        eprintln!(
+                            "[DEBUG] Invariant failed after clique swap day={} from={} to={} moved_clique_size={} target_size={}",
+                            day,
+                            self.group_idx_to_id[from_group],
+                            self.group_idx_to_id[to_group],
+                            active_members.len(),
+                            target_people.len()
+                        );
+                    }
+                    // Surface error up-stack on next algorithm-side check
+                    let _ = e; // no-op here; algorithm already checks after call
                 }
-                // Surface error up-stack on next algorithm-side check
-                let _ = e; // no-op here; algorithm already checks after call
             }
         }
 
