@@ -192,47 +192,31 @@ impl State {
         delta_cost += self.contact_delta_for_membership_change(day, p2_idx, g1_members, p1_idx, 1);
 
         // Attribute Balance Delta
-        for ac in &self.attribute_balance_constraints {
-            let g1_id = &self.group_idx_to_id[g1_idx];
-            let g2_id = &self.group_idx_to_id[g2_idx];
-
-            if !self.attribute_balance_constraint_applies(ac, day) {
-                continue;
-            }
-
-            // Only calculate if the constraint applies to one of the affected groups
-            let applies_to_g1 = ac.group_id == *g1_id;
-            let applies_to_g2 = ac.group_id == *g2_id;
-
-            if !applies_to_g1 && !applies_to_g2 {
-                continue; // Skip constraint that doesn't apply to either group
-            }
-
-            let old_penalty_g1 = if applies_to_g1 {
-                self.calculate_group_attribute_penalty_for_members(g1_members, ac)
-            } else {
-                0.0
-            };
-            let old_penalty_g2 = if applies_to_g2 {
-                self.calculate_group_attribute_penalty_for_members(g2_members, ac)
-            } else {
-                0.0
-            };
-
-            let new_penalty_g1 = if applies_to_g1 {
-                self.calculate_group_attribute_penalty_for_members(&next_g1_members, ac)
-            } else {
-                0.0
-            };
-            let new_penalty_g2 = if applies_to_g2 {
-                self.calculate_group_attribute_penalty_for_members(&next_g2_members, ac)
-            } else {
-                0.0
-            };
-
-            let delta_penalty =
-                (new_penalty_g1 + new_penalty_g2) - (old_penalty_g1 + old_penalty_g2);
-            delta_cost += delta_penalty;
+        for &constraint_idx in
+            self.attribute_balance_constraint_indices_for_group_session(day, g1_idx)
+        {
+            let old_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
+                g1_members,
+                constraint_idx,
+            );
+            let new_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
+                &next_g1_members,
+                constraint_idx,
+            );
+            delta_cost += new_penalty - old_penalty;
+        }
+        for &constraint_idx in
+            self.attribute_balance_constraint_indices_for_group_session(day, g2_idx)
+        {
+            let old_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
+                g2_members,
+                constraint_idx,
+            );
+            let new_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
+                &next_g2_members,
+                constraint_idx,
+            );
+            delta_cost += new_penalty - old_penalty;
         }
 
         // Hard Constraint Delta - Cliques
@@ -647,71 +631,48 @@ impl State {
             );
         }
 
-        for ac in &self.attribute_balance_constraints {
-            // Get group IDs for filtering
-            let g1_id = &self.group_idx_to_id[g1_idx];
-            let g2_id = &self.group_idx_to_id[g2_idx];
-
-            if !self.attribute_balance_constraint_applies(ac, day) {
-                continue;
-            }
-
-            // Only update if the constraint applies to one of the affected groups
-            let applies_to_g1 = ac.group_id == *g1_id;
-            let applies_to_g2 = ac.group_id == *g2_id;
-
-            if !applies_to_g1 && !applies_to_g2 {
-                continue; // Skip constraint that doesn't apply to either group
-            }
-
-            let old_penalty_g1 = if applies_to_g1 {
-                self.calculate_group_attribute_penalty_for_members(g1_members, ac)
-            } else {
-                0.0
-            };
-            let old_penalty_g2 = if applies_to_g2 {
-                self.calculate_group_attribute_penalty_for_members(g2_members, ac)
-            } else {
-                0.0
-            };
-
-            // Use the UPDATED schedule to get the new group members
-            let new_g1_members = &self.schedule[day][g1_idx];
-            let new_g2_members = &self.schedule[day][g2_idx];
-
-            let new_penalty_g1 = if applies_to_g1 {
-                self.calculate_group_attribute_penalty_for_members(new_g1_members, ac)
-            } else {
-                0.0
-            };
-            let new_penalty_g2 = if applies_to_g2 {
-                self.calculate_group_attribute_penalty_for_members(new_g2_members, ac)
-            } else {
-                0.0
-            };
-
-            let delta_penalty =
-                (new_penalty_g1 + new_penalty_g2) - (old_penalty_g1 + old_penalty_g2);
+        let g1_attr_constraints = self
+            .attribute_balance_constraint_indices_for_group_session(day, g1_idx)
+            .to_vec();
+        for constraint_idx in g1_attr_constraints {
+            let old_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
+                g1_members,
+                constraint_idx,
+            );
+            let new_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
+                &self.schedule[day][g1_idx],
+                constraint_idx,
+            );
+            let delta_penalty = new_penalty - old_penalty;
 
             #[cfg(feature = "debug-attr-balance-tracing")]
             if debug_attr_balance && delta_penalty.abs() > 0.001 {
                 println!(
-                        "DEBUG: apply_swap - specific constraint '{}' on group '{}' (applies_to_g1={}, applies_to_g2={}):",
-                        ac.attribute_key, ac.group_id, applies_to_g1, applies_to_g2
-                    );
-                println!(
-                    "  old_penalty_g1: {}, old_penalty_g2: {}",
-                    old_penalty_g1, old_penalty_g2
+                    "DEBUG: apply_swap - resolved g1 constraint idx {}:",
+                    constraint_idx
                 );
                 println!(
-                    "  new_penalty_g1: {}, new_penalty_g2: {}",
-                    new_penalty_g1, new_penalty_g2
+                    "  old_penalty: {}, new_penalty: {}",
+                    old_penalty, new_penalty
                 );
                 println!("  delta_penalty: {}", delta_penalty);
-                println!("  g1_id: {}, g2_id: {}", g1_id, g2_id);
             }
 
             self.attribute_balance_penalty += delta_penalty;
+        }
+        let g2_attr_constraints = self
+            .attribute_balance_constraint_indices_for_group_session(day, g2_idx)
+            .to_vec();
+        for constraint_idx in g2_attr_constraints {
+            let old_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
+                g2_members,
+                constraint_idx,
+            );
+            let new_penalty = self.calculate_group_attribute_penalty_for_constraint_members(
+                &self.schedule[day][g2_idx],
+                constraint_idx,
+            );
+            self.attribute_balance_penalty += new_penalty - old_penalty;
         }
 
         #[cfg(feature = "debug-attr-balance-tracing")]

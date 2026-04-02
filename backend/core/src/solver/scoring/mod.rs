@@ -4,7 +4,7 @@
 //! scoring components including attribute balance penalties, constraint
 //! penalties, and pair meeting counts.
 
-use super::State;
+use super::{constraint_index::flat_slot, State};
 use crate::models::AttributeBalanceParams;
 
 impl State {
@@ -20,6 +20,7 @@ impl State {
         counts
     }
 
+    #[allow(dead_code)]
     fn calculate_penalty_from_counts(&self, counts: &[u32], ac: &AttributeBalanceParams) -> f64 {
         use crate::models::AttributeBalanceMode;
         let mut penalty = 0.0;
@@ -43,6 +44,25 @@ impl State {
         penalty
     }
 
+    fn calculate_penalty_from_resolved_counts(&self, counts: &[u32], constraint_idx: usize) -> f64 {
+        use crate::models::AttributeBalanceMode;
+
+        let constraint = &self.resolved_attribute_balance_constraints[constraint_idx];
+        let mut penalty = 0.0;
+        for &(value_idx, desired_count) in &constraint.desired_counts {
+            let actual_count = counts.get(value_idx).copied().unwrap_or(0);
+            let diff = match constraint.mode {
+                AttributeBalanceMode::Exact => (actual_count as i32 - desired_count as i32).abs(),
+                AttributeBalanceMode::AtLeast => {
+                    let shortfall = desired_count as i32 - actual_count as i32;
+                    shortfall.max(0)
+                }
+            };
+            penalty += (diff.pow(2) as f64) * constraint.penalty_weight;
+        }
+        penalty
+    }
+
     pub(crate) fn _recalculate_attribute_balance_penalty(&mut self) {
         #[cfg(feature = "debug-attr-balance-tracing")]
         let debug_attr_balance = std::env::var_os("DEBUG_ATTR_BALANCE").is_some();
@@ -53,44 +73,31 @@ impl State {
         }
 
         self.attribute_balance_penalty = 0.0;
-        for (_day_idx, day_schedule) in self.schedule.iter().enumerate() {
+        let group_count = self.group_idx_to_id.len();
+        for (day_idx, day_schedule) in self.schedule.iter().enumerate() {
             for (group_idx, group_people) in day_schedule.iter().enumerate() {
-                let group_id = &self.group_idx_to_id[group_idx];
+                let slot = flat_slot(group_count, day_idx, group_idx);
+                for &constraint_idx in &self.attribute_balance_constraints_by_group_session[slot] {
+                    let constraint = &self.resolved_attribute_balance_constraints[constraint_idx];
+                    let counts = self.get_attribute_counts(group_people, constraint.attr_idx);
+                    let weighted_penalty =
+                        self.calculate_penalty_from_resolved_counts(&counts, constraint_idx);
 
-                for ac in &self.attribute_balance_constraints {
-                    // Check if the constraint applies to this group
-                    if &ac.group_id != group_id {
-                        continue;
+                    #[cfg(feature = "debug-attr-balance-tracing")]
+                    if debug_attr_balance && weighted_penalty > 0.001 {
+                        println!(
+                            "DEBUG: _recalculate - day {}, group {} ({}), resolved constraint idx {}:",
+                            day_idx,
+                            group_idx,
+                            self.group_idx_to_id[group_idx],
+                            constraint_idx
+                        );
+                        println!("  group_people: {:?}", group_people);
+                        println!("  value_counts: {:?}", counts);
+                        println!("  weighted_penalty: {}", weighted_penalty);
                     }
 
-                    // Find the internal index for the attribute key (e.g., "gender", "department")
-                    if let Some(&attr_idx) = self.attr_key_to_idx.get(&ac.attribute_key) {
-                        let num_values = self.attr_idx_to_val[attr_idx].len();
-                        let mut value_counts = vec![0; num_values];
-
-                        // Count how many people with each attribute value are in the group
-                        for person_idx in group_people {
-                            let val_idx = self.person_attributes[*person_idx][attr_idx];
-                            if val_idx != usize::MAX {
-                                value_counts[val_idx] += 1;
-                            }
-                        }
-
-                        // Calculate the weighted penalty for this specific constraint using the shared helper
-                        let weighted_penalty =
-                            self.calculate_penalty_from_counts(&value_counts, ac);
-
-                        #[cfg(feature = "debug-attr-balance-tracing")]
-                        if debug_attr_balance && weighted_penalty > 0.001 {
-                            println!("DEBUG: _recalculate - day {}, group {} ({}), constraint '{}' on '{}':", 
-                                    _day_idx, group_idx, group_id, ac.attribute_key, ac.group_id);
-                            println!("  group_people: {:?}", group_people);
-                            println!("  value_counts: {:?}", value_counts);
-                            println!("  weighted_penalty: {}", weighted_penalty);
-                        }
-
-                        self.attribute_balance_penalty += weighted_penalty;
-                    }
+                    self.attribute_balance_penalty += weighted_penalty;
                 }
             }
         }
@@ -259,6 +266,7 @@ impl State {
             + self._pairmin_violation_count();
     }
 
+    #[allow(dead_code)]
     pub(crate) fn calculate_group_attribute_penalty_for_members(
         &self,
         group_members: &[usize],
@@ -271,8 +279,29 @@ impl State {
         0.0
     }
 
+    pub(crate) fn calculate_group_attribute_penalty_for_constraint_members(
+        &self,
+        group_members: &[usize],
+        constraint_idx: usize,
+    ) -> f64 {
+        let constraint = &self.resolved_attribute_balance_constraints[constraint_idx];
+        let counts = self.get_attribute_counts(group_members, constraint.attr_idx);
+        self.calculate_penalty_from_resolved_counts(&counts, constraint_idx)
+    }
+
+    #[inline]
+    pub(crate) fn attribute_balance_constraint_indices_for_group_session(
+        &self,
+        session_idx: usize,
+        group_idx: usize,
+    ) -> &[usize] {
+        let slot = flat_slot(self.group_idx_to_id.len(), session_idx, group_idx);
+        &self.attribute_balance_constraints_by_group_session[slot]
+    }
+
     /// Helper: returns true if an attribute balance constraint is active for the given session.
     #[inline]
+    #[allow(dead_code)]
     pub(crate) fn attribute_balance_constraint_applies(
         &self,
         ac: &AttributeBalanceParams,

@@ -7,6 +7,7 @@
 //! The `State` is designed for performance, converting string-based API inputs into
 //! integer indices for fast array operations during optimization.
 
+mod constraint_index;
 mod construction;
 mod display;
 mod dsu;
@@ -20,6 +21,7 @@ use crate::models::{
     AttributeBalanceParams, LoggingOptions, MovePolicy, PairMeetingMode, SolverBenchmarkTelemetry,
     SolverResult, StopReason, TelemetryOptions,
 };
+use constraint_index::ResolvedAttributeBalanceConstraint;
 use dsu::Dsu;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -227,6 +229,10 @@ pub struct State {
     pub person_attributes: Vec<Vec<usize>>,
     /// Attribute balance constraints (copied from input for convenience)
     pub attribute_balance_constraints: Vec<AttributeBalanceParams>,
+    /// Attribute balance constraints resolved to internal group/attribute/value indices.
+    pub(crate) resolved_attribute_balance_constraints: Vec<ResolvedAttributeBalanceConstraint>,
+    /// Attribute-balance constraint indices for each `(session, group)` slot.
+    pub(crate) attribute_balance_constraints_by_group_session: Vec<Vec<usize>>,
     /// Merged cliques (groups of people who must stay together)
     pub cliques: Vec<Vec<usize>>,
     /// Maps each person *per session* to their clique index (None if not in a clique in that session)

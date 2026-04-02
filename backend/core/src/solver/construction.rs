@@ -4,6 +4,7 @@
 //! preprocessing logic that converts API input into the internal solver state.
 
 use super::{
+    constraint_index::{flat_slot, ResolvedAttributeBalanceConstraint},
     derive_phase_seed, Dsu, RepeatPenaltyFunction, SolverError, State, CONSTRUCTION_SEED_SALT,
 };
 use crate::models::{ApiInput, Constraint, PairMeetingMode};
@@ -280,6 +281,9 @@ impl State {
                 _ => None,
             })
             .collect();
+        let resolved_attribute_balance_constraints = Vec::new();
+        let attribute_balance_constraints_by_group_session =
+            vec![Vec::new(); num_sessions * group_count];
 
         // --- Extract weights from objectives and constraints ---
         let mut w_contacts = 0.0;
@@ -354,6 +358,8 @@ impl State {
             locations,
             person_attributes,
             attribute_balance_constraints,
+            resolved_attribute_balance_constraints,
+            attribute_balance_constraints_by_group_session,
             cliques: vec![], // To be populated by preprocessing
             person_to_clique_id: vec![
                 vec![None; people_count];
@@ -396,6 +402,7 @@ impl State {
         };
 
         state._preprocess_and_validate_constraints(input)?;
+        state.build_attribute_balance_constraint_indexes()?;
 
         // If an initial schedule is supplied, warm-start from it; otherwise random initialize
         if let Some(ref initial_schedule) = input.initial_schedule {
@@ -703,6 +710,80 @@ impl State {
             session_total_capacities,
             session_max_group_capacities,
         ))
+    }
+
+    fn build_attribute_balance_constraint_indexes(&mut self) -> Result<(), SolverError> {
+        let group_count = self.group_idx_to_id.len();
+        let num_sessions = self.num_sessions as usize;
+
+        self.resolved_attribute_balance_constraints.clear();
+        self.attribute_balance_constraints_by_group_session =
+            vec![Vec::new(); group_count * num_sessions];
+
+        for params in &self.attribute_balance_constraints {
+            let group_idx = *self.group_id_to_idx.get(&params.group_id).ok_or_else(|| {
+                SolverError::ValidationError(format!(
+                    "AttributeBalance references unknown group '{}'",
+                    params.group_id
+                ))
+            })?;
+            let attr_idx = *self
+                .attr_key_to_idx
+                .get(&params.attribute_key)
+                .ok_or_else(|| {
+                    SolverError::ValidationError(format!(
+                        "AttributeBalance references unknown attribute key '{}'",
+                        params.attribute_key
+                    ))
+                })?;
+
+            let desired_counts = params
+                .desired_values
+                .iter()
+                .filter_map(|(value, &desired_count)| {
+                    self.attr_val_to_idx[attr_idx]
+                        .get(value)
+                        .copied()
+                        .map(|value_idx| (value_idx, desired_count))
+                })
+                .collect();
+
+            let constraint_idx = self.resolved_attribute_balance_constraints.len();
+            self.resolved_attribute_balance_constraints
+                .push(ResolvedAttributeBalanceConstraint {
+                    attr_idx,
+                    desired_counts,
+                    penalty_weight: params.penalty_weight,
+                    mode: params.mode,
+                });
+
+            match &params.sessions {
+                Some(sessions) => {
+                    for &session in sessions {
+                        let day = session as usize;
+                        if day >= num_sessions {
+                            return Err(SolverError::ValidationError(format!(
+                                "AttributeBalance references invalid session {} (max: {})",
+                                session,
+                                num_sessions.saturating_sub(1)
+                            )));
+                        }
+                        let slot = flat_slot(group_count, day, group_idx);
+                        self.attribute_balance_constraints_by_group_session[slot]
+                            .push(constraint_idx);
+                    }
+                }
+                None => {
+                    for day in 0..num_sessions {
+                        let slot = flat_slot(group_count, day, group_idx);
+                        self.attribute_balance_constraints_by_group_session[slot]
+                            .push(constraint_idx);
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn _preprocess_and_validate_constraints(
