@@ -617,6 +617,8 @@ impl State {
 
         state._recalculate_locations_from_schedule();
         state._recalculate_scores();
+        #[cfg(feature = "cache-drift-assertions")]
+        state.debug_assert_no_cache_drift_if_enabled("State::new");
 
         Ok(state)
     }

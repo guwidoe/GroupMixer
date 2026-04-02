@@ -583,17 +583,8 @@ impl State {
                 }
 
                 // Update repetition penalty
-                let old_penalty = if old_count > 1 {
-                    (old_count as i32 - 1).pow(2)
-                } else {
-                    0
-                };
-                let new_count = old_count + 1;
-                let new_penalty = if new_count > 1 {
-                    (new_count as i32 - 1).pow(2)
-                } else {
-                    0
-                };
+                let old_penalty = self.repetition_penalty_for_contact_count(old_count);
+                let new_penalty = self.repetition_penalty_for_contact_count(old_count + 1);
                 self.repetition_penalty += new_penalty - old_penalty;
             }
         }
@@ -994,5 +985,7 @@ impl State {
         // Update the legacy constraint_penalty field for backward compatibility
         self._update_constraint_penalty_total();
         self.refresh_cost_from_caches();
+        #[cfg(feature = "cache-drift-assertions")]
+        self.debug_assert_no_cache_drift_if_enabled("apply_swap");
     }
 }

@@ -482,5 +482,8 @@ impl State {
                 let _ = e; // no-op here; algorithm already checks after call
             }
         }
+
+        #[cfg(feature = "cache-drift-assertions")]
+        self.debug_assert_no_cache_drift_if_enabled("apply_clique_swap");
     }
 }

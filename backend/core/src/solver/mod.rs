@@ -316,6 +316,81 @@ pub struct State {
 }
 
 impl State {
+    #[cfg(feature = "cache-drift-assertions")]
+    #[inline]
+    fn cache_drift_assertions_enabled() -> bool {
+        std::env::var_os("GROUPMIXER_ASSERT_NO_CACHE_DRIFT").is_some()
+    }
+
+    #[cfg(feature = "cache-drift-assertions")]
+    pub(crate) fn debug_assert_no_cache_drift_if_enabled(&self, context: &str) {
+        if !Self::cache_drift_assertions_enabled() {
+            return;
+        }
+
+        self.validate_no_duplicate_assignments()
+            .unwrap_or_else(|error| panic!("cache drift check failed in {context}: {error}"));
+
+        let mut recalculated = self.clone();
+        recalculated._recalculate_scores();
+
+        assert_eq!(
+            self.unique_contacts, recalculated.unique_contacts,
+            "cache drift in {context}: unique_contacts cached={} recalculated={}",
+            self.unique_contacts, recalculated.unique_contacts
+        );
+        assert_eq!(
+            self.repetition_penalty, recalculated.repetition_penalty,
+            "cache drift in {context}: repetition_penalty cached={} recalculated={}",
+            self.repetition_penalty, recalculated.repetition_penalty
+        );
+        assert_eq!(
+            self.constraint_penalty, recalculated.constraint_penalty,
+            "cache drift in {context}: constraint_penalty cached={} recalculated={}",
+            self.constraint_penalty, recalculated.constraint_penalty
+        );
+        assert_eq!(
+            self.clique_violations, recalculated.clique_violations,
+            "cache drift in {context}: clique_violations mismatch"
+        );
+        assert_eq!(
+            self.forbidden_pair_violations, recalculated.forbidden_pair_violations,
+            "cache drift in {context}: forbidden_pair_violations mismatch"
+        );
+        assert_eq!(
+            self.should_together_violations, recalculated.should_together_violations,
+            "cache drift in {context}: should_together_violations mismatch"
+        );
+        assert_eq!(
+            self.immovable_violations, recalculated.immovable_violations,
+            "cache drift in {context}: immovable_violations cached={} recalculated={}",
+            self.immovable_violations, recalculated.immovable_violations
+        );
+        assert_eq!(
+            self.pairmin_counts, recalculated.pairmin_counts,
+            "cache drift in {context}: pairmin_counts mismatch"
+        );
+        assert!(
+            (self.attribute_balance_penalty - recalculated.attribute_balance_penalty).abs() < 1e-9,
+            "cache drift in {context}: attribute_balance_penalty cached={} recalculated={}",
+            self.attribute_balance_penalty,
+            recalculated.attribute_balance_penalty
+        );
+        assert!(
+            (self.weighted_constraint_penalty - recalculated.weighted_constraint_penalty).abs()
+                < 1e-9,
+            "cache drift in {context}: weighted_constraint_penalty cached={} recalculated={}",
+            self.weighted_constraint_penalty,
+            recalculated.weighted_constraint_penalty
+        );
+        assert!(
+            (self.current_cost - recalculated.current_cost).abs() < 1e-9,
+            "cache drift in {context}: current_cost cached={} recalculated={}",
+            self.current_cost,
+            recalculated.current_cost
+        );
+    }
+
     #[inline]
     pub fn effective_group_capacity(&self, day: usize, group_idx: usize) -> usize {
         self.effective_group_capacities[day * self.group_idx_to_id.len() + group_idx]
