@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::models::{
     ApiInput, AttributeBalanceMode, AttributeBalanceParams, Constraint, Group,
@@ -18,7 +19,7 @@ use super::moves::transfer::{
 use super::scoring::recompute_full_score;
 use super::validation::invariants::validate_state_invariants;
 use super::validation::parity::{compare_against_solver1, compare_state_against_solver1};
-use super::SolutionState;
+use super::{RuntimeSolutionState, SolutionState};
 
 fn solver2_config_for_sessions(num_sessions: u32) -> SolverConfiguration {
     SolverConfiguration {
@@ -585,6 +586,28 @@ fn solution_state_initialization_is_deterministic_and_valid() {
     assert_eq!(first.locations, second.locations);
     validate_state_invariants(&first).unwrap();
     compare_state_against_solver1(&input, &first).unwrap();
+}
+
+#[test]
+fn runtime_state_shares_compiled_problem_and_cross_checks_against_oracle() {
+    let input = representative_input();
+    let state = SolutionState::from_input(&input).unwrap();
+    let runtime = RuntimeSolutionState::from_oracle_state(&state);
+
+    assert!(Arc::ptr_eq(
+        &state.compiled_problem,
+        runtime.compiled_problem_arc()
+    ));
+    runtime.validate_against_oracle().unwrap();
+
+    let round_tripped = runtime.clone().into_oracle_state();
+    assert!(Arc::ptr_eq(
+        &state.compiled_problem,
+        &round_tripped.compiled_problem
+    ));
+    assert_eq!(round_tripped.schedule, state.schedule);
+    assert_eq!(round_tripped.locations, state.locations);
+    assert_eq!(round_tripped.current_score, state.current_score);
 }
 
 #[test]

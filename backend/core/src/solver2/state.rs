@@ -1,13 +1,14 @@
 use crate::models::ApiInput;
 use crate::solver_support::SolverError;
+use std::sync::Arc;
 
 use super::compiled_problem::{CompiledProblem, IndexedSchedule};
 use super::scoring::{recompute_full_score, FullScoreSnapshot};
 
-/// Mutable schedule/cache boundary for the `solver2` family.
+/// Oracle-friendly mutable schedule/state boundary for the `solver2` family.
 #[derive(Debug, Clone)]
 pub struct SolutionState {
-    pub compiled_problem: CompiledProblem,
+    pub compiled_problem: Arc<CompiledProblem>,
     pub schedule: IndexedSchedule,
     pub locations: Vec<Vec<Option<(usize, usize)>>>,
     pub current_score: FullScoreSnapshot,
@@ -19,7 +20,7 @@ pub type ApiInputInitialSchedule =
 impl SolutionState {
     pub fn new(compiled_problem: &CompiledProblem) -> Result<Self, SolverError> {
         let mut state = Self {
-            compiled_problem: compiled_problem.clone(),
+            compiled_problem: Arc::new(compiled_problem.clone()),
             schedule: compiled_problem
                 .compiled_initial_schedule
                 .clone()
@@ -43,6 +44,10 @@ impl SolutionState {
     pub fn from_input(input: &ApiInput) -> Result<Self, SolverError> {
         let compiled_problem = CompiledProblem::compile(input)?;
         Self::new(&compiled_problem)
+    }
+
+    pub fn compiled_problem(&self) -> &CompiledProblem {
+        self.compiled_problem.as_ref()
     }
 
     pub fn to_api_schedule(&self) -> ApiInputInitialSchedule {

@@ -1,13 +1,18 @@
-//! Bootstrap skeleton for the `solver2` solver family.
+//! Internal `solver2` solver family.
 //!
-//! This module intentionally provides explicit structure without silently routing work back into
-//! `solver1`. The dedicated directory, typed problem/state boundary, and search/validation seams
-//! now exist, but execution is still intentionally unsupported until implementation lands.
+//! `solver2` now has two internal roles:
+//!
+//! - an oracle/reference path built around full recomputation and strong validation
+//! - a runtime path used by the search engine, with room for performance-oriented specialization
+//!
+//! Both paths stay inside the same solver family so benchmarks, parity checks, and observable
+//! semantics remain aligned.
 
 pub mod affected_region;
 pub mod compiled_problem;
 pub mod move_types;
 pub mod moves;
+pub mod runtime_state;
 pub mod scoring;
 pub mod search;
 pub mod state;
@@ -17,13 +22,14 @@ pub mod validation;
 mod tests;
 
 pub use compiled_problem::CompiledProblem;
+pub use runtime_state::RuntimeSolutionState;
 pub use search::SearchEngine;
 pub use state::SolutionState;
 
 use crate::solver_support::SolverError;
 
 pub const SOLVER2_BOOTSTRAP_NOTES: &str =
-    "Internal `solver2` family with explicit compiled-problem/state seams, correctness-first move kernels, and a minimal runnable search baseline. Solve paths now run through `gm-core`; runtime-aware recommendation remains intentionally unsupported during bring-up.";
+    "Internal `solver2` family with explicit compiled-problem/state seams, a retained recompute oracle, and an emerging runtime path for performance-oriented search work. Solve paths run through `gm-core`; runtime-aware recommendation remains intentionally unsupported during bring-up.";
 
 pub(crate) fn not_yet_implemented(feature: &str) -> SolverError {
     SolverError::ValidationError(format!(

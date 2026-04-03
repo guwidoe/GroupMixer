@@ -18,6 +18,7 @@ use super::super::moves::clique_swap::{
 };
 use super::super::moves::swap::{apply_swap_with_score, preview_swap, SwapMove};
 use super::super::moves::transfer::{apply_transfer_with_score, preview_transfer, TransferMove};
+use super::super::runtime_state::RuntimeSolutionState;
 use super::super::validation::invariants::validate_state_invariants;
 use super::super::SolutionState;
 
@@ -68,8 +69,8 @@ impl SearchEngine {
         let time_limit_seconds = self.configuration.stop_conditions.time_limit_seconds;
         let allowed_sessions = self.allowed_sessions(state).into_iter().collect::<Vec<_>>();
 
-        let mut current_state = state.clone();
-        let mut best_state = state.clone();
+        let mut current_state = RuntimeSolutionState::from_oracle_state(state);
+        let mut best_state = current_state.clone();
         let initial_score = current_state.current_score.total_score;
         let mut best_score = initial_score;
         let mut no_improvement_count = 0u64;
@@ -293,7 +294,7 @@ impl SearchEngine {
             observer(&BenchmarkEvent::RunCompleted(telemetry.clone()));
         }
 
-        *state = best_state.clone();
+        *state = best_state.clone().into_oracle_state();
         Ok(build_solver_result(
             &best_state,
             no_improvement_count,
