@@ -59,6 +59,18 @@ pub fn get_public_error(error_code: &str) -> Result<JsValue, JsValue> {
 }
 
 #[wasm_bindgen]
+pub fn list_solvers() -> Result<JsValue, JsValue> {
+    init_panic_hook();
+    contract_projection::list_solvers_js()
+}
+
+#[wasm_bindgen]
+pub fn get_solver_descriptor(solver_id: &str) -> Result<JsValue, JsValue> {
+    init_panic_hook();
+    contract_projection::get_solver_descriptor_js(solver_id)
+}
+
+#[wasm_bindgen]
 pub fn solve(input: JsValue) -> Result<JsValue, JsValue> {
     init_panic_hook();
     contract_runtime::solve_contract_js(input)

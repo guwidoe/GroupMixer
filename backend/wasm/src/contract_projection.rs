@@ -1,8 +1,9 @@
 use crate::contract_surface::binding_for_operation_id;
 use crate::public_errors::{
-    internal_error, public_error_to_js_value, unknown_error_code_error, unknown_operation_error,
-    unknown_schema_error,
+    internal_error, invalid_input_error, public_error_to_js_value, unknown_error_code_error,
+    unknown_operation_error, unknown_schema_error,
 };
+use gm_contracts::types::{SolverCatalogResponse, SolverDescriptorContract};
 use gm_contracts::{
     bootstrap::{bootstrap_spec, BootstrapSpec},
     errors::{error_spec, error_specs, PublicErrorSpec},
@@ -10,6 +11,7 @@ use gm_contracts::{
     operations::{local_help, operation_spec, OperationSpec},
     schemas::{export_schema, schema_spec, schema_specs},
 };
+use gm_core::{available_solver_descriptors, models::SolverKind, solver_descriptor};
 use schemars::Schema;
 use serde::Serialize;
 use wasm_bindgen::JsValue;
@@ -107,6 +109,14 @@ pub fn list_public_errors_js() -> Result<JsValue, JsValue> {
 
 pub fn get_public_error_js(error_code: &str) -> Result<JsValue, JsValue> {
     to_js_value(&build_error_lookup_response(error_code)?)
+}
+
+pub fn list_solvers_js() -> Result<JsValue, JsValue> {
+    to_js_value(&build_solver_catalog())
+}
+
+pub fn get_solver_descriptor_js(solver_id: &str) -> Result<JsValue, JsValue> {
+    to_js_value(&build_solver_descriptor_response(solver_id)?)
 }
 
 pub fn build_capabilities_response() -> WasmBootstrapResponse {
@@ -231,6 +241,33 @@ pub fn build_error_lookup_response(error_code: &str) -> Result<WasmErrorLookupRe
     })
 }
 
+pub fn build_solver_catalog() -> SolverCatalogResponse {
+    SolverCatalogResponse {
+        solvers: available_solver_descriptors()
+            .iter()
+            .map(SolverDescriptorContract::from)
+            .collect(),
+    }
+}
+
+pub fn build_solver_descriptor_response(
+    solver_id: &str,
+) -> Result<SolverDescriptorContract, JsValue> {
+    let kind = SolverKind::parse_config_id(solver_id).map_err(|_| {
+        public_error_to_js_value(&invalid_input_error(
+            "get-solver-descriptor",
+            format!("Unknown solver id '{solver_id}'"),
+            Some("solver_id".to_string()),
+            available_solver_descriptors()
+                .iter()
+                .map(|descriptor| descriptor.kind.canonical_id().to_string())
+                .collect(),
+        ))
+    })?;
+
+    Ok(SolverDescriptorContract::from(solver_descriptor(kind)))
+}
+
 fn to_js_value<T: Serialize>(value: &T) -> Result<JsValue, JsValue> {
     serde_wasm_bindgen::to_value(value).map_err(|error| {
         public_error_to_js_value(&internal_error(
@@ -245,6 +282,7 @@ mod tests {
     use super::{
         build_capabilities_response, build_error_catalog, build_error_lookup_response,
         build_operation_help_response, build_schema_lookup_response, build_schema_summaries,
+        build_solver_catalog, build_solver_descriptor_response,
     };
     use gm_contracts::{bootstrap::bootstrap_spec, errors::error_specs, schemas::schema_specs};
     use std::collections::HashSet;
@@ -352,5 +390,19 @@ mod tests {
         let registered_error_codes: HashSet<_> =
             error_specs().iter().map(|error| error.code).collect();
         assert_eq!(error_codes, registered_error_codes);
+    }
+
+    #[test]
+    fn solver_catalog_projection_exposes_current_solver_family() {
+        let catalog = build_solver_catalog();
+        assert_eq!(catalog.solvers.len(), 1);
+        assert_eq!(catalog.solvers[0].canonical_id, "legacy_simulated_annealing");
+    }
+
+    #[test]
+    fn solver_descriptor_projection_accepts_legacy_solver_aliases() {
+        let descriptor = build_solver_descriptor_response("SimulatedAnnealing")
+            .expect("legacy alias should resolve");
+        assert_eq!(descriptor.canonical_id, "legacy_simulated_annealing");
     }
 }

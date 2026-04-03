@@ -139,6 +139,27 @@ export interface WasmErrorLookupResponse {
   related_help_targets: string[];
 }
 
+export interface WasmSolverCapabilities {
+  supports_initial_schedule: boolean;
+  supports_progress_callback: boolean;
+  supports_benchmark_observer: boolean;
+  supports_recommended_settings: boolean;
+  supports_deterministic_seed: boolean;
+}
+
+export interface WasmSolverDescriptor {
+  kind: string;
+  canonical_id: string;
+  display_name: string;
+  accepted_config_ids: string[];
+  capabilities: WasmSolverCapabilities;
+  notes: string;
+}
+
+export interface WasmSolverCatalogResponse {
+  solvers: WasmSolverDescriptor[];
+}
+
 export type WasmInitInput =
   | RequestInfo
   | URL
@@ -159,6 +180,8 @@ export interface WasmContractModule {
   get_schema: (schemaId: string) => WasmSchemaLookupResponse;
   list_public_errors: () => WasmErrorLookupResponse[];
   get_public_error: (errorCode: string) => WasmErrorLookupResponse;
+  list_solvers?: () => WasmSolverCatalogResponse;
+  get_solver_descriptor?: (solverId: string) => WasmSolverDescriptor;
   solve: (input: WasmContractSolveInput) => RustResult;
   solve_with_progress: (
     input: WasmContractSolveInput,
@@ -197,6 +220,8 @@ export const WASM_RUNTIME_EXPORT_NAMES = {
   get_schema: "get_schema",
   list_public_errors: "list_public_errors",
   get_public_error: "get_public_error",
+  list_solvers: "list_solvers",
+  get_solver_descriptor: "get_solver_descriptor",
   solve: "solve",
   solve_with_progress: "solve_with_progress",
   validate_scenario: "validate_scenario",

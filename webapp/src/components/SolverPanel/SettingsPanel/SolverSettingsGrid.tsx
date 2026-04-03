@@ -2,6 +2,7 @@ import React from 'react';
 import { Info } from 'lucide-react';
 import { Tooltip } from '../../Tooltip';
 import type { SolverSettings } from '../../../types';
+import { getSolverParameterFieldMetadata } from '../../../services/solverCatalog';
 import type { SolverFormInputs } from './types';
 
 interface SolverSettingsGridProps {
@@ -19,6 +20,8 @@ export function SolverSettingsGrid({
   handleSettingsChange,
   isRunning,
 }: SolverSettingsGridProps) {
+  const solverParameterFields = getSolverParameterFieldMetadata(solverSettings);
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <div>
@@ -127,179 +130,43 @@ export function SolverSettingsGrid({
           placeholder="Iterations without improvement before stopping"
         />
       </div>
-      <div>
-        <div className="flex items-center space-x-2 mb-1">
-          <label htmlFor="initialTemperature" className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-            Initial Temperature
-          </label>
-          <Tooltip content="The starting temperature for the simulated annealing algorithm. Higher values allow more exploration.">
-            <Info className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
-          </Tooltip>
-        </div>
-        <input
-          type="number"
-          className="input"
-          value={
-            solverFormInputs.initialTemp ??
-            (solverSettings.solver_params.SimulatedAnnealing?.initial_temperature || 1.0).toString()
-          }
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setSolverFormInputs((prev) => ({ ...prev, initialTemp: e.target.value }))
-          }
-          onBlur={() => {
-            const inputValue =
-              solverFormInputs.initialTemp ||
-              (solverSettings.solver_params.SimulatedAnnealing?.initial_temperature || 1.0).toString();
-            const numValue = parseFloat(inputValue);
-            if (!isNaN(numValue) && numValue >= 0.1) {
-              handleSettingsChange({
-                ...solverSettings,
-                solver_params: {
-                  ...solverSettings.solver_params,
-                  SimulatedAnnealing: {
-                    ...solverSettings.solver_params.SimulatedAnnealing!,
-                    initial_temperature: numValue,
-                  },
-                },
-              });
-              setSolverFormInputs((prev) => ({ ...prev, initialTemp: undefined }));
-            }
-          }}
-          step="0.1"
-          min="0.1"
-          max="10.0"
-        />
-      </div>
-      <div>
-        <div className="flex items-center space-x-2 mb-1">
-          <label htmlFor="finalTemperature" className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-            Final Temperature
-          </label>
-          <Tooltip content="The temperature at which the algorithm will stop.">
-            <Info className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
-          </Tooltip>
-        </div>
-        <input
-          type="number"
-          className="input"
-          value={
-            solverFormInputs.finalTemp ??
-            (solverSettings.solver_params.SimulatedAnnealing?.final_temperature || 0.01).toString()
-          }
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setSolverFormInputs((prev) => ({ ...prev, finalTemp: e.target.value }))
-          }
-          onBlur={() => {
-            const inputValue =
-              solverFormInputs.finalTemp ||
-              (solverSettings.solver_params.SimulatedAnnealing?.final_temperature || 0.01).toString();
-            const numValue = parseFloat(inputValue);
-            if (!isNaN(numValue) && numValue >= 0.001) {
-              handleSettingsChange({
-                ...solverSettings,
-                solver_params: {
-                  ...solverSettings.solver_params,
-                  SimulatedAnnealing: {
-                    ...solverSettings.solver_params.SimulatedAnnealing!,
-                    final_temperature: numValue,
-                  },
-                },
-              });
-              setSolverFormInputs((prev) => ({ ...prev, finalTemp: undefined }));
-            }
-          }}
-          step="0.001"
-          min="0.001"
-          max="1.0"
-        />
-      </div>
-      <div>
-        <div className="flex items-center space-x-2 mb-1">
-          <label htmlFor="reheatCycles" className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-            Reheat Cycles
-          </label>
-          <Tooltip content="Number of cycles to cool from initial to final temperature, then reheat and repeat. 0 = disabled.">
-            <Info className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
-          </Tooltip>
-        </div>
-        <input
-          id="reheatCycles"
-          type="number"
-          className="input"
-          value={solverFormInputs.reheatCycles ?? (solverSettings.solver_params.SimulatedAnnealing?.reheat_cycles || 0).toString()}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setSolverFormInputs((prev) => ({ ...prev, reheatCycles: e.target.value }))
-          }
-          onBlur={() => {
-            const inputValue =
-              solverFormInputs.reheatCycles || (solverSettings.solver_params.SimulatedAnnealing?.reheat_cycles || 0).toString();
-            const numValue = parseInt(inputValue);
-            if (!isNaN(numValue) && numValue >= 0) {
-              handleSettingsChange({
-                ...solverSettings,
-                solver_params: {
-                  ...solverSettings.solver_params,
-                  SimulatedAnnealing: {
-                    ...solverSettings.solver_params.SimulatedAnnealing!,
-                    reheat_cycles: numValue,
-                  },
-                },
-              });
-              setSolverFormInputs((prev) => ({ ...prev, reheatCycles: undefined }));
-            }
-          }}
-          min="0"
-          max="100000"
-          placeholder="0 = disabled"
-        />
-      </div>
-      <div>
-        <div className="flex items-center space-x-2 mb-1">
-          <label
-            htmlFor="reheatAfterNoImprovement"
-            className="block text-sm font-medium"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            Reheat After No Improvement
-          </label>
-          <Tooltip content="Reset temperature to initial value after this many iterations without improvement (0 = disabled).">
-            <Info className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
-          </Tooltip>
-        </div>
-        <input
-          type="number"
-          className="input"
-          value={
-            solverFormInputs.reheat ??
-            (solverSettings.solver_params.SimulatedAnnealing?.reheat_after_no_improvement || 0).toString()
-          }
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setSolverFormInputs((prev) => ({ ...prev, reheat: e.target.value }))
-          }
-          onBlur={() => {
-            const inputValue =
-              solverFormInputs.reheat ||
-              (solverSettings.solver_params.SimulatedAnnealing?.reheat_after_no_improvement || 0).toString();
-            const numValue = parseInt(inputValue);
-            if (!isNaN(numValue) && numValue >= 0) {
-              handleSettingsChange({
-                ...solverSettings,
-                solver_params: {
-                  ...solverSettings.solver_params,
-                  SimulatedAnnealing: {
-                    ...solverSettings.solver_params.SimulatedAnnealing!,
-                    reheat_after_no_improvement: numValue,
-                  },
-                },
-              });
-              setSolverFormInputs((prev) => ({ ...prev, reheat: undefined }));
-            }
-          }}
-          min="0"
-          max="50000"
-          placeholder="0 = disabled"
-        />
-      </div>
+      {solverParameterFields.map((field) => {
+        const fallbackValue = field.getValue(solverSettings).toString() || field.defaultValue;
+        const inputValue = solverFormInputs[field.formInputKey] ?? fallbackValue;
+
+        return (
+          <div key={field.formInputKey}>
+            <div className="flex items-center space-x-2 mb-1">
+              <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                {field.label}
+              </label>
+              <Tooltip content={field.tooltip}>
+                <Info className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
+              </Tooltip>
+            </div>
+            <input
+              type="number"
+              className="input"
+              value={inputValue}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setSolverFormInputs((prev) => ({ ...prev, [field.formInputKey]: e.target.value }))
+              }
+              onBlur={() => {
+                const rawValue = solverFormInputs[field.formInputKey] ?? fallbackValue;
+                const parsedValue = field.parse(rawValue);
+                if (field.isValid(parsedValue)) {
+                  handleSettingsChange(field.applyValue(solverSettings, parsedValue));
+                  setSolverFormInputs((prev) => ({ ...prev, [field.formInputKey]: undefined }));
+                }
+              }}
+              step={field.step}
+              min={field.min}
+              max={field.max}
+              placeholder={field.placeholder}
+            />
+          </div>
+        );
+      })}
       <div>
         <div className="flex items-center space-x-2 mb-1">
           <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>

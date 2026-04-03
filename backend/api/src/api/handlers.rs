@@ -19,14 +19,16 @@ use gm_contracts::{
     operations::{local_help, operation_spec, OperationSpec},
     schemas::{export_schema, schema_specs},
     types::{
-        PublicError, PublicErrorEnvelope, RecommendSettingsRequest, ResultSummary, SolveRequest,
-        ValidateRequest, ValidateResponse, ValidationIssue,
+        PublicError, PublicErrorEnvelope, RecommendSettingsRequest, ResultSummary,
+        SolveRequest, SolverCatalogResponse, SolverDescriptorContract, ValidateRequest,
+        ValidateResponse, ValidationIssue,
     },
 };
 use gm_core::{
-    calculate_recommended_settings, default_solver_configuration,
-    models::{ApiInput, SolverConfiguration, SolverResult},
+    available_solver_descriptors, calculate_recommended_settings, default_solver_configuration,
+    models::{ApiInput, SolverConfiguration, SolverKind, SolverResult},
     run_solver,
+    solver_descriptor,
 };
 use schemars::Schema;
 use serde::{de::DeserializeOwned, Serialize};
@@ -189,6 +191,35 @@ pub async fn solve_handler(body: Bytes) -> Result<Json<SolverResult>, ApiError> 
     let result =
         run_solver(&payload).map_err(|error| map_solver_error(format!("{:?}", error), "solve"))?;
     Ok(Json(result))
+}
+
+pub async fn list_solvers_handler() -> Json<SolverCatalogResponse> {
+    Json(SolverCatalogResponse {
+        solvers: available_solver_descriptors()
+            .iter()
+            .map(SolverDescriptorContract::from)
+            .collect(),
+    })
+}
+
+pub async fn get_solver_descriptor_handler(
+    Path(solver_id): Path<String>,
+) -> Result<Json<SolverDescriptorContract>, ApiError> {
+    let kind = SolverKind::parse_config_id(&solver_id).map_err(|error| {
+        api_error(
+            INVALID_INPUT_ERROR,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            error,
+            Some("solver_id".to_string()),
+            available_solver_descriptors()
+                .iter()
+                .map(|descriptor| descriptor.kind.canonical_id().to_string())
+                .collect(),
+            Some(vec![help_path("get-solver-descriptor")]),
+        )
+    })?;
+
+    Ok(Json(SolverDescriptorContract::from(solver_descriptor(kind))))
 }
 
 pub async fn validate_scenario_handler(body: Bytes) -> Result<Json<ValidateResponse>, ApiError> {

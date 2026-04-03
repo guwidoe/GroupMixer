@@ -20,6 +20,18 @@ const HTTP_BINDINGS: &[HttpContractBinding] = &[
         note: "Local help endpoint for one public solver operation.",
     },
     HttpContractBinding {
+        method: "GET",
+        route_path: "/api/v1/solvers",
+        operation_id: Some("list-solvers"),
+        note: "Solver catalog listing endpoint for the public solver contract.",
+    },
+    HttpContractBinding {
+        method: "GET",
+        route_path: "/api/v1/solvers/{solver_id}",
+        operation_id: Some("get-solver-descriptor"),
+        note: "Single solver-family descriptor endpoint for the public solver contract.",
+    },
+    HttpContractBinding {
         method: "POST",
         route_path: "/api/v1/solve",
         operation_id: Some("solve"),

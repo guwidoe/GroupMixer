@@ -9,6 +9,7 @@ import type {
   Scenario,
   SolverSettings,
 } from '../../types';
+import { normalizeSolverFamilyId } from '../solverCatalog';
 
 export type WarmStartSchedule = Record<string, Record<string, string[]>>;
 
@@ -90,7 +91,10 @@ function normalizeSolverSettingsForWasm(settings: SolverSettings): SolverSetting
   let solverParams = settings.solver_params;
 
   if (solverParams && typeof solverParams === 'object') {
-    if (settings.solver_type === 'SimulatedAnnealing' && 'SimulatedAnnealing' in solverParams) {
+    if (
+      normalizeSolverFamilyId(settings.solver_type) === 'legacy_simulated_annealing'
+      && 'SimulatedAnnealing' in solverParams
+    ) {
       const rawParams =
         (solverParams.SimulatedAnnealing as unknown as Record<string, unknown> | undefined) ?? {};
 

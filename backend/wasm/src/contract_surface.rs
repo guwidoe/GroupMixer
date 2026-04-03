@@ -1,7 +1,8 @@
 use gm_contracts::operations::{
     EVALUATE_INPUT_OPERATION_ID, GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
-    GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID, INSPECT_RESULT_OPERATION_ID,
-    RECOMMEND_SETTINGS_OPERATION_ID, SOLVE_OPERATION_ID, VALIDATE_SCENARIO_OPERATION_ID,
+    GET_SCHEMA_OPERATION_ID, GET_SOLVER_DESCRIPTOR_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID,
+    INSPECT_RESULT_OPERATION_ID, LIST_SOLVERS_OPERATION_ID, RECOMMEND_SETTINGS_OPERATION_ID,
+    SOLVE_OPERATION_ID, VALIDATE_SCENARIO_OPERATION_ID,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -41,6 +42,16 @@ const WASM_BINDINGS: &[WasmContractBinding] = &[
         export_name: "get_public_error",
         operation_id: Some(INSPECT_ERRORS_OPERATION_ID),
         note: "Public error lookup derived from gm-contracts.",
+    },
+    WasmContractBinding {
+        export_name: "list_solvers",
+        operation_id: Some(LIST_SOLVERS_OPERATION_ID),
+        note: "Solver catalog listing derived from gm-core and projected through gm-contracts.",
+    },
+    WasmContractBinding {
+        export_name: "get_solver_descriptor",
+        operation_id: Some(GET_SOLVER_DESCRIPTOR_OPERATION_ID),
+        note: "Single solver-family descriptor lookup derived from gm-core and projected through gm-contracts.",
     },
     WasmContractBinding {
         export_name: "solve",

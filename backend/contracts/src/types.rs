@@ -16,6 +16,9 @@ pub type ExampleId = &'static str;
 /// Stable identifier for a public error code exposed by solver-facing surfaces.
 pub type ErrorCode = &'static str;
 
+/// Stable typed solver-family identifier exposed through public contract surfaces.
+pub type SolverKindContract = gm_core::models::SolverKind;
+
 /// Public scenario-definition shape shared across solver-facing contract surfaces.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ScenarioDefinitionContract {
@@ -57,6 +60,64 @@ pub type SolverConfigurationContract = gm_core::models::SolverConfiguration;
 
 /// Public progress-update shape currently reuses the core progress telemetry model.
 pub type ProgressUpdateContract = gm_core::models::ProgressUpdate;
+
+/// Public capability surface for one solver family.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct SolverCapabilityDescriptor {
+    pub supports_initial_schedule: bool,
+    pub supports_progress_callback: bool,
+    pub supports_benchmark_observer: bool,
+    pub supports_recommended_settings: bool,
+    pub supports_deterministic_seed: bool,
+}
+
+/// Public metadata for one available solver family.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct SolverDescriptorContract {
+    pub kind: SolverKindContract,
+    pub canonical_id: String,
+    pub display_name: String,
+    #[serde(default)]
+    pub accepted_config_ids: Vec<String>,
+    pub capabilities: SolverCapabilityDescriptor,
+    pub notes: String,
+}
+
+/// Canonical list response for available solver families.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct SolverCatalogResponse {
+    pub solvers: Vec<SolverDescriptorContract>,
+}
+
+impl From<gm_core::engines::SolverEngineCapabilities> for SolverCapabilityDescriptor {
+    fn from(value: gm_core::engines::SolverEngineCapabilities) -> Self {
+        Self {
+            supports_initial_schedule: value.supports_initial_schedule,
+            supports_progress_callback: value.supports_progress_callback,
+            supports_benchmark_observer: value.supports_benchmark_observer,
+            supports_recommended_settings: value.supports_recommended_settings,
+            supports_deterministic_seed: value.supports_deterministic_seed,
+        }
+    }
+}
+
+impl From<&gm_core::engines::SolverDescriptor> for SolverDescriptorContract {
+    fn from(value: &gm_core::engines::SolverDescriptor) -> Self {
+        Self {
+            kind: value.kind,
+            canonical_id: value.kind.canonical_id().to_string(),
+            display_name: value.display_name.to_string(),
+            accepted_config_ids: value
+                .kind
+                .accepted_config_ids()
+                .iter()
+                .map(|id| (*id).to_string())
+                .collect(),
+            capabilities: value.capabilities.into(),
+            notes: value.notes.to_string(),
+        }
+    }
+}
 
 /// Canonical request shape for runtime-aware solver setting recommendations.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

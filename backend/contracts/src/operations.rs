@@ -4,15 +4,16 @@ use crate::errors::{
 };
 use crate::examples::{
     DEFAULT_SOLVER_CONFIGURATION_EXAMPLE_ID, EVALUATE_INPUT_EXAMPLE_ID, GET_SCHEMA_EXAMPLE_ID,
-    INSPECT_RESULT_SUMMARY_EXAMPLE_ID, PUBLIC_ERROR_LOOKUP_EXAMPLE_ID,
-    RECOMMEND_SETTINGS_EXAMPLE_ID, SOLVE_HAPPY_PATH_EXAMPLE_ID, SOLVE_PROGRESS_UPDATE_EXAMPLE_ID,
-    VALIDATE_INVALID_CONSTRAINT_EXAMPLE_ID,
+    INSPECT_RESULT_SUMMARY_EXAMPLE_ID, LIST_SOLVERS_EXAMPLE_ID,
+    PUBLIC_ERROR_LOOKUP_EXAMPLE_ID, RECOMMEND_SETTINGS_EXAMPLE_ID,
+    SOLVE_HAPPY_PATH_EXAMPLE_ID, SOLVE_PROGRESS_UPDATE_EXAMPLE_ID,
+    SOLVER_DESCRIPTOR_EXAMPLE_ID, VALIDATE_INVALID_CONSTRAINT_EXAMPLE_ID,
 };
 use crate::schemas::{
     PROGRESS_UPDATE_SCHEMA_ID, PUBLIC_ERROR_ENVELOPE_SCHEMA_ID,
     RECOMMEND_SETTINGS_REQUEST_SCHEMA_ID, RESULT_SUMMARY_SCHEMA_ID, SOLVER_CONFIGURATION_SCHEMA_ID,
-    SOLVE_REQUEST_SCHEMA_ID, SOLVE_RESPONSE_SCHEMA_ID, VALIDATE_REQUEST_SCHEMA_ID,
-    VALIDATE_RESPONSE_SCHEMA_ID,
+    SOLVE_REQUEST_SCHEMA_ID, SOLVE_RESPONSE_SCHEMA_ID, SOLVER_CATALOG_SCHEMA_ID,
+    SOLVER_DESCRIPTOR_SCHEMA_ID, VALIDATE_REQUEST_SCHEMA_ID, VALIDATE_RESPONSE_SCHEMA_ID,
 };
 use crate::types::{ErrorCode, ExampleId, OperationId, OperationKind, SchemaId};
 use serde::Serialize;
@@ -25,6 +26,8 @@ pub const INSPECT_ERRORS_OPERATION_ID: &str = "inspect-errors";
 pub const GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID: &str = "get-default-solver-configuration";
 pub const RECOMMEND_SETTINGS_OPERATION_ID: &str = "recommend-settings";
 pub const EVALUATE_INPUT_OPERATION_ID: &str = "evaluate-input";
+pub const LIST_SOLVERS_OPERATION_ID: &str = "list-solvers";
+pub const GET_SOLVER_DESCRIPTOR_OPERATION_ID: &str = "get-solver-descriptor";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct OperationSpec {
@@ -49,6 +52,44 @@ pub struct LocalHelpSpec {
 
 const OPERATION_SPECS: &[OperationSpec] = &[
     OperationSpec {
+        id: LIST_SOLVERS_OPERATION_ID,
+        summary: "List the available solver families.",
+        description: "Return the currently compiled solver families plus their stable identifiers and capability summaries.",
+        kind: OperationKind::Read,
+        family: "solver-catalog",
+        input_schema_ids: &[],
+        output_schema_ids: &[SOLVER_CATALOG_SCHEMA_ID],
+        progress_schema_ids: &[],
+        error_codes: &[INTERNAL_ERROR],
+        related_operation_ids: &[
+            GET_SOLVER_DESCRIPTOR_OPERATION_ID,
+            GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
+            RECOMMEND_SETTINGS_OPERATION_ID,
+            SOLVE_OPERATION_ID,
+            GET_SCHEMA_OPERATION_ID,
+        ],
+        example_ids: &[LIST_SOLVERS_EXAMPLE_ID],
+    },
+    OperationSpec {
+        id: GET_SOLVER_DESCRIPTOR_OPERATION_ID,
+        summary: "Inspect one solver-family descriptor.",
+        description: "Return capability metadata and accepted configuration identifiers for one available solver family.",
+        kind: OperationKind::Read,
+        family: "solver-catalog",
+        input_schema_ids: &[],
+        output_schema_ids: &[SOLVER_DESCRIPTOR_SCHEMA_ID],
+        progress_schema_ids: &[],
+        error_codes: &[INVALID_INPUT_ERROR, INTERNAL_ERROR],
+        related_operation_ids: &[
+            LIST_SOLVERS_OPERATION_ID,
+            GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
+            RECOMMEND_SETTINGS_OPERATION_ID,
+            SOLVE_OPERATION_ID,
+            GET_SCHEMA_OPERATION_ID,
+        ],
+        example_ids: &[SOLVER_DESCRIPTOR_EXAMPLE_ID],
+    },
+    OperationSpec {
         id: SOLVE_OPERATION_ID,
         summary: "Run the solver for a complete optimization input.",
         description: "Accept a full solver input, execute the optimization engine, and return the resulting schedule plus final metrics.",
@@ -66,6 +107,8 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         related_operation_ids: &[
             VALIDATE_SCENARIO_OPERATION_ID,
             INSPECT_RESULT_OPERATION_ID,
+            LIST_SOLVERS_OPERATION_ID,
+            GET_SOLVER_DESCRIPTOR_OPERATION_ID,
             GET_SCHEMA_OPERATION_ID,
             INSPECT_ERRORS_OPERATION_ID,
             GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
@@ -121,6 +164,8 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         related_operation_ids: &[
             RECOMMEND_SETTINGS_OPERATION_ID,
             SOLVE_OPERATION_ID,
+            LIST_SOLVERS_OPERATION_ID,
+            GET_SOLVER_DESCRIPTOR_OPERATION_ID,
             GET_SCHEMA_OPERATION_ID,
         ],
         example_ids: &[DEFAULT_SOLVER_CONFIGURATION_EXAMPLE_ID],
@@ -137,6 +182,8 @@ const OPERATION_SPECS: &[OperationSpec] = &[
         error_codes: &[INVALID_INPUT_ERROR, INFEASIBLE_SCENARIO_ERROR, INTERNAL_ERROR],
         related_operation_ids: &[
             GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
+            LIST_SOLVERS_OPERATION_ID,
+            GET_SOLVER_DESCRIPTOR_OPERATION_ID,
             SOLVE_OPERATION_ID,
             VALIDATE_SCENARIO_OPERATION_ID,
             GET_SCHEMA_OPERATION_ID,
@@ -170,6 +217,8 @@ const OPERATION_SPECS: &[OperationSpec] = &[
             SOLVE_OPERATION_ID,
             VALIDATE_SCENARIO_OPERATION_ID,
             INSPECT_RESULT_OPERATION_ID,
+            LIST_SOLVERS_OPERATION_ID,
+            GET_SOLVER_DESCRIPTOR_OPERATION_ID,
             GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
             RECOMMEND_SETTINGS_OPERATION_ID,
             INSPECT_ERRORS_OPERATION_ID,
@@ -190,6 +239,8 @@ const OPERATION_SPECS: &[OperationSpec] = &[
             SOLVE_OPERATION_ID,
             VALIDATE_SCENARIO_OPERATION_ID,
             INSPECT_RESULT_OPERATION_ID,
+            LIST_SOLVERS_OPERATION_ID,
+            GET_SOLVER_DESCRIPTOR_OPERATION_ID,
             GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
             RECOMMEND_SETTINGS_OPERATION_ID,
             GET_SCHEMA_OPERATION_ID,
@@ -208,6 +259,8 @@ pub fn operation_spec(id: &str) -> Option<&'static OperationSpec> {
 
 pub fn top_level_operation_ids() -> &'static [OperationId] {
     &[
+        LIST_SOLVERS_OPERATION_ID,
+        GET_SOLVER_DESCRIPTOR_OPERATION_ID,
         SOLVE_OPERATION_ID,
         VALIDATE_SCENARIO_OPERATION_ID,
         INSPECT_RESULT_OPERATION_ID,

@@ -1,13 +1,15 @@
 use crate::errors::supported_constraint_kind_names;
 use crate::operations::{
     EVALUATE_INPUT_OPERATION_ID, GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
-    GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID, INSPECT_RESULT_OPERATION_ID,
-    RECOMMEND_SETTINGS_OPERATION_ID, SOLVE_OPERATION_ID, VALIDATE_SCENARIO_OPERATION_ID,
+    GET_SCHEMA_OPERATION_ID, GET_SOLVER_DESCRIPTOR_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID,
+    INSPECT_RESULT_OPERATION_ID, LIST_SOLVERS_OPERATION_ID, RECOMMEND_SETTINGS_OPERATION_ID,
+    SOLVE_OPERATION_ID, VALIDATE_SCENARIO_OPERATION_ID,
 };
 use crate::schemas::{
     PROGRESS_UPDATE_SCHEMA_ID, PUBLIC_ERROR_ENVELOPE_SCHEMA_ID,
     RECOMMEND_SETTINGS_REQUEST_SCHEMA_ID, RESULT_SUMMARY_SCHEMA_ID, SOLVER_CONFIGURATION_SCHEMA_ID,
-    SOLVE_REQUEST_SCHEMA_ID, SOLVE_RESPONSE_SCHEMA_ID, VALIDATE_RESPONSE_SCHEMA_ID,
+    SOLVE_REQUEST_SCHEMA_ID, SOLVE_RESPONSE_SCHEMA_ID, SOLVER_CATALOG_SCHEMA_ID,
+    SOLVER_DESCRIPTOR_SCHEMA_ID, VALIDATE_RESPONSE_SCHEMA_ID,
 };
 use crate::types::{ExampleId, OperationId, SchemaId};
 use serde::Serialize;
@@ -22,6 +24,8 @@ pub const DEFAULT_SOLVER_CONFIGURATION_EXAMPLE_ID: &str = "default-solver-config
 pub const RECOMMEND_SETTINGS_EXAMPLE_ID: &str = "recommend-settings-minimal";
 pub const SOLVE_PROGRESS_UPDATE_EXAMPLE_ID: &str = "solve-progress-update";
 pub const EVALUATE_INPUT_EXAMPLE_ID: &str = "evaluate-input-minimal";
+pub const LIST_SOLVERS_EXAMPLE_ID: &str = "list-solvers";
+pub const SOLVER_DESCRIPTOR_EXAMPLE_ID: &str = "solver-descriptor";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum ReferenceSnippetFormat {
@@ -301,6 +305,58 @@ const DEFAULT_SOLVER_CONFIGURATION_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSn
 }"#,
 }];
 
+const LIST_SOLVERS_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
+    label: "solver catalog",
+    format: ReferenceSnippetFormat::Json,
+    schema_id: Some(SOLVER_CATALOG_SCHEMA_ID),
+    content: r#"{
+  "solvers": [
+    {
+      "kind": "legacy_simulated_annealing",
+      "canonical_id": "legacy_simulated_annealing",
+      "display_name": "Legacy Simulated Annealing",
+      "accepted_config_ids": [
+        "legacy_simulated_annealing",
+        "simulated_annealing",
+        "SimulatedAnnealing"
+      ],
+      "capabilities": {
+        "supports_initial_schedule": true,
+        "supports_progress_callback": true,
+        "supports_benchmark_observer": true,
+        "supports_recommended_settings": true,
+        "supports_deterministic_seed": true
+      },
+      "notes": "Current production Rust solver engine backed by the legacy State + simulated annealing search implementation."
+    }
+  ]
+}"#,
+}];
+
+const SOLVER_DESCRIPTOR_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
+    label: "solver descriptor",
+    format: ReferenceSnippetFormat::Json,
+    schema_id: Some(SOLVER_DESCRIPTOR_SCHEMA_ID),
+    content: r#"{
+  "kind": "legacy_simulated_annealing",
+  "canonical_id": "legacy_simulated_annealing",
+  "display_name": "Legacy Simulated Annealing",
+  "accepted_config_ids": [
+    "legacy_simulated_annealing",
+    "simulated_annealing",
+    "SimulatedAnnealing"
+  ],
+  "capabilities": {
+    "supports_initial_schedule": true,
+    "supports_progress_callback": true,
+    "supports_benchmark_observer": true,
+    "supports_recommended_settings": true,
+    "supports_deterministic_seed": true
+  },
+  "notes": "Current production Rust solver engine backed by the legacy State + simulated annealing search implementation."
+}"#,
+}];
+
 const RECOMMEND_SETTINGS_SNIPPETS: &[ReferenceSnippet] = &[
     ReferenceSnippet {
         label: "recommend settings request",
@@ -391,6 +447,20 @@ const EVALUATE_INPUT_SNIPPETS: &[ReferenceSnippet] = &[
 
 static EXAMPLE_SPECS: LazyLock<Vec<ExampleSpec>> = LazyLock::new(|| {
     vec![
+        ExampleSpec {
+            id: LIST_SOLVERS_EXAMPLE_ID,
+            operation_id: LIST_SOLVERS_OPERATION_ID,
+            summary: "List the available solver families.",
+            description: "Shows the public catalog of currently compiled solver families and their capability summaries.",
+            snippets: LIST_SOLVERS_SNIPPETS,
+        },
+        ExampleSpec {
+            id: SOLVER_DESCRIPTOR_EXAMPLE_ID,
+            operation_id: GET_SOLVER_DESCRIPTOR_OPERATION_ID,
+            summary: "Inspect one solver-family descriptor.",
+            description: "Shows a single solver-family descriptor including accepted configuration identifiers and capability metadata.",
+            snippets: SOLVER_DESCRIPTOR_SNIPPETS,
+        },
         ExampleSpec {
             id: SOLVE_HAPPY_PATH_EXAMPLE_ID,
             operation_id: SOLVE_OPERATION_ID,

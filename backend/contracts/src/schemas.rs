@@ -1,7 +1,7 @@
 use crate::types::{
     ProgressUpdateContract, PublicErrorEnvelope, RecommendSettingsRequest, ResultSummary,
-    ScenarioDefinitionContract, SchemaId, SolveRequest, SolveResponse, SolverConfigurationContract,
-    ValidateRequest, ValidateResponse,
+    ScenarioDefinitionContract, SchemaId, SolveRequest, SolveResponse, SolverCatalogResponse,
+    SolverConfigurationContract, SolverDescriptorContract, ValidateRequest, ValidateResponse,
 };
 use schemars::{schema_for, Schema};
 
@@ -17,6 +17,8 @@ pub const SOLVER_CONFIGURATION_SCHEMA_ID: &str = "solver-configuration";
 pub const PROGRESS_UPDATE_SCHEMA_ID: &str = "progress-update";
 pub const RESULT_SUMMARY_SCHEMA_ID: &str = "result-summary";
 pub const PUBLIC_ERROR_ENVELOPE_SCHEMA_ID: &str = "public-error-envelope";
+pub const SOLVER_DESCRIPTOR_SCHEMA_ID: &str = "solver-descriptor";
+pub const SOLVER_CATALOG_SCHEMA_ID: &str = "solver-catalog";
 
 #[derive(Debug, Clone, Copy)]
 pub struct SchemaSpec {
@@ -76,6 +78,16 @@ const SCHEMA_SPECS: &[SchemaSpec] = &[
         version: SCHEMA_VERSION_V1,
         export: export_public_error_envelope_schema,
     },
+    SchemaSpec {
+        id: SOLVER_DESCRIPTOR_SCHEMA_ID,
+        version: SCHEMA_VERSION_V1,
+        export: export_solver_descriptor_schema,
+    },
+    SchemaSpec {
+        id: SOLVER_CATALOG_SCHEMA_ID,
+        version: SCHEMA_VERSION_V1,
+        export: export_solver_catalog_schema,
+    },
 ];
 
 pub fn schema_specs() -> &'static [SchemaSpec] {
@@ -128,6 +140,14 @@ fn export_result_summary_schema() -> Schema {
 
 fn export_public_error_envelope_schema() -> Schema {
     schema_for!(PublicErrorEnvelope)
+}
+
+fn export_solver_descriptor_schema() -> Schema {
+    schema_for!(SolverDescriptorContract)
+}
+
+fn export_solver_catalog_schema() -> Schema {
+    schema_for!(SolverCatalogResponse)
 }
 
 #[cfg(test)]

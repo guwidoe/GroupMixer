@@ -79,6 +79,8 @@ export const list_schemas = bindRuntimeFunction("list_schemas");
 export const get_schema = bindRuntimeFunction("get_schema");
 export const list_public_errors = bindRuntimeFunction("list_public_errors");
 export const get_public_error = bindRuntimeFunction("get_public_error");
+export const list_solvers = bindRuntimeFunction("list_solvers");
+export const get_solver_descriptor = bindRuntimeFunction("get_solver_descriptor");
 export const get_default_solver_configuration = bindRuntimeFunction(
   "get_default_solver_configuration",
 );
