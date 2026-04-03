@@ -173,6 +173,18 @@ fn render_bootstrap_command_help(command_name: &str) -> String {
 
 fn render_usage_and_options(command_name: &str) -> String {
     match command_name {
+        "list-solvers" => concat!(
+            "  gm-cli list-solvers [--json]\n",
+            "\nOPTIONS:\n",
+            "  --json            Emit machine-readable JSON instead of text\n"
+        )
+        .to_string(),
+        "solver-descriptor" => concat!(
+            "  gm-cli solver-descriptor <SOLVER_ID> [--json]\n",
+            "\nOPTIONS:\n",
+            "  --json            Emit machine-readable JSON instead of text\n"
+        )
+        .to_string(),
         "solve" => concat!(
             "  gm-cli solve <FILE> [--output <FILE>] [--pretty]\n",
             "  gm-cli solve --stdin [--output <FILE>] [--pretty]\n",

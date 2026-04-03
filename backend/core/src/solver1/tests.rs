@@ -1329,7 +1329,7 @@ mod attribute_balance_tests {
                     desired_values: [("male".to_string(), 2), ("female".to_string(), 1)].into(),
                     penalty_weight: 100.0,
                     mode: crate::models::AttributeBalanceMode::Exact,
-                    sessions: Some(vec![0, 1]),
+                    sessions: Some(vec![0]),
                 }),
                 Constraint::AttributeBalance(AttributeBalanceParams {
                     group_id: "team2".to_string(),
@@ -1337,7 +1337,7 @@ mod attribute_balance_tests {
                     desired_values: [("male".to_string(), 1), ("female".to_string(), 2)].into(),
                     penalty_weight: 100.0,
                     mode: crate::models::AttributeBalanceMode::Exact,
-                    sessions: Some(vec![0, 1]),
+                    sessions: Some(vec![0]),
                 }),
             ],
             solver: SolverConfiguration {

@@ -1,7 +1,8 @@
 use gm_contracts::operations::{
     EVALUATE_INPUT_OPERATION_ID, GET_DEFAULT_SOLVER_CONFIGURATION_OPERATION_ID,
-    GET_SCHEMA_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID, INSPECT_RESULT_OPERATION_ID,
-    RECOMMEND_SETTINGS_OPERATION_ID, SOLVE_OPERATION_ID, VALIDATE_SCENARIO_OPERATION_ID,
+    GET_SCHEMA_OPERATION_ID, GET_SOLVER_DESCRIPTOR_OPERATION_ID, INSPECT_ERRORS_OPERATION_ID,
+    INSPECT_RESULT_OPERATION_ID, LIST_SOLVERS_OPERATION_ID, RECOMMEND_SETTINGS_OPERATION_ID,
+    SOLVE_OPERATION_ID, VALIDATE_SCENARIO_OPERATION_ID,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -19,6 +20,18 @@ pub struct CliContractBinding {
 }
 
 const CLI_BINDINGS: &[CliContractBinding] = &[
+    CliContractBinding {
+        command_name: "list-solvers",
+        operation_id: Some(LIST_SOLVERS_OPERATION_ID),
+        scope: CliSurfaceScope::PublicContract,
+        note: "Public solver-catalog listing workflow.",
+    },
+    CliContractBinding {
+        command_name: "solver-descriptor",
+        operation_id: Some(GET_SOLVER_DESCRIPTOR_OPERATION_ID),
+        scope: CliSurfaceScope::PublicContract,
+        note: "Public solver-family descriptor inspection workflow.",
+    },
     CliContractBinding {
         command_name: "solve",
         operation_id: Some(SOLVE_OPERATION_ID),

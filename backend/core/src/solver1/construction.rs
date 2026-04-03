@@ -721,12 +721,16 @@ impl State {
             vec![Vec::new(); group_count * num_sessions];
 
         for params in &self.attribute_balance_constraints {
-            let group_idx = *self.group_id_to_idx.get(&params.group_id).ok_or_else(|| {
-                SolverError::ValidationError(format!(
-                    "AttributeBalance references unknown group '{}'",
-                    params.group_id
-                ))
-            })?;
+            let target_group_indices: Vec<usize> = if params.group_id == "ALL" {
+                (0..group_count).collect()
+            } else {
+                vec![*self.group_id_to_idx.get(&params.group_id).ok_or_else(|| {
+                    SolverError::ValidationError(format!(
+                        "AttributeBalance references unknown group '{}'",
+                        params.group_id
+                    ))
+                })?]
+            };
             let attr_idx = *self
                 .attr_key_to_idx
                 .get(&params.attribute_key)
@@ -768,16 +772,20 @@ impl State {
                                 num_sessions.saturating_sub(1)
                             )));
                         }
-                        let slot = flat_slot(group_count, day, group_idx);
-                        self.attribute_balance_constraints_by_group_session[slot]
-                            .push(constraint_idx);
+                        for &group_idx in &target_group_indices {
+                            let slot = flat_slot(group_count, day, group_idx);
+                            self.attribute_balance_constraints_by_group_session[slot]
+                                .push(constraint_idx);
+                        }
                     }
                 }
                 None => {
                     for day in 0..num_sessions {
-                        let slot = flat_slot(group_count, day, group_idx);
-                        self.attribute_balance_constraints_by_group_session[slot]
-                            .push(constraint_idx);
+                        for &group_idx in &target_group_indices {
+                            let slot = flat_slot(group_count, day, group_idx);
+                            self.attribute_balance_constraints_by_group_session[slot]
+                                .push(constraint_idx);
+                        }
                     }
                 }
             }

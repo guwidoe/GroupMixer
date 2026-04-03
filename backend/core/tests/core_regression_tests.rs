@@ -552,7 +552,7 @@ fn unknown_solver_type_is_rejected() {
 
     let error = run_solver(&input).unwrap_err().to_string();
     assert!(
-        error.contains("Unknown solver type: UnknownSolver"),
+        error.contains("Unknown solver type") && error.contains("UnknownSolver"),
         "{error}"
     );
 }

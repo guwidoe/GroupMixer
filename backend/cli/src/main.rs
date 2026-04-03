@@ -33,12 +33,15 @@ use gm_contracts::{
     operations::operation_spec,
     schemas::{export_schema, schema_specs},
     types::{
-        RecommendSettingsRequest, ResultSummary, SolveRequest, ValidateRequest, ValidateResponse,
-        ValidationIssue,
+        RecommendSettingsRequest, ResultSummary, SolveRequest, SolverCatalogResponse,
+        SolverDescriptorContract, ValidateRequest, ValidateResponse, ValidationIssue,
     },
 };
-use gm_core::models::{ApiInput, SolverResult};
-use gm_core::{calculate_recommended_settings, default_solver_configuration, run_solver};
+use gm_core::models::{ApiInput, SolverKind, SolverResult};
+use gm_core::{
+    available_solver_descriptors, calculate_recommended_settings, default_solver_configuration,
+    run_solver, solver_descriptor,
+};
 use serde::Serialize;
 use std::fs;
 use std::io::{self, Read};
@@ -56,6 +59,26 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// List the available solver families
+    #[command(name = "list-solvers")]
+    ListSolvers {
+        /// Emit machine-readable JSON
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Inspect one solver-family descriptor
+    #[command(name = "solver-descriptor")]
+    SolverDescriptor {
+        /// Stable solver id to inspect
+        #[arg(value_name = "SOLVER_ID")]
+        solver_id: String,
+
+        /// Emit machine-readable JSON
+        #[arg(long)]
+        json: bool,
+    },
+
     /// Run the solver on a scenario file
     Solve {
         /// Input JSON file path (use --stdin to read from stdin)
@@ -500,6 +523,10 @@ fn run() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
+        Commands::ListSolvers { json } => cmd_list_solvers(json),
+
+        Commands::SolverDescriptor { solver_id, json } => cmd_solver_descriptor(&solver_id, json),
+
         Commands::Solve {
             input,
             stdin,
@@ -1135,6 +1162,76 @@ fn read_input(file: Option<PathBuf>, use_stdin: bool, operation_id: &str) -> Res
             vec!["<FILE>".to_string(), "--stdin".to_string()],
         ))
     }
+}
+
+fn cmd_list_solvers(json: bool) -> Result<()> {
+    let response = SolverCatalogResponse {
+        solvers: available_solver_descriptors()
+            .iter()
+            .map(SolverDescriptorContract::from)
+            .collect(),
+    };
+
+    if json {
+        return print_json_pretty(&response);
+    }
+
+    println!("Available solver families:");
+    for solver in response.solvers {
+        println!("- {}", solver.canonical_id);
+        println!("  display: {}", solver.display_name);
+        if !solver.accepted_config_ids.is_empty() {
+            println!("  accepted ids: {}", solver.accepted_config_ids.join(", "));
+        }
+        println!(
+            "  capabilities: initial_schedule={}, progress_callback={}, benchmark_observer={}, recommended_settings={}, deterministic_seed={}",
+            solver.capabilities.supports_initial_schedule,
+            solver.capabilities.supports_progress_callback,
+            solver.capabilities.supports_benchmark_observer,
+            solver.capabilities.supports_recommended_settings,
+            solver.capabilities.supports_deterministic_seed,
+        );
+        println!("  notes: {}", solver.notes);
+    }
+
+    Ok(())
+}
+
+fn cmd_solver_descriptor(solver_id: &str, json: bool) -> Result<()> {
+    let kind = SolverKind::parse_config_id(solver_id).map_err(|error| {
+        public_errors::invalid_input_error(
+            error,
+            Some("solver_id".to_string()),
+            "get-solver-descriptor",
+            available_solver_descriptors()
+                .iter()
+                .map(|descriptor| descriptor.kind.canonical_id().to_string())
+                .collect(),
+        )
+    })?;
+    let descriptor = SolverDescriptorContract::from(solver_descriptor(kind));
+
+    if json {
+        return print_json_pretty(&descriptor);
+    }
+
+    println!("solver: {}", descriptor.canonical_id);
+    println!("display: {}", descriptor.display_name);
+    println!(
+        "accepted ids: {}",
+        descriptor.accepted_config_ids.join(", ")
+    );
+    println!(
+        "capabilities: initial_schedule={}, progress_callback={}, benchmark_observer={}, recommended_settings={}, deterministic_seed={}",
+        descriptor.capabilities.supports_initial_schedule,
+        descriptor.capabilities.supports_progress_callback,
+        descriptor.capabilities.supports_benchmark_observer,
+        descriptor.capabilities.supports_recommended_settings,
+        descriptor.capabilities.supports_deterministic_seed,
+    );
+    println!("notes: {}", descriptor.notes);
+
+    Ok(())
 }
 
 fn cmd_solve(
