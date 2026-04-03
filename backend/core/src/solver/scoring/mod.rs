@@ -125,17 +125,37 @@ impl State {
         self.immovable_violations = 0;
 
         // Calculate forbidden pair violations
-        for day_idx in 0..self.schedule.len() {
-            for &pair_idx in &self.forbidden_pairs_by_session[day_idx] {
-                let (p1, p2) = self.forbidden_pairs[pair_idx];
-                if !self.person_participation[p1][day_idx]
-                    || !self.person_participation[p2][day_idx]
-                {
-                    continue;
-                }
+        for (day_idx, day_schedule) in self.schedule.iter().enumerate() {
+            for group in day_schedule {
+                for (pair_idx, &(p1, p2)) in self.forbidden_pairs.iter().enumerate() {
+                    // Check if this forbidden pair applies to this session
+                    if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
+                        if !sessions.contains(&day_idx) {
+                            continue; // Skip this constraint for this session
+                        }
+                    }
+                    // If sessions is None, apply to all sessions
 
-                if self.locations[day_idx][p1].0 == self.locations[day_idx][p2].0 {
-                    self.forbidden_pair_violations[pair_idx] += 1;
+                    // Check if both people are participating in this session
+                    if !self.person_participation[p1][day_idx]
+                        || !self.person_participation[p2][day_idx]
+                    {
+                        continue; // Skip if either person is not participating
+                    }
+
+                    let mut p1_in = false;
+                    let mut p2_in = false;
+                    for &member in group {
+                        if member == p1 {
+                            p1_in = true;
+                        }
+                        if member == p2 {
+                            p2_in = true;
+                        }
+                    }
+                    if p1_in && p2_in {
+                        self.forbidden_pair_violations[pair_idx] += 1;
+                    }
                 }
             }
         }
@@ -179,16 +199,23 @@ impl State {
         }
 
         // Calculate should-together pair violations (when separated)
-        for day_idx in 0..self.schedule.len() {
-            for &pair_idx in &self.should_together_by_session[day_idx] {
-                let (p1, p2) = self.should_together_pairs[pair_idx];
+        for (day_idx, _day_schedule) in self.schedule.iter().enumerate() {
+            for (pair_idx, &(p1, p2)) in self.should_together_pairs.iter().enumerate() {
+                // Check if this should-together pair applies to this session
+                if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
+                    if !sessions.contains(&day_idx) {
+                        continue; // Skip this constraint for this session
+                    }
+                }
                 if !self.person_participation[p1][day_idx]
                     || !self.person_participation[p2][day_idx]
                 {
                     continue;
                 }
 
-                if self.locations[day_idx][p1].0 != self.locations[day_idx][p2].0 {
+                let (g1, _) = self.locations[day_idx][p1];
+                let (g2, _) = self.locations[day_idx][p2];
+                if g1 != g2 {
                     self.should_together_violations[pair_idx] += 1;
                 }
             }

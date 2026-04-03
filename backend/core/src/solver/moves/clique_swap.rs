@@ -311,8 +311,13 @@ impl State {
             }
         };
 
-        for &pair_idx in &self.forbidden_pairs_by_session[day] {
-            let (person_a, person_b) = self.forbidden_pairs[pair_idx];
+        for (pair_idx, &(person_a, person_b)) in self.forbidden_pairs.iter().enumerate() {
+            if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
+                if !sessions.contains(&day) {
+                    continue;
+                }
+            }
+
             if !self.person_participation[person_a][day]
                 || !self.person_participation[person_b][day]
             {
@@ -338,8 +343,13 @@ impl State {
             }
         }
 
-        for &pair_idx in &self.should_together_by_session[day] {
-            let (person_a, person_b) = self.should_together_pairs[pair_idx];
+        for (pair_idx, &(person_a, person_b)) in self.should_together_pairs.iter().enumerate() {
+            if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
+                if !sessions.contains(&day) {
+                    continue;
+                }
+            }
+
             if !self.person_participation[person_a][day]
                 || !self.person_participation[person_b][day]
             {
@@ -365,8 +375,11 @@ impl State {
             }
         }
 
-        for &pair_idx in &self.pairmin_by_session[day] {
-            let (person_a, person_b) = self.pairmin_pairs[pair_idx];
+        for (pair_idx, &(person_a, person_b)) in self.pairmin_pairs.iter().enumerate() {
+            if !self.pairmin_sessions[pair_idx].contains(&day) {
+                continue;
+            }
+
             if !self.person_participation[person_a][day]
                 || !self.person_participation[person_b][day]
             {
@@ -520,8 +533,13 @@ impl State {
             }
         }
 
-        for &pair_idx in &self.forbidden_pairs_by_session[day] {
-            let (person_a, person_b) = self.forbidden_pairs[pair_idx];
+        for (pair_idx, &(person_a, person_b)) in self.forbidden_pairs.iter().enumerate() {
+            if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
+                if !sessions.contains(&day) {
+                    continue;
+                }
+            }
+
             if !self.person_participation[person_a][day]
                 || !self.person_participation[person_b][day]
             {
@@ -547,8 +565,13 @@ impl State {
             }
         }
 
-        for &pair_idx in &self.should_together_by_session[day] {
-            let (person_a, person_b) = self.should_together_pairs[pair_idx];
+        for (pair_idx, &(person_a, person_b)) in self.should_together_pairs.iter().enumerate() {
+            if let Some(ref sessions) = self.should_together_sessions[pair_idx] {
+                if !sessions.contains(&day) {
+                    continue;
+                }
+            }
+
             if !self.person_participation[person_a][day]
                 || !self.person_participation[person_b][day]
             {
@@ -574,8 +597,11 @@ impl State {
             }
         }
 
-        for &pair_idx in &self.pairmin_by_session[day] {
-            let (person_a, person_b) = self.pairmin_pairs[pair_idx];
+        for (pair_idx, &(person_a, person_b)) in self.pairmin_pairs.iter().enumerate() {
+            if !self.pairmin_sessions[pair_idx].contains(&day) {
+                continue;
+            }
+
             if !self.person_participation[person_a][day]
                 || !self.person_participation[person_b][day]
             {

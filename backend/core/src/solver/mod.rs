@@ -21,7 +21,7 @@ use crate::models::{
     AttributeBalanceParams, LoggingOptions, MovePolicy, PairMeetingMode, SolverBenchmarkTelemetry,
     SolverResult, StopReason, TelemetryOptions,
 };
-use constraint_index::{flat_slot, ResolvedAttributeBalanceConstraint};
+use constraint_index::ResolvedAttributeBalanceConstraint;
 use dsu::Dsu;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -250,18 +250,6 @@ pub struct State {
     pub forbidden_pair_sessions: Vec<Option<Vec<usize>>>,
     /// Which sessions each should-together pair applies to (None = all sessions)
     pub should_together_sessions: Vec<Option<Vec<usize>>>,
-    /// Forbidden-pair constraint indices for each `(session, person)` slot.
-    pub(crate) forbidden_pairs_by_person_session: Vec<Vec<usize>>,
-    /// Should-together constraint indices for each `(session, person)` slot.
-    pub(crate) should_together_by_person_session: Vec<Vec<usize>>,
-    /// PairMeetingCount constraint indices for each `(session, person)` slot.
-    pub(crate) pairmin_by_person_session: Vec<Vec<usize>>,
-    /// Forbidden-pair constraint indices active in each session.
-    pub(crate) forbidden_pairs_by_session: Vec<Vec<usize>>,
-    /// Should-together constraint indices active in each session.
-    pub(crate) should_together_by_session: Vec<Vec<usize>>,
-    /// PairMeetingCount constraint indices active in each session.
-    pub(crate) pairmin_by_session: Vec<Vec<usize>>,
     /// Person participation matrix: `person_participation[person][session] = is_participating`
     pub person_participation: Vec<Vec<bool>>,
     /// Total number of sessions in the problem
@@ -412,52 +400,6 @@ impl State {
     #[inline]
     pub fn effective_group_capacity(&self, day: usize, group_idx: usize) -> usize {
         self.effective_group_capacities[day * self.group_idx_to_id.len() + group_idx]
-    }
-
-    #[inline]
-    fn person_session_slot(&self, day: usize, person_idx: usize) -> usize {
-        flat_slot(self.person_idx_to_id.len(), day, person_idx)
-    }
-
-    #[inline]
-    pub(crate) fn forbidden_pair_indices_for_person_session(
-        &self,
-        day: usize,
-        person_idx: usize,
-    ) -> &[usize] {
-        &self.forbidden_pairs_by_person_session[self.person_session_slot(day, person_idx)]
-    }
-
-    #[inline]
-    pub(crate) fn should_together_indices_for_person_session(
-        &self,
-        day: usize,
-        person_idx: usize,
-    ) -> &[usize] {
-        &self.should_together_by_person_session[self.person_session_slot(day, person_idx)]
-    }
-
-    #[inline]
-    pub(crate) fn pairmin_indices_for_person_session(
-        &self,
-        day: usize,
-        person_idx: usize,
-    ) -> &[usize] {
-        &self.pairmin_by_person_session[self.person_session_slot(day, person_idx)]
-    }
-
-    pub(crate) fn merged_unique_constraint_indices(
-        &self,
-        first: &[usize],
-        second: &[usize],
-    ) -> Vec<usize> {
-        let mut merged = first.to_vec();
-        for &constraint_idx in second {
-            if !merged.contains(&constraint_idx) {
-                merged.push(constraint_idx);
-            }
-        }
-        merged
     }
 
     #[inline]
