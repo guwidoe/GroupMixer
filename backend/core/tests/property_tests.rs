@@ -5,7 +5,7 @@
 
 use gm_core::models::{
     ApiInput, Group, Person, ProblemDefinition, SimulatedAnnealingParams, SolverConfiguration,
-    SolverKind, SolverParams, StopConditions,
+    SolverKind, SolverParams, StopConditions, StopReason,
 };
 use gm_core::solver1::State;
 use gm_core::{available_solver_descriptors, default_solver_configuration_for, run_solver};
@@ -404,8 +404,7 @@ proptest! {
         }
     }
 
-    /// Property: registered solver families either run with their default config or fail explicitly
-    /// when the family is only bootstrapped.
+    /// Property: registered solver families run successfully with their typed default configs.
     #[test]
     fn registered_solver_defaults_are_truthful_about_execution_state((num_people, num_groups, num_sessions) in (3..=8u32, 2..=3u32, 1..=3u32)) {
         let group_size = num_people.div_ceil(num_groups).max(2);
@@ -418,21 +417,22 @@ proptest! {
                 descriptor.kind,
             );
             let result = run_solver(&input);
-            match descriptor.kind {
-                SolverKind::Solver1 => prop_assert!(
-                    result.is_ok(),
+            let result = result.unwrap_or_else(|error| {
+                panic!(
                     "registered solver {} failed with default config: {:?}",
                     descriptor.kind.canonical_id(),
-                    result.err()
-                ),
-                SolverKind::Solver2 => {
-                    let error =
-                        result.expect_err("solver2 should fail explicitly while bootstrapped");
-                    let message = error.to_string();
-                    prop_assert!(message.contains("solver2"));
-                    prop_assert!(message.contains("not implemented"));
-                }
-            }
+                    error
+                )
+            });
+
+            prop_assert_eq!(result.stop_reason, Some(StopReason::MaxIterationsReached));
+            prop_assert!(result.effective_seed.is_some());
+            prop_assert_eq!(
+                result.move_policy,
+                Some(default_solver_configuration_for(descriptor.kind)
+                    .move_policy
+                    .unwrap_or_default())
+            );
         }
     }
 }

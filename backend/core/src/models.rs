@@ -913,7 +913,7 @@ pub struct StopConditions {
 pub enum SolverParams {
     /// Parameters for the Simulated Annealing algorithm
     SimulatedAnnealing(SimulatedAnnealingParams),
-    /// Placeholder parameters for the bootstrapped `solver2` family.
+    /// Parameters for the internal `solver2` family.
     #[serde(rename = "solver2")]
     Solver2(Solver2Params),
 }
@@ -934,10 +934,11 @@ impl SolverParams {
     }
 }
 
-/// Placeholder parameters for the bootstrapped `solver2` family.
+/// Parameters for the internal `solver2` family.
 ///
-/// The dedicated directory and typed registry slot exist so the new solver architecture can be
-/// developed in parallel. Execution paths still fail explicitly until the implementation lands.
+/// The dedicated directory and typed registry slot allow the new solver architecture to evolve in
+/// parallel. During the current bring-up phase, `solver2` uses a built-in minimal search baseline
+/// and this parameter type remains intentionally small until explicit tuning knobs are ready.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Default)]
 pub struct Solver2Params {}
 

@@ -45,13 +45,13 @@
         "solver2"
       ],
       "capabilities": {
-        "supports_initial_schedule": false,
-        "supports_progress_callback": false,
-        "supports_benchmark_observer": false,
+        "supports_initial_schedule": true,
+        "supports_progress_callback": true,
+        "supports_benchmark_observer": true,
         "supports_recommended_settings": false,
-        "supports_deterministic_seed": false
+        "supports_deterministic_seed": true
       },
-      "notes": "Bootstrapped placeholder for the upcoming `solver2` family. The directory, typed registry slot, and explicit problem/state/search seams exist, but solve and recommendation flows still fail explicitly until implementation lands."
+      "notes": "Internal `solver2` family with explicit compiled-problem/state seams, correctness-first move kernels, and a minimal runnable search baseline. Solve paths now run through `gm-core`; runtime-aware recommendation remains intentionally unsupported during bring-up."
     }
   ]
 }

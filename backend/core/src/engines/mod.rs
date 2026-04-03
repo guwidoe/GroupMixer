@@ -68,11 +68,11 @@ const SOLVER2_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
     kind: SolverKind::Solver2,
     display_name: "Solver 2",
     capabilities: SolverEngineCapabilities {
-        supports_initial_schedule: false,
-        supports_progress_callback: false,
-        supports_benchmark_observer: false,
+        supports_initial_schedule: true,
+        supports_progress_callback: true,
+        supports_benchmark_observer: true,
         supports_recommended_settings: false,
-        supports_deterministic_seed: false,
+        supports_deterministic_seed: true,
     },
     notes: SOLVER2_BOOTSTRAP_NOTES,
 };
@@ -146,7 +146,11 @@ impl SolverEngine for Solver2Engine {
     fn solve(&self, request: SolveRequest<'_>) -> Result<SolverResult, SolverError> {
         let mut state = crate::solver2::SolutionState::from_input(request.input)?;
         let solver = Solver2SearchEngine::new(&request.input.solver);
-        solver.solve(&mut state)
+        solver.solve(
+            &mut state,
+            request.progress_callback,
+            request.benchmark_observer,
+        )
     }
 
     fn default_configuration(&self) -> SolverConfiguration {
@@ -371,14 +375,14 @@ mod tests {
     }
 
     #[test]
-    fn registry_exposes_solver2_descriptor_with_bootstrap_capabilities() {
+    fn registry_exposes_solver2_descriptor_with_runnable_capabilities() {
         let descriptor = solver_descriptor(SolverKind::Solver2);
         assert_eq!(descriptor.kind, SolverKind::Solver2);
-        assert!(!descriptor.capabilities.supports_initial_schedule);
-        assert!(!descriptor.capabilities.supports_progress_callback);
-        assert!(!descriptor.capabilities.supports_benchmark_observer);
+        assert!(descriptor.capabilities.supports_initial_schedule);
+        assert!(descriptor.capabilities.supports_progress_callback);
+        assert!(descriptor.capabilities.supports_benchmark_observer);
         assert!(!descriptor.capabilities.supports_recommended_settings);
-        assert!(!descriptor.capabilities.supports_deterministic_seed);
+        assert!(descriptor.capabilities.supports_deterministic_seed);
         assert!(descriptor.notes.contains("solver2"));
     }
 
@@ -439,7 +443,7 @@ mod tests {
     }
 
     #[test]
-    fn solver2_run_fails_explicitly_until_implemented() {
+    fn solver2_run_executes_through_engine_registry() {
         let input = ApiInput {
             initial_schedule: None,
             problem: simple_problem(),
@@ -448,15 +452,22 @@ mod tests {
             solver: default_solver_configuration_for(SolverKind::Solver2),
         };
 
-        let error = run_solver_with_engine(SolveRequest {
+        let result = run_solver_with_engine(SolveRequest {
             input: &input,
             progress_callback: None,
             benchmark_observer: None,
         })
-        .unwrap_err();
+        .unwrap();
 
-        assert!(error.to_string().contains("solver2"));
-        assert!(error.to_string().contains("not implemented"));
+        assert_eq!(
+            result.stop_reason,
+            Some(crate::models::StopReason::NoImprovementLimitReached)
+        );
+        assert_eq!(
+            result.move_policy,
+            Some(crate::models::MovePolicy::default())
+        );
+        assert!(result.effective_seed.is_some());
     }
 
     #[test]

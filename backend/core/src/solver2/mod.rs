@@ -23,7 +23,7 @@ pub use state::SolutionState;
 use crate::solver_support::SolverError;
 
 pub const SOLVER2_BOOTSTRAP_NOTES: &str =
-    "Bootstrapped placeholder for the upcoming `solver2` family. The directory, typed registry slot, and explicit problem/state/search seams exist, but solve and recommendation flows still fail explicitly until implementation lands.";
+    "Internal `solver2` family with explicit compiled-problem/state seams, correctness-first move kernels, and a minimal runnable search baseline. Solve paths now run through `gm-core`; runtime-aware recommendation remains intentionally unsupported during bring-up.";
 
 pub(crate) fn not_yet_implemented(feature: &str) -> SolverError {
     SolverError::ValidationError(format!(

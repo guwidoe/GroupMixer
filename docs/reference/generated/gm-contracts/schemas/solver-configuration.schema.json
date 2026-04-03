@@ -276,7 +276,7 @@
       ]
     },
     "Solver2Params": {
-      "description": "Placeholder parameters for the bootstrapped `solver2` family.\n\nThe dedicated directory and typed registry slot exist so the new solver architecture can be\ndeveloped in parallel. Execution paths still fail explicitly until the implementation lands.",
+      "description": "Parameters for the internal `solver2` family.\n\nThe dedicated directory and typed registry slot allow the new solver architecture to evolve in\nparallel. During the current bring-up phase, `solver2` uses a built-in minimal search baseline\nand this parameter type remains intentionally small until explicit tuning knobs are ready.",
       "type": "object"
     },
     "SolverParams": {
@@ -297,7 +297,7 @@
           ]
         },
         {
-          "description": "Placeholder parameters for the bootstrapped `solver2` family.",
+          "description": "Parameters for the internal `solver2` family.",
           "type": "object",
           "properties": {
             "solver_type": {

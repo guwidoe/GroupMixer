@@ -1,4 +1,4 @@
-//! Search scaffolding for `solver2`.
+//! Minimal runnable search support for `solver2`.
 
 pub mod engine;
 
