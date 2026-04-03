@@ -50,6 +50,11 @@ The explicit catalog for those paths now lives in:
 
 Use these targeted tests when changing delta logic, move application, construction behavior, reheating/stop logic, or allowed-session handling. Keep the data-driven harness as the main end-to-end contract, and use the path-regression layer when you need to prove that a specific solver branch still activates and still reconciles with a full recalculation.
 
+Multi-family rule:
+- `data_driven_tests.rs` and the property harness are the shared cross-solver verification surfaces
+- direct state/move regression files are allowed to stay solver-family-specific while they exercise private internals
+- when another family needs equivalent path coverage, add explicit family-specific files or benchmark probes instead of pretending one family's private path names are generic
+
 ## Running fixtures
 
 Run the default correctness suite:

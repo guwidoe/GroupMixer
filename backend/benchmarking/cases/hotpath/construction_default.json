@@ -2,6 +2,7 @@
   "schema_version": 1,
   "id": "hotpath.construction.default",
   "class": "representative",
+  "solver_family": "solver1",
   "family": "construction",
   "paths": ["construction"],
   "title": "Hotpath construction preset",

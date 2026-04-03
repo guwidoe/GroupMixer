@@ -12,7 +12,9 @@ use crate::hotpath_inputs::{
     clique_swap_bench_input, construction_bench_input, search_loop_bench_input, swap_bench_input,
     transfer_bench_input,
 };
-use crate::manifest::{LoadedBenchmarkCase, LoadedBenchmarkSuite};
+use crate::manifest::{
+    canonical_solver_family_for_case, LoadedBenchmarkCase, LoadedBenchmarkSuite,
+};
 use crate::runner::build_solver_metadata_for_kind;
 use gm_core::models::{MoveFamilyBenchmarkTelemetrySummary, SolverKind};
 use gm_core::solver1::search::simulated_annealing::SimulatedAnnealing;
@@ -35,6 +37,8 @@ pub fn run_hotpath_case_artifact(
     git: crate::artifacts::GitIdentity,
     machine: crate::artifacts::MachineIdentity,
 ) -> CaseRunArtifact {
+    let solver_kind = hotpath_solver_kind(case)
+        .expect("loaded hotpath cases should declare a valid solver family");
     match run_hotpath_case(suite, case) {
         Ok(execution) => {
             let runtime_seconds =
@@ -55,8 +59,8 @@ pub fn run_hotpath_case_artifact(
                 git,
                 machine,
                 solver: build_solver_metadata_for_kind(
-                    SolverKind::Solver1,
-                    case.manifest.solver_family.as_deref().unwrap_or("solver1"),
+                    solver_kind,
+                    solver_kind.canonical_id(),
                     BenchmarkSeedPolicy::NotApplicable,
                 ),
                 effective_seed: execution.effective_seed,
@@ -99,8 +103,8 @@ pub fn run_hotpath_case_artifact(
             git,
             machine,
             solver: build_solver_metadata_for_kind(
-                SolverKind::Solver1,
-                case.manifest.solver_family.as_deref().unwrap_or("solver1"),
+                solver_kind,
+                solver_kind.canonical_id(),
                 BenchmarkSeedPolicy::NotApplicable,
             ),
             effective_seed: None,
@@ -136,6 +140,38 @@ fn run_hotpath_case(
             case.manifest.id
         )
     })?;
+    let solver_kind = hotpath_solver_kind(case)?;
+
+    match solver_kind {
+        SolverKind::Solver1 => run_solver1_hotpath_case(suite, case, preset),
+        SolverKind::Solver2 => Err(format!(
+            "hotpath probe '{}' for solver family '{}' is not implemented yet",
+            preset,
+            solver_kind.canonical_id()
+        )),
+    }
+}
+
+fn hotpath_solver_kind(case: &LoadedBenchmarkCase) -> Result<SolverKind, String> {
+    let solver_family = canonical_solver_family_for_case(&case.manifest).map_err(|error| {
+        format!(
+            "hotpath case {} has invalid solver family metadata: {error}",
+            case.manifest.id
+        )
+    })?;
+    SolverKind::parse_config_id(&solver_family).map_err(|error| {
+        format!(
+            "hotpath case {} has invalid solver family '{}': {}",
+            case.manifest.id, solver_family, error
+        )
+    })
+}
+
+fn run_solver1_hotpath_case(
+    suite: &LoadedBenchmarkSuite,
+    case: &LoadedBenchmarkCase,
+    preset: String,
+) -> Result<HotPathExecutionContext, String> {
     let benchmark_mode = suite.manifest.benchmark_mode.as_str();
     let iterations = case
         .overrides

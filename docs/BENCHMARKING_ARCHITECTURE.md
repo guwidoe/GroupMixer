@@ -145,6 +145,25 @@ The benchmark system should push the solver toward explicit seams:
 
 That is useful benchmarking architecture and good repo architecture.
 
+### 7. Share the platform, not fake identical internals
+
+For multiple solver families, the repo should keep one shared verification and benchmark platform while being honest about which layers are actually shared.
+
+Minimum shared contract:
+
+- typed solver-family selection through `SolverKind`
+- one shared solve entrypoint and result shape
+- one shared data-driven fixture harness
+- one shared solve-level benchmark runner / artifact / baseline / comparison flow
+- explicit solver-family identity in every run artifact
+- explicit comparison categories (`invariant_only`, `bounded_parity`, `score_quality`, etc.)
+
+Honest non-goals:
+
+- move-family regression files that call `solver1::State` directly are not yet cross-family surfaces
+- hotpath probes may be engine-specific even though the surrounding storage/reporting platform stays shared
+- no solver family should be forced to emulate another family's private state internals just to fit the benchmark system
+
 ---
 
 ## The 4-layer benchmark architecture

@@ -2,6 +2,7 @@
   "schema_version": 1,
   "id": "hotpath.swap.default",
   "class": "representative",
+  "solver_family": "solver1",
   "family": "swap",
   "paths": ["swap_preview", "swap_apply"],
   "title": "Hotpath swap preset",

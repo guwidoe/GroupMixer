@@ -28,6 +28,8 @@ Required layers:
 - property/invariant tests in `backend/core/tests/property_tests.rs`
 - mutation testing with `cargo-mutants`
 
+For multi-solver work, reuse the shared data-driven/property/solve-level benchmark harnesses across solver families wherever honest. Direct internal move-path tests that call one family's private state types remain family-specific until another family exposes an equivalent internal seam.
+
 ### `gm-api`
 Separate API surface.
 

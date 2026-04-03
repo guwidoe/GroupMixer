@@ -2,6 +2,7 @@
   "schema_version": 1,
   "id": "hotpath.transfer.default",
   "class": "representative",
+  "solver_family": "solver1",
   "family": "transfer",
   "paths": ["transfer_preview", "transfer_apply"],
   "title": "Hotpath transfer preset",

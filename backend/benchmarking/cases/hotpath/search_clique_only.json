@@ -2,6 +2,7 @@
   "schema_version": 1,
   "id": "hotpath.search-iteration.clique-only",
   "class": "representative",
+  "solver_family": "solver1",
   "family": "search_iteration",
   "paths": ["search_iteration", "clique_swap"],
   "title": "Hotpath search iteration clique-only preset",

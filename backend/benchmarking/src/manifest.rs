@@ -136,7 +136,10 @@ pub fn canonical_solver_family_for_case(manifest: &BenchmarkCaseManifest) -> Res
         .as_deref()
         .is_some_and(|preset| !preset.is_empty())
     {
-        return Ok(SolverKind::Solver1.canonical_id().to_string());
+        bail!(
+            "benchmark case {} defines hotpath_preset but does not declare solver_family",
+            manifest.id
+        );
     }
 
     bail!(
@@ -320,6 +323,17 @@ fn validate_case_manifest(path: &Path, manifest: &BenchmarkCaseManifest) -> Resu
                 )
             })?;
     }
+    if manifest
+        .hotpath_preset
+        .as_deref()
+        .is_some_and(|preset| !preset.is_empty())
+        && manifest.solver_family.as_deref().is_none_or(str::is_empty)
+    {
+        bail!(
+            "benchmark case manifest {} must declare solver_family when using hotpath_preset",
+            path.display()
+        );
+    }
     if manifest.input.is_none() && manifest.hotpath_preset.as_deref().is_none_or(str::is_empty) {
         bail!(
             "benchmark case manifest {} must define either input or hotpath_preset",
@@ -332,7 +346,9 @@ fn validate_case_manifest(path: &Path, manifest: &BenchmarkCaseManifest) -> Resu
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
     use std::path::Path;
+    use tempfile::TempDir;
 
     #[test]
     fn loads_path_suite_and_resolves_case_manifests() {
@@ -372,5 +388,27 @@ mod tests {
             .problem
             .people
             .is_empty());
+    }
+
+    #[test]
+    fn hotpath_cases_must_declare_solver_family_explicitly() {
+        let temp = TempDir::new().expect("temp dir");
+        let case_path = temp.path().join("hotpath-case.json");
+        fs::write(
+            &case_path,
+            serde_json::to_string_pretty(&serde_json::json!({
+                "schema_version": 1,
+                "id": "hotpath.swap-preview.default",
+                "class": "representative",
+                "hotpath_preset": "swap_default"
+            }))
+            .expect("serialize case"),
+        )
+        .expect("write case");
+
+        let error = load_case_manifest(&case_path).expect_err("manifest should be rejected");
+        assert!(error
+            .to_string()
+            .contains("must declare solver_family when using hotpath_preset"));
     }
 }

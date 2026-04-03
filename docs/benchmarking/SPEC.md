@@ -37,9 +37,17 @@ Current shape:
 - `id`
 - `class`
 - optional `family` and `paths` metadata for path cases
+- optional `solver_family` when the case needs to declare an explicit canonical solver-family id
 - optional `tags`
 - `description`
 - either `input` as a valid `gm_core::models::ApiInput` or `hotpath_preset` for a deterministic hotpath fixture
+
+Rules:
+
+- full-solve cases may infer solver family from `input.solver`, but may also declare `solver_family` explicitly for metadata clarity
+- hotpath cases **must** declare `solver_family` explicitly
+- `hotpath_preset` is a probe identifier, not a promise that every solver family shares the same internal kernel implementation
+- shared storage/reporting/comparison remain one platform even when the hotpath probe implementation differs by solver family
 
 ## Directory layout
 

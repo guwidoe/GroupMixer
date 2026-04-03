@@ -2,6 +2,7 @@
   "schema_version": 1,
   "id": "hotpath.full-recalculation.default",
   "class": "representative",
+  "solver_family": "solver1",
   "family": "recalculation",
   "paths": ["full_recalculation"],
   "title": "Hotpath full recalculation preset",

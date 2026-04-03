@@ -542,6 +542,7 @@ mod tests {
                 "schema_version": 1,
                 "id": "hotpath.swap-preview.default",
                 "class": "representative",
+                "solver_family": "solver1",
                 "title": "Hotpath swap preview",
                 "description": "Deterministic swap preview kernel run",
                 "tags": ["hotpath", "swap", "preview"],
@@ -603,5 +604,71 @@ mod tests {
             reloaded.cases[0].artifact_kind,
             BenchmarkArtifactKind::HotPath
         );
+    }
+
+    #[test]
+    fn hotpath_suite_keeps_shared_artifact_flow_for_unimplemented_solver_family_probes() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite_dir = temp.path().join("backend/benchmarking/suites");
+        let case_dir = temp.path().join("backend/benchmarking/cases/hotpath");
+        fs::create_dir_all(&suite_dir).expect("mk suite dir");
+        fs::create_dir_all(&case_dir).expect("mk case dir");
+
+        let case_path = case_dir.join("swap_preview_solver2.json");
+        fs::write(
+            &case_path,
+            serde_json::to_string_pretty(&json!({
+                "schema_version": 1,
+                "id": "hotpath.swap-preview.solver2",
+                "class": "representative",
+                "solver_family": "solver2",
+                "title": "Hotpath swap preview for solver2",
+                "description": "Bootstrapped solver2 hotpath lane",
+                "tags": ["hotpath", "swap", "preview", "solver2"],
+                "hotpath_preset": "swap_default"
+            }))
+            .expect("serialize case"),
+        )
+        .expect("write case");
+
+        let suite_path = suite_dir.join("hotpath-swap-preview-solver2.yaml");
+        fs::write(
+            &suite_path,
+            [
+                "schema_version: 1",
+                "suite_id: hotpath-swap-preview-solver2",
+                "benchmark_mode: swap_preview",
+                "class: representative",
+                "default_iterations: 4",
+                "default_warmup_iterations: 1",
+                "cases:",
+                "  - manifest: ../cases/hotpath/swap_preview_solver2.json",
+            ]
+            .join("\n"),
+        )
+        .expect("write suite");
+
+        let options = RunnerOptions {
+            artifacts_dir: temp.path().join("artifacts"),
+            cargo_profile: "test".to_string(),
+        };
+
+        let report = run_suite_from_manifest(&suite_path, &options)
+            .expect("runner should still produce a shared run report");
+        assert_eq!(report.suite.solver_families, vec!["solver2".to_string()]);
+        assert_eq!(report.totals.total_cases, 1);
+        assert_eq!(report.totals.failed_cases, 1);
+        assert_eq!(
+            report.cases[0].artifact_kind,
+            BenchmarkArtifactKind::HotPath
+        );
+        assert_eq!(report.cases[0].solver.solver_family, "solver2");
+        assert_eq!(report.cases[0].status, CaseRunStatus::SolverError);
+        assert!(report.cases[0]
+            .error_message
+            .as_deref()
+            .is_some_and(|message| {
+                message.contains("solver2") && message.contains("not implemented")
+            }));
     }
 }

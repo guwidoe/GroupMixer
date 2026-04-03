@@ -2,6 +2,7 @@
   "schema_version": 1,
   "id": "hotpath.search-iteration.mixed",
   "class": "representative",
+  "solver_family": "solver1",
   "family": "search_iteration",
   "paths": ["search_iteration"],
   "title": "Hotpath search iteration mixed preset",
