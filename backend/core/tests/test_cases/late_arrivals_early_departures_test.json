@@ -3,10 +3,19 @@
   "metadata": {
     "tags": [
       "sessions",
-      "participation"
+      "participation",
+      "comparison",
+      "solver2"
     ],
     "kind": "correctness",
-    "tier": "default"
+    "tier": "default",
+    "solver_families": [
+      "solver1",
+      "solver2"
+    ],
+    "comparison": {
+      "category": "invariant_only"
+    }
   },
   "input": {
     "problem": {

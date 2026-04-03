@@ -3,10 +3,20 @@
   "metadata": {
     "tags": [
       "constraints",
-      "clique"
+      "clique",
+      "comparison",
+      "solver2"
     ],
     "kind": "correctness",
-    "tier": "default"
+    "tier": "default",
+    "solver_families": [
+      "solver1",
+      "solver2"
+    ],
+    "comparison": {
+      "category": "bounded_parity",
+      "max_final_score_delta": 0.0
+    }
   },
   "input": {
     "problem": {

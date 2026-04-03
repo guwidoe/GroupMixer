@@ -2,7 +2,14 @@
 
 ## Status
 
-Planned.
+Implemented through Epic 5 for internal comparison mode.
+
+Current readiness snapshot:
+
+- `solver2` is runnable through the shared engine registry
+- shared data-driven, property, hotpath, and full-solve benchmark participation exists
+- current evidence supports **Stage 1 — internal comparison mode**
+- `solver2` is **not yet ready for broader product-facing rollout**
 
 ## Purpose
 
@@ -329,6 +336,29 @@ Use the existing rollout criteria to decide whether solver2 is ready for broader
 - benchmark evidence is recorded through the shared platform
 - rollout decisions are based on parity/invariant/benchmark evidence, not on architecture completion alone
 
+### Current evidence after Epic 5
+
+- cross-solver data-driven participation now includes explicit:
+  - `invariant_only`
+  - `bounded_parity`
+  - `score_quality`
+- solve-level benchmark suites now include dedicated solver2 lanes under:
+  - `backend/benchmarking/suites/path-solver2.yaml`
+  - `backend/benchmarking/suites/representative-solver2.yaml`
+- representative same-machine benchmark evidence currently shows solver2 matching solver1's final scores on the shipped representative suite, while still running materially slower on the current line
+- the search driver now avoids a second full recomputation when applying an already-previewed accepted move, while keeping the recompute oracle and debug cross-checks intact
+
+### Current rollout conclusion
+
+`solver2` is ready for continued internal comparison and benchmark-driven hardening, but not yet for Stage 2 limited product exposure.
+
+Reasons:
+
+- runtime / UX evidence is still incomplete for browser-facing and product-facing flows
+- representative runtime remains behind `solver1` on the current implementation line
+- recommendation/tuning support is still intentionally limited
+- broader persistence / import / webapp capability handling is still pending outside this plan
+
 ## Cross-epic acceptance gates
 
 ### Gate A — foundation gate
@@ -367,12 +397,11 @@ Before runtime/webapp rollout work:
 
 ## Suggested immediate next step
 
-Start Epic 1.
+Stay in Stage 1 internal comparison mode and focus on the next benchmark-backed hardening loop.
 
 Specifically:
 
-1. finish `CompiledProblem::compile(...)`
-2. finish `SolutionState::new(...)`
-3. implement full recomputation scoring
-4. add invariant + narrow parity coverage
-5. keep `solver2` solve support explicitly limited until the search baseline is real
+1. expand representative and adversarial solver2 benchmark coverage
+2. optimize candidate generation / preview-heavy search paths using the shared benchmark lanes
+3. keep recommendation metadata truthful until real tuning support exists
+4. defer product-facing runtime / webapp rollout until quality and runtime evidence are both acceptable

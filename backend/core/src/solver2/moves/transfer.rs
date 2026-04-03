@@ -4,7 +4,7 @@ use crate::solver_support::SolverError;
 
 use super::super::affected_region::AffectedRegion;
 use super::super::move_types::{CandidateMove, MovePreview};
-use super::super::scoring::recompute_full_score;
+use super::super::scoring::{recompute_full_score, FullScoreSnapshot};
 use super::super::validation::invariants::validate_state_invariants;
 use super::super::SolutionState;
 
@@ -248,12 +248,23 @@ pub fn apply_transfer(
     state: &mut SolutionState,
     transfer: &TransferMove,
 ) -> Result<(), SolverError> {
+    apply_transfer_with_score(state, transfer, None)
+}
+
+pub(crate) fn apply_transfer_with_score(
+    state: &mut SolutionState,
+    transfer: &TransferMove,
+    score_after_apply: Option<&FullScoreSnapshot>,
+) -> Result<(), SolverError> {
     let analysis = analyze_transfer(state, transfer)?;
     match analysis.feasibility {
         TransferFeasibility::Feasible => {
             apply_transfer_unchecked(state, &analysis)?;
-            state.current_score = recompute_full_score(state)?;
-            debug_assert!(validate_state_invariants(state).is_ok());
+            state.current_score = match score_after_apply {
+                Some(score) => score.clone(),
+                None => recompute_full_score(state)?,
+            };
+            debug_validate_applied_transfer(state);
             Ok(())
         }
         TransferFeasibility::SameGroupNoop => Ok(()),
@@ -270,6 +281,16 @@ fn touched_people_for_transfer(state: &SolutionState, transfer: &TransferMove) -
     touched.sort_unstable();
     touched.dedup();
     touched
+}
+
+fn debug_validate_applied_transfer(state: &SolutionState) {
+    debug_assert!(validate_state_invariants(state).is_ok());
+    #[cfg(debug_assertions)]
+    {
+        let recomputed_score =
+            recompute_full_score(state).expect("transfer recomputation should work");
+        debug_assert_eq!(recomputed_score, state.current_score);
+    }
 }
 
 fn apply_transfer_unchecked(

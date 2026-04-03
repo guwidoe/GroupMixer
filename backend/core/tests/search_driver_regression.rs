@@ -2,7 +2,7 @@ mod common;
 
 use common::{default_solver_config, make_initial_schedule};
 use gm_core::models::{
-    ApiInput, BenchmarkEvent, Group, MovePolicy, Objective, Person, ProblemDefinition,
+    ApiInput, BenchmarkEvent, Group, MoveFamily, MovePolicy, Objective, Person, ProblemDefinition,
     ProgressCallback, SimulatedAnnealingParams, SolverParams, StopReason,
 };
 use gm_core::{
@@ -301,4 +301,27 @@ fn solver2_progress_callback_and_benchmark_observer_can_run_together() {
     assert!(*progress_count.lock().unwrap() >= 1);
     assert_eq!(*benchmark_count.lock().unwrap(), 2);
     assert!(result.benchmark_telemetry.is_some());
+}
+
+#[test]
+fn solver2_search_uses_single_full_recompute_per_attempt() {
+    let mut input = solver2_driver_input();
+    input.solver.stop_conditions.max_iterations = Some(25);
+    input.solver.move_policy = Some(MovePolicy {
+        forced_family: Some(MoveFamily::Swap),
+        ..MovePolicy::default()
+    });
+
+    let result = run_solver(&input).expect("solver2 solve should succeed");
+    let telemetry = result
+        .benchmark_telemetry
+        .expect("benchmark telemetry should be present");
+
+    assert!(telemetry.moves.swap.attempts > 0);
+    assert_eq!(
+        telemetry.moves.swap.full_recalculation_count, telemetry.moves.swap.attempts,
+        "solver2 should spend one full recomputation per attempted swap preview"
+    );
+    assert_eq!(telemetry.moves.transfer.full_recalculation_count, 0);
+    assert_eq!(telemetry.moves.clique_swap.full_recalculation_count, 0);
 }

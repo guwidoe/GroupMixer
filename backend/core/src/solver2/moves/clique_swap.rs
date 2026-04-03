@@ -5,7 +5,7 @@ use crate::solver_support::SolverError;
 
 use super::super::affected_region::AffectedRegion;
 use super::super::move_types::{CandidateMove, MovePreview};
-use super::super::scoring::recompute_full_score;
+use super::super::scoring::{recompute_full_score, FullScoreSnapshot};
 use super::super::validation::invariants::validate_state_invariants;
 use super::super::SolutionState;
 
@@ -287,12 +287,23 @@ pub fn apply_clique_swap(
     state: &mut SolutionState,
     clique_swap: &CliqueSwapMove,
 ) -> Result<(), SolverError> {
+    apply_clique_swap_with_score(state, clique_swap, None)
+}
+
+pub(crate) fn apply_clique_swap_with_score(
+    state: &mut SolutionState,
+    clique_swap: &CliqueSwapMove,
+    score_after_apply: Option<&FullScoreSnapshot>,
+) -> Result<(), SolverError> {
     let analysis = analyze_clique_swap(state, clique_swap)?;
     match analysis.feasibility {
         CliqueSwapFeasibility::Feasible => {
             apply_clique_swap_unchecked(state, &analysis)?;
-            state.current_score = recompute_full_score(state)?;
-            debug_assert!(validate_state_invariants(state).is_ok());
+            state.current_score = match score_after_apply {
+                Some(score) => score.clone(),
+                None => recompute_full_score(state)?,
+            };
+            debug_validate_applied_clique_swap(state);
             Ok(())
         }
         CliqueSwapFeasibility::SameGroupNoop => Ok(()),
@@ -310,6 +321,16 @@ fn clique_is_active_in_session(
     match &problem.cliques[clique_idx].sessions {
         Some(sessions) => sessions.contains(&session_idx),
         None => true,
+    }
+}
+
+fn debug_validate_applied_clique_swap(state: &SolutionState) {
+    debug_assert!(validate_state_invariants(state).is_ok());
+    #[cfg(debug_assertions)]
+    {
+        let recomputed_score =
+            recompute_full_score(state).expect("clique swap recomputation should work");
+        debug_assert_eq!(recomputed_score, state.current_score);
     }
 }
 

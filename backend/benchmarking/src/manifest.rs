@@ -52,6 +52,8 @@ pub struct BenchmarkSuiteManifest {
     #[serde(default)]
     pub description: Option<String>,
     #[serde(default)]
+    pub default_solver_family: Option<String>,
+    #[serde(default)]
     pub default_seed: Option<u64>,
     #[serde(default)]
     pub default_max_iterations: Option<u64>,
@@ -71,6 +73,8 @@ pub struct BenchmarkCaseOverride {
     pub manifest: String,
     #[serde(default)]
     pub case_id: Option<String>,
+    #[serde(default)]
+    pub solver_family: Option<String>,
     #[serde(default)]
     pub seed: Option<u64>,
     #[serde(default)]
@@ -275,6 +279,30 @@ fn validate_suite_manifest(path: &Path, manifest: &BenchmarkSuiteManifest) -> Re
             path.display(),
             manifest.benchmark_mode
         );
+    }
+    if let Some(solver_family) = manifest.default_solver_family.as_deref() {
+        SolverKind::parse_config_id(solver_family)
+            .map_err(anyhow::Error::msg)
+            .with_context(|| {
+                format!(
+                    "benchmark suite manifest {} has unknown default solver family {}",
+                    path.display(),
+                    solver_family
+                )
+            })?;
+    }
+    for case in &manifest.cases {
+        if let Some(solver_family) = case.solver_family.as_deref() {
+            SolverKind::parse_config_id(solver_family)
+                .map_err(anyhow::Error::msg)
+                .with_context(|| {
+                    format!(
+                        "benchmark suite manifest {} has unknown case override solver family {}",
+                        path.display(),
+                        solver_family
+                    )
+                })?;
+        }
     }
     if manifest.cases.is_empty() {
         bail!("benchmark suite manifest {} has no cases", path.display());

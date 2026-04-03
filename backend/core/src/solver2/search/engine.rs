@@ -12,9 +12,12 @@ use crate::models::{
 use crate::solver_support::SolverError;
 
 use super::super::move_types::CandidateMove;
-use super::super::moves::clique_swap::{apply_clique_swap, preview_clique_swap, CliqueSwapMove};
-use super::super::moves::swap::{apply_swap, preview_swap, SwapMove};
-use super::super::moves::transfer::{apply_transfer, preview_transfer, TransferMove};
+use super::super::move_types::MovePreview;
+use super::super::moves::clique_swap::{
+    apply_clique_swap_with_score, preview_clique_swap, CliqueSwapMove,
+};
+use super::super::moves::swap::{apply_swap_with_score, preview_swap, SwapMove};
+use super::super::moves::transfer::{apply_transfer_with_score, preview_transfer, TransferMove};
 use super::super::validation::invariants::validate_state_invariants;
 use super::super::SolutionState;
 
@@ -128,12 +131,10 @@ impl SearchEngine {
 
                         if accepted {
                             let apply_started_at = now_seconds();
-                            apply_candidate(&mut current_state, &candidate)?;
+                            apply_previewed_candidate(&mut current_state, &preview)?;
                             let apply_seconds = now_seconds() - apply_started_at;
                             family_metrics.accepted += 1;
                             family_metrics.apply_seconds += apply_seconds;
-                            family_metrics.full_recalculation_count += 1;
-                            family_metrics.full_recalculation_seconds += apply_seconds;
                             accepted_delta_sum += preview.delta_cost;
 
                             if preview.delta_cost > 0.0 {
@@ -585,14 +586,20 @@ fn preview_candidate(
     }
 }
 
-fn apply_candidate(
+fn apply_previewed_candidate(
     state: &mut SolutionState,
-    candidate: &CandidateMove,
+    preview: &MovePreview,
 ) -> Result<(), SolverError> {
-    match candidate {
-        CandidateMove::Swap(swap) => apply_swap(state, swap),
-        CandidateMove::Transfer(transfer) => apply_transfer(state, transfer),
-        CandidateMove::CliqueSwap(clique_swap) => apply_clique_swap(state, clique_swap),
+    debug_assert_eq!(preview.before_score, state.current_score);
+
+    match &preview.candidate {
+        CandidateMove::Swap(swap) => apply_swap_with_score(state, swap, Some(&preview.after_score)),
+        CandidateMove::Transfer(transfer) => {
+            apply_transfer_with_score(state, transfer, Some(&preview.after_score))
+        }
+        CandidateMove::CliqueSwap(clique_swap) => {
+            apply_clique_swap_with_score(state, clique_swap, Some(&preview.after_score))
+        }
     }
 }
 

@@ -4,7 +4,7 @@ use crate::solver_support::SolverError;
 
 use super::super::affected_region::AffectedRegion;
 use super::super::move_types::{CandidateMove, MovePreview};
-use super::super::scoring::recompute_full_score;
+use super::super::scoring::{recompute_full_score, FullScoreSnapshot};
 use super::super::validation::invariants::validate_state_invariants;
 use super::super::SolutionState;
 
@@ -202,12 +202,23 @@ pub fn preview_swap(state: &SolutionState, swap: &SwapMove) -> Result<MovePrevie
 }
 
 pub fn apply_swap(state: &mut SolutionState, swap: &SwapMove) -> Result<(), SolverError> {
+    apply_swap_with_score(state, swap, None)
+}
+
+pub(crate) fn apply_swap_with_score(
+    state: &mut SolutionState,
+    swap: &SwapMove,
+    score_after_apply: Option<&FullScoreSnapshot>,
+) -> Result<(), SolverError> {
     let analysis = analyze_swap(state, swap)?;
     match analysis.feasibility {
         SwapFeasibility::Feasible => {
             apply_swap_unchecked(state, &analysis)?;
-            state.current_score = recompute_full_score(state)?;
-            debug_assert!(validate_state_invariants(state).is_ok());
+            state.current_score = match score_after_apply {
+                Some(score) => score.clone(),
+                None => recompute_full_score(state)?,
+            };
+            debug_validate_applied_swap(state);
             Ok(())
         }
         SwapFeasibility::SameGroupNoop => Ok(()),
@@ -229,6 +240,15 @@ fn build_affected_region(
         &[left_group_idx, right_group_idx],
         &[swap.left_person_idx, swap.right_person_idx],
     )
+}
+
+fn debug_validate_applied_swap(state: &SolutionState) {
+    debug_assert!(validate_state_invariants(state).is_ok());
+    #[cfg(debug_assertions)]
+    {
+        let recomputed_score = recompute_full_score(state).expect("swap recomputation should work");
+        debug_assert_eq!(recomputed_score, state.current_score);
+    }
 }
 
 fn apply_swap_unchecked(

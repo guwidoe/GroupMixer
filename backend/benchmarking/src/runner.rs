@@ -13,8 +13,8 @@ use crate::manifest::{
 use crate::storage::{machine_identity_label, BenchmarkStorage};
 use anyhow::{Context, Result};
 use chrono::Utc;
-use gm_core::models::{MoveFamilyBenchmarkTelemetrySummary, SolverKind};
-use gm_core::{run_solver, solver_descriptor};
+use gm_core::models::{MoveFamilyBenchmarkTelemetrySummary, SolverConfiguration, SolverKind};
+use gm_core::{default_solver_configuration_for, run_solver, solver_descriptor};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -304,6 +304,10 @@ fn apply_effective_overrides(
         .clone()
         .expect("full-solve benchmark cases require input");
 
+    if let Some(target_solver_kind) = effective_solver_kind_override(suite, case) {
+        input = retarget_input_for_solver_kind(&input, target_solver_kind);
+    }
+
     input.solver.seed = case
         .overrides
         .seed
@@ -336,6 +340,46 @@ fn apply_effective_overrides(
     }
 
     input
+}
+
+fn effective_solver_kind_override(
+    suite: &LoadedBenchmarkSuite,
+    case: &LoadedBenchmarkCase,
+) -> Option<SolverKind> {
+    case.overrides
+        .solver_family
+        .as_deref()
+        .or(suite.manifest.default_solver_family.as_deref())
+        .map(|solver_family| {
+            SolverKind::parse_config_id(solver_family)
+                .expect("benchmark suite solver family overrides should validate before use")
+        })
+}
+
+fn retarget_input_for_solver_kind(
+    input: &gm_core::models::ApiInput,
+    solver_kind: SolverKind,
+) -> gm_core::models::ApiInput {
+    let mut retargeted = input.clone();
+    let current_kind = input
+        .solver
+        .validate_solver_selection()
+        .expect("benchmark inputs should carry valid solver selection");
+
+    if current_kind == solver_kind {
+        retargeted.solver.solver_type = solver_kind.canonical_id().to_string();
+        return retargeted;
+    }
+
+    let mut replacement: SolverConfiguration = default_solver_configuration_for(solver_kind);
+    replacement.stop_conditions = input.solver.stop_conditions.clone();
+    replacement.logging = input.solver.logging.clone();
+    replacement.telemetry = input.solver.telemetry.clone();
+    replacement.seed = input.solver.seed;
+    replacement.move_policy = input.solver.move_policy.clone();
+    replacement.allowed_sessions = input.solver.allowed_sessions.clone();
+    retargeted.solver = replacement;
+    retargeted
 }
 
 fn build_totals(cases: &[CaseRunArtifact]) -> RunTotals {
@@ -525,6 +569,30 @@ mod tests {
         let baseline = load_baseline_snapshot(&baseline_path).expect("reload baseline");
         assert_eq!(baseline.baseline_name, "path-baseline");
         assert_eq!(baseline.run_report.run.run_id, report.run.run_id);
+    }
+
+    #[test]
+    fn full_solve_suite_can_retarget_cases_to_solver2() {
+        let temp = TempDir::new().expect("temp dir");
+        let options = RunnerOptions {
+            artifacts_dir: temp.path().to_path_buf(),
+            cargo_profile: "test".to_string(),
+        };
+
+        let report = run_suite_from_manifest("suites/path-solver2.yaml", &options)
+            .expect("solver2 path suite should run");
+
+        assert_eq!(report.suite.suite_id, "path-solver2");
+        assert_eq!(report.suite.solver_families, vec!["solver2".to_string()]);
+        assert_eq!(report.totals.failed_cases, 0);
+        assert!(report
+            .cases
+            .iter()
+            .all(|case| case.solver.solver_family == "solver2"));
+        assert!(report
+            .cases
+            .iter()
+            .all(|case| case.solver.solver_config_id == "solver2"));
     }
 
     #[test]

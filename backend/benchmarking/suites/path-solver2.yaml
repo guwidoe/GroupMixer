@@ -1,0 +1,15 @@
+schema_version: 1
+suite_id: path-solver2
+benchmark_mode: full_solve
+comparison_category: invariant_only
+class: path
+title: Path regression benchmark suite for solver2
+description: Deterministic small cases retargeted to solver2 for shared invariant-focused full-solve evidence.
+default_solver_family: solver2
+default_max_iterations: 40
+cases:
+  - manifest: ../cases/path/swap_forbidden_pair.json
+  - manifest: ../cases/path/transfer_pair_meeting.json
+  - manifest: ../cases/path/clique_swap_partial_participation.json
+  - manifest: ../cases/path/search_driver_allowed_sessions.json
+  - manifest: ../cases/path/construction_clique_immovable.json

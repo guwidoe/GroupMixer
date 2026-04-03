@@ -4,10 +4,20 @@
     "tags": [
       "constraints",
       "soft",
-      "scoring"
+      "scoring",
+      "comparison",
+      "solver2"
     ],
     "kind": "correctness",
-    "tier": "default"
+    "tier": "default",
+    "solver_families": [
+      "solver1",
+      "solver2"
+    ],
+    "comparison": {
+      "category": "score_quality",
+      "max_score_regression": 10.0
+    }
   },
   "input": {
     "problem": {
