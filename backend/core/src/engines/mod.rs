@@ -50,9 +50,9 @@ pub trait SolverEngine {
     ) -> Result<SolverConfiguration, SolverError>;
 }
 
-const LEGACY_SIMULATED_ANNEALING_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
-    kind: SolverKind::LegacySimulatedAnnealing,
-    display_name: "Legacy Simulated Annealing",
+const SOLVER1_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
+    kind: SolverKind::Solver1,
+    display_name: "Solver 1",
     capabilities: SolverEngineCapabilities {
         supports_initial_schedule: true,
         supports_progress_callback: true,
@@ -60,16 +60,16 @@ const LEGACY_SIMULATED_ANNEALING_DESCRIPTOR: SolverDescriptor = SolverDescriptor
         supports_recommended_settings: true,
         supports_deterministic_seed: true,
     },
-    notes: "Current production Rust solver engine backed by the legacy State + simulated annealing search implementation.",
+    notes: "Current production Rust solver family backed by the `solver1` State + simulated annealing search implementation.",
 };
 
-const SOLVER_DESCRIPTORS: [SolverDescriptor; 1] = [LEGACY_SIMULATED_ANNEALING_DESCRIPTOR];
+const SOLVER_DESCRIPTORS: [SolverDescriptor; 1] = [SOLVER1_DESCRIPTOR];
 
-struct LegacySimulatedAnnealingEngine;
+struct Solver1Engine;
 
-impl SolverEngine for LegacySimulatedAnnealingEngine {
+impl SolverEngine for Solver1Engine {
     fn descriptor(&self) -> &'static SolverDescriptor {
-        &LEGACY_SIMULATED_ANNEALING_DESCRIPTOR
+        &SOLVER1_DESCRIPTOR
     }
 
     fn solve(&self, request: SolveRequest<'_>) -> Result<SolverResult, SolverError> {
@@ -119,7 +119,7 @@ impl SolverEngine for LegacySimulatedAnnealingEngine {
         &self,
         request: RecommendationRequest<'_>,
     ) -> Result<SolverConfiguration, SolverError> {
-        recommend_legacy_simulated_annealing_configuration(request)
+        recommend_solver1_configuration(request)
     }
 }
 
@@ -133,7 +133,7 @@ pub fn available_solver_descriptors() -> &'static [SolverDescriptor] {
 
 pub fn solver_descriptor(kind: SolverKind) -> &'static SolverDescriptor {
     match kind {
-        SolverKind::LegacySimulatedAnnealing => &LEGACY_SIMULATED_ANNEALING_DESCRIPTOR,
+        SolverKind::Solver1 => &SOLVER1_DESCRIPTOR,
     }
 }
 
@@ -159,11 +159,11 @@ pub fn calculate_recommended_settings_for(
 
 fn create_solver_engine(kind: SolverKind) -> Box<dyn SolverEngine> {
     match kind {
-        SolverKind::LegacySimulatedAnnealing => Box::new(LegacySimulatedAnnealingEngine),
+        SolverKind::Solver1 => Box::new(Solver1Engine),
     }
 }
 
-fn recommend_legacy_simulated_annealing_configuration(
+fn recommend_solver1_configuration(
     request: RecommendationRequest<'_>,
 ) -> Result<SolverConfiguration, SolverError> {
     const TRIAL_ITERS: u64 = 10_000;
@@ -311,23 +311,23 @@ mod tests {
     #[test]
     fn registry_exposes_default_solver_descriptor() {
         let descriptor = solver_descriptor(default_solver_kind());
-        assert_eq!(descriptor.kind, SolverKind::LegacySimulatedAnnealing);
+        assert_eq!(descriptor.kind, SolverKind::Solver1);
         assert!(descriptor.capabilities.supports_recommended_settings);
     }
 
     #[test]
     fn default_configuration_round_trips_through_typed_solver_selection() {
-        let config = default_solver_configuration_for(SolverKind::LegacySimulatedAnnealing);
+        let config = default_solver_configuration_for(SolverKind::Solver1);
         assert_eq!(
             config.validate_solver_selection().unwrap(),
-            SolverKind::LegacySimulatedAnnealing
+            SolverKind::Solver1
         );
     }
 
     #[test]
     fn recommendation_routes_through_engine_registry() {
         let config = calculate_recommended_settings_for(
-            SolverKind::LegacySimulatedAnnealing,
+            SolverKind::Solver1,
             RecommendationRequest {
                 problem: &simple_problem(),
                 objectives: &[],
@@ -339,7 +339,7 @@ mod tests {
 
         assert_eq!(
             config.validate_solver_selection().unwrap(),
-            SolverKind::LegacySimulatedAnnealing
+            SolverKind::Solver1
         );
         assert!(matches!(
             config.solver_params,
@@ -349,7 +349,7 @@ mod tests {
 
     #[test]
     fn engine_run_rejects_mismatched_solver_selection() {
-        let mut config = default_solver_configuration_for(SolverKind::LegacySimulatedAnnealing);
+        let mut config = default_solver_configuration_for(SolverKind::Solver1);
         config.solver_type = "unknown_solver".to_string();
         let input = ApiInput {
             initial_schedule: None,

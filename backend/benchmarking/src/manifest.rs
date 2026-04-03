@@ -136,9 +136,7 @@ pub fn canonical_solver_family_for_case(manifest: &BenchmarkCaseManifest) -> Res
         .as_deref()
         .is_some_and(|preset| !preset.is_empty())
     {
-        return Ok(SolverKind::LegacySimulatedAnnealing
-            .canonical_id()
-            .to_string());
+        return Ok(SolverKind::Solver1.canonical_id().to_string());
     }
 
     bail!(
@@ -366,7 +364,7 @@ mod tests {
         assert_eq!(case.id, "representative.small-workshop-balanced");
         assert_eq!(
             canonical_solver_family_for_case(&case).expect("solver family"),
-            "legacy_simulated_annealing"
+            "solver1"
         );
         assert!(!case
             .input

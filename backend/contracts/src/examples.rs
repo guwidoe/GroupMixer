@@ -312,10 +312,11 @@ const LIST_SOLVERS_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
     content: r#"{
   "solvers": [
     {
-      "kind": "legacy_simulated_annealing",
-      "canonical_id": "legacy_simulated_annealing",
-      "display_name": "Legacy Simulated Annealing",
+      "kind": "solver1",
+      "canonical_id": "solver1",
+      "display_name": "Solver 1",
       "accepted_config_ids": [
+        "solver1",
         "legacy_simulated_annealing",
         "simulated_annealing",
         "SimulatedAnnealing"
@@ -327,7 +328,7 @@ const LIST_SOLVERS_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
         "supports_recommended_settings": true,
         "supports_deterministic_seed": true
       },
-      "notes": "Current production Rust solver engine backed by the legacy State + simulated annealing search implementation."
+      "notes": "Current production Rust solver family backed by the `solver1` State + simulated annealing search implementation."
     }
   ]
 }"#,
@@ -338,10 +339,11 @@ const SOLVER_DESCRIPTOR_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
     format: ReferenceSnippetFormat::Json,
     schema_id: Some(SOLVER_DESCRIPTOR_SCHEMA_ID),
     content: r#"{
-  "kind": "legacy_simulated_annealing",
-  "canonical_id": "legacy_simulated_annealing",
-  "display_name": "Legacy Simulated Annealing",
+  "kind": "solver1",
+  "canonical_id": "solver1",
+  "display_name": "Solver 1",
   "accepted_config_ids": [
+    "solver1",
     "legacy_simulated_annealing",
     "simulated_annealing",
     "SimulatedAnnealing"
@@ -353,7 +355,7 @@ const SOLVER_DESCRIPTOR_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
     "supports_recommended_settings": true,
     "supports_deterministic_seed": true
   },
-  "notes": "Current production Rust solver engine backed by the legacy State + simulated annealing search implementation."
+  "notes": "Current production Rust solver family backed by the `solver1` State + simulated annealing search implementation."
 }"#,
 }];
 

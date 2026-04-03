@@ -4,6 +4,8 @@
     "summary": "Static bootstrap for the public solver affordance graph shared by CLI, HTTP, and WASM projections.",
     "discovery_note": "The surface is static and self-describing. Start from a top-level operation, then request local help for that operation and follow its related affordances.",
     "top_level_operation_ids": [
+      "list-solvers",
+      "get-solver-descriptor",
       "solve",
       "validate-scenario",
       "inspect-result",
@@ -15,6 +17,57 @@
     ]
   },
   "operations": [
+    {
+      "id": "list-solvers",
+      "summary": "List the available solver families.",
+      "description": "Return the currently compiled solver families plus their stable identifiers and capability summaries.",
+      "kind": "read",
+      "family": "solver-catalog",
+      "input_schema_ids": [],
+      "output_schema_ids": [
+        "solver-catalog"
+      ],
+      "progress_schema_ids": [],
+      "error_codes": [
+        "internal-error"
+      ],
+      "related_operation_ids": [
+        "get-solver-descriptor",
+        "get-default-solver-configuration",
+        "recommend-settings",
+        "solve",
+        "get-schema"
+      ],
+      "example_ids": [
+        "list-solvers"
+      ]
+    },
+    {
+      "id": "get-solver-descriptor",
+      "summary": "Inspect one solver-family descriptor.",
+      "description": "Return capability metadata and accepted configuration identifiers for one available solver family.",
+      "kind": "read",
+      "family": "solver-catalog",
+      "input_schema_ids": [],
+      "output_schema_ids": [
+        "solver-descriptor"
+      ],
+      "progress_schema_ids": [],
+      "error_codes": [
+        "invalid-input",
+        "internal-error"
+      ],
+      "related_operation_ids": [
+        "list-solvers",
+        "get-default-solver-configuration",
+        "recommend-settings",
+        "solve",
+        "get-schema"
+      ],
+      "example_ids": [
+        "solver-descriptor"
+      ]
+    },
     {
       "id": "solve",
       "summary": "Run the solver for a complete optimization input.",
@@ -39,6 +92,8 @@
       "related_operation_ids": [
         "validate-scenario",
         "inspect-result",
+        "list-solvers",
+        "get-solver-descriptor",
         "get-schema",
         "inspect-errors",
         "get-default-solver-configuration",
@@ -120,6 +175,8 @@
       "related_operation_ids": [
         "recommend-settings",
         "solve",
+        "list-solvers",
+        "get-solver-descriptor",
         "get-schema"
       ],
       "example_ids": [
@@ -146,6 +203,8 @@
       ],
       "related_operation_ids": [
         "get-default-solver-configuration",
+        "list-solvers",
+        "get-solver-descriptor",
         "solve",
         "validate-scenario",
         "get-schema"
@@ -198,6 +257,8 @@
         "solve",
         "validate-scenario",
         "inspect-result",
+        "list-solvers",
+        "get-solver-descriptor",
         "get-default-solver-configuration",
         "recommend-settings",
         "inspect-errors"
@@ -226,6 +287,8 @@
         "solve",
         "validate-scenario",
         "inspect-result",
+        "list-solvers",
+        "get-solver-descriptor",
         "get-default-solver-configuration",
         "recommend-settings",
         "get-schema"
@@ -274,6 +337,14 @@
     },
     {
       "id": "public-error-envelope",
+      "version": "v1"
+    },
+    {
+      "id": "solver-descriptor",
+      "version": "v1"
+    },
+    {
+      "id": "solver-catalog",
       "version": "v1"
     }
   ],
@@ -369,6 +440,34 @@
     }
   ],
   "examples": [
+    {
+      "id": "list-solvers",
+      "operation_id": "list-solvers",
+      "summary": "List the available solver families.",
+      "description": "Shows the public catalog of currently compiled solver families and their capability summaries.",
+      "snippets": [
+        {
+          "label": "solver catalog",
+          "format": "Json",
+          "schema_id": "solver-catalog",
+          "content": "{\n  \"solvers\": [\n    {\n      \"kind\": \"solver1\",\n      \"canonical_id\": \"solver1\",\n      \"display_name\": \"Solver 1\",\n      \"accepted_config_ids\": [\n        \"solver1\",\n        \"legacy_simulated_annealing\",\n        \"simulated_annealing\",\n        \"SimulatedAnnealing\"\n      ],\n      \"capabilities\": {\n        \"supports_initial_schedule\": true,\n        \"supports_progress_callback\": true,\n        \"supports_benchmark_observer\": true,\n        \"supports_recommended_settings\": true,\n        \"supports_deterministic_seed\": true\n      },\n      \"notes\": \"Current production Rust solver family backed by the `solver1` State + simulated annealing search implementation.\"\n    }\n  ]\n}"
+        }
+      ]
+    },
+    {
+      "id": "solver-descriptor",
+      "operation_id": "get-solver-descriptor",
+      "summary": "Inspect one solver-family descriptor.",
+      "description": "Shows a single solver-family descriptor including accepted configuration identifiers and capability metadata.",
+      "snippets": [
+        {
+          "label": "solver descriptor",
+          "format": "Json",
+          "schema_id": "solver-descriptor",
+          "content": "{\n  \"kind\": \"solver1\",\n  \"canonical_id\": \"solver1\",\n  \"display_name\": \"Solver 1\",\n  \"accepted_config_ids\": [\n    \"solver1\",\n    \"legacy_simulated_annealing\",\n    \"simulated_annealing\",\n    \"SimulatedAnnealing\"\n  ],\n  \"capabilities\": {\n    \"supports_initial_schedule\": true,\n    \"supports_progress_callback\": true,\n    \"supports_benchmark_observer\": true,\n    \"supports_recommended_settings\": true,\n    \"supports_deterministic_seed\": true\n  },\n  \"notes\": \"Current production Rust solver family backed by the `solver1` State + simulated annealing search implementation.\"\n}"
+        }
+      ]
+    },
     {
       "id": "solve-happy-path",
       "operation_id": "solve",

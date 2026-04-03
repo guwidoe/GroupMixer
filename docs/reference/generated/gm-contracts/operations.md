@@ -2,6 +2,32 @@
 
 > Generated from `gm-contracts`. Do not edit by hand. Regenerate with `cargo run -p gm-contracts --bin generate-reference`.
 
+## `list-solvers`
+
+- summary: List the available solver families.
+- family: `solver-catalog`
+- kind: `"read"`
+- description: Return the currently compiled solver families plus their stable identifiers and capability summaries.
+- input schemas: (none)
+- output schemas: `solver-catalog`
+- progress schemas: (none)
+- error codes: `internal-error`
+- related operations: `get-solver-descriptor`, `get-default-solver-configuration`, `recommend-settings`, `solve`, `get-schema`
+- examples: `list-solvers`
+
+## `get-solver-descriptor`
+
+- summary: Inspect one solver-family descriptor.
+- family: `solver-catalog`
+- kind: `"read"`
+- description: Return capability metadata and accepted configuration identifiers for one available solver family.
+- input schemas: (none)
+- output schemas: `solver-descriptor`
+- progress schemas: (none)
+- error codes: `invalid-input`, `internal-error`
+- related operations: `list-solvers`, `get-default-solver-configuration`, `recommend-settings`, `solve`, `get-schema`
+- examples: `solver-descriptor`
+
 ## `solve`
 
 - summary: Run the solver for a complete optimization input.
@@ -12,7 +38,7 @@
 - output schemas: `solve-response`
 - progress schemas: `progress-update`
 - error codes: `invalid-input`, `infeasible-scenario`, `unsupported-constraint-kind`, `internal-error`
-- related operations: `validate-scenario`, `inspect-result`, `get-schema`, `inspect-errors`, `get-default-solver-configuration`, `recommend-settings`
+- related operations: `validate-scenario`, `inspect-result`, `list-solvers`, `get-solver-descriptor`, `get-schema`, `inspect-errors`, `get-default-solver-configuration`, `recommend-settings`
 - examples: `solve-happy-path`, `solve-progress-update`
 
 ## `validate-scenario`
@@ -51,7 +77,7 @@
 - output schemas: `solver-configuration`
 - progress schemas: (none)
 - error codes: `internal-error`
-- related operations: `recommend-settings`, `solve`, `get-schema`
+- related operations: `recommend-settings`, `solve`, `list-solvers`, `get-solver-descriptor`, `get-schema`
 - examples: `default-solver-configuration`
 
 ## `recommend-settings`
@@ -64,7 +90,7 @@
 - output schemas: `solver-configuration`
 - progress schemas: (none)
 - error codes: `invalid-input`, `infeasible-scenario`, `internal-error`
-- related operations: `get-default-solver-configuration`, `solve`, `validate-scenario`, `get-schema`
+- related operations: `get-default-solver-configuration`, `list-solvers`, `get-solver-descriptor`, `solve`, `validate-scenario`, `get-schema`
 - examples: `recommend-settings-minimal`
 
 ## `evaluate-input`
@@ -90,7 +116,7 @@
 - output schemas: (none)
 - progress schemas: (none)
 - error codes: `unknown-schema`, `internal-error`
-- related operations: `solve`, `validate-scenario`, `inspect-result`, `get-default-solver-configuration`, `recommend-settings`, `inspect-errors`
+- related operations: `solve`, `validate-scenario`, `inspect-result`, `list-solvers`, `get-solver-descriptor`, `get-default-solver-configuration`, `recommend-settings`, `inspect-errors`
 - examples: `get-schema-solve-request`
 
 ## `inspect-errors`
@@ -103,6 +129,6 @@
 - output schemas: `public-error-envelope`
 - progress schemas: (none)
 - error codes: `unknown-operation`, `unknown-error-code`, `internal-error`
-- related operations: `solve`, `validate-scenario`, `inspect-result`, `get-default-solver-configuration`, `recommend-settings`, `get-schema`
+- related operations: `solve`, `validate-scenario`, `inspect-result`, `list-solvers`, `get-solver-descriptor`, `get-default-solver-configuration`, `recommend-settings`, `get-schema`
 - examples: `inspect-errors-public-error`
 

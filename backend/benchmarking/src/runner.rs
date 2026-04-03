@@ -499,16 +499,13 @@ mod tests {
             report.suite.comparison_category,
             crate::artifacts::BenchmarkComparisonCategory::InvariantOnly
         );
-        assert_eq!(
-            report.suite.solver_families,
-            vec!["legacy_simulated_annealing".to_string()]
-        );
+        assert_eq!(report.suite.solver_families, vec!["solver1".to_string()]);
         assert!(report.totals.total_cases >= 5);
         assert_eq!(report.totals.failed_cases, 0);
         assert!(report
             .cases
             .iter()
-            .all(|case| case.solver.solver_family == "legacy_simulated_annealing"));
+            .all(|case| case.solver.solver_family == "solver1"));
 
         let run_path =
             persist_run_report(&report, &options.artifacts_dir).expect("persist run report");
@@ -588,10 +585,7 @@ mod tests {
             report.cases[0].artifact_kind,
             BenchmarkArtifactKind::HotPath
         );
-        assert_eq!(
-            report.cases[0].solver.solver_family,
-            "legacy_simulated_annealing"
-        );
+        assert_eq!(report.cases[0].solver.solver_family, "solver1");
         let metrics = report.cases[0]
             .hotpath_metrics
             .as_ref()

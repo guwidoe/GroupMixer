@@ -827,11 +827,11 @@
           "minimum": 0
         },
         "solver_params": {
-          "description": "Algorithm-specific parameters",
+          "description": "Algorithm-specific parameters.\n\nThis must describe the same solver family as `solver_type`.",
           "$ref": "#/$defs/SolverParams"
         },
         "solver_type": {
-          "description": "Type of solver algorithm to use (currently \"SimulatedAnnealing\")",
+          "description": "Compatibility-facing solver identifier accepted at the current public parse boundary.\n\nInternally, `gm-core` resolves this string into a typed `SolverKind` so solver-family\nselection is explicit even while the public contract is still migrating away from the\nlegacy string-only shape.",
           "type": "string"
         },
         "stop_conditions": {

@@ -365,7 +365,7 @@ mod tests {
                 suite_id: suite_id.to_string(),
                 benchmark_mode: FULL_SOLVE_BENCHMARK_MODE.to_string(),
                 comparison_category: BenchmarkComparisonCategory::ScoreQuality,
-                solver_families: vec!["legacy_simulated_annealing".to_string()],
+                solver_families: vec!["solver1".to_string()],
                 class: BenchmarkSuiteClass::Representative,
                 title: None,
                 description: None,

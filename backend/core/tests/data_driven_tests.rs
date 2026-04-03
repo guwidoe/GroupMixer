@@ -828,10 +828,7 @@ fn fixture_solver_family_aliases_normalize_and_deduplicate() {
             tags: vec![],
             kind: FixtureKind::Correctness,
             tier: FixtureTier::Default,
-            solver_families: vec![
-                "SimulatedAnnealing".to_string(),
-                "legacy_simulated_annealing".to_string(),
-            ],
+            solver_families: vec!["SimulatedAnnealing".to_string(), "solver1".to_string()],
             comparison: FixtureComparisonSpec::default(),
         },
         input: sample_fixture_input(),
@@ -840,17 +837,17 @@ fn fixture_solver_family_aliases_normalize_and_deduplicate() {
     };
 
     let kinds = fixture_solver_kinds(&test_case);
-    assert_eq!(kinds, vec![SolverKind::LegacySimulatedAnnealing]);
+    assert_eq!(kinds, vec![SolverKind::Solver1]);
 }
 
 #[test]
 fn retargeting_to_same_solver_canonicalizes_solver_type() {
     let input = sample_fixture_input();
-    let retargeted = retarget_input_for_solver_kind(&input, SolverKind::LegacySimulatedAnnealing);
-    assert_eq!(retargeted.solver.solver_type, "legacy_simulated_annealing");
+    let retargeted = retarget_input_for_solver_kind(&input, SolverKind::Solver1);
+    assert_eq!(retargeted.solver.solver_type, "solver1");
     assert_eq!(
         retargeted.solver.validate_solver_selection().unwrap(),
-        SolverKind::LegacySimulatedAnnealing
+        SolverKind::Solver1
     );
 }
 
@@ -879,7 +876,7 @@ fn sample_fixture_input() -> ApiInput {
         },
         objectives: vec![],
         constraints: vec![],
-        solver: default_solver_configuration_for(SolverKind::LegacySimulatedAnnealing),
+        solver: default_solver_configuration_for(SolverKind::Solver1),
     }
 }
 

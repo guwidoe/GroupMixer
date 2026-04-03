@@ -52,3 +52,13 @@
 - version: `v1`
 - artifact: `schemas/public-error-envelope.schema.json`
 
+## `solver-descriptor`
+
+- version: `v1`
+- artifact: `schemas/solver-descriptor.schema.json`
+
+## `solver-catalog`
+
+- version: `v1`
+- artifact: `schemas/solver-catalog.schema.json`
+

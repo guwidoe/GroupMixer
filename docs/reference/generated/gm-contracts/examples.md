@@ -2,6 +2,80 @@
 
 > Generated from `gm-contracts`. Do not edit by hand. Regenerate with `cargo run -p gm-contracts --bin generate-reference`.
 
+## `list-solvers`
+
+- operation: `list-solvers`
+- summary: List the available solver families.
+- description: Shows the public catalog of currently compiled solver families and their capability summaries.
+
+### Snippets
+
+#### solver catalog
+
+- format: `json`
+- schema: `solver-catalog`
+
+```
+{
+  "solvers": [
+    {
+      "kind": "solver1",
+      "canonical_id": "solver1",
+      "display_name": "Solver 1",
+      "accepted_config_ids": [
+        "solver1",
+        "legacy_simulated_annealing",
+        "simulated_annealing",
+        "SimulatedAnnealing"
+      ],
+      "capabilities": {
+        "supports_initial_schedule": true,
+        "supports_progress_callback": true,
+        "supports_benchmark_observer": true,
+        "supports_recommended_settings": true,
+        "supports_deterministic_seed": true
+      },
+      "notes": "Current production Rust solver family backed by the `solver1` State + simulated annealing search implementation."
+    }
+  ]
+}
+```
+
+## `solver-descriptor`
+
+- operation: `get-solver-descriptor`
+- summary: Inspect one solver-family descriptor.
+- description: Shows a single solver-family descriptor including accepted configuration identifiers and capability metadata.
+
+### Snippets
+
+#### solver descriptor
+
+- format: `json`
+- schema: `solver-descriptor`
+
+```
+{
+  "kind": "solver1",
+  "canonical_id": "solver1",
+  "display_name": "Solver 1",
+  "accepted_config_ids": [
+    "solver1",
+    "legacy_simulated_annealing",
+    "simulated_annealing",
+    "SimulatedAnnealing"
+  ],
+  "capabilities": {
+    "supports_initial_schedule": true,
+    "supports_progress_callback": true,
+    "supports_benchmark_observer": true,
+    "supports_recommended_settings": true,
+    "supports_deterministic_seed": true
+  },
+  "notes": "Current production Rust solver family backed by the `solver1` State + simulated annealing search implementation."
+}
+```
+
 ## `solve-happy-path`
 
 - operation: `solve`

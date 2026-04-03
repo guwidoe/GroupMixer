@@ -316,7 +316,7 @@ async fn solver_catalog_endpoints_expose_registered_solver_families() {
         .as_array()
         .unwrap()
         .iter()
-        .any(|solver| solver["canonical_id"] == "legacy_simulated_annealing"));
+        .any(|solver| solver["canonical_id"] == "solver1"));
 
     let descriptor_response = app
         .clone()
@@ -331,10 +331,7 @@ async fn solver_catalog_endpoints_expose_registered_solver_families() {
         .unwrap();
     assert_eq!(descriptor_response.status(), StatusCode::OK);
     let descriptor_body: serde_json::Value = json_response(descriptor_response).await;
-    assert_eq!(
-        descriptor_body["canonical_id"],
-        "legacy_simulated_annealing"
-    );
+    assert_eq!(descriptor_body["canonical_id"], "solver1");
 
     let bad_response = app
         .oneshot(

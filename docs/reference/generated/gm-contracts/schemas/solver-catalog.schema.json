@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SolverCatalogResponse",
+  "description": "Canonical list response for available solver families.",
+  "type": "object",
+  "properties": {
+    "solvers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SolverDescriptorContract"
+      }
+    }
+  },
+  "required": [
+    "solvers"
+  ],
+  "$defs": {
+    "SolverCapabilityDescriptor": {
+      "description": "Public capability surface for one solver family.",
+      "type": "object",
+      "properties": {
+        "supports_benchmark_observer": {
+          "type": "boolean"
+        },
+        "supports_deterministic_seed": {
+          "type": "boolean"
+        },
+        "supports_initial_schedule": {
+          "type": "boolean"
+        },
+        "supports_progress_callback": {
+          "type": "boolean"
+        },
+        "supports_recommended_settings": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "supports_initial_schedule",
+        "supports_progress_callback",
+        "supports_benchmark_observer",
+        "supports_recommended_settings",
+        "supports_deterministic_seed"
+      ]
+    },
+    "SolverDescriptorContract": {
+      "description": "Public metadata for one available solver family.",
+      "type": "object",
+      "properties": {
+        "accepted_config_ids": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "canonical_id": {
+          "type": "string"
+        },
+        "capabilities": {
+          "$ref": "#/$defs/SolverCapabilityDescriptor"
+        },
+        "display_name": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/SolverKind"
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "canonical_id",
+        "display_name",
+        "capabilities",
+        "notes"
+      ]
+    },
+    "SolverKind": {
+      "description": "Typed solver-family identifier used internally by `gm-core`.\n\nThe repo is preparing for multiple solver families, but the wider public contract still uses\nthe legacy string field on `SolverConfiguration`. This enum is the explicit internal source of\ntruth used by the engine registry/factory layer.",
+      "oneOf": [
+        {
+          "description": "The current production solver family backed by the `solver1` simulated annealing engine.",
+          "type": "string",
+          "const": "solver1"
+        }
+      ]
+    }
+  }
+}

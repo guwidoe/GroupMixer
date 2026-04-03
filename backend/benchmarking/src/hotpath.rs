@@ -55,11 +55,8 @@ pub fn run_hotpath_case_artifact(
                 git,
                 machine,
                 solver: build_solver_metadata_for_kind(
-                    SolverKind::LegacySimulatedAnnealing,
-                    case.manifest
-                        .solver_family
-                        .as_deref()
-                        .unwrap_or("legacy_simulated_annealing"),
+                    SolverKind::Solver1,
+                    case.manifest.solver_family.as_deref().unwrap_or("solver1"),
                     BenchmarkSeedPolicy::NotApplicable,
                 ),
                 effective_seed: execution.effective_seed,
@@ -102,11 +99,8 @@ pub fn run_hotpath_case_artifact(
             git,
             machine,
             solver: build_solver_metadata_for_kind(
-                SolverKind::LegacySimulatedAnnealing,
-                case.manifest
-                    .solver_family
-                    .as_deref()
-                    .unwrap_or("legacy_simulated_annealing"),
+                SolverKind::Solver1,
+                case.manifest.solver_family.as_deref().unwrap_or("solver1"),
                 BenchmarkSeedPolicy::NotApplicable,
             ),
             effective_seed: None,

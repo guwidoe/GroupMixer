@@ -577,29 +577,30 @@ pub struct SolverConfiguration {
 )]
 #[serde(rename_all = "snake_case")]
 pub enum SolverKind {
-    /// The current production solver family backed by the legacy simulated annealing engine.
-    LegacySimulatedAnnealing,
+    /// The current production solver family backed by the `solver1` simulated annealing engine.
+    Solver1,
 }
 
 /// Default solver family used by current public callers.
-pub const DEFAULT_SOLVER_KIND: SolverKind = SolverKind::LegacySimulatedAnnealing;
+pub const DEFAULT_SOLVER_KIND: SolverKind = SolverKind::Solver1;
 
 impl SolverKind {
     pub const fn canonical_id(self) -> &'static str {
         match self {
-            Self::LegacySimulatedAnnealing => "legacy_simulated_annealing",
+            Self::Solver1 => "solver1",
         }
     }
 
     pub const fn display_name(self) -> &'static str {
         match self {
-            Self::LegacySimulatedAnnealing => "Legacy Simulated Annealing",
+            Self::Solver1 => "Solver 1",
         }
     }
 
     pub fn accepted_config_ids(self) -> &'static [&'static str] {
         match self {
-            Self::LegacySimulatedAnnealing => &[
+            Self::Solver1 => &[
+                "solver1",
                 "legacy_simulated_annealing",
                 "simulated_annealing",
                 "SimulatedAnnealing",
@@ -609,12 +610,13 @@ impl SolverKind {
 
     pub fn parse_config_id(value: &str) -> Result<Self, String> {
         match value {
-            "legacy_simulated_annealing" | "simulated_annealing" | "SimulatedAnnealing" => {
-                Ok(Self::LegacySimulatedAnnealing)
-            }
+            "solver1"
+            | "legacy_simulated_annealing"
+            | "simulated_annealing"
+            | "SimulatedAnnealing" => Ok(Self::Solver1),
             other => Err(format!(
                 "Unknown solver type '{other}'. Supported solver IDs: {}",
-                [Self::LegacySimulatedAnnealing]
+                [Self::Solver1]
                     .iter()
                     .map(|kind| kind.canonical_id())
                     .collect::<Vec<_>>()
@@ -655,7 +657,7 @@ impl SolverConfiguration {
 
     pub fn simulated_annealing_params(&self) -> Result<&SimulatedAnnealingParams, String> {
         let kind = self.validate_solver_selection()?;
-        if kind != SolverKind::LegacySimulatedAnnealing {
+        if kind != SolverKind::Solver1 {
             return Err(format!(
                 "solver '{}' does not expose simulated annealing parameters",
                 kind.canonical_id()
@@ -910,7 +912,7 @@ pub enum SolverParams {
 impl SolverParams {
     pub fn solver_kind(&self) -> SolverKind {
         match self {
-            Self::SimulatedAnnealing(_) => SolverKind::LegacySimulatedAnnealing,
+            Self::SimulatedAnnealing(_) => SolverKind::Solver1,
         }
     }
 
