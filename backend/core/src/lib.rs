@@ -69,17 +69,23 @@
 //! }
 //! ```
 
-use crate::algorithms::simulated_annealing::SimulatedAnnealing;
-use crate::algorithms::Solver;
+use crate::engines::{
+    available_solver_descriptors as registry_available_solver_descriptors,
+    calculate_recommended_settings_for as registry_calculate_recommended_settings_for,
+    default_solver_configuration_for as registry_default_solver_configuration_for,
+    default_solver_kind as registry_default_solver_kind, run_solver_with_engine,
+    solver_descriptor as registry_solver_descriptor, RecommendationRequest, SolveRequest,
+    SolverDescriptor,
+};
 use crate::models::{
-    ApiInput, BenchmarkObserver, LoggingOptions, ProblemDefinition, ProgressCallback,
-    ProgressUpdate, SimulatedAnnealingParams, SolverConfiguration, SolverParams, SolverResult,
-    StopConditions,
+    ApiInput, BenchmarkObserver, ProblemDefinition, ProgressCallback, SolverConfiguration,
+    SolverKind, SolverResult,
 };
 use crate::models::{Constraint, Objective};
-use crate::solver::{SolverError, State};
+use crate::solver::SolverError;
 
 pub mod algorithms;
+pub mod engines;
 pub mod models;
 pub mod solver;
 
@@ -295,52 +301,36 @@ pub fn run_solver_with_callbacks(
     progress_callback: Option<&ProgressCallback>,
     benchmark_observer: Option<&BenchmarkObserver>,
 ) -> Result<SolverResult, SolverError> {
-    let mut state = State::new(input)?;
-
-    let solver: Box<dyn algorithms::Solver> = match input.solver.solver_type.as_str() {
-        "SimulatedAnnealing" => Box::new(SimulatedAnnealing::new(&input.solver)),
-        _ => {
-            return Err(SolverError::ValidationError(format!(
-                "Unknown solver type: {}",
-                input.solver.solver_type
-            )))
-        }
-    };
-
-    solver.solve(&mut state, progress_callback, benchmark_observer)
+    run_solver_with_engine(SolveRequest {
+        input,
+        progress_callback,
+        benchmark_observer,
+    })
 }
 
 /// Returns the canonical default solver configuration for public callers.
 pub fn default_solver_configuration() -> SolverConfiguration {
-    SolverConfiguration {
-        solver_type: "SimulatedAnnealing".into(),
-        stop_conditions: StopConditions {
-            max_iterations: Some(10_000),
-            time_limit_seconds: Some(30),
-            no_improvement_iterations: Some(5_000),
-        },
-        solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
-            initial_temperature: 1.0,
-            final_temperature: 0.01,
-            cooling_schedule: "geometric".into(),
-            reheat_cycles: Some(0),
-            reheat_after_no_improvement: Some(0),
-        }),
-        logging: LoggingOptions {
-            log_frequency: Some(1000),
-            log_initial_state: true,
-            log_duration_and_score: true,
-            display_final_schedule: true,
-            log_initial_score_breakdown: true,
-            log_final_score_breakdown: true,
-            log_stop_condition: true,
-            ..Default::default()
-        },
-        telemetry: Default::default(),
-        seed: None,
-        move_policy: None,
-        allowed_sessions: None,
-    }
+    registry_default_solver_configuration_for(registry_default_solver_kind())
+}
+
+/// Returns the canonical default solver configuration for the selected solver family.
+pub fn default_solver_configuration_for(kind: SolverKind) -> SolverConfiguration {
+    registry_default_solver_configuration_for(kind)
+}
+
+/// Returns the default solver family used by current public callers.
+pub fn default_solver_kind() -> SolverKind {
+    registry_default_solver_kind()
+}
+
+/// Lists the currently compiled solver families known to `gm-core`.
+pub fn available_solver_descriptors() -> &'static [SolverDescriptor] {
+    registry_available_solver_descriptors()
+}
+
+/// Returns metadata for one compiled solver family.
+pub fn solver_descriptor(kind: SolverKind) -> &'static SolverDescriptor {
+    registry_solver_descriptor(kind)
 }
 
 /// Calculates recommended solver settings based on a trial run.
@@ -364,157 +354,32 @@ pub fn calculate_recommended_settings(
     constraints: &[Constraint],
     desired_runtime_seconds: u64,
 ) -> Result<SolverConfiguration, SolverError> {
-    const TRIAL_ITERS: u64 = 10_000;
+    calculate_recommended_settings_for(
+        registry_default_solver_kind(),
+        problem,
+        objectives,
+        constraints,
+        desired_runtime_seconds,
+    )
+}
 
-    // trial configuration
-    let trial_cfg = SolverConfiguration {
-        solver_type: "SimulatedAnnealing".into(),
-        stop_conditions: StopConditions {
-            max_iterations: Some(TRIAL_ITERS),
-            time_limit_seconds: None,
-            no_improvement_iterations: None,
+/// Calculates recommended settings for the selected solver family.
+pub fn calculate_recommended_settings_for(
+    kind: SolverKind,
+    problem: &ProblemDefinition,
+    objectives: &[Objective],
+    constraints: &[Constraint],
+    desired_runtime_seconds: u64,
+) -> Result<SolverConfiguration, SolverError> {
+    registry_calculate_recommended_settings_for(
+        kind,
+        RecommendationRequest {
+            problem,
+            objectives,
+            constraints,
+            desired_runtime_seconds,
         },
-        solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
-            initial_temperature: 1_000_000.0,
-            final_temperature: 1_000_000.0,
-            cooling_schedule: "geometric".into(),
-            reheat_cycles: Some(0),
-            reheat_after_no_improvement: Some(0),
-        }),
-        logging: Default::default(),
-        telemetry: Default::default(),
-        seed: None,
-        move_policy: None,
-        allowed_sessions: None,
-    };
-
-    let trial_objectives: Vec<Objective> = if objectives.is_empty() {
-        vec![Objective {
-            r#type: "maximize_unique_contacts".into(),
-            weight: 1.0,
-        }]
-    } else {
-        objectives.to_vec()
-    };
-
-    let trial_input = ApiInput {
-        initial_schedule: None,
-        problem: problem.clone(),
-        objectives: trial_objectives,
-        constraints: constraints.to_vec(),
-        solver: trial_cfg.clone(),
-    };
-
-    // set up progress capture
-    use std::sync::{Arc, Mutex};
-    let last_prog: Arc<Mutex<Option<ProgressUpdate>>> = Arc::new(Mutex::new(None));
-    let cb_holder = last_prog.clone();
-    let progress: ProgressCallback = Box::new(move |p: &ProgressUpdate| {
-        *cb_holder.lock().unwrap() = Some(p.clone());
-        true
-    });
-
-    // run trial
-    let mut state = State::new(&trial_input)?;
-    let solver = SimulatedAnnealing::new(&trial_cfg);
-
-    // === Platform-specific wall-clock timing ===
-    #[cfg(not(target_arch = "wasm32"))]
-    let trial_secs = {
-        let start = std::time::Instant::now();
-        solver.solve(&mut state, Some(&progress), None)?;
-        start.elapsed().as_secs_f64()
-    };
-
-    // In the browser we can use JS Date (ms) for timing.
-    #[cfg(target_arch = "wasm32")]
-    let trial_secs = {
-        use js_sys::Date;
-        let start = Date::now();
-        solver.solve(&mut state, Some(&progress), None)?;
-        (Date::now() - start) / 1000.0
-    };
-
-    let metrics = last_prog
-        .lock()
-        .unwrap()
-        .clone()
-        .ok_or_else(|| SolverError::ValidationError("Trial run produced no progress".into()))?;
-
-    // === Debugging output ===
-    eprintln!(
-        "[DEBUG] biggest_attempted_increase: {}",
-        metrics.biggest_attempted_increase
-    );
-    eprintln!(
-        "[DEBUG] biggest_accepted_increase:  {}",
-        metrics.biggest_accepted_increase
-    );
-
-    // Choose an initial temperature that would accept the largest observed
-    // uphill (cost-increasing) move roughly half the time.
-    //
-    // Acceptance probability  P = exp(−Δ / T)  ⇒  T = - Δ / ln(2)  when P = 0.5 .
-    //
-    // We consider both attempted *and* accepted increases because in some
-    // degenerate cases (e.g. extremely good initial schedule) there may be no
-    // accepted uphill moves even though some were attempted, and vice-versa.
-    // If no positive cost increases were seen, we fall back to a small default.
-
-    let max_uphill_delta = metrics
-        .biggest_attempted_increase
-        .max(metrics.biggest_accepted_increase);
-
-    eprintln!("[DEBUG] max_uphill_delta chosen: {}", max_uphill_delta);
-
-    let init_temp = if max_uphill_delta > 0.0 {
-        -max_uphill_delta / 0.01_f64.ln()
-    } else {
-        1.0 // conservative fallback when no uphill moves were observed
-    };
-
-    eprintln!("[DEBUG] calculated init_temp: {}", init_temp);
-
-    // Final temperature is the temperature at which a step which
-    // increases the cost function by 1 is accepted with probability of 0.001%.
-    let final_temp = -1.0 / (0.00001f64).ln();
-
-    eprintln!("[DEBUG] calculated final_temp: {}", final_temp);
-
-    let t_per_iter = trial_secs / TRIAL_ITERS as f64;
-    let target_secs = desired_runtime_seconds as f64 * 0.9;
-    let total_iters = if t_per_iter > 0.0 {
-        (target_secs / t_per_iter).round() as u64
-    } else {
-        2_000_000
-    };
-
-    eprintln!(
-        "[DEBUG] trial_secs: {} t_per_iter: {} total_iters: {}",
-        trial_secs, t_per_iter, total_iters
-    );
-
-    // build recommended config
-    Ok(SolverConfiguration {
-        solver_type: "SimulatedAnnealing".into(),
-        stop_conditions: StopConditions {
-            max_iterations: Some(total_iters),
-            time_limit_seconds: Some(desired_runtime_seconds),
-            no_improvement_iterations: Some(total_iters / 2),
-        },
-        solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
-            initial_temperature: init_temp,
-            final_temperature: final_temp,
-            cooling_schedule: "geometric".into(),
-            reheat_cycles: Some(0),
-            reheat_after_no_improvement: Some(total_iters / 3),
-        }),
-        logging: Default::default(),
-        telemetry: Default::default(),
-        seed: None,
-        move_policy: None,
-        allowed_sessions: None,
-    })
+    )
 }
 
 #[cfg(test)]

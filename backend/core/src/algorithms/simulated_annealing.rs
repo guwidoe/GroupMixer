@@ -27,7 +27,7 @@ use crate::models::{
     BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, MoveFamily,
     MoveFamilyBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
     MoveSelectionMode, ProgressCallback, ProgressUpdate, SolverBenchmarkTelemetry,
-    SolverConfiguration, SolverParams, SolverResult, StopReason,
+    SolverConfiguration, SolverResult, StopReason,
 };
 use crate::solver::{derive_phase_seed, SolverError, State, SEARCH_SEED_SALT};
 use rand::{RngExt, SeedableRng};
@@ -742,7 +742,9 @@ impl SimulatedAnnealing {
     /// assert_eq!(solver.initial_temperature, 50.0);
     /// ```
     pub fn new(params: &SolverConfiguration) -> Self {
-        let SolverParams::SimulatedAnnealing(sa_params) = &params.solver_params;
+        let sa_params = params.simulated_annealing_params().expect(
+            "simulated annealing engine should only be constructed after solver selection validation",
+        );
         let max_iterations = params.stop_conditions.max_iterations.unwrap_or(100_000);
         let no_improvement_iterations = params.stop_conditions.no_improvement_iterations;
 
@@ -1330,7 +1332,8 @@ impl Solver for SimulatedAnnealing {
                             {
                                 // Optional invariant check after applying move
                                 if state.logging.debug_validate_invariants {
-                                    if let Err(e) = current_state.validate_no_duplicate_assignments()
+                                    if let Err(e) =
+                                        current_state.validate_no_duplicate_assignments()
                                     {
                                         if state.logging.debug_dump_invariant_context {
                                             println!("INVARIANT VIOLATION CONTEXT:");
@@ -1430,7 +1433,8 @@ impl Solver for SimulatedAnnealing {
                             {
                                 // Optional invariant check after applying move
                                 if state.logging.debug_validate_invariants {
-                                    if let Err(e) = current_state.validate_no_duplicate_assignments()
+                                    if let Err(e) =
+                                        current_state.validate_no_duplicate_assignments()
                                     {
                                         if state.logging.debug_dump_invariant_context {
                                             println!("INVARIANT VIOLATION CONTEXT:");

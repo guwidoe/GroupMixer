@@ -529,11 +529,17 @@ pub struct ImmovablePeopleParams {
 /// ```
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct SolverConfiguration {
-    /// Type of solver algorithm to use (currently "SimulatedAnnealing")
+    /// Compatibility-facing solver identifier accepted at the current public parse boundary.
+    ///
+    /// Internally, `gm-core` resolves this string into a typed `SolverKind` so solver-family
+    /// selection is explicit even while the public contract is still migrating away from the
+    /// legacy string-only shape.
     pub solver_type: String,
     /// Conditions that determine when to stop optimization
     pub stop_conditions: StopConditions,
-    /// Algorithm-specific parameters
+    /// Algorithm-specific parameters.
+    ///
+    /// This must describe the same solver family as `solver_type`.
     pub solver_params: SolverParams,
     /// Logging and output preferences (defaults to minimal logging)
     #[serde(default)]
@@ -559,6 +565,110 @@ pub struct SolverConfiguration {
     /// Session indices are 0-based.
     #[serde(default)]
     pub allowed_sessions: Option<Vec<u32>>,
+}
+
+/// Typed solver-family identifier used internally by `gm-core`.
+///
+/// The repo is preparing for multiple solver families, but the wider public contract still uses
+/// the legacy string field on `SolverConfiguration`. This enum is the explicit internal source of
+/// truth used by the engine registry/factory layer.
+#[derive(
+    Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum SolverKind {
+    /// The current production solver family backed by the legacy simulated annealing engine.
+    LegacySimulatedAnnealing,
+}
+
+/// Default solver family used by current public callers.
+pub const DEFAULT_SOLVER_KIND: SolverKind = SolverKind::LegacySimulatedAnnealing;
+
+impl SolverKind {
+    pub const fn canonical_id(self) -> &'static str {
+        match self {
+            Self::LegacySimulatedAnnealing => "legacy_simulated_annealing",
+        }
+    }
+
+    pub const fn display_name(self) -> &'static str {
+        match self {
+            Self::LegacySimulatedAnnealing => "Legacy Simulated Annealing",
+        }
+    }
+
+    pub fn accepted_config_ids(self) -> &'static [&'static str] {
+        match self {
+            Self::LegacySimulatedAnnealing => &[
+                "legacy_simulated_annealing",
+                "simulated_annealing",
+                "SimulatedAnnealing",
+            ],
+        }
+    }
+
+    pub fn parse_config_id(value: &str) -> Result<Self, String> {
+        match value {
+            "legacy_simulated_annealing" | "simulated_annealing" | "SimulatedAnnealing" => {
+                Ok(Self::LegacySimulatedAnnealing)
+            }
+            other => Err(format!(
+                "Unknown solver type '{other}'. Supported solver IDs: {}",
+                [Self::LegacySimulatedAnnealing]
+                    .iter()
+                    .map(|kind| kind.canonical_id())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )),
+        }
+    }
+}
+
+impl std::fmt::Display for SolverKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.canonical_id())
+    }
+}
+
+impl SolverConfiguration {
+    /// Resolves the compatibility-facing `solver_type` field into the typed internal solver kind.
+    pub fn solver_kind(&self) -> Result<SolverKind, String> {
+        SolverKind::parse_config_id(&self.solver_type)
+    }
+
+    /// Validates that `solver_type` and `solver_params` describe the same solver family.
+    pub fn validate_solver_selection(&self) -> Result<SolverKind, String> {
+        let declared_kind = self.solver_kind()?;
+        let params_kind = self.solver_params.solver_kind();
+
+        if declared_kind != params_kind {
+            return Err(format!(
+                "solver_type '{}' resolves to '{}', but solver_params describe '{}'",
+                self.solver_type,
+                declared_kind.canonical_id(),
+                params_kind.canonical_id()
+            ));
+        }
+
+        Ok(declared_kind)
+    }
+
+    pub fn simulated_annealing_params(&self) -> Result<&SimulatedAnnealingParams, String> {
+        let kind = self.validate_solver_selection()?;
+        if kind != SolverKind::LegacySimulatedAnnealing {
+            return Err(format!(
+                "solver '{}' does not expose simulated annealing parameters",
+                kind.canonical_id()
+            ));
+        }
+
+        self.solver_params
+            .simulated_annealing_params()
+            .ok_or_else(|| {
+                "solver_params did not contain simulated annealing parameters after validation"
+                    .to_string()
+            })
+    }
 }
 
 /// Explicit move families supported by the simulated annealing search loop.
@@ -795,6 +905,20 @@ pub struct StopConditions {
 pub enum SolverParams {
     /// Parameters for the Simulated Annealing algorithm
     SimulatedAnnealing(SimulatedAnnealingParams),
+}
+
+impl SolverParams {
+    pub fn solver_kind(&self) -> SolverKind {
+        match self {
+            Self::SimulatedAnnealing(_) => SolverKind::LegacySimulatedAnnealing,
+        }
+    }
+
+    pub fn simulated_annealing_params(&self) -> Option<&SimulatedAnnealingParams> {
+        match self {
+            Self::SimulatedAnnealing(params) => Some(params),
+        }
+    }
 }
 
 /// Parameters specific to the Simulated Annealing algorithm.
