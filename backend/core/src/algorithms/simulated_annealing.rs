@@ -103,62 +103,8 @@ fn select_clique_source_group(state: &State, clique: &[usize], day: usize) -> Op
     best_group
 }
 
-fn clique_is_active_on_day(state: &State, clique_idx: usize, day: usize) -> bool {
-    match &state.clique_sessions[clique_idx] {
-        Some(sessions) => sessions.contains(&day),
-        None => true,
-    }
-}
-
-fn active_clique_indices_for_day(state: &State, day: usize) -> Vec<usize> {
-    state
-        .cliques
-        .iter()
-        .enumerate()
-        .filter_map(|(clique_idx, clique)| {
-            if !clique_is_active_on_day(state, clique_idx, day) {
-                return None;
-            }
-
-            clique
-                .iter()
-                .any(|&member| state.person_participation[member][day])
-                .then_some(clique_idx)
-        })
-        .collect()
-}
-
-fn choose_swap_partner_in_different_group(
-    state: &State,
-    day: usize,
-    swappable_people: &[usize],
-    p1_idx: usize,
-    rng: &mut ChaCha12Rng,
-) -> Option<usize> {
-    if swappable_people.len() < 2 {
-        return None;
-    }
-
-    let p1_group = state.locations[day][p1_idx].0;
-
-    let mut attempts_remaining = swappable_people.len().min(8);
-    while attempts_remaining > 0 {
-        let candidate = swappable_people[rng.random_range(0..swappable_people.len())];
-        if candidate != p1_idx && state.locations[day][candidate].0 != p1_group {
-            return Some(candidate);
-        }
-        attempts_remaining -= 1;
-    }
-
-    swappable_people
-        .iter()
-        .copied()
-        .find(|&candidate| candidate != p1_idx && state.locations[day][candidate].0 != p1_group)
-}
-
 fn static_move_candidates_for_day(state: &State, day: usize) -> Vec<usize> {
     (0..state.person_idx_to_id.len())
-        .filter(|&person_idx| state.person_participation[person_idx][day])
         .filter(|&person_idx| !state.immovable_people.contains_key(&(person_idx, day)))
         .filter(|&person_idx| state.person_to_clique_id[day][person_idx].is_none())
         .collect()
@@ -223,7 +169,6 @@ fn sample_non_clique_swap_targets(
 
     (selected.len() == required_count).then_some(selected)
 }
-
 #[cfg(target_arch = "wasm32")]
 fn get_elapsed_seconds_between(start: f64, end: f64) -> f64 {
     (end - start) / 1000.0 // Convert milliseconds to seconds
@@ -1033,9 +978,6 @@ impl Solver for SimulatedAnnealing {
 
         let clique_swap_probabilities: Vec<f64> = current_state.calculate_clique_swap_probability();
         let move_family_selector = MoveFamilySelector::new(&state.move_policy);
-        let active_cliques_by_day: Vec<Vec<usize>> = (0..current_state.num_sessions as usize)
-            .map(|day| active_clique_indices_for_day(&current_state, day))
-            .collect();
         let movable_people_by_day: Vec<Vec<usize>> = (0..current_state.num_sessions as usize)
             .map(|day| static_move_candidates_for_day(&current_state, day))
             .collect();
@@ -1299,12 +1241,7 @@ impl Solver for SimulatedAnnealing {
             if chosen_family == MoveFamily::CliqueSwap {
                 // === CLIQUE SWAP ===
                 // --- Attempt Clique Swap ---
-                let active_cliques = &active_cliques_by_day[day];
-                if active_cliques.is_empty() {
-                    continue;
-                }
-
-                let clique_idx = active_cliques[rng.random_range(0..active_cliques.len())];
+                let clique_idx = rng.random_range(0..current_state.cliques.len());
                 let clique = &current_state.cliques[clique_idx];
 
                 // Determine a source group containing the majority of active (participating)
@@ -1393,8 +1330,7 @@ impl Solver for SimulatedAnnealing {
                             {
                                 // Optional invariant check after applying move
                                 if state.logging.debug_validate_invariants {
-                                    if let Err(e) =
-                                        current_state.validate_no_duplicate_assignments()
+                                    if let Err(e) = current_state.validate_no_duplicate_assignments()
                                     {
                                         if state.logging.debug_dump_invariant_context {
                                             println!("INVARIANT VIOLATION CONTEXT:");
@@ -1494,8 +1430,7 @@ impl Solver for SimulatedAnnealing {
                             {
                                 // Optional invariant check after applying move
                                 if state.logging.debug_validate_invariants {
-                                    if let Err(e) =
-                                        current_state.validate_no_duplicate_assignments()
+                                    if let Err(e) = current_state.validate_no_duplicate_assignments()
                                     {
                                         if state.logging.debug_dump_invariant_context {
                                             println!("INVARIANT VIOLATION CONTEXT:");
@@ -1571,108 +1506,101 @@ impl Solver for SimulatedAnnealing {
 
                 // Pick two non-clique, non-immovable people for a swap
                 let p1_idx = swappable_people[rng.random_range(0..swappable_people.len())];
-                let maybe_p2_idx = choose_swap_partner_in_different_group(
-                    &current_state,
-                    day,
-                    &swappable_people,
-                    p1_idx,
-                    &mut rng,
-                );
-
-                if let Some(p2_idx) = maybe_p2_idx {
-                    // --- Evaluate the swap ---
-                    let preview_started_at = get_current_time();
-                    let delta_cost = current_state.calculate_swap_cost_delta(day, p1_idx, p2_idx);
-                    let preview_seconds =
-                        get_elapsed_seconds_between(preview_started_at, get_current_time());
-                    let current_cost = current_state.current_cost;
-                    let next_cost = current_cost + delta_cost;
-                    let telemetry = benchmark_moves.family_mut(MoveFamily::Swap);
-                    telemetry.attempts += 1;
-                    telemetry.preview_seconds += preview_seconds;
-
-                    let move_accepted =
-                        delta_cost < 0.0 || rng.random::<f64>() < (-delta_cost / temperature).exp();
-
-                    if move_accepted {
-                        // Debug: For zero temperature, we should only accept improving moves
-                        if temperature == 0.0 && delta_cost >= 0.0 {
-                            println!("WARNING: Hill climbing violation!");
-                            println!("  temperature: {}", temperature);
-                            println!("  delta_cost: {}", delta_cost);
-                            println!("  accepted non-improving move with zero temperature");
-                        }
-
-                        let apply_started_at = get_current_time();
-                        current_state.apply_swap(day, p1_idx, p2_idx);
-                        telemetry.apply_seconds +=
-                            get_elapsed_seconds_between(apply_started_at, get_current_time());
-                        current_state.current_cost = next_cost;
-
-                        #[cfg(feature = "debug-invariant-checks")]
-                        {
-                            // Optional invariant check after applying move
-                            if state.logging.debug_validate_invariants {
-                                if let Err(e) = current_state.validate_no_duplicate_assignments() {
-                                    if state.logging.debug_dump_invariant_context {
-                                        println!("INVARIANT VIOLATION CONTEXT:");
-                                        println!("  Iteration: {}", i);
-                                        println!(
-                                            "  Move: SWAP day={} p1={} p2={}",
-                                            day,
-                                            current_state.display_person_by_idx(p1_idx),
-                                            current_state.display_person_by_idx(p2_idx)
-                                        );
-                                        println!("  After move (first 3 groups of day):");
-                                        for (g_idx, g) in
-                                            current_state.schedule[day].iter().enumerate().take(3)
-                                        {
-                                            let names: Vec<String> = g
-                                                .iter()
-                                                .map(|&pid| {
-                                                    current_state.display_person_by_idx(pid)
-                                                })
-                                                .collect();
-                                            println!(
-                                                "    group {} ({}): {:?}",
-                                                g_idx,
-                                                current_state.group_idx_to_id[g_idx].clone(),
-                                                names
-                                            );
-                                        }
-                                    }
-                                    return Err(e);
-                                }
-                            }
-                        }
-
-                        if next_cost < best_cost {
-                            // Recalculate to eliminate any incremental drift before
-                            // recording a new best and to keep telemetry consistent.
-                            let recalc_started_at = get_current_time();
-                            current_state._recalculate_scores();
-                            let verified_cost = current_state.calculate_cost();
-                            telemetry.full_recalculation_count += 1;
-                            telemetry.full_recalculation_seconds +=
-                                get_elapsed_seconds_between(recalc_started_at, get_current_time());
-                            if verified_cost < best_cost {
-                                best_cost = verified_cost;
-                                best_state = current_state.clone();
-                                no_improvement_counter = 0;
-                                improvement_found = true;
-                            }
-                        }
-                    }
-
-                    if move_accepted {
-                        telemetry.accepted += 1;
-                    } else {
-                        telemetry.rejected += 1;
-                    }
-
-                    // Record the move attempt
-                    metrics.record_swap(delta_cost, move_accepted);
+                let mut p2_idx = swappable_people[rng.random_range(0..swappable_people.len())];
+                while p1_idx == p2_idx {
+                    p2_idx = swappable_people[rng.random_range(0..swappable_people.len())];
                 }
+
+                // --- Evaluate the swap ---
+                let preview_started_at = get_current_time();
+                let delta_cost = current_state.calculate_swap_cost_delta(day, p1_idx, p2_idx);
+                let preview_seconds =
+                    get_elapsed_seconds_between(preview_started_at, get_current_time());
+                let current_cost = current_state.current_cost;
+                let next_cost = current_cost + delta_cost;
+                let telemetry = benchmark_moves.family_mut(MoveFamily::Swap);
+                telemetry.attempts += 1;
+                telemetry.preview_seconds += preview_seconds;
+
+                let move_accepted =
+                    delta_cost < 0.0 || rng.random::<f64>() < (-delta_cost / temperature).exp();
+
+                if move_accepted {
+                    // Debug: For zero temperature, we should only accept improving moves
+                    if temperature == 0.0 && delta_cost >= 0.0 {
+                        println!("WARNING: Hill climbing violation!");
+                        println!("  temperature: {}", temperature);
+                        println!("  delta_cost: {}", delta_cost);
+                        println!("  accepted non-improving move with zero temperature");
+                    }
+
+                    let apply_started_at = get_current_time();
+                    current_state.apply_swap(day, p1_idx, p2_idx);
+                    telemetry.apply_seconds +=
+                        get_elapsed_seconds_between(apply_started_at, get_current_time());
+                    current_state.current_cost = next_cost;
+
+                    #[cfg(feature = "debug-invariant-checks")]
+                    {
+                        // Optional invariant check after applying move
+                        if state.logging.debug_validate_invariants {
+                            if let Err(e) = current_state.validate_no_duplicate_assignments() {
+                                if state.logging.debug_dump_invariant_context {
+                                    println!("INVARIANT VIOLATION CONTEXT:");
+                                    println!("  Iteration: {}", i);
+                                    println!(
+                                        "  Move: SWAP day={} p1={} p2={}",
+                                        day,
+                                        current_state.display_person_by_idx(p1_idx),
+                                        current_state.display_person_by_idx(p2_idx)
+                                    );
+                                    println!("  After move (first 3 groups of day):");
+                                    for (g_idx, g) in
+                                        current_state.schedule[day].iter().enumerate().take(3)
+                                    {
+                                        let names: Vec<String> = g
+                                            .iter()
+                                            .map(|&pid| current_state.display_person_by_idx(pid))
+                                            .collect();
+                                        println!(
+                                            "    group {} ({}): {:?}",
+                                            g_idx,
+                                            current_state.group_idx_to_id[g_idx].clone(),
+                                            names
+                                        );
+                                    }
+                                }
+                                return Err(e);
+                            }
+                        }
+                    }
+
+                    if next_cost < best_cost {
+                        // Recalculate to eliminate any incremental drift before
+                        // recording a new best and to keep telemetry consistent.
+                        let recalc_started_at = get_current_time();
+                        current_state._recalculate_scores();
+                        let verified_cost = current_state.calculate_cost();
+                        telemetry.full_recalculation_count += 1;
+                        telemetry.full_recalculation_seconds +=
+                            get_elapsed_seconds_between(recalc_started_at, get_current_time());
+                        if verified_cost < best_cost {
+                            best_cost = verified_cost;
+                            best_state = current_state.clone();
+                            no_improvement_counter = 0;
+                            improvement_found = true;
+                        }
+                    }
+                }
+
+                if move_accepted {
+                    telemetry.accepted += 1;
+                } else {
+                    telemetry.rejected += 1;
+                }
+
+                // Record the move attempt
+                metrics.record_swap(delta_cost, move_accepted);
             }
 
             // --- Logging ---
@@ -1932,17 +1860,12 @@ impl Solver for SimulatedAnnealing {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        active_clique_indices_for_day, choose_swap_partner_in_different_group,
-        select_clique_source_group,
-    };
+    use super::select_clique_source_group;
     use crate::models::{
         ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
         SimulatedAnnealingParams, SolverConfiguration, SolverParams, StopConditions,
     };
     use crate::solver::State;
-    use rand::{RngExt, SeedableRng};
-    use rand_chacha::ChaCha12Rng;
     use std::collections::HashMap;
 
     fn person(id: &str) -> Person {
@@ -2022,97 +1945,5 @@ mod tests {
 
         let clique = &state.cliques[0];
         assert_eq!(select_clique_source_group(&state, clique, 0), Some(0));
-    }
-
-    #[test]
-    fn active_clique_indices_skip_inactive_sessions() {
-        let input = ApiInput {
-            initial_schedule: None,
-            problem: ProblemDefinition {
-                people: vec![person("p0"), person("p1"), person("p2"), person("p3")],
-                groups: vec![
-                    Group {
-                        id: "g0".to_string(),
-                        size: 2,
-                        session_sizes: None,
-                    },
-                    Group {
-                        id: "g1".to_string(),
-                        size: 2,
-                        session_sizes: None,
-                    },
-                ],
-                num_sessions: 2,
-            },
-            objectives: vec![Objective {
-                r#type: "maximize_unique_contacts".to_string(),
-                weight: 1.0,
-            }],
-            constraints: vec![
-                Constraint::MustStayTogether {
-                    people: vec!["p0".to_string(), "p1".to_string()],
-                    sessions: Some(vec![0]),
-                },
-                Constraint::MustStayTogether {
-                    people: vec!["p2".to_string(), "p3".to_string()],
-                    sessions: Some(vec![1]),
-                },
-            ],
-            solver: deterministic_solver_config(),
-        };
-
-        let state = State::new(&input).expect("state should build");
-        assert_eq!(active_clique_indices_for_day(&state, 0), vec![0]);
-        assert_eq!(active_clique_indices_for_day(&state, 1), vec![1]);
-    }
-
-    #[test]
-    fn swap_partner_selection_requires_a_different_group() {
-        let input = ApiInput {
-            initial_schedule: None,
-            problem: ProblemDefinition {
-                people: vec![person("p0"), person("p1"), person("p2"), person("p3")],
-                groups: vec![
-                    Group {
-                        id: "g0".to_string(),
-                        size: 2,
-                        session_sizes: None,
-                    },
-                    Group {
-                        id: "g1".to_string(),
-                        size: 2,
-                        session_sizes: None,
-                    },
-                ],
-                num_sessions: 1,
-            },
-            objectives: vec![Objective {
-                r#type: "maximize_unique_contacts".to_string(),
-                weight: 1.0,
-            }],
-            constraints: vec![],
-            solver: deterministic_solver_config(),
-        };
-
-        let mut state = State::new(&input).expect("state should build");
-        let p0 = state.person_id_to_idx["p0"];
-        let p1 = state.person_id_to_idx["p1"];
-        let p2 = state.person_id_to_idx["p2"];
-        let p3 = state.person_id_to_idx["p3"];
-
-        state.schedule[0][0] = vec![p0, p1];
-        state.schedule[0][1] = vec![p2, p3];
-        state._recalculate_locations_from_schedule();
-
-        let mut rng = ChaCha12Rng::seed_from_u64(7);
-        let swappable_people = vec![p0, p1, p2, p3];
-        let p1_idx = swappable_people[rng.random_range(0..swappable_people.len())];
-
-        let partner =
-            choose_swap_partner_in_different_group(&state, 0, &swappable_people, p1_idx, &mut rng)
-                .expect("partner should exist");
-
-        assert_ne!(p1_idx, partner);
-        assert_ne!(state.locations[0][p1_idx].0, state.locations[0][partner].0);
     }
 }
