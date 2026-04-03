@@ -12,9 +12,9 @@ use bench_inputs::{
     transfer_bench_input,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion, Throughput};
-use gm_core::algorithms::simulated_annealing::SimulatedAnnealing;
-use gm_core::algorithms::Solver;
-use gm_core::solver::State;
+use gm_core::solver1::search::simulated_annealing::SimulatedAnnealing;
+use gm_core::solver1::search::Solver;
+use gm_core::solver1::State;
 use std::hint::black_box;
 
 fn bench_construction(c: &mut Criterion) {

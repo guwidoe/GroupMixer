@@ -1,13 +1,13 @@
 mod common;
 
 use common::default_solver_config;
-use gm_core::algorithms::simulated_annealing::SimulatedAnnealing;
 use gm_core::models::{
     ApiInput, BenchmarkEvent, Constraint, Group, LoggingOptions, MoveFamily, MovePolicy,
     MoveSelectionMode, Objective, Person, ProblemDefinition, RepeatEncounterParams,
     SimulatedAnnealingParams, SolverConfiguration, SolverParams, StopConditions, StopReason,
 };
-use gm_core::solver::State;
+use gm_core::solver1::search::simulated_annealing::SimulatedAnnealing;
+use gm_core::solver1::State;
 use gm_core::{
     run_solver, run_solver_with_benchmark_observer, run_solver_with_callbacks,
     run_solver_with_progress,

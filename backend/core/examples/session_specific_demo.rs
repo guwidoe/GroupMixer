@@ -1,5 +1,5 @@
 use gm_core::models::*;
-use gm_core::solver::State;
+use gm_core::solver1::State;
 
 fn main() {
     println!("=== Session-Specific Constraints Demo ===\n");

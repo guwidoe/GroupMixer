@@ -227,7 +227,7 @@ pub async fn validate_scenario_handler(body: Bytes) -> Result<Json<ValidateRespo
     let payload: ValidateRequest =
         parse_json_body(&body, "validate-scenario", &["validate-request"])?;
     let payload: ApiInput = payload.into();
-    use gm_core::solver::State;
+    use gm_core::solver1::State;
     let response = match State::new(&payload) {
         Ok(_) => ValidateResponse {
             valid: true,

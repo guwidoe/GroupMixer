@@ -1,11 +1,12 @@
-use crate::algorithms::simulated_annealing::SimulatedAnnealing;
-use crate::algorithms::Solver as LegacyAlgorithmSolver;
 use crate::models::{
     ApiInput, BenchmarkObserver, Constraint, LoggingOptions, Objective, ProblemDefinition,
     ProgressCallback, ProgressUpdate, SimulatedAnnealingParams, SolverConfiguration, SolverKind,
     SolverParams, SolverResult, StopConditions, DEFAULT_SOLVER_KIND,
 };
-use crate::solver::{SolverError, State};
+use crate::solver1::search::simulated_annealing::SimulatedAnnealing;
+use crate::solver1::search::Solver as _;
+use crate::solver1::State;
+use crate::solver_support::SolverError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SolverEngineCapabilities {

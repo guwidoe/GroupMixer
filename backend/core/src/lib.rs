@@ -82,12 +82,14 @@ use crate::models::{
     SolverKind, SolverResult,
 };
 use crate::models::{Constraint, Objective};
-use crate::solver::SolverError;
+use crate::solver_support::SolverError;
 
 pub mod algorithms;
 pub mod engines;
 pub mod models;
 pub mod solver;
+pub mod solver1;
+pub mod solver_support;
 
 /// Runs the optimization solver with the given input configuration.
 ///

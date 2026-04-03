@@ -5,7 +5,7 @@ use gm_core::models::{
     ApiInput, AttributeBalanceMode, AttributeBalanceParams, Constraint, Group, Objective,
     PairMeetingCountParams, PairMeetingMode, Person, ProblemDefinition,
 };
-use gm_core::solver::State;
+use gm_core::solver1::State;
 use std::collections::HashMap;
 
 fn person(id: &str) -> Person {

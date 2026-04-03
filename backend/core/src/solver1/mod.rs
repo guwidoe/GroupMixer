@@ -13,6 +13,7 @@ mod display;
 mod dsu;
 mod moves;
 mod scoring;
+pub mod search;
 #[cfg(test)]
 mod tests;
 mod validation;
@@ -21,11 +22,10 @@ use crate::models::{
     AttributeBalanceParams, LoggingOptions, MovePolicy, PairMeetingMode, SolverBenchmarkTelemetry,
     SolverResult, StopReason, TelemetryOptions,
 };
+use crate::solver_support::SolverError;
 use constraint_index::ResolvedAttributeBalanceConstraint;
 use dsu::Dsu;
-use serde::Serialize;
 use std::collections::HashMap;
-use thiserror::Error;
 
 pub(crate) const CONSTRUCTION_SEED_SALT: u64 = 0x6a09e667f3bcc909;
 pub(crate) const SEARCH_SEED_SALT: u64 = 0xbb67ae8584caa73b;
@@ -37,23 +37,6 @@ pub(crate) fn derive_phase_seed(base_seed: u64, salt: u64) -> u64 {
     z = (z ^ (z >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
     z = (z ^ (z >> 27)).wrapping_mul(0x94d049bb133111eb);
     z ^ (z >> 31)
-}
-
-/// Errors that can occur during solver operation.
-///
-/// These errors represent validation failures or constraint violations that
-/// prevent the solver from proceeding with optimization.
-#[derive(Error, Debug, Serialize)]
-pub enum SolverError {
-    /// A constraint validation error with descriptive message.
-    ///
-    /// This error occurs when the problem configuration is invalid, such as:
-    /// - Insufficient group capacity for all people
-    /// - Contradictory constraints (e.g., must-stay-together + cannot-be-together for same people)
-    /// - Invalid person or group IDs referenced in constraints
-    /// - Cliques that are too large to fit in any group
-    #[error("Constraint violation: {0}")]
-    ValidationError(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

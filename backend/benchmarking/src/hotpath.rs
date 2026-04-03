@@ -14,9 +14,9 @@ use crate::hotpath_inputs::{
 };
 use crate::manifest::{LoadedBenchmarkCase, LoadedBenchmarkSuite};
 use crate::runner::build_solver_metadata_for_kind;
-use gm_core::algorithms::simulated_annealing::SimulatedAnnealing;
-use gm_core::algorithms::Solver;
 use gm_core::models::{MoveFamilyBenchmarkTelemetrySummary, SolverKind};
+use gm_core::solver1::search::simulated_annealing::SimulatedAnnealing;
+use gm_core::solver1::search::Solver;
 use std::hint::black_box;
 use std::time::Instant;
 
@@ -167,7 +167,7 @@ fn run_hotpath_case(
                 let effective_move_policy = input.cold_input.solver.move_policy.clone();
                 for _ in 0..warmup_iterations {
                     black_box(
-                        gm_core::solver::State::new(&input.cold_input)
+                        gm_core::solver1::State::new(&input.cold_input)
                             .map_err(|error| error.to_string())?,
                     );
                 }
@@ -176,7 +176,7 @@ fn run_hotpath_case(
                 let mut construction_seconds = 0.0;
                 for _ in 0..iterations {
                     let op_started = Instant::now();
-                    let state = gm_core::solver::State::new(&input.cold_input)
+                    let state = gm_core::solver1::State::new(&input.cold_input)
                         .map_err(|error| error.to_string())?;
                     construction_seconds += op_started.elapsed().as_secs_f64();
                     checksum =

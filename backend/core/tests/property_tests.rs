@@ -7,7 +7,7 @@ use gm_core::models::{
     ApiInput, Group, Person, ProblemDefinition, SimulatedAnnealingParams, SolverConfiguration,
     SolverKind, SolverParams, StopConditions,
 };
-use gm_core::solver::State;
+use gm_core::solver1::State;
 use gm_core::{available_solver_descriptors, default_solver_configuration_for, run_solver};
 use proptest::prelude::*;
 use std::collections::HashMap;

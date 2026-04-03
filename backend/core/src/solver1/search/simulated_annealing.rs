@@ -22,14 +22,15 @@
 //!
 //! This provides smooth temperature decay from high exploration to low exploitation.
 
-use crate::algorithms::Solver;
 use crate::models::{
     BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, MoveFamily,
     MoveFamilyBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
     MoveSelectionMode, ProgressCallback, ProgressUpdate, SolverBenchmarkTelemetry,
     SolverConfiguration, SolverResult, StopReason,
 };
-use crate::solver::{derive_phase_seed, SolverError, State, SEARCH_SEED_SALT};
+use crate::solver1::search::Solver;
+use crate::solver1::{derive_phase_seed, State, SEARCH_SEED_SALT};
+use crate::solver_support::SolverError;
 use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha12Rng;
 #[cfg(not(target_arch = "wasm32"))]
@@ -1869,7 +1870,7 @@ mod tests {
         ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
         SimulatedAnnealingParams, SolverConfiguration, SolverParams, StopConditions,
     };
-    use crate::solver::State;
+    use crate::solver1::State;
     use std::collections::HashMap;
 
     fn person(id: &str) -> Person {

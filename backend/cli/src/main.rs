@@ -1192,7 +1192,7 @@ fn cmd_validate(input: Option<PathBuf>, stdin: bool) -> Result<()> {
     })?;
     let api_input: ApiInput = validate_request.into();
 
-    use gm_core::solver::State;
+    use gm_core::solver1::State;
     match State::new(&api_input) {
         Ok(_) => {
             let response = ValidateResponse {

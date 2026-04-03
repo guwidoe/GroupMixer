@@ -4,7 +4,7 @@ use gm_core::models::{
     PairMeetingCountParams, PairMeetingMode, Person, ProblemDefinition, SimulatedAnnealingParams,
     SolverConfiguration, SolverParams, StopConditions,
 };
-use gm_core::solver::State;
+use gm_core::solver1::State;
 use std::collections::HashMap;
 
 #[derive(Clone)]

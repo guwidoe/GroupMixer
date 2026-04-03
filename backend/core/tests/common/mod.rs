@@ -7,7 +7,7 @@ use gm_core::models::{
     ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams,
     SolverConfiguration, SolverParams, StopConditions,
 };
-use gm_core::solver::State;
+use gm_core::solver1::State;
 use std::collections::HashMap;
 
 /// Creates a simple test input with the specified configuration.
