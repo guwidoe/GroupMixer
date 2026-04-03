@@ -54,43 +54,49 @@ Avoid labels like:
 - `new`
 - `old`
 
-Those names describe project chronology, not architecture.
+Avoid also forcing overly specific architectural claims into folder names when the real distinctions are still evolving.
 
-Use descriptive names tied to solver structure.
+In this case, the two solver families may share search-policy ideas such as simulated annealing while differing mainly in internal architecture and data flow. That makes many "descriptive" names brittle or misleading.
+
+So the repo should use **neutral numbered family names** for the long-lived internal seam.
 
 ## Recommended canonical names
 
 ### Current solver family
 
-**Directory:** `backend/core/src/simulated_annealing_incremental/`
+**Directory:** `backend/core/src/solver1/`
 
-**Canonical solver family id:** `simulated_annealing_incremental`
+**Canonical solver family id:** `solver1`
 
 ### Proposed new solver family
 
-**Directory:** `backend/core/src/metaheuristic_compiled_kernel/`
+**Directory:** `backend/core/src/solver2/`
 
-**Canonical solver family id:** `metaheuristic_compiled_kernel`
+**Canonical solver family id:** `solver2`
 
 ## Why these names
 
-### `simulated_annealing_incremental`
-This names the current solver by what materially defines it:
+### `solver1` / `solver2`
+These names are intentionally neutral.
 
-- simulated annealing search policy
-- incremental state/cache maintenance
+That is a feature here, not a weakness.
 
-It does **not** falsely imply weakness with words like `naive`, and it does **not** tie the name to repo history.
+They avoid:
 
-### `metaheuristic_compiled_kernel`
-This names the proposed architecture by what materially defines it:
+- chronology-laden labels like `legacy` and `v2`
+- judgment words like `naive`
+- misleading architectural claims in short path names
+- ugly acronym soup that future contributors must decode
 
-- compiled immutable problem representation
-- explicit move kernels
-- explicit affected-region / scoring kernel structure
-- metaheuristic search over those kernels
+The descriptive truth should instead live in explicit metadata and docs, such as:
 
-If the architecture later stops matching this description, rename before wider exposure. Until then, this is a truthful working name.
+- `SolverKind`
+- solver descriptors / notes
+- benchmark artifact metadata
+- architecture docs
+- parity and rollout docs
+
+This keeps source paths short and stable while preserving honest architectural description elsewhere.
 
 ## Compatibility rule
 
@@ -100,9 +106,9 @@ At the current public parse boundary, the repo should continue to accept the exi
 - `simulated_annealing`
 - `legacy_simulated_annealing`
 
-But internally, shared code should converge on the new canonical descriptive id:
+But internally, shared code should converge on the new canonical neutral id:
 
-- `simulated_annealing_incremental`
+- `solver1`
 
 This keeps migration explicit without breaking existing saved requests or wrappers immediately.
 
@@ -165,8 +171,8 @@ flowchart TD
     A[backend/core/src] --> B[engines]
     A --> C[models.rs]
     A --> D[solver_support]
-    A --> E[simulated_annealing_incremental]
-    A --> F[metaheuristic_compiled_kernel]
+    A --> E[solver1]
+    A --> F[solver2]
 
     B --> B1[registry]
     B --> B2[descriptors]
@@ -203,7 +209,7 @@ backend/core/src/
     mod.rs
     validation.rs         # only truly cross-engine helpers
     telemetry.rs          # only if shared observer glue is needed
-  simulated_annealing_incremental/
+  solver1/
     mod.rs
     state.rs
     construction.rs
@@ -221,7 +227,7 @@ backend/core/src/
       mod.rs
       simulated_annealing.rs
     validation.rs
-  metaheuristic_compiled_kernel/
+  solver2/
     mod.rs
     compiled_problem.rs
     state.rs
@@ -303,7 +309,7 @@ The new solver should **not** be forced to:
 - pretend its internal hotpath breakdown is identical
 - emit fake `swap/transfer/clique_swap` timing buckets if those cease to be the truthful internal units
 
-If `metaheuristic_compiled_kernel` still uses comparable move families, reuse those categories.
+If `solver2` still uses comparable move families, reuse those categories.
 If not, extend the benchmark system honestly rather than bending the new engine to match the old one.
 
 ## Phased plan
@@ -323,7 +329,7 @@ Lock descriptive names and the target directory shape before implementation star
 ### Acceptance
 
 - no new docs or code should introduce `legacy` / `v2` naming for the solver-family seam
-- descriptive naming is the new standard in docs and implementation planning
+- `solver1` / `solver2` are the accepted neutral family names for source layout and canonical internal ids
 
 ## Phase 1 — Pure directory reshape for the current solver
 
@@ -332,7 +338,7 @@ Move the current solver into a descriptive dedicated directory without changing 
 
 ### Work
 
-- move `backend/core/src/solver/` into `backend/core/src/simulated_annealing_incremental/`
+- move `backend/core/src/solver/` into `backend/core/src/solver1/`
 - move or absorb `backend/core/src/algorithms/simulated_annealing.rs` into that solver-family tree
 - update `lib.rs`, `engines/`, and imports
 - keep behavior unchanged
@@ -347,22 +353,22 @@ This phase is a **mechanical boundary cleanup**, not a semantic rewrite.
 - all existing tests pass unchanged in behavior
 - benchmark commands still run against the current solver
 
-## Phase 2 — Strengthen descriptive solver-family identifiers
+## Phase 2 — Strengthen canonical solver-family identifiers
 
 ### Goal
-Align internal solver-family ids with the new descriptive naming.
+Align internal solver-family ids with the new canonical neutral naming.
 
 ### Work
 
-- extend `SolverKind` with descriptive canonical ids
+- extend `SolverKind` with the neutral canonical ids
 - keep parse aliases for older ids
 - update engine descriptors
-- update benchmark artifact metadata to record the descriptive canonical id
+- update benchmark artifact metadata to record the canonical neutral id
 - update fixture parsing and benchmark manifest parsing to accept old aliases but normalize to new ids
 
 ### Acceptance
 
-- internal code and benchmark artifacts use descriptive canonical ids
+- internal code and benchmark artifacts use the canonical ids `solver1` / `solver2`
 - public parse boundaries still accept historical aliases where required
 - no silent fallback between solver families exists
 
@@ -376,7 +382,7 @@ Make it obvious which code is shared and which code belongs to one engine.
 - create `solver_support/` only for truly cross-engine helpers
 - keep engine registry in `engines/`
 - avoid leaking current-solver-only helpers into shared directories
-- review imports so shared code does not accidentally depend on `simulated_annealing_incremental` internals except through the engine seam
+- review imports so shared code does not accidentally depend on `solver1` internals except through the engine seam
 
 ### Acceptance
 
@@ -384,14 +390,14 @@ Make it obvious which code is shared and which code belongs to one engine.
 - current solver internals are no longer the accidental global default
 - adding the new solver does not require touching unrelated current-solver internals by default
 
-## Phase 4 — Bootstrap `metaheuristic_compiled_kernel`
+## Phase 4 — Bootstrap `solver2`
 
 ### Goal
 Create the new solver-family directory and compile it behind the shared engine seam.
 
 ### Work
 
-- add `backend/core/src/metaheuristic_compiled_kernel/`
+- add `backend/core/src/solver2/`
 - add a new `SolverKind` variant and descriptor
 - implement explicit unsupported behavior where parts are not ready yet
 - start with correctness-first skeletons:
@@ -413,7 +419,7 @@ Reuse the existing solver-aware test stack immediately.
 
 ### Work
 
-- run `metaheuristic_compiled_kernel` through property/invariant tests where possible
+- run `solver2` through property/invariant tests where possible
 - add solver-aware data-driven fixtures using explicit comparison categories
 - start with:
   - `invariant_only`
@@ -434,7 +440,7 @@ Reuse the benchmark system without cloning it.
 
 ### Work
 
-- run solve-level suites for `metaheuristic_compiled_kernel`
+- run solve-level suites for `solver2`
 - store solver-family identity in the existing artifact shape
 - reuse existing baseline / compare / recording flow
 - add new hotpath modes only where the architecture actually needs them
@@ -465,13 +471,13 @@ Do not make the new solver user-selectable in normal product flows until the rol
 ## PR 1 — current solver directory reshape
 Mechanical move only.
 
-## PR 2 — descriptive canonical ids + alias normalization
+## PR 2 — canonical ids + alias normalization
 No new solver implementation yet.
 
 ## PR 3 — shared/support boundary cleanup
 Keep shared vs solver-family code honest.
 
-## PR 4 — `metaheuristic_compiled_kernel` skeleton + registry integration
+## PR 4 — `solver2` skeleton + registry integration
 Explicit unsupported behavior allowed.
 
 ## PR 5 — parity/invariant harness integration
@@ -510,11 +516,11 @@ Mitigation:
 
 The repo is in the right shape for sustained parallel solver work when all of the following are true:
 
-1. the current solver lives in `simulated_annealing_incremental/`
-2. the new architecture lives in `metaheuristic_compiled_kernel/`
+1. the current solver lives in `solver1/`
+2. the new architecture lives in `solver2/`
 3. shared engine dispatch lives outside both directories
 4. generic `solver/` is no longer the home of one concrete engine
-5. descriptive canonical solver family ids are in place internally
+5. canonical neutral solver family ids are in place internally
 6. old ids remain accepted only as explicit parse aliases where needed
 7. both engines can plug into the same fixture harness
 8. both engines can plug into the same solve-level benchmark system
@@ -525,4 +531,4 @@ The repo is in the right shape for sustained parallel solver work when all of th
 
 Start with **PR 1: current solver directory reshape**.
 
-That gives the repo honest boundaries first, keeps the current solver intact, and clears the path for `metaheuristic_compiled_kernel` to reuse the existing verification and benchmark stack without architectural confusion.
+That gives the repo honest boundaries first, keeps the current solver intact, and clears the path for `solver2` to reuse the existing verification and benchmark stack without architectural confusion.
