@@ -24,6 +24,8 @@ Each fixture can declare metadata alongside `input`, `expected`, and `test_optio
 - `tags`: queryable categories that are also encoded into generated test names
 - `kind`: `correctness` or `performance`
 - `tier`: `default` or `slow`
+- `solver_families`: optional list of solver IDs/aliases to run the fixture against; omitted means use the fixture input's declared solver
+- `comparison`: optional cross-solver comparison policy (`single_solver`, `exact_parity`, `bounded_parity`, `invariant_only`, `score_quality`, `performance_only`)
 
 Performance and slow fixtures are generated as `#[ignore]` tests so they do not make the default correctness suite brittle.
 
@@ -101,6 +103,7 @@ When adding a new solver feature or regression case:
 2. assign meaningful `metadata.tags`
 3. mark expensive cases with `kind: "performance"` and/or `tier: "slow"`
 4. encode expected behavior in `expected`
-5. use unit/property tests for local branches and invariants, but keep cross-cutting solver behavior in fixture form where practical
+5. for cross-solver fixtures, declare `metadata.solver_families` and an honest `metadata.comparison.category`
+6. use unit/property tests for local branches and invariants, but keep cross-cutting solver behavior in fixture form where practical
 
 The generated per-fixture tests come from `backend/core/build.rs`, which scans the fixture directory and emits one Rust test per JSON file.

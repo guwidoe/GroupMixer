@@ -1,5 +1,7 @@
-use gm_core::models::{ApiInput, SolverResult};
+use gm_core::models::{ApiInput, SolverKind, SolverResult};
+use gm_core::{default_solver_configuration_for, run_solver_with_progress};
 use serde::Deserialize;
+use std::collections::BTreeSet;
 use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
@@ -38,6 +40,34 @@ struct FixtureMetadata {
     kind: FixtureKind,
     #[serde(default)]
     tier: FixtureTier,
+    #[serde(default)]
+    solver_families: Vec<String>,
+    #[serde(default)]
+    comparison: FixtureComparisonSpec,
+}
+
+#[derive(Deserialize, Debug, Default)]
+struct FixtureComparisonSpec {
+    #[serde(default)]
+    category: FixtureComparisonCategory,
+    #[serde(default)]
+    max_final_score_delta: Option<f64>,
+    #[serde(default)]
+    max_score_regression: Option<f64>,
+    #[serde(default)]
+    require_matching_stop_reason: bool,
+}
+
+#[derive(Deserialize, Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+enum FixtureComparisonCategory {
+    #[default]
+    SingleSolver,
+    ExactParity,
+    BoundedParity,
+    InvariantOnly,
+    ScoreQuality,
+    PerformanceOnly,
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -102,6 +132,12 @@ struct ExpectedMetrics {
     min_iterations_per_second: Option<u64>,
 }
 
+struct FixtureRunRecord {
+    solver_kind: SolverKind,
+    result: SolverResult,
+    elapsed_ms: u64,
+}
+
 fn run_fixture_case(path: &Path) {
     let file_content = fs::read_to_string(path)
         .unwrap_or_else(|e| panic!("Failed to read test case file {:?}: {}", path, e));
@@ -114,68 +150,251 @@ fn run_fixture_case(path: &Path) {
     });
 
     let loop_count = test_case.test_options.loop_count;
+    let solver_kinds = fixture_solver_kinds(&test_case);
     if loop_count > 1 {
         println!(
-            "--- Running Test: {} ({} times) [{} / {}] ---",
+            "--- Running Test: {} ({} times) [{} / {} / solvers={}] ---",
             test_case.name,
             loop_count,
             format_tags(&test_case.metadata.tags),
-            format_fixture_mode(&test_case.metadata)
+            format_fixture_mode(&test_case.metadata),
+            format_solver_kinds(&solver_kinds),
         );
     } else {
         println!(
-            "--- Running Test: {} [{} / {}] ---",
+            "--- Running Test: {} [{} / {} / solvers={}] ---",
             test_case.name,
             format_tags(&test_case.metadata.tags),
-            format_fixture_mode(&test_case.metadata)
+            format_fixture_mode(&test_case.metadata),
+            format_solver_kinds(&solver_kinds),
         );
     }
 
-    let last_progress: Arc<Mutex<Option<gm_core::models::ProgressUpdate>>> =
-        Arc::new(Mutex::new(None));
-    let progress_clone = last_progress.clone();
+    let mut run_records = Vec::new();
+    for solver_kind in solver_kinds {
+        let input = retarget_input_for_solver_kind(&test_case.input, solver_kind);
+        let last_progress: Arc<Mutex<Option<gm_core::models::ProgressUpdate>>> =
+            Arc::new(Mutex::new(None));
+        let progress_clone = last_progress.clone();
 
-    let progress_cb: gm_core::models::ProgressCallback =
-        Box::new(move |p: &gm_core::models::ProgressUpdate| {
-            *progress_clone.lock().unwrap() = Some(p.clone());
-            true
-        });
+        let progress_cb: gm_core::models::ProgressCallback =
+            Box::new(move |p: &gm_core::models::ProgressUpdate| {
+                *progress_clone.lock().unwrap() = Some(p.clone());
+                true
+            });
 
-    let start_time = Instant::now();
-    let result = gm_core::run_solver_with_progress(&test_case.input, Some(&progress_cb));
-    let elapsed_ms = start_time.elapsed().as_millis() as u64;
+        let start_time = Instant::now();
+        let result = run_solver_with_progress(&input, Some(&progress_cb));
+        let elapsed_ms = start_time.elapsed().as_millis() as u64;
 
-    match result {
-        Ok(result) => {
-            if test_case.expected.expect_solver_error {
-                panic!(
-                    "Expected solver to error for test case {} ({:?}), but it succeeded",
-                    test_case.name, path
-                );
-            }
-
-            run_assertions(&test_case, result, &last_progress, loop_count, elapsed_ms);
-        }
-        Err(e) => {
-            if test_case.expected.expect_solver_error {
-                if let Some(substr) = &test_case.expected.expected_error_contains {
-                    let msg = format!("{:?}", e);
-                    assert!(
-                        msg.contains(substr),
-                        "Expected error to contain '{}', but got {:?}",
-                        substr,
-                        e
+        match result {
+            Ok(result) => {
+                if test_case.expected.expect_solver_error {
+                    panic!(
+                        "Expected solver to error for test case {} ({:?}) with solver {}, but it succeeded",
+                        test_case.name,
+                        path,
+                        solver_kind.canonical_id()
                     );
                 }
-                return;
-            }
 
+                run_assertions(
+                    &test_case,
+                    &input,
+                    &result,
+                    &last_progress,
+                    loop_count,
+                    elapsed_ms,
+                    solver_kind,
+                );
+                run_records.push(FixtureRunRecord {
+                    solver_kind,
+                    result,
+                    elapsed_ms,
+                });
+            }
+            Err(e) => {
+                if test_case.expected.expect_solver_error {
+                    if let Some(substr) = &test_case.expected.expected_error_contains {
+                        let msg = format!("{:?}", e);
+                        assert!(
+                            msg.contains(substr),
+                            "Expected error to contain '{}' for solver {}, but got {:?}",
+                            substr,
+                            solver_kind.canonical_id(),
+                            e
+                        );
+                    }
+                    continue;
+                }
+
+                panic!(
+                    "Solver failed for test case {} ({:?}) with solver {}: {:?}",
+                    test_case.name,
+                    path,
+                    solver_kind.canonical_id(),
+                    Some(e)
+                );
+            }
+        }
+    }
+
+    assert_cross_solver_expectations(&test_case, &run_records);
+}
+
+fn fixture_solver_kinds(test_case: &TestCase) -> Vec<SolverKind> {
+    if test_case.metadata.solver_families.is_empty() {
+        return vec![test_case
+            .input
+            .solver
+            .validate_solver_selection()
+            .unwrap_or_else(|error| panic!("Invalid fixture solver selection: {error}"))];
+    }
+
+    let mut seen = BTreeSet::new();
+    test_case
+        .metadata
+        .solver_families
+        .iter()
+        .map(|solver_id| {
+            SolverKind::parse_config_id(solver_id).unwrap_or_else(|error| {
+                panic!(
+                    "Invalid fixture solver family '{}' in {}: {}",
+                    solver_id, test_case.name, error
+                )
+            })
+        })
+        .filter(|kind| seen.insert(*kind))
+        .collect()
+}
+
+fn format_solver_kinds(kinds: &[SolverKind]) -> String {
+    kinds
+        .iter()
+        .map(|kind| kind.canonical_id())
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
+fn retarget_input_for_solver_kind(input: &ApiInput, solver_kind: SolverKind) -> ApiInput {
+    let mut retargeted = input.clone();
+    let current_kind = input
+        .solver
+        .validate_solver_selection()
+        .unwrap_or_else(|error| {
             panic!(
-                "Solver failed for test case {} ({:?}): {:?}",
-                test_case.name,
-                path,
-                Some(e)
-            );
+                "Fixture input has invalid solver selection '{}': {error}",
+                input.solver.solver_type
+            )
+        });
+
+    if current_kind == solver_kind {
+        retargeted.solver.solver_type = solver_kind.canonical_id().to_string();
+        return retargeted;
+    }
+
+    let mut replacement = default_solver_configuration_for(solver_kind);
+    replacement.stop_conditions = input.solver.stop_conditions.clone();
+    replacement.logging = input.solver.logging.clone();
+    replacement.telemetry = input.solver.telemetry.clone();
+    replacement.seed = input.solver.seed;
+    replacement.move_policy = input.solver.move_policy.clone();
+    replacement.allowed_sessions = input.solver.allowed_sessions.clone();
+    retargeted.solver = replacement;
+    retargeted
+}
+
+fn assert_cross_solver_expectations(test_case: &TestCase, run_records: &[FixtureRunRecord]) {
+    if run_records.len() <= 1 {
+        return;
+    }
+
+    match test_case.metadata.comparison.category {
+        FixtureComparisonCategory::SingleSolver | FixtureComparisonCategory::InvariantOnly => {}
+        FixtureComparisonCategory::ExactParity => {
+            let baseline = &run_records[0];
+            for candidate in &run_records[1..] {
+                assert_eq!(
+                    candidate.result.schedule,
+                    baseline.result.schedule,
+                    "Expected exact schedule parity between '{}' and '{}'",
+                    baseline.solver_kind.canonical_id(),
+                    candidate.solver_kind.canonical_id()
+                );
+                assert_eq!(
+                    candidate.result.final_score,
+                    baseline.result.final_score,
+                    "Expected exact final score parity between '{}' and '{}'",
+                    baseline.solver_kind.canonical_id(),
+                    candidate.solver_kind.canonical_id()
+                );
+                assert_eq!(
+                    candidate.result.constraint_penalty,
+                    baseline.result.constraint_penalty,
+                    "Expected exact constraint penalty parity between '{}' and '{}'",
+                    baseline.solver_kind.canonical_id(),
+                    candidate.solver_kind.canonical_id()
+                );
+                assert_eq!(
+                    candidate.result.stop_reason,
+                    baseline.result.stop_reason,
+                    "Expected exact stop reason parity between '{}' and '{}'",
+                    baseline.solver_kind.canonical_id(),
+                    candidate.solver_kind.canonical_id()
+                );
+            }
+        }
+        FixtureComparisonCategory::BoundedParity => {
+            let max_final_score_delta =
+                test_case.metadata.comparison.max_final_score_delta.expect(
+                    "bounded_parity fixtures must declare comparison.max_final_score_delta",
+                );
+            let baseline = &run_records[0];
+            for candidate in &run_records[1..] {
+                let delta = (candidate.result.final_score - baseline.result.final_score).abs();
+                assert!(
+                    delta <= max_final_score_delta,
+                    "Final score delta {} exceeded bounded parity threshold {} between '{}' and '{}'",
+                    delta,
+                    max_final_score_delta,
+                    baseline.solver_kind.canonical_id(),
+                    candidate.solver_kind.canonical_id()
+                );
+                if test_case.metadata.comparison.require_matching_stop_reason {
+                    assert_eq!(candidate.result.stop_reason, baseline.result.stop_reason);
+                }
+            }
+        }
+        FixtureComparisonCategory::ScoreQuality => {
+            let max_score_regression = test_case
+                .metadata
+                .comparison
+                .max_score_regression
+                .unwrap_or(0.0);
+            let baseline = &run_records[0];
+            for candidate in &run_records[1..] {
+                let delta = candidate.result.final_score - baseline.result.final_score;
+                assert!(
+                    delta <= max_score_regression,
+                    "Solver '{}' regressed final score by {} vs '{}' (allowed {})",
+                    candidate.solver_kind.canonical_id(),
+                    delta,
+                    baseline.solver_kind.canonical_id(),
+                    max_score_regression
+                );
+            }
+        }
+        FixtureComparisonCategory::PerformanceOnly => {
+            let baseline = &run_records[0];
+            for candidate in &run_records[1..] {
+                println!(
+                    "  Performance-only comparison: {}={}ms vs {}={}ms",
+                    baseline.solver_kind.canonical_id(),
+                    baseline.elapsed_ms,
+                    candidate.solver_kind.canonical_id(),
+                    candidate.elapsed_ms
+                );
+            }
         }
     }
 }
@@ -199,11 +418,13 @@ fn format_fixture_mode(metadata: &FixtureMetadata) -> &'static str {
 
 fn run_assertions(
     test_case: &TestCase,
-    result: SolverResult,
+    input: &ApiInput,
+    result: &SolverResult,
     last_progress: &Arc<Mutex<Option<gm_core::models::ProgressUpdate>>>,
     loop_count: u32,
     elapsed_ms: u64,
-) {
+    solver_kind: SolverKind,
+) -> gm_core::models::ProgressUpdate {
     let final_progress = last_progress
         .lock()
         .unwrap()
@@ -211,27 +432,27 @@ fn run_assertions(
         .expect("Expected at least one progress callback to have been recorded");
 
     if test_case.expected.must_stay_together_respected {
-        assert_cliques_respected(&test_case.input, &result);
+        assert_cliques_respected(input, result);
     }
 
     if test_case.expected.cannot_be_together_respected {
-        assert_forbidden_pairs_respected(&test_case.input, &result);
+        assert_forbidden_pairs_respected(input, result);
     }
 
     if test_case.expected.should_stay_together_respected {
-        assert_should_together_respected(&test_case.input, &result);
+        assert_should_together_respected(input, result);
     }
 
     if test_case.expected.immovable_person_respected {
-        assert_immovable_person_respected(&test_case.input, &result);
+        assert_immovable_person_respected(input, result);
     }
 
     if test_case.expected.session_specific_constraints_respected {
-        assert_session_specific_constraints_respected(&test_case.input, &result);
+        assert_session_specific_constraints_respected(input, result);
     }
 
     if test_case.expected.participation_patterns_respected {
-        assert_participation_patterns_respected(&test_case.input, &result);
+        assert_participation_patterns_respected(input, result);
     }
 
     if let Some(max_penalty) = test_case.expected.max_constraint_penalty {
@@ -269,12 +490,18 @@ fn run_assertions(
             if let Some(max_ms) = test_case.expected.max_runtime_ms {
                 assert!(
                     elapsed_ms <= max_ms,
-                    "PERFORMANCE REGRESSION: Test '{}' took {}ms, exceeds max of {}ms",
+                    "PERFORMANCE REGRESSION: Test '{}' with solver '{}' took {}ms, exceeds max of {}ms",
                     test_case.name,
+                    solver_kind.canonical_id(),
                     elapsed_ms,
                     max_ms
                 );
-                println!("  Performance: {}ms (max: {}ms) ✓", elapsed_ms, max_ms);
+                println!(
+                    "  Performance [{}]: {}ms (max: {}ms) ✓",
+                    solver_kind.canonical_id(),
+                    elapsed_ms,
+                    max_ms
+                );
             }
 
             if let Some(min_ips) = test_case.expected.min_iterations_per_second {
@@ -291,14 +518,17 @@ fn run_assertions(
                 };
                 assert!(
                     actual_ips >= min_ips,
-                    "PERFORMANCE REGRESSION: Test '{}' achieved {} iter/s, below minimum of {} iter/s",
+                    "PERFORMANCE REGRESSION: Test '{}' with solver '{}' achieved {} iter/s, below minimum of {} iter/s",
                     test_case.name,
+                    solver_kind.canonical_id(),
                     actual_ips,
                     min_ips
                 );
                 println!(
-                    "  Throughput: {} iter/s (min: {} iter/s) ✓",
-                    actual_ips, min_ips
+                    "  Throughput [{}]: {} iter/s (min: {} iter/s) ✓",
+                    solver_kind.canonical_id(),
+                    actual_ips,
+                    min_ips
                 );
             }
         } else {
@@ -312,6 +542,8 @@ fn run_assertions(
     if loop_count > 1 {
         println!("\r  All {} runs passed.        ", loop_count);
     }
+
+    final_progress
 }
 
 fn assert_cliques_respected(input: &ApiInput, result: &SolverResult) {
@@ -585,6 +817,69 @@ fn assert_participation_patterns_respected(input: &ApiInput, result: &SolverResu
                 }
             }
         }
+    }
+}
+
+#[test]
+fn fixture_solver_family_aliases_normalize_and_deduplicate() {
+    let test_case = TestCase {
+        name: "solver family aliases".to_string(),
+        metadata: FixtureMetadata {
+            tags: vec![],
+            kind: FixtureKind::Correctness,
+            tier: FixtureTier::Default,
+            solver_families: vec![
+                "SimulatedAnnealing".to_string(),
+                "legacy_simulated_annealing".to_string(),
+            ],
+            comparison: FixtureComparisonSpec::default(),
+        },
+        input: sample_fixture_input(),
+        expected: ExpectedMetrics::default(),
+        test_options: TestOptions::default(),
+    };
+
+    let kinds = fixture_solver_kinds(&test_case);
+    assert_eq!(kinds, vec![SolverKind::LegacySimulatedAnnealing]);
+}
+
+#[test]
+fn retargeting_to_same_solver_canonicalizes_solver_type() {
+    let input = sample_fixture_input();
+    let retargeted = retarget_input_for_solver_kind(&input, SolverKind::LegacySimulatedAnnealing);
+    assert_eq!(retargeted.solver.solver_type, "legacy_simulated_annealing");
+    assert_eq!(
+        retargeted.solver.validate_solver_selection().unwrap(),
+        SolverKind::LegacySimulatedAnnealing
+    );
+}
+
+fn sample_fixture_input() -> ApiInput {
+    ApiInput {
+        initial_schedule: None,
+        problem: gm_core::models::ProblemDefinition {
+            people: vec![
+                gm_core::models::Person {
+                    id: "p0".to_string(),
+                    attributes: Default::default(),
+                    sessions: None,
+                },
+                gm_core::models::Person {
+                    id: "p1".to_string(),
+                    attributes: Default::default(),
+                    sessions: None,
+                },
+            ],
+            groups: vec![gm_core::models::Group {
+                id: "g0".to_string(),
+                size: 2,
+                session_sizes: None,
+            }],
+            num_sessions: 1,
+        },
+        objectives: vec![],
+        constraints: vec![],
+        solver: default_solver_configuration_for(SolverKind::LegacySimulatedAnnealing),
     }
 }
 

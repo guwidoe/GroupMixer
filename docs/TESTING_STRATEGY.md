@@ -293,8 +293,9 @@ Policy:
 ## Contributor rule of thumb
 
 - Small Rust change: run relevant unit/data-driven/property tests plus `cargo nextest run --workspace`
-- Solver refactor: run full Rust coverage plus mutation testing for the affected solver areas
-- Performance-sensitive solver refactor: add the relevant solve-level benchmark run and, if needed, matching `solver_perf` Criterion microbench group
+- Shared multi-solver seam change: run solver-aware data-driven/property coverage, contract/runtime parity checks, and update any affected rollout/comparison docs
+- Solver refactor for one family: run the affected unit/data-driven/property lanes for that family and keep unsupported modes explicit
+- Performance-sensitive solver refactor: add the relevant solve-level benchmark run with explicit solver-family identity and, if needed, matching `solver_perf` Criterion microbench group
 - Frontend logic change: run Vitest unit/component coverage for the affected area
 - UI flow change: run Vitest component tests plus Playwright workflow coverage
 - Layout/theme change: run visual regression in addition to functional tests

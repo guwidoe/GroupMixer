@@ -11,6 +11,7 @@
     "current_run_id",
     "suite_id",
     "benchmark_mode",
+    "comparison_category",
     "comparability",
     "case_comparisons",
     "class_rollups",
@@ -24,13 +25,16 @@
     "current_run_id": { "type": "string" },
     "suite_id": { "type": "string" },
     "benchmark_mode": { "type": "string" },
+    "comparison_category": { "type": "string", "enum": ["exact_parity", "bounded_parity", "invariant_only", "score_quality", "performance_only"] },
     "comparability": {
       "type": "object",
-      "required": ["status", "reasons", "same_benchmark_mode", "same_machine", "same_suite"],
+      "required": ["status", "reasons", "same_benchmark_mode", "same_comparison_category", "same_solver_families", "same_machine", "same_suite"],
       "properties": {
         "status": { "type": "string", "enum": ["comparable", "not_comparable"] },
         "reasons": { "type": "array", "items": { "type": "string" } },
         "same_benchmark_mode": { "type": "boolean" },
+        "same_comparison_category": { "type": "boolean" },
+        "same_solver_families": { "type": "boolean" },
         "same_machine": { "type": "boolean" },
         "same_suite": { "type": "boolean" }
       }

@@ -19,16 +19,15 @@ use gm_contracts::{
     operations::{local_help, operation_spec, OperationSpec},
     schemas::{export_schema, schema_specs},
     types::{
-        PublicError, PublicErrorEnvelope, RecommendSettingsRequest, ResultSummary,
-        SolveRequest, SolverCatalogResponse, SolverDescriptorContract, ValidateRequest,
-        ValidateResponse, ValidationIssue,
+        PublicError, PublicErrorEnvelope, RecommendSettingsRequest, ResultSummary, SolveRequest,
+        SolverCatalogResponse, SolverDescriptorContract, ValidateRequest, ValidateResponse,
+        ValidationIssue,
     },
 };
 use gm_core::{
     available_solver_descriptors, calculate_recommended_settings, default_solver_configuration,
     models::{ApiInput, SolverConfiguration, SolverKind, SolverResult},
-    run_solver,
-    solver_descriptor,
+    run_solver, solver_descriptor,
 };
 use schemars::Schema;
 use serde::{de::DeserializeOwned, Serialize};
@@ -219,7 +218,9 @@ pub async fn get_solver_descriptor_handler(
         )
     })?;
 
-    Ok(Json(SolverDescriptorContract::from(solver_descriptor(kind))))
+    Ok(Json(SolverDescriptorContract::from(solver_descriptor(
+        kind,
+    ))))
 }
 
 pub async fn validate_scenario_handler(body: Bytes) -> Result<Json<ValidateResponse>, ApiError> {

@@ -14,12 +14,14 @@ pub mod storage;
 pub mod summary;
 
 pub use artifacts::{
-    BaselineSnapshot, CaseComparison, CaseRunArtifact, CaseRunStatus, ClassRollup,
-    ClassRollupComparison, ComparabilityReport, ComparisonReport, ComparisonStatus,
-    EffectiveBenchmarkBudget, GitIdentity, IntegerDelta, MachineIdentity, MoveFamilyComparison,
-    NumericDelta, RegressionSuspect, RegressionSuspectKind, RegressionSuspectSummary, RunMetadata,
-    RunReport, RunSuiteMetadata, RunTotals, SolveTimingBreakdown, BASELINE_SNAPSHOT_SCHEMA_VERSION,
-    CASE_RUN_SCHEMA_VERSION, COMPARISON_REPORT_SCHEMA_VERSION, RUN_REPORT_SCHEMA_VERSION,
+    BaselineSnapshot, BenchmarkComparisonCategory, BenchmarkSeedPolicy, CaseComparison,
+    CaseRunArtifact, CaseRunStatus, ClassRollup, ClassRollupComparison, ComparabilityReport,
+    ComparisonReport, ComparisonStatus, EffectiveBenchmarkBudget, GitIdentity, IntegerDelta,
+    MachineIdentity, MoveFamilyComparison, NumericDelta, RegressionSuspect, RegressionSuspectKind,
+    RegressionSuspectSummary, RunMetadata, RunReport, RunSuiteMetadata, RunTotals,
+    SolveTimingBreakdown, SolverBenchmarkMetadata, SolverCapabilitiesSnapshot,
+    BASELINE_SNAPSHOT_SCHEMA_VERSION, CASE_RUN_SCHEMA_VERSION, COMPARISON_REPORT_SCHEMA_VERSION,
+    RUN_REPORT_SCHEMA_VERSION,
 };
 pub use benchmark_mode::{
     default_benchmark_mode, is_hotpath_benchmark_mode, is_supported_benchmark_mode,
@@ -31,8 +33,9 @@ pub use benchmark_mode::{
 pub use compare::{compare_run_to_baseline, persist_comparison_report};
 pub use index::{db_path as benchmark_index_path, list_recordings, list_refs};
 pub use manifest::{
-    load_case_manifest, load_suite_manifest, BenchmarkCaseManifest, BenchmarkCaseOverride,
-    BenchmarkSuiteClass, BenchmarkSuiteManifest, LoadedBenchmarkCase, LoadedBenchmarkSuite,
+    canonical_solver_family_for_case, load_case_manifest, load_suite_manifest,
+    BenchmarkCaseManifest, BenchmarkCaseOverride, BenchmarkSuiteClass, BenchmarkSuiteManifest,
+    LoadedBenchmarkCase, LoadedBenchmarkSuite,
 };
 pub use recording_types::{
     BenchmarkRef, BenchmarkRefTarget, RecordingGitIdentity, RecordingIndexRow,

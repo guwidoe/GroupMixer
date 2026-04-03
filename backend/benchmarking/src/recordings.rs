@@ -352,8 +352,8 @@ fn sanitize(value: &str) -> String {
 mod tests {
     use super::*;
     use crate::artifacts::{
-        GitIdentity, MachineIdentity, RunMetadata, RunSuiteMetadata, RunTotals,
-        RUN_REPORT_SCHEMA_VERSION,
+        BenchmarkComparisonCategory, GitIdentity, MachineIdentity, RunMetadata, RunSuiteMetadata,
+        RunTotals, RUN_REPORT_SCHEMA_VERSION,
     };
     use crate::manifest::BenchmarkSuiteClass;
     use tempfile::TempDir;
@@ -364,6 +364,8 @@ mod tests {
             suite: RunSuiteMetadata {
                 suite_id: suite_id.to_string(),
                 benchmark_mode: FULL_SOLVE_BENCHMARK_MODE.to_string(),
+                comparison_category: BenchmarkComparisonCategory::ScoreQuality,
+                solver_families: vec!["legacy_simulated_annealing".to_string()],
                 class: BenchmarkSuiteClass::Representative,
                 title: None,
                 description: None,

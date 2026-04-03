@@ -280,3 +280,4 @@ That protocol seam is a follow-on concern and should remain below:
 
 See:
 - `docs/adr/0001-future-cross-language-solver-adapter-seam.md`
+- `docs/MULTI_SOLVER_ROLLOUT_CRITERIA.md`

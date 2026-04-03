@@ -296,6 +296,60 @@ async fn contract_solver_endpoints_return_public_shapes() {
 }
 
 #[tokio::test]
+async fn solver_catalog_endpoints_expose_registered_solver_families() {
+    let app = create_router();
+
+    let list_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/solvers")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(list_response.status(), StatusCode::OK);
+    let list_body: serde_json::Value = json_response(list_response).await;
+    assert!(list_body["solvers"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|solver| solver["canonical_id"] == "legacy_simulated_annealing"));
+
+    let descriptor_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/solvers/SimulatedAnnealing")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(descriptor_response.status(), StatusCode::OK);
+    let descriptor_body: serde_json::Value = json_response(descriptor_response).await;
+    assert_eq!(
+        descriptor_body["canonical_id"],
+        "legacy_simulated_annealing"
+    );
+
+    let bad_response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/solvers/not-a-solver")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(bad_response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+#[tokio::test]
 async fn error_catalog_endpoints_are_available() {
     let app = create_router();
 

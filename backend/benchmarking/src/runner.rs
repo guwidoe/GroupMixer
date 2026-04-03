@@ -1,8 +1,8 @@
 use crate::artifacts::{
-    BaselineSnapshot, BenchmarkArtifactKind, CaseRunArtifact, CaseRunStatus, ClassRollup,
-    EffectiveBenchmarkBudget, RunMetadata, RunReport, RunSuiteMetadata, RunTotals,
-    SolveTimingBreakdown, BASELINE_SNAPSHOT_SCHEMA_VERSION, CASE_RUN_SCHEMA_VERSION,
-    RUN_REPORT_SCHEMA_VERSION,
+    BaselineSnapshot, BenchmarkArtifactKind, BenchmarkSeedPolicy, CaseRunArtifact, CaseRunStatus,
+    ClassRollup, EffectiveBenchmarkBudget, RunMetadata, RunReport, RunSuiteMetadata, RunTotals,
+    SolveTimingBreakdown, SolverBenchmarkMetadata, SolverCapabilitiesSnapshot,
+    BASELINE_SNAPSHOT_SCHEMA_VERSION, CASE_RUN_SCHEMA_VERSION, RUN_REPORT_SCHEMA_VERSION,
 };
 use crate::benchmark_mode::FULL_SOLVE_BENCHMARK_MODE;
 use crate::hotpath::run_hotpath_case_artifact;
@@ -13,8 +13,8 @@ use crate::manifest::{
 use crate::storage::{machine_identity_label, BenchmarkStorage};
 use anyhow::{Context, Result};
 use chrono::Utc;
-use gm_core::models::MoveFamilyBenchmarkTelemetrySummary;
-use gm_core::run_solver;
+use gm_core::models::{MoveFamilyBenchmarkTelemetrySummary, SolverKind};
+use gm_core::{run_solver, solver_descriptor};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -91,6 +91,8 @@ pub fn run_loaded_suite(
         suite: RunSuiteMetadata {
             suite_id: suite.manifest.suite_id.clone(),
             benchmark_mode: suite.manifest.benchmark_mode.clone(),
+            comparison_category: suite.manifest.comparison_category,
+            solver_families: suite_solver_families(&cases),
             class: suite.manifest.class,
             title: suite.manifest.title.clone(),
             description: suite.manifest.description.clone(),
@@ -188,6 +190,7 @@ fn run_case(
         time_limit_seconds: input.solver.stop_conditions.time_limit_seconds,
         no_improvement_iterations: input.solver.stop_conditions.no_improvement_iterations,
     };
+    let solver_metadata = build_solver_metadata(&input);
 
     let wall_start = Instant::now();
     match run_solver(&input) {
@@ -225,6 +228,7 @@ fn run_case(
                 tags: case.manifest.tags.clone(),
                 git,
                 machine,
+                solver: solver_metadata.clone(),
                 effective_seed: result.effective_seed.or(input.solver.seed),
                 effective_budget,
                 artifact_kind: BenchmarkArtifactKind::FullSolve,
@@ -263,6 +267,7 @@ fn run_case(
             tags: case.manifest.tags.clone(),
             git,
             machine,
+            solver: solver_metadata,
             effective_seed: input.solver.seed,
             effective_budget,
             artifact_kind: BenchmarkArtifactKind::FullSolve,
@@ -394,6 +399,63 @@ fn average(values: &[f64]) -> Option<f64> {
     }
 }
 
+fn build_solver_metadata(input: &gm_core::models::ApiInput) -> SolverBenchmarkMetadata {
+    let kind = input
+        .solver
+        .validate_solver_selection()
+        .expect("benchmark inputs should carry valid solver selection");
+    let descriptor = solver_descriptor(kind);
+
+    SolverBenchmarkMetadata {
+        solver_family: kind.canonical_id().to_string(),
+        solver_config_id: input.solver.solver_type.clone(),
+        display_name: descriptor.display_name.to_string(),
+        seed_policy: if input.solver.seed.is_some() {
+            BenchmarkSeedPolicy::Explicit
+        } else {
+            BenchmarkSeedPolicy::RuntimeGenerated
+        },
+        capabilities: SolverCapabilitiesSnapshot {
+            supports_initial_schedule: descriptor.capabilities.supports_initial_schedule,
+            supports_progress_callback: descriptor.capabilities.supports_progress_callback,
+            supports_benchmark_observer: descriptor.capabilities.supports_benchmark_observer,
+            supports_recommended_settings: descriptor.capabilities.supports_recommended_settings,
+            supports_deterministic_seed: descriptor.capabilities.supports_deterministic_seed,
+        },
+    }
+}
+
+pub(crate) fn build_solver_metadata_for_kind(
+    kind: SolverKind,
+    solver_config_id: &str,
+    seed_policy: BenchmarkSeedPolicy,
+) -> SolverBenchmarkMetadata {
+    let descriptor = solver_descriptor(kind);
+    SolverBenchmarkMetadata {
+        solver_family: kind.canonical_id().to_string(),
+        solver_config_id: solver_config_id.to_string(),
+        display_name: descriptor.display_name.to_string(),
+        seed_policy,
+        capabilities: SolverCapabilitiesSnapshot {
+            supports_initial_schedule: descriptor.capabilities.supports_initial_schedule,
+            supports_progress_callback: descriptor.capabilities.supports_progress_callback,
+            supports_benchmark_observer: descriptor.capabilities.supports_benchmark_observer,
+            supports_recommended_settings: descriptor.capabilities.supports_recommended_settings,
+            supports_deterministic_seed: descriptor.capabilities.supports_deterministic_seed,
+        },
+    }
+}
+
+fn suite_solver_families(cases: &[CaseRunArtifact]) -> Vec<String> {
+    let mut families: Vec<String> = cases
+        .iter()
+        .map(|case| case.solver.solver_family.clone())
+        .collect();
+    families.sort();
+    families.dedup();
+    families
+}
+
 fn write_json<T: serde::Serialize>(path: &Path, value: &T) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
@@ -433,8 +495,20 @@ mod tests {
         let report =
             run_suite_from_manifest("suites/path.yaml", &options).expect("path suite should run");
         assert_eq!(report.suite.suite_id, "path");
+        assert_eq!(
+            report.suite.comparison_category,
+            crate::artifacts::BenchmarkComparisonCategory::InvariantOnly
+        );
+        assert_eq!(
+            report.suite.solver_families,
+            vec!["legacy_simulated_annealing".to_string()]
+        );
         assert!(report.totals.total_cases >= 5);
         assert_eq!(report.totals.failed_cases, 0);
+        assert!(report
+            .cases
+            .iter()
+            .all(|case| case.solver.solver_family == "legacy_simulated_annealing"));
 
         let run_path =
             persist_run_report(&report, &options.artifacts_dir).expect("persist run report");
@@ -505,10 +579,18 @@ mod tests {
         let report =
             run_suite_from_manifest(&suite_path, &options).expect("hotpath suite should run");
         assert_eq!(report.suite.benchmark_mode, "swap_preview");
+        assert_eq!(
+            report.suite.comparison_category,
+            crate::artifacts::BenchmarkComparisonCategory::PerformanceOnly
+        );
         assert_eq!(report.totals.total_cases, 1);
         assert_eq!(
             report.cases[0].artifact_kind,
             BenchmarkArtifactKind::HotPath
+        );
+        assert_eq!(
+            report.cases[0].solver.solver_family,
+            "legacy_simulated_annealing"
         );
         let metrics = report.cases[0]
             .hotpath_metrics

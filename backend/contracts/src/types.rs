@@ -397,11 +397,20 @@ mod tests {
 
         assert_eq!(request.scenario.num_sessions, 2);
         assert_eq!(request.objectives.len(), 1);
-        assert_eq!(round_tripped.problem.num_sessions, api_input.problem.num_sessions);
+        assert_eq!(
+            round_tripped.problem.num_sessions,
+            api_input.problem.num_sessions
+        );
         assert_eq!(round_tripped.initial_schedule, api_input.initial_schedule);
         assert_eq!(round_tripped.objectives.len(), api_input.objectives.len());
-        assert_eq!(round_tripped.objectives[0].r#type, api_input.objectives[0].r#type);
-        assert_eq!(round_tripped.objectives[0].weight, api_input.objectives[0].weight);
+        assert_eq!(
+            round_tripped.objectives[0].r#type,
+            api_input.objectives[0].r#type
+        );
+        assert_eq!(
+            round_tripped.objectives[0].weight,
+            api_input.objectives[0].weight
+        );
         assert_eq!(round_tripped.solver.seed, api_input.solver.seed);
     }
 
@@ -416,7 +425,10 @@ mod tests {
         assert_eq!(contract.groups.len(), problem.groups.len());
         assert_eq!(round_tripped.num_sessions, problem.num_sessions);
         assert_eq!(round_tripped.people[1].sessions, problem.people[1].sessions);
-        assert_eq!(round_tripped.groups[1].session_sizes, problem.groups[1].session_sizes);
+        assert_eq!(
+            round_tripped.groups[1].session_sizes,
+            problem.groups[1].session_sizes
+        );
     }
 
     #[test]

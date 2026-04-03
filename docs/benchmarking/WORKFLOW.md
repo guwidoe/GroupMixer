@@ -219,6 +219,12 @@ Both bundle commands stage an immutable snapshot, persist one recording, and mat
 
 The current canonical bundle adds these hotpath lanes alongside the full-solve suites:
 
+Benchmark artifacts now also record solver-family identity and suite comparison category so cross-solver comparisons stay honest. Use:
+- `score_quality` for representative full-solve suites
+- `invariant_only` for semantic/path-focused suites
+- `performance_only` for hotpath forensics
+
+
 - `hotpath-construction`
 - `hotpath-full-recalculation`
 - `hotpath-swap-preview`

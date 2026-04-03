@@ -40,6 +40,24 @@ pub fn compare_run_to_baseline(
         ));
     }
 
+    let same_comparison_category =
+        current.suite.comparison_category == baseline.run_report.suite.comparison_category;
+    if !same_comparison_category {
+        reasons.push(format!(
+            "comparison category mismatch: current={:?} baseline={:?}",
+            current.suite.comparison_category, baseline.run_report.suite.comparison_category
+        ));
+    }
+
+    let same_solver_families =
+        current.suite.solver_families == baseline.run_report.suite.solver_families;
+    if !same_solver_families {
+        reasons.push(format!(
+            "solver family mismatch: current={:?} baseline={:?}",
+            current.suite.solver_families, baseline.run_report.suite.solver_families
+        ));
+    }
+
     let same_machine = same_machine_identity(current, &baseline.run_report);
     if !same_machine {
         reasons
@@ -76,6 +94,17 @@ pub fn compare_run_to_baseline(
         .collect();
     shared_case_ids.sort_unstable();
 
+    for case_id in &shared_case_ids {
+        let baseline_case = baseline_cases[case_id];
+        let current_case = current_cases[case_id];
+        if baseline_case.solver.solver_family != current_case.solver.solver_family {
+            reasons.push(format!(
+                "case solver family mismatch for {}: current={} baseline={}",
+                case_id, current_case.solver.solver_family, baseline_case.solver.solver_family
+            ));
+        }
+    }
+
     let case_comparisons: Vec<_> = shared_case_ids
         .into_iter()
         .map(|case_id| compare_case(current_cases[case_id], baseline_cases[case_id]))
@@ -90,6 +119,8 @@ pub fn compare_run_to_baseline(
         },
         reasons,
         same_benchmark_mode,
+        same_comparison_category,
+        same_solver_families,
         same_machine,
         same_suite: current.suite.suite_id == baseline.run_report.suite.suite_id,
     };
@@ -103,6 +134,7 @@ pub fn compare_run_to_baseline(
         current_run_id: current.run.run_id.clone(),
         suite_id: current.suite.suite_id.clone(),
         benchmark_mode: current.suite.benchmark_mode.clone(),
+        comparison_category: current.suite.comparison_category,
         comparability,
         case_comparisons,
         class_rollups,
@@ -340,12 +372,19 @@ fn build_suspect_summary(case_comparisons: &[CaseComparison]) -> RegressionSuspe
     }
 }
 
-fn preferred_quality_delta<'a>(comparison: &'a CaseComparison) -> Option<(&'static str, &'a NumericDelta)> {
+fn preferred_quality_delta<'a>(
+    comparison: &'a CaseComparison,
+) -> Option<(&'static str, &'a NumericDelta)> {
     comparison
         .final_score
         .as_ref()
         .map(|delta| ("final score", delta))
-        .or_else(|| comparison.best_score.as_ref().map(|delta| ("best score", delta)))
+        .or_else(|| {
+            comparison
+                .best_score
+                .as_ref()
+                .map(|delta| ("best score", delta))
+        })
 }
 
 fn quality_regression_suspect(comparison: &CaseComparison) -> Option<RegressionSuspect> {
@@ -576,6 +615,39 @@ mod tests {
             .reasons
             .iter()
             .any(|reason| reason.contains("benchmark mode mismatch")));
+    }
+
+    #[test]
+    fn solver_family_mismatch_is_reported_explicitly() {
+        let temp = TempDir::new().expect("temp dir");
+        let options = RunnerOptions {
+            artifacts_dir: temp.path().to_path_buf(),
+            cargo_profile: "test".to_string(),
+        };
+        let mut report =
+            run_suite_from_manifest("suites/path.yaml", &options).expect("run path suite");
+        let baseline_path =
+            save_baseline_snapshot(&report, "path-baseline", &options.artifacts_dir, None)
+                .expect("save baseline");
+        let baseline =
+            crate::runner::load_baseline_snapshot(&baseline_path).expect("load baseline");
+
+        report.suite.solver_families = vec!["next_solver".to_string()];
+        for case in &mut report.cases {
+            case.solver.solver_family = "next_solver".to_string();
+        }
+
+        let comparison = compare_run_to_baseline(&report, &baseline);
+        assert_eq!(
+            comparison.comparability.status,
+            ComparisonStatus::NotComparable
+        );
+        assert!(!comparison.comparability.same_solver_families);
+        assert!(comparison
+            .comparability
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("solver family mismatch")));
     }
 
     #[test]

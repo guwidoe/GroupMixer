@@ -313,6 +313,8 @@ mod tests {
             suite: RunSuiteMetadata {
                 suite_id: "path".to_string(),
                 benchmark_mode: crate::FULL_SOLVE_BENCHMARK_MODE.to_string(),
+                comparison_category: crate::BenchmarkComparisonCategory::InvariantOnly,
+                solver_families: vec!["legacy_simulated_annealing".to_string()],
                 class: BenchmarkSuiteClass::Path,
                 title: None,
                 description: None,

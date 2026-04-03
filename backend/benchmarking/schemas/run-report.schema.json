@@ -8,7 +8,7 @@
     "schema_version": { "type": "integer", "minimum": 1 },
     "suite": {
       "type": "object",
-      "required": ["suite_id", "benchmark_mode", "class", "manifest_path"],
+      "required": ["suite_id", "benchmark_mode", "comparison_category", "solver_families", "class", "manifest_path"],
       "properties": {
         "suite_id": { "type": "string" },
         "benchmark_mode": {
@@ -26,6 +26,8 @@
             "search_iteration"
           ]
         },
+        "comparison_category": { "type": "string", "enum": ["exact_parity", "bounded_parity", "invariant_only", "score_quality", "performance_only"] },
+        "solver_families": { "type": "array", "items": { "type": "string" } },
         "class": { "type": "string", "enum": ["path", "representative", "stretch", "adversarial"] },
         "title": { "type": ["string", "null"] },
         "description": { "type": ["string", "null"] },

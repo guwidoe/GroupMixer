@@ -14,6 +14,48 @@ pub enum BenchmarkArtifactKind {
     HotPath,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum BenchmarkComparisonCategory {
+    ExactParity,
+    BoundedParity,
+    InvariantOnly,
+    ScoreQuality,
+    #[default]
+    PerformanceOnly,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum BenchmarkSeedPolicy {
+    Explicit,
+    RuntimeGenerated,
+    NotApplicable,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct SolverCapabilitiesSnapshot {
+    #[serde(default)]
+    pub supports_initial_schedule: bool,
+    #[serde(default)]
+    pub supports_progress_callback: bool,
+    #[serde(default)]
+    pub supports_benchmark_observer: bool,
+    #[serde(default)]
+    pub supports_recommended_settings: bool,
+    #[serde(default)]
+    pub supports_deterministic_seed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SolverBenchmarkMetadata {
+    pub solver_family: String,
+    pub solver_config_id: String,
+    pub display_name: String,
+    pub seed_policy: BenchmarkSeedPolicy,
+    pub capabilities: SolverCapabilitiesSnapshot,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct HotPathMetrics {
     pub benchmark_mode: String,
@@ -125,6 +167,7 @@ pub struct CaseRunArtifact {
     pub tags: Vec<String>,
     pub git: GitIdentity,
     pub machine: MachineIdentity,
+    pub solver: SolverBenchmarkMetadata,
     #[serde(default)]
     pub effective_seed: Option<u64>,
     #[serde(default)]
@@ -167,6 +210,9 @@ pub struct CaseRunArtifact {
 pub struct RunSuiteMetadata {
     pub suite_id: String,
     pub benchmark_mode: String,
+    pub comparison_category: BenchmarkComparisonCategory,
+    #[serde(default)]
+    pub solver_families: Vec<String>,
     pub class: BenchmarkSuiteClass,
     #[serde(default)]
     pub title: Option<String>,
@@ -247,6 +293,8 @@ pub struct ComparabilityReport {
     #[serde(default)]
     pub reasons: Vec<String>,
     pub same_benchmark_mode: bool,
+    pub same_comparison_category: bool,
+    pub same_solver_families: bool,
     pub same_machine: bool,
     pub same_suite: bool,
 }
@@ -350,6 +398,7 @@ pub struct ComparisonReport {
     pub current_run_id: String,
     pub suite_id: String,
     pub benchmark_mode: String,
+    pub comparison_category: BenchmarkComparisonCategory,
     pub comparability: ComparabilityReport,
     pub case_comparisons: Vec<CaseComparison>,
     pub class_rollups: Vec<ClassRollupComparison>,
@@ -370,10 +419,13 @@ mod tests {
             current_run_id: "current-run".to_string(),
             suite_id: "path".to_string(),
             benchmark_mode: "full_solve".to_string(),
+            comparison_category: BenchmarkComparisonCategory::InvariantOnly,
             comparability: ComparabilityReport {
                 status: ComparisonStatus::Comparable,
                 reasons: vec![],
                 same_benchmark_mode: true,
+                same_comparison_category: true,
+                same_solver_families: true,
                 same_machine: true,
                 same_suite: true,
             },

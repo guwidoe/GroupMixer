@@ -15,7 +15,10 @@ pub fn create_router() -> Router {
         .route("/api/v1/help", get(bootstrap_help_handler))
         .route("/api/v1/help/{operation_id}", get(operation_help_handler))
         .route("/api/v1/solvers", get(list_solvers_handler))
-        .route("/api/v1/solvers/{solver_id}", get(get_solver_descriptor_handler))
+        .route(
+            "/api/v1/solvers/{solver_id}",
+            get(get_solver_descriptor_handler),
+        )
         .route("/api/v1/solve", post(solve_handler))
         .route("/api/v1/validate-scenario", post(validate_scenario_handler))
         .route(

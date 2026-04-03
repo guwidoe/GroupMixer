@@ -1,6 +1,6 @@
 use crate::artifacts::{
-    BenchmarkArtifactKind, CaseRunArtifact, CaseRunStatus, EffectiveBenchmarkBudget,
-    HotPathMetrics, SolveTimingBreakdown, CASE_RUN_SCHEMA_VERSION,
+    BenchmarkArtifactKind, BenchmarkSeedPolicy, CaseRunArtifact, CaseRunStatus,
+    EffectiveBenchmarkBudget, HotPathMetrics, SolveTimingBreakdown, CASE_RUN_SCHEMA_VERSION,
 };
 use crate::benchmark_mode::{
     CLIQUE_SWAP_APPLY_BENCHMARK_MODE, CLIQUE_SWAP_PREVIEW_BENCHMARK_MODE,
@@ -13,9 +13,10 @@ use crate::hotpath_inputs::{
     transfer_bench_input,
 };
 use crate::manifest::{LoadedBenchmarkCase, LoadedBenchmarkSuite};
+use crate::runner::build_solver_metadata_for_kind;
 use gm_core::algorithms::simulated_annealing::SimulatedAnnealing;
 use gm_core::algorithms::Solver;
-use gm_core::models::MoveFamilyBenchmarkTelemetrySummary;
+use gm_core::models::{MoveFamilyBenchmarkTelemetrySummary, SolverKind};
 use std::hint::black_box;
 use std::time::Instant;
 
@@ -53,6 +54,14 @@ pub fn run_hotpath_case_artifact(
                 tags: case.manifest.tags.clone(),
                 git,
                 machine,
+                solver: build_solver_metadata_for_kind(
+                    SolverKind::LegacySimulatedAnnealing,
+                    case.manifest
+                        .solver_family
+                        .as_deref()
+                        .unwrap_or("legacy_simulated_annealing"),
+                    BenchmarkSeedPolicy::NotApplicable,
+                ),
                 effective_seed: execution.effective_seed,
                 effective_budget: execution.effective_budget,
                 artifact_kind: BenchmarkArtifactKind::HotPath,
@@ -92,6 +101,14 @@ pub fn run_hotpath_case_artifact(
             tags: case.manifest.tags.clone(),
             git,
             machine,
+            solver: build_solver_metadata_for_kind(
+                SolverKind::LegacySimulatedAnnealing,
+                case.manifest
+                    .solver_family
+                    .as_deref()
+                    .unwrap_or("legacy_simulated_annealing"),
+                BenchmarkSeedPolicy::NotApplicable,
+            ),
             effective_seed: None,
             effective_budget: EffectiveBenchmarkBudget::default(),
             artifact_kind: BenchmarkArtifactKind::HotPath,

@@ -5,9 +5,10 @@
 
 use gm_core::models::{
     ApiInput, Group, Person, ProblemDefinition, SimulatedAnnealingParams, SolverConfiguration,
-    SolverParams, StopConditions,
+    SolverKind, SolverParams, StopConditions,
 };
 use gm_core::solver::State;
+use gm_core::{available_solver_descriptors, default_solver_configuration_for, run_solver};
 use proptest::prelude::*;
 use std::collections::HashMap;
 
@@ -124,6 +125,22 @@ fn create_test_input(
             allowed_sessions: None,
         },
     }
+}
+
+fn create_test_input_for_solver(
+    num_people: u32,
+    num_groups: u32,
+    group_size: u32,
+    num_sessions: u32,
+    solver_kind: SolverKind,
+) -> ApiInput {
+    let mut input = create_test_input(num_people, num_groups, group_size, num_sessions);
+    let mut solver = default_solver_configuration_for(solver_kind);
+    solver.stop_conditions.max_iterations = Some(1);
+    solver.stop_conditions.time_limit_seconds = None;
+    solver.stop_conditions.no_improvement_iterations = None;
+    input.solver = solver;
+    input
 }
 
 fn create_test_input_with_sessions(
@@ -385,6 +402,40 @@ proptest! {
                 }
             }
         }
+    }
+
+    /// Property: every registered solver family can solve a tiny valid problem using its default config.
+    #[test]
+    fn registered_solver_defaults_run_on_valid_problem((num_people, num_groups, num_sessions) in (3..=8u32, 2..=3u32, 1..=3u32)) {
+        let group_size = num_people.div_ceil(num_groups).max(2);
+        for descriptor in available_solver_descriptors() {
+            let input = create_test_input_for_solver(
+                num_people,
+                num_groups,
+                group_size,
+                num_sessions,
+                descriptor.kind,
+            );
+            let result = run_solver(&input);
+            prop_assert!(
+                result.is_ok(),
+                "registered solver {} failed with default config: {:?}",
+                descriptor.kind.canonical_id(),
+                result.err()
+            );
+        }
+    }
+}
+
+#[test]
+fn registered_solver_descriptors_have_valid_default_configurations() {
+    for descriptor in available_solver_descriptors() {
+        let config = default_solver_configuration_for(descriptor.kind);
+        assert_eq!(
+            config.validate_solver_selection().unwrap(),
+            descriptor.kind,
+            "default configuration should resolve back to its registered solver family"
+        );
     }
 }
 

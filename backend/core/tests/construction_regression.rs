@@ -183,7 +183,10 @@ fn construction_assigns_clique_ids_in_sorted_member_order() {
     let p4 = state.person_id_to_idx["p4"];
     let p5 = state.person_id_to_idx["p5"];
 
-    assert_eq!(state.cliques, vec![vec![p0, p1], vec![p2, p3], vec![p4, p5]]);
+    assert_eq!(
+        state.cliques,
+        vec![vec![p0, p1], vec![p2, p3], vec![p4, p5]]
+    );
     assert_eq!(state.person_to_clique_id[0][p0], Some(0));
     assert_eq!(state.person_to_clique_id[0][p2], Some(1));
     assert_eq!(state.person_to_clique_id[0][p4], Some(2));

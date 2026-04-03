@@ -15,6 +15,7 @@
     "case_manifest_path",
     "git",
     "machine",
+    "solver",
     "effective_budget",
     "artifact_kind",
     "status",
@@ -51,6 +52,7 @@
     "tags": { "type": "array", "items": { "type": "string" } },
     "git": { "$ref": "#/definitions/gitIdentity" },
     "machine": { "$ref": "#/definitions/machineIdentity" },
+    "solver": { "$ref": "#/definitions/solverMetadata" },
     "effective_seed": { "type": ["integer", "null"] },
     "effective_budget": { "$ref": "#/definitions/effectiveBudget" },
     "artifact_kind": { "type": "string", "enum": ["full_solve", "hot_path"] },
@@ -164,6 +166,33 @@
         "search_seconds": { "type": "number" },
         "finalization_seconds": { "type": "number" },
         "total_seconds": { "type": "number" }
+      }
+    },
+    "solverMetadata": {
+      "type": "object",
+      "required": ["solver_family", "solver_config_id", "display_name", "seed_policy", "capabilities"],
+      "properties": {
+        "solver_family": { "type": "string" },
+        "solver_config_id": { "type": "string" },
+        "display_name": { "type": "string" },
+        "seed_policy": { "type": "string", "enum": ["explicit", "runtime_generated", "not_applicable"] },
+        "capabilities": {
+          "type": "object",
+          "required": [
+            "supports_initial_schedule",
+            "supports_progress_callback",
+            "supports_benchmark_observer",
+            "supports_recommended_settings",
+            "supports_deterministic_seed"
+          ],
+          "properties": {
+            "supports_initial_schedule": { "type": "boolean" },
+            "supports_progress_callback": { "type": "boolean" },
+            "supports_benchmark_observer": { "type": "boolean" },
+            "supports_recommended_settings": { "type": "boolean" },
+            "supports_deterministic_seed": { "type": "boolean" }
+          }
+        }
       }
     }
   }

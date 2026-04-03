@@ -1,6 +1,7 @@
 schema_version: 1
 suite_id: adversarial
 benchmark_mode: full_solve
+comparison_category: score_quality
 class: adversarial
 title: Adversarial solve-level benchmark suite
 description: Constraint-heavy or awkward cases that expose rejection-heavy and boundary-shaped behavior.

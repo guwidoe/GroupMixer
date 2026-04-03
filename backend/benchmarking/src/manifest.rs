@@ -1,8 +1,9 @@
+use crate::artifacts::BenchmarkComparisonCategory;
 use crate::benchmark_mode::{
     default_benchmark_mode, is_hotpath_benchmark_mode, is_supported_benchmark_mode,
 };
 use anyhow::{bail, Context, Result};
-use gm_core::models::{ApiInput, MovePolicy};
+use gm_core::models::{ApiInput, MovePolicy, SolverKind};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -43,6 +44,8 @@ pub struct BenchmarkSuiteManifest {
     pub suite_id: String,
     #[serde(default = "default_benchmark_mode")]
     pub benchmark_mode: String,
+    #[serde(default)]
+    pub comparison_category: BenchmarkComparisonCategory,
     pub class: BenchmarkSuiteClass,
     #[serde(default)]
     pub title: Option<String>,
@@ -96,6 +99,8 @@ pub struct BenchmarkCaseManifest {
     #[serde(default)]
     pub family: Option<String>,
     #[serde(default)]
+    pub solver_family: Option<String>,
+    #[serde(default)]
     pub paths: Vec<String>,
     #[serde(default)]
     pub title: Option<String>,
@@ -107,6 +112,39 @@ pub struct BenchmarkCaseManifest {
     pub input: Option<ApiInput>,
     #[serde(default)]
     pub hotpath_preset: Option<String>,
+}
+
+pub fn canonical_solver_family_for_case(manifest: &BenchmarkCaseManifest) -> Result<String> {
+    if let Some(input) = &manifest.input {
+        return Ok(input
+            .solver
+            .validate_solver_selection()
+            .map_err(anyhow::Error::msg)?
+            .canonical_id()
+            .to_string());
+    }
+
+    if let Some(solver_family) = manifest.solver_family.as_deref() {
+        return Ok(SolverKind::parse_config_id(solver_family)
+            .map_err(anyhow::Error::msg)?
+            .canonical_id()
+            .to_string());
+    }
+
+    if manifest
+        .hotpath_preset
+        .as_deref()
+        .is_some_and(|preset| !preset.is_empty())
+    {
+        return Ok(SolverKind::LegacySimulatedAnnealing
+            .canonical_id()
+            .to_string());
+    }
+
+    bail!(
+        "benchmark case {} does not define a solver family",
+        manifest.id
+    )
 }
 
 #[derive(Debug, Clone)]
@@ -262,6 +300,27 @@ fn validate_case_manifest(path: &Path, manifest: &BenchmarkCaseManifest) -> Resu
                 path.display()
             );
         }
+        input
+            .solver
+            .validate_solver_selection()
+            .map_err(anyhow::Error::msg)
+            .with_context(|| {
+                format!(
+                    "benchmark case manifest {} has invalid solver selection",
+                    path.display()
+                )
+            })?;
+    }
+    if let Some(solver_family) = manifest.solver_family.as_deref() {
+        SolverKind::parse_config_id(solver_family)
+            .map_err(anyhow::Error::msg)
+            .with_context(|| {
+                format!(
+                    "benchmark case manifest {} has unknown solver family {}",
+                    path.display(),
+                    solver_family
+                )
+            })?;
     }
     if manifest.input.is_none() && manifest.hotpath_preset.as_deref().is_none_or(str::is_empty) {
         bail!(
@@ -284,6 +343,10 @@ mod tests {
 
         assert_eq!(suite.manifest.suite_id, "path");
         assert_eq!(suite.manifest.benchmark_mode, "full_solve");
+        assert_eq!(
+            suite.manifest.comparison_category,
+            BenchmarkComparisonCategory::InvariantOnly
+        );
         assert_eq!(suite.manifest.class, BenchmarkSuiteClass::Path);
         assert!(suite.cases.len() >= 5);
         assert!(suite
@@ -301,6 +364,10 @@ mod tests {
 
         assert_eq!(case.class, BenchmarkSuiteClass::Representative);
         assert_eq!(case.id, "representative.small-workshop-balanced");
+        assert_eq!(
+            canonical_solver_family_for_case(&case).expect("solver family"),
+            "legacy_simulated_annealing"
+        );
         assert!(!case
             .input
             .expect("input should exist")
