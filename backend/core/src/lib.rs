@@ -89,6 +89,7 @@ pub mod engines;
 pub mod models;
 pub mod solver;
 pub mod solver1;
+pub mod solver2;
 pub mod solver_support;
 
 /// Runs the optimization solver with the given input configuration.

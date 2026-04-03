@@ -404,9 +404,10 @@ proptest! {
         }
     }
 
-    /// Property: every registered solver family can solve a tiny valid problem using its default config.
+    /// Property: registered solver families either run with their default config or fail explicitly
+    /// when the family is only bootstrapped.
     #[test]
-    fn registered_solver_defaults_run_on_valid_problem((num_people, num_groups, num_sessions) in (3..=8u32, 2..=3u32, 1..=3u32)) {
+    fn registered_solver_defaults_are_truthful_about_execution_state((num_people, num_groups, num_sessions) in (3..=8u32, 2..=3u32, 1..=3u32)) {
         let group_size = num_people.div_ceil(num_groups).max(2);
         for descriptor in available_solver_descriptors() {
             let input = create_test_input_for_solver(
@@ -417,12 +418,21 @@ proptest! {
                 descriptor.kind,
             );
             let result = run_solver(&input);
-            prop_assert!(
-                result.is_ok(),
-                "registered solver {} failed with default config: {:?}",
-                descriptor.kind.canonical_id(),
-                result.err()
-            );
+            match descriptor.kind {
+                SolverKind::Solver1 => prop_assert!(
+                    result.is_ok(),
+                    "registered solver {} failed with default config: {:?}",
+                    descriptor.kind.canonical_id(),
+                    result.err()
+                ),
+                SolverKind::Solver2 => {
+                    let error =
+                        result.expect_err("solver2 should fail explicitly while bootstrapped");
+                    let message = error.to_string();
+                    prop_assert!(message.contains("solver2"));
+                    prop_assert!(message.contains("not implemented"));
+                }
+            }
         }
     }
 }

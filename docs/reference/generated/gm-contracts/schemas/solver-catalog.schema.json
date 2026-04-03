@@ -85,6 +85,11 @@
           "description": "The current production solver family backed by the `solver1` simulated annealing engine.",
           "type": "string",
           "const": "solver1"
+        },
+        {
+          "description": "Bootstrapped placeholder for the upcoming `solver2` family.",
+          "type": "string",
+          "const": "solver2"
         }
       ]
     }

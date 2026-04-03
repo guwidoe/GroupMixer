@@ -275,6 +275,10 @@
         "cooling_schedule"
       ]
     },
+    "Solver2Params": {
+      "description": "Placeholder parameters for the bootstrapped `solver2` family.\n\nThe dedicated directory and typed registry slot exist so the new solver architecture can be\ndeveloped in parallel. Execution paths still fail explicitly until the implementation lands.",
+      "type": "object"
+    },
     "SolverParams": {
       "description": "Algorithm-specific parameters for different solver types.\n\nThis enum allows different algorithms to have their own parameter structures\nwhile maintaining a unified API.",
       "oneOf": [
@@ -288,6 +292,20 @@
             }
           },
           "$ref": "#/$defs/SimulatedAnnealingParams",
+          "required": [
+            "solver_type"
+          ]
+        },
+        {
+          "description": "Placeholder parameters for the bootstrapped `solver2` family.",
+          "type": "object",
+          "properties": {
+            "solver_type": {
+              "type": "string",
+              "const": "solver2"
+            }
+          },
+          "$ref": "#/$defs/Solver2Params",
           "required": [
             "solver_type"
           ]

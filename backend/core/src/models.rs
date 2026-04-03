@@ -579,6 +579,8 @@ pub struct SolverConfiguration {
 pub enum SolverKind {
     /// The current production solver family backed by the `solver1` simulated annealing engine.
     Solver1,
+    /// Bootstrapped placeholder for the upcoming `solver2` family.
+    Solver2,
 }
 
 /// Default solver family used by current public callers.
@@ -588,12 +590,14 @@ impl SolverKind {
     pub const fn canonical_id(self) -> &'static str {
         match self {
             Self::Solver1 => "solver1",
+            Self::Solver2 => "solver2",
         }
     }
 
     pub const fn display_name(self) -> &'static str {
         match self {
             Self::Solver1 => "Solver 1",
+            Self::Solver2 => "Solver 2",
         }
     }
 
@@ -605,6 +609,7 @@ impl SolverKind {
                 "simulated_annealing",
                 "SimulatedAnnealing",
             ],
+            Self::Solver2 => &["solver2"],
         }
     }
 
@@ -614,9 +619,10 @@ impl SolverKind {
             | "legacy_simulated_annealing"
             | "simulated_annealing"
             | "SimulatedAnnealing" => Ok(Self::Solver1),
+            "solver2" => Ok(Self::Solver2),
             other => Err(format!(
                 "Unknown solver type '{other}'. Supported solver IDs: {}",
-                [Self::Solver1]
+                [Self::Solver1, Self::Solver2]
                     .iter()
                     .map(|kind| kind.canonical_id())
                     .collect::<Vec<_>>()
@@ -907,21 +913,33 @@ pub struct StopConditions {
 pub enum SolverParams {
     /// Parameters for the Simulated Annealing algorithm
     SimulatedAnnealing(SimulatedAnnealingParams),
+    /// Placeholder parameters for the bootstrapped `solver2` family.
+    #[serde(rename = "solver2")]
+    Solver2(Solver2Params),
 }
 
 impl SolverParams {
     pub fn solver_kind(&self) -> SolverKind {
         match self {
             Self::SimulatedAnnealing(_) => SolverKind::Solver1,
+            Self::Solver2(_) => SolverKind::Solver2,
         }
     }
 
     pub fn simulated_annealing_params(&self) -> Option<&SimulatedAnnealingParams> {
         match self {
             Self::SimulatedAnnealing(params) => Some(params),
+            Self::Solver2(_) => None,
         }
     }
 }
+
+/// Placeholder parameters for the bootstrapped `solver2` family.
+///
+/// The dedicated directory and typed registry slot exist so the new solver architecture can be
+/// developed in parallel. Execution paths still fail explicitly until the implementation lands.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Default)]
+pub struct Solver2Params {}
 
 /// Parameters specific to the Simulated Annealing algorithm.
 ///

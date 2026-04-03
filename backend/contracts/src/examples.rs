@@ -329,6 +329,22 @@ const LIST_SOLVERS_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
         "supports_deterministic_seed": true
       },
       "notes": "Current production Rust solver family backed by the `solver1` State + simulated annealing search implementation."
+    },
+    {
+      "kind": "solver2",
+      "canonical_id": "solver2",
+      "display_name": "Solver 2",
+      "accepted_config_ids": [
+        "solver2"
+      ],
+      "capabilities": {
+        "supports_initial_schedule": false,
+        "supports_progress_callback": false,
+        "supports_benchmark_observer": false,
+        "supports_recommended_settings": false,
+        "supports_deterministic_seed": false
+      },
+      "notes": "Bootstrapped placeholder for the upcoming `solver2` family. The directory, typed registry slot, and explicit problem/state/search seams exist, but solve and recommendation flows still fail explicitly until implementation lands."
     }
   ]
 }"#,

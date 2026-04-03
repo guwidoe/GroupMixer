@@ -772,6 +772,10 @@
         "cooling_schedule"
       ]
     },
+    "Solver2Params": {
+      "description": "Placeholder parameters for the bootstrapped `solver2` family.\n\nThe dedicated directory and typed registry slot exist so the new solver architecture can be\ndeveloped in parallel. Execution paths still fail explicitly until the implementation lands.",
+      "type": "object"
+    },
     "SolverConfiguration": {
       "description": "Complete configuration for the optimization solver.\n\nThis structure specifies which algorithm to use, when to stop optimization,\nalgorithm-specific parameters, and logging preferences.\n\n# Example\n\n```no_run\nuse gm_core::models::*;\n\nlet config = SolverConfiguration {\n    solver_type: \"SimulatedAnnealing\".to_string(),\n    stop_conditions: StopConditions {\n        max_iterations: Some(50_000),\n        time_limit_seconds: Some(60),\n        no_improvement_iterations: Some(5_000),\n    },\n    solver_params: SolverParams::SimulatedAnnealing(\n        SimulatedAnnealingParams {\n            initial_temperature: 100.0,\n            final_temperature: 0.1,\n            cooling_schedule: \"geometric\".to_string(),\n            reheat_after_no_improvement: Some(0),\n            reheat_cycles: Some(0),\n        }\n    ),\n    logging: LoggingOptions {\n        log_frequency: Some(1000),\n        display_final_schedule: true,\n        log_final_score_breakdown: true,\n        ..Default::default()\n    },\n    telemetry: Default::default(),\n    seed: None,\n    move_policy: None,\n    allowed_sessions: None,\n};\n```",
       "type": "object",
@@ -866,6 +870,20 @@
             }
           },
           "$ref": "#/$defs/SimulatedAnnealingParams",
+          "required": [
+            "solver_type"
+          ]
+        },
+        {
+          "description": "Placeholder parameters for the bootstrapped `solver2` family.",
+          "type": "object",
+          "properties": {
+            "solver_type": {
+              "type": "string",
+              "const": "solver2"
+            }
+          },
+          "$ref": "#/$defs/Solver2Params",
           "required": [
             "solver_type"
           ]
