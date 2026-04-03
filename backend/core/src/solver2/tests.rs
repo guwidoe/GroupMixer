@@ -7,6 +7,7 @@ use crate::models::{
 };
 
 use super::compiled_problem::CompiledProblem;
+use super::moves::swap::{analyze_swap, apply_swap, preview_swap, SwapFeasibility, SwapMove};
 use super::scoring::recompute_full_score;
 use super::validation::invariants::validate_state_invariants;
 use super::validation::parity::{compare_against_solver1, compare_state_against_solver1};
@@ -208,4 +209,136 @@ fn invariant_validation_rejects_split_cliques() {
     let error = validate_state_invariants(&state).unwrap_err().to_string();
     assert!(error.contains("clique"));
     assert!(error.contains("session 0"));
+}
+
+#[test]
+fn swap_analysis_reports_explicit_affected_region() {
+    let input = representative_input();
+    let state = SolutionState::from_input(&input).unwrap();
+    let swap = SwapMove::new(
+        2,
+        state.compiled_problem.person_id_to_idx["p0"],
+        state.compiled_problem.person_id_to_idx["p5"],
+    );
+
+    let analysis = analyze_swap(&state, &swap).unwrap();
+    assert_eq!(analysis.feasibility, SwapFeasibility::Feasible);
+    assert_eq!(analysis.affected_region.touched_session, Some(2));
+    assert_eq!(analysis.affected_region.touched_groups, vec![0, 1]);
+    assert_eq!(analysis.affected_region.touched_people, vec![0, 5]);
+    assert!(!analysis
+        .affected_region
+        .touched_should_together_constraints
+        .is_empty());
+    assert!(!analysis
+        .affected_region
+        .touched_pair_meeting_constraints
+        .is_empty());
+    assert!(!analysis
+        .affected_region
+        .touched_attribute_balance_constraints
+        .is_empty());
+}
+
+#[test]
+fn swap_preview_matches_apply_and_solver1_parity() {
+    let input = representative_input();
+    let mut state = SolutionState::from_input(&input).unwrap();
+    let swap = SwapMove::new(
+        2,
+        state.compiled_problem.person_id_to_idx["p0"],
+        state.compiled_problem.person_id_to_idx["p5"],
+    );
+
+    let before_score = state.current_score.total_score;
+    let preview = preview_swap(&state, &swap).unwrap();
+    apply_swap(&mut state, &swap).unwrap();
+
+    assert_eq!(state.current_score, preview.after_score);
+    assert_eq!(preview.before_score.total_score, before_score);
+    assert_eq!(
+        preview.delta_cost,
+        state.current_score.total_score - preview.before_score.total_score
+    );
+    validate_state_invariants(&state).unwrap();
+    let recomputed = recompute_full_score(&state).unwrap();
+    assert_eq!(state.current_score, recomputed);
+    compare_state_against_solver1(&input, &state).unwrap();
+}
+
+#[test]
+fn swap_same_group_is_a_noop() {
+    let input = representative_input();
+    let mut state = SolutionState::from_input(&input).unwrap();
+    let swap = SwapMove::new(
+        0,
+        state.compiled_problem.person_id_to_idx["p0"],
+        state.compiled_problem.person_id_to_idx["p1"],
+    );
+
+    let before = state.clone();
+    let analysis = analyze_swap(&state, &swap).unwrap();
+    assert_eq!(analysis.feasibility, SwapFeasibility::SameGroupNoop);
+
+    let preview = preview_swap(&state, &swap).unwrap();
+    assert_eq!(preview.delta_cost, 0.0);
+
+    apply_swap(&mut state, &swap).unwrap();
+    assert_eq!(state.schedule, before.schedule);
+    assert_eq!(state.locations, before.locations);
+    assert_eq!(state.current_score, before.current_score);
+}
+
+#[test]
+fn swap_rejects_immovable_people_and_active_clique_members() {
+    let input = representative_input();
+    let mut state = SolutionState::from_input(&input).unwrap();
+
+    let immovable_swap = SwapMove::new(
+        1,
+        state.compiled_problem.person_id_to_idx["p4"],
+        state.compiled_problem.person_id_to_idx["p0"],
+    );
+    let immovable_error = apply_swap(&mut state, &immovable_swap)
+        .unwrap_err()
+        .to_string();
+    assert!(immovable_error.contains("immovable"));
+
+    let clique_swap = SwapMove::new(
+        0,
+        state.compiled_problem.person_id_to_idx["p0"],
+        state.compiled_problem.person_id_to_idx["p2"],
+    );
+    let clique_error = apply_swap(&mut state, &clique_swap)
+        .unwrap_err()
+        .to_string();
+    assert!(clique_error.contains("clique"));
+}
+
+#[test]
+fn sequential_swaps_do_not_drift_from_recomputation() {
+    let input = representative_input();
+    let mut state = SolutionState::from_input(&input).unwrap();
+    let swaps = [
+        SwapMove::new(
+            2,
+            state.compiled_problem.person_id_to_idx["p0"],
+            state.compiled_problem.person_id_to_idx["p5"],
+        ),
+        SwapMove::new(
+            2,
+            state.compiled_problem.person_id_to_idx["p2"],
+            state.compiled_problem.person_id_to_idx["p1"],
+        ),
+    ];
+
+    for swap in &swaps {
+        let preview = preview_swap(&state, swap).unwrap();
+        apply_swap(&mut state, swap).unwrap();
+        validate_state_invariants(&state).unwrap();
+        let recomputed = recompute_full_score(&state).unwrap();
+        assert_eq!(state.current_score, recomputed);
+        assert_eq!(state.current_score, preview.after_score);
+        compare_state_against_solver1(&input, &state).unwrap();
+    }
 }

@@ -607,6 +607,73 @@ mod tests {
     }
 
     #[test]
+    fn hotpath_suite_runs_solver2_swap_preview_with_shared_artifacts() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite_dir = temp.path().join("backend/benchmarking/suites");
+        let case_dir = temp.path().join("backend/benchmarking/cases/hotpath");
+        fs::create_dir_all(&suite_dir).expect("mk suite dir");
+        fs::create_dir_all(&case_dir).expect("mk case dir");
+
+        let case_path = case_dir.join("swap_preview_solver2_supported.json");
+        fs::write(
+            &case_path,
+            serde_json::to_string_pretty(&json!({
+                "schema_version": 1,
+                "id": "hotpath.swap-preview.solver2.supported",
+                "class": "representative",
+                "solver_family": "solver2",
+                "title": "Hotpath swap preview for solver2",
+                "description": "Supported solver2 swap preview hotpath lane",
+                "tags": ["hotpath", "swap", "preview", "solver2"],
+                "hotpath_preset": "swap_default_solver2"
+            }))
+            .expect("serialize case"),
+        )
+        .expect("write case");
+
+        let suite_path = suite_dir.join("hotpath-swap-preview-solver2-supported.yaml");
+        fs::write(
+            &suite_path,
+            [
+                "schema_version: 1",
+                "suite_id: hotpath-swap-preview-solver2-supported",
+                "benchmark_mode: swap_preview",
+                "class: representative",
+                "default_iterations: 4",
+                "default_warmup_iterations: 1",
+                "cases:",
+                "  - manifest: ../cases/hotpath/swap_preview_solver2_supported.json",
+            ]
+            .join("\n"),
+        )
+        .expect("write suite");
+
+        let options = RunnerOptions {
+            artifacts_dir: temp.path().join("artifacts"),
+            cargo_profile: "test".to_string(),
+        };
+
+        let report = run_suite_from_manifest(&suite_path, &options)
+            .expect("solver2 hotpath suite should run successfully");
+        assert_eq!(report.suite.solver_families, vec!["solver2".to_string()]);
+        assert_eq!(report.totals.total_cases, 1);
+        assert_eq!(report.totals.successful_cases, 1);
+        assert_eq!(
+            report.cases[0].artifact_kind,
+            BenchmarkArtifactKind::HotPath
+        );
+        assert_eq!(report.cases[0].solver.solver_family, "solver2");
+        assert_eq!(report.cases[0].status, CaseRunStatus::Success);
+        let metrics = report.cases[0]
+            .hotpath_metrics
+            .as_ref()
+            .expect("hotpath metrics should exist");
+        assert_eq!(metrics.benchmark_mode, "swap_preview");
+        assert_eq!(metrics.preset.as_deref(), Some("swap_default_solver2"));
+        assert!(metrics.preview_seconds > 0.0);
+    }
+
+    #[test]
     fn hotpath_suite_keeps_shared_artifact_flow_for_unimplemented_solver_family_probes() {
         let temp = TempDir::new().expect("temp dir");
         let suite_dir = temp.path().join("backend/benchmarking/suites");

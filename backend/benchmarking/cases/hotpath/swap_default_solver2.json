@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "hotpath.swap.default.solver2",
+  "class": "representative",
+  "solver_family": "solver2",
+  "family": "swap",
+  "paths": ["swap_preview", "swap_apply"],
+  "title": "Hotpath solver2 swap preset",
+  "description": "Deterministic solver2 swap kernel lane used for preview and apply history.",
+  "tags": ["hotpath", "swap", "representative", "solver2"],
+  "hotpath_preset": "swap_default_solver2"
+}
