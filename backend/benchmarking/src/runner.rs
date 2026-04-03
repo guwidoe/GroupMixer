@@ -674,6 +674,133 @@ mod tests {
     }
 
     #[test]
+    fn hotpath_suite_runs_solver2_transfer_preview_with_shared_artifacts() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite_dir = temp.path().join("backend/benchmarking/suites");
+        let case_dir = temp.path().join("backend/benchmarking/cases/hotpath");
+        fs::create_dir_all(&suite_dir).expect("mk suite dir");
+        fs::create_dir_all(&case_dir).expect("mk case dir");
+
+        let case_path = case_dir.join("transfer_preview_solver2_supported.json");
+        fs::write(
+            &case_path,
+            serde_json::to_string_pretty(&json!({
+                "schema_version": 1,
+                "id": "hotpath.transfer-preview.solver2.supported",
+                "class": "representative",
+                "solver_family": "solver2",
+                "title": "Hotpath transfer preview for solver2",
+                "description": "Supported solver2 transfer preview hotpath lane",
+                "tags": ["hotpath", "transfer", "preview", "solver2"],
+                "hotpath_preset": "transfer_default_solver2"
+            }))
+            .expect("serialize case"),
+        )
+        .expect("write case");
+
+        let suite_path = suite_dir.join("hotpath-transfer-preview-solver2-supported.yaml");
+        fs::write(
+            &suite_path,
+            [
+                "schema_version: 1",
+                "suite_id: hotpath-transfer-preview-solver2-supported",
+                "benchmark_mode: transfer_preview",
+                "class: representative",
+                "default_iterations: 4",
+                "default_warmup_iterations: 1",
+                "cases:",
+                "  - manifest: ../cases/hotpath/transfer_preview_solver2_supported.json",
+            ]
+            .join("\n"),
+        )
+        .expect("write suite");
+
+        let options = RunnerOptions {
+            artifacts_dir: temp.path().join("artifacts"),
+            cargo_profile: "test".to_string(),
+        };
+
+        let report = run_suite_from_manifest(&suite_path, &options)
+            .expect("solver2 transfer hotpath suite should run successfully");
+        assert_eq!(report.suite.solver_families, vec!["solver2".to_string()]);
+        assert_eq!(report.totals.successful_cases, 1);
+        assert_eq!(report.cases[0].solver.solver_family, "solver2");
+        assert_eq!(report.cases[0].status, CaseRunStatus::Success);
+        let metrics = report.cases[0]
+            .hotpath_metrics
+            .as_ref()
+            .expect("hotpath metrics should exist");
+        assert_eq!(metrics.benchmark_mode, "transfer_preview");
+        assert_eq!(metrics.preset.as_deref(), Some("transfer_default_solver2"));
+        assert!(metrics.preview_seconds > 0.0);
+    }
+
+    #[test]
+    fn hotpath_suite_runs_solver2_clique_swap_preview_with_shared_artifacts() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite_dir = temp.path().join("backend/benchmarking/suites");
+        let case_dir = temp.path().join("backend/benchmarking/cases/hotpath");
+        fs::create_dir_all(&suite_dir).expect("mk suite dir");
+        fs::create_dir_all(&case_dir).expect("mk case dir");
+
+        let case_path = case_dir.join("clique_swap_preview_solver2_supported.json");
+        fs::write(
+            &case_path,
+            serde_json::to_string_pretty(&json!({
+                "schema_version": 1,
+                "id": "hotpath.clique-swap-preview.solver2.supported",
+                "class": "representative",
+                "solver_family": "solver2",
+                "title": "Hotpath clique swap preview for solver2",
+                "description": "Supported solver2 clique swap preview hotpath lane",
+                "tags": ["hotpath", "clique_swap", "preview", "solver2"],
+                "hotpath_preset": "clique_swap_default_solver2"
+            }))
+            .expect("serialize case"),
+        )
+        .expect("write case");
+
+        let suite_path = suite_dir.join("hotpath-clique-swap-preview-solver2-supported.yaml");
+        fs::write(
+            &suite_path,
+            [
+                "schema_version: 1",
+                "suite_id: hotpath-clique-swap-preview-solver2-supported",
+                "benchmark_mode: clique_swap_preview",
+                "class: representative",
+                "default_iterations: 4",
+                "default_warmup_iterations: 1",
+                "cases:",
+                "  - manifest: ../cases/hotpath/clique_swap_preview_solver2_supported.json",
+            ]
+            .join("\n"),
+        )
+        .expect("write suite");
+
+        let options = RunnerOptions {
+            artifacts_dir: temp.path().join("artifacts"),
+            cargo_profile: "test".to_string(),
+        };
+
+        let report = run_suite_from_manifest(&suite_path, &options)
+            .expect("solver2 clique swap hotpath suite should run successfully");
+        assert_eq!(report.suite.solver_families, vec!["solver2".to_string()]);
+        assert_eq!(report.totals.successful_cases, 1);
+        assert_eq!(report.cases[0].solver.solver_family, "solver2");
+        assert_eq!(report.cases[0].status, CaseRunStatus::Success);
+        let metrics = report.cases[0]
+            .hotpath_metrics
+            .as_ref()
+            .expect("hotpath metrics should exist");
+        assert_eq!(metrics.benchmark_mode, "clique_swap_preview");
+        assert_eq!(
+            metrics.preset.as_deref(),
+            Some("clique_swap_default_solver2")
+        );
+        assert!(metrics.preview_seconds > 0.0);
+    }
+
+    #[test]
     fn hotpath_suite_keeps_shared_artifact_flow_for_unimplemented_solver_family_probes() {
         let temp = TempDir::new().expect("temp dir");
         let suite_dir = temp.path().join("backend/benchmarking/suites");

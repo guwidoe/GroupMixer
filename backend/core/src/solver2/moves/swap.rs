@@ -223,47 +223,12 @@ fn build_affected_region(
     left_group_idx: usize,
     right_group_idx: usize,
 ) -> AffectedRegion {
-    let problem = &state.compiled_problem;
-    let mut region = AffectedRegion::for_session(swap.session_idx);
-    region.touched_groups = vec![left_group_idx, right_group_idx];
-    region.touched_people = vec![swap.left_person_idx, swap.right_person_idx];
-
-    for &person_idx in &[swap.left_person_idx, swap.right_person_idx] {
-        if let Some(clique_idx) = problem.person_to_clique_id[swap.session_idx][person_idx] {
-            region.touched_cliques.push(clique_idx);
-        }
-        region.touched_forbidden_pair_constraints.extend(
-            problem.forbidden_pairs_by_person[person_idx]
-                .iter()
-                .copied(),
-        );
-        region.touched_should_together_constraints.extend(
-            problem.should_together_pairs_by_person[person_idx]
-                .iter()
-                .copied(),
-        );
-        region.touched_pair_meeting_constraints.extend(
-            problem.pair_meeting_constraints_by_person[person_idx]
-                .iter()
-                .copied(),
-        );
-    }
-
-    let left_slot = problem.flat_group_session_slot(swap.session_idx, left_group_idx);
-    let right_slot = problem.flat_group_session_slot(swap.session_idx, right_group_idx);
-    region.touched_attribute_balance_constraints.extend(
-        problem.attribute_balance_constraints_by_group_session[left_slot]
-            .iter()
-            .copied(),
-    );
-    region.touched_attribute_balance_constraints.extend(
-        problem.attribute_balance_constraints_by_group_session[right_slot]
-            .iter()
-            .copied(),
-    );
-
-    region.normalize();
-    region
+    AffectedRegion::from_groups_and_people(
+        &state.compiled_problem,
+        swap.session_idx,
+        &[left_group_idx, right_group_idx],
+        &[swap.left_person_idx, swap.right_person_idx],
+    )
 }
 
 fn apply_swap_unchecked(

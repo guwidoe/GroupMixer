@@ -10,7 +10,8 @@ use crate::benchmark_mode::{
 };
 use crate::hotpath_inputs::{
     clique_swap_bench_input, construction_bench_input, search_loop_bench_input,
-    solver2_swap_bench_input, swap_bench_input, transfer_bench_input,
+    solver2_clique_swap_bench_input, solver2_swap_bench_input, solver2_transfer_bench_input,
+    swap_bench_input, transfer_bench_input,
 };
 use crate::manifest::{
     canonical_solver_family_for_case, LoadedBenchmarkCase, LoadedBenchmarkSuite,
@@ -19,7 +20,13 @@ use crate::runner::build_solver_metadata_for_kind;
 use gm_core::models::{MoveFamilyBenchmarkTelemetrySummary, SolverKind};
 use gm_core::solver1::search::simulated_annealing::SimulatedAnnealing;
 use gm_core::solver1::search::Solver;
+use gm_core::solver2::moves::clique_swap::{
+    apply_clique_swap as apply_solver2_clique_swap, preview_clique_swap,
+};
 use gm_core::solver2::moves::swap::{apply_swap as apply_solver2_swap, preview_swap};
+use gm_core::solver2::moves::transfer::{
+    apply_transfer as apply_solver2_transfer, preview_transfer,
+};
 use std::hint::black_box;
 use std::time::Instant;
 
@@ -181,20 +188,17 @@ fn run_solver2_hotpath_case(
         .or(suite.manifest.default_warmup_iterations)
         .unwrap_or(4);
 
-    let input = solver2_swap_bench_input(&preset).ok_or_else(|| {
-        format!(
-            "hotpath probe '{}' for solver family '{}' is not implemented yet",
-            preset,
-            SolverKind::Solver2.canonical_id()
-        )
-    })?;
-    let effective_seed = input.input.solver.seed;
-    let effective_budget = EffectiveBenchmarkBudget::default();
-    let effective_move_policy = input.input.solver.move_policy.clone();
     let prepared_started = Instant::now();
 
-    let metrics = match benchmark_mode {
+    let (metrics, effective_seed, effective_budget, effective_move_policy) = match benchmark_mode {
         SWAP_PREVIEW_BENCHMARK_MODE => {
+            let input = solver2_swap_bench_input(&preset).ok_or_else(|| {
+                format!(
+                    "hotpath probe '{}' for solver family '{}' is not implemented yet",
+                    preset,
+                    SolverKind::Solver2.canonical_id()
+                )
+            })?;
             for _ in 0..warmup_iterations {
                 let preview =
                     preview_swap(&input.state, &input.swap).map_err(|error| error.to_string())?;
@@ -210,28 +214,40 @@ fn run_solver2_hotpath_case(
                 preview_seconds += op_started.elapsed().as_secs_f64();
                 checksum = checksum.wrapping_add(black_box(preview.delta_cost.to_bits() as i64));
             }
-            HotPathMetrics {
-                benchmark_mode: benchmark_mode.to_string(),
-                preset: Some(preset),
-                iterations,
-                warmup_iterations,
-                measured_operations: iterations,
-                average_runtime_seconds: average_runtime(
-                    started.elapsed().as_secs_f64(),
+            (
+                HotPathMetrics {
+                    benchmark_mode: benchmark_mode.to_string(),
+                    preset: Some(preset),
                     iterations,
-                ),
-                ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
-                checksum,
-                measurement_seconds: started.elapsed().as_secs_f64(),
-                setup_seconds: 0.0,
-                construction_seconds: 0.0,
-                preview_seconds,
-                apply_seconds: 0.0,
-                full_recalculation_seconds: 0.0,
-                search_seconds: 0.0,
-            }
+                    warmup_iterations,
+                    measured_operations: iterations,
+                    average_runtime_seconds: average_runtime(
+                        started.elapsed().as_secs_f64(),
+                        iterations,
+                    ),
+                    ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
+                    checksum,
+                    measurement_seconds: started.elapsed().as_secs_f64(),
+                    setup_seconds: 0.0,
+                    construction_seconds: 0.0,
+                    preview_seconds,
+                    apply_seconds: 0.0,
+                    full_recalculation_seconds: 0.0,
+                    search_seconds: 0.0,
+                },
+                input.input.solver.seed,
+                EffectiveBenchmarkBudget::default(),
+                input.input.solver.move_policy.clone(),
+            )
         }
         SWAP_APPLY_BENCHMARK_MODE => {
+            let input = solver2_swap_bench_input(&preset).ok_or_else(|| {
+                format!(
+                    "hotpath probe '{}' for solver family '{}' is not implemented yet",
+                    preset,
+                    SolverKind::Solver2.canonical_id()
+                )
+            })?;
             for _ in 0..warmup_iterations {
                 let mut state = input.state.clone();
                 apply_solver2_swap(&mut state, &input.swap).map_err(|error| error.to_string())?;
@@ -248,26 +264,233 @@ fn run_solver2_hotpath_case(
                 checksum = checksum
                     .wrapping_add(black_box(state.current_score.total_score.to_bits() as i64));
             }
-            HotPathMetrics {
-                benchmark_mode: benchmark_mode.to_string(),
-                preset: Some(preset),
-                iterations,
-                warmup_iterations,
-                measured_operations: iterations,
-                average_runtime_seconds: average_runtime(
-                    started.elapsed().as_secs_f64(),
+            (
+                HotPathMetrics {
+                    benchmark_mode: benchmark_mode.to_string(),
+                    preset: Some(preset),
                     iterations,
-                ),
-                ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
-                checksum,
-                measurement_seconds: started.elapsed().as_secs_f64(),
-                setup_seconds: 0.0,
-                construction_seconds: 0.0,
-                preview_seconds: 0.0,
-                apply_seconds,
-                full_recalculation_seconds: 0.0,
-                search_seconds: 0.0,
+                    warmup_iterations,
+                    measured_operations: iterations,
+                    average_runtime_seconds: average_runtime(
+                        started.elapsed().as_secs_f64(),
+                        iterations,
+                    ),
+                    ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
+                    checksum,
+                    measurement_seconds: started.elapsed().as_secs_f64(),
+                    setup_seconds: 0.0,
+                    construction_seconds: 0.0,
+                    preview_seconds: 0.0,
+                    apply_seconds,
+                    full_recalculation_seconds: 0.0,
+                    search_seconds: 0.0,
+                },
+                input.input.solver.seed,
+                EffectiveBenchmarkBudget::default(),
+                input.input.solver.move_policy.clone(),
+            )
+        }
+        TRANSFER_PREVIEW_BENCHMARK_MODE => {
+            let input = solver2_transfer_bench_input(&preset).ok_or_else(|| {
+                format!(
+                    "hotpath probe '{}' for solver family '{}' is not implemented yet",
+                    preset,
+                    SolverKind::Solver2.canonical_id()
+                )
+            })?;
+            for _ in 0..warmup_iterations {
+                let preview = preview_transfer(&input.state, &input.transfer)
+                    .map_err(|error| error.to_string())?;
+                black_box(preview.delta_cost);
             }
+            let started = Instant::now();
+            let mut checksum = 0i64;
+            let mut preview_seconds = 0.0;
+            for _ in 0..iterations {
+                let op_started = Instant::now();
+                let preview = preview_transfer(&input.state, &input.transfer)
+                    .map_err(|error| error.to_string())?;
+                preview_seconds += op_started.elapsed().as_secs_f64();
+                checksum = checksum.wrapping_add(black_box(preview.delta_cost.to_bits() as i64));
+            }
+            (
+                HotPathMetrics {
+                    benchmark_mode: benchmark_mode.to_string(),
+                    preset: Some(preset),
+                    iterations,
+                    warmup_iterations,
+                    measured_operations: iterations,
+                    average_runtime_seconds: average_runtime(
+                        started.elapsed().as_secs_f64(),
+                        iterations,
+                    ),
+                    ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
+                    checksum,
+                    measurement_seconds: started.elapsed().as_secs_f64(),
+                    setup_seconds: 0.0,
+                    construction_seconds: 0.0,
+                    preview_seconds,
+                    apply_seconds: 0.0,
+                    full_recalculation_seconds: 0.0,
+                    search_seconds: 0.0,
+                },
+                input.input.solver.seed,
+                EffectiveBenchmarkBudget::default(),
+                input.input.solver.move_policy.clone(),
+            )
+        }
+        TRANSFER_APPLY_BENCHMARK_MODE => {
+            let input = solver2_transfer_bench_input(&preset).ok_or_else(|| {
+                format!(
+                    "hotpath probe '{}' for solver family '{}' is not implemented yet",
+                    preset,
+                    SolverKind::Solver2.canonical_id()
+                )
+            })?;
+            for _ in 0..warmup_iterations {
+                let mut state = input.state.clone();
+                apply_solver2_transfer(&mut state, &input.transfer)
+                    .map_err(|error| error.to_string())?;
+                black_box(state.current_score.total_score);
+            }
+            let started = Instant::now();
+            let mut checksum = 0i64;
+            let mut apply_seconds = 0.0;
+            for _ in 0..iterations {
+                let mut state = input.state.clone();
+                let op_started = Instant::now();
+                apply_solver2_transfer(&mut state, &input.transfer)
+                    .map_err(|error| error.to_string())?;
+                apply_seconds += op_started.elapsed().as_secs_f64();
+                checksum = checksum
+                    .wrapping_add(black_box(state.current_score.total_score.to_bits() as i64));
+            }
+            (
+                HotPathMetrics {
+                    benchmark_mode: benchmark_mode.to_string(),
+                    preset: Some(preset),
+                    iterations,
+                    warmup_iterations,
+                    measured_operations: iterations,
+                    average_runtime_seconds: average_runtime(
+                        started.elapsed().as_secs_f64(),
+                        iterations,
+                    ),
+                    ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
+                    checksum,
+                    measurement_seconds: started.elapsed().as_secs_f64(),
+                    setup_seconds: 0.0,
+                    construction_seconds: 0.0,
+                    preview_seconds: 0.0,
+                    apply_seconds,
+                    full_recalculation_seconds: 0.0,
+                    search_seconds: 0.0,
+                },
+                input.input.solver.seed,
+                EffectiveBenchmarkBudget::default(),
+                input.input.solver.move_policy.clone(),
+            )
+        }
+        CLIQUE_SWAP_PREVIEW_BENCHMARK_MODE => {
+            let input = solver2_clique_swap_bench_input(&preset).ok_or_else(|| {
+                format!(
+                    "hotpath probe '{}' for solver family '{}' is not implemented yet",
+                    preset,
+                    SolverKind::Solver2.canonical_id()
+                )
+            })?;
+            for _ in 0..warmup_iterations {
+                let preview = preview_clique_swap(&input.state, &input.clique_swap)
+                    .map_err(|error| error.to_string())?;
+                black_box(preview.delta_cost);
+            }
+            let started = Instant::now();
+            let mut checksum = 0i64;
+            let mut preview_seconds = 0.0;
+            for _ in 0..iterations {
+                let op_started = Instant::now();
+                let preview = preview_clique_swap(&input.state, &input.clique_swap)
+                    .map_err(|error| error.to_string())?;
+                preview_seconds += op_started.elapsed().as_secs_f64();
+                checksum = checksum.wrapping_add(black_box(preview.delta_cost.to_bits() as i64));
+            }
+            (
+                HotPathMetrics {
+                    benchmark_mode: benchmark_mode.to_string(),
+                    preset: Some(preset),
+                    iterations,
+                    warmup_iterations,
+                    measured_operations: iterations,
+                    average_runtime_seconds: average_runtime(
+                        started.elapsed().as_secs_f64(),
+                        iterations,
+                    ),
+                    ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
+                    checksum,
+                    measurement_seconds: started.elapsed().as_secs_f64(),
+                    setup_seconds: 0.0,
+                    construction_seconds: 0.0,
+                    preview_seconds,
+                    apply_seconds: 0.0,
+                    full_recalculation_seconds: 0.0,
+                    search_seconds: 0.0,
+                },
+                input.input.solver.seed,
+                EffectiveBenchmarkBudget::default(),
+                input.input.solver.move_policy.clone(),
+            )
+        }
+        CLIQUE_SWAP_APPLY_BENCHMARK_MODE => {
+            let input = solver2_clique_swap_bench_input(&preset).ok_or_else(|| {
+                format!(
+                    "hotpath probe '{}' for solver family '{}' is not implemented yet",
+                    preset,
+                    SolverKind::Solver2.canonical_id()
+                )
+            })?;
+            for _ in 0..warmup_iterations {
+                let mut state = input.state.clone();
+                apply_solver2_clique_swap(&mut state, &input.clique_swap)
+                    .map_err(|error| error.to_string())?;
+                black_box(state.current_score.total_score);
+            }
+            let started = Instant::now();
+            let mut checksum = 0i64;
+            let mut apply_seconds = 0.0;
+            for _ in 0..iterations {
+                let mut state = input.state.clone();
+                let op_started = Instant::now();
+                apply_solver2_clique_swap(&mut state, &input.clique_swap)
+                    .map_err(|error| error.to_string())?;
+                apply_seconds += op_started.elapsed().as_secs_f64();
+                checksum = checksum
+                    .wrapping_add(black_box(state.current_score.total_score.to_bits() as i64));
+            }
+            (
+                HotPathMetrics {
+                    benchmark_mode: benchmark_mode.to_string(),
+                    preset: Some(preset),
+                    iterations,
+                    warmup_iterations,
+                    measured_operations: iterations,
+                    average_runtime_seconds: average_runtime(
+                        started.elapsed().as_secs_f64(),
+                        iterations,
+                    ),
+                    ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
+                    checksum,
+                    measurement_seconds: started.elapsed().as_secs_f64(),
+                    setup_seconds: 0.0,
+                    construction_seconds: 0.0,
+                    preview_seconds: 0.0,
+                    apply_seconds,
+                    full_recalculation_seconds: 0.0,
+                    search_seconds: 0.0,
+                },
+                input.input.solver.seed,
+                EffectiveBenchmarkBudget::default(),
+                input.input.solver.move_policy.clone(),
+            )
         }
         _ => {
             return Err(format!(

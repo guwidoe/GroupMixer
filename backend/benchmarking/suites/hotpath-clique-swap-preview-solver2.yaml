@@ -1,0 +1,10 @@
+schema_version: 1
+suite_id: hotpath-clique-swap-preview-solver2
+benchmark_mode: clique_swap_preview
+class: representative
+title: Hotpath solver2 clique swap preview benchmark suite
+description: Deterministic solver2 clique-swap preview lane for shared reporting/history.
+default_iterations: 48
+default_warmup_iterations: 4
+cases:
+  - manifest: ../cases/hotpath/clique_swap_default_solver2.json
