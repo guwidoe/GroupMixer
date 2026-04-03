@@ -13,6 +13,9 @@ pub mod search;
 pub mod state;
 pub mod validation;
 
+#[cfg(test)]
+mod tests;
+
 pub use compiled_problem::CompiledProblem;
 pub use search::SearchEngine;
 pub use state::SolutionState;
