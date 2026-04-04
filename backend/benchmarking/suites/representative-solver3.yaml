@@ -1,0 +1,12 @@
+schema_version: 1
+suite_id: representative-solver3
+benchmark_mode: full_solve
+comparison_category: score_quality
+class: representative
+title: Representative solve-level benchmark suite for solver3
+description: Small but realistic day-to-day workshop scheduling workloads retargeted to solver3 for early search viability evidence.
+default_solver_family: solver3
+default_max_iterations: 60
+cases:
+  - manifest: ../cases/representative/small_workshop_balanced.json
+  - manifest: ../cases/representative/small_workshop_constrained.json

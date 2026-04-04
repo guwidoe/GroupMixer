@@ -20,6 +20,7 @@ pub mod moves;
 pub mod oracle;
 pub mod runtime_state;
 pub mod scoring;
+pub mod search;
 pub mod validation;
 
 #[cfg(test)]
@@ -30,6 +31,7 @@ pub use moves::SwapMove;
 pub use oracle::{check_drift, oracle_score};
 pub use runtime_state::RuntimeState;
 pub use scoring::{recompute_oracle_score, OracleSnapshot};
+pub use search::SearchEngine;
 pub use validation::validate_invariants;
 
 use crate::solver_support::SolverError;
@@ -37,8 +39,8 @@ use crate::solver_support::SolverError;
 pub const SOLVER3_BOOTSTRAP_NOTES: &str =
     "Internal `solver3` family — performance-oriented dense-state solver with packed-pair index. \
 Phase 2 foundation (compiled problem, flat runtime state, oracle, invariants) is implemented, and \
-a swap-only move kernel exists for runtime preview/apply hotpath validation. Solve/search paths and \
-other move families are still not implemented. No fallback to solver1 or solver2 occurs.";
+a swap-only move kernel plus a runnable swap-only bounded-sampling search baseline exist. Transfer \
+and clique-swap families are still not implemented. No fallback to solver1 or solver2 occurs.";
 
 pub(crate) fn not_yet_implemented(feature: &str) -> SolverError {
     SolverError::ValidationError(format!(

@@ -596,6 +596,30 @@ mod tests {
     }
 
     #[test]
+    fn full_solve_suite_can_retarget_cases_to_solver3() {
+        let temp = TempDir::new().expect("temp dir");
+        let options = RunnerOptions {
+            artifacts_dir: temp.path().to_path_buf(),
+            cargo_profile: "test".to_string(),
+        };
+
+        let report = run_suite_from_manifest("suites/path-solver3.yaml", &options)
+            .expect("solver3 path suite should run");
+
+        assert_eq!(report.suite.suite_id, "path-solver3");
+        assert_eq!(report.suite.solver_families, vec!["solver3".to_string()]);
+        assert_eq!(report.totals.failed_cases, 0);
+        assert!(report
+            .cases
+            .iter()
+            .all(|case| case.solver.solver_family == "solver3"));
+        assert!(report
+            .cases
+            .iter()
+            .all(|case| case.solver.solver_config_id == "solver3"));
+    }
+
+    #[test]
     fn hotpath_suite_runs_and_persists_structured_metrics() {
         let temp = TempDir::new().expect("temp dir");
         let suite_dir = temp.path().join("backend/benchmarking/suites");

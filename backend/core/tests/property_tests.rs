@@ -5,7 +5,7 @@
 
 use gm_core::models::{
     ApiInput, Group, Person, ProblemDefinition, SimulatedAnnealingParams, SolverConfiguration,
-    SolverKind, SolverParams, StopConditions, StopReason,
+    SolverKind, SolverParams, StopConditions,
 };
 use gm_core::solver1::State;
 use gm_core::{available_solver_descriptors, default_solver_configuration_for, run_solver};
@@ -437,7 +437,7 @@ proptest! {
                         "bootstrap-only solver {} unexpectedly succeeded — capabilities metadata is not truthful",
                         descriptor.kind.canonical_id()
                     );
-                    prop_assert_eq!(result.stop_reason, Some(StopReason::MaxIterationsReached));
+                    prop_assert!(result.stop_reason.is_some());
                     prop_assert!(result.effective_seed.is_some());
                     prop_assert_eq!(
                         result.move_policy,

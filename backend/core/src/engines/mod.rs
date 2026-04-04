@@ -8,7 +8,7 @@ use crate::solver1::search::simulated_annealing::SimulatedAnnealing;
 use crate::solver1::search::Solver as _;
 use crate::solver1::State;
 use crate::solver2::{SearchEngine as Solver2SearchEngine, SOLVER2_BOOTSTRAP_NOTES};
-use crate::solver3::SOLVER3_BOOTSTRAP_NOTES;
+use crate::solver3::{SearchEngine as Solver3SearchEngine, SOLVER3_BOOTSTRAP_NOTES};
 use crate::solver_support::SolverError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -83,11 +83,11 @@ const SOLVER3_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
     kind: SolverKind::Solver3,
     display_name: "Solver 3",
     capabilities: SolverEngineCapabilities {
-        supports_initial_schedule: false,
-        supports_progress_callback: false,
-        supports_benchmark_observer: false,
+        supports_initial_schedule: true,
+        supports_progress_callback: true,
+        supports_benchmark_observer: true,
         supports_recommended_settings: false,
-        supports_deterministic_seed: false,
+        supports_deterministic_seed: true,
     },
     notes: SOLVER3_BOOTSTRAP_NOTES,
 };
@@ -121,7 +121,7 @@ impl SolverEngine for Solver1Engine {
             stop_conditions: StopConditions {
                 max_iterations: Some(10_000),
                 time_limit_seconds: Some(30),
-                no_improvement_iterations: Some(5_000),
+                no_improvement_iterations: None,
             },
             solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
                 initial_temperature: 1.0,
@@ -202,17 +202,23 @@ impl SolverEngine for Solver3Engine {
         &SOLVER3_DESCRIPTOR
     }
 
-    fn solve(&self, _request: SolveRequest<'_>) -> Result<SolverResult, SolverError> {
-        Err(crate::solver3::not_yet_implemented("solve paths"))
+    fn solve(&self, request: SolveRequest<'_>) -> Result<SolverResult, SolverError> {
+        let mut state = crate::solver3::RuntimeState::from_input(request.input)?;
+        let solver = Solver3SearchEngine::new(&request.input.solver);
+        solver.solve(
+            &mut state,
+            request.progress_callback,
+            request.benchmark_observer,
+        )
     }
 
     fn default_configuration(&self) -> SolverConfiguration {
         SolverConfiguration {
             solver_type: SolverKind::Solver3.canonical_id().into(),
             stop_conditions: StopConditions {
-                max_iterations: None,
-                time_limit_seconds: None,
-                no_improvement_iterations: None,
+                max_iterations: Some(10_000),
+                time_limit_seconds: Some(30),
+                no_improvement_iterations: Some(5_000),
             },
             solver_params: SolverParams::Solver3(Solver3Params::default()),
             logging: LoggingOptions::default(),
@@ -548,16 +554,18 @@ mod tests {
     }
 
     #[test]
-    fn registry_exposes_solver3_descriptor_with_bootstrap_capabilities() {
+    fn registry_exposes_solver3_descriptor_with_runnable_capabilities() {
         let descriptor = solver_descriptor(SolverKind::Solver3);
         assert_eq!(descriptor.kind, SolverKind::Solver3);
-        assert!(!descriptor.capabilities.supports_initial_schedule);
-        assert!(!descriptor.capabilities.supports_progress_callback);
-        assert!(!descriptor.capabilities.supports_benchmark_observer);
+        assert!(descriptor.capabilities.supports_initial_schedule);
+        assert!(descriptor.capabilities.supports_progress_callback);
+        assert!(descriptor.capabilities.supports_benchmark_observer);
         assert!(!descriptor.capabilities.supports_recommended_settings);
-        assert!(!descriptor.capabilities.supports_deterministic_seed);
+        assert!(descriptor.capabilities.supports_deterministic_seed);
         assert!(descriptor.notes.contains("solver3"));
-        assert!(descriptor.notes.contains("swap-only move kernel"));
+        assert!(descriptor
+            .notes
+            .contains("swap-only bounded-sampling search baseline"));
     }
 
     #[test]
@@ -588,24 +596,27 @@ mod tests {
     }
 
     #[test]
-    fn solver3_solve_fails_explicitly_until_implemented() {
+    fn solver3_run_executes_through_engine_registry() {
         let input = ApiInput {
             initial_schedule: None,
             problem: simple_problem(),
-            objectives: vec![],
+            objectives: vec![Objective {
+                r#type: "maximize_unique_contacts".to_string(),
+                weight: 1.0,
+            }],
             constraints: vec![],
             solver: default_solver_configuration_for(SolverKind::Solver3),
         };
 
-        let error = run_solver_with_engine(SolveRequest {
+        let result = run_solver_with_engine(SolveRequest {
             input: &input,
             progress_callback: None,
             benchmark_observer: None,
         })
-        .unwrap_err();
+        .expect("solver3 should execute through the engine registry");
 
-        assert!(error.to_string().contains("solver3"));
-        assert!(error.to_string().contains("not implemented"));
+        assert!(result.stop_reason.is_some());
+        assert_eq!(result.effective_seed.is_some(), true);
     }
 
     #[test]

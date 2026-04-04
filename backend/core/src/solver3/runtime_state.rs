@@ -18,6 +18,8 @@
 
 use std::sync::Arc;
 
+use std::collections::HashMap;
+
 use crate::models::ApiInput;
 use crate::solver_support::SolverError;
 
@@ -397,5 +399,28 @@ impl RuntimeState {
         self.constraint_penalty_weighted = score.constraint_penalty_weighted;
         self.total_score = score.total_score;
         Ok(())
+    }
+
+    /// Converts the flat runtime state back into the API schedule shape.
+    pub fn to_api_schedule(&self) -> HashMap<String, HashMap<String, Vec<String>>> {
+        let mut schedule = HashMap::new();
+
+        for session_idx in 0..self.compiled.num_sessions {
+            let mut groups = HashMap::new();
+
+            for group_idx in 0..self.compiled.num_groups {
+                let slot = self.group_slot(session_idx, group_idx);
+                let members = self.group_members[slot]
+                    .iter()
+                    .map(|&person_idx| self.compiled.person_idx_to_id[person_idx].clone())
+                    .collect::<Vec<_>>();
+
+                groups.insert(self.compiled.group_idx_to_id[group_idx].clone(), members);
+            }
+
+            schedule.insert(format!("session_{session_idx}"), groups);
+        }
+
+        schedule
     }
 }

@@ -430,7 +430,10 @@ mod tests {
         let descriptor =
             build_solver_descriptor_response("solver3").expect("solver3 should resolve");
         assert_eq!(descriptor.canonical_id, "solver3");
-        assert!(!descriptor.capabilities.supports_initial_schedule);
-        assert!(!descriptor.capabilities.supports_progress_callback);
+        assert!(descriptor.capabilities.supports_initial_schedule);
+        assert!(descriptor.capabilities.supports_progress_callback);
+        assert!(descriptor.capabilities.supports_benchmark_observer);
+        assert!(descriptor.capabilities.supports_deterministic_seed);
+        assert!(!descriptor.capabilities.supports_recommended_settings);
     }
 }

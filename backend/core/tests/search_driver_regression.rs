@@ -4,7 +4,7 @@ use common::{default_solver_config, make_initial_schedule};
 use gm_core::models::{
     ApiInput, BenchmarkEvent, Constraint, Group, MoveFamily, MovePolicy, Objective,
     PairMeetingCountParams, PairMeetingMode, Person, ProblemDefinition, ProgressCallback,
-    SimulatedAnnealingParams, SolverParams, StopReason,
+    SimulatedAnnealingParams, SolverKind, SolverParams, StopReason,
 };
 use gm_core::{
     default_solver_configuration_for, run_solver, run_solver_with_benchmark_observer,
@@ -78,6 +78,21 @@ fn solver2_driver_input() -> ApiInput {
     solver.stop_conditions.max_iterations = Some(40);
     solver.stop_conditions.time_limit_seconds = None;
     solver.stop_conditions.no_improvement_iterations = None;
+    input.solver = solver;
+    input
+}
+
+fn solver3_driver_input() -> ApiInput {
+    let mut input = driver_input();
+    let mut solver = default_solver_configuration_for(SolverKind::Solver3);
+    solver.seed = Some(211);
+    solver.stop_conditions.max_iterations = Some(40);
+    solver.stop_conditions.time_limit_seconds = None;
+    solver.stop_conditions.no_improvement_iterations = None;
+    solver.move_policy = Some(MovePolicy {
+        forced_family: Some(MoveFamily::Swap),
+        ..MovePolicy::default()
+    });
     input.solver = solver;
     input
 }
@@ -308,6 +323,167 @@ fn progress_callback_can_request_early_stop() {
         Some(StopReason::ProgressCallbackRequestedStop)
     );
     assert!(*calls.lock().unwrap() >= 1);
+}
+
+#[test]
+fn solver3_allowed_sessions_preserve_other_warm_start_sessions() {
+    let mut input = solver3_driver_input();
+    let initial = input.initial_schedule.clone().expect("warm start present");
+    input.solver.allowed_sessions = Some(vec![1]);
+    input.solver.stop_conditions.max_iterations = Some(60);
+
+    let result = run_solver(&input).expect("solver3 solve should succeed");
+
+    assert_eq!(result.schedule.get("session_0"), initial.get("session_0"));
+    assert_eq!(result.schedule.get("session_2"), initial.get("session_2"));
+}
+
+#[test]
+fn solver3_time_limit_stop_reason_surfaces_through_result_and_telemetry() {
+    let mut input = solver3_driver_input();
+    input.solver.stop_conditions.max_iterations = Some(5_000);
+    input.solver.stop_conditions.time_limit_seconds = Some(0);
+
+    let result = run_solver(&input).expect("solver3 solve should succeed");
+    let telemetry = result
+        .benchmark_telemetry
+        .clone()
+        .expect("benchmark telemetry should be present");
+
+    assert_eq!(result.stop_reason, Some(StopReason::TimeLimitReached));
+    assert_eq!(telemetry.stop_reason, StopReason::TimeLimitReached);
+}
+
+#[test]
+fn solver3_progress_callback_can_request_early_stop() {
+    let mut input = solver3_driver_input();
+    input.solver.stop_conditions.max_iterations = Some(5_000);
+
+    let calls = Arc::new(Mutex::new(0u32));
+    let calls_for_callback = Arc::clone(&calls);
+    let callback: ProgressCallback = Box::new(move |_| {
+        let mut calls = calls_for_callback.lock().unwrap();
+        *calls += 1;
+        false
+    });
+
+    let result = run_solver_with_progress(&input, Some(&callback)).expect("solver3 should stop");
+
+    assert_eq!(
+        result.stop_reason,
+        Some(StopReason::ProgressCallbackRequestedStop)
+    );
+    assert!(*calls.lock().unwrap() >= 1);
+}
+
+#[test]
+fn solver3_benchmark_observer_receives_started_and_completed_events() {
+    let input = solver3_driver_input();
+
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let events_clone = Arc::clone(&events);
+    let observer: gm_core::models::BenchmarkObserver = Box::new(move |event| {
+        events_clone.lock().unwrap().push(event.clone());
+    });
+
+    let result = run_solver_with_benchmark_observer(&input, Some(&observer))
+        .expect("solver3 benchmark observer solve should succeed");
+    let events = events.lock().unwrap().clone();
+
+    assert_eq!(events.len(), 2);
+
+    match &events[0] {
+        BenchmarkEvent::RunStarted(started) => {
+            assert_eq!(started.effective_seed, 211);
+            assert_eq!(started.move_policy.forced_family, Some(MoveFamily::Swap));
+        }
+        other => panic!("unexpected first benchmark event: {other:?}"),
+    }
+
+    let completed = match &events[1] {
+        BenchmarkEvent::RunCompleted(completed) => completed,
+        other => panic!("unexpected completion benchmark event: {other:?}"),
+    };
+
+    assert_eq!(completed.effective_seed, 211);
+    assert_eq!(completed.stop_reason, result.stop_reason.unwrap());
+    assert_eq!(
+        result
+            .benchmark_telemetry
+            .as_ref()
+            .expect("result telemetry"),
+        completed
+    );
+}
+
+#[test]
+fn solver3_progress_callback_and_benchmark_observer_can_run_together() {
+    let input = solver3_driver_input();
+
+    let progress_count = Arc::new(Mutex::new(0usize));
+    let progress_count_clone = Arc::clone(&progress_count);
+    let progress_callback: ProgressCallback = Box::new(move |_| {
+        *progress_count_clone.lock().unwrap() += 1;
+        true
+    });
+
+    let benchmark_count = Arc::new(Mutex::new(0usize));
+    let benchmark_count_clone = Arc::clone(&benchmark_count);
+    let observer: gm_core::models::BenchmarkObserver = Box::new(move |_| {
+        *benchmark_count_clone.lock().unwrap() += 1;
+    });
+
+    let result = run_solver_with_callbacks(&input, Some(&progress_callback), Some(&observer))
+        .expect("combined solver3 callback solve should succeed");
+
+    assert!(*progress_count.lock().unwrap() >= 1);
+    assert_eq!(*benchmark_count.lock().unwrap(), 2);
+    assert!(result.benchmark_telemetry.is_some());
+}
+
+#[test]
+fn solver3_same_seed_runs_remain_deterministic_after_search_changes() {
+    let input = solver3_driver_input();
+
+    let result_a = run_solver(&input).expect("first solver3 solve should succeed");
+    let result_b = run_solver(&input).expect("second solver3 solve should succeed");
+
+    assert_eq!(result_a.schedule, result_b.schedule);
+    assert_eq!(result_a.final_score, result_b.final_score);
+    assert_eq!(result_a.effective_seed, Some(211));
+    assert_eq!(result_b.effective_seed, Some(211));
+    assert_eq!(result_a.stop_reason, result_b.stop_reason);
+
+    let telemetry_a = result_a.benchmark_telemetry.expect("solver3 telemetry a");
+    let telemetry_b = result_b.benchmark_telemetry.expect("solver3 telemetry b");
+    assert_eq!(
+        telemetry_a.moves.swap.attempts,
+        telemetry_b.moves.swap.attempts
+    );
+    assert_eq!(
+        telemetry_a.moves.swap.accepted,
+        telemetry_b.moves.swap.accepted
+    );
+    assert_eq!(telemetry_a.moves.transfer.attempts, 0);
+    assert_eq!(telemetry_b.moves.transfer.attempts, 0);
+    assert_eq!(telemetry_a.moves.clique_swap.attempts, 0);
+    assert_eq!(telemetry_b.moves.clique_swap.attempts, 0);
+}
+
+#[test]
+fn solver3_swap_runtime_preview_avoids_full_recompute_per_attempt() {
+    let mut input = solver3_driver_input();
+    input.solver.stop_conditions.max_iterations = Some(25);
+
+    let result = run_solver(&input).expect("solver3 solve should succeed");
+    let telemetry = result
+        .benchmark_telemetry
+        .expect("benchmark telemetry should be present");
+
+    assert!(telemetry.moves.swap.attempts > 0);
+    assert_eq!(telemetry.moves.swap.full_recalculation_count, 0);
+    assert_eq!(telemetry.moves.transfer.full_recalculation_count, 0);
+    assert_eq!(telemetry.moves.clique_swap.full_recalculation_count, 0);
 }
 
 #[test]

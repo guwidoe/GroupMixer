@@ -1,0 +1,13 @@
+schema_version: 1
+suite_id: path-solver3
+benchmark_mode: full_solve
+comparison_category: invariant_only
+class: path
+title: Path regression benchmark suite for solver3
+description: Deterministic small swap-capable cases retargeted to solver3 for shared invariant-focused full-solve evidence.
+default_solver_family: solver3
+default_max_iterations: 40
+cases:
+  - manifest: ../cases/path/swap_forbidden_pair.json
+  - manifest: ../cases/path/search_driver_allowed_sessions.json
+  - manifest: ../cases/path/construction_clique_immovable.json
