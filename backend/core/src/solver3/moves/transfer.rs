@@ -481,43 +481,34 @@ fn attribute_balance_penalty_delta_for_transfer(
     let mut delta = 0.0;
     for group_idx in [transfer.source_group_idx, transfer.target_group_idx] {
         let slot = cp.group_session_slot(session_idx, group_idx);
-        let before_members = &state.group_members[state.group_slot(session_idx, group_idx)];
-        let after_members = members_after_transfer_for_group(state, analysis, group_idx);
-
         for &cidx in &cp.attribute_balance_constraints_by_group_session[slot] {
             let constraint = &cp.attribute_balance_constraints[cidx];
-            delta +=
-                attribute_balance_penalty_for_members(cp, constraint, after_members.as_slice())
-                    - attribute_balance_penalty_for_members(cp, constraint, before_members);
+            let before_members = &state.group_members[state.group_slot(session_idx, group_idx)];
+            let mut counts = attribute_balance_counts_for_members(cp, constraint, before_members);
+            let before_penalty = attribute_balance_penalty_for_counts(constraint, &counts);
+
+            if let Some(value_idx) =
+                cp.person_attribute_value_indices[transfer.person_idx][constraint.attr_idx]
+            {
+                if group_idx == transfer.source_group_idx {
+                    counts[value_idx] = counts[value_idx].saturating_sub(1);
+                } else {
+                    counts[value_idx] += 1;
+                }
+            }
+
+            delta += attribute_balance_penalty_for_counts(constraint, &counts) - before_penalty;
         }
     }
 
     delta
 }
 
-fn members_after_transfer_for_group(
-    state: &RuntimeState,
-    analysis: &TransferAnalysis,
-    group_idx: usize,
-) -> Vec<usize> {
-    let transfer = analysis.transfer;
-    let session_idx = transfer.session_idx;
-    let mut members = state.group_members[state.group_slot(session_idx, group_idx)].clone();
-
-    if group_idx == transfer.source_group_idx {
-        members.retain(|member| *member != transfer.person_idx);
-    } else if group_idx == transfer.target_group_idx {
-        members.push(transfer.person_idx);
-    }
-
-    members
-}
-
-fn attribute_balance_penalty_for_members(
+fn attribute_balance_counts_for_members(
     cp: &crate::solver3::CompiledProblem,
     constraint: &CompiledAttributeBalanceConstraint,
     members: &[usize],
-) -> f64 {
+) -> Vec<u32> {
     let value_count = cp
         .attr_idx_to_val
         .get(constraint.attr_idx)
@@ -531,6 +522,13 @@ fn attribute_balance_penalty_for_members(
         }
     }
 
+    counts
+}
+
+fn attribute_balance_penalty_for_counts(
+    constraint: &CompiledAttributeBalanceConstraint,
+    counts: &[u32],
+) -> f64 {
     let mut penalty = 0.0;
     for &(value_idx, desired) in &constraint.desired_counts {
         let actual = counts.get(value_idx).copied().unwrap_or(0);

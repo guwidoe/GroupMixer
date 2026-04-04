@@ -70,6 +70,11 @@ Known from current local evidence before this session was prepared:
 - dense runtime architecture (`CompiledProblem` + flat `RuntimeState`) already exists
 - move kernels for `swap`, `transfer`, and `clique_swap` already exist
 - previous raw-runtime pass already removed a large amount of `HashSet` / `BTreeSet` / `BTreeMap` churn and improved multiple lanes materially
+- discarded local experiments so far:
+  - gating progress-only search bookkeeping in `search/engine.rs` looked semantically safe but measured as a broad regression; likely benchmark noise or hidden interaction, not a keepable win
+  - skipping transfer/clique attribute-balance after-group cloning when a touched slot had no balance constraints also came back with a noisy broad regression; unchanged swap lanes moved too, so local variance is currently real
+  - clique-search sampling rewrite that removed temporary active-member vectors and redundant target exclusion checks produced a **positive hotpath/path signal** (`hotpath_total_us` improved) but still lost on aggregate because representative iteration time spiked; worth retrying later with an immediate confirmation rerun if the environment is calmer
+- current measured local noise floor is non-trivial: a no-code-change rerun landed about **6.5% slower** than the best baseline, so only keep wins that are clearly larger than that spread or survive a confirmation rerun
 - current likely remaining raw-performance opportunities are:
   - reducing search-loop sampling overhead further
   - removing remaining per-preview scans / temporary allocations

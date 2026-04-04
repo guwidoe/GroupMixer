@@ -553,45 +553,56 @@ fn attribute_balance_penalty_delta_for_clique_swap(
     let mut delta = 0.0;
     for group_idx in [clique_swap.source_group_idx, clique_swap.target_group_idx] {
         let slot = cp.group_session_slot(session_idx, group_idx);
-        let before_members = &state.group_members[state.group_slot(session_idx, group_idx)];
-        let after_members = members_after_clique_swap_for_group(state, analysis, group_idx);
-
         for &cidx in &cp.attribute_balance_constraints_by_group_session[slot] {
             let constraint = &cp.attribute_balance_constraints[cidx];
-            delta +=
-                attribute_balance_penalty_for_members(cp, constraint, after_members.as_slice())
-                    - attribute_balance_penalty_for_members(cp, constraint, before_members);
+            let before_members = &state.group_members[state.group_slot(session_idx, group_idx)];
+            let mut counts = attribute_balance_counts_for_members(cp, constraint, before_members);
+            let before_penalty = attribute_balance_penalty_for_counts(constraint, &counts);
+
+            if group_idx == clique_swap.source_group_idx {
+                adjust_attribute_balance_counts_for_people(
+                    cp,
+                    &mut counts,
+                    constraint.attr_idx,
+                    &analysis.active_members,
+                    -1,
+                );
+                adjust_attribute_balance_counts_for_people(
+                    cp,
+                    &mut counts,
+                    constraint.attr_idx,
+                    &analysis.ordered_target_people,
+                    1,
+                );
+            } else {
+                adjust_attribute_balance_counts_for_people(
+                    cp,
+                    &mut counts,
+                    constraint.attr_idx,
+                    &analysis.ordered_target_people,
+                    -1,
+                );
+                adjust_attribute_balance_counts_for_people(
+                    cp,
+                    &mut counts,
+                    constraint.attr_idx,
+                    &analysis.active_members,
+                    1,
+                );
+            }
+
+            delta += attribute_balance_penalty_for_counts(constraint, &counts) - before_penalty;
         }
     }
 
     delta
 }
 
-fn members_after_clique_swap_for_group(
-    state: &RuntimeState,
-    analysis: &CliqueSwapAnalysis,
-    group_idx: usize,
-) -> Vec<usize> {
-    let clique_swap = &analysis.clique_swap;
-    let session_idx = clique_swap.session_idx;
-    let mut members = state.group_members[state.group_slot(session_idx, group_idx)].clone();
-
-    if group_idx == clique_swap.source_group_idx {
-        members.retain(|member| !analysis.active_members.contains(member));
-        members.extend_from_slice(&analysis.ordered_target_people);
-    } else if group_idx == clique_swap.target_group_idx {
-        members.retain(|member| !analysis.ordered_target_people.contains(member));
-        members.extend_from_slice(&analysis.active_members);
-    }
-
-    members
-}
-
-fn attribute_balance_penalty_for_members(
+fn attribute_balance_counts_for_members(
     cp: &crate::solver3::CompiledProblem,
     constraint: &CompiledAttributeBalanceConstraint,
     members: &[usize],
-) -> f64 {
+) -> Vec<u32> {
     let value_count = cp
         .attr_idx_to_val
         .get(constraint.attr_idx)
@@ -605,6 +616,33 @@ fn attribute_balance_penalty_for_members(
         }
     }
 
+    counts
+}
+
+fn adjust_attribute_balance_counts_for_people(
+    cp: &crate::solver3::CompiledProblem,
+    counts: &mut [u32],
+    attr_idx: usize,
+    people: &[usize],
+    delta: i32,
+) {
+    for &person_idx in people {
+        let Some(value_idx) = cp.person_attribute_value_indices[person_idx][attr_idx] else {
+            continue;
+        };
+
+        if delta > 0 {
+            counts[value_idx] += delta as u32;
+        } else {
+            counts[value_idx] = counts[value_idx].saturating_sub(delta.unsigned_abs());
+        }
+    }
+}
+
+fn attribute_balance_penalty_for_counts(
+    constraint: &CompiledAttributeBalanceConstraint,
+    counts: &[u32],
+) -> f64 {
     let mut penalty = 0.0;
     for &(value_idx, desired) in &constraint.desired_counts {
         let actual = counts.get(value_idx).copied().unwrap_or(0);
