@@ -12,6 +12,7 @@ use crate::models::{
 };
 use crate::solver_support::SolverError;
 
+use super::acceptance::{AcceptanceInputs, SimulatedAnnealingAcceptance, temperature_for_iteration};
 use super::super::moves::{
     apply_clique_swap_runtime_preview, apply_swap_runtime_preview, apply_transfer_runtime_preview,
     preview_clique_swap_runtime_lightweight, preview_swap_runtime_lightweight,
@@ -22,8 +23,6 @@ use super::super::oracle::{check_drift, oracle_score};
 use super::super::runtime_state::RuntimeState;
 
 const DEFAULT_MAX_ITERATIONS: u64 = 10_000;
-const DEFAULT_INITIAL_TEMPERATURE: f64 = 2.0;
-const DEFAULT_FINAL_TEMPERATURE: f64 = 0.05;
 const RECENT_WINDOW: usize = 100;
 const MAX_RANDOM_CANDIDATE_ATTEMPTS: usize = 24;
 const MAX_RANDOM_TARGET_ATTEMPTS: usize = 24;
@@ -94,6 +93,7 @@ impl SearchEngine {
         let no_improvement_limit = self.configuration.stop_conditions.no_improvement_iterations;
         let time_limit_seconds = self.configuration.stop_conditions.time_limit_seconds;
         let allowed_sessions = self.allowed_sessions(state);
+        let acceptance_policy = SimulatedAnnealingAcceptance;
 
         let mut current_state = state.clone();
         let mut best_state = current_state.clone();
@@ -140,11 +140,16 @@ impl SearchEngine {
                 attempted_delta_sum += delta_cost;
                 biggest_attempted_increase = biggest_attempted_increase.max(delta_cost.max(0.0));
 
-                let accepted = delta_cost <= 0.0
-                    || (temperature > 0.0
-                        && rng.random::<f64>() < (-delta_cost / temperature).exp().clamp(0.0, 1.0));
+                let acceptance = acceptance_policy.decide(
+                    AcceptanceInputs {
+                        iteration,
+                        max_iterations,
+                        delta_score: delta_cost,
+                    },
+                    &mut rng,
+                );
 
-                if accepted {
+                if acceptance.accepted {
                     let apply_started_at = Instant::now();
                     apply_previewed_move(&mut current_state, &preview)?;
                     family_metrics.apply_seconds += apply_started_at.elapsed().as_secs_f64();
@@ -161,7 +166,7 @@ impl SearchEngine {
                         })?;
                     }
 
-                    if delta_cost > 0.0 {
+                    if acceptance.escaped_local_optimum {
                         local_optima_escapes += 1;
                         biggest_accepted_increase = biggest_accepted_increase.max(delta_cost);
                     }
@@ -936,15 +941,6 @@ fn build_progress_update(
         move_policy: Some(move_policy.clone()),
         stop_reason,
     }
-}
-
-fn temperature_for_iteration(iteration: u64, max_iterations: u64) -> f64 {
-    if max_iterations <= 1 {
-        return DEFAULT_FINAL_TEMPERATURE;
-    }
-    let progress = (iteration as f64 / (max_iterations - 1) as f64).clamp(0.0, 1.0);
-    DEFAULT_INITIAL_TEMPERATURE
-        * (DEFAULT_FINAL_TEMPERATURE / DEFAULT_INITIAL_TEMPERATURE).powf(progress)
 }
 
 fn push_recent_acceptance(recent_acceptance: &mut VecDeque<bool>, accepted: bool) {
