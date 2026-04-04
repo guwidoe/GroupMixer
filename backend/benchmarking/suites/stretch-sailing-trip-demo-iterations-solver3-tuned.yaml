@@ -1,0 +1,35 @@
+schema_version: 1
+suite_id: stretch-sailing-trip-demo-iterations-solver3-tuned
+benchmark_mode: full_solve
+comparison_category: score_quality
+class: stretch
+title: Real Sailing Trip demo 1M-iteration benchmark for solver3 tuned policy
+description: Exact Sailing Trip demo workload under a 1,000,000 iteration budget using
+  the checked-in tuned solver3 benchmark policy.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 1000000
+    time_limit_seconds: null
+    no_improvement_iterations: 250000
+  solver_params:
+    solver_type: solver3
+  logging: {}
+  telemetry: {}
+  seed: 7
+  move_policy:
+    mode: weighted
+    allowed_families:
+    - swap
+    - transfer
+    - clique_swap
+    forced_family: null
+    weights:
+      swap: 0.6
+      transfer: 1.2
+      clique_swap: 1.8
+  allowed_sessions: null
+cases:
+- manifest: ../cases/stretch/sailing_trip_demo_real_benchmark_start.json
+default_max_iterations: 1000000

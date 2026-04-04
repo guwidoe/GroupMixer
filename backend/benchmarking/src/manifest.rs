@@ -3,7 +3,7 @@ use crate::benchmark_mode::{
     default_benchmark_mode, is_hotpath_benchmark_mode, is_supported_benchmark_mode,
 };
 use anyhow::{bail, Context, Result};
-use gm_core::models::{ApiInput, MovePolicy, SolverKind};
+use gm_core::models::{ApiInput, MovePolicy, SolverConfiguration, SolverKind};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -38,7 +38,7 @@ impl BenchmarkSuiteClass {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BenchmarkSuiteManifest {
     pub schema_version: u32,
     pub suite_id: String,
@@ -54,6 +54,8 @@ pub struct BenchmarkSuiteManifest {
     #[serde(default)]
     pub default_solver_family: Option<String>,
     #[serde(default)]
+    pub default_solver: Option<SolverConfiguration>,
+    #[serde(default)]
     pub default_seed: Option<u64>,
     #[serde(default)]
     pub default_max_iterations: Option<u64>,
@@ -68,13 +70,15 @@ pub struct BenchmarkSuiteManifest {
     pub cases: Vec<BenchmarkCaseOverride>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BenchmarkCaseOverride {
     pub manifest: String,
     #[serde(default)]
     pub case_id: Option<String>,
     #[serde(default)]
     pub solver_family: Option<String>,
+    #[serde(default)]
+    pub solver: Option<SolverConfiguration>,
     #[serde(default)]
     pub seed: Option<u64>,
     #[serde(default)]
@@ -291,6 +295,46 @@ fn validate_suite_manifest(path: &Path, manifest: &BenchmarkSuiteManifest) -> Re
                 )
             })?;
     }
+    if let Some(default_solver) = manifest.default_solver.as_ref() {
+        default_solver
+            .validate_solver_selection()
+            .map_err(anyhow::Error::msg)
+            .with_context(|| {
+                format!(
+                    "benchmark suite manifest {} has invalid default solver override",
+                    path.display()
+                )
+            })?;
+
+        if let Some(solver_family) = manifest.default_solver_family.as_deref() {
+            let declared_kind = SolverKind::parse_config_id(solver_family)
+                .map_err(anyhow::Error::msg)
+                .with_context(|| {
+                    format!(
+                        "benchmark suite manifest {} has unknown default solver family {}",
+                        path.display(),
+                        solver_family
+                    )
+                })?;
+            let override_kind = default_solver
+                .validate_solver_selection()
+                .map_err(anyhow::Error::msg)
+                .with_context(|| {
+                    format!(
+                        "benchmark suite manifest {} has invalid default solver override",
+                        path.display()
+                    )
+                })?;
+            if declared_kind != override_kind {
+                bail!(
+                    "benchmark suite manifest {} declares default solver family {} but default solver override uses {}",
+                    path.display(),
+                    declared_kind.canonical_id(),
+                    override_kind.canonical_id()
+                );
+            }
+        }
+    }
     for case in &manifest.cases {
         if let Some(solver_family) = case.solver_family.as_deref() {
             SolverKind::parse_config_id(solver_family)
@@ -302,6 +346,37 @@ fn validate_suite_manifest(path: &Path, manifest: &BenchmarkSuiteManifest) -> Re
                         solver_family
                     )
                 })?;
+        }
+        if let Some(solver) = case.solver.as_ref() {
+            let override_kind = solver
+                .validate_solver_selection()
+                .map_err(anyhow::Error::msg)
+                .with_context(|| {
+                    format!(
+                        "benchmark suite manifest {} has invalid case solver override",
+                        path.display()
+                    )
+                })?;
+
+            if let Some(solver_family) = case.solver_family.as_deref() {
+                let declared_kind = SolverKind::parse_config_id(solver_family)
+                    .map_err(anyhow::Error::msg)
+                    .with_context(|| {
+                        format!(
+                            "benchmark suite manifest {} has unknown case override solver family {}",
+                            path.display(),
+                            solver_family
+                        )
+                    })?;
+                if declared_kind != override_kind {
+                    bail!(
+                        "benchmark suite manifest {} declares case solver family {} but case solver override uses {}",
+                        path.display(),
+                        declared_kind.canonical_id(),
+                        override_kind.canonical_id()
+                    );
+                }
+            }
         }
     }
     if manifest.cases.is_empty() {

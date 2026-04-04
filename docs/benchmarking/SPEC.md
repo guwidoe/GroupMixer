@@ -7,7 +7,7 @@ This folder implements the solve-level benchmark system described in `docs/BENCH
 - structured artifacts are the source of truth
 - suite class is preserved in every case and rollup
 - manifests are explicit and versioned
-- benchmark runs record reproducibility inputs like seed, stop budget, and move policy
+- benchmark runs record reproducibility inputs like seed, stop budget, move policy, and explicit solver-policy selection
 - comparisons must fail honestly when runs are not compatible
 
 ## Manifest layers
@@ -24,7 +24,7 @@ Current shape:
 - `class`
 - `title`
 - `description`
-- optional suite-level defaults for seed, stop budget, move policy, hotpath iterations, and hotpath warmup iterations
+- optional suite-level defaults for solver family, full solver configuration, seed, stop budget, move policy, hotpath iterations, and hotpath warmup iterations
 - `cases[]`
 
 ### Case manifest
@@ -38,6 +38,7 @@ Current shape:
 - `class`
 - optional `family` and `paths` metadata for path cases
 - optional `solver_family` when the case needs to declare an explicit canonical solver-family id
+- suite case overrides may also provide an explicit `solver` configuration when benchmark policy must pin solver meta-settings rather than rely on family defaults alone
 - optional `tags`
 - `description`
 - either `input` as a valid `gm_core::models::ApiInput` or `hotpath_preset` for a deterministic hotpath fixture
@@ -45,6 +46,7 @@ Current shape:
 Rules:
 
 - full-solve cases may infer solver family from `input.solver`, but may also declare `solver_family` explicitly for metadata clarity
+- full-solve suites may replace a case's embedded solver configuration with an explicit checked-in benchmark policy via `default_solver` / `solver` overrides
 - hotpath cases **must** declare `solver_family` explicitly
 - `hotpath_preset` is a probe identifier, not a promise that every solver family shares the same internal kernel implementation
 - shared storage/reporting/comparison remain one platform even when the hotpath probe implementation differs by solver family

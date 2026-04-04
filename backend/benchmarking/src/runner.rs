@@ -304,6 +304,14 @@ fn apply_effective_overrides(
         .clone()
         .expect("full-solve benchmark cases require input");
 
+    if let Some(default_solver) = suite.manifest.default_solver.clone() {
+        input.solver = default_solver;
+    }
+
+    if let Some(case_solver) = case.overrides.solver.clone() {
+        input.solver = case_solver;
+    }
+
     if let Some(target_solver_kind) = effective_solver_kind_override(suite, case) {
         input = retarget_input_for_solver_kind(&input, target_solver_kind);
     }
@@ -617,6 +625,142 @@ mod tests {
             .cases
             .iter()
             .all(|case| case.solver.solver_config_id == "solver3"));
+    }
+
+    #[test]
+    fn full_solve_suite_can_apply_explicit_solver_overrides() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite_dir = temp.path().join("backend/benchmarking/suites");
+        let case_dir = temp.path().join("backend/benchmarking/cases/stretch");
+        fs::create_dir_all(&suite_dir).expect("mk suite dir");
+        fs::create_dir_all(&case_dir).expect("mk case dir");
+
+        let case_path = case_dir.join("tiny_real_demo_case.json");
+        fs::write(
+            &case_path,
+            serde_json::to_string_pretty(&json!({
+                "schema_version": 1,
+                "id": "stretch.tiny-real-demo-case",
+                "class": "stretch",
+                "title": "Tiny real demo case",
+                "description": "Small solve case used to validate suite-level solver overrides.",
+                "input": {
+                    "initial_schedule": null,
+                    "problem": {
+                        "people": [
+                            { "id": "p0", "attributes": { "role": "eng" } },
+                            { "id": "p1", "attributes": { "role": "eng" } },
+                            { "id": "p2", "attributes": { "role": "design" } },
+                            { "id": "p3", "attributes": { "role": "design" } }
+                        ],
+                        "groups": [
+                            { "id": "g0", "size": 2 },
+                            { "id": "g1", "size": 2 }
+                        ],
+                        "num_sessions": 2
+                    },
+                    "constraints": [
+                        {
+                            "type": "AttributeBalance",
+                            "group_id": "g0",
+                            "attribute_key": "role",
+                            "desired_values": { "eng": 1, "design": 1 },
+                            "penalty_weight": 5.0,
+                            "mode": "exact"
+                        }
+                    ],
+                    "solver": {
+                        "solver_type": "SimulatedAnnealing",
+                        "stop_conditions": {
+                            "max_iterations": 10,
+                            "time_limit_seconds": null,
+                            "no_improvement_iterations": null
+                        },
+                        "solver_params": {
+                            "solver_type": "SimulatedAnnealing",
+                            "initial_temperature": 1.0,
+                            "final_temperature": 0.01,
+                            "cooling_schedule": "geometric",
+                            "reheat_after_no_improvement": 0,
+                            "reheat_cycles": 0
+                        },
+                        "logging": {},
+                        "telemetry": {},
+                        "seed": 5,
+                        "move_policy": null,
+                        "allowed_sessions": null
+                    }
+                }
+            }))
+            .expect("serialize case"),
+        )
+        .expect("write case");
+
+        let suite_path = suite_dir.join("suite-with-explicit-solver.yaml");
+        fs::write(
+            &suite_path,
+            [
+                "schema_version: 1",
+                "suite_id: suite-with-explicit-solver",
+                "benchmark_mode: full_solve",
+                "comparison_category: score_quality",
+                "class: stretch",
+                "default_solver_family: solver1",
+                "default_solver:",
+                "  solver_type: SimulatedAnnealing",
+                "  stop_conditions:",
+                "    max_iterations: 12",
+                "    time_limit_seconds: null",
+                "    no_improvement_iterations: 6",
+                "  solver_params:",
+                "    solver_type: SimulatedAnnealing",
+                "    initial_temperature: 2.5",
+                "    final_temperature: 0.02",
+                "    cooling_schedule: geometric",
+                "    reheat_after_no_improvement: 3",
+                "    reheat_cycles: 1",
+                "  logging: {}",
+                "  telemetry: {}",
+                "  seed: 17",
+                "  move_policy:",
+                "    mode: weighted",
+                "    allowed_families: [swap, transfer, clique_swap]",
+                "    forced_family: null",
+                "    weights:",
+                "      swap: 0.5",
+                "      transfer: 1.0",
+                "      clique_swap: 2.0",
+                "  allowed_sessions: null",
+                "cases:",
+                "  - manifest: ../cases/stretch/tiny_real_demo_case.json",
+            ]
+            .join("\n"),
+        )
+        .expect("write suite");
+
+        let suite = load_suite_manifest(&suite_path).expect("suite should load");
+        let effective = apply_effective_overrides(&suite, &suite.cases[0]);
+        let params = effective
+            .solver
+            .solver_params
+            .simulated_annealing_params()
+            .expect("solver1 params");
+
+        assert_eq!(effective.solver.seed, Some(17));
+        assert_eq!(effective.solver.stop_conditions.max_iterations, Some(12));
+        assert_eq!(effective.solver.stop_conditions.no_improvement_iterations, Some(6));
+        assert_eq!(params.initial_temperature, 2.5);
+        assert_eq!(params.final_temperature, 0.02);
+        assert_eq!(params.reheat_cycles, Some(1));
+        assert_eq!(
+            effective
+                .solver
+                .move_policy
+                .as_ref()
+                .expect("weighted move policy")
+                .mode,
+            gm_core::models::MoveSelectionMode::Weighted
+        );
     }
 
     #[test]
