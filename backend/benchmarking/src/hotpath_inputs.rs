@@ -6,7 +6,7 @@ use gm_core::models::{
     Solver2Params, Solver3Params, SolverConfiguration, SolverParams, StopConditions,
 };
 use gm_core::solver1::State;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 #[derive(Clone)]
 pub struct ConstructionBenchInput {
@@ -366,6 +366,7 @@ pub fn solver3_swap_bench_input(id: &str) -> Option<Solver3SwapBenchInput> {
             );
             Some(Solver3SwapBenchInput { input, state, swap })
         }
+        "swap_sailing_trip_demo_real_solver3" => Some(real_demo_solver3_swap_bench_input()),
         _ => None,
     }
 }
@@ -521,6 +522,9 @@ pub fn solver3_transfer_bench_input(id: &str) -> Option<Solver3TransferBenchInpu
                 state,
                 transfer,
             })
+        }
+        "transfer_sailing_trip_demo_real_solver3" => {
+            Some(real_demo_solver3_transfer_bench_input())
         }
         _ => None,
     }
@@ -954,8 +958,231 @@ pub fn solver3_clique_swap_bench_input(id: &str) -> Option<Solver3CliqueSwapBenc
                 clique_swap,
             })
         }
+        "clique_swap_sailing_trip_demo_real_solver3" => {
+            Some(real_demo_solver3_clique_swap_bench_input())
+        }
         _ => None,
     }
+}
+
+fn real_demo_solver3_swap_bench_input() -> Solver3SwapBenchInput {
+    let (input, state) = real_demo_solver3_state();
+    let swap = first_valid_real_demo_swap(&state)
+        .expect("real demo solver3 state should have a valid swap hotpath move");
+    Solver3SwapBenchInput { input, state, swap }
+}
+
+fn real_demo_solver3_transfer_bench_input() -> Solver3TransferBenchInput {
+    let (input, state) = real_demo_solver3_state();
+    let transfer = first_valid_real_demo_transfer(&state)
+        .expect("real demo solver3 state should have a valid transfer hotpath move");
+    Solver3TransferBenchInput {
+        input,
+        state,
+        transfer,
+    }
+}
+
+fn real_demo_solver3_clique_swap_bench_input() -> Solver3CliqueSwapBenchInput {
+    let (input, state) = real_demo_solver3_state();
+    let clique_swap = first_valid_real_demo_clique_swap(&state)
+        .expect("real demo solver3 state should have a valid clique-swap hotpath move");
+    Solver3CliqueSwapBenchInput {
+        input,
+        state,
+        clique_swap,
+    }
+}
+
+fn real_demo_solver3_state() -> (ApiInput, gm_core::solver3::RuntimeState) {
+    let mut input = sailing_trip_demo_benchmark_start_input();
+    input.solver = SolverConfiguration {
+        solver_type: "solver3".to_string(),
+        stop_conditions: StopConditions {
+            max_iterations: Some(1),
+            time_limit_seconds: None,
+            no_improvement_iterations: None,
+        },
+        solver_params: SolverParams::Solver3(Solver3Params::default()),
+        logging: Default::default(),
+        telemetry: Default::default(),
+        seed: Some(7),
+        move_policy: None,
+        allowed_sessions: None,
+    };
+    let state = gm_core::solver3::RuntimeState::from_input(&input)
+        .expect("real demo solver3 hotpath state should build");
+    (input, state)
+}
+
+fn first_valid_real_demo_swap(
+    state: &gm_core::solver3::RuntimeState,
+) -> Option<gm_core::solver3::moves::SwapMove> {
+    for session_idx in 0..state.compiled.num_sessions {
+        for left_group in 0..state.compiled.num_groups {
+            let left_members = &state.group_members[state.group_slot(session_idx, left_group)];
+            if left_members.is_empty() {
+                continue;
+            }
+            for right_group in (left_group + 1)..state.compiled.num_groups {
+                let right_members = &state.group_members[state.group_slot(session_idx, right_group)];
+                if right_members.is_empty() {
+                    continue;
+                }
+                for &left_person in left_members {
+                    for &right_person in right_members {
+                        let swap = gm_core::solver3::moves::SwapMove::new(
+                            session_idx,
+                            left_person,
+                            right_person,
+                        );
+                        if gm_core::solver3::moves::swap::preview_swap_runtime_lightweight(
+                            state, &swap,
+                        )
+                        .is_ok()
+                        {
+                            return Some(swap);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn first_valid_real_demo_transfer(
+    state: &gm_core::solver3::RuntimeState,
+) -> Option<gm_core::solver3::moves::TransferMove> {
+    for session_idx in 0..state.compiled.num_sessions {
+        for from_group in 0..state.compiled.num_groups {
+            let members = &state.group_members[state.group_slot(session_idx, from_group)];
+            if members.is_empty() {
+                continue;
+            }
+            for &person_idx in members {
+                for to_group in 0..state.compiled.num_groups {
+                    if to_group == from_group {
+                        continue;
+                    }
+                    let transfer = gm_core::solver3::moves::TransferMove::new(
+                        session_idx,
+                        person_idx,
+                        from_group,
+                        to_group,
+                    );
+                    if gm_core::solver3::moves::transfer::preview_transfer_runtime_lightweight(
+                        state, &transfer,
+                    )
+                    .is_ok()
+                    {
+                        return Some(transfer);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn first_valid_real_demo_clique_swap(
+    state: &gm_core::solver3::RuntimeState,
+) -> Option<gm_core::solver3::moves::CliqueSwapMove> {
+    for session_idx in 0..state.compiled.num_sessions {
+        let mut cliques_by_id: BTreeMap<usize, Vec<usize>> = BTreeMap::new();
+        for person_idx in 0..state.compiled.num_people {
+            if let Some(clique_id) = state.compiled.person_to_clique_id[session_idx][person_idx] {
+                cliques_by_id.entry(clique_id).or_default().push(person_idx);
+            }
+        }
+
+        for (clique_id, mut clique_members) in cliques_by_id {
+            clique_members.sort_unstable();
+            let source_group = state.person_location[state.people_slot(session_idx, clique_members[0])]?;
+            for target_group in 0..state.compiled.num_groups {
+                if target_group == source_group {
+                    continue;
+                }
+                let target_members = &state.group_members[state.group_slot(session_idx, target_group)];
+                if target_members.len() < clique_members.len() {
+                    continue;
+                }
+                let mut chosen = Vec::with_capacity(clique_members.len());
+                if let Some(target_people) = first_valid_target_people_for_clique_swap(
+                    state,
+                    session_idx,
+                    clique_id,
+                    source_group,
+                    target_group,
+                    &clique_members,
+                    target_members,
+                    0,
+                    &mut chosen,
+                ) {
+                    return Some(gm_core::solver3::moves::CliqueSwapMove::new(
+                        session_idx,
+                        clique_id,
+                        source_group,
+                        target_group,
+                        target_people,
+                    ));
+                }
+            }
+        }
+    }
+    None
+}
+
+fn first_valid_target_people_for_clique_swap(
+    state: &gm_core::solver3::RuntimeState,
+    session_idx: usize,
+    clique_id: usize,
+    source_group: usize,
+    target_group: usize,
+    clique_members: &[usize],
+    target_members: &[usize],
+    start_idx: usize,
+    chosen: &mut Vec<usize>,
+) -> Option<Vec<usize>> {
+    if chosen.len() == clique_members.len() {
+        let candidate = gm_core::solver3::moves::CliqueSwapMove::new(
+            session_idx,
+            clique_id,
+            source_group,
+            target_group,
+            chosen.clone(),
+        );
+        return gm_core::solver3::moves::clique_swap::preview_clique_swap_runtime_lightweight(
+            state, &candidate,
+        )
+        .ok()
+        .map(|_| chosen.clone());
+    }
+
+    let remaining = clique_members.len() - chosen.len();
+    if target_members.len().saturating_sub(start_idx) < remaining {
+        return None;
+    }
+
+    for idx in start_idx..=target_members.len() - remaining {
+        chosen.push(target_members[idx]);
+        if let Some(valid) = first_valid_target_people_for_clique_swap(
+            state,
+            session_idx,
+            clique_id,
+            source_group,
+            target_group,
+            clique_members,
+            target_members,
+            idx + 1,
+            chosen,
+        ) {
+            return Some(valid);
+        }
+        chosen.pop();
+    }
+
+    None
 }
 
 pub fn search_loop_bench_input(id: &str) -> Option<SearchLoopBenchInput> {

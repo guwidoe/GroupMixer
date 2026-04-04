@@ -61,6 +61,23 @@ cargo bench -p gm-core --bench solver_perf construction
 cargo bench -p gm-core --bench solver_perf search_loop
 ```
 
+### Real-demo large-workload validation
+
+Use the real Sailing Trip package when you need the actual demo workload rather than a toy or derived proxy:
+
+```bash
+gm-cli benchmark run --manifest backend/benchmarking/suites/stretch-sailing-trip-demo-time-solver3-canonical.yaml
+gm-cli benchmark run --manifest backend/benchmarking/suites/stretch-sailing-trip-demo-iterations-solver3-canonical.yaml
+gm-cli benchmark run --manifest backend/benchmarking/suites/hotpath-search-iteration-sailing-trip-demo-solver3.yaml
+gm-cli benchmark run --manifest backend/benchmarking/suites/hotpath-clique-swap-preview-sailing-trip-demo-solver3.yaml
+```
+
+Policy notes:
+
+- use the `*-canonical` suites for stable architecture/regression comparisons
+- use the `*-tuned` suites for checked-in best-known benchmark policy comparisons
+- use the `*_demo_real_benchmark_start` workload when you want shared deterministic start-state comparability across solver families
+
 ## Baseline workflow
 
 ### Record a baseline before a refactor

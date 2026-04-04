@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "id": "hotpath.clique-swap.sailing-trip-demo-real.solver3",
+  "class": "stretch",
+  "solver_family": "solver3",
+  "family": "clique_swap",
+  "paths": [
+    "clique_swap_preview",
+    "clique_swap_apply"
+  ],
+  "title": "Hotpath solver3 Sailing Trip real-demo clique-swap preset",
+  "description": "Deterministic solver3 clique-swap probe over the real Sailing Trip demo benchmark start state.",
+  "tags": [
+    "hotpath",
+    "clique_swap",
+    "stretch",
+    "sailing",
+    "demo-real",
+    "solver3"
+  ],
+  "hotpath_preset": "clique_swap_sailing_trip_demo_real_solver3"
+}

@@ -1,0 +1,10 @@
+schema_version: 1
+suite_id: hotpath-swap-preview-sailing-trip-demo-solver3
+benchmark_mode: swap_preview
+class: stretch
+title: hotpath swap preview sailing trip demo solver3
+description: Deterministic large-instance swap_preview lane over the real Sailing Trip demo benchmark start state for solver3.
+default_iterations: 16
+default_warmup_iterations: 2
+cases:
+  - manifest: ../cases/hotpath/sailing_trip_demo_real_swap_solver3.json

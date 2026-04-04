@@ -55,3 +55,27 @@ Each case belongs to exactly one primary class so rollups preserve context inste
 - `clique_swap_preview`
 - `clique_swap_apply`
 - `search_iteration`
+
+## Real Sailing Trip benchmark package
+
+The repo now distinguishes between two Sailing Trip benchmark artifacts:
+
+- `backend/benchmarking/cases/stretch/sailing_trip_demo_real.json`
+  - exact anonymized product demo problem
+- `backend/benchmarking/cases/stretch/sailing_trip_demo_real_benchmark_start.json`
+  - the same real problem paired with a shared deterministic initial schedule for reproducible cross-solver search-policy comparisons
+
+The real-demo benchmark package currently includes:
+
+- full-solve suites for solver1 and solver3 under:
+  - canonical policy
+  - tuned policy
+  - 15-second budget
+  - 1,000,000-iteration budget
+- a large-instance solver3 `search_iteration` lane
+- large-instance solver3 hotpath lanes for:
+  - `swap_preview` / `swap_apply`
+  - `transfer_preview` / `transfer_apply`
+  - `clique_swap_preview` / `clique_swap_apply`
+
+See `docs/benchmarking/REAL_SAILING_TRIP_BENCHMARK_PLAN.md` for the implementation plan and rationale.

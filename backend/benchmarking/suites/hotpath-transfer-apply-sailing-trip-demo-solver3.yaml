@@ -1,0 +1,10 @@
+schema_version: 1
+suite_id: hotpath-transfer-apply-sailing-trip-demo-solver3
+benchmark_mode: transfer_apply
+class: stretch
+title: hotpath transfer apply sailing trip demo solver3
+description: Deterministic large-instance transfer_apply lane over the real Sailing Trip demo benchmark start state for solver3.
+default_iterations: 16
+default_warmup_iterations: 2
+cases:
+  - manifest: ../cases/hotpath/sailing_trip_demo_real_transfer_solver3.json

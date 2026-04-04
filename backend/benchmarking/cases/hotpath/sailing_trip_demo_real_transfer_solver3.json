@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "id": "hotpath.transfer.sailing-trip-demo-real.solver3",
+  "class": "stretch",
+  "solver_family": "solver3",
+  "family": "transfer",
+  "paths": [
+    "transfer_preview",
+    "transfer_apply"
+  ],
+  "title": "Hotpath solver3 Sailing Trip real-demo transfer preset",
+  "description": "Deterministic solver3 transfer probe over the real Sailing Trip demo benchmark start state.",
+  "tags": [
+    "hotpath",
+    "transfer",
+    "stretch",
+    "sailing",
+    "demo-real",
+    "solver3"
+  ],
+  "hotpath_preset": "transfer_sailing_trip_demo_real_solver3"
+}
