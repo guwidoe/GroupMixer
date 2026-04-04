@@ -2,13 +2,22 @@
 
 ## Status
 
-Proposed.
+Completed with a **no-go / shelve** decision for further runtime-track optimization work.
 
 ## Decision
 
-Phase B will **not** create another solver family and will **not** discard the current `solver2` implementation.
+Phase B did **not** justify continued runtime hardening toward competitiveness.
 
-Instead:
+Final decision:
+
+- keep `solver2` as a single solver family
+- keep the current oracle / reference path inside `solver2`
+- keep the implemented runtime fast paths as internal experimental machinery
+- **shelve further Phase B runtime optimization work for now**
+- keep `solver2` in internal comparison / reference mode only
+- do **not** advance solver2 toward broader rollout on the basis of the current runtime evidence
+
+What remains true from the original Phase B framing:
 
 - `solver2` remains the solver family
 - the current implementation becomes the **oracle / reference path** inside `solver2`
@@ -226,6 +235,75 @@ A human decision is made from current evidence, not optimism.
 - decision is recorded explicitly
 - if gates are missed, the plan says to shelve rather than continue indefinitely
 
+## Final benchmark review
+
+Phase B produced real local improvements, but not a durable solve-level competitiveness result.
+
+### Phase A baseline vs later Phase B hotpath evidence
+
+Earlier same-machine Phase A evidence established approximately:
+
+- swap preview: `24.09 µs`
+- transfer preview: `33.24 µs`
+- clique-swap preview: `38.58 µs`
+
+Latest same-machine Phase B hotpath evidence (`6b6967f`) showed:
+
+- swap preview:
+  - solver2 `5.1674 µs`
+  - solver1 `1.3959 µs`
+  - improvement vs Phase A baseline: `~4.66x`
+  - solver2 vs solver1 ratio: `~3.70x`
+- transfer preview:
+  - solver2 `4.4975 µs`
+  - solver1 `1.2943 µs`
+  - improvement vs Phase A baseline: `~7.39x`
+  - solver2 vs solver1 ratio: `~3.47x`
+- clique-swap preview:
+  - solver2 `18.5480 µs`
+  - solver1 `2.9222 µs`
+  - improvement vs Phase A baseline: `~2.08x`
+  - solver2 vs solver1 ratio: `~6.35x`
+
+### Latest same-machine representative solve evidence
+
+Latest representative rerun (`6b6967f`) showed:
+
+- `representative.small-workshop-balanced`
+  - solver1 `0.000676636s`
+  - solver2 `0.0041930676s`
+  - ratio `~6.20x`
+  - final score: both `3.0`
+- `representative.small-workshop-constrained`
+  - solver1 `0.000616879s`
+  - solver2 `0.0048007965s`
+  - ratio `~7.78x`
+  - final score: both `4.0`
+
+Notably, the representative suite still exercised only `swap` attempts in these runs, so Phase B did not establish that the runtime path is solve-level competitive even after the transfer / clique runtime work landed.
+
+### Go / no-go conclusion
+
+Decision: **no-go for continued Phase B optimization at this time**.
+
+Why:
+
+- Gate 1 was only partially recovered later and was not cleanly achieved when first measured.
+- Gate 2 was not met robustly; representative evidence remained noisy and the latest clean rerun was materially slower than solver1.
+- Gate 3 was missed: although all move families now have runtime fast paths and transfer improved strongly, clique-swap remains far from solver1 and representative solve performance is still not close enough to justify more optimization churn.
+- The retained value is now the architecture, oracle/reference path, parity corpus, and shared benchmark infrastructure—not a rollout-ready competitive runtime.
+
+### Operational conclusion
+
+From this point forward:
+
+- keep `solver2` available for internal comparison and architectural learning
+- keep the oracle path permanent
+- keep the current runtime fast paths as useful experimental/reference machinery
+- do not continue open-ended performance work by default
+- do not broaden rollout scope
+- only reopen runtime optimization if a new benchmark corpus or a narrowly scoped, high-confidence performance hypothesis justifies it
+
 ## Benchmark gates
 
 These gates are intentionally strict enough to prevent endless optimistic iteration.
@@ -274,6 +352,6 @@ Do **not** start transfer/clique or broader rollout work before this slice is me
 
 ## Immediate next step
 
-Start Epic B1 and B2 as one bounded rescue spike.
+No further default Phase B optimization step is approved.
 
-If the swap vertical slice cannot produce a dramatic speedup, stop there.
+If future work reopens this track, it should begin from a fresh benchmark-backed hypothesis rather than resuming open-ended hardening.

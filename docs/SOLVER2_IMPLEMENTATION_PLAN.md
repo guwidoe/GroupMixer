@@ -8,8 +8,9 @@ Current readiness snapshot:
 
 - `solver2` is runnable through the shared engine registry
 - shared data-driven, property, hotpath, and full-solve benchmark participation exists
-- current evidence supports **Stage 1 — internal comparison mode**
-- `solver2` is **not yet ready for broader product-facing rollout**
+- current evidence supports **Stage 1 — internal comparison mode only**
+- the bounded Phase B runtime rescue effort has been reviewed and is now **shelved for further optimization by default**
+- `solver2` is **not ready for broader product-facing rollout**
 
 ## Purpose
 
@@ -350,14 +351,17 @@ Use the existing rollout criteria to decide whether solver2 is ready for broader
 
 ### Current rollout conclusion
 
-`solver2` is ready for continued internal comparison and benchmark-driven hardening, but not yet for Stage 2 limited product exposure.
+`solver2` should remain in Stage 1 internal comparison mode only.
+
+The bounded Phase B runtime rescue effort did not produce strong enough same-machine benchmark evidence to justify continued optimization by default or any broader rollout push.
 
 Reasons:
 
-- runtime / UX evidence is still incomplete for browser-facing and product-facing flows
-- representative runtime remains behind `solver1` on the current implementation line
+- representative runtime still remains materially behind `solver1`
+- latest same-machine Phase B evidence did not establish durable solve-level competitiveness
 - recommendation/tuning support is still intentionally limited
 - broader persistence / import / webapp capability handling is still pending outside this plan
+- the highest retained value today is the oracle/reference implementation plus the shared multi-solver verification and benchmark platform
 
 ## Cross-epic acceptance gates
 
@@ -397,11 +401,11 @@ Before runtime/webapp rollout work:
 
 ## Suggested immediate next step
 
-Stay in Stage 1 internal comparison mode and focus on the next benchmark-backed hardening loop.
+Stay in Stage 1 internal comparison mode.
 
 Specifically:
 
-1. expand representative and adversarial solver2 benchmark coverage
-2. optimize candidate generation / preview-heavy search paths using the shared benchmark lanes
-3. keep recommendation metadata truthful until real tuning support exists
-4. defer product-facing runtime / webapp rollout until quality and runtime evidence are both acceptable
+1. keep recommendation metadata truthful until real tuning support exists
+2. defer product-facing runtime / webapp rollout until quality and runtime evidence are both acceptable
+3. preserve the oracle/reference implementation and shared benchmark platform
+4. only reopen runtime optimization work if a new benchmark corpus or a narrowly scoped, high-confidence performance hypothesis justifies it
