@@ -21,13 +21,15 @@ use gm_core::models::{MoveFamilyBenchmarkTelemetrySummary, SolverKind};
 use gm_core::solver1::search::simulated_annealing::SimulatedAnnealing;
 use gm_core::solver1::search::Solver;
 use gm_core::solver2::moves::clique_swap::{
-    apply_clique_swap as apply_solver2_clique_swap, preview_clique_swap,
+    apply_clique_swap_runtime_preview as apply_solver2_clique_swap_runtime_preview,
+    preview_clique_swap_runtime_lightweight,
 };
 use gm_core::solver2::moves::swap::{
     apply_swap_runtime_with_score as apply_solver2_swap_runtime_with_score, preview_swap_runtime,
 };
 use gm_core::solver2::moves::transfer::{
-    apply_transfer as apply_solver2_transfer, preview_transfer,
+    apply_transfer_runtime_preview as apply_solver2_transfer_runtime_preview,
+    preview_transfer_runtime_lightweight,
 };
 use std::hint::black_box;
 use std::time::Instant;
@@ -313,7 +315,7 @@ fn run_solver2_hotpath_case(
                 )
             })?;
             for _ in 0..warmup_iterations {
-                let preview = preview_transfer(&input.state, &input.transfer)
+                let preview = preview_transfer_runtime_lightweight(&input.state, &input.transfer)
                     .map_err(|error| error.to_string())?;
                 black_box(preview.delta_cost);
             }
@@ -322,7 +324,7 @@ fn run_solver2_hotpath_case(
             let mut preview_seconds = 0.0;
             for _ in 0..iterations {
                 let op_started = Instant::now();
-                let preview = preview_transfer(&input.state, &input.transfer)
+                let preview = preview_transfer_runtime_lightweight(&input.state, &input.transfer)
                     .map_err(|error| error.to_string())?;
                 preview_seconds += op_started.elapsed().as_secs_f64();
                 checksum = checksum.wrapping_add(black_box(preview.delta_cost.to_bits() as i64));
@@ -361,9 +363,11 @@ fn run_solver2_hotpath_case(
                     SolverKind::Solver2.canonical_id()
                 )
             })?;
+            let preview = preview_transfer_runtime_lightweight(&input.state, &input.transfer)
+                .map_err(|error| error.to_string())?;
             for _ in 0..warmup_iterations {
                 let mut state = input.state.clone();
-                apply_solver2_transfer(&mut state, &input.transfer)
+                apply_solver2_transfer_runtime_preview(&mut state, &preview)
                     .map_err(|error| error.to_string())?;
                 black_box(state.current_score.total_score);
             }
@@ -373,7 +377,7 @@ fn run_solver2_hotpath_case(
             for _ in 0..iterations {
                 let mut state = input.state.clone();
                 let op_started = Instant::now();
-                apply_solver2_transfer(&mut state, &input.transfer)
+                apply_solver2_transfer_runtime_preview(&mut state, &preview)
                     .map_err(|error| error.to_string())?;
                 apply_seconds += op_started.elapsed().as_secs_f64();
                 checksum = checksum
@@ -414,8 +418,9 @@ fn run_solver2_hotpath_case(
                 )
             })?;
             for _ in 0..warmup_iterations {
-                let preview = preview_clique_swap(&input.state, &input.clique_swap)
-                    .map_err(|error| error.to_string())?;
+                let preview =
+                    preview_clique_swap_runtime_lightweight(&input.state, &input.clique_swap)
+                        .map_err(|error| error.to_string())?;
                 black_box(preview.delta_cost);
             }
             let started = Instant::now();
@@ -423,8 +428,9 @@ fn run_solver2_hotpath_case(
             let mut preview_seconds = 0.0;
             for _ in 0..iterations {
                 let op_started = Instant::now();
-                let preview = preview_clique_swap(&input.state, &input.clique_swap)
-                    .map_err(|error| error.to_string())?;
+                let preview =
+                    preview_clique_swap_runtime_lightweight(&input.state, &input.clique_swap)
+                        .map_err(|error| error.to_string())?;
                 preview_seconds += op_started.elapsed().as_secs_f64();
                 checksum = checksum.wrapping_add(black_box(preview.delta_cost.to_bits() as i64));
             }
@@ -462,9 +468,11 @@ fn run_solver2_hotpath_case(
                     SolverKind::Solver2.canonical_id()
                 )
             })?;
+            let preview = preview_clique_swap_runtime_lightweight(&input.state, &input.clique_swap)
+                .map_err(|error| error.to_string())?;
             for _ in 0..warmup_iterations {
                 let mut state = input.state.clone();
-                apply_solver2_clique_swap(&mut state, &input.clique_swap)
+                apply_solver2_clique_swap_runtime_preview(&mut state, &preview)
                     .map_err(|error| error.to_string())?;
                 black_box(state.current_score.total_score);
             }
@@ -474,7 +482,7 @@ fn run_solver2_hotpath_case(
             for _ in 0..iterations {
                 let mut state = input.state.clone();
                 let op_started = Instant::now();
-                apply_solver2_clique_swap(&mut state, &input.clique_swap)
+                apply_solver2_clique_swap_runtime_preview(&mut state, &preview)
                     .map_err(|error| error.to_string())?;
                 apply_seconds += op_started.elapsed().as_secs_f64();
                 checksum = checksum

@@ -41,7 +41,7 @@ pub struct TransferBenchInput {
 #[derive(Clone)]
 pub struct Solver2TransferBenchInput {
     pub input: ApiInput,
-    pub state: gm_core::solver2::SolutionState,
+    pub state: gm_core::solver2::RuntimeSolutionState,
     pub transfer: gm_core::solver2::moves::TransferMove,
 }
 
@@ -58,7 +58,7 @@ pub struct CliqueSwapBenchInput {
 #[derive(Clone)]
 pub struct Solver2CliqueSwapBenchInput {
     pub input: ApiInput,
-    pub state: gm_core::solver2::SolutionState,
+    pub state: gm_core::solver2::RuntimeSolutionState,
     pub clique_swap: gm_core::solver2::moves::CliqueSwapMove,
 }
 
@@ -331,7 +331,7 @@ pub fn solver2_transfer_bench_input(id: &str) -> Option<Solver2TransferBenchInpu
                     vec![vec!["p0", "p4"], vec!["p1", "p2"], vec!["p3"]],
                 ],
             ));
-            let state = gm_core::solver2::SolutionState::from_input(&input)
+            let state = gm_core::solver2::RuntimeSolutionState::from_input(&input)
                 .expect("solver2 transfer state should build");
             let transfer = gm_core::solver2::moves::TransferMove::new(
                 1,
@@ -665,7 +665,7 @@ pub fn solver2_clique_swap_bench_input(id: &str) -> Option<Solver2CliqueSwapBenc
                     vec![vec!["p0", "p2", "p4"], vec!["p1", "p3", "p5"], vec![]],
                 ],
             ));
-            let state = gm_core::solver2::SolutionState::from_input(&input)
+            let state = gm_core::solver2::RuntimeSolutionState::from_input(&input)
                 .expect("solver2 clique swap state should build");
             let clique_idx = state.compiled_problem.person_to_clique_id[0]
                 [state.compiled_problem.person_id_to_idx["p0"]]

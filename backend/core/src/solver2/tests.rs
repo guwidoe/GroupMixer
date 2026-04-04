@@ -9,7 +9,8 @@ use crate::models::{
 
 use super::compiled_problem::CompiledProblem;
 use super::moves::clique_swap::{
-    analyze_clique_swap, apply_clique_swap, preview_clique_swap, CliqueSwapFeasibility,
+    analyze_clique_swap, apply_clique_swap, apply_clique_swap_runtime_preview, preview_clique_swap,
+    preview_clique_swap_runtime, preview_clique_swap_runtime_lightweight, CliqueSwapFeasibility,
     CliqueSwapMove,
 };
 use super::moves::swap::{
@@ -18,7 +19,9 @@ use super::moves::swap::{
     SwapMove,
 };
 use super::moves::transfer::{
-    analyze_transfer, apply_transfer, preview_transfer, TransferFeasibility, TransferMove,
+    analyze_transfer, apply_transfer, apply_transfer_runtime_preview, preview_transfer,
+    preview_transfer_runtime, preview_transfer_runtime_lightweight, TransferFeasibility,
+    TransferMove,
 };
 use super::scoring::recompute_full_score;
 use super::validation::invariants::validate_state_invariants;
@@ -854,6 +857,68 @@ fn sequential_swaps_do_not_drift_from_recomputation() {
 }
 
 #[test]
+fn runtime_transfer_preview_matches_oracle_preview_and_apply() {
+    let input = transfer_input();
+    let oracle_state = SolutionState::from_input(&input).unwrap();
+    let runtime_state = RuntimeSolutionState::from_oracle_state(&oracle_state);
+    let transfer = TransferMove::new(
+        1,
+        oracle_state.compiled_problem.person_id_to_idx["p1"],
+        oracle_state.compiled_problem.group_id_to_idx["g1"],
+        oracle_state.compiled_problem.group_id_to_idx["g0"],
+    );
+
+    let oracle_preview = preview_transfer(&oracle_state, &transfer).unwrap();
+    let runtime_preview = preview_transfer_runtime(&runtime_state, &transfer).unwrap();
+    let lightweight = preview_transfer_runtime_lightweight(&runtime_state, &transfer).unwrap();
+
+    assert_eq!(runtime_preview.after_score, oracle_preview.after_score);
+    assert_eq!(runtime_preview.delta_cost, oracle_preview.delta_cost);
+    assert_eq!(lightweight.delta_cost, runtime_preview.delta_cost);
+
+    let mut runtime_state = RuntimeSolutionState::from_oracle_state(&oracle_state);
+    apply_transfer_runtime_preview(&mut runtime_state, &lightweight).unwrap();
+    assert_eq!(runtime_state.current_score, runtime_preview.after_score);
+    runtime_state.validate_against_oracle().unwrap();
+    compare_state_against_solver1(&input, runtime_state.as_oracle_state()).unwrap();
+}
+
+#[test]
+fn runtime_sequential_transfers_do_not_drift_from_oracle() {
+    let input = transfer_sequential_input();
+    let oracle_state = SolutionState::from_input(&input).unwrap();
+    let mut runtime_state = RuntimeSolutionState::from_oracle_state(&oracle_state);
+    let transfers = [
+        TransferMove::new(
+            1,
+            runtime_state.compiled_problem.person_id_to_idx["p2"],
+            runtime_state.compiled_problem.group_id_to_idx["g0"],
+            runtime_state.compiled_problem.group_id_to_idx["g1"],
+        ),
+        TransferMove::new(
+            0,
+            runtime_state.compiled_problem.person_id_to_idx["p1"],
+            runtime_state.compiled_problem.group_id_to_idx["g0"],
+            runtime_state.compiled_problem.group_id_to_idx["g1"],
+        ),
+        TransferMove::new(
+            0,
+            runtime_state.compiled_problem.person_id_to_idx["p4"],
+            runtime_state.compiled_problem.group_id_to_idx["g2"],
+            runtime_state.compiled_problem.group_id_to_idx["g0"],
+        ),
+    ];
+
+    for transfer in transfers {
+        let preview = preview_transfer_runtime_lightweight(&runtime_state, &transfer).unwrap();
+        apply_transfer_runtime_preview(&mut runtime_state, &preview).unwrap();
+        runtime_state.validate_against_oracle().unwrap();
+    }
+
+    compare_state_against_solver1(&input, runtime_state.as_oracle_state()).unwrap();
+}
+
+#[test]
 fn transfer_analysis_reports_explicit_affected_region() {
     let input = transfer_input();
     let state = SolutionState::from_input(&input).unwrap();
@@ -1130,6 +1195,82 @@ fn sequential_transfers_do_not_drift_from_recomputation() {
         assert_eq!(state.current_score, preview.after_score);
         compare_state_against_solver1(&input, &state).unwrap();
     }
+}
+
+#[test]
+fn runtime_clique_swap_preview_matches_oracle_preview_and_apply() {
+    let input = clique_swap_input();
+    let oracle_state = SolutionState::from_input(&input).unwrap();
+    let runtime_state = RuntimeSolutionState::from_oracle_state(&oracle_state);
+    let clique_idx = oracle_state.compiled_problem.person_to_clique_id[0]
+        [oracle_state.compiled_problem.person_id_to_idx["p0"]]
+        .unwrap();
+    let clique_swap = CliqueSwapMove::new(
+        0,
+        clique_idx,
+        oracle_state.compiled_problem.group_id_to_idx["g0"],
+        oracle_state.compiled_problem.group_id_to_idx["g1"],
+        vec![
+            oracle_state.compiled_problem.person_id_to_idx["p2"],
+            oracle_state.compiled_problem.person_id_to_idx["p3"],
+        ],
+    );
+
+    let oracle_preview = preview_clique_swap(&oracle_state, &clique_swap).unwrap();
+    let runtime_preview = preview_clique_swap_runtime(&runtime_state, &clique_swap).unwrap();
+    let lightweight =
+        preview_clique_swap_runtime_lightweight(&runtime_state, &clique_swap).unwrap();
+
+    assert_eq!(runtime_preview.after_score, oracle_preview.after_score);
+    assert_eq!(runtime_preview.delta_cost, oracle_preview.delta_cost);
+    assert_eq!(lightweight.delta_cost, runtime_preview.delta_cost);
+
+    let mut runtime_state = RuntimeSolutionState::from_oracle_state(&oracle_state);
+    apply_clique_swap_runtime_preview(&mut runtime_state, &lightweight).unwrap();
+    assert_eq!(runtime_state.current_score, runtime_preview.after_score);
+    runtime_state.validate_against_oracle().unwrap();
+    compare_state_against_solver1(&input, runtime_state.as_oracle_state()).unwrap();
+}
+
+#[test]
+fn runtime_sequential_clique_swaps_do_not_drift_from_oracle() {
+    let input = sequential_clique_swap_input();
+    let oracle_state = SolutionState::from_input(&input).unwrap();
+    let mut runtime_state = RuntimeSolutionState::from_oracle_state(&oracle_state);
+    let clique_idx = runtime_state.compiled_problem.person_to_clique_id[0]
+        [runtime_state.compiled_problem.person_id_to_idx["p0"]]
+        .unwrap();
+    let swaps = [
+        CliqueSwapMove::new(
+            0,
+            clique_idx,
+            runtime_state.compiled_problem.group_id_to_idx["g0"],
+            runtime_state.compiled_problem.group_id_to_idx["g1"],
+            vec![
+                runtime_state.compiled_problem.person_id_to_idx["p2"],
+                runtime_state.compiled_problem.person_id_to_idx["p3"],
+            ],
+        ),
+        CliqueSwapMove::new(
+            0,
+            clique_idx,
+            runtime_state.compiled_problem.group_id_to_idx["g1"],
+            runtime_state.compiled_problem.group_id_to_idx["g2"],
+            vec![
+                runtime_state.compiled_problem.person_id_to_idx["p4"],
+                runtime_state.compiled_problem.person_id_to_idx["p5"],
+            ],
+        ),
+    ];
+
+    for clique_swap in swaps {
+        let preview =
+            preview_clique_swap_runtime_lightweight(&runtime_state, &clique_swap).unwrap();
+        apply_clique_swap_runtime_preview(&mut runtime_state, &preview).unwrap();
+        runtime_state.validate_against_oracle().unwrap();
+    }
+
+    compare_state_against_solver1(&input, runtime_state.as_oracle_state()).unwrap();
 }
 
 #[test]

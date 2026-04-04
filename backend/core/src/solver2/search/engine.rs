@@ -12,14 +12,17 @@ use crate::models::{
 use crate::solver_support::SolverError;
 
 use super::super::move_types::CandidateMove;
-use super::super::move_types::MovePreview;
 use super::super::moves::clique_swap::{
-    apply_clique_swap_with_score, preview_clique_swap, CliqueSwapMove,
+    apply_clique_swap_runtime_preview, preview_clique_swap_runtime_lightweight, CliqueSwapMove,
+    CliqueSwapRuntimePreview,
 };
 use super::super::moves::swap::{
     apply_swap_runtime_preview, preview_swap_runtime_lightweight, SwapMove, SwapRuntimePreview,
 };
-use super::super::moves::transfer::{apply_transfer_with_score, preview_transfer, TransferMove};
+use super::super::moves::transfer::{
+    apply_transfer_runtime_preview, preview_transfer_runtime_lightweight, TransferMove,
+    TransferRuntimePreview,
+};
 use super::super::runtime_state::RuntimeSolutionState;
 use super::super::validation::invariants::validate_state_invariants;
 use super::super::SolutionState;
@@ -34,21 +37,26 @@ const MAX_RANDOM_TARGET_ATTEMPTS: usize = 24;
 #[derive(Debug, Clone, PartialEq)]
 enum SearchMovePreview {
     Swap(SwapRuntimePreview),
-    Full(MovePreview),
+    Transfer(TransferRuntimePreview),
+    CliqueSwap(CliqueSwapRuntimePreview),
 }
 
 impl SearchMovePreview {
     fn delta_cost(&self) -> f64 {
         match self {
             Self::Swap(preview) => preview.delta_cost,
-            Self::Full(preview) => preview.delta_cost,
+            Self::Transfer(preview) => preview.delta_cost,
+            Self::CliqueSwap(preview) => preview.delta_cost,
         }
     }
 
     fn candidate(&self) -> CandidateMove {
         match self {
             Self::Swap(preview) => CandidateMove::Swap(preview.analysis.swap.clone()),
-            Self::Full(preview) => preview.candidate.clone(),
+            Self::Transfer(preview) => CandidateMove::Transfer(preview.analysis.transfer.clone()),
+            Self::CliqueSwap(preview) => {
+                CandidateMove::CliqueSwap(preview.analysis.clique_swap.clone())
+            }
         }
     }
 }
@@ -168,13 +176,11 @@ impl SearchEngine {
                             family_metrics.apply_seconds += apply_seconds;
                             accepted_delta_sum += delta_cost;
 
-                            if family == MoveFamily::Swap
-                                && should_sample_runtime_swap_oracle_check(family_metrics.accepted)
-                            {
+                            if should_sample_runtime_oracle_check(family_metrics.accepted) {
                                 current_state.validate_against_oracle().map_err(|error| {
                                     SolverError::ValidationError(format!(
-                                        "solver2 runtime swap drift check failed after accepted move {:?}: {}",
-                                        preview_candidate, error
+                                        "solver2 runtime {:?} drift check failed after accepted move {:?}: {}",
+                                        family, preview_candidate, error
                                     ))
                                 })?;
                             }
@@ -415,12 +421,12 @@ fn ordered_move_families(move_policy: &MovePolicy, rng: &mut ChaCha12Rng) -> Vec
     }
 }
 
-fn move_family_preview_uses_full_recompute(family: MoveFamily) -> bool {
-    !matches!(family, MoveFamily::Swap)
+fn move_family_preview_uses_full_recompute(_family: MoveFamily) -> bool {
+    false
 }
 
-fn should_sample_runtime_swap_oracle_check(accepted_swap_count: u64) -> bool {
-    accepted_swap_count > 0 && accepted_swap_count % 16 == 0
+fn should_sample_runtime_oracle_check(accepted_count: u64) -> bool {
+    accepted_count > 0 && accepted_count % 16 == 0
 }
 
 fn choose_weighted_family(
@@ -777,10 +783,11 @@ fn preview_candidate(
             preview_swap_runtime_lightweight(state, swap).map(SearchMovePreview::Swap)
         }
         CandidateMove::Transfer(transfer) => {
-            preview_transfer(state.as_oracle_state(), transfer).map(SearchMovePreview::Full)
+            preview_transfer_runtime_lightweight(state, transfer).map(SearchMovePreview::Transfer)
         }
         CandidateMove::CliqueSwap(clique_swap) => {
-            preview_clique_swap(state.as_oracle_state(), clique_swap).map(SearchMovePreview::Full)
+            preview_clique_swap_runtime_lightweight(state, clique_swap)
+                .map(SearchMovePreview::CliqueSwap)
         }
     }
 }
@@ -791,24 +798,8 @@ fn apply_previewed_candidate(
 ) -> Result<(), SolverError> {
     match preview {
         SearchMovePreview::Swap(preview) => apply_swap_runtime_preview(state, preview),
-        SearchMovePreview::Full(preview) => {
-            debug_assert_eq!(preview.before_score, state.current_score);
-            match &preview.candidate {
-                CandidateMove::Swap(_) => {
-                    unreachable!("swap should use runtime lightweight preview")
-                }
-                CandidateMove::Transfer(transfer) => apply_transfer_with_score(
-                    state.as_oracle_state_mut(),
-                    transfer,
-                    Some(&preview.after_score),
-                ),
-                CandidateMove::CliqueSwap(clique_swap) => apply_clique_swap_with_score(
-                    state.as_oracle_state_mut(),
-                    clique_swap,
-                    Some(&preview.after_score),
-                ),
-            }
-        }
+        SearchMovePreview::Transfer(preview) => apply_transfer_runtime_preview(state, preview),
+        SearchMovePreview::CliqueSwap(preview) => apply_clique_swap_runtime_preview(state, preview),
     }
 }
 
