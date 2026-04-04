@@ -73,16 +73,20 @@ Known from current local evidence before this session was prepared:
 - current kept changes:
   - `backend/core/src/solver3/moves/transfer.rs` + `backend/core/src/solver3/moves/clique_swap.rs`: attribute-balance deltas now count each touched group once and apply moved-person count adjustments instead of cloning/recounting full before/after member vectors. This produced the first local keep and clearly improved transfer/clique hotpaths.
   - `backend/core/src/solver3/moves/clique_swap.rs`: clique preview now avoids one participating-members allocation during feasibility checks and computes the moved-people list once for reuse across forbidden/should-together/pair-meeting penalty passes. This was the second keep and improved aggregate solve/runtime again.
+  - `backend/core/src/solver3/moves/clique_swap.rs`: analysis now reuses `target_person_indices` directly instead of rescanning the target group to rebuild `ordered_target_people`; because runtime member order is semantically irrelevant, this deleted a full preview scan and produced a large confirmed win.
+  - `backend/core/src/solver3/moves/clique_swap.rs`: source-group filtering and target-person clique validation now use dense `person_to_clique_id` lookups instead of repeated `Vec::contains` checks. This compounded with the previous clique-preview keep and produced another confirmed best result.
 - discarded local experiments so far:
   - gating progress-only search bookkeeping in `search/engine.rs` looked semantically safe but measured as a broad regression; likely benchmark noise or hidden interaction, not a keepable win
   - skipping transfer/clique attribute-balance after-group cloning when a touched slot had no balance constraints also came back with a noisy broad regression; unchanged swap lanes moved too, so local variance is currently real
   - clique-search sampling rewrite that removed temporary active-member vectors and redundant target exclusion checks produced a **positive hotpath/path signal** (`hotpath_total_us` improved) but still lost on aggregate because representative iteration time spiked; worth retrying later with an immediate confirmation rerun if the environment is calmer
   - extending the count-delta pattern to swap attribute-balance preview (plus an all-sessions pair-meeting fast path) badly regressed swap-heavy path lanes; treat swap preview as a separate problem and do not bundle it casually with transfer/clique work
-- current measured local noise floor is non-trivial: a no-code-change rerun landed about **6.5% slower** than the best baseline, and an immediate confirmation rerun after the kept change still swung back upward overall even while hotpaths stayed improved. Only trust wins that are clearly larger than that spread or that hold across back-to-back reruns.
+  - clique patch-construction rewrites that tried to reuse `source_after` / `target_after` buffers or rely on reserve-only allocator tweaks did not beat the best result; removing whole scans is paying off more reliably than reshaping temporary buffers
+  - transfer-only pair-meeting fast paths and ultra-small clique lookup substitutions improved some micro lanes but did not survive the aggregate metric; prefer larger work-deletion changes
+- current measured local noise floor is non-trivial: a no-code-change rerun landed about **6.5% slower** than the best baseline earlier in the session, but the most recent clique-focused wins also survived immediate confirmation reruns. Only trust wins that are clearly larger than the noise or that hold across back-to-back reruns.
 - current likely remaining raw-performance opportunities are:
-  - reducing search-loop sampling overhead further
-  - removing remaining per-preview scans / temporary allocations
-  - improving clique-specific preview bookkeeping and target selection
+  - further clique-preview scan deletion, especially around target filtering / duplicate validation / penalty setup
+  - reducing search-loop sampling overhead further, but only with changes large enough to beat noise
+  - transfer apply/preview cleanup only when it removes obvious repeated work
   - adding denser precompiled eligibility metadata where repeated checks still cost too much
 
 ## Immediate Working Heuristic
