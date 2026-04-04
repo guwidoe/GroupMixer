@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "hotpath.search-iteration.sailing-trip-demo-real.solver3",
+  "class": "stretch",
+  "solver_family": "solver3",
+  "family": "search_iteration",
+  "paths": ["search_iteration"],
+  "title": "Hotpath solver3 search iteration for real Sailing Trip demo",
+  "description": "Deterministic solver3 search-iteration lane over the real Sailing Trip demo benchmark start state.",
+  "tags": ["hotpath", "search", "stretch", "sailing", "demo-real", "solver3"],
+  "hotpath_preset": "search_sailing_trip_demo_real_solver3"
+}

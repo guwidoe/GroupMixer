@@ -1,3 +1,4 @@
+use crate::manifest::BenchmarkCaseManifest;
 use gm_core::models::{
     ApiInput, AttributeBalanceMode, AttributeBalanceParams, Constraint, Group,
     ImmovablePersonParams, MoveFamily, MovePolicy, MoveSelectionMode, Objective,
@@ -84,10 +85,16 @@ pub struct Solver3CliqueSwapBenchInput {
 }
 
 #[derive(Clone)]
+pub enum SearchLoopBenchState {
+    Solver1(State),
+    Solver3(gm_core::solver3::RuntimeState),
+}
+
+#[derive(Clone)]
 pub struct SearchLoopBenchInput {
     pub id: &'static str,
     pub input: ApiInput,
-    pub base_state: State,
+    pub base_state: SearchLoopBenchState,
 }
 
 pub fn construction_bench_input() -> ConstructionBenchInput {
@@ -955,6 +962,9 @@ pub fn search_loop_bench_input(id: &str) -> Option<SearchLoopBenchInput> {
     match id {
         "search_mixed" => Some(search_loop_mixed_input()),
         "search_clique_only" => Some(search_loop_clique_only_input()),
+        "search_sailing_trip_demo_real_solver3" => {
+            Some(search_loop_sailing_trip_demo_real_solver3_input())
+        }
         _ => None,
     }
 }
@@ -1009,7 +1019,7 @@ fn search_loop_mixed_input() -> SearchLoopBenchInput {
     SearchLoopBenchInput {
         id: "search_mixed",
         input,
-        base_state,
+        base_state: SearchLoopBenchState::Solver1(base_state),
     }
 }
 
@@ -1058,8 +1068,43 @@ fn search_loop_clique_only_input() -> SearchLoopBenchInput {
     SearchLoopBenchInput {
         id: "search_clique_only",
         input,
-        base_state,
+        base_state: SearchLoopBenchState::Solver1(base_state),
     }
+}
+
+fn search_loop_sailing_trip_demo_real_solver3_input() -> SearchLoopBenchInput {
+    let mut input = sailing_trip_demo_benchmark_start_input();
+    input.solver = SolverConfiguration {
+        solver_type: "solver3".to_string(),
+        stop_conditions: StopConditions {
+            max_iterations: Some(1_000_000),
+            time_limit_seconds: None,
+            no_improvement_iterations: Some(250_000),
+        },
+        solver_params: SolverParams::Solver3(Solver3Params::default()),
+        logging: Default::default(),
+        telemetry: Default::default(),
+        seed: Some(7),
+        move_policy: None,
+        allowed_sessions: None,
+    };
+    let base_state = gm_core::solver3::RuntimeState::from_input(&input)
+        .expect("real demo solver3 search state should build");
+    SearchLoopBenchInput {
+        id: "search_sailing_trip_demo_real_solver3",
+        input,
+        base_state: SearchLoopBenchState::Solver3(base_state),
+    }
+}
+
+fn sailing_trip_demo_benchmark_start_input() -> ApiInput {
+    let manifest: BenchmarkCaseManifest = serde_json::from_str(include_str!(
+        "../cases/stretch/sailing_trip_demo_real_benchmark_start.json"
+    ))
+    .expect("embedded Sailing Trip benchmark-start case should parse");
+    manifest
+        .input
+        .expect("embedded Sailing Trip benchmark-start case should define input")
 }
 
 pub fn make_api_input(

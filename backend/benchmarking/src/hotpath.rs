@@ -10,6 +10,7 @@ use crate::benchmark_mode::{
 };
 use crate::hotpath_inputs::{
     clique_swap_bench_input, construction_bench_input, search_loop_bench_input,
+    SearchLoopBenchState,
     solver2_clique_swap_bench_input, solver2_swap_bench_input, solver2_transfer_bench_input,
     solver3_clique_swap_bench_input, solver3_swap_bench_input, solver3_transfer_bench_input,
     swap_bench_input, transfer_bench_input,
@@ -44,6 +45,7 @@ use gm_core::solver3::moves::transfer::{
     apply_transfer_runtime_preview as apply_solver3_transfer_runtime_preview,
     preview_transfer_runtime_lightweight as preview_solver3_transfer_runtime_lightweight,
 };
+use gm_core::solver3::SearchEngine as Solver3SearchEngine;
 use std::hint::black_box;
 use std::time::Instant;
 
@@ -199,7 +201,10 @@ fn run_solver2_hotpath_case(
         .overrides
         .iterations
         .or(suite.manifest.default_iterations)
-        .unwrap_or(64);
+        .unwrap_or(match benchmark_mode {
+            SEARCH_ITERATION_BENCHMARK_MODE => 8,
+            _ => 64,
+        });
     let warmup_iterations = case
         .overrides
         .warmup_iterations
@@ -884,6 +889,62 @@ fn run_solver3_hotpath_case(
                 input.input.solver.move_policy.clone(),
             )
         }
+        SEARCH_ITERATION_BENCHMARK_MODE => {
+            let input = search_loop_bench_input(&preset).ok_or_else(|| {
+                format!(
+                    "hotpath probe '{}' for solver family '{}' is not implemented yet",
+                    preset,
+                    SolverKind::Solver3.canonical_id()
+                )
+            })?;
+            let effective_seed = input.input.solver.seed;
+            let effective_budget = EffectiveBenchmarkBudget {
+                max_iterations: Some(1),
+                time_limit_seconds: input.input.solver.stop_conditions.time_limit_seconds,
+                no_improvement_iterations: input
+                    .input
+                    .solver
+                    .stop_conditions
+                    .no_improvement_iterations,
+            };
+            let effective_move_policy = input.input.solver.move_policy.clone();
+            for _ in 0..warmup_iterations {
+                black_box(run_search_iteration(&input)?);
+            }
+            let started = Instant::now();
+            let mut checksum = 0i64;
+            let mut search_seconds = 0.0;
+            for _ in 0..iterations {
+                let op_started = Instant::now();
+                checksum = checksum.wrapping_add(black_box(run_search_iteration(&input)?));
+                search_seconds += op_started.elapsed().as_secs_f64();
+            }
+            (
+                HotPathMetrics {
+                    benchmark_mode: benchmark_mode.to_string(),
+                    preset: Some(preset),
+                    iterations,
+                    warmup_iterations,
+                    measured_operations: iterations,
+                    average_runtime_seconds: average_runtime(
+                        started.elapsed().as_secs_f64(),
+                        iterations,
+                    ),
+                    ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
+                    checksum,
+                    measurement_seconds: started.elapsed().as_secs_f64(),
+                    setup_seconds: 0.0,
+                    construction_seconds: 0.0,
+                    preview_seconds: 0.0,
+                    apply_seconds: 0.0,
+                    full_recalculation_seconds: 0.0,
+                    search_seconds,
+                },
+                effective_seed,
+                effective_budget,
+                effective_move_policy,
+            )
+        }
         _ => {
             return Err(format!(
                 "hotpath probe '{}' for solver family '{}' is not implemented yet",
@@ -1412,16 +1473,29 @@ fn run_solver1_hotpath_case(
 fn run_search_iteration(
     input: &crate::hotpath_inputs::SearchLoopBenchInput,
 ) -> Result<i64, String> {
-    let mut state = input.base_state.clone();
     let mut config = input.input.solver.clone();
     config.stop_conditions.max_iterations = Some(1);
     config.stop_conditions.no_improvement_iterations = None;
     config.stop_conditions.time_limit_seconds = None;
-    let solver = SimulatedAnnealing::new(&config);
-    let result = solver
-        .solve(&mut state, None, None)
-        .map_err(|error| error.to_string())?;
-    Ok(result.final_score.to_bits() as i64)
+
+    match &input.base_state {
+        SearchLoopBenchState::Solver1(base_state) => {
+            let mut state = base_state.clone();
+            let solver = SimulatedAnnealing::new(&config);
+            let result = solver
+                .solve(&mut state, None, None)
+                .map_err(|error| error.to_string())?;
+            Ok(result.final_score.to_bits() as i64)
+        }
+        SearchLoopBenchState::Solver3(base_state) => {
+            let mut state = base_state.clone();
+            let solver = Solver3SearchEngine::new(&config);
+            let result = solver
+                .solve(&mut state, None, None)
+                .map_err(|error| error.to_string())?;
+            Ok(result.final_score.to_bits() as i64)
+        }
+    }
 }
 
 fn stop_budget(input: &gm_core::models::ApiInput) -> EffectiveBenchmarkBudget {
