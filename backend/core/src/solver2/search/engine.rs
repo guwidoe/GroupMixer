@@ -16,7 +16,7 @@ use super::super::move_types::MovePreview;
 use super::super::moves::clique_swap::{
     apply_clique_swap_with_score, preview_clique_swap, CliqueSwapMove,
 };
-use super::super::moves::swap::{apply_swap_with_score, preview_swap, SwapMove};
+use super::super::moves::swap::{apply_swap_runtime_with_score, preview_swap_runtime, SwapMove};
 use super::super::moves::transfer::{apply_transfer_with_score, preview_transfer, TransferMove};
 use super::super::runtime_state::RuntimeSolutionState;
 use super::super::validation::invariants::validate_state_invariants;
@@ -116,8 +116,10 @@ impl SearchEngine {
                 let preview = preview_candidate(&current_state, &candidate);
                 let preview_seconds = now_seconds() - preview_started_at;
                 family_metrics.preview_seconds += preview_seconds;
-                family_metrics.full_recalculation_count += 1;
-                family_metrics.full_recalculation_seconds += preview_seconds;
+                if move_family_preview_uses_full_recompute(family) {
+                    family_metrics.full_recalculation_count += 1;
+                    family_metrics.full_recalculation_seconds += preview_seconds;
+                }
 
                 match preview {
                     Ok(preview) => {
@@ -137,6 +139,17 @@ impl SearchEngine {
                             family_metrics.accepted += 1;
                             family_metrics.apply_seconds += apply_seconds;
                             accepted_delta_sum += preview.delta_cost;
+
+                            if family == MoveFamily::Swap
+                                && should_sample_runtime_swap_oracle_check(family_metrics.accepted)
+                            {
+                                current_state.validate_against_oracle().map_err(|error| {
+                                    SolverError::ValidationError(format!(
+                                        "solver2 runtime swap drift check failed after accepted move {:?}: {}",
+                                        candidate, error
+                                    ))
+                                })?;
+                            }
 
                             if preview.delta_cost > 0.0 {
                                 local_optima_escapes += 1;
@@ -374,6 +387,14 @@ fn ordered_move_families(move_policy: &MovePolicy, rng: &mut ChaCha12Rng) -> Vec
     }
 }
 
+fn move_family_preview_uses_full_recompute(family: MoveFamily) -> bool {
+    !matches!(family, MoveFamily::Swap)
+}
+
+fn should_sample_runtime_swap_oracle_check(accepted_swap_count: u64) -> bool {
+    accepted_swap_count == 1 || accepted_swap_count % 16 == 0
+}
+
 fn choose_weighted_family(
     families: &[MoveFamily],
     weights: &crate::models::MoveFamilyWeights,
@@ -577,30 +598,38 @@ fn participating_clique_members(
 }
 
 fn preview_candidate(
-    state: &SolutionState,
+    state: &RuntimeSolutionState,
     candidate: &CandidateMove,
 ) -> Result<super::super::move_types::MovePreview, SolverError> {
     match candidate {
-        CandidateMove::Swap(swap) => preview_swap(state, swap),
-        CandidateMove::Transfer(transfer) => preview_transfer(state, transfer),
-        CandidateMove::CliqueSwap(clique_swap) => preview_clique_swap(state, clique_swap),
+        CandidateMove::Swap(swap) => preview_swap_runtime(state, swap),
+        CandidateMove::Transfer(transfer) => preview_transfer(state.as_oracle_state(), transfer),
+        CandidateMove::CliqueSwap(clique_swap) => {
+            preview_clique_swap(state.as_oracle_state(), clique_swap)
+        }
     }
 }
 
 fn apply_previewed_candidate(
-    state: &mut SolutionState,
+    state: &mut RuntimeSolutionState,
     preview: &MovePreview,
 ) -> Result<(), SolverError> {
     debug_assert_eq!(preview.before_score, state.current_score);
 
     match &preview.candidate {
-        CandidateMove::Swap(swap) => apply_swap_with_score(state, swap, Some(&preview.after_score)),
-        CandidateMove::Transfer(transfer) => {
-            apply_transfer_with_score(state, transfer, Some(&preview.after_score))
+        CandidateMove::Swap(swap) => {
+            apply_swap_runtime_with_score(state, swap, &preview.after_score)
         }
-        CandidateMove::CliqueSwap(clique_swap) => {
-            apply_clique_swap_with_score(state, clique_swap, Some(&preview.after_score))
-        }
+        CandidateMove::Transfer(transfer) => apply_transfer_with_score(
+            state.as_oracle_state_mut(),
+            transfer,
+            Some(&preview.after_score),
+        ),
+        CandidateMove::CliqueSwap(clique_swap) => apply_clique_swap_with_score(
+            state.as_oracle_state_mut(),
+            clique_swap,
+            Some(&preview.after_score),
+        ),
     }
 }
 

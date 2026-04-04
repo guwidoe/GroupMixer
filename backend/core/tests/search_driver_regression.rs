@@ -304,7 +304,7 @@ fn solver2_progress_callback_and_benchmark_observer_can_run_together() {
 }
 
 #[test]
-fn solver2_search_uses_single_full_recompute_per_attempt() {
+fn solver2_swap_runtime_preview_avoids_full_recompute_per_attempt() {
     let mut input = solver2_driver_input();
     input.solver.stop_conditions.max_iterations = Some(25);
     input.solver.move_policy = Some(MovePolicy {
@@ -319,8 +319,8 @@ fn solver2_search_uses_single_full_recompute_per_attempt() {
 
     assert!(telemetry.moves.swap.attempts > 0);
     assert_eq!(
-        telemetry.moves.swap.full_recalculation_count, telemetry.moves.swap.attempts,
-        "solver2 should spend one full recomputation per attempted swap preview"
+        telemetry.moves.swap.full_recalculation_count, 0,
+        "solver2 runtime swap previews should avoid full recomputation in the default path"
     );
     assert_eq!(telemetry.moves.transfer.full_recalculation_count, 0);
     assert_eq!(telemetry.moves.clique_swap.full_recalculation_count, 0);

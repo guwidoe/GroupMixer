@@ -12,7 +12,10 @@ use super::moves::clique_swap::{
     analyze_clique_swap, apply_clique_swap, preview_clique_swap, CliqueSwapFeasibility,
     CliqueSwapMove,
 };
-use super::moves::swap::{analyze_swap, apply_swap, preview_swap, SwapFeasibility, SwapMove};
+use super::moves::swap::{
+    analyze_swap, apply_swap, apply_swap_runtime_with_score, preview_swap, preview_swap_runtime,
+    SwapFeasibility, SwapMove,
+};
 use super::moves::transfer::{
     analyze_transfer, apply_transfer, preview_transfer, TransferFeasibility, TransferMove,
 };
@@ -697,6 +700,57 @@ fn swap_preview_matches_apply_and_solver1_parity() {
     let recomputed = recompute_full_score(&state).unwrap();
     assert_eq!(state.current_score, recomputed);
     compare_state_against_solver1(&input, &state).unwrap();
+}
+
+#[test]
+fn runtime_swap_preview_matches_oracle_preview_and_apply() {
+    let input = representative_input();
+    let oracle_state = SolutionState::from_input(&input).unwrap();
+    let runtime_state = RuntimeSolutionState::from_oracle_state(&oracle_state);
+    let swap = SwapMove::new(
+        2,
+        oracle_state.compiled_problem.person_id_to_idx["p0"],
+        oracle_state.compiled_problem.person_id_to_idx["p5"],
+    );
+
+    let oracle_preview = preview_swap(&oracle_state, &swap).unwrap();
+    let runtime_preview = preview_swap_runtime(&runtime_state, &swap).unwrap();
+
+    assert_eq!(runtime_preview.delta_cost, oracle_preview.delta_cost);
+    assert_eq!(runtime_preview.after_score, oracle_preview.after_score);
+
+    let mut runtime_state = RuntimeSolutionState::from_oracle_state(&oracle_state);
+    apply_swap_runtime_with_score(&mut runtime_state, &swap, &runtime_preview.after_score).unwrap();
+
+    runtime_state.validate_against_oracle().unwrap();
+    compare_state_against_solver1(&input, runtime_state.as_oracle_state()).unwrap();
+}
+
+#[test]
+fn runtime_sequential_swaps_do_not_drift_from_oracle() {
+    let input = representative_input();
+    let oracle_state = SolutionState::from_input(&input).unwrap();
+    let mut runtime_state = RuntimeSolutionState::from_oracle_state(&oracle_state);
+    let swaps = [
+        SwapMove::new(
+            2,
+            runtime_state.compiled_problem.person_id_to_idx["p0"],
+            runtime_state.compiled_problem.person_id_to_idx["p5"],
+        ),
+        SwapMove::new(
+            2,
+            runtime_state.compiled_problem.person_id_to_idx["p2"],
+            runtime_state.compiled_problem.person_id_to_idx["p1"],
+        ),
+    ];
+
+    for swap in swaps {
+        let preview = preview_swap_runtime(&runtime_state, &swap).unwrap();
+        apply_swap_runtime_with_score(&mut runtime_state, &swap, &preview.after_score).unwrap();
+        runtime_state.validate_against_oracle().unwrap();
+    }
+
+    compare_state_against_solver1(&input, runtime_state.as_oracle_state()).unwrap();
 }
 
 #[test]

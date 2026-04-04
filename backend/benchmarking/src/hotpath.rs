@@ -23,7 +23,9 @@ use gm_core::solver1::search::Solver;
 use gm_core::solver2::moves::clique_swap::{
     apply_clique_swap as apply_solver2_clique_swap, preview_clique_swap,
 };
-use gm_core::solver2::moves::swap::{apply_swap as apply_solver2_swap, preview_swap};
+use gm_core::solver2::moves::swap::{
+    apply_swap_runtime_with_score as apply_solver2_swap_runtime_with_score, preview_swap_runtime,
+};
 use gm_core::solver2::moves::transfer::{
     apply_transfer as apply_solver2_transfer, preview_transfer,
 };
@@ -200,8 +202,8 @@ fn run_solver2_hotpath_case(
                 )
             })?;
             for _ in 0..warmup_iterations {
-                let preview =
-                    preview_swap(&input.state, &input.swap).map_err(|error| error.to_string())?;
+                let preview = preview_swap_runtime(&input.state, &input.swap)
+                    .map_err(|error| error.to_string())?;
                 black_box(preview.delta_cost);
             }
             let started = Instant::now();
@@ -209,8 +211,8 @@ fn run_solver2_hotpath_case(
             let mut preview_seconds = 0.0;
             for _ in 0..iterations {
                 let op_started = Instant::now();
-                let preview =
-                    preview_swap(&input.state, &input.swap).map_err(|error| error.to_string())?;
+                let preview = preview_swap_runtime(&input.state, &input.swap)
+                    .map_err(|error| error.to_string())?;
                 preview_seconds += op_started.elapsed().as_secs_f64();
                 checksum = checksum.wrapping_add(black_box(preview.delta_cost.to_bits() as i64));
             }
@@ -248,9 +250,16 @@ fn run_solver2_hotpath_case(
                     SolverKind::Solver2.canonical_id()
                 )
             })?;
+            let preview = preview_swap_runtime(&input.state, &input.swap)
+                .map_err(|error| error.to_string())?;
             for _ in 0..warmup_iterations {
                 let mut state = input.state.clone();
-                apply_solver2_swap(&mut state, &input.swap).map_err(|error| error.to_string())?;
+                apply_solver2_swap_runtime_with_score(
+                    &mut state,
+                    &input.swap,
+                    &preview.after_score,
+                )
+                .map_err(|error| error.to_string())?;
                 black_box(state.current_score.total_score);
             }
             let started = Instant::now();
@@ -259,7 +268,12 @@ fn run_solver2_hotpath_case(
             for _ in 0..iterations {
                 let mut state = input.state.clone();
                 let op_started = Instant::now();
-                apply_solver2_swap(&mut state, &input.swap).map_err(|error| error.to_string())?;
+                apply_solver2_swap_runtime_with_score(
+                    &mut state,
+                    &input.swap,
+                    &preview.after_score,
+                )
+                .map_err(|error| error.to_string())?;
                 apply_seconds += op_started.elapsed().as_secs_f64();
                 checksum = checksum
                     .wrapping_add(black_box(state.current_score.total_score.to_bits() as i64));

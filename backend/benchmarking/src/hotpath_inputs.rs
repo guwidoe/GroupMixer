@@ -25,7 +25,7 @@ pub struct SwapBenchInput {
 #[derive(Clone)]
 pub struct Solver2SwapBenchInput {
     pub input: ApiInput,
-    pub state: gm_core::solver2::SolutionState,
+    pub state: gm_core::solver2::RuntimeSolutionState,
     pub swap: gm_core::solver2::moves::SwapMove,
 }
 
@@ -254,7 +254,7 @@ pub fn solver2_swap_bench_input(id: &str) -> Option<Solver2SwapBenchInput> {
                     vec![vec!["p0", "p2"], vec!["p1", "p4"], vec!["p3", "p5"]],
                 ],
             ));
-            let state = gm_core::solver2::SolutionState::from_input(&input)
+            let state = gm_core::solver2::RuntimeSolutionState::from_input(&input)
                 .expect("solver2 swap state should build");
             let swap = gm_core::solver2::moves::SwapMove::new(
                 0,
