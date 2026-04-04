@@ -70,8 +70,9 @@ Known from current local evidence before this session was prepared:
 - dense runtime architecture (`CompiledProblem` + flat `RuntimeState`) already exists
 - move kernels for `swap`, `transfer`, and `clique_swap` already exist
 - previous raw-runtime pass already removed a large amount of `HashSet` / `BTreeSet` / `BTreeMap` churn and improved multiple lanes materially
-- current kept change:
+- current kept changes:
   - `backend/core/src/solver3/moves/transfer.rs` + `backend/core/src/solver3/moves/clique_swap.rs`: attribute-balance deltas now count each touched group once and apply moved-person count adjustments instead of cloning/recounting full before/after member vectors. This produced the first local keep and clearly improved transfer/clique hotpaths.
+  - `backend/core/src/solver3/moves/clique_swap.rs`: clique preview now avoids one participating-members allocation during feasibility checks and computes the moved-people list once for reuse across forbidden/should-together/pair-meeting penalty passes. This was the second keep and improved aggregate solve/runtime again.
 - discarded local experiments so far:
   - gating progress-only search bookkeeping in `search/engine.rs` looked semantically safe but measured as a broad regression; likely benchmark noise or hidden interaction, not a keepable win
   - skipping transfer/clique attribute-balance after-group cloning when a touched slot had no balance constraints also came back with a noisy broad regression; unchanged swap lanes moved too, so local variance is currently real

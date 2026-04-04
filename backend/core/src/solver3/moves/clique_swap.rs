@@ -204,7 +204,6 @@ pub fn analyze_clique_swap(
     }
 
     let active_members = active_clique_members_in_source_group(state, clique_swap);
-    let ordered_target_people = ordered_target_people_in_group(state, clique_swap);
     let participating_member_count = participating_clique_member_count(cp, clique_swap);
 
     let feasibility = if clique_swap.source_group_idx == clique_swap.target_group_idx {
@@ -245,7 +244,7 @@ pub fn analyze_clique_swap(
         clique_swap: clique_swap.clone(),
         feasibility,
         active_members,
-        ordered_target_people,
+        ordered_target_people: clique_swap.target_person_indices.clone(),
     })
 }
 
@@ -805,19 +804,6 @@ fn active_clique_members_in_source_group(
             state.compiled.person_to_clique_id[clique_swap.session_idx][person_idx]
                 == Some(clique_swap.clique_idx)
         })
-        .collect()
-}
-
-fn ordered_target_people_in_group(
-    state: &RuntimeState,
-    clique_swap: &CliqueSwapMove,
-) -> Vec<usize> {
-    let target_slot = state.group_slot(clique_swap.session_idx, clique_swap.target_group_idx);
-
-    state.group_members[target_slot]
-        .iter()
-        .copied()
-        .filter(|person_idx| clique_swap.target_person_indices.contains(person_idx))
         .collect()
 }
 
