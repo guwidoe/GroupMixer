@@ -557,7 +557,7 @@ mod tests {
         assert!(!descriptor.capabilities.supports_recommended_settings);
         assert!(!descriptor.capabilities.supports_deterministic_seed);
         assert!(descriptor.notes.contains("solver3"));
-        assert!(descriptor.notes.contains("not yet implemented"));
+        assert!(descriptor.notes.contains("swap-only move kernel"));
     }
 
     #[test]

@@ -2,7 +2,7 @@ use gm_core::models::{
     ApiInput, AttributeBalanceMode, AttributeBalanceParams, Constraint, Group,
     ImmovablePersonParams, MoveFamily, MovePolicy, MoveSelectionMode, Objective,
     PairMeetingCountParams, PairMeetingMode, Person, ProblemDefinition, SimulatedAnnealingParams,
-    Solver2Params, SolverConfiguration, SolverParams, StopConditions,
+    Solver2Params, Solver3Params, SolverConfiguration, SolverParams, StopConditions,
 };
 use gm_core::solver1::State;
 use std::collections::HashMap;
@@ -27,6 +27,13 @@ pub struct Solver2SwapBenchInput {
     pub input: ApiInput,
     pub state: gm_core::solver2::RuntimeSolutionState,
     pub swap: gm_core::solver2::moves::SwapMove,
+}
+
+#[derive(Clone)]
+pub struct Solver3SwapBenchInput {
+    pub input: ApiInput,
+    pub state: gm_core::solver3::RuntimeState,
+    pub swap: gm_core::solver3::moves::SwapMove,
 }
 
 #[derive(Clone)]
@@ -262,6 +269,81 @@ pub fn solver2_swap_bench_input(id: &str) -> Option<Solver2SwapBenchInput> {
                 state.compiled_problem.person_id_to_idx["p2"],
             );
             Some(Solver2SwapBenchInput { input, state, swap })
+        }
+        _ => None,
+    }
+}
+
+pub fn solver3_swap_bench_input(id: &str) -> Option<Solver3SwapBenchInput> {
+    match id {
+        "swap_default_solver3" => {
+            let mut input = make_api_input(
+                ProblemDefinition {
+                    people: vec![
+                        person_with_attr("p0", "role", "eng"),
+                        person_with_attr("p1", "role", "design"),
+                        person_with_attr("p2", "role", "eng"),
+                        person_with_attr("p3", "role", "design"),
+                        person_with_attr("p4", "role", "pm"),
+                        person_with_attr("p5", "role", "pm"),
+                    ],
+                    groups: vec![group("g0", 2), group("g1", 2), group("g2", 2)],
+                    num_sessions: 2,
+                },
+                vec![
+                    Constraint::ShouldNotBeTogether {
+                        people: vec!["p0".to_string(), "p2".to_string()],
+                        penalty_weight: 25.0,
+                        sessions: None,
+                    },
+                    Constraint::PairMeetingCount(PairMeetingCountParams {
+                        people: vec!["p0".to_string(), "p1".to_string()],
+                        sessions: vec![0, 1],
+                        target_meetings: 2,
+                        mode: PairMeetingMode::AtLeast,
+                        penalty_weight: 13.0,
+                    }),
+                    Constraint::AttributeBalance(AttributeBalanceParams {
+                        group_id: "g0".to_string(),
+                        attribute_key: "role".to_string(),
+                        desired_values: hashmap_counts(&[("eng", 1), ("design", 1)]),
+                        penalty_weight: 10.0,
+                        mode: AttributeBalanceMode::Exact,
+                        sessions: None,
+                    }),
+                ],
+                80,
+                171,
+            );
+            input.solver = SolverConfiguration {
+                solver_type: "solver3".to_string(),
+                stop_conditions: StopConditions {
+                    max_iterations: Some(1),
+                    time_limit_seconds: None,
+                    no_improvement_iterations: None,
+                },
+                solver_params: SolverParams::Solver3(Solver3Params::default()),
+                logging: Default::default(),
+                telemetry: Default::default(),
+                seed: Some(171),
+                move_policy: None,
+                allowed_sessions: None,
+            };
+            input.initial_schedule = Some(make_initial_schedule(
+                &["g0", "g1", "g2"],
+                vec![
+                    vec![vec!["p0", "p1"], vec!["p2", "p3"], vec!["p4", "p5"]],
+                    vec![vec!["p0", "p2"], vec!["p1", "p4"], vec!["p3", "p5"]],
+                ],
+            ));
+            let state = gm_core::solver3::RuntimeState::from_input(&input)
+                .expect("solver3 swap state should build");
+            let swap = gm_core::solver3::moves::SwapMove::new(
+                0,
+                state.compiled.person_id_to_idx["p1"],
+                state.compiled.person_id_to_idx["p2"],
+            );
+            Some(Solver3SwapBenchInput { input, state, swap })
         }
         _ => None,
     }

@@ -13,10 +13,15 @@ use std::collections::HashMap;
 use crate::models::{
     ApiInput, AttributeBalanceMode, AttributeBalanceParams, Constraint, Group,
     ImmovablePersonParams, Objective, PairMeetingCountParams, PairMeetingMode, Person,
-    ProblemDefinition, Solver3Params, SolverConfiguration, SolverParams, StopConditions,
+    ProblemDefinition, RepeatEncounterParams, Solver3Params, SolverConfiguration, SolverParams,
+    StopConditions,
 };
 
 use super::compiled_problem::CompiledProblem;
+use super::moves::{
+    apply_swap_runtime_preview, preview_swap_oracle_recompute, preview_swap_runtime_lightweight,
+    SwapMove,
+};
 use super::oracle::check_drift;
 use super::runtime_state::RuntimeState;
 use super::scoring::recompute::recompute_oracle_score;
@@ -893,4 +898,192 @@ fn forbidden_pair_penalty_is_scored() {
     let snap = recompute_oracle_score(&state).unwrap();
     assert_eq!(snap.forbidden_pair_violations[0], 1);
     assert!((snap.constraint_penalty_weighted - 42.0).abs() < 1e-9);
+}
+
+// ---------------------------------------------------------------------------
+// 10. Swap kernel: equivalence, drift, and invariants
+// ---------------------------------------------------------------------------
+
+fn swap_kernel_input() -> ApiInput {
+    let people = vec![
+        person_with_attr("p0", "role", "eng"),
+        person_with_attr("p1", "role", "design"),
+        person_with_attr("p2", "role", "eng"),
+        person_with_attr("p3", "role", "design"),
+        person_with_attr("p4", "role", "pm"),
+        person_with_attr("p5", "role", "pm"),
+    ];
+
+    let groups = vec![
+        Group {
+            id: "g0".into(),
+            size: 2,
+            session_sizes: None,
+        },
+        Group {
+            id: "g1".into(),
+            size: 2,
+            session_sizes: None,
+        },
+        Group {
+            id: "g2".into(),
+            size: 2,
+            session_sizes: None,
+        },
+    ];
+
+    let mut initial_schedule = HashMap::new();
+    initial_schedule.insert(
+        "session_0".into(),
+        HashMap::from([
+            ("g0".into(), vec!["p0".into(), "p1".into()]),
+            ("g1".into(), vec!["p2".into(), "p3".into()]),
+            ("g2".into(), vec!["p4".into(), "p5".into()]),
+        ]),
+    );
+    initial_schedule.insert(
+        "session_1".into(),
+        HashMap::from([
+            ("g0".into(), vec!["p0".into(), "p2".into()]),
+            ("g1".into(), vec!["p1".into(), "p4".into()]),
+            ("g2".into(), vec!["p3".into(), "p5".into()]),
+        ]),
+    );
+
+    ApiInput {
+        problem: ProblemDefinition {
+            people,
+            groups,
+            num_sessions: 2,
+        },
+        initial_schedule: Some(initial_schedule),
+        objectives: vec![Objective {
+            r#type: "maximize_unique_contacts".into(),
+            weight: 1.0,
+        }],
+        constraints: vec![
+            Constraint::RepeatEncounter(RepeatEncounterParams {
+                max_allowed_encounters: 1,
+                penalty_function: "squared".into(),
+                penalty_weight: 11.0,
+            }),
+            Constraint::ShouldNotBeTogether {
+                people: vec!["p0".into(), "p2".into()],
+                penalty_weight: 25.0,
+                sessions: None,
+            },
+            Constraint::PairMeetingCount(PairMeetingCountParams {
+                people: vec!["p0".into(), "p1".into()],
+                sessions: vec![0, 1],
+                target_meetings: 2,
+                mode: PairMeetingMode::AtLeast,
+                penalty_weight: 13.0,
+            }),
+            Constraint::AttributeBalance(AttributeBalanceParams {
+                group_id: "g0".into(),
+                attribute_key: "role".into(),
+                desired_values: HashMap::from([("eng".into(), 1), ("design".into(), 1)]),
+                penalty_weight: 10.0,
+                mode: AttributeBalanceMode::Exact,
+                sessions: None,
+            }),
+        ],
+        solver: solver3_config(),
+    }
+}
+
+fn person_with_attr(id: &str, key: &str, value: &str) -> Person {
+    Person {
+        id: id.into(),
+        attributes: HashMap::from([(key.into(), value.into())]),
+        sessions: None,
+    }
+}
+
+fn assert_close(actual: f64, expected: f64, context: &str) {
+    let tol = 1e-9;
+    assert!(
+        (actual - expected).abs() <= tol,
+        "{}: actual={} expected={}",
+        context,
+        actual,
+        expected
+    );
+}
+
+#[test]
+fn swap_preview_lightweight_matches_oracle_delta() {
+    let input = swap_kernel_input();
+    let state = RuntimeState::from_input(&input).unwrap();
+    let cp = &state.compiled;
+    let swap = SwapMove::new(0, cp.person_id_to_idx["p1"], cp.person_id_to_idx["p2"]);
+
+    let preview = preview_swap_runtime_lightweight(&state, &swap).unwrap();
+    assert!(
+        !preview.patch.pair_contact_updates.is_empty(),
+        "swap preview should emit pair-contact updates"
+    );
+
+    let oracle_delta = preview_swap_oracle_recompute(&state, &swap).unwrap();
+    assert_close(
+        preview.delta_score,
+        oracle_delta,
+        "swap preview delta should match oracle recompute delta",
+    );
+}
+
+#[test]
+fn swap_apply_runtime_preview_preserves_invariants_and_oracle_alignment() {
+    let input = swap_kernel_input();
+    let mut state = RuntimeState::from_input(&input).unwrap();
+    let cp = state.compiled.clone();
+    let swap = SwapMove::new(0, cp.person_id_to_idx["p1"], cp.person_id_to_idx["p2"]);
+
+    let before_total = state.total_score;
+    let preview = preview_swap_runtime_lightweight(&state, &swap).unwrap();
+    apply_swap_runtime_preview(&mut state, &preview).unwrap();
+
+    validate_invariants(&state).unwrap();
+    check_drift(&state).unwrap();
+
+    let runtime_delta = state.total_score - before_total;
+    assert_close(
+        runtime_delta,
+        preview.delta_score,
+        "applied swap total delta should match preview delta",
+    );
+}
+
+#[test]
+fn sequential_swap_runtime_apply_does_not_drift_from_oracle() {
+    let input = swap_kernel_input();
+    let mut state = RuntimeState::from_input(&input).unwrap();
+    let cp = state.compiled.clone();
+
+    let swaps = vec![
+        SwapMove::new(0, cp.person_id_to_idx["p1"], cp.person_id_to_idx["p2"]),
+        SwapMove::new(1, cp.person_id_to_idx["p4"], cp.person_id_to_idx["p3"]),
+        SwapMove::new(0, cp.person_id_to_idx["p0"], cp.person_id_to_idx["p5"]),
+    ];
+
+    for (step, swap) in swaps.iter().enumerate() {
+        let preview = preview_swap_runtime_lightweight(&state, swap).unwrap();
+        let oracle_delta = preview_swap_oracle_recompute(&state, swap).unwrap();
+        assert_close(
+            preview.delta_score,
+            oracle_delta,
+            &format!("step {} preview/oracle mismatch", step),
+        );
+
+        let before_total = state.total_score;
+        apply_swap_runtime_preview(&mut state, &preview).unwrap();
+        validate_invariants(&state).unwrap();
+        check_drift(&state).unwrap();
+
+        assert_close(
+            state.total_score - before_total,
+            oracle_delta,
+            &format!("step {} runtime delta/oracle mismatch", step),
+        );
+    }
 }
