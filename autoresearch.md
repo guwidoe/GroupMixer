@@ -70,11 +70,14 @@ Known from current local evidence before this session was prepared:
 - dense runtime architecture (`CompiledProblem` + flat `RuntimeState`) already exists
 - move kernels for `swap`, `transfer`, and `clique_swap` already exist
 - previous raw-runtime pass already removed a large amount of `HashSet` / `BTreeSet` / `BTreeMap` churn and improved multiple lanes materially
+- current kept change:
+  - `backend/core/src/solver3/moves/transfer.rs` + `backend/core/src/solver3/moves/clique_swap.rs`: attribute-balance deltas now count each touched group once and apply moved-person count adjustments instead of cloning/recounting full before/after member vectors. This produced the first local keep and clearly improved transfer/clique hotpaths.
 - discarded local experiments so far:
   - gating progress-only search bookkeeping in `search/engine.rs` looked semantically safe but measured as a broad regression; likely benchmark noise or hidden interaction, not a keepable win
   - skipping transfer/clique attribute-balance after-group cloning when a touched slot had no balance constraints also came back with a noisy broad regression; unchanged swap lanes moved too, so local variance is currently real
   - clique-search sampling rewrite that removed temporary active-member vectors and redundant target exclusion checks produced a **positive hotpath/path signal** (`hotpath_total_us` improved) but still lost on aggregate because representative iteration time spiked; worth retrying later with an immediate confirmation rerun if the environment is calmer
-- current measured local noise floor is non-trivial: a no-code-change rerun landed about **6.5% slower** than the best baseline, so only keep wins that are clearly larger than that spread or survive a confirmation rerun
+  - extending the count-delta pattern to swap attribute-balance preview (plus an all-sessions pair-meeting fast path) badly regressed swap-heavy path lanes; treat swap preview as a separate problem and do not bundle it casually with transfer/clique work
+- current measured local noise floor is non-trivial: a no-code-change rerun landed about **6.5% slower** than the best baseline, and an immediate confirmation rerun after the kept change still swung back upward overall even while hotpaths stayed improved. Only trust wins that are clearly larger than that spread or that hold across back-to-back reruns.
 - current likely remaining raw-performance opportunities are:
   - reducing search-loop sampling overhead further
   - removing remaining per-preview scans / temporary allocations

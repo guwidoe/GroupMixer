@@ -205,7 +205,7 @@ pub fn analyze_clique_swap(
 
     let active_members = active_clique_members_in_source_group(state, clique_swap);
     let ordered_target_people = ordered_target_people_in_group(state, clique_swap);
-    let participating_members = participating_clique_members(cp, clique_swap);
+    let participating_member_count = participating_clique_member_count(cp, clique_swap);
 
     let feasibility = if clique_swap.source_group_idx == clique_swap.target_group_idx {
         CliqueSwapFeasibility::SameGroupNoop
@@ -213,7 +213,7 @@ pub fn analyze_clique_swap(
         CliqueSwapFeasibility::InactiveClique {
             clique_idx: clique_swap.clique_idx,
         }
-    } else if active_members.len() != participating_members.len() || active_members.is_empty() {
+    } else if active_members.len() != participating_member_count || active_members.is_empty() {
         CliqueSwapFeasibility::CliqueNotInSourceGroup {
             clique_idx: clique_swap.clique_idx,
             source_group_idx: clique_swap.source_group_idx,
@@ -414,12 +414,14 @@ fn build_clique_swap_runtime_patch(
             patch.score_delta.repetition_penalty_raw_delta as f64 * repeat.penalty_weight;
     }
 
+    let moved_people = moved_people(analysis);
+
     patch.score_delta.constraint_penalty_weighted_delta +=
-        forbidden_pair_penalty_delta_for_clique_swap(state, analysis);
+        forbidden_pair_penalty_delta_for_clique_swap(state, analysis, &moved_people);
     patch.score_delta.constraint_penalty_weighted_delta +=
-        should_together_penalty_delta_for_clique_swap(state, analysis);
+        should_together_penalty_delta_for_clique_swap(state, analysis, &moved_people);
     patch.score_delta.constraint_penalty_weighted_delta +=
-        pair_meeting_penalty_delta_for_clique_swap(state, analysis);
+        pair_meeting_penalty_delta_for_clique_swap(state, analysis, &moved_people);
     patch.score_delta.attribute_balance_penalty_delta +=
         attribute_balance_penalty_delta_for_clique_swap(state, analysis);
 
@@ -434,11 +436,11 @@ fn build_clique_swap_runtime_patch(
 fn forbidden_pair_penalty_delta_for_clique_swap(
     state: &RuntimeState,
     analysis: &CliqueSwapAnalysis,
+    moved_people: &[usize],
 ) -> f64 {
     let cp = &state.compiled;
     let session_idx = analysis.clique_swap.session_idx;
-    let moved_people = moved_people(analysis);
-    let indices = merged_indices_for_people(&moved_people, &cp.forbidden_pairs_by_person);
+    let indices = merged_indices_for_people(moved_people, &cp.forbidden_pairs_by_person);
 
     let mut delta = 0.0;
     for idx in indices {
@@ -469,11 +471,11 @@ fn forbidden_pair_penalty_delta_for_clique_swap(
 fn should_together_penalty_delta_for_clique_swap(
     state: &RuntimeState,
     analysis: &CliqueSwapAnalysis,
+    moved_people: &[usize],
 ) -> f64 {
     let cp = &state.compiled;
     let session_idx = analysis.clique_swap.session_idx;
-    let moved_people = moved_people(analysis);
-    let indices = merged_indices_for_people(&moved_people, &cp.should_together_pairs_by_person);
+    let indices = merged_indices_for_people(moved_people, &cp.should_together_pairs_by_person);
 
     let mut delta = 0.0;
     for idx in indices {
@@ -505,11 +507,11 @@ fn should_together_penalty_delta_for_clique_swap(
 fn pair_meeting_penalty_delta_for_clique_swap(
     state: &RuntimeState,
     analysis: &CliqueSwapAnalysis,
+    moved_people: &[usize],
 ) -> f64 {
     let cp = &state.compiled;
     let session_idx = analysis.clique_swap.session_idx;
-    let moved_people = moved_people(analysis);
-    let indices = merged_indices_for_people(&moved_people, &cp.pair_meeting_constraints_by_person);
+    let indices = merged_indices_for_people(moved_people, &cp.pair_meeting_constraints_by_person);
 
     let mut delta = 0.0;
     for idx in indices {
@@ -780,16 +782,15 @@ fn clique_is_active_in_session(
     }
 }
 
-fn participating_clique_members(
+fn participating_clique_member_count(
     cp: &crate::solver3::CompiledProblem,
     clique_swap: &CliqueSwapMove,
-) -> Vec<usize> {
+) -> usize {
     cp.cliques[clique_swap.clique_idx]
         .members
         .iter()
-        .copied()
-        .filter(|&member| cp.person_participation[member][clique_swap.session_idx])
-        .collect()
+        .filter(|&&member| cp.person_participation[member][clique_swap.session_idx])
+        .count()
 }
 
 fn active_clique_members_in_source_group(
