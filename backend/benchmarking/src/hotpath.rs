@@ -11,7 +11,7 @@ use crate::benchmark_mode::{
 use crate::hotpath_inputs::{
     clique_swap_bench_input, construction_bench_input, search_loop_bench_input,
     solver2_clique_swap_bench_input, solver2_swap_bench_input, solver2_transfer_bench_input,
-    solver3_swap_bench_input, swap_bench_input, transfer_bench_input,
+    solver3_swap_bench_input, solver3_transfer_bench_input, swap_bench_input, transfer_bench_input,
 };
 use crate::manifest::{
     canonical_solver_family_for_case, LoadedBenchmarkCase, LoadedBenchmarkSuite,
@@ -34,6 +34,10 @@ use gm_core::solver2::moves::transfer::{
 use gm_core::solver3::moves::swap::{
     apply_swap_runtime_preview as apply_solver3_swap_runtime_preview,
     preview_swap_runtime_lightweight as preview_solver3_swap_runtime_lightweight,
+};
+use gm_core::solver3::moves::transfer::{
+    apply_transfer_runtime_preview as apply_solver3_transfer_runtime_preview,
+    preview_transfer_runtime_lightweight as preview_solver3_transfer_runtime_lightweight,
 };
 use std::hint::black_box;
 use std::time::Instant;
@@ -631,6 +635,111 @@ fn run_solver3_hotpath_case(
                 let mut state = input.state.clone();
                 let op_started = Instant::now();
                 apply_solver3_swap_runtime_preview(&mut state, &preview)
+                    .map_err(|error| error.to_string())?;
+                apply_seconds += op_started.elapsed().as_secs_f64();
+                checksum = checksum.wrapping_add(black_box(state.total_score.to_bits() as i64));
+            }
+            (
+                HotPathMetrics {
+                    benchmark_mode: benchmark_mode.to_string(),
+                    preset: Some(preset),
+                    iterations,
+                    warmup_iterations,
+                    measured_operations: iterations,
+                    average_runtime_seconds: average_runtime(
+                        started.elapsed().as_secs_f64(),
+                        iterations,
+                    ),
+                    ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
+                    checksum,
+                    measurement_seconds: started.elapsed().as_secs_f64(),
+                    setup_seconds: 0.0,
+                    construction_seconds: 0.0,
+                    preview_seconds: 0.0,
+                    apply_seconds,
+                    full_recalculation_seconds: 0.0,
+                    search_seconds: 0.0,
+                },
+                input.input.solver.seed,
+                EffectiveBenchmarkBudget::default(),
+                input.input.solver.move_policy.clone(),
+            )
+        }
+        TRANSFER_PREVIEW_BENCHMARK_MODE => {
+            let input = solver3_transfer_bench_input(&preset).ok_or_else(|| {
+                format!(
+                    "hotpath probe '{}' for solver family '{}' is not implemented yet",
+                    preset,
+                    SolverKind::Solver3.canonical_id()
+                )
+            })?;
+            for _ in 0..warmup_iterations {
+                let preview =
+                    preview_solver3_transfer_runtime_lightweight(&input.state, &input.transfer)
+                        .map_err(|error| error.to_string())?;
+                black_box(preview.delta_score);
+            }
+            let started = Instant::now();
+            let mut checksum = 0i64;
+            let mut preview_seconds = 0.0;
+            for _ in 0..iterations {
+                let op_started = Instant::now();
+                let preview =
+                    preview_solver3_transfer_runtime_lightweight(&input.state, &input.transfer)
+                        .map_err(|error| error.to_string())?;
+                preview_seconds += op_started.elapsed().as_secs_f64();
+                checksum = checksum.wrapping_add(black_box(preview.delta_score.to_bits() as i64));
+            }
+            (
+                HotPathMetrics {
+                    benchmark_mode: benchmark_mode.to_string(),
+                    preset: Some(preset),
+                    iterations,
+                    warmup_iterations,
+                    measured_operations: iterations,
+                    average_runtime_seconds: average_runtime(
+                        started.elapsed().as_secs_f64(),
+                        iterations,
+                    ),
+                    ops_per_second: ops_per_second(started.elapsed().as_secs_f64(), iterations),
+                    checksum,
+                    measurement_seconds: started.elapsed().as_secs_f64(),
+                    setup_seconds: 0.0,
+                    construction_seconds: 0.0,
+                    preview_seconds,
+                    apply_seconds: 0.0,
+                    full_recalculation_seconds: 0.0,
+                    search_seconds: 0.0,
+                },
+                input.input.solver.seed,
+                EffectiveBenchmarkBudget::default(),
+                input.input.solver.move_policy.clone(),
+            )
+        }
+        TRANSFER_APPLY_BENCHMARK_MODE => {
+            let input = solver3_transfer_bench_input(&preset).ok_or_else(|| {
+                format!(
+                    "hotpath probe '{}' for solver family '{}' is not implemented yet",
+                    preset,
+                    SolverKind::Solver3.canonical_id()
+                )
+            })?;
+            let preview =
+                preview_solver3_transfer_runtime_lightweight(&input.state, &input.transfer)
+                    .map_err(|error| error.to_string())?;
+            for _ in 0..warmup_iterations {
+                let mut state = input.state.clone();
+                apply_solver3_transfer_runtime_preview(&mut state, &preview)
+                    .map_err(|error| error.to_string())?;
+                black_box(state.total_score);
+            }
+            let started = Instant::now();
+            let mut checksum = 0i64;
+            let mut apply_seconds = 0.0;
+            for _ in 0..iterations {
+                let mut state = input.state.clone();
+                let op_started = Instant::now();
+                apply_solver3_transfer_runtime_preview(&mut state, &preview)
                     .map_err(|error| error.to_string())?;
                 apply_seconds += op_started.elapsed().as_secs_f64();
                 checksum = checksum.wrapping_add(black_box(state.total_score.to_bits() as i64));

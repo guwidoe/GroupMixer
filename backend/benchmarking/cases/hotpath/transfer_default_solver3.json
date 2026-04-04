@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "hotpath.transfer.default.solver3",
+  "class": "representative",
+  "solver_family": "solver3",
+  "family": "transfer",
+  "paths": ["transfer_preview", "transfer_apply"],
+  "title": "Hotpath solver3 transfer preset",
+  "description": "Deterministic solver3 transfer kernel lane used for preview and apply history.",
+  "tags": ["hotpath", "transfer", "representative", "solver3"],
+  "hotpath_preset": "transfer_default_solver3"
+}

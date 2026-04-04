@@ -1,18 +1,21 @@
 use std::collections::VecDeque;
 use std::time::Instant;
 
-use rand::{rng, RngExt, SeedableRng};
+use rand::{rng, seq::SliceRandom, RngExt, SeedableRng};
 use rand_chacha::ChaCha12Rng;
 
 use crate::models::{
     BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, MoveFamily,
-    MoveFamilyBenchmarkTelemetrySummary, MovePolicy, ProgressCallback, ProgressUpdate,
-    SolverBenchmarkTelemetry, SolverConfiguration, SolverResult, StopReason,
+    MoveFamilyBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
+    MoveSelectionMode, ProgressCallback, ProgressUpdate, SolverBenchmarkTelemetry,
+    SolverConfiguration, SolverResult, StopReason,
 };
 use crate::solver_support::SolverError;
 
 use super::super::moves::{
-    apply_swap_runtime_preview, preview_swap_runtime_lightweight, SwapMove, SwapRuntimePreview,
+    apply_swap_runtime_preview, apply_transfer_runtime_preview, preview_swap_runtime_lightweight,
+    preview_transfer_runtime_lightweight, SwapMove, SwapRuntimePreview, TransferMove,
+    TransferRuntimePreview,
 };
 use super::super::oracle::{check_drift, oracle_score};
 use super::super::runtime_state::RuntimeState;
@@ -22,7 +25,30 @@ const DEFAULT_INITIAL_TEMPERATURE: f64 = 2.0;
 const DEFAULT_FINAL_TEMPERATURE: f64 = 0.05;
 const RECENT_WINDOW: usize = 100;
 const MAX_RANDOM_CANDIDATE_ATTEMPTS: usize = 24;
+const MAX_RANDOM_TARGET_ATTEMPTS: usize = 24;
 const ORACLE_DRIFT_SAMPLE_INTERVAL: u64 = 16;
+
+#[derive(Debug, Clone, PartialEq)]
+enum SearchMovePreview {
+    Swap(SwapRuntimePreview),
+    Transfer(TransferRuntimePreview),
+}
+
+impl SearchMovePreview {
+    fn delta_score(&self) -> f64 {
+        match self {
+            Self::Swap(preview) => preview.delta_score,
+            Self::Transfer(preview) => preview.delta_score,
+        }
+    }
+
+    fn describe(&self) -> String {
+        match self {
+            Self::Swap(preview) => format!("swap {:?}", preview.analysis.swap),
+            Self::Transfer(preview) => format!("transfer {:?}", preview.analysis.transfer),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct SearchEngine {
@@ -96,65 +122,60 @@ impl SearchEngine {
             }
 
             let temperature = temperature_for_iteration(iteration, max_iterations);
-            let family_metrics = &mut move_metrics.swap;
 
-            let preview_started_at = Instant::now();
-            let preview =
-                sample_swap_preview(&current_state, &move_policy, &allowed_sessions, &mut rng);
-            family_metrics.preview_seconds += preview_started_at.elapsed().as_secs_f64();
+            if let Some((family, preview, preview_seconds)) =
+                select_previewed_move(&current_state, &move_policy, &allowed_sessions, &mut rng)
+            {
+                let family_metrics = family_metrics_mut(&mut move_metrics, family);
+                family_metrics.preview_seconds += preview_seconds;
+                family_metrics.attempts += 1;
 
-            match preview {
-                Some(preview) => {
-                    family_metrics.attempts += 1;
-                    let delta_cost = preview.delta_score;
-                    attempted_delta_sum += delta_cost;
-                    biggest_attempted_increase =
-                        biggest_attempted_increase.max(delta_cost.max(0.0));
+                let delta_cost = preview.delta_score();
+                attempted_delta_sum += delta_cost;
+                biggest_attempted_increase = biggest_attempted_increase.max(delta_cost.max(0.0));
 
-                    let accepted = delta_cost <= 0.0
-                        || (temperature > 0.0
-                            && rng.random::<f64>()
-                                < (-delta_cost / temperature).exp().clamp(0.0, 1.0));
+                let accepted = delta_cost <= 0.0
+                    || (temperature > 0.0
+                        && rng.random::<f64>() < (-delta_cost / temperature).exp().clamp(0.0, 1.0));
 
-                    if accepted {
-                        let apply_started_at = Instant::now();
-                        apply_swap_runtime_preview(&mut current_state, &preview)?;
-                        family_metrics.apply_seconds += apply_started_at.elapsed().as_secs_f64();
-                        family_metrics.accepted += 1;
-                        accepted_delta_sum += delta_cost;
+                if accepted {
+                    let apply_started_at = Instant::now();
+                    apply_previewed_move(&mut current_state, &preview)?;
+                    family_metrics.apply_seconds += apply_started_at.elapsed().as_secs_f64();
+                    family_metrics.accepted += 1;
+                    accepted_delta_sum += delta_cost;
 
-                        if should_sample_oracle_check(family_metrics.accepted) {
-                            check_drift(&current_state).map_err(|error| {
-                                SolverError::ValidationError(format!(
-                                    "solver3 runtime swap drift check failed after accepted move {:?}: {}",
-                                    preview.analysis.swap, error
-                                ))
-                            })?;
-                        }
-
-                        if delta_cost > 0.0 {
-                            local_optima_escapes += 1;
-                            biggest_accepted_increase = biggest_accepted_increase.max(delta_cost);
-                        }
-
-                        if current_state.total_score < best_score {
-                            best_score = current_state.total_score;
-                            best_state = current_state.clone();
-                            no_improvement_count = 0;
-                        } else {
-                            no_improvement_count += 1;
-                        }
-                        push_recent_acceptance(&mut recent_acceptance, true);
-                    } else {
-                        family_metrics.rejected += 1;
-                        no_improvement_count += 1;
-                        push_recent_acceptance(&mut recent_acceptance, false);
+                    if should_sample_oracle_check(family_metrics.accepted) {
+                        let preview_description = preview.describe();
+                        check_drift(&current_state).map_err(|error| {
+                            SolverError::ValidationError(format!(
+                                "solver3 runtime {:?} drift check failed after accepted move {}: {}",
+                                family, preview_description, error
+                            ))
+                        })?;
                     }
-                }
-                None => {
+
+                    if delta_cost > 0.0 {
+                        local_optima_escapes += 1;
+                        biggest_accepted_increase = biggest_accepted_increase.max(delta_cost);
+                    }
+
+                    if current_state.total_score < best_score {
+                        best_score = current_state.total_score;
+                        best_state = current_state.clone();
+                        no_improvement_count = 0;
+                    } else {
+                        no_improvement_count += 1;
+                    }
+                    push_recent_acceptance(&mut recent_acceptance, true);
+                } else {
+                    family_metrics.rejected += 1;
                     no_improvement_count += 1;
                     push_recent_acceptance(&mut recent_acceptance, false);
                 }
+            } else {
+                no_improvement_count += 1;
+                push_recent_acceptance(&mut recent_acceptance, false);
             }
 
             iterations_completed = iteration + 1;
@@ -309,25 +330,126 @@ fn build_solver_result(
     })
 }
 
-fn sample_swap_preview(
+fn select_previewed_move(
     state: &RuntimeState,
     move_policy: &MovePolicy,
     allowed_sessions: &[usize],
     rng: &mut ChaCha12Rng,
-) -> Option<SwapRuntimePreview> {
-    if move_policy
-        .forced_family
-        .is_some_and(|family| family != MoveFamily::Swap)
-    {
-        return None;
-    }
-
-    if let Some(allowed) = &move_policy.allowed_families {
-        if !allowed.contains(&MoveFamily::Swap) {
-            return None;
+) -> Option<(MoveFamily, SearchMovePreview, f64)> {
+    let ordered_families = ordered_move_families(move_policy, rng);
+    for family in ordered_families {
+        let preview_started_at = Instant::now();
+        let preview = sample_preview_for_family(state, family, allowed_sessions, rng);
+        let preview_seconds = preview_started_at.elapsed().as_secs_f64();
+        if let Some(preview) = preview {
+            return Some((family, preview, preview_seconds));
         }
     }
 
+    None
+}
+
+fn sample_preview_for_family(
+    state: &RuntimeState,
+    family: MoveFamily,
+    allowed_sessions: &[usize],
+    rng: &mut ChaCha12Rng,
+) -> Option<SearchMovePreview> {
+    match family {
+        MoveFamily::Swap => {
+            sample_swap_preview(state, allowed_sessions, rng).map(SearchMovePreview::Swap)
+        }
+        MoveFamily::Transfer => {
+            sample_transfer_preview(state, allowed_sessions, rng).map(SearchMovePreview::Transfer)
+        }
+        MoveFamily::CliqueSwap => None,
+    }
+}
+
+fn apply_previewed_move(
+    state: &mut RuntimeState,
+    preview: &SearchMovePreview,
+) -> Result<(), SolverError> {
+    match preview {
+        SearchMovePreview::Swap(preview) => apply_swap_runtime_preview(state, preview),
+        SearchMovePreview::Transfer(preview) => apply_transfer_runtime_preview(state, preview),
+    }
+}
+
+fn ordered_move_families(move_policy: &MovePolicy, rng: &mut ChaCha12Rng) -> Vec<MoveFamily> {
+    if let Some(forced_family) = move_policy.forced_family {
+        return vec![forced_family];
+    }
+
+    let mut families = move_policy.allowed_families();
+    if families.len() <= 1 {
+        return families;
+    }
+
+    match move_policy.mode {
+        MoveSelectionMode::Adaptive => {
+            families.shuffle(rng);
+            families
+        }
+        MoveSelectionMode::Weighted => {
+            let weights = move_policy
+                .weights
+                .as_ref()
+                .expect("weighted move policy should be normalized before use");
+            let Some(first) = choose_weighted_family(&families, weights, rng) else {
+                families.shuffle(rng);
+                return families;
+            };
+
+            let mut ordered = vec![first];
+            families.retain(|family| *family != first);
+            families.shuffle(rng);
+            ordered.extend(families);
+            ordered
+        }
+    }
+}
+
+fn choose_weighted_family(
+    families: &[MoveFamily],
+    weights: &crate::models::MoveFamilyWeights,
+    rng: &mut ChaCha12Rng,
+) -> Option<MoveFamily> {
+    let total_weight = families
+        .iter()
+        .map(|family| weights.weight_for(*family))
+        .sum::<f64>();
+    if total_weight <= 0.0 {
+        return None;
+    }
+
+    let mut slot = rng.random::<f64>() * total_weight;
+    for family in families {
+        slot -= weights.weight_for(*family);
+        if slot <= 0.0 {
+            return Some(*family);
+        }
+    }
+
+    families.last().copied()
+}
+
+fn family_metrics_mut(
+    summary: &mut MoveFamilyBenchmarkTelemetrySummary,
+    family: MoveFamily,
+) -> &mut MoveFamilyBenchmarkTelemetry {
+    match family {
+        MoveFamily::Swap => &mut summary.swap,
+        MoveFamily::Transfer => &mut summary.transfer,
+        MoveFamily::CliqueSwap => &mut summary.clique_swap,
+    }
+}
+
+fn sample_swap_preview(
+    state: &RuntimeState,
+    allowed_sessions: &[usize],
+    rng: &mut ChaCha12Rng,
+) -> Option<SwapRuntimePreview> {
     if allowed_sessions.is_empty() || state.compiled.num_groups < 2 {
         return None;
     }
@@ -359,6 +481,132 @@ fn sample_swap_preview(
     None
 }
 
+fn sample_transfer_preview(
+    state: &RuntimeState,
+    allowed_sessions: &[usize],
+    rng: &mut ChaCha12Rng,
+) -> Option<TransferRuntimePreview> {
+    if allowed_sessions.is_empty() || state.compiled.num_people == 0 {
+        return None;
+    }
+
+    let eligible_sessions = allowed_sessions
+        .iter()
+        .copied()
+        .filter(|&session_idx| runtime_session_can_transfer(state, session_idx))
+        .collect::<Vec<_>>();
+    if eligible_sessions.is_empty() {
+        return None;
+    }
+
+    for _ in 0..MAX_RANDOM_CANDIDATE_ATTEMPTS {
+        let session_idx = eligible_sessions[rng.random_range(0..eligible_sessions.len())];
+        let person_idx = rng.random_range(0..state.compiled.num_people);
+        let Some(source_group_idx) = runtime_transfer_source_group(state, session_idx, person_idx)
+        else {
+            continue;
+        };
+
+        for _ in 0..MAX_RANDOM_TARGET_ATTEMPTS {
+            let target_group_idx = rng.random_range(0..state.compiled.num_groups);
+            if target_group_idx == source_group_idx
+                || !runtime_transfer_target_has_capacity(state, session_idx, target_group_idx)
+            {
+                continue;
+            }
+
+            let transfer =
+                TransferMove::new(session_idx, person_idx, source_group_idx, target_group_idx);
+            if let Ok(preview) = preview_transfer_runtime_lightweight(state, &transfer) {
+                return Some(preview);
+            }
+        }
+    }
+
+    let session_start = rng.random_range(0..eligible_sessions.len());
+    let person_start = rng.random_range(0..state.compiled.num_people);
+    let target_start = rng.random_range(0..state.compiled.num_groups);
+
+    for session_offset in 0..eligible_sessions.len() {
+        let session_idx =
+            eligible_sessions[(session_start + session_offset) % eligible_sessions.len()];
+        for person_offset in 0..state.compiled.num_people {
+            let person_idx = (person_start + person_offset) % state.compiled.num_people;
+            let Some(source_group_idx) =
+                runtime_transfer_source_group(state, session_idx, person_idx)
+            else {
+                continue;
+            };
+
+            for target_offset in 0..state.compiled.num_groups {
+                let target_group_idx = (target_start + target_offset) % state.compiled.num_groups;
+                if target_group_idx == source_group_idx
+                    || !runtime_transfer_target_has_capacity(state, session_idx, target_group_idx)
+                {
+                    continue;
+                }
+
+                let transfer =
+                    TransferMove::new(session_idx, person_idx, source_group_idx, target_group_idx);
+                if let Ok(preview) = preview_transfer_runtime_lightweight(state, &transfer) {
+                    return Some(preview);
+                }
+            }
+        }
+    }
+
+    None
+}
+
+fn runtime_session_can_transfer(state: &RuntimeState, session_idx: usize) -> bool {
+    let has_capacity_target = (0..state.compiled.num_groups)
+        .any(|group_idx| runtime_transfer_target_has_capacity(state, session_idx, group_idx));
+    let has_nonempty_source = (0..state.compiled.num_groups)
+        .any(|group_idx| state.group_sizes[state.group_slot(session_idx, group_idx)] > 1);
+    has_capacity_target && has_nonempty_source
+}
+
+fn runtime_transfer_source_group(
+    state: &RuntimeState,
+    session_idx: usize,
+    person_idx: usize,
+) -> Option<usize> {
+    if !is_runtime_transferable_person(state, session_idx, person_idx) {
+        return None;
+    }
+
+    let source_group_idx = state.person_location[state.people_slot(session_idx, person_idx)]?;
+    if state.group_sizes[state.group_slot(session_idx, source_group_idx)] <= 1 {
+        return None;
+    }
+
+    Some(source_group_idx)
+}
+
+fn runtime_transfer_target_has_capacity(
+    state: &RuntimeState,
+    session_idx: usize,
+    target_group_idx: usize,
+) -> bool {
+    state.group_sizes[state.group_slot(session_idx, target_group_idx)]
+        < state.compiled.group_capacity(session_idx, target_group_idx)
+}
+
+fn is_runtime_transferable_person(
+    state: &RuntimeState,
+    session_idx: usize,
+    person_idx: usize,
+) -> bool {
+    state.compiled.person_participation[person_idx][session_idx]
+        && state.person_location[state.people_slot(session_idx, person_idx)].is_some()
+        && !state
+            .compiled
+            .immovable_lookup
+            .contains_key(&(person_idx, session_idx))
+        && state.compiled.person_to_clique_id[session_idx][person_idx].is_none()
+}
+
+#[allow(clippy::too_many_arguments)]
 fn build_progress_update(
     iteration: u64,
     max_iterations: u64,
@@ -498,6 +746,6 @@ fn reached_time_limit(started_at: Instant, time_limit_seconds: Option<u64>) -> b
     time_limit_seconds.is_some_and(|limit| started_at.elapsed().as_secs() >= limit)
 }
 
-fn should_sample_oracle_check(accepted_swap_count: u64) -> bool {
-    accepted_swap_count > 0 && accepted_swap_count % ORACLE_DRIFT_SAMPLE_INTERVAL == 0
+fn should_sample_oracle_check(accepted_move_count: u64) -> bool {
+    accepted_move_count > 0 && accepted_move_count % ORACLE_DRIFT_SAMPLE_INTERVAL == 0
 }

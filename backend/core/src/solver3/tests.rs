@@ -19,8 +19,10 @@ use crate::models::{
 
 use super::compiled_problem::CompiledProblem;
 use super::moves::{
-    apply_swap_runtime_preview, preview_swap_oracle_recompute, preview_swap_runtime_lightweight,
-    SwapMove,
+    analyze_transfer, apply_swap_runtime_preview, apply_transfer_runtime_preview,
+    preview_swap_oracle_recompute, preview_swap_runtime_lightweight,
+    preview_transfer_oracle_recompute, preview_transfer_runtime_lightweight, SwapMove,
+    TransferFeasibility, TransferMove,
 };
 use super::oracle::check_drift;
 use super::runtime_state::RuntimeState;
@@ -1086,4 +1088,395 @@ fn sequential_swap_runtime_apply_does_not_drift_from_oracle() {
             &format!("step {} runtime delta/oracle mismatch", step),
         );
     }
+}
+
+// ---------------------------------------------------------------------------
+// 11. Transfer kernel: equivalence, drift, and feasibility regressions
+// ---------------------------------------------------------------------------
+
+fn transfer_kernel_input() -> ApiInput {
+    ApiInput {
+        problem: ProblemDefinition {
+            people: vec![
+                person_with_attr("p0", "role", "eng"),
+                person_with_attr("p1", "role", "eng"),
+                person_with_attr("p2", "role", "design"),
+                person_with_attr("p3", "role", "design"),
+                person_with_attr("p4", "role", "pm"),
+            ],
+            groups: vec![
+                Group {
+                    id: "g0".into(),
+                    size: 3,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g2".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 2,
+        },
+        initial_schedule: Some(HashMap::from([
+            (
+                "session_0".into(),
+                HashMap::from([
+                    ("g0".into(), vec!["p0".into(), "p1".into(), "p4".into()]),
+                    ("g1".into(), vec!["p2".into(), "p3".into()]),
+                    ("g2".into(), Vec::new()),
+                ]),
+            ),
+            (
+                "session_1".into(),
+                HashMap::from([
+                    ("g0".into(), vec!["p0".into(), "p4".into()]),
+                    ("g1".into(), vec!["p1".into(), "p2".into()]),
+                    ("g2".into(), vec!["p3".into()]),
+                ]),
+            ),
+        ])),
+        objectives: vec![Objective {
+            r#type: "maximize_unique_contacts".into(),
+            weight: 1.0,
+        }],
+        constraints: vec![
+            Constraint::RepeatEncounter(RepeatEncounterParams {
+                max_allowed_encounters: 1,
+                penalty_function: "squared".into(),
+                penalty_weight: 11.0,
+            }),
+            Constraint::ShouldNotBeTogether {
+                people: vec!["p0".into(), "p2".into()],
+                penalty_weight: 20.0,
+                sessions: None,
+            },
+            Constraint::ShouldStayTogether {
+                people: vec!["p3".into(), "p4".into()],
+                penalty_weight: 7.0,
+                sessions: Some(vec![0, 1]),
+            },
+            Constraint::PairMeetingCount(PairMeetingCountParams {
+                people: vec!["p0".into(), "p1".into()],
+                sessions: vec![0, 1],
+                target_meetings: 2,
+                mode: PairMeetingMode::AtLeast,
+                penalty_weight: 13.0,
+            }),
+            Constraint::AttributeBalance(AttributeBalanceParams {
+                group_id: "g0".into(),
+                attribute_key: "role".into(),
+                desired_values: HashMap::from([
+                    ("eng".into(), 2),
+                    ("design".into(), 0),
+                    ("pm".into(), 1),
+                ]),
+                penalty_weight: 9.0,
+                mode: AttributeBalanceMode::Exact,
+                sessions: None,
+            }),
+        ],
+        solver: solver3_config(),
+    }
+}
+
+fn transfer_restricted_input() -> ApiInput {
+    ApiInput {
+        problem: ProblemDefinition {
+            people: vec![
+                person_with_attr("p0", "role", "eng"),
+                person_with_attr("p1", "role", "eng"),
+                person_with_attr("p2", "role", "design"),
+                person_with_attr("p3", "role", "design"),
+                person_with_attr("p4", "role", "pm"),
+                Person {
+                    id: "p5".into(),
+                    attributes: HashMap::from([("role".into(), "qa".into())]),
+                    sessions: Some(vec![1]),
+                },
+            ],
+            groups: vec![
+                Group {
+                    id: "g0".into(),
+                    size: 3,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g2".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 2,
+        },
+        initial_schedule: Some(HashMap::from([
+            (
+                "session_0".into(),
+                HashMap::from([
+                    ("g0".into(), vec!["p0".into(), "p1".into(), "p2".into()]),
+                    ("g1".into(), vec!["p3".into(), "p4".into()]),
+                    ("g2".into(), Vec::new()),
+                ]),
+            ),
+            (
+                "session_1".into(),
+                HashMap::from([
+                    ("g0".into(), vec!["p0".into(), "p2".into()]),
+                    ("g1".into(), vec!["p1".into(), "p4".into()]),
+                    ("g2".into(), vec!["p3".into(), "p5".into()]),
+                ]),
+            ),
+        ])),
+        objectives: vec![Objective {
+            r#type: "maximize_unique_contacts".into(),
+            weight: 1.0,
+        }],
+        constraints: vec![
+            Constraint::MustStayTogether {
+                people: vec!["p0".into(), "p1".into()],
+                sessions: Some(vec![0]),
+            },
+            Constraint::ImmovablePerson(ImmovablePersonParams {
+                person_id: "p4".into(),
+                group_id: "g1".into(),
+                sessions: Some(vec![1]),
+            }),
+        ],
+        solver: solver3_config(),
+    }
+}
+
+#[test]
+fn transfer_preview_lightweight_matches_oracle_delta() {
+    let input = transfer_kernel_input();
+    let state = RuntimeState::from_input(&input).unwrap();
+    let cp = &state.compiled;
+    let transfer = TransferMove::new(
+        1,
+        cp.person_id_to_idx["p1"],
+        cp.group_id_to_idx["g1"],
+        cp.group_id_to_idx["g0"],
+    );
+
+    let preview = preview_transfer_runtime_lightweight(&state, &transfer).unwrap();
+    assert!(
+        !preview.patch.pair_contact_updates.is_empty(),
+        "transfer preview should emit pair-contact updates"
+    );
+
+    let oracle_delta = preview_transfer_oracle_recompute(&state, &transfer).unwrap();
+    assert_close(
+        preview.delta_score,
+        oracle_delta,
+        "transfer preview delta should match oracle recompute delta",
+    );
+}
+
+#[test]
+fn transfer_apply_runtime_preview_preserves_invariants_and_oracle_alignment() {
+    let input = transfer_kernel_input();
+    let mut state = RuntimeState::from_input(&input).unwrap();
+    let cp = state.compiled.clone();
+    let transfer = TransferMove::new(
+        1,
+        cp.person_id_to_idx["p1"],
+        cp.group_id_to_idx["g1"],
+        cp.group_id_to_idx["g0"],
+    );
+
+    let before_total = state.total_score;
+    let preview = preview_transfer_runtime_lightweight(&state, &transfer).unwrap();
+    apply_transfer_runtime_preview(&mut state, &preview).unwrap();
+
+    validate_invariants(&state).unwrap();
+    check_drift(&state).unwrap();
+
+    assert_close(
+        state.total_score - before_total,
+        preview.delta_score,
+        "applied transfer total delta should match preview delta",
+    );
+}
+
+#[test]
+fn sequential_transfer_runtime_apply_does_not_drift_from_oracle() {
+    let input = transfer_kernel_input();
+    let mut state = RuntimeState::from_input(&input).unwrap();
+    let cp = state.compiled.clone();
+
+    let transfers = vec![
+        TransferMove::new(
+            1,
+            cp.person_id_to_idx["p1"],
+            cp.group_id_to_idx["g1"],
+            cp.group_id_to_idx["g0"],
+        ),
+        TransferMove::new(
+            0,
+            cp.person_id_to_idx["p4"],
+            cp.group_id_to_idx["g0"],
+            cp.group_id_to_idx["g2"],
+        ),
+        TransferMove::new(
+            1,
+            cp.person_id_to_idx["p0"],
+            cp.group_id_to_idx["g0"],
+            cp.group_id_to_idx["g2"],
+        ),
+    ];
+
+    for (step, transfer) in transfers.iter().enumerate() {
+        let preview = preview_transfer_runtime_lightweight(&state, transfer).unwrap();
+        let oracle_delta = preview_transfer_oracle_recompute(&state, transfer).unwrap();
+        assert_close(
+            preview.delta_score,
+            oracle_delta,
+            &format!("step {} transfer preview/oracle mismatch", step),
+        );
+
+        let before_total = state.total_score;
+        apply_transfer_runtime_preview(&mut state, &preview).unwrap();
+        validate_invariants(&state).unwrap();
+        check_drift(&state).unwrap();
+
+        assert_close(
+            state.total_score - before_total,
+            oracle_delta,
+            &format!("step {} transfer runtime delta/oracle mismatch", step),
+        );
+    }
+}
+
+#[test]
+fn transfer_feasibility_regressions_report_specific_reasons() {
+    let input = transfer_kernel_input();
+    let state = RuntimeState::from_input(&input).unwrap();
+    let cp = state.compiled.clone();
+
+    let same_group = TransferMove::new(
+        1,
+        cp.person_id_to_idx["p1"],
+        cp.group_id_to_idx["g1"],
+        cp.group_id_to_idx["g1"],
+    );
+    assert!(matches!(
+        analyze_transfer(&state, &same_group).unwrap().feasibility,
+        TransferFeasibility::SameGroupNoop
+    ));
+
+    let wrong_source = TransferMove::new(
+        1,
+        cp.person_id_to_idx["p1"],
+        cp.group_id_to_idx["g0"],
+        cp.group_id_to_idx["g2"],
+    );
+    assert!(matches!(
+        analyze_transfer(&state, &wrong_source).unwrap().feasibility,
+        TransferFeasibility::WrongSourceGroup {
+            person_idx,
+            actual_group_idx
+        } if person_idx == cp.person_id_to_idx["p1"] && actual_group_idx == cp.group_id_to_idx["g1"]
+    ));
+
+    let target_full = TransferMove::new(
+        0,
+        cp.person_id_to_idx["p2"],
+        cp.group_id_to_idx["g1"],
+        cp.group_id_to_idx["g0"],
+    );
+    assert!(matches!(
+        analyze_transfer(&state, &target_full).unwrap().feasibility,
+        TransferFeasibility::TargetGroupFull {
+            target_group_idx,
+            capacity
+        } if target_group_idx == cp.group_id_to_idx["g0"] && capacity == 3
+    ));
+
+    let source_singleton = TransferMove::new(
+        1,
+        cp.person_id_to_idx["p3"],
+        cp.group_id_to_idx["g2"],
+        cp.group_id_to_idx["g0"],
+    );
+    assert!(matches!(
+        analyze_transfer(&state, &source_singleton)
+            .unwrap()
+            .feasibility,
+        TransferFeasibility::SourceWouldBeEmpty { source_group_idx }
+            if source_group_idx == cp.group_id_to_idx["g2"]
+    ));
+
+    let mut tampered = state.clone();
+    let p2_slot = tampered.people_slot(1, cp.person_id_to_idx["p2"]);
+    tampered.person_location[p2_slot] = None;
+    let missing_location = TransferMove::new(
+        1,
+        cp.person_id_to_idx["p2"],
+        cp.group_id_to_idx["g1"],
+        cp.group_id_to_idx["g0"],
+    );
+    assert!(matches!(
+        analyze_transfer(&tampered, &missing_location)
+            .unwrap()
+            .feasibility,
+        TransferFeasibility::MissingLocation { person_idx }
+            if person_idx == cp.person_id_to_idx["p2"]
+    ));
+
+    let restricted_state = RuntimeState::from_input(&transfer_restricted_input()).unwrap();
+    let rcp = restricted_state.compiled.clone();
+
+    let non_participating = TransferMove::new(
+        0,
+        rcp.person_id_to_idx["p5"],
+        rcp.group_id_to_idx["g2"],
+        rcp.group_id_to_idx["g0"],
+    );
+    assert!(matches!(
+        analyze_transfer(&restricted_state, &non_participating)
+            .unwrap()
+            .feasibility,
+        TransferFeasibility::NonParticipatingPerson { person_idx }
+            if person_idx == rcp.person_id_to_idx["p5"]
+    ));
+
+    let clique_member = TransferMove::new(
+        0,
+        rcp.person_id_to_idx["p0"],
+        rcp.group_id_to_idx["g0"],
+        rcp.group_id_to_idx["g2"],
+    );
+    assert!(matches!(
+        analyze_transfer(&restricted_state, &clique_member)
+            .unwrap()
+            .feasibility,
+        TransferFeasibility::ActiveCliqueMember { person_idx, .. }
+            if person_idx == rcp.person_id_to_idx["p0"]
+    ));
+
+    let immovable = TransferMove::new(
+        1,
+        rcp.person_id_to_idx["p4"],
+        rcp.group_id_to_idx["g1"],
+        rcp.group_id_to_idx["g0"],
+    );
+    assert!(matches!(
+        analyze_transfer(&restricted_state, &immovable)
+            .unwrap()
+            .feasibility,
+        TransferFeasibility::ImmovablePerson {
+            person_idx,
+            required_group_idx
+        } if person_idx == rcp.person_id_to_idx["p4"] && required_group_idx == rcp.group_id_to_idx["g1"]
+    ));
 }

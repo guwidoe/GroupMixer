@@ -53,6 +53,13 @@ pub struct Solver2TransferBenchInput {
 }
 
 #[derive(Clone)]
+pub struct Solver3TransferBenchInput {
+    pub input: ApiInput,
+    pub state: gm_core::solver3::RuntimeState,
+    pub transfer: gm_core::solver3::moves::TransferMove,
+}
+
+#[derive(Clone)]
 pub struct CliqueSwapBenchInput {
     pub state: State,
     pub day: usize,
@@ -422,6 +429,80 @@ pub fn solver2_transfer_bench_input(id: &str) -> Option<Solver2TransferBenchInpu
                 state.compiled_problem.group_id_to_idx["g0"],
             );
             Some(Solver2TransferBenchInput {
+                input,
+                state,
+                transfer,
+            })
+        }
+        _ => None,
+    }
+}
+
+pub fn solver3_transfer_bench_input(id: &str) -> Option<Solver3TransferBenchInput> {
+    match id {
+        "transfer_default_solver3" => {
+            let mut input = make_api_input(
+                ProblemDefinition {
+                    people: vec![
+                        person_with_attr("p0", "role", "eng"),
+                        person_with_attr("p1", "role", "eng"),
+                        person_with_attr("p2", "role", "design"),
+                        person_with_attr("p3", "role", "design"),
+                        person_with_attr("p4", "role", "pm"),
+                    ],
+                    groups: vec![group("g0", 3), group("g1", 2), group("g2", 2)],
+                    num_sessions: 2,
+                },
+                vec![
+                    Constraint::PairMeetingCount(PairMeetingCountParams {
+                        people: vec!["p0".to_string(), "p1".to_string()],
+                        sessions: vec![0, 1],
+                        target_meetings: 2,
+                        mode: PairMeetingMode::AtLeast,
+                        penalty_weight: 13.0,
+                    }),
+                    Constraint::AttributeBalance(AttributeBalanceParams {
+                        group_id: "g0".to_string(),
+                        attribute_key: "role".to_string(),
+                        desired_values: hashmap_counts(&[("eng", 2), ("pm", 1)]),
+                        penalty_weight: 9.0,
+                        mode: AttributeBalanceMode::Exact,
+                        sessions: None,
+                    }),
+                ],
+                80,
+                181,
+            );
+            input.solver = SolverConfiguration {
+                solver_type: "solver3".to_string(),
+                stop_conditions: StopConditions {
+                    max_iterations: Some(1),
+                    time_limit_seconds: None,
+                    no_improvement_iterations: None,
+                },
+                solver_params: SolverParams::Solver3(Solver3Params::default()),
+                logging: Default::default(),
+                telemetry: Default::default(),
+                seed: Some(181),
+                move_policy: None,
+                allowed_sessions: None,
+            };
+            input.initial_schedule = Some(make_initial_schedule(
+                &["g0", "g1", "g2"],
+                vec![
+                    vec![vec!["p0", "p1", "p4"], vec!["p2", "p3"], vec![]],
+                    vec![vec!["p0", "p4"], vec!["p1", "p2"], vec!["p3"]],
+                ],
+            ));
+            let state = gm_core::solver3::RuntimeState::from_input(&input)
+                .expect("solver3 transfer state should build");
+            let transfer = gm_core::solver3::moves::TransferMove::new(
+                1,
+                state.compiled.person_id_to_idx["p1"],
+                state.compiled.group_id_to_idx["g1"],
+                state.compiled.group_id_to_idx["g0"],
+            );
+            Some(Solver3TransferBenchInput {
                 input,
                 state,
                 transfer,

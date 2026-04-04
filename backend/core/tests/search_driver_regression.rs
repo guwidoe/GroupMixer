@@ -97,6 +97,65 @@ fn solver3_driver_input() -> ApiInput {
     input
 }
 
+fn solver3_transfer_driver_input() -> ApiInput {
+    let mut solver = default_solver_configuration_for(gm_core::models::SolverKind::Solver3);
+    solver.seed = Some(281);
+    solver.stop_conditions.max_iterations = Some(25);
+    solver.move_policy = Some(MovePolicy {
+        forced_family: Some(MoveFamily::Transfer),
+        ..MovePolicy::default()
+    });
+
+    ApiInput {
+        initial_schedule: Some(make_initial_schedule(
+            &["g0", "g1", "g2"],
+            vec![
+                vec![vec!["p0", "p1", "p4"], vec!["p2", "p3"], vec![]],
+                vec![vec!["p0", "p4"], vec!["p1", "p2"], vec!["p3"]],
+            ],
+        )),
+        problem: ProblemDefinition {
+            people: vec![
+                person("p0"),
+                person("p1"),
+                person("p2"),
+                person("p3"),
+                person("p4"),
+            ],
+            groups: vec![
+                Group {
+                    id: "g0".to_string(),
+                    size: 3,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".to_string(),
+                    size: 2,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g2".to_string(),
+                    size: 2,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 2,
+        },
+        objectives: vec![Objective {
+            r#type: "maximize_unique_contacts".to_string(),
+            weight: 1.0,
+        }],
+        constraints: vec![Constraint::PairMeetingCount(PairMeetingCountParams {
+            people: vec!["p0".to_string(), "p1".to_string()],
+            sessions: vec![0, 1],
+            target_meetings: 2,
+            mode: PairMeetingMode::AtLeast,
+            penalty_weight: 13.0,
+        })],
+        solver,
+    }
+}
+
 fn solver2_transfer_driver_input() -> ApiInput {
     let mut solver = default_solver_configuration_for(gm_core::models::SolverKind::Solver2);
     solver.seed = Some(181);
@@ -483,6 +542,35 @@ fn solver3_swap_runtime_preview_avoids_full_recompute_per_attempt() {
     assert!(telemetry.moves.swap.attempts > 0);
     assert_eq!(telemetry.moves.swap.full_recalculation_count, 0);
     assert_eq!(telemetry.moves.transfer.full_recalculation_count, 0);
+    assert_eq!(telemetry.moves.clique_swap.full_recalculation_count, 0);
+}
+
+#[test]
+fn solver3_transfer_move_policy_only_attempts_transfers() {
+    let input = solver3_transfer_driver_input();
+
+    let result = run_solver(&input).expect("solver3 transfer-only solve should succeed");
+    let telemetry = result
+        .benchmark_telemetry
+        .expect("benchmark telemetry should be present");
+
+    assert!(telemetry.moves.transfer.attempts > 0);
+    assert_eq!(telemetry.moves.swap.attempts, 0);
+    assert_eq!(telemetry.moves.clique_swap.attempts, 0);
+}
+
+#[test]
+fn solver3_transfer_runtime_preview_avoids_full_recompute_per_attempt() {
+    let input = solver3_transfer_driver_input();
+
+    let result = run_solver(&input).expect("solver3 transfer solve should succeed");
+    let telemetry = result
+        .benchmark_telemetry
+        .expect("benchmark telemetry should be present");
+
+    assert!(telemetry.moves.transfer.attempts > 0);
+    assert_eq!(telemetry.moves.transfer.full_recalculation_count, 0);
+    assert_eq!(telemetry.moves.swap.full_recalculation_count, 0);
     assert_eq!(telemetry.moves.clique_swap.full_recalculation_count, 0);
 }
 
