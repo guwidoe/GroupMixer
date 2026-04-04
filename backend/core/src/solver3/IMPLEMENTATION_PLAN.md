@@ -2,14 +2,22 @@
 
 ## Status
 
-Proposed.
+Implemented through Epic S3-6 with a final **internal-only / no-rollout** decision.
 
-`solver3` does not exist as a runnable solver family yet. This directory is being created as the planning home for a new implementation track whose purpose is to test whether GroupMixer can host a solver family that is both:
+Current readiness snapshot:
+
+- `solver3` is now a runnable internal solver family through the shared engine registry
+- dense compiled-problem, flat runtime state, permanent oracle, and runtime kernels for `swap`, `transfer`, and `clique_swap` are implemented
+- shared hotpath, path, representative, property, and search-regression participation exists
+- current evidence does **not** support product-facing rollout
+- current evidence also does **not** support the claim that `solver3` is an overall performance winner over `solver1`
+
+This directory remains the planning and review home for the implementation track whose purpose was to test whether GroupMixer could host a solver family that is both:
 
 - materially more performance-oriented than the current `solver2` runtime line
 - structurally cleaner and more explicit than the current `solver1` implementation
 
-This plan intentionally treats `solver3` as a fresh design track rather than an incremental continuation of the current `solver2` runtime rescue work.
+This plan intentionally treated `solver3` as a fresh design track rather than an incremental continuation of the current `solver2` runtime rescue work.
 
 ## Why `solver3` exists
 
@@ -806,6 +814,125 @@ A human decision is made from same-machine evidence, not architectural optimism.
 - the decision is recorded explicitly
 - no broader rollout or continuation is claimed without evidence
 
+## Final benchmark review
+
+`solver3` succeeded as an architectural experiment and implementation track, but it did **not** achieve its original practical ambition of becoming both more elegant and clearly more performant than `solver1` on the current evidence set.
+
+### Gate recap
+
+- **Gate S3-A**: provisionally passed
+  - early swap hotpath landed within the target rough range
+- **Gate S3-B**: mixed / not cleanly passed
+  - representative runtime looked promising on some lanes, but search quality regressed on a constrained representative case
+- **Gate S3-C**: not passed cleanly
+  - all move families are implemented, but clique-swap remains materially slower than solver1 on the sampled hotpath lane
+
+### Final same-machine solver1 vs solver3 evidence
+
+Representative full-solve:
+
+- `representative.small-workshop-balanced`
+  - solver1: `0.002501029s`
+  - solver3: `0.007495345s`
+  - ratio: `~3.00x`
+  - final score: both `3.0`
+- `representative.small-workshop-constrained`
+  - solver1: `0.002970148s`
+  - solver3: `0.003148478s`
+  - ratio: `~1.06x`
+  - final score: solver1 `4.0`, solver3 `10.0`
+
+Path suite:
+
+- `path.swap.forbidden-pair`
+  - solver1: `0.001125679s`
+  - solver3: `0.001995252s`
+  - ratio: `~1.77x`
+- `path.transfer.pair-meeting`
+  - solver1: `0.001407142s`
+  - solver3: `0.000986559s`
+  - ratio: `~0.70x`
+- `path.clique-swap.partial-participation`
+  - solver1: `0.003072473s`
+  - solver3: `0.010069873s`
+  - ratio: `~3.28x`
+- `path.search-driver.allowed-sessions`
+  - solver1: `0.000878572s`
+  - solver3: `0.001033993s`
+  - ratio: `~1.18x`
+- `path.construction.clique-immovable`
+  - solver1: `0.001088853s`
+  - solver3: `0.003204071s`
+  - ratio: `~2.94x`
+
+Hotpath preview lanes:
+
+- swap preview:
+  - solver1: `9.81378125 µs`
+  - solver3: `22.789359375 µs`
+  - ratio: `~2.32x`
+- transfer preview:
+  - solver1: `8.481734375 µs`
+  - solver3: `18.56190625 µs`
+  - ratio: `~2.19x`
+- clique-swap preview:
+  - solver1: `18.021729166666668 µs`
+  - solver3: `140.35504166666667 µs`
+  - ratio: `~7.79x`
+
+### Final solver2 vs solver3 evidence
+
+Representative full-solve:
+
+- balanced:
+  - solver2: `0.0062935352s`
+  - solver3: `0.007495345s`
+  - ratio vs solver2: `~1.19x` slower
+  - final score: both `3.0`
+- constrained:
+  - solver2: `0.0097992420s`
+  - solver3: `0.003148478s`
+  - ratio vs solver2: `~0.32x`
+  - but solver3 quality regressed to `10.0` while solver2 held `4.0`
+
+Path suite:
+
+- solver3 beat solver2 on:
+  - `path.swap.forbidden-pair`
+  - `path.transfer.pair-meeting`
+  - `path.search-driver.allowed-sessions`
+  - `path.construction.clique-immovable`
+- solver3 remained worse on:
+  - `path.clique-swap.partial-participation`
+
+### Architectural lesson
+
+`solver3` partially validates the runtime-first kernel hypothesis:
+
+- dense compiled data + flat runtime state + compact patches can produce competitive or better runtime on some swap/transfer/search-driver lanes
+- but that architecture alone does not guarantee overall solve quality or clique-heavy competitiveness
+- the hardest move family (`clique_swap`) remains the clearest performance and complexity stress point
+
+### Final decision
+
+Decision: **keep `solver3` as an internal-only experimental family; do not advance it toward rollout and do not claim it beats `solver1` overall**.
+
+Reasons:
+
+- solve-level quality regressed on the constrained representative case
+- clique-swap remains materially slower than solver1 on the sampled hotpath lane
+- representative evidence does not justify saying solver3 is the new best runtime family
+- the most durable value is the architecture, runtime-kernel experiments, and the benchmark/test evidence they produced
+
+### Operational conclusion
+
+From this point forward:
+
+- keep `solver3` available for internal comparison and architectural learning
+- do not broaden rollout scope
+- do not describe solver3 as production-ready or solver1-replacing
+- only reopen major optimization or quality work if a narrowly scoped, benchmark-backed hypothesis is approved
+
 ## Benchmark gates
 
 These gates should be stricter than the original solver2 bring-up because solver2 already taught the repo what failure looks like.
@@ -919,17 +1046,6 @@ Created tracking items:
 
 ## Immediate next step
 
-If solver3 work is approved, start with **Epic S3-1** and **Epic S3-2** only.
+No further default rollout or optimization step is approved.
 
-Do not implement all move families up front.
-
-The first true proof point should be:
-
-- dense compiled problem
-- flat runtime state
-- packed pair index
-- oracle separation
-- swap-only runtime slice
-- same-machine benchmark evidence
-
-If that slice is not promising very early, stop.
+If future work reopens solver3, it should begin from a narrowly scoped, benchmark-backed quality or performance hypothesis rather than from the assumption that solver3 is already the successor to solver1.
