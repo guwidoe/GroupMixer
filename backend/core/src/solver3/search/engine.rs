@@ -13,9 +13,10 @@ use crate::models::{
 use crate::solver_support::SolverError;
 
 use super::super::moves::{
-    apply_swap_runtime_preview, apply_transfer_runtime_preview, preview_swap_runtime_lightweight,
-    preview_transfer_runtime_lightweight, SwapMove, SwapRuntimePreview, TransferMove,
-    TransferRuntimePreview,
+    apply_clique_swap_runtime_preview, apply_swap_runtime_preview, apply_transfer_runtime_preview,
+    preview_clique_swap_runtime_lightweight, preview_swap_runtime_lightweight,
+    preview_transfer_runtime_lightweight, CliqueSwapMove, CliqueSwapRuntimePreview, SwapMove,
+    SwapRuntimePreview, TransferMove, TransferRuntimePreview,
 };
 use super::super::oracle::{check_drift, oracle_score};
 use super::super::runtime_state::RuntimeState;
@@ -32,6 +33,7 @@ const ORACLE_DRIFT_SAMPLE_INTERVAL: u64 = 16;
 enum SearchMovePreview {
     Swap(SwapRuntimePreview),
     Transfer(TransferRuntimePreview),
+    CliqueSwap(CliqueSwapRuntimePreview),
 }
 
 impl SearchMovePreview {
@@ -39,6 +41,7 @@ impl SearchMovePreview {
         match self {
             Self::Swap(preview) => preview.delta_score,
             Self::Transfer(preview) => preview.delta_score,
+            Self::CliqueSwap(preview) => preview.delta_score,
         }
     }
 
@@ -46,6 +49,9 @@ impl SearchMovePreview {
         match self {
             Self::Swap(preview) => format!("swap {:?}", preview.analysis.swap),
             Self::Transfer(preview) => format!("transfer {:?}", preview.analysis.transfer),
+            Self::CliqueSwap(preview) => {
+                format!("clique_swap {:?}", preview.analysis.clique_swap)
+            }
         }
     }
 }
@@ -362,7 +368,8 @@ fn sample_preview_for_family(
         MoveFamily::Transfer => {
             sample_transfer_preview(state, allowed_sessions, rng).map(SearchMovePreview::Transfer)
         }
-        MoveFamily::CliqueSwap => None,
+        MoveFamily::CliqueSwap => sample_clique_swap_preview(state, allowed_sessions, rng)
+            .map(SearchMovePreview::CliqueSwap),
     }
 }
 
@@ -373,6 +380,7 @@ fn apply_previewed_move(
     match preview {
         SearchMovePreview::Swap(preview) => apply_swap_runtime_preview(state, preview),
         SearchMovePreview::Transfer(preview) => apply_transfer_runtime_preview(state, preview),
+        SearchMovePreview::CliqueSwap(preview) => apply_clique_swap_runtime_preview(state, preview),
     }
 }
 
@@ -556,6 +564,236 @@ fn sample_transfer_preview(
     }
 
     None
+}
+
+fn sample_clique_swap_preview(
+    state: &RuntimeState,
+    allowed_sessions: &[usize],
+    rng: &mut ChaCha12Rng,
+) -> Option<CliqueSwapRuntimePreview> {
+    if allowed_sessions.is_empty() || state.compiled.cliques.is_empty() {
+        return None;
+    }
+
+    let eligible_sessions = allowed_sessions
+        .iter()
+        .copied()
+        .filter(|&session_idx| runtime_session_can_clique_swap(state, session_idx))
+        .collect::<Vec<_>>();
+    if eligible_sessions.is_empty() {
+        return None;
+    }
+
+    for _ in 0..MAX_RANDOM_CANDIDATE_ATTEMPTS {
+        let session_idx = eligible_sessions[rng.random_range(0..eligible_sessions.len())];
+        let clique_idx = rng.random_range(0..state.compiled.cliques.len());
+        let Some((active_members, source_group_idx)) =
+            runtime_active_clique_in_single_group(state, session_idx, clique_idx)
+        else {
+            continue;
+        };
+
+        for _ in 0..MAX_RANDOM_TARGET_ATTEMPTS {
+            let target_group_idx = rng.random_range(0..state.compiled.num_groups);
+            if target_group_idx == source_group_idx {
+                continue;
+            }
+            let Some(target_people) = runtime_pick_clique_targets(
+                state,
+                session_idx,
+                &active_members,
+                target_group_idx,
+                rng,
+            ) else {
+                continue;
+            };
+
+            let clique_swap = CliqueSwapMove::new(
+                session_idx,
+                clique_idx,
+                source_group_idx,
+                target_group_idx,
+                target_people,
+            );
+            if let Ok(preview) = preview_clique_swap_runtime_lightweight(state, &clique_swap) {
+                return Some(preview);
+            }
+        }
+    }
+
+    let session_start = rng.random_range(0..eligible_sessions.len());
+    let clique_start = rng.random_range(0..state.compiled.cliques.len());
+    let target_start = rng.random_range(0..state.compiled.num_groups);
+
+    for session_offset in 0..eligible_sessions.len() {
+        let session_idx =
+            eligible_sessions[(session_start + session_offset) % eligible_sessions.len()];
+
+        for clique_offset in 0..state.compiled.cliques.len() {
+            let clique_idx = (clique_start + clique_offset) % state.compiled.cliques.len();
+            let Some((active_members, source_group_idx)) =
+                runtime_active_clique_in_single_group(state, session_idx, clique_idx)
+            else {
+                continue;
+            };
+
+            for target_offset in 0..state.compiled.num_groups {
+                let target_group_idx = (target_start + target_offset) % state.compiled.num_groups;
+                if target_group_idx == source_group_idx {
+                    continue;
+                }
+
+                let Some(target_people) = runtime_pick_clique_targets(
+                    state,
+                    session_idx,
+                    &active_members,
+                    target_group_idx,
+                    rng,
+                ) else {
+                    continue;
+                };
+
+                let clique_swap = CliqueSwapMove::new(
+                    session_idx,
+                    clique_idx,
+                    source_group_idx,
+                    target_group_idx,
+                    target_people,
+                );
+                if let Ok(preview) = preview_clique_swap_runtime_lightweight(state, &clique_swap) {
+                    return Some(preview);
+                }
+            }
+        }
+    }
+
+    None
+}
+
+fn participating_clique_members(
+    state: &RuntimeState,
+    session_idx: usize,
+    clique_idx: usize,
+) -> Vec<usize> {
+    state.compiled.cliques[clique_idx]
+        .members
+        .iter()
+        .copied()
+        .filter(|&member| state.compiled.person_participation[member][session_idx])
+        .collect()
+}
+
+fn runtime_session_can_clique_swap(state: &RuntimeState, session_idx: usize) -> bool {
+    (0..state.compiled.cliques.len()).any(|clique_idx| {
+        let Some((active_members, source_group_idx)) =
+            runtime_active_clique_in_single_group(state, session_idx, clique_idx)
+        else {
+            return false;
+        };
+
+        (0..state.compiled.num_groups).any(|target_group_idx| {
+            target_group_idx != source_group_idx
+                && runtime_target_group_has_eligible_clique_swap_people(
+                    state,
+                    session_idx,
+                    &active_members,
+                    target_group_idx,
+                )
+        })
+    })
+}
+
+fn runtime_active_clique_in_single_group(
+    state: &RuntimeState,
+    session_idx: usize,
+    clique_idx: usize,
+) -> Option<(Vec<usize>, usize)> {
+    let active_members = participating_clique_members(state, session_idx, clique_idx);
+    if active_members.is_empty() {
+        return None;
+    }
+
+    let source_group_idx =
+        state.person_location[state.people_slot(session_idx, active_members[0])]?;
+
+    if active_members.iter().any(|&member| {
+        state.person_location[state.people_slot(session_idx, member)] != Some(source_group_idx)
+    }) {
+        return None;
+    }
+
+    if active_members.iter().any(|&member| {
+        state
+            .compiled
+            .immovable_lookup
+            .contains_key(&(member, session_idx))
+    }) {
+        return None;
+    }
+
+    Some((active_members, source_group_idx))
+}
+
+fn runtime_pick_clique_targets(
+    state: &RuntimeState,
+    session_idx: usize,
+    active_members: &[usize],
+    target_group_idx: usize,
+    rng: &mut ChaCha12Rng,
+) -> Option<Vec<usize>> {
+    let active_set = active_members
+        .iter()
+        .copied()
+        .collect::<std::collections::BTreeSet<_>>();
+    let target_slot = state.group_slot(session_idx, target_group_idx);
+    let mut eligible_targets = state.group_members[target_slot]
+        .iter()
+        .copied()
+        .filter(|person_idx| {
+            !active_set.contains(person_idx)
+                && state.compiled.person_participation[*person_idx][session_idx]
+                && state.compiled.person_to_clique_id[session_idx][*person_idx].is_none()
+                && !state
+                    .compiled
+                    .immovable_lookup
+                    .contains_key(&(*person_idx, session_idx))
+        })
+        .collect::<Vec<_>>();
+
+    if eligible_targets.len() < active_members.len() {
+        return None;
+    }
+
+    eligible_targets.shuffle(rng);
+    eligible_targets.truncate(active_members.len());
+    Some(eligible_targets)
+}
+
+fn runtime_target_group_has_eligible_clique_swap_people(
+    state: &RuntimeState,
+    session_idx: usize,
+    active_members: &[usize],
+    target_group_idx: usize,
+) -> bool {
+    let active_set = active_members
+        .iter()
+        .copied()
+        .collect::<std::collections::BTreeSet<_>>();
+    let target_slot = state.group_slot(session_idx, target_group_idx);
+    let eligible = state.group_members[target_slot]
+        .iter()
+        .filter(|person_idx| {
+            !active_set.contains(person_idx)
+                && state.compiled.person_participation[**person_idx][session_idx]
+                && state.compiled.person_to_clique_id[session_idx][**person_idx].is_none()
+                && !state
+                    .compiled
+                    .immovable_lookup
+                    .contains_key(&(**person_idx, session_idx))
+        })
+        .count();
+
+    eligible >= active_members.len()
 }
 
 fn runtime_session_can_transfer(state: &RuntimeState, session_idx: usize) -> bool {

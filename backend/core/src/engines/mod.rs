@@ -564,7 +564,7 @@ mod tests {
         assert!(descriptor.capabilities.supports_deterministic_seed);
         assert!(descriptor.notes.contains("solver3"));
         assert!(descriptor.notes.contains(
-            "swap + transfer move kernels plus a runnable bounded-sampling search baseline"
+            "swap + transfer + clique-swap move kernels plus a runnable bounded-sampling search baseline"
         ));
     }
 

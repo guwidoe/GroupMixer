@@ -215,6 +215,77 @@ fn solver2_transfer_driver_input() -> ApiInput {
     }
 }
 
+fn solver3_clique_driver_input() -> ApiInput {
+    let mut solver = default_solver_configuration_for(gm_core::models::SolverKind::Solver3);
+    solver.seed = Some(311);
+    solver.stop_conditions.max_iterations = Some(25);
+    solver.move_policy = Some(MovePolicy {
+        forced_family: Some(MoveFamily::CliqueSwap),
+        ..MovePolicy::default()
+    });
+
+    ApiInput {
+        initial_schedule: Some(make_initial_schedule(
+            &["g0", "g1", "g2"],
+            vec![
+                vec![vec!["p0", "p1", "p4"], vec!["p2", "p3", "p5"], vec![]],
+                vec![vec!["p0", "p1", "p4"], vec!["p2", "p3", "p5"], vec![]],
+            ],
+        )),
+        problem: ProblemDefinition {
+            people: vec![
+                person("p0"),
+                person("p1"),
+                person("p2"),
+                person("p3"),
+                person("p4"),
+                person("p5"),
+            ],
+            groups: vec![
+                Group {
+                    id: "g0".to_string(),
+                    size: 3,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".to_string(),
+                    size: 3,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g2".to_string(),
+                    size: 1,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 2,
+        },
+        objectives: vec![Objective {
+            r#type: "maximize_unique_contacts".to_string(),
+            weight: 1.0,
+        }],
+        constraints: vec![
+            Constraint::MustStayTogether {
+                people: vec!["p0".to_string(), "p1".to_string()],
+                sessions: None,
+            },
+            Constraint::ShouldNotBeTogether {
+                people: vec!["p0".to_string(), "p5".to_string()],
+                penalty_weight: 25.0,
+                sessions: None,
+            },
+            Constraint::PairMeetingCount(PairMeetingCountParams {
+                people: vec!["p0".to_string(), "p5".to_string()],
+                sessions: vec![0, 1],
+                target_meetings: 1,
+                mode: PairMeetingMode::AtLeast,
+                penalty_weight: 17.0,
+            }),
+        ],
+        solver,
+    }
+}
+
 fn solver2_clique_driver_input() -> ApiInput {
     let mut solver = default_solver_configuration_for(gm_core::models::SolverKind::Solver2);
     solver.seed = Some(191);
@@ -572,6 +643,35 @@ fn solver3_transfer_runtime_preview_avoids_full_recompute_per_attempt() {
     assert_eq!(telemetry.moves.transfer.full_recalculation_count, 0);
     assert_eq!(telemetry.moves.swap.full_recalculation_count, 0);
     assert_eq!(telemetry.moves.clique_swap.full_recalculation_count, 0);
+}
+
+#[test]
+fn solver3_clique_swap_move_policy_only_attempts_clique_swaps() {
+    let input = solver3_clique_driver_input();
+
+    let result = run_solver(&input).expect("solver3 clique-only solve should succeed");
+    let telemetry = result
+        .benchmark_telemetry
+        .expect("benchmark telemetry should be present");
+
+    assert!(telemetry.moves.clique_swap.attempts > 0);
+    assert_eq!(telemetry.moves.swap.attempts, 0);
+    assert_eq!(telemetry.moves.transfer.attempts, 0);
+}
+
+#[test]
+fn solver3_clique_swap_runtime_preview_avoids_full_recompute_per_attempt() {
+    let input = solver3_clique_driver_input();
+
+    let result = run_solver(&input).expect("solver3 clique solve should succeed");
+    let telemetry = result
+        .benchmark_telemetry
+        .expect("benchmark telemetry should be present");
+
+    assert!(telemetry.moves.clique_swap.attempts > 0);
+    assert_eq!(telemetry.moves.clique_swap.full_recalculation_count, 0);
+    assert_eq!(telemetry.moves.swap.full_recalculation_count, 0);
+    assert_eq!(telemetry.moves.transfer.full_recalculation_count, 0);
 }
 
 #[test]

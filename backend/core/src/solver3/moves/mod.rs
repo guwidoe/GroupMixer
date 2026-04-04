@@ -1,9 +1,15 @@
 //! Move kernels for `solver3`.
 
+pub mod clique_swap;
 pub mod patch;
 pub mod swap;
 pub mod transfer;
 
+pub use clique_swap::{
+    analyze_clique_swap, apply_clique_swap, apply_clique_swap_runtime_preview,
+    preview_clique_swap_oracle_recompute, preview_clique_swap_runtime_lightweight,
+    CliqueSwapAnalysis, CliqueSwapFeasibility, CliqueSwapMove, CliqueSwapRuntimePreview,
+};
 pub use patch::{
     apply_runtime_patch, GroupMembersPatchOp, PairContactUpdate, PersonLocationUpdate,
     RuntimePatch, ScoreDelta,

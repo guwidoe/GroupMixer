@@ -19,10 +19,12 @@ use crate::models::{
 
 use super::compiled_problem::CompiledProblem;
 use super::moves::{
-    analyze_transfer, apply_swap_runtime_preview, apply_transfer_runtime_preview,
+    analyze_clique_swap, analyze_transfer, apply_clique_swap_runtime_preview,
+    apply_swap_runtime_preview, apply_transfer_runtime_preview,
+    preview_clique_swap_oracle_recompute, preview_clique_swap_runtime_lightweight,
     preview_swap_oracle_recompute, preview_swap_runtime_lightweight,
-    preview_transfer_oracle_recompute, preview_transfer_runtime_lightweight, SwapMove,
-    TransferFeasibility, TransferMove,
+    preview_transfer_oracle_recompute, preview_transfer_runtime_lightweight, CliqueSwapFeasibility,
+    CliqueSwapMove, SwapMove, TransferFeasibility, TransferMove,
 };
 use super::oracle::check_drift;
 use super::runtime_state::RuntimeState;
@@ -1478,5 +1480,374 @@ fn transfer_feasibility_regressions_report_specific_reasons() {
             person_idx,
             required_group_idx
         } if person_idx == rcp.person_id_to_idx["p4"] && required_group_idx == rcp.group_id_to_idx["g1"]
+    ));
+}
+
+// ---------------------------------------------------------------------------
+// 12. Clique-swap kernel: oracle equivalence, drift safety, and clique-heavy
+//     regression coverage
+// ---------------------------------------------------------------------------
+
+fn clique_swap_kernel_input() -> ApiInput {
+    ApiInput {
+        problem: ProblemDefinition {
+            people: vec![
+                person_with_attr("p0", "team", "red"),
+                person_with_attr("p1", "team", "red"),
+                person_with_attr("p2", "team", "blue"),
+                person_with_attr("p3", "team", "blue"),
+                person_with_attr("p4", "team", "red"),
+                person_with_attr("p5", "team", "blue"),
+            ],
+            groups: vec![
+                Group {
+                    id: "g0".into(),
+                    size: 3,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".into(),
+                    size: 3,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g2".into(),
+                    size: 1,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 2,
+        },
+        initial_schedule: Some(HashMap::from([
+            (
+                "session_0".into(),
+                HashMap::from([
+                    ("g0".into(), vec!["p0".into(), "p1".into(), "p4".into()]),
+                    ("g1".into(), vec!["p2".into(), "p3".into(), "p5".into()]),
+                    ("g2".into(), Vec::new()),
+                ]),
+            ),
+            (
+                "session_1".into(),
+                HashMap::from([
+                    ("g0".into(), vec!["p0".into(), "p1".into(), "p4".into()]),
+                    ("g1".into(), vec!["p2".into(), "p3".into(), "p5".into()]),
+                    ("g2".into(), Vec::new()),
+                ]),
+            ),
+        ])),
+        objectives: vec![Objective {
+            r#type: "maximize_unique_contacts".into(),
+            weight: 1.0,
+        }],
+        constraints: vec![
+            Constraint::RepeatEncounter(RepeatEncounterParams {
+                max_allowed_encounters: 1,
+                penalty_function: "squared".into(),
+                penalty_weight: 9.0,
+            }),
+            Constraint::MustStayTogether {
+                people: vec!["p0".into(), "p1".into()],
+                sessions: None,
+            },
+            Constraint::ShouldNotBeTogether {
+                people: vec!["p0".into(), "p5".into()],
+                penalty_weight: 21.0,
+                sessions: None,
+            },
+            Constraint::ShouldStayTogether {
+                people: vec!["p2".into(), "p4".into()],
+                penalty_weight: 8.0,
+                sessions: Some(vec![0]),
+            },
+            Constraint::PairMeetingCount(PairMeetingCountParams {
+                people: vec!["p0".into(), "p5".into()],
+                sessions: vec![0, 1],
+                target_meetings: 1,
+                mode: PairMeetingMode::AtLeast,
+                penalty_weight: 17.0,
+            }),
+            Constraint::AttributeBalance(AttributeBalanceParams {
+                group_id: "g0".into(),
+                attribute_key: "team".into(),
+                desired_values: HashMap::from([("red".into(), 1), ("blue".into(), 2)]),
+                penalty_weight: 12.0,
+                mode: AttributeBalanceMode::Exact,
+                sessions: None,
+            }),
+        ],
+        solver: solver3_config(),
+    }
+}
+
+fn clique_swap_restricted_input() -> ApiInput {
+    ApiInput {
+        problem: ProblemDefinition {
+            people: vec![
+                person_with_attr("p0", "team", "red"),
+                person_with_attr("p1", "team", "red"),
+                person_with_attr("p2", "team", "blue"),
+                person_with_attr("p3", "team", "blue"),
+                person_with_attr("p4", "team", "red"),
+                person_with_attr("p5", "team", "blue"),
+                Person {
+                    id: "p6".into(),
+                    attributes: HashMap::from([("team".into(), "green".into())]),
+                    sessions: Some(vec![1]),
+                },
+            ],
+            groups: vec![
+                Group {
+                    id: "g0".into(),
+                    size: 3,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".into(),
+                    size: 3,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g2".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 2,
+        },
+        initial_schedule: Some(HashMap::from([
+            (
+                "session_0".into(),
+                HashMap::from([
+                    ("g0".into(), vec!["p0".into(), "p1".into(), "p4".into()]),
+                    ("g1".into(), vec!["p2".into(), "p3".into(), "p5".into()]),
+                    ("g2".into(), Vec::new()),
+                ]),
+            ),
+            (
+                "session_1".into(),
+                HashMap::from([
+                    ("g0".into(), vec!["p0".into(), "p2".into(), "p4".into()]),
+                    ("g1".into(), vec!["p1".into(), "p3".into(), "p5".into()]),
+                    ("g2".into(), vec!["p6".into()]),
+                ]),
+            ),
+        ])),
+        objectives: vec![Objective {
+            r#type: "maximize_unique_contacts".into(),
+            weight: 1.0,
+        }],
+        constraints: vec![
+            Constraint::MustStayTogether {
+                people: vec!["p0".into(), "p1".into()],
+                sessions: Some(vec![0]),
+            },
+            Constraint::MustStayTogether {
+                people: vec!["p2".into(), "p3".into()],
+                sessions: Some(vec![0]),
+            },
+            Constraint::ImmovablePerson(ImmovablePersonParams {
+                person_id: "p0".into(),
+                group_id: "g0".into(),
+                sessions: Some(vec![0]),
+            }),
+            Constraint::ImmovablePerson(ImmovablePersonParams {
+                person_id: "p5".into(),
+                group_id: "g1".into(),
+                sessions: Some(vec![0]),
+            }),
+        ],
+        solver: solver3_config(),
+    }
+}
+
+#[test]
+fn clique_swap_preview_lightweight_matches_oracle_delta() {
+    let input = clique_swap_kernel_input();
+    let state = RuntimeState::from_input(&input).unwrap();
+    let cp = state.compiled.clone();
+    let clique_idx = cp.person_to_clique_id[0][cp.person_id_to_idx["p0"]]
+        .expect("p0 should belong to a clique in session 0");
+
+    let clique_swap = CliqueSwapMove::new(
+        0,
+        clique_idx,
+        cp.group_id_to_idx["g0"],
+        cp.group_id_to_idx["g1"],
+        vec![cp.person_id_to_idx["p2"], cp.person_id_to_idx["p3"]],
+    );
+
+    let preview = preview_clique_swap_runtime_lightweight(&state, &clique_swap).unwrap();
+    assert!(
+        !preview.patch.pair_contact_updates.is_empty(),
+        "clique-swap preview should emit pair-contact updates"
+    );
+
+    let oracle_delta = preview_clique_swap_oracle_recompute(&state, &clique_swap).unwrap();
+    assert_close(
+        preview.delta_score,
+        oracle_delta,
+        "clique-swap preview delta should match oracle recompute delta",
+    );
+}
+
+#[test]
+fn sequential_clique_swap_runtime_apply_does_not_drift_from_oracle() {
+    let input = clique_swap_kernel_input();
+    let mut state = RuntimeState::from_input(&input).unwrap();
+    let cp = state.compiled.clone();
+    let clique_idx = cp.person_to_clique_id[0][cp.person_id_to_idx["p0"]]
+        .expect("p0 should belong to a clique in session 0");
+
+    let clique_swaps = vec![
+        CliqueSwapMove::new(
+            0,
+            clique_idx,
+            cp.group_id_to_idx["g0"],
+            cp.group_id_to_idx["g1"],
+            vec![cp.person_id_to_idx["p2"], cp.person_id_to_idx["p3"]],
+        ),
+        CliqueSwapMove::new(
+            0,
+            clique_idx,
+            cp.group_id_to_idx["g1"],
+            cp.group_id_to_idx["g0"],
+            vec![cp.person_id_to_idx["p2"], cp.person_id_to_idx["p3"]],
+        ),
+    ];
+
+    for (step, clique_swap) in clique_swaps.iter().enumerate() {
+        let preview = preview_clique_swap_runtime_lightweight(&state, clique_swap).unwrap();
+        let oracle_delta = preview_clique_swap_oracle_recompute(&state, clique_swap).unwrap();
+        assert_close(
+            preview.delta_score,
+            oracle_delta,
+            &format!("step {} clique-swap preview/oracle mismatch", step),
+        );
+
+        let before_total = state.total_score;
+        apply_clique_swap_runtime_preview(&mut state, &preview).unwrap();
+        validate_invariants(&state).unwrap();
+        check_drift(&state).unwrap();
+
+        assert_close(
+            state.total_score - before_total,
+            oracle_delta,
+            &format!("step {} clique-swap runtime delta/oracle mismatch", step),
+        );
+    }
+}
+
+#[test]
+fn clique_heavy_feasibility_regressions_report_specific_reasons() {
+    let state = RuntimeState::from_input(&clique_swap_restricted_input()).unwrap();
+    let cp = state.compiled.clone();
+
+    let clique_idx = cp.person_to_clique_id[0][cp.person_id_to_idx["p0"]]
+        .expect("p0 should belong to clique in session 0");
+
+    let same_group = CliqueSwapMove::new(
+        0,
+        clique_idx,
+        cp.group_id_to_idx["g0"],
+        cp.group_id_to_idx["g0"],
+        vec![cp.person_id_to_idx["p2"], cp.person_id_to_idx["p3"]],
+    );
+    assert!(matches!(
+        analyze_clique_swap(&state, &same_group)
+            .unwrap()
+            .feasibility,
+        CliqueSwapFeasibility::SameGroupNoop
+    ));
+
+    let immovable_clique_member = CliqueSwapMove::new(
+        0,
+        clique_idx,
+        cp.group_id_to_idx["g0"],
+        cp.group_id_to_idx["g1"],
+        vec![cp.person_id_to_idx["p2"], cp.person_id_to_idx["p3"]],
+    );
+    assert!(matches!(
+        analyze_clique_swap(&state, &immovable_clique_member)
+            .unwrap()
+            .feasibility,
+        CliqueSwapFeasibility::ActiveCliqueMemberImmovable {
+            person_idx,
+            required_group_idx
+        } if person_idx == cp.person_id_to_idx["p0"] && required_group_idx == cp.group_id_to_idx["g0"]
+    ));
+
+    let inactive_clique = CliqueSwapMove::new(
+        1,
+        clique_idx,
+        cp.group_id_to_idx["g0"],
+        cp.group_id_to_idx["g1"],
+        vec![cp.person_id_to_idx["p3"], cp.person_id_to_idx["p5"]],
+    );
+    assert!(matches!(
+        analyze_clique_swap(&state, &inactive_clique).unwrap().feasibility,
+        CliqueSwapFeasibility::InactiveClique { clique_idx: idx } if idx == clique_idx
+    ));
+
+    let second_clique_idx = cp.person_to_clique_id[0][cp.person_id_to_idx["p2"]]
+        .expect("p2 should be in second clique during session 0");
+
+    let target_count_mismatch = CliqueSwapMove::new(
+        0,
+        second_clique_idx,
+        cp.group_id_to_idx["g1"],
+        cp.group_id_to_idx["g0"],
+        vec![cp.person_id_to_idx["p4"]],
+    );
+    assert!(matches!(
+        analyze_clique_swap(&state, &target_count_mismatch)
+            .unwrap()
+            .feasibility,
+        CliqueSwapFeasibility::TargetCountMismatch { expected, actual } if expected == 2 && actual == 1
+    ));
+
+    let duplicate_target_person = CliqueSwapMove::new(
+        0,
+        second_clique_idx,
+        cp.group_id_to_idx["g1"],
+        cp.group_id_to_idx["g0"],
+        vec![cp.person_id_to_idx["p4"], cp.person_id_to_idx["p4"]],
+    );
+    assert!(matches!(
+        analyze_clique_swap(&state, &duplicate_target_person)
+            .unwrap()
+            .feasibility,
+        CliqueSwapFeasibility::DuplicateTargetPerson { person_idx }
+            if person_idx == cp.person_id_to_idx["p4"]
+    ));
+
+    let target_in_another_clique = CliqueSwapMove::new(
+        0,
+        second_clique_idx,
+        cp.group_id_to_idx["g1"],
+        cp.group_id_to_idx["g0"],
+        vec![cp.person_id_to_idx["p0"], cp.person_id_to_idx["p4"]],
+    );
+    assert!(matches!(
+        analyze_clique_swap(&state, &target_in_another_clique)
+            .unwrap()
+            .feasibility,
+        CliqueSwapFeasibility::TargetPersonInAnotherClique { person_idx, .. }
+            if person_idx == cp.person_id_to_idx["p0"]
+    ));
+
+    let non_participating_target = CliqueSwapMove::new(
+        0,
+        second_clique_idx,
+        cp.group_id_to_idx["g1"],
+        cp.group_id_to_idx["g2"],
+        vec![cp.person_id_to_idx["p6"], cp.person_id_to_idx["p4"]],
+    );
+    assert!(matches!(
+        analyze_clique_swap(&state, &non_participating_target)
+            .unwrap()
+            .feasibility,
+        CliqueSwapFeasibility::TargetPersonNotParticipating { person_idx }
+            if person_idx == cp.person_id_to_idx["p6"]
     ));
 }

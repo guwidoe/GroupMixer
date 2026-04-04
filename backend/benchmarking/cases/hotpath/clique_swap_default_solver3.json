@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "id": "hotpath.clique-swap.default.solver3",
+  "class": "representative",
+  "solver_family": "solver3",
+  "family": "clique_swap",
+  "paths": ["clique_swap_preview", "clique_swap_apply"],
+  "title": "Hotpath solver3 clique swap preset",
+  "description": "Deterministic solver3 clique-swap kernel lane used for preview and apply history.",
+  "tags": ["hotpath", "clique_swap", "representative", "solver3"],
+  "hotpath_preset": "clique_swap_default_solver3"
+}

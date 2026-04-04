@@ -7,10 +7,10 @@
 //! - baseline invariant and drift validation helpers
 //!
 //! Phase 2 provides the compiled problem, runtime state, oracle, and validation
-//! surface. Phase S3-3/S3-5 add swap + transfer move kernels (typed moves + runtime
-//! preview/apply patch paths + oracle equivalence hooks). Search paths support swap
-//! and transfer families; clique-swap is still pending. There is no hidden fallback
-//! to `solver1` or `solver2`.
+//! surface. Phase S3-3/S3-6 add swap + transfer + clique-swap move kernels (typed
+//! moves + runtime preview/apply patch paths + oracle equivalence hooks). Search
+//! paths support all three move families. There is no hidden fallback to `solver1`
+//! or `solver2`.
 //!
 //! See `backend/core/src/solver3/IMPLEMENTATION_PLAN.md` for the full design and
 //! phased execution plan.
@@ -27,7 +27,7 @@ pub mod validation;
 mod tests;
 
 pub use compiled_problem::CompiledProblem;
-pub use moves::{SwapMove, TransferMove};
+pub use moves::{CliqueSwapMove, SwapMove, TransferMove};
 pub use oracle::{check_drift, oracle_score};
 pub use runtime_state::RuntimeState;
 pub use scoring::{recompute_oracle_score, OracleSnapshot};
@@ -39,8 +39,8 @@ use crate::solver_support::SolverError;
 pub const SOLVER3_BOOTSTRAP_NOTES: &str =
     "Internal `solver3` family — performance-oriented dense-state solver with packed-pair index. \
 Phase 2 foundation (compiled problem, flat runtime state, oracle, invariants) is implemented, and \
-swap + transfer move kernels plus a runnable bounded-sampling search baseline exist. Clique-swap \
-is still not implemented. No fallback to solver1 or solver2 occurs.";
+swap + transfer + clique-swap move kernels plus a runnable bounded-sampling search baseline exist. \
+No fallback to solver1 or solver2 occurs.";
 
 pub(crate) fn not_yet_implemented(feature: &str) -> SolverError {
     SolverError::ValidationError(format!(
