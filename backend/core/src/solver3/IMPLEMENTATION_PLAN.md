@@ -1049,3 +1049,72 @@ Created tracking items:
 No further default rollout or optimization step is approved.
 
 If future work reopens solver3, it should begin from a narrowly scoped, benchmark-backed quality or performance hypothesis rather than from the assumption that solver3 is already the successor to solver1.
+
+## 2026-04 search refactor guardrails
+
+The next approved `solver3` track is **search refactoring for extensibility**, not a generic rewrite of the hot kernels.
+
+### Current architecture boundaries to preserve
+
+- `backend/core/src/solver3/runtime_state.rs`
+  - owns the dense mutable runtime facts
+  - remains the only state mutated by accepted move application
+- `backend/core/src/solver3/moves/{swap,transfer,clique_swap}.rs`
+  - remain the concrete preview/apply kernel surface
+  - continue to own move-family-specific feasibility, delta accounting, and patch construction
+- `backend/core/src/solver3/search/engine.rs`
+  - should shrink into orchestration only
+  - may delegate policy, scheduling, and sampling, but must not re-absorb kernel logic into a new abstraction layer
+
+### Non-negotiable performance rules
+
+- no trait objects, boxed callbacks, or virtual dispatch in the per-iteration search path
+- no new per-iteration heap allocation introduced by the refactor seams unless benchmark evidence justifies it explicitly
+- keep preview/apply kernels concrete, enum/struct-based, and inline-friendly
+- policy abstraction is allowed only above the kernel layer
+- future policy memory belongs in search-side context/state types, **not** in `RuntimeState`
+
+### Target architectural split
+
+The refactor should move toward:
+
+- `search/acceptance.rs` — acceptance / temperature policy
+- `search/family_selection.rs` — move-family ordering / weighted selection
+- `search/candidate_sampling.rs` — bounded per-family candidate sampling helpers
+- `search/context.rs` — search-side run context and mutable metrics / policy memory
+- `search/engine.rs` — thin orchestrator over the concrete kernels
+
+This split is specifically intended to make tabu / threshold / iterated-local-search style follow-on work possible **without** reopening the hot move kernels.
+
+## 2026-04 before-change benchmark baseline
+
+Same-machine baseline captured on branch `autoresearch/solver3-raw-performance-2026-04-04` at commit `ee3f511` before the search refactor started.
+
+### Real Sailing Trip solver3 probe lanes
+
+- `search_iteration`: `668.481 µs/op`
+  - `backend/benchmarking/artifacts/runs/hotpath-search-iteration-sailing-trip-demo-solver3-20260404T235337Z-0215dbb1/run-report.json`
+- `swap_preview`: `12.103 µs/op`
+  - `backend/benchmarking/artifacts/runs/hotpath-swap-preview-sailing-trip-demo-solver3-20260404T235337Z-096ca4ae/run-report.json`
+- `swap_apply`: `6.446 µs/op`
+  - `backend/benchmarking/artifacts/runs/hotpath-swap-apply-sailing-trip-demo-solver3-20260404T235337Z-c83b5c69/run-report.json`
+- `transfer_preview`: `8.239 µs/op`
+  - `backend/benchmarking/artifacts/runs/hotpath-transfer-preview-sailing-trip-demo-solver3-20260404T235337Z-3bc380c8/run-report.json`
+- `transfer_apply`: `5.977 µs/op`
+  - `backend/benchmarking/artifacts/runs/hotpath-transfer-apply-sailing-trip-demo-solver3-20260404T235338Z-270abd65/run-report.json`
+- `clique_swap_preview`: `145.970 µs/op`
+  - `backend/benchmarking/artifacts/runs/hotpath-clique-swap-preview-sailing-trip-demo-solver3-20260404T235338Z-2cd36d70/run-report.json`
+- `clique_swap_apply`: `6.970 µs/op`
+  - `backend/benchmarking/artifacts/runs/hotpath-clique-swap-apply-sailing-trip-demo-solver3-20260404T235338Z-9ddea04f/run-report.json`
+
+### Real Sailing Trip canonical full-solve checkpoint
+
+- suite: `stretch-sailing-trip-demo-time-solver3-canonical`
+- final score: `4410`
+- iterations: `287085`
+- runtime: `15.000010s`
+- stop reason: `time_limit_reached`
+- run report:
+  - `backend/benchmarking/artifacts/runs/stretch-sailing-trip-demo-time-solver3-canonical-20260404T235338Z-af15ec14/run-report.json`
+
+Every search-refactor phase should be compared against these same-machine checkpoints before continuing.
