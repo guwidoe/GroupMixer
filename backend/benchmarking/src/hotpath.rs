@@ -157,6 +157,10 @@ fn run_hotpath_case(
     match solver_kind {
         SolverKind::Solver1 => run_solver1_hotpath_case(suite, case, preset),
         SolverKind::Solver2 => run_solver2_hotpath_case(suite, case, preset),
+        SolverKind::Solver3 => Err(format!(
+            "solver3 hotpath benchmark is not yet implemented (case: {})",
+            case.manifest.id
+        )),
     }
 }
 

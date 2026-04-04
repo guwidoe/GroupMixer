@@ -404,7 +404,12 @@ proptest! {
         }
     }
 
-    /// Property: registered solver families run successfully with their typed default configs.
+    /// Property: registered solver families behave truthfully with their typed default configs.
+    ///
+    /// Runnable solvers (all capabilities true) must complete successfully and report accurate
+    /// metadata. Bootstrap-only solvers (no runnable capabilities) must fail explicitly with an
+    /// "not implemented" error rather than panicking, returning garbage, or silently falling back
+    /// to another solver family.
     #[test]
     fn registered_solver_defaults_are_truthful_about_execution_state((num_people, num_groups, num_sessions) in (3..=8u32, 2..=3u32, 1..=3u32)) {
         let group_size = num_people.div_ceil(num_groups).max(2);
@@ -416,23 +421,46 @@ proptest! {
                 num_sessions,
                 descriptor.kind,
             );
-            let result = run_solver(&input);
-            let result = result.unwrap_or_else(|error| {
-                panic!(
-                    "registered solver {} failed with default config: {:?}",
-                    descriptor.kind.canonical_id(),
-                    error
-                )
-            });
 
-            prop_assert_eq!(result.stop_reason, Some(StopReason::MaxIterationsReached));
-            prop_assert!(result.effective_seed.is_some());
-            prop_assert_eq!(
-                result.move_policy,
-                Some(default_solver_configuration_for(descriptor.kind)
-                    .move_policy
-                    .unwrap_or_default())
-            );
+            // Bootstrap-only solvers (no runnable capabilities) are expected to fail
+            // explicitly with a clear "not implemented" message and no silent fallback.
+            let is_bootstrap_only = !descriptor.capabilities.supports_initial_schedule
+                && !descriptor.capabilities.supports_progress_callback
+                && !descriptor.capabilities.supports_benchmark_observer
+                && !descriptor.capabilities.supports_recommended_settings
+                && !descriptor.capabilities.supports_deterministic_seed;
+
+            match run_solver(&input) {
+                Ok(result) => {
+                    prop_assert!(
+                        !is_bootstrap_only,
+                        "bootstrap-only solver {} unexpectedly succeeded — capabilities metadata is not truthful",
+                        descriptor.kind.canonical_id()
+                    );
+                    prop_assert_eq!(result.stop_reason, Some(StopReason::MaxIterationsReached));
+                    prop_assert!(result.effective_seed.is_some());
+                    prop_assert_eq!(
+                        result.move_policy,
+                        Some(default_solver_configuration_for(descriptor.kind)
+                            .move_policy
+                            .unwrap_or_default())
+                    );
+                }
+                Err(error) => {
+                    prop_assert!(
+                        is_bootstrap_only,
+                        "runnable solver {} failed with default config: {:?}",
+                        descriptor.kind.canonical_id(),
+                        error
+                    );
+                    prop_assert!(
+                        error.to_string().contains("not implemented"),
+                        "bootstrap solver {} should fail with an explicit 'not implemented' error, got: {}",
+                        descriptor.kind.canonical_id(),
+                        error
+                    );
+                }
+            }
         }
     }
 }

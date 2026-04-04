@@ -1,12 +1,14 @@
 use crate::models::{
     ApiInput, BenchmarkObserver, Constraint, LoggingOptions, Objective, ProblemDefinition,
-    ProgressCallback, ProgressUpdate, SimulatedAnnealingParams, Solver2Params, SolverConfiguration,
-    SolverKind, SolverParams, SolverResult, StopConditions, DEFAULT_SOLVER_KIND,
+    ProgressCallback, ProgressUpdate, SimulatedAnnealingParams, Solver2Params, Solver3Params,
+    SolverConfiguration, SolverKind, SolverParams, SolverResult, StopConditions,
+    DEFAULT_SOLVER_KIND,
 };
 use crate::solver1::search::simulated_annealing::SimulatedAnnealing;
 use crate::solver1::search::Solver as _;
 use crate::solver1::State;
 use crate::solver2::{SearchEngine as Solver2SearchEngine, SOLVER2_BOOTSTRAP_NOTES};
+use crate::solver3::SOLVER3_BOOTSTRAP_NOTES;
 use crate::solver_support::SolverError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -77,10 +79,25 @@ const SOLVER2_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
     notes: SOLVER2_BOOTSTRAP_NOTES,
 };
 
-const SOLVER_DESCRIPTORS: [SolverDescriptor; 2] = [SOLVER1_DESCRIPTOR, SOLVER2_DESCRIPTOR];
+const SOLVER3_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
+    kind: SolverKind::Solver3,
+    display_name: "Solver 3",
+    capabilities: SolverEngineCapabilities {
+        supports_initial_schedule: false,
+        supports_progress_callback: false,
+        supports_benchmark_observer: false,
+        supports_recommended_settings: false,
+        supports_deterministic_seed: false,
+    },
+    notes: SOLVER3_BOOTSTRAP_NOTES,
+};
+
+const SOLVER_DESCRIPTORS: [SolverDescriptor; 3] =
+    [SOLVER1_DESCRIPTOR, SOLVER2_DESCRIPTOR, SOLVER3_DESCRIPTOR];
 
 struct Solver1Engine;
 struct Solver2Engine;
+struct Solver3Engine;
 
 impl SolverEngine for Solver1Engine {
     fn descriptor(&self) -> &'static SolverDescriptor {
@@ -180,6 +197,42 @@ impl SolverEngine for Solver2Engine {
     }
 }
 
+impl SolverEngine for Solver3Engine {
+    fn descriptor(&self) -> &'static SolverDescriptor {
+        &SOLVER3_DESCRIPTOR
+    }
+
+    fn solve(&self, _request: SolveRequest<'_>) -> Result<SolverResult, SolverError> {
+        Err(crate::solver3::not_yet_implemented("solve paths"))
+    }
+
+    fn default_configuration(&self) -> SolverConfiguration {
+        SolverConfiguration {
+            solver_type: SolverKind::Solver3.canonical_id().into(),
+            stop_conditions: StopConditions {
+                max_iterations: None,
+                time_limit_seconds: None,
+                no_improvement_iterations: None,
+            },
+            solver_params: SolverParams::Solver3(Solver3Params::default()),
+            logging: LoggingOptions::default(),
+            telemetry: Default::default(),
+            seed: None,
+            move_policy: None,
+            allowed_sessions: None,
+        }
+    }
+
+    fn recommend_configuration(
+        &self,
+        _request: RecommendationRequest<'_>,
+    ) -> Result<SolverConfiguration, SolverError> {
+        Err(crate::solver3::not_yet_implemented(
+            "runtime-aware recommendation for solver3",
+        ))
+    }
+}
+
 pub fn default_solver_kind() -> SolverKind {
     DEFAULT_SOLVER_KIND
 }
@@ -192,6 +245,7 @@ pub fn solver_descriptor(kind: SolverKind) -> &'static SolverDescriptor {
     match kind {
         SolverKind::Solver1 => &SOLVER1_DESCRIPTOR,
         SolverKind::Solver2 => &SOLVER2_DESCRIPTOR,
+        SolverKind::Solver3 => &SOLVER3_DESCRIPTOR,
     }
 }
 
@@ -219,6 +273,7 @@ fn create_solver_engine(kind: SolverKind) -> Box<dyn SolverEngine> {
     match kind {
         SolverKind::Solver1 => Box::new(Solver1Engine),
         SolverKind::Solver2 => Box::new(Solver2Engine),
+        SolverKind::Solver3 => Box::new(Solver3Engine),
     }
 }
 
@@ -490,5 +545,76 @@ mod tests {
         .unwrap_err();
 
         assert!(error.to_string().contains("Unknown solver type"));
+    }
+
+    #[test]
+    fn registry_exposes_solver3_descriptor_with_bootstrap_capabilities() {
+        let descriptor = solver_descriptor(SolverKind::Solver3);
+        assert_eq!(descriptor.kind, SolverKind::Solver3);
+        assert!(!descriptor.capabilities.supports_initial_schedule);
+        assert!(!descriptor.capabilities.supports_progress_callback);
+        assert!(!descriptor.capabilities.supports_benchmark_observer);
+        assert!(!descriptor.capabilities.supports_recommended_settings);
+        assert!(!descriptor.capabilities.supports_deterministic_seed);
+        assert!(descriptor.notes.contains("solver3"));
+        assert!(descriptor.notes.contains("not yet implemented"));
+    }
+
+    #[test]
+    fn solver3_default_configuration_round_trips_through_typed_solver_selection() {
+        let config = default_solver_configuration_for(SolverKind::Solver3);
+        assert_eq!(
+            config.validate_solver_selection().unwrap(),
+            SolverKind::Solver3
+        );
+        assert!(matches!(config.solver_params, SolverParams::Solver3(_)));
+    }
+
+    #[test]
+    fn solver3_recommendation_fails_explicitly_until_implemented() {
+        let error = calculate_recommended_settings_for(
+            SolverKind::Solver3,
+            RecommendationRequest {
+                problem: &simple_problem(),
+                objectives: &[],
+                constraints: &[],
+                desired_runtime_seconds: 1,
+            },
+        )
+        .unwrap_err();
+
+        assert!(error.to_string().contains("solver3"));
+        assert!(error.to_string().contains("not implemented"));
+    }
+
+    #[test]
+    fn solver3_solve_fails_explicitly_until_implemented() {
+        let input = ApiInput {
+            initial_schedule: None,
+            problem: simple_problem(),
+            objectives: vec![],
+            constraints: vec![],
+            solver: default_solver_configuration_for(SolverKind::Solver3),
+        };
+
+        let error = run_solver_with_engine(SolveRequest {
+            input: &input,
+            progress_callback: None,
+            benchmark_observer: None,
+        })
+        .unwrap_err();
+
+        assert!(error.to_string().contains("solver3"));
+        assert!(error.to_string().contains("not implemented"));
+    }
+
+    #[test]
+    fn available_solver_descriptors_includes_solver3() {
+        let descriptors = available_solver_descriptors();
+        assert!(
+            descriptors.iter().any(|d| d.kind == SolverKind::Solver3),
+            "solver3 should appear in available_solver_descriptors"
+        );
+        assert_eq!(descriptors.len(), 3);
     }
 }
