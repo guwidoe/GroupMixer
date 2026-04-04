@@ -237,7 +237,7 @@ pub fn analyze_clique_swap(
             actual: clique_swap.target_person_indices.len(),
         }
     } else {
-        validate_target_people(state, clique_swap, &active_members)
+        validate_target_people(state, clique_swap)
     };
 
     Ok(CliqueSwapAnalysis {
@@ -328,7 +328,9 @@ fn build_clique_swap_runtime_patch(
     let source_remaining = state.group_members[source_slot]
         .iter()
         .copied()
-        .filter(|person_idx| !analysis.active_members.contains(person_idx))
+        .filter(|&person_idx| {
+            cp.person_to_clique_id[session_idx][person_idx] != Some(clique_swap.clique_idx)
+        })
         .collect::<Vec<_>>();
     let target_remaining = state.group_members[target_slot]
         .iter()
@@ -810,7 +812,6 @@ fn active_clique_members_in_source_group(
 fn validate_target_people(
     state: &RuntimeState,
     clique_swap: &CliqueSwapMove,
-    active_members: &[usize],
 ) -> CliqueSwapFeasibility {
     let cp = &state.compiled;
 
@@ -818,8 +819,17 @@ fn validate_target_people(
         if clique_swap.target_person_indices[..idx].contains(&person_idx) {
             return CliqueSwapFeasibility::DuplicateTargetPerson { person_idx };
         }
-        if active_members.contains(&person_idx) {
-            return CliqueSwapFeasibility::TargetPersonIsCliqueMember { person_idx };
+        match cp.person_to_clique_id[clique_swap.session_idx][person_idx] {
+            Some(clique_idx) if clique_idx == clique_swap.clique_idx => {
+                return CliqueSwapFeasibility::TargetPersonIsCliqueMember { person_idx };
+            }
+            Some(clique_idx) => {
+                return CliqueSwapFeasibility::TargetPersonInAnotherClique {
+                    person_idx,
+                    clique_idx,
+                };
+            }
+            None => {}
         }
         if !cp.person_participation[person_idx][clique_swap.session_idx] {
             return CliqueSwapFeasibility::TargetPersonNotParticipating { person_idx };
@@ -834,13 +844,6 @@ fn validate_target_people(
             return CliqueSwapFeasibility::TargetPersonWrongGroup {
                 person_idx,
                 expected_group_idx: clique_swap.target_group_idx,
-            };
-        }
-
-        if let Some(clique_idx) = cp.person_to_clique_id[clique_swap.session_idx][person_idx] {
-            return CliqueSwapFeasibility::TargetPersonInAnotherClique {
-                person_idx,
-                clique_idx,
             };
         }
 
