@@ -304,6 +304,39 @@ fn solver2_progress_callback_and_benchmark_observer_can_run_together() {
 }
 
 #[test]
+fn solver2_same_seed_runs_remain_deterministic_after_runtime_search_changes() {
+    let input = solver2_driver_input();
+
+    let result_a = run_solver(&input).expect("first solver2 solve should succeed");
+    let result_b = run_solver(&input).expect("second solver2 solve should succeed");
+
+    assert_eq!(result_a.schedule, result_b.schedule);
+    assert_eq!(result_a.final_score, result_b.final_score);
+    assert_eq!(result_a.effective_seed, Some(97));
+    assert_eq!(result_b.effective_seed, Some(97));
+    assert_eq!(result_a.stop_reason, result_b.stop_reason);
+
+    let telemetry_a = result_a.benchmark_telemetry.expect("solver2 telemetry a");
+    let telemetry_b = result_b.benchmark_telemetry.expect("solver2 telemetry b");
+    assert_eq!(
+        telemetry_a.moves.swap.attempts,
+        telemetry_b.moves.swap.attempts
+    );
+    assert_eq!(
+        telemetry_a.moves.swap.accepted,
+        telemetry_b.moves.swap.accepted
+    );
+    assert_eq!(
+        telemetry_a.moves.transfer.attempts,
+        telemetry_b.moves.transfer.attempts
+    );
+    assert_eq!(
+        telemetry_a.moves.clique_swap.attempts,
+        telemetry_b.moves.clique_swap.attempts
+    );
+}
+
+#[test]
 fn solver2_swap_runtime_preview_avoids_full_recompute_per_attempt() {
     let mut input = solver2_driver_input();
     input.solver.stop_conditions.max_iterations = Some(25);

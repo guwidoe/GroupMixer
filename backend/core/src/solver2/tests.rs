@@ -13,8 +13,9 @@ use super::moves::clique_swap::{
     CliqueSwapMove,
 };
 use super::moves::swap::{
-    analyze_swap, apply_swap, apply_swap_runtime_with_score, preview_swap, preview_swap_runtime,
-    SwapFeasibility, SwapMove,
+    analyze_swap, apply_swap, apply_swap_runtime_preview, apply_swap_runtime_with_score,
+    preview_swap, preview_swap_runtime, preview_swap_runtime_lightweight, SwapFeasibility,
+    SwapMove,
 };
 use super::moves::transfer::{
     analyze_transfer, apply_transfer, preview_transfer, TransferFeasibility, TransferMove,
@@ -700,6 +701,28 @@ fn swap_preview_matches_apply_and_solver1_parity() {
     let recomputed = recompute_full_score(&state).unwrap();
     assert_eq!(state.current_score, recomputed);
     compare_state_against_solver1(&input, &state).unwrap();
+}
+
+#[test]
+fn runtime_lightweight_swap_preview_matches_materialized_runtime_preview() {
+    let input = representative_input();
+    let oracle_state = SolutionState::from_input(&input).unwrap();
+    let runtime_state = RuntimeSolutionState::from_oracle_state(&oracle_state);
+    let swap = SwapMove::new(
+        2,
+        oracle_state.compiled_problem.person_id_to_idx["p0"],
+        oracle_state.compiled_problem.person_id_to_idx["p5"],
+    );
+
+    let lightweight = preview_swap_runtime_lightweight(&runtime_state, &swap).unwrap();
+    let materialized = preview_swap_runtime(&runtime_state, &swap).unwrap();
+
+    assert_eq!(lightweight.delta_cost, materialized.delta_cost);
+
+    let mut lightweight_state = RuntimeSolutionState::from_oracle_state(&oracle_state);
+    apply_swap_runtime_preview(&mut lightweight_state, &lightweight).unwrap();
+    assert_eq!(lightweight_state.current_score, materialized.after_score);
+    lightweight_state.validate_against_oracle().unwrap();
 }
 
 #[test]

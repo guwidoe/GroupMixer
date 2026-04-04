@@ -94,6 +94,47 @@ pub struct SwapAnalysis {
     pub right_group_idx: usize,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ContactCountUpdate {
+    pub left_person_idx: usize,
+    pub right_person_idx: usize,
+    pub new_count: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct IndexedI32Update {
+    pub index: usize,
+    pub new_value: i32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct IndexedU32Update {
+    pub index: usize,
+    pub new_value: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub(crate) struct SwapRuntimePatch {
+    pub contact_updates: Vec<ContactCountUpdate>,
+    pub forbidden_pair_updates: Vec<IndexedI32Update>,
+    pub should_together_updates: Vec<IndexedI32Update>,
+    pub pair_meeting_updates: Vec<IndexedU32Update>,
+    pub unique_contacts_delta: i32,
+    pub repetition_penalty_delta: i32,
+    pub weighted_repetition_penalty_delta: f64,
+    pub attribute_balance_penalty_delta: f64,
+    pub weighted_constraint_penalty_delta: f64,
+    pub constraint_penalty_delta: i32,
+    pub total_score_delta: f64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct SwapRuntimePreview {
+    pub analysis: SwapAnalysis,
+    pub patch: SwapRuntimePatch,
+    pub delta_cost: f64,
+}
+
 pub fn analyze_swap(state: &SolutionState, swap: &SwapMove) -> Result<SwapAnalysis, SolverError> {
     let problem = state.compiled_problem();
     if swap.session_idx >= problem.num_sessions {
@@ -209,12 +250,32 @@ pub fn preview_swap_runtime(
     state: &RuntimeSolutionState,
     swap: &SwapMove,
 ) -> Result<MovePreview, SolverError> {
-    let analysis = analyze_swap(state.as_oracle_state(), swap)?;
+    let runtime_preview = preview_swap_runtime_lightweight(state, swap)?;
     let before_score = state.current_score.clone();
+    let after_score = materialize_score_after_patch(
+        state.compiled_problem(),
+        &state.current_score,
+        &runtime_preview.patch,
+    );
 
-    let after_score = match analysis.feasibility {
-        SwapFeasibility::Feasible => preview_swap_incremental(state.as_oracle_state(), &analysis)?,
-        SwapFeasibility::SameGroupNoop => before_score.clone(),
+    Ok(MovePreview {
+        candidate: CandidateMove::Swap(swap.clone()),
+        affected_region: runtime_preview.analysis.affected_region,
+        delta_cost: runtime_preview.delta_cost,
+        before_score,
+        after_score,
+    })
+}
+
+pub(crate) fn preview_swap_runtime_lightweight(
+    state: &RuntimeSolutionState,
+    swap: &SwapMove,
+) -> Result<SwapRuntimePreview, SolverError> {
+    let analysis = analyze_swap(state.as_oracle_state(), swap)?;
+
+    let patch = match analysis.feasibility {
+        SwapFeasibility::Feasible => build_runtime_swap_patch(state.as_oracle_state(), &analysis)?,
+        SwapFeasibility::SameGroupNoop => SwapRuntimePatch::default(),
         ref infeasible => {
             return Err(SolverError::ValidationError(format!(
                 "solver2 swap is not feasible: {infeasible}"
@@ -222,12 +283,10 @@ pub fn preview_swap_runtime(
         }
     };
 
-    Ok(MovePreview {
-        candidate: CandidateMove::Swap(swap.clone()),
-        affected_region: analysis.affected_region,
-        delta_cost: after_score.total_score - before_score.total_score,
-        before_score,
-        after_score,
+    Ok(SwapRuntimePreview {
+        delta_cost: patch.total_score_delta,
+        analysis,
+        patch,
     })
 }
 
@@ -278,46 +337,144 @@ pub fn apply_swap_runtime_with_score(
     }
 }
 
-fn preview_swap_incremental(
+pub(crate) fn apply_swap_runtime_preview(
+    state: &mut RuntimeSolutionState,
+    preview: &SwapRuntimePreview,
+) -> Result<(), SolverError> {
+    match preview.analysis.feasibility {
+        SwapFeasibility::Feasible => {
+            let compiled_problem = state.compiled_problem_arc().clone();
+            apply_swap_unchecked(state.as_oracle_state_mut(), &preview.analysis)?;
+            apply_runtime_swap_patch_to_snapshot(
+                compiled_problem.as_ref(),
+                &mut state.current_score,
+                &preview.patch,
+            );
+            debug_assert!(validate_state_invariants(state.as_oracle_state()).is_ok());
+            Ok(())
+        }
+        SwapFeasibility::SameGroupNoop => Ok(()),
+        ref infeasible => Err(SolverError::ValidationError(format!(
+            "solver2 swap is not feasible: {infeasible}"
+        ))),
+    }
+}
+
+fn build_runtime_swap_patch(
     state: &SolutionState,
     analysis: &SwapAnalysis,
-) -> Result<FullScoreSnapshot, SolverError> {
+) -> Result<SwapRuntimePatch, SolverError> {
     let problem = state.compiled_problem();
     let session_idx = analysis.swap.session_idx;
     let left_person_idx = analysis.swap.left_person_idx;
     let right_person_idx = analysis.swap.right_person_idx;
-
-    let mut after_score = state.current_score.clone();
+    let current_score = &state.current_score;
+    let mut patch = SwapRuntimePatch::default();
 
     for &member in &state.schedule[session_idx][analysis.left_group_idx] {
         if member == left_person_idx {
             continue;
         }
-        apply_contact_delta(&mut after_score, problem, left_person_idx, member, -1)?;
-        apply_contact_delta(&mut after_score, problem, right_person_idx, member, 1)?;
+        record_contact_update(
+            &mut patch,
+            current_score,
+            problem,
+            left_person_idx,
+            member,
+            -1,
+        )?;
+        record_contact_update(
+            &mut patch,
+            current_score,
+            problem,
+            right_person_idx,
+            member,
+            1,
+        )?;
     }
 
     for &member in &state.schedule[session_idx][analysis.right_group_idx] {
         if member == right_person_idx {
             continue;
         }
-        apply_contact_delta(&mut after_score, problem, right_person_idx, member, -1)?;
-        apply_contact_delta(&mut after_score, problem, left_person_idx, member, 1)?;
+        record_contact_update(
+            &mut patch,
+            current_score,
+            problem,
+            right_person_idx,
+            member,
+            -1,
+        )?;
+        record_contact_update(
+            &mut patch,
+            current_score,
+            problem,
+            left_person_idx,
+            member,
+            1,
+        )?;
     }
 
-    update_forbidden_pair_violations_for_swap(state, analysis, &mut after_score);
-    update_should_together_violations_for_swap(state, analysis, &mut after_score);
-    update_pair_meeting_counts_for_swap(state, analysis, &mut after_score);
-    update_attribute_balance_penalty_for_swap(state, analysis, &mut after_score);
-    refresh_aggregate_scores(problem, &mut after_score);
+    record_forbidden_pair_updates_for_swap(state, analysis, &mut patch);
+    record_should_together_updates_for_swap(state, analysis, &mut patch);
+    record_pair_meeting_updates_for_swap(state, analysis, &mut patch);
+    record_attribute_balance_delta_for_swap(state, analysis, &mut patch);
 
-    Ok(after_score)
+    patch.total_score_delta = patch.weighted_repetition_penalty_delta
+        + patch.attribute_balance_penalty_delta
+        + patch.weighted_constraint_penalty_delta
+        - (patch.unique_contacts_delta as f64 * problem.maximize_unique_contacts_weight);
+
+    Ok(patch)
 }
 
-fn update_forbidden_pair_violations_for_swap(
+fn materialize_score_after_patch(
+    problem: &CompiledProblem,
+    before_score: &FullScoreSnapshot,
+    patch: &SwapRuntimePatch,
+) -> FullScoreSnapshot {
+    let mut after_score = before_score.clone();
+    apply_runtime_swap_patch_to_snapshot(problem, &mut after_score, patch);
+    after_score
+}
+
+fn apply_runtime_swap_patch_to_snapshot(
+    problem: &CompiledProblem,
+    snapshot: &mut FullScoreSnapshot,
+    patch: &SwapRuntimePatch,
+) {
+    for update in &patch.contact_updates {
+        snapshot.contact_matrix[update.left_person_idx][update.right_person_idx] = update.new_count;
+        snapshot.contact_matrix[update.right_person_idx][update.left_person_idx] = update.new_count;
+    }
+
+    for update in &patch.forbidden_pair_updates {
+        snapshot.forbidden_pair_violations[update.index] = update.new_value;
+    }
+    for update in &patch.should_together_updates {
+        snapshot.should_together_violations[update.index] = update.new_value;
+    }
+    for update in &patch.pair_meeting_updates {
+        snapshot.pair_meeting_counts[update.index] = update.new_value;
+    }
+
+    snapshot.unique_contacts += patch.unique_contacts_delta;
+    snapshot.repetition_penalty += patch.repetition_penalty_delta;
+    snapshot.weighted_repetition_penalty += patch.weighted_repetition_penalty_delta;
+    snapshot.attribute_balance_penalty += patch.attribute_balance_penalty_delta;
+    snapshot.weighted_constraint_penalty += patch.weighted_constraint_penalty_delta;
+    snapshot.constraint_penalty += patch.constraint_penalty_delta;
+    snapshot.total_score = snapshot.weighted_repetition_penalty
+        + snapshot.attribute_balance_penalty
+        + snapshot.weighted_constraint_penalty
+        - (snapshot.unique_contacts as f64 * problem.maximize_unique_contacts_weight)
+        + snapshot.baseline_score;
+}
+
+fn record_forbidden_pair_updates_for_swap(
     state: &SolutionState,
     analysis: &SwapAnalysis,
-    snapshot: &mut FullScoreSnapshot,
+    patch: &mut SwapRuntimePatch,
 ) {
     let problem = state.compiled_problem();
     for constraint_idx in affected_constraint_indices(
@@ -332,17 +489,23 @@ fn update_forbidden_pair_violations_for_swap(
             constraint.sessions.as_deref(),
             true,
         );
-        let old_violations = snapshot.forbidden_pair_violations[constraint_idx];
-        snapshot.forbidden_pair_violations[constraint_idx] = new_violations;
-        snapshot.weighted_constraint_penalty +=
-            (new_violations - old_violations) as f64 * constraint.penalty_weight;
+        let old_violations = state.current_score.forbidden_pair_violations[constraint_idx];
+        if new_violations != old_violations {
+            patch.forbidden_pair_updates.push(IndexedI32Update {
+                index: constraint_idx,
+                new_value: new_violations,
+            });
+            patch.weighted_constraint_penalty_delta +=
+                (new_violations - old_violations) as f64 * constraint.penalty_weight;
+            patch.constraint_penalty_delta += new_violations - old_violations;
+        }
     }
 }
 
-fn update_should_together_violations_for_swap(
+fn record_should_together_updates_for_swap(
     state: &SolutionState,
     analysis: &SwapAnalysis,
-    snapshot: &mut FullScoreSnapshot,
+    patch: &mut SwapRuntimePatch,
 ) {
     let problem = state.compiled_problem();
     for constraint_idx in affected_constraint_indices(
@@ -357,17 +520,23 @@ fn update_should_together_violations_for_swap(
             constraint.sessions.as_deref(),
             false,
         );
-        let old_violations = snapshot.should_together_violations[constraint_idx];
-        snapshot.should_together_violations[constraint_idx] = new_violations;
-        snapshot.weighted_constraint_penalty +=
-            (new_violations - old_violations) as f64 * constraint.penalty_weight;
+        let old_violations = state.current_score.should_together_violations[constraint_idx];
+        if new_violations != old_violations {
+            patch.should_together_updates.push(IndexedI32Update {
+                index: constraint_idx,
+                new_value: new_violations,
+            });
+            patch.weighted_constraint_penalty_delta +=
+                (new_violations - old_violations) as f64 * constraint.penalty_weight;
+            patch.constraint_penalty_delta += new_violations - old_violations;
+        }
     }
 }
 
-fn update_pair_meeting_counts_for_swap(
+fn record_pair_meeting_updates_for_swap(
     state: &SolutionState,
     analysis: &SwapAnalysis,
-    snapshot: &mut FullScoreSnapshot,
+    patch: &mut SwapRuntimePatch,
 ) {
     let problem = state.compiled_problem();
     for constraint_idx in affected_constraint_indices(
@@ -376,18 +545,28 @@ fn update_pair_meeting_counts_for_swap(
     ) {
         let constraint = &problem.pair_meeting_constraints[constraint_idx];
         let new_meetings = count_pair_meetings_after_swap(state, analysis, constraint);
-        let old_meetings = snapshot.pair_meeting_counts[constraint_idx];
+        let old_meetings = state.current_score.pair_meeting_counts[constraint_idx];
+        if new_meetings != old_meetings {
+            patch.pair_meeting_updates.push(IndexedU32Update {
+                index: constraint_idx,
+                new_value: new_meetings,
+            });
+        }
+
         let old_penalty = pair_meeting_penalty(constraint, old_meetings);
         let new_penalty = pair_meeting_penalty(constraint, new_meetings);
-        snapshot.pair_meeting_counts[constraint_idx] = new_meetings;
-        snapshot.weighted_constraint_penalty += new_penalty - old_penalty;
+        patch.weighted_constraint_penalty_delta += new_penalty - old_penalty;
+
+        let old_violation = pair_meeting_violation_indicator(constraint, old_meetings);
+        let new_violation = pair_meeting_violation_indicator(constraint, new_meetings);
+        patch.constraint_penalty_delta += new_violation - old_violation;
     }
 }
 
-fn update_attribute_balance_penalty_for_swap(
+fn record_attribute_balance_delta_for_swap(
     state: &SolutionState,
     analysis: &SwapAnalysis,
-    snapshot: &mut FullScoreSnapshot,
+    patch: &mut SwapRuntimePatch,
 ) {
     let problem = state.compiled_problem();
     let session_idx = analysis.swap.session_idx;
@@ -403,7 +582,7 @@ fn update_attribute_balance_penalty_for_swap(
                 attribute_balance_penalty_for_members(problem, before_members, constraint);
             let after_penalty =
                 attribute_balance_penalty_for_members(problem, &after_members, constraint);
-            snapshot.attribute_balance_penalty += after_penalty - before_penalty;
+            patch.attribute_balance_penalty_delta += after_penalty - before_penalty;
         }
     }
 }
@@ -588,6 +767,24 @@ fn pair_meeting_penalty(constraint: &CompiledPairMeetingConstraint, meetings: u3
     raw_penalty * constraint.penalty_weight
 }
 
+fn pair_meeting_violation_indicator(
+    constraint: &CompiledPairMeetingConstraint,
+    meetings: u32,
+) -> i32 {
+    let target = constraint.target_meetings as i32;
+    let have = meetings as i32;
+    let raw_violation = match constraint.mode {
+        PairMeetingMode::AtLeast => (target - have).max(0),
+        PairMeetingMode::Exact => (have - target).abs(),
+        PairMeetingMode::AtMost => (have - target).max(0),
+    };
+    if raw_violation > 0 && constraint.penalty_weight > 0.0 {
+        1
+    } else {
+        0
+    }
+}
+
 fn affected_constraint_indices(left: &[usize], right: &[usize]) -> Vec<usize> {
     let mut indices = left.to_vec();
     indices.extend_from_slice(right);
@@ -596,14 +793,15 @@ fn affected_constraint_indices(left: &[usize], right: &[usize]) -> Vec<usize> {
     indices
 }
 
-fn apply_contact_delta(
-    snapshot: &mut FullScoreSnapshot,
+fn record_contact_update(
+    patch: &mut SwapRuntimePatch,
+    current_score: &FullScoreSnapshot,
     problem: &CompiledProblem,
     left_person_idx: usize,
     right_person_idx: usize,
     delta: i32,
 ) -> Result<(), SolverError> {
-    let current = snapshot.contact_matrix[left_person_idx][right_person_idx];
+    let current = current_score.contact_matrix[left_person_idx][right_person_idx];
     let updated = current as i32 + delta;
     if updated < 0 {
         return Err(SolverError::ValidationError(format!(
@@ -615,9 +813,9 @@ fn apply_contact_delta(
     let updated = updated as u32;
 
     if current == 0 && updated > 0 {
-        snapshot.unique_contacts += 1;
+        patch.unique_contacts_delta += 1;
     } else if current > 0 && updated == 0 {
-        snapshot.unique_contacts -= 1;
+        patch.unique_contacts_delta -= 1;
     }
 
     if let Some(repeat) = &problem.repeat_encounter {
@@ -628,44 +826,17 @@ fn apply_contact_delta(
             .penalty_function
             .penalty_for_excess(updated.saturating_sub(repeat.max_allowed_encounters));
         let delta_penalty = new_penalty - old_penalty;
-        snapshot.repetition_penalty += delta_penalty;
-        snapshot.weighted_repetition_penalty += delta_penalty as f64 * repeat.penalty_weight;
+        patch.repetition_penalty_delta += delta_penalty;
+        patch.weighted_repetition_penalty_delta += delta_penalty as f64 * repeat.penalty_weight;
     }
 
-    snapshot.contact_matrix[left_person_idx][right_person_idx] = updated;
-    snapshot.contact_matrix[right_person_idx][left_person_idx] = updated;
+    patch.contact_updates.push(ContactCountUpdate {
+        left_person_idx,
+        right_person_idx,
+        new_count: updated,
+    });
 
     Ok(())
-}
-
-fn refresh_aggregate_scores(problem: &CompiledProblem, snapshot: &mut FullScoreSnapshot) {
-    snapshot.constraint_penalty = snapshot.forbidden_pair_violations.iter().sum::<i32>()
-        + snapshot.should_together_violations.iter().sum::<i32>()
-        + snapshot.clique_violations.iter().sum::<i32>()
-        + snapshot.immovable_violations
-        + pair_meeting_violation_count(problem, snapshot);
-    snapshot.total_score = snapshot.weighted_repetition_penalty
-        + snapshot.attribute_balance_penalty
-        + snapshot.weighted_constraint_penalty
-        - (snapshot.unique_contacts as f64 * problem.maximize_unique_contacts_weight)
-        + problem.baseline_score;
-}
-
-fn pair_meeting_violation_count(problem: &CompiledProblem, snapshot: &FullScoreSnapshot) -> i32 {
-    let mut count = 0;
-    for (constraint_idx, constraint) in problem.pair_meeting_constraints.iter().enumerate() {
-        let target = constraint.target_meetings as i32;
-        let have = snapshot.pair_meeting_counts[constraint_idx] as i32;
-        let raw_violation = match constraint.mode {
-            PairMeetingMode::AtLeast => (target - have).max(0),
-            PairMeetingMode::Exact => (have - target).abs(),
-            PairMeetingMode::AtMost => (have - target).max(0),
-        };
-        if raw_violation > 0 && constraint.penalty_weight > 0.0 {
-            count += 1;
-        }
-    }
-    count
 }
 
 fn build_affected_region(
