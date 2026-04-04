@@ -13,23 +13,30 @@ pub struct PersonLocationUpdate {
     pub new_group_idx: Option<usize>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GroupMembersPatchOp {
-    Replace {
+    ReplaceAt {
         session_idx: usize,
         group_idx: usize,
-        old_person_idx: usize,
+        member_pos: usize,
+        expected_old_person_idx: usize,
         new_person_idx: usize,
     },
-    Remove {
+    RemoveAt {
         session_idx: usize,
         group_idx: usize,
-        person_idx: usize,
+        member_pos: usize,
+        expected_person_idx: usize,
     },
     Insert {
         session_idx: usize,
         group_idx: usize,
         person_idx: usize,
+    },
+    Reset {
+        session_idx: usize,
+        group_idx: usize,
+        new_members: Vec<usize>,
     },
 }
 
@@ -63,36 +70,50 @@ pub fn apply_runtime_patch(
 ) -> Result<(), SolverError> {
     for op in &patch.group_member_ops {
         match *op {
-            GroupMembersPatchOp::Replace {
+            GroupMembersPatchOp::ReplaceAt {
                 session_idx,
                 group_idx,
-                old_person_idx,
+                member_pos,
+                expected_old_person_idx,
                 new_person_idx,
             } => {
                 let slot = state.group_slot(session_idx, group_idx);
                 let members = &mut state.group_members[slot];
-                let Some(pos) = members.iter().position(|&m| m == old_person_idx) else {
+                if member_pos >= members.len() {
                     return Err(SolverError::ValidationError(format!(
-                        "solver3 patch replace failed: person {} not in session {} group {}",
-                        old_person_idx, session_idx, group_idx
+                        "solver3 patch replace failed: position {} out of range for session {} group {}",
+                        member_pos, session_idx, group_idx
                     )));
-                };
-                members[pos] = new_person_idx;
+                }
+                if members[member_pos] != expected_old_person_idx {
+                    return Err(SolverError::ValidationError(format!(
+                        "solver3 patch replace failed: expected person {} at position {} in session {} group {}, found {}",
+                        expected_old_person_idx, member_pos, session_idx, group_idx, members[member_pos]
+                    )));
+                }
+                members[member_pos] = new_person_idx;
             }
-            GroupMembersPatchOp::Remove {
+            GroupMembersPatchOp::RemoveAt {
                 session_idx,
                 group_idx,
-                person_idx,
+                member_pos,
+                expected_person_idx,
             } => {
                 let slot = state.group_slot(session_idx, group_idx);
                 let members = &mut state.group_members[slot];
-                let Some(pos) = members.iter().position(|&m| m == person_idx) else {
+                if member_pos >= members.len() {
                     return Err(SolverError::ValidationError(format!(
-                        "solver3 patch remove failed: person {} not in session {} group {}",
-                        person_idx, session_idx, group_idx
+                        "solver3 patch remove failed: position {} out of range for session {} group {}",
+                        member_pos, session_idx, group_idx
                     )));
-                };
-                members.swap_remove(pos);
+                }
+                let removed = members.swap_remove(member_pos);
+                if removed != expected_person_idx {
+                    return Err(SolverError::ValidationError(format!(
+                        "solver3 patch remove failed: expected person {} at position {} in session {} group {}, removed {}",
+                        expected_person_idx, member_pos, session_idx, group_idx, removed
+                    )));
+                }
                 state.group_sizes[slot] = state.group_sizes[slot].saturating_sub(1);
             }
             GroupMembersPatchOp::Insert {
@@ -103,6 +124,17 @@ pub fn apply_runtime_patch(
                 let slot = state.group_slot(session_idx, group_idx);
                 state.group_members[slot].push(person_idx);
                 state.group_sizes[slot] += 1;
+            }
+            GroupMembersPatchOp::Reset {
+                session_idx,
+                group_idx,
+                ref new_members,
+            } => {
+                let slot = state.group_slot(session_idx, group_idx);
+                let members = &mut state.group_members[slot];
+                members.clear();
+                members.extend_from_slice(new_members);
+                state.group_sizes[slot] = new_members.len();
             }
         }
     }

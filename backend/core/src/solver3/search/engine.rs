@@ -498,17 +498,11 @@ fn sample_transfer_preview(
         return None;
     }
 
-    let eligible_sessions = allowed_sessions
-        .iter()
-        .copied()
-        .filter(|&session_idx| runtime_session_can_transfer(state, session_idx))
-        .collect::<Vec<_>>();
-    if eligible_sessions.is_empty() {
-        return None;
-    }
-
     for _ in 0..MAX_RANDOM_CANDIDATE_ATTEMPTS {
-        let session_idx = eligible_sessions[rng.random_range(0..eligible_sessions.len())];
+        let session_idx = allowed_sessions[rng.random_range(0..allowed_sessions.len())];
+        if !runtime_session_can_transfer(state, session_idx) {
+            continue;
+        }
         let person_idx = rng.random_range(0..state.compiled.num_people);
         let Some(source_group_idx) = runtime_transfer_source_group(state, session_idx, person_idx)
         else {
@@ -531,13 +525,16 @@ fn sample_transfer_preview(
         }
     }
 
-    let session_start = rng.random_range(0..eligible_sessions.len());
+    let session_start = rng.random_range(0..allowed_sessions.len());
     let person_start = rng.random_range(0..state.compiled.num_people);
     let target_start = rng.random_range(0..state.compiled.num_groups);
 
-    for session_offset in 0..eligible_sessions.len() {
+    for session_offset in 0..allowed_sessions.len() {
         let session_idx =
-            eligible_sessions[(session_start + session_offset) % eligible_sessions.len()];
+            allowed_sessions[(session_start + session_offset) % allowed_sessions.len()];
+        if !runtime_session_can_transfer(state, session_idx) {
+            continue;
+        }
         for person_offset in 0..state.compiled.num_people {
             let person_idx = (person_start + person_offset) % state.compiled.num_people;
             let Some(source_group_idx) =
@@ -575,17 +572,11 @@ fn sample_clique_swap_preview(
         return None;
     }
 
-    let eligible_sessions = allowed_sessions
-        .iter()
-        .copied()
-        .filter(|&session_idx| runtime_session_can_clique_swap(state, session_idx))
-        .collect::<Vec<_>>();
-    if eligible_sessions.is_empty() {
-        return None;
-    }
-
     for _ in 0..MAX_RANDOM_CANDIDATE_ATTEMPTS {
-        let session_idx = eligible_sessions[rng.random_range(0..eligible_sessions.len())];
+        let session_idx = allowed_sessions[rng.random_range(0..allowed_sessions.len())];
+        if !runtime_session_can_clique_swap(state, session_idx) {
+            continue;
+        }
         let clique_idx = rng.random_range(0..state.compiled.cliques.len());
         let Some((active_members, source_group_idx)) =
             runtime_active_clique_in_single_group(state, session_idx, clique_idx)
@@ -621,13 +612,16 @@ fn sample_clique_swap_preview(
         }
     }
 
-    let session_start = rng.random_range(0..eligible_sessions.len());
+    let session_start = rng.random_range(0..allowed_sessions.len());
     let clique_start = rng.random_range(0..state.compiled.cliques.len());
     let target_start = rng.random_range(0..state.compiled.num_groups);
 
-    for session_offset in 0..eligible_sessions.len() {
+    for session_offset in 0..allowed_sessions.len() {
         let session_idx =
-            eligible_sessions[(session_start + session_offset) % eligible_sessions.len()];
+            allowed_sessions[(session_start + session_offset) % allowed_sessions.len()];
+        if !runtime_session_can_clique_swap(state, session_idx) {
+            continue;
+        }
 
         for clique_offset in 0..state.compiled.cliques.len() {
             let clique_idx = (clique_start + clique_offset) % state.compiled.cliques.len();
@@ -725,8 +719,8 @@ fn runtime_active_clique_in_single_group(
     if active_members.iter().any(|&member| {
         state
             .compiled
-            .immovable_lookup
-            .contains_key(&(member, session_idx))
+            .immovable_group(session_idx, member)
+            .is_some()
     }) {
         return None;
     }
@@ -741,32 +735,32 @@ fn runtime_pick_clique_targets(
     target_group_idx: usize,
     rng: &mut ChaCha12Rng,
 ) -> Option<Vec<usize>> {
-    let active_set = active_members
-        .iter()
-        .copied()
-        .collect::<std::collections::BTreeSet<_>>();
     let target_slot = state.group_slot(session_idx, target_group_idx);
-    let mut eligible_targets = state.group_members[target_slot]
-        .iter()
-        .copied()
-        .filter(|person_idx| {
-            !active_set.contains(person_idx)
-                && state.compiled.person_participation[*person_idx][session_idx]
-                && state.compiled.person_to_clique_id[session_idx][*person_idx].is_none()
-                && !state
-                    .compiled
-                    .immovable_lookup
-                    .contains_key(&(*person_idx, session_idx))
-        })
-        .collect::<Vec<_>>();
-
-    if eligible_targets.len() < active_members.len() {
+    let target_members = &state.group_members[target_slot];
+    if target_members.len() < active_members.len() {
         return None;
     }
 
-    eligible_targets.shuffle(rng);
-    eligible_targets.truncate(active_members.len());
-    Some(eligible_targets)
+    let start = rng.random_range(0..target_members.len());
+    let mut selected = Vec::with_capacity(active_members.len());
+    for offset in 0..target_members.len() {
+        let person_idx = target_members[(start + offset) % target_members.len()];
+        if !active_members.contains(&person_idx)
+            && state.compiled.person_participation[person_idx][session_idx]
+            && state.compiled.person_to_clique_id[session_idx][person_idx].is_none()
+            && state
+                .compiled
+                .immovable_group(session_idx, person_idx)
+                .is_none()
+        {
+            selected.push(person_idx);
+            if selected.len() == active_members.len() {
+                return Some(selected);
+            }
+        }
+    }
+
+    None
 }
 
 fn runtime_target_group_has_eligible_clique_swap_people(
@@ -775,21 +769,17 @@ fn runtime_target_group_has_eligible_clique_swap_people(
     active_members: &[usize],
     target_group_idx: usize,
 ) -> bool {
-    let active_set = active_members
-        .iter()
-        .copied()
-        .collect::<std::collections::BTreeSet<_>>();
     let target_slot = state.group_slot(session_idx, target_group_idx);
     let eligible = state.group_members[target_slot]
         .iter()
         .filter(|person_idx| {
-            !active_set.contains(person_idx)
+            !active_members.contains(person_idx)
                 && state.compiled.person_participation[**person_idx][session_idx]
                 && state.compiled.person_to_clique_id[session_idx][**person_idx].is_none()
-                && !state
+                && state
                     .compiled
-                    .immovable_lookup
-                    .contains_key(&(**person_idx, session_idx))
+                    .immovable_group(session_idx, **person_idx)
+                    .is_none()
         })
         .count();
 
@@ -837,10 +827,10 @@ fn is_runtime_transferable_person(
 ) -> bool {
     state.compiled.person_participation[person_idx][session_idx]
         && state.person_location[state.people_slot(session_idx, person_idx)].is_some()
-        && !state
+        && state
             .compiled
-            .immovable_lookup
-            .contains_key(&(person_idx, session_idx))
+            .immovable_group(session_idx, person_idx)
+            .is_none()
         && state.compiled.person_to_clique_id[session_idx][person_idx].is_none()
 }
 

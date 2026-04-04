@@ -1,4 +1,3 @@
-use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::fmt;
 
 use crate::models::{AttributeBalanceMode, PairMeetingMode};
@@ -221,9 +220,8 @@ pub fn analyze_clique_swap(
         }
     } else if let Some((person_idx, required_group_idx)) =
         active_members.iter().find_map(|&member| {
-            cp.immovable_lookup
-                .get(&(member, clique_swap.session_idx))
-                .map(|&group_idx| (member, group_idx))
+            cp.immovable_group(clique_swap.session_idx, member)
+                .map(|group_idx| (member, group_idx))
         })
     {
         if required_group_idx != clique_swap.target_group_idx {
@@ -325,48 +323,59 @@ fn build_clique_swap_runtime_patch(
     let source_group_idx = clique_swap.source_group_idx;
     let target_group_idx = clique_swap.target_group_idx;
 
-    let active_member_set = analysis
-        .active_members
-        .iter()
-        .copied()
-        .collect::<HashSet<_>>();
-    let target_member_set = analysis
-        .ordered_target_people
-        .iter()
-        .copied()
-        .collect::<HashSet<_>>();
-
     let source_slot = state.group_slot(session_idx, source_group_idx);
     let target_slot = state.group_slot(session_idx, target_group_idx);
 
     let source_remaining = state.group_members[source_slot]
         .iter()
         .copied()
-        .filter(|person_idx| !active_member_set.contains(person_idx))
+        .filter(|person_idx| !analysis.active_members.contains(person_idx))
         .collect::<Vec<_>>();
     let target_remaining = state.group_members[target_slot]
         .iter()
         .copied()
-        .filter(|person_idx| !target_member_set.contains(person_idx))
+        .filter(|person_idx| !analysis.ordered_target_people.contains(person_idx))
         .collect::<Vec<_>>();
 
-    let mut patch = RuntimePatch::default();
+    let mut source_after =
+        Vec::with_capacity(source_remaining.len() + analysis.ordered_target_people.len());
+    source_after.extend_from_slice(&source_remaining);
+    source_after.extend_from_slice(&analysis.ordered_target_people);
+
+    let mut target_after =
+        Vec::with_capacity(target_remaining.len() + analysis.active_members.len());
+    target_after.extend_from_slice(&target_remaining);
+    target_after.extend_from_slice(&analysis.active_members);
+
+    let mut patch = RuntimePatch {
+        person_location_updates: Vec::with_capacity(
+            analysis.active_members.len() + analysis.ordered_target_people.len(),
+        ),
+        group_member_ops: vec![
+            GroupMembersPatchOp::Reset {
+                session_idx,
+                group_idx: source_group_idx,
+                new_members: source_after,
+            },
+            GroupMembersPatchOp::Reset {
+                session_idx,
+                group_idx: target_group_idx,
+                new_members: target_after,
+            },
+        ],
+        pair_contact_updates: Vec::with_capacity(
+            analysis.active_members.len() * (source_remaining.len() + target_remaining.len())
+                + analysis.ordered_target_people.len()
+                    * (source_remaining.len() + target_remaining.len()),
+        ),
+        ..RuntimePatch::default()
+    };
 
     for &member in &analysis.active_members {
         patch.person_location_updates.push(PersonLocationUpdate {
             session_idx,
             person_idx: member,
             new_group_idx: Some(target_group_idx),
-        });
-        patch.group_member_ops.push(GroupMembersPatchOp::Remove {
-            session_idx,
-            group_idx: source_group_idx,
-            person_idx: member,
-        });
-        patch.group_member_ops.push(GroupMembersPatchOp::Insert {
-            session_idx,
-            group_idx: target_group_idx,
-            person_idx: member,
         });
     }
 
@@ -376,79 +385,27 @@ fn build_clique_swap_runtime_patch(
             person_idx,
             new_group_idx: Some(source_group_idx),
         });
-        patch.group_member_ops.push(GroupMembersPatchOp::Remove {
-            session_idx,
-            group_idx: target_group_idx,
-            person_idx,
-        });
-        patch.group_member_ops.push(GroupMembersPatchOp::Insert {
-            session_idx,
-            group_idx: source_group_idx,
-            person_idx,
-        });
     }
-
-    let mut pair_deltas: BTreeMap<usize, i32> = BTreeMap::new();
 
     for &member in &analysis.active_members {
         for &other in &source_remaining {
             let pair_idx = cp.pair_idx(member, other);
-            *pair_deltas.entry(pair_idx).or_insert(0) -= 1;
+            record_pair_contact_delta(&mut patch, cp, state, pair_idx, -1)?;
         }
         for &other in &target_remaining {
             let pair_idx = cp.pair_idx(member, other);
-            *pair_deltas.entry(pair_idx).or_insert(0) += 1;
+            record_pair_contact_delta(&mut patch, cp, state, pair_idx, 1)?;
         }
     }
 
     for &member in &analysis.ordered_target_people {
         for &other in &target_remaining {
             let pair_idx = cp.pair_idx(member, other);
-            *pair_deltas.entry(pair_idx).or_insert(0) -= 1;
+            record_pair_contact_delta(&mut patch, cp, state, pair_idx, -1)?;
         }
         for &other in &source_remaining {
             let pair_idx = cp.pair_idx(member, other);
-            *pair_deltas.entry(pair_idx).or_insert(0) += 1;
-        }
-    }
-
-    for (pair_idx, delta) in pair_deltas {
-        if delta == 0 {
-            continue;
-        }
-
-        let old_count = state.pair_contacts[pair_idx] as i32;
-        let new_count = old_count + delta;
-        if !(0..=u16::MAX as i32).contains(&new_count) {
-            return Err(SolverError::ValidationError(format!(
-                "solver3 clique swap pair contact update out of range for pair {}: {} + {}",
-                pair_idx, old_count, delta
-            )));
-        }
-
-        patch.pair_contact_updates.push(PairContactUpdate {
-            pair_idx,
-            new_count: new_count as u16,
-        });
-
-        if old_count == 0 && new_count > 0 {
-            patch.score_delta.unique_contacts_delta += 1;
-        } else if old_count > 0 && new_count == 0 {
-            patch.score_delta.unique_contacts_delta -= 1;
-        }
-
-        if let Some(repeat) = cp.repeat_encounter.as_ref() {
-            let old_pen = repeat_pair_penalty(
-                repeat.penalty_function,
-                old_count as u16,
-                repeat.max_allowed_encounters,
-            );
-            let new_pen = repeat_pair_penalty(
-                repeat.penalty_function,
-                new_count as u16,
-                repeat.max_allowed_encounters,
-            );
-            patch.score_delta.repetition_penalty_raw_delta += new_pen - old_pen;
+            record_pair_contact_delta(&mut patch, cp, state, pair_idx, 1)?;
         }
     }
 
@@ -620,20 +577,10 @@ fn members_after_clique_swap_for_group(
     let mut members = state.group_members[state.group_slot(session_idx, group_idx)].clone();
 
     if group_idx == clique_swap.source_group_idx {
-        let active_set = analysis
-            .active_members
-            .iter()
-            .copied()
-            .collect::<HashSet<_>>();
-        members.retain(|member| !active_set.contains(member));
+        members.retain(|member| !analysis.active_members.contains(member));
         members.extend_from_slice(&analysis.ordered_target_people);
     } else if group_idx == clique_swap.target_group_idx {
-        let target_set = analysis
-            .ordered_target_people
-            .iter()
-            .copied()
-            .collect::<HashSet<_>>();
-        members.retain(|member| !target_set.contains(member));
+        members.retain(|member| !analysis.ordered_target_people.contains(member));
         members.extend_from_slice(&analysis.active_members);
     }
 
@@ -754,13 +701,13 @@ fn is_active_in_session(sessions: Option<&[usize]>, session_idx: usize) -> bool 
 }
 
 fn merged_indices_for_people(people: &[usize], adjacency: &[Vec<usize>]) -> Vec<usize> {
-    let mut merged = BTreeSet::new();
+    let mut merged = Vec::new();
     for &person_idx in people {
-        for &idx in &adjacency[person_idx] {
-            merged.insert(idx);
-        }
+        merged.extend_from_slice(&adjacency[person_idx]);
     }
-    merged.into_iter().collect()
+    merged.sort_unstable();
+    merged.dedup();
+    merged
 }
 
 fn moved_people(analysis: &CliqueSwapAnalysis) -> Vec<usize> {
@@ -826,17 +773,12 @@ fn ordered_target_people_in_group(
     state: &RuntimeState,
     clique_swap: &CliqueSwapMove,
 ) -> Vec<usize> {
-    let selected = clique_swap
-        .target_person_indices
-        .iter()
-        .copied()
-        .collect::<HashSet<_>>();
     let target_slot = state.group_slot(clique_swap.session_idx, clique_swap.target_group_idx);
 
     state.group_members[target_slot]
         .iter()
         .copied()
-        .filter(|person_idx| selected.contains(person_idx))
+        .filter(|person_idx| clique_swap.target_person_indices.contains(person_idx))
         .collect()
 }
 
@@ -846,10 +788,9 @@ fn validate_target_people(
     active_members: &[usize],
 ) -> CliqueSwapFeasibility {
     let cp = &state.compiled;
-    let mut seen = HashSet::new();
 
-    for &person_idx in &clique_swap.target_person_indices {
-        if !seen.insert(person_idx) {
+    for (idx, &person_idx) in clique_swap.target_person_indices.iter().enumerate() {
+        if clique_swap.target_person_indices[..idx].contains(&person_idx) {
             return CliqueSwapFeasibility::DuplicateTargetPerson { person_idx };
         }
         if active_members.contains(&person_idx) {
@@ -878,10 +819,7 @@ fn validate_target_people(
             };
         }
 
-        if let Some(&required_group_idx) = cp
-            .immovable_lookup
-            .get(&(person_idx, clique_swap.session_idx))
-        {
+        if let Some(required_group_idx) = cp.immovable_group(clique_swap.session_idx, person_idx) {
             if required_group_idx != clique_swap.source_group_idx {
                 return CliqueSwapFeasibility::TargetPersonImmovable {
                     person_idx,
@@ -903,19 +841,8 @@ fn apply_clique_swap_direct_membership(
     let source_slot = state.group_slot(session_idx, clique_swap.source_group_idx);
     let target_slot = state.group_slot(session_idx, clique_swap.target_group_idx);
 
-    let active_set = analysis
-        .active_members
-        .iter()
-        .copied()
-        .collect::<HashSet<_>>();
-    let target_set = analysis
-        .ordered_target_people
-        .iter()
-        .copied()
-        .collect::<HashSet<_>>();
-
     let source_before = state.group_members[source_slot].len();
-    state.group_members[source_slot].retain(|member| !active_set.contains(member));
+    state.group_members[source_slot].retain(|member| !analysis.active_members.contains(member));
     let removed_source = source_before - state.group_members[source_slot].len();
     if removed_source != analysis.active_members.len() {
         return Err(SolverError::ValidationError(
@@ -925,7 +852,8 @@ fn apply_clique_swap_direct_membership(
     }
 
     let target_before = state.group_members[target_slot].len();
-    state.group_members[target_slot].retain(|member| !target_set.contains(member));
+    state.group_members[target_slot]
+        .retain(|member| !analysis.ordered_target_people.contains(member));
     let removed_target = target_before - state.group_members[target_slot].len();
     if removed_target != analysis.ordered_target_people.len() {
         return Err(SolverError::ValidationError(
@@ -946,6 +874,50 @@ fn apply_clique_swap_direct_membership(
     for &person_idx in &analysis.ordered_target_people {
         let ps = state.people_slot(session_idx, person_idx);
         state.person_location[ps] = Some(clique_swap.source_group_idx);
+    }
+
+    Ok(())
+}
+
+fn record_pair_contact_delta(
+    patch: &mut RuntimePatch,
+    cp: &crate::solver3::CompiledProblem,
+    state: &RuntimeState,
+    pair_idx: usize,
+    delta: i32,
+) -> Result<(), SolverError> {
+    let old_count = state.pair_contacts[pair_idx] as i32;
+    let new_count = old_count + delta;
+    if !(0..=u16::MAX as i32).contains(&new_count) {
+        return Err(SolverError::ValidationError(format!(
+            "solver3 clique swap pair contact update out of range for pair {}: {} + {}",
+            pair_idx, old_count, delta
+        )));
+    }
+
+    patch.pair_contact_updates.push(PairContactUpdate {
+        pair_idx,
+        new_count: new_count as u16,
+    });
+
+    if old_count == 0 && new_count > 0 {
+        patch.score_delta.unique_contacts_delta += 1;
+    } else if old_count > 0 && new_count == 0 {
+        patch.score_delta.unique_contacts_delta -= 1;
+    }
+
+    if let Some(repeat) = cp.repeat_encounter.as_ref() {
+        let old_pen = repeat_pair_penalty(
+            repeat.penalty_function,
+            old_count as u16,
+            repeat.max_allowed_encounters,
+        );
+        let new_pen = repeat_pair_penalty(
+            repeat.penalty_function,
+            new_count as u16,
+            repeat.max_allowed_encounters,
+        );
+        patch.score_delta.repetition_penalty_raw_delta += new_pen - old_pen;
     }
 
     Ok(())

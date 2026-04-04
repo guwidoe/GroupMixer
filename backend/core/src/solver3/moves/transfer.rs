@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::fmt;
 
 use crate::models::{AttributeBalanceMode, PairMeetingMode};
@@ -190,9 +189,8 @@ pub fn analyze_transfer(
             target_group_idx: transfer.target_group_idx,
             capacity: target_capacity,
         }
-    } else if let Some(&required_group_idx) = cp
-        .immovable_lookup
-        .get(&(transfer.person_idx, transfer.session_idx))
+    } else if let Some(required_group_idx) =
+        cp.immovable_group(transfer.session_idx, transfer.person_idx)
     {
         TransferFeasibility::ImmovablePerson {
             person_idx: transfer.person_idx,
@@ -291,6 +289,20 @@ fn build_transfer_runtime_patch(
     let source_group_idx = transfer.source_group_idx;
     let target_group_idx = transfer.target_group_idx;
 
+    let source_slot = state.group_slot(session_idx, source_group_idx);
+    let target_slot = state.group_slot(session_idx, target_group_idx);
+    let source_members = &state.group_members[source_slot];
+    let target_members = &state.group_members[target_slot];
+    let source_member_pos = source_members
+        .iter()
+        .position(|&member| member == person_idx)
+        .ok_or_else(|| {
+            SolverError::ValidationError(format!(
+                "solver3 transfer missing person {} in source group {} during patch build",
+                person_idx, source_group_idx
+            ))
+        })?;
+
     let mut patch = RuntimePatch {
         person_location_updates: vec![PersonLocationUpdate {
             session_idx,
@@ -298,10 +310,11 @@ fn build_transfer_runtime_patch(
             new_group_idx: Some(target_group_idx),
         }],
         group_member_ops: vec![
-            GroupMembersPatchOp::Remove {
+            GroupMembersPatchOp::RemoveAt {
                 session_idx,
                 group_idx: source_group_idx,
-                person_idx,
+                member_pos: source_member_pos,
+                expected_person_idx: person_idx,
             },
             GroupMembersPatchOp::Insert {
                 session_idx,
@@ -309,67 +322,23 @@ fn build_transfer_runtime_patch(
                 person_idx,
             },
         ],
+        pair_contact_updates: Vec::with_capacity(
+            source_members.len().saturating_sub(1) + target_members.len(),
+        ),
         ..RuntimePatch::default()
     };
-
-    let source_slot = state.group_slot(session_idx, source_group_idx);
-    let target_slot = state.group_slot(session_idx, target_group_idx);
-    let source_members = &state.group_members[source_slot];
-    let target_members = &state.group_members[target_slot];
-
-    let mut pair_deltas: BTreeMap<usize, i32> = BTreeMap::new();
 
     for &member in source_members {
         if member == person_idx {
             continue;
         }
         let pair_idx = cp.pair_idx(person_idx, member);
-        *pair_deltas.entry(pair_idx).or_insert(0) -= 1;
+        record_pair_contact_delta(&mut patch, cp, state, pair_idx, -1)?;
     }
 
     for &member in target_members {
         let pair_idx = cp.pair_idx(person_idx, member);
-        *pair_deltas.entry(pair_idx).or_insert(0) += 1;
-    }
-
-    for (pair_idx, delta) in pair_deltas {
-        if delta == 0 {
-            continue;
-        }
-
-        let old_count = state.pair_contacts[pair_idx] as i32;
-        let new_count = old_count + delta;
-        if !(0..=u16::MAX as i32).contains(&new_count) {
-            return Err(SolverError::ValidationError(format!(
-                "solver3 transfer pair contact update out of range for pair {}: {} + {}",
-                pair_idx, old_count, delta
-            )));
-        }
-
-        patch.pair_contact_updates.push(PairContactUpdate {
-            pair_idx,
-            new_count: new_count as u16,
-        });
-
-        if old_count == 0 && new_count > 0 {
-            patch.score_delta.unique_contacts_delta += 1;
-        } else if old_count > 0 && new_count == 0 {
-            patch.score_delta.unique_contacts_delta -= 1;
-        }
-
-        if let Some(repeat) = cp.repeat_encounter.as_ref() {
-            let old_pen = repeat_pair_penalty(
-                repeat.penalty_function,
-                old_count as u16,
-                repeat.max_allowed_encounters,
-            );
-            let new_pen = repeat_pair_penalty(
-                repeat.penalty_function,
-                new_count as u16,
-                repeat.max_allowed_encounters,
-            );
-            patch.score_delta.repetition_penalty_raw_delta += new_pen - old_pen;
-        }
+        record_pair_contact_delta(&mut patch, cp, state, pair_idx, 1)?;
     }
 
     if let Some(repeat) = cp.repeat_encounter.as_ref() {
@@ -652,6 +621,50 @@ fn is_active_in_session(sessions: Option<&[usize]>, session_idx: usize) -> bool 
     sessions
         .map(|list| list.contains(&session_idx))
         .unwrap_or(true)
+}
+
+fn record_pair_contact_delta(
+    patch: &mut RuntimePatch,
+    cp: &crate::solver3::CompiledProblem,
+    state: &RuntimeState,
+    pair_idx: usize,
+    delta: i32,
+) -> Result<(), SolverError> {
+    let old_count = state.pair_contacts[pair_idx] as i32;
+    let new_count = old_count + delta;
+    if !(0..=u16::MAX as i32).contains(&new_count) {
+        return Err(SolverError::ValidationError(format!(
+            "solver3 transfer pair contact update out of range for pair {}: {} + {}",
+            pair_idx, old_count, delta
+        )));
+    }
+
+    patch.pair_contact_updates.push(PairContactUpdate {
+        pair_idx,
+        new_count: new_count as u16,
+    });
+
+    if old_count == 0 && new_count > 0 {
+        patch.score_delta.unique_contacts_delta += 1;
+    } else if old_count > 0 && new_count == 0 {
+        patch.score_delta.unique_contacts_delta -= 1;
+    }
+
+    if let Some(repeat) = cp.repeat_encounter.as_ref() {
+        let old_pen = repeat_pair_penalty(
+            repeat.penalty_function,
+            old_count as u16,
+            repeat.max_allowed_encounters,
+        );
+        let new_pen = repeat_pair_penalty(
+            repeat.penalty_function,
+            new_count as u16,
+            repeat.max_allowed_encounters,
+        );
+        patch.score_delta.repetition_penalty_raw_delta += new_pen - old_pen;
+    }
+
+    Ok(())
 }
 
 fn repeat_pair_penalty(

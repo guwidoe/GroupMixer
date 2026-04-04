@@ -1,4 +1,3 @@
-use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 use crate::models::{AttributeBalanceMode, PairMeetingMode};
@@ -150,17 +149,15 @@ pub fn analyze_swap(state: &RuntimeState, swap: &SwapMove) -> Result<SwapAnalysi
         }
     } else if left_group_idx == right_group_idx {
         SwapFeasibility::SameGroupNoop
-    } else if let Some(&required_group_idx) = cp
-        .immovable_lookup
-        .get(&(swap.left_person_idx, swap.session_idx))
+    } else if let Some(required_group_idx) =
+        cp.immovable_group(swap.session_idx, swap.left_person_idx)
     {
         SwapFeasibility::ImmovablePerson {
             person_idx: swap.left_person_idx,
             required_group_idx,
         }
-    } else if let Some(&required_group_idx) = cp
-        .immovable_lookup
-        .get(&(swap.right_person_idx, swap.session_idx))
+    } else if let Some(required_group_idx) =
+        cp.immovable_group(swap.session_idx, swap.right_person_idx)
     {
         SwapFeasibility::ImmovablePerson {
             person_idx: swap.right_person_idx,
@@ -270,6 +267,30 @@ fn build_swap_runtime_patch(
         ));
     };
 
+    let left_group_slot = state.group_slot(session_idx, left_group_idx);
+    let right_group_slot = state.group_slot(session_idx, right_group_idx);
+
+    let left_members = &state.group_members[left_group_slot];
+    let right_members = &state.group_members[right_group_slot];
+    let left_member_pos = left_members
+        .iter()
+        .position(|&member| member == left_person_idx)
+        .ok_or_else(|| {
+            SolverError::ValidationError(format!(
+                "solver3 swap missing left person {} in group {} during patch build",
+                left_person_idx, left_group_idx
+            ))
+        })?;
+    let right_member_pos = right_members
+        .iter()
+        .position(|&member| member == right_person_idx)
+        .ok_or_else(|| {
+            SolverError::ValidationError(format!(
+                "solver3 swap missing right person {} in group {} during patch build",
+                right_person_idx, right_group_idx
+            ))
+        })?;
+
     let mut patch = RuntimePatch {
         person_location_updates: vec![
             PersonLocationUpdate {
@@ -284,29 +305,26 @@ fn build_swap_runtime_patch(
             },
         ],
         group_member_ops: vec![
-            GroupMembersPatchOp::Replace {
+            GroupMembersPatchOp::ReplaceAt {
                 session_idx,
                 group_idx: left_group_idx,
-                old_person_idx: left_person_idx,
+                member_pos: left_member_pos,
+                expected_old_person_idx: left_person_idx,
                 new_person_idx: right_person_idx,
             },
-            GroupMembersPatchOp::Replace {
+            GroupMembersPatchOp::ReplaceAt {
                 session_idx,
                 group_idx: right_group_idx,
-                old_person_idx: right_person_idx,
+                member_pos: right_member_pos,
+                expected_old_person_idx: right_person_idx,
                 new_person_idx: left_person_idx,
             },
         ],
+        pair_contact_updates: Vec::with_capacity(
+            left_members.len().saturating_sub(1) + right_members.len().saturating_sub(1),
+        ),
         ..RuntimePatch::default()
     };
-
-    let left_group_slot = state.group_slot(session_idx, left_group_idx);
-    let right_group_slot = state.group_slot(session_idx, right_group_idx);
-
-    let left_members = &state.group_members[left_group_slot];
-    let right_members = &state.group_members[right_group_slot];
-
-    let mut pair_deltas: BTreeMap<usize, i32> = BTreeMap::new();
 
     for &member in left_members {
         if member == left_person_idx {
@@ -314,8 +332,8 @@ fn build_swap_runtime_patch(
         }
         let left_pair_idx = cp.pair_idx(left_person_idx, member);
         let right_pair_idx = cp.pair_idx(right_person_idx, member);
-        *pair_deltas.entry(left_pair_idx).or_insert(0) -= 1;
-        *pair_deltas.entry(right_pair_idx).or_insert(0) += 1;
+        record_pair_contact_delta(&mut patch, cp, state, left_pair_idx, -1)?;
+        record_pair_contact_delta(&mut patch, cp, state, right_pair_idx, 1)?;
     }
 
     for &member in right_members {
@@ -324,47 +342,8 @@ fn build_swap_runtime_patch(
         }
         let right_pair_idx = cp.pair_idx(right_person_idx, member);
         let left_pair_idx = cp.pair_idx(left_person_idx, member);
-        *pair_deltas.entry(right_pair_idx).or_insert(0) -= 1;
-        *pair_deltas.entry(left_pair_idx).or_insert(0) += 1;
-    }
-
-    for (pair_idx, delta) in pair_deltas {
-        if delta == 0 {
-            continue;
-        }
-        let old_count = state.pair_contacts[pair_idx] as i32;
-        let new_count = old_count + delta;
-        if !(0..=u16::MAX as i32).contains(&new_count) {
-            return Err(SolverError::ValidationError(format!(
-                "solver3 swap pair contact update out of range for pair {}: {} + {}",
-                pair_idx, old_count, delta
-            )));
-        }
-
-        patch.pair_contact_updates.push(PairContactUpdate {
-            pair_idx,
-            new_count: new_count as u16,
-        });
-
-        if old_count == 0 && new_count > 0 {
-            patch.score_delta.unique_contacts_delta += 1;
-        } else if old_count > 0 && new_count == 0 {
-            patch.score_delta.unique_contacts_delta -= 1;
-        }
-
-        if let Some(repeat) = cp.repeat_encounter.as_ref() {
-            let old_pen = repeat_pair_penalty(
-                repeat.penalty_function,
-                old_count as u16,
-                repeat.max_allowed_encounters,
-            );
-            let new_pen = repeat_pair_penalty(
-                repeat.penalty_function,
-                new_count as u16,
-                repeat.max_allowed_encounters,
-            );
-            patch.score_delta.repetition_penalty_raw_delta += new_pen - old_pen;
-        }
+        record_pair_contact_delta(&mut patch, cp, state, right_pair_idx, -1)?;
+        record_pair_contact_delta(&mut patch, cp, state, left_pair_idx, 1)?;
     }
 
     if let Some(repeat) = cp.repeat_encounter.as_ref() {
@@ -665,10 +644,56 @@ fn is_active_in_session(sessions: Option<&[usize]>, session_idx: usize) -> bool 
 }
 
 fn merged_indices(left: &[usize], right: &[usize]) -> Vec<usize> {
-    let mut merged = BTreeSet::new();
-    merged.extend(left.iter().copied());
-    merged.extend(right.iter().copied());
-    merged.into_iter().collect()
+    let mut merged = Vec::with_capacity(left.len() + right.len());
+    merged.extend_from_slice(left);
+    merged.extend_from_slice(right);
+    merged.sort_unstable();
+    merged.dedup();
+    merged
+}
+
+fn record_pair_contact_delta(
+    patch: &mut RuntimePatch,
+    cp: &crate::solver3::CompiledProblem,
+    state: &RuntimeState,
+    pair_idx: usize,
+    delta: i32,
+) -> Result<(), SolverError> {
+    let old_count = state.pair_contacts[pair_idx] as i32;
+    let new_count = old_count + delta;
+    if !(0..=u16::MAX as i32).contains(&new_count) {
+        return Err(SolverError::ValidationError(format!(
+            "solver3 swap pair contact update out of range for pair {}: {} + {}",
+            pair_idx, old_count, delta
+        )));
+    }
+
+    patch.pair_contact_updates.push(PairContactUpdate {
+        pair_idx,
+        new_count: new_count as u16,
+    });
+
+    if old_count == 0 && new_count > 0 {
+        patch.score_delta.unique_contacts_delta += 1;
+    } else if old_count > 0 && new_count == 0 {
+        patch.score_delta.unique_contacts_delta -= 1;
+    }
+
+    if let Some(repeat) = cp.repeat_encounter.as_ref() {
+        let old_pen = repeat_pair_penalty(
+            repeat.penalty_function,
+            old_count as u16,
+            repeat.max_allowed_encounters,
+        );
+        let new_pen = repeat_pair_penalty(
+            repeat.penalty_function,
+            new_count as u16,
+            repeat.max_allowed_encounters,
+        );
+        patch.score_delta.repetition_penalty_raw_delta += new_pen - old_pen;
+    }
+
+    Ok(())
 }
 
 fn repeat_pair_penalty(

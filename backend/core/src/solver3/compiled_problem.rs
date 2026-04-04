@@ -186,6 +186,8 @@ pub struct CompiledProblem {
     pub(crate) immovable_assignments: Vec<CompiledImmovableAssignment>,
     /// `(person_idx, session_idx) -> group_idx`.
     pub immovable_lookup: HashMap<(usize, usize), usize>,
+    /// `[session_idx * num_people + person_idx] -> Option<group_idx>`.
+    pub immovable_group_by_person_session: Vec<Option<usize>>,
 
     pub(crate) pair_meeting_constraints: Vec<CompiledPairMeetingConstraint>,
     pub pair_meeting_constraints_by_person: Vec<Vec<usize>>,
@@ -294,6 +296,12 @@ impl CompiledProblem {
             .iter()
             .map(|a| ((a.person_idx, a.session_idx), a.group_idx))
             .collect::<HashMap<_, _>>();
+        let mut immovable_group_by_person_session = vec![None; num_sessions * num_people];
+        for assignment in &immovable_assignments {
+            immovable_group_by_person_session
+                [assignment.session_idx * num_people + assignment.person_idx] =
+                Some(assignment.group_idx);
+        }
 
         let (cliques, person_to_clique_id) =
             compile_cliques(input, &person_id_to_idx, num_sessions, num_people)?;
@@ -394,6 +402,7 @@ impl CompiledProblem {
             should_together_pairs_by_person,
             immovable_assignments,
             immovable_lookup,
+            immovable_group_by_person_session,
             pair_meeting_constraints,
             pair_meeting_constraints_by_person,
             attribute_balance_constraints,
@@ -437,6 +446,16 @@ impl CompiledProblem {
     #[inline]
     pub fn group_capacity(&self, session_idx: usize, group_idx: usize) -> usize {
         self.effective_group_capacities[self.group_session_slot(session_idx, group_idx)]
+    }
+
+    #[inline]
+    pub fn person_session_slot(&self, session_idx: usize, person_idx: usize) -> usize {
+        session_idx * self.num_people + person_idx
+    }
+
+    #[inline]
+    pub fn immovable_group(&self, session_idx: usize, person_idx: usize) -> Option<usize> {
+        self.immovable_group_by_person_session[self.person_session_slot(session_idx, person_idx)]
     }
 
     // ------------------------------------------------------------------

@@ -260,12 +260,9 @@ impl RuntimeState {
                 let required = unplaced.len();
 
                 // Prefer a group that has an immovable assignment for any member.
-                let immovable_group = participating.iter().find_map(|&m| {
-                    self.compiled
-                        .immovable_lookup
-                        .get(&(m, session_idx))
-                        .copied()
-                });
+                let immovable_group = participating
+                    .iter()
+                    .find_map(|&m| self.compiled.immovable_group(session_idx, m));
 
                 if let Some(gidx) = immovable_group {
                     let avail = self.available_capacity(session_idx, gidx);
