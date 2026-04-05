@@ -192,3 +192,201 @@ fn construction_assigns_clique_ids_in_sorted_member_order() {
     assert_eq!(state.person_to_clique_id[0][p4], Some(2));
     assert_eq!(state.person_to_clique_id[0][p5], Some(2));
 }
+
+#[test]
+fn construction_propagates_immovable_assignment_to_clique_members() {
+    let mut solver = default_solver_config(1);
+    solver.seed = Some(7);
+
+    let input = ApiInput {
+        initial_schedule: None,
+        problem: ProblemDefinition {
+            people: vec![person("p0"), person("p1"), person("p2"), person("p3")],
+            groups: vec![
+                Group {
+                    id: "g0".to_string(),
+                    size: 2,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".to_string(),
+                    size: 2,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 2,
+        },
+        objectives: vec![Objective {
+            r#type: "maximize_unique_contacts".to_string(),
+            weight: 1.0,
+        }],
+        constraints: vec![
+            Constraint::MustStayTogether {
+                people: vec!["p0".to_string(), "p1".to_string()],
+                sessions: None,
+            },
+            Constraint::ImmovablePerson(ImmovablePersonParams {
+                person_id: "p0".to_string(),
+                group_id: "g1".to_string(),
+                sessions: Some(vec![1]),
+            }),
+        ],
+        solver,
+    };
+
+    let state = State::new(&input).expect("state should build");
+
+    let p0 = state.person_id_to_idx["p0"];
+    let p1 = state.person_id_to_idx["p1"];
+    let g1 = state.group_id_to_idx["g1"];
+
+    assert_eq!(state.locations[0][p0].0, state.locations[0][p1].0);
+    assert_eq!(state.locations[1][p0].0, g1);
+    assert_eq!(state.locations[1][p1].0, g1);
+
+    let clique_id = state.person_to_clique_id[0][p0].expect("p0 should belong to a clique");
+    assert_eq!(state.clique_sessions[clique_id], Some(vec![0]));
+}
+
+#[test]
+fn construction_handles_sparse_participation_for_partially_active_clique() {
+    let mut solver = default_solver_config(1);
+    solver.seed = Some(21);
+
+    let input = ApiInput {
+        initial_schedule: None,
+        problem: ProblemDefinition {
+            people: vec![
+                person_with_sessions("p0", vec![0, 1]),
+                person_with_sessions("p1", vec![0]),
+                person("p2"),
+                person("p3"),
+            ],
+            groups: vec![
+                Group {
+                    id: "g0".to_string(),
+                    size: 2,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".to_string(),
+                    size: 2,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 2,
+        },
+        objectives: vec![Objective {
+            r#type: "maximize_unique_contacts".to_string(),
+            weight: 1.0,
+        }],
+        constraints: vec![Constraint::MustStayTogether {
+            people: vec!["p0".to_string(), "p1".to_string()],
+            sessions: None,
+        }],
+        solver,
+    };
+
+    let state = State::new(&input).expect("state should build");
+
+    let p0 = state.person_id_to_idx["p0"];
+    let p1 = state.person_id_to_idx["p1"];
+
+    assert_eq!(state.locations[0][p0].0, state.locations[0][p1].0);
+    assert_eq!(count_person_occurrences_in_session(&state, 1, "p1"), 0);
+    assert_eq!(count_person_occurrences_in_session(&state, 1, "p0"), 1);
+}
+
+#[test]
+fn construction_hard_fails_when_immovable_constraints_overfill_group() {
+    let mut solver = default_solver_config(1);
+    solver.seed = Some(5);
+
+    let input = ApiInput {
+        initial_schedule: None,
+        problem: ProblemDefinition {
+            people: vec![person("p0"), person("p1")],
+            groups: vec![
+                Group {
+                    id: "g0".to_string(),
+                    size: 1,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".to_string(),
+                    size: 1,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 1,
+        },
+        objectives: vec![Objective {
+            r#type: "maximize_unique_contacts".to_string(),
+            weight: 1.0,
+        }],
+        constraints: vec![
+            Constraint::ImmovablePerson(ImmovablePersonParams {
+                person_id: "p0".to_string(),
+                group_id: "g0".to_string(),
+                sessions: Some(vec![0]),
+            }),
+            Constraint::ImmovablePerson(ImmovablePersonParams {
+                person_id: "p1".to_string(),
+                group_id: "g0".to_string(),
+                sessions: Some(vec![0]),
+            }),
+        ],
+        solver,
+    };
+
+    let error = State::new(&input)
+        .expect_err("state construction should fail")
+        .to_string();
+    assert!(
+        error.contains("Cannot place immovable person: group g0 is full"),
+        "unexpected validation error: {error}"
+    );
+}
+
+#[test]
+fn construction_hard_fails_when_active_clique_cannot_fit_any_group() {
+    let mut solver = default_solver_config(1);
+    solver.seed = Some(11);
+
+    let input = ApiInput {
+        initial_schedule: None,
+        problem: ProblemDefinition {
+            people: vec![person("p0"), person("p1"), person("p2")],
+            groups: vec![
+                Group {
+                    id: "g0".to_string(),
+                    size: 2,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".to_string(),
+                    size: 2,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 1,
+        },
+        objectives: vec![Objective {
+            r#type: "maximize_unique_contacts".to_string(),
+            weight: 1.0,
+        }],
+        constraints: vec![Constraint::MustStayTogether {
+            people: vec!["p0".to_string(), "p1".to_string(), "p2".to_string()],
+            sessions: None,
+        }],
+        solver,
+    };
+
+    let error = State::new(&input)
+        .expect_err("state construction should fail")
+        .to_string();
+    assert!(
+        error.contains("Could not place clique"),
+        "unexpected validation error: {error}"
+    );
+}

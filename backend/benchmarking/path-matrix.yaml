@@ -154,17 +154,28 @@ families:
       covered_by:
         rust_tests:
           - backend/core/tests/construction_regression.rs::construction_places_immovable_people_in_required_group
+          - backend/core/tests/construction_regression.rs::construction_propagates_immovable_assignment_to_clique_members
         fixtures:
           - backend/benchmarking/cases/path/construction_clique_immovable.json#path.construction.clique-immovable
     - id: construction.clique_placement
       covered_by:
         rust_tests:
           - backend/core/tests/construction_regression.rs::construction_keeps_clique_members_together_when_active
+          - backend/core/tests/construction_regression.rs::construction_propagates_immovable_assignment_to_clique_members
         fixtures:
           - backend/benchmarking/cases/path/construction_clique_immovable.json#path.construction.clique-immovable
     - id: construction.partial_attendance_placement
       covered_by:
         rust_tests:
           - backend/core/tests/construction_regression.rs::construction_omits_non_participants_from_inactive_sessions
+          - backend/core/tests/construction_regression.rs::construction_handles_sparse_participation_for_partially_active_clique
         fixtures:
           - backend/benchmarking/cases/path/construction_clique_immovable.json#path.construction.clique-immovable
+    - id: construction.hard_failure_immovable_overfill
+      covered_by:
+        rust_tests:
+          - backend/core/tests/construction_regression.rs::construction_hard_fails_when_immovable_constraints_overfill_group
+    - id: construction.hard_failure_impossible_clique_placement
+      covered_by:
+        rust_tests:
+          - backend/core/tests/construction_regression.rs::construction_hard_fails_when_active_clique_cannot_fit_any_group
