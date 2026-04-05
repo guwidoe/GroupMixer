@@ -1118,3 +1118,77 @@ Same-machine baseline captured on branch `autoresearch/solver3-raw-performance-2
   - `backend/benchmarking/artifacts/runs/stretch-sailing-trip-demo-time-solver3-canonical-20260404T235338Z-af15ec14/run-report.json`
 
 Every search-refactor phase should be compared against these same-machine checkpoints before continuing.
+
+## 2026-04 refactor phase benchmark log
+
+The search refactor was executed as a staged sequence with benchmark checkpoints after each major extraction.
+
+### Acceptance extraction (`1f8d2a8`)
+
+- search iteration rerun:
+  - `backend/benchmarking/artifacts/runs/hotpath-search-iteration-sailing-trip-demo-solver3-20260404T235736Z-5073f236/run-report.json`
+- canonical full solve:
+  - `backend/benchmarking/artifacts/runs/stretch-sailing-trip-demo-time-solver3-canonical-20260404T235701Z-e212d66b/run-report.json`
+
+### Family selector extraction (`6a2d7a4`)
+
+- search iteration reruns:
+  - `backend/benchmarking/artifacts/runs/hotpath-search-iteration-sailing-trip-demo-solver3-20260404T235922Z-3c780469/run-report.json`
+  - `backend/benchmarking/artifacts/runs/hotpath-search-iteration-sailing-trip-demo-solver3-20260404T235954Z-ffa84e24/run-report.json`
+- canonical full solve rerun:
+  - `backend/benchmarking/artifacts/runs/stretch-sailing-trip-demo-time-solver3-canonical-20260405T000014Z-01bb0f4a/run-report.json`
+
+### Candidate sampler extraction (`98ed9ef`)
+
+- search iteration:
+  - `backend/benchmarking/artifacts/runs/hotpath-search-iteration-sailing-trip-demo-solver3-20260405T000723Z-de761c0b/run-report.json`
+- canonical full solve:
+  - `backend/benchmarking/artifacts/runs/stretch-sailing-trip-demo-time-solver3-canonical-20260405T000723Z-ab1089fb/run-report.json`
+
+### Search context extraction (`8cd042c`)
+
+- search iteration:
+  - `backend/benchmarking/artifacts/runs/hotpath-search-iteration-sailing-trip-demo-solver3-20260405T001139Z-fb9c4b93/run-report.json`
+- canonical full solve:
+  - `backend/benchmarking/artifacts/runs/stretch-sailing-trip-demo-time-solver3-canonical-20260405T001140Z-76d0eaea/run-report.json`
+
+### Thin-engine checkpoint (`be78db2`)
+
+- search iteration:
+  - `backend/benchmarking/artifacts/runs/hotpath-search-iteration-sailing-trip-demo-solver3-20260405T001435Z-c72b91c0/run-report.json`
+- canonical full solve:
+  - `backend/benchmarking/artifacts/runs/stretch-sailing-trip-demo-time-solver3-canonical-20260405T001436Z-e03242ad/run-report.json`
+
+### End-to-end post-refactor bundle (`5a218e4` working tree / final verification pass)
+
+- `search_iteration`: `751.672 µs/op`
+  - `backend/benchmarking/artifacts/runs/hotpath-search-iteration-sailing-trip-demo-solver3-20260405T001756Z-2e0e6145/run-report.json`
+- `swap_preview`: `11.799 µs/op`
+  - `backend/benchmarking/artifacts/runs/hotpath-swap-preview-sailing-trip-demo-solver3-20260405T001756Z-a842e206/run-report.json`
+- `swap_apply`: `6.035 µs/op`
+  - `backend/benchmarking/artifacts/runs/hotpath-swap-apply-sailing-trip-demo-solver3-20260405T001756Z-5d17d465/run-report.json`
+- `transfer_preview`: `15.939 µs/op`
+  - `backend/benchmarking/artifacts/runs/hotpath-transfer-preview-sailing-trip-demo-solver3-20260405T001756Z-a060556a/run-report.json`
+- `transfer_apply`: `12.980 µs/op`
+  - `backend/benchmarking/artifacts/runs/hotpath-transfer-apply-sailing-trip-demo-solver3-20260405T001757Z-f7509593/run-report.json`
+- `clique_swap_preview`: `188.769 µs/op`
+  - `backend/benchmarking/artifacts/runs/hotpath-clique-swap-preview-sailing-trip-demo-solver3-20260405T001757Z-02800456/run-report.json`
+- `clique_swap_apply`: `14.752 µs/op`
+  - `backend/benchmarking/artifacts/runs/hotpath-clique-swap-apply-sailing-trip-demo-solver3-20260405T001758Z-92b09ad4/run-report.json`
+- canonical full solve:
+  - score `4399`
+  - iterations `305892`
+  - runtime `15.000081s`
+  - `backend/benchmarking/artifacts/runs/stretch-sailing-trip-demo-time-solver3-canonical-20260405T001758Z-78409262/run-report.json`
+
+### Regression note
+
+The search-level checkpoints stayed in the same rough band as the pre-refactor baseline, and the 15-second canonical full-solve run did **not** collapse. However, the final hotpath bundle showed materially slower transfer/clique probe numbers even though the move-kernel files were untouched by this refactor.
+
+That mismatch strongly suggests the current dev-profile/WSL hotpath lane is sensitive to whole-binary layout and ambient machine noise, not only to direct kernel edits. Treat those final hotpath deltas as a **guardrail warning**, not as proof that the search refactor semantically damaged the kernels.
+
+Operational rule going forward:
+
+- keep the same benchmark bundle active for every follow-on phase
+- if a suspicious delta appears on a lane whose code did not change, rerun before acting
+- use the dedicated same-machine remote benchmark lane before making irreversible architecture decisions from those microbench numbers
