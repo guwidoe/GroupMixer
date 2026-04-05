@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::time::Instant;
 
 use rand::{rng, RngExt, SeedableRng};
@@ -7,8 +6,8 @@ use rand_chacha::ChaCha12Rng;
 use crate::models::{
     BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, MoveFamily,
     MoveFamilyBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
-    ProgressCallback, ProgressUpdate, SolverBenchmarkTelemetry, SolverConfiguration,
-    SolverResult, StopReason,
+    ProgressCallback, SolverBenchmarkTelemetry, SolverConfiguration, SolverResult,
+    StopReason,
 };
 use crate::solver_support::SolverError;
 
@@ -127,45 +126,21 @@ impl SearchEngine {
             search.finish_iteration(iteration);
 
             if let Some(callback) = progress_callback {
-                let progress = build_progress_update(
+                let progress = search.to_progress_update(
+                    &run_context,
                     iteration,
-                    run_context.max_iterations,
                     temperature,
                     search_started_at.elapsed().as_secs_f64(),
-                    &search.current_state,
-                    &search.best_state,
-                    search.no_improvement_count,
-                    &search.move_metrics,
-                    search.attempted_delta_sum,
-                    search.accepted_delta_sum,
-                    search.biggest_attempted_increase,
-                    search.biggest_accepted_increase,
-                    search.local_optima_escapes,
-                    &search.recent_acceptance,
-                    run_context.effective_seed,
-                    &run_context.move_policy,
                     None,
                 );
 
                 if !(callback)(&progress) {
                     stop_reason = StopReason::ProgressCallbackRequestedStop;
-                    let final_progress = build_progress_update(
+                    let final_progress = search.to_progress_update(
+                        &run_context,
                         iteration,
-                        run_context.max_iterations,
                         temperature,
                         search_started_at.elapsed().as_secs_f64(),
-                        &search.current_state,
-                        &search.best_state,
-                        search.no_improvement_count,
-                        &search.move_metrics,
-                        search.attempted_delta_sum,
-                        search.accepted_delta_sum,
-                        search.biggest_attempted_increase,
-                        search.biggest_accepted_increase,
-                        search.local_optima_escapes,
-                        &search.recent_acceptance,
-                        run_context.effective_seed,
-                        &run_context.move_policy,
                         Some(stop_reason),
                     );
                     let _ = (callback)(&final_progress);
@@ -185,23 +160,11 @@ impl SearchEngine {
         if let Some(callback) = progress_callback {
             if !final_progress_emitted {
                 let final_iteration = search.iterations_completed.saturating_sub(1);
-                let final_progress = build_progress_update(
+                let final_progress = search.to_progress_update(
+                    &run_context,
                     final_iteration,
-                    run_context.max_iterations,
                     temperature_for_iteration(final_iteration, run_context.max_iterations),
                     search_started_at.elapsed().as_secs_f64(),
-                    &search.current_state,
-                    &search.best_state,
-                    search.no_improvement_count,
-                    &search.move_metrics,
-                    search.attempted_delta_sum,
-                    search.accepted_delta_sum,
-                    search.biggest_attempted_increase,
-                    search.biggest_accepted_increase,
-                    search.local_optima_escapes,
-                    &search.recent_acceptance,
-                    run_context.effective_seed,
-                    &run_context.move_policy,
                     Some(stop_reason),
                 );
                 let _ = (callback)(&final_progress);
@@ -209,22 +172,7 @@ impl SearchEngine {
         }
 
         let search_seconds = search_started_at.elapsed().as_secs_f64();
-        let telemetry = SolverBenchmarkTelemetry {
-            effective_seed: run_context.effective_seed,
-            move_policy: run_context.move_policy.clone(),
-            stop_reason,
-            iterations_completed: search.iterations_completed,
-            no_improvement_count: search.no_improvement_count,
-            reheats_performed: 0,
-            initial_score: search.initial_score,
-            best_score: search.best_state.total_score,
-            final_score: search.best_state.total_score,
-            initialization_seconds: 0.0,
-            search_seconds,
-            finalization_seconds: 0.0,
-            total_seconds: search_seconds,
-            moves: search.move_metrics.clone(),
-        };
+        let telemetry = search.to_benchmark_telemetry(&run_context, stop_reason, search_seconds);
 
         if let Some(observer) = benchmark_observer {
             observer(&BenchmarkEvent::RunCompleted(telemetry.clone()));
@@ -291,125 +239,6 @@ fn family_metrics(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn build_progress_update(
-    iteration: u64,
-    max_iterations: u64,
-    temperature: f64,
-    elapsed_seconds: f64,
-    current_state: &RuntimeState,
-    best_state: &RuntimeState,
-    no_improvement_count: u64,
-    move_metrics: &MoveFamilyBenchmarkTelemetrySummary,
-    attempted_delta_sum: f64,
-    accepted_delta_sum: f64,
-    biggest_attempted_increase: f64,
-    biggest_accepted_increase: f64,
-    local_optima_escapes: u64,
-    recent_acceptance: &VecDeque<bool>,
-    effective_seed: u64,
-    move_policy: &MovePolicy,
-    stop_reason: Option<StopReason>,
-) -> ProgressUpdate {
-    let total_attempts = move_metrics.swap.attempts
-        + move_metrics.transfer.attempts
-        + move_metrics.clique_swap.attempts;
-    let total_accepted = move_metrics.swap.accepted
-        + move_metrics.transfer.accepted
-        + move_metrics.clique_swap.accepted;
-    let overall_acceptance_rate = ratio(total_accepted, total_attempts);
-    let recent_acceptance_rate = if recent_acceptance.is_empty() {
-        0.0
-    } else {
-        recent_acceptance
-            .iter()
-            .filter(|accepted| **accepted)
-            .count() as f64
-            / recent_acceptance.len() as f64
-    };
-
-    ProgressUpdate {
-        iteration,
-        max_iterations,
-        temperature,
-        current_score: current_state.total_score,
-        best_score: best_state.total_score,
-        current_contacts: current_state.unique_contacts as i32,
-        best_contacts: best_state.unique_contacts as i32,
-        repetition_penalty: current_state.repetition_penalty_raw,
-        elapsed_seconds,
-        no_improvement_count,
-        clique_swaps_tried: move_metrics.clique_swap.attempts,
-        clique_swaps_accepted: move_metrics.clique_swap.accepted,
-        clique_swaps_rejected: move_metrics.clique_swap.rejected,
-        transfers_tried: move_metrics.transfer.attempts,
-        transfers_accepted: move_metrics.transfer.accepted,
-        transfers_rejected: move_metrics.transfer.rejected,
-        swaps_tried: move_metrics.swap.attempts,
-        swaps_accepted: move_metrics.swap.accepted,
-        swaps_rejected: move_metrics.swap.rejected,
-        overall_acceptance_rate,
-        recent_acceptance_rate,
-        avg_attempted_move_delta: average_delta(attempted_delta_sum, total_attempts),
-        avg_accepted_move_delta: average_delta(accepted_delta_sum, total_accepted),
-        biggest_accepted_increase,
-        biggest_attempted_increase,
-        current_repetition_penalty: current_state.weighted_repetition_penalty,
-        current_balance_penalty: current_state.attribute_balance_penalty,
-        current_constraint_penalty: current_state.constraint_penalty_weighted,
-        best_repetition_penalty: best_state.weighted_repetition_penalty,
-        best_balance_penalty: best_state.attribute_balance_penalty,
-        best_constraint_penalty: best_state.constraint_penalty_weighted,
-        reheats_performed: 0,
-        iterations_since_last_reheat: iteration,
-        local_optima_escapes,
-        avg_time_per_iteration_ms: if iteration == 0 {
-            0.0
-        } else {
-            elapsed_seconds * 1000.0 / iteration as f64
-        },
-        cooling_progress: if max_iterations == 0 {
-            1.0
-        } else {
-            ((iteration + 1) as f64 / max_iterations as f64).clamp(0.0, 1.0)
-        },
-        clique_swap_success_rate: ratio(
-            move_metrics.clique_swap.accepted,
-            move_metrics.clique_swap.attempts,
-        ),
-        transfer_success_rate: ratio(
-            move_metrics.transfer.accepted,
-            move_metrics.transfer.attempts,
-        ),
-        swap_success_rate: ratio(move_metrics.swap.accepted, move_metrics.swap.attempts),
-        score_variance: 0.0,
-        search_efficiency: if elapsed_seconds > 0.0 {
-            (best_state.total_score - current_state.total_score).abs() / elapsed_seconds
-        } else {
-            0.0
-        },
-        best_schedule: None,
-        effective_seed: Some(effective_seed),
-        move_policy: Some(move_policy.clone()),
-        stop_reason,
-    }
-}
-
-fn average_delta(sum: f64, count: u64) -> f64 {
-    if count == 0 {
-        0.0
-    } else {
-        sum / count as f64
-    }
-}
-
-fn ratio(numerator: u64, denominator: u64) -> f64 {
-    if denominator == 0 {
-        0.0
-    } else {
-        numerator as f64 / denominator as f64
-    }
-}
-
 fn reached_time_limit(started_at: Instant, time_limit_seconds: Option<u64>) -> bool {
     time_limit_seconds.is_some_and(|limit| started_at.elapsed().as_secs() >= limit)
 }
