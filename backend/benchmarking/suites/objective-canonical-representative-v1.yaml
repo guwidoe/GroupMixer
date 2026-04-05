@@ -1,0 +1,27 @@
+schema_version: 1
+suite_id: objective-canonical-representative-v1
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: representative
+title: Objective canonical representative bundle (v1)
+description: Representative component of canonical objective suite v1. Every case entry carries explicit identity metadata and per-case budget declarations.
+cases:
+  - manifest: ../cases/representative/small_workshop_balanced.json
+    case_role: canonical
+    purpose: objective_target.representative.balanced
+    provenance: checked_in_case_manifest
+    declared_budget:
+      max_iterations: 5000
+      time_limit_seconds: 2
+    max_iterations: 5000
+    time_limit_seconds: 2
+  - manifest: ../cases/representative/small_workshop_constrained.json
+    case_role: canonical
+    purpose: objective_target.representative.constraint_mix
+    provenance: checked_in_case_manifest
+    declared_budget:
+      max_iterations: 8000
+      time_limit_seconds: 3
+    max_iterations: 8000
+    time_limit_seconds: 3

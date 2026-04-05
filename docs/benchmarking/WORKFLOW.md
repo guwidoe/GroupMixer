@@ -95,6 +95,32 @@ Policy notes:
 - use the `*_demo_real_benchmark_start` workload only when you explicitly want shared deterministic start-state comparability across solver families
 - do not present those helper-start suites as the canonical objective benchmark answer
 
+## Objective autoresearch full-suite policy (canonical v1)
+
+Canonical objective suite v1 is a bundle of three manifests:
+
+- `backend/benchmarking/suites/objective-canonical-representative-v1.yaml`
+- `backend/benchmarking/suites/objective-canonical-adversarial-v1.yaml`
+- `backend/benchmarking/suites/objective-canonical-stretch-v1.yaml`
+
+For objective autoresearch, run **all three manifests on every experiment**:
+
+```bash
+gm-cli benchmark run --manifest backend/benchmarking/suites/objective-canonical-representative-v1.yaml
+gm-cli benchmark run --manifest backend/benchmarking/suites/objective-canonical-adversarial-v1.yaml
+gm-cli benchmark run --manifest backend/benchmarking/suites/objective-canonical-stretch-v1.yaml
+```
+
+Rule: partial subsets are diagnostics only and must not be used as keep/discard evidence for objective-lane claims.
+
+Sailing Trip truth boundary:
+
+- the canonical raw case is included directly in `objective-canonical-stretch-v1`
+- this does **not** imply the raw Sailing Trip solver3 path is already solved
+- helper benchmark-start cases remain helper-only and must not replace the raw canonical case in objective claims
+
+See `docs/benchmarking/OBJECTIVE_CASE_PORTFOLIO.md` for required metadata and per-case budget policy.
+
 ## Baseline workflow
 
 ### Record a baseline before a refactor

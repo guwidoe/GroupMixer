@@ -702,6 +702,124 @@ mod tests {
     }
 
     #[test]
+    fn objective_canonical_v1_component_manifests_define_explicit_identity_and_budget_metadata() {
+        let suite_paths = [
+            "suites/objective-canonical-representative-v1.yaml",
+            "suites/objective-canonical-adversarial-v1.yaml",
+            "suites/objective-canonical-stretch-v1.yaml",
+        ];
+
+        for suite_path in suite_paths {
+            let suite = load_suite_manifest(Path::new(suite_path)).unwrap_or_else(|error| {
+                panic!(
+                    "objective canonical component manifest {} should load: {error}",
+                    suite_path
+                )
+            });
+
+            assert_eq!(
+                effective_case_selection_policy(&suite.manifest),
+                BenchmarkCaseSelectionPolicy::CanonicalOnly,
+                "{} should stay canonical-only",
+                suite_path
+            );
+            assert!(
+                !suite.cases.is_empty(),
+                "{} should contain cases",
+                suite_path
+            );
+
+            for case in &suite.cases {
+                assert_eq!(
+                    case.overrides.case_role,
+                    Some(BenchmarkCaseRole::Canonical),
+                    "{} / {} should declare case_role: canonical",
+                    suite_path,
+                    case.manifest.id
+                );
+                assert!(
+                    case.overrides
+                        .purpose
+                        .as_deref()
+                        .is_some_and(|purpose| !purpose.trim().is_empty()),
+                    "{} / {} should declare purpose",
+                    suite_path,
+                    case.manifest.id
+                );
+                assert!(
+                    case.overrides
+                        .provenance
+                        .as_deref()
+                        .is_some_and(|provenance| !provenance.trim().is_empty()),
+                    "{} / {} should declare provenance",
+                    suite_path,
+                    case.manifest.id
+                );
+
+                let declared_budget =
+                    case.overrides.declared_budget.as_ref().unwrap_or_else(|| {
+                        panic!(
+                            "{} / {} should declare declared_budget",
+                            suite_path, case.manifest.id
+                        )
+                    });
+                assert!(
+                    declared_budget.max_iterations.is_some()
+                        || declared_budget.time_limit_seconds.is_some(),
+                    "{} / {} declared_budget should have at least one limit",
+                    suite_path,
+                    case.manifest.id
+                );
+                assert!(
+                    case.overrides.max_iterations.is_some()
+                        || case.overrides.time_limit_seconds.is_some(),
+                    "{} / {} should set explicit effective budget overrides",
+                    suite_path,
+                    case.manifest.id
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn objective_canonical_stretch_v1_uses_raw_sailing_case_without_solver3_override_claims() {
+        let suite = load_suite_manifest(Path::new("suites/objective-canonical-stretch-v1.yaml"))
+            .expect("objective stretch v1 suite should load");
+
+        assert!(
+            suite.manifest.default_solver_family.is_none(),
+            "suite should not claim a global solver family override"
+        );
+
+        let sailing_case = suite
+            .cases
+            .iter()
+            .find(|case| case.manifest.id == "stretch.sailing-trip-demo-real")
+            .expect("stretch objective suite should include raw sailing case");
+
+        assert_eq!(
+            sailing_case.manifest.case_role,
+            BenchmarkCaseRole::Canonical
+        );
+        assert!(
+            sailing_case
+                .overrides
+                .manifest
+                .ends_with("sailing_trip_demo_real.json"),
+            "stretch objective suite should point at raw sailing case manifest"
+        );
+        assert!(
+            !sailing_case.overrides.manifest.contains("benchmark_start"),
+            "stretch objective suite must not substitute helper benchmark-start case"
+        );
+        assert!(
+            sailing_case.overrides.solver_family.is_none()
+                && sailing_case.overrides.solver.is_none(),
+            "stretch objective suite should not imply solver3 raw-case path is already solved"
+        );
+    }
+
+    #[test]
     fn hotpath_cases_must_declare_solver_family_explicitly() {
         let temp = TempDir::new().expect("temp dir");
         let case_path = temp.path().join("hotpath-case.json");

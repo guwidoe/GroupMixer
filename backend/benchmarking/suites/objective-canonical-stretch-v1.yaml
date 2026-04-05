@@ -1,0 +1,27 @@
+schema_version: 1
+suite_id: objective-canonical-stretch-v1
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: stretch
+title: Objective canonical stretch bundle (v1)
+description: Stretch component of canonical objective suite v1. Includes the exact raw Sailing Trip case under case-native canonical solver policy and explicit per-case budgets.
+cases:
+  - manifest: ../cases/stretch/medium_multi_session.json
+    case_role: canonical
+    purpose: objective_target.stretch.medium_multi_session
+    provenance: checked_in_case_manifest
+    declared_budget:
+      max_iterations: 20000
+      time_limit_seconds: 6
+    max_iterations: 20000
+    time_limit_seconds: 6
+  - manifest: ../cases/stretch/sailing_trip_demo_real.json
+    case_role: canonical
+    purpose: objective_target.stretch.real_sailing_trip_raw_case
+    provenance: exact_anonymized_demo_case_no_helper_start_substitution
+    declared_budget:
+      max_iterations: 1000000
+      time_limit_seconds: 15
+    max_iterations: 1000000
+    time_limit_seconds: 15

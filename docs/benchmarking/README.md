@@ -12,6 +12,7 @@ Primary references:
 - `./RECORDINGS.md`
 - `./AUDIT.md`
 - `./BENCHMARK_TRUTHFULNESS_AUDIT.md`
+- `./OBJECTIVE_CASE_PORTFOLIO.md`
 
 ## What lives here
 
@@ -89,4 +90,4 @@ Important truthfulness note:
 - they are therefore valid for comparative diagnostics, but **not** for the future canonical objective suite
 - the canonical objective lane remains blocked on making the exact raw case runnable as itself
 
-See `docs/benchmarking/REAL_SAILING_TRIP_BENCHMARK_PLAN.md` and `docs/benchmarking/BENCHMARK_TRUTHFULNESS_AUDIT.md` for the current status and rationale.
+See `docs/benchmarking/REAL_SAILING_TRIP_BENCHMARK_PLAN.md`, `docs/benchmarking/BENCHMARK_TRUTHFULNESS_AUDIT.md`, and `docs/benchmarking/OBJECTIVE_CASE_PORTFOLIO.md` for current objective-suite shape, truthfulness boundaries, and rollout status.

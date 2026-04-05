@@ -40,6 +40,14 @@ Each suite case override may also declare benchmark-identity metadata:
 - optional `provenance`
 - optional `declared_budget` (`max_iterations` and/or `time_limit_seconds`)
 
+For canonical objective-suite manifests, this metadata is policy-required even when optional in the generic schema:
+
+- `case_role` must be `canonical`
+- `purpose` must be set
+- `provenance` must be set
+- `declared_budget` must be set
+- effective budget fields (`max_iterations` and/or `time_limit_seconds`) must be explicit in the case override
+
 ### Case manifest
 
 A case manifest describes one deterministic benchmark case.
@@ -72,6 +80,12 @@ Rules:
 - hotpath cases **must** declare `solver_family` explicitly
 - `hotpath_preset` is a probe identifier, not a promise that every solver family shares the same internal kernel implementation
 - shared storage/reporting/comparison remain one platform even when the hotpath probe implementation differs by solver family
+
+### Canonical objective full-suite policy
+
+Canonical objective suite v1 is represented by the three manifests documented in `docs/benchmarking/OBJECTIVE_CASE_PORTFOLIO.md`.
+
+For objective autoresearch, the full canonical objective bundle must run every experiment. Running only one manifest is a diagnostic shortcut, not objective-lane keep/discard evidence.
 
 ## Directory layout
 
