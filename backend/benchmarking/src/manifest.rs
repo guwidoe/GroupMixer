@@ -11,6 +11,32 @@ use std::path::{Path, PathBuf};
 pub const SUITE_SCHEMA_VERSION: u32 = 1;
 pub const CASE_SCHEMA_VERSION: u32 = 1;
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum BenchmarkCaseRole {
+    #[default]
+    Canonical,
+    Helper,
+    Derived,
+    Proxy,
+    WarmStart,
+    BenchmarkStart,
+}
+
+impl BenchmarkCaseRole {
+    pub fn is_canonical(self) -> bool {
+        matches!(self, Self::Canonical)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct DeclaredBenchmarkBudget {
+    #[serde(default)]
+    pub max_iterations: Option<u64>,
+    #[serde(default)]
+    pub time_limit_seconds: Option<u64>,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[serde(rename_all = "snake_case")]
 pub enum BenchmarkSuiteClass {
@@ -76,6 +102,16 @@ pub struct BenchmarkCaseOverride {
     #[serde(default)]
     pub case_id: Option<String>,
     #[serde(default)]
+    pub case_role: Option<BenchmarkCaseRole>,
+    #[serde(default)]
+    pub canonical_case_id: Option<String>,
+    #[serde(default)]
+    pub purpose: Option<String>,
+    #[serde(default)]
+    pub provenance: Option<String>,
+    #[serde(default)]
+    pub declared_budget: Option<DeclaredBenchmarkBudget>,
+    #[serde(default)]
     pub solver_family: Option<String>,
     #[serde(default)]
     pub solver: Option<SolverConfiguration>,
@@ -105,6 +141,10 @@ pub struct BenchmarkCaseManifest {
     pub id: String,
     pub class: BenchmarkSuiteClass,
     #[serde(default)]
+    pub case_role: BenchmarkCaseRole,
+    #[serde(default)]
+    pub canonical_case_id: Option<String>,
+    #[serde(default)]
     pub family: Option<String>,
     #[serde(default)]
     pub solver_family: Option<String>,
@@ -114,6 +154,12 @@ pub struct BenchmarkCaseManifest {
     pub title: Option<String>,
     #[serde(default)]
     pub description: Option<String>,
+    #[serde(default)]
+    pub purpose: Option<String>,
+    #[serde(default)]
+    pub provenance: Option<String>,
+    #[serde(default)]
+    pub declared_budget: Option<DeclaredBenchmarkBudget>,
     #[serde(default)]
     pub tags: Vec<String>,
     #[serde(default)]
@@ -336,6 +382,13 @@ fn validate_suite_manifest(path: &Path, manifest: &BenchmarkSuiteManifest) -> Re
         }
     }
     for case in &manifest.cases {
+        validate_case_identity_fields(
+            &format!("benchmark suite manifest {} case override", path.display()),
+            case.case_role,
+            case.canonical_case_id.as_deref(),
+            case.purpose.as_deref(),
+            case.declared_budget.as_ref(),
+        )?;
         if let Some(solver_family) = case.solver_family.as_deref() {
             SolverKind::parse_config_id(solver_family)
                 .map_err(anyhow::Error::msg)
@@ -397,6 +450,13 @@ fn validate_case_manifest(path: &Path, manifest: &BenchmarkCaseManifest) -> Resu
     if manifest.id.trim().is_empty() {
         bail!("benchmark case manifest {} is missing id", path.display());
     }
+    validate_case_identity_fields(
+        &format!("benchmark case manifest {}", path.display()),
+        Some(manifest.case_role),
+        manifest.canonical_case_id.as_deref(),
+        manifest.purpose.as_deref(),
+        manifest.declared_budget.as_ref(),
+    )?;
     if let Some(input) = &manifest.input {
         if input.solver.solver_type.trim().is_empty() {
             bail!(
@@ -443,6 +503,50 @@ fn validate_case_manifest(path: &Path, manifest: &BenchmarkCaseManifest) -> Resu
             path.display()
         );
     }
+    Ok(())
+}
+
+fn validate_case_identity_fields(
+    context: &str,
+    case_role: Option<BenchmarkCaseRole>,
+    canonical_case_id: Option<&str>,
+    purpose: Option<&str>,
+    declared_budget: Option<&DeclaredBenchmarkBudget>,
+) -> Result<()> {
+    if let Some(role) = case_role {
+        if role.is_canonical() && canonical_case_id.is_some() {
+            bail!(
+                "{} declares canonical case_role but also sets canonical_case_id",
+                context
+            );
+        }
+
+        if !role.is_canonical()
+            && canonical_case_id
+                .map(str::trim)
+                .is_none_or(str::is_empty)
+        {
+            bail!(
+                "{} declares non-canonical case_role {:?} but does not set canonical_case_id",
+                context,
+                role
+            );
+        }
+    }
+
+    if purpose.is_some_and(|purpose| purpose.trim().is_empty()) {
+        bail!("{} sets an empty purpose", context);
+    }
+
+    if let Some(declared_budget) = declared_budget {
+        if declared_budget.max_iterations.is_none() && declared_budget.time_limit_seconds.is_none() {
+            bail!(
+                "{} declares an empty declared_budget; set max_iterations and/or time_limit_seconds",
+                context
+            );
+        }
+    }
+
     Ok(())
 }
 
@@ -513,5 +617,113 @@ mod tests {
         assert!(error
             .to_string()
             .contains("must declare solver_family when using hotpath_preset"));
+    }
+
+    #[test]
+    fn non_canonical_cases_must_point_back_to_a_canonical_case() {
+        let temp = TempDir::new().expect("temp dir");
+        let case_path = temp.path().join("derived-case.json");
+        fs::write(
+            &case_path,
+            serde_json::to_string_pretty(&serde_json::json!({
+                "schema_version": 1,
+                "id": "stretch.derived-case",
+                "class": "stretch",
+                "case_role": "derived",
+                "input": {
+                    "initial_schedule": null,
+                    "problem": {
+                        "people": [{"id": "p0", "attributes": {}}],
+                        "groups": [{"id": "g0", "size": 1}],
+                        "num_sessions": 1
+                    },
+                    "objectives": [],
+                    "constraints": [],
+                    "solver": {
+                        "solver_type": "solver1",
+                        "stop_conditions": {"max_iterations": 1, "time_limit_seconds": null, "no_improvement_iterations": null},
+                        "solver_params": {"solver_type": "SimulatedAnnealing", "initial_temperature": 1.0, "final_temperature": 0.1, "cooling_schedule": "geometric", "reheat_after_no_improvement": 0, "reheat_cycles": 0},
+                        "logging": {},
+                        "telemetry": {},
+                        "seed": 1,
+                        "move_policy": null,
+                        "allowed_sessions": null
+                    }
+                }
+            }))
+            .expect("serialize case"),
+        )
+        .expect("write case");
+
+        let error = load_case_manifest(&case_path).expect_err("manifest should be rejected");
+        assert!(error
+            .to_string()
+            .contains("does not set canonical_case_id"));
+    }
+
+    #[test]
+    fn canonical_cases_must_not_set_canonical_case_id() {
+        let temp = TempDir::new().expect("temp dir");
+        let case_path = temp.path().join("canonical-case.json");
+        fs::write(
+            &case_path,
+            serde_json::to_string_pretty(&serde_json::json!({
+                "schema_version": 1,
+                "id": "representative.example",
+                "class": "representative",
+                "case_role": "canonical",
+                "canonical_case_id": "representative.other",
+                "input": {
+                    "initial_schedule": null,
+                    "problem": {
+                        "people": [{"id": "p0", "attributes": {}}],
+                        "groups": [{"id": "g0", "size": 1}],
+                        "num_sessions": 1
+                    },
+                    "objectives": [],
+                    "constraints": [],
+                    "solver": {
+                        "solver_type": "solver1",
+                        "stop_conditions": {"max_iterations": 1, "time_limit_seconds": null, "no_improvement_iterations": null},
+                        "solver_params": {"solver_type": "SimulatedAnnealing", "initial_temperature": 1.0, "final_temperature": 0.1, "cooling_schedule": "geometric", "reheat_after_no_improvement": 0, "reheat_cycles": 0},
+                        "logging": {},
+                        "telemetry": {},
+                        "seed": 1,
+                        "move_policy": null,
+                        "allowed_sessions": null
+                    }
+                }
+            }))
+            .expect("serialize case"),
+        )
+        .expect("write case");
+
+        let error = load_case_manifest(&case_path).expect_err("manifest should be rejected");
+        assert!(error
+            .to_string()
+            .contains("declares canonical case_role but also sets canonical_case_id"));
+    }
+
+    #[test]
+    fn suite_case_overrides_validate_declared_budget_metadata() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite_path = temp.path().join("suite.yaml");
+        fs::write(
+            &suite_path,
+            r#"schema_version: 1
+suite_id: test-suite
+benchmark_mode: full_solve
+class: representative
+cases:
+  - manifest: ../cases/representative/small_workshop_balanced.json
+    declared_budget: {}
+"#,
+        )
+        .expect("write suite");
+
+        let error = load_suite_manifest(&suite_path).expect_err("suite should be rejected");
+        assert!(error
+            .to_string()
+            .contains("declares an empty declared_budget"));
     }
 }

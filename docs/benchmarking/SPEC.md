@@ -27,6 +27,14 @@ Current shape:
 - optional suite-level defaults for solver family, full solver configuration, seed, stop budget, move policy, hotpath iterations, and hotpath warmup iterations
 - `cases[]`
 
+Each suite case override may also declare benchmark-identity metadata:
+
+- optional `case_role`
+- optional `canonical_case_id`
+- optional `purpose`
+- optional `provenance`
+- optional `declared_budget` (`max_iterations` and/or `time_limit_seconds`)
+
 ### Case manifest
 
 A case manifest describes one deterministic benchmark case.
@@ -36,15 +44,24 @@ Current shape:
 - `schema_version`
 - `id`
 - `class`
+- `case_role` (`canonical` by default)
+- optional `canonical_case_id` for non-canonical helper/derived/proxy cases
 - optional `family` and `paths` metadata for path cases
 - optional `solver_family` when the case needs to declare an explicit canonical solver-family id
 - suite case overrides may also provide an explicit `solver` configuration when benchmark policy must pin solver meta-settings rather than rely on family defaults alone
+- optional `purpose`
+- optional `provenance`
+- optional `declared_budget`
 - optional `tags`
 - `description`
 - either `input` as a valid `gm_core::models::ApiInput` or `hotpath_preset` for a deterministic hotpath fixture
 
 Rules:
 
+- `case_role: canonical` means the case is the exact benchmark/testing target for its declared question
+- non-canonical roles (`helper`, `derived`, `proxy`, `warm_start`, `benchmark_start`) must declare `canonical_case_id`
+- canonical cases must **not** set `canonical_case_id`
+- `declared_budget`, when present, must set at least one of `max_iterations` or `time_limit_seconds`
 - full-solve cases may infer solver family from `input.solver`, but may also declare `solver_family` explicitly for metadata clarity
 - full-solve suites may replace a case's embedded solver configuration with an explicit checked-in benchmark policy via `default_solver` / `solver` overrides
 - hotpath cases **must** declare `solver_family` explicitly
