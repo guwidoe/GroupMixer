@@ -4,6 +4,9 @@ use crate::models::{AttributeBalanceMode, PairMeetingMode};
 use crate::solver3::compiled_problem::{
     CompiledAttributeBalanceConstraint, CompiledPairMeetingConstraint, RepeatPenaltyFunction,
 };
+#[cfg(feature = "solver3-oracle-checks")]
+use crate::solver3::oracle::maybe_cross_check_preview_delta;
+use crate::solver3::oracle::maybe_cross_check_runtime_state;
 use crate::solver3::runtime_state::RuntimeState;
 use crate::solver3::scoring::recompute_oracle_score;
 use crate::solver_support::SolverError;
@@ -263,11 +266,15 @@ pub fn preview_clique_swap_runtime_lightweight(
         }
     };
 
-    Ok(CliqueSwapRuntimePreview {
+    let preview = CliqueSwapRuntimePreview {
         delta_score: patch.score_delta.total_score_delta,
         analysis,
         patch,
-    })
+    };
+
+    maybe_cross_check_clique_swap_preview_delta(state, clique_swap, &preview)?;
+
+    Ok(preview)
 }
 
 pub fn preview_clique_swap_oracle_recompute(
@@ -296,8 +303,13 @@ pub fn apply_clique_swap_runtime_preview(
     preview: &CliqueSwapRuntimePreview,
 ) -> Result<(), SolverError> {
     match preview.analysis.feasibility {
-        CliqueSwapFeasibility::Feasible => apply_runtime_patch(state, &preview.patch),
-        CliqueSwapFeasibility::SameGroupNoop => Ok(()),
+        CliqueSwapFeasibility::Feasible => {
+            apply_runtime_patch(state, &preview.patch)?;
+            maybe_cross_check_runtime_state(state, "clique swap apply runtime preview")
+        }
+        CliqueSwapFeasibility::SameGroupNoop => {
+            maybe_cross_check_runtime_state(state, "clique swap apply runtime preview no-op")
+        }
         ref infeasible => Err(SolverError::ValidationError(format!(
             "solver3 clique swap is not feasible: {infeasible}"
         ))),
@@ -310,6 +322,28 @@ pub fn apply_clique_swap(
 ) -> Result<(), SolverError> {
     let preview = preview_clique_swap_runtime_lightweight(state, clique_swap)?;
     apply_clique_swap_runtime_preview(state, &preview)
+}
+
+fn maybe_cross_check_clique_swap_preview_delta(
+    state: &RuntimeState,
+    clique_swap: &CliqueSwapMove,
+    preview: &CliqueSwapRuntimePreview,
+) -> Result<(), SolverError> {
+    #[cfg(feature = "solver3-oracle-checks")]
+    {
+        let oracle_delta = preview_clique_swap_oracle_recompute(state, clique_swap)?;
+        maybe_cross_check_preview_delta(
+            "clique swap runtime preview",
+            preview.delta_score,
+            oracle_delta,
+        )
+    }
+
+    #[cfg(not(feature = "solver3-oracle-checks"))]
+    {
+        let _ = (state, clique_swap, preview);
+        Ok(())
+    }
 }
 
 fn build_clique_swap_runtime_patch(

@@ -88,3 +88,46 @@ pub fn check_drift(state: &RuntimeState) -> Result<(), SolverError> {
 
     Ok(())
 }
+
+/// Feature-gated runtime-vs-oracle drift cross-check hook.
+///
+/// When `solver3-oracle-checks` is disabled this is a no-op.
+pub(crate) fn maybe_cross_check_runtime_state(
+    state: &RuntimeState,
+    context: &str,
+) -> Result<(), SolverError> {
+    #[cfg(feature = "solver3-oracle-checks")]
+    {
+        check_drift(state).map_err(|error| {
+            SolverError::ValidationError(format!(
+                "solver3 oracle cross-check failed during {context}: {error}"
+            ))
+        })
+    }
+
+    #[cfg(not(feature = "solver3-oracle-checks"))]
+    {
+        let _ = (state, context);
+        Ok(())
+    }
+}
+
+/// Feature-gated preview delta cross-check hook.
+///
+/// When `solver3-oracle-checks` is enabled, this asserts that a lightweight
+/// runtime preview delta matches the oracle recompute delta.
+#[cfg(feature = "solver3-oracle-checks")]
+pub(crate) fn maybe_cross_check_preview_delta(
+    context: &str,
+    runtime_delta: f64,
+    oracle_delta: f64,
+) -> Result<(), SolverError> {
+    let tolerance = 1e-9_f64;
+    if (runtime_delta - oracle_delta).abs() > tolerance {
+        return Err(SolverError::ValidationError(format!(
+            "solver3 oracle preview delta cross-check failed during {context}: runtime_delta={runtime_delta:.12}, oracle_delta={oracle_delta:.12}"
+        )));
+    }
+
+    Ok(())
+}

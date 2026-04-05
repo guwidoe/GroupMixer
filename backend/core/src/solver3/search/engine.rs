@@ -6,22 +6,23 @@ use rand_chacha::ChaCha12Rng;
 use crate::models::{
     BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, MoveFamily,
     MoveFamilyBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
-    ProgressCallback, SolverBenchmarkTelemetry, SolverConfiguration, SolverResult,
-    StopReason,
+    ProgressCallback, SolverBenchmarkTelemetry, SolverConfiguration, SolverResult, StopReason,
 };
 use crate::solver_support::SolverError;
 
-use super::acceptance::{AcceptanceInputs, SimulatedAnnealingAcceptance, temperature_for_iteration};
-use super::candidate_sampling::{CandidateSampler, SearchMovePreview};
-use super::context::{SearchProgressState, SearchRunContext};
-use super::family_selection::MoveFamilySelector;
 use super::super::moves::{
     apply_clique_swap_runtime_preview, apply_swap_runtime_preview, apply_transfer_runtime_preview,
 };
 #[cfg(feature = "solver3-oracle-checks")]
-use super::super::oracle::check_drift;
+use super::super::oracle::maybe_cross_check_runtime_state;
 use super::super::oracle::oracle_score;
 use super::super::runtime_state::RuntimeState;
+use super::acceptance::{
+    temperature_for_iteration, AcceptanceInputs, SimulatedAnnealingAcceptance,
+};
+use super::candidate_sampling::{CandidateSampler, SearchMovePreview};
+use super::context::{SearchProgressState, SearchRunContext};
+use super::family_selection::MoveFamilySelector;
 
 #[cfg(feature = "solver3-oracle-checks")]
 const ORACLE_DRIFT_SAMPLE_INTERVAL: u64 = 16;
@@ -49,7 +50,8 @@ impl SearchEngine {
             .seed
             .unwrap_or_else(|| rng().random::<u64>());
         let mut rng = ChaCha12Rng::seed_from_u64(effective_seed);
-        let run_context = SearchRunContext::from_solver(&self.configuration, state, effective_seed)?;
+        let run_context =
+            SearchRunContext::from_solver(&self.configuration, state, effective_seed)?;
         let acceptance_policy = SimulatedAnnealingAcceptance;
         let candidate_sampler = CandidateSampler;
         let family_selector = MoveFamilySelector::new(&run_context.move_policy);
@@ -75,8 +77,8 @@ impl SearchEngine {
 
             let temperature = temperature_for_iteration(iteration, run_context.max_iterations);
 
-            if let Some((family, preview, preview_seconds)) =
-                candidate_sampler.select_previewed_move(
+            if let Some((family, preview, preview_seconds)) = candidate_sampler
+                .select_previewed_move(
                     &search.current_state,
                     &family_selector,
                     &run_context.allowed_sessions,
@@ -252,12 +254,13 @@ fn maybe_run_sampled_oracle_check(
     {
         if should_sample_oracle_check(accepted_move_count) {
             let preview_description = preview.describe();
-            check_drift(state).map_err(|error| {
-                SolverError::ValidationError(format!(
-                    "solver3 runtime {:?} drift check failed after accepted move {}: {}",
-                    family, preview_description, error
-                ))
-            })?;
+            maybe_cross_check_runtime_state(
+                state,
+                &format!(
+                    "search sampled {:?} accepted move {}",
+                    family, preview_description
+                ),
+            )?;
         }
     }
 

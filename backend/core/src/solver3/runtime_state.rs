@@ -24,6 +24,7 @@ use crate::models::ApiInput;
 use crate::solver_support::SolverError;
 
 use super::compiled_problem::CompiledProblem;
+use super::oracle::maybe_cross_check_runtime_state;
 use super::scoring::recompute::recompute_oracle_score;
 
 // ---------------------------------------------------------------------------
@@ -395,6 +396,7 @@ impl RuntimeState {
         self.attribute_balance_penalty = score.attribute_balance_penalty;
         self.constraint_penalty_weighted = score.constraint_penalty_weighted;
         self.total_score = score.total_score;
+        maybe_cross_check_runtime_state(self, "runtime state initialization")?;
         Ok(())
     }
 

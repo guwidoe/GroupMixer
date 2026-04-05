@@ -4,6 +4,9 @@ use crate::models::{AttributeBalanceMode, PairMeetingMode};
 use crate::solver3::compiled_problem::{
     CompiledAttributeBalanceConstraint, CompiledPairMeetingConstraint, RepeatPenaltyFunction,
 };
+#[cfg(feature = "solver3-oracle-checks")]
+use crate::solver3::oracle::maybe_cross_check_preview_delta;
+use crate::solver3::oracle::maybe_cross_check_runtime_state;
 use crate::solver3::runtime_state::RuntimeState;
 use crate::solver3::scoring::recompute_oracle_score;
 use crate::solver_support::SolverError;
@@ -202,11 +205,15 @@ pub fn preview_swap_runtime_lightweight(
         }
     };
 
-    Ok(SwapRuntimePreview {
+    let preview = SwapRuntimePreview {
         delta_score: patch.score_delta.total_score_delta,
         analysis,
         patch,
-    })
+    };
+
+    maybe_cross_check_swap_preview_delta(state, swap, &preview)?;
+
+    Ok(preview)
 }
 
 pub fn preview_swap_oracle_recompute(
@@ -235,8 +242,13 @@ pub fn apply_swap_runtime_preview(
     preview: &SwapRuntimePreview,
 ) -> Result<(), SolverError> {
     match preview.analysis.feasibility {
-        SwapFeasibility::Feasible => apply_runtime_patch(state, &preview.patch),
-        SwapFeasibility::SamePersonNoop | SwapFeasibility::SameGroupNoop => Ok(()),
+        SwapFeasibility::Feasible => {
+            apply_runtime_patch(state, &preview.patch)?;
+            maybe_cross_check_runtime_state(state, "swap apply runtime preview")
+        }
+        SwapFeasibility::SamePersonNoop | SwapFeasibility::SameGroupNoop => {
+            maybe_cross_check_runtime_state(state, "swap apply runtime preview no-op")
+        }
         ref infeasible => Err(SolverError::ValidationError(format!(
             "solver3 swap is not feasible: {infeasible}"
         ))),
@@ -246,6 +258,24 @@ pub fn apply_swap_runtime_preview(
 pub fn apply_swap(state: &mut RuntimeState, swap: &SwapMove) -> Result<(), SolverError> {
     let preview = preview_swap_runtime_lightweight(state, swap)?;
     apply_swap_runtime_preview(state, &preview)
+}
+
+fn maybe_cross_check_swap_preview_delta(
+    state: &RuntimeState,
+    swap: &SwapMove,
+    preview: &SwapRuntimePreview,
+) -> Result<(), SolverError> {
+    #[cfg(feature = "solver3-oracle-checks")]
+    {
+        let oracle_delta = preview_swap_oracle_recompute(state, swap)?;
+        maybe_cross_check_preview_delta("swap runtime preview", preview.delta_score, oracle_delta)
+    }
+
+    #[cfg(not(feature = "solver3-oracle-checks"))]
+    {
+        let _ = (state, swap, preview);
+        Ok(())
+    }
 }
 
 fn build_swap_runtime_patch(

@@ -4,6 +4,9 @@ use crate::models::{AttributeBalanceMode, PairMeetingMode};
 use crate::solver3::compiled_problem::{
     CompiledAttributeBalanceConstraint, CompiledPairMeetingConstraint, RepeatPenaltyFunction,
 };
+#[cfg(feature = "solver3-oracle-checks")]
+use crate::solver3::oracle::maybe_cross_check_preview_delta;
+use crate::solver3::oracle::maybe_cross_check_runtime_state;
 use crate::solver3::runtime_state::RuntimeState;
 use crate::solver3::scoring::recompute_oracle_score;
 use crate::solver_support::SolverError;
@@ -229,11 +232,15 @@ pub fn preview_transfer_runtime_lightweight(
         }
     };
 
-    Ok(TransferRuntimePreview {
+    let preview = TransferRuntimePreview {
         delta_score: patch.score_delta.total_score_delta,
         analysis,
         patch,
-    })
+    };
+
+    maybe_cross_check_transfer_preview_delta(state, transfer, &preview)?;
+
+    Ok(preview)
 }
 
 pub fn preview_transfer_oracle_recompute(
@@ -262,8 +269,13 @@ pub fn apply_transfer_runtime_preview(
     preview: &TransferRuntimePreview,
 ) -> Result<(), SolverError> {
     match preview.analysis.feasibility {
-        TransferFeasibility::Feasible => apply_runtime_patch(state, &preview.patch),
-        TransferFeasibility::SameGroupNoop => Ok(()),
+        TransferFeasibility::Feasible => {
+            apply_runtime_patch(state, &preview.patch)?;
+            maybe_cross_check_runtime_state(state, "transfer apply runtime preview")
+        }
+        TransferFeasibility::SameGroupNoop => {
+            maybe_cross_check_runtime_state(state, "transfer apply runtime preview no-op")
+        }
         ref infeasible => Err(SolverError::ValidationError(format!(
             "solver3 transfer is not feasible: {infeasible}"
         ))),
@@ -276,6 +288,28 @@ pub fn apply_transfer(
 ) -> Result<(), SolverError> {
     let preview = preview_transfer_runtime_lightweight(state, transfer)?;
     apply_transfer_runtime_preview(state, &preview)
+}
+
+fn maybe_cross_check_transfer_preview_delta(
+    state: &RuntimeState,
+    transfer: &TransferMove,
+    preview: &TransferRuntimePreview,
+) -> Result<(), SolverError> {
+    #[cfg(feature = "solver3-oracle-checks")]
+    {
+        let oracle_delta = preview_transfer_oracle_recompute(state, transfer)?;
+        maybe_cross_check_preview_delta(
+            "transfer runtime preview",
+            preview.delta_score,
+            oracle_delta,
+        )
+    }
+
+    #[cfg(not(feature = "solver3-oracle-checks"))]
+    {
+        let _ = (state, transfer, preview);
+        Ok(())
+    }
 }
 
 fn build_transfer_runtime_patch(

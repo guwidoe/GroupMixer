@@ -1851,3 +1851,166 @@ fn clique_heavy_feasibility_regressions_report_specific_reasons() {
             if person_idx == cp.person_id_to_idx["p6"]
     ));
 }
+
+// ---------------------------------------------------------------------------
+// 13. Oracle cross-check hooks (feature-gated): initialization + preview/apply
+//     regression coverage for swap/transfer/clique-swap paths.
+// ---------------------------------------------------------------------------
+
+#[cfg(feature = "solver3-oracle-checks")]
+#[test]
+fn runtime_state_sync_score_from_oracle_rejects_pair_contact_drift() {
+    let mut state = RuntimeState::from_input(&swap_kernel_input()).unwrap();
+    state.pair_contacts[0] = state.pair_contacts[0].saturating_add(1);
+
+    let err = state.sync_score_from_oracle().unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("oracle cross-check failed during runtime state initialization"),
+        "unexpected error: {}",
+        err
+    );
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+#[test]
+fn swap_preview_hook_rejects_oracle_mismatch() {
+    let mut state = RuntimeState::from_input(&swap_kernel_input()).unwrap();
+    let cp = state.compiled.clone();
+    let swap = SwapMove::new(0, cp.person_id_to_idx["p1"], cp.person_id_to_idx["p2"]);
+
+    let touched_pair = cp.pair_idx(cp.person_id_to_idx["p1"], cp.person_id_to_idx["p0"]);
+    state.pair_contacts[touched_pair] = state.pair_contacts[touched_pair].saturating_add(1);
+
+    let err = preview_swap_runtime_lightweight(&state, &swap).unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("oracle preview delta cross-check failed during swap runtime preview"),
+        "unexpected error: {}",
+        err
+    );
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+#[test]
+fn transfer_preview_hook_rejects_oracle_mismatch() {
+    let mut state = RuntimeState::from_input(&transfer_kernel_input()).unwrap();
+    let cp = state.compiled.clone();
+    let transfer = TransferMove::new(
+        1,
+        cp.person_id_to_idx["p1"],
+        cp.group_id_to_idx["g1"],
+        cp.group_id_to_idx["g0"],
+    );
+
+    let touched_pair = cp.pair_idx(cp.person_id_to_idx["p1"], cp.person_id_to_idx["p2"]);
+    state.pair_contacts[touched_pair] = state.pair_contacts[touched_pair].saturating_add(1);
+
+    let err = preview_transfer_runtime_lightweight(&state, &transfer).unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("oracle preview delta cross-check failed during transfer runtime preview"),
+        "unexpected error: {}",
+        err
+    );
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+#[test]
+fn clique_swap_preview_hook_rejects_oracle_mismatch() {
+    let mut state = RuntimeState::from_input(&clique_swap_kernel_input()).unwrap();
+    let cp = state.compiled.clone();
+    let clique_idx = cp.person_to_clique_id[0][cp.person_id_to_idx["p0"]]
+        .expect("p0 should belong to a clique in session 0");
+    let clique_swap = CliqueSwapMove::new(
+        0,
+        clique_idx,
+        cp.group_id_to_idx["g0"],
+        cp.group_id_to_idx["g1"],
+        vec![cp.person_id_to_idx["p2"], cp.person_id_to_idx["p3"]],
+    );
+
+    let touched_pair = cp.pair_idx(cp.person_id_to_idx["p0"], cp.person_id_to_idx["p4"]);
+    state.pair_contacts[touched_pair] = state.pair_contacts[touched_pair].saturating_add(1);
+
+    let err = preview_clique_swap_runtime_lightweight(&state, &clique_swap).unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("oracle preview delta cross-check failed during clique swap runtime preview"),
+        "unexpected error: {}",
+        err
+    );
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+#[test]
+fn swap_apply_hook_rejects_runtime_state_drift() {
+    let mut state = RuntimeState::from_input(&swap_kernel_input()).unwrap();
+    let cp = state.compiled.clone();
+    let swap = SwapMove::new(0, cp.person_id_to_idx["p1"], cp.person_id_to_idx["p2"]);
+
+    let preview = preview_swap_runtime_lightweight(&state, &swap).unwrap();
+    let untouched_pair = cp.pair_idx(cp.person_id_to_idx["p4"], cp.person_id_to_idx["p5"]);
+    state.pair_contacts[untouched_pair] = state.pair_contacts[untouched_pair].saturating_add(1);
+
+    let err = apply_swap_runtime_preview(&mut state, &preview).unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("oracle cross-check failed during swap apply runtime preview"),
+        "unexpected error: {}",
+        err
+    );
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+#[test]
+fn transfer_apply_hook_rejects_runtime_state_drift() {
+    let mut state = RuntimeState::from_input(&transfer_kernel_input()).unwrap();
+    let cp = state.compiled.clone();
+    let transfer = TransferMove::new(
+        1,
+        cp.person_id_to_idx["p1"],
+        cp.group_id_to_idx["g1"],
+        cp.group_id_to_idx["g0"],
+    );
+
+    let preview = preview_transfer_runtime_lightweight(&state, &transfer).unwrap();
+    let untouched_pair = cp.pair_idx(cp.person_id_to_idx["p3"], cp.person_id_to_idx["p4"]);
+    state.pair_contacts[untouched_pair] = state.pair_contacts[untouched_pair].saturating_add(1);
+
+    let err = apply_transfer_runtime_preview(&mut state, &preview).unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("oracle cross-check failed during transfer apply runtime preview"),
+        "unexpected error: {}",
+        err
+    );
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+#[test]
+fn clique_swap_apply_hook_rejects_runtime_state_drift() {
+    let mut state = RuntimeState::from_input(&clique_swap_kernel_input()).unwrap();
+    let cp = state.compiled.clone();
+    let clique_idx = cp.person_to_clique_id[0][cp.person_id_to_idx["p0"]]
+        .expect("p0 should belong to a clique in session 0");
+    let clique_swap = CliqueSwapMove::new(
+        0,
+        clique_idx,
+        cp.group_id_to_idx["g0"],
+        cp.group_id_to_idx["g1"],
+        vec![cp.person_id_to_idx["p2"], cp.person_id_to_idx["p3"]],
+    );
+
+    let preview = preview_clique_swap_runtime_lightweight(&state, &clique_swap).unwrap();
+    let untouched_pair = cp.pair_idx(cp.person_id_to_idx["p4"], cp.person_id_to_idx["p5"]);
+    state.pair_contacts[untouched_pair] = state.pair_contacts[untouched_pair].saturating_add(1);
+
+    let err = apply_clique_swap_runtime_preview(&mut state, &preview).unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("oracle cross-check failed during clique swap apply runtime preview"),
+        "unexpected error: {}",
+        err
+    );
+}
