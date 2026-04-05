@@ -72,6 +72,15 @@ gm-cli benchmark run --manifest backend/benchmarking/suites/hotpath-search-itera
 gm-cli benchmark run --manifest backend/benchmarking/suites/hotpath-clique-swap-preview-sailing-trip-demo-solver3.yaml
 ```
 
+### Solver3 oracle/debug correctness feature
+
+`gm-core` exposes `solver3-oracle-checks` as an explicit correctness/debug feature flag.
+
+- Enable it for correctness runs that should execute sampled runtime-vs-oracle drift checks:
+  - `cargo test -p gm-core --features solver3-oracle-checks --test search_driver_regression solver3_same_seed_runs_remain_deterministic_after_search_changes`
+- Leave it disabled for performance benchmark lanes so hotpath timing remains representative:
+  - run `gm-cli benchmark ...` normally (no extra `--features`)
+
 Truthfulness notes:
 
 - `backend/benchmarking/cases/stretch/sailing_trip_demo_real.json` is the canonical real-demo target case

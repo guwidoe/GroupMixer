@@ -203,12 +203,17 @@ The work here is to harden and operationalize them as an intentional correctness
 
 #### 3.1 Introduce an explicit correctness feature flag
 
-Suggested names:
+Implemented feature flag: `solver3-oracle-checks` (in `backend/core/Cargo.toml`).
 
-- `solver3-oracle-checks`
-- or `solver3-debug-validation`
+Intended usage:
 
-This feature should enable correctness-first checks used in tests, debug runs, and dedicated validation lanes, while staying disabled in performance benchmarks.
+- enable for correctness/debug lanes that should sample runtime-vs-oracle drift checks during `solver3` search
+- leave disabled for performance benchmark lanes to avoid oracle recompute overhead in hotpath measurements
+
+Example:
+
+- correctness/debug run: `cargo test -p gm-core --features solver3-oracle-checks --test search_driver_regression solver3_same_seed_runs_remain_deterministic_after_search_changes`
+- performance benchmark run: `gm-cli benchmark run --manifest backend/benchmarking/suites/hotpath-search-iteration-sailing-trip-demo-solver3.yaml` (no extra features)
 
 #### 3.2 Add sampled and targeted oracle checks
 

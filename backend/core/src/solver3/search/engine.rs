@@ -18,9 +18,12 @@ use super::family_selection::MoveFamilySelector;
 use super::super::moves::{
     apply_clique_swap_runtime_preview, apply_swap_runtime_preview, apply_transfer_runtime_preview,
 };
-use super::super::oracle::{check_drift, oracle_score};
+#[cfg(feature = "solver3-oracle-checks")]
+use super::super::oracle::check_drift;
+use super::super::oracle::oracle_score;
 use super::super::runtime_state::RuntimeState;
 
+#[cfg(feature = "solver3-oracle-checks")]
 const ORACLE_DRIFT_SAMPLE_INTERVAL: u64 = 16;
 
 #[derive(Debug, Clone)]
@@ -103,16 +106,12 @@ impl SearchEngine {
                         acceptance.escaped_local_optimum,
                     );
 
-                    if should_sample_oracle_check(family_metrics(&search.move_metrics, family).accepted)
-                    {
-                        let preview_description = preview.describe();
-                        check_drift(&search.current_state).map_err(|error| {
-                            SolverError::ValidationError(format!(
-                                "solver3 runtime {:?} drift check failed after accepted move {}: {}",
-                                family, preview_description, error
-                            ))
-                        })?;
-                    }
+                    maybe_run_sampled_oracle_check(
+                        &search.current_state,
+                        family,
+                        family_metrics(&search.move_metrics, family).accepted,
+                        &preview,
+                    )?;
 
                     search.refresh_best_from_current();
                     search.record_acceptance_result(true);
@@ -243,6 +242,34 @@ fn reached_time_limit(started_at: Instant, time_limit_seconds: Option<u64>) -> b
     time_limit_seconds.is_some_and(|limit| started_at.elapsed().as_secs() >= limit)
 }
 
+fn maybe_run_sampled_oracle_check(
+    state: &RuntimeState,
+    family: MoveFamily,
+    accepted_move_count: u64,
+    preview: &SearchMovePreview,
+) -> Result<(), SolverError> {
+    #[cfg(feature = "solver3-oracle-checks")]
+    {
+        if should_sample_oracle_check(accepted_move_count) {
+            let preview_description = preview.describe();
+            check_drift(state).map_err(|error| {
+                SolverError::ValidationError(format!(
+                    "solver3 runtime {:?} drift check failed after accepted move {}: {}",
+                    family, preview_description, error
+                ))
+            })?;
+        }
+    }
+
+    #[cfg(not(feature = "solver3-oracle-checks"))]
+    {
+        let _ = (state, family, accepted_move_count, preview);
+    }
+
+    Ok(())
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
 fn should_sample_oracle_check(accepted_move_count: u64) -> bool {
     accepted_move_count > 0 && accepted_move_count % ORACLE_DRIFT_SAMPLE_INTERVAL == 0
 }

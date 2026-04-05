@@ -42,6 +42,7 @@ impl SearchMovePreview {
         }
     }
 
+    #[cfg(feature = "solver3-oracle-checks")]
     pub(crate) fn describe(&self) -> String {
         match self {
             Self::Swap(preview) => format!("swap {:?}", preview.analysis.swap),
