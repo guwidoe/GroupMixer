@@ -81,6 +81,7 @@ cd webapp && npm run test:e2e
 ## Notes
 
 - The existing `gm-core` **data-driven test harness is the main integration-testing surface for the solver**. Preserve and improve it rather than replacing it with a weaker or more ad hoc approach.
+- Canonical benchmark/test cases are the thing being measured. **Never** simplify, derive, proxy, warm-start, or otherwise substitute a canonical benchmark/testing case to make a lane pass unless the user explicitly approves changing the benchmark question. If the canonical case fails, fail honestly. Helper/diagnostic cases must stay explicitly separate from canonical objective suites.
 - For solver work, prefer a layered test strategy:
   - narrow unit tests for local logic/branches
   - property tests for invariants
