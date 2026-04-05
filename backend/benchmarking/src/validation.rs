@@ -463,7 +463,7 @@ mod tests {
     }
 
     #[test]
-    fn validation_detects_final_score_mismatch() {
+    fn validation_detects_final_total_score_mismatch() {
         let input = tiny_input();
         let mut result = run_solver(&input).expect("solver output");
         result.final_score += 1.0;
@@ -472,6 +472,7 @@ mod tests {
 
         assert!(!report.validation_passed);
         assert!(!report.total_score_agreement);
+        assert!(!report.component_agreement.final_score);
         assert!(report
             .mismatch_diagnostics
             .iter()
@@ -479,7 +480,7 @@ mod tests {
     }
 
     #[test]
-    fn validation_detects_breakdown_mismatch() {
+    fn validation_detects_score_breakdown_mismatch() {
         let input = tiny_input();
         let mut result = run_solver(&input).expect("solver output");
         result.weighted_constraint_penalty += 0.5;
@@ -487,7 +488,9 @@ mod tests {
         let report = validate_final_solution(&input, &result);
 
         assert!(!report.validation_passed);
+        assert!(report.total_score_agreement);
         assert!(!report.score_breakdown_agreement);
+        assert!(!report.component_agreement.weighted_constraint_penalty);
         assert!(report
             .mismatch_diagnostics
             .iter()
@@ -495,7 +498,7 @@ mod tests {
     }
 
     #[test]
-    fn validation_detects_schedule_invariant_violation() {
+    fn validation_detects_assignment_invariant_violation() {
         let input = tiny_input();
         let mut result = run_solver(&input).expect("solver output");
 
@@ -516,6 +519,7 @@ mod tests {
         let report = validate_final_solution(&input, &result);
 
         assert!(!report.validation_passed);
+        assert!(!report.invariants_passed);
         assert!(!report.schedule_roundtrip_exact);
         assert!(report
             .mismatch_diagnostics

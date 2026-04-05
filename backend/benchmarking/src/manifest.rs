@@ -947,37 +947,9 @@ cases:
             .contains("declares an empty declared_budget"));
     }
 
-    #[test]
-    fn score_quality_full_solve_suites_default_to_canonical_only() {
-        let temp = TempDir::new().expect("temp dir");
-        let suite_path = temp.path().join("suite.yaml");
+    fn write_minimal_helper_case(path: &Path) {
         fs::write(
-            &suite_path,
-            r#"schema_version: 1
-suite_id: canonical-default-suite
-benchmark_mode: full_solve
-comparison_category: score_quality
-class: stretch
-cases:
-  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/sailing_trip_demo_real_benchmark_start.json
-"#,
-        )
-        .expect("write suite");
-
-        let error = load_suite_manifest(&suite_path)
-            .expect_err("helper-start suite should be rejected without explicit override");
-
-        assert!(error.to_string().contains("rejects non-canonical case"));
-    }
-
-    #[test]
-    fn helper_suites_can_opt_into_non_canonical_cases() {
-        let temp = TempDir::new().expect("temp dir");
-        let suite_path = temp.path().join("suite.yaml");
-        let case_path = temp.path().join("case.json");
-
-        fs::write(
-            &case_path,
+            path,
             serde_json::to_string_pretty(&serde_json::json!({
                 "schema_version": 1,
                 "id": "stretch.helper-case",
@@ -1008,6 +980,38 @@ cases:
             .expect("serialize case"),
         )
         .expect("write case");
+    }
+
+    #[test]
+    fn canonical_score_quality_suite_rejects_helper_case() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite_path = temp.path().join("suite.yaml");
+        let case_path = temp.path().join("helper-case.json");
+
+        write_minimal_helper_case(&case_path);
+
+        fs::write(
+            &suite_path,
+            format!(
+                "schema_version: 1\nsuite_id: canonical-default-suite\nbenchmark_mode: full_solve\ncomparison_category: score_quality\nclass: stretch\ncases:\n  - manifest: {}\n",
+                case_path.display()
+            ),
+        )
+        .expect("write suite");
+
+        let error = load_suite_manifest(&suite_path)
+            .expect_err("helper-start suite should be rejected without explicit override");
+
+        assert!(error.to_string().contains("rejects non-canonical case"));
+    }
+
+    #[test]
+    fn helper_suites_can_opt_into_non_canonical_cases() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite_path = temp.path().join("suite.yaml");
+        let case_path = temp.path().join("case.json");
+
+        write_minimal_helper_case(&case_path);
 
         fs::write(
             &suite_path,

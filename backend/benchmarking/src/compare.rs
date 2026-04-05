@@ -650,7 +650,7 @@ mod tests {
     }
 
     #[test]
-    fn case_identity_mismatch_is_reported_explicitly() {
+    fn run_report_case_identity_fingerprint_mismatch_is_reported_explicitly() {
         let temp = TempDir::new().expect("temp dir");
         let options = RunnerOptions {
             artifacts_dir: temp.path().to_path_buf(),
@@ -658,6 +658,7 @@ mod tests {
         };
         let mut report =
             run_suite_from_manifest("suites/path.yaml", &options).expect("run path suite");
+        let mismatched_case_id = report.cases[0].case_id.clone();
         let baseline_path =
             save_baseline_snapshot(&report, "path-baseline", &options.artifacts_dir, None)
                 .expect("save baseline");
@@ -677,11 +678,9 @@ mod tests {
             ComparisonStatus::NotComparable
         );
         assert!(!comparison.comparability.same_case_identity);
-        assert!(comparison
-            .comparability
-            .reasons
-            .iter()
-            .any(|reason| reason.contains("case fingerprint mismatch")));
+        assert!(comparison.comparability.reasons.iter().any(|reason| {
+            reason.contains("case fingerprint mismatch") && reason.contains(&mismatched_case_id)
+        }));
     }
 
     #[test]
