@@ -1,18 +1,19 @@
 use std::collections::VecDeque;
 use std::time::Instant;
 
-use rand::{rng, seq::SliceRandom, RngExt, SeedableRng};
+use rand::{rng, RngExt, SeedableRng};
 use rand_chacha::ChaCha12Rng;
 
 use crate::models::{
     BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, MoveFamily,
     MoveFamilyBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
-    MoveSelectionMode, ProgressCallback, ProgressUpdate, SolverBenchmarkTelemetry,
-    SolverConfiguration, SolverResult, StopReason,
+    ProgressCallback, ProgressUpdate, SolverBenchmarkTelemetry, SolverConfiguration,
+    SolverResult, StopReason,
 };
 use crate::solver_support::SolverError;
 
 use super::acceptance::{AcceptanceInputs, SimulatedAnnealingAcceptance, temperature_for_iteration};
+use super::family_selection::MoveFamilySelector;
 use super::super::moves::{
     apply_clique_swap_runtime_preview, apply_swap_runtime_preview, apply_transfer_runtime_preview,
     preview_clique_swap_runtime_lightweight, preview_swap_runtime_lightweight,
@@ -94,6 +95,7 @@ impl SearchEngine {
         let time_limit_seconds = self.configuration.stop_conditions.time_limit_seconds;
         let allowed_sessions = self.allowed_sessions(state);
         let acceptance_policy = SimulatedAnnealingAcceptance;
+        let family_selector = MoveFamilySelector::new(&move_policy);
 
         let mut current_state = state.clone();
         let mut best_state = current_state.clone();
@@ -130,7 +132,7 @@ impl SearchEngine {
             let temperature = temperature_for_iteration(iteration, max_iterations);
 
             if let Some((family, preview, preview_seconds)) =
-                select_previewed_move(&current_state, &move_policy, &allowed_sessions, &mut rng)
+                select_previewed_move(&current_state, &family_selector, &allowed_sessions, &mut rng)
             {
                 let family_metrics = family_metrics_mut(&mut move_metrics, family);
                 family_metrics.preview_seconds += preview_seconds;
@@ -343,11 +345,11 @@ fn build_solver_result(
 
 fn select_previewed_move(
     state: &RuntimeState,
-    move_policy: &MovePolicy,
+    family_selector: &MoveFamilySelector,
     allowed_sessions: &[usize],
     rng: &mut ChaCha12Rng,
 ) -> Option<(MoveFamily, SearchMovePreview, f64)> {
-    let ordered_families = ordered_move_families(move_policy, rng);
+    let ordered_families = family_selector.ordered_families(rng);
     for family in ordered_families {
         let preview_started_at = Instant::now();
         let preview = sample_preview_for_family(state, family, allowed_sessions, rng);
@@ -388,65 +390,6 @@ fn apply_previewed_move(
         SearchMovePreview::CliqueSwap(preview) => apply_clique_swap_runtime_preview(state, preview),
     }
 }
-
-fn ordered_move_families(move_policy: &MovePolicy, rng: &mut ChaCha12Rng) -> Vec<MoveFamily> {
-    if let Some(forced_family) = move_policy.forced_family {
-        return vec![forced_family];
-    }
-
-    let mut families = move_policy.allowed_families();
-    if families.len() <= 1 {
-        return families;
-    }
-
-    match move_policy.mode {
-        MoveSelectionMode::Adaptive => {
-            families.shuffle(rng);
-            families
-        }
-        MoveSelectionMode::Weighted => {
-            let weights = move_policy
-                .weights
-                .as_ref()
-                .expect("weighted move policy should be normalized before use");
-            let Some(first) = choose_weighted_family(&families, weights, rng) else {
-                families.shuffle(rng);
-                return families;
-            };
-
-            let mut ordered = vec![first];
-            families.retain(|family| *family != first);
-            families.shuffle(rng);
-            ordered.extend(families);
-            ordered
-        }
-    }
-}
-
-fn choose_weighted_family(
-    families: &[MoveFamily],
-    weights: &crate::models::MoveFamilyWeights,
-    rng: &mut ChaCha12Rng,
-) -> Option<MoveFamily> {
-    let total_weight = families
-        .iter()
-        .map(|family| weights.weight_for(*family))
-        .sum::<f64>();
-    if total_weight <= 0.0 {
-        return None;
-    }
-
-    let mut slot = rng.random::<f64>() * total_weight;
-    for family in families {
-        slot -= weights.weight_for(*family);
-        if slot <= 0.0 {
-            return Some(*family);
-        }
-    }
-
-    families.last().copied()
-}
-
 fn family_metrics_mut(
     summary: &mut MoveFamilyBenchmarkTelemetrySummary,
     family: MoveFamily,

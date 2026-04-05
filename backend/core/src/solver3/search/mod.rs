@@ -2,5 +2,6 @@
 
 mod acceptance;
 mod engine;
+mod family_selection;
 
 pub use engine::SearchEngine;
