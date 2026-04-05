@@ -1086,6 +1086,79 @@ The refactor should move toward:
 
 This split is specifically intended to make tabu / threshold / iterated-local-search style follow-on work possible **without** reopening the hot move kernels.
 
+## Solver3 after the refactor: a concrete local-search substrate
+
+The post-refactor architecture should be understood as:
+
+> **concrete dense runtime kernels + pluggable search-side policy/orchestration**
+
+That means `solver3` is no longer just "the current SA-like engine". It is a substrate for a family of **single-state local-search** drivers that all reuse the same concrete runtime state and preview/apply kernels.
+
+### What belongs in the reusable substrate
+
+- dense immutable `CompiledProblem`
+- dense mutable `RuntimeState`
+- concrete move-family kernels for `swap`, `transfer`, and `clique_swap`
+- patch-based preview/apply contracts
+- oracle/drift validation
+- bounded candidate sampling helpers over dense runtime facts
+
+### What should vary by future driver
+
+- acceptance rule
+- family-ordering / neighborhood scheduling policy
+- search memory (for example tabu tenure or threshold history)
+- restart / perturbation behavior
+- stop / reheat / plateau-escape policy
+
+### Why this is a better fit for tabu / threshold / ILS than for GA
+
+`solver3` is fundamentally optimized around **one current state**, **one candidate move**, and **incremental local delta accounting**.
+
+That maps naturally onto:
+
+- tabu search
+- threshold acceptance
+- late acceptance
+- iterated local search
+- variable-neighborhood / neighborhood-scheduling families
+
+It maps much less naturally onto population-oriented methods like GA, where the core architecture wants:
+
+- many concurrent solution states
+- crossover-specific representations
+- population evaluation / replacement bookkeeping
+- a different notion of search memory and diversification
+
+GA is still possible in principle, but it is **not** the native extension path for the current runtime model.
+
+### Anti-goal: premature generic metaheuristic frameworking
+
+Do **not** respond to this extensibility by building:
+
+- a trait-heavy metaheuristic framework
+- boxed strategy objects in the inner loop
+- callback-rich generic move-preview abstractions
+- a one-size-fits-all policy interface that every future heuristic must implement
+
+The intended extension story is deliberately narrower:
+
+- keep hot kernels concrete
+- keep search memory explicit and search-side
+- add new drivers by composing concrete modules, not by abstracting away the kernels
+
+### Practical extension rule
+
+If a future engineer wants to add tabu / threshold / ILS behavior, the default path should be:
+
+1. add or extend search-side context/memory types
+2. add a new concrete acceptance / scheduling / restart module
+3. add or adjust a search driver/orchestrator
+4. reuse the existing move kernels unchanged
+5. benchmark the result against the same Sailing Trip guardrail bundle
+
+If a proposed extension requires reopening all three move kernels, it is probably violating the intended architecture.
+
 ## 2026-04 before-change benchmark baseline
 
 Same-machine baseline captured on branch `autoresearch/solver3-raw-performance-2026-04-04` at commit `ee3f511` before the search refactor started.
