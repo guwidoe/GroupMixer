@@ -94,6 +94,7 @@ pub fn compare_run_to_baseline(
         .collect();
     shared_case_ids.sort_unstable();
 
+    let mut same_case_identity = true;
     for case_id in &shared_case_ids {
         let baseline_case = baseline_cases[case_id];
         let current_case = current_cases[case_id];
@@ -102,6 +103,9 @@ pub fn compare_run_to_baseline(
                 "case solver family mismatch for {}: current={} baseline={}",
                 case_id, current_case.solver.solver_family, baseline_case.solver.solver_family
             ));
+        }
+        if !case_identity_matches(current_case, baseline_case, &mut reasons) {
+            same_case_identity = false;
         }
     }
 
@@ -121,6 +125,7 @@ pub fn compare_run_to_baseline(
         same_benchmark_mode,
         same_comparison_category,
         same_solver_families,
+        same_case_identity,
         same_machine,
         same_suite: current.suite.suite_id == baseline.run_report.suite.suite_id,
     };
@@ -139,6 +144,94 @@ pub fn compare_run_to_baseline(
         case_comparisons,
         class_rollups,
         suspects,
+    }
+}
+
+fn case_identity_matches(
+    current: &CaseRunArtifact,
+    baseline: &CaseRunArtifact,
+    reasons: &mut Vec<String>,
+) -> bool {
+    let current_identity = current.case_identity.as_ref();
+    let baseline_identity = baseline.case_identity.as_ref();
+
+    match (current_identity, baseline_identity) {
+        (Some(current_identity), Some(baseline_identity)) => {
+            let mut matches = true;
+            if current_identity.source_path != baseline_identity.source_path {
+                matches = false;
+                reasons.push(format!(
+                    "case source path mismatch for {}: current={} baseline={}",
+                    current.case_id, current_identity.source_path, baseline_identity.source_path
+                ));
+            }
+            if current_identity.source_fingerprint != baseline_identity.source_fingerprint {
+                matches = false;
+                reasons.push(format!(
+                    "case fingerprint mismatch for {}: current={} baseline={}",
+                    current.case_id,
+                    current_identity.source_fingerprint,
+                    baseline_identity.source_fingerprint
+                ));
+            }
+            if current_identity.canonical_case_id != baseline_identity.canonical_case_id {
+                matches = false;
+                reasons.push(format!(
+                    "case canonical id mismatch for {}: current={} baseline={}",
+                    current.case_id,
+                    current_identity.canonical_case_id,
+                    baseline_identity.canonical_case_id
+                ));
+            }
+            if current_identity.case_role != baseline_identity.case_role {
+                matches = false;
+                reasons.push(format!(
+                    "case role mismatch for {}: current={:?} baseline={:?}",
+                    current.case_id, current_identity.case_role, baseline_identity.case_role
+                ));
+            }
+            if current_identity.purpose_provenance_summary
+                != baseline_identity.purpose_provenance_summary
+            {
+                matches = false;
+                reasons.push(format!(
+                    "case purpose/provenance summary mismatch for {}",
+                    current.case_id
+                ));
+            }
+            if current_identity.declared_budget != baseline_identity.declared_budget {
+                matches = false;
+                reasons.push(format!(
+                    "case declared_budget mismatch for {}: current={:?} baseline={:?}",
+                    current.case_id,
+                    current_identity.declared_budget,
+                    baseline_identity.declared_budget
+                ));
+            }
+
+            matches
+        }
+        (Some(_), None) => {
+            reasons.push(format!(
+                "case identity metadata missing in baseline run for {}",
+                current.case_id
+            ));
+            false
+        }
+        (None, Some(_)) => {
+            reasons.push(format!(
+                "case identity metadata missing in current run for {}",
+                current.case_id
+            ));
+            false
+        }
+        (None, None) => {
+            reasons.push(format!(
+                "case identity metadata missing in both runs for {}",
+                current.case_id
+            ));
+            false
+        }
     }
 }
 
@@ -548,11 +641,47 @@ mod tests {
             comparison.comparability.status,
             ComparisonStatus::Comparable
         );
+        assert!(comparison.comparability.same_case_identity);
         assert_eq!(comparison.case_comparisons.len(), report.cases.len());
 
         let comparison_path = persist_comparison_report(&comparison, &options.artifacts_dir)
             .expect("persist comparison report");
         assert!(comparison_path.exists());
+    }
+
+    #[test]
+    fn case_identity_mismatch_is_reported_explicitly() {
+        let temp = TempDir::new().expect("temp dir");
+        let options = RunnerOptions {
+            artifacts_dir: temp.path().to_path_buf(),
+            cargo_profile: "test".to_string(),
+        };
+        let mut report =
+            run_suite_from_manifest("suites/path.yaml", &options).expect("run path suite");
+        let baseline_path =
+            save_baseline_snapshot(&report, "path-baseline", &options.artifacts_dir, None)
+                .expect("save baseline");
+        let baseline =
+            crate::runner::load_baseline_snapshot(&baseline_path).expect("load baseline");
+
+        report.cases[0]
+            .case_identity
+            .as_mut()
+            .expect("case identity should be present")
+            .source_fingerprint =
+            "sha256:0000000000000000000000000000000000000000000000000000000000000000".to_string();
+
+        let comparison = compare_run_to_baseline(&report, &baseline);
+        assert_eq!(
+            comparison.comparability.status,
+            ComparisonStatus::NotComparable
+        );
+        assert!(!comparison.comparability.same_case_identity);
+        assert!(comparison
+            .comparability
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("case fingerprint mismatch")));
     }
 
     #[test]

@@ -5,8 +5,9 @@ use crate::benchmark_mode::{
 use anyhow::{bail, Context, Result};
 use gm_core::models::{ApiInput, MovePolicy, SolverConfiguration, SolverKind};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 pub const SUITE_SCHEMA_VERSION: u32 = 1;
 pub const CASE_SCHEMA_VERSION: u32 = 1;
@@ -33,7 +34,9 @@ impl BenchmarkCaseSelectionPolicy {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd, Default)]
+#[derive(
+    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd, Default,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum BenchmarkCaseRole {
     #[default]
@@ -247,6 +250,8 @@ pub struct LoadedBenchmarkSuite {
 #[derive(Debug, Clone)]
 pub struct LoadedBenchmarkCase {
     pub manifest_path: PathBuf,
+    pub source_path: String,
+    pub source_fingerprint: String,
     pub manifest: BenchmarkCaseManifest,
     pub overrides: BenchmarkCaseOverride,
 }
@@ -296,8 +301,10 @@ pub fn load_suite_manifest(path: impl AsRef<Path>) -> Result<LoadedBenchmarkSuit
             }
         }
         let effective_case_role = case_override.case_role.unwrap_or(case_manifest.case_role);
-        if matches!(case_selection_policy, BenchmarkCaseSelectionPolicy::CanonicalOnly)
-            && !effective_case_role.is_canonical()
+        if matches!(
+            case_selection_policy,
+            BenchmarkCaseSelectionPolicy::CanonicalOnly
+        ) && !effective_case_role.is_canonical()
         {
             bail!(
                 "benchmark suite {} rejects non-canonical case {} with role {:?}; set case_selection_policy: allow_non_canonical only for explicit helper/diagnostic suites",
@@ -325,8 +332,12 @@ pub fn load_suite_manifest(path: impl AsRef<Path>) -> Result<LoadedBenchmarkSuit
                 case_manifest.id
             );
         }
+        let source_path = normalized_manifest_path(&case_path);
+        let source_fingerprint = format!("sha256:{}", sha256_file(&case_path)?);
         cases.push(LoadedBenchmarkCase {
             manifest_path: case_path,
+            source_path,
+            source_fingerprint,
             manifest: case_manifest,
             overrides: case_override.clone(),
         });
@@ -570,11 +581,7 @@ fn validate_case_identity_fields(
             );
         }
 
-        if !role.is_canonical()
-            && canonical_case_id
-                .map(str::trim)
-                .is_none_or(str::is_empty)
-        {
+        if !role.is_canonical() && canonical_case_id.map(str::trim).is_none_or(str::is_empty) {
             bail!(
                 "{} declares non-canonical case_role {:?} but does not set canonical_case_id",
                 context,
@@ -588,7 +595,8 @@ fn validate_case_identity_fields(
     }
 
     if let Some(declared_budget) = declared_budget {
-        if declared_budget.max_iterations.is_none() && declared_budget.time_limit_seconds.is_none() {
+        if declared_budget.max_iterations.is_none() && declared_budget.time_limit_seconds.is_none()
+        {
             bail!(
                 "{} declares an empty declared_budget; set max_iterations and/or time_limit_seconds",
                 context
@@ -597,6 +605,53 @@ fn validate_case_identity_fields(
     }
 
     Ok(())
+}
+
+fn sha256_file(path: &Path) -> Result<String> {
+    let contents = fs::read(path)
+        .with_context(|| format!("failed to read benchmark case manifest {}", path.display()))?;
+    let digest = Sha256::digest(contents);
+    Ok(digest.iter().map(|byte| format!("{byte:02x}")).collect())
+}
+
+fn normalized_manifest_path(path: &Path) -> String {
+    let is_absolute = path.is_absolute();
+    let mut parts: Vec<&std::ffi::OsStr> = Vec::new();
+
+    for component in path.components() {
+        match component {
+            Component::RootDir | Component::CurDir => {}
+            Component::ParentDir => {
+                if parts
+                    .last()
+                    .is_some_and(|last| *last != std::ffi::OsStr::new(".."))
+                {
+                    parts.pop();
+                } else if !is_absolute {
+                    parts.push(std::ffi::OsStr::new(".."));
+                }
+            }
+            Component::Normal(value) => parts.push(value),
+            Component::Prefix(prefix) => {
+                parts.push(prefix.as_os_str());
+            }
+        }
+    }
+
+    let mut normalized = if is_absolute {
+        PathBuf::from(std::path::MAIN_SEPARATOR_STR)
+    } else {
+        PathBuf::new()
+    };
+    for part in parts {
+        normalized.push(part);
+    }
+
+    if normalized.as_os_str().is_empty() {
+        ".".to_string()
+    } else {
+        normalized.display().to_string()
+    }
 }
 
 #[cfg(test)]
@@ -705,9 +760,7 @@ mod tests {
         .expect("write case");
 
         let error = load_case_manifest(&case_path).expect_err("manifest should be rejected");
-        assert!(error
-            .to_string()
-            .contains("does not set canonical_case_id"));
+        assert!(error.to_string().contains("does not set canonical_case_id"));
     }
 
     #[test]
@@ -796,9 +849,7 @@ cases:
         let error = load_suite_manifest(&suite_path)
             .expect_err("helper-start suite should be rejected without explicit override");
 
-        assert!(error
-            .to_string()
-            .contains("rejects non-canonical case"));
+        assert!(error.to_string().contains("rejects non-canonical case"));
     }
 
     #[test]

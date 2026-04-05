@@ -15,11 +15,11 @@ pub mod summary;
 
 pub use artifacts::{
     BaselineSnapshot, BenchmarkComparisonCategory, BenchmarkSeedPolicy, CaseComparison,
-    CaseRunArtifact, CaseRunStatus, ClassRollup, ClassRollupComparison, ComparabilityReport,
-    ComparisonReport, ComparisonStatus, EffectiveBenchmarkBudget, GitIdentity, IntegerDelta,
-    MachineIdentity, MoveFamilyComparison, NumericDelta, RegressionSuspect, RegressionSuspectKind,
-    RegressionSuspectSummary, RunMetadata, RunReport, RunSuiteMetadata, RunTotals,
-    SolveTimingBreakdown, SolverBenchmarkMetadata, SolverCapabilitiesSnapshot,
+    CaseIdentityMetadata, CaseRunArtifact, CaseRunStatus, ClassRollup, ClassRollupComparison,
+    ComparabilityReport, ComparisonReport, ComparisonStatus, EffectiveBenchmarkBudget, GitIdentity,
+    IntegerDelta, MachineIdentity, MoveFamilyComparison, NumericDelta, RegressionSuspect,
+    RegressionSuspectKind, RegressionSuspectSummary, RunMetadata, RunReport, RunSuiteMetadata,
+    RunTotals, SolveTimingBreakdown, SolverBenchmarkMetadata, SolverCapabilitiesSnapshot,
     BASELINE_SNAPSHOT_SCHEMA_VERSION, CASE_RUN_SCHEMA_VERSION, COMPARISON_REPORT_SCHEMA_VERSION,
     RUN_REPORT_SCHEMA_VERSION,
 };

@@ -1,8 +1,9 @@
 use crate::artifacts::{
-    BaselineSnapshot, BenchmarkArtifactKind, BenchmarkSeedPolicy, CaseRunArtifact, CaseRunStatus,
-    ClassRollup, EffectiveBenchmarkBudget, RunMetadata, RunReport, RunSuiteMetadata, RunTotals,
-    SolveTimingBreakdown, SolverBenchmarkMetadata, SolverCapabilitiesSnapshot,
-    BASELINE_SNAPSHOT_SCHEMA_VERSION, CASE_RUN_SCHEMA_VERSION, RUN_REPORT_SCHEMA_VERSION,
+    BaselineSnapshot, BenchmarkArtifactKind, BenchmarkSeedPolicy, CaseIdentityMetadata,
+    CaseRunArtifact, CaseRunStatus, ClassRollup, EffectiveBenchmarkBudget, RunMetadata, RunReport,
+    RunSuiteMetadata, RunTotals, SolveTimingBreakdown, SolverBenchmarkMetadata,
+    SolverCapabilitiesSnapshot, BASELINE_SNAPSHOT_SCHEMA_VERSION, CASE_RUN_SCHEMA_VERSION,
+    RUN_REPORT_SCHEMA_VERSION,
 };
 use crate::benchmark_mode::FULL_SOLVE_BENCHMARK_MODE;
 use crate::hotpath::run_hotpath_case_artifact;
@@ -185,6 +186,7 @@ fn run_case(
 ) -> CaseRunArtifact {
     debug_assert_eq!(suite.manifest.benchmark_mode, FULL_SOLVE_BENCHMARK_MODE);
     let input = apply_effective_overrides(suite, case);
+    let case_identity = build_case_identity_metadata(case);
     let effective_budget = EffectiveBenchmarkBudget {
         max_iterations: input.solver.stop_conditions.max_iterations,
         time_limit_seconds: input.solver.stop_conditions.time_limit_seconds,
@@ -223,6 +225,7 @@ fn run_case(
                 case_id: case.manifest.id.clone(),
                 case_class: case.manifest.class,
                 case_manifest_path: case.manifest_path.display().to_string(),
+                case_identity: Some(case_identity.clone()),
                 case_title: case.manifest.title.clone(),
                 case_description: case.manifest.description.clone(),
                 tags: case.manifest.tags.clone(),
@@ -262,6 +265,7 @@ fn run_case(
             case_id: case.manifest.id.clone(),
             case_class: case.manifest.class,
             case_manifest_path: case.manifest_path.display().to_string(),
+            case_identity: Some(case_identity),
             case_title: case.manifest.title.clone(),
             case_description: case.manifest.description.clone(),
             tags: case.manifest.tags.clone(),
@@ -498,6 +502,56 @@ pub(crate) fn build_solver_metadata_for_kind(
     }
 }
 
+pub(crate) fn build_case_identity_metadata(case: &LoadedBenchmarkCase) -> CaseIdentityMetadata {
+    let case_role = case.overrides.case_role.unwrap_or(case.manifest.case_role);
+    let canonical_case_id = if case_role.is_canonical() {
+        case.manifest.id.clone()
+    } else {
+        case.overrides
+            .canonical_case_id
+            .clone()
+            .or_else(|| case.manifest.canonical_case_id.clone())
+            .unwrap_or_else(|| case.manifest.id.clone())
+    };
+
+    let purpose = case
+        .overrides
+        .purpose
+        .as_deref()
+        .or(case.manifest.purpose.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let provenance = case
+        .overrides
+        .provenance
+        .as_deref()
+        .or(case.manifest.provenance.as_deref())
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+
+    let purpose_provenance_summary = match (purpose, provenance) {
+        (Some(purpose), Some(provenance)) => {
+            Some(format!("purpose: {purpose}; provenance: {provenance}"))
+        }
+        (Some(purpose), None) => Some(format!("purpose: {purpose}")),
+        (None, Some(provenance)) => Some(format!("provenance: {provenance}")),
+        (None, None) => None,
+    };
+
+    CaseIdentityMetadata {
+        source_path: case.source_path.clone(),
+        canonical_case_id,
+        case_role,
+        source_fingerprint: case.source_fingerprint.clone(),
+        purpose_provenance_summary,
+        declared_budget: case
+            .overrides
+            .declared_budget
+            .clone()
+            .or_else(|| case.manifest.declared_budget.clone()),
+    }
+}
+
 fn suite_solver_families(cases: &[CaseRunArtifact]) -> Vec<String> {
     let mut families: Vec<String> = cases
         .iter()
@@ -558,6 +612,12 @@ mod tests {
             .cases
             .iter()
             .all(|case| case.solver.solver_family == "solver1"));
+        assert!(report.cases.iter().all(|case| {
+            case.case_identity.as_ref().is_some_and(|identity| {
+                identity.canonical_case_id == case.case_id
+                    && identity.source_fingerprint.starts_with("sha256:")
+            })
+        }));
 
         let run_path =
             persist_run_report(&report, &options.artifacts_dir).expect("persist run report");
@@ -748,7 +808,10 @@ mod tests {
 
         assert_eq!(effective.solver.seed, Some(17));
         assert_eq!(effective.solver.stop_conditions.max_iterations, Some(12));
-        assert_eq!(effective.solver.stop_conditions.no_improvement_iterations, Some(6));
+        assert_eq!(
+            effective.solver.stop_conditions.no_improvement_iterations,
+            Some(6)
+        );
         assert_eq!(params.initial_temperature, 2.5);
         assert_eq!(params.final_temperature, 0.02);
         assert_eq!(params.reheat_cycles, Some(1));

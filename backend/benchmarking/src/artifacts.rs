@@ -1,4 +1,4 @@
-use crate::manifest::BenchmarkSuiteClass;
+use crate::manifest::{BenchmarkCaseRole, BenchmarkSuiteClass, DeclaredBenchmarkBudget};
 use gm_core::models::{MoveFamilyBenchmarkTelemetrySummary, MovePolicy, StopReason};
 use serde::{Deserialize, Serialize};
 
@@ -129,6 +129,18 @@ pub struct EffectiveBenchmarkBudget {
     pub no_improvement_iterations: Option<u64>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CaseIdentityMetadata {
+    pub source_path: String,
+    pub canonical_case_id: String,
+    pub case_role: BenchmarkCaseRole,
+    pub source_fingerprint: String,
+    #[serde(default)]
+    pub purpose_provenance_summary: Option<String>,
+    #[serde(default)]
+    pub declared_budget: Option<DeclaredBenchmarkBudget>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct SolveTimingBreakdown {
     #[serde(default)]
@@ -159,6 +171,8 @@ pub struct CaseRunArtifact {
     pub case_id: String,
     pub case_class: BenchmarkSuiteClass,
     pub case_manifest_path: String,
+    #[serde(default)]
+    pub case_identity: Option<CaseIdentityMetadata>,
     #[serde(default)]
     pub case_title: Option<String>,
     #[serde(default)]
@@ -295,6 +309,8 @@ pub struct ComparabilityReport {
     pub same_benchmark_mode: bool,
     pub same_comparison_category: bool,
     pub same_solver_families: bool,
+    #[serde(default)]
+    pub same_case_identity: bool,
     pub same_machine: bool,
     pub same_suite: bool,
 }
@@ -426,6 +442,7 @@ mod tests {
                 same_benchmark_mode: true,
                 same_comparison_category: true,
                 same_solver_families: true,
+                same_case_identity: true,
                 same_machine: true,
                 same_suite: true,
             },

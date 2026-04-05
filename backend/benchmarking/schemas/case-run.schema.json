@@ -13,6 +13,7 @@
     "case_id",
     "case_class",
     "case_manifest_path",
+    "case_identity",
     "git",
     "machine",
     "solver",
@@ -47,6 +48,7 @@
     "case_id": { "type": "string" },
     "case_class": { "$ref": "#/definitions/suiteClass" },
     "case_manifest_path": { "type": "string" },
+    "case_identity": { "$ref": "#/definitions/caseIdentity" },
     "case_title": { "type": ["string", "null"] },
     "case_description": { "type": ["string", "null"] },
     "tags": { "type": "array", "items": { "type": "string" } },
@@ -191,6 +193,38 @@
             "supports_benchmark_observer": { "type": "boolean" },
             "supports_recommended_settings": { "type": "boolean" },
             "supports_deterministic_seed": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "caseIdentity": {
+      "type": "object",
+      "required": [
+        "source_path",
+        "canonical_case_id",
+        "case_role",
+        "source_fingerprint",
+        "purpose_provenance_summary",
+        "declared_budget"
+      ],
+      "properties": {
+        "source_path": { "type": "string" },
+        "canonical_case_id": { "type": "string" },
+        "case_role": {
+          "type": "string",
+          "enum": ["canonical", "helper", "derived", "proxy", "warm_start", "benchmark_start"]
+        },
+        "source_fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "purpose_provenance_summary": { "type": ["string", "null"] },
+        "declared_budget": {
+          "type": ["object", "null"],
+          "required": ["max_iterations", "time_limit_seconds"],
+          "properties": {
+            "max_iterations": { "type": ["integer", "null"] },
+            "time_limit_seconds": { "type": ["integer", "null"] }
           }
         }
       }

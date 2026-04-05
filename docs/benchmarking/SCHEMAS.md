@@ -30,6 +30,13 @@ Key fields:
 
 - identity: suite id, case id, manifest path, timestamp, run id
 - benchmark lane identity: `benchmark_mode`, `artifact_kind`
+- persisted case identity metadata (`case_identity`):
+  - normalized source path
+  - canonical case id
+  - effective case role
+  - source fingerprint/hash (`sha256:...`)
+  - purpose/provenance summary
+  - declared budget metadata
 - reproducibility: git identity, machine identity, effective seed, effective budget, effective move policy
 - outcome: status, stop reason, error message if any
 - timing: initialization / search / finalization / total
@@ -83,4 +90,5 @@ Examples of non-comparable situations:
 - benchmark mode mismatch
 - machine mismatch for runtime interpretation
 - missing cases in one side or the other
+- case identity mismatch (source path, canonical id, role, fingerprint, purpose/provenance summary, or declared budget metadata)
 - incompatible schema versions

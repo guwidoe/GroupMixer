@@ -8,7 +8,8 @@ This folder implements the solve-level benchmark system described in `docs/BENCH
 - suite class is preserved in every case and rollup
 - manifests are explicit and versioned
 - benchmark runs record reproducibility inputs like seed, stop budget, move policy, and explicit solver-policy selection
-- comparisons must fail honestly when runs are not compatible
+- benchmark run artifacts persist case-identity metadata (source path, canonical case id, role, source fingerprint, purpose/provenance summary, declared budget metadata)
+- comparisons must fail honestly when runs are not compatible, including case-identity drift
 
 ## Manifest layers
 

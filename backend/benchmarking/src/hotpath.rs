@@ -10,15 +10,14 @@ use crate::benchmark_mode::{
 };
 use crate::hotpath_inputs::{
     clique_swap_bench_input, construction_bench_input, search_loop_bench_input,
-    SearchLoopBenchState,
     solver2_clique_swap_bench_input, solver2_swap_bench_input, solver2_transfer_bench_input,
     solver3_clique_swap_bench_input, solver3_swap_bench_input, solver3_transfer_bench_input,
-    swap_bench_input, transfer_bench_input,
+    swap_bench_input, transfer_bench_input, SearchLoopBenchState,
 };
 use crate::manifest::{
     canonical_solver_family_for_case, LoadedBenchmarkCase, LoadedBenchmarkSuite,
 };
-use crate::runner::build_solver_metadata_for_kind;
+use crate::runner::{build_case_identity_metadata, build_solver_metadata_for_kind};
 use gm_core::models::{MoveFamilyBenchmarkTelemetrySummary, SolverKind};
 use gm_core::solver1::search::simulated_annealing::SimulatedAnnealing;
 use gm_core::solver1::search::Solver;
@@ -66,6 +65,7 @@ pub fn run_hotpath_case_artifact(
 ) -> CaseRunArtifact {
     let solver_kind = hotpath_solver_kind(case)
         .expect("loaded hotpath cases should declare a valid solver family");
+    let case_identity = build_case_identity_metadata(case);
     match run_hotpath_case(suite, case) {
         Ok(execution) => {
             let runtime_seconds =
@@ -80,6 +80,7 @@ pub fn run_hotpath_case_artifact(
                 case_id: case.manifest.id.clone(),
                 case_class: case.manifest.class,
                 case_manifest_path: case.manifest_path.display().to_string(),
+                case_identity: Some(case_identity.clone()),
                 case_title: case.manifest.title.clone(),
                 case_description: case.manifest.description.clone(),
                 tags: case.manifest.tags.clone(),
@@ -124,6 +125,7 @@ pub fn run_hotpath_case_artifact(
             case_id: case.manifest.id.clone(),
             case_class: case.manifest.class,
             case_manifest_path: case.manifest_path.display().to_string(),
+            case_identity: Some(case_identity),
             case_title: case.manifest.title.clone(),
             case_description: case.manifest.description.clone(),
             tags: case.manifest.tags.clone(),
