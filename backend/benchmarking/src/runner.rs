@@ -12,6 +12,7 @@ use crate::manifest::{
     load_suite_manifest, BenchmarkSuiteClass, LoadedBenchmarkCase, LoadedBenchmarkSuite,
 };
 use crate::storage::{machine_identity_label, BenchmarkStorage};
+use crate::validation::{validate_final_solution, validation_failure_summary};
 use anyhow::{Context, Result};
 use chrono::Utc;
 use gm_core::models::{MoveFamilyBenchmarkTelemetrySummary, SolverConfiguration, SolverKind};
@@ -214,6 +215,13 @@ fn run_case(
                 .as_ref()
                 .map(|telemetry| telemetry.moves.clone())
                 .unwrap_or_default();
+            let validation = validate_final_solution(&input, &result);
+            let validation_error = (!validation.validation_passed).then(|| {
+                format!(
+                    "external final-solution validation failed: {}",
+                    validation_failure_summary(&validation)
+                )
+            });
 
             CaseRunArtifact {
                 schema_version: CASE_RUN_SCHEMA_VERSION,
@@ -237,8 +245,12 @@ fn run_case(
                 artifact_kind: BenchmarkArtifactKind::FullSolve,
                 effective_move_policy: result.move_policy.or(input.solver.move_policy.clone()),
                 stop_reason: result.stop_reason,
-                status: CaseRunStatus::Success,
-                error_message: None,
+                status: if validation_error.is_some() {
+                    CaseRunStatus::SolverError
+                } else {
+                    CaseRunStatus::Success
+                },
+                error_message: validation_error,
                 runtime_seconds: timing.total_seconds,
                 timing,
                 initial_score: telemetry.as_ref().map(|telemetry| telemetry.initial_score),
@@ -253,6 +265,7 @@ fn run_case(
                 weighted_constraint_penalty: Some(result.weighted_constraint_penalty),
                 moves,
                 hotpath_metrics: None,
+                external_validation: Some(validation),
             }
         }
         Err(error) => CaseRunArtifact {
@@ -294,6 +307,7 @@ fn run_case(
             weighted_constraint_penalty: None,
             moves: MoveFamilyBenchmarkTelemetrySummary::default(),
             hotpath_metrics: None,
+            external_validation: None,
         },
     }
 }
@@ -618,6 +632,11 @@ mod tests {
                     && identity.source_fingerprint.starts_with("sha256:")
             })
         }));
+        assert!(report.cases.iter().all(|case| {
+            case.external_validation
+                .as_ref()
+                .is_some_and(|validation| validation.validation_passed)
+        }));
 
         let run_path =
             persist_run_report(&report, &options.artifacts_dir).expect("persist run report");
@@ -661,6 +680,11 @@ mod tests {
             .cases
             .iter()
             .all(|case| case.solver.solver_config_id == "solver2"));
+        assert!(report.cases.iter().all(|case| {
+            case.external_validation
+                .as_ref()
+                .is_some_and(|validation| validation.validation_passed)
+        }));
     }
 
     #[test]
@@ -685,6 +709,11 @@ mod tests {
             .cases
             .iter()
             .all(|case| case.solver.solver_config_id == "solver3"));
+        assert!(report.cases.iter().all(|case| {
+            case.external_validation
+                .as_ref()
+                .is_some_and(|validation| validation.validation_passed)
+        }));
     }
 
     #[test]

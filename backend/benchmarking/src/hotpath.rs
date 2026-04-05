@@ -113,6 +113,7 @@ pub fn run_hotpath_case_artifact(
                 weighted_constraint_penalty: None,
                 moves: MoveFamilyBenchmarkTelemetrySummary::default(),
                 hotpath_metrics: Some(execution.metrics),
+                external_validation: None,
             }
         }
         Err(error) => CaseRunArtifact {
@@ -155,6 +156,7 @@ pub fn run_hotpath_case_artifact(
             weighted_constraint_penalty: None,
             moves: MoveFamilyBenchmarkTelemetrySummary::default(),
             hotpath_metrics: None,
+            external_validation: None,
         },
     }
 }

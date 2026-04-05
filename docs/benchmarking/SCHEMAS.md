@@ -41,6 +41,13 @@ Key fields:
 - outcome: status, stop reason, error message if any
 - timing: initialization / search / finalization / total
 - quality: initial score, final score, best score
+- external full-solve validation block (`external_validation`):
+  - `validation_passed`
+  - total-score agreement
+  - score-breakdown agreement
+  - invariant/feasibility status
+  - schedule roundtrip agreement
+  - mismatch diagnostics and recomputed breakdown details
 - search telemetry: iterations, no-improvement count, per-move-family counters
 - optional hotpath metrics: measured operations, warmup count, throughput, and mode-specific timing buckets
 

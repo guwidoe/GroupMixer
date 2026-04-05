@@ -12,6 +12,7 @@ pub mod refs;
 pub mod runner;
 pub mod storage;
 pub mod summary;
+pub mod validation;
 
 pub use artifacts::{
     BaselineSnapshot, BenchmarkComparisonCategory, BenchmarkSeedPolicy, CaseComparison,
@@ -58,3 +59,7 @@ pub use storage::{
     MachineRecord,
 };
 pub use summary::render_comparison_summary;
+pub use validation::{
+    validate_final_solution, validation_failure_summary, ExternalValidationAgreement,
+    ExternalValidationReport, RecomputedScoreBreakdown, ReportedScoreBreakdown,
+};

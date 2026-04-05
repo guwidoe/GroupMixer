@@ -1,4 +1,5 @@
 use crate::manifest::{BenchmarkCaseRole, BenchmarkSuiteClass, DeclaredBenchmarkBudget};
+use crate::validation::ExternalValidationReport;
 use gm_core::models::{MoveFamilyBenchmarkTelemetrySummary, MovePolicy, StopReason};
 use serde::{Deserialize, Serialize};
 
@@ -218,6 +219,8 @@ pub struct CaseRunArtifact {
     pub moves: MoveFamilyBenchmarkTelemetrySummary,
     #[serde(default)]
     pub hotpath_metrics: Option<HotPathMetrics>,
+    #[serde(default)]
+    pub external_validation: Option<ExternalValidationReport>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

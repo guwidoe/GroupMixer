@@ -9,6 +9,7 @@ This folder implements the solve-level benchmark system described in `docs/BENCH
 - manifests are explicit and versioned
 - benchmark runs record reproducibility inputs like seed, stop budget, move policy, and explicit solver-policy selection
 - benchmark run artifacts persist case-identity metadata (source path, canonical case id, role, source fingerprint, purpose/provenance summary, declared budget metadata)
+- full-solve case artifacts include an external final-solution validation report (independent recompute + invariant checks + mismatch diagnostics)
 - comparisons must fail honestly when runs are not compatible, including case-identity drift
 
 ## Manifest layers
@@ -114,6 +115,16 @@ backend/benchmarking/
     baseline-snapshot.schema.json
     comparison-report.schema.json
 ```
+
+## External full-solve validation
+
+For every `full_solve` case, the runner performs an external validation pass after the solver returns:
+
+- parse the solver-reported final schedule as a fresh external state
+- recompute total score and score breakdown from scratch
+- run independent feasibility/invariant checks
+- mark the case as failed (`status: solver_error`) if validation mismatches are found
+- persist detailed diagnostics in `external_validation`
 
 ## Initial workflow target
 

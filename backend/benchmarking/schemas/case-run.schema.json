@@ -120,6 +120,103 @@
         "full_recalculation_seconds": { "type": "number" },
         "search_seconds": { "type": "number" }
       }
+    },
+    "external_validation": {
+      "type": ["object", "null"],
+      "required": [
+        "validation_passed",
+        "total_score_agreement",
+        "score_breakdown_agreement",
+        "invariants_passed",
+        "schedule_roundtrip_exact",
+        "component_agreement",
+        "reported",
+        "recomputed",
+        "mismatch_diagnostics"
+      ],
+      "properties": {
+        "validation_passed": { "type": "boolean" },
+        "total_score_agreement": { "type": "boolean" },
+        "score_breakdown_agreement": { "type": "boolean" },
+        "invariants_passed": { "type": "boolean" },
+        "schedule_roundtrip_exact": { "type": "boolean" },
+        "component_agreement": {
+          "type": "object",
+          "required": [
+            "final_score",
+            "unique_contacts",
+            "repetition_penalty",
+            "attribute_balance_penalty",
+            "constraint_penalty",
+            "weighted_repetition_penalty",
+            "weighted_constraint_penalty"
+          ],
+          "properties": {
+            "final_score": { "type": "boolean" },
+            "unique_contacts": { "type": "boolean" },
+            "repetition_penalty": { "type": "boolean" },
+            "attribute_balance_penalty": { "type": "boolean" },
+            "constraint_penalty": { "type": "boolean" },
+            "weighted_repetition_penalty": { "type": "boolean" },
+            "weighted_constraint_penalty": { "type": "boolean" }
+          }
+        },
+        "reported": {
+          "type": "object",
+          "required": [
+            "final_score",
+            "unique_contacts",
+            "repetition_penalty",
+            "attribute_balance_penalty",
+            "constraint_penalty",
+            "weighted_repetition_penalty",
+            "weighted_constraint_penalty"
+          ],
+          "properties": {
+            "final_score": { "type": "number" },
+            "unique_contacts": { "type": "integer" },
+            "repetition_penalty": { "type": "integer" },
+            "attribute_balance_penalty": { "type": "integer" },
+            "constraint_penalty": { "type": "integer" },
+            "weighted_repetition_penalty": { "type": "number" },
+            "weighted_constraint_penalty": { "type": "number" }
+          }
+        },
+        "recomputed": {
+          "type": ["object", "null"],
+          "required": [
+            "total_score",
+            "baseline_score",
+            "unique_contacts",
+            "repetition_penalty",
+            "weighted_repetition_penalty",
+            "attribute_balance_penalty",
+            "constraint_penalty",
+            "weighted_constraint_penalty",
+            "clique_violations",
+            "forbidden_pair_violations",
+            "should_together_violations",
+            "immovable_violations",
+            "pair_meeting_counts"
+          ],
+          "properties": {
+            "total_score": { "type": "number" },
+            "baseline_score": { "type": "number" },
+            "unique_contacts": { "type": "integer" },
+            "repetition_penalty": { "type": "integer" },
+            "weighted_repetition_penalty": { "type": "number" },
+            "attribute_balance_penalty": { "type": "number" },
+            "constraint_penalty": { "type": "integer" },
+            "weighted_constraint_penalty": { "type": "number" },
+            "clique_violations": { "type": "array", "items": { "type": "integer" } },
+            "forbidden_pair_violations": { "type": "array", "items": { "type": "integer" } },
+            "should_together_violations": { "type": "array", "items": { "type": "integer" } },
+            "immovable_violations": { "type": "integer" },
+            "pair_meeting_counts": { "type": "array", "items": { "type": "integer" } }
+          }
+        },
+        "mismatch_diagnostics": { "type": "array", "items": { "type": "string" } }
+      }
     }
   },
   "definitions": {
