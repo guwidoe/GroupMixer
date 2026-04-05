@@ -61,6 +61,12 @@ cargo bench -p gm-core --bench solver_perf construction
 cargo bench -p gm-core --bench solver_perf search_loop
 ```
 
+Construction baseline ownership note:
+
+- the benchmark platform and artifact schema for construction are shared
+- the currently runnable hotpath construction baseline (`hotpath-construction`) is solver1-owned today
+- solver2/solver3 still rely on shared full-solve + move-family/search-iteration lanes while their dedicated construction probes remain future work
+
 ### Real-demo large-workload validation
 
 Use the real Sailing Trip package with the benchmark meaning kept explicit:

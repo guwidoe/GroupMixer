@@ -82,6 +82,34 @@ Rules:
 - `hotpath_preset` is a probe identifier, not a promise that every solver family shares the same internal kernel implementation
 - shared storage/reporting/comparison remain one platform even when the hotpath probe implementation differs by solver family
 
+### Shared baseline construction ownership model
+
+The benchmark platform has one shared way to describe the **construction benchmark question**,
+but construction implementation ownership remains solver-family specific.
+
+What is shared today:
+
+- the benchmark question shape (`benchmark_mode: construction` and `benchmark_mode: full_recalculation`)
+- case/suite metadata ownership (manifest id, provenance, solver-family id, class, tags)
+- artifact schema + storage ownership (`hotpath_metrics`, run reports, baselines, comparisons)
+- reproducibility metadata ownership (seed/budget/move policy capture)
+
+What remains solver-owned:
+
+- the constructor entrypoint that is actually timed
+- deterministic placement behavior and internal state layout
+- any constructor-specific caches/derived state built before search begins
+
+Current honest status:
+
+- `hotpath-construction` and `hotpath-full-recalculation` currently use solver1 fixtures (`construction_default`)
+- solver2/solver3 already share the broader benchmark platform (full-solve suites and move-family hotpath lanes), but do **not** yet provide dedicated construction/full-recalculation hotpath probes
+
+Future work (not done yet):
+
+- add solver2/solver3 construction + full-recalculation presets/cases
+- only claim cross-family shared construction baselines once those lanes are implemented and runnable
+
 ### Canonical objective full-suite policy
 
 Canonical objective suite v1 is represented by the three manifests documented in `docs/benchmarking/OBJECTIVE_CASE_PORTFOLIO.md`.

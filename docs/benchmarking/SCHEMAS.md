@@ -51,6 +51,43 @@ Key fields:
 - search telemetry: iterations, no-improvement count, per-move-family counters
 - optional hotpath metrics: measured operations, warmup count, throughput, and mode-specific timing buckets
 
+## Timing and construction telemetry semantics
+
+The case-run schema uses two timing surfaces that serve different purposes.
+
+### 1) `timing` (shared solve-level timing)
+
+- for `full_solve` artifacts, `timing.initialization_seconds`, `timing.search_seconds`,
+  `timing.finalization_seconds`, and `timing.total_seconds` come from solver benchmark telemetry
+- `runtime_seconds` is the same top-level wall-time value used for rollups/comparisons
+- this is the cross-suite/cross-case timing surface used by baseline/compare reports
+
+Current-state note:
+
+- solver1 currently fills all three phase buckets (initialization/search/finalization)
+- solver2/solver3 currently emphasize search timing and still report `0` for some non-search buckets
+  (that gap is known follow-up work, not hidden behavior)
+
+### 2) `hotpath_metrics` (mode-specific timing)
+
+- `measurement_seconds` is total measured-loop wall time
+- `setup_seconds` is one-time fixture/setup time outside the measured-loop body
+- `construction_seconds`, `preview_seconds`, `apply_seconds`, `full_recalculation_seconds`,
+  and `search_seconds` are mode-specific operation-time accumulators
+- `runtime_seconds` for hotpath artifacts is computed as:
+  - `setup_seconds + measurement_seconds`
+
+Interpretation rule:
+
+- mode-specific buckets are for operation forensics
+- `measurement_seconds` and `runtime_seconds` remain the authoritative wall-time values for comparisons
+
+Construction-lane honesty:
+
+- `construction_seconds` is non-zero only when the suite runs `benchmark_mode: construction`
+- today that runnable lane is solver1-only (`hotpath.construction.default`)
+- solver2/solver3 construction telemetry in the shared hotpath schema is intentionally reserved for future implementation, not currently populated by dedicated construction suites
+
 ## Run report
 
 A persisted suite execution.
