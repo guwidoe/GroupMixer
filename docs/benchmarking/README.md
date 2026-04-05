@@ -11,6 +11,7 @@ Primary references:
 - `./WORKFLOW.md`
 - `./RECORDINGS.md`
 - `./AUDIT.md`
+- `./BENCHMARK_TRUTHFULNESS_AUDIT.md`
 
 ## What lives here
 
@@ -67,7 +68,11 @@ The repo now distinguishes between two Sailing Trip benchmark artifacts:
 
 The real-demo benchmark package currently includes:
 
-- full-solve suites for solver1 and solver3 under:
+- the canonical raw case:
+  - `backend/benchmarking/cases/stretch/sailing_trip_demo_real.json`
+- a helper comparative start-state case:
+  - `backend/benchmarking/cases/stretch/sailing_trip_demo_real_benchmark_start.json`
+- full-solve comparative suites for solver1 and solver3 under:
   - canonical policy
   - tuned policy
   - 15-second budget
@@ -78,4 +83,10 @@ The real-demo benchmark package currently includes:
   - `transfer_preview` / `transfer_apply`
   - `clique_swap_preview` / `clique_swap_apply`
 
-See `docs/benchmarking/REAL_SAILING_TRIP_BENCHMARK_PLAN.md` for the implementation plan and rationale.
+Important truthfulness note:
+
+- the current checked-in Sailing Trip full-solve suites use the `*_benchmark_start` helper case
+- they are therefore valid for comparative diagnostics, but **not** for the future canonical objective suite
+- the canonical objective lane remains blocked on making the exact raw case runnable as itself
+
+See `docs/benchmarking/REAL_SAILING_TRIP_BENCHMARK_PLAN.md` and `docs/benchmarking/BENCHMARK_TRUTHFULNESS_AUDIT.md` for the current status and rationale.

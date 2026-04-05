@@ -63,7 +63,7 @@ cargo bench -p gm-core --bench solver_perf search_loop
 
 ### Real-demo large-workload validation
 
-Use the real Sailing Trip package when you need the actual demo workload rather than a toy or derived proxy:
+Use the real Sailing Trip package with the benchmark meaning kept explicit:
 
 ```bash
 gm-cli benchmark run --manifest backend/benchmarking/suites/stretch-sailing-trip-demo-time-solver3-canonical.yaml
@@ -72,11 +72,19 @@ gm-cli benchmark run --manifest backend/benchmarking/suites/hotpath-search-itera
 gm-cli benchmark run --manifest backend/benchmarking/suites/hotpath-clique-swap-preview-sailing-trip-demo-solver3.yaml
 ```
 
+Truthfulness notes:
+
+- `backend/benchmarking/cases/stretch/sailing_trip_demo_real.json` is the canonical real-demo target case
+- `backend/benchmarking/cases/stretch/sailing_trip_demo_real_benchmark_start.json` is a helper comparative case, not a canonical objective target
+- the current checked-in Sailing Trip full-solve suites use the helper benchmark-start case for shared-start-state comparison
+- that makes them useful for comparative diagnostics, but blocked from the future canonical objective suite until the exact raw case is runnable as itself
+
 Policy notes:
 
-- use the `*-canonical` suites for stable architecture/regression comparisons
-- use the `*-tuned` suites for checked-in best-known benchmark policy comparisons
-- use the `*_demo_real_benchmark_start` workload when you want shared deterministic start-state comparability across solver families
+- use the current `*-canonical` suites for stable comparative architecture/regression checks only within that helper-start benchmark question
+- use the `*-tuned` suites for checked-in best-known comparative policy checks within that same helper-start benchmark question
+- use the `*_demo_real_benchmark_start` workload only when you explicitly want shared deterministic start-state comparability across solver families
+- do not present those helper-start suites as the canonical objective benchmark answer
 
 ## Baseline workflow
 
