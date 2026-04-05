@@ -2,6 +2,7 @@ schema_version: 1
 suite_id: stretch-sailing-trip-demo-iterations-solver1-tuned
 benchmark_mode: full_solve
 comparison_category: score_quality
+case_selection_policy: allow_non_canonical
 class: stretch
 title: Real Sailing Trip demo 1M-iteration benchmark for solver1 tuned policy
 description: Exact Sailing Trip demo workload under a 1,000,000 iteration budget using

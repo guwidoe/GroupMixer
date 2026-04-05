@@ -2,6 +2,14 @@
   "schema_version": 1,
   "id": "stretch.sailing-trip-demo-real-benchmark-start",
   "class": "stretch",
+  "case_role": "benchmark_start",
+  "canonical_case_id": "stretch.sailing-trip-demo-real",
+  "purpose": "shared deterministic cross-solver comparative start state for the exact real Sailing Trip problem",
+  "provenance": "derived from backend/benchmarking/cases/stretch/sailing_trip_demo_real.json by adding a checked-in deterministic initial_schedule without changing the underlying problem definition",
+  "declared_budget": {
+    "time_limit_seconds": 15,
+    "max_iterations": 1000000
+  },
   "tags": [
     "stretch",
     "demo",

@@ -11,6 +11,28 @@ use std::path::{Path, PathBuf};
 pub const SUITE_SCHEMA_VERSION: u32 = 1;
 pub const CASE_SCHEMA_VERSION: u32 = 1;
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[serde(rename_all = "snake_case")]
+pub enum BenchmarkCaseSelectionPolicy {
+    CanonicalOnly,
+    AllowNonCanonical,
+}
+
+impl BenchmarkCaseSelectionPolicy {
+    pub fn default_for(
+        benchmark_mode: &str,
+        comparison_category: BenchmarkComparisonCategory,
+    ) -> Self {
+        if benchmark_mode == default_benchmark_mode()
+            && comparison_category == BenchmarkComparisonCategory::ScoreQuality
+        {
+            Self::CanonicalOnly
+        } else {
+            Self::AllowNonCanonical
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum BenchmarkCaseRole {
@@ -27,6 +49,17 @@ impl BenchmarkCaseRole {
     pub fn is_canonical(self) -> bool {
         matches!(self, Self::Canonical)
     }
+}
+
+pub fn effective_case_selection_policy(
+    manifest: &BenchmarkSuiteManifest,
+) -> BenchmarkCaseSelectionPolicy {
+    manifest.case_selection_policy.unwrap_or_else(|| {
+        BenchmarkCaseSelectionPolicy::default_for(
+            &manifest.benchmark_mode,
+            manifest.comparison_category,
+        )
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
@@ -77,6 +110,8 @@ pub struct BenchmarkSuiteManifest {
     pub title: Option<String>,
     #[serde(default)]
     pub description: Option<String>,
+    #[serde(default)]
+    pub case_selection_policy: Option<BenchmarkCaseSelectionPolicy>,
     #[serde(default)]
     pub default_solver_family: Option<String>,
     #[serde(default)]
@@ -230,6 +265,8 @@ pub fn load_suite_manifest(path: impl AsRef<Path>) -> Result<LoadedBenchmarkSuit
 
     validate_suite_manifest(path, &manifest)?;
 
+    let case_selection_policy = effective_case_selection_policy(&manifest);
+
     let suite_dir = path
         .parent()
         .map(Path::to_path_buf)
@@ -257,6 +294,17 @@ pub fn load_suite_manifest(path: impl AsRef<Path>) -> Result<LoadedBenchmarkSuit
                     expected_case_id
                 );
             }
+        }
+        let effective_case_role = case_override.case_role.unwrap_or(case_manifest.case_role);
+        if matches!(case_selection_policy, BenchmarkCaseSelectionPolicy::CanonicalOnly)
+            && !effective_case_role.is_canonical()
+        {
+            bail!(
+                "benchmark suite {} rejects non-canonical case {} with role {:?}; set case_selection_policy: allow_non_canonical only for explicit helper/diagnostic suites",
+                manifest.suite_id,
+                case_manifest.id,
+                effective_case_role
+            );
         }
         if is_hotpath_benchmark_mode(&manifest.benchmark_mode) {
             if case_manifest
@@ -330,6 +378,7 @@ fn validate_suite_manifest(path: &Path, manifest: &BenchmarkSuiteManifest) -> Re
             manifest.benchmark_mode
         );
     }
+    let _ = effective_case_selection_policy(manifest);
     if let Some(solver_family) = manifest.default_solver_family.as_deref() {
         SolverKind::parse_config_id(solver_family)
             .map_err(anyhow::Error::msg)
@@ -725,5 +774,85 @@ cases:
         assert!(error
             .to_string()
             .contains("declares an empty declared_budget"));
+    }
+
+    #[test]
+    fn score_quality_full_solve_suites_default_to_canonical_only() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite_path = temp.path().join("suite.yaml");
+        fs::write(
+            &suite_path,
+            r#"schema_version: 1
+suite_id: canonical-default-suite
+benchmark_mode: full_solve
+comparison_category: score_quality
+class: stretch
+cases:
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/sailing_trip_demo_real_benchmark_start.json
+"#,
+        )
+        .expect("write suite");
+
+        let error = load_suite_manifest(&suite_path)
+            .expect_err("helper-start suite should be rejected without explicit override");
+
+        assert!(error
+            .to_string()
+            .contains("rejects non-canonical case"));
+    }
+
+    #[test]
+    fn helper_suites_can_opt_into_non_canonical_cases() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite_path = temp.path().join("suite.yaml");
+        let case_path = temp.path().join("case.json");
+
+        fs::write(
+            &case_path,
+            serde_json::to_string_pretty(&serde_json::json!({
+                "schema_version": 1,
+                "id": "stretch.helper-case",
+                "class": "stretch",
+                "case_role": "helper",
+                "canonical_case_id": "stretch.real-case",
+                "input": {
+                    "initial_schedule": null,
+                    "problem": {
+                        "people": [{"id": "p0", "attributes": {}}],
+                        "groups": [{"id": "g0", "size": 1}],
+                        "num_sessions": 1
+                    },
+                    "objectives": [],
+                    "constraints": [],
+                    "solver": {
+                        "solver_type": "solver1",
+                        "stop_conditions": {"max_iterations": 1, "time_limit_seconds": null, "no_improvement_iterations": null},
+                        "solver_params": {"solver_type": "SimulatedAnnealing", "initial_temperature": 1.0, "final_temperature": 0.1, "cooling_schedule": "geometric", "reheat_after_no_improvement": 0, "reheat_cycles": 0},
+                        "logging": {},
+                        "telemetry": {},
+                        "seed": 1,
+                        "move_policy": null,
+                        "allowed_sessions": null
+                    }
+                }
+            }))
+            .expect("serialize case"),
+        )
+        .expect("write case");
+
+        fs::write(
+            &suite_path,
+            format!(
+                "schema_version: 1\nsuite_id: helper-suite\nbenchmark_mode: full_solve\ncomparison_category: score_quality\nclass: stretch\ncase_selection_policy: allow_non_canonical\ncases:\n  - manifest: {}\n",
+                case_path.display()
+            ),
+        )
+        .expect("write suite");
+
+        let suite = load_suite_manifest(&suite_path).expect("helper suite should load");
+        assert_eq!(
+            effective_case_selection_policy(&suite.manifest),
+            BenchmarkCaseSelectionPolicy::AllowNonCanonical
+        );
     }
 }

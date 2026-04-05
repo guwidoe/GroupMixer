@@ -2,6 +2,7 @@ schema_version: 1
 suite_id: stretch
 benchmark_mode: full_solve
 comparison_category: score_quality
+case_selection_policy: allow_non_canonical
 class: stretch
 title: Stretch solve-level benchmark suite
 description: Larger deterministic workloads used for controlled stress and scaling diagnosis.

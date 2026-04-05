@@ -2,6 +2,7 @@ schema_version: 1
 suite_id: stretch-sailing-trip-demo-time-solver3-canonical
 benchmark_mode: full_solve
 comparison_category: score_quality
+case_selection_policy: allow_non_canonical
 class: stretch
 title: Real Sailing Trip demo 15s benchmark for solver3 canonical policy
 description: Exact Sailing Trip demo workload under a 15-second wall-clock budget

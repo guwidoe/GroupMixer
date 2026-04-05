@@ -2,6 +2,13 @@
   "schema_version": 1,
   "id": "stretch.sailing-trip-feature-dense",
   "class": "stretch",
+  "case_role": "derived",
+  "canonical_case_id": "stretch.sailing-trip-demo-real",
+  "purpose": "historical sailing-trip-derived stretch workload for mixed-feature stress testing",
+  "provenance": "hand-derived stretch case inspired by the real Sailing Trip scenario but intentionally reduced and reshaped; not the exact demo workload",
+  "declared_budget": {
+    "max_iterations": 2500
+  },
   "tags": [
     "stretch",
     "demo-derived",

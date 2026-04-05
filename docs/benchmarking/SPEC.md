@@ -21,11 +21,15 @@ Current shape:
 - `schema_version`
 - `suite_id`
 - `benchmark_mode` (`full_solve` by default; hotpath modes are explicit)
+- optional `case_selection_policy` (`canonical_only` by default for full-solve `score_quality` suites; otherwise `allow_non_canonical`)
 - `class`
 - `title`
 - `description`
 - optional suite-level defaults for solver family, full solver configuration, seed, stop budget, move policy, hotpath iterations, and hotpath warmup iterations
 - `cases[]`
+
+Canonical objective suites default to `case_selection_policy: canonical_only`.
+Helper/diagnostic suites that intentionally include derived/proxy/helper cases must opt into `case_selection_policy: allow_non_canonical`.
 
 Each suite case override may also declare benchmark-identity metadata:
 
