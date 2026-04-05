@@ -33,6 +33,15 @@ impl SearchMovePreview {
         }
     }
 
+    #[cfg(test)]
+    pub(crate) fn session_idx(&self) -> usize {
+        match self {
+            Self::Swap(preview) => preview.analysis.swap.session_idx,
+            Self::Transfer(preview) => preview.analysis.transfer.session_idx,
+            Self::CliqueSwap(preview) => preview.analysis.clique_swap.session_idx,
+        }
+    }
+
     pub(crate) fn describe(&self) -> String {
         match self {
             Self::Swap(preview) => format!("swap {:?}", preview.analysis.swap),

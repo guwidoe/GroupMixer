@@ -6,4 +6,7 @@ mod context;
 mod engine;
 mod family_selection;
 
+#[cfg(test)]
+mod tests;
+
 pub use engine::SearchEngine;
