@@ -1,5 +1,6 @@
 use crate::models::ApiInput;
 use crate::solver_support::SolverError;
+use crate::solver_support::validation::validate_schedule_as_incumbent;
 use std::sync::Arc;
 
 use super::compiled_problem::{CompiledProblem, IndexedSchedule};
@@ -43,6 +44,20 @@ impl SolutionState {
 
     pub fn from_input(input: &ApiInput) -> Result<Self, SolverError> {
         let compiled_problem = CompiledProblem::compile(input)?;
+        if let Some(initial_schedule) = &input.initial_schedule {
+            let validated = validate_schedule_as_incumbent(input, initial_schedule)?;
+            let num_people = compiled_problem.num_people;
+            let num_sessions = compiled_problem.num_sessions;
+            let mut state = Self {
+                compiled_problem: Arc::new(compiled_problem),
+                schedule: validated.schedule,
+                locations: vec![vec![None; num_people]; num_sessions],
+                current_score: FullScoreSnapshot::default(),
+            };
+            state.rebuild_locations_from_schedule()?;
+            state.current_score = recompute_full_score(&state)?;
+            return Ok(state);
+        }
         Self::new(&compiled_problem)
     }
 

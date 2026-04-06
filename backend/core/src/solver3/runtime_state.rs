@@ -25,6 +25,7 @@ use crate::solver_support::construction::{
     apply_baseline_construction_heuristic, BaselineConstructionContext,
 };
 use crate::solver_support::SolverError;
+use crate::solver_support::validation::validate_schedule_as_incumbent;
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use rand_chacha::ChaCha12Rng;
@@ -93,6 +94,10 @@ impl RuntimeState {
             .solver
             .seed
             .unwrap_or(DEFAULT_BASELINE_CONSTRUCTION_SEED);
+        if let Some(initial_schedule) = &input.initial_schedule {
+            let validated = validate_schedule_as_incumbent(input, initial_schedule)?;
+            return Self::from_compiled_schedule(compiled, validated.schedule);
+        }
         Self::from_compiled_with_seed(compiled, effective_seed)
     }
 
@@ -130,6 +135,39 @@ impl RuntimeState {
         };
 
         state.initialize_from_schedule(effective_seed)?;
+        state.rebuild_pair_contacts();
+        state.sync_score_from_oracle()?;
+        Ok(state)
+    }
+
+    fn from_compiled_schedule(
+        compiled: Arc<CompiledProblem>,
+        schedule: PackedSchedule,
+    ) -> Result<Self, SolverError> {
+        let np = compiled.num_people;
+        let ng = compiled.num_groups;
+        let ns = compiled.num_sessions;
+
+        let person_location = vec![None::<usize>; ns * np];
+        let group_members = vec![Vec::new(); ns * ng];
+        let group_sizes = vec![0usize; ns * ng];
+        let pair_contacts = vec![0u16; compiled.num_pairs];
+
+        let mut state = Self {
+            compiled,
+            person_location,
+            group_members,
+            group_sizes,
+            pair_contacts,
+            unique_contacts: 0,
+            repetition_penalty_raw: 0,
+            weighted_repetition_penalty: 0.0,
+            attribute_balance_penalty: 0.0,
+            constraint_penalty_weighted: 0.0,
+            total_score: 0.0,
+        };
+
+        state.load_exact_schedule(&schedule)?;
         state.rebuild_pair_contacts();
         state.sync_score_from_oracle()?;
         Ok(state)
@@ -198,6 +236,13 @@ impl RuntimeState {
     fn initialize_from_schedule(&mut self, effective_seed: u64) -> Result<(), SolverError> {
         let schedule = self.build_baseline_schedule(effective_seed)?;
 
+        self.load_exact_schedule(&schedule)?;
+
+        Ok(())
+    }
+
+    fn load_exact_schedule(&mut self, schedule: &PackedSchedule) -> Result<(), SolverError> {
+        
         for (sidx, groups) in schedule.iter().enumerate() {
             for (gidx, members) in groups.iter().enumerate() {
                 for &pidx in members {

@@ -78,22 +78,37 @@ fn representative_input() -> ApiInput {
     initial_schedule.insert(
         "session_0".to_string(),
         HashMap::from([
-            ("g0".to_string(), vec!["p0".to_string(), "p1".to_string()]),
+            (
+                "g0".to_string(),
+                vec!["p0".to_string(), "p1".to_string(), "p4".to_string()],
+            ),
             ("g1".to_string(), vec!["p2".to_string(), "p3".to_string()]),
         ]),
     );
     initial_schedule.insert(
         "session_1".to_string(),
         HashMap::from([
-            ("g0".to_string(), vec!["p0".to_string(), "p1".to_string()]),
-            ("g1".to_string(), vec!["p2".to_string(), "p4".to_string()]),
+            (
+                "g0".to_string(),
+                vec!["p0".to_string(), "p1".to_string(), "p5".to_string()],
+            ),
+            (
+                "g1".to_string(),
+                vec!["p2".to_string(), "p3".to_string(), "p4".to_string()],
+            ),
         ]),
     );
     initial_schedule.insert(
         "session_2".to_string(),
         HashMap::from([
-            ("g0".to_string(), vec!["p0".to_string(), "p2".to_string()]),
-            ("g1".to_string(), vec!["p1".to_string(), "p3".to_string()]),
+            (
+                "g0".to_string(),
+                vec!["p0".to_string(), "p2".to_string(), "p4".to_string()],
+            ),
+            (
+                "g1".to_string(),
+                vec!["p1".to_string(), "p3".to_string(), "p5".to_string()],
+            ),
         ]),
     );
 

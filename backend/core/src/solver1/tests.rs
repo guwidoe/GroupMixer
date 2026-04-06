@@ -262,20 +262,29 @@ fn test_per_session_capacity_validation_uses_participation() {
 fn test_warm_start_overfill_uses_session_specific_capacity() {
     let mut input = create_test_input(3, vec![(2, 2)], 2);
     input.problem.groups[0].session_sizes = Some(vec![1, 2]);
-    input.initial_schedule = Some(HashMap::from([(
-        "session_0".to_string(),
-        HashMap::from([
-            ("g0_0".to_string(), vec!["p0".to_string(), "p1".to_string()]),
-            ("g0_1".to_string(), vec!["p2".to_string()]),
-        ]),
-    )]));
+    input.initial_schedule = Some(HashMap::from([
+        (
+            "session_0".to_string(),
+            HashMap::from([
+                ("g0_0".to_string(), vec!["p0".to_string(), "p1".to_string()]),
+                ("g0_1".to_string(), vec!["p2".to_string()]),
+            ]),
+        ),
+        (
+            "session_1".to_string(),
+            HashMap::from([
+                ("g0_0".to_string(), vec!["p0".to_string()]),
+                ("g0_1".to_string(), vec!["p1".to_string(), "p2".to_string()]),
+            ]),
+        ),
+    ]));
 
     let error = State::new(&input).unwrap_err().to_string();
     assert!(
-        error.contains("Initial schedule overfills group g0_0 in session 0"),
+        error.contains("schedule overfills group 'g0_0' in session_0"),
         "{error}"
     );
-    assert!(error.contains("Capacity: 1"), "{error}");
+    assert!(error.contains("capacity 1"), "{error}");
 }
 
 #[test]

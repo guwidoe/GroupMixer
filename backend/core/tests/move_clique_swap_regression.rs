@@ -91,7 +91,7 @@ fn richer_clique_state(
     } else {
         vec![
             vec![vec!["p0", "p1", "p4"], vec!["p2", "p3", "p5"], vec![]],
-            vec![vec!["p0", "p2", "p4"], vec!["p1", "p3", "p5"], vec![]],
+            vec![vec!["p0", "p1", "p4"], vec!["p2", "p3", "p5"], vec![]],
         ]
     };
 

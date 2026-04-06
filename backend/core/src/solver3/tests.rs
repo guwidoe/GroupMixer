@@ -132,22 +132,37 @@ fn representative_input() -> ApiInput {
     initial_schedule.insert(
         "session_0".into(),
         HashMap::from([
-            ("g0".into(), vec!["p0".into(), "p1".into()]),
+            (
+                "g0".into(),
+                vec!["p0".into(), "p1".into(), "p4".into()],
+            ),
             ("g1".into(), vec!["p2".into(), "p3".into()]),
         ]),
     );
     initial_schedule.insert(
         "session_1".into(),
         HashMap::from([
-            ("g0".into(), vec!["p0".into(), "p1".into()]),
-            ("g1".into(), vec!["p2".into(), "p4".into()]),
+            (
+                "g0".into(),
+                vec!["p0".into(), "p1".into(), "p5".into()],
+            ),
+            (
+                "g1".into(),
+                vec!["p2".into(), "p3".into(), "p4".into()],
+            ),
         ]),
     );
     initial_schedule.insert(
         "session_2".into(),
         HashMap::from([
-            ("g0".into(), vec!["p0".into(), "p2".into()]),
-            ("g1".into(), vec!["p1".into(), "p3".into()]),
+            (
+                "g0".into(),
+                vec!["p0".into(), "p2".into(), "p4".into()],
+            ),
+            (
+                "g1".into(),
+                vec!["p1".into(), "p3".into(), "p5".into()],
+            ),
         ]),
     );
 
@@ -745,30 +760,29 @@ fn invariants_detect_immovable_violation() {
     let mut state = RuntimeState::from_input(&input).unwrap();
     let cp = state.compiled.clone();
 
-    let p3 = cp.person_id_to_idx["p3"];
     let p4 = cp.person_id_to_idx["p4"];
+    let p5 = cp.person_id_to_idx["p5"];
     let g0 = cp.group_id_to_idx["g0"];
     let g1 = cp.group_id_to_idx["g1"];
     let gs0 = state.group_slot(1, g0);
     let gs1 = state.group_slot(1, g1);
 
-    // Remove p3 from g0 and p4 from g1.
-    state.group_members[gs0].retain(|&m| m != p3);
+    // Swap p4 and p5 between the two groups while keeping group sizes unchanged.
+    state.group_members[gs0].retain(|&m| m != p5);
     state.group_sizes[gs0] = state.group_members[gs0].len();
     state.group_members[gs1].retain(|&m| m != p4);
     state.group_sizes[gs1] = state.group_members[gs1].len();
 
-    // Insert p4 into g0 and p3 into g1 — sizes stay the same.
     state.group_members[gs0].push(p4);
     state.group_sizes[gs0] += 1;
-    state.group_members[gs1].push(p3);
+    state.group_members[gs1].push(p5);
     state.group_sizes[gs1] += 1;
 
     // Update person_location to stay location/membership consistent.
-    let ps_p3 = state.people_slot(1, p3);
     let ps_p4 = state.people_slot(1, p4);
-    state.person_location[ps_p3] = Some(g1);
+    let ps_p5 = state.people_slot(1, p5);
     state.person_location[ps_p4] = Some(g0); // violates immovable (must be g1)
+    state.person_location[ps_p5] = Some(g1);
 
     let err = validate_invariants(&state).unwrap_err();
     assert!(
