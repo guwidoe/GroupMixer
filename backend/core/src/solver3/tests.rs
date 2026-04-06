@@ -10,6 +10,18 @@
 
 use std::collections::HashMap;
 
+#[cfg(feature = "solver3-oracle-checks")]
+use std::fs;
+#[cfg(feature = "solver3-oracle-checks")]
+use std::path::Path;
+
+#[cfg(feature = "solver3-oracle-checks")]
+use rand::{RngExt, SeedableRng};
+#[cfg(feature = "solver3-oracle-checks")]
+use rand_chacha::ChaCha12Rng;
+#[cfg(feature = "solver3-oracle-checks")]
+use serde::Deserialize;
+
 use crate::models::{
     ApiInput, AttributeBalanceMode, AttributeBalanceParams, Constraint, Group,
     ImmovablePersonParams, Objective, PairMeetingCountParams, PairMeetingMode, Person,
@@ -2013,4 +2025,421 @@ fn clique_swap_apply_hook_rejects_runtime_state_drift() {
         "unexpected error: {}",
         err
     );
+}
+
+// ---------------------------------------------------------------------------
+// 14. Large-instance random-sequence drift checks (oracle/correctness lane)
+// ---------------------------------------------------------------------------
+
+#[cfg(feature = "solver3-oracle-checks")]
+const RANDOM_SEQUENCE_CANDIDATE_ATTEMPTS: usize = 32;
+
+#[cfg(feature = "solver3-oracle-checks")]
+const RANDOM_SEQUENCE_MAX_STALL_STEPS: usize = 256;
+
+#[cfg(feature = "solver3-oracle-checks")]
+#[derive(Deserialize)]
+struct FixtureEnvelope {
+    input: ApiInput,
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+fn load_solver3_fixture_input(file_name: &str) -> ApiInput {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("test_cases")
+        .join(file_name);
+    let raw = fs::read_to_string(&path)
+        .unwrap_or_else(|err| panic!("failed to read fixture {}: {}", path.display(), err));
+    let mut fixture: FixtureEnvelope = serde_json::from_str(&raw)
+        .unwrap_or_else(|err| panic!("failed to parse fixture {}: {}", path.display(), err));
+
+    fixture.input.solver = solver3_config();
+    fixture.input
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+fn runtime_session_can_transfer(state: &RuntimeState, session_idx: usize) -> bool {
+    let has_capacity_target = (0..state.compiled.num_groups).any(|group_idx| {
+        state.group_sizes[state.group_slot(session_idx, group_idx)]
+            < state.compiled.group_capacity(session_idx, group_idx)
+    });
+    let has_nonempty_source = (0..state.compiled.num_groups)
+        .any(|group_idx| state.group_sizes[state.group_slot(session_idx, group_idx)] > 1);
+    has_capacity_target && has_nonempty_source
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+fn active_clique_members_in_single_group(
+    state: &RuntimeState,
+    session_idx: usize,
+    clique_idx: usize,
+) -> Option<(Vec<usize>, usize)> {
+    let clique = state.compiled.cliques.get(clique_idx)?;
+    if clique
+        .sessions
+        .as_ref()
+        .is_some_and(|sessions| !sessions.contains(&session_idx))
+    {
+        return None;
+    }
+
+    let active_members = clique
+        .members
+        .iter()
+        .copied()
+        .filter(|&person_idx| state.compiled.person_participation[person_idx][session_idx])
+        .collect::<Vec<_>>();
+
+    if active_members.is_empty() {
+        return None;
+    }
+
+    let source_group_idx =
+        state.person_location[state.people_slot(session_idx, active_members[0])]?;
+
+    if active_members.iter().any(|&person_idx| {
+        state.person_location[state.people_slot(session_idx, person_idx)] != Some(source_group_idx)
+            || state.compiled.immovable_group(session_idx, person_idx).is_some()
+    }) {
+        return None;
+    }
+
+    Some((active_members, source_group_idx))
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+fn pick_clique_targets(
+    state: &RuntimeState,
+    session_idx: usize,
+    active_members: &[usize],
+    target_group_idx: usize,
+    rng: &mut ChaCha12Rng,
+) -> Option<Vec<usize>> {
+    let target_slot = state.group_slot(session_idx, target_group_idx);
+    let target_members = &state.group_members[target_slot];
+    if target_members.len() < active_members.len() {
+        return None;
+    }
+
+    let start = rng.random_range(0..target_members.len());
+    let mut selected = Vec::with_capacity(active_members.len());
+    for offset in 0..target_members.len() {
+        let person_idx = target_members[(start + offset) % target_members.len()];
+        if active_members.contains(&person_idx) {
+            continue;
+        }
+        if !state.compiled.person_participation[person_idx][session_idx] {
+            continue;
+        }
+        if state.compiled.person_to_clique_id[session_idx][person_idx].is_some() {
+            continue;
+        }
+        if state.compiled.immovable_group(session_idx, person_idx).is_some() {
+            continue;
+        }
+
+        selected.push(person_idx);
+        if selected.len() == active_members.len() {
+            return Some(selected);
+        }
+    }
+
+    None
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+fn try_apply_random_swap_with_oracle_cross_check(
+    state: &mut RuntimeState,
+    rng: &mut ChaCha12Rng,
+) -> Result<bool, crate::solver_support::SolverError> {
+    if state.compiled.num_groups < 2 {
+        return Ok(false);
+    }
+
+    for _ in 0..RANDOM_SEQUENCE_CANDIDATE_ATTEMPTS {
+        let session_idx = rng.random_range(0..state.compiled.num_sessions);
+        let left_group_idx = rng.random_range(0..state.compiled.num_groups);
+        let mut right_group_idx = rng.random_range(0..state.compiled.num_groups);
+        if right_group_idx == left_group_idx {
+            right_group_idx = (right_group_idx + 1) % state.compiled.num_groups;
+        }
+
+        let left_slot = state.group_slot(session_idx, left_group_idx);
+        let right_slot = state.group_slot(session_idx, right_group_idx);
+        let left_members = &state.group_members[left_slot];
+        let right_members = &state.group_members[right_slot];
+        if left_members.is_empty() || right_members.is_empty() {
+            continue;
+        }
+
+        let left_person_idx = left_members[rng.random_range(0..left_members.len())];
+        let right_person_idx = right_members[rng.random_range(0..right_members.len())];
+        let swap = SwapMove::new(session_idx, left_person_idx, right_person_idx);
+        let Ok(preview) = preview_swap_runtime_lightweight(state, &swap) else {
+            continue;
+        };
+
+        let oracle_delta = preview_swap_oracle_recompute(state, &swap)?;
+        assert_close(
+            preview.delta_score,
+            oracle_delta,
+            "random swap preview delta/oracle mismatch",
+        );
+
+        let before_total = state.total_score;
+        apply_swap_runtime_preview(state, &preview)?;
+        assert_close(
+            state.total_score - before_total,
+            preview.delta_score,
+            "random swap runtime delta/preview mismatch",
+        );
+        return Ok(true);
+    }
+
+    Ok(false)
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+fn try_apply_random_transfer_with_oracle_cross_check(
+    state: &mut RuntimeState,
+    rng: &mut ChaCha12Rng,
+) -> Result<bool, crate::solver_support::SolverError> {
+    for _ in 0..RANDOM_SEQUENCE_CANDIDATE_ATTEMPTS {
+        let session_idx = rng.random_range(0..state.compiled.num_sessions);
+        if !runtime_session_can_transfer(state, session_idx) {
+            continue;
+        }
+
+        let person_idx = rng.random_range(0..state.compiled.num_people);
+        if !state.compiled.person_participation[person_idx][session_idx] {
+            continue;
+        }
+        if state.compiled.immovable_group(session_idx, person_idx).is_some() {
+            continue;
+        }
+        if state.compiled.person_to_clique_id[session_idx][person_idx].is_some() {
+            continue;
+        }
+
+        let Some(source_group_idx) = state.person_location[state.people_slot(session_idx, person_idx)]
+        else {
+            continue;
+        };
+        if state.group_sizes[state.group_slot(session_idx, source_group_idx)] <= 1 {
+            continue;
+        }
+
+        let mut target_group_idx = rng.random_range(0..state.compiled.num_groups);
+        if target_group_idx == source_group_idx {
+            target_group_idx = (target_group_idx + 1) % state.compiled.num_groups;
+        }
+        if state.group_sizes[state.group_slot(session_idx, target_group_idx)]
+            >= state.compiled.group_capacity(session_idx, target_group_idx)
+        {
+            continue;
+        }
+
+        let transfer = TransferMove::new(
+            session_idx,
+            person_idx,
+            source_group_idx,
+            target_group_idx,
+        );
+        let Ok(preview) = preview_transfer_runtime_lightweight(state, &transfer) else {
+            continue;
+        };
+
+        let oracle_delta = preview_transfer_oracle_recompute(state, &transfer)?;
+        assert_close(
+            preview.delta_score,
+            oracle_delta,
+            "random transfer preview delta/oracle mismatch",
+        );
+
+        let before_total = state.total_score;
+        apply_transfer_runtime_preview(state, &preview)?;
+        assert_close(
+            state.total_score - before_total,
+            preview.delta_score,
+            "random transfer runtime delta/preview mismatch",
+        );
+        return Ok(true);
+    }
+
+    Ok(false)
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+fn try_apply_random_clique_swap_with_oracle_cross_check(
+    state: &mut RuntimeState,
+    rng: &mut ChaCha12Rng,
+) -> Result<bool, crate::solver_support::SolverError> {
+    if state.compiled.num_groups < 2 || state.compiled.cliques.is_empty() {
+        return Ok(false);
+    }
+
+    for _ in 0..RANDOM_SEQUENCE_CANDIDATE_ATTEMPTS {
+        let session_idx = rng.random_range(0..state.compiled.num_sessions);
+        let clique_idx = rng.random_range(0..state.compiled.cliques.len());
+        let Some((active_members, source_group_idx)) =
+            active_clique_members_in_single_group(state, session_idx, clique_idx)
+        else {
+            continue;
+        };
+
+        for _ in 0..RANDOM_SEQUENCE_CANDIDATE_ATTEMPTS {
+            let mut target_group_idx = rng.random_range(0..state.compiled.num_groups);
+            if target_group_idx == source_group_idx {
+                target_group_idx = (target_group_idx + 1) % state.compiled.num_groups;
+            }
+            let Some(target_people) = pick_clique_targets(
+                state,
+                session_idx,
+                &active_members,
+                target_group_idx,
+                rng,
+            ) else {
+                continue;
+            };
+
+            let clique_swap = CliqueSwapMove::new(
+                session_idx,
+                clique_idx,
+                source_group_idx,
+                target_group_idx,
+                target_people,
+            );
+            let Ok(preview) = preview_clique_swap_runtime_lightweight(state, &clique_swap) else {
+                continue;
+            };
+
+            let oracle_delta = preview_clique_swap_oracle_recompute(state, &clique_swap)?;
+            assert_close(
+                preview.delta_score,
+                oracle_delta,
+                "random clique-swap preview delta/oracle mismatch",
+            );
+
+            let before_total = state.total_score;
+            apply_clique_swap_runtime_preview(state, &preview)?;
+            assert_close(
+                state.total_score - before_total,
+                preview.delta_score,
+                "random clique-swap runtime delta/preview mismatch",
+            );
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+fn try_apply_random_move_with_oracle_cross_check(
+    state: &mut RuntimeState,
+    rng: &mut ChaCha12Rng,
+) -> Result<bool, crate::solver_support::SolverError> {
+    let start_family = rng.random_range(0..3);
+    for family_offset in 0..3 {
+        let family = (start_family + family_offset) % 3;
+        let applied = match family {
+            0 => try_apply_random_swap_with_oracle_cross_check(state, rng)?,
+            1 => try_apply_random_transfer_with_oracle_cross_check(state, rng)?,
+            2 => try_apply_random_clique_swap_with_oracle_cross_check(state, rng)?,
+            _ => unreachable!(),
+        };
+
+        if applied {
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+fn run_random_sequence_drift_checks(
+    input: &ApiInput,
+    scenario_label: &str,
+    seeds: &[u64],
+    min_applied_moves_per_seed: usize,
+) {
+    for &seed in seeds {
+        let mut state = RuntimeState::from_input(input)
+            .unwrap_or_else(|err| panic!("{} seed {} init failed: {}", scenario_label, seed, err));
+        check_drift(&state)
+            .unwrap_or_else(|err| panic!("{} seed {} initial drift: {}", scenario_label, seed, err));
+        validate_invariants(&state).unwrap_or_else(|err| {
+            panic!(
+                "{} seed {} initial invariants failed: {}",
+                scenario_label, seed, err
+            )
+        });
+
+        let mut rng = ChaCha12Rng::seed_from_u64(seed);
+        let mut applied_moves = 0usize;
+        let mut stalled_steps = 0usize;
+
+        while applied_moves < min_applied_moves_per_seed
+            && stalled_steps < RANDOM_SEQUENCE_MAX_STALL_STEPS
+        {
+            let applied = try_apply_random_move_with_oracle_cross_check(&mut state, &mut rng)
+                .unwrap_or_else(|err| {
+                    panic!(
+                        "{} seed {} failed during random move {}: {}",
+                        scenario_label, seed, applied_moves, err
+                    )
+                });
+
+            if !applied {
+                stalled_steps += 1;
+                continue;
+            }
+
+            applied_moves += 1;
+            stalled_steps = 0;
+
+            check_drift(&state).unwrap_or_else(|err| {
+                panic!(
+                    "{} seed {} drifted after move {}: {}",
+                    scenario_label, seed, applied_moves, err
+                )
+            });
+            validate_invariants(&state).unwrap_or_else(|err| {
+                panic!(
+                    "{} seed {} invariants failed after move {}: {}",
+                    scenario_label, seed, applied_moves, err
+                )
+            });
+        }
+
+        assert!(
+            applied_moves >= min_applied_moves_per_seed,
+            "{} seed {} only applied {} random moves (target {})",
+            scenario_label,
+            seed,
+            applied_moves,
+            min_applied_moves_per_seed,
+        );
+    }
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+#[test]
+fn large_realistic_random_sequences_do_not_drift_from_oracle() {
+    let input = load_solver3_fixture_input("benchmark_large_gender_immovable.json");
+    run_random_sequence_drift_checks(
+        &input,
+        "benchmark_large_gender_immovable",
+        &[11, 29],
+        12,
+    );
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+#[test]
+fn intertwined_edge_case_random_sequences_do_not_drift_from_oracle() {
+    let input = load_solver3_fixture_input("google_cp_equivalent_test.json");
+    run_random_sequence_drift_checks(&input, "google_cp_equivalent", &[7, 23, 91], 24);
 }
