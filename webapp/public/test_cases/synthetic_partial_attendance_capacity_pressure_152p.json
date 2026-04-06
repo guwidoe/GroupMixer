@@ -3,7 +3,7 @@
   "demo_metadata": {
     "id": "synthetic-partial-attendance-capacity-pressure",
     "display_name": "Synthetic Partial Attendance Capacity Pressure",
-    "description": "Large synthetic stress case with heavy partial participation and strongly session-specific capacities.",
+    "description": "Large synthetic stress case with heavy partial participation, distributed session-scoped constraints, and strongly session-specific capacities.",
     "category": "Benchmark"
   },
   "input": {
@@ -24,8 +24,8 @@
         {
           "id": "person_001",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "data",
             "Region": "apac",
             "Experience": "veteran",
             "Attendance Pattern": "full_core",
@@ -36,7 +36,7 @@
           "id": "person_002",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "engineering",
             "Region": "europe",
             "Experience": "veteran",
             "Attendance Pattern": "full_core",
@@ -46,8 +46,8 @@
         {
           "id": "person_003",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "apac",
             "Experience": "veteran",
             "Attendance Pattern": "full_core",
@@ -58,7 +58,7 @@
           "id": "person_004",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "data",
             "Region": "europe",
             "Experience": "veteran",
             "Attendance Pattern": "full_core",
@@ -68,8 +68,8 @@
         {
           "id": "person_005",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "engineering",
             "Region": "apac",
             "Experience": "veteran",
             "Attendance Pattern": "full_core",
@@ -90,8 +90,8 @@
         {
           "id": "person_007",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "nonbinary",
+            "Track": "data",
             "Region": "apac",
             "Experience": "veteran",
             "Attendance Pattern": "full_core",
@@ -102,7 +102,7 @@
           "id": "person_008",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "engineering",
             "Region": "europe",
             "Experience": "veteran",
             "Attendance Pattern": "full_core",
@@ -112,8 +112,8 @@
         {
           "id": "person_009",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "apac",
             "Experience": "veteran",
             "Attendance Pattern": "full_core",
@@ -124,7 +124,7 @@
           "id": "person_010",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "data",
             "Region": "europe",
             "Experience": "veteran",
             "Attendance Pattern": "full_core",
@@ -134,8 +134,8 @@
         {
           "id": "person_011",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "engineering",
             "Region": "apac",
             "Experience": "veteran",
             "Attendance Pattern": "full_core",
@@ -156,10 +156,10 @@
         {
           "id": "person_013",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "data",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "full_core",
             "Role": "member"
           }
@@ -168,7 +168,7 @@
           "id": "person_014",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "engineering",
             "Region": "europe",
             "Experience": "veteran",
             "Attendance Pattern": "full_core",
@@ -178,10 +178,10 @@
         {
           "id": "person_015",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "nonbinary",
+            "Track": "ops",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "full_core",
             "Role": "member"
           }
@@ -190,7 +190,7 @@
           "id": "person_016",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "data",
             "Region": "europe",
             "Experience": "veteran",
             "Attendance Pattern": "full_core",
@@ -200,10 +200,10 @@
         {
           "id": "person_017",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "engineering",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "full_core",
             "Role": "member"
           }
@@ -222,10 +222,10 @@
         {
           "id": "person_019",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "data",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "full_core",
             "Role": "member"
           }
@@ -234,7 +234,7 @@
           "id": "person_020",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "engineering",
             "Region": "europe",
             "Experience": "veteran",
             "Attendance Pattern": "full_core",
@@ -244,10 +244,10 @@
         {
           "id": "person_021",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "full_core",
             "Role": "specialist"
           }
@@ -256,7 +256,7 @@
           "id": "person_022",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "data",
             "Region": "europe",
             "Experience": "veteran",
             "Attendance Pattern": "full_core",
@@ -266,10 +266,10 @@
         {
           "id": "person_023",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "nonbinary",
+            "Track": "engineering",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "full_core",
             "Role": "member"
           }
@@ -294,10 +294,10 @@
         {
           "id": "person_025",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "data",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_a",
             "Role": "member"
           },
@@ -312,7 +312,7 @@
           "id": "person_026",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "engineering",
             "Region": "europe",
             "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_a",
@@ -328,10 +328,10 @@
         {
           "id": "person_027",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_a",
             "Role": "member"
           },
@@ -346,7 +346,7 @@
           "id": "person_028",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "data",
             "Region": "europe",
             "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_a",
@@ -362,10 +362,10 @@
         {
           "id": "person_029",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "engineering",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_a",
             "Role": "member"
           },
@@ -396,10 +396,10 @@
         {
           "id": "person_031",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "nonbinary",
+            "Track": "data",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_a",
             "Role": "member"
           },
@@ -414,7 +414,7 @@
           "id": "person_032",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "engineering",
             "Region": "europe",
             "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_a",
@@ -430,10 +430,10 @@
         {
           "id": "person_033",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_a",
             "Role": "specialist"
           },
@@ -448,7 +448,7 @@
           "id": "person_034",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "data",
             "Region": "europe",
             "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_a",
@@ -464,10 +464,10 @@
         {
           "id": "person_035",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "engineering",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_a",
             "Role": "member"
           },
@@ -498,10 +498,10 @@
         {
           "id": "person_037",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "data",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_a",
             "Role": "member"
           },
@@ -516,7 +516,7 @@
           "id": "person_038",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "engineering",
             "Region": "europe",
             "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_a",
@@ -532,10 +532,10 @@
         {
           "id": "person_039",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "nonbinary",
+            "Track": "ops",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_a",
             "Role": "member"
           },
@@ -550,7 +550,7 @@
           "id": "person_040",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "data",
             "Region": "europe",
             "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_a",
@@ -566,10 +566,10 @@
         {
           "id": "person_041",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "engineering",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_a",
             "Role": "member"
           },
@@ -599,10 +599,10 @@
         {
           "id": "person_043",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "data",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_024",
             "Role": "member"
           },
@@ -616,7 +616,7 @@
           "id": "person_044",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "engineering",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_024",
@@ -631,10 +631,10 @@
         {
           "id": "person_045",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_024",
             "Role": "member"
           },
@@ -648,7 +648,7 @@
           "id": "person_046",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "data",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_024",
@@ -663,10 +663,10 @@
         {
           "id": "person_047",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "nonbinary",
+            "Track": "engineering",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_024",
             "Role": "member"
           },
@@ -695,10 +695,10 @@
         {
           "id": "person_049",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "data",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_024",
             "Role": "specialist"
           },
@@ -712,7 +712,7 @@
           "id": "person_050",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "engineering",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_024",
@@ -727,10 +727,10 @@
         {
           "id": "person_051",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_024",
             "Role": "member"
           },
@@ -744,7 +744,7 @@
           "id": "person_052",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "data",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_024",
@@ -759,10 +759,10 @@
         {
           "id": "person_053",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "engineering",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_024",
             "Role": "member"
           },
@@ -791,10 +791,10 @@
         {
           "id": "person_055",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "nonbinary",
+            "Track": "data",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_024",
             "Role": "member"
           },
@@ -808,7 +808,7 @@
           "id": "person_056",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "engineering",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_024",
@@ -823,10 +823,10 @@
         {
           "id": "person_057",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_024",
             "Role": "member"
           },
@@ -840,7 +840,7 @@
           "id": "person_058",
           "attributes": {
             "Gender": "female",
-            "Track": "data",
+            "Track": "ops",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_125",
@@ -855,10 +855,10 @@
         {
           "id": "person_059",
           "attributes": {
-            "Gender": "female",
-            "Track": "product",
+            "Gender": "male",
+            "Track": "data",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_125",
             "Role": "member"
           },
@@ -872,7 +872,7 @@
           "id": "person_060",
           "attributes": {
             "Gender": "female",
-            "Track": "data",
+            "Track": "engineering",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_125",
@@ -887,10 +887,10 @@
         {
           "id": "person_061",
           "attributes": {
-            "Gender": "female",
-            "Track": "product",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_125",
             "Role": "member"
           },
@@ -919,10 +919,10 @@
         {
           "id": "person_063",
           "attributes": {
-            "Gender": "female",
-            "Track": "product",
+            "Gender": "nonbinary",
+            "Track": "engineering",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_125",
             "Role": "member"
           },
@@ -936,7 +936,7 @@
           "id": "person_064",
           "attributes": {
             "Gender": "female",
-            "Track": "data",
+            "Track": "ops",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_125",
@@ -951,10 +951,10 @@
         {
           "id": "person_065",
           "attributes": {
-            "Gender": "female",
-            "Track": "product",
+            "Gender": "male",
+            "Track": "data",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_125",
             "Role": "member"
           },
@@ -968,7 +968,7 @@
           "id": "person_066",
           "attributes": {
             "Gender": "female",
-            "Track": "data",
+            "Track": "engineering",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_125",
@@ -983,10 +983,10 @@
         {
           "id": "person_067",
           "attributes": {
-            "Gender": "female",
-            "Track": "product",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_125",
             "Role": "member"
           },
@@ -1015,10 +1015,10 @@
         {
           "id": "person_069",
           "attributes": {
-            "Gender": "female",
-            "Track": "product",
+            "Gender": "male",
+            "Track": "engineering",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_125",
             "Role": "member"
           },
@@ -1032,7 +1032,7 @@
           "id": "person_070",
           "attributes": {
             "Gender": "female",
-            "Track": "data",
+            "Track": "ops",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_125",
@@ -1047,10 +1047,10 @@
         {
           "id": "person_071",
           "attributes": {
-            "Gender": "female",
-            "Track": "product",
+            "Gender": "nonbinary",
+            "Track": "data",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_125",
             "Role": "specialist"
           },
@@ -1064,7 +1064,7 @@
           "id": "person_072",
           "attributes": {
             "Gender": "female",
-            "Track": "data",
+            "Track": "engineering",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_125",
@@ -1079,10 +1079,10 @@
         {
           "id": "person_073",
           "attributes": {
-            "Gender": "female",
-            "Track": "product",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_125",
             "Role": "member"
           },
@@ -1096,7 +1096,7 @@
           "id": "person_074",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "ops",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_035",
@@ -1111,10 +1111,10 @@
         {
           "id": "person_075",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "data",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_035",
             "Role": "member"
           },
@@ -1143,10 +1143,10 @@
         {
           "id": "person_077",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_035",
             "Role": "member"
           },
@@ -1160,7 +1160,7 @@
           "id": "person_078",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "data",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_035",
@@ -1175,10 +1175,10 @@
         {
           "id": "person_079",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "nonbinary",
+            "Track": "engineering",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_035",
             "Role": "specialist"
           },
@@ -1192,7 +1192,7 @@
           "id": "person_080",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "ops",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_035",
@@ -1207,10 +1207,10 @@
         {
           "id": "person_081",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "data",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_035",
             "Role": "member"
           },
@@ -1239,10 +1239,10 @@
         {
           "id": "person_083",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_035",
             "Role": "member"
           },
@@ -1256,7 +1256,7 @@
           "id": "person_084",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "data",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_035",
@@ -1271,10 +1271,10 @@
         {
           "id": "person_085",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "engineering",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_035",
             "Role": "member"
           },
@@ -1288,7 +1288,7 @@
           "id": "person_086",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "ops",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_134",
@@ -1303,10 +1303,10 @@
         {
           "id": "person_087",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "nonbinary",
+            "Track": "data",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_134",
             "Role": "member"
           },
@@ -1335,10 +1335,10 @@
         {
           "id": "person_089",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_134",
             "Role": "member"
           },
@@ -1352,7 +1352,7 @@
           "id": "person_090",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "data",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_134",
@@ -1367,10 +1367,10 @@
         {
           "id": "person_091",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "engineering",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_134",
             "Role": "member"
           },
@@ -1384,7 +1384,7 @@
           "id": "person_092",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "ops",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_134",
@@ -1399,10 +1399,10 @@
         {
           "id": "person_093",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "data",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_134",
             "Role": "member"
           },
@@ -1431,10 +1431,10 @@
         {
           "id": "person_095",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "nonbinary",
+            "Track": "ops",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_134",
             "Role": "member"
           },
@@ -1448,7 +1448,7 @@
           "id": "person_096",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "data",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_134",
@@ -1463,10 +1463,10 @@
         {
           "id": "person_097",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "engineering",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_134",
             "Role": "member"
           },
@@ -1480,7 +1480,7 @@
           "id": "person_098",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "ops",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_235",
@@ -1495,10 +1495,10 @@
         {
           "id": "person_099",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "data",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_235",
             "Role": "member"
           },
@@ -1527,10 +1527,10 @@
         {
           "id": "person_101",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_235",
             "Role": "member"
           },
@@ -1544,7 +1544,7 @@
           "id": "person_102",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "data",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_235",
@@ -1559,10 +1559,10 @@
         {
           "id": "person_103",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "nonbinary",
+            "Track": "engineering",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_235",
             "Role": "member"
           },
@@ -1576,7 +1576,7 @@
           "id": "person_104",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "ops",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_235",
@@ -1591,10 +1591,10 @@
         {
           "id": "person_105",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "data",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_235",
             "Role": "specialist"
           },
@@ -1623,10 +1623,10 @@
         {
           "id": "person_107",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_235",
             "Role": "member"
           },
@@ -1640,7 +1640,7 @@
           "id": "person_108",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "data",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_235",
@@ -1655,10 +1655,10 @@
         {
           "id": "person_109",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "engineering",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_235",
             "Role": "member"
           },
@@ -1672,7 +1672,7 @@
           "id": "person_110",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "ops",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_0235",
@@ -1688,10 +1688,10 @@
         {
           "id": "person_111",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "nonbinary",
+            "Track": "data",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_0235",
             "Role": "specialist"
           },
@@ -1722,10 +1722,10 @@
         {
           "id": "person_113",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_0235",
             "Role": "member"
           },
@@ -1740,7 +1740,7 @@
           "id": "person_114",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "data",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_0235",
@@ -1756,10 +1756,10 @@
         {
           "id": "person_115",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "engineering",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_0235",
             "Role": "member"
           },
@@ -1774,7 +1774,7 @@
           "id": "person_116",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "ops",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_0235",
@@ -1790,10 +1790,10 @@
         {
           "id": "person_117",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "data",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_0235",
             "Role": "member"
           },
@@ -1824,10 +1824,10 @@
         {
           "id": "person_119",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "nonbinary",
+            "Track": "ops",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_0235",
             "Role": "member"
           },
@@ -1842,7 +1842,7 @@
           "id": "person_120",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "data",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_0235",
@@ -1858,10 +1858,10 @@
         {
           "id": "person_121",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "engineering",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_0235",
             "Role": "member"
           },
@@ -1876,7 +1876,7 @@
           "id": "person_122",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "ops",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_124",
@@ -1891,10 +1891,10 @@
         {
           "id": "person_123",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "data",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_124",
             "Role": "member"
           },
@@ -1923,10 +1923,10 @@
         {
           "id": "person_125",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_124",
             "Role": "member"
           },
@@ -1940,7 +1940,7 @@
           "id": "person_126",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "data",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_124",
@@ -1955,10 +1955,10 @@
         {
           "id": "person_127",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "nonbinary",
+            "Track": "engineering",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_124",
             "Role": "member"
           },
@@ -1972,7 +1972,7 @@
           "id": "person_128",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "ops",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_124",
@@ -1987,10 +1987,10 @@
         {
           "id": "person_129",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "data",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_124",
             "Role": "member"
           },
@@ -2019,10 +2019,10 @@
         {
           "id": "person_131",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_124",
             "Role": "specialist"
           },
@@ -2052,10 +2052,10 @@
         {
           "id": "person_133",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "data",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "bridge_0134",
             "Role": "member"
           },
@@ -2070,7 +2070,7 @@
           "id": "person_134",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "engineering",
             "Region": "europe",
             "Experience": "veteran",
             "Attendance Pattern": "bridge_0134",
@@ -2086,10 +2086,10 @@
         {
           "id": "person_135",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "nonbinary",
+            "Track": "ops",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "bridge_0134",
             "Role": "member"
           },
@@ -2104,7 +2104,7 @@
           "id": "person_136",
           "attributes": {
             "Gender": "female",
-            "Track": "ops",
+            "Track": "data",
             "Region": "europe",
             "Experience": "veteran",
             "Attendance Pattern": "bridge_0134",
@@ -2120,10 +2120,10 @@
         {
           "id": "person_137",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "engineering",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "bridge_0134",
             "Role": "member"
           },
@@ -2154,10 +2154,10 @@
         {
           "id": "person_139",
           "attributes": {
-            "Gender": "female",
-            "Track": "design",
+            "Gender": "male",
+            "Track": "data",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "bridge_0134",
             "Role": "member"
           },
@@ -2172,7 +2172,7 @@
           "id": "person_140",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "ops",
             "Region": "europe",
             "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_b",
@@ -2187,10 +2187,10 @@
         {
           "id": "person_141",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "data",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_b",
             "Role": "member"
           },
@@ -2219,10 +2219,10 @@
         {
           "id": "person_143",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "nonbinary",
+            "Track": "ops",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_b",
             "Role": "member"
           },
@@ -2236,7 +2236,7 @@
           "id": "person_144",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "data",
             "Region": "europe",
             "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_b",
@@ -2251,10 +2251,10 @@
         {
           "id": "person_145",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "engineering",
             "Region": "apac",
-            "Experience": "intermediate",
+            "Experience": "veteran",
             "Attendance Pattern": "arrival_wave_b",
             "Role": "member"
           },
@@ -2268,7 +2268,7 @@
           "id": "person_146",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "ops",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_025",
@@ -2283,10 +2283,10 @@
         {
           "id": "person_147",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "data",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_025",
             "Role": "member"
           },
@@ -2315,10 +2315,10 @@
         {
           "id": "person_149",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "male",
+            "Track": "ops",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_025",
             "Role": "member"
           },
@@ -2332,7 +2332,7 @@
           "id": "person_150",
           "attributes": {
             "Gender": "female",
-            "Track": "engineering",
+            "Track": "data",
             "Region": "apac",
             "Experience": "intermediate",
             "Attendance Pattern": "bridge_025",
@@ -2347,10 +2347,10 @@
         {
           "id": "person_151",
           "attributes": {
-            "Gender": "female",
-            "Track": "community",
+            "Gender": "nonbinary",
+            "Track": "engineering",
             "Region": "europe",
-            "Experience": "veteran",
+            "Experience": "intermediate",
             "Attendance Pattern": "bridge_025",
             "Role": "member"
           },
@@ -2970,6 +2970,20 @@
         "type": "ShouldNotBeTogether",
         "people": [
           "person_000",
+          "person_133"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_000",
           "person_025"
         ],
         "sessions": [
@@ -2984,12 +2998,51 @@
         "type": "ShouldNotBeTogether",
         "people": [
           "person_001",
-          "person_024"
+          "person_110"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_024",
+          "person_132"
         ],
         "sessions": [
           0,
           1,
-          4,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_001",
+          "person_042"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_002",
+          "person_146"
+        ],
+        "sessions": [
+          0,
+          2,
           5
         ],
         "penalty_weight": 45.0
@@ -2998,12 +3051,11 @@
         "type": "ShouldNotBeTogether",
         "people": [
           "person_002",
-          "person_026"
+          "person_074"
         ],
         "sessions": [
           0,
-          1,
-          4,
+          3,
           5
         ],
         "penalty_weight": 45.0
@@ -3012,12 +3064,24 @@
         "type": "ShouldNotBeTogether",
         "people": [
           "person_003",
-          "person_027"
+          "person_122"
         ],
         "sessions": [
-          0,
           1,
-          4,
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_003",
+          "person_058"
+        ],
+        "sessions": [
+          1,
+          2,
           5
         ],
         "penalty_weight": 45.0
@@ -3026,10 +3090,22 @@
         "type": "ShouldNotBeTogether",
         "people": [
           "person_004",
-          "person_028"
+          "person_086"
         ],
         "sessions": [
-          0,
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_004",
+          "person_141"
+        ],
+        "sessions": [
           1,
           4,
           5
@@ -3040,12 +3116,11 @@
         "type": "ShouldNotBeTogether",
         "people": [
           "person_005",
-          "person_029"
+          "person_098"
         ],
         "sessions": [
-          0,
-          1,
-          4,
+          2,
+          3,
           5
         ],
         "penalty_weight": 45.0
@@ -3053,13 +3128,47 @@
       {
         "type": "ShouldNotBeTogether",
         "people": [
-          "person_006",
-          "person_030"
+          "person_042",
+          "person_110"
         ],
         "sessions": [
           0,
-          1,
-          4,
+          2
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_074",
+          "person_132"
+        ],
+        "sessions": [
+          0,
+          3
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_024",
+          "person_043"
+        ],
+        "sessions": [
+          0,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_025",
+          "person_075"
+        ],
+        "sessions": [
+          0,
           5
         ],
         "penalty_weight": 45.0
@@ -3067,207 +3176,38 @@
       {
         "type": "ShouldNotBeTogether",
         "people": [
-          "person_007",
-          "person_032"
+          "person_058",
+          "person_122"
         ],
         "sessions": [
-          0,
           1,
-          4,
-          5
+          2
         ],
         "penalty_weight": 45.0
       },
       {
         "type": "ShouldNotBeTogether",
         "people": [
-          "person_008",
-          "person_031"
+          "person_026",
+          "person_086"
         ],
         "sessions": [
-          0,
           1,
-          4,
-          5
+          4
         ],
         "penalty_weight": 45.0
-      },
-      {
-        "type": "ShouldNotBeTogether",
-        "people": [
-          "person_009",
-          "person_034"
-        ],
-        "sessions": [
-          0,
-          1,
-          4,
-          5
-        ],
-        "penalty_weight": 45.0
-      },
-      {
-        "type": "ShouldNotBeTogether",
-        "people": [
-          "person_010",
-          "person_036"
-        ],
-        "sessions": [
-          0,
-          1,
-          4,
-          5
-        ],
-        "penalty_weight": 45.0
-      },
-      {
-        "type": "ShouldNotBeTogether",
-        "people": [
-          "person_011",
-          "person_033"
-        ],
-        "sessions": [
-          0,
-          1,
-          4,
-          5
-        ],
-        "penalty_weight": 45.0
-      },
-      {
-        "type": "ShouldNotBeTogether",
-        "people": [
-          "person_012",
-          "person_035"
-        ],
-        "sessions": [
-          0,
-          1,
-          4,
-          5
-        ],
-        "penalty_weight": 45.0
-      },
-      {
-        "type": "ShouldNotBeTogether",
-        "people": [
-          "person_013",
-          "person_037"
-        ],
-        "sessions": [
-          0,
-          1,
-          4,
-          5
-        ],
-        "penalty_weight": 45.0
-      },
-      {
-        "type": "ShouldNotBeTogether",
-        "people": [
-          "person_014",
-          "person_039"
-        ],
-        "sessions": [
-          0,
-          1,
-          4,
-          5
-        ],
-        "penalty_weight": 45.0
-      },
-      {
-        "type": "ShouldNotBeTogether",
-        "people": [
-          "person_015",
-          "person_038"
-        ],
-        "sessions": [
-          0,
-          1,
-          4,
-          5
-        ],
-        "penalty_weight": 45.0
-      },
-      {
-        "type": "ShouldNotBeTogether",
-        "people": [
-          "person_016",
-          "person_040"
-        ],
-        "sessions": [
-          0,
-          1,
-          4,
-          5
-        ],
-        "penalty_weight": 45.0
-      },
-      {
-        "type": "ShouldNotBeTogether",
-        "people": [
-          "person_017",
-          "person_041"
-        ],
-        "sessions": [
-          0,
-          1,
-          4,
-          5
-        ],
-        "penalty_weight": 45.0
-      },
-      {
-        "type": "AttributeBalance",
-        "group_id": "crew_00",
-        "attribute_key": "Gender",
-        "desired_values": {
-          "female": 2
-        },
-        "penalty_weight": 18.0,
-        "mode": "at_least",
-        "sessions": [
-          0
-        ]
-      },
-      {
-        "type": "AttributeBalance",
-        "group_id": "crew_00",
-        "attribute_key": "Experience",
-        "desired_values": {
-          "veteran": 1,
-          "advanced": 1
-        },
-        "penalty_weight": 14.0,
-        "mode": "at_least",
-        "sessions": [
-          0
-        ]
       },
       {
         "type": "AttributeBalance",
         "group_id": "crew_01",
         "attribute_key": "Gender",
         "desired_values": {
-          "female": 2
+          "female": 4,
+          "male": 3,
+          "nonbinary": 2
         },
         "penalty_weight": 18.0,
-        "mode": "at_least",
-        "sessions": [
-          0
-        ]
-      },
-      {
-        "type": "AttributeBalance",
-        "group_id": "crew_01",
-        "attribute_key": "Experience",
-        "desired_values": {
-          "veteran": 1,
-          "advanced": 1
-        },
-        "penalty_weight": 14.0,
-        "mode": "at_least",
+        "mode": "exact",
         "sessions": [
           0
         ]
@@ -3277,134 +3217,104 @@
         "group_id": "crew_02",
         "attribute_key": "Gender",
         "desired_values": {
-          "female": 2
+          "female": 4,
+          "male": 2,
+          "nonbinary": 2
         },
         "penalty_weight": 18.0,
-        "mode": "at_least",
+        "mode": "exact",
         "sessions": [
           0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_03",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 2,
+          "engineering": 2,
+          "ops": 5
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_04",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 5,
+          "engineering": 2,
+          "ops": 2
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_05",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 3,
+          "male": 3,
+          "nonbinary": 3
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          1
         ]
       },
       {
         "type": "AttributeBalance",
         "group_id": "crew_02",
-        "attribute_key": "Experience",
+        "attribute_key": "Gender",
         "desired_values": {
-          "veteran": 1,
-          "advanced": 1
+          "female": 5,
+          "male": 2,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          1
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_01",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 3,
+          "engineering": 2,
+          "ops": 3
         },
         "penalty_weight": 14.0,
-        "mode": "at_least",
+        "mode": "exact",
         "sessions": [
-          0
+          1
         ]
       },
       {
         "type": "AttributeBalance",
         "group_id": "crew_03",
-        "attribute_key": "Gender",
+        "attribute_key": "Track",
         "desired_values": {
-          "female": 2
-        },
-        "penalty_weight": 18.0,
-        "mode": "at_least",
-        "sessions": [
-          0
-        ]
-      },
-      {
-        "type": "AttributeBalance",
-        "group_id": "crew_03",
-        "attribute_key": "Experience",
-        "desired_values": {
-          "veteran": 1,
-          "advanced": 1
+          "data": 2,
+          "engineering": 4,
+          "ops": 3
         },
         "penalty_weight": 14.0,
-        "mode": "at_least",
+        "mode": "exact",
         "sessions": [
-          0
-        ]
-      },
-      {
-        "type": "AttributeBalance",
-        "group_id": "crew_04",
-        "attribute_key": "Gender",
-        "desired_values": {
-          "female": 2
-        },
-        "penalty_weight": 18.0,
-        "mode": "at_least",
-        "sessions": [
-          0
-        ]
-      },
-      {
-        "type": "AttributeBalance",
-        "group_id": "crew_04",
-        "attribute_key": "Experience",
-        "desired_values": {
-          "veteran": 1,
-          "advanced": 1
-        },
-        "penalty_weight": 14.0,
-        "mode": "at_least",
-        "sessions": [
-          0
-        ]
-      },
-      {
-        "type": "AttributeBalance",
-        "group_id": "crew_05",
-        "attribute_key": "Gender",
-        "desired_values": {
-          "female": 2
-        },
-        "penalty_weight": 18.0,
-        "mode": "at_least",
-        "sessions": [
-          0
-        ]
-      },
-      {
-        "type": "AttributeBalance",
-        "group_id": "crew_05",
-        "attribute_key": "Experience",
-        "desired_values": {
-          "veteran": 1,
-          "advanced": 1
-        },
-        "penalty_weight": 14.0,
-        "mode": "at_least",
-        "sessions": [
-          0
-        ]
-      },
-      {
-        "type": "AttributeBalance",
-        "group_id": "crew_06",
-        "attribute_key": "Gender",
-        "desired_values": {
-          "female": 2
-        },
-        "penalty_weight": 18.0,
-        "mode": "at_least",
-        "sessions": [
-          0
-        ]
-      },
-      {
-        "type": "AttributeBalance",
-        "group_id": "crew_06",
-        "attribute_key": "Experience",
-        "desired_values": {
-          "veteran": 1,
-          "advanced": 1
-        },
-        "penalty_weight": 14.0,
-        "mode": "at_least",
-        "sessions": [
-          0
+          1
         ]
       },
       {
@@ -3412,107 +3322,179 @@
         "group_id": "crew_07",
         "attribute_key": "Gender",
         "desired_values": {
-          "female": 2
+          "female": 3,
+          "male": 4,
+          "nonbinary": 2
         },
         "penalty_weight": 18.0,
-        "mode": "at_least",
+        "mode": "exact",
         "sessions": [
-          0
+          2
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_08",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 3,
+          "male": 3,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          2
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_02",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 3,
+          "engineering": 3,
+          "ops": 3
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          2
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_00",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 2,
+          "engineering": 3,
+          "ops": 4
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          2
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_05",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 3,
+          "male": 3,
+          "nonbinary": 3
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          3
         ]
       },
       {
         "type": "AttributeBalance",
         "group_id": "crew_07",
-        "attribute_key": "Experience",
-        "desired_values": {
-          "veteran": 1,
-          "advanced": 1
-        },
-        "penalty_weight": 14.0,
-        "mode": "at_least",
-        "sessions": [
-          0
-        ]
-      },
-      {
-        "type": "AttributeBalance",
-        "group_id": "crew_08",
         "attribute_key": "Gender",
         "desired_values": {
-          "female": 2
+          "female": 4,
+          "male": 2,
+          "nonbinary": 3
         },
         "penalty_weight": 18.0,
-        "mode": "at_least",
+        "mode": "exact",
         "sessions": [
-          0
+          3
         ]
       },
       {
         "type": "AttributeBalance",
-        "group_id": "crew_08",
-        "attribute_key": "Experience",
+        "group_id": "crew_00",
+        "attribute_key": "Track",
         "desired_values": {
-          "veteran": 1,
-          "advanced": 1
+          "data": 2,
+          "engineering": 2,
+          "ops": 5
         },
         "penalty_weight": 14.0,
-        "mode": "at_least",
+        "mode": "exact",
         "sessions": [
-          0
+          3
         ]
       },
       {
         "type": "AttributeBalance",
-        "group_id": "crew_09",
+        "group_id": "crew_03",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 2,
+          "engineering": 4,
+          "ops": 3
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          3
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_01",
         "attribute_key": "Gender",
         "desired_values": {
-          "female": 2
+          "female": 3,
+          "male": 4,
+          "nonbinary": 2
         },
         "penalty_weight": 18.0,
-        "mode": "at_least",
+        "mode": "exact",
         "sessions": [
-          0
+          4
         ]
       },
       {
         "type": "AttributeBalance",
-        "group_id": "crew_09",
-        "attribute_key": "Experience",
-        "desired_values": {
-          "veteran": 1,
-          "advanced": 1
-        },
-        "penalty_weight": 14.0,
-        "mode": "at_least",
-        "sessions": [
-          0
-        ]
-      },
-      {
-        "type": "AttributeBalance",
-        "group_id": "crew_10",
+        "group_id": "crew_03",
         "attribute_key": "Gender",
         "desired_values": {
-          "female": 2
+          "female": 4,
+          "male": 3,
+          "nonbinary": 2
         },
         "penalty_weight": 18.0,
-        "mode": "at_least",
+        "mode": "exact",
         "sessions": [
-          0
+          4
         ]
       },
       {
         "type": "AttributeBalance",
-        "group_id": "crew_10",
-        "attribute_key": "Experience",
+        "group_id": "crew_05",
+        "attribute_key": "Track",
         "desired_values": {
-          "veteran": 1,
-          "advanced": 1
+          "data": 2,
+          "engineering": 4,
+          "ops": 3
         },
         "penalty_weight": 14.0,
-        "mode": "at_least",
+        "mode": "exact",
         "sessions": [
-          0
+          4
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_06",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 2,
+          "engineering": 2,
+          "ops": 4
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          4
         ]
       },
       {
@@ -3520,26 +3502,59 @@
         "group_id": "crew_00",
         "attribute_key": "Gender",
         "desired_values": {
-          "female": 2
+          "female": 5,
+          "male": 2,
+          "nonbinary": 2
         },
         "penalty_weight": 18.0,
-        "mode": "at_least",
+        "mode": "exact",
         "sessions": [
-          1
+          5
         ]
       },
       {
         "type": "AttributeBalance",
-        "group_id": "crew_00",
-        "attribute_key": "Experience",
+        "group_id": "crew_06",
+        "attribute_key": "Gender",
         "desired_values": {
-          "veteran": 1,
-          "advanced": 1
+          "female": 5,
+          "male": 2,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          5
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_10",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 3,
+          "engineering": 3,
+          "ops": 3
         },
         "penalty_weight": 14.0,
-        "mode": "at_least",
+        "mode": "exact",
         "sessions": [
-          1
+          5
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_01",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 3,
+          "engineering": 2,
+          "ops": 4
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          5
         ]
       }
     ],

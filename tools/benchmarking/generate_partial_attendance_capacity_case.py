@@ -126,10 +126,10 @@ def build_people() -> List[PersonSpec]:
         for local_index in range(count):
             person_id = f"person_{person_index:03d}"
             attributes = {
-                "Gender": GENDERS[(person_index + local_index) % len(GENDERS)],
-                "Track": TRACKS[(person_index + 2 * local_index) % len(TRACKS)],
-                "Region": REGIONS[(person_index + local_index) % len(REGIONS)],
-                "Experience": EXPERIENCE[(person_index + local_index) % len(EXPERIENCE)],
+                "Gender": GENDERS[person_index % len(GENDERS)],
+                "Track": TRACKS[(person_index * 3 + local_index) % len(TRACKS)],
+                "Region": REGIONS[(person_index * 5 + local_index) % len(REGIONS)],
+                "Experience": EXPERIENCE[(person_index * 7 + local_index) % len(EXPERIENCE)],
                 "Attendance Pattern": mask_name,
             }
             role = "member"
@@ -388,20 +388,18 @@ class PlantedSchedule:
     def derive_soft_constraints(self, existing_constraints: List[Dict[str, object]]) -> List[Dict[str, object]]:
         constraints = list(existing_constraints)
         people_ids = sorted(self.people.keys())
-        must_sets = {
+        existing_pair_sets = {
             tuple(sorted(constraint["people"]))
             for constraint in existing_constraints
-            if constraint["type"] == "MustStayTogether"
-        }
-        should_sets = {
-            tuple(sorted(constraint["people"]))
-            for constraint in existing_constraints
-            if constraint["type"] == "ShouldStayTogether"
+            if constraint["type"] in {"MustStayTogether", "ShouldStayTogether"}
         }
 
-        should_not_candidates: List[Tuple[int, str, str, List[int]]] = []
+        should_not_candidates_by_window: Dict[Tuple[int, ...], List[Tuple[int, str, str]]] = defaultdict(list)
         for left_index, left_person in enumerate(people_ids):
             for right_person in people_ids[left_index + 1 :]:
+                pair_key = tuple(sorted((left_person, right_person)))
+                if pair_key in existing_pair_sets:
+                    continue
                 shared = self.shared_sessions(left_person, right_person)
                 if len(shared) < 2:
                     continue
@@ -411,76 +409,120 @@ class PlantedSchedule:
                 if self.people[left_person].mask_name == self.people[right_person].mask_name:
                     continue
                 overlap_score = len(shared)
-                should_not_candidates.append((overlap_score, left_person, right_person, shared))
-        should_not_candidates.sort(key=lambda item: (-item[0], item[1], item[2]))
-        used_people: set[str] = set()
-        for _, left_person, right_person, shared in should_not_candidates:
-            if len([constraint for constraint in constraints if constraint["type"] == "ShouldNotBeTogether"]) >= 18:
-                break
-            if left_person in used_people or right_person in used_people:
-                continue
-            constraints.append(
-                {
-                    "type": "ShouldNotBeTogether",
-                    "people": [left_person, right_person],
-                    "sessions": shared,
-                    "penalty_weight": 45.0,
-                }
-            )
-            used_people.update({left_person, right_person})
+                should_not_candidates_by_window[tuple(shared)].append(
+                    (overlap_score, left_person, right_person)
+                )
 
-        attr_candidates: List[Tuple[int, str, str, int, int]] = []
+        for candidates in should_not_candidates_by_window.values():
+            candidates.sort(key=lambda item: (-item[0], item[1], item[2]))
+
+        person_should_not_count: Dict[str, int] = defaultdict(int)
+        should_not_session_pressure: Dict[int, int] = defaultdict(int)
+        target_should_not_count = 18
+        window_offsets = {window: 0 for window in should_not_candidates_by_window}
+        while len([constraint for constraint in constraints if constraint["type"] == "ShouldNotBeTogether"]) < target_should_not_count:
+            added_any = False
+            window_order = sorted(
+                should_not_candidates_by_window,
+                key=lambda window: (
+                    sum(should_not_session_pressure[session] for session in window),
+                    -len(window),
+                    window,
+                ),
+            )
+            for window in window_order:
+                candidates = should_not_candidates_by_window[window]
+                while window_offsets[window] < len(candidates):
+                    _, left_person, right_person = candidates[window_offsets[window]]
+                    window_offsets[window] += 1
+                    if person_should_not_count[left_person] >= 2 or person_should_not_count[right_person] >= 2:
+                        continue
+                    constraints.append(
+                        {
+                            "type": "ShouldNotBeTogether",
+                            "people": [left_person, right_person],
+                            "sessions": list(window),
+                            "penalty_weight": 45.0,
+                        }
+                    )
+                    person_should_not_count[left_person] += 1
+                    person_should_not_count[right_person] += 1
+                    for session in window:
+                        should_not_session_pressure[session] += 1
+                    added_any = True
+                    break
+                if len([constraint for constraint in constraints if constraint["type"] == "ShouldNotBeTogether"]) >= target_should_not_count:
+                    break
+            if not added_any:
+                break
+
+        def full_distribution(members: Sequence[str], attribute_key: str) -> Dict[str, int]:
+            distribution: Dict[str, int] = defaultdict(int)
+            for person_id in members:
+                distribution[self.people[person_id].attributes[attribute_key]] += 1
+            return dict(sorted(distribution.items()))
+
         for session in range(NUM_SESSIONS):
+            gender_candidates: List[Tuple[int, str, Dict[str, int]]] = []
+            track_candidates: List[Tuple[int, str, Dict[str, int]]] = []
             for group_id, members in self.schedule[session].items():
-                if not members:
+                if len(members) < 6:
                     continue
-                female_count = sum(
-                    1 for person_id in members if self.people[person_id].attributes["Gender"] == "female"
-                )
-                veteran_like_count = sum(
-                    1
-                    for person_id in members
-                    if self.people[person_id].attributes["Experience"] in {"veteran", "advanced"}
-                )
-                if female_count >= 2:
-                    attr_candidates.append((session, group_id, "female", 2, female_count))
-                if veteran_like_count >= 2:
-                    attr_candidates.append((session, group_id, "veteran_or_advanced", 2, veteran_like_count))
-        attr_candidates.sort(key=lambda item: (item[0], item[1], item[2]))
-        female_added = 0
-        veteran_added = 0
-        for session, group_id, attr_kind, desired_count, actual_count in attr_candidates:
-            if attr_kind == "female" and female_added < 12:
+                gender_distribution = full_distribution(members, "Gender")
+                track_distribution = full_distribution(members, "Track")
+                if len(gender_distribution) >= 2:
+                    gender_candidates.append(
+                        (
+                            len(gender_distribution) * 10 + min(gender_distribution.values()),
+                            group_id,
+                            gender_distribution,
+                        )
+                    )
+                if len(track_distribution) >= 2:
+                    track_candidates.append(
+                        (
+                            len(track_distribution) * 10 + min(track_distribution.values()),
+                            group_id,
+                            track_distribution,
+                        )
+                    )
+
+            gender_candidates.sort(key=lambda item: (-item[0], item[1]))
+            track_candidates.sort(key=lambda item: (-item[0], item[1]))
+
+            used_groups_for_session: set[str] = set()
+            for _, group_id, distribution in gender_candidates[:2]:
                 constraints.append(
                     {
                         "type": "AttributeBalance",
                         "group_id": group_id,
                         "attribute_key": "Gender",
-                        "desired_values": {"female": desired_count},
+                        "desired_values": distribution,
                         "penalty_weight": 18.0,
-                        "mode": "at_least",
+                        "mode": "exact",
                         "sessions": [session],
                     }
                 )
-                female_added += 1
-            elif attr_kind == "veteran_or_advanced" and veteran_added < 12:
+                used_groups_for_session.add(group_id)
+
+            added_track = 0
+            for _, group_id, distribution in track_candidates:
+                if group_id in used_groups_for_session:
+                    continue
                 constraints.append(
                     {
                         "type": "AttributeBalance",
                         "group_id": group_id,
-                        "attribute_key": "Experience",
-                        "desired_values": {
-                            "veteran": 1,
-                            "advanced": 1,
-                        },
+                        "attribute_key": "Track",
+                        "desired_values": distribution,
                         "penalty_weight": 14.0,
-                        "mode": "at_least",
+                        "mode": "exact",
                         "sessions": [session],
                     }
                 )
-                veteran_added += 1
-            if female_added >= 12 and veteran_added >= 12:
-                break
+                added_track += 1
+                if added_track >= 2:
+                    break
 
         constraints.insert(
             0,

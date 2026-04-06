@@ -75,6 +75,12 @@ Current constraint mix:
 - `18` × `ShouldNotBeTogether`
 - `24` × session-scoped `AttributeBalance`
 
+Current design notes:
+
+- `ShouldNotBeTogether` windows are intentionally distributed across many different shared-session patterns instead of clustering on one overlap signature.
+- `AttributeBalance` constraints are now defined with **exact full planted distributions** for `Gender` and `Track`, so their targets cover the whole group composition rather than leaving large unconstrained slack.
+- `AttributeBalance` pressure is spread across **all 6 sessions** (`4` balance constraints per session), not concentrated in a single session.
+
 ## Why this is separate from the primary objective aggregate
 
 This benchmark is valuable as a **targeted stress benchmark** for the feature combination above.
@@ -97,9 +103,9 @@ gm-cli benchmark run --manifest backend/benchmarking/suites/stretch-partial-atte
 Observed local result:
 
 - stop reason: `time_limit_reached`
-- runtime: `15.004146887s`
-- iterations: `1,687,382`
-- initial score: `7691.0`
+- runtime: `15.001207458s`
+- iterations: `4,414,008`
+- initial score: `10230.0`
 - final score: `4348.0`
 
 Fixed-iteration companion:
@@ -111,9 +117,9 @@ gm-cli benchmark run --manifest backend/benchmarking/suites/stretch-partial-atte
 Observed local result:
 
 - stop reason: `max_iterations_reached`
-- runtime: `3.32978349s`
+- runtime: `1.138123026s`
 - iterations: `260,000`
-- initial score: `7691.0`
+- initial score: `10230.0`
 - final score: `4348.0`
 
 ## Validation performed
