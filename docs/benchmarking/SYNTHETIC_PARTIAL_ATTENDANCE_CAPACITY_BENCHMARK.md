@@ -72,28 +72,26 @@ Current constraint mix:
 - `1` × `RepeatEncounter`
 - `20` × `ImmovablePerson`
 - `8` × `MustStayTogether`
-- `8` × `ShouldStayTogether`
-- `30` × `ShouldNotBeTogether`
-- `18` × `PairMeetingCount`
-- `24` × session-scoped `AttributeBalance`
+- `44` × `ShouldStayTogether`
+- `72` × `ShouldNotBeTogether`
+- `96` × `PairMeetingCount`
+- `36` × session-scoped `AttributeBalance`
 
 Current design notes:
 
 - `ShouldNotBeTogether` windows are intentionally distributed across many different shared-session patterns instead of clustering on one overlap signature.
+- `ShouldStayTogether` is no longer limited to the planted buddy skeleton; the builder now derives additional planted-feasible pair constraints from pairs that stay together across all of their shared sessions.
 - `PairMeetingCount` constraints are derived from the planted feasible schedule and use exact target meeting counts over distributed session windows, so they add real cross-session coupling without introducing impossible targets.
-- `AttributeBalance` constraints are now defined with **exact full planted distributions** for `Gender` and `Track`, so their targets cover the whole group composition rather than leaving large unconstrained slack.
-- `AttributeBalance` pressure is spread across **all 6 sessions** (`4` balance constraints per session), not concentrated in a single session.
+- `AttributeBalance` constraints are now defined with **exact full planted distributions** for `Gender`, `Track`, and `Region`, so their targets cover the whole group composition rather than leaving large unconstrained slack.
+- `AttributeBalance` pressure is spread across **all 6 sessions** (`6` balance constraints per session), not concentrated in a single session.
 
 ## Why this is separate from the primary objective aggregate
 
 This benchmark is valuable as a **targeted stress benchmark** for the feature combination above.
 
-However, even after densifying the soft-constraint package, the current checked-in solver1 baseline still converges to the same observed score in both:
+After scaling the synthetic package closer to the real Sailing Trip regime, this case now carries **277 total constraints** (still below Sailing Trip's `361`, but much closer than the earlier ~100-constraint version).
 
-- the `15s` fixed-time suite, and
-- the `260,000` iteration diagnostic suite
-
-That means it is currently better justified as a **dedicated canonical stress benchmark** than as primary aggregate evidence. If future solver changes show meaningful headroom or differentiation here, it can be promoted into the main objective bundle later.
+That heavier package is intended to create the kind of entangled local minima seen in the real demo workload rather than a quickly solved toy basin. It remains a **dedicated canonical stress benchmark** rather than a primary aggregate member until it proves useful as a stable keep/discard signal across research runs.
 
 ## Current measured local runs
 
@@ -106,10 +104,10 @@ gm-cli benchmark run --manifest backend/benchmarking/suites/stretch-partial-atte
 Observed local result:
 
 - stop reason: `time_limit_reached`
-- runtime: `15.001416993s`
-- iterations: `3,098,857`
-- initial score: `11160.0`
-- final score: `4582.0`
+- runtime: `15.003052788s`
+- iterations: `1,294,434`
+- initial score: `18057.0`
+- final score: `6529.0`
 
 Fixed-iteration companion:
 
@@ -120,10 +118,10 @@ gm-cli benchmark run --manifest backend/benchmarking/suites/stretch-partial-atte
 Observed local result:
 
 - stop reason: `max_iterations_reached`
-- runtime: `1.465503432s`
+- runtime: `3.463344568s`
 - iterations: `260,000`
-- initial score: `11160.0`
-- final score: `4582.0`
+- initial score: `18057.0`
+- final score: `6786.0`
 
 Solver3 fixed-time run:
 

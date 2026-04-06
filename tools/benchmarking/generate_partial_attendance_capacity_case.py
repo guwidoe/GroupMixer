@@ -399,6 +399,7 @@ class PlantedSchedule:
             for constraint in existing_constraints
             if constraint["type"] in {"MustStayTogether", "ShouldStayTogether"}
         }
+        protected_pair_sets = set(existing_pair_sets)
 
         should_not_candidates_by_window: Dict[Tuple[int, ...], List[Tuple[int, str, str]]] = defaultdict(list)
         for left_index, left_person in enumerate(people_ids):
@@ -424,7 +425,7 @@ class PlantedSchedule:
 
         person_should_not_count: Dict[str, int] = defaultdict(int)
         should_not_session_pressure: Dict[int, int] = defaultdict(int)
-        target_should_not_count = 30
+        target_should_not_count = 72
         window_offsets = {window: 0 for window in should_not_candidates_by_window}
         while len([constraint for constraint in constraints if constraint["type"] == "ShouldNotBeTogether"]) < target_should_not_count:
             added_any = False
@@ -441,7 +442,7 @@ class PlantedSchedule:
                 while window_offsets[window] < len(candidates):
                     _, left_person, right_person = candidates[window_offsets[window]]
                     window_offsets[window] += 1
-                    if person_should_not_count[left_person] >= 2 or person_should_not_count[right_person] >= 2:
+                    if person_should_not_count[left_person] >= 4 or person_should_not_count[right_person] >= 4:
                         continue
                     constraints.append(
                         {
@@ -458,6 +459,73 @@ class PlantedSchedule:
                     added_any = True
                     break
                 if len([constraint for constraint in constraints if constraint["type"] == "ShouldNotBeTogether"]) >= target_should_not_count:
+                    break
+            if not added_any:
+                break
+
+        should_stay_candidates_by_window: Dict[Tuple[int, ...], List[Tuple[int, str, str]]] = defaultdict(list)
+        for left_index, left_person in enumerate(people_ids):
+            for right_person in people_ids[left_index + 1 :]:
+                pair_key = tuple(sorted((left_person, right_person)))
+                if pair_key in protected_pair_sets:
+                    continue
+                shared = self.shared_sessions(left_person, right_person)
+                if len(shared) < 2:
+                    continue
+                together = self.together_sessions(left_person, right_person)
+                if len(together) != len(shared):
+                    continue
+                should_stay_candidates_by_window[tuple(shared)].append(
+                    (len(shared), left_person, right_person)
+                )
+
+        for candidates in should_stay_candidates_by_window.values():
+            candidates.sort(key=lambda item: (-item[0], item[1], item[2]))
+
+        should_stay_offsets = {window: 0 for window in should_stay_candidates_by_window}
+        should_stay_participation_count: Dict[str, int] = defaultdict(int)
+        target_soft_should_stay_count = 36
+        while len([constraint for constraint in constraints if constraint["type"] == "ShouldStayTogether"]) < len([constraint for constraint in existing_constraints if constraint["type"] == "ShouldStayTogether"]) + target_soft_should_stay_count:
+            added_any = False
+            window_order = sorted(
+                should_stay_candidates_by_window,
+                key=lambda window: (
+                    len(
+                        [
+                            constraint
+                            for constraint in constraints
+                            if constraint["type"] == "ShouldStayTogether"
+                            and tuple(constraint["sessions"]) == window
+                        ]
+                    ),
+                    -len(window),
+                    window,
+                ),
+            )
+            for window in window_order:
+                candidates = should_stay_candidates_by_window[window]
+                while should_stay_offsets[window] < len(candidates):
+                    _, left_person, right_person = candidates[should_stay_offsets[window]]
+                    should_stay_offsets[window] += 1
+                    pair_key = tuple(sorted((left_person, right_person)))
+                    if pair_key in protected_pair_sets:
+                        continue
+                    if should_stay_participation_count[left_person] >= 3 or should_stay_participation_count[right_person] >= 3:
+                        continue
+                    constraints.append(
+                        {
+                            "type": "ShouldStayTogether",
+                            "people": [left_person, right_person],
+                            "sessions": list(window),
+                            "penalty_weight": 32.0,
+                        }
+                    )
+                    protected_pair_sets.add(pair_key)
+                    should_stay_participation_count[left_person] += 1
+                    should_stay_participation_count[right_person] += 1
+                    added_any = True
+                    break
+                if len([constraint for constraint in constraints if constraint["type"] == "ShouldStayTogether"]) >= len([constraint for constraint in existing_constraints if constraint["type"] == "ShouldStayTogether"]) + target_soft_should_stay_count:
                     break
             if not added_any:
                 break
@@ -507,8 +575,7 @@ class PlantedSchedule:
             track_candidates.sort(key=lambda item: (-item[0], item[1]))
             region_candidates.sort(key=lambda item: (-item[0], item[1]))
 
-            used_groups_for_session: set[str] = set()
-            for _, group_id, distribution in gender_candidates[:2]:
+            for _, group_id, distribution in gender_candidates[:3]:
                 constraints.append(
                     {
                         "type": "AttributeBalance",
@@ -520,12 +587,9 @@ class PlantedSchedule:
                         "sessions": [session],
                     }
                 )
-                used_groups_for_session.add(group_id)
 
             added_track = 0
             for _, group_id, distribution in track_candidates:
-                if group_id in used_groups_for_session:
-                    continue
                 constraints.append(
                     {
                         "type": "AttributeBalance",
@@ -538,7 +602,7 @@ class PlantedSchedule:
                     }
                 )
                 added_track += 1
-                if added_track >= 2:
+                if added_track >= 3:
                     break
 
             added_region = 0
@@ -555,7 +619,7 @@ class PlantedSchedule:
                     }
                 )
                 added_region += 1
-                if added_region >= 1:
+                if added_region >= 2:
                     break
 
         pair_meeting_candidates_by_window: Dict[Tuple[int, ...], List[Tuple[int, str, str, int]]] = defaultdict(list)
@@ -584,7 +648,7 @@ class PlantedSchedule:
 
         pair_window_offsets = {window: 0 for window in pair_meeting_candidates_by_window}
         pair_participation_count: Dict[str, int] = defaultdict(int)
-        target_pair_constraints = 18
+        target_pair_constraints = 96
         while len([constraint for constraint in constraints if constraint["type"] == "PairMeetingCount"]) < target_pair_constraints:
             added_any = False
             window_order = sorted(
@@ -607,7 +671,7 @@ class PlantedSchedule:
                 while pair_window_offsets[window] < len(candidates):
                     _, left_person, right_person, actual_meetings = candidates[pair_window_offsets[window]]
                     pair_window_offsets[window] += 1
-                    if pair_participation_count[left_person] >= 2 or pair_participation_count[right_person] >= 2:
+                    if pair_participation_count[left_person] >= 4 or pair_participation_count[right_person] >= 4:
                         continue
                     constraints.append(
                         {

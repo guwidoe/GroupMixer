@@ -3,7 +3,7 @@
   "demo_metadata": {
     "id": "synthetic-partial-attendance-capacity-pressure",
     "display_name": "Synthetic Partial Attendance Capacity Pressure",
-    "description": "Large synthetic stress case with heavy partial participation, exact balance targets, pair meeting counts, and strongly session-specific capacities.",
+    "description": "Large synthetic stress case with heavy partial participation, exact balance targets, dense pair/stay constraints, and strongly session-specific capacities.",
     "category": "Benchmark"
   },
   "input": {
@@ -2997,7 +2997,7 @@
       {
         "type": "ShouldNotBeTogether",
         "people": [
-          "person_001",
+          "person_000",
           "person_110"
         ],
         "sessions": [
@@ -3024,7 +3024,7 @@
       {
         "type": "ShouldNotBeTogether",
         "people": [
-          "person_001",
+          "person_000",
           "person_042"
         ],
         "sessions": [
@@ -3037,7 +3037,7 @@
       {
         "type": "ShouldNotBeTogether",
         "people": [
-          "person_002",
+          "person_001",
           "person_146"
         ],
         "sessions": [
@@ -3050,8 +3050,8 @@
       {
         "type": "ShouldNotBeTogether",
         "people": [
-          "person_002",
-          "person_074"
+          "person_001",
+          "person_075"
         ],
         "sessions": [
           0,
@@ -3063,7 +3063,7 @@
       {
         "type": "ShouldNotBeTogether",
         "people": [
-          "person_003",
+          "person_001",
           "person_122"
         ],
         "sessions": [
@@ -3076,7 +3076,7 @@
       {
         "type": "ShouldNotBeTogether",
         "people": [
-          "person_003",
+          "person_001",
           "person_058"
         ],
         "sessions": [
@@ -3089,7 +3089,7 @@
       {
         "type": "ShouldNotBeTogether",
         "people": [
-          "person_004",
+          "person_002",
           "person_086"
         ],
         "sessions": [
@@ -3102,8 +3102,8 @@
       {
         "type": "ShouldNotBeTogether",
         "people": [
-          "person_004",
-          "person_141"
+          "person_002",
+          "person_140"
         ],
         "sessions": [
           1,
@@ -3115,7 +3115,7 @@
       {
         "type": "ShouldNotBeTogether",
         "people": [
-          "person_005",
+          "person_002",
           "person_098"
         ],
         "sessions": [
@@ -3153,7 +3153,7 @@
         "type": "ShouldNotBeTogether",
         "people": [
           "person_024",
-          "person_043"
+          "person_042"
         ],
         "sessions": [
           0,
@@ -3164,8 +3164,8 @@
       {
         "type": "ShouldNotBeTogether",
         "people": [
-          "person_025",
-          "person_075"
+          "person_024",
+          "person_074"
         ],
         "sessions": [
           0,
@@ -3188,11 +3188,143 @@
       {
         "type": "ShouldNotBeTogether",
         "people": [
-          "person_026",
+          "person_024",
           "person_086"
         ],
         "sessions": [
           1,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_025",
+          "person_058"
+        ],
+        "sessions": [
+          1,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_042",
+          "person_122"
+        ],
+        "sessions": [
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_058",
+          "person_098"
+        ],
+        "sessions": [
+          2,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_074",
+          "person_098"
+        ],
+        "sessions": [
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_074",
+          "person_134"
+        ],
+        "sessions": [
+          0,
+          3
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_075",
+          "person_098"
+        ],
+        "sessions": [
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_059",
+          "person_122"
+        ],
+        "sessions": [
+          1,
+          2
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_025",
+          "person_086"
+        ],
+        "sessions": [
+          1,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_043",
+          "person_123"
+        ],
+        "sessions": [
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_043",
+          "person_110"
+        ],
+        "sessions": [
+          0,
+          2
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_025",
+          "person_043"
+        ],
+        "sessions": [
+          0,
           4
         ],
         "penalty_weight": 45.0
@@ -3212,20 +3344,8 @@
       {
         "type": "ShouldNotBeTogether",
         "people": [
-          "person_043",
-          "person_123"
-        ],
-        "sessions": [
-          2,
-          4
-        ],
-        "penalty_weight": 45.0
-      },
-      {
-        "type": "ShouldNotBeTogether",
-        "people": [
           "person_059",
-          "person_098"
+          "person_099"
         ],
         "sessions": [
           2,
@@ -3236,10 +3356,36 @@
       {
         "type": "ShouldNotBeTogether",
         "people": [
-          "person_075",
+          "person_026",
+          "person_075"
+        ],
+        "sessions": [
+          0,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_002",
+          "person_087"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_003",
           "person_099"
         ],
         "sessions": [
+          2,
           3,
           5
         ],
@@ -3248,7 +3394,140 @@
       {
         "type": "ShouldNotBeTogether",
         "people": [
-          "person_076",
+          "person_003",
+          "person_078"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_003",
+          "person_123"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_026",
+          "person_132"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_003",
+          "person_043"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_004",
+          "person_059"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_004",
+          "person_141"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_004",
+          "person_148"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_004",
+          "person_132"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_005",
+          "person_110"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_005",
+          "person_026"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_075",
           "person_133"
         ],
         "sessions": [
@@ -3285,7 +3564,7 @@
         "type": "ShouldNotBeTogether",
         "people": [
           "person_027",
-          "person_087"
+          "person_086"
         ],
         "sessions": [
           1,
@@ -3297,7 +3576,7 @@
         "type": "ShouldNotBeTogether",
         "people": [
           "person_044",
-          "person_124"
+          "person_123"
         ],
         "sessions": [
           2,
@@ -3321,7 +3600,7 @@
         "type": "ShouldNotBeTogether",
         "people": [
           "person_027",
-          "person_045"
+          "person_044"
         ],
         "sessions": [
           0,
@@ -3332,7 +3611,7 @@
       {
         "type": "ShouldNotBeTogether",
         "people": [
-          "person_028",
+          "person_027",
           "person_060"
         ],
         "sessions": [
@@ -3340,6 +3619,727 @@
           5
         ],
         "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_060",
+          "person_099"
+        ],
+        "sessions": [
+          2,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_027",
+          "person_076"
+        ],
+        "sessions": [
+          0,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_005",
+          "person_090"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_005",
+          "person_100"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_006",
+          "person_076"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_006",
+          "person_124"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_028",
+          "person_135"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_006",
+          "person_044"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_006",
+          "person_060"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_007",
+          "person_140"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_007",
+          "person_146"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_007",
+          "person_134"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_007",
+          "person_111"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_008",
+          "person_029"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_076",
+          "person_133"
+        ],
+        "sessions": [
+          0,
+          3
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_077",
+          "person_100"
+        ],
+        "sessions": [
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_061",
+          "person_124"
+        ],
+        "sessions": [
+          1,
+          2
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_028",
+          "person_087"
+        ],
+        "sessions": [
+          1,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_045",
+          "person_124"
+        ],
+        "sessions": [
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_045",
+          "person_111"
+        ],
+        "sessions": [
+          0,
+          2
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_012",
+          "person_015"
+        ],
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_033",
+          "person_050"
+        ],
+        "sessions": [
+          0,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_040",
+          "person_147"
+        ],
+        "sessions": [
+          0,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_024",
+          "person_122"
+        ],
+        "sessions": [
+          1,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_109",
+          "person_146"
+        ],
+        "sessions": [
+          2,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_081",
+          "person_109"
+        ],
+        "sessions": [
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_000",
+          "person_024"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_004",
+          "person_110"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_002",
+          "person_046"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_001",
+          "person_074"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_000",
+          "person_122"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_002",
+          "person_058"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_003",
+          "person_086"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_000",
+          "person_099"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_034",
+          "person_051"
+        ],
+        "sessions": [
+          0,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_041",
+          "person_121"
+        ],
+        "sessions": [
+          0,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_034",
+          "person_095"
+        ],
+        "sessions": [
+          1,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_008",
+          "person_025"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_004",
+          "person_114"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_002",
+          "person_047"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_001",
+          "person_078"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_001",
+          "person_123"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_007",
+          "person_059"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_004",
+          "person_090"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_005",
+          "person_102"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_035",
+          "person_052"
+        ],
+        "sessions": [
+          0,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_035",
+          "person_096"
+        ],
+        "sessions": [
+          1,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_008",
+          "person_026"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_006",
+          "person_111"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_005",
+          "person_042"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_003",
+          "person_075"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_003",
+          "person_126"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_007",
+          "person_060"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_005",
+          "person_087"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_006",
+          "person_098"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_051",
+          "person_135"
+        ],
+        "sessions": [
+          0,
+          4
+        ],
+        "penalty_weight": 32.0
       },
       {
         "type": "AttributeBalance",
@@ -3374,11 +4374,26 @@
       {
         "type": "AttributeBalance",
         "group_id": "crew_03",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 4,
+          "male": 3,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_01",
         "attribute_key": "Track",
         "desired_values": {
-          "data": 2,
-          "engineering": 2,
-          "ops": 5
+          "data": 4,
+          "engineering": 3,
+          "ops": 2
         },
         "penalty_weight": 14.0,
         "mode": "exact",
@@ -3388,12 +4403,27 @@
       },
       {
         "type": "AttributeBalance",
-        "group_id": "crew_04",
+        "group_id": "crew_02",
         "attribute_key": "Track",
         "desired_values": {
-          "data": 5,
-          "engineering": 2,
+          "data": 3,
+          "engineering": 3,
           "ops": 2
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_03",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 2,
+          "engineering": 2,
+          "ops": 5
         },
         "penalty_weight": 14.0,
         "mode": "exact",
@@ -3426,6 +4456,36 @@
           "nonbinary": 2
         },
         "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          1
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_03",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 5,
+          "male": 2,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          1
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_02",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 3,
+          "engineering": 3,
+          "ops": 3
+        },
+        "penalty_weight": 14.0,
         "mode": "exact",
         "sessions": [
           1
@@ -3493,6 +4553,21 @@
       },
       {
         "type": "AttributeBalance",
+        "group_id": "crew_10",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 5,
+          "male": 2,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          2
+        ]
+      },
+      {
+        "type": "AttributeBalance",
         "group_id": "crew_02",
         "attribute_key": "Track",
         "desired_values": {
@@ -3514,6 +4589,21 @@
           "data": 2,
           "engineering": 3,
           "ops": 4
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          2
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_01",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 3,
+          "engineering": 2,
+          "ops": 3
         },
         "penalty_weight": 14.0,
         "mode": "exact",
@@ -3554,6 +4644,21 @@
       {
         "type": "AttributeBalance",
         "group_id": "crew_00",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 6,
+          "male": 2,
+          "nonbinary": 1
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          3
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_00",
         "attribute_key": "Track",
         "desired_values": {
           "data": 2,
@@ -3573,6 +4678,21 @@
         "desired_values": {
           "data": 2,
           "engineering": 4,
+          "ops": 3
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          3
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_04",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 4,
+          "engineering": 2,
           "ops": 3
         },
         "penalty_weight": 14.0,
@@ -3606,6 +4726,36 @@
           "nonbinary": 2
         },
         "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          4
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_06",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 3,
+          "male": 2,
+          "nonbinary": 3
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          4
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_01",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 3,
+          "engineering": 3,
+          "ops": 3
+        },
+        "penalty_weight": 14.0,
         "mode": "exact",
         "sessions": [
           4
@@ -3673,12 +4823,42 @@
       },
       {
         "type": "AttributeBalance",
+        "group_id": "crew_07",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 3,
+          "male": 4,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          5
+        ]
+      },
+      {
+        "type": "AttributeBalance",
         "group_id": "crew_10",
         "attribute_key": "Track",
         "desired_values": {
           "data": 3,
           "engineering": 3,
           "ops": 3
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          5
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_00",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 2,
+          "engineering": 3,
+          "ops": 4
         },
         "penalty_weight": 14.0,
         "mode": "exact",
@@ -3980,6 +5160,1212 @@
           4
         ],
         "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_017",
+          "person_051"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_018",
+          "person_146"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_014",
+          "person_085"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_015",
+          "person_129"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_023",
+          "person_065"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_093",
+          "person_133"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_040",
+          "person_142"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_019",
+          "person_107"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_002",
+          "person_020"
+        ],
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_018",
+          "person_136"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_020",
+          "person_037"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_017",
+          "person_120"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_036",
+          "person_139"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_000",
+          "person_049"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_117",
+          "person_148"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_022",
+          "person_085"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_019",
+          "person_128"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_000",
+          "person_066"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_095",
+          "person_136"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_041",
+          "person_144"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_000",
+          "person_106"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_007",
+          "person_014"
+        ],
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_019",
+          "person_139"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_022",
+          "person_039"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_020",
+          "person_119"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_024",
+          "person_138"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_000",
+          "person_054"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_118",
+          "person_149"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_084",
+          "person_120"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_001",
+          "person_130"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_001",
+          "person_065"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_097",
+          "person_138"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_001",
+          "person_141"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_001",
+          "person_104"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_008",
+          "person_009"
+        ],
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_020",
+          "person_138"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_023",
+          "person_040"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_021",
+          "person_120"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_024",
+          "person_139"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_002",
+          "person_049"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_003",
+          "person_146"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_085",
+          "person_121"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_003",
+          "person_128"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_003",
+          "person_064"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_003",
+          "person_094"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_004",
+          "person_140"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_004",
+          "person_104"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_011",
+          "person_014"
+        ],
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_004",
+          "person_135"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_031",
+          "person_041"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_004",
+          "person_116"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_025",
+          "person_133"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_005",
+          "person_052"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_005",
+          "person_146"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_005",
+          "person_080"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_005",
+          "person_131"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_006",
+          "person_067"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_006",
+          "person_095"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_007",
+          "person_144"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_007",
+          "person_104"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_011",
+          "person_016"
+        ],
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_006",
+          "person_132"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_006",
+          "person_032"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_007",
+          "person_117"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_025",
+          "person_134"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_008",
+          "person_049"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_008",
+          "person_149"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_008",
+          "person_082"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_009",
+          "person_129"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_009",
+          "person_064"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_009",
+          "person_093"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_010",
+          "person_145"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_010",
+          "person_106"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_011",
+          "person_022"
+        ],
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_012",
+          "person_137"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_012",
+          "person_024"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_013",
+          "person_121"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_025",
+          "person_138"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "target_meetings": 1,
         "mode": "exact",
         "penalty_weight": 28.0
       }
