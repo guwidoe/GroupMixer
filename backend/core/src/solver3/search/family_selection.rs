@@ -93,7 +93,10 @@ mod tests {
             ..Default::default()
         });
         let mut rng = ChaCha12Rng::seed_from_u64(7);
-        assert_eq!(selector.ordered_families(&mut rng), vec![MoveFamily::Transfer]);
+        assert_eq!(
+            selector.ordered_families(&mut rng),
+            vec![MoveFamily::Transfer]
+        );
     }
 
     #[test]

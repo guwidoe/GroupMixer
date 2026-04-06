@@ -90,6 +90,7 @@ fn minimal_input() -> ApiInput {
             num_sessions: 2,
         },
         initial_schedule: None,
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".into(),
             weight: 1.0,
@@ -132,37 +133,22 @@ fn representative_input() -> ApiInput {
     initial_schedule.insert(
         "session_0".into(),
         HashMap::from([
-            (
-                "g0".into(),
-                vec!["p0".into(), "p1".into(), "p4".into()],
-            ),
+            ("g0".into(), vec!["p0".into(), "p1".into(), "p4".into()]),
             ("g1".into(), vec!["p2".into(), "p3".into()]),
         ]),
     );
     initial_schedule.insert(
         "session_1".into(),
         HashMap::from([
-            (
-                "g0".into(),
-                vec!["p0".into(), "p1".into(), "p5".into()],
-            ),
-            (
-                "g1".into(),
-                vec!["p2".into(), "p3".into(), "p4".into()],
-            ),
+            ("g0".into(), vec!["p0".into(), "p1".into(), "p5".into()]),
+            ("g1".into(), vec!["p2".into(), "p3".into(), "p4".into()]),
         ]),
     );
     initial_schedule.insert(
         "session_2".into(),
         HashMap::from([
-            (
-                "g0".into(),
-                vec!["p0".into(), "p2".into(), "p4".into()],
-            ),
-            (
-                "g1".into(),
-                vec!["p1".into(), "p3".into(), "p5".into()],
-            ),
+            ("g0".into(), vec!["p0".into(), "p2".into(), "p4".into()]),
+            ("g1".into(), vec!["p1".into(), "p3".into(), "p5".into()]),
         ]),
     );
 
@@ -173,6 +159,7 @@ fn representative_input() -> ApiInput {
             num_sessions: 3,
         },
         initial_schedule: Some(initial_schedule),
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".into(),
             weight: 1.0,
@@ -285,6 +272,7 @@ fn num_pairs_is_zero_for_single_person() {
             num_sessions: 1,
         },
         initial_schedule: None,
+        construction_seed_schedule: None,
         objectives: vec![],
         constraints: vec![],
         solver: solver3_config(),
@@ -873,6 +861,7 @@ fn zero_unique_contacts_when_no_pairs_share_groups() {
             num_sessions: 1,
         },
         initial_schedule: None,
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".into(),
             weight: 1.0,
@@ -913,6 +902,7 @@ fn forbidden_pair_penalty_is_scored() {
             num_sessions: 1,
         },
         initial_schedule: None,
+        construction_seed_schedule: None,
         objectives: vec![],
         constraints: vec![Constraint::ShouldNotBeTogether {
             people: vec!["a".into(), "b".into()],
@@ -987,6 +977,7 @@ fn swap_kernel_input() -> ApiInput {
             num_sessions: 2,
         },
         initial_schedule: Some(initial_schedule),
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".into(),
             weight: 1.0,
@@ -1169,6 +1160,7 @@ fn transfer_kernel_input() -> ApiInput {
                 ]),
             ),
         ])),
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".into(),
             weight: 1.0,
@@ -1265,6 +1257,7 @@ fn transfer_restricted_input() -> ApiInput {
                 ]),
             ),
         ])),
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".into(),
             weight: 1.0,
@@ -1562,6 +1555,7 @@ fn clique_swap_kernel_input() -> ApiInput {
                 ]),
             ),
         ])),
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".into(),
             weight: 1.0,
@@ -1659,6 +1653,7 @@ fn clique_swap_restricted_input() -> ApiInput {
                 ]),
             ),
         ])),
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".into(),
             weight: 1.0,
@@ -2114,7 +2109,10 @@ fn active_clique_members_in_single_group(
 
     if active_members.iter().any(|&person_idx| {
         state.person_location[state.people_slot(session_idx, person_idx)] != Some(source_group_idx)
-            || state.compiled.immovable_group(session_idx, person_idx).is_some()
+            || state
+                .compiled
+                .immovable_group(session_idx, person_idx)
+                .is_some()
     }) {
         return None;
     }
@@ -2149,7 +2147,11 @@ fn pick_clique_targets(
         if state.compiled.person_to_clique_id[session_idx][person_idx].is_some() {
             continue;
         }
-        if state.compiled.immovable_group(session_idx, person_idx).is_some() {
+        if state
+            .compiled
+            .immovable_group(session_idx, person_idx)
+            .is_some()
+        {
             continue;
         }
 
@@ -2229,14 +2231,19 @@ fn try_apply_random_transfer_with_oracle_cross_check(
         if !state.compiled.person_participation[person_idx][session_idx] {
             continue;
         }
-        if state.compiled.immovable_group(session_idx, person_idx).is_some() {
+        if state
+            .compiled
+            .immovable_group(session_idx, person_idx)
+            .is_some()
+        {
             continue;
         }
         if state.compiled.person_to_clique_id[session_idx][person_idx].is_some() {
             continue;
         }
 
-        let Some(source_group_idx) = state.person_location[state.people_slot(session_idx, person_idx)]
+        let Some(source_group_idx) =
+            state.person_location[state.people_slot(session_idx, person_idx)]
         else {
             continue;
         };
@@ -2254,12 +2261,8 @@ fn try_apply_random_transfer_with_oracle_cross_check(
             continue;
         }
 
-        let transfer = TransferMove::new(
-            session_idx,
-            person_idx,
-            source_group_idx,
-            target_group_idx,
-        );
+        let transfer =
+            TransferMove::new(session_idx, person_idx, source_group_idx, target_group_idx);
         let Ok(preview) = preview_transfer_runtime_lightweight(state, &transfer) else {
             continue;
         };
@@ -2307,13 +2310,9 @@ fn try_apply_random_clique_swap_with_oracle_cross_check(
             if target_group_idx == source_group_idx {
                 target_group_idx = (target_group_idx + 1) % state.compiled.num_groups;
             }
-            let Some(target_people) = pick_clique_targets(
-                state,
-                session_idx,
-                &active_members,
-                target_group_idx,
-                rng,
-            ) else {
+            let Some(target_people) =
+                pick_clique_targets(state, session_idx, &active_members, target_group_idx, rng)
+            else {
                 continue;
             };
 
@@ -2382,8 +2381,9 @@ fn run_random_sequence_drift_checks(
     for &seed in seeds {
         let mut state = RuntimeState::from_input(input)
             .unwrap_or_else(|err| panic!("{} seed {} init failed: {}", scenario_label, seed, err));
-        check_drift(&state)
-            .unwrap_or_else(|err| panic!("{} seed {} initial drift: {}", scenario_label, seed, err));
+        check_drift(&state).unwrap_or_else(|err| {
+            panic!("{} seed {} initial drift: {}", scenario_label, seed, err)
+        });
         validate_invariants(&state).unwrap_or_else(|err| {
             panic!(
                 "{} seed {} initial invariants failed: {}",
@@ -2443,12 +2443,7 @@ fn run_random_sequence_drift_checks(
 #[test]
 fn large_realistic_random_sequences_do_not_drift_from_oracle() {
     let input = load_solver3_fixture_input("benchmark_large_gender_immovable.json");
-    run_random_sequence_drift_checks(
-        &input,
-        "benchmark_large_gender_immovable",
-        &[11, 29],
-        12,
-    );
+    run_random_sequence_drift_checks(&input, "benchmark_large_gender_immovable", &[11, 29], 12);
 }
 
 #[cfg(feature = "solver3-oracle-checks")]

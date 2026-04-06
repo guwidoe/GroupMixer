@@ -89,6 +89,7 @@ impl State {
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
     /// #     initial_schedule: None,
+    /// #     construction_seed_schedule: None,
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
@@ -408,6 +409,7 @@ impl State {
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
     /// #     initial_schedule: None,   
+    /// #     construction_seed_schedule: None,
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
@@ -460,6 +462,7 @@ impl State {
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
     /// #     initial_schedule: None,
+    /// #     construction_seed_schedule: None,
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {

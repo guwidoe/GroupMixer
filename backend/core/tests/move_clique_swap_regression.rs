@@ -65,6 +65,7 @@ fn clique_state_with_group_sizes(
 
     let input = ApiInput {
         initial_schedule: Some(make_initial_schedule(&group_id_refs, sessions)),
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people,
             groups: groups_with_sizes(group_sizes),

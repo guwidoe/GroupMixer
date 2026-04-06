@@ -53,6 +53,7 @@ fn driver_input() -> ApiInput {
 
     ApiInput {
         initial_schedule: Some(warm_start_schedule()),
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![person("p0"), person("p1"), person("p2"), person("p3")],
             groups: vec![
@@ -136,6 +137,7 @@ fn solver3_transfer_driver_input() -> ApiInput {
                 vec![vec!["p0", "p4"], vec!["p1", "p2"], vec!["p3"]],
             ],
         )),
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 person("p0"),
@@ -195,6 +197,7 @@ fn solver2_transfer_driver_input() -> ApiInput {
                 vec![vec!["p0", "p4"], vec!["p1", "p2"], vec!["p3"]],
             ],
         )),
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 person("p0"),
@@ -254,6 +257,7 @@ fn solver3_clique_driver_input() -> ApiInput {
                 vec![vec!["p0", "p1", "p4"], vec!["p2", "p3", "p5"], vec![]],
             ],
         )),
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 person("p0"),
@@ -325,6 +329,7 @@ fn solver2_clique_driver_input() -> ApiInput {
                 vec![vec!["p2", "p3"], vec!["p4", "p5"], vec!["p0", "p1"]],
             ],
         )),
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 person("p0"),

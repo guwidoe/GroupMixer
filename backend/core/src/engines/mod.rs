@@ -320,6 +320,7 @@ fn recommend_solver1_configuration(
 
     let trial_input = ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: request.problem.clone(),
         objectives: trial_objectives,
         constraints: request.constraints.to_vec(),
@@ -507,6 +508,7 @@ mod tests {
     fn solver2_run_executes_through_engine_registry() {
         let input = ApiInput {
             initial_schedule: None,
+            construction_seed_schedule: None,
             problem: simple_problem(),
             objectives: vec![],
             constraints: vec![],
@@ -537,6 +539,7 @@ mod tests {
         config.solver_type = "unknown_solver".to_string();
         let input = ApiInput {
             initial_schedule: None,
+            construction_seed_schedule: None,
             problem: simple_problem(),
             objectives: vec![],
             constraints: vec![],
@@ -602,6 +605,7 @@ mod tests {
     fn solver3_run_executes_through_engine_registry() {
         let input = ApiInput {
             initial_schedule: None,
+            construction_seed_schedule: None,
             problem: simple_problem(),
             objectives: vec![Objective {
                 r#type: "maximize_unique_contacts".to_string(),

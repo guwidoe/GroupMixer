@@ -76,6 +76,7 @@ fn search_input() -> ApiInput {
             num_sessions: 2,
         },
         initial_schedule: None,
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".into(),
             weight: 1.0,
@@ -108,7 +109,10 @@ fn family_selector_honors_allowed_family_subset() {
         ..Default::default()
     });
     let mut rng = ChaCha12Rng::seed_from_u64(7);
-    assert_eq!(selector.ordered_families(&mut rng), vec![MoveFamily::Transfer]);
+    assert_eq!(
+        selector.ordered_families(&mut rng),
+        vec![MoveFamily::Transfer]
+    );
 }
 
 #[test]
@@ -130,7 +134,8 @@ fn candidate_sampler_respects_allowed_sessions() {
 fn progress_state_reports_allowed_move_policy_in_progress_updates() {
     let state = RuntimeState::from_input(&search_input()).unwrap();
     let run_context = SearchRunContext::from_solver(&solver3_config(), &state, 7).unwrap();
-    let progress = SearchProgressState::new(state).to_progress_update(&run_context, 0, 1.0, 0.0, None);
+    let progress =
+        SearchProgressState::new(state).to_progress_update(&run_context, 0, 1.0, 0.0, None);
     assert_eq!(progress.effective_seed, Some(7));
     assert_eq!(progress.move_policy, Some(run_context.move_policy));
 }
@@ -152,7 +157,10 @@ fn search_engine_respects_forced_family_in_telemetry() {
     assert!(telemetry.moves.swap.attempts > 0);
     assert_eq!(telemetry.moves.transfer.attempts, 0);
     assert_eq!(telemetry.moves.clique_swap.attempts, 0);
-    assert_eq!(result.move_policy.unwrap().forced_family, Some(MoveFamily::Swap));
+    assert_eq!(
+        result.move_policy.unwrap().forced_family,
+        Some(MoveFamily::Swap)
+    );
 }
 
 #[test]

@@ -1,6 +1,7 @@
 import type { Scenario, Solution } from '../types';
 import { convertRustResultToSolution } from './wasm/conversions';
 import {
+  buildWasmConstructionSeedInput,
   buildWasmScenarioInput,
   buildWasmWarmStartInput,
   type WarmStartSchedule,
@@ -28,6 +29,24 @@ export function buildWarmStartScenarioJson(
   initialSchedule: WarmStartSchedule,
 ): string {
   return JSON.stringify(buildWarmStartScenarioPayload(scenario, initialSchedule));
+}
+
+export function buildConstructionSeedScenarioPayload(
+  scenario: Scenario,
+  constructionSeedSchedule: WarmStartSchedule,
+): WasmContractSolveInput & { construction_seed_schedule: WarmStartSchedule } {
+  return buildWasmConstructionSeedInput(scenario, constructionSeedSchedule) as WasmContractSolveInput & {
+    construction_seed_schedule: WarmStartSchedule;
+  };
+}
+
+export function buildConstructionSeedScenarioJson(
+  scenario: Scenario,
+  constructionSeedSchedule: WarmStartSchedule,
+): string {
+  return JSON.stringify(
+    buildConstructionSeedScenarioPayload(scenario, constructionSeedSchedule),
+  );
 }
 
 export function parseProgressUpdate(progressJson: string): ProgressUpdate {

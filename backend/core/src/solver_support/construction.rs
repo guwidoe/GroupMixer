@@ -5,6 +5,7 @@
 //! semantics without copying logic.
 
 use crate::models::ApiInput;
+use crate::solver_support::validation::validate_schedule_as_construction_seed;
 use crate::solver_support::SolverError;
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
@@ -24,14 +25,8 @@ fn derive_phase_seed(base_seed: u64, salt: u64) -> u64 {
 
 pub(crate) struct BaselineConstructionContext<'a> {
     pub effective_seed: u64,
-    pub num_sessions: usize,
-    pub group_id_to_idx: &'a HashMap<String, usize>,
     pub group_idx_to_id: &'a [String],
-    pub person_id_to_idx: &'a HashMap<String, usize>,
     pub person_idx_to_id: &'a [String],
-    pub attr_key_to_idx: &'a HashMap<String, usize>,
-    pub person_attributes: &'a [Vec<usize>],
-    pub attr_idx_to_val: &'a [Vec<String>],
     pub effective_group_capacities: &'a [usize],
     pub person_participation: &'a [Vec<bool>],
     pub immovable_people: &'a HashMap<(usize, usize), usize>,
@@ -50,114 +45,17 @@ impl BaselineConstructionContext<'_> {
     fn people_count(&self) -> usize {
         self.person_idx_to_id.len()
     }
-
-    fn display_person_by_idx(&self, person_idx: usize) -> String {
-        let id_str = &self.person_idx_to_id[person_idx];
-        if let Some(&name_attr_idx) = self.attr_key_to_idx.get("name") {
-            let name_val_idx = self.person_attributes[person_idx][name_attr_idx];
-            if name_val_idx != usize::MAX {
-                if let Some(name_str) = self
-                    .attr_idx_to_val
-                    .get(name_attr_idx)
-                    .and_then(|values| values.get(name_val_idx))
-                {
-                    return format!("{} ({})", name_str, id_str);
-                }
-            }
-        }
-        id_str.clone()
-    }
 }
 
-pub(crate) fn apply_initial_schedule_warm_start(
+pub(crate) fn apply_construction_seed_schedule(
     context: &mut BaselineConstructionContext<'_>,
     input: &ApiInput,
 ) -> Result<(), SolverError> {
-    let Some(initial_schedule) = &input.initial_schedule else {
+    let Some(construction_seed_schedule) = &input.construction_seed_schedule else {
         return Ok(());
     };
-
-    let num_sessions = context.num_sessions;
-    let group_count = context.group_count();
-    let people_count = context.people_count();
-
-    // Build mapping of group id -> index for quick lookup
-    // Expect keys like "session_0", iterate in sorted order by session index
-    let mut sessions: Vec<(usize, &HashMap<String, Vec<String>>)> = initial_schedule
-        .iter()
-        .map(|(key, value)| {
-            let session_idx = key
-                .strip_prefix("session_")
-                .ok_or_else(|| {
-                    SolverError::ValidationError(format!(
-                        "Initial schedule uses invalid session key '{}'",
-                        key
-                    ))
-                })?
-                .parse::<usize>()
-                .map_err(|_| {
-                    SolverError::ValidationError(format!(
-                        "Initial schedule uses invalid session key '{}'",
-                        key
-                    ))
-                })?;
-            if session_idx >= num_sessions {
-                return Err(SolverError::ValidationError(format!(
-                    "Initial schedule references invalid session {} (max: {})",
-                    session_idx,
-                    num_sessions.saturating_sub(1)
-                )));
-            }
-            Ok((session_idx, value))
-        })
-        .collect::<Result<_, _>>()?;
-    sessions.sort_by_key(|(s_idx, _)| *s_idx);
-
-    for (s_idx, group_map) in sessions {
-        let day_schedule = &mut context.schedule[s_idx];
-        let mut placed: Vec<bool> = vec![false; people_count];
-        for (group_id, people_ids) in group_map.iter() {
-            let &g_idx = context.group_id_to_idx.get(group_id).ok_or_else(|| {
-                SolverError::ValidationError(format!(
-                    "Initial schedule references unknown group '{}'",
-                    group_id
-                ))
-            })?;
-            let group_capacity = context.effective_group_capacities[s_idx * group_count + g_idx];
-            for pid in people_ids {
-                let &p_idx = context.person_id_to_idx.get(pid).ok_or_else(|| {
-                    SolverError::ValidationError(format!(
-                        "Initial schedule references unknown person '{}'",
-                        pid
-                    ))
-                })?;
-                if !context.person_participation[p_idx][s_idx] {
-                    return Err(SolverError::ValidationError(format!(
-                        "Initial schedule assigns non-participating person {} in session {}",
-                        context.display_person_by_idx(p_idx),
-                        s_idx
-                    )));
-                }
-                if placed[p_idx] {
-                    return Err(SolverError::ValidationError(format!(
-                        "Initial schedule assigns person {} multiple times in session {}",
-                        context.display_person_by_idx(p_idx),
-                        s_idx
-                    )));
-                }
-                if day_schedule[g_idx].len() >= group_capacity {
-                    return Err(SolverError::ValidationError(format!(
-                        "Initial schedule overfills group {} in session {}. Capacity: {}",
-                        context.group_idx_to_id[g_idx], s_idx, group_capacity
-                    )));
-                }
-
-                day_schedule[g_idx].push(p_idx);
-                placed[p_idx] = true;
-            }
-        }
-        // Any unplaced participating people will be filled in by random initializer below
-    }
+    let validated = validate_schedule_as_construction_seed(input, construction_seed_schedule)?;
+    *context.schedule = validated.schedule;
 
     Ok(())
 }

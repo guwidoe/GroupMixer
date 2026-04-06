@@ -14,6 +14,9 @@ use crate::models::{
     ApiInput, AttributeBalanceMode, Constraint, Objective, PairMeetingMode, ProblemDefinition,
     SolverKind,
 };
+use crate::solver_support::validation::{
+    validate_schedule_as_construction_seed, validate_schedule_input_mode,
+};
 use crate::solver_support::SolverError;
 
 /// Flat `[session_idx][group_idx] -> members` schedule representation used only during
@@ -162,9 +165,9 @@ pub struct CompiledProblem {
     pub person_participation: Vec<Vec<bool>>,
 
     // ------------------------------------------------------------------
-    // Initial schedule (optional, used for warm-start)
+    // Construction seed schedule (optional, used for bootstrap seeding)
     // ------------------------------------------------------------------
-    pub(crate) compiled_initial_schedule: Option<PackedSchedule>,
+    pub(crate) compiled_construction_seed_schedule: Option<PackedSchedule>,
 
     // ------------------------------------------------------------------
     // Cliques (MustStayTogether)
@@ -229,6 +232,8 @@ impl CompiledProblem {
             )));
         }
 
+        validate_schedule_input_mode(input)?;
+
         let num_people = input.problem.people.len();
         let num_groups = input.problem.groups.len();
         let num_sessions = input.problem.num_sessions as usize;
@@ -275,16 +280,7 @@ impl CompiledProblem {
             person_attribute_value_indices,
         ) = build_attribute_indexes(input)?;
 
-        let compiled_initial_schedule = compile_initial_schedule(
-            input,
-            &person_id_to_idx,
-            &group_id_to_idx,
-            &person_participation,
-            &effective_group_capacities,
-            num_groups,
-            num_sessions,
-            num_people,
-        )?;
+        let compiled_construction_seed_schedule = compile_construction_seed_schedule(input)?;
 
         let immovable_assignments = compile_immovable_assignments(
             input,
@@ -393,7 +389,7 @@ impl CompiledProblem {
             attr_idx_to_val,
             person_attribute_value_indices,
             person_participation,
-            compiled_initial_schedule,
+            compiled_construction_seed_schedule,
             cliques,
             person_to_clique_id,
             forbidden_pairs,
@@ -628,82 +624,16 @@ fn normalize_allowed_sessions(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn compile_initial_schedule(
+fn compile_construction_seed_schedule(
     input: &ApiInput,
-    person_id_to_idx: &HashMap<String, usize>,
-    group_id_to_idx: &HashMap<String, usize>,
-    person_participation: &[Vec<bool>],
-    effective_group_capacities: &[usize],
-    num_groups: usize,
-    num_sessions: usize,
-    num_people: usize,
 ) -> Result<Option<PackedSchedule>, SolverError> {
-    let Some(initial_schedule) = &input.initial_schedule else {
+    let Some(construction_seed_schedule) = &input.construction_seed_schedule else {
         return Ok(None);
     };
-    let mut compiled = vec![vec![Vec::new(); num_groups]; num_sessions];
 
-    for (session_key, groups) in initial_schedule {
-        let sidx = session_key
-            .strip_prefix("session_")
-            .and_then(|s| s.parse::<usize>().ok())
-            .ok_or_else(|| {
-                SolverError::ValidationError(format!(
-                    "initial schedule: invalid session key '{}'",
-                    session_key
-                ))
-            })?;
-        if sidx >= num_sessions {
-            return Err(SolverError::ValidationError(format!(
-                "initial schedule: session {} out of range (max {})",
-                sidx,
-                num_sessions.saturating_sub(1)
-            )));
-        }
-
-        let mut placed = vec![false; num_people];
-
-        for (group_id, people_ids) in groups {
-            let &gidx = group_id_to_idx.get(group_id).ok_or_else(|| {
-                SolverError::ValidationError(format!(
-                    "initial schedule: unknown group '{}'",
-                    group_id
-                ))
-            })?;
-            let cap = effective_group_capacities[sidx * num_groups + gidx];
-
-            for person_id in people_ids {
-                let &pidx = person_id_to_idx.get(person_id).ok_or_else(|| {
-                    SolverError::ValidationError(format!(
-                        "initial schedule: unknown person '{}'",
-                        person_id
-                    ))
-                })?;
-                if !person_participation[pidx][sidx] {
-                    return Err(SolverError::ValidationError(format!(
-                        "initial schedule: person '{}' does not participate in session {}",
-                        person_id, sidx
-                    )));
-                }
-                if placed[pidx] {
-                    return Err(SolverError::ValidationError(format!(
-                        "initial schedule: person '{}' assigned multiple times in session {}",
-                        person_id, sidx
-                    )));
-                }
-                if compiled[sidx][gidx].len() >= cap {
-                    return Err(SolverError::ValidationError(format!(
-                        "initial schedule: group '{}' overfilled in session {} (capacity {})",
-                        group_id, sidx, cap
-                    )));
-                }
-                compiled[sidx][gidx].push(pidx);
-                placed[pidx] = true;
-            }
-        }
-    }
-
-    Ok(Some(compiled))
+    Ok(Some(
+        validate_schedule_as_construction_seed(input, construction_seed_schedule)?.schedule,
+    ))
 }
 
 fn compile_immovable_assignments(

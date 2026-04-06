@@ -44,6 +44,7 @@ fn transfer_state(
 
     let input = ApiInput {
         initial_schedule: Some(make_initial_schedule(&group_ids, sessions)),
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people,
             groups,
@@ -244,6 +245,7 @@ fn pair_meeting_transfer_delta_matches_apply_and_recalculation() {
                 vec![vec!["p0", "p4"], vec!["p1", "p2"], vec!["p3"]],
             ],
         )),
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 person("p0"),
@@ -349,6 +351,7 @@ fn sequential_transfer_moves_do_not_drift_caches() {
                 vec![vec!["p0", "p2"], vec!["p1"], vec!["p3", "p4"]],
             ],
         )),
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 person_with_attribute("p0", "team", "red"),

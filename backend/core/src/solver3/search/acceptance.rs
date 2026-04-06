@@ -31,8 +31,7 @@ impl SimulatedAnnealingAcceptance {
         let temperature = temperature_for_iteration(inputs.iteration, inputs.max_iterations);
         let accepted = inputs.delta_score <= 0.0
             || (temperature > 0.0
-                && rng.random::<f64>()
-                    < (-inputs.delta_score / temperature).exp().clamp(0.0, 1.0));
+                && rng.random::<f64>() < (-inputs.delta_score / temperature).exp().clamp(0.0, 1.0));
 
         AcceptanceDecision {
             temperature,
@@ -57,7 +56,7 @@ mod tests {
     use rand::SeedableRng;
     use rand_chacha::ChaCha12Rng;
 
-    use super::{AcceptanceInputs, SimulatedAnnealingAcceptance, temperature_for_iteration};
+    use super::{temperature_for_iteration, AcceptanceInputs, SimulatedAnnealingAcceptance};
 
     #[test]
     fn improving_moves_are_always_accepted() {
@@ -77,7 +76,10 @@ mod tests {
 
     #[test]
     fn max_iteration_one_uses_final_temperature() {
-        assert_eq!(temperature_for_iteration(0, 1), super::DEFAULT_FINAL_TEMPERATURE);
+        assert_eq!(
+            temperature_for_iteration(0, 1),
+            super::DEFAULT_FINAL_TEMPERATURE
+        );
     }
 
     #[test]

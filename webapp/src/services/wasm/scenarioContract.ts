@@ -16,6 +16,7 @@ export type WarmStartSchedule = Record<string, Record<string, string[]>>;
 export interface WasmScenarioContractInput {
   scenario: Scenario;
   initial_schedule?: WarmStartSchedule;
+  construction_seed_schedule?: WarmStartSchedule;
 }
 
 export interface WasmScenarioRecommendSettingsRequest {
@@ -254,6 +255,16 @@ export function buildWasmWarmStartInput(
   return {
     scenario: normalizeScenarioForWasm(scenario),
     initial_schedule: initialSchedule,
+  };
+}
+
+export function buildWasmConstructionSeedInput(
+  scenario: Scenario,
+  constructionSeedSchedule: WarmStartSchedule,
+): WasmScenarioContractInput {
+  return {
+    scenario: normalizeScenarioForWasm(scenario),
+    construction_seed_schedule: constructionSeedSchedule,
   };
 }
 

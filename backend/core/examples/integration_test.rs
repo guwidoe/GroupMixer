@@ -8,6 +8,7 @@ fn main() {
 
     let input = ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 Person {

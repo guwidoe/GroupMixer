@@ -18,6 +18,7 @@ use std::sync::{Arc, Mutex};
 fn basic_input() -> ApiInput {
     ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 Person {
@@ -578,6 +579,7 @@ fn validate_no_duplicate_assignments_includes_debug_context() {
 fn display_helpers_prefer_name_and_fallback_cleanly() {
     let input = ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 Person {

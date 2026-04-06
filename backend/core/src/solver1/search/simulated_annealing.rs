@@ -637,6 +637,7 @@ impl MoveFamilySelector {
 /// let solver = SimulatedAnnealing::new(&config);
 /// # let input = ApiInput {
 /// #     initial_schedule: None,
+/// #     construction_seed_schedule: None,
 /// #     problem: ProblemDefinition {
 /// #         people: vec![],
 /// #         groups: vec![],
@@ -873,6 +874,7 @@ impl Solver for SimulatedAnnealing {
     ///
     /// # let input = ApiInput {
     /// #     initial_schedule: None,
+    /// #     construction_seed_schedule: None,
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
@@ -1969,6 +1971,7 @@ mod tests {
     fn clique_source_group_prefers_lowest_group_on_tie() {
         let input = ApiInput {
             initial_schedule: None,
+            construction_seed_schedule: None,
             problem: ProblemDefinition {
                 people: vec![person("p0"), person("p1"), person("p2"), person("p3")],
                 groups: vec![

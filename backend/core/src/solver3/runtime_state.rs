@@ -24,8 +24,10 @@ use crate::models::ApiInput;
 use crate::solver_support::construction::{
     apply_baseline_construction_heuristic, BaselineConstructionContext,
 };
+use crate::solver_support::validation::{
+    validate_schedule_as_incumbent, validate_schedule_input_mode,
+};
 use crate::solver_support::SolverError;
-use crate::solver_support::validation::validate_schedule_as_incumbent;
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use rand_chacha::ChaCha12Rng;
@@ -83,12 +85,13 @@ impl RuntimeState {
     /// Builds a `RuntimeState` from an `ApiInput`.
     ///
     /// 1. Compiles the `CompiledProblem`.
-    /// 2. Seeds the schedule from `initial_schedule` if present.
+    /// 2. Loads `initial_schedule` directly if present, otherwise starts from `construction_seed_schedule` if present.
     /// 3. Applies the shared baseline construction heuristic (seeded) to fill remaining slots.
     /// 4. Builds flat derived arrays.
     /// 5. Runs the oracle to set initial score aggregates.
     ///
     pub fn from_input(input: &ApiInput) -> Result<Self, SolverError> {
+        validate_schedule_input_mode(input)?;
         let compiled = Arc::new(CompiledProblem::compile(input)?);
         let effective_seed = input
             .solver
@@ -242,7 +245,6 @@ impl RuntimeState {
     }
 
     fn load_exact_schedule(&mut self, schedule: &PackedSchedule) -> Result<(), SolverError> {
-        
         for (sidx, groups) in schedule.iter().enumerate() {
             for (gidx, members) in groups.iter().enumerate() {
                 for &pidx in members {
@@ -257,7 +259,7 @@ impl RuntimeState {
     fn build_baseline_schedule(&self, effective_seed: u64) -> Result<PackedSchedule, SolverError> {
         let mut schedule = self
             .compiled
-            .compiled_initial_schedule
+            .compiled_construction_seed_schedule
             .clone()
             .unwrap_or_else(|| {
                 vec![vec![Vec::new(); self.compiled.num_groups]; self.compiled.num_sessions]
@@ -275,28 +277,10 @@ impl RuntimeState {
             .iter()
             .map(|clique| clique.sessions.clone())
             .collect::<Vec<_>>();
-        let person_attributes = self
-            .compiled
-            .person_attribute_value_indices
-            .iter()
-            .map(|attrs| {
-                attrs
-                    .iter()
-                    .map(|value_idx| value_idx.unwrap_or(usize::MAX))
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
-
         let mut construction_context = BaselineConstructionContext {
             effective_seed,
-            num_sessions: self.compiled.num_sessions,
-            group_id_to_idx: &self.compiled.group_id_to_idx,
             group_idx_to_id: &self.compiled.group_idx_to_id,
-            person_id_to_idx: &self.compiled.person_id_to_idx,
             person_idx_to_id: &self.compiled.person_idx_to_id,
-            attr_key_to_idx: &self.compiled.attr_key_to_idx,
-            person_attributes: &person_attributes,
-            attr_idx_to_val: &self.compiled.attr_idx_to_val,
             effective_group_capacities: &self.compiled.effective_group_capacities,
             person_participation: &self.compiled.person_participation,
             immovable_people: &self.compiled.immovable_lookup,
@@ -323,7 +307,11 @@ impl RuntimeState {
         Ok(())
     }
 
-    fn session_has_split_active_clique(&self, schedule: &PackedSchedule, session_idx: usize) -> bool {
+    fn session_has_split_active_clique(
+        &self,
+        schedule: &PackedSchedule,
+        session_idx: usize,
+    ) -> bool {
         let mut person_group = vec![None; self.compiled.num_people];
         for (group_idx, members) in schedule[session_idx].iter().enumerate() {
             for &person_idx in members {
@@ -480,7 +468,9 @@ impl RuntimeState {
             }
 
             if group_sizes[assignment.group_idx]
-                >= self.compiled.group_capacity(session_idx, assignment.group_idx)
+                >= self
+                    .compiled
+                    .group_capacity(session_idx, assignment.group_idx)
             {
                 return Err(SolverError::ValidationError(format!(
                     "group '{}' is full while placing immovable person '{}' in session {} during solver3 normalization",

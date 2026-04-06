@@ -7,6 +7,7 @@ fn main() {
     // Create a simple problem with 6 people, 2 groups, 3 sessions
     let input = ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 Person {

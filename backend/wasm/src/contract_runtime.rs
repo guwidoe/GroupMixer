@@ -2,7 +2,7 @@
 
 use crate::public_errors::{
     evaluate_requires_initial_schedule_error, infeasible_scenario_error, internal_error,
-    parse_error, public_error_to_js_value,
+    invalid_input_error, parse_error, public_error_to_js_value,
 };
 use gm_contracts::types::{
     PublicErrorEnvelope, RecommendSettingsRequest, ResultSummary, ValidateResponse, ValidationIssue,
@@ -31,6 +31,8 @@ struct WasmScenarioContractInput {
     scenario: WasmScenario,
     #[serde(default)]
     initial_schedule: Option<WasmInitialSchedule>,
+    #[serde(default)]
+    construction_seed_schedule: Option<WasmInitialSchedule>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -205,6 +207,14 @@ pub fn recommend_settings_contract(
 pub fn evaluate_input_contract(request: &ApiInput) -> Result<SolverResult, PublicErrorEnvelope> {
     let adjusted = ensure_browser_safe_seed(request)?;
 
+    if request.construction_seed_schedule.is_some() {
+        return Err(invalid_input_error(
+            "evaluate-input",
+            "Evaluate input does not accept construction_seed_schedule; provide a complete initial_schedule instead",
+            Some("construction_seed_schedule".to_string()),
+            vec!["remove construction_seed_schedule".to_string(), "provide initial_schedule".to_string()],
+        ));
+    }
     if request.initial_schedule.is_none() {
         return Err(evaluate_requires_initial_schedule_error());
     }
@@ -261,7 +271,11 @@ fn serialize_output<T: Serialize>(value: &T, operation_id: &str) -> Result<JsVal
 }
 
 impl WasmScenario {
-    fn into_api_input(self, initial_schedule: Option<WasmInitialSchedule>) -> ApiInput {
+    fn into_api_input(
+        self,
+        initial_schedule: Option<WasmInitialSchedule>,
+        construction_seed_schedule: Option<WasmInitialSchedule>,
+    ) -> ApiInput {
         ApiInput {
             problem: ProblemDefinition {
                 people: self.people,
@@ -269,6 +283,7 @@ impl WasmScenario {
                 num_sessions: self.num_sessions,
             },
             initial_schedule,
+            construction_seed_schedule,
             objectives: default_objectives(self.objectives),
             constraints: self.constraints,
             solver: self.settings,
@@ -278,7 +293,9 @@ impl WasmScenario {
 
 impl From<WasmScenarioContractInput> for ApiInput {
     fn from(value: WasmScenarioContractInput) -> Self {
-        value.scenario.into_api_input(value.initial_schedule)
+        value
+            .scenario
+            .into_api_input(value.initial_schedule, value.construction_seed_schedule)
     }
 }
 
@@ -331,6 +348,7 @@ mod tests {
     fn valid_input() -> gm_core::models::ApiInput {
         gm_core::models::ApiInput {
             initial_schedule: None,
+            construction_seed_schedule: None,
             problem: ProblemDefinition {
                 people: vec![
                     Person {

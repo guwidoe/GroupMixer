@@ -36,9 +36,12 @@ pub struct ScenarioDefinitionContract {
 pub struct SolveRequest {
     /// The scenario definition: people, groups, and sessions.
     pub scenario: ScenarioDefinitionContract,
-    /// Optional initial schedule to warm-start the solver.
+    /// Optional incumbent schedule to warm-start the solver.
     #[serde(default)]
     pub initial_schedule: Option<InitialScheduleContract>,
+    /// Optional construction seed schedule for constructor-driven bootstrapping.
+    #[serde(default)]
+    pub construction_seed_schedule: Option<InitialScheduleContract>,
     /// Optimization objectives (defaults to empty list if not specified)
     #[serde(default)]
     pub objectives: Vec<gm_core::models::Objective>,
@@ -213,6 +216,7 @@ impl From<SolveRequest> for gm_core::models::ApiInput {
         Self {
             problem: value.scenario.into(),
             initial_schedule: value.initial_schedule,
+            construction_seed_schedule: value.construction_seed_schedule,
             objectives: value.objectives,
             constraints: value.constraints,
             solver: value.solver,
@@ -225,6 +229,7 @@ impl From<&SolveRequest> for gm_core::models::ApiInput {
         Self {
             problem: value.scenario.clone().into(),
             initial_schedule: value.initial_schedule.clone(),
+            construction_seed_schedule: value.construction_seed_schedule.clone(),
             objectives: value.objectives.clone(),
             constraints: value.constraints.clone(),
             solver: value.solver.clone(),
@@ -237,6 +242,7 @@ impl From<gm_core::models::ApiInput> for SolveRequest {
         Self {
             scenario: value.problem.into(),
             initial_schedule: value.initial_schedule,
+            construction_seed_schedule: value.construction_seed_schedule,
             objectives: value.objectives,
             constraints: value.constraints,
             solver: value.solver,
@@ -249,6 +255,7 @@ impl From<&gm_core::models::ApiInput> for SolveRequest {
         Self {
             scenario: value.problem.clone().into(),
             initial_schedule: value.initial_schedule.clone(),
+            construction_seed_schedule: value.construction_seed_schedule.clone(),
             objectives: value.objectives.clone(),
             constraints: value.constraints.clone(),
             solver: value.solver.clone(),
@@ -379,6 +386,7 @@ mod tests {
                 "session_0".to_string(),
                 HashMap::from([("g1".to_string(), vec!["p1".to_string(), "p2".to_string()])]),
             )])),
+            construction_seed_schedule: None,
             objectives: vec![Objective {
                 r#type: "maximize_unique_contacts".to_string(),
                 weight: 1.0,

@@ -53,6 +53,7 @@ fn single_session_swap_state(constraints: Vec<Constraint>) -> State {
             &["g0", "g1"],
             vec![vec![vec!["p0", "p1"], vec!["p2", "p3"]]],
         )),
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![person("p0"), person("p1"), person("p2"), person("p3")],
             groups: groups(),
@@ -101,6 +102,7 @@ fn non_participant_swap_returns_infinity_and_apply_is_noop() {
                 vec![vec!["p0", "p1"], vec!["p2"]],
             ],
         )),
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 person("p0"),
@@ -191,6 +193,7 @@ fn attribute_balance_delta_matches_apply_and_recalculation() {
             &["g0", "g1"],
             vec![vec![vec!["p0", "p1"], vec!["p2", "p3"]]],
         )),
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 person_with_attribute("p0", "team", "red"),
@@ -241,6 +244,7 @@ fn pair_meeting_delta_matches_apply_and_recalculation() {
                 vec![vec!["p0", "p2"], vec!["p1", "p3"]],
             ],
         )),
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![person("p0"), person("p1"), person("p2"), person("p3")],
             groups: groups(),

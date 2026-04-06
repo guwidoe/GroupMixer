@@ -5,13 +5,13 @@ use rand_chacha::ChaCha12Rng;
 
 use crate::models::MoveFamily;
 
-use super::family_selection::MoveFamilySelector;
 use super::super::moves::{
     preview_clique_swap_runtime_lightweight, preview_swap_runtime_lightweight,
     preview_transfer_runtime_lightweight, CliqueSwapMove, CliqueSwapRuntimePreview, SwapMove,
     SwapRuntimePreview, TransferMove, TransferRuntimePreview,
 };
 use super::super::runtime_state::RuntimeState;
+use super::family_selection::MoveFamilySelector;
 
 const MAX_RANDOM_CANDIDATE_ATTEMPTS: usize = 24;
 const MAX_RANDOM_TARGET_ATTEMPTS: usize = 24;
@@ -88,10 +88,9 @@ impl CandidateSampler {
         rng: &mut ChaCha12Rng,
     ) -> Option<SearchMovePreview> {
         match family {
-            MoveFamily::Swap => {
-                self.sample_swap_preview(state, allowed_sessions, rng)
-                    .map(SearchMovePreview::Swap)
-            }
+            MoveFamily::Swap => self
+                .sample_swap_preview(state, allowed_sessions, rng)
+                .map(SearchMovePreview::Swap),
             MoveFamily::Transfer => self
                 .sample_transfer_preview(state, allowed_sessions, rng)
                 .map(SearchMovePreview::Transfer),
@@ -154,7 +153,8 @@ impl CandidateSampler {
                 continue;
             }
             let person_idx = rng.random_range(0..state.compiled.num_people);
-            let Some(source_group_idx) = runtime_transfer_source_group(state, session_idx, person_idx)
+            let Some(source_group_idx) =
+                runtime_transfer_source_group(state, session_idx, person_idx)
             else {
                 continue;
             };
@@ -194,9 +194,14 @@ impl CandidateSampler {
                 };
 
                 for target_offset in 0..state.compiled.num_groups {
-                    let target_group_idx = (target_start + target_offset) % state.compiled.num_groups;
+                    let target_group_idx =
+                        (target_start + target_offset) % state.compiled.num_groups;
                     if target_group_idx == source_group_idx
-                        || !runtime_transfer_target_has_capacity(state, session_idx, target_group_idx)
+                        || !runtime_transfer_target_has_capacity(
+                            state,
+                            session_idx,
+                            target_group_idx,
+                        )
                     {
                         continue;
                     }
@@ -287,7 +292,8 @@ impl CandidateSampler {
                 };
 
                 for target_offset in 0..state.compiled.num_groups {
-                    let target_group_idx = (target_start + target_offset) % state.compiled.num_groups;
+                    let target_group_idx =
+                        (target_start + target_offset) % state.compiled.num_groups;
                     if target_group_idx == source_group_idx {
                         continue;
                     }
@@ -309,7 +315,8 @@ impl CandidateSampler {
                         target_group_idx,
                         target_people,
                     );
-                    if let Ok(preview) = preview_clique_swap_runtime_lightweight(state, &clique_swap)
+                    if let Ok(preview) =
+                        preview_clique_swap_runtime_lightweight(state, &clique_swap)
                     {
                         return Some(preview);
                     }
@@ -364,7 +371,8 @@ fn runtime_active_clique_in_single_group(
         return None;
     }
 
-    let source_group_idx = state.person_location[state.people_slot(session_idx, active_members[0])]?;
+    let source_group_idx =
+        state.person_location[state.people_slot(session_idx, active_members[0])]?;
 
     if active_members.iter().any(|&member| {
         state.person_location[state.people_slot(session_idx, member)] != Some(source_group_idx)
@@ -372,10 +380,12 @@ fn runtime_active_clique_in_single_group(
         return None;
     }
 
-    if active_members
-        .iter()
-        .any(|&member| state.compiled.immovable_group(session_idx, member).is_some())
-    {
+    if active_members.iter().any(|&member| {
+        state
+            .compiled
+            .immovable_group(session_idx, member)
+            .is_some()
+    }) {
         return None;
     }
 
@@ -402,7 +412,10 @@ fn runtime_pick_clique_targets(
         if !active_members.contains(&person_idx)
             && state.compiled.person_participation[person_idx][session_idx]
             && state.compiled.person_to_clique_id[session_idx][person_idx].is_none()
-            && state.compiled.immovable_group(session_idx, person_idx).is_none()
+            && state
+                .compiled
+                .immovable_group(session_idx, person_idx)
+                .is_none()
         {
             selected.push(person_idx);
             if selected.len() == active_members.len() {
@@ -440,8 +453,8 @@ fn runtime_target_group_has_eligible_clique_swap_people(
 fn runtime_session_can_transfer(state: &RuntimeState, session_idx: usize) -> bool {
     let has_capacity_target = (0..state.compiled.num_groups)
         .any(|group_idx| runtime_transfer_target_has_capacity(state, session_idx, group_idx));
-    let has_nonempty_source =
-        (0..state.compiled.num_groups).any(|group_idx| state.group_sizes[state.group_slot(session_idx, group_idx)] > 1);
+    let has_nonempty_source = (0..state.compiled.num_groups)
+        .any(|group_idx| state.group_sizes[state.group_slot(session_idx, group_idx)] > 1);
     has_capacity_target && has_nonempty_source
 }
 
@@ -478,7 +491,10 @@ fn is_runtime_transferable_person(
 ) -> bool {
     state.compiled.person_participation[person_idx][session_idx]
         && state.person_location[state.people_slot(session_idx, person_idx)].is_some()
-        && state.compiled.immovable_group(session_idx, person_idx).is_none()
+        && state
+            .compiled
+            .immovable_group(session_idx, person_idx)
+            .is_none()
         && state.compiled.person_to_clique_id[session_idx][person_idx].is_none()
 }
 
@@ -490,13 +506,13 @@ mod tests {
     use rand_chacha::ChaCha12Rng;
 
     use crate::models::{
-        ApiInput, Group, Objective, Person, ProblemDefinition, Solver3Params,
-        SolverConfiguration, SolverParams, StopConditions,
+        ApiInput, Group, Objective, Person, ProblemDefinition, Solver3Params, SolverConfiguration,
+        SolverParams, StopConditions,
     };
 
-    use super::CandidateSampler;
-    use super::super::family_selection::MoveFamilySelector;
     use super::super::super::runtime_state::RuntimeState;
+    use super::super::family_selection::MoveFamilySelector;
+    use super::CandidateSampler;
 
     fn solver3_config() -> SolverConfiguration {
         SolverConfiguration {
@@ -540,6 +556,7 @@ mod tests {
                 num_sessions: 1,
             },
             initial_schedule: None,
+            construction_seed_schedule: None,
             objectives: vec![Objective {
                 r#type: "maximize_unique_contacts".into(),
                 weight: 1.0,

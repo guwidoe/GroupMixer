@@ -14,6 +14,16 @@ pub struct IndexedScheduleValidation {
     pub schedule: IndexedSchedule,
 }
 
+pub fn validate_schedule_input_mode(input: &ApiInput) -> Result<(), SolverError> {
+    if input.initial_schedule.is_some() && input.construction_seed_schedule.is_some() {
+        return Err(SolverError::ValidationError(
+            "input cannot specify both 'initial_schedule' and 'construction_seed_schedule'"
+                .to_string(),
+        ));
+    }
+    Ok(())
+}
+
 pub fn validate_schedule_as_incumbent(
     input: &ApiInput,
     schedule: &ApiSchedule,
@@ -66,7 +76,8 @@ fn validate_schedule(
 
     let person_participation = build_person_participation(input)?;
     let effective_group_capacities = build_effective_group_capacities(input)?;
-    let immovable_assignments = compile_immovable_assignments(input, &person_id_to_idx, &group_id_to_idx)?;
+    let immovable_assignments =
+        compile_immovable_assignments(input, &person_id_to_idx, &group_id_to_idx)?;
     let cliques = compile_cliques(input, &person_id_to_idx, num_sessions)?;
 
     let mut compiled = vec![vec![Vec::new(); num_groups]; num_sessions];
@@ -152,7 +163,9 @@ fn validate_schedule(
     if require_complete {
         for session_idx in 0..num_sessions {
             for person_idx in 0..num_people {
-                if person_participation[person_idx][session_idx] && !seen_people[session_idx][person_idx] {
+                if person_participation[person_idx][session_idx]
+                    && !seen_people[session_idx][person_idx]
+                {
                     return Err(SolverError::ValidationError(format!(
                         "warm start leaves participating person '{}' unassigned in session {}",
                         person_idx_to_id[person_idx], session_idx
@@ -280,7 +293,10 @@ fn compile_cliques(
             root_to_members.entry(root).or_default().push(person_idx);
         }
 
-        for mut members in root_to_members.into_values().filter(|members| members.len() >= 2) {
+        for mut members in root_to_members
+            .into_values()
+            .filter(|members| members.len() >= 2)
+        {
             members.sort_unstable();
             members_to_sessions
                 .entry(members)
@@ -293,8 +309,8 @@ fn compile_cliques(
         .into_iter()
         .map(|(members, mut sessions)| {
             sessions.sort_unstable();
-            let all_sessions = sessions.len() == num_sessions
-                && sessions.iter().copied().eq(0..num_sessions);
+            let all_sessions =
+                sessions.len() == num_sessions && sessions.iter().copied().eq(0..num_sessions);
             CompiledClique {
                 members,
                 sessions: if all_sessions { None } else { Some(sessions) },

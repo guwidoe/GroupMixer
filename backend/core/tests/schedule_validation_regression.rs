@@ -17,6 +17,7 @@ fn person(id: &str) -> Person {
 fn base_input() -> ApiInput {
     ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![person("p0"), person("p1"), person("p2"), person("p3")],
             groups: vec![
@@ -78,7 +79,10 @@ fn incumbent_validator_rejects_partial_schedule_but_seed_validator_accepts_it() 
     let error = validate_schedule_as_incumbent(&input, &partial)
         .expect_err("partial warm start must be rejected")
         .to_string();
-    assert!(error.contains("must define all 2 sessions explicitly"), "{error}");
+    assert!(
+        error.contains("must define all 2 sessions explicitly"),
+        "{error}"
+    );
 
     validate_schedule_as_construction_seed(&input, &partial)
         .expect("partial construction seed should validate structurally");
@@ -117,11 +121,13 @@ fn incumbent_validator_rejects_split_clique_schedule() {
 #[test]
 fn incumbent_validator_rejects_immovable_violation() {
     let mut input = base_input();
-    input.constraints.push(Constraint::ImmovablePerson(ImmovablePersonParams {
-        person_id: "p0".to_string(),
-        group_id: "g1".to_string(),
-        sessions: Some(vec![0]),
-    }));
+    input
+        .constraints
+        .push(Constraint::ImmovablePerson(ImmovablePersonParams {
+            person_id: "p0".to_string(),
+            group_id: "g1".to_string(),
+            sessions: Some(vec![0]),
+        }));
 
     let error = validate_schedule_as_incumbent(&input, &valid_schedule())
         .expect_err("immovable violation should be rejected")

@@ -97,6 +97,7 @@ fn create_test_input(
 
     ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people,
             groups,
@@ -169,6 +170,7 @@ fn create_test_input_with_sessions(
 
     ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people,
             groups,

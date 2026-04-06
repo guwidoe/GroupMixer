@@ -119,6 +119,7 @@ fn representative_input() -> ApiInput {
             num_sessions: 3,
         },
         initial_schedule: Some(initial_schedule),
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".to_string(),
             weight: 1.0,
@@ -244,6 +245,7 @@ fn transfer_input() -> ApiInput {
                 ]),
             ),
         ])),
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".to_string(),
             weight: 1.0,
@@ -341,6 +343,7 @@ fn transfer_sequential_input() -> ApiInput {
                 ]),
             ),
         ])),
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".to_string(),
             weight: 1.0,
@@ -465,6 +468,7 @@ fn clique_swap_input() -> ApiInput {
                 ]),
             ),
         ])),
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".to_string(),
             weight: 1.0,
@@ -546,6 +550,7 @@ fn sequential_clique_swap_input() -> ApiInput {
                 ("g2".to_string(), vec!["p4".to_string(), "p5".to_string()]),
             ]),
         )])),
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".to_string(),
             weight: 1.0,
@@ -578,8 +583,9 @@ fn sequential_clique_swap_input() -> ApiInput {
 }
 
 #[test]
-fn compiled_problem_builds_explicit_indexes_and_initial_schedule() {
-    let input = representative_input();
+fn compiled_problem_builds_explicit_indexes_and_construction_seed() {
+    let mut input = representative_input();
+    input.construction_seed_schedule = input.initial_schedule.take();
     let compiled = CompiledProblem::compile(&input).unwrap();
 
     assert_eq!(compiled.num_people, 6);
@@ -594,7 +600,7 @@ fn compiled_problem_builds_explicit_indexes_and_initial_schedule() {
     assert_eq!(compiled.immovable_assignments.len(), 1);
     assert_eq!(compiled.pair_meeting_constraints.len(), 1);
     assert_eq!(compiled.allowed_sessions, Some(vec![0, 1, 2]));
-    assert!(compiled.compiled_initial_schedule.is_some());
+    assert!(compiled.compiled_construction_seed_schedule.is_some());
 }
 
 #[test]
@@ -1032,6 +1038,7 @@ fn transfer_rejects_invalid_moves() {
                 ("g2".to_string(), vec!["p3".to_string()]),
             ]),
         )])),
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".to_string(),
             weight: 1.0,
@@ -1087,6 +1094,7 @@ fn transfer_rejects_invalid_moves() {
                 ("g2".to_string(), vec!["p3".to_string()]),
             ]),
         )])),
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".to_string(),
             weight: 1.0,
@@ -1152,6 +1160,7 @@ fn transfer_rejects_invalid_moves() {
                 ("g2".to_string(), Vec::new()),
             ]),
         )])),
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".to_string(),
             weight: 1.0,
@@ -1420,6 +1429,7 @@ fn clique_swap_handles_partial_participation_and_rejects_invalid_targets() {
                 ]),
             ),
         ])),
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".to_string(),
             weight: 1.0,
@@ -1494,6 +1504,7 @@ fn clique_swap_handles_partial_participation_and_rejects_invalid_targets() {
                 ]),
             ),
         ])),
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".to_string(),
             weight: 1.0,

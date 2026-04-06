@@ -45,6 +45,7 @@ pub fn create_simple_input(
 
     ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people,
             groups,
@@ -88,6 +89,7 @@ pub fn create_input_with_attributes(
 
     ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people,
             groups,

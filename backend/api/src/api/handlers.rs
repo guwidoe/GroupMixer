@@ -268,6 +268,16 @@ pub async fn recommend_settings_handler(
 pub async fn evaluate_input_handler(body: Bytes) -> Result<Json<SolverResult>, ApiError> {
     let payload: SolveRequest = parse_json_body(&body, "evaluate-input", &["solve-request"])?;
     let mut payload: ApiInput = payload.into();
+    if payload.construction_seed_schedule.is_some() {
+        return Err(api_error(
+            INVALID_INPUT_ERROR,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "Evaluate input does not accept construction_seed_schedule; provide a complete initial_schedule instead",
+            Some("construction_seed_schedule".to_string()),
+            vec!["remove construction_seed_schedule".to_string(), "provide initial_schedule".to_string()],
+            Some(vec![help_path("evaluate-input")]),
+        ));
+    }
     if payload.initial_schedule.is_none() {
         return Err(api_error(
             INVALID_INPUT_ERROR,

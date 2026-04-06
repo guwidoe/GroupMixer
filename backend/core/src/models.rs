@@ -24,6 +24,7 @@ pub type ApiSchedule = HashMap<String, HashMap<String, Vec<String>>>;
 ///
 /// let input = ApiInput {
 ///     initial_schedule: None,
+///     construction_seed_schedule: None,
 ///     problem: ProblemDefinition {
 ///         people: vec![
 ///             Person {
@@ -76,11 +77,22 @@ pub type ApiSchedule = HashMap<String, HashMap<String, Vec<String>>>;
 pub struct ApiInput {
     /// The core problem definition: people, groups, and sessions
     pub problem: ProblemDefinition,
-    /// Optional initial schedule to warm-start the solver. If provided, the solver
-    /// initializes the internal state from this schedule instead of a random one.
+    /// Optional incumbent schedule to warm-start the solver.
+    ///
+    /// This field is for a **complete, already-valid schedule** only. If provided,
+    /// the solver validates it as an incumbent and starts from it directly.
+    /// The solver does not silently repair or complete this schedule.
+    ///
     /// Format: schedule["session_{i}"][group_id] = [person_ids]
     #[serde(default)]
     pub initial_schedule: Option<ApiSchedule>,
+    /// Optional construction seed schedule for constructor-driven bootstrapping.
+    ///
+    /// Unlike `initial_schedule`, this field may be partial or advisory. It is
+    /// consumed by the shared construction heuristic, which must complete it into
+    /// a full valid schedule or fail explicitly.
+    #[serde(default)]
+    pub construction_seed_schedule: Option<ApiSchedule>,
     /// Optimization objectives (defaults to empty list if not specified)
     #[serde(default)]
     pub objectives: Vec<Objective>,
@@ -1387,6 +1399,7 @@ pub type BenchmarkObserver = Box<dyn Fn(&BenchmarkEvent) + Send>;
 /// // ... create input configuration ...
 /// # let input = ApiInput {
 /// #     initial_schedule: None,
+/// #     construction_seed_schedule: None,
 /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
 /// #     objectives: vec![], constraints: vec![],
 /// #     solver: SolverConfiguration {
@@ -1485,6 +1498,7 @@ impl SolverResult {
     /// # use std::collections::HashMap;
     /// # let input = ApiInput {
     /// #     initial_schedule: None,
+    /// #     construction_seed_schedule: None,
     /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {

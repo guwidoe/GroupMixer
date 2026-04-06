@@ -1381,6 +1381,15 @@ fn cmd_evaluate(input: Option<PathBuf>, stdin: bool, pretty: bool) -> Result<()>
     })?;
     let api_input: ApiInput = solve_request.into();
 
+    if api_input.construction_seed_schedule.is_some() {
+        return Err(public_errors::invalid_input_error(
+            "Evaluate does not accept construction_seed_schedule; provide a complete initial_schedule instead",
+            Some("construction_seed_schedule".to_string()),
+            "evaluate-input",
+            vec!["remove construction_seed_schedule".to_string(), "provide initial_schedule".to_string()],
+        ));
+    }
+
     if api_input.initial_schedule.is_none() {
         return Err(public_errors::invalid_input_error(
             "Evaluate requires initial_schedule in the input",

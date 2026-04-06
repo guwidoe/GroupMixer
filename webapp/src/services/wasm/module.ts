@@ -8,6 +8,7 @@ export type WasmModuleLoader = () => Promise<WasmContractModule>;
 export interface WasmContractSolveInput {
   scenario: Scenario;
   initial_schedule?: WarmStartSchedule;
+  construction_seed_schedule?: WarmStartSchedule;
 }
 
 export interface WasmRecommendSettingsRequest {

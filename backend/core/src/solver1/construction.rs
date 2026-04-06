@@ -9,9 +9,12 @@ use super::{
 };
 use crate::models::{ApiInput, Constraint, PairMeetingMode};
 use crate::solver_support::construction::{
-    apply_baseline_construction_heuristic, BaselineConstructionContext,
+    apply_baseline_construction_heuristic, apply_construction_seed_schedule,
+    BaselineConstructionContext,
 };
-use crate::solver_support::validation::validate_schedule_as_incumbent;
+use crate::solver_support::validation::{
+    validate_schedule_as_incumbent, validate_schedule_input_mode,
+};
 use rand::{rng, RngExt};
 use std::collections::HashMap;
 
@@ -61,6 +64,7 @@ impl State {
     ///
     /// let input = ApiInput {
     ///     initial_schedule: None,
+    ///     construction_seed_schedule: None,
     ///     problem: ProblemDefinition {
     ///         people: vec![
     ///             Person {
@@ -120,6 +124,7 @@ impl State {
     /// }
     /// ```
     pub fn new(input: &ApiInput) -> Result<Self, SolverError> {
+        validate_schedule_input_mode(input)?;
         // --- Pre-validation ---
         let people_count = input.problem.people.len();
         let group_count = input.problem.groups.len();
@@ -411,14 +416,8 @@ impl State {
         } else {
             let mut construction_context = BaselineConstructionContext {
                 effective_seed: state.effective_seed,
-                num_sessions,
-                group_id_to_idx: &state.group_id_to_idx,
                 group_idx_to_id: &state.group_idx_to_id,
-                person_id_to_idx: &state.person_id_to_idx,
                 person_idx_to_id: &state.person_idx_to_id,
-                attr_key_to_idx: &state.attr_key_to_idx,
-                person_attributes: &state.person_attributes,
-                attr_idx_to_val: &state.attr_idx_to_val,
                 effective_group_capacities: &state.effective_group_capacities,
                 person_participation: &state.person_participation,
                 immovable_people: &state.immovable_people,
@@ -426,6 +425,7 @@ impl State {
                 clique_sessions: &state.clique_sessions,
                 schedule: &mut state.schedule,
             };
+            apply_construction_seed_schedule(&mut construction_context, input)?;
             apply_baseline_construction_heuristic(&mut construction_context)?;
         }
 

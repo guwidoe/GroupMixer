@@ -854,6 +854,7 @@ fn retargeting_to_same_solver_canonicalizes_solver_type() {
 fn sample_fixture_input() -> ApiInput {
     ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: gm_core::models::ProblemDefinition {
             people: vec![
                 gm_core::models::Person {

@@ -21,6 +21,7 @@ fn base_input(solver_kind: SolverKind) -> ApiInput {
 
     ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![person("p0"), person("p1"), person("p2"), person("p3")],
             groups: vec![
@@ -65,7 +66,11 @@ fn valid_schedule() -> HashMap<String, HashMap<String, Vec<String>>> {
     ])
 }
 
-fn assert_invalid_warm_start_rejected(kind: SolverKind, schedule: HashMap<String, HashMap<String, Vec<String>>>, needle: &str) {
+fn assert_invalid_warm_start_rejected(
+    kind: SolverKind,
+    schedule: HashMap<String, HashMap<String, Vec<String>>>,
+    needle: &str,
+) {
     let mut input = base_input(kind);
     input.initial_schedule = Some(schedule);
     input.constraints.push(Constraint::MustStayTogether {
@@ -81,13 +86,21 @@ fn assert_invalid_warm_start_rejected(kind: SolverKind, schedule: HashMap<String
 
 #[test]
 fn all_solver_families_accept_valid_incumbent_warm_start_exactly() {
-    for kind in [SolverKind::Solver1, SolverKind::Solver2, SolverKind::Solver3] {
+    for kind in [
+        SolverKind::Solver1,
+        SolverKind::Solver2,
+        SolverKind::Solver3,
+    ] {
         let mut input = base_input(kind);
         let schedule = valid_schedule();
         input.initial_schedule = Some(schedule.clone());
 
         let result = run_solver(&input).expect("valid warm start should solve");
-        assert_eq!(result.schedule, schedule, "solver {:?} changed exact incumbent at iteration 0", kind);
+        assert_eq!(
+            result.schedule, schedule,
+            "solver {:?} changed exact incumbent at iteration 0",
+            kind
+        );
     }
 }
 
@@ -98,13 +111,20 @@ fn all_solver_families_reject_partial_incumbent_warm_start() {
         HashMap::from([("g0".to_string(), vec!["p0".to_string()])]),
     )]);
 
-    for kind in [SolverKind::Solver1, SolverKind::Solver2, SolverKind::Solver3] {
+    for kind in [
+        SolverKind::Solver1,
+        SolverKind::Solver2,
+        SolverKind::Solver3,
+    ] {
         let mut input = base_input(kind);
         input.initial_schedule = Some(partial.clone());
         let error = run_solver(&input)
             .expect_err("partial warm start must be rejected")
             .to_string();
-        assert!(error.contains("must define all 2 sessions explicitly"), "{error}");
+        assert!(
+            error.contains("must define all 2 sessions explicitly"),
+            "{error}"
+        );
     }
 }
 
@@ -127,7 +147,11 @@ fn all_solver_families_reject_split_clique_incumbent_warm_start() {
         ),
     ]);
 
-    for kind in [SolverKind::Solver1, SolverKind::Solver2, SolverKind::Solver3] {
+    for kind in [
+        SolverKind::Solver1,
+        SolverKind::Solver2,
+        SolverKind::Solver3,
+    ] {
         assert_invalid_warm_start_rejected(kind, split.clone(), "must-stay-together clique");
     }
 }

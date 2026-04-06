@@ -1,6 +1,6 @@
 use crate::models::ApiInput;
-use crate::solver_support::SolverError;
 use crate::solver_support::validation::validate_schedule_as_incumbent;
+use crate::solver_support::SolverError;
 use std::sync::Arc;
 
 use super::compiled_problem::{CompiledProblem, IndexedSchedule};
@@ -23,7 +23,7 @@ impl SolutionState {
         let mut state = Self {
             compiled_problem: Arc::new(compiled_problem.clone()),
             schedule: compiled_problem
-                .compiled_initial_schedule
+                .compiled_construction_seed_schedule
                 .clone()
                 .unwrap_or_else(|| {
                     vec![

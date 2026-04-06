@@ -482,6 +482,7 @@ mod tests {
                 num_sessions: 2,
             },
             initial_schedule: None,
+            construction_seed_schedule: None,
             objectives: vec![Objective {
                 r#type: "maximize_unique_contacts".into(),
                 weight: 1.0,

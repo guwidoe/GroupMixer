@@ -29,6 +29,7 @@ fn construction_input() -> ApiInput {
 
     ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 person("p0"),
@@ -125,6 +126,7 @@ fn construction_assigns_clique_ids_in_sorted_member_order() {
 
     let input = ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 person("p0"),
@@ -200,6 +202,7 @@ fn construction_propagates_immovable_assignment_to_clique_members() {
 
     let input = ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![person("p0"), person("p1"), person("p2"), person("p3")],
             groups: vec![
@@ -255,6 +258,7 @@ fn construction_handles_sparse_participation_for_partially_active_clique() {
 
     let input = ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![
                 person_with_sessions("p0", vec![0, 1]),
@@ -304,6 +308,7 @@ fn construction_hard_fails_when_immovable_constraints_overfill_group() {
 
     let input = ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![person("p0"), person("p1")],
             groups: vec![
@@ -355,6 +360,7 @@ fn construction_hard_fails_when_active_clique_cannot_fit_any_group() {
 
     let input = ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people: vec![person("p0"), person("p1"), person("p2")],
             groups: vec![

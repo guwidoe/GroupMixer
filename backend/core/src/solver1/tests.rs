@@ -36,6 +36,7 @@ fn create_test_input(
 
     ApiInput {
         initial_schedule: None,
+        construction_seed_schedule: None,
         problem: ProblemDefinition {
             people,
             groups,
@@ -1280,6 +1281,7 @@ mod attribute_balance_tests {
     fn create_attribute_balance_test_input() -> ApiInput {
         ApiInput {
             initial_schedule: None,
+            construction_seed_schedule: None,
             problem: ProblemDefinition {
                 people: vec![
                     Person {
@@ -1410,6 +1412,7 @@ mod attribute_balance_tests {
 
         let input = ApiInput {
             initial_schedule: None,
+            construction_seed_schedule: None,
             problem: ProblemDefinition {
                 people,
                 groups: vec![

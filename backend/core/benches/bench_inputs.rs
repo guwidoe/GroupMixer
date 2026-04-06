@@ -528,6 +528,7 @@ pub fn make_api_input(
     ApiInput {
         problem,
         initial_schedule: None,
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".to_string(),
             weight: 1.0,

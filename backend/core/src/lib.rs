@@ -12,6 +12,7 @@
 //!
 //! let input = ApiInput {
 //!     initial_schedule: None,
+//!     construction_seed_schedule: None,
 //!     problem: ProblemDefinition {
 //!         people: vec![
 //!             Person {
@@ -130,6 +131,7 @@ pub mod solver_support;
 ///
 /// let input = ApiInput {
 ///     initial_schedule: None,
+///     construction_seed_schedule: None,
 ///     problem: ProblemDefinition {
 ///         people: vec![
 ///             Person {
@@ -256,6 +258,7 @@ pub fn run_solver(input: &ApiInput) -> Result<SolverResult, SolverError> {
 ///
 /// # let input = ApiInput {
 /// #     initial_schedule: None,
+/// #     construction_seed_schedule: None,
 /// #     problem: ProblemDefinition { people: vec![], groups: vec![], num_sessions: 1 },
 /// #     objectives: vec![], constraints: vec![],
 /// #     solver: SolverConfiguration {
@@ -651,6 +654,7 @@ mod callback_tests {
 
         ApiInput {
             initial_schedule: None,
+            construction_seed_schedule: None,
             problem: ProblemDefinition {
                 people,
                 groups,
@@ -734,6 +738,7 @@ mod callback_tests {
 
         ApiInput {
             initial_schedule: None,
+            construction_seed_schedule: None,
             problem: ProblemDefinition {
                 people,
                 groups,

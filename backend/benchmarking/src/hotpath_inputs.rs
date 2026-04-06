@@ -523,9 +523,7 @@ pub fn solver3_transfer_bench_input(id: &str) -> Option<Solver3TransferBenchInpu
                 transfer,
             })
         }
-        "transfer_sailing_trip_demo_real_solver3" => {
-            Some(real_demo_solver3_transfer_bench_input())
-        }
+        "transfer_sailing_trip_demo_real_solver3" => Some(real_demo_solver3_transfer_bench_input()),
         _ => None,
     }
 }
@@ -1025,7 +1023,8 @@ fn first_valid_real_demo_swap(
                 continue;
             }
             for right_group in (left_group + 1)..state.compiled.num_groups {
-                let right_members = &state.group_members[state.group_slot(session_idx, right_group)];
+                let right_members =
+                    &state.group_members[state.group_slot(session_idx, right_group)];
                 if right_members.is_empty() {
                     continue;
                 }
@@ -1098,12 +1097,14 @@ fn first_valid_real_demo_clique_swap(
 
         for (clique_id, mut clique_members) in cliques_by_id {
             clique_members.sort_unstable();
-            let source_group = state.person_location[state.people_slot(session_idx, clique_members[0])]?;
+            let source_group =
+                state.person_location[state.people_slot(session_idx, clique_members[0])]?;
             for target_group in 0..state.compiled.num_groups {
                 if target_group == source_group {
                     continue;
                 }
-                let target_members = &state.group_members[state.group_slot(session_idx, target_group)];
+                let target_members =
+                    &state.group_members[state.group_slot(session_idx, target_group)];
                 if target_members.len() < clique_members.len() {
                     continue;
                 }
@@ -1343,6 +1344,7 @@ pub fn make_api_input(
     ApiInput {
         problem,
         initial_schedule: None,
+        construction_seed_schedule: None,
         objectives: vec![Objective {
             r#type: "maximize_unique_contacts".to_string(),
             weight: 1.0,
