@@ -1098,6 +1098,82 @@ mod tests {
     }
 
     #[test]
+    fn synthetic_partial_attendance_capacity_case_is_large_session_aware_and_partial() {
+        let case = load_case_manifest(Path::new(
+            "cases/stretch/synthetic_partial_attendance_capacity_pressure_152p.json",
+        ))
+        .expect("synthetic partial-attendance stretch case should load");
+
+        assert_eq!(
+            case.id,
+            "stretch.synthetic-partial-attendance-capacity-pressure-152p"
+        );
+        assert_eq!(case.class, BenchmarkSuiteClass::Stretch);
+        assert_eq!(case.case_role, BenchmarkCaseRole::Canonical);
+
+        let input = case
+            .input
+            .as_ref()
+            .expect("synthetic stretch case should embed full solve input");
+        assert_eq!(input.problem.people.len(), 152);
+        assert_eq!(input.problem.num_sessions, 6);
+        assert_eq!(input.problem.groups.len(), 12);
+
+        let partial_people = input
+            .problem
+            .people
+            .iter()
+            .filter(|person| person.sessions.is_some())
+            .count();
+        assert!(
+            partial_people >= 120,
+            "expected most people to have explicit partial attendance; got {partial_people}"
+        );
+
+        let session_aware_groups = input
+            .problem
+            .groups
+            .iter()
+            .filter_map(|group| group.session_sizes.as_ref())
+            .filter(|sizes| sizes.iter().any(|size| *size == 0) && sizes.windows(2).any(|w| w[0] != w[1]))
+            .count();
+        assert!(
+            session_aware_groups >= 6,
+            "expected many groups to have strong session-specific capacities; got {session_aware_groups}"
+        );
+
+        let must_stay_count = input
+            .constraints
+            .iter()
+            .filter(|constraint| matches!(constraint, gm_core::models::Constraint::MustStayTogether { .. }))
+            .count();
+        let immovable_count = input
+            .constraints
+            .iter()
+            .filter(|constraint| matches!(constraint, gm_core::models::Constraint::ImmovablePerson(_)))
+            .count();
+        assert!(must_stay_count >= 8);
+        assert!(immovable_count >= 20);
+    }
+
+    #[test]
+    fn synthetic_partial_attendance_capacity_suite_declares_explicit_seed_and_budget() {
+        let suite = load_suite_manifest(Path::new(
+            "suites/stretch-partial-attendance-capacity-pressure-time.yaml",
+        ))
+        .expect("synthetic partial-attendance fixed-time suite should load");
+        assert_eq!(suite.cases.len(), 1);
+        let case = &suite.cases[0];
+        assert_eq!(
+            case.manifest.id,
+            "stretch.synthetic-partial-attendance-capacity-pressure-152p"
+        );
+        assert_eq!(case.overrides.seed, Some(152605));
+        assert_eq!(case.overrides.max_iterations, Some(4_500_000));
+        assert_eq!(case.overrides.time_limit_seconds, Some(15));
+    }
+
+    #[test]
     fn objective_canonical_adversarial_v1_includes_only_hard_current_adversarial_cases() {
         let suite =
             load_suite_manifest(Path::new("suites/objective-canonical-adversarial-v1.yaml"))

@@ -1,0 +1,27 @@
+schema_version: 1
+suite_id: stretch-partial-attendance-capacity-pressure-time
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: stretch
+title: Synthetic partial-attendance capacity-pressure stretch (fixed-time)
+description: Deterministic planted-feasible synthetic stretch workload with heavy partial attendance and strongly session-specific capacities under a fixed-time objective budget.
+cases:
+  - manifest: ../cases/stretch/synthetic_partial_attendance_capacity_pressure_152p.json
+    case_role: canonical
+    purpose: objective_target.stretch.synthetic_partial_attendance_capacity_pressure_152p
+    provenance: generated_by_tools/benchmarking/generate_partial_attendance_capacity_case.py_using_a_deterministic_planted_feasible_builder
+    declared_budget:
+      max_iterations: 4500000
+      time_limit_seconds: 15
+    seed: 152605
+    max_iterations: 4500000
+    time_limit_seconds: 15
+    search_policy:
+      no_improvement_iterations: null
+      simulated_annealing:
+        reheat_after_no_improvement: 0
+        reheat_cycles: 0
+        initial_temperature: 8.0
+        final_temperature: 0.0005
+        cooling_schedule: geometric

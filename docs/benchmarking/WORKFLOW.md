@@ -78,6 +78,22 @@ gm-cli benchmark run --manifest backend/benchmarking/suites/hotpath-search-itera
 gm-cli benchmark run --manifest backend/benchmarking/suites/hotpath-clique-swap-preview-sailing-trip-demo-solver3.yaml
 ```
 
+### Partial-attendance + session-capacity stress validation
+
+Use the synthetic planted-feasible stress benchmark when the change may affect:
+
+- partial participation semantics
+- session-aware capacity accounting
+- session-scoped immovable/clique/pair pressure
+- constructor/search behavior on heterogeneous attendance windows
+
+```bash
+gm-cli benchmark run --manifest backend/benchmarking/suites/stretch-partial-attendance-capacity-pressure-time.yaml
+gm-cli benchmark run --manifest backend/benchmarking/suites/stretch-partial-attendance-capacity-pressure-fixed-iteration.yaml
+```
+
+This benchmark is intentionally kept separate from the current primary objective aggregate. See `docs/benchmarking/SYNTHETIC_PARTIAL_ATTENDANCE_CAPACITY_BENCHMARK.md` for construction method, workload shape, and current measured behavior.
+
 ### Solver3 oracle/debug correctness feature
 
 `gm-core` exposes `solver3-oracle-checks` as an explicit correctness/debug feature flag.
