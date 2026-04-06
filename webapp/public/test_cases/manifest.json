@@ -11,6 +11,7 @@
     "social_golfer_problem.json",
     "clique_swap_functionality_test.json",
     "session_specific_constraints_test.json",
-    "sailing_trip_test.json"
+    "sailing_trip_test.json",
+    "synthetic_partial_attendance_capacity_pressure_152p.json"
   ]
 }
