@@ -4,6 +4,25 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$ROOT"
 
+# Broad shared correctness guardrails. These are the main semantic protection for
+# the objective lane and intentionally cover the repo's strongest gm-core solver
+# contract surfaces.
+cargo test -q -p gm-core --test data_driven_tests -- --nocapture >/dev/null
+cargo test -q -p gm-core --test property_tests -- --nocapture >/dev/null
+
+# Focused regression surfaces for the constructor/search driver and concrete move
+# families. These keep targeted regressions visible even when the broader suites
+# happen not to trip first.
+for test_name in \
+  construction_regression \
+  search_driver_regression \
+  move_swap_regression \
+  move_transfer_regression \
+  move_clique_swap_regression
+ do
+  cargo test -q -p gm-core --test "$test_name" -- --nocapture >/dev/null
+ done
+
 # Solver3 sampled oracle lane (feature-gated correctness path).
 cargo test -q -p gm-core --features solver3-oracle-checks --test search_driver_regression \
   solver3_correctness_lane_runs_with_feature_enabled -- --nocapture >/dev/null

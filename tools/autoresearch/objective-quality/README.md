@@ -26,11 +26,48 @@ Runtime is explicitly a monitoring signal in this lane, not the keep/discard tar
 
 ## Required checks lane (runs after successful experiment commands)
 
-`autoresearch.checks.sh` runs:
+`autoresearch.checks.sh` now runs the following guardrails after each successful experiment:
 
-- solver3 sampled oracle lane test (`gm-core`, `solver3-oracle-checks` feature)
-- canonical objective/correctness manifest guardrail tests (`gm-benchmarking`)
-- external benchmark validation contract test (`gm-benchmarking`)
+### Broad shared correctness surfaces (`gm-core`)
+
+- `cargo test -p gm-core --test data_driven_tests`
+- `cargo test -p gm-core --test property_tests`
+
+### Focused regression surfaces (`gm-core`)
+
+- `cargo test -p gm-core --test construction_regression`
+- `cargo test -p gm-core --test search_driver_regression`
+- `cargo test -p gm-core --test move_swap_regression`
+- `cargo test -p gm-core --test move_transfer_regression`
+- `cargo test -p gm-core --test move_clique_swap_regression`
+
+### Solver3 correctness-lane guardrail (`gm-core`)
+
+- solver3 sampled oracle lane test under `solver3-oracle-checks`
+
+### Benchmark metadata / validation guardrails (`gm-benchmarking`)
+
+- canonical objective manifest identity+budget guardrail test
+- correctness corpus separation guardrail test
+- external benchmark validation contract test
+
+This is intentionally much broader than the original narrow smoke-style checks: the objective lane now leans on shared `gm-core` semantic surfaces as its primary regression guardrail.
+
+## Measured local runtime impact (warm-cache wall clock)
+
+Previous checks lane measurement before guardrail expansion:
+
+- `tools/autoresearch/objective-quality/autoresearch.checks.sh`: **5.34s**
+
+Current checks lane measurement after guardrail expansion:
+
+- `tools/autoresearch/objective-quality/autoresearch.checks.sh`: **8.59s**
+
+Interpretation:
+
+- the lane is intentionally slower
+- the extra runtime buys materially broader semantic protection
+- this is a desirable trade for objective-quality research, where silent feature regressions are more dangerous than a somewhat slower experiment loop
 
 ## How to run
 
