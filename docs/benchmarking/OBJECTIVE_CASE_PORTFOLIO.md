@@ -60,6 +60,20 @@ For objective autoresearch, **every experiment must run the full v1 bundle**:
 
 No single-manifest subset may be used as keep/discard evidence for objective-lane claims. Subsets are diagnostics only.
 
+## Objective autoresearch go-live checklist (v1)
+
+The objective autoresearch lane is **go-live ready only when every gate below is green**.
+
+| Gate | Evidence expected in-repo | Current status |
+| --- | --- | --- |
+| 1. Canonical-vs-helper truth boundary is enforced | Runner/manifest validation rejects non-canonical objective entries by default; objective manifests stay `case_selection_policy: canonical_only`. | ✅ enforced |
+| 2. External full-solve validation is active | Benchmark run artifacts include independent `external_validation` results and fail on mismatch. | ✅ enforced |
+| 3. Curated canonical objective bundle is checked in | `objective-canonical-{representative,adversarial,stretch}-v1` manifests exist with explicit identity + budget metadata. | ✅ checked in |
+| 4. Objective workflow requires full-suite runs | Workflow policy requires all three canonical manifests on every objective experiment (no subset keep/discard claims). | ✅ documented |
+| 5. Exact raw Sailing Trip solver3 path is runnable as itself | Solver3 can run the **raw** `stretch/sailing_trip_demo_real.json` objective case directly (not helper benchmark-start substitution) in the objective lane. | ⛔ **blocked** |
+
+Current decision: **NO-GO** for objective autoresearch launch while gate 5 remains blocked.
+
 ## Sailing Trip solver3 truth boundary
 
 The stretch v1 manifest includes the exact raw canonical case:
