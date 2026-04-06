@@ -566,6 +566,9 @@ mod tests {
         assert!(descriptor.notes.contains(
             "swap + transfer + clique-swap move kernels plus a runnable bounded-sampling search baseline"
         ));
+        assert!(descriptor.notes.contains(
+            "does not use the shared solver1 baseline constructor"
+        ));
     }
 
     #[test]

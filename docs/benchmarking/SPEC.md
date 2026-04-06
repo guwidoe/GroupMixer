@@ -105,6 +105,7 @@ Current honest status:
 
 - `hotpath-construction` and `hotpath-full-recalculation` currently use solver1 fixtures (`construction_default`)
 - solver2/solver3 already share the broader benchmark platform (full-solve suites and move-family hotpath lanes), but do **not** yet provide dedicated construction/full-recalculation hotpath probes
+- `solver3` baseline placement is currently family-owned in `RuntimeState::initialize_from_schedule`; it does **not** use the shared solver1 baseline constructor helper (`solver_support::construction::apply_solver1_baseline_construction_heuristic`)
 
 Future work (not done yet):
 

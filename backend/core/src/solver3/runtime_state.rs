@@ -78,6 +78,13 @@ impl RuntimeState {
     /// 3. Places cliques, immovable people, and remaining participants deterministically.
     /// 4. Builds flat derived arrays.
     /// 5. Runs the oracle to set initial score aggregates.
+    ///
+    /// Honest relationship note:
+    /// - this constructor currently owns solver3 baseline placement semantics directly
+    /// - it does **not** call `solver_support::construction::apply_solver1_baseline_construction_heuristic`
+    ///
+    /// That gap is explicit so solver3 does not silently diverge while claiming shared
+    /// constructor behavior.
     pub fn from_input(input: &ApiInput) -> Result<Self, SolverError> {
         let compiled = Arc::new(CompiledProblem::compile(input)?);
         Self::from_compiled(compiled)
