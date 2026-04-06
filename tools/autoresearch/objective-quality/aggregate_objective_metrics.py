@@ -180,10 +180,10 @@ def main(argv):
     print(f"INFO weighting_note={metric_config['weighting_note']}")
 
     if mode == "fixed-time":
-        if len(reports) != 4:
-            raise SystemExit("fixed-time mode expects 4 reports")
-        canonical_reports = reports[:3]
-        correctness_report = reports[3]
+        if len(reports) < 2:
+            raise SystemExit("fixed-time mode expects at least 1 canonical report plus 1 correctness report")
+        canonical_reports = reports[:-1]
+        correctness_report = reports[-1]
         case_map = index_cases(canonical_reports)
         metrics, canonical_cases = compute_lane_metrics(metric_config, case_map)
         correctness_metrics, correctness_cases = compute_correctness_metrics(correctness_report)
@@ -195,8 +195,8 @@ def main(argv):
             (sum(canonical_runtimes) / sum(all_runtimes)) * 100.0 if sum(all_runtimes) else 0.0
         )
     elif mode == "fixed-iteration":
-        if len(reports) != 3:
-            raise SystemExit("fixed-iteration mode expects 3 reports")
+        if len(reports) < 1:
+            raise SystemExit("fixed-iteration mode expects at least 1 canonical report")
         case_map = index_cases(reports)
         metrics, _ = compute_diagnostic_lane_metrics(metric_config, case_map)
     else:

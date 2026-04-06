@@ -818,7 +818,6 @@ mod tests {
     #[test]
     fn objective_canonical_v1_component_manifests_define_explicit_identity_and_budget_metadata() {
         let suite_paths = [
-            "suites/objective-canonical-representative-v1.yaml",
             "suites/objective-canonical-adversarial-v1.yaml",
             "suites/objective-canonical-stretch-v1.yaml",
         ];
@@ -916,7 +915,6 @@ mod tests {
     fn objective_fixed_iteration_diagnostic_manifests_define_explicit_identity_and_budget_metadata()
     {
         let suite_paths = [
-            "suites/objective-diagnostic-fixed-iteration-representative-v1.yaml",
             "suites/objective-diagnostic-fixed-iteration-adversarial-v1.yaml",
             "suites/objective-diagnostic-fixed-iteration-stretch-v1.yaml",
         ];
@@ -1097,6 +1095,45 @@ mod tests {
                 "{case_id} should expose expected canonical purpose"
             );
         }
+    }
+
+    #[test]
+    fn objective_canonical_adversarial_v1_includes_only_hard_current_adversarial_cases() {
+        let suite =
+            load_suite_manifest(Path::new("suites/objective-canonical-adversarial-v1.yaml"))
+                .expect("objective adversarial v1 suite should load");
+
+        let expected_cases = [
+            (
+                "adversarial.clique-swap-functionality-35p",
+                "clique_swap_functionality_35p.json",
+                "objective_target.adversarial.clique_integrity_and_department_balance_35p",
+            ),
+            (
+                "adversarial.transfer-attribute-balance-111p",
+                "transfer_attribute_balance_111p.json",
+                "objective_target.adversarial.large_attribute_balance_111p",
+            ),
+        ];
+
+        assert_eq!(suite.cases.len(), expected_cases.len());
+
+        for (case_id, manifest_suffix, purpose) in expected_cases {
+            let case = suite
+                .cases
+                .iter()
+                .find(|case| case.manifest.id == case_id)
+                .unwrap_or_else(|| panic!("adversarial objective suite should include {case_id}"));
+
+            assert_eq!(case.manifest.case_role, BenchmarkCaseRole::Canonical);
+            assert!(case.overrides.manifest.ends_with(manifest_suffix));
+            assert_eq!(case.overrides.purpose.as_deref(), Some(purpose));
+        }
+
+        assert!(suite
+            .cases
+            .iter()
+            .all(|case| case.manifest.id != "adversarial.constraint-heavy-partial-attendance"));
     }
 
     #[test]

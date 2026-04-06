@@ -14,7 +14,7 @@ This corpus is intentionally **separate** from the canonical objective score-qua
 
 - Use it to stress correctness semantics and invariant behavior under intertwined constraints.
 - Do **not** treat it as canonical objective keep/discard evidence.
-- Canonical objective benchmarking remains the three-manifest bundle documented in `docs/benchmarking/OBJECTIVE_CASE_PORTFOLIO.md`.
+- Canonical objective benchmarking remains the current hard-case bundle documented in `docs/benchmarking/OBJECTIVE_CASE_PORTFOLIO.md`.
 
 This suite declares:
 

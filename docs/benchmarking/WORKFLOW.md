@@ -114,16 +114,14 @@ Policy notes:
 
 ## Objective autoresearch full-suite policy (canonical v1)
 
-Canonical objective suite v1 is a bundle of three manifests:
+The current canonical objective suite is a bundle of two manifests:
 
-- `backend/benchmarking/suites/objective-canonical-representative-v1.yaml`
 - `backend/benchmarking/suites/objective-canonical-adversarial-v1.yaml`
 - `backend/benchmarking/suites/objective-canonical-stretch-v1.yaml`
 
-For objective autoresearch, run **all three manifests on every experiment**:
+For objective autoresearch, run **both canonical manifests on every experiment**:
 
 ```bash
-gm-cli benchmark run --manifest backend/benchmarking/suites/objective-canonical-representative-v1.yaml
 gm-cli benchmark run --manifest backend/benchmarking/suites/objective-canonical-adversarial-v1.yaml
 gm-cli benchmark run --manifest backend/benchmarking/suites/objective-canonical-stretch-v1.yaml
 ```

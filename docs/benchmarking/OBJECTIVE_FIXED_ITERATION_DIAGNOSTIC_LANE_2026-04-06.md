@@ -16,7 +16,6 @@ This lane is intentionally **not** the primary keep/discard authority.
 
 ## Checked-in manifests
 
-- `backend/benchmarking/suites/objective-diagnostic-fixed-iteration-representative-v1.yaml`
 - `backend/benchmarking/suites/objective-diagnostic-fixed-iteration-adversarial-v1.yaml`
 - `backend/benchmarking/suites/objective-diagnostic-fixed-iteration-stretch-v1.yaml`
 
@@ -34,15 +33,15 @@ Measured local result:
 
 - `objective_fixed_iteration_weighted_normalized_score=1.0`
 - `objective_fixed_iteration_weighted_normalized_score_delta_from_reference=0.0`
-- `objective_fixed_iteration_total_final_score_raw=552987.0`
-- `objective_fixed_iteration_average_final_score_raw=78998.14285714286`
-- `objective_fixed_iteration_case_count=7`
-- `objective_fixed_iteration_total_runtime_seconds=60.371070975`
-- `objective_fixed_iteration_average_runtime_seconds=8.624438710714285`
+- `objective_fixed_iteration_total_final_score_raw=557968.0`
+- `objective_fixed_iteration_average_final_score_raw=111593.6`
+- `objective_fixed_iteration_case_count=5`
+- `objective_fixed_iteration_total_runtime_seconds=75.711729346`
+- `objective_fixed_iteration_average_runtime_seconds=15.1423458692`
 - `objective_fixed_iteration_external_validation_failures=0`
 - `objective_fixed_iteration_total_score_mismatches=0`
 - `objective_fixed_iteration_score_breakdown_mismatches=0`
-- wall-clock `real 61.46s`
+- wall-clock `real 76.37s`
 
 ## Case-by-case diagnostic profile
 
@@ -50,13 +49,11 @@ Observed from a fresh local run of the fixed-iteration manifests:
 
 | Case | Stop reason | Runtime | Iterations | Interpretation |
 | --- | --- | ---: | ---: | --- |
-| `representative.small-workshop-balanced` | `max_iterations_reached` | `2.443s` | `800,000` | fixed-iteration diagnostic behaved as intended |
-| `representative.small-workshop-constrained` | `max_iterations_reached` | `3.052s` | `1,200,000` | fixed-iteration diagnostic behaved as intended |
-| `adversarial.constraint-heavy-partial-attendance` | `max_iterations_reached` | `3.039s` | `1,100,000` | fixed-iteration diagnostic behaved as intended |
-| `stretch.medium-multi-session` | `max_iterations_reached` | `3.792s` | `1,250,000` | fixed-iteration diagnostic behaved as intended |
-| `stretch.social-golfer-32x8x10` | `max_iterations_reached` | `20.097s` | `9,000,000` | true fixed-effort combinatorial comparison |
-| `stretch.large-gender-immovable-110p` | `max_iterations_reached` | `11.450s` | `1,700,000` | true fixed-effort large-instance comparison |
-| `stretch.sailing-trip-demo-real` | `max_iterations_reached` | `14.705s` | `270,000` | true fixed-effort real-demo comparison |
+| `adversarial.clique-swap-functionality-35p` | `max_iterations_reached` | `13.002s` | `2,200,000` | fixed-effort clique-pressure comparison |
+| `adversarial.transfer-attribute-balance-111p` | `max_iterations_reached` | `16.203s` | `1,500,000` | fixed-effort large-instance attribute-balance comparison |
+| `stretch.social-golfer-32x8x10` | `max_iterations_reached` | `26.876s` | `9,000,000` | true fixed-effort combinatorial comparison |
+| `stretch.large-gender-immovable-110p` | `max_iterations_reached` | `13.048s` | `1,700,000` | true fixed-effort large-instance comparison |
+| `stretch.sailing-trip-demo-real` | `max_iterations_reached` | `20.000s` | `270,000` | true fixed-effort real-demo comparison |
 
 ## How to interpret it
 

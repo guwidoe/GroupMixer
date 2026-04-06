@@ -5,23 +5,8 @@ comparison_category: score_quality
 case_selection_policy: canonical_only
 class: stretch
 title: Objective canonical stretch bundle (v1)
-description: Stretch component of canonical objective suite v1. Includes the exact raw Sailing Trip case plus additional hard canonical workloads under explicit fixed-time budgets and explicit seed policy.
+description: Stretch component of the current canonical objective suite. Contains only hard large-instance workloads with meaningful fixed-time objective signal.
 cases:
-  - manifest: ../cases/stretch/medium_multi_session.json
-    case_role: canonical
-    purpose: objective_target.stretch.medium_multi_session
-    provenance: checked_in_case_manifest
-    declared_budget:
-      max_iterations: 2000000
-      time_limit_seconds: 6
-    seed: 201
-    max_iterations: 2000000
-    time_limit_seconds: 6
-    search_policy:
-      no_improvement_iterations: null
-      simulated_annealing:
-        reheat_after_no_improvement: 0
-        reheat_cycles: 0
   - manifest: ../cases/stretch/social_golfer_32x8x10.json
     case_role: canonical
     purpose: objective_target.stretch.social_golfer_zero_repeat_encounters

@@ -1,0 +1,872 @@
+{
+  "schema_version": 1,
+  "id": "adversarial.transfer-attribute-balance-111p",
+  "class": "adversarial",
+  "case_role": "canonical",
+  "purpose": "objective_target.adversarial.large_attribute_balance_111p",
+  "provenance": "converted_from_backend_core_tests_test_cases_transfer_test_json_with_name_attributes_removed_and_objective_benchmark_metadata",
+  "declared_budget": {
+    "max_iterations": 3000000,
+    "time_limit_seconds": 15
+  },
+  "tags": [
+    "adversarial",
+    "attribute-balance",
+    "large-instance",
+    "111p",
+    "objective-research"
+  ],
+  "title": "Large attribute-balance workload (111 participants)",
+  "description": "Canonical adversarial objective workload derived from the large transfer test after removing non-essential name attributes. Exercises large-instance attribute-balance pressure across 11 groups and 5 sessions.",
+  "input": {
+    "problem": {
+      "people": [
+        {
+          "id": "person_1751472652642_0",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_1",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_2",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_3",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_4",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_5",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_6",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_7",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_8",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_9",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_10",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_11",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_12",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_13",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_14",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_15",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_16",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_17",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_18",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_19",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_20",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_21",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_22",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_23",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_24",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_25",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_26",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_27",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_28",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_29",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_30",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_31",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_32",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_33",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_34",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_35",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_36",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_37",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_38",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_39",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_40",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_41",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_42",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_43",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_44",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_45",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_46",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_47",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_48",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_49",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_50",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_51",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_52",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_53",
+          "attributes": {
+            "Gender": "male"
+          }
+        },
+        {
+          "id": "person_1751472652642_54",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_55",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_56",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_57",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_58",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_59",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_60",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_61",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_62",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_63",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_64",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_65",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_66",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_67",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_68",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_69",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_70",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_71",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_72",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_73",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_74",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_75",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_76",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_77",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_78",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_79",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_80",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_81",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_82",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_83",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_84",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_85",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_86",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_87",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_88",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_89",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_90",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_91",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_92",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_93",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_94",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_95",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_96",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_97",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_98",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_99",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_100",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_101",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_102",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_103",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_104",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_105",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_106",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_107",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_108",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_109",
+          "attributes": {
+            "Gender": "female"
+          }
+        },
+        {
+          "id": "person_1751472652642_110",
+          "attributes": {
+            "Gender": "female"
+          }
+        }
+      ],
+      "groups": [
+        {
+          "id": "Group_1",
+          "size": 11
+        },
+        {
+          "id": "Group_2",
+          "size": 11
+        },
+        {
+          "id": "Group_3",
+          "size": 11
+        },
+        {
+          "id": "Group_4",
+          "size": 11
+        },
+        {
+          "id": "Group_5",
+          "size": 11
+        },
+        {
+          "id": "Group_6",
+          "size": 11
+        },
+        {
+          "id": "Group_7",
+          "size": 11
+        },
+        {
+          "id": "Group_8",
+          "size": 11
+        },
+        {
+          "id": "Group_9",
+          "size": 11
+        },
+        {
+          "id": "Group_10",
+          "size": 11
+        },
+        {
+          "id": "Group_11",
+          "size": 11
+        }
+      ],
+      "num_sessions": 5
+    },
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "constraints": [
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group_1",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 5,
+          "female": 6
+        },
+        "penalty_weight": 50
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group_2",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 6,
+          "female": 5
+        },
+        "penalty_weight": 50
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group_3",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 5,
+          "female": 6
+        },
+        "penalty_weight": 50
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group_4",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 6,
+          "female": 5
+        },
+        "penalty_weight": 50
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group_5",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 5,
+          "female": 6
+        },
+        "penalty_weight": 50
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group_6",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 6,
+          "female": 5
+        },
+        "penalty_weight": 50
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group_7",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 5,
+          "female": 6
+        },
+        "penalty_weight": 50
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group_8",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 6,
+          "female": 5
+        },
+        "penalty_weight": 50
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group_9",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 5,
+          "female": 5
+        },
+        "penalty_weight": 50
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group_10",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "male": 5,
+          "female": 5
+        },
+        "penalty_weight": 50
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 100000,
+        "time_limit_seconds": 10,
+        "no_improvement_iterations": 1216216
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 2319.8536257494534,
+        "final_temperature": 0.33380820069533407,
+        "cooling_schedule": "geometric",
+        "reheat_after_no_improvement": 810810
+      },
+      "logging": {
+        "log_frequency": null,
+        "log_initial_state": false,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      }
+    }
+  }
+}

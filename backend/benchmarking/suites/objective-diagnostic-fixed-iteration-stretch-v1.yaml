@@ -5,23 +5,8 @@ comparison_category: score_quality
 case_selection_policy: canonical_only
 class: stretch
 title: Objective fixed-iteration diagnostic stretch bundle (v1)
-description: Diagnostic companion to the fixed-time primary lane. Uses explicit fixed iteration budgets to help explain whether an objective change came from better search policy or simply more throughput. Not primary keep/discard evidence.
+description: Diagnostic companion to the fixed-time primary lane. Uses explicit fixed iteration budgets on the same hard stretch workloads. Not primary keep/discard evidence.
 cases:
-  - manifest: ../cases/stretch/medium_multi_session.json
-    case_role: canonical
-    purpose: objective_diagnostic.fixed_iteration.stretch.medium_multi_session
-    provenance: checked_in_case_manifest
-    declared_budget:
-      max_iterations: 1250000
-      time_limit_seconds: 15
-    seed: 201
-    max_iterations: 1250000
-    time_limit_seconds: 15
-    search_policy:
-      no_improvement_iterations: null
-      simulated_annealing:
-        reheat_after_no_improvement: 0
-        reheat_cycles: 0
   - manifest: ../cases/stretch/social_golfer_32x8x10.json
     case_role: canonical
     purpose: objective_diagnostic.fixed_iteration.stretch.social_golfer_zero_repeat_encounters

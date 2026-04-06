@@ -31,13 +31,11 @@ run_suite() {
   printf '%s\n' "$report_path"
 }
 
-REPRESENTATIVE_REPORT="$(run_suite backend/benchmarking/suites/objective-diagnostic-fixed-iteration-representative-v1.yaml representative)"
 ADVERSARIAL_REPORT="$(run_suite backend/benchmarking/suites/objective-diagnostic-fixed-iteration-adversarial-v1.yaml adversarial)"
 STRETCH_REPORT="$(run_suite backend/benchmarking/suites/objective-diagnostic-fixed-iteration-stretch-v1.yaml stretch)"
 
 python3 tools/autoresearch/objective-quality/aggregate_objective_metrics.py \
   fixed-iteration \
   tools/autoresearch/objective-quality/fixed-iteration-metric-config.json \
-  "$REPRESENTATIVE_REPORT" \
   "$ADVERSARIAL_REPORT" \
   "$STRETCH_REPORT"

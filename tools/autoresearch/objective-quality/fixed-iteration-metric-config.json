@@ -9,46 +9,34 @@
   "weighting_note": "All canonical objective cases currently use equal weight 1.0, so the diagnostic metric is the arithmetic mean of the per-case normalized scores.",
   "cases": [
     {
-      "case_id": "representative.small-workshop-balanced",
+      "case_id": "adversarial.clique-swap-functionality-35p",
       "weight": 1.0,
-      "reference_final_score": 3.0,
-      "explanation": "Reference final score from the checked-in fixed-iteration diagnostic baseline."
+      "reference_final_score": 4756.0,
+      "explanation": "Reference final score from the checked-in hard-case fixed-iteration diagnostic baseline."
     },
     {
-      "case_id": "representative.small-workshop-constrained",
+      "case_id": "adversarial.transfer-attribute-balance-111p",
       "weight": 1.0,
-      "reference_final_score": 4.0,
-      "explanation": "Reference final score from the checked-in fixed-iteration diagnostic baseline."
-    },
-    {
-      "case_id": "adversarial.constraint-heavy-partial-attendance",
-      "weight": 1.0,
-      "reference_final_score": 12.0,
-      "explanation": "Reference final score from the checked-in fixed-iteration diagnostic baseline."
-    },
-    {
-      "case_id": "stretch.medium-multi-session",
-      "weight": 1.0,
-      "reference_final_score": 7.0,
-      "explanation": "Reference final score from the checked-in fixed-iteration diagnostic baseline."
+      "reference_final_score": 251.0,
+      "explanation": "Reference final score from the checked-in hard-case fixed-iteration diagnostic baseline."
     },
     {
       "case_id": "stretch.social-golfer-32x8x10",
       "weight": 1.0,
       "reference_final_score": 546033.0,
-      "explanation": "Reference final score from the checked-in fixed-iteration diagnostic baseline."
+      "explanation": "Reference final score from the checked-in hard-case fixed-iteration diagnostic baseline."
     },
     {
       "case_id": "stretch.large-gender-immovable-110p",
       "weight": 1.0,
       "reference_final_score": 2157.0,
-      "explanation": "Reference final score from the checked-in fixed-iteration diagnostic baseline."
+      "explanation": "Reference final score from the checked-in hard-case fixed-iteration diagnostic baseline."
     },
     {
       "case_id": "stretch.sailing-trip-demo-real",
       "weight": 1.0,
       "reference_final_score": 4771.0,
-      "explanation": "Reference final score from the checked-in fixed-iteration diagnostic baseline."
+      "explanation": "Reference final score from the checked-in hard-case fixed-iteration diagnostic baseline."
     }
   ]
 }

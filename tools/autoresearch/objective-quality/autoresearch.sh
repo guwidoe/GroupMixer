@@ -31,7 +31,6 @@ run_suite() {
   printf '%s\n' "$report_path"
 }
 
-REPRESENTATIVE_REPORT="$(run_suite backend/benchmarking/suites/objective-canonical-representative-v1.yaml representative)"
 ADVERSARIAL_REPORT="$(run_suite backend/benchmarking/suites/objective-canonical-adversarial-v1.yaml adversarial)"
 STRETCH_REPORT="$(run_suite backend/benchmarking/suites/objective-canonical-stretch-v1.yaml stretch)"
 CORRECTNESS_REPORT="$(run_suite backend/benchmarking/suites/correctness-edge-intertwined-v1.yaml correctness)"
@@ -39,7 +38,6 @@ CORRECTNESS_REPORT="$(run_suite backend/benchmarking/suites/correctness-edge-int
 python3 tools/autoresearch/objective-quality/aggregate_objective_metrics.py \
   fixed-time \
   tools/autoresearch/objective-quality/fixed-time-metric-config.json \
-  "$REPRESENTATIVE_REPORT" \
   "$ADVERSARIAL_REPORT" \
   "$STRETCH_REPORT" \
   "$CORRECTNESS_REPORT"

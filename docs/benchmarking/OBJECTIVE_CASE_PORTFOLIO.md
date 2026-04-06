@@ -2,7 +2,7 @@
 
 ## Status
 
-- Canonical objective suite v1 is checked in and runnable as a three-manifest bundle.
+- Canonical objective suite v1 is checked in and runnable as a hard-case bundle.
 - A separate intertwined correctness corpus is checked in.
 - This document tracks, per curated case:
   - provenance
@@ -21,13 +21,12 @@ Current objective-lane policy note:
 
 ## Canonical objective suite shape (v1)
 
-Because the runner currently enforces one `class` per suite manifest, canonical objective v1 is represented as a bundle:
+Because the runner currently enforces one `class` per suite manifest, the current canonical objective bundle is represented as:
 
-1. `backend/benchmarking/suites/objective-canonical-representative-v1.yaml`
-2. `backend/benchmarking/suites/objective-canonical-adversarial-v1.yaml`
-3. `backend/benchmarking/suites/objective-canonical-stretch-v1.yaml`
+1. `backend/benchmarking/suites/objective-canonical-adversarial-v1.yaml`
+2. `backend/benchmarking/suites/objective-canonical-stretch-v1.yaml`
 
-Objective keep/discard claims must run all three manifests together.
+Objective keep/discard claims must run both manifests together.
 
 ## Separate correctness/edge-case corpus (non-objective)
 
@@ -52,10 +51,8 @@ No baseline/best-known refs are filled in this doc yet; placeholders are intenti
 
 | Case manifest | Status | Provenance | Purpose | Checked-in budget | Baseline note | Best-known note |
 | --- | --- | --- | --- | --- | --- | --- |
-| `backend/benchmarking/cases/representative/small_workshop_balanced.json` | canonical objective | `checked_in_case_manifest` (from objective-canonical-representative-v1 entry) | `objective_target.representative.balanced` | `max_iterations: 1000000`, `time_limit_seconds: 3` (suite entry) | TODO | TODO |
-| `backend/benchmarking/cases/representative/small_workshop_constrained.json` | canonical objective | `checked_in_case_manifest` (from objective-canonical-representative-v1 entry) | `objective_target.representative.constraint_mix` | `max_iterations: 1500000`, `time_limit_seconds: 4` (suite entry) | TODO | TODO |
-| `backend/benchmarking/cases/adversarial/constraint_heavy_partial_attendance.json` | canonical objective | `checked_in_case_manifest` (from objective-canonical-adversarial-v1 entry) | `objective_target.adversarial.partial_attendance_constraints` | `max_iterations: 1500000`, `time_limit_seconds: 4` (suite entry) | TODO | TODO |
-| `backend/benchmarking/cases/stretch/medium_multi_session.json` | canonical objective | `checked_in_case_manifest` (from objective-canonical-stretch-v1 entry) | `objective_target.stretch.medium_multi_session` | `max_iterations: 2000000`, `time_limit_seconds: 6` (suite entry) | TODO | TODO |
+| `backend/benchmarking/cases/adversarial/clique_swap_functionality_35p.json` | canonical objective | `backend/core/tests/test_cases/clique_swap_functionality_test.json` reused as benchmark manifest | `objective_target.adversarial.clique_integrity_and_department_balance_35p` | `max_iterations: 3000000`, `time_limit_seconds: 12` (suite entry) | TODO | TODO |
+| `backend/benchmarking/cases/adversarial/transfer_attribute_balance_111p.json` | canonical objective | `backend/core/tests/test_cases/transfer_test.json` converted with non-essential name attributes removed | `objective_target.adversarial.large_attribute_balance_111p` | `max_iterations: 3000000`, `time_limit_seconds: 15` (suite entry) | TODO | TODO |
 | `backend/benchmarking/cases/stretch/social_golfer_32x8x10.json` | canonical objective | `backend/core/tests/test_cases/social_golfer_problem.json` reused as benchmark manifest | `objective_target.stretch.social_golfer_zero_repeat_encounters` | `max_iterations: 10000000`, `time_limit_seconds: 25` (suite entry) | TODO | TODO |
 | `backend/benchmarking/cases/stretch/large_gender_immovable_110p.json` | canonical objective | `backend/core/tests/test_cases/benchmark_large_gender_immovable.json` reused as benchmark manifest | `objective_target.stretch.large_heterogeneous_attribute_balance_and_immovable` | `max_iterations: 2000000`, `time_limit_seconds: 12` (suite entry) | TODO | TODO |
 | `backend/benchmarking/cases/stretch/sailing_trip_demo_real.json` | canonical objective | `exact_anonymized_demo_case_no_helper_start_substitution` (from objective-canonical-stretch-v1 entry) | `objective_target.stretch.real_sailing_trip_raw_case` | `max_iterations: 1000000`, `time_limit_seconds: 15` (suite entry, now with explicit fixed seed policy) | TODO | TODO |
@@ -88,9 +85,8 @@ This corpus is distinct from the objective suite and is aimed at correctness str
 
 For objective autoresearch, every experiment must run the full canonical bundle:
 
-1. `objective-canonical-representative-v1`
-2. `objective-canonical-adversarial-v1`
-3. `objective-canonical-stretch-v1`
+1. `objective-canonical-adversarial-v1`
+2. `objective-canonical-stretch-v1`
 
 Single-manifest subset runs are diagnostics only.
 
@@ -98,9 +94,8 @@ Single-manifest subset runs are diagnostics only.
 
 The checked-in fixed-iteration diagnostic bundle is also split by class:
 
-1. `backend/benchmarking/suites/objective-diagnostic-fixed-iteration-representative-v1.yaml`
-2. `backend/benchmarking/suites/objective-diagnostic-fixed-iteration-adversarial-v1.yaml`
-3. `backend/benchmarking/suites/objective-diagnostic-fixed-iteration-stretch-v1.yaml`
+1. `backend/benchmarking/suites/objective-diagnostic-fixed-iteration-adversarial-v1.yaml`
+2. `backend/benchmarking/suites/objective-diagnostic-fixed-iteration-stretch-v1.yaml`
 
 This bundle exists to normalize away wall-clock speed and measure objective quality at fixed effort. It is explicitly secondary to the fixed-time primary lane.
 

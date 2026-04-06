@@ -5,20 +5,25 @@ comparison_category: score_quality
 case_selection_policy: canonical_only
 class: adversarial
 title: Objective canonical adversarial bundle (v1)
-description: Adversarial component of canonical objective suite v1. Designed to keep constraint-heavy objective quality regressions visible under meaningful fixed-time search effort rather than inherited smoke-fixture policy.
+description: Adversarial component of the current canonical objective suite. Contains only hard cases that provide meaningful objective-quality signal under fixed-time budgets.
 cases:
-  - manifest: ../cases/adversarial/constraint_heavy_partial_attendance.json
+  - manifest: ../cases/adversarial/clique_swap_functionality_35p.json
     case_role: canonical
-    purpose: objective_target.adversarial.partial_attendance_constraints
-    provenance: checked_in_case_manifest
+    purpose: objective_target.adversarial.clique_integrity_and_department_balance_35p
+    provenance: converted_from_backend_core_tests_test_cases_clique_swap_functionality_test_json_with_objective_benchmark_metadata
     declared_budget:
-      max_iterations: 1500000
-      time_limit_seconds: 4
-    seed: 301
-    max_iterations: 1500000
-    time_limit_seconds: 4
-    search_policy:
-      no_improvement_iterations: null
-      simulated_annealing:
-        reheat_after_no_improvement: 0
-        reheat_cycles: 0
+      max_iterations: 3000000
+      time_limit_seconds: 12
+    seed: 333
+    max_iterations: 3000000
+    time_limit_seconds: 12
+  - manifest: ../cases/adversarial/transfer_attribute_balance_111p.json
+    case_role: canonical
+    purpose: objective_target.adversarial.large_attribute_balance_111p
+    provenance: converted_from_backend_core_tests_test_cases_transfer_test_json_with_name_attributes_removed_and_objective_benchmark_metadata
+    declared_budget:
+      max_iterations: 3000000
+      time_limit_seconds: 15
+    seed: 424242
+    max_iterations: 3000000
+    time_limit_seconds: 15

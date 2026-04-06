@@ -14,12 +14,13 @@ This lane is intentionally separate from the root-level raw-runtime lane (`/auto
 
 ## Default experiment flow
 
-Each experiment run executes the **full canonical objective suite** and the dedicated correctness corpus:
+Each experiment run executes the **full current canonical objective suite** and the dedicated correctness corpus:
 
-1. `backend/benchmarking/suites/objective-canonical-representative-v1.yaml`
-2. `backend/benchmarking/suites/objective-canonical-adversarial-v1.yaml`
-3. `backend/benchmarking/suites/objective-canonical-stretch-v1.yaml`
-4. `backend/benchmarking/suites/correctness-edge-intertwined-v1.yaml`
+1. `backend/benchmarking/suites/objective-canonical-adversarial-v1.yaml`
+2. `backend/benchmarking/suites/objective-canonical-stretch-v1.yaml`
+3. `backend/benchmarking/suites/correctness-edge-intertwined-v1.yaml`
+
+The small low-headroom representative cases remain in the repo for other purposes, but they are intentionally no longer part of the primary objective-research aggregate.
 
 The script emits:
 
@@ -41,13 +42,14 @@ Runtime is explicitly a monitoring signal in this lane, not the keep/discard tar
 
 ## Measured local runtime after the fixed-time lane rebuild
 
-Current local warm-cache measurement:
+Current local hard-case primary-lane measurement:
 
-- `tools/autoresearch/objective-quality/autoresearch.sh`: **70.13s** wall clock
-- `objective_suite_weighted_normalized_score=1.0`
-- `objective_suite_total_final_score_raw=552975.0`
-- `objective_suite_total_runtime_seconds=68.920084947`
-- `runtime_canonical_share_percent=99.91630440181967`
+- `tools/autoresearch/objective-quality/autoresearch.sh`: **79.67s** wall clock
+- `objective_suite_weighted_normalized_score=0.960294885161354`
+- `objective_suite_total_final_score_raw=559074.0`
+- `objective_suite_case_count=5.0`
+- `objective_suite_total_runtime_seconds=78.70026615500001`
+- `runtime_canonical_share_percent=99.91394203362009`
 
 Previous lighter objective-lane measurement before the rebuild:
 
@@ -135,16 +137,16 @@ Its metric math is declared in:
 
 It runs these manifests:
 
-- `backend/benchmarking/suites/objective-diagnostic-fixed-iteration-representative-v1.yaml`
 - `backend/benchmarking/suites/objective-diagnostic-fixed-iteration-adversarial-v1.yaml`
 - `backend/benchmarking/suites/objective-diagnostic-fixed-iteration-stretch-v1.yaml`
 
 Sample local measurement:
 
 - `objective_fixed_iteration_weighted_normalized_score=1.0`
-- `objective_fixed_iteration_total_final_score_raw=552987.0`
-- `objective_fixed_iteration_total_runtime_seconds=60.371070975`
-- wall-clock `61.19s`
+- `objective_fixed_iteration_total_final_score_raw=557968.0`
+- `objective_fixed_iteration_case_count=5.0`
+- `objective_fixed_iteration_total_runtime_seconds=75.711729346`
+- wall-clock `76.37s`
 
 Interpretation rule:
 
