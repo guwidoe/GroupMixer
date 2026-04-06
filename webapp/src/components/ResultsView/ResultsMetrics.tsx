@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, PieChart, RefreshCw, Target, Users } from 'lucide-react';
+import { AlertTriangle, PieChart, RefreshCw, Scale, Target, Users } from 'lucide-react';
 import type { MetricCalculations } from '../../utils/metricCalculations';
 import { getColorClass } from '../../utils/metricCalculations';
 import type { SolverState, Solution } from '../../types';
@@ -22,9 +22,11 @@ export function ResultsMetrics({
 }: ResultsMetricsProps) {
   const repetitionPenalty = solution.weighted_repetition_penalty ?? solution.repetition_penalty;
   const repetitionBaseline = (solverState.currentRepetitionPenalty ?? repetitionPenalty) || 1;
+  const balancePenalty = solution.attribute_balance_penalty;
+  const balanceBaseline = (solverState.currentBalancePenalty ?? balancePenalty) || 1;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
       <MetricCard title="Cost Score" value={solution.final_score.toFixed(1)} icon={Target} colorClass="text-green-600" />
       {metrics && (
         <MetricCard
@@ -47,6 +49,12 @@ export function ResultsMetrics({
         value={repetitionPenalty.toFixed(1)}
         icon={RefreshCw}
         colorClass={getColorClass(repetitionPenalty / repetitionBaseline, true)}
+      />
+      <MetricCard
+        title="Attribute Balance"
+        value={balancePenalty.toFixed(1)}
+        icon={Scale}
+        colorClass={getColorClass(balancePenalty / balanceBaseline, true)}
       />
       <MetricCard
         title="Constraint Penalty"
