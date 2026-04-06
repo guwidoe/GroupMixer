@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "npm run build-wasm",
     "dev": "vite",
     "sync:seo-assets": "tsx scripts/seoArtifacts.tsx sync-public",
     "prerender:seo": "tsx scripts/seoArtifacts.tsx prerender-dist",
