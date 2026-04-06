@@ -24,6 +24,25 @@ The script emits:
 
 Runtime is explicitly a monitoring signal in this lane, not the keep/discard target.
 
+## Benchmark contract vs tunable search policy
+
+For this lane, the **benchmark contract** is the stable part of the question:
+
+- workload / case identity
+- solver family
+- seed policy
+- `max_iterations`
+- `time_limit_seconds`
+
+The **tunable search policy** is the part research is allowed to change without redefining the benchmark question, including:
+
+- `no_improvement_iterations`
+- temperature schedule
+- reheat policy
+- move-family policy
+
+The benchmark runner now supports this split explicitly through suite-level `default_search_policy` and case-level `search_policy`, instead of forcing objective suites to replace the entire solver configuration just to tune metaheuristics.
+
 ## Required checks lane (runs after successful experiment commands)
 
 `autoresearch.checks.sh` now runs the following guardrails after each successful experiment:

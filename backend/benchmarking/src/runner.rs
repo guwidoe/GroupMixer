@@ -10,7 +10,8 @@ use crate::benchmark_mode::FULL_SOLVE_BENCHMARK_MODE;
 use crate::hotpath::run_hotpath_case_artifact;
 use crate::machine::{capture_git_identity, capture_machine_identity};
 use crate::manifest::{
-    load_suite_manifest, BenchmarkSuiteClass, LoadedBenchmarkCase, LoadedBenchmarkSuite,
+    load_suite_manifest, BenchmarkSearchPolicyOverride, BenchmarkSuiteClass,
+    LoadedBenchmarkCase, LoadedBenchmarkSuite,
 };
 use crate::storage::{machine_identity_label, BenchmarkStorage};
 use crate::validation::{
@@ -189,7 +190,63 @@ fn run_case(
     machine: crate::artifacts::MachineIdentity,
 ) -> CaseRunArtifact {
     debug_assert_eq!(suite.manifest.benchmark_mode, FULL_SOLVE_BENCHMARK_MODE);
-    let input = apply_effective_overrides(suite, case);
+    let input = match apply_effective_overrides(suite, case) {
+        Ok(input) => input,
+        Err(error) => {
+            let case_identity = build_case_identity_metadata(case);
+            return CaseRunArtifact {
+                schema_version: CASE_RUN_SCHEMA_VERSION,
+                run_id: run_id.to_string(),
+                generated_at: generated_at.to_string(),
+                suite_id: suite.manifest.suite_id.clone(),
+                benchmark_mode: suite.manifest.benchmark_mode.clone(),
+                suite_class: suite.manifest.class,
+                case_id: case.manifest.id.clone(),
+                case_class: case.manifest.class,
+                case_manifest_path: case.manifest_path.display().to_string(),
+                case_identity: Some(case_identity),
+                case_title: case.manifest.title.clone(),
+                case_description: case.manifest.description.clone(),
+                tags: case.manifest.tags.clone(),
+                git,
+                machine,
+                solver: SolverBenchmarkMetadata {
+                    solver_family: canonical_solver_family_for_error(case),
+                    solver_config_id: case
+                        .manifest
+                        .input
+                        .as_ref()
+                        .map(|input| input.solver.solver_type.clone())
+                        .unwrap_or_default(),
+                    display_name: "invalid benchmark policy".to_string(),
+                    seed_policy: BenchmarkSeedPolicy::NotApplicable,
+                    capabilities: SolverCapabilitiesSnapshot::default(),
+                },
+                effective_seed: None,
+                effective_budget: EffectiveBenchmarkBudget::default(),
+                artifact_kind: BenchmarkArtifactKind::FullSolve,
+                effective_move_policy: None,
+                stop_reason: None,
+                status: CaseRunStatus::SolverError,
+                error_message: Some(error.to_string()),
+                runtime_seconds: 0.0,
+                timing: SolveTimingBreakdown::default(),
+                initial_score: None,
+                final_score: None,
+                best_score: None,
+                iteration_count: None,
+                no_improvement_count: None,
+                unique_contacts: None,
+                weighted_repetition_penalty: None,
+                weighted_constraint_penalty: None,
+                score_decomposition: None,
+                search_telemetry: None,
+                moves: MoveFamilyBenchmarkTelemetrySummary::default(),
+                hotpath_metrics: None,
+                external_validation: None,
+            };
+        }
+    };
     let case_identity = build_case_identity_metadata(case);
     let effective_budget = EffectiveBenchmarkBudget {
         max_iterations: input.solver.stop_conditions.max_iterations,
@@ -483,12 +540,12 @@ fn weighted_sum(violations: &[i32], weights: &[f64]) -> f64 {
 fn apply_effective_overrides(
     suite: &LoadedBenchmarkSuite,
     case: &LoadedBenchmarkCase,
-) -> gm_core::models::ApiInput {
+) -> Result<gm_core::models::ApiInput> {
     let mut input = case
         .manifest
         .input
         .clone()
-        .expect("full-solve benchmark cases require input");
+        .context("full-solve benchmark cases require input")?;
 
     if let Some(default_solver) = suite.manifest.default_solver.clone() {
         input.solver = default_solver;
@@ -533,7 +590,70 @@ fn apply_effective_overrides(
         input.solver.move_policy = Some(move_policy);
     }
 
-    input
+    if let Some(search_policy) = suite.manifest.default_search_policy.as_ref() {
+        apply_search_policy_override(&mut input, search_policy)?;
+    }
+
+    if let Some(search_policy) = case.overrides.search_policy.as_ref() {
+        apply_search_policy_override(&mut input, search_policy)?;
+    }
+
+    Ok(input)
+}
+
+fn apply_search_policy_override(
+    input: &mut gm_core::models::ApiInput,
+    search_policy: &BenchmarkSearchPolicyOverride,
+) -> Result<()> {
+    match search_policy.no_improvement_iterations {
+        crate::manifest::NullableU64Override::Inherit => {}
+        crate::manifest::NullableU64Override::Clear => {
+            input.solver.stop_conditions.no_improvement_iterations = None;
+        }
+        crate::manifest::NullableU64Override::Value(value) => {
+            input.solver.stop_conditions.no_improvement_iterations = Some(value);
+        }
+    }
+
+    if let Some(simulated_annealing) = search_policy.simulated_annealing.as_ref() {
+        let params = match &mut input.solver.solver_params {
+            gm_core::models::SolverParams::SimulatedAnnealing(params) => params,
+            _ => anyhow::bail!(
+                "search_policy.simulated_annealing requires a simulated annealing solver input, found {}",
+                input.solver.solver_type
+            ),
+        };
+
+        if let Some(initial_temperature) = simulated_annealing.initial_temperature {
+            params.initial_temperature = initial_temperature;
+        }
+        if let Some(final_temperature) = simulated_annealing.final_temperature {
+            params.final_temperature = final_temperature;
+        }
+        if let Some(cooling_schedule) = simulated_annealing.cooling_schedule.as_ref() {
+            params.cooling_schedule = cooling_schedule.clone();
+        }
+        if let Some(reheat_cycles) = simulated_annealing.reheat_cycles {
+            params.reheat_cycles = Some(reheat_cycles);
+        }
+        if let Some(reheat_after_no_improvement) =
+            simulated_annealing.reheat_after_no_improvement
+        {
+            params.reheat_after_no_improvement = Some(reheat_after_no_improvement);
+        }
+    }
+
+    Ok(())
+}
+
+fn canonical_solver_family_for_error(case: &LoadedBenchmarkCase) -> String {
+    case.manifest
+        .input
+        .as_ref()
+        .and_then(|input| input.solver.validate_solver_selection().ok())
+        .map(|kind| kind.canonical_id().to_string())
+        .or_else(|| case.manifest.solver_family.clone())
+        .unwrap_or_else(|| "unknown".to_string())
 }
 
 fn effective_solver_kind_override(
@@ -1039,7 +1159,8 @@ mod tests {
         .expect("write suite");
 
         let suite = load_suite_manifest(&suite_path).expect("suite should load");
-        let effective = apply_effective_overrides(&suite, &suite.cases[0]);
+        let effective =
+            apply_effective_overrides(&suite, &suite.cases[0]).expect("effective overrides");
         let params = effective
             .solver
             .solver_params
@@ -1064,6 +1185,198 @@ mod tests {
                 .mode,
             gm_core::models::MoveSelectionMode::Weighted
         );
+    }
+
+    #[test]
+    fn full_solve_suite_can_apply_search_policy_without_replacing_benchmark_contract() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite_dir = temp.path().join("backend/benchmarking/suites");
+        let case_dir = temp.path().join("backend/benchmarking/cases/stretch");
+        fs::create_dir_all(&suite_dir).expect("mk suite dir");
+        fs::create_dir_all(&case_dir).expect("mk case dir");
+
+        let case_path = case_dir.join("tiny_search_policy_case.json");
+        fs::write(
+            &case_path,
+            serde_json::to_string_pretty(&json!({
+                "schema_version": 1,
+                "id": "stretch.tiny-search-policy-case",
+                "class": "stretch",
+                "title": "Tiny search policy case",
+                "description": "Small solve case used to validate search-policy overrides.",
+                "input": {
+                    "initial_schedule": null,
+                    "problem": {
+                        "people": [
+                            { "id": "p0", "attributes": {} },
+                            { "id": "p1", "attributes": {} },
+                            { "id": "p2", "attributes": {} },
+                            { "id": "p3", "attributes": {} }
+                        ],
+                        "groups": [
+                            { "id": "g0", "size": 2 },
+                            { "id": "g1", "size": 2 }
+                        ],
+                        "num_sessions": 2
+                    },
+                    "constraints": [],
+                    "objectives": [{ "type": "maximize_unique_contacts", "weight": 1.0 }],
+                    "solver": {
+                        "solver_type": "SimulatedAnnealing",
+                        "stop_conditions": {
+                            "max_iterations": 60,
+                            "time_limit_seconds": null,
+                            "no_improvement_iterations": 20
+                        },
+                        "solver_params": {
+                            "solver_type": "SimulatedAnnealing",
+                            "initial_temperature": 1.0,
+                            "final_temperature": 0.01,
+                            "cooling_schedule": "geometric",
+                            "reheat_after_no_improvement": 5,
+                            "reheat_cycles": 1
+                        },
+                        "logging": {},
+                        "telemetry": {},
+                        "seed": 5,
+                        "move_policy": null,
+                        "allowed_sessions": null
+                    }
+                }
+            }))
+            .expect("serialize case"),
+        )
+        .expect("write case");
+
+        let suite_path = suite_dir.join("suite-with-search-policy.yaml");
+        fs::write(
+            &suite_path,
+            [
+                "schema_version: 1",
+                "suite_id: suite-with-search-policy",
+                "benchmark_mode: full_solve",
+                "comparison_category: score_quality",
+                "class: stretch",
+                "default_seed: 77",
+                "default_max_iterations: 8000",
+                "default_time_limit_seconds: 3",
+                "default_search_policy:",
+                "  simulated_annealing:",
+                "    final_temperature: 0.05",
+                "cases:",
+                "  - manifest: ../cases/stretch/tiny_search_policy_case.json",
+                "    search_policy:",
+                "      no_improvement_iterations: null",
+                "      simulated_annealing:",
+                "        initial_temperature: 9.0",
+                "        reheat_after_no_improvement: 0",
+                "        reheat_cycles: 0",
+            ]
+            .join("\n"),
+        )
+        .expect("write suite");
+
+        let suite = load_suite_manifest(&suite_path).expect("suite should load");
+        let effective =
+            apply_effective_overrides(&suite, &suite.cases[0]).expect("effective overrides");
+        let params = effective
+            .solver
+            .solver_params
+            .simulated_annealing_params()
+            .expect("solver1 params");
+
+        assert_eq!(effective.solver.seed, Some(77));
+        assert_eq!(effective.solver.stop_conditions.max_iterations, Some(8000));
+        assert_eq!(effective.solver.stop_conditions.time_limit_seconds, Some(3));
+        assert_eq!(effective.solver.stop_conditions.no_improvement_iterations, None);
+        assert_eq!(params.initial_temperature, 9.0);
+        assert_eq!(params.final_temperature, 0.05);
+        assert_eq!(params.reheat_after_no_improvement, Some(0));
+        assert_eq!(params.reheat_cycles, Some(0));
+        assert_eq!(effective.solver.solver_type, "SimulatedAnnealing");
+    }
+
+    #[test]
+    fn search_policy_simulated_annealing_overrides_fail_on_non_sa_solver_inputs() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite_dir = temp.path().join("backend/benchmarking/suites");
+        let case_dir = temp.path().join("backend/benchmarking/cases/stretch");
+        fs::create_dir_all(&suite_dir).expect("mk suite dir");
+        fs::create_dir_all(&case_dir).expect("mk case dir");
+
+        let case_path = case_dir.join("tiny_solver3_case.json");
+        fs::write(
+            &case_path,
+            serde_json::to_string_pretty(&json!({
+                "schema_version": 1,
+                "id": "stretch.tiny-solver3-case",
+                "class": "stretch",
+                "title": "Tiny solver3 case",
+                "description": "Small solve case used to validate search-policy guardrails.",
+                "input": {
+                    "initial_schedule": null,
+                    "problem": {
+                        "people": [
+                            { "id": "p0", "attributes": {} },
+                            { "id": "p1", "attributes": {} }
+                        ],
+                        "groups": [{ "id": "g0", "size": 2 }],
+                        "num_sessions": 1
+                    },
+                    "constraints": [],
+                    "objectives": [{ "type": "maximize_unique_contacts", "weight": 1.0 }],
+                    "solver": {
+                        "solver_type": "solver3",
+                        "stop_conditions": {
+                            "max_iterations": 5,
+                            "time_limit_seconds": null,
+                            "no_improvement_iterations": null
+                        },
+                        "solver_params": {
+                            "solver_type": "solver3",
+                            "correctness_lane": {
+                                "enabled": false,
+                                "sample_every_accepted_moves": 16
+                            }
+                        },
+                        "logging": {},
+                        "telemetry": {},
+                        "seed": 3,
+                        "move_policy": null,
+                        "allowed_sessions": null
+                    }
+                }
+            }))
+            .expect("serialize case"),
+        )
+        .expect("write case");
+
+        let suite_path = suite_dir.join("suite-with-invalid-search-policy.yaml");
+        fs::write(
+            &suite_path,
+            [
+                "schema_version: 1",
+                "suite_id: suite-with-invalid-search-policy",
+                "benchmark_mode: full_solve",
+                "comparison_category: score_quality",
+                "class: stretch",
+                "cases:",
+                "  - manifest: ../cases/stretch/tiny_solver3_case.json",
+                "    search_policy:",
+                "      simulated_annealing:",
+                "        initial_temperature: 4.0",
+            ]
+            .join("\n"),
+        )
+        .expect("write suite");
+
+        let suite = load_suite_manifest(&suite_path).expect("suite should load");
+        let error = apply_effective_overrides(&suite, &suite.cases[0])
+            .expect_err("search policy should be rejected for solver3 input");
+
+        assert!(error
+            .to_string()
+            .contains("search_policy.simulated_annealing requires a simulated annealing solver input"));
     }
 
     #[test]

@@ -28,7 +28,7 @@ Current shape:
 - `class`
 - `title`
 - `description`
-- optional suite-level defaults for solver family, full solver configuration, seed, stop budget, move policy, hotpath iterations, and hotpath warmup iterations
+- optional suite-level defaults for solver family, full solver configuration, seed, benchmark stop budget, tunable search-policy overrides, move policy, hotpath iterations, and hotpath warmup iterations
 - `cases[]`
 
 Canonical objective suites default to `case_selection_policy: canonical_only`.
@@ -41,6 +41,23 @@ Each suite case override may also declare benchmark-identity metadata:
 - optional `purpose`
 - optional `provenance`
 - optional `declared_budget` (`max_iterations` and/or `time_limit_seconds`)
+
+Objective/full-solve suites may additionally carry a **separate tunable search-policy layer**:
+
+- suite-level `default_search_policy`
+- case-level `search_policy`
+
+Current `search_policy` fields are intentionally about solver/metaheuristic tuning, not benchmark identity:
+
+- `no_improvement_iterations` (including explicit `null` to clear inherited case values)
+- simulated annealing knobs such as:
+  - `initial_temperature`
+  - `final_temperature`
+  - `cooling_schedule`
+  - `reheat_after_no_improvement`
+  - `reheat_cycles`
+
+This allows objective suites to keep the benchmark contract stable while still tuning search behavior without replacing the whole embedded solver config.
 
 For canonical objective-suite manifests, this metadata is policy-required even when optional in the generic schema:
 
@@ -78,7 +95,8 @@ Rules:
 - canonical cases must **not** set `canonical_case_id`
 - `declared_budget`, when present, must set at least one of `max_iterations` or `time_limit_seconds`
 - full-solve cases may infer solver family from `input.solver`, but may also declare `solver_family` explicitly for metadata clarity
-- full-solve suites may replace a case's embedded solver configuration with an explicit checked-in benchmark policy via `default_solver` / `solver` overrides
+- full-solve suites may still replace a case's embedded solver configuration with `default_solver` / `solver` overrides when that is the actual benchmark question
+- for **objective research**, prefer benchmark-contract fields (`solver_family`, `seed`, `max_iterations`, `time_limit_seconds`) plus `default_search_policy` / `search_policy` rather than full `default_solver` / `solver` replacement when the intent is only to tune metaheuristics
 - hotpath cases **must** declare `solver_family` explicitly
 - `hotpath_preset` is a probe identifier, not a promise that every solver family shares the same internal kernel implementation
 - shared storage/reporting/comparison remain one platform even when the hotpath probe implementation differs by solver family
@@ -111,6 +129,33 @@ Future work (not done yet):
 
 - add solver2/solver3 construction + full-recalculation presets/cases
 - only claim cross-family shared construction baselines once those lanes are implemented and runnable
+
+### Objective benchmark contract vs tunable search policy
+
+For objective research, these concerns are deliberately separate.
+
+**Benchmark contract** owns:
+
+- workload / case identity
+- case provenance
+- declared canonical budget metadata
+- solver family selection
+- deterministic seed policy
+- `max_iterations`
+- `time_limit_seconds`
+
+**Tunable search policy** owns solver/metaheuristic knobs such as:
+
+- `no_improvement_iterations`
+- simulated annealing temperature schedule
+- reheat behavior
+- move-family policy when the benchmark question is still the same workload under the same top-level contract
+
+Design intent:
+
+- changing the benchmark contract means changing the benchmark question
+- changing `search_policy` means tuning how the solver attacks the same benchmark question
+- objective suites should not accidentally freeze tiny fixture-era `no_improvement_iterations` or reheat settings just because they reused a case JSON file
 
 ### Canonical objective full-suite policy
 

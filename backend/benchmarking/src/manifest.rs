@@ -4,7 +4,7 @@ use crate::benchmark_mode::{
 };
 use anyhow::{bail, Context, Result};
 use gm_core::models::{ApiInput, MovePolicy, SolverConfiguration, SolverKind};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
@@ -73,6 +73,62 @@ pub struct DeclaredBenchmarkBudget {
     pub time_limit_seconds: Option<u64>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct BenchmarkSearchPolicyOverride {
+    #[serde(default)]
+    pub no_improvement_iterations: NullableU64Override,
+    #[serde(default)]
+    pub simulated_annealing: Option<BenchmarkSimulatedAnnealingPolicyOverride>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum NullableU64Override {
+    #[default]
+    Inherit,
+    Clear,
+    Value(u64),
+}
+
+impl Serialize for NullableU64Override {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Self::Inherit => serializer.serialize_unit(),
+            Self::Clear => serializer.serialize_none(),
+            Self::Value(value) => serializer.serialize_u64(*value),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for NullableU64Override {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = Option::<u64>::deserialize(deserializer)?;
+        Ok(match value {
+            Some(value) => Self::Value(value),
+            None => Self::Clear,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct BenchmarkSimulatedAnnealingPolicyOverride {
+    #[serde(default)]
+    pub initial_temperature: Option<f64>,
+    #[serde(default)]
+    pub final_temperature: Option<f64>,
+    #[serde(default)]
+    pub cooling_schedule: Option<String>,
+    #[serde(default)]
+    pub reheat_cycles: Option<u64>,
+    #[serde(default)]
+    pub reheat_after_no_improvement: Option<u64>,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[serde(rename_all = "snake_case")]
 pub enum BenchmarkSuiteClass {
@@ -126,6 +182,8 @@ pub struct BenchmarkSuiteManifest {
     #[serde(default)]
     pub default_time_limit_seconds: Option<u64>,
     #[serde(default)]
+    pub default_search_policy: Option<BenchmarkSearchPolicyOverride>,
+    #[serde(default)]
     pub default_move_policy: Option<MovePolicy>,
     #[serde(default)]
     pub default_iterations: Option<u64>,
@@ -159,6 +217,8 @@ pub struct BenchmarkCaseOverride {
     pub max_iterations: Option<u64>,
     #[serde(default)]
     pub time_limit_seconds: Option<u64>,
+    #[serde(default)]
+    pub search_policy: Option<BenchmarkSearchPolicyOverride>,
     #[serde(default)]
     pub move_policy: Option<MovePolicy>,
     #[serde(default)]
@@ -441,6 +501,15 @@ fn validate_suite_manifest(path: &Path, manifest: &BenchmarkSuiteManifest) -> Re
             }
         }
     }
+    if let Some(default_search_policy) = manifest.default_search_policy.as_ref() {
+        validate_search_policy_override(
+            &format!(
+                "benchmark suite manifest {} default_search_policy",
+                path.display()
+            ),
+            default_search_policy,
+        )?;
+    }
     for case in &manifest.cases {
         validate_case_identity_fields(
             &format!("benchmark suite manifest {} case override", path.display()),
@@ -490,6 +559,15 @@ fn validate_suite_manifest(path: &Path, manifest: &BenchmarkSuiteManifest) -> Re
                     );
                 }
             }
+        }
+        if let Some(search_policy) = case.search_policy.as_ref() {
+            validate_search_policy_override(
+                &format!(
+                    "benchmark suite manifest {} case override search_policy",
+                    path.display()
+                ),
+                search_policy,
+            )?;
         }
     }
     if manifest.cases.is_empty() {
@@ -602,6 +680,42 @@ fn validate_case_identity_fields(
                 context
             );
         }
+    }
+
+    Ok(())
+}
+
+fn validate_search_policy_override(
+    context: &str,
+    search_policy: &BenchmarkSearchPolicyOverride,
+) -> Result<()> {
+    let has_top_level = !matches!(
+        search_policy.no_improvement_iterations,
+        NullableU64Override::Inherit
+    );
+    let mut has_simulated_annealing = false;
+
+    if let Some(simulated_annealing) = search_policy.simulated_annealing.as_ref() {
+        has_simulated_annealing = simulated_annealing.initial_temperature.is_some()
+            || simulated_annealing.final_temperature.is_some()
+            || simulated_annealing.cooling_schedule.is_some()
+            || simulated_annealing.reheat_cycles.is_some()
+            || simulated_annealing.reheat_after_no_improvement.is_some();
+
+        if simulated_annealing
+            .cooling_schedule
+            .as_deref()
+            .is_some_and(|schedule| schedule.trim().is_empty())
+        {
+            bail!("{} sets an empty simulated_annealing.cooling_schedule", context);
+        }
+    }
+
+    if !has_top_level && !has_simulated_annealing {
+        bail!(
+            "{} is empty; set no_improvement_iterations and/or simulated_annealing fields",
+            context
+        );
     }
 
     Ok(())
@@ -1078,6 +1192,88 @@ cases:
         assert!(error
             .to_string()
             .contains("declares an empty declared_budget"));
+    }
+
+    #[test]
+    fn suite_search_policy_must_not_be_empty() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite_path = temp.path().join("suite.yaml");
+        fs::write(
+            &suite_path,
+            r#"schema_version: 1
+suite_id: test-suite
+benchmark_mode: full_solve
+class: representative
+default_search_policy: {}
+cases:
+  - manifest: ../cases/representative/small_workshop_balanced.json
+"#,
+        )
+        .expect("write suite");
+
+        let error = load_suite_manifest(&suite_path).expect_err("suite should be rejected");
+        assert!(error
+            .to_string()
+            .contains("default_search_policy is empty"));
+    }
+
+    #[test]
+    fn search_policy_can_explicitly_clear_no_improvement_iterations() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite_path = temp.path().join("suite.yaml");
+        let case_path = temp.path().join("case.json");
+        fs::write(
+            &case_path,
+            serde_json::to_string_pretty(&serde_json::json!({
+                "schema_version": 1,
+                "id": "representative.search-policy-clear-case",
+                "class": "representative",
+                "input": {
+                    "initial_schedule": null,
+                    "problem": {
+                        "people": [{"id": "p0", "attributes": {}}, {"id": "p1", "attributes": {}}],
+                        "groups": [{"id": "g0", "size": 2}],
+                        "num_sessions": 1
+                    },
+                    "objectives": [],
+                    "constraints": [],
+                    "solver": {
+                        "solver_type": "solver1",
+                        "stop_conditions": {"max_iterations": 1, "time_limit_seconds": null, "no_improvement_iterations": 1},
+                        "solver_params": {"solver_type": "SimulatedAnnealing", "initial_temperature": 1.0, "final_temperature": 0.1, "cooling_schedule": "geometric", "reheat_after_no_improvement": 0, "reheat_cycles": 0},
+                        "logging": {},
+                        "telemetry": {},
+                        "seed": 1,
+                        "move_policy": null,
+                        "allowed_sessions": null
+                    }
+                }
+            }))
+            .expect("serialize case"),
+        )
+        .expect("write case");
+        fs::write(
+            &suite_path,
+            format!(r#"schema_version: 1
+suite_id: test-suite
+benchmark_mode: full_solve
+class: representative
+cases:
+  - manifest: {}
+    search_policy:
+      no_improvement_iterations: null
+"#, case_path.display()),
+        )
+        .expect("write suite");
+
+        let suite = load_suite_manifest(&suite_path).expect("suite should load");
+        assert_eq!(
+            suite.cases[0].overrides.search_policy,
+            Some(BenchmarkSearchPolicyOverride {
+                no_improvement_iterations: NullableU64Override::Clear,
+                simulated_annealing: None,
+            })
+        );
     }
 
     fn write_minimal_helper_case(path: &Path) {
