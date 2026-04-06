@@ -5,14 +5,20 @@ comparison_category: score_quality
 case_selection_policy: canonical_only
 class: adversarial
 title: Objective canonical adversarial bundle (v1)
-description: Adversarial component of canonical objective suite v1. Designed to keep constraint-heavy objective quality regressions visible.
+description: Adversarial component of canonical objective suite v1. Designed to keep constraint-heavy objective quality regressions visible under meaningful fixed-time search effort rather than inherited smoke-fixture policy.
 cases:
   - manifest: ../cases/adversarial/constraint_heavy_partial_attendance.json
     case_role: canonical
     purpose: objective_target.adversarial.partial_attendance_constraints
     provenance: checked_in_case_manifest
     declared_budget:
-      max_iterations: 12000
+      max_iterations: 1500000
       time_limit_seconds: 4
-    max_iterations: 12000
+    seed: 301
+    max_iterations: 1500000
     time_limit_seconds: 4
+    search_policy:
+      no_improvement_iterations: null
+      simulated_annealing:
+        reheat_after_no_improvement: 0
+        reheat_cycles: 0

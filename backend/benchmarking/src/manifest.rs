@@ -842,6 +842,11 @@ mod tests {
                 "{} should contain cases",
                 suite_path
             );
+            assert!(
+                suite.manifest.default_solver.is_none(),
+                "{} should not pin full default_solver config for objective research",
+                suite_path
+            );
 
             for case in &suite.cases {
                 assert_eq!(
@@ -888,6 +893,18 @@ mod tests {
                     case.overrides.max_iterations.is_some()
                         || case.overrides.time_limit_seconds.is_some(),
                     "{} / {} should set explicit effective budget overrides",
+                    suite_path,
+                    case.manifest.id
+                );
+                assert!(
+                    case.overrides.seed.is_some(),
+                    "{} / {} should set explicit seed policy in the suite contract",
+                    suite_path,
+                    case.manifest.id
+                );
+                assert!(
+                    case.overrides.solver.is_none(),
+                    "{} / {} should not replace the full solver config when the benchmark question is objective research",
                     suite_path,
                     case.manifest.id
                 );

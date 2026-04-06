@@ -5,23 +5,32 @@ comparison_category: score_quality
 case_selection_policy: canonical_only
 class: representative
 title: Objective canonical representative bundle (v1)
-description: Representative component of canonical objective suite v1. Every case entry carries explicit identity metadata and per-case budget declarations.
+description: Representative component of canonical objective suite v1. This is the fixed-time primary objective lane, so suite entries own explicit seeds and benchmark budgets while tunable search policy is separated into search_policy overrides where needed.
 cases:
   - manifest: ../cases/representative/small_workshop_balanced.json
     case_role: canonical
     purpose: objective_target.representative.balanced
     provenance: checked_in_case_manifest
     declared_budget:
-      max_iterations: 5000
-      time_limit_seconds: 2
-    max_iterations: 5000
-    time_limit_seconds: 2
+      max_iterations: 1000000
+      time_limit_seconds: 3
+    seed: 101
+    max_iterations: 1000000
+    time_limit_seconds: 3
+    search_policy:
+      no_improvement_iterations: null
   - manifest: ../cases/representative/small_workshop_constrained.json
     case_role: canonical
     purpose: objective_target.representative.constraint_mix
     provenance: checked_in_case_manifest
     declared_budget:
-      max_iterations: 8000
-      time_limit_seconds: 3
-    max_iterations: 8000
-    time_limit_seconds: 3
+      max_iterations: 1500000
+      time_limit_seconds: 4
+    seed: 102
+    max_iterations: 1500000
+    time_limit_seconds: 4
+    search_policy:
+      no_improvement_iterations: null
+      simulated_annealing:
+        reheat_after_no_improvement: 0
+        reheat_cycles: 0

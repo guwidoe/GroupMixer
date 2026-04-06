@@ -24,6 +24,24 @@ The script emits:
 
 Runtime is explicitly a monitoring signal in this lane, not the keep/discard target.
 
+## Measured local runtime after the fixed-time lane rebuild
+
+Current local warm-cache measurement:
+
+- `tools/autoresearch/objective-quality/autoresearch.sh`: **70.02s** wall clock
+- `objective_suite_total_runtime_seconds=68.83894603`
+- `runtime_canonical_share_percent=99.9114473519419`
+
+Previous lighter objective-lane measurement before the rebuild:
+
+- `tools/autoresearch/objective-quality/autoresearch.sh`: **22.57s** wall clock
+
+Interpretation:
+
+- the lane is intentionally much slower now
+- the new runtime reflects substantially more real search work on the canonical fixed-time cases
+- that slowdown is deliberate and desirable for a research-grade primary objective harness
+
 ## Benchmark contract vs tunable search policy
 
 For this lane, the **benchmark contract** is the stable part of the question:

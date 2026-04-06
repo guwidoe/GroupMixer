@@ -14,6 +14,11 @@
 
 This is an honest current-state portfolio, not a claim that all go-live blockers are resolved.
 
+Current objective-lane policy note:
+
+- the fixed-time primary lane now owns explicit suite-case seed policy for every canonical objective case
+- fixture-era search-policy inheritance is neutralized where needed via suite-case `search_policy` overrides instead of full solver replacement
+
 ## Canonical objective suite shape (v1)
 
 Because the runner currently enforces one `class` per suite manifest, canonical objective v1 is represented as a bundle:
@@ -47,13 +52,13 @@ No baseline/best-known refs are filled in this doc yet; placeholders are intenti
 
 | Case manifest | Status | Provenance | Purpose | Checked-in budget | Baseline note | Best-known note |
 | --- | --- | --- | --- | --- | --- | --- |
-| `backend/benchmarking/cases/representative/small_workshop_balanced.json` | canonical objective | `checked_in_case_manifest` (from objective-canonical-representative-v1 entry) | `objective_target.representative.balanced` | `max_iterations: 5000`, `time_limit_seconds: 2` (suite entry) | TODO | TODO |
-| `backend/benchmarking/cases/representative/small_workshop_constrained.json` | canonical objective | `checked_in_case_manifest` (from objective-canonical-representative-v1 entry) | `objective_target.representative.constraint_mix` | `max_iterations: 8000`, `time_limit_seconds: 3` (suite entry) | TODO | TODO |
-| `backend/benchmarking/cases/adversarial/constraint_heavy_partial_attendance.json` | canonical objective | `checked_in_case_manifest` (from objective-canonical-adversarial-v1 entry) | `objective_target.adversarial.partial_attendance_constraints` | `max_iterations: 12000`, `time_limit_seconds: 4` (suite entry) | TODO | TODO |
-| `backend/benchmarking/cases/stretch/medium_multi_session.json` | canonical objective | `checked_in_case_manifest` (from objective-canonical-stretch-v1 entry) | `objective_target.stretch.medium_multi_session` | `max_iterations: 20000`, `time_limit_seconds: 6` (suite entry) | TODO | TODO |
-| `backend/benchmarking/cases/stretch/social_golfer_32x8x10.json` | canonical objective | `backend/core/tests/test_cases/social_golfer_problem.json` reused as benchmark manifest | `objective_target.stretch.social_golfer_zero_repeat_encounters` | `max_iterations: 400000`, `time_limit_seconds: 25` (suite entry) | TODO | TODO |
-| `backend/benchmarking/cases/stretch/large_gender_immovable_110p.json` | canonical objective | `backend/core/tests/test_cases/benchmark_large_gender_immovable.json` reused as benchmark manifest | `objective_target.stretch.large_heterogeneous_attribute_balance_and_immovable` | `max_iterations: 100000`, `time_limit_seconds: 12` (suite entry) | TODO | TODO |
-| `backend/benchmarking/cases/stretch/sailing_trip_demo_real.json` | canonical objective | `exact_anonymized_demo_case_no_helper_start_substitution` (from objective-canonical-stretch-v1 entry) | `objective_target.stretch.real_sailing_trip_raw_case` | `max_iterations: 1000000`, `time_limit_seconds: 15` (suite entry) | TODO | TODO |
+| `backend/benchmarking/cases/representative/small_workshop_balanced.json` | canonical objective | `checked_in_case_manifest` (from objective-canonical-representative-v1 entry) | `objective_target.representative.balanced` | `max_iterations: 1000000`, `time_limit_seconds: 3` (suite entry) | TODO | TODO |
+| `backend/benchmarking/cases/representative/small_workshop_constrained.json` | canonical objective | `checked_in_case_manifest` (from objective-canonical-representative-v1 entry) | `objective_target.representative.constraint_mix` | `max_iterations: 1500000`, `time_limit_seconds: 4` (suite entry) | TODO | TODO |
+| `backend/benchmarking/cases/adversarial/constraint_heavy_partial_attendance.json` | canonical objective | `checked_in_case_manifest` (from objective-canonical-adversarial-v1 entry) | `objective_target.adversarial.partial_attendance_constraints` | `max_iterations: 1500000`, `time_limit_seconds: 4` (suite entry) | TODO | TODO |
+| `backend/benchmarking/cases/stretch/medium_multi_session.json` | canonical objective | `checked_in_case_manifest` (from objective-canonical-stretch-v1 entry) | `objective_target.stretch.medium_multi_session` | `max_iterations: 2000000`, `time_limit_seconds: 6` (suite entry) | TODO | TODO |
+| `backend/benchmarking/cases/stretch/social_golfer_32x8x10.json` | canonical objective | `backend/core/tests/test_cases/social_golfer_problem.json` reused as benchmark manifest | `objective_target.stretch.social_golfer_zero_repeat_encounters` | `max_iterations: 10000000`, `time_limit_seconds: 25` (suite entry) | TODO | TODO |
+| `backend/benchmarking/cases/stretch/large_gender_immovable_110p.json` | canonical objective | `backend/core/tests/test_cases/benchmark_large_gender_immovable.json` reused as benchmark manifest | `objective_target.stretch.large_heterogeneous_attribute_balance_and_immovable` | `max_iterations: 2000000`, `time_limit_seconds: 12` (suite entry) | TODO | TODO |
+| `backend/benchmarking/cases/stretch/sailing_trip_demo_real.json` | canonical objective | `exact_anonymized_demo_case_no_helper_start_substitution` (from objective-canonical-stretch-v1 entry) | `objective_target.stretch.real_sailing_trip_raw_case` | `max_iterations: 1000000`, `time_limit_seconds: 15` (suite entry, now with explicit fixed seed policy) | TODO | TODO |
 
 ## Objective-adjacent checked-in cases (helper / non-canonical)
 

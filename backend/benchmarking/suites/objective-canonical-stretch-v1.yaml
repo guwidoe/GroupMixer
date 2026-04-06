@@ -5,34 +5,42 @@ comparison_category: score_quality
 case_selection_policy: canonical_only
 class: stretch
 title: Objective canonical stretch bundle (v1)
-description: Stretch component of canonical objective suite v1. Includes the exact raw Sailing Trip case plus additional hard canonical workloads (social-golfer style and heterogeneous large-constraint stress) under explicit per-case budgets.
+description: Stretch component of canonical objective suite v1. Includes the exact raw Sailing Trip case plus additional hard canonical workloads under explicit fixed-time budgets and explicit seed policy.
 cases:
   - manifest: ../cases/stretch/medium_multi_session.json
     case_role: canonical
     purpose: objective_target.stretch.medium_multi_session
     provenance: checked_in_case_manifest
     declared_budget:
-      max_iterations: 20000
+      max_iterations: 2000000
       time_limit_seconds: 6
-    max_iterations: 20000
+    seed: 201
+    max_iterations: 2000000
     time_limit_seconds: 6
+    search_policy:
+      no_improvement_iterations: null
+      simulated_annealing:
+        reheat_after_no_improvement: 0
+        reheat_cycles: 0
   - manifest: ../cases/stretch/social_golfer_32x8x10.json
     case_role: canonical
     purpose: objective_target.stretch.social_golfer_zero_repeat_encounters
     provenance: converted_from_backend_core_tests_test_cases_social_golfer_problem_json_with_canonical_benchmark_metadata
     declared_budget:
-      max_iterations: 400000
+      max_iterations: 10000000
       time_limit_seconds: 25
-    max_iterations: 400000
+    seed: 320810
+    max_iterations: 10000000
     time_limit_seconds: 25
   - manifest: ../cases/stretch/large_gender_immovable_110p.json
     case_role: canonical
     purpose: objective_target.stretch.large_heterogeneous_attribute_balance_and_immovable
     provenance: converted_from_backend_core_tests_test_cases_benchmark_large_gender_immovable_json_with_canonical_benchmark_metadata
     declared_budget:
-      max_iterations: 100000
+      max_iterations: 2000000
       time_limit_seconds: 12
-    max_iterations: 100000
+    seed: 110115
+    max_iterations: 2000000
     time_limit_seconds: 12
   - manifest: ../cases/stretch/sailing_trip_demo_real.json
     case_role: canonical
@@ -41,5 +49,6 @@ cases:
     declared_budget:
       max_iterations: 1000000
       time_limit_seconds: 15
+    seed: 624485344291700314
     max_iterations: 1000000
     time_limit_seconds: 15
