@@ -161,6 +161,54 @@ pub enum CaseRunStatus {
     SolverError,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct ConstraintFamilyContribution {
+    #[serde(default)]
+    pub weighted_penalty: f64,
+    #[serde(default)]
+    pub raw_violations: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct WeightedConstraintBreakdown {
+    #[serde(default)]
+    pub forbidden_pair: ConstraintFamilyContribution,
+    #[serde(default)]
+    pub should_stay_together: ConstraintFamilyContribution,
+    #[serde(default)]
+    pub pair_meeting_count: ConstraintFamilyContribution,
+    #[serde(default)]
+    pub clique: ConstraintFamilyContribution,
+    #[serde(default)]
+    pub immovable: ConstraintFamilyContribution,
+    #[serde(default)]
+    pub residual_weighted_penalty: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct ScoreDecomposition {
+    #[serde(default)]
+    pub total_score: f64,
+    #[serde(default)]
+    pub baseline_score: f64,
+    #[serde(default)]
+    pub unique_contacts: i32,
+    #[serde(default)]
+    pub unique_contact_weight: f64,
+    #[serde(default)]
+    pub unique_contact_term: f64,
+    #[serde(default)]
+    pub repetition_penalty: i32,
+    #[serde(default)]
+    pub repetition_term: f64,
+    #[serde(default)]
+    pub attribute_balance_term: f64,
+    #[serde(default)]
+    pub weighted_constraint_total: f64,
+    #[serde(default)]
+    pub weighted_constraint_breakdown: WeightedConstraintBreakdown,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CaseRunArtifact {
     pub schema_version: u32,
@@ -215,6 +263,8 @@ pub struct CaseRunArtifact {
     pub weighted_repetition_penalty: Option<f64>,
     #[serde(default)]
     pub weighted_constraint_penalty: Option<f64>,
+    #[serde(default)]
+    pub score_decomposition: Option<ScoreDecomposition>,
     #[serde(default)]
     pub moves: MoveFamilyBenchmarkTelemetrySummary,
     #[serde(default)]
@@ -349,6 +399,32 @@ pub struct MoveFamilyComparison {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ConstraintFamilyContributionComparison {
+    pub weighted_penalty: NumericDelta,
+    pub raw_violations: IntegerDelta,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct WeightedConstraintBreakdownComparison {
+    pub forbidden_pair: ConstraintFamilyContributionComparison,
+    pub should_stay_together: ConstraintFamilyContributionComparison,
+    pub pair_meeting_count: ConstraintFamilyContributionComparison,
+    pub clique: ConstraintFamilyContributionComparison,
+    pub immovable: ConstraintFamilyContributionComparison,
+    pub residual_weighted_penalty: NumericDelta,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ScoreDecompositionComparison {
+    pub total_score: NumericDelta,
+    pub unique_contact_term: NumericDelta,
+    pub repetition_term: NumericDelta,
+    pub attribute_balance_term: NumericDelta,
+    pub weighted_constraint_total: NumericDelta,
+    pub weighted_constraint_breakdown: WeightedConstraintBreakdownComparison,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CaseComparison {
     pub case_id: String,
     pub class: BenchmarkSuiteClass,
@@ -363,6 +439,8 @@ pub struct CaseComparison {
     pub stop_reason_baseline: Option<StopReason>,
     #[serde(default)]
     pub stop_reason_current: Option<StopReason>,
+    #[serde(default)]
+    pub score_decomposition: Option<ScoreDecompositionComparison>,
     pub move_family_deltas: Vec<MoveFamilyComparison>,
 }
 

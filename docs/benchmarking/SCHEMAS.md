@@ -41,6 +41,13 @@ Key fields:
 - outcome: status, stop reason, error message if any
 - timing: initialization / search / finalization / total
 - quality: initial score, final score, best score
+- structured score decomposition (`score_decomposition`) for full-solve runs:
+  - total score
+  - unique-contact term (`weight * contacts`, represented as a signed score contribution)
+  - repetition term
+  - attribute-balance term
+  - weighted constraint total
+  - weighted major-family breakdown (`forbidden_pair`, `should_stay_together`, `pair_meeting_count`, `clique`, `immovable`, plus residual)
 - external full-solve validation block (`external_validation`):
   - `validation_passed`
   - total-score agreement
@@ -121,6 +128,7 @@ Key fields:
 - comparability result and explicit incompatibility reasons
 - explicit `benchmark_mode` and benchmark-mode compatibility flag
 - per-case runtime / quality / iteration deltas
+- optional per-case score-decomposition deltas (including weighted major-constraint-family breakdowns)
 - per-class rollup deltas
 - ranked regression-suspect summary
 

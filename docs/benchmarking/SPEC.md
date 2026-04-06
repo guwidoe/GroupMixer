@@ -10,6 +10,7 @@ This folder implements the solve-level benchmark system described in `docs/BENCH
 - benchmark runs record reproducibility inputs like seed, stop budget, move policy, and explicit solver-policy selection
 - benchmark run artifacts persist case-identity metadata (source path, canonical case id, role, source fingerprint, purpose/provenance summary, declared budget metadata)
 - full-solve case artifacts include an external final-solution validation report (independent recompute + invariant checks + mismatch diagnostics)
+- full-solve case artifacts persist a structured score decomposition (total, objective/penalty terms, and weighted major-constraint-family breakdown)
 - comparisons must fail honestly when runs are not compatible, including case-identity drift
 
 ## Manifest layers

@@ -17,12 +17,14 @@ pub mod validation;
 pub use artifacts::{
     BaselineSnapshot, BenchmarkComparisonCategory, BenchmarkSeedPolicy, CaseComparison,
     CaseIdentityMetadata, CaseRunArtifact, CaseRunStatus, ClassRollup, ClassRollupComparison,
-    ComparabilityReport, ComparisonReport, ComparisonStatus, EffectiveBenchmarkBudget, GitIdentity,
-    IntegerDelta, MachineIdentity, MoveFamilyComparison, NumericDelta, RegressionSuspect,
-    RegressionSuspectKind, RegressionSuspectSummary, RunMetadata, RunReport, RunSuiteMetadata,
-    RunTotals, SolveTimingBreakdown, SolverBenchmarkMetadata, SolverCapabilitiesSnapshot,
-    BASELINE_SNAPSHOT_SCHEMA_VERSION, CASE_RUN_SCHEMA_VERSION, COMPARISON_REPORT_SCHEMA_VERSION,
-    RUN_REPORT_SCHEMA_VERSION,
+    ComparabilityReport, ComparisonReport, ComparisonStatus, ConstraintFamilyContribution,
+    ConstraintFamilyContributionComparison, EffectiveBenchmarkBudget, GitIdentity, IntegerDelta,
+    MachineIdentity, MoveFamilyComparison, NumericDelta, RegressionSuspect, RegressionSuspectKind,
+    RegressionSuspectSummary, RunMetadata, RunReport, RunSuiteMetadata, RunTotals,
+    ScoreDecomposition, ScoreDecompositionComparison, SolveTimingBreakdown,
+    SolverBenchmarkMetadata, SolverCapabilitiesSnapshot, WeightedConstraintBreakdown,
+    WeightedConstraintBreakdownComparison, BASELINE_SNAPSHOT_SCHEMA_VERSION,
+    CASE_RUN_SCHEMA_VERSION, COMPARISON_REPORT_SCHEMA_VERSION, RUN_REPORT_SCHEMA_VERSION,
 };
 pub use benchmark_mode::{
     default_benchmark_mode, is_hotpath_benchmark_mode, is_supported_benchmark_mode,

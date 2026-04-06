@@ -1,8 +1,9 @@
 use crate::artifacts::{
     BaselineSnapshot, BenchmarkArtifactKind, BenchmarkSeedPolicy, CaseIdentityMetadata,
-    CaseRunArtifact, CaseRunStatus, ClassRollup, EffectiveBenchmarkBudget, RunMetadata, RunReport,
-    RunSuiteMetadata, RunTotals, SolveTimingBreakdown, SolverBenchmarkMetadata,
-    SolverCapabilitiesSnapshot, BASELINE_SNAPSHOT_SCHEMA_VERSION, CASE_RUN_SCHEMA_VERSION,
+    CaseRunArtifact, CaseRunStatus, ClassRollup, ConstraintFamilyContribution,
+    EffectiveBenchmarkBudget, RunMetadata, RunReport, RunSuiteMetadata, RunTotals,
+    ScoreDecomposition, SolveTimingBreakdown, SolverBenchmarkMetadata, SolverCapabilitiesSnapshot,
+    WeightedConstraintBreakdown, BASELINE_SNAPSHOT_SCHEMA_VERSION, CASE_RUN_SCHEMA_VERSION,
     RUN_REPORT_SCHEMA_VERSION,
 };
 use crate::benchmark_mode::FULL_SOLVE_BENCHMARK_MODE;
@@ -12,7 +13,9 @@ use crate::manifest::{
     load_suite_manifest, BenchmarkSuiteClass, LoadedBenchmarkCase, LoadedBenchmarkSuite,
 };
 use crate::storage::{machine_identity_label, BenchmarkStorage};
-use crate::validation::{validate_final_solution, validation_failure_summary};
+use crate::validation::{
+    validate_final_solution, validation_failure_summary, RecomputedScoreBreakdown,
+};
 use anyhow::{Context, Result};
 use chrono::Utc;
 use gm_core::models::{MoveFamilyBenchmarkTelemetrySummary, SolverConfiguration, SolverKind};
@@ -216,6 +219,8 @@ fn run_case(
                 .map(|telemetry| telemetry.moves.clone())
                 .unwrap_or_default();
             let validation = validate_final_solution(&input, &result);
+            let score_decomposition =
+                build_score_decomposition(&input, &result, validation.recomputed.as_ref());
             let validation_error = (!validation.validation_passed).then(|| {
                 format!(
                     "external final-solution validation failed: {}",
@@ -263,6 +268,7 @@ fn run_case(
                 unique_contacts: Some(result.unique_contacts),
                 weighted_repetition_penalty: Some(result.weighted_repetition_penalty),
                 weighted_constraint_penalty: Some(result.weighted_constraint_penalty),
+                score_decomposition: Some(score_decomposition),
                 moves,
                 hotpath_metrics: None,
                 external_validation: Some(validation),
@@ -305,11 +311,161 @@ fn run_case(
             unique_contacts: None,
             weighted_repetition_penalty: None,
             weighted_constraint_penalty: None,
+            score_decomposition: None,
             moves: MoveFamilyBenchmarkTelemetrySummary::default(),
             hotpath_metrics: None,
             external_validation: None,
         },
     }
+}
+
+fn build_score_decomposition(
+    input: &gm_core::models::ApiInput,
+    result: &gm_core::models::SolverResult,
+    recomputed: Option<&RecomputedScoreBreakdown>,
+) -> ScoreDecomposition {
+    let unique_contact_weight = input
+        .objectives
+        .iter()
+        .find(|objective| objective.r#type == "maximize_unique_contacts")
+        .map(|objective| objective.weight)
+        .unwrap_or(0.0);
+
+    let weighted_constraint_total = recomputed
+        .map(|snapshot| snapshot.weighted_constraint_penalty)
+        .unwrap_or(result.weighted_constraint_penalty);
+    let weighted_constraint_breakdown = recomputed
+        .map(|snapshot| {
+            build_weighted_constraint_breakdown(input, snapshot, weighted_constraint_total)
+        })
+        .unwrap_or(WeightedConstraintBreakdown {
+            residual_weighted_penalty: weighted_constraint_total,
+            ..WeightedConstraintBreakdown::default()
+        });
+
+    ScoreDecomposition {
+        total_score: result.final_score,
+        baseline_score: recomputed
+            .map(|snapshot| snapshot.baseline_score)
+            .unwrap_or(0.0),
+        unique_contacts: result.unique_contacts,
+        unique_contact_weight,
+        unique_contact_term: -(result.unique_contacts as f64 * unique_contact_weight),
+        repetition_penalty: result.repetition_penalty,
+        repetition_term: result.weighted_repetition_penalty,
+        attribute_balance_term: recomputed
+            .map(|snapshot| snapshot.attribute_balance_penalty)
+            .unwrap_or(result.attribute_balance_penalty as f64),
+        weighted_constraint_total,
+        weighted_constraint_breakdown,
+    }
+}
+
+fn build_weighted_constraint_breakdown(
+    input: &gm_core::models::ApiInput,
+    recomputed: &RecomputedScoreBreakdown,
+    weighted_constraint_total: f64,
+) -> WeightedConstraintBreakdown {
+    let forbidden_weights: Vec<f64> = input
+        .constraints
+        .iter()
+        .filter_map(|constraint| match constraint {
+            gm_core::models::Constraint::ShouldNotBeTogether { penalty_weight, .. } => {
+                Some(*penalty_weight)
+            }
+            _ => None,
+        })
+        .collect();
+    let should_together_weights: Vec<f64> = input
+        .constraints
+        .iter()
+        .filter_map(|constraint| match constraint {
+            gm_core::models::Constraint::ShouldStayTogether { penalty_weight, .. } => {
+                Some(*penalty_weight)
+            }
+            _ => None,
+        })
+        .collect();
+    let pair_meeting_constraints: Vec<&gm_core::models::PairMeetingCountParams> = input
+        .constraints
+        .iter()
+        .filter_map(|constraint| match constraint {
+            gm_core::models::Constraint::PairMeetingCount(params) => Some(params),
+            _ => None,
+        })
+        .collect();
+
+    let forbidden_raw = recomputed.forbidden_pair_violations.iter().sum::<i32>();
+    let forbidden_weighted =
+        weighted_sum(&recomputed.forbidden_pair_violations, &forbidden_weights);
+
+    let should_together_raw = recomputed.should_together_violations.iter().sum::<i32>();
+    let should_together_weighted = weighted_sum(
+        &recomputed.should_together_violations,
+        &should_together_weights,
+    );
+
+    let mut pair_meeting_raw = 0i32;
+    let mut pair_meeting_weighted = 0.0;
+    for (idx, params) in pair_meeting_constraints.iter().enumerate() {
+        let meetings = recomputed
+            .pair_meeting_counts
+            .get(idx)
+            .copied()
+            .unwrap_or_default() as i32;
+        let target = params.target_meetings as i32;
+        let raw_violation = match params.mode {
+            gm_core::models::PairMeetingMode::AtLeast => (target - meetings).max(0),
+            gm_core::models::PairMeetingMode::Exact => (meetings - target).abs(),
+            gm_core::models::PairMeetingMode::AtMost => (meetings - target).max(0),
+        };
+        pair_meeting_raw += raw_violation;
+        pair_meeting_weighted += raw_violation as f64 * params.penalty_weight;
+    }
+
+    let clique_raw = recomputed.clique_violations.iter().sum::<i32>();
+    let clique_weighted = 0.0;
+
+    let immovable_raw = recomputed.immovable_violations;
+    let immovable_weighted = immovable_raw as f64 * 1000.0;
+
+    let accounted_weighted = forbidden_weighted
+        + should_together_weighted
+        + pair_meeting_weighted
+        + clique_weighted
+        + immovable_weighted;
+
+    WeightedConstraintBreakdown {
+        forbidden_pair: ConstraintFamilyContribution {
+            weighted_penalty: forbidden_weighted,
+            raw_violations: forbidden_raw,
+        },
+        should_stay_together: ConstraintFamilyContribution {
+            weighted_penalty: should_together_weighted,
+            raw_violations: should_together_raw,
+        },
+        pair_meeting_count: ConstraintFamilyContribution {
+            weighted_penalty: pair_meeting_weighted,
+            raw_violations: pair_meeting_raw,
+        },
+        clique: ConstraintFamilyContribution {
+            weighted_penalty: clique_weighted,
+            raw_violations: clique_raw,
+        },
+        immovable: ConstraintFamilyContribution {
+            weighted_penalty: immovable_weighted,
+            raw_violations: immovable_raw,
+        },
+        residual_weighted_penalty: weighted_constraint_total - accounted_weighted,
+    }
+}
+
+fn weighted_sum(violations: &[i32], weights: &[f64]) -> f64 {
+    violations
+        .iter()
+        .enumerate()
+        .map(|(idx, violations)| *violations as f64 * weights.get(idx).copied().unwrap_or(0.0))
+        .sum()
 }
 
 fn apply_effective_overrides(
@@ -636,6 +792,39 @@ mod tests {
             case.external_validation
                 .as_ref()
                 .is_some_and(|validation| validation.validation_passed)
+        }));
+        assert!(report.cases.iter().all(|case| {
+            case.score_decomposition
+                .as_ref()
+                .is_some_and(|decomposition| {
+                    (decomposition.total_score - case.final_score.unwrap_or_default()).abs() < 1e-6
+                        && (decomposition.weighted_constraint_total
+                            - (decomposition
+                                .weighted_constraint_breakdown
+                                .forbidden_pair
+                                .weighted_penalty
+                                + decomposition
+                                    .weighted_constraint_breakdown
+                                    .should_stay_together
+                                    .weighted_penalty
+                                + decomposition
+                                    .weighted_constraint_breakdown
+                                    .pair_meeting_count
+                                    .weighted_penalty
+                                + decomposition
+                                    .weighted_constraint_breakdown
+                                    .clique
+                                    .weighted_penalty
+                                + decomposition
+                                    .weighted_constraint_breakdown
+                                    .immovable
+                                    .weighted_penalty
+                                + decomposition
+                                    .weighted_constraint_breakdown
+                                    .residual_weighted_penalty))
+                            .abs()
+                            < 1e-6
+                })
         }));
 
         let run_path =

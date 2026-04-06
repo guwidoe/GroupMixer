@@ -1,7 +1,10 @@
 use crate::artifacts::{
     CaseComparison, ClassRollupComparison, ComparabilityReport, ComparisonReport, ComparisonStatus,
-    IntegerDelta, MoveFamilyComparison, NumericDelta, RegressionSuspect, RegressionSuspectKind,
-    RegressionSuspectSummary, COMPARISON_REPORT_SCHEMA_VERSION,
+    ConstraintFamilyContribution, ConstraintFamilyContributionComparison, IntegerDelta,
+    MoveFamilyComparison, NumericDelta, RegressionSuspect, RegressionSuspectKind,
+    RegressionSuspectSummary, ScoreDecomposition, ScoreDecompositionComparison,
+    WeightedConstraintBreakdown, WeightedConstraintBreakdownComparison,
+    COMPARISON_REPORT_SCHEMA_VERSION,
 };
 use crate::manifest::BenchmarkSuiteClass;
 use crate::storage::BenchmarkStorage;
@@ -288,6 +291,10 @@ fn compare_case(current: &CaseRunArtifact, baseline: &CaseRunArtifact) -> CaseCo
         iteration_count: zip_integer_delta(baseline.iteration_count, current.iteration_count),
         stop_reason_baseline: baseline.stop_reason,
         stop_reason_current: current.stop_reason,
+        score_decomposition: zip_score_decomposition(
+            baseline.score_decomposition.as_ref(),
+            current.score_decomposition.as_ref(),
+        ),
         move_family_deltas,
     }
 }
@@ -373,6 +380,71 @@ fn compare_move_family(
             baseline.full_recalculation_seconds,
             current.full_recalculation_seconds,
         ),
+    }
+}
+
+fn zip_score_decomposition(
+    baseline: Option<&ScoreDecomposition>,
+    current: Option<&ScoreDecomposition>,
+) -> Option<ScoreDecompositionComparison> {
+    let baseline = baseline?;
+    let current = current?;
+
+    Some(ScoreDecompositionComparison {
+        total_score: numeric_delta(baseline.total_score, current.total_score),
+        unique_contact_term: numeric_delta(
+            baseline.unique_contact_term,
+            current.unique_contact_term,
+        ),
+        repetition_term: numeric_delta(baseline.repetition_term, current.repetition_term),
+        attribute_balance_term: numeric_delta(
+            baseline.attribute_balance_term,
+            current.attribute_balance_term,
+        ),
+        weighted_constraint_total: numeric_delta(
+            baseline.weighted_constraint_total,
+            current.weighted_constraint_total,
+        ),
+        weighted_constraint_breakdown: compare_weighted_constraint_breakdown(
+            &baseline.weighted_constraint_breakdown,
+            &current.weighted_constraint_breakdown,
+        ),
+    })
+}
+
+fn compare_weighted_constraint_breakdown(
+    baseline: &WeightedConstraintBreakdown,
+    current: &WeightedConstraintBreakdown,
+) -> WeightedConstraintBreakdownComparison {
+    WeightedConstraintBreakdownComparison {
+        forbidden_pair: compare_constraint_family_contribution(
+            &baseline.forbidden_pair,
+            &current.forbidden_pair,
+        ),
+        should_stay_together: compare_constraint_family_contribution(
+            &baseline.should_stay_together,
+            &current.should_stay_together,
+        ),
+        pair_meeting_count: compare_constraint_family_contribution(
+            &baseline.pair_meeting_count,
+            &current.pair_meeting_count,
+        ),
+        clique: compare_constraint_family_contribution(&baseline.clique, &current.clique),
+        immovable: compare_constraint_family_contribution(&baseline.immovable, &current.immovable),
+        residual_weighted_penalty: numeric_delta(
+            baseline.residual_weighted_penalty,
+            current.residual_weighted_penalty,
+        ),
+    }
+}
+
+fn compare_constraint_family_contribution(
+    baseline: &ConstraintFamilyContribution,
+    current: &ConstraintFamilyContribution,
+) -> ConstraintFamilyContributionComparison {
+    ConstraintFamilyContributionComparison {
+        weighted_penalty: numeric_delta(baseline.weighted_penalty, current.weighted_penalty),
+        raw_violations: integer_delta_from_i32(baseline.raw_violations, current.raw_violations),
     }
 }
 
@@ -469,9 +541,15 @@ fn preferred_quality_delta<'a>(
     comparison: &'a CaseComparison,
 ) -> Option<(&'static str, &'a NumericDelta)> {
     comparison
-        .final_score
+        .score_decomposition
         .as_ref()
-        .map(|delta| ("final score", delta))
+        .map(|decomposition| ("decomposition total score", &decomposition.total_score))
+        .or_else(|| {
+            comparison
+                .final_score
+                .as_ref()
+                .map(|delta| ("final score", delta))
+        })
         .or_else(|| {
             comparison
                 .best_score
@@ -555,6 +633,10 @@ fn integer_delta(baseline: u64, current: u64) -> IntegerDelta {
     }
 }
 
+fn integer_delta_from_i32(baseline: i32, current: i32) -> IntegerDelta {
+    integer_delta(baseline.max(0) as u64, current.max(0) as u64)
+}
+
 fn zip_numeric_delta(baseline: Option<f64>, current: Option<f64>) -> Option<NumericDelta> {
     Some(numeric_delta(baseline?, current?))
 }
@@ -590,7 +672,10 @@ fn sanitize_filename(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::artifacts::{CaseComparison, MoveFamilyComparison, NumericDelta};
+    use crate::artifacts::{
+        CaseComparison, ConstraintFamilyContributionComparison, IntegerDelta, MoveFamilyComparison,
+        NumericDelta, ScoreDecompositionComparison, WeightedConstraintBreakdownComparison,
+    };
     use crate::manifest::BenchmarkSuiteClass;
     use crate::runner::{
         persist_run_report, run_suite_from_manifest, save_baseline_snapshot, RunnerOptions,
@@ -612,7 +697,59 @@ mod tests {
             iteration_count: None,
             stop_reason_baseline: None,
             stop_reason_current: None,
+            score_decomposition: None,
             move_family_deltas: Vec::<MoveFamilyComparison>::new(),
+        }
+    }
+
+    fn numeric_delta_for_test(absolute: f64) -> NumericDelta {
+        NumericDelta {
+            baseline: 10.0,
+            current: 10.0 + absolute,
+            absolute,
+            percent: Some((absolute / 10.0) * 100.0),
+        }
+    }
+
+    fn integer_delta_for_test(absolute: i64) -> IntegerDelta {
+        IntegerDelta {
+            baseline: 10,
+            current: (10i64 + absolute) as u64,
+            absolute,
+            percent: Some((absolute as f64 / 10.0) * 100.0),
+        }
+    }
+
+    fn sample_score_decomposition_delta(total_absolute: f64) -> ScoreDecompositionComparison {
+        ScoreDecompositionComparison {
+            total_score: numeric_delta_for_test(total_absolute),
+            unique_contact_term: numeric_delta_for_test(0.0),
+            repetition_term: numeric_delta_for_test(0.0),
+            attribute_balance_term: numeric_delta_for_test(0.0),
+            weighted_constraint_total: numeric_delta_for_test(0.0),
+            weighted_constraint_breakdown: WeightedConstraintBreakdownComparison {
+                forbidden_pair: ConstraintFamilyContributionComparison {
+                    weighted_penalty: numeric_delta_for_test(0.0),
+                    raw_violations: integer_delta_for_test(0),
+                },
+                should_stay_together: ConstraintFamilyContributionComparison {
+                    weighted_penalty: numeric_delta_for_test(0.0),
+                    raw_violations: integer_delta_for_test(0),
+                },
+                pair_meeting_count: ConstraintFamilyContributionComparison {
+                    weighted_penalty: numeric_delta_for_test(0.0),
+                    raw_violations: integer_delta_for_test(0),
+                },
+                clique: ConstraintFamilyContributionComparison {
+                    weighted_penalty: numeric_delta_for_test(0.0),
+                    raw_violations: integer_delta_for_test(0),
+                },
+                immovable: ConstraintFamilyContributionComparison {
+                    weighted_penalty: numeric_delta_for_test(0.0),
+                    raw_violations: integer_delta_for_test(0),
+                },
+                residual_weighted_penalty: numeric_delta_for_test(0.0),
+            },
         }
     }
 
@@ -829,5 +966,49 @@ mod tests {
         assert!(suspects.top_quality_regressions[0]
             .summary
             .contains("best score increased by 3.0000"));
+    }
+
+    #[test]
+    fn score_decomposition_is_present_in_case_comparisons_when_available() {
+        let temp = TempDir::new().expect("temp dir");
+        let options = RunnerOptions {
+            artifacts_dir: temp.path().to_path_buf(),
+            cargo_profile: "test".to_string(),
+        };
+        let report = run_suite_from_manifest("suites/path.yaml", &options).expect("run path suite");
+        let baseline_path =
+            save_baseline_snapshot(&report, "path-baseline", &options.artifacts_dir, None)
+                .expect("save baseline");
+        let baseline =
+            crate::runner::load_baseline_snapshot(&baseline_path).expect("load baseline");
+
+        let comparison = compare_run_to_baseline(&report, &baseline);
+        assert!(comparison
+            .case_comparisons
+            .iter()
+            .all(|case| case.score_decomposition.is_some()));
+        assert!(comparison.case_comparisons.iter().all(|case| {
+            case.score_decomposition
+                .as_ref()
+                .is_some_and(|decomposition| decomposition.total_score.absolute.abs() < 1e-9)
+        }));
+    }
+
+    #[test]
+    fn quality_suspects_prefer_decomposition_total_when_available() {
+        let mut comparison = sample_case_comparison();
+        comparison.final_score = Some(NumericDelta {
+            baseline: 186.0,
+            current: 190.0,
+            absolute: 4.0,
+            percent: Some(2.150537634408602),
+        });
+        comparison.score_decomposition = Some(sample_score_decomposition_delta(1.0));
+
+        let suspects = build_suspect_summary(&[comparison]);
+        assert_eq!(suspects.top_quality_regressions.len(), 1);
+        assert!(suspects.top_quality_regressions[0]
+            .summary
+            .contains("decomposition total score increased by 1.0000"));
     }
 }

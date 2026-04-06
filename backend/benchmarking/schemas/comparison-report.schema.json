@@ -54,6 +54,12 @@
           "iteration_count": { "anyOf": [{ "$ref": "#/definitions/integerDelta" }, { "type": "null" }] },
           "stop_reason_baseline": { "type": ["string", "null"] },
           "stop_reason_current": { "type": ["string", "null"] },
+          "score_decomposition": {
+            "anyOf": [
+              { "$ref": "#/definitions/scoreDecompositionComparison" },
+              { "type": "null" }
+            ]
+          },
           "move_family_deltas": { "type": "array", "items": { "type": "object" } }
         }
       }
@@ -102,6 +108,60 @@
         "current": { "type": "integer" },
         "absolute": { "type": "integer" },
         "percent": { "type": ["number", "null"] }
+      }
+    },
+    "constraintFamilyContributionComparison": {
+      "type": "object",
+      "required": ["weighted_penalty", "raw_violations"],
+      "properties": {
+        "weighted_penalty": { "$ref": "#/definitions/numericDelta" },
+        "raw_violations": { "$ref": "#/definitions/integerDelta" }
+      }
+    },
+    "weightedConstraintBreakdownComparison": {
+      "type": "object",
+      "required": [
+        "forbidden_pair",
+        "should_stay_together",
+        "pair_meeting_count",
+        "clique",
+        "immovable",
+        "residual_weighted_penalty"
+      ],
+      "properties": {
+        "forbidden_pair": {
+          "$ref": "#/definitions/constraintFamilyContributionComparison"
+        },
+        "should_stay_together": {
+          "$ref": "#/definitions/constraintFamilyContributionComparison"
+        },
+        "pair_meeting_count": {
+          "$ref": "#/definitions/constraintFamilyContributionComparison"
+        },
+        "clique": { "$ref": "#/definitions/constraintFamilyContributionComparison" },
+        "immovable": { "$ref": "#/definitions/constraintFamilyContributionComparison" },
+        "residual_weighted_penalty": { "$ref": "#/definitions/numericDelta" }
+      }
+    },
+    "scoreDecompositionComparison": {
+      "type": "object",
+      "required": [
+        "total_score",
+        "unique_contact_term",
+        "repetition_term",
+        "attribute_balance_term",
+        "weighted_constraint_total",
+        "weighted_constraint_breakdown"
+      ],
+      "properties": {
+        "total_score": { "$ref": "#/definitions/numericDelta" },
+        "unique_contact_term": { "$ref": "#/definitions/numericDelta" },
+        "repetition_term": { "$ref": "#/definitions/numericDelta" },
+        "attribute_balance_term": { "$ref": "#/definitions/numericDelta" },
+        "weighted_constraint_total": { "$ref": "#/definitions/numericDelta" },
+        "weighted_constraint_breakdown": {
+          "$ref": "#/definitions/weightedConstraintBreakdownComparison"
+        }
       }
     },
     "suspect": {

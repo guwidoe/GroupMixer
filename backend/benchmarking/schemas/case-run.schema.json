@@ -81,6 +81,12 @@
     "unique_contacts": { "type": ["integer", "null"] },
     "weighted_repetition_penalty": { "type": ["number", "null"] },
     "weighted_constraint_penalty": { "type": ["number", "null"] },
+    "score_decomposition": {
+      "anyOf": [
+        { "$ref": "#/definitions/scoreDecomposition" },
+        { "type": "null" }
+      ]
+    },
     "moves": {
       "type": "object",
       "description": "Serialized gm-core MoveFamilyBenchmarkTelemetrySummary"
@@ -323,6 +329,62 @@
             "max_iterations": { "type": ["integer", "null"] },
             "time_limit_seconds": { "type": ["integer", "null"] }
           }
+        }
+      }
+    },
+    "constraintFamilyContribution": {
+      "type": "object",
+      "required": ["weighted_penalty", "raw_violations"],
+      "properties": {
+        "weighted_penalty": { "type": "number" },
+        "raw_violations": { "type": "integer" }
+      }
+    },
+    "weightedConstraintBreakdown": {
+      "type": "object",
+      "required": [
+        "forbidden_pair",
+        "should_stay_together",
+        "pair_meeting_count",
+        "clique",
+        "immovable",
+        "residual_weighted_penalty"
+      ],
+      "properties": {
+        "forbidden_pair": { "$ref": "#/definitions/constraintFamilyContribution" },
+        "should_stay_together": { "$ref": "#/definitions/constraintFamilyContribution" },
+        "pair_meeting_count": { "$ref": "#/definitions/constraintFamilyContribution" },
+        "clique": { "$ref": "#/definitions/constraintFamilyContribution" },
+        "immovable": { "$ref": "#/definitions/constraintFamilyContribution" },
+        "residual_weighted_penalty": { "type": "number" }
+      }
+    },
+    "scoreDecomposition": {
+      "type": "object",
+      "required": [
+        "total_score",
+        "baseline_score",
+        "unique_contacts",
+        "unique_contact_weight",
+        "unique_contact_term",
+        "repetition_penalty",
+        "repetition_term",
+        "attribute_balance_term",
+        "weighted_constraint_total",
+        "weighted_constraint_breakdown"
+      ],
+      "properties": {
+        "total_score": { "type": "number" },
+        "baseline_score": { "type": "number" },
+        "unique_contacts": { "type": "integer" },
+        "unique_contact_weight": { "type": "number" },
+        "unique_contact_term": { "type": "number" },
+        "repetition_penalty": { "type": "integer" },
+        "repetition_term": { "type": "number" },
+        "attribute_balance_term": { "type": "number" },
+        "weighted_constraint_total": { "type": "number" },
+        "weighted_constraint_breakdown": {
+          "$ref": "#/definitions/weightedConstraintBreakdown"
         }
       }
     }
