@@ -1,0 +1,167 @@
+{
+  "name": "Kirkman's Schoolgirl Problem",
+  "demo_metadata": {
+    "id": "kirkman-schoolgirls",
+    "display_name": "Kirkman's Schoolgirl Problem",
+    "description": "Classic 15-schoolgirl / 7-day zero-repeat walking arrangement benchmark.",
+    "category": "Benchmark"
+  },
+  "input": {
+    "initial_schedule": null,
+    "problem": {
+      "people": [
+        {
+          "id": "schoolgirl_01",
+          "attributes": {
+            "name": "Schoolgirl 01"
+          }
+        },
+        {
+          "id": "schoolgirl_02",
+          "attributes": {
+            "name": "Schoolgirl 02"
+          }
+        },
+        {
+          "id": "schoolgirl_03",
+          "attributes": {
+            "name": "Schoolgirl 03"
+          }
+        },
+        {
+          "id": "schoolgirl_04",
+          "attributes": {
+            "name": "Schoolgirl 04"
+          }
+        },
+        {
+          "id": "schoolgirl_05",
+          "attributes": {
+            "name": "Schoolgirl 05"
+          }
+        },
+        {
+          "id": "schoolgirl_06",
+          "attributes": {
+            "name": "Schoolgirl 06"
+          }
+        },
+        {
+          "id": "schoolgirl_07",
+          "attributes": {
+            "name": "Schoolgirl 07"
+          }
+        },
+        {
+          "id": "schoolgirl_08",
+          "attributes": {
+            "name": "Schoolgirl 08"
+          }
+        },
+        {
+          "id": "schoolgirl_09",
+          "attributes": {
+            "name": "Schoolgirl 09"
+          }
+        },
+        {
+          "id": "schoolgirl_10",
+          "attributes": {
+            "name": "Schoolgirl 10"
+          }
+        },
+        {
+          "id": "schoolgirl_11",
+          "attributes": {
+            "name": "Schoolgirl 11"
+          }
+        },
+        {
+          "id": "schoolgirl_12",
+          "attributes": {
+            "name": "Schoolgirl 12"
+          }
+        },
+        {
+          "id": "schoolgirl_13",
+          "attributes": {
+            "name": "Schoolgirl 13"
+          }
+        },
+        {
+          "id": "schoolgirl_14",
+          "attributes": {
+            "name": "Schoolgirl 14"
+          }
+        },
+        {
+          "id": "schoolgirl_15",
+          "attributes": {
+            "name": "Schoolgirl 15"
+          }
+        }
+      ],
+      "groups": [
+        {
+          "id": "row_1",
+          "size": 3
+        },
+        {
+          "id": "row_2",
+          "size": 3
+        },
+        {
+          "id": "row_3",
+          "size": 3
+        },
+        {
+          "id": "row_4",
+          "size": 3
+        },
+        {
+          "id": "row_5",
+          "size": 3
+        }
+      ],
+      "num_sessions": 7
+    },
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "constraints": [
+      {
+        "type": "RepeatEncounter",
+        "max_allowed_encounters": 1,
+        "penalty_function": "squared",
+        "penalty_weight": 10.0
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 1500000,
+        "time_limit_seconds": 10,
+        "no_improvement_iterations": 750000
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 25.0,
+        "final_temperature": 0.001,
+        "cooling_schedule": "geometric"
+      },
+      "logging": {
+        "log_frequency": 0,
+        "log_initial_state": false,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      },
+      "seed": 150507
+    }
+  }
+}

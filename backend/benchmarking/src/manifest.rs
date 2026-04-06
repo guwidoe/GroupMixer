@@ -1180,6 +1180,36 @@ mod tests {
     }
 
     #[test]
+    fn kirkman_schoolgirls_case_and_suite_load_with_explicit_budget() {
+        let case = load_case_manifest(Path::new(
+            "cases/stretch/kirkman_schoolgirls_15x5x7.json",
+        ))
+        .expect("kirkman schoolgirls case should load");
+
+        assert_eq!(case.id, "stretch.kirkman-schoolgirls-15x5x7");
+        assert_eq!(case.class, BenchmarkSuiteClass::Stretch);
+        assert_eq!(case.case_role, BenchmarkCaseRole::Canonical);
+
+        let input = case.input.as_ref().expect("case should embed input");
+        assert_eq!(input.problem.people.len(), 15);
+        assert_eq!(input.problem.groups.len(), 5);
+        assert_eq!(input.problem.num_sessions, 7);
+        assert_eq!(input.constraints.len(), 1);
+
+        let suite = load_suite_manifest(Path::new(
+            "suites/stretch-kirkman-schoolgirls-time.yaml",
+        ))
+        .expect("kirkman schoolgirls suite should load");
+
+        assert_eq!(suite.cases.len(), 1);
+        let suite_case = &suite.cases[0];
+        assert_eq!(suite_case.manifest.id, "stretch.kirkman-schoolgirls-15x5x7");
+        assert_eq!(suite_case.overrides.seed, Some(150507));
+        assert_eq!(suite_case.overrides.max_iterations, Some(1_500_000));
+        assert_eq!(suite_case.overrides.time_limit_seconds, Some(10));
+    }
+
+    #[test]
     fn synthetic_partial_attendance_capacity_solver3_suite_declares_solver3_contract() {
         let suite = load_suite_manifest(Path::new(
             "suites/stretch-partial-attendance-capacity-pressure-time-solver3.yaml",

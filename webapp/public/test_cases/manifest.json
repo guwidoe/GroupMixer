@@ -9,6 +9,7 @@
     "soft_constraints_test.json",
     "hard_constraints_stress_test.json",
     "social_golfer_problem.json",
+    "kirkman_schoolgirls_15x5x7.json",
     "clique_swap_functionality_test.json",
     "session_specific_constraints_test.json",
     "sailing_trip_test.json",
