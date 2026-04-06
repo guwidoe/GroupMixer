@@ -4,7 +4,8 @@ use common::{default_solver_config, make_initial_schedule};
 use gm_core::models::{
     ApiInput, BenchmarkEvent, Constraint, Group, MoveFamily, MovePolicy, Objective,
     PairMeetingCountParams, PairMeetingMode, Person, ProblemDefinition, ProgressCallback,
-    SimulatedAnnealingParams, SolverKind, SolverParams, StopReason,
+    SimulatedAnnealingParams, Solver3CorrectnessLaneParams, Solver3Params, SolverKind,
+    SolverParams, StopReason,
 };
 use gm_core::{
     default_solver_configuration_for, run_solver, run_solver_with_benchmark_observer,
@@ -598,6 +599,41 @@ fn solver3_same_seed_runs_remain_deterministic_after_search_changes() {
     assert_eq!(telemetry_b.moves.transfer.attempts, 0);
     assert_eq!(telemetry_a.moves.clique_swap.attempts, 0);
     assert_eq!(telemetry_b.moves.clique_swap.attempts, 0);
+}
+
+#[cfg(not(feature = "solver3-oracle-checks"))]
+#[test]
+fn solver3_correctness_lane_requires_solver3_oracle_checks_feature() {
+    let mut input = solver3_driver_input();
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        correctness_lane: Solver3CorrectnessLaneParams {
+            enabled: true,
+            sample_every_accepted_moves: 2,
+        },
+    });
+
+    let err = run_solver(&input).expect_err(
+        "solver3 correctness lane should fail when solver3-oracle-checks feature is disabled",
+    );
+    assert!(
+        err.to_string().contains("solver3-oracle-checks"),
+        "unexpected error: {err}"
+    );
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+#[test]
+fn solver3_correctness_lane_runs_with_feature_enabled() {
+    let mut input = solver3_driver_input();
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        correctness_lane: Solver3CorrectnessLaneParams {
+            enabled: true,
+            sample_every_accepted_moves: 1,
+        },
+    });
+
+    let result = run_solver(&input).expect("solver3 correctness-lane run should succeed");
+    assert!(result.benchmark_telemetry.is_some());
 }
 
 #[test]

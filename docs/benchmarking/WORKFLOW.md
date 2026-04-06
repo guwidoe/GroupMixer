@@ -76,9 +76,21 @@ gm-cli benchmark run --manifest backend/benchmarking/suites/hotpath-clique-swap-
 
 `gm-core` exposes `solver3-oracle-checks` as an explicit correctness/debug feature flag.
 
-- Enable it for correctness runs that should execute sampled runtime-vs-oracle drift checks:
-  - `cargo test -p gm-core --features solver3-oracle-checks --test search_driver_regression solver3_same_seed_runs_remain_deterministic_after_search_changes`
-- Leave it disabled for performance benchmark lanes so hotpath timing remains representative:
+The sampled search-loop correctness lane also requires an explicit solver3 setting:
+
+```json
+"solver_params": {
+  "solver_type": "solver3",
+  "correctness_lane": {
+    "enabled": true,
+    "sample_every_accepted_moves": 16
+  }
+}
+```
+
+- Enable the feature + setting for correctness runs that should execute sampled runtime-vs-oracle/invariant checks:
+  - `cargo test -p gm-core --features solver3-oracle-checks --test search_driver_regression solver3_correctness_lane_runs_with_feature_enabled`
+- Keep the setting disabled (default) and leave the feature off for performance benchmark lanes so hotpath timing remains representative:
   - run `gm-cli benchmark ...` normally (no extra `--features`)
 
 Truthfulness notes:

@@ -946,6 +946,13 @@ impl SolverParams {
             Self::Solver2(_) | Self::Solver3(_) => None,
         }
     }
+
+    pub fn solver3_params(&self) -> Option<&Solver3Params> {
+        match self {
+            Self::Solver3(params) => Some(params),
+            Self::SimulatedAnnealing(_) | Self::Solver2(_) => None,
+        }
+    }
 }
 
 /// Parameters for the internal `solver2` family.
@@ -959,10 +966,47 @@ pub struct Solver2Params {}
 /// Parameters for the internal `solver3` family.
 ///
 /// `solver3` is a bootstrap scaffold targeting dense runtime state and patch-based move
-/// kernels. This parameter type is intentionally empty during the bootstrap phase; explicit
-/// tuning knobs will be added as implementation epics land.
+/// kernels. The correctness lane is intentionally opt-in so benchmark and hotpath timing runs
+/// keep representative performance by default.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Default)]
-pub struct Solver3Params {}
+pub struct Solver3Params {
+    /// Correctness-lane controls for sampled runtime validation during real search runs.
+    #[serde(default)]
+    pub correctness_lane: Solver3CorrectnessLaneParams,
+}
+
+/// Opt-in controls for solver3 correctness-lane sampling.
+///
+/// This lane is intended for correctness/debug runs and should stay disabled in performance
+/// benchmark runs.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+pub struct Solver3CorrectnessLaneParams {
+    /// Enables periodic sampled correctness checks during solver3 search.
+    ///
+    /// Note: this requires compiling gm-core with `solver3-oracle-checks`.
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Run sampled correctness checks every N accepted moves.
+    ///
+    /// Values must be >= 1.
+    #[serde(default = "default_solver3_correctness_lane_sample_every_accepted_moves")]
+    pub sample_every_accepted_moves: u64,
+}
+
+impl Default for Solver3CorrectnessLaneParams {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            sample_every_accepted_moves:
+                default_solver3_correctness_lane_sample_every_accepted_moves(),
+        }
+    }
+}
+
+fn default_solver3_correctness_lane_sample_every_accepted_moves() -> u64 {
+    16
+}
 
 /// Parameters specific to the Simulated Annealing algorithm.
 ///

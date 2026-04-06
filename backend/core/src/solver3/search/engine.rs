@@ -4,8 +4,7 @@ use rand::{rng, RngExt, SeedableRng};
 use rand_chacha::ChaCha12Rng;
 
 use crate::models::{
-    BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, MoveFamily,
-    MoveFamilyBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
+    BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, MoveFamily, MovePolicy,
     ProgressCallback, SolverBenchmarkTelemetry, SolverConfiguration, SolverResult, StopReason,
 };
 use crate::solver_support::SolverError;
@@ -17,15 +16,14 @@ use super::super::moves::{
 use super::super::oracle::maybe_cross_check_runtime_state;
 use super::super::oracle::oracle_score;
 use super::super::runtime_state::RuntimeState;
+#[cfg(feature = "solver3-oracle-checks")]
+use super::super::validation::invariants::validate_invariants;
 use super::acceptance::{
     temperature_for_iteration, AcceptanceInputs, SimulatedAnnealingAcceptance,
 };
 use super::candidate_sampling::{CandidateSampler, SearchMovePreview};
 use super::context::{SearchProgressState, SearchRunContext};
 use super::family_selection::MoveFamilySelector;
-
-#[cfg(feature = "solver3-oracle-checks")]
-const ORACLE_DRIFT_SAMPLE_INTERVAL: u64 = 16;
 
 #[derive(Debug, Clone)]
 pub struct SearchEngine {
@@ -108,10 +106,11 @@ impl SearchEngine {
                         acceptance.escaped_local_optimum,
                     );
 
-                    maybe_run_sampled_oracle_check(
+                    maybe_run_sampled_correctness_check(
+                        &run_context,
                         &search.current_state,
+                        search.total_accepted_moves(),
                         family,
-                        family_metrics(&search.move_metrics, family).accepted,
                         &preview,
                     )?;
 
@@ -228,31 +227,28 @@ fn apply_previewed_move(
     }
 }
 
-fn family_metrics(
-    summary: &MoveFamilyBenchmarkTelemetrySummary,
-    family: MoveFamily,
-) -> &MoveFamilyBenchmarkTelemetry {
-    match family {
-        MoveFamily::Swap => &summary.swap,
-        MoveFamily::Transfer => &summary.transfer,
-        MoveFamily::CliqueSwap => &summary.clique_swap,
-    }
-}
-
 #[allow(clippy::too_many_arguments)]
 fn reached_time_limit(started_at: Instant, time_limit_seconds: Option<u64>) -> bool {
     time_limit_seconds.is_some_and(|limit| started_at.elapsed().as_secs() >= limit)
 }
 
-fn maybe_run_sampled_oracle_check(
+fn maybe_run_sampled_correctness_check(
+    run_context: &SearchRunContext,
     state: &RuntimeState,
-    family: MoveFamily,
     accepted_move_count: u64,
+    family: MoveFamily,
     preview: &SearchMovePreview,
 ) -> Result<(), SolverError> {
+    if !run_context.correctness_lane_enabled {
+        return Ok(());
+    }
+
     #[cfg(feature = "solver3-oracle-checks")]
     {
-        if should_sample_oracle_check(accepted_move_count) {
+        if should_sample_correctness_check(
+            accepted_move_count,
+            run_context.correctness_sample_every_accepted_moves,
+        ) {
             let preview_description = preview.describe();
             maybe_cross_check_runtime_state(
                 state,
@@ -261,18 +257,34 @@ fn maybe_run_sampled_oracle_check(
                     family, preview_description
                 ),
             )?;
+            validate_invariants(state).map_err(|error| {
+                SolverError::ValidationError(format!(
+                    "solver3 sampled invariant check failed after accepted {:?} move {}: {}",
+                    family, preview_description, error
+                ))
+            })?;
         }
     }
 
     #[cfg(not(feature = "solver3-oracle-checks"))]
     {
-        let _ = (state, family, accepted_move_count, preview);
+        let _ = (
+            run_context.correctness_sample_every_accepted_moves,
+            run_context.correctness_lane_enabled,
+            state,
+            accepted_move_count,
+            family,
+            preview,
+        );
     }
 
     Ok(())
 }
 
 #[cfg(feature = "solver3-oracle-checks")]
-fn should_sample_oracle_check(accepted_move_count: u64) -> bool {
-    accepted_move_count > 0 && accepted_move_count % ORACLE_DRIFT_SAMPLE_INTERVAL == 0
+fn should_sample_correctness_check(
+    accepted_move_count: u64,
+    sample_every_accepted_moves: u64,
+) -> bool {
+    accepted_move_count > 0 && accepted_move_count % sample_every_accepted_moves == 0
 }

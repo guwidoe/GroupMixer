@@ -19,6 +19,8 @@ pub(crate) struct SearchRunContext {
     pub(crate) no_improvement_limit: Option<u64>,
     pub(crate) time_limit_seconds: Option<u64>,
     pub(crate) allowed_sessions: Vec<usize>,
+    pub(crate) correctness_lane_enabled: bool,
+    pub(crate) correctness_sample_every_accepted_moves: u64,
 }
 
 impl SearchRunContext {
@@ -33,6 +35,31 @@ impl SearchRunContext {
             .unwrap_or_default()
             .normalized()
             .map_err(SolverError::ValidationError)?;
+        let solver3_params = configuration
+            .solver_params
+            .solver3_params()
+            .ok_or_else(|| {
+                SolverError::ValidationError(
+                    "solver3 search received non-solver3 parameters in configuration".into(),
+                )
+            })?;
+        let correctness_lane_enabled = solver3_params.correctness_lane.enabled;
+        let correctness_sample_every_accepted_moves =
+            solver3_params.correctness_lane.sample_every_accepted_moves;
+
+        if correctness_sample_every_accepted_moves == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 correctness_lane.sample_every_accepted_moves must be >= 1".into(),
+            ));
+        }
+
+        #[cfg(not(feature = "solver3-oracle-checks"))]
+        if correctness_lane_enabled {
+            return Err(SolverError::ValidationError(
+                "solver3 correctness lane requires compiling gm-core with feature `solver3-oracle-checks`"
+                    .into(),
+            ));
+        }
 
         Ok(Self {
             effective_seed,
@@ -48,6 +75,8 @@ impl SearchRunContext {
                 .allowed_sessions
                 .clone()
                 .unwrap_or_else(|| (0..state.compiled.num_sessions).collect()),
+            correctness_lane_enabled,
+            correctness_sample_every_accepted_moves,
         })
     }
 }
@@ -176,6 +205,12 @@ impl SearchProgressState {
         self.push_recent_acceptance(accepted);
     }
 
+    pub(crate) fn total_accepted_moves(&self) -> u64 {
+        self.move_metrics.swap.accepted
+            + self.move_metrics.transfer.accepted
+            + self.move_metrics.clique_swap.accepted
+    }
+
     pub(crate) fn finish_iteration(&mut self, iteration: u64) {
         self.iterations_completed = iteration + 1;
     }
@@ -259,7 +294,10 @@ impl SearchProgressState {
                 self.move_metrics.transfer.accepted,
                 self.move_metrics.transfer.attempts,
             ),
-            swap_success_rate: ratio(self.move_metrics.swap.accepted, self.move_metrics.swap.attempts),
+            swap_success_rate: ratio(
+                self.move_metrics.swap.accepted,
+                self.move_metrics.swap.attempts,
+            ),
             score_variance: 0.0,
             search_efficiency: if elapsed_seconds > 0.0 {
                 (self.best_state.total_score - self.current_state.total_score).abs()
@@ -338,8 +376,8 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::models::{
-        ApiInput, Group, Objective, Person, ProblemDefinition, Solver3Params,
-        SolverConfiguration, SolverParams, StopConditions,
+        ApiInput, Group, Objective, Person, ProblemDefinition, Solver3CorrectnessLaneParams,
+        Solver3Params, SolverConfiguration, SolverParams, StopConditions,
     };
 
     use super::{SearchProgressState, SearchRunContext};
@@ -406,6 +444,63 @@ mod tests {
         assert_eq!(context.no_improvement_limit, Some(17));
         assert_eq!(context.time_limit_seconds, Some(9));
         assert_eq!(context.allowed_sessions, vec![0, 1]);
+        assert!(!context.correctness_lane_enabled);
+        assert_eq!(context.correctness_sample_every_accepted_moves, 16);
+    }
+
+    #[test]
+    fn run_context_rejects_zero_correctness_sample_interval() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            correctness_lane: Solver3CorrectnessLaneParams {
+                enabled: false,
+                sample_every_accepted_moves: 0,
+            },
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("correctness_lane.sample_every_accepted_moves"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[cfg(not(feature = "solver3-oracle-checks"))]
+    #[test]
+    fn run_context_rejects_correctness_lane_when_feature_is_disabled() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            correctness_lane: Solver3CorrectnessLaneParams {
+                enabled: true,
+                sample_every_accepted_moves: 2,
+            },
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string().contains("solver3-oracle-checks"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[cfg(feature = "solver3-oracle-checks")]
+    #[test]
+    fn run_context_accepts_correctness_lane_when_feature_is_enabled() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            correctness_lane: Solver3CorrectnessLaneParams {
+                enabled: true,
+                sample_every_accepted_moves: 3,
+            },
+        });
+
+        let context = SearchRunContext::from_solver(&config, &state, 7).unwrap();
+        assert!(context.correctness_lane_enabled);
+        assert_eq!(context.correctness_sample_every_accepted_moves, 3);
     }
 
     #[test]
@@ -424,6 +519,9 @@ mod tests {
         assert_eq!(progress.iterations_completed, 5);
         assert_eq!(progress.no_improvement_count, 0);
         assert_eq!(progress.recent_acceptance.back(), Some(&true));
-        assert_eq!(progress.best_state.total_score, progress.current_state.total_score);
+        assert_eq!(
+            progress.best_state.total_score,
+            progress.current_state.total_score
+        );
     }
 }

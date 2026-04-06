@@ -207,8 +207,8 @@ Implemented feature flag: `solver3-oracle-checks` (in `backend/core/Cargo.toml`)
 
 Intended usage:
 
-- enable for correctness/debug lanes that should sample runtime-vs-oracle drift checks during `solver3` search
-- leave disabled for performance benchmark lanes to avoid oracle recompute overhead in hotpath measurements
+- compile with the feature and set `solver_params.solver3.correctness_lane.enabled=true` for correctness/debug lanes that should sample runtime-vs-oracle/invariant checks during `solver3` search
+- keep `correctness_lane.enabled=false` (default) and leave the feature off for performance benchmark lanes to avoid oracle/invariant recompute overhead in hotpath measurements
 
 Example:
 
