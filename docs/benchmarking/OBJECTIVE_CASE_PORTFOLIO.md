@@ -44,6 +44,12 @@ Budgets are **per-case research parameters**, not one global constant. The v1 ma
 - stretch.medium-multi-session
   - `max_iterations: 20000`
   - `time_limit_seconds: 6`
+- stretch.social-golfer-32x8x10
+  - `max_iterations: 400000`
+  - `time_limit_seconds: 25`
+- stretch.large-gender-immovable-110p
+  - `max_iterations: 100000`
+  - `time_limit_seconds: 12`
 - stretch.sailing-trip-demo-real
   - `max_iterations: 1000000`
   - `time_limit_seconds: 15`

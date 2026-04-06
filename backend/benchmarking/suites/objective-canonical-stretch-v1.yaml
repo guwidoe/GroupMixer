@@ -5,7 +5,7 @@ comparison_category: score_quality
 case_selection_policy: canonical_only
 class: stretch
 title: Objective canonical stretch bundle (v1)
-description: Stretch component of canonical objective suite v1. Includes the exact raw Sailing Trip case under case-native canonical solver policy and explicit per-case budgets.
+description: Stretch component of canonical objective suite v1. Includes the exact raw Sailing Trip case plus additional hard canonical workloads (social-golfer style and heterogeneous large-constraint stress) under explicit per-case budgets.
 cases:
   - manifest: ../cases/stretch/medium_multi_session.json
     case_role: canonical
@@ -16,6 +16,24 @@ cases:
       time_limit_seconds: 6
     max_iterations: 20000
     time_limit_seconds: 6
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: objective_target.stretch.social_golfer_zero_repeat_encounters
+    provenance: converted_from_backend_core_tests_test_cases_social_golfer_problem_json_with_canonical_benchmark_metadata
+    declared_budget:
+      max_iterations: 400000
+      time_limit_seconds: 25
+    max_iterations: 400000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/large_gender_immovable_110p.json
+    case_role: canonical
+    purpose: objective_target.stretch.large_heterogeneous_attribute_balance_and_immovable
+    provenance: converted_from_backend_core_tests_test_cases_benchmark_large_gender_immovable_json_with_canonical_benchmark_metadata
+    declared_budget:
+      max_iterations: 100000
+      time_limit_seconds: 12
+    max_iterations: 100000
+    time_limit_seconds: 12
   - manifest: ../cases/stretch/sailing_trip_demo_real.json
     case_role: canonical
     purpose: objective_target.stretch.real_sailing_trip_raw_case

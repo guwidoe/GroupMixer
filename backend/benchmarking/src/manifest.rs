@@ -820,6 +820,48 @@ mod tests {
     }
 
     #[test]
+    fn objective_canonical_stretch_v1_includes_social_golfer_and_large_heterogeneous_cases() {
+        let suite = load_suite_manifest(Path::new("suites/objective-canonical-stretch-v1.yaml"))
+            .expect("objective stretch v1 suite should load");
+
+        let expected_cases = [
+            (
+                "stretch.social-golfer-32x8x10",
+                "social_golfer_32x8x10.json",
+                "objective_target.stretch.social_golfer_zero_repeat_encounters",
+            ),
+            (
+                "stretch.large-gender-immovable-110p",
+                "large_gender_immovable_110p.json",
+                "objective_target.stretch.large_heterogeneous_attribute_balance_and_immovable",
+            ),
+        ];
+
+        for (case_id, manifest_suffix, purpose) in expected_cases {
+            let case = suite
+                .cases
+                .iter()
+                .find(|case| case.manifest.id == case_id)
+                .unwrap_or_else(|| panic!("stretch objective suite should include {case_id}"));
+
+            assert_eq!(
+                case.manifest.case_role,
+                BenchmarkCaseRole::Canonical,
+                "{case_id} should remain canonical"
+            );
+            assert!(
+                case.overrides.manifest.ends_with(manifest_suffix),
+                "{case_id} should point at {manifest_suffix}"
+            );
+            assert_eq!(
+                case.overrides.purpose.as_deref(),
+                Some(purpose),
+                "{case_id} should expose expected canonical purpose"
+            );
+        }
+    }
+
+    #[test]
     fn hotpath_cases_must_declare_solver_family_explicitly() {
         let temp = TempDir::new().expect("temp dir");
         let case_path = temp.path().join("hotpath-case.json");
