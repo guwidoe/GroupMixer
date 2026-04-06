@@ -8,6 +8,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+pub type ApiSchedule = HashMap<String, HashMap<String, Vec<String>>>;
+
 /// Complete input specification for the optimization solver.
 ///
 /// This is the root structure that contains all information needed to run
@@ -78,8 +80,7 @@ pub struct ApiInput {
     /// initializes the internal state from this schedule instead of a random one.
     /// Format: schedule["session_{i}"][group_id] = [person_ids]
     #[serde(default)]
-    pub initial_schedule:
-        Option<std::collections::HashMap<String, std::collections::HashMap<String, Vec<String>>>>,
+    pub initial_schedule: Option<ApiSchedule>,
     /// Optimization objectives (defaults to empty list if not specified)
     #[serde(default)]
     pub objectives: Vec<Objective>,
