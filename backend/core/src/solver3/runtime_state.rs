@@ -25,6 +25,9 @@ use crate::solver_support::construction::{
     apply_baseline_construction_heuristic, BaselineConstructionContext,
 };
 use crate::solver_support::SolverError;
+use rand::seq::SliceRandom;
+use rand::SeedableRng;
+use rand_chacha::ChaCha12Rng;
 
 use super::compiled_problem::{CompiledProblem, PackedSchedule};
 use super::oracle::maybe_cross_check_runtime_state;
@@ -258,7 +261,234 @@ impl RuntimeState {
         };
 
         apply_baseline_construction_heuristic(&mut construction_context)?;
+        self.normalize_invalid_clique_sessions(&mut schedule, effective_seed)?;
         Ok(schedule)
+    }
+
+    fn normalize_invalid_clique_sessions(
+        &self,
+        schedule: &mut PackedSchedule,
+        effective_seed: u64,
+    ) -> Result<(), SolverError> {
+        for session_idx in 0..self.compiled.num_sessions {
+            if self.session_has_split_active_clique(schedule, session_idx) {
+                self.rebuild_session_with_clique_integrity(schedule, session_idx, effective_seed)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn session_has_split_active_clique(&self, schedule: &PackedSchedule, session_idx: usize) -> bool {
+        let mut person_group = vec![None; self.compiled.num_people];
+        for (group_idx, members) in schedule[session_idx].iter().enumerate() {
+            for &person_idx in members {
+                person_group[person_idx] = Some(group_idx);
+            }
+        }
+
+        self.compiled.cliques.iter().any(|clique| {
+            if let Some(sessions) = &clique.sessions {
+                if !sessions.contains(&session_idx) {
+                    return false;
+                }
+            }
+
+            let active_members: Vec<usize> = clique
+                .members
+                .iter()
+                .copied()
+                .filter(|&member| self.compiled.person_participation[member][session_idx])
+                .collect();
+            if active_members.len() < 2 {
+                return false;
+            }
+
+            let mut groups = active_members
+                .iter()
+                .filter_map(|&member| person_group[member])
+                .collect::<Vec<_>>();
+            groups.sort_unstable();
+            groups.dedup();
+            groups.len() > 1
+        })
+    }
+
+    fn rebuild_session_with_clique_integrity(
+        &self,
+        schedule: &mut PackedSchedule,
+        session_idx: usize,
+        effective_seed: u64,
+    ) -> Result<(), SolverError> {
+        let num_people = self.compiled.num_people;
+        let num_groups = self.compiled.num_groups;
+        let preferred_groups = {
+            let mut preferred = vec![None; num_people];
+            for (group_idx, members) in schedule[session_idx].iter().enumerate() {
+                for &person_idx in members {
+                    preferred[person_idx] = Some(group_idx);
+                }
+            }
+            preferred
+        };
+
+        let mut rebuilt_groups = vec![Vec::new(); num_groups];
+        let mut assigned = vec![false; num_people];
+        let mut group_sizes = vec![0usize; num_groups];
+        let mut rng = ChaCha12Rng::seed_from_u64(
+            effective_seed ^ ((session_idx as u64).wrapping_mul(0x9e3779b97f4a7c15)),
+        );
+
+        for clique in &self.compiled.cliques {
+            if let Some(sessions) = &clique.sessions {
+                if !sessions.contains(&session_idx) {
+                    continue;
+                }
+            }
+
+            let active_members: Vec<usize> = clique
+                .members
+                .iter()
+                .copied()
+                .filter(|&member| self.compiled.person_participation[member][session_idx])
+                .collect();
+            if active_members.len() < 2 {
+                continue;
+            }
+
+            let mut required_group = None;
+            for &member in &active_members {
+                if let Some(group_idx) = self.compiled.immovable_group(session_idx, member) {
+                    match required_group {
+                        Some(existing) if existing != group_idx => {
+                            return Err(SolverError::ValidationError(format!(
+                                "conflicting immovable groups for clique in session {}",
+                                session_idx
+                            )));
+                        }
+                        Some(_) => {}
+                        None => required_group = Some(group_idx),
+                    }
+                }
+            }
+
+            let target_group = if let Some(group_idx) = required_group {
+                group_idx
+            } else {
+                let mut preferred_counts = vec![0usize; num_groups];
+                for &member in &active_members {
+                    if let Some(group_idx) = preferred_groups[member] {
+                        preferred_counts[group_idx] += 1;
+                    }
+                }
+                let mut candidates: Vec<usize> = (0..num_groups).collect();
+                candidates.sort_by(|&left, &right| {
+                    preferred_counts[right]
+                        .cmp(&preferred_counts[left])
+                        .then_with(|| left.cmp(&right))
+                });
+                candidates
+                    .into_iter()
+                    .find(|&group_idx| {
+                        group_sizes[group_idx] + active_members.len()
+                            <= self.compiled.group_capacity(session_idx, group_idx)
+                    })
+                    .ok_or_else(|| {
+                        SolverError::ValidationError(format!(
+                            "no group has room for clique of {} in session {} during solver3 normalization",
+                            active_members.len(),
+                            session_idx
+                        ))
+                    })?
+            };
+
+            if group_sizes[target_group] + active_members.len()
+                > self.compiled.group_capacity(session_idx, target_group)
+            {
+                return Err(SolverError::ValidationError(format!(
+                    "required group '{}' lacks capacity for clique of {} in session {} during solver3 normalization",
+                    self.compiled.display_group(target_group),
+                    active_members.len(),
+                    session_idx
+                )));
+            }
+
+            for member in active_members {
+                if assigned[member] {
+                    continue;
+                }
+                rebuilt_groups[target_group].push(member);
+                group_sizes[target_group] += 1;
+                assigned[member] = true;
+            }
+        }
+
+        for assignment in self
+            .compiled
+            .immovable_assignments
+            .iter()
+            .filter(|assignment| assignment.session_idx == session_idx)
+        {
+            if !self.compiled.person_participation[assignment.person_idx][session_idx]
+                || assigned[assignment.person_idx]
+            {
+                continue;
+            }
+
+            if group_sizes[assignment.group_idx]
+                >= self.compiled.group_capacity(session_idx, assignment.group_idx)
+            {
+                return Err(SolverError::ValidationError(format!(
+                    "group '{}' is full while placing immovable person '{}' in session {} during solver3 normalization",
+                    self.compiled.display_group(assignment.group_idx),
+                    self.compiled.display_person(assignment.person_idx),
+                    session_idx
+                )));
+            }
+
+            rebuilt_groups[assignment.group_idx].push(assignment.person_idx);
+            group_sizes[assignment.group_idx] += 1;
+            assigned[assignment.person_idx] = true;
+        }
+
+        let remaining_people: Vec<usize> = (0..num_people)
+            .filter(|&person_idx| {
+                self.compiled.person_participation[person_idx][session_idx] && !assigned[person_idx]
+            })
+            .collect();
+
+        for person_idx in remaining_people {
+            if let Some(preferred_group) = preferred_groups[person_idx] {
+                if group_sizes[preferred_group]
+                    < self.compiled.group_capacity(session_idx, preferred_group)
+                {
+                    rebuilt_groups[preferred_group].push(person_idx);
+                    group_sizes[preferred_group] += 1;
+                    assigned[person_idx] = true;
+                    continue;
+                }
+            }
+
+            let mut candidates: Vec<usize> = (0..num_groups).collect();
+            candidates.shuffle(&mut rng);
+            let target_group = candidates
+                .into_iter()
+                .find(|&group_idx| {
+                    group_sizes[group_idx] < self.compiled.group_capacity(session_idx, group_idx)
+                })
+                .ok_or_else(|| {
+                    SolverError::ValidationError(format!(
+                        "could not place person '{}' in session {} during solver3 normalization",
+                        self.compiled.display_person(person_idx),
+                        session_idx
+                    ))
+                })?;
+            rebuilt_groups[target_group].push(person_idx);
+            group_sizes[target_group] += 1;
+            assigned[person_idx] = true;
+        }
+
+        schedule[session_idx] = rebuilt_groups;
+        Ok(())
     }
 
     // ------------------------------------------------------------------
