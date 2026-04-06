@@ -151,6 +151,18 @@ Current status: **NO-GO** for objective autoresearch launch. The open blocker is
 
 See `docs/benchmarking/OBJECTIVE_CASE_PORTFOLIO.md` for required metadata and per-case budget policy.
 
+## Correctness edge-case corpus workflow (intertwined constraints)
+
+Run the dedicated correctness corpus when you need focused confidence on intertwined-constraint semantics:
+
+```bash
+gm-cli benchmark run --manifest backend/benchmarking/suites/correctness-edge-intertwined-v1.yaml
+```
+
+This corpus is intentionally separate from canonical objective score-quality evidence. Treat it as a correctness/invariant lane, not objective keep/discard proof.
+
+See `docs/benchmarking/CORRECTNESS_EDGE_CASE_CORPUS.md` for case inventory and provenance back to `backend/core/tests/test_cases/` sources.
+
 ## Baseline workflow
 
 ### Record a baseline before a refactor

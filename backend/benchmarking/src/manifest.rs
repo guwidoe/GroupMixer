@@ -862,6 +862,55 @@ mod tests {
     }
 
     #[test]
+    fn correctness_edge_intertwined_suite_is_distinct_from_canonical_objective_bundle() {
+        let suite = load_suite_manifest(Path::new("suites/correctness-edge-intertwined-v1.yaml"))
+            .expect("correctness edge-case suite should load");
+
+        assert_eq!(suite.manifest.class, BenchmarkSuiteClass::Adversarial);
+        assert_eq!(
+            suite.manifest.comparison_category,
+            BenchmarkComparisonCategory::InvariantOnly
+        );
+        assert_eq!(
+            effective_case_selection_policy(&suite.manifest),
+            BenchmarkCaseSelectionPolicy::AllowNonCanonical
+        );
+        assert!(
+            !suite.cases.is_empty(),
+            "correctness edge-case suite should include at least one case"
+        );
+
+        for case in &suite.cases {
+            assert_eq!(
+                case.overrides.case_role,
+                Some(BenchmarkCaseRole::Canonical),
+                "correctness corpus uses exact curated scenarios for its own benchmark question"
+            );
+            assert!(
+                case.overrides
+                    .purpose
+                    .as_deref()
+                    .is_some_and(|purpose| purpose.starts_with("correctness_edge.")),
+                "{} should declare a correctness-edge purpose",
+                case.manifest.id
+            );
+            assert!(
+                case.overrides
+                    .provenance
+                    .as_deref()
+                    .is_some_and(|provenance| provenance.contains("backend/core/tests/test_cases/")),
+                "{} should document reused core test-case provenance",
+                case.manifest.id
+            );
+            assert!(
+                case.overrides.declared_budget.is_some(),
+                "{} should declare an explicit benchmark budget",
+                case.manifest.id
+            );
+        }
+    }
+
+    #[test]
     fn hotpath_cases_must_declare_solver_family_explicitly() {
         let temp = TempDir::new().expect("temp dir");
         let case_path = temp.path().join("hotpath-case.json");

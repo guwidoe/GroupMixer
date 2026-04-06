@@ -13,6 +13,7 @@ Primary references:
 - `./AUDIT.md`
 - `./BENCHMARK_TRUTHFULNESS_AUDIT.md`
 - `./OBJECTIVE_CASE_PORTFOLIO.md`
+- `./CORRECTNESS_EDGE_CASE_CORPUS.md`
 
 ## What lives here
 
@@ -91,3 +92,12 @@ Important truthfulness note:
 - the canonical objective lane remains blocked on making the exact raw case runnable as itself
 
 See `docs/benchmarking/REAL_SAILING_TRIP_BENCHMARK_PLAN.md`, `docs/benchmarking/BENCHMARK_TRUTHFULNESS_AUDIT.md`, and `docs/benchmarking/OBJECTIVE_CASE_PORTFOLIO.md` for current objective-suite shape, truthfulness boundaries, and rollout status.
+
+## Correctness edge-case corpus
+
+The repo now also includes a dedicated intertwined-constraints correctness corpus:
+
+- suite: `backend/benchmarking/suites/correctness-edge-intertwined-v1.yaml`
+- case manifests under: `backend/benchmarking/cases/adversarial/correctness_*.json`
+
+This corpus is diagnostic for correctness and invariant behavior and is explicitly separate from canonical objective score-quality evidence.

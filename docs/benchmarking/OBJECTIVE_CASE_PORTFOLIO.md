@@ -16,6 +16,16 @@ The current runner enforces one `class` per suite manifest. Because objective re
 
 Together, those three manifests are the canonical objective suite shape for v1.
 
+## Separate correctness/edge-case corpus (non-objective)
+
+The intertwined-constraints correctness corpus is tracked separately under:
+
+- `backend/benchmarking/suites/correctness-edge-intertwined-v1.yaml`
+
+That suite is intentionally documented as a correctness/invariant lane (`comparison_category: invariant_only`) and is **not** part of canonical objective score-quality keep/discard evidence.
+
+See `docs/benchmarking/CORRECTNESS_EDGE_CASE_CORPUS.md` for corpus inventory, reused test-case provenance, and run guidance.
+
 ## Required metadata for canonical objective entries
 
 For every case entry in the v1 objective manifests, the following metadata is required and must be checked in:

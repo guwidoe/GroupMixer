@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "id": "adversarial.correctness-hard-constraints-stress",
+  "class": "adversarial",
+  "case_role": "canonical",
+  "tags": [
+    "correctness-corpus",
+    "edge-case",
+    "intertwined",
+    "must-stay",
+    "should-not",
+    "immovable"
+  ],
+  "title": "Correctness hard-constraints stress",
+  "description": "Intertwined MustStayTogether, ShouldNotBeTogether, and ImmovablePerson constraints on a dense multi-session schedule.",
+  "purpose": "correctness_edge.intertwined.must_should_not_immovable",
+  "provenance": "reused_from_backend/core/tests/test_cases/hard_constraints_stress_test.json",
+  "input": {
+    "problem": {
+      "people": [
+        {
+          "id": "p0",
+          "attributes": {}
+        },
+        {
+          "id": "p1",
+          "attributes": {}
+        },
+        {
+          "id": "p2",
+          "attributes": {}
+        },
+        {
+          "id": "p3",
+          "attributes": {}
+        },
+        {
+          "id": "p4",
+          "attributes": {}
+        },
+        {
+          "id": "p5",
+          "attributes": {}
+        },
+        {
+          "id": "p6",
+          "attributes": {}
+        },
+        {
+          "id": "p7",
+          "attributes": {}
+        },
+        {
+          "id": "p8",
+          "attributes": {}
+        },
+        {
+          "id": "p9",
+          "attributes": {}
+        },
+        {
+          "id": "p10",
+          "attributes": {}
+        },
+        {
+          "id": "p11",
+          "attributes": {}
+        }
+      ],
+      "groups": [
+        {
+          "id": "g0",
+          "size": 6
+        },
+        {
+          "id": "g1",
+          "size": 6
+        }
+      ],
+      "num_sessions": 3
+    },
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "constraints": [
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "p0",
+          "p1"
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "p2",
+          "p3"
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "p4",
+          "p5"
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "p0",
+          "p6"
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "p2",
+          "p7"
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "p4",
+          "p8"
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "p6",
+          "p7"
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "p9",
+        "group_id": "g0",
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "p10",
+        "group_id": "g1",
+        "sessions": [
+          1,
+          2
+        ]
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 10000
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 1.0,
+        "final_temperature": 0.0001,
+        "cooling_schedule": "geometric"
+      },
+      "logging": {
+        "log_frequency": 0,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      }
+    }
+  }
+}

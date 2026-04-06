@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "id": "adversarial.correctness-late-arrivals-early-departures",
+  "class": "adversarial",
+  "case_role": "canonical",
+  "tags": [
+    "correctness-corpus",
+    "edge-case",
+    "intertwined",
+    "partial-attendance",
+    "session-scoped",
+    "immovable"
+  ],
+  "title": "Correctness late arrivals and early departures",
+  "description": "Partial participation plus session-scoped pairing pressure and immovable anchors across three sessions.",
+  "purpose": "correctness_edge.intertwined.partial_participation_session_scoping",
+  "provenance": "reused_from_backend/core/tests/test_cases/late_arrivals_early_departures_test.json",
+  "input": {
+    "problem": {
+      "people": [
+        {
+          "id": "alice",
+          "attributes": {}
+        },
+        {
+          "id": "bob",
+          "attributes": {}
+        },
+        {
+          "id": "charlie",
+          "attributes": {}
+        },
+        {
+          "id": "diana",
+          "attributes": {}
+        },
+        {
+          "id": "eve",
+          "attributes": {},
+          "sessions": [
+            1,
+            2
+          ]
+        },
+        {
+          "id": "frank",
+          "attributes": {},
+          "sessions": [
+            0,
+            1
+          ]
+        },
+        {
+          "id": "grace",
+          "attributes": {},
+          "sessions": [
+            1
+          ]
+        },
+        {
+          "id": "henry",
+          "attributes": {}
+        }
+      ],
+      "groups": [
+        {
+          "id": "team1",
+          "size": 4
+        },
+        {
+          "id": "team2",
+          "size": 4
+        }
+      ],
+      "num_sessions": 3
+    },
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "constraints": [
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "alice",
+          "bob"
+        ],
+        "penalty_weight": 1000.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "charlie",
+          "diana"
+        ],
+        "penalty_weight": 1000.0,
+        "sessions": [
+          0,
+          2
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "henry",
+        "group_id": "team1",
+        "sessions": [
+          0,
+          1,
+          2
+        ]
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 100000
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 1.0,
+        "final_temperature": 0.001,
+        "cooling_schedule": "geometric"
+      },
+      "logging": {
+        "log_frequency": 0,
+        "log_initial_state": false,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      }
+    }
+  }
+}

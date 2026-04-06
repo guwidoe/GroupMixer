@@ -118,6 +118,14 @@ Canonical objective suite v1 is represented by the three manifests documented in
 
 For objective autoresearch, the full canonical objective bundle must run every experiment. Running only one manifest is a diagnostic shortcut, not objective-lane keep/discard evidence.
 
+### Correctness edge-case corpus policy
+
+The intertwined-constraints correctness corpus is a separate suite:
+
+- `backend/benchmarking/suites/correctness-edge-intertwined-v1.yaml`
+
+It is intentionally configured for correctness/invariant interpretation (`comparison_category: invariant_only`) and is not part of the canonical objective score-quality bundle.
+
 ## Directory layout
 
 ```text
