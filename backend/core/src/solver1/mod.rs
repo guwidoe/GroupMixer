@@ -27,7 +27,6 @@ use constraint_index::ResolvedAttributeBalanceConstraint;
 use dsu::Dsu;
 use std::collections::HashMap;
 
-pub(crate) const CONSTRUCTION_SEED_SALT: u64 = 0x6a09e667f3bcc909;
 pub(crate) const SEARCH_SEED_SALT: u64 = 0xbb67ae8584caa73b;
 
 pub(crate) fn derive_phase_seed(base_seed: u64, salt: u64) -> u64 {

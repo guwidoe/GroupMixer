@@ -9,7 +9,8 @@ use super::{
 };
 use crate::models::{ApiInput, Constraint, PairMeetingMode};
 use crate::solver_support::construction::{
-    apply_initial_schedule_warm_start, apply_solver1_baseline_construction_heuristic,
+    apply_baseline_construction_heuristic, apply_initial_schedule_warm_start,
+    BaselineConstructionContext,
 };
 use rand::{rng, RngExt};
 use std::collections::HashMap;
@@ -405,8 +406,26 @@ impl State {
         state._preprocess_and_validate_constraints(input)?;
         state.build_attribute_balance_constraint_indexes()?;
 
-        apply_initial_schedule_warm_start(&mut state, input)?;
-        apply_solver1_baseline_construction_heuristic(&mut state)?;
+        let mut construction_context = BaselineConstructionContext {
+            effective_seed: state.effective_seed,
+            num_sessions,
+            group_id_to_idx: &state.group_id_to_idx,
+            group_idx_to_id: &state.group_idx_to_id,
+            person_id_to_idx: &state.person_id_to_idx,
+            person_idx_to_id: &state.person_idx_to_id,
+            attr_key_to_idx: &state.attr_key_to_idx,
+            person_attributes: &state.person_attributes,
+            attr_idx_to_val: &state.attr_idx_to_val,
+            effective_group_capacities: &state.effective_group_capacities,
+            person_participation: &state.person_participation,
+            immovable_people: &state.immovable_people,
+            cliques: &state.cliques,
+            clique_sessions: &state.clique_sessions,
+            schedule: &mut state.schedule,
+        };
+
+        apply_initial_schedule_warm_start(&mut construction_context, input)?;
+        apply_baseline_construction_heuristic(&mut construction_context)?;
 
         state._recalculate_locations_from_schedule();
         state._recalculate_scores();
