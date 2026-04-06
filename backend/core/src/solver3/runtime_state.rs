@@ -21,11 +21,16 @@ use std::sync::Arc;
 use std::collections::HashMap;
 
 use crate::models::ApiInput;
+use crate::solver_support::construction::{
+    apply_baseline_construction_heuristic, BaselineConstructionContext,
+};
 use crate::solver_support::SolverError;
 
-use super::compiled_problem::CompiledProblem;
+use super::compiled_problem::{CompiledProblem, PackedSchedule};
 use super::oracle::maybe_cross_check_runtime_state;
 use super::scoring::recompute::recompute_oracle_score;
+
+const DEFAULT_BASELINE_CONSTRUCTION_SEED: u64 = 42;
 
 // ---------------------------------------------------------------------------
 // RuntimeState
@@ -75,23 +80,28 @@ impl RuntimeState {
     ///
     /// 1. Compiles the `CompiledProblem`.
     /// 2. Seeds the schedule from `initial_schedule` if present.
-    /// 3. Places cliques, immovable people, and remaining participants deterministically.
+    /// 3. Applies the shared baseline construction heuristic (seeded) to fill remaining slots.
     /// 4. Builds flat derived arrays.
     /// 5. Runs the oracle to set initial score aggregates.
     ///
-    /// Honest relationship note:
-    /// - this constructor currently owns solver3 baseline placement semantics directly
-    /// - it does **not** call `solver_support::construction::apply_solver1_baseline_construction_heuristic`
-    ///
-    /// That gap is explicit so solver3 does not silently diverge while claiming shared
-    /// constructor behavior.
     pub fn from_input(input: &ApiInput) -> Result<Self, SolverError> {
         let compiled = Arc::new(CompiledProblem::compile(input)?);
-        Self::from_compiled(compiled)
+        let effective_seed = input
+            .solver
+            .seed
+            .unwrap_or(DEFAULT_BASELINE_CONSTRUCTION_SEED);
+        Self::from_compiled_with_seed(compiled, effective_seed)
     }
 
     /// Builds a `RuntimeState` from a pre-compiled problem.
     pub fn from_compiled(compiled: Arc<CompiledProblem>) -> Result<Self, SolverError> {
+        Self::from_compiled_with_seed(compiled, DEFAULT_BASELINE_CONSTRUCTION_SEED)
+    }
+
+    fn from_compiled_with_seed(
+        compiled: Arc<CompiledProblem>,
+        effective_seed: u64,
+    ) -> Result<Self, SolverError> {
         let np = compiled.num_people;
         let ng = compiled.num_groups;
         let ns = compiled.num_sessions;
@@ -116,7 +126,7 @@ impl RuntimeState {
             total_score: 0.0,
         };
 
-        state.initialize_from_schedule()?;
+        state.initialize_from_schedule(effective_seed)?;
         state.rebuild_pair_contacts();
         state.sync_score_from_oracle()?;
         Ok(state)
@@ -136,20 +146,6 @@ impl RuntimeState {
     #[inline]
     pub fn group_slot(&self, session_idx: usize, group_idx: usize) -> usize {
         session_idx * self.compiled.num_groups + group_idx
-    }
-
-    // ------------------------------------------------------------------
-    // Capacity helpers
-    // ------------------------------------------------------------------
-
-    #[inline]
-    fn available_capacity(&self, session_idx: usize, group_idx: usize) -> usize {
-        let cap = self.compiled.group_capacity(session_idx, group_idx);
-        cap.saturating_sub(self.group_sizes[self.group_slot(session_idx, group_idx)])
-    }
-
-    fn first_group_with_capacity(&self, session_idx: usize, required: usize) -> Option<usize> {
-        (0..self.compiled.num_groups).find(|&g| self.available_capacity(session_idx, g) >= required)
     }
 
     // ------------------------------------------------------------------
@@ -196,162 +192,73 @@ impl RuntimeState {
     // Deterministic initialization
     // ------------------------------------------------------------------
 
-    fn initialize_from_schedule(&mut self) -> Result<(), SolverError> {
-        // Seed from initial_schedule if provided.
-        if let Some(sched) = self.compiled.compiled_initial_schedule.clone() {
-            for (sidx, groups) in sched.iter().enumerate() {
-                for (gidx, members) in groups.iter().enumerate() {
-                    for &pidx in members {
-                        self.place_person(sidx, gidx, pidx)?;
-                    }
+    fn initialize_from_schedule(&mut self, effective_seed: u64) -> Result<(), SolverError> {
+        let schedule = self.build_baseline_schedule(effective_seed)?;
+
+        for (sidx, groups) in schedule.iter().enumerate() {
+            for (gidx, members) in groups.iter().enumerate() {
+                for &pidx in members {
+                    self.place_person(sidx, gidx, pidx)?;
                 }
-            }
-        }
-
-        // Fill remaining slots deterministically.
-        for sidx in 0..self.compiled.num_sessions {
-            self.place_cliques_for_session(sidx)?;
-            self.place_immovable_for_session(sidx)?;
-            self.place_remaining_for_session(sidx)?;
-        }
-
-        Ok(())
-    }
-
-    fn place_cliques_for_session(&mut self, session_idx: usize) -> Result<(), SolverError> {
-        let cliques = self.compiled.cliques.clone();
-        for clique in &cliques {
-            let active = match &clique.sessions {
-                Some(sessions) => sessions.contains(&session_idx),
-                None => true,
-            };
-            if !active {
-                continue;
-            }
-
-            let participating = clique
-                .members
-                .iter()
-                .copied()
-                .filter(|&m| self.compiled.person_participation[m][session_idx])
-                .collect::<Vec<_>>();
-            if participating.len() < 2 {
-                continue;
-            }
-
-            // Find groups already assigned to any member.
-            let mut assigned_groups = participating
-                .iter()
-                .filter_map(|&m| self.person_location[self.people_slot(session_idx, m)])
-                .collect::<Vec<_>>();
-            assigned_groups.sort_unstable();
-            assigned_groups.dedup();
-
-            let unplaced: Vec<usize> = participating
-                .iter()
-                .copied()
-                .filter(|&m| self.person_location[self.people_slot(session_idx, m)].is_none())
-                .collect();
-
-            if unplaced.is_empty() {
-                continue;
-            }
-
-            let target_group = if assigned_groups.len() == 1 {
-                // Existing members are in one group — place the rest there.
-                assigned_groups[0]
-            } else if assigned_groups.len() > 1 {
-                // Split across multiple groups — skip; validation will catch this.
-                continue;
-            } else {
-                // No member placed yet — find a suitable group.
-                let required = unplaced.len();
-
-                // Prefer a group that has an immovable assignment for any member.
-                let immovable_group = participating
-                    .iter()
-                    .find_map(|&m| self.compiled.immovable_group(session_idx, m));
-
-                if let Some(gidx) = immovable_group {
-                    let avail = self.available_capacity(session_idx, gidx);
-                    if avail < required {
-                        return Err(SolverError::ValidationError(format!(
-                            "cannot place clique of {} into required group '{}' in session {} (capacity {})",
-                            required,
-                            self.compiled.display_group(gidx),
-                            session_idx,
-                            avail
-                        )));
-                    }
-                    gidx
-                } else {
-                    self.first_group_with_capacity(session_idx, required)
-                        .ok_or_else(|| {
-                            SolverError::ValidationError(format!(
-                                "no group has room for a clique of {} in session {}",
-                                required, session_idx
-                            ))
-                        })?
-                }
-            };
-
-            if self.available_capacity(session_idx, target_group) < unplaced.len() {
-                continue;
-            }
-
-            for pidx in unplaced {
-                self.place_person(session_idx, target_group, pidx)?;
             }
         }
 
         Ok(())
     }
 
-    fn place_immovable_for_session(&mut self, session_idx: usize) -> Result<(), SolverError> {
-        let assignments = self
+    fn build_baseline_schedule(&self, effective_seed: u64) -> Result<PackedSchedule, SolverError> {
+        let mut schedule = self
             .compiled
-            .immovable_assignments
+            .compiled_initial_schedule
+            .clone()
+            .unwrap_or_else(|| {
+                vec![vec![Vec::new(); self.compiled.num_groups]; self.compiled.num_sessions]
+            });
+
+        let cliques = self
+            .compiled
+            .cliques
             .iter()
-            .filter(|a| a.session_idx == session_idx)
-            .cloned()
+            .map(|clique| clique.members.clone())
+            .collect::<Vec<_>>();
+        let clique_sessions = self
+            .compiled
+            .cliques
+            .iter()
+            .map(|clique| clique.sessions.clone())
+            .collect::<Vec<_>>();
+        let person_attributes = self
+            .compiled
+            .person_attribute_value_indices
+            .iter()
+            .map(|attrs| {
+                attrs
+                    .iter()
+                    .map(|value_idx| value_idx.unwrap_or(usize::MAX))
+                    .collect::<Vec<_>>()
+            })
             .collect::<Vec<_>>();
 
-        for a in assignments {
-            if !self.compiled.person_participation[a.person_idx][session_idx] {
-                continue;
-            }
-            let ps = self.people_slot(session_idx, a.person_idx);
-            if self.person_location[ps].is_some() {
-                continue;
-            }
-            self.place_person(session_idx, a.group_idx, a.person_idx)?;
-        }
+        let mut construction_context = BaselineConstructionContext {
+            effective_seed,
+            num_sessions: self.compiled.num_sessions,
+            group_id_to_idx: &self.compiled.group_id_to_idx,
+            group_idx_to_id: &self.compiled.group_idx_to_id,
+            person_id_to_idx: &self.compiled.person_id_to_idx,
+            person_idx_to_id: &self.compiled.person_idx_to_id,
+            attr_key_to_idx: &self.compiled.attr_key_to_idx,
+            person_attributes: &person_attributes,
+            attr_idx_to_val: &self.compiled.attr_idx_to_val,
+            effective_group_capacities: &self.compiled.effective_group_capacities,
+            person_participation: &self.compiled.person_participation,
+            immovable_people: &self.compiled.immovable_lookup,
+            cliques: &cliques,
+            clique_sessions: &clique_sessions,
+            schedule: &mut schedule,
+        };
 
-        Ok(())
-    }
-
-    fn place_remaining_for_session(&mut self, session_idx: usize) -> Result<(), SolverError> {
-        for pidx in 0..self.compiled.num_people {
-            if !self.compiled.person_participation[pidx][session_idx] {
-                continue;
-            }
-            let ps = self.people_slot(session_idx, pidx);
-            if self.person_location[ps].is_some() {
-                continue;
-            }
-            let gidx = self
-                .first_group_with_capacity(session_idx, 1)
-                .ok_or_else(|| {
-                    SolverError::ValidationError(format!(
-                        "no capacity remaining for person '{}' in session {}",
-                        self.compiled.display_person(pidx),
-                        session_idx
-                    ))
-                })?;
-            self.place_person(session_idx, gidx, pidx)?;
-        }
-
-        Ok(())
+        apply_baseline_construction_heuristic(&mut construction_context)?;
+        Ok(schedule)
     }
 
     // ------------------------------------------------------------------

@@ -820,6 +820,48 @@ mod tests {
     }
 
     #[test]
+    fn solver3_canonical_sailing_trip_suites_target_raw_case_without_helper_substitution() {
+        let suite_paths = [
+            "suites/stretch-sailing-trip-demo-time-solver3-canonical.yaml",
+            "suites/stretch-sailing-trip-demo-iterations-solver3-canonical.yaml",
+        ];
+
+        for suite_path in suite_paths {
+            let suite = load_suite_manifest(Path::new(suite_path))
+                .unwrap_or_else(|err| panic!("{suite_path} should load: {err}"));
+
+            assert_eq!(
+                effective_case_selection_policy(&suite.manifest),
+                BenchmarkCaseSelectionPolicy::CanonicalOnly,
+                "{suite_path} should enforce canonical-only case selection"
+            );
+
+            let sailing_case = suite
+                .cases
+                .iter()
+                .find(|case| case.manifest.id == "stretch.sailing-trip-demo-real")
+                .unwrap_or_else(|| panic!("{suite_path} should include raw sailing case"));
+
+            assert_eq!(
+                sailing_case.manifest.case_role,
+                BenchmarkCaseRole::Canonical,
+                "{suite_path} should classify sailing case as canonical"
+            );
+            assert!(
+                sailing_case
+                    .overrides
+                    .manifest
+                    .ends_with("sailing_trip_demo_real.json"),
+                "{suite_path} should point at raw sailing case manifest"
+            );
+            assert!(
+                !sailing_case.overrides.manifest.contains("benchmark_start"),
+                "{suite_path} must not substitute helper benchmark-start case"
+            );
+        }
+    }
+
+    #[test]
     fn objective_canonical_stretch_v1_includes_social_golfer_and_large_heterogeneous_cases() {
         let suite = load_suite_manifest(Path::new("suites/objective-canonical-stretch-v1.yaml"))
             .expect("objective stretch v1 suite should load");

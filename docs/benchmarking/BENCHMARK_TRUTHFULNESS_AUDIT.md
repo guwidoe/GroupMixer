@@ -83,19 +83,24 @@ These suites are still useful, but should not be treated as a canonical objectiv
 These suites currently use the helper benchmark-start case for the main run:
 
 - `backend/benchmarking/suites/stretch-sailing-trip-demo-time-solver1-canonical.yaml`
-- `backend/benchmarking/suites/stretch-sailing-trip-demo-time-solver3-canonical.yaml`
 - `backend/benchmarking/suites/stretch-sailing-trip-demo-time-solver1-tuned.yaml`
 - `backend/benchmarking/suites/stretch-sailing-trip-demo-time-solver3-tuned.yaml`
 - `backend/benchmarking/suites/stretch-sailing-trip-demo-iterations-solver1-canonical.yaml`
-- `backend/benchmarking/suites/stretch-sailing-trip-demo-iterations-solver3-canonical.yaml`
 - `backend/benchmarking/suites/stretch-sailing-trip-demo-iterations-solver1-tuned.yaml`
 - `backend/benchmarking/suites/stretch-sailing-trip-demo-iterations-solver3-tuned.yaml`
 
 Current classification:
 
 - role: **diagnostic comparative suites**
-- status: **blocked from canonical objective-suite use** until `TODO-698000aa` is complete
+- status: helper-only for shared-start comparison questions
 - reason: they answer a shared-start-state comparison question, not the exact raw-case objective target question
+
+### Raw-case canonical real-demo full-solve suites
+
+These suites now run the exact raw Sailing Trip case directly and are canonical-safe for that benchmark question:
+
+- `backend/benchmarking/suites/stretch-sailing-trip-demo-time-solver3-canonical.yaml`
+- `backend/benchmarking/suites/stretch-sailing-trip-demo-iterations-solver3-canonical.yaml`
 
 ### Hotpath suites
 
@@ -117,18 +122,18 @@ Before runner enforcement lands, contributors should follow this manual rule set
 
 1. `sailing_trip_demo_real.json` is the canonical real-demo target case.
 2. `sailing_trip_demo_real_benchmark_start.json` is helper-only.
-3. the current Sailing Trip full-solve suites are comparative/helper suites, not canonical objective suites.
+3. solver3 `*-canonical` Sailing Trip suites are raw-case canonical suites; helper-start suites remain comparative-only.
 4. `sailing_trip_feature_dense.json` remains a derived stretch workload, not the real demo target.
 5. hotpath/path fixtures are never to be presented as objective target answers.
 
 ## Immediate blocked claims
 
-Until the truthfulness-enforcement work is complete, the repo should **not** claim that the checked-in Sailing Trip full-solve suites are the canonical objective benchmark for solver-quality research.
+Until the truthfulness-enforcement work is complete, the repo should avoid blanket claims and distinguish raw-case canonical suites from helper-start comparative suites.
 
-Those suites remain useful for:
+Helper-start suites remain useful for:
 
 - same-start-state comparison
 - search-policy comparison
 - controlled comparative diagnostics
 
-But they are blocked from the future canonical objective autoresearch lane until the exact raw-case path is genuinely runnable as itself.
+Canonical objective claims for the real Sailing Trip workload should point to raw-case suites/manifests.

@@ -2,7 +2,7 @@ schema_version: 1
 suite_id: stretch-sailing-trip-demo-iterations-solver3-canonical
 benchmark_mode: full_solve
 comparison_category: score_quality
-case_selection_policy: allow_non_canonical
+case_selection_policy: canonical_only
 class: stretch
 title: Real Sailing Trip demo 1M-iteration benchmark for solver3 canonical policy
 description: Exact Sailing Trip demo workload under a 1,000,000 iteration budget using
@@ -22,5 +22,5 @@ default_solver:
   move_policy: null
   allowed_sessions: null
 cases:
-- manifest: ../cases/stretch/sailing_trip_demo_real_benchmark_start.json
+- manifest: ../cases/stretch/sailing_trip_demo_real.json
 default_max_iterations: 1000000

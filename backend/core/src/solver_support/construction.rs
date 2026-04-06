@@ -176,14 +176,14 @@ pub(crate) fn apply_baseline_construction_heuristic(
 
     for (day, day_schedule) in context.schedule.iter_mut().enumerate() {
         let mut group_cursors = vec![0; group_count];
-        let mut assigned_in_day = vec![false; people_count];
+        let mut person_group_assignments = vec![None::<usize>; people_count];
 
         // Warm-start aware: mark already placed people and count existing occupants
         for (g_idx, members) in day_schedule.iter().enumerate() {
             group_cursors[g_idx] = members.len();
             for &p in members {
                 if p < people_count {
-                    assigned_in_day[p] = true;
+                    person_group_assignments[p] = Some(g_idx);
                 }
             }
         }
@@ -200,9 +200,9 @@ pub(crate) fn apply_baseline_construction_heuristic(
             .filter(|((_, s_idx), _)| *s_idx == day)
             .map(|((p_idx, _), g_idx)| (*p_idx, *g_idx))
         {
-            if assigned_in_day[person_idx] {
+            if person_group_assignments[person_idx].is_some() {
                 continue;
-            } // Already placed as part of a clique
+            } // Already warm-started
 
             let group_size = context.effective_group_capacities[day * group_count + group_idx];
             if group_cursors[group_idx] >= group_size {
@@ -214,26 +214,11 @@ pub(crate) fn apply_baseline_construction_heuristic(
 
             day_schedule[group_idx].push(person_idx);
             group_cursors[group_idx] += 1;
-            assigned_in_day[person_idx] = true;
+            person_group_assignments[person_idx] = Some(group_idx);
         }
 
         // --- Step 2: Place cliques as units ---
         for (clique_idx, clique) in context.cliques.iter().enumerate() {
-            // Check if any member of the clique is already assigned in this day
-            if clique.iter().any(|&member| assigned_in_day[member]) {
-                continue;
-            }
-
-            // Check if all clique members are participating in this session
-            let all_participating = clique
-                .iter()
-                .all(|&member| context.person_participation[member][day]);
-
-            if !all_participating {
-                // Some clique members not participating - handle individual placement
-                continue;
-            }
-
             // Check if this clique applies to this session (session-aware initialization)
             if let Some(ref sessions) = context.clique_sessions[clique_idx] {
                 if !sessions.contains(&day) {
@@ -241,41 +226,90 @@ pub(crate) fn apply_baseline_construction_heuristic(
                 }
             }
 
-            // Find a group with enough space for the entire clique
-            let mut placed = false;
-            let mut potential_groups: Vec<usize> = (0..group_count).collect();
-            potential_groups.shuffle(&mut rng);
+            // Keep only participating members for this day.
+            let active_members: Vec<usize> = clique
+                .iter()
+                .copied()
+                .filter(|&member| context.person_participation[member][day])
+                .collect();
 
-            for group_idx in potential_groups {
-                let group_size = context.effective_group_capacities[day * group_count + group_idx];
-                let available_space = group_size - group_cursors[group_idx];
-
-                if available_space >= clique.len() {
-                    // Place the entire clique in this group
-                    for &member in clique {
-                        day_schedule[group_idx].push(member);
-                        assigned_in_day[member] = true;
-                    }
-                    group_cursors[group_idx] += clique.len();
-                    placed = true;
-                    break;
-                }
+            // Clique constraints only matter when 2+ members are active.
+            if active_members.len() < 2 {
+                continue;
             }
 
-            if !placed {
+            let mut already_assigned_groups = active_members
+                .iter()
+                .filter_map(|&member| person_group_assignments[member])
+                .collect::<Vec<_>>();
+            already_assigned_groups.sort_unstable();
+            already_assigned_groups.dedup();
+
+            if already_assigned_groups.len() > 1 {
                 return Err(SolverError::ValidationError(format!(
-                    "Could not place clique {} (size {}) in any group for day {}",
-                    clique_idx,
-                    clique.len(),
-                    day
+                    "Could not place clique {} in day {}: members already split across groups",
+                    clique_idx, day
                 )));
+            }
+
+            let unassigned_members: Vec<usize> = active_members
+                .iter()
+                .copied()
+                .filter(|&member| person_group_assignments[member].is_none())
+                .collect();
+            if unassigned_members.is_empty() {
+                continue;
+            }
+
+            let target_group = if let Some(group_idx) = already_assigned_groups.first().copied() {
+                group_idx
+            } else {
+                // Find any group with enough room for the entire active clique.
+                let mut potential_groups: Vec<usize> = (0..group_count).collect();
+                potential_groups.shuffle(&mut rng);
+
+                let Some(group_idx) = potential_groups.into_iter().find(|&candidate| {
+                    let group_size =
+                        context.effective_group_capacities[day * group_count + candidate];
+                    let available_space = group_size - group_cursors[candidate];
+                    available_space >= active_members.len()
+                }) else {
+                    return Err(SolverError::ValidationError(format!(
+                        "Could not place clique {} (size {}) in any group for day {}",
+                        clique_idx,
+                        active_members.len(),
+                        day
+                    )));
+                };
+
+                group_idx
+            };
+
+            let target_group_size =
+                context.effective_group_capacities[day * group_count + target_group];
+            let target_available = target_group_size - group_cursors[target_group];
+            if target_available < unassigned_members.len() {
+                return Err(SolverError::ValidationError(format!(
+                    "Could not place clique {} in day {}: group {} lacks capacity (need {}, have {})",
+                    clique_idx,
+                    day,
+                    context.group_idx_to_id[target_group],
+                    unassigned_members.len(),
+                    target_available
+                )));
+            }
+
+            for member in unassigned_members {
+                day_schedule[target_group].push(member);
+                person_group_assignments[member] = Some(target_group);
+                group_cursors[target_group] += 1;
             }
         }
 
         // --- Step 3: Place remaining unassigned participating people ---
         let unassigned_people: Vec<usize> = participating_people
             .iter()
-            .filter(|&&person_idx| !assigned_in_day[person_idx])
+            .filter(|&&person_idx| person_group_assignments[person_idx].is_none())
             .cloned()
             .collect();
 
@@ -288,6 +322,7 @@ pub(crate) fn apply_baseline_construction_heuristic(
                 if group_cursors[group_idx] < group_size {
                     day_schedule[group_idx].push(person_idx);
                     group_cursors[group_idx] += 1;
+                    person_group_assignments[person_idx] = Some(group_idx);
                     placed = true;
                     break;
                 }

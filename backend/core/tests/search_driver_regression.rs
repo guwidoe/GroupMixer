@@ -11,8 +11,14 @@ use gm_core::{
     default_solver_configuration_for, run_solver, run_solver_with_benchmark_observer,
     run_solver_with_callbacks, run_solver_with_progress,
 };
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+
+#[derive(Debug, Deserialize)]
+struct BenchmarkCaseInputEnvelope {
+    input: ApiInput,
+}
 
 fn person(id: &str) -> Person {
     Person {
@@ -96,6 +102,21 @@ fn solver3_driver_input() -> ApiInput {
     });
     input.solver = solver;
     input
+}
+
+fn solver3_raw_sailing_trip_input() -> ApiInput {
+    let mut envelope: BenchmarkCaseInputEnvelope = serde_json::from_str(include_str!(
+        "../../benchmarking/cases/stretch/sailing_trip_demo_real.json"
+    ))
+    .expect("raw Sailing Trip benchmark case should parse");
+
+    let mut solver = default_solver_configuration_for(SolverKind::Solver3);
+    solver.seed = Some(7);
+    solver.stop_conditions.max_iterations = Some(2_000);
+    solver.stop_conditions.time_limit_seconds = Some(2);
+    solver.stop_conditions.no_improvement_iterations = Some(1_000);
+    envelope.input.solver = solver;
+    envelope.input
 }
 
 fn solver3_transfer_driver_input() -> ApiInput {
@@ -467,6 +488,16 @@ fn solver3_allowed_sessions_preserve_other_warm_start_sessions() {
 
     assert_eq!(result.schedule.get("session_0"), initial.get("session_0"));
     assert_eq!(result.schedule.get("session_2"), initial.get("session_2"));
+}
+
+#[test]
+fn solver3_runs_exact_raw_sailing_trip_case_without_benchmark_start_substitution() {
+    let result = run_solver(&solver3_raw_sailing_trip_input())
+        .expect("solver3 should run the exact raw Sailing Trip case");
+
+    assert_eq!(result.effective_seed, Some(7));
+    assert!(result.schedule.contains_key("session_0"));
+    assert!(result.benchmark_telemetry.is_some());
 }
 
 #[test]

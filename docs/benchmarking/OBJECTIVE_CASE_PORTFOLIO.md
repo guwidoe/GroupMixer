@@ -91,6 +91,6 @@ Single-manifest subset runs are diagnostics only.
 
 ## Blockers and gaps (honest status)
 
-- The exact raw Sailing Trip solver3 path remains a go-live blocker for objective autoresearch (`sailing_trip_demo_real.json` as itself, not helper substitution).
+- The exact raw Sailing Trip solver3 path is now runnable as itself (`sailing_trip_demo_real.json` without helper substitution); keep objective claims anchored to raw-case suites/manifests.
 - The correctness corpus is now checked in as a separate suite, but it still needs broader expansion for more edge families over time.
 - Baseline and best-known references are intentionally placeholders in this document and still need explicit checked-in policy decisions per case.

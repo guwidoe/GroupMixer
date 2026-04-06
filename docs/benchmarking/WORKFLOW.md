@@ -103,15 +103,14 @@ Truthfulness notes:
 
 - `backend/benchmarking/cases/stretch/sailing_trip_demo_real.json` is the canonical real-demo target case
 - `backend/benchmarking/cases/stretch/sailing_trip_demo_real_benchmark_start.json` is a helper comparative case, not a canonical objective target
-- the current checked-in Sailing Trip full-solve suites use the helper benchmark-start case for shared-start-state comparison
-- that makes them useful for comparative diagnostics, but blocked from the future canonical objective suite until the exact raw case is runnable as itself
+- solver3 `*-canonical` Sailing Trip full-solve suites now run the exact raw case directly
+- helper benchmark-start suites remain valid for explicit shared-start comparative diagnostics only
 
 Policy notes:
 
-- use the current `*-canonical` suites for stable comparative architecture/regression checks only within that helper-start benchmark question
-- use the `*-tuned` suites for checked-in best-known comparative policy checks within that same helper-start benchmark question
-- use the `*_demo_real_benchmark_start` workload only when you explicitly want shared deterministic start-state comparability across solver families
-- do not present those helper-start suites as the canonical objective benchmark answer
+- use solver3 `*-canonical` Sailing Trip suites when the benchmark question is the exact raw real-demo workload
+- use `*-tuned` or explicit `*_benchmark_start` suites only when you intentionally want shared deterministic start-state comparison
+- do not present helper-start runs as the canonical objective benchmark answer
 
 ## Objective autoresearch full-suite policy (canonical v1)
 
@@ -134,7 +133,7 @@ Rule: partial subsets are diagnostics only and must not be used as keep/discard 
 Sailing Trip truth boundary:
 
 - the canonical raw case is included directly in `objective-canonical-stretch-v1`
-- this does **not** imply the raw Sailing Trip solver3 path is already solved
+- the raw Sailing Trip solver3 path is now runnable as itself
 - helper benchmark-start cases remain helper-only and must not replace the raw canonical case in objective claims
 
 ### Objective autoresearch go-live checklist and blockers
@@ -145,9 +144,9 @@ Before declaring the objective autoresearch lane live, confirm every go-live gat
 - [x] external full-solve validation is active in benchmark run artifacts
 - [x] canonical objective suite v1 manifests + explicit per-case budgets are checked in
 - [x] workflow policy requires full-suite execution on every objective experiment
-- [ ] exact raw `stretch/sailing_trip_demo_real.json` solver3 path is runnable as itself (not helper benchmark-start substitution)
+- [x] exact raw `stretch/sailing_trip_demo_real.json` solver3 path is runnable as itself (not helper benchmark-start substitution)
 
-Current status: **NO-GO** for objective autoresearch launch. The open blocker is exact raw Sailing Trip solver3 support.
+Current status: raw Sailing Trip solver3 blocker cleared.
 
 See `docs/benchmarking/OBJECTIVE_CASE_PORTFOLIO.md` for required metadata and per-case budget policy.
 

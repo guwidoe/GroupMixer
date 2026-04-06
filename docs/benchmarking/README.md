@@ -87,9 +87,9 @@ The real-demo benchmark package currently includes:
 
 Important truthfulness note:
 
-- the current checked-in Sailing Trip full-solve suites use the `*_benchmark_start` helper case
-- they are therefore valid for comparative diagnostics, but **not** for the future canonical objective suite
-- the canonical objective lane remains blocked on making the exact raw case runnable as itself
+- solver3 `*-canonical` Sailing Trip full-solve suites now run the exact raw case directly
+- `*_benchmark_start` suites remain helper comparative lanes (diagnostics only)
+- canonical objective claims must still use raw-case suites/manifests, not helper-start substitutions
 
 See `docs/benchmarking/REAL_SAILING_TRIP_BENCHMARK_PLAN.md`, `docs/benchmarking/BENCHMARK_TRUTHFULNESS_AUDIT.md`, and `docs/benchmarking/OBJECTIVE_CASE_PORTFOLIO.md` for current objective-suite shape, truthfulness boundaries, and rollout status.
 

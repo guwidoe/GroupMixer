@@ -40,8 +40,7 @@ pub const SOLVER3_BOOTSTRAP_NOTES: &str =
     "Internal `solver3` family — performance-oriented dense-state solver with packed-pair index. \
 Phase 2 foundation (compiled problem, flat runtime state, oracle, invariants) is implemented, and \
 swap + transfer + clique-swap move kernels plus a runnable bounded-sampling search baseline exist. \
-Construction is currently solver3-owned (`RuntimeState::initialize_from_schedule`) and does not use \
-the shared solver1 baseline constructor in `solver_support::construction`. \
+Construction uses the shared baseline constructor path in `solver_support::construction` with solver3 runtime ingestion. \
 No fallback to solver1 or solver2 occurs.";
 
 pub(crate) fn not_yet_implemented(feature: &str) -> SolverError {
