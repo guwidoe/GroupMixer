@@ -94,6 +94,16 @@ For objective autoresearch, every experiment must run the full canonical bundle:
 
 Single-manifest subset runs are diagnostics only.
 
+## Fixed-iteration diagnostic companion bundle
+
+The checked-in fixed-iteration diagnostic bundle is also split by class:
+
+1. `backend/benchmarking/suites/objective-diagnostic-fixed-iteration-representative-v1.yaml`
+2. `backend/benchmarking/suites/objective-diagnostic-fixed-iteration-adversarial-v1.yaml`
+3. `backend/benchmarking/suites/objective-diagnostic-fixed-iteration-stretch-v1.yaml`
+
+This bundle exists to normalize away wall-clock speed and measure objective quality at fixed effort. It is explicitly secondary to the fixed-time primary lane.
+
 ## Blockers and gaps (honest status)
 
 - The exact raw Sailing Trip solver3 path is now runnable as itself (`sailing_trip_demo_real.json` without helper substitution); keep objective claims anchored to raw-case suites/manifests.

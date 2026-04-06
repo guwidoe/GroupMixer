@@ -1,0 +1,24 @@
+schema_version: 1
+suite_id: objective-diagnostic-fixed-iteration-adversarial-v1
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: adversarial
+title: Objective fixed-iteration diagnostic adversarial bundle (v1)
+description: Diagnostic companion to the fixed-time primary lane. Uses explicit fixed iteration budgets to normalize away wall-clock throughput on adversarial workloads. Not primary keep/discard evidence.
+cases:
+  - manifest: ../cases/adversarial/constraint_heavy_partial_attendance.json
+    case_role: canonical
+    purpose: objective_diagnostic.fixed_iteration.adversarial.partial_attendance_constraints
+    provenance: checked_in_case_manifest
+    declared_budget:
+      max_iterations: 1100000
+      time_limit_seconds: 12
+    seed: 301
+    max_iterations: 1100000
+    time_limit_seconds: 12
+    search_policy:
+      no_improvement_iterations: null
+      simulated_annealing:
+        reheat_after_no_improvement: 0
+        reheat_cycles: 0

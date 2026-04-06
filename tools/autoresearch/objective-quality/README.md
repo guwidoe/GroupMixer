@@ -106,14 +106,40 @@ Interpretation:
 - the extra runtime buys materially broader semantic protection
 - this is a desirable trade for objective-quality research, where silent feature regressions are more dangerous than a somewhat slower experiment loop
 
+## Fixed-iteration diagnostic companion lane
+
+The companion fixed-iteration diagnostic script is:
+
+- `tools/autoresearch/objective-quality/fixed-iteration-diagnostic.sh`
+
+It runs these manifests:
+
+- `backend/benchmarking/suites/objective-diagnostic-fixed-iteration-representative-v1.yaml`
+- `backend/benchmarking/suites/objective-diagnostic-fixed-iteration-adversarial-v1.yaml`
+- `backend/benchmarking/suites/objective-diagnostic-fixed-iteration-stretch-v1.yaml`
+
+Sample local measurement:
+
+- `objective_fixed_iteration_total_final_score=552987.0`
+- `objective_fixed_iteration_total_runtime_seconds=59.332849581`
+- wall-clock `61.46s`
+
+Interpretation rule:
+
+- use this lane to explain *why* fixed-time changed
+- do **not** use it as primary keep/discard evidence on its own
+
 ## How to run
 
 From this folder:
 
 ```bash
 cd tools/autoresearch/objective-quality
-# configure objective metric in init_experiment as lower-is-better
-# command: ./autoresearch.sh
+# primary fixed-time lane
+./autoresearch.sh
+
+# fixed-iteration diagnostic companion lane
+./fixed-iteration-diagnostic.sh
 ```
 
 ## Go-live status (honest current state)

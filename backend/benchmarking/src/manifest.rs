@@ -913,6 +913,71 @@ mod tests {
     }
 
     #[test]
+    fn objective_fixed_iteration_diagnostic_manifests_define_explicit_identity_and_budget_metadata()
+    {
+        let suite_paths = [
+            "suites/objective-diagnostic-fixed-iteration-representative-v1.yaml",
+            "suites/objective-diagnostic-fixed-iteration-adversarial-v1.yaml",
+            "suites/objective-diagnostic-fixed-iteration-stretch-v1.yaml",
+        ];
+
+        for suite_path in suite_paths {
+            let suite = load_suite_manifest(Path::new(suite_path)).unwrap_or_else(|error| {
+                panic!(
+                    "objective fixed-iteration manifest {} should load: {error}",
+                    suite_path
+                )
+            });
+
+            assert_eq!(
+                effective_case_selection_policy(&suite.manifest),
+                BenchmarkCaseSelectionPolicy::CanonicalOnly,
+                "{} should stay canonical-only",
+                suite_path
+            );
+            assert!(
+                suite.manifest.default_solver.is_none(),
+                "{} should not pin full default_solver config",
+                suite_path
+            );
+
+            for case in &suite.cases {
+                assert_eq!(
+                    case.overrides.case_role,
+                    Some(BenchmarkCaseRole::Canonical),
+                    "{} / {} should stay canonical",
+                    suite_path,
+                    case.manifest.id
+                );
+                assert!(
+                    case.overrides.seed.is_some(),
+                    "{} / {} should declare explicit seed policy",
+                    suite_path,
+                    case.manifest.id
+                );
+                assert!(
+                    case.overrides.max_iterations.is_some(),
+                    "{} / {} should declare explicit fixed-iteration budget",
+                    suite_path,
+                    case.manifest.id
+                );
+                assert!(
+                    case.overrides.time_limit_seconds.is_some(),
+                    "{} / {} should declare explicit safety time limit",
+                    suite_path,
+                    case.manifest.id
+                );
+                assert!(
+                    case.overrides.solver.is_none(),
+                    "{} / {} should not replace the full solver config",
+                    suite_path,
+                    case.manifest.id
+                );
+            }
+        }
+    }
+
+    #[test]
     fn objective_canonical_stretch_v1_uses_raw_sailing_case_without_solver3_override_claims() {
         let suite = load_suite_manifest(Path::new("suites/objective-canonical-stretch-v1.yaml"))
             .expect("objective stretch v1 suite should load");

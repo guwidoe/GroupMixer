@@ -135,8 +135,9 @@ Checked-in autoresearch lane wiring:
 - `tools/autoresearch/objective-quality/autoresearch.sh` runs the full canonical objective bundle **plus** `correctness-edge-intertwined-v1` on every experiment.
 - the canonical objective manifests now use explicit suite-case seed policy and research-grade fixed-time budgets; fixture-era smoke policy is neutralized with `search_policy` overrides where needed.
 - `tools/autoresearch/objective-quality/autoresearch.checks.sh` now runs broad shared `gm-core` semantic guardrails (`data_driven_tests`, `property_tests`), focused regression suites (`construction_regression`, `search_driver_regression`, `move_*_regression`), the solver3 sampled oracle lane, and benchmark metadata/validation guardrails.
-- `tools/autoresearch/objective-quality/README.md` documents setup, metric policy (objective quality primary, runtime secondary), and measured runtime costs.
+- `tools/autoresearch/objective-quality/README.md` documents setup, metric policy (objective quality primary, runtime secondary), fixed-iteration diagnostics, and measured runtime costs.
 - `docs/benchmarking/OBJECTIVE_FIXED_TIME_PRIMARY_LANE_2026-04-06.md` records the rebuilt fixed-time lane contract and a measured case-by-case effort profile.
+- `docs/benchmarking/OBJECTIVE_FIXED_ITERATION_DIAGNOSTIC_LANE_2026-04-06.md` records the companion fixed-iteration diagnostic lane and how to interpret it.
 
 Sailing Trip truth boundary:
 
