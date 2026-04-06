@@ -20,7 +20,8 @@ The primary keep/discard signal is:
 Concretely, for the current checked-in primary lane that means the result from:
 
 - `tools/autoresearch/objective-quality/autoresearch.sh`
-- judged primarily by `objective_suite_total_final_score` (lower is better)
+- judged primarily by `objective_suite_weighted_normalized_score` (lower is better)
+- with the explicit math declared in `tools/autoresearch/objective-quality/fixed-time-metric-config.json`
 
 This is the main truth because real users experience the solver under wall-clock budgets.
 

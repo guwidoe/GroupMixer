@@ -4,6 +4,10 @@
 
 This lane is the **diagnostic companion** to the fixed-time primary objective lane.
 
+Its aggregation math is also explicit and checked in:
+
+- `tools/autoresearch/objective-quality/fixed-iteration-metric-config.json`
+
 It exists to answer a different question:
 
 > If wall-clock speed is normalized away, did the solver/search policy actually produce better objective quality for a fixed amount of search work?
@@ -28,11 +32,13 @@ These reuse the same canonical workloads, explicit seeds, and search-policy shap
 
 Measured local result:
 
-- `objective_fixed_iteration_total_final_score=552987.0`
-- `objective_fixed_iteration_average_final_score=78998.14285714286`
+- `objective_fixed_iteration_weighted_normalized_score=1.0`
+- `objective_fixed_iteration_weighted_normalized_score_delta_from_reference=0.0`
+- `objective_fixed_iteration_total_final_score_raw=552987.0`
+- `objective_fixed_iteration_average_final_score_raw=78998.14285714286`
 - `objective_fixed_iteration_case_count=7`
-- `objective_fixed_iteration_total_runtime_seconds=59.332849581`
-- `objective_fixed_iteration_average_runtime_seconds=8.476121368714285`
+- `objective_fixed_iteration_total_runtime_seconds=60.371070975`
+- `objective_fixed_iteration_average_runtime_seconds=8.624438710714285`
 - `objective_fixed_iteration_external_validation_failures=0`
 - `objective_fixed_iteration_total_score_mismatches=0`
 - `objective_fixed_iteration_score_breakdown_mismatches=0`

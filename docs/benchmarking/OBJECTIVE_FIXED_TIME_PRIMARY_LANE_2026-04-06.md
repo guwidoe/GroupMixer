@@ -4,6 +4,17 @@
 
 The canonical objective lane was rebuilt so the **fixed-time** budget is now the real primary signal instead of being undermined by inherited fixture-era search policy.
 
+The lane now also uses an explicit checked-in aggregation config instead of a hidden raw sum across heterogeneous cases:
+
+- `tools/autoresearch/objective-quality/fixed-time-metric-config.json`
+
+That config declares:
+
+- every canonical case included in the primary metric
+- each case's explicit weight
+- each case's explicit reference final score
+- the exact math used to aggregate the suite metric
+
 Key changes in the suite manifests:
 
 - explicit suite-case `seed` policy for every canonical objective case
@@ -39,11 +50,13 @@ Measured after the rebuild with:
 
 Observed local result:
 
-- `objective_suite_total_final_score=552976.0`
-- `objective_suite_average_final_score=78996.57142857143`
+- `objective_suite_weighted_normalized_score=1.0`
+- `objective_suite_weighted_normalized_score_delta_from_reference=0.0`
+- `objective_suite_total_final_score_raw=552975.0`
+- `objective_suite_average_final_score_raw=78996.42857142857`
 - `objective_suite_case_count=7`
-- `objective_suite_total_runtime_seconds=68.83894603`
-- `objective_suite_average_runtime_seconds=9.834135147142856`
+- `objective_suite_total_runtime_seconds=68.920084947`
+- `objective_suite_average_runtime_seconds=9.845726421`
 - `objective_suite_external_validation_failures=0`
 - `objective_suite_total_score_mismatches=0`
 - `objective_suite_score_breakdown_mismatches=0`

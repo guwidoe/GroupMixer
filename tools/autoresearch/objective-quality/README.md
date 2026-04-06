@@ -7,6 +7,10 @@ This lane is intentionally separate from the root-level raw-runtime lane (`/auto
 - `tools/autoresearch/objective-quality/autoresearch.config.json`
 - `tools/autoresearch/objective-quality/autoresearch.sh`
 - `tools/autoresearch/objective-quality/autoresearch.checks.sh`
+- `tools/autoresearch/objective-quality/fixed-time-metric-config.json`
+- `tools/autoresearch/objective-quality/fixed-iteration-metric-config.json`
+- `tools/autoresearch/objective-quality/aggregate_objective_metrics.py`
+- `tools/autoresearch/objective-quality/fixed-iteration-diagnostic.sh`
 
 ## Default experiment flow
 
@@ -19,8 +23,19 @@ Each experiment run executes the **full canonical objective suite** and the dedi
 
 The script emits:
 
-- **Primary metric**: `objective_suite_total_final_score` (lower is better)
+- **Primary metric**: `objective_suite_weighted_normalized_score` (lower is better)
+- **Raw-score diagnostics**: `objective_suite_total_final_score_raw`, `objective_suite_average_final_score_raw`
 - **Secondary metrics**: runtime + validation diagnostics (`runtime_total_seconds`, per-suite validation mismatch counters, etc.)
+
+The primary metric math is not hidden in the script anymore. It is declared in:
+
+- `tools/autoresearch/objective-quality/fixed-time-metric-config.json`
+
+Current fixed-time primary metric formula:
+
+- per case: `normalized_case_score = final_score / reference_final_score`
+- aggregate: `objective_suite_weighted_normalized_score = sum(weight * normalized_case_score) / sum(weight)`
+- current weights: all canonical cases use explicit equal weight `1.0`
 
 Runtime is explicitly a monitoring signal in this lane, not the keep/discard target.
 
@@ -28,9 +43,11 @@ Runtime is explicitly a monitoring signal in this lane, not the keep/discard tar
 
 Current local warm-cache measurement:
 
-- `tools/autoresearch/objective-quality/autoresearch.sh`: **70.02s** wall clock
-- `objective_suite_total_runtime_seconds=68.83894603`
-- `runtime_canonical_share_percent=99.9114473519419`
+- `tools/autoresearch/objective-quality/autoresearch.sh`: **70.13s** wall clock
+- `objective_suite_weighted_normalized_score=1.0`
+- `objective_suite_total_final_score_raw=552975.0`
+- `objective_suite_total_runtime_seconds=68.920084947`
+- `runtime_canonical_share_percent=99.91630440181967`
 
 Previous lighter objective-lane measurement before the rebuild:
 
@@ -112,6 +129,10 @@ The companion fixed-iteration diagnostic script is:
 
 - `tools/autoresearch/objective-quality/fixed-iteration-diagnostic.sh`
 
+Its metric math is declared in:
+
+- `tools/autoresearch/objective-quality/fixed-iteration-metric-config.json`
+
 It runs these manifests:
 
 - `backend/benchmarking/suites/objective-diagnostic-fixed-iteration-representative-v1.yaml`
@@ -120,9 +141,10 @@ It runs these manifests:
 
 Sample local measurement:
 
-- `objective_fixed_iteration_total_final_score=552987.0`
-- `objective_fixed_iteration_total_runtime_seconds=59.332849581`
-- wall-clock `61.46s`
+- `objective_fixed_iteration_weighted_normalized_score=1.0`
+- `objective_fixed_iteration_total_final_score_raw=552987.0`
+- `objective_fixed_iteration_total_runtime_seconds=60.371070975`
+- wall-clock `61.19s`
 
 Interpretation rule:
 
@@ -144,7 +166,7 @@ cd tools/autoresearch/objective-quality
 
 ## Decision policy summary
 
-- **primary keep/discard metric:** fixed-time objective quality (`objective_suite_total_final_score`) on a stable machine
+- **primary keep/discard metric:** fixed-time objective quality (`objective_suite_weighted_normalized_score`) on a stable machine
 - **hard blockers:** any correctness-guardrail failure, external validation failure, canonical-case failure, or benchmark-contract dishonesty
 - **fixed-iteration lane:** diagnostic only; explains quality-per-unit-of-search and does not override the fixed-time lane by itself
 - **raw runtime / hotpath lanes:** diagnostic only; explain throughput changes and help interpret fixed-time moves
