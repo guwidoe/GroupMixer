@@ -424,7 +424,7 @@ class PlantedSchedule:
 
         person_should_not_count: Dict[str, int] = defaultdict(int)
         should_not_session_pressure: Dict[int, int] = defaultdict(int)
-        target_should_not_count = 18
+        target_should_not_count = 30
         window_offsets = {window: 0 for window in should_not_candidates_by_window}
         while len([constraint for constraint in constraints if constraint["type"] == "ShouldNotBeTogether"]) < target_should_not_count:
             added_any = False
@@ -471,11 +471,13 @@ class PlantedSchedule:
         for session in range(NUM_SESSIONS):
             gender_candidates: List[Tuple[int, str, Dict[str, int]]] = []
             track_candidates: List[Tuple[int, str, Dict[str, int]]] = []
+            region_candidates: List[Tuple[int, str, Dict[str, int]]] = []
             for group_id, members in self.schedule[session].items():
                 if len(members) < 6:
                     continue
                 gender_distribution = full_distribution(members, "Gender")
                 track_distribution = full_distribution(members, "Track")
+                region_distribution = full_distribution(members, "Region")
                 if len(gender_distribution) >= 2:
                     gender_candidates.append(
                         (
@@ -492,9 +494,18 @@ class PlantedSchedule:
                             track_distribution,
                         )
                     )
+                if len(region_distribution) >= 3:
+                    region_candidates.append(
+                        (
+                            len(region_distribution) * 10 + min(region_distribution.values()),
+                            group_id,
+                            region_distribution,
+                        )
+                    )
 
             gender_candidates.sort(key=lambda item: (-item[0], item[1]))
             track_candidates.sort(key=lambda item: (-item[0], item[1]))
+            region_candidates.sort(key=lambda item: (-item[0], item[1]))
 
             used_groups_for_session: set[str] = set()
             for _, group_id, distribution in gender_candidates[:2]:
@@ -530,6 +541,23 @@ class PlantedSchedule:
                 if added_track >= 2:
                     break
 
+            added_region = 0
+            for _, group_id, distribution in region_candidates:
+                constraints.append(
+                    {
+                        "type": "AttributeBalance",
+                        "group_id": group_id,
+                        "attribute_key": "Region",
+                        "desired_values": distribution,
+                        "penalty_weight": 10.0,
+                        "mode": "exact",
+                        "sessions": [session],
+                    }
+                )
+                added_region += 1
+                if added_region >= 1:
+                    break
+
         pair_meeting_candidates_by_window: Dict[Tuple[int, ...], List[Tuple[int, str, str, int]]] = defaultdict(list)
         for left_index, left_person in enumerate(people_ids):
             for right_person in people_ids[left_index + 1 :]:
@@ -556,7 +584,7 @@ class PlantedSchedule:
 
         pair_window_offsets = {window: 0 for window in pair_meeting_candidates_by_window}
         pair_participation_count: Dict[str, int] = defaultdict(int)
-        target_pair_constraints = 10
+        target_pair_constraints = 18
         while len([constraint for constraint in constraints if constraint["type"] == "PairMeetingCount"]) < target_pair_constraints:
             added_any = False
             window_order = sorted(

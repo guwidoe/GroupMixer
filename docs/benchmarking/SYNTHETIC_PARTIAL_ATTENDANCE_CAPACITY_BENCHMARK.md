@@ -73,8 +73,8 @@ Current constraint mix:
 - `20` × `ImmovablePerson`
 - `8` × `MustStayTogether`
 - `8` × `ShouldStayTogether`
-- `18` × `ShouldNotBeTogether`
-- `10` × `PairMeetingCount`
+- `30` × `ShouldNotBeTogether`
+- `18` × `PairMeetingCount`
 - `24` × session-scoped `AttributeBalance`
 
 Current design notes:
@@ -88,7 +88,7 @@ Current design notes:
 
 This benchmark is valuable as a **targeted stress benchmark** for the feature combination above.
 
-However, the current checked-in solver1 baseline converges to the same observed score in both:
+However, even after densifying the soft-constraint package, the current checked-in solver1 baseline still converges to the same observed score in both:
 
 - the `15s` fixed-time suite, and
 - the `260,000` iteration diagnostic suite
@@ -106,10 +106,10 @@ gm-cli benchmark run --manifest backend/benchmarking/suites/stretch-partial-atte
 Observed local result:
 
 - stop reason: `time_limit_reached`
-- runtime: `15.001207458s`
-- iterations: `4,414,008`
-- initial score: `10230.0`
-- final score: `4348.0`
+- runtime: `15.001416993s`
+- iterations: `3,098,857`
+- initial score: `11160.0`
+- final score: `4582.0`
 
 Fixed-iteration companion:
 
@@ -120,10 +120,10 @@ gm-cli benchmark run --manifest backend/benchmarking/suites/stretch-partial-atte
 Observed local result:
 
 - stop reason: `max_iterations_reached`
-- runtime: `1.138123026s`
+- runtime: `1.465503432s`
 - iterations: `260,000`
-- initial score: `10230.0`
-- final score: `4348.0`
+- initial score: `11160.0`
+- final score: `4582.0`
 
 Solver3 fixed-time run:
 
