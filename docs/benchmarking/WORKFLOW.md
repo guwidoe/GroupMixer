@@ -130,6 +130,12 @@ gm-cli benchmark run --manifest backend/benchmarking/suites/objective-canonical-
 
 Rule: partial subsets are diagnostics only and must not be used as keep/discard evidence for objective-lane claims.
 
+Checked-in autoresearch lane wiring:
+
+- `tools/autoresearch/objective-quality/autoresearch.sh` runs the full canonical objective bundle **plus** `correctness-edge-intertwined-v1` on every experiment.
+- `tools/autoresearch/objective-quality/autoresearch.checks.sh` runs required correctness/validation guardrails.
+- `tools/autoresearch/objective-quality/README.md` documents setup and metric policy (objective quality primary, runtime secondary).
+
 Sailing Trip truth boundary:
 
 - the canonical raw case is included directly in `objective-canonical-stretch-v1`
@@ -145,8 +151,10 @@ Before declaring the objective autoresearch lane live, confirm every go-live gat
 - [x] canonical objective suite v1 manifests + explicit per-case budgets are checked in
 - [x] workflow policy requires full-suite execution on every objective experiment
 - [x] exact raw `stretch/sailing_trip_demo_real.json` solver3 path is runnable as itself (not helper benchmark-start substitution)
+- [x] dedicated objective-quality autoresearch config/command/checks are checked in
+- [ ] long-running objective-lane burn-in evidence has been recorded and reviewed
 
-Current status: raw Sailing Trip solver3 blocker cleared.
+Current status: lane wiring is complete and ready for supervised use; autonomous go-live is still pending burn-in evidence.
 
 See `docs/benchmarking/OBJECTIVE_CASE_PORTFOLIO.md` for required metadata and per-case budget policy.
 
