@@ -3,7 +3,7 @@
   "demo_metadata": {
     "id": "synthetic-partial-attendance-capacity-pressure",
     "display_name": "Synthetic Partial Attendance Capacity Pressure",
-    "description": "Large synthetic stress case with heavy partial participation, distributed session-scoped constraints, and strongly session-specific capacities.",
+    "description": "Large synthetic stress case with heavy partial participation, exact balance targets, pair meeting counts, and strongly session-specific capacities.",
     "category": "Benchmark"
   },
   "input": {
@@ -3556,6 +3556,162 @@
         "sessions": [
           5
         ]
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_002",
+          "person_012"
+        ],
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_013",
+          "person_139"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_014",
+          "person_038"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_013",
+          "person_120"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_031",
+          "person_133"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_016",
+          "person_050"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_010",
+          "person_151"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_011",
+          "person_085"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_012",
+          "person_129"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_010",
+          "person_067"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
       }
     ],
     "solver": {

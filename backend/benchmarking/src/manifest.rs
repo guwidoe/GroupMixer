@@ -1152,8 +1152,14 @@ mod tests {
             .iter()
             .filter(|constraint| matches!(constraint, gm_core::models::Constraint::ImmovablePerson(_)))
             .count();
+        let pair_meeting_count = input
+            .constraints
+            .iter()
+            .filter(|constraint| matches!(constraint, gm_core::models::Constraint::PairMeetingCount(_)))
+            .count();
         assert!(must_stay_count >= 8);
         assert!(immovable_count >= 20);
+        assert!(pair_meeting_count >= 10);
     }
 
     #[test]
@@ -1171,6 +1177,29 @@ mod tests {
         assert_eq!(case.overrides.seed, Some(152605));
         assert_eq!(case.overrides.max_iterations, Some(4_500_000));
         assert_eq!(case.overrides.time_limit_seconds, Some(15));
+    }
+
+    #[test]
+    fn synthetic_partial_attendance_capacity_solver3_suite_declares_solver3_contract() {
+        let suite = load_suite_manifest(Path::new(
+            "suites/stretch-partial-attendance-capacity-pressure-time-solver3.yaml",
+        ))
+        .expect("synthetic partial-attendance solver3 suite should load");
+
+        assert_eq!(suite.manifest.default_solver_family.as_deref(), Some("solver3"));
+        let default_solver = suite
+            .manifest
+            .default_solver
+            .as_ref()
+            .expect("solver3 suite should define default solver");
+        assert_eq!(default_solver.solver_type, "solver3");
+        assert_eq!(default_solver.stop_conditions.time_limit_seconds, Some(15));
+
+        assert_eq!(suite.cases.len(), 1);
+        assert_eq!(
+            suite.cases[0].manifest.id,
+            "stretch.synthetic-partial-attendance-capacity-pressure-152p"
+        );
     }
 
     #[test]

@@ -25,6 +25,7 @@ Dedicated suites:
 
 - `backend/benchmarking/suites/stretch-partial-attendance-capacity-pressure-time.yaml`
 - `backend/benchmarking/suites/stretch-partial-attendance-capacity-pressure-fixed-iteration.yaml`
+- `backend/benchmarking/suites/stretch-partial-attendance-capacity-pressure-time-solver3.yaml`
 
 ## Construction method
 
@@ -73,11 +74,13 @@ Current constraint mix:
 - `8` × `MustStayTogether`
 - `8` × `ShouldStayTogether`
 - `18` × `ShouldNotBeTogether`
+- `10` × `PairMeetingCount`
 - `24` × session-scoped `AttributeBalance`
 
 Current design notes:
 
 - `ShouldNotBeTogether` windows are intentionally distributed across many different shared-session patterns instead of clustering on one overlap signature.
+- `PairMeetingCount` constraints are derived from the planted feasible schedule and use exact target meeting counts over distributed session windows, so they add real cross-session coupling without introducing impossible targets.
 - `AttributeBalance` constraints are now defined with **exact full planted distributions** for `Gender` and `Track`, so their targets cover the whole group composition rather than leaving large unconstrained slack.
 - `AttributeBalance` pressure is spread across **all 6 sessions** (`4` balance constraints per session), not concentrated in a single session.
 
@@ -122,6 +125,21 @@ Observed local result:
 - initial score: `10230.0`
 - final score: `4348.0`
 
+Solver3 fixed-time run:
+
+```bash
+gm-cli benchmark run --manifest backend/benchmarking/suites/stretch-partial-attendance-capacity-pressure-time-solver3.yaml
+```
+
+Observed local result:
+
+- solver family: `solver3`
+- stop reason: `no_improvement_limit_reached`
+- runtime: `11.870528157s`
+- iterations: `566,998`
+- initial score: `10706.0`
+- final score: `4478.0`
+
 ## Validation performed
 
 The generated planted schedule was validated under the shared warm-start contract before using the case.
@@ -131,6 +149,7 @@ Additional validation run for the benchmark package:
 - `cargo test -p gm-benchmarking`
 - dedicated fixed-time benchmark run
 - dedicated fixed-iteration benchmark run
+- dedicated solver3 fixed-time benchmark run
 
 ## Regeneration
 

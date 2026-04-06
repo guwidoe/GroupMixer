@@ -385,6 +385,12 @@ class PlantedSchedule:
                     break
         return sessions
 
+    def meetings_within_sessions(
+        self, left_person: str, right_person: str, sessions: Sequence[int]
+    ) -> int:
+        session_set = set(sessions)
+        return sum(1 for session in self.together_sessions(left_person, right_person) if session in session_set)
+
     def derive_soft_constraints(self, existing_constraints: List[Dict[str, object]]) -> List[Dict[str, object]]:
         constraints = list(existing_constraints)
         people_ids = sorted(self.people.keys())
@@ -523,6 +529,76 @@ class PlantedSchedule:
                 added_track += 1
                 if added_track >= 2:
                     break
+
+        pair_meeting_candidates_by_window: Dict[Tuple[int, ...], List[Tuple[int, str, str, int]]] = defaultdict(list)
+        for left_index, left_person in enumerate(people_ids):
+            for right_person in people_ids[left_index + 1 :]:
+                pair_key = tuple(sorted((left_person, right_person)))
+                if pair_key in existing_pair_sets:
+                    continue
+                shared = self.shared_sessions(left_person, right_person)
+                if len(shared) < 3:
+                    continue
+                actual_meetings = self.meetings_within_sessions(left_person, right_person, shared)
+                if actual_meetings not in {1, 2}:
+                    continue
+                pair_meeting_candidates_by_window[tuple(shared)].append(
+                    (
+                        abs(len(shared) - actual_meetings),
+                        left_person,
+                        right_person,
+                        actual_meetings,
+                    )
+                )
+
+        for candidates in pair_meeting_candidates_by_window.values():
+            candidates.sort(key=lambda item: (item[0], item[1], item[2]))
+
+        pair_window_offsets = {window: 0 for window in pair_meeting_candidates_by_window}
+        pair_participation_count: Dict[str, int] = defaultdict(int)
+        target_pair_constraints = 10
+        while len([constraint for constraint in constraints if constraint["type"] == "PairMeetingCount"]) < target_pair_constraints:
+            added_any = False
+            window_order = sorted(
+                pair_meeting_candidates_by_window,
+                key=lambda window: (
+                    len(
+                        [
+                            constraint
+                            for constraint in constraints
+                            if constraint["type"] == "PairMeetingCount"
+                            and tuple(constraint["sessions"]) == window
+                        ]
+                    ),
+                    -len(window),
+                    window,
+                ),
+            )
+            for window in window_order:
+                candidates = pair_meeting_candidates_by_window[window]
+                while pair_window_offsets[window] < len(candidates):
+                    _, left_person, right_person, actual_meetings = candidates[pair_window_offsets[window]]
+                    pair_window_offsets[window] += 1
+                    if pair_participation_count[left_person] >= 2 or pair_participation_count[right_person] >= 2:
+                        continue
+                    constraints.append(
+                        {
+                            "type": "PairMeetingCount",
+                            "people": [left_person, right_person],
+                            "sessions": list(window),
+                            "target_meetings": actual_meetings,
+                            "mode": "exact",
+                            "penalty_weight": 28.0,
+                        }
+                    )
+                    pair_participation_count[left_person] += 1
+                    pair_participation_count[right_person] += 1
+                    added_any = True
+                    break
+                if len([constraint for constraint in constraints if constraint["type"] == "PairMeetingCount"]) >= target_pair_constraints:
+                    break
+            if not added_any:
+                break
 
         constraints.insert(
             0,
