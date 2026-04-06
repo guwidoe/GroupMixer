@@ -28,7 +28,7 @@
     "comparison_category": { "type": "string", "enum": ["exact_parity", "bounded_parity", "invariant_only", "score_quality", "performance_only"] },
     "comparability": {
       "type": "object",
-      "required": ["status", "reasons", "same_benchmark_mode", "same_comparison_category", "same_solver_families", "same_case_identity", "same_machine", "same_suite"],
+      "required": ["status", "reasons", "same_benchmark_mode", "same_comparison_category", "same_solver_families", "same_case_identity", "same_case_canonical_identity", "same_declared_case_budgets", "same_effective_case_budgets", "same_machine", "same_suite"],
       "properties": {
         "status": { "type": "string", "enum": ["comparable", "not_comparable"] },
         "reasons": { "type": "array", "items": { "type": "string" } },
@@ -36,6 +36,9 @@
         "same_comparison_category": { "type": "boolean" },
         "same_solver_families": { "type": "boolean" },
         "same_case_identity": { "type": "boolean" },
+        "same_case_canonical_identity": { "type": "boolean" },
+        "same_declared_case_budgets": { "type": "boolean" },
+        "same_effective_case_budgets": { "type": "boolean" },
         "same_machine": { "type": "boolean" },
         "same_suite": { "type": "boolean" }
       }
@@ -52,11 +55,24 @@
           "final_score": { "anyOf": [{ "$ref": "#/definitions/numericDelta" }, { "type": "null" }] },
           "best_score": { "anyOf": [{ "$ref": "#/definitions/numericDelta" }, { "type": "null" }] },
           "iteration_count": { "anyOf": [{ "$ref": "#/definitions/integerDelta" }, { "type": "null" }] },
+          "no_improvement_count": { "anyOf": [{ "$ref": "#/definitions/integerDelta" }, { "type": "null" }] },
+          "objective_metrics": {
+            "anyOf": [
+              { "$ref": "#/definitions/objectiveMetricsComparison" },
+              { "type": "null" }
+            ]
+          },
           "stop_reason_baseline": { "type": ["string", "null"] },
           "stop_reason_current": { "type": ["string", "null"] },
           "score_decomposition": {
             "anyOf": [
               { "$ref": "#/definitions/scoreDecompositionComparison" },
+              { "type": "null" }
+            ]
+          },
+          "search_telemetry": {
+            "anyOf": [
+              { "$ref": "#/definitions/searchTelemetryComparison" },
               { "type": "null" }
             ]
           },
@@ -147,7 +163,11 @@
       "type": "object",
       "required": [
         "total_score",
+        "baseline_score",
+        "unique_contacts",
+        "unique_contact_weight",
         "unique_contact_term",
+        "repetition_penalty",
         "repetition_term",
         "attribute_balance_term",
         "weighted_constraint_total",
@@ -155,13 +175,71 @@
       ],
       "properties": {
         "total_score": { "$ref": "#/definitions/numericDelta" },
+        "baseline_score": { "$ref": "#/definitions/numericDelta" },
+        "unique_contacts": { "$ref": "#/definitions/integerDelta" },
+        "unique_contact_weight": { "$ref": "#/definitions/numericDelta" },
         "unique_contact_term": { "$ref": "#/definitions/numericDelta" },
+        "repetition_penalty": { "$ref": "#/definitions/integerDelta" },
         "repetition_term": { "$ref": "#/definitions/numericDelta" },
         "attribute_balance_term": { "$ref": "#/definitions/numericDelta" },
         "weighted_constraint_total": { "$ref": "#/definitions/numericDelta" },
         "weighted_constraint_breakdown": {
           "$ref": "#/definitions/weightedConstraintBreakdownComparison"
         }
+      }
+    },
+    "objectiveMetricsComparison": {
+      "type": "object",
+      "properties": {
+        "unique_contacts": {
+          "anyOf": [
+            { "$ref": "#/definitions/integerDelta" },
+            { "type": "null" }
+          ]
+        },
+        "weighted_repetition_penalty": {
+          "anyOf": [
+            { "$ref": "#/definitions/numericDelta" },
+            { "type": "null" }
+          ]
+        },
+        "weighted_constraint_penalty": {
+          "anyOf": [
+            { "$ref": "#/definitions/numericDelta" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "searchTelemetryComparison": {
+      "type": "object",
+      "required": [
+        "accepted_uphill_moves",
+        "accepted_downhill_moves",
+        "accepted_neutral_moves",
+        "max_no_improvement_streak",
+        "iterations_per_second",
+        "best_score_timeline_points"
+      ],
+      "properties": {
+        "accepted_uphill_moves": { "$ref": "#/definitions/integerDelta" },
+        "accepted_downhill_moves": { "$ref": "#/definitions/integerDelta" },
+        "accepted_neutral_moves": { "$ref": "#/definitions/integerDelta" },
+        "max_no_improvement_streak": { "$ref": "#/definitions/integerDelta" },
+        "restart_count": {
+          "anyOf": [
+            { "$ref": "#/definitions/integerDelta" },
+            { "type": "null" }
+          ]
+        },
+        "perturbation_count": {
+          "anyOf": [
+            { "$ref": "#/definitions/integerDelta" },
+            { "type": "null" }
+          ]
+        },
+        "iterations_per_second": { "$ref": "#/definitions/numericDelta" },
+        "best_score_timeline_points": { "$ref": "#/definitions/integerDelta" }
       }
     },
     "suspect": {

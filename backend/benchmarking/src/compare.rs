@@ -1,8 +1,9 @@
 use crate::artifacts::{
     CaseComparison, ClassRollupComparison, ComparabilityReport, ComparisonReport, ComparisonStatus,
     ConstraintFamilyContribution, ConstraintFamilyContributionComparison, IntegerDelta,
-    MoveFamilyComparison, NumericDelta, RegressionSuspect, RegressionSuspectKind,
-    RegressionSuspectSummary, ScoreDecomposition, ScoreDecompositionComparison,
+    MoveFamilyComparison, NumericDelta, ObjectiveMetricsComparison, RegressionSuspect,
+    RegressionSuspectKind, RegressionSuspectSummary, ScoreDecomposition,
+    ScoreDecompositionComparison, SearchTelemetryArtifact, SearchTelemetryComparison,
     WeightedConstraintBreakdown, WeightedConstraintBreakdownComparison,
     COMPARISON_REPORT_SCHEMA_VERSION,
 };
@@ -98,6 +99,9 @@ pub fn compare_run_to_baseline(
     shared_case_ids.sort_unstable();
 
     let mut same_case_identity = true;
+    let mut same_case_canonical_identity = true;
+    let mut same_declared_case_budgets = true;
+    let mut same_effective_case_budgets = true;
     for case_id in &shared_case_ids {
         let baseline_case = baseline_cases[case_id];
         let current_case = current_cases[case_id];
@@ -107,8 +111,22 @@ pub fn compare_run_to_baseline(
                 case_id, current_case.solver.solver_family, baseline_case.solver.solver_family
             ));
         }
-        if !case_identity_matches(current_case, baseline_case, &mut reasons) {
+        let identity_comparison = case_identity_matches(current_case, baseline_case, &mut reasons);
+        if !identity_comparison.matches {
             same_case_identity = false;
+        }
+        if !identity_comparison.same_canonical_case_id {
+            same_case_canonical_identity = false;
+        }
+        if !identity_comparison.same_declared_budget {
+            same_declared_case_budgets = false;
+        }
+        if current_case.effective_budget != baseline_case.effective_budget {
+            same_effective_case_budgets = false;
+            reasons.push(format!(
+                "case effective budget mismatch for {}: current={:?} baseline={:?}",
+                case_id, current_case.effective_budget, baseline_case.effective_budget
+            ));
         }
     }
 
@@ -129,6 +147,9 @@ pub fn compare_run_to_baseline(
         same_comparison_category,
         same_solver_families,
         same_case_identity,
+        same_case_canonical_identity,
+        same_declared_case_budgets,
+        same_effective_case_budgets,
         same_machine,
         same_suite: current.suite.suite_id == baseline.run_report.suite.suite_id,
     };
@@ -150,17 +171,25 @@ pub fn compare_run_to_baseline(
     }
 }
 
+struct CaseIdentityComparison {
+    matches: bool,
+    same_canonical_case_id: bool,
+    same_declared_budget: bool,
+}
+
 fn case_identity_matches(
     current: &CaseRunArtifact,
     baseline: &CaseRunArtifact,
     reasons: &mut Vec<String>,
-) -> bool {
+) -> CaseIdentityComparison {
     let current_identity = current.case_identity.as_ref();
     let baseline_identity = baseline.case_identity.as_ref();
 
     match (current_identity, baseline_identity) {
         (Some(current_identity), Some(baseline_identity)) => {
             let mut matches = true;
+            let mut same_canonical_case_id = true;
+            let mut same_declared_budget = true;
             if current_identity.source_path != baseline_identity.source_path {
                 matches = false;
                 reasons.push(format!(
@@ -179,6 +208,7 @@ fn case_identity_matches(
             }
             if current_identity.canonical_case_id != baseline_identity.canonical_case_id {
                 matches = false;
+                same_canonical_case_id = false;
                 reasons.push(format!(
                     "case canonical id mismatch for {}: current={} baseline={}",
                     current.case_id,
@@ -204,6 +234,7 @@ fn case_identity_matches(
             }
             if current_identity.declared_budget != baseline_identity.declared_budget {
                 matches = false;
+                same_declared_budget = false;
                 reasons.push(format!(
                     "case declared_budget mismatch for {}: current={:?} baseline={:?}",
                     current.case_id,
@@ -212,28 +243,44 @@ fn case_identity_matches(
                 ));
             }
 
-            matches
+            CaseIdentityComparison {
+                matches,
+                same_canonical_case_id,
+                same_declared_budget,
+            }
         }
         (Some(_), None) => {
             reasons.push(format!(
                 "case identity metadata missing in baseline run for {}",
                 current.case_id
             ));
-            false
+            CaseIdentityComparison {
+                matches: false,
+                same_canonical_case_id: false,
+                same_declared_budget: false,
+            }
         }
         (None, Some(_)) => {
             reasons.push(format!(
                 "case identity metadata missing in current run for {}",
                 current.case_id
             ));
-            false
+            CaseIdentityComparison {
+                matches: false,
+                same_canonical_case_id: false,
+                same_declared_budget: false,
+            }
         }
         (None, None) => {
             reasons.push(format!(
                 "case identity metadata missing in both runs for {}",
                 current.case_id
             ));
-            false
+            CaseIdentityComparison {
+                matches: false,
+                same_canonical_case_id: false,
+                same_declared_budget: false,
+            }
         }
     }
 }
@@ -289,11 +336,20 @@ fn compare_case(current: &CaseRunArtifact, baseline: &CaseRunArtifact) -> CaseCo
         final_score: zip_numeric_delta(baseline.final_score, current.final_score),
         best_score: zip_numeric_delta(baseline.best_score, current.best_score),
         iteration_count: zip_integer_delta(baseline.iteration_count, current.iteration_count),
+        no_improvement_count: zip_integer_delta(
+            baseline.no_improvement_count,
+            current.no_improvement_count,
+        ),
+        objective_metrics: zip_objective_metrics_delta(current, baseline),
         stop_reason_baseline: baseline.stop_reason,
         stop_reason_current: current.stop_reason,
         score_decomposition: zip_score_decomposition(
             baseline.score_decomposition.as_ref(),
             current.score_decomposition.as_ref(),
+        ),
+        search_telemetry: zip_search_telemetry_delta(
+            baseline.search_telemetry.as_ref(),
+            current.search_telemetry.as_ref(),
         ),
         move_family_deltas,
     }
@@ -393,9 +449,19 @@ fn zip_score_decomposition(
 
     Some(ScoreDecompositionComparison {
         total_score: numeric_delta(baseline.total_score, current.total_score),
+        baseline_score: numeric_delta(baseline.baseline_score, current.baseline_score),
+        unique_contacts: integer_delta_from_i32(baseline.unique_contacts, current.unique_contacts),
+        unique_contact_weight: numeric_delta(
+            baseline.unique_contact_weight,
+            current.unique_contact_weight,
+        ),
         unique_contact_term: numeric_delta(
             baseline.unique_contact_term,
             current.unique_contact_term,
+        ),
+        repetition_penalty: integer_delta_from_i32(
+            baseline.repetition_penalty,
+            current.repetition_penalty,
         ),
         repetition_term: numeric_delta(baseline.repetition_term, current.repetition_term),
         attribute_balance_term: numeric_delta(
@@ -409,6 +475,75 @@ fn zip_score_decomposition(
         weighted_constraint_breakdown: compare_weighted_constraint_breakdown(
             &baseline.weighted_constraint_breakdown,
             &current.weighted_constraint_breakdown,
+        ),
+    })
+}
+
+fn zip_objective_metrics_delta(
+    current: &CaseRunArtifact,
+    baseline: &CaseRunArtifact,
+) -> Option<ObjectiveMetricsComparison> {
+    let unique_contacts =
+        zip_integer_delta_from_i32(baseline.unique_contacts, current.unique_contacts);
+    let weighted_repetition_penalty = zip_numeric_delta(
+        baseline.weighted_repetition_penalty,
+        current.weighted_repetition_penalty,
+    );
+    let weighted_constraint_penalty = zip_numeric_delta(
+        baseline.weighted_constraint_penalty,
+        current.weighted_constraint_penalty,
+    );
+
+    if unique_contacts.is_none()
+        && weighted_repetition_penalty.is_none()
+        && weighted_constraint_penalty.is_none()
+    {
+        None
+    } else {
+        Some(ObjectiveMetricsComparison {
+            unique_contacts,
+            weighted_repetition_penalty,
+            weighted_constraint_penalty,
+        })
+    }
+}
+
+fn zip_search_telemetry_delta(
+    baseline: Option<&SearchTelemetryArtifact>,
+    current: Option<&SearchTelemetryArtifact>,
+) -> Option<SearchTelemetryComparison> {
+    let baseline = baseline?;
+    let current = current?;
+
+    Some(SearchTelemetryComparison {
+        accepted_uphill_moves: integer_delta(
+            baseline.accepted_uphill_moves,
+            current.accepted_uphill_moves,
+        ),
+        accepted_downhill_moves: integer_delta(
+            baseline.accepted_downhill_moves,
+            current.accepted_downhill_moves,
+        ),
+        accepted_neutral_moves: integer_delta(
+            baseline.accepted_neutral_moves,
+            current.accepted_neutral_moves,
+        ),
+        max_no_improvement_streak: integer_delta(
+            baseline.max_no_improvement_streak,
+            current.max_no_improvement_streak,
+        ),
+        restart_count: zip_integer_delta(baseline.restart_count, current.restart_count),
+        perturbation_count: zip_integer_delta(
+            baseline.perturbation_count,
+            current.perturbation_count,
+        ),
+        iterations_per_second: numeric_delta(
+            baseline.iterations_per_second,
+            current.iterations_per_second,
+        ),
+        best_score_timeline_points: integer_delta(
+            baseline.best_score_timeline.len() as u64,
+            current.best_score_timeline.len() as u64,
         ),
     })
 }
@@ -646,6 +781,10 @@ fn zip_integer_delta(baseline: Option<u64>, current: Option<u64>) -> Option<Inte
     Some(integer_delta(baseline?, current?))
 }
 
+fn zip_integer_delta_from_i32(baseline: Option<i32>, current: Option<i32>) -> Option<IntegerDelta> {
+    Some(integer_delta_from_i32(baseline?, current?))
+}
+
 fn percent(delta: f64, baseline: f64) -> Option<f64> {
     if baseline.abs() < f64::EPSILON {
         None
@@ -696,9 +835,12 @@ mod tests {
             final_score: None,
             best_score: None,
             iteration_count: None,
+            no_improvement_count: None,
+            objective_metrics: None,
             stop_reason_baseline: None,
             stop_reason_current: None,
             score_decomposition: None,
+            search_telemetry: None,
             move_family_deltas: Vec::<MoveFamilyComparison>::new(),
         }
     }
@@ -724,7 +866,11 @@ mod tests {
     fn sample_score_decomposition_delta(total_absolute: f64) -> ScoreDecompositionComparison {
         ScoreDecompositionComparison {
             total_score: numeric_delta_for_test(total_absolute),
+            baseline_score: numeric_delta_for_test(0.0),
+            unique_contacts: integer_delta_for_test(0),
+            unique_contact_weight: numeric_delta_for_test(0.0),
             unique_contact_term: numeric_delta_for_test(0.0),
+            repetition_penalty: integer_delta_for_test(0),
             repetition_term: numeric_delta_for_test(0.0),
             attribute_balance_term: numeric_delta_for_test(0.0),
             weighted_constraint_total: numeric_delta_for_test(0.0),
@@ -780,6 +926,9 @@ mod tests {
             ComparisonStatus::Comparable
         );
         assert!(comparison.comparability.same_case_identity);
+        assert!(comparison.comparability.same_case_canonical_identity);
+        assert!(comparison.comparability.same_declared_case_budgets);
+        assert!(comparison.comparability.same_effective_case_budgets);
         assert_eq!(comparison.case_comparisons.len(), report.cases.len());
 
         let comparison_path = persist_comparison_report(&comparison, &options.artifacts_dir)
@@ -819,6 +968,112 @@ mod tests {
         assert!(comparison.comparability.reasons.iter().any(|reason| {
             reason.contains("case fingerprint mismatch") && reason.contains(&mismatched_case_id)
         }));
+    }
+
+    #[test]
+    fn run_report_case_identity_canonical_id_mismatch_is_reported_explicitly() {
+        let temp = TempDir::new().expect("temp dir");
+        let options = RunnerOptions {
+            artifacts_dir: temp.path().to_path_buf(),
+            cargo_profile: "test".to_string(),
+        };
+        let mut report =
+            run_suite_from_manifest("suites/path.yaml", &options).expect("run path suite");
+        let mismatched_case_id = report.cases[0].case_id.clone();
+        let baseline_path =
+            save_baseline_snapshot(&report, "path-baseline", &options.artifacts_dir, None)
+                .expect("save baseline");
+        let baseline =
+            crate::runner::load_baseline_snapshot(&baseline_path).expect("load baseline");
+
+        report.cases[0]
+            .case_identity
+            .as_mut()
+            .expect("case identity should be present")
+            .canonical_case_id = "canonical.case.mismatch".to_string();
+
+        let comparison = compare_run_to_baseline(&report, &baseline);
+        assert_eq!(
+            comparison.comparability.status,
+            ComparisonStatus::NotComparable
+        );
+        assert!(!comparison.comparability.same_case_identity);
+        assert!(!comparison.comparability.same_case_canonical_identity);
+        assert!(comparison.comparability.reasons.iter().any(|reason| {
+            reason.contains("case canonical id mismatch") && reason.contains(&mismatched_case_id)
+        }));
+    }
+
+    #[test]
+    fn run_report_case_declared_budget_mismatch_is_reported_explicitly() {
+        let temp = TempDir::new().expect("temp dir");
+        let options = RunnerOptions {
+            artifacts_dir: temp.path().to_path_buf(),
+            cargo_profile: "test".to_string(),
+        };
+        let mut report =
+            run_suite_from_manifest("suites/path.yaml", &options).expect("run path suite");
+        let baseline_path =
+            save_baseline_snapshot(&report, "path-baseline", &options.artifacts_dir, None)
+                .expect("save baseline");
+        let baseline =
+            crate::runner::load_baseline_snapshot(&baseline_path).expect("load baseline");
+
+        report.cases[0]
+            .case_identity
+            .as_mut()
+            .expect("case identity should be present")
+            .declared_budget = Some(crate::manifest::DeclaredBenchmarkBudget {
+            max_iterations: Some(1234),
+            time_limit_seconds: Some(9),
+        });
+
+        let comparison = compare_run_to_baseline(&report, &baseline);
+        assert_eq!(
+            comparison.comparability.status,
+            ComparisonStatus::NotComparable
+        );
+        assert!(!comparison.comparability.same_case_identity);
+        assert!(!comparison.comparability.same_declared_case_budgets);
+        assert!(comparison
+            .comparability
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("case declared_budget mismatch")));
+    }
+
+    #[test]
+    fn run_report_effective_budget_mismatch_is_reported_explicitly() {
+        let temp = TempDir::new().expect("temp dir");
+        let options = RunnerOptions {
+            artifacts_dir: temp.path().to_path_buf(),
+            cargo_profile: "test".to_string(),
+        };
+        let mut report =
+            run_suite_from_manifest("suites/path.yaml", &options).expect("run path suite");
+        let baseline_path =
+            save_baseline_snapshot(&report, "path-baseline", &options.artifacts_dir, None)
+                .expect("save baseline");
+        let baseline =
+            crate::runner::load_baseline_snapshot(&baseline_path).expect("load baseline");
+
+        report.cases[0].effective_budget.max_iterations = report.cases[0]
+            .effective_budget
+            .max_iterations
+            .map(|value| value + 1)
+            .or(Some(1));
+
+        let comparison = compare_run_to_baseline(&report, &baseline);
+        assert_eq!(
+            comparison.comparability.status,
+            ComparisonStatus::NotComparable
+        );
+        assert!(!comparison.comparability.same_effective_case_budgets);
+        assert!(comparison
+            .comparability
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("case effective budget mismatch")));
     }
 
     #[test]
@@ -992,6 +1247,41 @@ mod tests {
             case.score_decomposition
                 .as_ref()
                 .is_some_and(|decomposition| decomposition.total_score.absolute.abs() < 1e-9)
+        }));
+        assert!(comparison.case_comparisons.iter().all(|case| {
+            case.score_decomposition
+                .as_ref()
+                .is_some_and(|decomposition| decomposition.unique_contacts.absolute == 0)
+        }));
+    }
+
+    #[test]
+    fn objective_and_telemetry_deltas_are_present_in_case_comparisons_when_available() {
+        let temp = TempDir::new().expect("temp dir");
+        let options = RunnerOptions {
+            artifacts_dir: temp.path().to_path_buf(),
+            cargo_profile: "test".to_string(),
+        };
+        let report = run_suite_from_manifest("suites/path.yaml", &options).expect("run path suite");
+        let baseline_path =
+            save_baseline_snapshot(&report, "path-baseline", &options.artifacts_dir, None)
+                .expect("save baseline");
+        let baseline =
+            crate::runner::load_baseline_snapshot(&baseline_path).expect("load baseline");
+
+        let comparison = compare_run_to_baseline(&report, &baseline);
+        assert!(comparison
+            .case_comparisons
+            .iter()
+            .all(|case| case.objective_metrics.is_some()));
+        assert!(comparison
+            .case_comparisons
+            .iter()
+            .all(|case| case.search_telemetry.is_some()));
+        assert!(comparison.case_comparisons.iter().all(|case| {
+            case.search_telemetry
+                .as_ref()
+                .is_some_and(|telemetry| telemetry.accepted_uphill_moves.absolute == 0)
         }));
     }
 

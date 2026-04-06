@@ -388,6 +388,12 @@ pub struct ComparabilityReport {
     pub same_solver_families: bool,
     #[serde(default)]
     pub same_case_identity: bool,
+    #[serde(default)]
+    pub same_case_canonical_identity: bool,
+    #[serde(default)]
+    pub same_declared_case_budgets: bool,
+    #[serde(default)]
+    pub same_effective_case_budgets: bool,
     pub same_machine: bool,
     pub same_suite: bool,
 }
@@ -442,11 +448,39 @@ pub struct WeightedConstraintBreakdownComparison {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ScoreDecompositionComparison {
     pub total_score: NumericDelta,
+    pub baseline_score: NumericDelta,
+    pub unique_contacts: IntegerDelta,
+    pub unique_contact_weight: NumericDelta,
     pub unique_contact_term: NumericDelta,
+    pub repetition_penalty: IntegerDelta,
     pub repetition_term: NumericDelta,
     pub attribute_balance_term: NumericDelta,
     pub weighted_constraint_total: NumericDelta,
     pub weighted_constraint_breakdown: WeightedConstraintBreakdownComparison,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ObjectiveMetricsComparison {
+    #[serde(default)]
+    pub unique_contacts: Option<IntegerDelta>,
+    #[serde(default)]
+    pub weighted_repetition_penalty: Option<NumericDelta>,
+    #[serde(default)]
+    pub weighted_constraint_penalty: Option<NumericDelta>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SearchTelemetryComparison {
+    pub accepted_uphill_moves: IntegerDelta,
+    pub accepted_downhill_moves: IntegerDelta,
+    pub accepted_neutral_moves: IntegerDelta,
+    pub max_no_improvement_streak: IntegerDelta,
+    #[serde(default)]
+    pub restart_count: Option<IntegerDelta>,
+    #[serde(default)]
+    pub perturbation_count: Option<IntegerDelta>,
+    pub iterations_per_second: NumericDelta,
+    pub best_score_timeline_points: IntegerDelta,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -461,11 +495,17 @@ pub struct CaseComparison {
     #[serde(default)]
     pub iteration_count: Option<IntegerDelta>,
     #[serde(default)]
+    pub no_improvement_count: Option<IntegerDelta>,
+    #[serde(default)]
+    pub objective_metrics: Option<ObjectiveMetricsComparison>,
+    #[serde(default)]
     pub stop_reason_baseline: Option<StopReason>,
     #[serde(default)]
     pub stop_reason_current: Option<StopReason>,
     #[serde(default)]
     pub score_decomposition: Option<ScoreDecompositionComparison>,
+    #[serde(default)]
+    pub search_telemetry: Option<SearchTelemetryComparison>,
     pub move_family_deltas: Vec<MoveFamilyComparison>,
 }
 
@@ -549,6 +589,9 @@ mod tests {
                 same_comparison_category: true,
                 same_solver_families: true,
                 same_case_identity: true,
+                same_case_canonical_identity: true,
+                same_declared_case_budgets: true,
+                same_effective_case_budgets: true,
                 same_machine: true,
                 same_suite: true,
             },

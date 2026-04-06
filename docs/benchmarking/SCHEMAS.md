@@ -133,8 +133,10 @@ Key fields:
 
 - comparability result and explicit incompatibility reasons
 - explicit `benchmark_mode` and benchmark-mode compatibility flag
-- per-case runtime / quality / iteration deltas
+- canonical identity/budget compatibility flags (`same_case_canonical_identity`, `same_declared_case_budgets`, `same_effective_case_budgets`)
+- per-case runtime / objective / quality / iteration deltas
 - optional per-case score-decomposition deltas (including weighted major-constraint-family breakdowns)
+- optional per-case search telemetry deltas (acceptance-direction counters, streaks, restart/perturbation counts, throughput, timeline-point count)
 - per-class rollup deltas
 - ranked regression-suspect summary
 
@@ -149,4 +151,5 @@ Examples of non-comparable situations:
 - machine mismatch for runtime interpretation
 - missing cases in one side or the other
 - case identity mismatch (source path, canonical id, role, fingerprint, purpose/provenance summary, or declared budget metadata)
+- effective benchmark budget mismatch for the same canonical case
 - incompatible schema versions
