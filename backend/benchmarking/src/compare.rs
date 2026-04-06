@@ -369,6 +369,7 @@ fn compare_move_family(
         family: family.to_string(),
         attempts: integer_delta(baseline.attempts, current.attempts),
         accepted: integer_delta(baseline.accepted, current.accepted),
+        improving_accepts: integer_delta(baseline.improving_accepts, current.improving_accepts),
         rejected: integer_delta(baseline.rejected, current.rejected),
         preview_seconds: numeric_delta(baseline.preview_seconds, current.preview_seconds),
         apply_seconds: numeric_delta(baseline.apply_seconds, current.apply_seconds),

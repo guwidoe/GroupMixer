@@ -1,8 +1,9 @@
 use std::collections::VecDeque;
 
 use crate::models::{
-    MoveFamily, MoveFamilyBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
-    ProgressUpdate, SolverBenchmarkTelemetry, SolverConfiguration, StopReason,
+    BestScoreTimelinePoint, MoveFamily, MoveFamilyBenchmarkTelemetry,
+    MoveFamilyBenchmarkTelemetrySummary, MovePolicy, ProgressUpdate, SolverBenchmarkTelemetry,
+    SolverConfiguration, StopReason,
 };
 use crate::solver_support::SolverError;
 
@@ -117,13 +118,18 @@ pub(crate) struct SearchProgressState {
     pub(crate) initial_score: f64,
     pub(crate) best_score: f64,
     pub(crate) no_improvement_count: u64,
+    pub(crate) max_no_improvement_streak: u64,
     pub(crate) iterations_completed: u64,
     pub(crate) local_optima_escapes: u64,
+    pub(crate) accepted_uphill_moves: u64,
+    pub(crate) accepted_downhill_moves: u64,
+    pub(crate) accepted_neutral_moves: u64,
     pub(crate) attempted_delta_sum: f64,
     pub(crate) accepted_delta_sum: f64,
     pub(crate) biggest_attempted_increase: f64,
     pub(crate) biggest_accepted_increase: f64,
     pub(crate) recent_acceptance: VecDeque<bool>,
+    pub(crate) best_score_timeline: Vec<BestScoreTimelinePoint>,
     pub(crate) move_metrics: MoveFamilyBenchmarkTelemetrySummary,
     #[allow(dead_code)]
     pub(crate) policy_memory: SearchPolicyMemory,
@@ -138,13 +144,22 @@ impl SearchProgressState {
             initial_score,
             best_score: initial_score,
             no_improvement_count: 0,
+            max_no_improvement_streak: 0,
             iterations_completed: 0,
             local_optima_escapes: 0,
+            accepted_uphill_moves: 0,
+            accepted_downhill_moves: 0,
+            accepted_neutral_moves: 0,
             attempted_delta_sum: 0.0,
             accepted_delta_sum: 0.0,
             biggest_attempted_increase: 0.0,
             biggest_accepted_increase: 0.0,
             recent_acceptance: VecDeque::with_capacity(RECENT_WINDOW),
+            best_score_timeline: vec![BestScoreTimelinePoint {
+                iteration: 0,
+                elapsed_seconds: 0.0,
+                best_score: initial_score,
+            }],
             move_metrics: MoveFamilyBenchmarkTelemetrySummary::default(),
             policy_memory: SearchPolicyMemory::default(),
         }
@@ -172,6 +187,14 @@ impl SearchProgressState {
     ) {
         let metrics = family_metrics_mut(&mut self.move_metrics, family);
         metrics.accepted += 1;
+        if delta_score < 0.0 {
+            metrics.improving_accepts += 1;
+            self.accepted_downhill_moves += 1;
+        } else if delta_score > 0.0 {
+            self.accepted_uphill_moves += 1;
+        } else {
+            self.accepted_neutral_moves += 1;
+        }
         metrics.apply_seconds += apply_seconds;
         self.accepted_delta_sum += delta_score;
         if escaped_local_optimum {
@@ -182,22 +205,33 @@ impl SearchProgressState {
 
     pub(crate) fn record_rejected_move(&mut self, family: MoveFamily) {
         family_metrics_mut(&mut self.move_metrics, family).rejected += 1;
-        self.no_improvement_count += 1;
+        self.record_no_improvement_step();
         self.push_recent_acceptance(false);
     }
 
     pub(crate) fn record_no_candidate(&mut self) {
-        self.no_improvement_count += 1;
+        self.record_no_improvement_step();
         self.push_recent_acceptance(false);
     }
 
-    pub(crate) fn refresh_best_from_current(&mut self) {
+    pub(crate) fn refresh_best_from_current(
+        &mut self,
+        iteration: u64,
+        elapsed_seconds: f64,
+    ) -> bool {
         if self.current_state.total_score < self.best_score {
             self.best_score = self.current_state.total_score;
             self.best_state = self.current_state.clone();
             self.no_improvement_count = 0;
+            self.best_score_timeline.push(BestScoreTimelinePoint {
+                iteration: iteration + 1,
+                elapsed_seconds,
+                best_score: self.best_score,
+            });
+            true
         } else {
-            self.no_improvement_count += 1;
+            self.record_no_improvement_step();
+            false
         }
     }
 
@@ -324,7 +358,17 @@ impl SearchProgressState {
             stop_reason,
             iterations_completed: self.iterations_completed,
             no_improvement_count: self.no_improvement_count,
+            max_no_improvement_streak: self.max_no_improvement_streak,
             reheats_performed: 0,
+            accepted_uphill_moves: self.accepted_uphill_moves,
+            accepted_downhill_moves: self.accepted_downhill_moves,
+            accepted_neutral_moves: self.accepted_neutral_moves,
+            restart_count: None,
+            perturbation_count: self
+                .policy_memory
+                .ils
+                .as_ref()
+                .map(|memory| memory.perturbation_round),
             initial_score: self.initial_score,
             best_score: self.best_state.total_score,
             final_score: self.best_state.total_score,
@@ -332,8 +376,21 @@ impl SearchProgressState {
             search_seconds,
             finalization_seconds: 0.0,
             total_seconds: search_seconds,
+            iterations_per_second: if search_seconds > 0.0 {
+                self.iterations_completed as f64 / search_seconds
+            } else {
+                0.0
+            },
+            best_score_timeline: self.best_score_timeline.clone(),
             moves: self.move_metrics.clone(),
         }
+    }
+
+    fn record_no_improvement_step(&mut self) {
+        self.no_improvement_count += 1;
+        self.max_no_improvement_streak = self
+            .max_no_improvement_streak
+            .max(self.no_improvement_count);
     }
 
     fn push_recent_acceptance(&mut self, accepted: bool) {
@@ -510,7 +567,7 @@ mod tests {
         progress.record_accepted_move(crate::models::MoveFamily::Swap, 0.1, 1.5, true);
         progress.record_acceptance_result(true);
         progress.current_state.total_score -= 2.0;
-        progress.refresh_best_from_current();
+        progress.refresh_best_from_current(4, 0.42);
         progress.finish_iteration(4);
 
         assert_eq!(progress.move_metrics.swap.attempts, 1);

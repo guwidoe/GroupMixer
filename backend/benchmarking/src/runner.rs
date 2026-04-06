@@ -2,9 +2,9 @@ use crate::artifacts::{
     BaselineSnapshot, BenchmarkArtifactKind, BenchmarkSeedPolicy, CaseIdentityMetadata,
     CaseRunArtifact, CaseRunStatus, ClassRollup, ConstraintFamilyContribution,
     EffectiveBenchmarkBudget, RunMetadata, RunReport, RunSuiteMetadata, RunTotals,
-    ScoreDecomposition, SolveTimingBreakdown, SolverBenchmarkMetadata, SolverCapabilitiesSnapshot,
-    WeightedConstraintBreakdown, BASELINE_SNAPSHOT_SCHEMA_VERSION, CASE_RUN_SCHEMA_VERSION,
-    RUN_REPORT_SCHEMA_VERSION,
+    ScoreDecomposition, SearchTelemetryArtifact, SolveTimingBreakdown, SolverBenchmarkMetadata,
+    SolverCapabilitiesSnapshot, WeightedConstraintBreakdown, BASELINE_SNAPSHOT_SCHEMA_VERSION,
+    CASE_RUN_SCHEMA_VERSION, RUN_REPORT_SCHEMA_VERSION,
 };
 use crate::benchmark_mode::FULL_SOLVE_BENCHMARK_MODE;
 use crate::hotpath::run_hotpath_case_artifact;
@@ -218,6 +218,16 @@ fn run_case(
                 .as_ref()
                 .map(|telemetry| telemetry.moves.clone())
                 .unwrap_or_default();
+            let search_telemetry = telemetry.as_ref().map(|telemetry| SearchTelemetryArtifact {
+                accepted_uphill_moves: telemetry.accepted_uphill_moves,
+                accepted_downhill_moves: telemetry.accepted_downhill_moves,
+                accepted_neutral_moves: telemetry.accepted_neutral_moves,
+                max_no_improvement_streak: telemetry.max_no_improvement_streak,
+                restart_count: telemetry.restart_count,
+                perturbation_count: telemetry.perturbation_count,
+                iterations_per_second: telemetry.iterations_per_second,
+                best_score_timeline: telemetry.best_score_timeline.clone(),
+            });
             let validation = validate_final_solution(&input, &result);
             let score_decomposition =
                 build_score_decomposition(&input, &result, validation.recomputed.as_ref());
@@ -269,6 +279,7 @@ fn run_case(
                 weighted_repetition_penalty: Some(result.weighted_repetition_penalty),
                 weighted_constraint_penalty: Some(result.weighted_constraint_penalty),
                 score_decomposition: Some(score_decomposition),
+                search_telemetry,
                 moves,
                 hotpath_metrics: None,
                 external_validation: Some(validation),
@@ -312,6 +323,7 @@ fn run_case(
             weighted_repetition_penalty: None,
             weighted_constraint_penalty: None,
             score_decomposition: None,
+            search_telemetry: None,
             moves: MoveFamilyBenchmarkTelemetrySummary::default(),
             hotpath_metrics: None,
             external_validation: None,
@@ -874,6 +886,11 @@ mod tests {
                 .as_ref()
                 .is_some_and(|validation| validation.validation_passed)
         }));
+        assert!(report.cases.iter().all(|case| {
+            case.search_telemetry
+                .as_ref()
+                .is_some_and(|telemetry| !telemetry.best_score_timeline.is_empty())
+        }));
     }
 
     #[test]
@@ -902,6 +919,11 @@ mod tests {
             case.external_validation
                 .as_ref()
                 .is_some_and(|validation| validation.validation_passed)
+        }));
+        assert!(report.cases.iter().all(|case| {
+            case.search_telemetry
+                .as_ref()
+                .is_some_and(|telemetry| !telemetry.best_score_timeline.is_empty())
         }));
     }
 

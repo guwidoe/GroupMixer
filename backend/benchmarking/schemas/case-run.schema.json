@@ -87,9 +87,43 @@
         { "type": "null" }
       ]
     },
+    "search_telemetry": {
+      "type": ["object", "null"],
+      "required": [
+        "accepted_uphill_moves",
+        "accepted_downhill_moves",
+        "accepted_neutral_moves",
+        "max_no_improvement_streak",
+        "restart_count",
+        "perturbation_count",
+        "iterations_per_second",
+        "best_score_timeline"
+      ],
+      "properties": {
+        "accepted_uphill_moves": { "type": "integer" },
+        "accepted_downhill_moves": { "type": "integer" },
+        "accepted_neutral_moves": { "type": "integer" },
+        "max_no_improvement_streak": { "type": "integer" },
+        "restart_count": { "type": ["integer", "null"] },
+        "perturbation_count": { "type": ["integer", "null"] },
+        "iterations_per_second": { "type": "number" },
+        "best_score_timeline": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["iteration", "elapsed_seconds", "best_score"],
+            "properties": {
+              "iteration": { "type": "integer" },
+              "elapsed_seconds": { "type": "number" },
+              "best_score": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
     "moves": {
       "type": "object",
-      "description": "Serialized gm-core MoveFamilyBenchmarkTelemetrySummary"
+      "description": "Serialized gm-core MoveFamilyBenchmarkTelemetrySummary (attempts/accepted/improving_accepts/rejected plus timing counters per move family)."
     },
     "hotpath_metrics": {
       "type": ["object", "null"],

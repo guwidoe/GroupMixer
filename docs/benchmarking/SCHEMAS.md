@@ -55,7 +55,13 @@ Key fields:
   - invariant/feasibility status
   - schedule roundtrip agreement
   - mismatch diagnostics and recomputed breakdown details
-- search telemetry: iterations, no-improvement count, per-move-family counters
+- search telemetry:
+  - iterations and iteration throughput (`iterations_per_second`)
+  - no-improvement counters (`no_improvement_count`) and max streak (`search_telemetry.max_no_improvement_streak`)
+  - acceptance-direction counters (`accepted_downhill_moves`, `accepted_uphill_moves`, `accepted_neutral_moves`)
+  - restart/perturbation counters where available (`restart_count`, `perturbation_count`)
+  - best-so-far improvement timeline (`best_score_timeline`)
+  - per-move-family counters including `improving_accepts`
 - optional hotpath metrics: measured operations, warmup count, throughput, and mode-specific timing buckets
 
 ## Timing and construction telemetry semantics

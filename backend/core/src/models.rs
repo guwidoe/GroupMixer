@@ -1274,6 +1274,8 @@ pub struct MoveFamilyBenchmarkTelemetry {
     #[serde(default)]
     pub accepted: u64,
     #[serde(default)]
+    pub improving_accepts: u64,
+    #[serde(default)]
     pub rejected: u64,
     #[serde(default)]
     pub preview_seconds: f64,
@@ -1283,6 +1285,14 @@ pub struct MoveFamilyBenchmarkTelemetry {
     pub full_recalculation_count: u64,
     #[serde(default)]
     pub full_recalculation_seconds: f64,
+}
+
+/// A best-so-far score sample recorded during search.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+pub struct BestScoreTimelinePoint {
+    pub iteration: u64,
+    pub elapsed_seconds: f64,
+    pub best_score: f64,
 }
 
 /// Benchmark telemetry grouped by move family.
@@ -1304,7 +1314,19 @@ pub struct SolverBenchmarkTelemetry {
     pub stop_reason: StopReason,
     pub iterations_completed: u64,
     pub no_improvement_count: u64,
+    #[serde(default)]
+    pub max_no_improvement_streak: u64,
     pub reheats_performed: u64,
+    #[serde(default)]
+    pub accepted_uphill_moves: u64,
+    #[serde(default)]
+    pub accepted_downhill_moves: u64,
+    #[serde(default)]
+    pub accepted_neutral_moves: u64,
+    #[serde(default)]
+    pub restart_count: Option<u64>,
+    #[serde(default)]
+    pub perturbation_count: Option<u64>,
     pub initial_score: f64,
     pub best_score: f64,
     pub final_score: f64,
@@ -1312,6 +1334,10 @@ pub struct SolverBenchmarkTelemetry {
     pub search_seconds: f64,
     pub finalization_seconds: f64,
     pub total_seconds: f64,
+    #[serde(default)]
+    pub iterations_per_second: f64,
+    #[serde(default)]
+    pub best_score_timeline: Vec<BestScoreTimelinePoint>,
     pub moves: MoveFamilyBenchmarkTelemetrySummary,
 }
 

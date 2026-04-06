@@ -4,7 +4,7 @@ use rand::{rng, seq::SliceRandom, RngExt, SeedableRng};
 use rand_chacha::ChaCha12Rng;
 
 use crate::models::{
-    BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, MoveFamily,
+    BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, BestScoreTimelinePoint, MoveFamily,
     MoveFamilyBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
     MoveSelectionMode, ProgressCallback, ProgressUpdate, SolverBenchmarkTelemetry,
     SolverConfiguration, SolverResult, StopReason,
@@ -108,13 +108,22 @@ impl SearchEngine {
         let initial_score = current_state.current_score.total_score;
         let mut best_score = initial_score;
         let mut no_improvement_count = 0u64;
+        let mut max_no_improvement_streak = 0u64;
         let mut iterations_completed = 0u64;
         let mut local_optima_escapes = 0u64;
+        let mut accepted_uphill_moves = 0u64;
+        let mut accepted_downhill_moves = 0u64;
+        let mut accepted_neutral_moves = 0u64;
         let mut attempted_delta_sum = 0.0;
         let mut accepted_delta_sum = 0.0;
         let mut biggest_attempted_increase: f64 = 0.0;
         let mut biggest_accepted_increase: f64 = 0.0;
         let mut recent_acceptance = VecDeque::with_capacity(RECENT_WINDOW);
+        let mut best_score_timeline = vec![BestScoreTimelinePoint {
+            iteration: 0,
+            elapsed_seconds: 0.0,
+            best_score: initial_score,
+        }];
         let mut move_metrics = MoveFamilyBenchmarkTelemetrySummary::default();
 
         if let Some(observer) = benchmark_observer {
@@ -173,6 +182,14 @@ impl SearchEngine {
                             apply_previewed_candidate(&mut current_state, &preview)?;
                             let apply_seconds = now_seconds() - apply_started_at;
                             family_metrics.accepted += 1;
+                            if delta_cost < 0.0 {
+                                family_metrics.improving_accepts += 1;
+                                accepted_downhill_moves += 1;
+                            } else if delta_cost > 0.0 {
+                                accepted_uphill_moves += 1;
+                            } else {
+                                accepted_neutral_moves += 1;
+                            }
                             family_metrics.apply_seconds += apply_seconds;
                             accepted_delta_sum += delta_cost;
 
@@ -208,24 +225,41 @@ impl SearchEngine {
                                 best_score = current_state.current_score.total_score;
                                 best_state = current_state.clone();
                                 no_improvement_count = 0;
+                                best_score_timeline.push(BestScoreTimelinePoint {
+                                    iteration: iteration + 1,
+                                    elapsed_seconds: now_seconds() - search_started_at,
+                                    best_score,
+                                });
                             } else {
-                                no_improvement_count += 1;
+                                increment_no_improvement_streak(
+                                    &mut no_improvement_count,
+                                    &mut max_no_improvement_streak,
+                                );
                             }
                             push_recent_acceptance(&mut recent_acceptance, true);
                         } else {
                             family_metrics.rejected += 1;
-                            no_improvement_count += 1;
+                            increment_no_improvement_streak(
+                                &mut no_improvement_count,
+                                &mut max_no_improvement_streak,
+                            );
                             push_recent_acceptance(&mut recent_acceptance, false);
                         }
                     }
                     Err(_) => {
                         family_metrics.rejected += 1;
-                        no_improvement_count += 1;
+                        increment_no_improvement_streak(
+                            &mut no_improvement_count,
+                            &mut max_no_improvement_streak,
+                        );
                         push_recent_acceptance(&mut recent_acceptance, false);
                     }
                 }
             } else {
-                no_improvement_count += 1;
+                increment_no_improvement_streak(
+                    &mut no_improvement_count,
+                    &mut max_no_improvement_streak,
+                );
             }
 
             iterations_completed = iteration + 1;
@@ -326,7 +360,13 @@ impl SearchEngine {
             stop_reason,
             iterations_completed,
             no_improvement_count,
+            max_no_improvement_streak,
             reheats_performed: 0,
+            accepted_uphill_moves,
+            accepted_downhill_moves,
+            accepted_neutral_moves,
+            restart_count: None,
+            perturbation_count: None,
             initial_score,
             best_score: best_state.current_score.total_score,
             final_score: best_state.current_score.total_score,
@@ -334,6 +374,12 @@ impl SearchEngine {
             search_seconds: search_finished_at - search_started_at,
             finalization_seconds: 0.0,
             total_seconds: search_finished_at - run_started_at,
+            iterations_per_second: if search_finished_at > search_started_at {
+                iterations_completed as f64 / (search_finished_at - search_started_at)
+            } else {
+                0.0
+            },
+            best_score_timeline,
             moves: move_metrics.clone(),
         };
 
@@ -956,6 +1002,14 @@ fn push_recent_acceptance(recent_acceptance: &mut VecDeque<bool>, accepted: bool
         recent_acceptance.pop_front();
     }
     recent_acceptance.push_back(accepted);
+}
+
+fn increment_no_improvement_streak(
+    no_improvement_count: &mut u64,
+    max_no_improvement_streak: &mut u64,
+) {
+    *no_improvement_count += 1;
+    *max_no_improvement_streak = (*max_no_improvement_streak).max(*no_improvement_count);
 }
 
 fn family_metrics_mut(

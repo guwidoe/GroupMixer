@@ -400,9 +400,24 @@ fn cycle_reheating_is_reported_in_benchmark_telemetry() {
     let telemetry = result
         .benchmark_telemetry
         .expect("benchmark telemetry should be present");
+    let accepted_total = telemetry.moves.swap.accepted
+        + telemetry.moves.transfer.accepted
+        + telemetry.moves.clique_swap.accepted;
+    let accepted_direction_total = telemetry.accepted_downhill_moves
+        + telemetry.accepted_uphill_moves
+        + telemetry.accepted_neutral_moves;
 
     assert_eq!(telemetry.reheats_performed, 2);
     assert_eq!(telemetry.stop_reason, StopReason::MaxIterationsReached);
+    assert_eq!(telemetry.restart_count, Some(2));
+    assert!(telemetry.max_no_improvement_streak >= telemetry.no_improvement_count);
+    assert_eq!(accepted_total, accepted_direction_total);
+    assert!(telemetry.moves.swap.improving_accepts <= telemetry.moves.swap.accepted);
+    assert!(telemetry.moves.transfer.improving_accepts <= telemetry.moves.transfer.accepted);
+    assert!(telemetry.moves.clique_swap.improving_accepts <= telemetry.moves.clique_swap.accepted);
+    assert!(!telemetry.best_score_timeline.is_empty());
+    assert_eq!(telemetry.best_score_timeline[0].iteration, 0);
+    assert!(telemetry.iterations_per_second >= 0.0);
 }
 
 #[test]
@@ -453,6 +468,7 @@ fn time_limit_stop_reason_surfaces_through_result_and_telemetry() {
 
     assert_eq!(result.stop_reason, Some(StopReason::TimeLimitReached));
     assert_eq!(telemetry.stop_reason, StopReason::TimeLimitReached);
+    assert!(telemetry.perturbation_count.is_none());
 }
 
 #[test]

@@ -23,7 +23,7 @@
 //! This provides smooth temperature decay from high exploration to low exploitation.
 
 use crate::models::{
-    BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, MoveFamily,
+    BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, BestScoreTimelinePoint, MoveFamily,
     MoveFamilyBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
     MoveSelectionMode, ProgressCallback, ProgressUpdate, SolverBenchmarkTelemetry,
     SolverConfiguration, SolverResult, StopReason,
@@ -961,10 +961,14 @@ impl Solver for SimulatedAnnealing {
         let mut best_state = state.clone();
         let mut best_cost = state.calculate_cost();
         let mut no_improvement_counter = 0;
+        let mut max_no_improvement_streak = 0u64;
         let mut last_callback_time = get_start_time();
         let mut progress_callback_count: u64 = 0;
         let mut final_iteration = 0;
         let mut stop_reason = StopReason::MaxIterationsReached;
+        let mut accepted_uphill_moves = 0u64;
+        let mut accepted_downhill_moves = 0u64;
+        let mut accepted_neutral_moves = 0u64;
         let initialization_finished_at = get_current_time();
 
         if state.logging.log_initial_score_breakdown {
@@ -998,6 +1002,11 @@ impl Solver for SimulatedAnnealing {
 
         // Initialize algorithm metrics (convert start_time to f64 for cross-platform compatibility)
         let initial_score = state.calculate_cost();
+        let mut best_score_timeline = vec![BestScoreTimelinePoint {
+            iteration: 0,
+            elapsed_seconds: 0.0,
+            best_score: initial_score,
+        }];
 
         let mut metrics = AlgorithmMetrics::new(initial_score);
         let mut benchmark_moves = BenchmarkMoveTelemetry::default();
@@ -1375,11 +1384,24 @@ impl Solver for SimulatedAnnealing {
                                 best_state = current_state.clone();
                                 no_improvement_counter = 0;
                                 improvement_found = true;
+                                best_score_timeline.push(BestScoreTimelinePoint {
+                                    iteration: i + 1,
+                                    elapsed_seconds: get_elapsed_seconds(start_time),
+                                    best_score: best_cost,
+                                });
                             }
                         }
 
                         if move_accepted {
                             telemetry.accepted += 1;
+                            if recorded_delta < 0.0 {
+                                telemetry.improving_accepts += 1;
+                                accepted_downhill_moves += 1;
+                            } else if recorded_delta > 0.0 {
+                                accepted_uphill_moves += 1;
+                            } else {
+                                accepted_neutral_moves += 1;
+                            }
                         } else {
                             telemetry.rejected += 1;
                         }
@@ -1487,12 +1509,25 @@ impl Solver for SimulatedAnnealing {
                                     best_state = current_state.clone();
                                     no_improvement_counter = 0;
                                     improvement_found = true;
+                                    best_score_timeline.push(BestScoreTimelinePoint {
+                                        iteration: i + 1,
+                                        elapsed_seconds: get_elapsed_seconds(start_time),
+                                        best_score: best_cost,
+                                    });
                                 }
                             }
                         }
 
                         if move_accepted {
                             telemetry.accepted += 1;
+                            if delta_cost < 0.0 {
+                                telemetry.improving_accepts += 1;
+                                accepted_downhill_moves += 1;
+                            } else if delta_cost > 0.0 {
+                                accepted_uphill_moves += 1;
+                            } else {
+                                accepted_neutral_moves += 1;
+                            }
                         } else {
                             telemetry.rejected += 1;
                         }
@@ -1594,12 +1629,25 @@ impl Solver for SimulatedAnnealing {
                             best_state = current_state.clone();
                             no_improvement_counter = 0;
                             improvement_found = true;
+                            best_score_timeline.push(BestScoreTimelinePoint {
+                                iteration: i + 1,
+                                elapsed_seconds: get_elapsed_seconds(start_time),
+                                best_score: best_cost,
+                            });
                         }
                     }
                 }
 
                 if move_accepted {
                     telemetry.accepted += 1;
+                    if delta_cost < 0.0 {
+                        telemetry.improving_accepts += 1;
+                        accepted_downhill_moves += 1;
+                    } else if delta_cost > 0.0 {
+                        accepted_uphill_moves += 1;
+                    } else {
+                        accepted_neutral_moves += 1;
+                    }
                 } else {
                     telemetry.rejected += 1;
                 }
@@ -1625,6 +1673,7 @@ impl Solver for SimulatedAnnealing {
             // --- Stop Conditions ---
             if !improvement_found {
                 no_improvement_counter += 1;
+                max_no_improvement_streak = max_no_improvement_streak.max(no_improvement_counter);
             }
 
             if let Some(no_improvement_limit) = self.no_improvement_iterations {
@@ -1689,7 +1738,13 @@ impl Solver for SimulatedAnnealing {
             stop_reason,
             iterations_completed: final_iteration + 1,
             no_improvement_count: no_improvement_counter,
+            max_no_improvement_streak,
             reheats_performed: reheat_count,
+            accepted_uphill_moves,
+            accepted_downhill_moves,
+            accepted_neutral_moves,
+            restart_count: Some(reheat_count),
+            perturbation_count: None,
             initial_score,
             best_score: best_cost,
             final_score: final_cost,
@@ -1697,6 +1752,12 @@ impl Solver for SimulatedAnnealing {
             search_seconds,
             finalization_seconds,
             total_seconds,
+            iterations_per_second: if search_seconds > 0.0 {
+                (final_iteration + 1) as f64 / search_seconds
+            } else {
+                0.0
+            },
+            best_score_timeline,
             moves: benchmark_moves.into_summary(),
         };
 

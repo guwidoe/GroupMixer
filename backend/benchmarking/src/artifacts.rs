@@ -1,6 +1,8 @@
 use crate::manifest::{BenchmarkCaseRole, BenchmarkSuiteClass, DeclaredBenchmarkBudget};
 use crate::validation::ExternalValidationReport;
-use gm_core::models::{MoveFamilyBenchmarkTelemetrySummary, MovePolicy, StopReason};
+use gm_core::models::{
+    BestScoreTimelinePoint, MoveFamilyBenchmarkTelemetrySummary, MovePolicy, StopReason,
+};
 use serde::{Deserialize, Serialize};
 
 pub const CASE_RUN_SCHEMA_VERSION: u32 = 1;
@@ -209,6 +211,26 @@ pub struct ScoreDecomposition {
     pub weighted_constraint_breakdown: WeightedConstraintBreakdown,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct SearchTelemetryArtifact {
+    #[serde(default)]
+    pub accepted_uphill_moves: u64,
+    #[serde(default)]
+    pub accepted_downhill_moves: u64,
+    #[serde(default)]
+    pub accepted_neutral_moves: u64,
+    #[serde(default)]
+    pub max_no_improvement_streak: u64,
+    #[serde(default)]
+    pub restart_count: Option<u64>,
+    #[serde(default)]
+    pub perturbation_count: Option<u64>,
+    #[serde(default)]
+    pub iterations_per_second: f64,
+    #[serde(default)]
+    pub best_score_timeline: Vec<BestScoreTimelinePoint>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CaseRunArtifact {
     pub schema_version: u32,
@@ -265,6 +287,8 @@ pub struct CaseRunArtifact {
     pub weighted_constraint_penalty: Option<f64>,
     #[serde(default)]
     pub score_decomposition: Option<ScoreDecomposition>,
+    #[serde(default)]
+    pub search_telemetry: Option<SearchTelemetryArtifact>,
     #[serde(default)]
     pub moves: MoveFamilyBenchmarkTelemetrySummary,
     #[serde(default)]
@@ -391,6 +415,7 @@ pub struct MoveFamilyComparison {
     pub family: String,
     pub attempts: IntegerDelta,
     pub accepted: IntegerDelta,
+    pub improving_accepts: IntegerDelta,
     pub rejected: IntegerDelta,
     pub preview_seconds: NumericDelta,
     pub apply_seconds: NumericDelta,

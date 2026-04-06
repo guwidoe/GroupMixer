@@ -114,7 +114,10 @@ impl SearchEngine {
                         &preview,
                     )?;
 
-                    search.refresh_best_from_current();
+                    search.refresh_best_from_current(
+                        iteration,
+                        search_started_at.elapsed().as_secs_f64(),
+                    );
                     search.record_acceptance_result(true);
                 } else {
                     search.record_rejected_move(family);
