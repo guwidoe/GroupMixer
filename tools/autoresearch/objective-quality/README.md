@@ -142,6 +142,18 @@ cd tools/autoresearch/objective-quality
 ./fixed-iteration-diagnostic.sh
 ```
 
+## Decision policy summary
+
+- **primary keep/discard metric:** fixed-time objective quality (`objective_suite_total_final_score`) on a stable machine
+- **hard blockers:** any correctness-guardrail failure, external validation failure, canonical-case failure, or benchmark-contract dishonesty
+- **fixed-iteration lane:** diagnostic only; explains quality-per-unit-of-search and does not override the fixed-time lane by itself
+- **raw runtime / hotpath lanes:** diagnostic only; explain throughput changes and help interpret fixed-time moves
+- **rerun rule:** if the fixed-time result is borderline or the lanes disagree in a way that could be noise, rerun before keep/discard
+
+Full decision matrix:
+
+- `docs/benchmarking/OBJECTIVE_RESEARCH_DECISION_POLICY.md`
+
 ## Go-live status (honest current state)
 
 - The lane wiring (config + command + checks) is now checked in.

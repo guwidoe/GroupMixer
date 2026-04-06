@@ -138,6 +138,7 @@ Checked-in autoresearch lane wiring:
 - `tools/autoresearch/objective-quality/README.md` documents setup, metric policy (objective quality primary, runtime secondary), fixed-iteration diagnostics, and measured runtime costs.
 - `docs/benchmarking/OBJECTIVE_FIXED_TIME_PRIMARY_LANE_2026-04-06.md` records the rebuilt fixed-time lane contract and a measured case-by-case effort profile.
 - `docs/benchmarking/OBJECTIVE_FIXED_ITERATION_DIAGNOSTIC_LANE_2026-04-06.md` records the companion fixed-iteration diagnostic lane and how to interpret it.
+- `docs/benchmarking/OBJECTIVE_RESEARCH_DECISION_POLICY.md` defines the keep/discard decision matrix across fixed-time, fixed-iteration, raw-perf, and correctness evidence.
 
 Sailing Trip truth boundary:
 
