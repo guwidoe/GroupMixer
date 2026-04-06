@@ -323,19 +323,20 @@ function createFallbackDemo(): Scenario {
         type: "RepeatEncounter",
         max_allowed_encounters: 1,
         penalty_function: "squared",
-        penalty_weight: 1.0,
+        penalty_weight: 10.0,
       },
       // Keep Alice and Bob together (they're project partners)
       {
         type: "MustStayTogether",
         people: ["alice", "bob"],
+        penalty_weight: 10.0,
         sessions: [0, 1], // Only for first two sessions
       },
       // Charlie and Diana can't be together (personality conflict)
       {
         type: "ShouldNotBeTogether",
         people: ["charlie", "diana"],
-        penalty_weight: 500.0,
+        penalty_weight: 10.0,
       },
       // Maintain gender balance in team-alpha
       {
@@ -343,7 +344,7 @@ function createFallbackDemo(): Scenario {
         group_id: "team-alpha",
         attribute_key: "gender",
         desired_values: { male: 2, female: 2 },
-        penalty_weight: 50.0,
+        penalty_weight: 10.0,
         mode: "exact",
       },
     ],

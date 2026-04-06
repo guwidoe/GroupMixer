@@ -23,8 +23,8 @@
     {
       "case_id": "stretch.social-golfer-32x8x10",
       "weight": 1.0,
-      "reference_final_score": 546033.0,
-      "explanation": "Reference final score from the checked-in hard-case fixed-iteration diagnostic baseline."
+      "reference_final_score": 5409.0,
+      "explanation": "Reference final score from the checked-in hard-case fixed-iteration diagnostic baseline after reducing the standalone repeat-encounter weight."
     },
     {
       "case_id": "stretch.large-gender-immovable-110p",

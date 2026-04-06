@@ -251,7 +251,7 @@
         "type": "RepeatEncounter",
         "max_allowed_encounters": 0,
         "penalty_function": "squared",
-        "penalty_weight": 1000.0
+        "penalty_weight": 10.0
       }
     ],
     "solver": {
