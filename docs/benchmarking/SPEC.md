@@ -158,6 +158,8 @@ backend/benchmarking/
 
 For every `full_solve` case, the runner performs an external validation pass after the solver returns:
 
+- first validate the solver-reported final schedule against the shared **incumbent warm-start** contract
+- clear any source-case `construction_seed_schedule` before replaying the final schedule
 - parse the solver-reported final schedule as a fresh external state
 - recompute total score and score breakdown from scratch
 - run independent feasibility/invariant checks

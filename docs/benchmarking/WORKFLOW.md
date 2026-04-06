@@ -148,6 +148,7 @@ Before declaring the objective autoresearch lane live, confirm every go-live gat
 
 - [x] canonical-vs-helper enforcement is active for objective suites (`case_selection_policy: canonical_only` by default)
 - [x] external full-solve validation is active in benchmark run artifacts
+- [x] final-solution validation now replays schedules under the shared incumbent-warm-start contract (benchmark helper construction seeds are cleared before replay)
 - [x] canonical objective suite v1 manifests + explicit per-case budgets are checked in
 - [x] workflow policy requires full-suite execution on every objective experiment
 - [x] exact raw `stretch/sailing_trip_demo_real.json` solver3 path is runnable as itself (not helper benchmark-start substitution)

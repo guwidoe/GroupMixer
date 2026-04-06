@@ -3,6 +3,7 @@ use gm_core::models::{ApiInput, SolverKind, SolverResult};
 use gm_core::solver2::scoring::{recompute_full_score, FullScoreSnapshot};
 use gm_core::solver2::validation::invariants::validate_state_invariants;
 use gm_core::solver2::SolutionState;
+use gm_core::solver_support::validation::validate_schedule_as_incumbent;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
@@ -63,6 +64,7 @@ impl Default for ExternalValidationAgreement {
             weighted_constraint_penalty: false,
         }
     }
+
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -97,6 +99,23 @@ pub fn validate_final_solution(
     let mut diagnostics = Vec::new();
     let mut validation_input = input.clone();
     validation_input.initial_schedule = Some(result.schedule.clone());
+    validation_input.construction_seed_schedule = None;
+    if let Err(error) = validate_schedule_as_incumbent(&validation_input, &result.schedule) {
+        diagnostics.push(format!(
+            "shared incumbent schedule validation failed before external recomputation: {error}"
+        ));
+        return ExternalValidationReport {
+            validation_passed: false,
+            total_score_agreement: false,
+            score_breakdown_agreement: false,
+            invariants_passed: false,
+            schedule_roundtrip_exact: false,
+            component_agreement: ExternalValidationAgreement::default(),
+            reported,
+            recomputed: None,
+            mismatch_diagnostics: diagnostics,
+        };
+    }
     let mut solver_override = default_solver_configuration_for(SolverKind::Solver2);
     solver_override.stop_conditions = validation_input.solver.stop_conditions.clone();
     solver_override.logging = validation_input.solver.logging.clone();
@@ -521,9 +540,9 @@ mod tests {
         assert!(!report.validation_passed);
         assert!(!report.invariants_passed);
         assert!(!report.schedule_roundtrip_exact);
-        assert!(report
-            .mismatch_diagnostics
-            .iter()
-            .any(|entry| entry.contains("failed to build external validation state")));
+        assert!(report.mismatch_diagnostics.iter().any(|entry| {
+            entry.contains("shared incumbent schedule validation failed")
+                || entry.contains("failed to build external validation state")
+        }));
     }
 }
