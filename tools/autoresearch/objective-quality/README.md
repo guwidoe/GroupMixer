@@ -24,7 +24,7 @@ The small low-headroom representative cases remain in the repo for other purpose
 
 The script emits:
 
-- **Primary metric**: `objective_suite_weighted_normalized_score` (lower is better)
+- **Primary metric**: `objective_suite_weighted_normalized_score` (lower is better, scaled by `100` for readability)
 - **Raw-score diagnostics**: `objective_suite_total_final_score_raw`, `objective_suite_average_final_score_raw`
 - **Secondary metrics**: runtime + validation diagnostics (`runtime_total_seconds`, per-suite validation mismatch counters, etc.)
 
@@ -35,7 +35,7 @@ The primary metric math is not hidden in the script anymore. It is declared in:
 Current fixed-time primary metric formula:
 
 - per case: `normalized_case_score = final_score / reference_final_score`
-- aggregate: `objective_suite_weighted_normalized_score = sum(weight * normalized_case_score) / sum(weight)`
+- aggregate: `objective_suite_weighted_normalized_score = 100 * sum(weight * normalized_case_score) / sum(weight)`
 - current weights: all canonical cases use explicit equal weight `1.0`
 
 Runtime is explicitly a monitoring signal in this lane, not the keep/discard target.

@@ -6,7 +6,7 @@ Improve `solver3` on the hard canonical objective bundle using **fixed-time obje
 This lane is solver3-only. Fixed-iteration quality and raw-runtime probes are supporting diagnostics, not the keep/discard target.
 
 ## Metrics
-- **Primary**: `objective_suite_weighted_normalized_score` (lower is better)
+- **Primary**: `objective_suite_weighted_normalized_score` (lower is better, scaled so baseline-like values are around `100` instead of `1.00`)
 - **Secondary**:
   - `objective_fixed_iteration_weighted_normalized_score`
   - `solver3_raw_score_us`

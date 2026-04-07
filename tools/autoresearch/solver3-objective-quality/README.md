@@ -6,7 +6,7 @@ This package is a light orchestration layer over the shared benchmarking and cor
 
 Iterate on `solver3` internals only, with:
 
-- **Primary metric:** fixed-time objective quality on a 6-case canonical hard bundle
+- **Primary metric:** fixed-time objective quality on a 6-case canonical hard bundle, scaled by `100` for readability
 - **Secondary diagnostics:** fixed-iteration objective quality, solver3 raw-runtime / hotpath metrics, runtime and validation breakdowns
 - **Checks:** broad shared correctness guardrails plus solver3-specific benchmark metadata / validation checks
 

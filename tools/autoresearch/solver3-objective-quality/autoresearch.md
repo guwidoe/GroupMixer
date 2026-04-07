@@ -6,7 +6,7 @@ Improve `solver3` on the canonical hard objective bundle using **fixed-time obje
 This lane is explicitly **solver3-only**. It exists to improve solver3 internals and search behavior without changing the benchmark question.
 
 ## Metrics
-- **Primary**: `objective_suite_weighted_normalized_score` (unitless, lower is better) — arithmetic mean of the six per-case normalized final scores on the solver3 fixed-time canonical bundle
+- **Primary**: `objective_suite_weighted_normalized_score` (unitless, lower is better) — `100 ×` the arithmetic mean of the six per-case normalized final scores on the solver3 fixed-time canonical bundle
 - **Secondary**:
   - `objective_fixed_iteration_weighted_normalized_score`
   - `solver3_raw_score_us`
