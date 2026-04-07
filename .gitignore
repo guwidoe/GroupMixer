@@ -385,3 +385,5 @@ FodyWeavers.xsd
 .desloppify
 
 tools/remote_benchmark.env
+
+papers/
