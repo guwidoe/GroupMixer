@@ -36,7 +36,11 @@ The stretch solver3 bundle intentionally includes the synthetic partial-attendan
 
 ## Persistence note
 
-The tool-managed `autoresearch.jsonl` currently only persists the primary metric reliably. The lane therefore also maintains `autoresearch.metrics.jsonl` as a sidecar log for secondary diagnostics and per-case score history.
+`./autoresearch.sh` writes the latest full metric set to `autoresearch.last_run_metrics.json`. After each completed `run_experiment` + `log_experiment` cycle, patch the latest `autoresearch.jsonl` run entry with:
+
+`python3 tools/autoresearch/patch_autoresearch_jsonl.py autoresearch.jsonl autoresearch.last_run_metrics.json`
+
+This keeps the tool-managed history authoritative while preserving secondary diagnostics and per-case score history in the same file.
 
 ## Scope rules
 

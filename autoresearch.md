@@ -20,7 +20,11 @@ This lane is solver3-only. Fixed-iteration quality and raw-runtime probes are su
 Root wrappers delegate to `tools/autoresearch/solver3-objective-quality/`.
 
 ## Persistent Metrics Logging
-`autoresearch.jsonl` is tool-managed and currently persists only the primary metric reliably. To preserve secondary diagnostics and per-case scores across resets/reverts, append a structured entry to `autoresearch.metrics.jsonl` after every completed `run_experiment` + `log_experiment` cycle.
+`./autoresearch.sh` now writes the most recent full metric set to `autoresearch.last_run_metrics.json`. After every completed `run_experiment` + `log_experiment` cycle, run:
+
+`python3 tools/autoresearch/patch_autoresearch_jsonl.py autoresearch.jsonl autoresearch.last_run_metrics.json`
+
+This patches the latest run entry in `autoresearch.jsonl` so the tool-managed history also retains the secondary diagnostics and per-case scores.
 
 ## Files in Scope
 - `backend/core/src/solver3/**`
