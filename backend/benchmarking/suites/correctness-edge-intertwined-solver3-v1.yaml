@@ -1,0 +1,59 @@
+schema_version: 1
+suite_id: correctness-edge-intertwined-solver3-v1
+benchmark_mode: full_solve
+comparison_category: invariant_only
+case_selection_policy: allow_non_canonical
+class: adversarial
+title: Correctness edge-case intertwined corpus for solver3 (v1)
+description: Curated correctness/edge-case benchmark corpus with intertwined constraints, retargeted explicitly to solver3 for semantic trust during solver3 autoresearch.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 1000000
+    time_limit_seconds: 60
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/adversarial/correctness_hard_constraints_stress.json
+    case_role: canonical
+    purpose: correctness_edge.intertwined.must_should_not_immovable
+    provenance: reused_from_backend/core/tests/test_cases/hard_constraints_stress_test.json
+    declared_budget:
+      max_iterations: 6000
+      time_limit_seconds: 2
+    max_iterations: 6000
+    time_limit_seconds: 2
+  - manifest: ../cases/adversarial/correctness_late_arrivals_early_departures.json
+    case_role: canonical
+    purpose: correctness_edge.intertwined.partial_participation_session_scoping
+    provenance: reused_from_backend/core/tests/test_cases/late_arrivals_early_departures_test.json
+    declared_budget:
+      max_iterations: 8000
+      time_limit_seconds: 3
+    max_iterations: 8000
+    time_limit_seconds: 3
+  - manifest: ../cases/adversarial/correctness_session_aware_group_capacities.json
+    case_role: canonical
+    purpose: correctness_edge.intertwined.session_sizes_and_participation
+    provenance: reused_from_backend/core/tests/test_cases/session_aware_group_capacities.json
+    declared_budget:
+      max_iterations: 3000
+      time_limit_seconds: 2
+    max_iterations: 3000
+    time_limit_seconds: 2
+  - manifest: ../cases/adversarial/correctness_session_specific_constraints.json
+    case_role: canonical
+    purpose: correctness_edge.intertwined.session_specific_constraint_windows
+    provenance: reused_from_backend/core/tests/test_cases/session_specific_constraints_test.json
+    declared_budget:
+      max_iterations: 3000
+      time_limit_seconds: 2
+    max_iterations: 3000
+    time_limit_seconds: 2

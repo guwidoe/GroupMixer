@@ -28,6 +28,11 @@ Because the runner currently enforces one `class` per suite manifest, the curren
 
 Objective keep/discard claims must run both manifests together.
 
+Solver3-specific autoresearch note:
+
+- the dedicated solver3 objective autoresearch lane uses solver3-retargeted suite variants and currently expands the primary bundle with `stretch.synthetic-partial-attendance-capacity-pressure-152p`
+- see `tools/autoresearch/solver3-objective-quality/README.md`
+
 ## Separate correctness/edge-case corpus (non-objective)
 
 The intertwined-constraints correctness corpus is tracked separately under:

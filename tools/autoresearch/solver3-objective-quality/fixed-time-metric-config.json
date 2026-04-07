@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "lane_id": "solver3-objective-fixed-time-primary-v1",
+  "description": "Primary fixed-time solver3 objective autoresearch metric. Every canonical case contributes through the same explicit normalized-score math and equal weight.",
+  "direction": "lower",
+  "primary_metric_name": "objective_suite_weighted_normalized_score",
+  "case_formula": "normalized_case_score = final_score / reference_final_score",
+  "aggregate_formula": "primary_metric = sum(weight * normalized_case_score) / sum(weight)",
+  "weighting_note": "All solver3 objective autoresearch cases currently use equal weight 1.0, so the primary metric is the arithmetic mean of the six per-case normalized scores.",
+  "cases": [
+    {
+      "case_id": "adversarial.clique-swap-functionality-35p",
+      "weight": 1.0,
+      "reference_final_score": 4756.0,
+      "explanation": "Reference final score from the initial solver3 fixed-time objective autoresearch baseline."
+    },
+    {
+      "case_id": "adversarial.transfer-attribute-balance-111p",
+      "weight": 1.0,
+      "reference_final_score": 198.0,
+      "explanation": "Reference final score from the initial solver3 fixed-time objective autoresearch baseline."
+    },
+    {
+      "case_id": "stretch.social-golfer-32x8x10",
+      "weight": 1.0,
+      "reference_final_score": 5493.0,
+      "explanation": "Reference final score from the initial solver3 fixed-time objective autoresearch baseline."
+    },
+    {
+      "case_id": "stretch.large-gender-immovable-110p",
+      "weight": 1.0,
+      "reference_final_score": 2179.0,
+      "explanation": "Reference final score from the initial solver3 fixed-time objective autoresearch baseline."
+    },
+    {
+      "case_id": "stretch.sailing-trip-demo-real",
+      "weight": 1.0,
+      "reference_final_score": 2393.0,
+      "explanation": "Reference final score from the initial solver3 fixed-time objective autoresearch baseline."
+    },
+    {
+      "case_id": "stretch.synthetic-partial-attendance-capacity-pressure-152p",
+      "weight": 1.0,
+      "reference_final_score": 6640.0,
+      "explanation": "Reference final score from the initial solver3 fixed-time objective autoresearch baseline."
+    }
+  ]
+}

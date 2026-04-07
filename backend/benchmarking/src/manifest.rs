@@ -1210,6 +1210,62 @@ mod tests {
     }
 
     #[test]
+    fn solver3_objective_autoresearch_suites_pin_solver3_and_include_synthetic() {
+        let fixed_time_adversarial = load_suite_manifest(Path::new(
+            "suites/objective-canonical-adversarial-solver3-v1.yaml",
+        ))
+        .expect("solver3 fixed-time adversarial suite should load");
+        assert_eq!(
+            fixed_time_adversarial.manifest.default_solver_family.as_deref(),
+            Some("solver3")
+        );
+        assert!(fixed_time_adversarial
+            .cases
+            .iter()
+            .all(|case| case.manifest.class == BenchmarkSuiteClass::Adversarial));
+
+        let fixed_time_stretch = load_suite_manifest(Path::new(
+            "suites/objective-canonical-stretch-solver3-v1.yaml",
+        ))
+        .expect("solver3 fixed-time stretch suite should load");
+        assert_eq!(
+            fixed_time_stretch.manifest.default_solver_family.as_deref(),
+            Some("solver3")
+        );
+        assert!(fixed_time_stretch.cases.iter().any(|case| {
+            case.manifest.id == "stretch.synthetic-partial-attendance-capacity-pressure-152p"
+        }));
+
+        let fixed_iteration_stretch = load_suite_manifest(Path::new(
+            "suites/objective-diagnostic-fixed-iteration-stretch-solver3-v1.yaml",
+        ))
+        .expect("solver3 fixed-iteration stretch suite should load");
+        assert_eq!(
+            fixed_iteration_stretch
+                .manifest
+                .default_solver_family
+                .as_deref(),
+            Some("solver3")
+        );
+        assert!(fixed_iteration_stretch.cases.iter().any(|case| {
+            case.manifest.id == "stretch.synthetic-partial-attendance-capacity-pressure-152p"
+        }));
+
+        let correctness = load_suite_manifest(Path::new(
+            "suites/correctness-edge-intertwined-solver3-v1.yaml",
+        ))
+        .expect("solver3 correctness suite should load");
+        assert_eq!(
+            correctness.manifest.default_solver_family.as_deref(),
+            Some("solver3")
+        );
+        assert_eq!(
+            correctness.manifest.comparison_category,
+            BenchmarkComparisonCategory::InvariantOnly
+        );
+    }
+
+    #[test]
     fn synthetic_partial_attendance_capacity_solver3_suite_declares_solver3_contract() {
         let suite = load_suite_manifest(Path::new(
             "suites/stretch-partial-attendance-capacity-pressure-time-solver3.yaml",

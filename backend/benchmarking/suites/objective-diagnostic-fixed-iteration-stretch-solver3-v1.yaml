@@ -1,0 +1,63 @@
+schema_version: 1
+suite_id: objective-diagnostic-fixed-iteration-stretch-solver3-v1
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: stretch
+title: Objective fixed-iteration diagnostic stretch bundle for solver3 (v1)
+description: Diagnostic companion to the solver3 fixed-time primary lane. Uses explicit fixed-iteration budgets on the same hard stretch workloads plus the synthetic partial-attendance stress case under explicit solver3 retargeting.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 1000000
+    time_limit_seconds: 60
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: objective_diagnostic.fixed_iteration.stretch.social_golfer_zero_repeat_encounters
+    provenance: converted_from_backend_core_tests_test_cases_social_golfer_problem_json_with_canonical_benchmark_metadata
+    declared_budget:
+      max_iterations: 9000000
+      time_limit_seconds: 120
+    seed: 320810
+    max_iterations: 9000000
+    time_limit_seconds: 120
+  - manifest: ../cases/stretch/large_gender_immovable_110p.json
+    case_role: canonical
+    purpose: objective_diagnostic.fixed_iteration.stretch.large_heterogeneous_attribute_balance_and_immovable
+    provenance: converted_from_backend_core_tests_test_cases_benchmark_large_gender_immovable_json_with_canonical_benchmark_metadata
+    declared_budget:
+      max_iterations: 1700000
+      time_limit_seconds: 60
+    seed: 110115
+    max_iterations: 1700000
+    time_limit_seconds: 60
+  - manifest: ../cases/stretch/sailing_trip_demo_real.json
+    case_role: canonical
+    purpose: objective_diagnostic.fixed_iteration.stretch.real_sailing_trip_raw_case
+    provenance: exact_anonymized_demo_case_no_helper_start_substitution
+    declared_budget:
+      max_iterations: 270000
+      time_limit_seconds: 20
+    seed: 624485344291700314
+    max_iterations: 270000
+    time_limit_seconds: 20
+  - manifest: ../cases/stretch/synthetic_partial_attendance_capacity_pressure_152p.json
+    case_role: canonical
+    purpose: objective_diagnostic.fixed_iteration.stretch.synthetic_partial_attendance_capacity_pressure_152p
+    provenance: generated_by_tools/benchmarking/generate_partial_attendance_capacity_case.py_using_a_deterministic_planted_feasible_builder
+    declared_budget:
+      max_iterations: 260000
+      time_limit_seconds: 25
+    seed: 152605
+    max_iterations: 260000
+    time_limit_seconds: 25
