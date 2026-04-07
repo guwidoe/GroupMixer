@@ -21,6 +21,15 @@ This lane is explicitly **solver3-only**. It exists to improve solver3 internals
 
 The root wrapper delegates to `tools/autoresearch/solver3-objective-quality/autoresearch.sh`.
 
+## Persistent Metrics Logging
+`autoresearch.jsonl` is tool-managed and currently persists only the primary metric reliably. After every completed `run_experiment` + `log_experiment` cycle, append a structured entry to `autoresearch.metrics.jsonl` capturing:
+- primary metric + delta
+- fixed-iteration diagnostic metric
+- raw-runtime diagnostic metric
+- objective/correctness runtimes
+- per-case final/reference/normalized scores
+- brief interpretation notes
+
 ## Files in Scope
 - `backend/core/src/solver3/**` — solver3 runtime, search, scoring, move logic, and policy internals
 - `tools/autoresearch/solver3-objective-quality/**` — orchestration and explicit metric configuration for this lane

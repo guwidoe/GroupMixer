@@ -19,6 +19,9 @@ This lane is solver3-only. Fixed-iteration quality and raw-runtime probes are su
 
 Root wrappers delegate to `tools/autoresearch/solver3-objective-quality/`.
 
+## Persistent Metrics Logging
+`autoresearch.jsonl` is tool-managed and currently persists only the primary metric reliably. To preserve secondary diagnostics and per-case scores across resets/reverts, append a structured entry to `autoresearch.metrics.jsonl` after every completed `run_experiment` + `log_experiment` cycle.
+
 ## Files in Scope
 - `backend/core/src/solver3/**`
 - `tools/autoresearch/solver3-objective-quality/**`

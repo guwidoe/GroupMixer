@@ -34,6 +34,10 @@ The stretch solver3 bundle intentionally includes the synthetic partial-attendan
 
 - `tools/autoresearch/solver3-raw-runtime/autoresearch.sh`
 
+## Persistence note
+
+The tool-managed `autoresearch.jsonl` currently only persists the primary metric reliably. The lane therefore also maintains `autoresearch.metrics.jsonl` as a sidecar log for secondary diagnostics and per-case score history.
+
 ## Scope rules
 
 The experiment loop may modify:
