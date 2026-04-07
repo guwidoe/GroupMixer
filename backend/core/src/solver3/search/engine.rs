@@ -19,7 +19,8 @@ use super::super::runtime_state::RuntimeState;
 #[cfg(feature = "solver3-oracle-checks")]
 use super::super::validation::invariants::validate_invariants;
 use super::acceptance::{
-    cooling_progress, temperature_for_progress, AcceptanceInputs, SimulatedAnnealingAcceptance,
+    cooling_progress, record_to_record_threshold_for_progress, RecordToRecordAcceptance,
+    RecordToRecordInputs,
 };
 use super::candidate_sampling::{CandidateSampler, SearchMovePreview};
 use super::context::{SearchProgressState, SearchRunContext};
@@ -50,7 +51,7 @@ impl SearchEngine {
         let mut rng = ChaCha12Rng::seed_from_u64(effective_seed);
         let run_context =
             SearchRunContext::from_solver(&self.configuration, state, effective_seed)?;
-        let acceptance_policy = SimulatedAnnealingAcceptance;
+        let acceptance_policy = RecordToRecordAcceptance;
         let candidate_sampler = CandidateSampler;
         let family_selector = MoveFamilySelector::new(&run_context.move_policy);
         let mut search = SearchProgressState::new(state.clone());
@@ -92,7 +93,7 @@ impl SearchEngine {
                 cached_elapsed_seconds,
                 run_context.time_limit_seconds,
             );
-            let temperature = temperature_for_progress(progress);
+            let temperature = record_to_record_threshold_for_progress(progress);
 
             if let Some((family, preview, preview_seconds)) = candidate_sampler
                 .select_previewed_move(
@@ -104,16 +105,16 @@ impl SearchEngine {
             {
                 let delta_cost = preview.delta_score();
                 search.record_preview_attempt(family, preview_seconds, delta_cost);
+                let current_score = search.current_state.total_score;
+                let candidate_score = current_score + delta_cost;
 
                 let acceptance = acceptance_policy.decide(
-                    AcceptanceInputs {
-                        iteration,
-                        max_iterations: run_context.max_iterations,
-                        elapsed_seconds: cached_elapsed_seconds,
-                        time_limit_seconds: run_context.time_limit_seconds,
-                        delta_score: delta_cost,
+                    RecordToRecordInputs {
+                        current_score,
+                        best_score: search.best_score,
+                        candidate_score,
+                        progress,
                     },
-                    &mut rng,
                 );
 
                 if acceptance.accepted {
@@ -194,7 +195,7 @@ impl SearchEngine {
                 let final_progress = search.to_progress_update(
                     &run_context,
                     final_iteration,
-                    temperature_for_progress(final_progress_val),
+                    record_to_record_threshold_for_progress(final_progress_val),
                     final_elapsed,
                     Some(stop_reason),
                 );
