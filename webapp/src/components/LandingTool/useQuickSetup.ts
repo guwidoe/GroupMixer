@@ -466,7 +466,7 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
         const { solution } = await solveScenario({
           scenario: mapped.scenario,
           useRecommendedSettings: true,
-          desiredRuntimeSeconds: draft.preset === 'networking' ? 5 : 3,
+          desiredRuntimeSeconds: 1,
         });
         setLastSolvedScenario(mapped.scenario);
         setLastSolvedSolution(solution);
