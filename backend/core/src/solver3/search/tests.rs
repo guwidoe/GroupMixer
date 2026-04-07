@@ -94,6 +94,8 @@ fn acceptance_policy_marks_uphill_acceptance_as_escape() {
         AcceptanceInputs {
             iteration: 0,
             max_iterations: 1,
+            elapsed_seconds: 0.0,
+            time_limit_seconds: None,
             delta_score: 0.01,
         },
         &mut rng,
