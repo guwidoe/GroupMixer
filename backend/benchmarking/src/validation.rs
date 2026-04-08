@@ -64,7 +64,6 @@ impl Default for ExternalValidationAgreement {
             weighted_constraint_penalty: false,
         }
     }
-
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

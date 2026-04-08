@@ -10,8 +10,8 @@ use crate::benchmark_mode::FULL_SOLVE_BENCHMARK_MODE;
 use crate::hotpath::run_hotpath_case_artifact;
 use crate::machine::{capture_git_identity, capture_machine_identity};
 use crate::manifest::{
-    load_suite_manifest, BenchmarkSearchPolicyOverride, BenchmarkSuiteClass,
-    LoadedBenchmarkCase, LoadedBenchmarkSuite,
+    load_suite_manifest, BenchmarkSearchPolicyOverride, BenchmarkSuiteClass, LoadedBenchmarkCase,
+    LoadedBenchmarkSuite,
 };
 use crate::storage::{machine_identity_label, BenchmarkStorage};
 use crate::validation::{
@@ -636,9 +636,7 @@ fn apply_search_policy_override(
         if let Some(reheat_cycles) = simulated_annealing.reheat_cycles {
             params.reheat_cycles = Some(reheat_cycles);
         }
-        if let Some(reheat_after_no_improvement) =
-            simulated_annealing.reheat_after_no_improvement
-        {
+        if let Some(reheat_after_no_improvement) = simulated_annealing.reheat_after_no_improvement {
             params.reheat_after_no_improvement = Some(reheat_after_no_improvement);
         }
     }
@@ -1288,7 +1286,10 @@ mod tests {
         assert_eq!(effective.solver.seed, Some(77));
         assert_eq!(effective.solver.stop_conditions.max_iterations, Some(8000));
         assert_eq!(effective.solver.stop_conditions.time_limit_seconds, Some(3));
-        assert_eq!(effective.solver.stop_conditions.no_improvement_iterations, None);
+        assert_eq!(
+            effective.solver.stop_conditions.no_improvement_iterations,
+            None
+        );
         assert_eq!(params.initial_temperature, 9.0);
         assert_eq!(params.final_temperature, 0.05);
         assert_eq!(params.reheat_after_no_improvement, Some(0));
@@ -1374,9 +1375,9 @@ mod tests {
         let error = apply_effective_overrides(&suite, &suite.cases[0])
             .expect_err("search policy should be rejected for solver3 input");
 
-        assert!(error
-            .to_string()
-            .contains("search_policy.simulated_annealing requires a simulated annealing solver input"));
+        assert!(error.to_string().contains(
+            "search_policy.simulated_annealing requires a simulated annealing solver input"
+        ));
     }
 
     #[test]

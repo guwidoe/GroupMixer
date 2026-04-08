@@ -187,35 +187,9 @@ This file is the **untried queue**.
 
 ---
 
-## 6. Multi-level structural tabu as an inner intensifier, not a standalone driver
-**Why this is still worth keeping in the queue**
-- Simple exact-undo tabu was too weak and is retired.
-- But the literature still suggests tabu can be valuable when it targets **structural churn** rather than just reverse-move bans.
-- This is most promising as a component inside memetic search, GRASP polish, or ALNS post-repair descent.
-
-**What would be genuinely new vs. what we already tried**
-- tabu over repeated pair-contact churn, hotspot revisitation, or balance-damaging assignment patterns
-- memory keyed to structural conflict regions, not just exact inverse moves
-- potentially aspiration rules tied to best-score improvement
-
-**First concrete experiment shape**
-- track a small structural tabu cache over repeated-pair hotspot features
-- only use it during post-repair polish or offspring intensification, not as the sole global driver
-
-**What success would look like**
-- better escape from local churn loops without the overhead / bluntness of exact-undo bans
-
-**Local source text**
-- [papers/marker/scheduling-social-golfers-locally-tabu/scheduling-social-golfers-locally-tabu.md](papers/marker/scheduling-social-golfers-locally-tabu/scheduling-social-golfers-locally-tabu.md)
-- [papers/html/scheduling-social-golfers-locally-tabu.springer-page.html](papers/html/scheduling-social-golfers-locally-tabu.springer-page.html)
-- [papers/html/grouping-problems-metaheuristics-review-2020.html](papers/html/grouping-problems-metaheuristics-review-2020.html)
-
----
-
 ## Recommended next implementation order
 1. **Elite-population memetic solver3**
 2. **Freedom-aware GRASP constructor**
-3. **Targeted ALNS / LNS with restricted exact repair**
+3. **Targeted ALNS / LNS with stronger repair coverage**
 4. **Stage-aware hyper-heuristic over macro operators**
 5. **Hypergraph / structural-compatibility enabling layer**
-6. **Multi-level structural tabu as an inner component**

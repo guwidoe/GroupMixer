@@ -23,8 +23,12 @@ use super::acceptance::{
     RecordToRecordInputs,
 };
 use super::candidate_sampling::{CandidateSampler, SearchMovePreview};
-use super::context::{SearchProgressState, SearchRunContext};
+use super::context::{IteratedLocalSearchMemory, SearchProgressState, SearchRunContext};
 use super::family_selection::MoveFamilySelector;
+
+const MEMETIC_BURST_STAGNATION_THRESHOLD: u64 = 25_000;
+const MEMETIC_DONOR_POLISH_SECONDS: u64 = 2;
+const MEMETIC_MIN_REMAINING_TIME_SECONDS: u64 = 4;
 
 #[derive(Debug, Clone)]
 pub struct SearchEngine {
@@ -44,13 +48,26 @@ impl SearchEngine {
         progress_callback: Option<&ProgressCallback>,
         benchmark_observer: Option<&BenchmarkObserver>,
     ) -> Result<SolverResult, SolverError> {
-        let effective_seed = self
-            .configuration
-            .seed
-            .unwrap_or_else(|| rng().random::<u64>());
+        self.solve_single_state_with_configuration(
+            &self.configuration,
+            state,
+            progress_callback,
+            benchmark_observer,
+            true,
+        )
+    }
+
+    fn solve_single_state_with_configuration(
+        &self,
+        configuration: &SolverConfiguration,
+        state: &mut RuntimeState,
+        progress_callback: Option<&ProgressCallback>,
+        benchmark_observer: Option<&BenchmarkObserver>,
+        allow_memetic_burst: bool,
+    ) -> Result<SolverResult, SolverError> {
+        let effective_seed = configuration.seed.unwrap_or_else(|| rng().random::<u64>());
         let mut rng = ChaCha12Rng::seed_from_u64(effective_seed);
-        let run_context =
-            SearchRunContext::from_solver(&self.configuration, state, effective_seed)?;
+        let run_context = SearchRunContext::from_solver(configuration, state, effective_seed)?;
         let acceptance_policy = RecordToRecordAcceptance;
         let candidate_sampler = CandidateSampler;
         let family_selector = MoveFamilySelector::new(&run_context.move_policy);
@@ -67,17 +84,12 @@ impl SearchEngine {
         let search_started_at = Instant::now();
         let mut stop_reason = StopReason::MaxIterationsReached;
         let mut final_progress_emitted = false;
+        let mut memetic_burst_attempted = false;
 
-        // Refresh elapsed time every TIME_REFRESH_INTERVAL iterations so that
-        // `Instant::elapsed()` (a cheap vDSO call, ~15–30 ns) is not called on
-        // every single iteration, which would add up at high iteration rates.
-        // At 30 µs/iter this gives ~2 ms time resolution — plenty for cooling
-        // accuracy and the time-limit check.
         const TIME_REFRESH_INTERVAL: u64 = 64;
         let mut cached_elapsed_seconds: f64 = 0.0;
 
         for iteration in 0..run_context.max_iterations {
-            // Refresh the elapsed-time cache every N iterations.
             if iteration % TIME_REFRESH_INTERVAL == 0 {
                 cached_elapsed_seconds = search_started_at.elapsed().as_secs_f64();
             }
@@ -95,6 +107,41 @@ impl SearchEngine {
             );
             let temperature = record_to_record_threshold_for_progress(progress);
 
+            if allow_memetic_burst
+                && !memetic_burst_attempted
+                && should_attempt_memetic_burst(
+                    search.no_improvement_count,
+                    run_context.time_limit_seconds,
+                    cached_elapsed_seconds,
+                )
+            {
+                memetic_burst_attempted = true;
+                if let Some(offspring_state) = self.try_memetic_offspring_burst(
+                    configuration,
+                    &search.best_state,
+                    &run_context,
+                    iteration,
+                    progress,
+                    false,
+                )? {
+                    let offspring_score = offspring_state.total_score;
+                    if offspring_score <= search.best_score + temperature {
+                        search.current_state = offspring_state;
+                        cached_elapsed_seconds = search_started_at.elapsed().as_secs_f64();
+                        search.refresh_best_from_current(iteration, cached_elapsed_seconds);
+                        search.record_acceptance_result(true);
+                        let ils_memory =
+                            search
+                                .policy_memory
+                                .ils
+                                .get_or_insert(IteratedLocalSearchMemory {
+                                    perturbation_round: 0,
+                                });
+                        ils_memory.perturbation_round += 1;
+                    }
+                }
+            }
+
             if let Some((family, preview, preview_seconds)) = candidate_sampler
                 .select_previewed_move(
                     &search.current_state,
@@ -108,14 +155,12 @@ impl SearchEngine {
                 let current_score = search.current_state.total_score;
                 let candidate_score = current_score + delta_cost;
 
-                let acceptance = acceptance_policy.decide(
-                    RecordToRecordInputs {
-                        current_score,
-                        best_score: search.best_score,
-                        candidate_score,
-                        progress,
-                    },
-                );
+                let acceptance = acceptance_policy.decide(RecordToRecordInputs {
+                    current_score,
+                    best_score: search.best_score,
+                    candidate_score,
+                    progress,
+                });
 
                 if acceptance.accepted {
                     let apply_started_at = Instant::now();
@@ -136,10 +181,7 @@ impl SearchEngine {
                         &preview,
                     )?;
 
-                    search.refresh_best_from_current(
-                        iteration,
-                        cached_elapsed_seconds,
-                    );
+                    search.refresh_best_from_current(iteration, cached_elapsed_seconds);
                     search.record_acceptance_result(true);
                 } else {
                     search.record_rejected_move(family);
@@ -220,6 +262,59 @@ impl SearchEngine {
             telemetry,
         )
     }
+
+    fn try_memetic_offspring_burst(
+        &self,
+        configuration: &SolverConfiguration,
+        recipient_state: &RuntimeState,
+        run_context: &SearchRunContext,
+        iteration: u64,
+        progress: f64,
+        _allow_progress: bool,
+    ) -> Result<Option<RuntimeState>, SolverError> {
+        let donor_seed = diversify_seed(run_context.effective_seed, iteration.saturating_add(1));
+        let Ok(mut donor_state) =
+            RuntimeState::from_compiled_with_seed(recipient_state.compiled.clone(), donor_seed)
+        else {
+            return Ok(None);
+        };
+
+        let mut donor_configuration = configuration.clone();
+        donor_configuration.seed = Some(donor_seed);
+        donor_configuration.stop_conditions.time_limit_seconds = Some(MEMETIC_DONOR_POLISH_SECONDS);
+        donor_configuration
+            .stop_conditions
+            .no_improvement_iterations = None;
+
+        let donor_result = self.solve_single_state_with_configuration(
+            &donor_configuration,
+            &mut donor_state,
+            None,
+            None,
+            false,
+        )?;
+
+        let Some(session_idx) =
+            select_best_donor_session(recipient_state, &donor_state, &run_context.allowed_sessions)
+        else {
+            return Ok(None);
+        };
+
+        let mut offspring = recipient_state.clone();
+        offspring.overwrite_session_from(&donor_state, session_idx)?;
+        offspring.rebuild_pair_contacts();
+        offspring.sync_score_from_oracle()?;
+
+        let threshold = record_to_record_threshold_for_progress(progress);
+        if offspring.total_score <= recipient_state.total_score
+            || offspring.total_score <= recipient_state.total_score + threshold
+        {
+            return Ok(Some(offspring));
+        }
+
+        let _ = donor_result;
+        Ok(None)
+    }
 }
 
 fn build_solver_result(
@@ -259,12 +354,66 @@ fn apply_previewed_move(
     }
 }
 
-/// Returns true when the cached elapsed time has met or exceeded the time limit.
-/// Uses the caller-maintained cached value to avoid an `Instant::elapsed()` call
-/// on every single iteration (debounced at `TIME_REFRESH_INTERVAL`).
 #[inline]
 fn time_limit_exceeded(elapsed_seconds: f64, time_limit_seconds: Option<u64>) -> bool {
     time_limit_seconds.is_some_and(|limit| elapsed_seconds >= limit as f64)
+}
+
+#[inline]
+fn should_attempt_memetic_burst(
+    no_improvement_count: u64,
+    time_limit_seconds: Option<u64>,
+    elapsed_seconds: f64,
+) -> bool {
+    if no_improvement_count < MEMETIC_BURST_STAGNATION_THRESHOLD {
+        return false;
+    }
+
+    time_limit_seconds.is_some_and(|limit| {
+        elapsed_seconds + MEMETIC_DONOR_POLISH_SECONDS as f64 + 0.5
+            < limit as f64 - MEMETIC_MIN_REMAINING_TIME_SECONDS as f64
+    })
+}
+
+fn select_best_donor_session(
+    recipient_state: &RuntimeState,
+    donor_state: &RuntimeState,
+    allowed_sessions: &[usize],
+) -> Option<usize> {
+    let mut best_session_idx = None;
+    let mut best_gain = 0.0;
+
+    for &session_idx in allowed_sessions {
+        let recipient_pressure = local_session_repeat_pressure(recipient_state, session_idx);
+        let donor_pressure = local_session_repeat_pressure(donor_state, session_idx);
+        let gain = recipient_pressure - donor_pressure;
+        if gain > best_gain {
+            best_gain = gain;
+            best_session_idx = Some(session_idx);
+        }
+    }
+
+    best_session_idx
+}
+
+fn local_session_repeat_pressure(state: &RuntimeState, session_idx: usize) -> f64 {
+    let mut pressure = 0.0;
+    for group_idx in 0..state.compiled.num_groups {
+        let slot = state.group_slot(session_idx, group_idx);
+        let members = &state.group_members[slot];
+        for left in 0..members.len() {
+            for right in (left + 1)..members.len() {
+                let pair_idx = state.compiled.pair_idx(members[left], members[right]);
+                pressure += state.pair_contacts[pair_idx].saturating_sub(1) as f64;
+            }
+        }
+    }
+    pressure
+}
+
+#[inline]
+fn diversify_seed(base_seed: u64, salt: u64) -> u64 {
+    base_seed ^ 0x9e37_79b9_7f4a_7c15u64.wrapping_mul(salt.saturating_add(1))
 }
 
 fn maybe_run_sampled_correctness_check(

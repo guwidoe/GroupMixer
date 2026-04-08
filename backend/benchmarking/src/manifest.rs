@@ -707,7 +707,10 @@ fn validate_search_policy_override(
             .as_deref()
             .is_some_and(|schedule| schedule.trim().is_empty())
         {
-            bail!("{} sets an empty simulated_annealing.cooling_schedule", context);
+            bail!(
+                "{} sets an empty simulated_annealing.cooling_schedule",
+                context
+            );
         }
     }
 
@@ -1135,7 +1138,9 @@ mod tests {
             .groups
             .iter()
             .filter_map(|group| group.session_sizes.as_ref())
-            .filter(|sizes| sizes.iter().any(|size| *size == 0) && sizes.windows(2).any(|w| w[0] != w[1]))
+            .filter(|sizes| {
+                sizes.iter().any(|size| *size == 0) && sizes.windows(2).any(|w| w[0] != w[1])
+            })
             .count();
         assert!(
             session_aware_groups >= 6,
@@ -1145,17 +1150,26 @@ mod tests {
         let must_stay_count = input
             .constraints
             .iter()
-            .filter(|constraint| matches!(constraint, gm_core::models::Constraint::MustStayTogether { .. }))
+            .filter(|constraint| {
+                matches!(
+                    constraint,
+                    gm_core::models::Constraint::MustStayTogether { .. }
+                )
+            })
             .count();
         let immovable_count = input
             .constraints
             .iter()
-            .filter(|constraint| matches!(constraint, gm_core::models::Constraint::ImmovablePerson(_)))
+            .filter(|constraint| {
+                matches!(constraint, gm_core::models::Constraint::ImmovablePerson(_))
+            })
             .count();
         let pair_meeting_count = input
             .constraints
             .iter()
-            .filter(|constraint| matches!(constraint, gm_core::models::Constraint::PairMeetingCount(_)))
+            .filter(|constraint| {
+                matches!(constraint, gm_core::models::Constraint::PairMeetingCount(_))
+            })
             .count();
         assert!(must_stay_count >= 8);
         assert!(immovable_count >= 20);
@@ -1181,10 +1195,8 @@ mod tests {
 
     #[test]
     fn kirkman_schoolgirls_case_and_suite_load_with_explicit_budget() {
-        let case = load_case_manifest(Path::new(
-            "cases/stretch/kirkman_schoolgirls_15x5x7.json",
-        ))
-        .expect("kirkman schoolgirls case should load");
+        let case = load_case_manifest(Path::new("cases/stretch/kirkman_schoolgirls_15x5x7.json"))
+            .expect("kirkman schoolgirls case should load");
 
         assert_eq!(case.id, "stretch.kirkman-schoolgirls-15x5x7");
         assert_eq!(case.class, BenchmarkSuiteClass::Stretch);
@@ -1196,10 +1208,8 @@ mod tests {
         assert_eq!(input.problem.num_sessions, 7);
         assert_eq!(input.constraints.len(), 1);
 
-        let suite = load_suite_manifest(Path::new(
-            "suites/stretch-kirkman-schoolgirls-time.yaml",
-        ))
-        .expect("kirkman schoolgirls suite should load");
+        let suite = load_suite_manifest(Path::new("suites/stretch-kirkman-schoolgirls-time.yaml"))
+            .expect("kirkman schoolgirls suite should load");
 
         assert_eq!(suite.cases.len(), 1);
         let suite_case = &suite.cases[0];
@@ -1216,7 +1226,10 @@ mod tests {
         ))
         .expect("solver3 fixed-time adversarial suite should load");
         assert_eq!(
-            fixed_time_adversarial.manifest.default_solver_family.as_deref(),
+            fixed_time_adversarial
+                .manifest
+                .default_solver_family
+                .as_deref(),
             Some("solver3")
         );
         assert!(fixed_time_adversarial
@@ -1272,7 +1285,10 @@ mod tests {
         ))
         .expect("synthetic partial-attendance solver3 suite should load");
 
-        assert_eq!(suite.manifest.default_solver_family.as_deref(), Some("solver3"));
+        assert_eq!(
+            suite.manifest.default_solver_family.as_deref(),
+            Some("solver3")
+        );
         let default_solver = suite
             .manifest
             .default_solver
@@ -1522,9 +1538,7 @@ cases:
         .expect("write suite");
 
         let error = load_suite_manifest(&suite_path).expect_err("suite should be rejected");
-        assert!(error
-            .to_string()
-            .contains("default_search_policy is empty"));
+        assert!(error.to_string().contains("default_search_policy is empty"));
     }
 
     #[test]
@@ -1564,7 +1578,8 @@ cases:
         .expect("write case");
         fs::write(
             &suite_path,
-            format!(r#"schema_version: 1
+            format!(
+                r#"schema_version: 1
 suite_id: test-suite
 benchmark_mode: full_solve
 class: representative
@@ -1572,7 +1587,9 @@ cases:
   - manifest: {}
     search_policy:
       no_improvement_iterations: null
-"#, case_path.display()),
+"#,
+                case_path.display()
+            ),
         )
         .expect("write suite");
 
