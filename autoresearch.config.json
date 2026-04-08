@@ -1,4 +1,5 @@
 {
-  "workingDir": "/home/ralph/ralph-repos/GroupMixer",
-  "maxIterations": 200
+  "workingDir": "/home/qido/repositories/GroupMixer",
+  "maxIterations": 200,
+  "autoCompactResume": true
 }
