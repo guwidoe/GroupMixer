@@ -1,12 +1,13 @@
 {
   "schema_version": 1,
   "lane_id": "objective-fixed-iteration-diagnostic-v1",
-  "description": "Diagnostic fixed-iteration objective metric. Every canonical case contributes through the same explicit math and equal weight.",
+  "description": "Diagnostic fixed-iteration objective metric. Every canonical case contributes through the same explicit math and equal weight, then the final aggregate is scaled by 100 for readability.",
   "direction": "lower",
   "primary_metric_name": "objective_fixed_iteration_weighted_normalized_score",
+  "metric_scale": 100.0,
   "case_formula": "normalized_case_score = final_score / reference_final_score",
-  "aggregate_formula": "primary_metric = sum(weight * normalized_case_score) / sum(weight)",
-  "weighting_note": "All canonical objective cases currently use equal weight 1.0, so the diagnostic metric is the arithmetic mean of the per-case normalized scores.",
+  "aggregate_formula": "primary_metric = 100 * sum(weight * normalized_case_score) / sum(weight)",
+  "weighting_note": "All canonical objective cases currently use equal weight 1.0, so the diagnostic metric is 100 times the arithmetic mean of the per-case normalized scores.",
   "cases": [
     {
       "case_id": "adversarial.clique-swap-functionality-35p",

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { useAppStore } from '../store';
+import { solveScenario } from '../services/solver/solveScenario';
 import ToolLandingPage from './ToolLandingPage';
 import { getToolPageConfig, TOOL_PAGE_CONFIGS } from './toolPageConfigs';
 
@@ -40,6 +41,7 @@ beforeEach(() => {
   });
   window.localStorage.clear();
   window.__groupmixerLandingEvents = [];
+  vi.mocked(solveScenario).mockClear();
   useAppStore.getState().reset();
 });
 
@@ -214,6 +216,12 @@ describe('ToolLandingPage SEO wiring', () => {
 
     // Results appear inline
     expect(await screen.findByRole('heading', { name: /your groups/i })).toBeInTheDocument();
+    expect(vi.mocked(solveScenario)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        useRecommendedSettings: true,
+        desiredRuntimeSeconds: 1,
+      }),
+    );
     expect(await screen.findByText('Group 1')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /export csv/i })).toBeInTheDocument();
     expect(await screen.findByText(/results generated below/i)).toBeInTheDocument();

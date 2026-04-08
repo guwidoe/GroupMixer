@@ -68,6 +68,7 @@ def compute_lane_metrics(metric_config, case_map):
     runtimes = []
     resolved_cases = []
     per_case_metrics = {}
+    metric_scale = float(metric_config.get("metric_scale", 1.0))
 
     for entry in metric_config["cases"]:
         case = case_map[entry["case_id"]]
@@ -100,14 +101,15 @@ def compute_lane_metrics(metric_config, case_map):
         per_case_metrics[f"{slug}_normalized_score"] = normalized_case_score
         per_case_metrics[f"{slug}_weighted_contribution"] = weighted_contribution
 
-    primary_metric = weighted_sum / total_weight
+    raw_primary_metric = weighted_sum / total_weight
+    primary_metric = raw_primary_metric * metric_scale
     metric_name = metric_config["primary_metric_name"]
     if not metric_name:
         raise SystemExit("metric config missing primary_metric_name")
 
     metrics = {
         metric_name: primary_metric,
-        f"{metric_name}_delta_from_reference": primary_metric - 1.0,
+        f"{metric_name}_delta_from_reference": (raw_primary_metric - 1.0) * metric_scale,
         f"{metric_name}_weight_sum": total_weight,
         "objective_suite_total_final_score_raw": sum(raw_scores),
         "objective_suite_average_final_score_raw": mean(raw_scores),
@@ -178,6 +180,7 @@ def main(argv):
     print(f"INFO case_formula={metric_config['case_formula']}")
     print(f"INFO aggregate_formula={metric_config['aggregate_formula']}")
     print(f"INFO weighting_note={metric_config['weighting_note']}")
+    print(f"INFO metric_scale={float(metric_config.get('metric_scale', 1.0))}")
 
     if mode == "fixed-time":
         if len(reports) < 2:

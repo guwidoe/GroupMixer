@@ -5,10 +5,20 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$ROOT"
 
 ARTIFACTS_DIR="$(mktemp -d "${TMPDIR:-/tmp}/groupmixer-autoresearch-solver3-objective-XXXXXX")"
+METRICS_OUTPUT_LOG="$ARTIFACTS_DIR/metrics-output.log"
 cleanup() {
   rm -rf "$ARTIFACTS_DIR"
 }
 trap cleanup EXIT
+
+emit_and_capture() {
+  local slug="$1"
+  shift
+  local output_file="$ARTIFACTS_DIR/${slug}.out"
+  "$@" >"$output_file"
+  cat "$output_file"
+  cat "$output_file" >> "$METRICS_OUTPUT_LOG"
+}
 
 run_suite() {
   local manifest="$1"
@@ -35,20 +45,26 @@ FIXED_TIME_ADVERSARIAL_REPORT="$(run_suite backend/benchmarking/suites/objective
 FIXED_TIME_STRETCH_REPORT="$(run_suite backend/benchmarking/suites/objective-canonical-stretch-solver3-v1.yaml fixed-time-stretch)"
 CORRECTNESS_REPORT="$(run_suite backend/benchmarking/suites/correctness-edge-intertwined-solver3-v1.yaml correctness)"
 
-python3 tools/autoresearch/objective-quality/aggregate_objective_metrics.py \
-  fixed-time \
-  tools/autoresearch/solver3-objective-quality/fixed-time-metric-config.json \
-  "$FIXED_TIME_ADVERSARIAL_REPORT" \
-  "$FIXED_TIME_STRETCH_REPORT" \
-  "$CORRECTNESS_REPORT"
+emit_and_capture fixed-time-metrics \
+  python3 tools/autoresearch/objective-quality/aggregate_objective_metrics.py \
+    fixed-time \
+    tools/autoresearch/solver3-objective-quality/fixed-time-metric-config.json \
+    "$FIXED_TIME_ADVERSARIAL_REPORT" \
+    "$FIXED_TIME_STRETCH_REPORT" \
+    "$CORRECTNESS_REPORT"
 
 FIXED_ITERATION_ADVERSARIAL_REPORT="$(run_suite backend/benchmarking/suites/objective-diagnostic-fixed-iteration-adversarial-solver3-v1.yaml fixed-iteration-adversarial)"
 FIXED_ITERATION_STRETCH_REPORT="$(run_suite backend/benchmarking/suites/objective-diagnostic-fixed-iteration-stretch-solver3-v1.yaml fixed-iteration-stretch)"
 
-python3 tools/autoresearch/objective-quality/aggregate_objective_metrics.py \
-  fixed-iteration \
-  tools/autoresearch/solver3-objective-quality/fixed-iteration-metric-config.json \
-  "$FIXED_ITERATION_ADVERSARIAL_REPORT" \
-  "$FIXED_ITERATION_STRETCH_REPORT"
+emit_and_capture fixed-iteration-metrics \
+  python3 tools/autoresearch/objective-quality/aggregate_objective_metrics.py \
+    fixed-iteration \
+    tools/autoresearch/solver3-objective-quality/fixed-iteration-metric-config.json \
+    "$FIXED_ITERATION_ADVERSARIAL_REPORT" \
+    "$FIXED_ITERATION_STRETCH_REPORT"
 
-./tools/autoresearch/solver3-raw-runtime/autoresearch.sh
+emit_and_capture raw-runtime-metrics \
+  ./tools/autoresearch/solver3-raw-runtime/autoresearch.sh
+
+python3 tools/autoresearch/metrics_lines_to_json.py "$METRICS_OUTPUT_LOG" \
+  > "$ROOT/autoresearch.last_run_metrics.json"

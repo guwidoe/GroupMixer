@@ -6,7 +6,7 @@ Improve `solver3` on the canonical hard objective bundle using **fixed-time obje
 This lane is explicitly **solver3-only**. It exists to improve solver3 internals and search behavior without changing the benchmark question.
 
 ## Metrics
-- **Primary**: `objective_suite_weighted_normalized_score` (unitless, lower is better) — arithmetic mean of the six per-case normalized final scores on the solver3 fixed-time canonical bundle
+- **Primary**: `objective_suite_weighted_normalized_score` (unitless, lower is better) — `100 ×` the arithmetic mean of the six per-case normalized final scores on the solver3 fixed-time canonical bundle
 - **Secondary**:
   - `objective_fixed_iteration_weighted_normalized_score`
   - `solver3_raw_score_us`
@@ -20,6 +20,20 @@ This lane is explicitly **solver3-only**. It exists to improve solver3 internals
 `./autoresearch.sh`
 
 The root wrapper delegates to `tools/autoresearch/solver3-objective-quality/autoresearch.sh`.
+
+## Persistent Metrics Logging
+`./autoresearch.sh` now writes the most recent full metric set to `autoresearch.last_run_metrics.json`.
+
+After every completed `run_experiment` + `log_experiment` cycle, run:
+
+`python3 tools/autoresearch/patch_autoresearch_jsonl.py autoresearch.jsonl autoresearch.last_run_metrics.json`
+
+That patches the latest run entry in `autoresearch.jsonl` so the tool-managed history retains:
+- primary metric + delta
+- fixed-iteration diagnostic metric
+- raw-runtime diagnostic metric
+- objective/correctness runtimes
+- per-case final/reference/normalized scores
 
 ## Files in Scope
 - `backend/core/src/solver3/**` — solver3 runtime, search, scoring, move logic, and policy internals
