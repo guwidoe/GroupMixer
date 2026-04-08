@@ -27,7 +27,8 @@ use super::context::{IteratedLocalSearchMemory, SearchProgressState, SearchRunCo
 use super::family_selection::MoveFamilySelector;
 
 const MEMETIC_BURST_STAGNATION_THRESHOLD: u64 = 25_000;
-const MEMETIC_DONOR_POLISH_SECONDS: u64 = 2;
+const MEMETIC_TOTAL_DONOR_POLISH_SECONDS: u64 = 2;
+const MEMETIC_DONOR_COUNT: usize = 2;
 const MEMETIC_MIN_REMAINING_TIME_SECONDS: u64 = 4;
 
 #[derive(Debug, Clone)]
@@ -272,34 +273,54 @@ impl SearchEngine {
         progress: f64,
         _allow_progress: bool,
     ) -> Result<Option<RuntimeState>, SolverError> {
-        let donor_seed = diversify_seed(run_context.effective_seed, iteration.saturating_add(1));
-        let Ok(mut donor_state) =
-            RuntimeState::from_compiled_with_seed(recipient_state.compiled.clone(), donor_seed)
-        else {
-            return Ok(None);
-        };
+        let mut best_offspring = None;
+        let mut best_score = f64::INFINITY;
 
-        let mut donor_configuration = configuration.clone();
-        donor_configuration.seed = Some(donor_seed);
-        donor_configuration.stop_conditions.time_limit_seconds = Some(MEMETIC_DONOR_POLISH_SECONDS);
-        donor_configuration
-            .stop_conditions
-            .no_improvement_iterations = None;
+        for donor_ordinal in 0..MEMETIC_DONOR_COUNT {
+            let donor_seed = diversify_seed(
+                run_context.effective_seed,
+                iteration
+                    .saturating_add(1)
+                    .saturating_add(donor_ordinal as u64),
+            );
+            let Ok(mut donor_state) =
+                RuntimeState::from_compiled_with_seed(recipient_state.compiled.clone(), donor_seed)
+            else {
+                continue;
+            };
 
-        self.solve_single_state_with_configuration(
-            &donor_configuration,
-            &mut donor_state,
-            None,
-            None,
-            false,
-        )?;
+            let mut donor_configuration = configuration.clone();
+            donor_configuration.seed = Some(donor_seed);
+            donor_configuration.stop_conditions.time_limit_seconds =
+                Some(memetic_per_donor_polish_seconds());
+            donor_configuration
+                .stop_conditions
+                .no_improvement_iterations = None;
 
-        let Some(offspring) = select_best_offspring_session(
-            recipient_state,
-            &donor_state,
-            &run_context.allowed_sessions,
-        )?
-        else {
+            self.solve_single_state_with_configuration(
+                &donor_configuration,
+                &mut donor_state,
+                None,
+                None,
+                false,
+            )?;
+
+            let Some(offspring) = select_best_offspring_session(
+                recipient_state,
+                &donor_state,
+                &run_context.allowed_sessions,
+            )?
+            else {
+                continue;
+            };
+
+            if offspring.total_score < best_score {
+                best_score = offspring.total_score;
+                best_offspring = Some(offspring);
+            }
+        }
+
+        let Some(offspring) = best_offspring else {
             return Ok(None);
         };
 
@@ -367,9 +388,14 @@ fn should_attempt_memetic_burst(
     }
 
     time_limit_seconds.is_some_and(|limit| {
-        elapsed_seconds + MEMETIC_DONOR_POLISH_SECONDS as f64 + 0.5
+        elapsed_seconds + MEMETIC_TOTAL_DONOR_POLISH_SECONDS as f64 + 0.5
             < limit as f64 - MEMETIC_MIN_REMAINING_TIME_SECONDS as f64
     })
+}
+
+#[inline]
+fn memetic_per_donor_polish_seconds() -> u64 {
+    (MEMETIC_TOTAL_DONOR_POLISH_SECONDS / MEMETIC_DONOR_COUNT as u64).max(1)
 }
 
 fn select_best_offspring_session(

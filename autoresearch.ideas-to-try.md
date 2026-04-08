@@ -30,40 +30,7 @@ This file is the **untried queue**.
 
 ## Highest-priority ideas
 
-## 1. Elite-population memetic solver3 with diversity maintenance
-**Why this is still one of the best bets**
-- The strongest non-winning big-family result so far was still a **naive donor crossover**. That suggests recombination is directionally alive, but our donor source and compatibility logic were too weak.
-- The literature consistently points toward **memetic search** working when offspring come from **elite, locally improved schedules**, not raw constructor samples.
-
-**What would be genuinely new vs. what we already tried**
-- maintain a real population across the run instead of generating one-off donor schedules
-- use **elite polished donors** rather than constructor-seeded donors
-- preserve diversity explicitly instead of letting the population collapse
-- score donor/recipient compatibility before crossover
-- polish offspring with the current best record-to-record local search
-
-**First concrete experiment shape**
-- population of 8 diverse schedules
-- each seed gets a small but real polish budget
-- elite preservation for top 1–2 individuals
-- tournament selection over top half of the population
-- crossover on one or two sessions only, but only when donor compatibility clears a threshold
-- offspring repair + brief polish before insertion
-- diversity metric based on pair-contact or session-assignment distance
-
-**What success would look like**
-- improves on the current record-to-record baseline without the broad regressions seen in naive constructor-seeded crossover
-- especially promising if it helps `large_gender` without giving back sailing / transfer balance
-
-**Local source text**
-- [papers/marker/social-golfer-memetic-cotta-2006/social-golfer-memetic-cotta-2006.md](papers/marker/social-golfer-memetic-cotta-2006/social-golfer-memetic-cotta-2006.md)
-- [papers/html/classroom-team-formation-evolutionary-metaheuristic-2025.html](papers/html/classroom-team-formation-evolutionary-metaheuristic-2025.html)
-- [papers/html/grouping-problems-metaheuristics-review-2020.html](papers/html/grouping-problems-metaheuristics-review-2020.html)
-- [papers/marker/hypergraph-team-formation-communications-physics-2025/hypergraph-team-formation-communications-physics-2025.md](papers/marker/hypergraph-team-formation-communications-physics-2025/hypergraph-team-formation-communications-physics-2025.md)
-
----
-
-## 2. Freedom-aware GRASP constructor feeding the kept record-to-record local search
+## 1. Freedom-aware GRASP constructor feeding the kept record-to-record local search
 **Why this is promising**
 - The literature suggests start quality can completely change what the inner search can reach.
 - Our naive multi-start experiment probably failed less because “multi-start is bad” and more because the constructor was not strong enough to justify splitting the budget.
@@ -89,7 +56,7 @@ This file is the **untried queue**.
 
 ---
 
-## 3. Targeted ALNS / LNS with restricted exact repair kernel
+## 2. Targeted ALNS / LNS with restricted exact repair kernel
 **Why this is promising**
 - We already learned that naive whole-session greedy rebuild is too weak.
 - The literature keeps reinforcing that ALNS only becomes compelling when the **repair** is strong enough.
@@ -124,7 +91,7 @@ This file is the **untried queue**.
 
 ---
 
-## 4. Stage-aware hyper-heuristic over macro operators, not low-level move families
+## 3. Stage-aware hyper-heuristic over macro operators, not low-level move families
 **Why this is promising**
 - We already know simple UCB over low-level move families is not enough.
 - The literature-backed idea is higher-level: learn which **macro search behavior** to run next, given the current search state.
@@ -158,7 +125,7 @@ This file is the **untried queue**.
 
 ---
 
-## 5. Hypergraph / structural-compatibility scoring as an enabling layer for memetic and ALNS search
+## 4. Hypergraph / structural-compatibility scoring as an enabling layer for memetic and ALNS search
 **Why this is promising**
 - One recurring failure mode in our crossover and rebuild attempts is that we use overly local or naive notions of compatibility.
 - The hypergraph-style paper suggests a more structured way to reason about higher-order team/group compatibility.
@@ -188,8 +155,7 @@ This file is the **untried queue**.
 ---
 
 ## Recommended next implementation order
-1. **Elite-population memetic solver3**
-2. **Freedom-aware GRASP constructor**
-3. **Targeted ALNS / LNS with stronger repair coverage**
-4. **Stage-aware hyper-heuristic over macro operators**
-5. **Hypergraph / structural-compatibility enabling layer**
+1. **Freedom-aware GRASP constructor**
+2. **Targeted ALNS / LNS with stronger repair coverage**
+3. **Stage-aware hyper-heuristic over macro operators**
+4. **Hypergraph / structural-compatibility enabling layer**
