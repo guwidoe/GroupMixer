@@ -48,7 +48,7 @@ The experiment loop may modify:
 
 - `backend/core/src/solver3/**`
 - this package's orchestration/metric files when signal quality needs improvement
-- root `autoresearch.md`, `autoresearch.sh`, `autoresearch.checks.sh`, `autoresearch.ideas.md`
+- root `autoresearch.md`, `autoresearch.sh`, `autoresearch.checks.sh`, `autoresearch.ideas-to-try.md`, `autoresearch.ideas.md`
 
 Off-limits during the solver3 objective loop:
 
@@ -56,3 +56,11 @@ Off-limits during the solver3 objective loop:
 - `backend/core/src/solver2/**`
 - shared construction / validation / benchmarking plumbing, unless a blocking bug is found and the user confirms the fix direction
 - benchmark case identity, seeds, budgets, or metric reference math
+
+## Idea queue workflow
+
+Before planning a fresh solver3 experiment, read `autoresearch.ideas-to-try.md`.
+
+- `autoresearch.ideas-to-try.md` holds the strongest **untried** literature-backed ideas.
+- `autoresearch.ideas.md` holds ideas that have already been **tried**, along with learnings and conclusions.
+- Once an idea from `autoresearch.ideas-to-try.md` is materially tried in a real solver experiment, move it to `autoresearch.ideas.md` and record the outcome there.
