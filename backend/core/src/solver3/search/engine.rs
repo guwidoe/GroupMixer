@@ -275,6 +275,7 @@ impl SearchEngine {
     ) -> Result<Option<RuntimeState>, SolverError> {
         let mut best_offspring = None;
         let mut best_score = f64::INFINITY;
+        let mut polished_donors = Vec::new();
 
         for donor_ordinal in 0..MEMETIC_DONOR_COUNT {
             let donor_seed = diversify_seed(
@@ -305,6 +306,8 @@ impl SearchEngine {
                 false,
             )?;
 
+            polished_donors.push(donor_state.clone());
+
             let Some(offspring) = select_best_offspring_session(
                 recipient_state,
                 &donor_state,
@@ -314,6 +317,17 @@ impl SearchEngine {
                 continue;
             };
 
+            if offspring.total_score < best_score {
+                best_score = offspring.total_score;
+                best_offspring = Some(offspring);
+            }
+        }
+
+        if let Some(offspring) = select_best_cross_donor_bundle(
+            recipient_state,
+            &polished_donors,
+            &run_context.allowed_sessions,
+        )? {
             if offspring.total_score < best_score {
                 best_score = offspring.total_score;
                 best_offspring = Some(offspring);
@@ -418,6 +432,56 @@ fn select_best_offspring_session(
     }
 
     Ok(best_offspring)
+}
+
+fn select_best_cross_donor_bundle(
+    recipient_state: &RuntimeState,
+    donors: &[RuntimeState],
+    allowed_sessions: &[usize],
+) -> Result<Option<RuntimeState>, SolverError> {
+    if donors.len() < 2 {
+        return Ok(None);
+    }
+
+    let mut best_offspring = None;
+    let mut best_score = f64::INFINITY;
+
+    for left_donor_idx in 0..donors.len() {
+        for right_donor_idx in (left_donor_idx + 1)..donors.len() {
+            for (left_session_pos, &left_session_idx) in allowed_sessions.iter().enumerate() {
+                for &right_session_idx in allowed_sessions.iter().skip(left_session_pos + 1) {
+                    let offspring = transplant_mixed_donor_sessions(
+                        recipient_state,
+                        &donors[left_donor_idx],
+                        left_session_idx,
+                        &donors[right_donor_idx],
+                        right_session_idx,
+                    )?;
+                    if offspring.total_score < best_score {
+                        best_score = offspring.total_score;
+                        best_offspring = Some(offspring);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(best_offspring)
+}
+
+fn transplant_mixed_donor_sessions(
+    recipient_state: &RuntimeState,
+    left_donor: &RuntimeState,
+    left_session_idx: usize,
+    right_donor: &RuntimeState,
+    right_session_idx: usize,
+) -> Result<RuntimeState, SolverError> {
+    let mut offspring = recipient_state.clone();
+    offspring.overwrite_session_from(left_donor, left_session_idx)?;
+    offspring.overwrite_session_from(right_donor, right_session_idx)?;
+    offspring.rebuild_pair_contacts();
+    offspring.sync_score_from_oracle()?;
+    Ok(offspring)
 }
 
 #[inline]
