@@ -286,7 +286,7 @@ impl SearchEngine {
             .stop_conditions
             .no_improvement_iterations = None;
 
-        let donor_result = self.solve_single_state_with_configuration(
+        self.solve_single_state_with_configuration(
             &donor_configuration,
             &mut donor_state,
             None,
@@ -294,16 +294,14 @@ impl SearchEngine {
             false,
         )?;
 
-        let Some(session_idx) =
-            select_best_donor_session(recipient_state, &donor_state, &run_context.allowed_sessions)
+        let Some(offspring) = select_best_offspring_session(
+            recipient_state,
+            &donor_state,
+            &run_context.allowed_sessions,
+        )?
         else {
             return Ok(None);
         };
-
-        let mut offspring = recipient_state.clone();
-        offspring.overwrite_session_from(&donor_state, session_idx)?;
-        offspring.rebuild_pair_contacts();
-        offspring.sync_score_from_oracle()?;
 
         let threshold = record_to_record_threshold_for_progress(progress);
         if offspring.total_score <= recipient_state.total_score
@@ -312,7 +310,6 @@ impl SearchEngine {
             return Ok(Some(offspring));
         }
 
-        let _ = donor_result;
         Ok(None)
     }
 }
@@ -375,40 +372,26 @@ fn should_attempt_memetic_burst(
     })
 }
 
-fn select_best_donor_session(
+fn select_best_offspring_session(
     recipient_state: &RuntimeState,
     donor_state: &RuntimeState,
     allowed_sessions: &[usize],
-) -> Option<usize> {
-    let mut best_session_idx = None;
-    let mut best_gain = 0.0;
+) -> Result<Option<RuntimeState>, SolverError> {
+    let mut best_offspring = None;
+    let mut best_score = f64::INFINITY;
 
     for &session_idx in allowed_sessions {
-        let recipient_pressure = local_session_repeat_pressure(recipient_state, session_idx);
-        let donor_pressure = local_session_repeat_pressure(donor_state, session_idx);
-        let gain = recipient_pressure - donor_pressure;
-        if gain > best_gain {
-            best_gain = gain;
-            best_session_idx = Some(session_idx);
+        let mut offspring = recipient_state.clone();
+        offspring.overwrite_session_from(donor_state, session_idx)?;
+        offspring.rebuild_pair_contacts();
+        offspring.sync_score_from_oracle()?;
+        if offspring.total_score < best_score {
+            best_score = offspring.total_score;
+            best_offspring = Some(offspring);
         }
     }
 
-    best_session_idx
-}
-
-fn local_session_repeat_pressure(state: &RuntimeState, session_idx: usize) -> f64 {
-    let mut pressure = 0.0;
-    for group_idx in 0..state.compiled.num_groups {
-        let slot = state.group_slot(session_idx, group_idx);
-        let members = &state.group_members[slot];
-        for left in 0..members.len() {
-            for right in (left + 1)..members.len() {
-                let pair_idx = state.compiled.pair_idx(members[left], members[right]);
-                pressure += state.pair_contacts[pair_idx].saturating_sub(1) as f64;
-            }
-        }
-    }
-    pressure
+    Ok(best_offspring)
 }
 
 #[inline]
