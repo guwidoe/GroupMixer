@@ -393,6 +393,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                   cell: (item) => <SetupPersonListText people={scenario.people} personIds={item.constraint.people} />,
                   sortValue: (item) => item.constraint.people.length,
                   searchValue: (item) => formatPersonSearchList(scenario.people, item.constraint.people),
+                  exportValue: (item) => formatPersonDisplayList(scenario.people, item.constraint.people),
                   filter: {
                     type: 'text',
                     placeholder: 'Filter people…',
@@ -407,6 +408,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                       cell: (item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>) => item.constraint.group_id,
                       sortValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>) => item.constraint.group_id,
                       searchValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>) => item.constraint.group_id,
+                      exportValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>) => item.constraint.group_id,
                       filter: {
                         type: 'text' as const,
                         placeholder: 'Filter groups…',
@@ -420,6 +422,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                   header: 'Sessions',
                   cell: (item) => item.constraint.sessions?.length ? item.constraint.sessions.map((session) => session + 1).join(', ') : 'All sessions',
                   searchValue: (item) => item.constraint.sessions?.join(' ') || 'all sessions',
+                  exportValue: (item) => item.constraint.sessions?.length ? item.constraint.sessions.map((session) => session + 1).join(', ') : 'All sessions',
                   filter: {
                     type: 'text',
                     placeholder: 'Filter sessions…',
@@ -626,6 +629,7 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                           cell: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.group_id,
                           sortValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.group_id,
                           searchValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => `${item.constraint.group_id} ${item.constraint.attribute_key}`,
+                          exportValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.group_id,
                           filter: {
                             type: 'text' as const,
                             placeholder: 'Filter groups…',
@@ -639,6 +643,7 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                           cell: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.attribute_key,
                           sortValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.attribute_key,
                           searchValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.attribute_key,
+                          exportValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.attribute_key,
                           filter: {
                             type: 'text' as const,
                             placeholder: 'Filter attributes…',
@@ -657,6 +662,7 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                           ),
                           sortValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => formatPersonDisplayList(scenario.people, item.constraint.people, ' & '),
                           searchValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => formatPersonSearchList(scenario.people, item.constraint.people),
+                          exportValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => formatPersonDisplayList(scenario.people, item.constraint.people, ' & '),
                           filter: {
                             type: 'text' as const,
                             placeholder: 'Filter pairs…',
@@ -674,6 +680,7 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                           ),
                           sortValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => item.constraint.people.length,
                           searchValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => formatPersonSearchList(scenario.people, item.constraint.people),
+                          exportValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => formatPersonDisplayList(scenario.people, item.constraint.people),
                           filter: {
                             type: 'text' as const,
                             placeholder: 'Filter people…',
@@ -689,6 +696,7 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                       cell: (item: IndexedConstraint<Constraint & { penalty_weight: number }>) => item.constraint.penalty_weight,
                       sortValue: (item: IndexedConstraint<Constraint & { penalty_weight: number }>) => item.constraint.penalty_weight,
                       searchValue: (item: IndexedConstraint<Constraint & { penalty_weight: number }>) => String(item.constraint.penalty_weight),
+                      exportValue: (item: IndexedConstraint<Constraint & { penalty_weight: number }>) => String(item.constraint.penalty_weight),
                       filter: {
                         type: 'numberRange' as const,
                         ariaLabel: `Filter ${copy.title} by weight`,
@@ -702,6 +710,7 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                   header: 'Sessions',
                   cell: (item) => 'sessions' in item.constraint && item.constraint.sessions?.length ? item.constraint.sessions.map((session) => session + 1).join(', ') : 'All sessions',
                   searchValue: (item) => ('sessions' in item.constraint && item.constraint.sessions ? item.constraint.sessions.join(' ') : 'all sessions'),
+                  exportValue: (item) => 'sessions' in item.constraint && item.constraint.sessions?.length ? item.constraint.sessions.map((session) => session + 1).join(', ') : 'All sessions',
                   filter: {
                     type: 'text',
                     placeholder: 'Filter sessions…',

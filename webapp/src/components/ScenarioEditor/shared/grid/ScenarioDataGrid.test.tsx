@@ -212,4 +212,39 @@ describe('ScenarioDataGrid', () => {
 
     expect(onCommit).toHaveBeenCalledWith(rows[0], 'Beta Prime');
   });
+
+  it('opens a CSV preview for the current filtered rows and visible columns', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ScenarioDataGrid
+        rows={rows}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            id: 'name',
+            header: 'Name',
+            cell: (row) => row.name,
+            sortValue: (row) => row.name,
+            searchValue: (row) => row.name,
+            exportValue: (row) => row.name,
+          },
+          {
+            id: 'weight',
+            header: 'Weight',
+            cell: (row) => row.weight,
+            sortValue: (row) => row.weight,
+            searchValue: (row) => String(row.weight),
+            exportValue: (row) => String(row.weight),
+          },
+        ]}
+      />,
+    );
+
+    await user.type(screen.getByRole('textbox', { name: /search table/i }), 'alpha');
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+
+    expect(screen.getByRole('heading', { name: /csv preview/i })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /csv preview content/i })).toHaveValue('Name,Weight\nAlpha,10');
+  });
 });

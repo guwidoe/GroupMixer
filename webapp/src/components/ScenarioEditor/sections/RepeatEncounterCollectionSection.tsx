@@ -83,6 +83,7 @@ function renderRepeatEncounterContent(
             ),
             sortValue: (item) => item.constraint.max_allowed_encounters,
             searchValue: (item) => String(item.constraint.max_allowed_encounters),
+            exportValue: (item) => String(item.constraint.max_allowed_encounters),
             filter: {
               type: 'numberRange',
               ariaLabel: 'Filter repeat encounter max encounters',
@@ -96,6 +97,7 @@ function renderRepeatEncounterContent(
             cell: (item) => item.constraint.penalty_function,
             sortValue: (item) => item.constraint.penalty_function,
             searchValue: (item) => item.constraint.penalty_function,
+            exportValue: (item) => item.constraint.penalty_function,
             filter: {
               type: 'select',
               ariaLabel: 'Filter repeat encounter penalty function',
@@ -110,6 +112,7 @@ function renderRepeatEncounterContent(
             cell: (item) => item.constraint.penalty_weight,
             sortValue: (item) => item.constraint.penalty_weight,
             searchValue: (item) => String(item.constraint.penalty_weight),
+            exportValue: (item) => String(item.constraint.penalty_weight),
             filter: {
               type: 'numberRange',
               ariaLabel: 'Filter repeat encounter weight',

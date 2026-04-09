@@ -59,6 +59,7 @@ function renderGroupContent(
             cell: (group) => <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{group.id}</span>,
             sortValue: (group) => group.id,
             searchValue: (group) => group.id,
+            exportValue: (group) => group.id,
             filter: {
               type: 'text',
               placeholder: 'Filter groups…',
@@ -72,6 +73,7 @@ function renderGroupContent(
             cell: (group) => `${group.size} people`,
             sortValue: (group) => group.size,
             searchValue: (group) => String(group.size),
+            exportValue: (group) => String(group.size),
             filter: {
               type: 'numberRange',
               ariaLabel: 'Filter groups by default capacity',
@@ -92,6 +94,12 @@ function renderGroupContent(
               scenario && hasSessionSpecificGroupCapacities(group, scenario.num_sessions)
                 ? getGroupCapacityProfile(group, scenario.num_sessions).join(' ')
                 : 'default capacity',
+            exportValue: (group) =>
+              scenario && hasSessionSpecificGroupCapacities(group, scenario.num_sessions)
+                ? getGroupCapacityProfile(group, scenario.num_sessions)
+                    .map((capacity, index) => `${index + 1}: ${capacity}`)
+                    .join('; ')
+                : 'Uses default capacity in every session',
             filter: {
               type: 'text',
               placeholder: 'Filter session capacities…',

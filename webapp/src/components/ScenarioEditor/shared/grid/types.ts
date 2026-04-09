@@ -35,6 +35,7 @@ export interface ScenarioDataGridColumn<T> {
   cell: (row: T) => React.ReactNode;
   sortValue?: (row: T) => string | number;
   searchValue?: (row: T) => string;
+  exportValue?: (row: T) => string | number | string[] | undefined;
   filter?: ScenarioDataGridColumnFilter<T>;
   width?: number;
   minWidth?: number;

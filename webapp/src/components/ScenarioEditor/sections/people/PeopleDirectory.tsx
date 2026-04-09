@@ -258,6 +258,7 @@ export function PeopleDirectory({
                 ),
                 sortValue: (person) => resolvePersonDisplay(basePeople, person.id).displayName.toLowerCase(),
                 searchValue: (person) => resolvePersonDisplay(basePeople, person.id).searchText,
+                exportValue: (person) => resolvePersonDisplay(basePeople, person.id).displayName,
                 filter: {
                   type: 'text',
                   placeholder: 'Filter names…',
@@ -279,6 +280,10 @@ export function PeopleDirectory({
                   person.sessions ? `${person.sessions.map((session) => session + 1).join(', ')}` : `All (${sessionsCount})`,
                 sortValue: (person) => person.sessions?.length ?? sessionsCount,
                 searchValue: (person) => (person.sessions ? person.sessions.join(' ') : `all ${sessionsCount}`),
+                exportValue: (person) =>
+                  person.sessions && person.sessions.length > 0
+                    ? person.sessions.map((session) => String(session + 1)).join(', ')
+                    : 'All sessions',
                 filter: {
                   type: 'text',
                   ariaLabel: 'Filter people by session availability',
@@ -316,6 +321,7 @@ export function PeopleDirectory({
                 header: attribute.key,
                 cell: (person: Person) => person.attributes[attribute.key] || '—',
                 searchValue: (person: Person) => String(person.attributes[attribute.key] || ''),
+                exportValue: (person: Person) => String(person.attributes[attribute.key] || ''),
                 filter: {
                   type: 'select' as const,
                   ariaLabel: `Filter people by ${attribute.key}`,

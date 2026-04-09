@@ -2,7 +2,10 @@ import React from 'react';
 import {
   ChevronDown,
   ChevronUp,
+  Copy,
   Columns3,
+  Download,
+  FileSpreadsheet,
   PencilLine,
   Search,
   X,
@@ -87,6 +90,28 @@ function resolveFilterOptions<T>(column: ScenarioDataGridColumn<T>, rows: T[]): 
     return [];
   }
   return typeof column.filter.options === 'function' ? column.filter.options(rows) : column.filter.options;
+}
+
+function normalizeExportValue(value: string | number | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value.join('; ');
+  }
+  return value == null ? '' : String(value);
+}
+
+function escapeCsvValue(value: string) {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+function resolveExportValue<T>(row: T, column: ScenarioDataGridColumn<T>) {
+  return normalizeExportValue(
+    column.exportValue?.(row)
+      ?? resolveFilterValue(row, column)
+      ?? column.searchValue?.(row),
+  );
 }
 
 function getEditorOptions<T>(editor: ScenarioDataGridColumnEditor<T>, row: T): ScenarioDataGridOption[] {
@@ -357,6 +382,78 @@ function ColumnFilterControl<T>({
   );
 }
 
+function CsvPreviewDialog({
+  csvText,
+  rowCount,
+  onClose,
+}: {
+  csvText: string;
+  rowCount: number;
+  onClose: () => void;
+}) {
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  const handleDownload = () => {
+    const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'scenario-grid.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopy = async () => {
+    if (!navigator.clipboard) {
+      return;
+    }
+    await navigator.clipboard.writeText(csvText);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+      <div className="w-full max-w-4xl rounded-2xl border p-5 shadow-xl" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>CSV preview</h3>
+            <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Previewing {rowCount} filtered row{rowCount === 1 ? '' : 's'} using the currently visible columns.
+            </p>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close CSV preview">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <textarea
+          readOnly
+          value={csvText}
+          className="mt-4 min-h-[22rem] w-full rounded-xl border p-3 font-mono text-xs"
+          style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }}
+          aria-label="CSV preview content"
+        />
+        <div className="mt-4 flex flex-wrap justify-end gap-2">
+          <Button variant="secondary" onClick={() => void handleCopy()} leadingIcon={<Copy className="h-4 w-4" />}>
+            Copy CSV
+          </Button>
+          <Button variant="secondary" onClick={handleDownload} leadingIcon={<Download className="h-4 w-4" />}>
+            Download CSV
+          </Button>
+          <Button variant="primary" onClick={onClose}>Done</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ScenarioDataGrid<T>({
   rows,
   columns,
@@ -379,6 +476,7 @@ export function ScenarioDataGrid<T>({
   const [globalFilter, setGlobalFilter] = React.useState('');
   const [isColumnsMenuOpen, setIsColumnsMenuOpen] = React.useState(false);
   const [isEditMode, setIsEditMode] = React.useState(false);
+  const [isCsvPreviewOpen, setIsCsvPreviewOpen] = React.useState(false);
   const [scrollMetrics, setScrollMetrics] = React.useState({ scrollWidth: 0, clientWidth: 0 });
   const topScrollRef = React.useRef<HTMLDivElement>(null);
   const bodyScrollRef = React.useRef<HTMLDivElement>(null);
@@ -594,6 +692,21 @@ export function ScenarioDataGrid<T>({
 
   const filteredCount = table.getFilteredRowModel().rows.length;
   const totalCount = rows.length;
+  const csvColumns = table.getVisibleLeafColumns()
+    .map((column) => {
+      const sourceColumn = (column.columnDef.meta as { sourceColumn?: ScenarioDataGridColumn<T> } | undefined)?.sourceColumn;
+      return sourceColumn ? { id: column.id, header: sourceColumn.header, sourceColumn } : null;
+    })
+    .filter(Boolean) as Array<{ id: string; header: string; sourceColumn: ScenarioDataGridColumn<T> }>;
+  const csvText = React.useMemo(() => {
+    const headerLine = csvColumns.map((column) => escapeCsvValue(column.header)).join(',');
+    const rowLines = table.getRowModel().rows.map((row) =>
+      csvColumns
+        .map((column) => escapeCsvValue(resolveExportValue(row.original, column.sourceColumn)))
+        .join(','),
+    );
+    return [headerLine, ...rowLines].join('\n');
+  }, [csvColumns, table]);
   const activeColumnFilters = table.getState().columnFilters.map((filterState) => {
     const sourceColumn = columns.find((candidate) => candidate.id === filterState.id);
     const sourceFilter = sourceColumn?.filter;
@@ -660,6 +773,16 @@ export function ScenarioDataGrid<T>({
 
         <div className="flex flex-wrap items-center gap-2">
           {toolbarActions}
+          {csvColumns.length > 0 && table.getRowModel().rows.length > 0 ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              leadingIcon={<FileSpreadsheet className="h-4 w-4" />}
+              onClick={() => setIsCsvPreviewOpen(true)}
+            >
+              CSV
+            </Button>
+          ) : null}
           {hasEditableColumns ? (
             <Button
               variant={isEditMode ? 'primary' : 'secondary'}
@@ -722,6 +845,10 @@ export function ScenarioDataGrid<T>({
         >
           <div style={{ width: `${scrollMetrics.scrollWidth}px`, height: '10px' }} />
         </div>
+      ) : null}
+
+      {isCsvPreviewOpen ? (
+        <CsvPreviewDialog csvText={csvText} rowCount={table.getRowModel().rows.length} onClose={() => setIsCsvPreviewOpen(false)} />
       ) : null}
 
       <div
