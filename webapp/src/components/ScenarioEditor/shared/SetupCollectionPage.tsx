@@ -45,14 +45,12 @@ export function SetupCollectionPage({
   const resolvedToolbarTrailing = typeof toolbarTrailing === 'function' ? toolbarTrailing(viewMode) : toolbarTrailing;
   const hasDedicatedToolbarContent = Boolean(resolvedToolbarLeading || resolvedToolbarTrailing);
   const viewModeToggle = <SetupViewModeToggle viewMode={viewMode} onChange={setViewMode} />;
-  const headerActions = hasDedicatedToolbarContent
-    ? actions
-    : (
-      <>
-        {actions}
-        {viewModeToggle}
-      </>
-    );
+  const headerActions = (
+    <>
+      {actions}
+      {viewModeToggle}
+    </>
+  );
 
   React.useEffect(() => {
     onViewModeChange?.(viewMode);
@@ -65,12 +63,7 @@ export function SetupCollectionPage({
       {hasDedicatedToolbarContent ? (
         <SetupSectionToolbar
           leading={resolvedToolbarLeading}
-          trailing={
-            <>
-              {resolvedToolbarTrailing}
-              {viewModeToggle}
-            </>
-          }
+          trailing={resolvedToolbarTrailing}
         />
       ) : null}
 

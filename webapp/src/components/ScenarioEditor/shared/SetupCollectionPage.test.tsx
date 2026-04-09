@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { SetupCollectionPage } from './SetupCollectionPage';
 
 describe('SetupCollectionPage', () => {
-  it('switches between cards and list modes through the shared toolbar', async () => {
+  it('switches between cards and list modes through the shared header toggle', async () => {
     const user = userEvent.setup();
 
     render(
@@ -62,7 +62,7 @@ describe('SetupCollectionPage', () => {
     expect(screen.queryByTestId('setup-section-toolbar')).not.toBeInTheDocument();
   });
 
-  it('keeps the dedicated toolbar row when the current view has extra toolbar content', () => {
+  it('keeps the dedicated toolbar row for extra content while the view toggle stays in the header', () => {
     render(
       <SetupCollectionPage
         sectionKey="toolbar-shell"
@@ -79,5 +79,7 @@ describe('SetupCollectionPage', () => {
 
     expect(screen.getByTestId('setup-section-toolbar')).toBeInTheDocument();
     expect(screen.getByText('Toolbar search')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /cards/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /list/i })).toBeInTheDocument();
   });
 });
