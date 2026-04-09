@@ -91,6 +91,7 @@ describe('PeopleDirectory', () => {
 
     await user.click(screen.getByRole('button', { name: /list/i }));
     expect(screen.getByRole('columnheader', { name: /name/i })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /search table/i })).not.toBeInTheDocument();
     expect(screen.queryByText('p1')).not.toBeInTheDocument();
     expect(screen.getAllByText('dev').length).toBeGreaterThan(0);
 

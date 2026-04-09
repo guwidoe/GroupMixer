@@ -50,6 +50,7 @@ interface ScenarioDataGridProps<T> {
   filterQuery?: string;
   emptyState?: React.ReactNode;
   searchPlaceholder?: string;
+  showGlobalSearch?: boolean;
   searchSummary?: (args: { filteredCount: number; totalCount: number; query: string }) => React.ReactNode;
   toolbarActions?: React.ReactNode;
   maxHeight?: string;
@@ -770,6 +771,7 @@ export function ScenarioDataGrid<T>({
   filterQuery = '',
   emptyState,
   searchPlaceholder = 'Search table…',
+  showGlobalSearch = true,
   searchSummary,
   toolbarActions,
   maxHeight = 'min(70vh, calc(100vh - 18rem))',
@@ -1077,32 +1079,34 @@ export function ScenarioDataGrid<T>({
       style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
     >
       <div
-        className="flex flex-col gap-3 border-b px-4 py-3 lg:flex-row lg:items-center lg:justify-between"
+        className={`flex border-b px-4 ${showGlobalSearch ? 'py-3' : 'py-2.5'} flex-col gap-3 lg:flex-row lg:items-center lg:justify-between`}
         style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}
       >
-        <div className="flex min-w-0 flex-1 flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
-          <label className="relative block min-w-0 flex-1 lg:max-w-sm">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
-            <input
-              type="text"
-              value={globalFilter}
-              onChange={(event) => setGlobalFilter(event.target.value)}
-              placeholder={searchPlaceholder}
-              className="input h-10 w-full rounded-xl pl-9 pr-10"
-              aria-label="Search table"
-            />
-            {globalFilter ? (
-              <button
-                type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5"
-                style={{ color: 'var(--text-tertiary)' }}
-                onClick={() => setGlobalFilter('')}
-                aria-label="Clear table search"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            ) : null}
-          </label>
+        <div className={`flex min-w-0 flex-1 ${showGlobalSearch ? 'flex-col gap-3 lg:flex-row lg:items-center lg:gap-4' : 'items-center'}`}>
+          {showGlobalSearch ? (
+            <label className="relative block min-w-0 flex-1 lg:max-w-sm">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
+              <input
+                type="text"
+                value={globalFilter}
+                onChange={(event) => setGlobalFilter(event.target.value)}
+                placeholder={searchPlaceholder}
+                className="input h-10 w-full rounded-xl pl-9 pr-10"
+                aria-label="Search table"
+              />
+              {globalFilter ? (
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5"
+                  style={{ color: 'var(--text-tertiary)' }}
+                  onClick={() => setGlobalFilter('')}
+                  aria-label="Clear table search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
+            </label>
+          ) : null}
           <div className="min-w-0">{summary}</div>
         </div>
 

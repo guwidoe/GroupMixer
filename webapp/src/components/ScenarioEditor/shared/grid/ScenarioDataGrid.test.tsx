@@ -68,6 +68,32 @@ describe('ScenarioDataGrid', () => {
     expect(screen.queryByText('Beta')).not.toBeInTheDocument();
   });
 
+  it('can hide the global search row when a section relies on column filters instead', () => {
+    render(
+      <ScenarioDataGrid
+        rows={rows}
+        rowKey={(row) => row.id}
+        showGlobalSearch={false}
+        columns={[
+          {
+            id: 'name',
+            header: 'Name',
+            cell: (row) => row.name,
+            sortValue: (row) => row.name,
+            searchValue: (row) => row.name,
+            filter: {
+              type: 'text',
+              ariaLabel: 'Filter names',
+            },
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.queryByRole('textbox', { name: /search table/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/showing 2 of 2 rows/i)).toBeInTheDocument();
+  });
+
   it('supports icon-triggered header text tokens and range filters', async () => {
     const user = userEvent.setup();
 

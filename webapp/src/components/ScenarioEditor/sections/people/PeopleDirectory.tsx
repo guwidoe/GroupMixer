@@ -292,10 +292,10 @@ export function PeopleDirectory({
             rows={visiblePeople}
             rowKey={(person) => person.id}
             emptyState={<div className="text-sm" style={{ color: 'var(--text-secondary)' }}>No matching people.</div>}
-            searchPlaceholder="Search people by name, ID, or attribute…"
-            searchSummary={({ filteredCount, totalCount, query }) => (
+            showGlobalSearch={false}
+            searchSummary={({ filteredCount }) => (
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                {query.trim() ? `Showing ${filteredCount} of ${totalCount} matching people.` : `Showing ${filteredCount} people.`}
+                Showing {filteredCount} people.
               </div>
             )}
             columns={[
