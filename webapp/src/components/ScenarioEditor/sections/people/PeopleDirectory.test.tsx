@@ -80,6 +80,9 @@ describe('PeopleDirectory', () => {
       />,
     );
 
+    expect(screen.queryByText(/^availability$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('p1')).not.toBeInTheDocument();
+
     await user.click(screen.getByRole('button', { name: /edit alex/i }));
     expect(onEditPerson).toHaveBeenCalledTimes(1);
 

@@ -33,8 +33,8 @@ describe('scenario setup card primitives', () => {
     expect(screen.getByText(/repeat encounter/i)).toBeInTheDocument();
     expect(screen.getByText(/weight 12/i)).toBeInTheDocument();
     expect(screen.getByText(/penalty function/i)).toBeInTheDocument();
-    expect(screen.getByText('S1')).toBeInTheDocument();
-    expect(screen.getByText('S3')).toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
     expect(screen.getByText('Alex')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /edit item/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /delete item/i })).toBeInTheDocument();

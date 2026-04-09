@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { ChevronDown, Edit, Search, Table, Upload, Users } from 'lucide-react';
+import { ChevronDown, Search, Table, Upload, Users } from 'lucide-react';
 import type { AttributeDefinition, Person, Scenario } from '../../../../types';
 import { useOutsideClick } from '../../../../hooks';
 import { Button } from '../../../ui';
@@ -33,10 +33,12 @@ function PeopleBulkActions({
   onTriggerCsvUpload,
   onTriggerExcelImport,
   onOpenBulkAddForm,
+  onOpenBulkUpdateForm,
 }: {
   onTriggerCsvUpload: () => void;
   onTriggerExcelImport: () => void;
   onOpenBulkAddForm: () => void;
+  onOpenBulkUpdateForm: () => void;
 }) {
   const bulkDropdownRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -55,7 +57,7 @@ function PeopleBulkActions({
         trailingIcon={<ChevronDown className="h-3 w-3" />}
         onClick={() => setIsOpen((open) => !open)}
       >
-        Bulk Add
+        Import & Bulk
       </Button>
       {isOpen ? (
         <div
@@ -97,6 +99,18 @@ function PeopleBulkActions({
           >
             <Table className="h-4 w-4" />
             Open Bulk Form
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm"
+            style={{ color: 'var(--text-primary)' }}
+            onClick={() => {
+              setIsOpen(false);
+              onOpenBulkUpdateForm();
+            }}
+          >
+            <Table className="h-4 w-4" />
+            Bulk Update
           </button>
         </div>
       ) : null}
@@ -218,10 +232,8 @@ export function PeopleDirectory({
             onTriggerCsvUpload={onTriggerCsvUpload}
             onTriggerExcelImport={onTriggerExcelImport}
             onOpenBulkAddForm={onOpenBulkAddForm}
+            onOpenBulkUpdateForm={onOpenBulkUpdateForm}
           />
-          <Button variant="secondary" leadingIcon={<Edit className="h-4 w-4" />} onClick={onOpenBulkUpdateForm}>
-            Bulk Update
-          </Button>
           <Button variant="primary" leadingIcon={<Users className="h-4 w-4" />} onClick={onAddPerson}>
             Add Person
           </Button>

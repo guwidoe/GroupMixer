@@ -1,9 +1,10 @@
 import React from 'react';
-import { Tag, Users } from 'lucide-react';
+import { Users } from 'lucide-react';
 import type { Person } from '../../../../types';
 import { PeopleEmptyState } from './PeopleEmptyState';
 import { PeopleSearchSummary } from './PeopleSearchSummary';
-import { SetupItemActions, SetupItemCard, SetupKeyValueList, SetupSessionsBadgeList, SetupTagList } from '../../shared/cards';
+import { SetupItemActions, SetupItemCard, SetupKeyValueList, SetupSessionsBadgeList } from '../../shared/cards';
+import { SetupPersonName } from '../../shared/personDisplay';
 
 interface PeopleGridProps {
   people: Person[];
@@ -58,15 +59,17 @@ export function PeopleGrid({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {people.map((person) => {
             const displayName = person.attributes.name || person.id;
-            const sessionText = person.sessions
-              ? `Sessions: ${person.sessions.map((s) => s + 1).join(', ')}`
-              : 'All sessions';
+            const detailItems = Object.entries(person.attributes)
+              .filter(([key]) => key !== 'name')
+              .map(([key, value]) => ({
+                label: key,
+                value,
+              }));
 
             return (
               <SetupItemCard
                 key={person.id}
-                title={displayName}
-                titleMeta={person.id !== displayName ? person.id : undefined}
+                title={<SetupPersonName people={people} personId={person.id} className="font-semibold" />}
                 onOpen={() => onEditPerson(person)}
                 openLabel={`Edit ${displayName}`}
                 actions={
@@ -77,24 +80,8 @@ export function PeopleGrid({
                   />
                 }
               >
-                <SetupKeyValueList items={[{ label: 'Availability', value: sessionText }]} />
                 <SetupSessionsBadgeList sessions={person.sessions} />
-                {Object.entries(person.attributes).some(([key]) => key !== 'name') ? (
-                  <SetupTagList
-                    items={Object.entries(person.attributes)
-                      .filter(([key]) => key !== 'name')
-                      .map(([key, value]) => (
-                        <span
-                          key={key}
-                          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
-                          style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}
-                        >
-                          <Tag className="h-3 w-3" />
-                          <span>{key}: {value}</span>
-                        </span>
-                      ))}
-                  />
-                ) : null}
+                {detailItems.length > 0 ? <SetupKeyValueList items={detailItems} /> : null}
               </SetupItemCard>
             );
           })}

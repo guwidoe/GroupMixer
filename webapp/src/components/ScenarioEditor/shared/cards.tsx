@@ -41,7 +41,7 @@ export function SetupTagList({ items }: { items: Array<React.ReactNode> }) {
 }
 
 export function SetupSessionsBadgeList({ sessions }: { sessions?: number[] }) {
-  const labels = sessions && sessions.length > 0 ? sessions.map((session) => `S${session + 1}`) : ['All sessions'];
+  const labels = sessions && sessions.length > 0 ? sessions.map((session) => String(session + 1)) : ['All sessions'];
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
