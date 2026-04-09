@@ -41,4 +41,43 @@ describe('SetupCollectionPage', () => {
     expect(screen.getByText('Add one to get started.')).toBeInTheDocument();
     expect(screen.queryByText('Should not render')).not.toBeInTheDocument();
   });
+
+  it('folds the view toggle into header actions when there is no dedicated toolbar content', () => {
+    render(
+      <SetupCollectionPage
+        sectionKey="compact-shell"
+        title="Compact Section"
+        count={2}
+        actions={<button type="button">Add item</button>}
+        hasItems
+        emptyState={{ title: 'Empty', message: 'Nothing here yet.' }}
+        renderContent={() => <div>List content</div>}
+        defaultViewMode="list"
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /add item/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /cards/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /list/i })).toBeInTheDocument();
+    expect(screen.queryByTestId('setup-section-toolbar')).not.toBeInTheDocument();
+  });
+
+  it('keeps the dedicated toolbar row when the current view has extra toolbar content', () => {
+    render(
+      <SetupCollectionPage
+        sectionKey="toolbar-shell"
+        title="Toolbar Section"
+        count={2}
+        actions={<button type="button">Add item</button>}
+        hasItems
+        emptyState={{ title: 'Empty', message: 'Nothing here yet.' }}
+        toolbarLeading={<div>Toolbar search</div>}
+        renderContent={() => <div>Card content</div>}
+        defaultViewMode="cards"
+      />,
+    );
+
+    expect(screen.getByTestId('setup-section-toolbar')).toBeInTheDocument();
+    expect(screen.getByText('Toolbar search')).toBeInTheDocument();
+  });
 });

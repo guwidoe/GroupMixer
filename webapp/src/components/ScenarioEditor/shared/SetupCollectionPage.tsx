@@ -43,6 +43,16 @@ export function SetupCollectionPage({
   const { viewMode, setViewMode } = useSetupCollectionViewMode(sectionKey, defaultViewMode);
   const resolvedToolbarLeading = typeof toolbarLeading === 'function' ? toolbarLeading(viewMode) : toolbarLeading;
   const resolvedToolbarTrailing = typeof toolbarTrailing === 'function' ? toolbarTrailing(viewMode) : toolbarTrailing;
+  const hasDedicatedToolbarContent = Boolean(resolvedToolbarLeading || resolvedToolbarTrailing);
+  const viewModeToggle = <SetupViewModeToggle viewMode={viewMode} onChange={setViewMode} />;
+  const headerActions = hasDedicatedToolbarContent
+    ? actions
+    : (
+      <>
+        {actions}
+        {viewModeToggle}
+      </>
+    );
 
   React.useEffect(() => {
     onViewModeChange?.(viewMode);
@@ -50,17 +60,19 @@ export function SetupCollectionPage({
 
   return (
     <div className="space-y-5">
-      <SetupSectionHeader title={title} count={count} description={description} actions={actions} />
+      <SetupSectionHeader title={title} count={count} description={description} actions={headerActions} />
 
-      <SetupSectionToolbar
-        leading={resolvedToolbarLeading}
-        trailing={
-          <>
-            {resolvedToolbarTrailing}
-            <SetupViewModeToggle viewMode={viewMode} onChange={setViewMode} />
-          </>
-        }
-      />
+      {hasDedicatedToolbarContent ? (
+        <SetupSectionToolbar
+          leading={resolvedToolbarLeading}
+          trailing={
+            <>
+              {resolvedToolbarTrailing}
+              {viewModeToggle}
+            </>
+          }
+        />
+      ) : null}
 
       {summary ? (
         <div
