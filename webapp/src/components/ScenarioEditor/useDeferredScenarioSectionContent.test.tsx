@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Scenario } from '../../types';
 import { createSampleScenario, createSampleSolverSettings } from '../../test/fixtures';
-import { useDeferredScenarioSectionContent } from './useDeferredScenarioSectionContent';
+import { useDeferredScenarioSectionContent, useDeferredScenarioSetupSummary } from './useDeferredScenarioSectionContent';
 
 function createLargeScenario(peopleCount: number): Scenario {
   return createSampleScenario({
@@ -58,5 +58,31 @@ describe('useDeferredScenarioSectionContent', () => {
     expect(result.current.isContentLoading).toBe(false);
     expect(result.current.isContentReady).toBe(true);
     expect(result.current.deferredSectionLabel).toBe('sessions');
+  });
+
+  it('defers large setup summary counts until the next task', () => {
+    vi.useFakeTimers();
+
+    const largeScenario = createLargeScenario(250);
+    const attributeDefinitions = [{ key: 'team', values: ['A', 'B'] }];
+    const { result } = renderHook(() =>
+      useDeferredScenarioSetupSummary(largeScenario, attributeDefinitions, 3, 'scenario-1'),
+    );
+
+    expect(result.current.areSummaryCountsReady).toBe(false);
+    expect(result.current.summaryScenario).toBeNull();
+    expect(result.current.summaryAttributeDefinitions).toEqual([]);
+    expect(result.current.summaryObjectiveCount).toBe(0);
+
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(result.current.areSummaryCountsReady).toBe(true);
+    expect(result.current.summaryScenario).toEqual(largeScenario);
+    expect(result.current.summaryAttributeDefinitions).toEqual(attributeDefinitions);
+    expect(result.current.summaryObjectiveCount).toBe(3);
+
+    vi.useRealTimers();
   });
 });

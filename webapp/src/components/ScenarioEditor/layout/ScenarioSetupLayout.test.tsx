@@ -119,4 +119,36 @@ describe('ScenarioSetupLayout', () => {
     expect(onNavigate).toHaveBeenCalledWith('soft');
     expect(screen.queryByRole('dialog', { name: /scenario setup navigation drawer/i })).not.toBeInTheDocument();
   });
+
+  it('renders the sidebar shell without counts first, then shows counts when summary data arrives', () => {
+    const { rerender } = render(
+      <ScenarioSetupLayout
+        scenario={null}
+        attributeDefinitions={[]}
+        objectiveCount={0}
+        activeSection="people"
+        onNavigate={vi.fn()}
+      >
+        <div>Section content</div>
+      </ScenarioSetupLayout>,
+    );
+
+    const sidebar = screen.getByLabelText('Scenario Setup navigation');
+    const peopleButton = within(sidebar).getByRole('button', { name: /people/i });
+    expect(within(peopleButton).queryByText('2')).not.toBeInTheDocument();
+
+    rerender(
+      <ScenarioSetupLayout
+        scenario={createScenario()}
+        attributeDefinitions={[{ key: 'role', values: ['dev', 'pm'] }]}
+        objectiveCount={1}
+        activeSection="people"
+        onNavigate={vi.fn()}
+      >
+        <div>Section content</div>
+      </ScenarioSetupLayout>,
+    );
+
+    expect(within(screen.getByRole('button', { name: /people/i })).getByText('2')).toBeInTheDocument();
+  });
 });

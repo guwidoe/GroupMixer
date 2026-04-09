@@ -6,7 +6,7 @@ import { ScenarioEditorConstraintModals } from './ScenarioEditorConstraintModals
 import { ScenarioEditorForms } from './ScenarioEditorForms';
 import { ScenarioEditorHeader } from './ScenarioEditorHeader';
 import { ScenarioSetupSectionRenderer } from './ScenarioSetupSectionRenderer';
-import { useDeferredScenarioSectionContent } from './useDeferredScenarioSectionContent';
+import { useDeferredScenarioSectionContent, useDeferredScenarioSetupSummary } from './useDeferredScenarioSectionContent';
 import { useScenarioEditorController } from './useScenarioEditorController';
 
 export function ScenarioEditor() {
@@ -14,6 +14,12 @@ export function ScenarioEditor() {
   const deferredSection = useDeferredScenarioSectionContent(
     controller.activeSection,
     controller.scenario ?? null,
+    controller.currentScenarioId,
+  );
+  const deferredSummary = useDeferredScenarioSetupSummary(
+    controller.scenario ?? null,
+    controller.attributeDefinitions,
+    controller.objectiveCount,
     controller.currentScenarioId,
   );
   const showSectionLoadingState = controller.ui.isLoading || deferredSection.isContentLoading;
@@ -27,9 +33,9 @@ export function ScenarioEditor() {
   return (
     <div className="space-y-6 md:flex md:h-full md:min-h-0 md:flex-col md:space-y-0">
       <ScenarioSetupLayout
-        scenario={controller.scenario ?? null}
-        attributeDefinitions={controller.attributeDefinitions}
-        objectiveCount={controller.objectiveCount}
+        scenario={deferredSummary.summaryScenario}
+        attributeDefinitions={deferredSummary.summaryAttributeDefinitions}
+        objectiveCount={deferredSummary.summaryObjectiveCount}
         activeSection={controller.navigationSection}
         onNavigate={controller.navigateToSection}
         sidebarHeader={

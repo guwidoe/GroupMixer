@@ -5,6 +5,7 @@ import type { ScenarioEditorController } from './useScenarioEditorController';
 
 const mockUseScenarioEditorController = vi.fn();
 const mockUseDeferredScenarioSectionContent = vi.fn();
+const mockUseDeferredScenarioSetupSummary = vi.fn();
 
 vi.mock('./useScenarioEditorController', () => ({
   useScenarioEditorController: () => mockUseScenarioEditorController(),
@@ -12,6 +13,7 @@ vi.mock('./useScenarioEditorController', () => ({
 
 vi.mock('./useDeferredScenarioSectionContent', () => ({
   useDeferredScenarioSectionContent: () => mockUseDeferredScenarioSectionContent(),
+  useDeferredScenarioSetupSummary: () => mockUseDeferredScenarioSetupSummary(),
 }));
 
 vi.mock('./layout/ScenarioSetupLayout', () => ({
@@ -218,6 +220,12 @@ describe('ScenarioEditor', () => {
       isContentReady: true,
       isContentLoading: false,
       deferredSectionLabel: 'people directory',
+    });
+    mockUseDeferredScenarioSetupSummary.mockReturnValue({
+      areSummaryCountsReady: false,
+      summaryScenario: null,
+      summaryAttributeDefinitions: [],
+      summaryObjectiveCount: 0,
     });
 
     render(<ScenarioEditor />);
