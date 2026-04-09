@@ -1,8 +1,9 @@
 import React from 'react';
-import { Plus, RotateCcw, Search } from 'lucide-react';
+import { Plus, RotateCcw } from 'lucide-react';
 import type { Constraint, Scenario } from '../../../types';
 import { Button } from '../../ui';
 import { SetupCollectionPage } from '../shared/SetupCollectionPage';
+import { SetupSearchField } from '../shared/SetupSearchField';
 import { SetupItemActions, SetupItemCard, SetupKeyValueList, SetupTypeBadge, SetupWeightBadge } from '../shared/cards';
 import { ScenarioDataGrid } from '../shared/grid/ScenarioDataGrid';
 import type { SetupCollectionViewMode } from '../shared/useSetupCollectionViewMode';
@@ -188,24 +189,18 @@ export function RepeatEncounterCollectionSection({
       toolbarLeading={(viewMode) =>
         viewMode === 'cards' ? (
           <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
-            <label className="relative block min-w-0 flex-1 md:max-w-sm">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
-              <input
-                type="text"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Filter by limit, weight, or penalty function"
-                className="input w-full pl-9"
-              />
-            </label>
+            <SetupSearchField
+              label="Search repeat encounter preferences"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Filter by limit, weight, or penalty function"
+            />
             <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
               {filteredItems.length} of {items.length} preference{items.length === 1 ? '' : 's'} shown
             </div>
           </div>
         ) : (
-          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Use the shared grid search and column controls to review repeat-limit preferences quickly.
-          </div>
+          null
         )
       }
       summary={

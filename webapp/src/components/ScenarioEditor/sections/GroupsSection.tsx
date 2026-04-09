@@ -1,9 +1,9 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { ChevronDown, Hash, Plus, Table, Upload } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Hash, Plus, Table, Upload } from 'lucide-react';
 import type { Group, Scenario } from '../../../types';
-import { useOutsideClick } from '../../../hooks';
 import { getGroupCapacityProfile, hasSessionSpecificGroupCapacities } from '../../../utils/groupCapacities';
 import { Button } from '../../ui';
+import { SetupActionsMenu } from '../shared/SetupActionsMenu';
 import { SetupCollectionPage } from '../shared/SetupCollectionPage';
 import { SetupItemActions, SetupItemCard, SetupKeyValueList, SetupTagList } from '../shared/cards';
 import { ScenarioDataGrid } from '../shared/grid/ScenarioDataGrid';
@@ -19,57 +19,23 @@ interface GroupsSectionProps {
 }
 
 function GroupsBulkActions({ onOpenBulkAddForm, onTriggerCsvUpload }: { onOpenBulkAddForm: () => void; onTriggerCsvUpload: () => void }) {
-  const bulkDropdownRef = useRef<HTMLDivElement>(null);
-  const [isOpen, setIsOpen] = useState(false);
-
-  useOutsideClick({
-    refs: [bulkDropdownRef],
-    enabled: isOpen,
-    onOutsideClick: () => setIsOpen(false),
-  });
-
   return (
-    <div className="relative" ref={bulkDropdownRef}>
-      <Button
-        variant="secondary"
-        leadingIcon={<Upload className="h-4 w-4" />}
-        trailingIcon={<ChevronDown className="h-3 w-3" />}
-        onClick={() => setIsOpen((open) => !open)}
-      >
-        Bulk Add
-      </Button>
-      {isOpen ? (
-        <div
-          className="absolute right-0 z-20 mt-2 w-56 rounded-xl border p-1 shadow-lg"
-          style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
-        >
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors"
-            style={{ color: 'var(--text-primary)' }}
-            onClick={() => {
-              setIsOpen(false);
-              onTriggerCsvUpload();
-            }}
-          >
-            <Upload className="h-4 w-4" />
-            Upload CSV
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors"
-            style={{ color: 'var(--text-primary)' }}
-            onClick={() => {
-              setIsOpen(false);
-              onOpenBulkAddForm();
-            }}
-          >
-            <Table className="h-4 w-4" />
-            Open Bulk Form
-          </button>
-        </div>
-      ) : null}
-    </div>
+    <SetupActionsMenu
+      label="Import & Bulk"
+      icon={<Upload className="h-4 w-4" />}
+      items={[
+        {
+          label: 'Upload CSV',
+          icon: <Upload className="h-4 w-4" />,
+          onSelect: onTriggerCsvUpload,
+        },
+        {
+          label: 'Open bulk add form',
+          icon: <Table className="h-4 w-4" />,
+          onSelect: onOpenBulkAddForm,
+        },
+      ]}
+    />
   );
 }
 
@@ -204,11 +170,6 @@ export function GroupsSection({
             Add Group
           </Button>
         </>
-      }
-      toolbarLeading={
-        <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Use cards to scan capacities visually or switch to list view for sorting and column control.
-        </div>
       }
       hasItems={groups.length > 0}
       emptyState={{

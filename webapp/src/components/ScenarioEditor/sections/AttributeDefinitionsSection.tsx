@@ -150,11 +150,6 @@ export function AttributeDefinitionsSection({
           Add Attribute
         </Button>
       }
-      toolbarLeading={
-        <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Switch between a compact list and a broader card layout for reviewing attribute schemas.
-        </div>
-      }
       hasItems={attributeDefinitions.length > 0}
       emptyState={{
         icon: <Tag className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,

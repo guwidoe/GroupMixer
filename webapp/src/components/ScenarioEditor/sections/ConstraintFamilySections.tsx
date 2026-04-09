@@ -1,14 +1,15 @@
 import React from 'react';
-import { Ellipsis, Filter, Link2, Plus, Search, UserLock, UserMinus, Users } from 'lucide-react';
+import { Filter, Link2, Plus, UserLock, UserMinus, Users } from 'lucide-react';
 import type { Constraint, Scenario } from '../../../types';
 import { useAppStore } from '../../../store';
-import { useOutsideClick } from '../../../hooks';
 import { Button } from '../../ui';
 import AttributeBalanceDashboard from '../../AttributeBalanceDashboard';
 import ConstraintPersonChip from '../../ConstraintPersonChip';
 import PairMeetingCountBulkConvertModal from '../../modals/PairMeetingCountBulkConvertModal';
 import { removePersonFromPeopleConstraint, replaceConstraintsAtIndices } from '../../constraints/constraintMutations';
+import { SetupActionsMenu } from '../shared/SetupActionsMenu';
 import { SetupCollectionPage } from '../shared/SetupCollectionPage';
+import { SetupSearchField } from '../shared/SetupSearchField';
 import {
   SetupItemActions,
   SetupItemCard,
@@ -122,70 +123,6 @@ const SOFT_SECTION_COPY: Record<SoftConstraintFamily, { title: string; descripti
     addLabel: 'Add Pair Meeting Count',
   },
 };
-
-function ConstraintAdvancedActionsMenu({
-  selectedCount,
-  items,
-}: {
-  selectedCount: number;
-  items: Array<{ label: string; disabled?: boolean; onSelect: () => void; helperText?: string }>;
-}) {
-  const menuRef = React.useRef<HTMLDivElement>(null);
-  const [isOpen, setIsOpen] = React.useState(false);
-
-  useOutsideClick({
-    refs: [menuRef],
-    enabled: isOpen,
-    onOutsideClick: () => setIsOpen(false),
-  });
-
-  return (
-    <div className="relative" ref={menuRef}>
-      <Button
-        variant="secondary"
-        leadingIcon={<Ellipsis className="h-4 w-4" />}
-        onClick={() => setIsOpen((open) => !open)}
-      >
-        Actions
-      </Button>
-      {isOpen ? (
-        <div
-          className="absolute right-0 z-30 mt-2 w-72 rounded-2xl border p-2 shadow-lg"
-          style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
-        >
-          <div className="px-2 pb-2 pt-1 text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>
-            Advanced actions · {selectedCount} selected
-          </div>
-          <div className="space-y-1">
-            {items.map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                disabled={item.disabled}
-                className="flex w-full flex-col items-start rounded-xl px-3 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                style={{ color: 'var(--text-primary)' }}
-                onClick={() => {
-                  if (item.disabled) {
-                    return;
-                  }
-                  setIsOpen(false);
-                  item.onSelect();
-                }}
-              >
-                <span className="text-sm font-medium">{item.label}</span>
-                {item.helperText ? (
-                  <span className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    {item.helperText}
-                  </span>
-                ) : null}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 function useConstraintScenario() {
   const { resolveScenario, setScenario, ui } = useAppStore();
@@ -360,13 +297,14 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
         actions={
           <>
             {family === 'MustStayTogether' ? (
-              <ConstraintAdvancedActionsMenu
-                selectedCount={selectedMustIndices.length}
+              <SetupActionsMenu
+                label="Actions"
+                summary={`Advanced actions · ${selectedMustIndices.length} selected`}
                 items={[
                   {
                     label: 'Convert selected to Should Stay Together',
                     disabled: selectedMustIndices.length === 0,
-                    helperText:
+                    description:
                       selectedMustIndices.length === 0
                         ? 'Select one or more cards to enable this conversion.'
                         : 'Turn the selected hard cliques into weighted preferences.',
@@ -383,16 +321,12 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
         toolbarLeading={
           family === 'MustStayTogether' ? (
             <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
-              <label className="relative block min-w-0 flex-1 md:max-w-sm">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Filter by person or session"
-                  className="input w-full pl-9"
-                />
-              </label>
+              <SetupSearchField
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Filter by person or session"
+                label="Search must stay together cliques"
+              />
               <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
                 <span>Min members</span>
                 <input
@@ -407,11 +341,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                 Showing {filteredItems.length} of {items.length}. Selected {selectedMustIndices.length}.
               </div>
             </div>
-          ) : (
-            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Review fixed placements as cards or switch to list view for sorting and column control.
-            </div>
-          )
+          ) : null
         }
         hasItems={filteredItems.length > 0}
         emptyState={{
@@ -590,13 +520,14 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
         actions={
           <>
             {family === 'ShouldStayTogether' ? (
-              <ConstraintAdvancedActionsMenu
-                selectedCount={selectedShouldIndices.length}
+              <SetupActionsMenu
+                label="Actions"
+                summary={`Advanced actions · ${selectedShouldIndices.length} selected`}
                 items={[
                   {
                     label: 'Convert selected to Pair Meeting Count',
                     disabled: selectedShouldIndices.length === 0,
-                    helperText:
+                    description:
                       selectedShouldIndices.length === 0
                         ? 'Select one or more cards to enable this conversion.'
                         : 'Break selected cliques into pair-based contact targets.',
@@ -613,18 +544,13 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
         toolbarLeading={
           family === 'ShouldStayTogether' ? (
             <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
-              <label className="relative block min-w-0 flex-1 md:max-w-sm">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
-                <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Filter by person or session" className="input w-full pl-9" />
-              </label>
+              <SetupSearchField value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Filter by person or session" label="Search should stay together preferences" />
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Showing {filteredItems.length} of {items.length}. Selected {selectedShouldIndices.length}.
               </div>
             </div>
           ) : (
-            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Each family gets the same cards/list structure while preserving its family-specific metadata and summaries.
-            </div>
+            null
           )
         }
         summary={summary}
