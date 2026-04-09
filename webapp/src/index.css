@@ -412,6 +412,31 @@
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 85%, transparent), 0 0 0 5px rgba(59, 130, 246, 0.14);
   }
 
+  .ui-button--toolbar {
+    min-height: 2.5rem;
+    padding: 0.55rem 0.85rem;
+    border-radius: 0.85rem;
+    background-color: transparent;
+    color: var(--text-secondary);
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  .ui-button--toolbar:hover:not(:disabled) {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    box-shadow: none;
+    transform: none;
+  }
+
+  .ui-button--toolbar:active:not(:disabled) {
+    transform: none;
+  }
+
+  .ui-button--toolbar:focus-visible {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 85%, transparent), 0 0 0 4px rgba(59, 130, 246, 0.12);
+  }
+
   .ui-button--sm {
     min-height: 2.25rem;
     padding: 0.45rem 0.8rem;

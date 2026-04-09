@@ -95,7 +95,7 @@ export function ThemeToggle({ showLabel = false, size = 'md', variant = 'default
         onMouseEnter={() => setToggleHovered(true)}
         onMouseLeave={() => setToggleHovered(false)}
         className={isHeaderVariant
-          ? getButtonClassName({ variant: 'secondary', size: 'lg' })
+          ? getButtonClassName({ variant: 'toolbar', size: 'md' })
           : `${buttonSizeClasses[size]} flex items-center gap-1 rounded-lg border transition-all duration-200`}
         style={{
           backgroundColor: dropdownOpen || toggleHovered ? 'var(--bg-tertiary)' : 'var(--bg-primary)',

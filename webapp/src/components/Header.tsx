@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Save, Upload } from 'lucide-react';
 import { useAppStore } from '../store';
 import { AppHeader } from './AppHeader';
-import { HEADER_ACTION_GROUP_CLASS } from './headerActionStyles';
+import { HEADER_ACTION_GROUP_CLASS, HEADER_ACTION_TOOLBAR_CLASS } from './headerActionStyles';
 import { DemoDataWarningModal } from './modals/DemoDataWarningModal';
 import { DemoDataDropdown } from './ScenarioEditor/DemoDataDropdown';
 import { Button } from './ui';
@@ -85,10 +85,14 @@ function WorkspaceHeaderActions({ closeMobileMenu }: { closeMobileMenu?: () => v
   return (
     <>
       <div className={HEADER_ACTION_GROUP_CLASS}>
+        <div
+          className={HEADER_ACTION_TOOLBAR_CLASS}
+          style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+        >
         <Button
           onClick={handleLoadScenario}
-          variant="secondary"
-          size="lg"
+          variant="toolbar"
+          size="md"
           title="Load scenario"
           leadingIcon={<Upload className="h-4 w-4" />}
         >
@@ -96,14 +100,15 @@ function WorkspaceHeaderActions({ closeMobileMenu }: { closeMobileMenu?: () => v
         </Button>
         <Button
           onClick={handleSaveScenario}
-          variant="secondary"
-          size="lg"
+          variant="toolbar"
+          size="md"
           title="Save scenario"
           leadingIcon={<Save className="h-4 w-4" />}
         >
           <span>Save</span>
         </Button>
         <DemoDataDropdown onDemoCaseClick={handleDemoCaseClick} />
+        </div>
       </div>
 
       <DemoDataWarningModal

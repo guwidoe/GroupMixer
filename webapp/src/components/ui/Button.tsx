@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'ghost';
+export type ButtonVariant = 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'ghost' | 'toolbar';
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon';
 
 interface ButtonClassOptions {

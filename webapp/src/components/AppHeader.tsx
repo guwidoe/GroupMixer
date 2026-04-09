@@ -2,7 +2,7 @@ import { type ReactNode, useState } from 'react';
 import { Bug, Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
-import { HEADER_ACTION_GROUP_CLASS } from './headerActionStyles';
+import { HEADER_ACTION_GROUP_CLASS, HEADER_ACTION_TOOLBAR_CLASS } from './headerActionStyles';
 import { getButtonClassName } from './ui';
 
 interface AppHeaderProps {
@@ -68,18 +68,23 @@ export function AppHeader({
             {desktopActions}
 
             <div className={HEADER_ACTION_GROUP_CLASS}>
+              <div
+                className={HEADER_ACTION_TOOLBAR_CLASS}
+                style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+              >
               <a
                 href={issueHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 title={issueLabel}
-                className={getButtonClassName({ variant: 'secondary', size: 'lg' })}
+                className={getButtonClassName({ variant: 'toolbar', size: 'md' })}
               >
                 <Bug className="h-4 w-4" />
                 <span>Report Issue</span>
               </a>
 
               <ThemeToggle size="md" variant="header" />
+              </div>
             </div>
           </div>
         </div>
@@ -90,12 +95,16 @@ export function AppHeader({
               {mobileActions}
 
               <div className={HEADER_ACTION_GROUP_CLASS}>
+                <div
+                  className={HEADER_ACTION_TOOLBAR_CLASS}
+                  style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+                >
                 <a
                   href={issueHref}
                   target="_blank"
                   rel="noopener noreferrer"
                   title={issueLabel}
-                  className={getButtonClassName({ variant: 'secondary', size: 'lg' })}
+                  className={getButtonClassName({ variant: 'toolbar', size: 'md' })}
                   onClick={closeMobileMenu}
                 >
                   <Bug className="h-4 w-4" />
@@ -104,6 +113,7 @@ export function AppHeader({
 
                 <div className="flex-shrink-0">
                   <ThemeToggle size="md" variant="header" />
+                </div>
                 </div>
               </div>
             </div>
