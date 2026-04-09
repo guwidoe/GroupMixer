@@ -4,6 +4,7 @@ import type { AttributeDefinition } from '../../../types';
 import { Button } from '../../ui';
 import { SetupCollectionPage } from '../shared/SetupCollectionPage';
 import { SetupItemActions, SetupItemCard, SetupTagList } from '../shared/cards';
+import { ScenarioDataGrid } from '../shared/grid/ScenarioDataGrid';
 import type { SetupCollectionViewMode } from '../shared/useSetupCollectionViewMode';
 
 interface AttributeDefinitionsSectionProps {
@@ -57,25 +58,22 @@ function renderAttributeContent(
 ) {
   if (viewMode === 'list') {
     return (
-      <div className="overflow-hidden rounded-2xl border" style={{ borderColor: 'var(--border-primary)' }}>
-        <div
-          className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] gap-4 border-b px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]"
-          style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)', color: 'var(--text-tertiary)' }}
-        >
-          <div>Attribute</div>
-          <div>Values</div>
-          <div className="text-right">Actions</div>
-        </div>
-        <div className="divide-y" style={{ borderColor: 'var(--border-primary)' }}>
-          {attributeDefinitions.map((definition) => (
-            <div
-              key={definition.key}
-              className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] gap-4 px-4 py-3"
-              style={{ backgroundColor: 'var(--bg-primary)' }}
-            >
-              <div className="text-sm font-semibold capitalize" style={{ color: 'var(--text-primary)' }}>
-                {definition.key}
-              </div>
+      <ScenarioDataGrid
+        rows={attributeDefinitions}
+        rowKey={(definition) => definition.key}
+        columns={[
+          {
+            id: 'attribute',
+            header: 'Attribute',
+            cell: (definition) => <span className="font-semibold capitalize" style={{ color: 'var(--text-primary)' }}>{definition.key}</span>,
+            sortValue: (definition) => definition.key,
+            searchValue: (definition) => definition.key,
+            width: 220,
+          },
+          {
+            id: 'values',
+            header: 'Values',
+            cell: (definition) => (
               <div className="flex flex-wrap gap-1.5">
                 {definition.values.map((value) => (
                   <span
@@ -87,7 +85,16 @@ function renderAttributeContent(
                   </span>
                 ))}
               </div>
-              <div className="flex items-center justify-end gap-1">
+            ),
+            sortValue: (definition) => definition.values.length,
+            searchValue: (definition) => definition.values.join(' '),
+            width: 340,
+          },
+          {
+            id: 'actions',
+            header: 'Actions',
+            cell: (definition) => (
+              <div className="flex justify-end">
                 <SetupItemActions
                   editLabel={`Edit ${definition.key}`}
                   deleteLabel={`Delete ${definition.key}`}
@@ -95,10 +102,13 @@ function renderAttributeContent(
                   onDelete={() => onRemoveAttribute(definition.key)}
                 />
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
+            ),
+            align: 'right',
+            hideable: false,
+            width: 180,
+          },
+        ]}
+      />
     );
   }
 

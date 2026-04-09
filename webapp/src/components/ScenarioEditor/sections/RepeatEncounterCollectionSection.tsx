@@ -4,6 +4,7 @@ import type { Constraint, Scenario } from '../../../types';
 import { Button } from '../../ui';
 import { SetupCollectionPage } from '../shared/SetupCollectionPage';
 import { SetupItemActions, SetupItemCard, SetupKeyValueList, SetupTypeBadge, SetupWeightBadge } from '../shared/cards';
+import { ScenarioDataGrid } from '../shared/grid/ScenarioDataGrid';
 import type { SetupCollectionViewMode } from '../shared/useSetupCollectionViewMode';
 
 type RepeatEncounterConstraint = Extract<Constraint, { type: 'RepeatEncounter' }>;
@@ -65,29 +66,43 @@ function renderRepeatEncounterContent(
 ) {
   if (viewMode === 'list') {
     return (
-      <div className="overflow-hidden rounded-2xl border" style={{ borderColor: 'var(--border-primary)' }}>
-        <div
-          className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-4 border-b px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]"
-          style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)', color: 'var(--text-tertiary)' }}
-        >
-          <div>Limit</div>
-          <div>Penalty function</div>
-          <div>Weight</div>
-          <div className="text-right">Actions</div>
-        </div>
-        <div className="divide-y" style={{ borderColor: 'var(--border-primary)' }}>
-          {items.map((item) => (
-            <div
-              key={item.index}
-              className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-4 px-4 py-3 text-sm"
-              style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}
-            >
-              <div>
+      <ScenarioDataGrid
+        rows={items}
+        rowKey={(item) => String(item.index)}
+        columns={[
+          {
+            id: 'limit',
+            header: 'Limit',
+            cell: (item) => (
+              <span>
                 Max {item.constraint.max_allowed_encounters} encounter{item.constraint.max_allowed_encounters === 1 ? '' : 's'}
-              </div>
-              <div>{item.constraint.penalty_function}</div>
-              <div>{item.constraint.penalty_weight}</div>
-              <div className="flex items-center justify-end gap-1">
+              </span>
+            ),
+            sortValue: (item) => item.constraint.max_allowed_encounters,
+            searchValue: (item) => String(item.constraint.max_allowed_encounters),
+            width: 240,
+          },
+          {
+            id: 'penalty-function',
+            header: 'Penalty function',
+            cell: (item) => item.constraint.penalty_function,
+            sortValue: (item) => item.constraint.penalty_function,
+            searchValue: (item) => item.constraint.penalty_function,
+            width: 220,
+          },
+          {
+            id: 'weight',
+            header: 'Weight',
+            cell: (item) => item.constraint.penalty_weight,
+            sortValue: (item) => item.constraint.penalty_weight,
+            searchValue: (item) => String(item.constraint.penalty_weight),
+            width: 140,
+          },
+          {
+            id: 'actions',
+            header: 'Actions',
+            cell: (item) => (
+              <div className="flex justify-end">
                 <SetupItemActions
                   onEdit={() => onEdit(item.constraint, item.index)}
                   onDelete={() => onDelete(item.index)}
@@ -95,10 +110,13 @@ function renderRepeatEncounterContent(
                   deleteLabel="Delete repeat encounter preference"
                 />
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
+            ),
+            align: 'right',
+            hideable: false,
+            width: 180,
+          },
+        ]}
+      />
     );
   }
 
