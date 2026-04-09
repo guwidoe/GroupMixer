@@ -3,6 +3,7 @@
  */
 
 import React from 'react';
+import { Button } from './Button';
 
 interface ModalFooterProps {
   onCancel: () => void;
@@ -21,28 +22,28 @@ const ModalFooter: React.FC<ModalFooterProps> = ({
   saveDisabled = false,
   saveDanger = false,
 }) => {
-  const saveButtonClass = saveDanger
-    ? 'btn-danger flex-1 sm:flex-none px-6 py-3 text-base font-medium'
-    : 'btn-primary flex-1 sm:flex-none px-6 py-3 text-base font-medium';
-
   return (
     <div
       className="flex flex-col sm:flex-row justify-end gap-3 mt-8 pt-4 border-t"
       style={{ borderColor: 'var(--border-primary)' }}
     >
-      <button
+      <Button
         onClick={onCancel}
-        className="btn-secondary flex-1 sm:flex-none px-6 py-3 text-base font-medium"
+        variant="secondary"
+        size="lg"
+        className="flex-1 sm:flex-none"
       >
         {cancelLabel}
-      </button>
-      <button
+      </Button>
+      <Button
         onClick={onSave}
         disabled={saveDisabled}
-        className={saveButtonClass}
+        variant={saveDanger ? 'danger' : 'primary'}
+        size="lg"
+        className="flex-1 sm:flex-none"
       >
         {saveLabel}
-      </button>
+      </Button>
     </div>
   );
 };

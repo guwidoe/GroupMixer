@@ -5,6 +5,7 @@ import { useAppStore } from '../../store';
 import { Tooltip } from '../Tooltip';
 import type { DemoCaseWithMetrics } from './types';
 import { useOutsideClick } from '../../hooks';
+import { getButtonClassName } from '../ui';
 
 interface DemoDataDropdownProps {
   onDemoCaseClick: (demoCaseId: string, demoCaseName: string) => void;
@@ -181,13 +182,11 @@ export function DemoDataDropdown({
   ) : (
     <button
       onClick={() => setIsOpen((open) => !open)}
-      className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition-colors whitespace-nowrap"
+      className={getButtonClassName({ variant: 'secondary', size: 'lg' })}
       style={{
         outline: 'none',
         boxShadow: 'none',
-        borderColor: 'var(--border-primary)',
         backgroundColor: isOpen ? 'var(--bg-tertiary)' : 'var(--bg-primary)',
-        color: 'var(--text-secondary)',
       }}
       aria-expanded={isOpen}
       aria-haspopup="menu"

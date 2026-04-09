@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Save, Upload } from 'lucide-react';
 import { useAppStore } from '../store';
 import { AppHeader } from './AppHeader';
-import { HEADER_ACTION_BUTTON_CLASS, HEADER_ACTION_GROUP_CLASS } from './headerActionStyles';
+import { HEADER_ACTION_GROUP_CLASS } from './headerActionStyles';
 import { DemoDataWarningModal } from './modals/DemoDataWarningModal';
 import { DemoDataDropdown } from './ScenarioEditor/DemoDataDropdown';
+import { Button } from './ui';
 
 function WorkspaceHeaderActions({ closeMobileMenu }: { closeMobileMenu?: () => void }) {
   const {
@@ -84,24 +85,24 @@ function WorkspaceHeaderActions({ closeMobileMenu }: { closeMobileMenu?: () => v
   return (
     <>
       <div className={HEADER_ACTION_GROUP_CLASS}>
-        <button
+        <Button
           onClick={handleLoadScenario}
-          className={HEADER_ACTION_BUTTON_CLASS}
+          variant="secondary"
+          size="lg"
           title="Load scenario"
-          style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}
+          leadingIcon={<Upload className="h-4 w-4" />}
         >
-          <Upload className="h-4 w-4" />
           <span>Load</span>
-        </button>
-        <button
+        </Button>
+        <Button
           onClick={handleSaveScenario}
-          className={HEADER_ACTION_BUTTON_CLASS}
+          variant="secondary"
+          size="lg"
           title="Save scenario"
-          style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}
+          leadingIcon={<Save className="h-4 w-4" />}
         >
-          <Save className="h-4 w-4" />
           <span>Save</span>
-        </button>
+        </Button>
         <DemoDataDropdown onDemoCaseClick={handleDemoCaseClick} />
       </div>
 

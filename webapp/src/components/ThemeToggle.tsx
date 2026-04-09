@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useThemeStore } from '../store/theme';
 import { Sun, Moon, Monitor, ChevronDown } from 'lucide-react';
 import type { Theme } from '../store/theme';
+import { getButtonClassName } from './ui';
 
 interface ThemeToggleProps {
   showLabel?: boolean;
@@ -94,7 +95,7 @@ export function ThemeToggle({ showLabel = false, size = 'md', variant = 'default
         onMouseEnter={() => setToggleHovered(true)}
         onMouseLeave={() => setToggleHovered(false)}
         className={isHeaderVariant
-          ? 'inline-flex h-12 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition-colors whitespace-nowrap'
+          ? getButtonClassName({ variant: 'secondary', size: 'lg' })
           : `${buttonSizeClasses[size]} flex items-center gap-1 rounded-lg border transition-all duration-200`}
         style={{
           backgroundColor: dropdownOpen || toggleHovered ? 'var(--bg-tertiary)' : 'var(--bg-primary)',

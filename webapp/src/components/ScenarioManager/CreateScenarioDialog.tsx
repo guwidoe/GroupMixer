@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from '../ui';
 
 interface CreateScenarioDialogProps {
   open: boolean;
@@ -60,16 +61,18 @@ export function CreateScenarioDialog({
           className="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-4 border-t"
           style={{ borderColor: 'var(--border-primary)' }}
         >
-          <button onClick={onCancel} className="btn-secondary flex-1 sm:flex-none px-6 py-3 text-base font-medium">
+          <Button onClick={onCancel} variant="secondary" size="lg" className="flex-1 sm:flex-none">
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onCreate}
             disabled={!newScenarioName.trim()}
-            className="btn-primary flex-1 sm:flex-none px-6 py-3 text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            variant="primary"
+            size="lg"
+            className="flex-1 sm:flex-none"
           >
             Create
-          </button>
+          </Button>
         </div>
       </div>
     </div>

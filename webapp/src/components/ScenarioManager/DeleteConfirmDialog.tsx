@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from '../ui';
 
 interface DeleteConfirmDialogProps {
   open: boolean;
@@ -19,12 +20,12 @@ export function DeleteConfirmDialog({ open, onConfirm, onCancel }: DeleteConfirm
           Are you sure you want to delete this scenario? This action cannot be undone.
         </p>
         <div className="flex flex-col sm:flex-row justify-end gap-3">
-          <button onClick={onCancel} className="btn-secondary flex-1 sm:flex-none px-6 py-3 text-base font-medium">
+          <Button onClick={onCancel} variant="secondary" size="lg" className="flex-1 sm:flex-none">
             Cancel
-          </button>
-          <button onClick={onConfirm} className="btn-error flex-1 sm:flex-none px-6 py-3 text-base font-medium">
+          </Button>
+          <Button onClick={onConfirm} variant="danger" size="lg" className="flex-1 sm:flex-none">
             Delete
-          </button>
+          </Button>
         </div>
       </div>
     </div>

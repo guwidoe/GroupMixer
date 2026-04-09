@@ -2,7 +2,8 @@ import { type ReactNode, useState } from 'react';
 import { Bug, Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
-import { HEADER_ACTION_BUTTON_CLASS, HEADER_ACTION_GROUP_CLASS } from './headerActionStyles';
+import { HEADER_ACTION_GROUP_CLASS } from './headerActionStyles';
+import { getButtonClassName } from './ui';
 
 interface AppHeaderProps {
   homeTo?: string;
@@ -72,8 +73,7 @@ export function AppHeader({
                 target="_blank"
                 rel="noopener noreferrer"
                 title={issueLabel}
-                className={HEADER_ACTION_BUTTON_CLASS}
-                style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+                className={getButtonClassName({ variant: 'secondary', size: 'lg' })}
               >
                 <Bug className="h-4 w-4" />
                 <span>Report Issue</span>
@@ -95,8 +95,7 @@ export function AppHeader({
                   target="_blank"
                   rel="noopener noreferrer"
                   title={issueLabel}
-                  className={HEADER_ACTION_BUTTON_CLASS}
-                  style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+                  className={getButtonClassName({ variant: 'secondary', size: 'lg' })}
                   onClick={closeMobileMenu}
                 >
                   <Bug className="h-4 w-4" />
