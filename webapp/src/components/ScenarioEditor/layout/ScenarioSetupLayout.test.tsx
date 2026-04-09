@@ -46,8 +46,9 @@ describe('ScenarioSetupLayout', () => {
 
     const sidebar = screen.getByLabelText('Scenario Setup navigation');
     expect(within(sidebar).getByText('Model')).toBeInTheDocument();
-    expect(within(sidebar).getByText('Rules')).toBeInTheDocument();
-    expect(within(sidebar).getByText('Goals')).toBeInTheDocument();
+    expect(within(sidebar).getByText('Requirements')).toBeInTheDocument();
+    expect(within(sidebar).getByText('Preferences')).toBeInTheDocument();
+    expect(within(sidebar).getByText('Optimization')).toBeInTheDocument();
 
     const activeItem = within(sidebar).getByRole('button', { name: /attribute definitions/i });
     expect(activeItem).toHaveAttribute('aria-current', 'page');
@@ -70,7 +71,7 @@ describe('ScenarioSetupLayout', () => {
       </ScenarioSetupLayout>,
     );
 
-    const peopleItem = screen.getByRole('button', { name: /people/i });
+    const peopleItem = screen.getByRole('button', { name: /^people$/i });
     const activeItem = screen.getByRole('button', { name: /attribute definitions/i });
 
     await user.hover(peopleItem);
@@ -142,9 +143,9 @@ describe('ScenarioSetupLayout', () => {
     expect(openButton).toHaveAttribute('aria-expanded', 'true');
 
     const dialog = screen.getByRole('dialog', { name: /scenario setup navigation drawer/i });
-    await user.click(within(dialog).getByRole('button', { name: /soft constraints/i }));
+    await user.click(within(dialog).getByRole('button', { name: /repeat encounter/i }));
 
-    expect(onNavigate).toHaveBeenCalledWith('soft');
+    expect(onNavigate).toHaveBeenCalledWith('repeat-encounter');
     expect(screen.queryByRole('dialog', { name: /scenario setup navigation drawer/i })).not.toBeInTheDocument();
   });
 
@@ -162,7 +163,7 @@ describe('ScenarioSetupLayout', () => {
     );
 
     const sidebar = screen.getByLabelText('Scenario Setup navigation');
-    const peopleButton = within(sidebar).getByRole('button', { name: /people/i });
+    const peopleButton = within(sidebar).getByRole('button', { name: /^people$/i });
     expect(within(peopleButton).queryByText('2')).not.toBeInTheDocument();
 
     rerender(
@@ -177,6 +178,6 @@ describe('ScenarioSetupLayout', () => {
       </ScenarioSetupLayout>,
     );
 
-    expect(within(screen.getByRole('button', { name: /people/i })).getByText('2')).toBeInTheDocument();
+    expect(within(screen.getByRole('button', { name: /^people$/i })).getByText('2')).toBeInTheDocument();
   });
 });

@@ -6,11 +6,11 @@ import { getDefaultSolverSettings } from './helpers';
 import { useScenarioEditorBulk } from './hooks/useScenarioEditorBulk';
 import { useScenarioEditorConstraints } from './hooks/useScenarioEditorConstraints';
 import { useScenarioEditorEntities } from './hooks/useScenarioEditorEntities';
-import { isScenarioSetupSectionId } from './navigation/scenarioSetupNav';
+import { resolveScenarioSetupSection } from './navigation/scenarioSetupNav';
 import type { ScenarioSetupSectionId } from './navigation/scenarioSetupNavTypes';
 import { createScenarioEditorActions } from './scenarioEditorActions';
 
-export type ScenarioEditorSection = ScenarioSetupSectionId | 'constraints';
+export type ScenarioEditorSection = ScenarioSetupSectionId;
 
 export function useScenarioEditorController() {
   const {
@@ -33,9 +33,8 @@ export function useScenarioEditorController() {
   } = useAppStore();
 
   const { section } = useParams<{ section: string }>();
-  const activeSection: ScenarioEditorSection =
-    section === 'constraints' || (section && isScenarioSetupSectionId(section)) ? section : 'people';
-  const navigationSection = activeSection === 'constraints' ? null : activeSection;
+  const activeSection: ScenarioEditorSection = resolveScenarioSetupSection(section);
+  const navigationSection = activeSection;
   const navigate = useNavigate();
 
   const [sessionsCount, setSessionsCount] = useState(scenario?.num_sessions || 3);

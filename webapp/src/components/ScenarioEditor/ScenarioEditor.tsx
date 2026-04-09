@@ -6,7 +6,7 @@ import { ScenarioSetupLayout } from './layout/ScenarioSetupLayout';
 import { ScenarioEditorConstraintModals } from './ScenarioEditorConstraintModals';
 import { ScenarioEditorForms } from './ScenarioEditorForms';
 import { ScenarioSetupSectionRenderer } from './ScenarioSetupSectionRenderer';
-import { isScenarioSetupSectionId } from './navigation/scenarioSetupNav';
+import { getScenarioSetupLegacyRedirect, resolveScenarioSetupSection } from './navigation/scenarioSetupNav';
 import type { ScenarioSetupSectionId } from './navigation/scenarioSetupNavTypes';
 import { useDeferredScenarioSectionContent, useDeferredScenarioSetupSummary } from './useDeferredScenarioSectionContent';
 import { useScenarioEditorController, type ScenarioEditorSection } from './useScenarioEditorController';
@@ -31,18 +31,17 @@ function ScenarioEditorLoadingState({ label, message }: { label: string; message
 
 function resolveRouteSection(section: string | undefined): {
   activeSection: ScenarioEditorSection;
-  navigationSection: ScenarioSetupSectionId | null;
+  navigationSection: ScenarioSetupSectionId;
 } {
-  const activeSection: ScenarioEditorSection =
-    section === 'constraints' || (section && isScenarioSetupSectionId(section)) ? section : 'people';
+  const activeSection = resolveScenarioSetupSection(section);
 
   return {
     activeSection,
-    navigationSection: activeSection === 'constraints' ? null : activeSection,
+    navigationSection: activeSection,
   };
 }
 
-function ScenarioEditorShell({ activeSection, navigationSection }: { activeSection: ScenarioEditorSection; navigationSection: ScenarioSetupSectionId | null }) {
+function ScenarioEditorShell({ activeSection, navigationSection }: { activeSection: ScenarioEditorSection; navigationSection: ScenarioSetupSectionId }) {
   const navigate = useNavigate();
 
   return (
@@ -55,7 +54,7 @@ function ScenarioEditorShell({ activeSection, navigationSection }: { activeSecti
         onNavigate={(sectionId) => navigate(`/app/scenario/${sectionId}`)}
       >
         <ScenarioEditorLoadingState
-          label={activeSection === 'constraints' ? 'constraints' : activeSection}
+          label={activeSection}
           message="The setup shell is ready. Scenario content is mounting asynchronously to keep navigation responsive."
         />
       </ScenarioSetupLayout>
@@ -234,8 +233,16 @@ function ScenarioEditorLoaded() {
 
 export function ScenarioEditor() {
   const { section } = useParams<{ section: string }>();
+  const navigate = useNavigate();
   const { activeSection, navigationSection } = resolveRouteSection(section);
   const [shouldMountController, setShouldMountController] = React.useState(false);
+
+  React.useEffect(() => {
+    const redirectSection = getScenarioSetupLegacyRedirect(section);
+    if (redirectSection) {
+      navigate(`/app/scenario/${redirectSection}`, { replace: true });
+    }
+  }, [navigate, section]);
 
   React.useEffect(() => {
     setShouldMountController(false);

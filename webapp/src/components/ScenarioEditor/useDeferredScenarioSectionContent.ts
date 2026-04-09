@@ -28,9 +28,13 @@ function getScenarioSectionItemCount(activeSection: ScenarioEditorSection, scena
       return scenario.people.length;
     case 'groups':
       return scenario.groups.length;
-    case 'hard':
-    case 'soft':
-    case 'constraints':
+    case 'immovable-people':
+    case 'must-stay-together':
+    case 'repeat-encounter':
+    case 'should-not-be-together':
+    case 'should-stay-together':
+    case 'attribute-balance':
+    case 'pair-meeting-count':
       return scenario.constraints.length;
     default:
       return 0;
@@ -45,9 +49,13 @@ export function shouldDeferScenarioSectionContent(activeSection: ScenarioEditorS
       return itemCount >= PEOPLE_SECTION_DEFER_THRESHOLD;
     case 'groups':
       return itemCount >= GROUPS_SECTION_DEFER_THRESHOLD;
-    case 'hard':
-    case 'soft':
-    case 'constraints':
+    case 'immovable-people':
+    case 'must-stay-together':
+    case 'repeat-encounter':
+    case 'should-not-be-together':
+    case 'should-stay-together':
+    case 'attribute-balance':
+    case 'pair-meeting-count':
       return itemCount >= CONSTRAINTS_SECTION_DEFER_THRESHOLD;
     default:
       return false;
@@ -60,12 +68,20 @@ export function getDeferredScenarioSectionLabel(activeSection: ScenarioEditorSec
       return 'people directory';
     case 'groups':
       return 'group list';
-    case 'hard':
-      return 'hard constraints';
-    case 'soft':
-      return 'soft constraints';
-    case 'constraints':
-      return 'constraints';
+    case 'immovable-people':
+      return 'immovable people constraints';
+    case 'must-stay-together':
+      return 'must stay together constraints';
+    case 'repeat-encounter':
+      return 'repeat encounter constraints';
+    case 'should-not-be-together':
+      return 'should not be together constraints';
+    case 'should-stay-together':
+      return 'should stay together constraints';
+    case 'attribute-balance':
+      return 'attribute balance constraints';
+    case 'pair-meeting-count':
+      return 'pair meeting count constraints';
     case 'sessions':
       return 'sessions';
     case 'attributes':

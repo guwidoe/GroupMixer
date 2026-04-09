@@ -9,9 +9,9 @@ interface ConstraintFamilyPanelProps {
   infoContent: React.ReactNode;
   showInfo: boolean;
   onToggleInfo: () => void;
-  families: ConstraintFamilyNavItem[];
-  activeFamilyId: string;
-  onChangeFamily: (familyId: string) => void;
+  families?: ConstraintFamilyNavItem[];
+  activeFamilyId?: string;
+  onChangeFamily?: (familyId: string) => void;
   children: React.ReactNode;
 }
 
@@ -53,7 +53,9 @@ export function ConstraintFamilyPanel({
         {showInfo && <div className="p-4 pt-0 text-sm" style={{ color: 'var(--text-secondary)' }}>{infoContent}</div>}
       </div>
 
-      <ConstraintFamilyNav items={families} activeItemId={activeFamilyId} onChange={onChangeFamily} />
+      {families && families.length > 0 && activeFamilyId && onChangeFamily ? (
+        <ConstraintFamilyNav items={families} activeItemId={activeFamilyId} onChange={onChangeFamily} />
+      ) : null}
 
       {children}
     </div>

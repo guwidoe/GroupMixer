@@ -2,13 +2,12 @@ import React from 'react';
 import type { ScenarioEditorController } from './useScenarioEditorController';
 import {
   AttributeDefinitionsSection,
-  ConstraintsSection,
   GroupsSection,
-  HardConstraintsSection,
+  HardConstraintFamilySection,
   ObjectivesSection,
   PeopleSection,
   SessionsSection,
-  SoftConstraintsSection,
+  SoftConstraintFamilySection,
 } from './sections';
 
 interface ScenarioSetupSectionRendererProps {
@@ -83,35 +82,67 @@ export function ScenarioSetupSectionRenderer({ controller }: ScenarioSetupSectio
           onCommit={editorActions.handleObjectiveCommit}
         />
       );
-    case 'hard':
+    case 'immovable-people':
       return (
-        <HardConstraintsSection
+        <HardConstraintFamilySection
+          family="ImmovablePeople"
           onAdd={editorActions.handleHardConstraintAdd}
           onEdit={editorActions.handleHardConstraintEdit}
           onDelete={constraints.handleDeleteConstraint}
         />
       );
-    case 'soft':
+    case 'must-stay-together':
       return (
-        <SoftConstraintsSection
+        <HardConstraintFamilySection
+          family="MustStayTogether"
+          onAdd={editorActions.handleHardConstraintAdd}
+          onEdit={editorActions.handleHardConstraintEdit}
+          onDelete={constraints.handleDeleteConstraint}
+        />
+      );
+    case 'repeat-encounter':
+      return (
+        <SoftConstraintFamilySection
+          family="RepeatEncounter"
           onAdd={editorActions.handleSoftConstraintAdd}
           onEdit={editorActions.handleSoftConstraintEdit}
           onDelete={constraints.handleDeleteConstraint}
         />
       );
-    case 'constraints':
+    case 'should-not-be-together':
       return (
-        <ConstraintsSection
-          scenario={scenario ?? null}
-          activeConstraintTab={constraints.activeConstraintTab}
-          constraintCategoryTab={constraints.constraintCategoryTab}
-          hardTypes={constraints.HARD_TYPES}
-          softTypes={constraints.SOFT_TYPES}
-          onChangeCategory={constraints.setConstraintCategoryTab}
-          onChangeTab={constraints.setActiveConstraintTab}
-          onAddConstraint={() => constraints.setShowConstraintForm(true)}
-          onEditConstraint={constraints.handleEditConstraint}
-          onDeleteConstraint={constraints.handleDeleteConstraint}
+        <SoftConstraintFamilySection
+          family="ShouldNotBeTogether"
+          onAdd={editorActions.handleSoftConstraintAdd}
+          onEdit={editorActions.handleSoftConstraintEdit}
+          onDelete={constraints.handleDeleteConstraint}
+        />
+      );
+    case 'should-stay-together':
+      return (
+        <SoftConstraintFamilySection
+          family="ShouldStayTogether"
+          onAdd={editorActions.handleSoftConstraintAdd}
+          onEdit={editorActions.handleSoftConstraintEdit}
+          onDelete={constraints.handleDeleteConstraint}
+        />
+      );
+    case 'attribute-balance':
+      return (
+        <SoftConstraintFamilySection
+          family="AttributeBalance"
+          onAdd={editorActions.handleSoftConstraintAdd}
+          onEdit={editorActions.handleSoftConstraintEdit}
+          onDelete={constraints.handleDeleteConstraint}
+        />
+      );
+    case 'pair-meeting-count':
+      return (
+        <SoftConstraintFamilySection
+          family="PairMeetingCount"
+          onAdd={editorActions.handleSoftConstraintAdd}
+          onEdit={editorActions.handleSoftConstraintEdit}
+          onDelete={constraints.handleDeleteConstraint}
         />
       );
     default:

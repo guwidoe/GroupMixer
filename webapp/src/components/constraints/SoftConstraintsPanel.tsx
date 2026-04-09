@@ -23,15 +23,27 @@ interface AttributeBalanceConstraint {
 }
 
 interface Props {
-  onAddConstraint: (type: 'RepeatEncounter' | 'ShouldNotBeTogether' | 'ShouldStayTogether' | 'AttributeBalance' | 'PairMeetingCount') => void;
+  onAddConstraint: (type: SoftConstraintFamily) => void;
   onEditConstraint: (constraint: Constraint, index: number) => void;
   onDeleteConstraint: (index: number) => void;
+  forcedTab?: SoftConstraintFamily;
+  showFamilyNav?: boolean;
+  title?: string;
+  infoTitle?: string;
+  infoContent?: React.ReactNode;
 }
 
 type PairMeetingCountConstraint = Extract<Constraint, { type: 'PairMeetingCount' }>;
 type ShouldStayTogetherConstraint = Extract<Constraint, { type: 'ShouldStayTogether' }>;
 
-const SOFT_TABS = ['RepeatEncounter', 'ShouldNotBeTogether', 'ShouldStayTogether', 'AttributeBalance', 'PairMeetingCount'] as const;
+type SoftConstraintFamily =
+  | 'RepeatEncounter'
+  | 'ShouldNotBeTogether'
+  | 'ShouldStayTogether'
+  | 'AttributeBalance'
+  | 'PairMeetingCount';
+
+const SOFT_TABS = ['RepeatEncounter', 'ShouldNotBeTogether', 'ShouldStayTogether', 'AttributeBalance', 'PairMeetingCount'] as const satisfies readonly SoftConstraintFamily[];
 
 const constraintTypeLabels: Record<typeof SOFT_TABS[number], string> = {
   RepeatEncounter: 'Repeat Encounter',
@@ -41,8 +53,18 @@ const constraintTypeLabels: Record<typeof SOFT_TABS[number], string> = {
   PairMeetingCount: 'Pair Meeting Count',
 };
 
-const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstraint, onDeleteConstraint }) => {
-  const [activeTab, setActiveTab] = useState<typeof SOFT_TABS[number]>('RepeatEncounter');
+const SoftConstraintsPanel: React.FC<Props> = ({
+  onAddConstraint,
+  onEditConstraint,
+  onDeleteConstraint,
+  forcedTab,
+  showFamilyNav = true,
+  title,
+  infoTitle,
+  infoContent,
+}) => {
+  const [localActiveTab, setLocalActiveTab] = useState<SoftConstraintFamily>('RepeatEncounter');
+  const activeTab = forcedTab ?? localActiveTab;
   const [showInfo, setShowInfo] = useState(false);
   const { resolveScenario, setScenario, ui } = useAppStore();
   const [filterText, setFilterText] = useState('');
@@ -88,9 +110,9 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
 
   return (
     <ConstraintFamilyPanel
-      title="Soft Constraints"
-      infoTitle="How do these constraints work?"
-      infoContent={(
+      title={title ?? (showFamilyNav ? 'Soft Constraints' : constraintTypeLabels[activeTab])}
+      infoTitle={infoTitle ?? 'How does this preference work?'}
+      infoContent={infoContent ?? (
         <>
           <p className="mb-2">Soft constraints can be violated. Each violation increases the schedule cost by its penalty weight.</p>
           <ul className="list-disc list-inside space-y-0.5">
@@ -102,9 +124,9 @@ const SoftConstraintsPanel: React.FC<Props> = ({ onAddConstraint, onEditConstrai
       )}
       showInfo={showInfo}
       onToggleInfo={() => setShowInfo(!showInfo)}
-      families={familyItems}
-      activeFamilyId={activeTab}
-      onChangeFamily={(familyId) => setActiveTab(familyId as typeof SOFT_TABS[number])}
+      families={showFamilyNav ? familyItems : undefined}
+      activeFamilyId={showFamilyNav ? activeTab : undefined}
+      onChangeFamily={showFamilyNav ? (familyId) => setLocalActiveTab(familyId as SoftConstraintFamily) : undefined}
     >
       <div>
         <button

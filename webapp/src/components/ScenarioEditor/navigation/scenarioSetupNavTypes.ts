@@ -1,15 +1,20 @@
 import type { LucideIcon } from 'lucide-react';
 import type { AttributeDefinition, Scenario } from '../../../types';
 
-export type ScenarioSetupSectionGroupId = 'model' | 'rules' | 'goals';
+export type ScenarioSetupSectionGroupId = 'model' | 'requirements' | 'preferences' | 'optimization';
 
 export type ScenarioSetupSectionId =
   | 'sessions'
   | 'groups'
   | 'attributes'
   | 'people'
-  | 'hard'
-  | 'soft'
+  | 'immovable-people'
+  | 'must-stay-together'
+  | 'repeat-encounter'
+  | 'should-not-be-together'
+  | 'should-stay-together'
+  | 'attribute-balance'
+  | 'pair-meeting-count'
   | 'objectives';
 
 export type ScenarioSetupNavSurface = 'legacy-tabs' | 'sidebar';

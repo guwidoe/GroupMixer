@@ -1,65 +1,77 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getScenarioSetupLegacyRedirect,
   getScenarioSetupSectionById,
   getScenarioSetupSectionCount,
   getScenarioSetupSectionGroups,
   getScenarioSetupSections,
   getScenarioSetupSectionsByGroup,
   isScenarioSetupSectionId,
+  resolveScenarioSetupSection,
 } from './scenarioSetupNav';
 
 describe('scenarioSetupNav', () => {
-  it('returns canonical available sections for the legacy tabs surface', () => {
+  it('keeps the legacy-tabs surface limited to the coarse sections that still use it', () => {
     const sections = getScenarioSetupSections({ surface: 'legacy-tabs' });
 
     expect(sections.map((section) => section.id)).toEqual([
       'sessions',
       'groups',
       'people',
-      'hard',
-      'soft',
       'objectives',
     ]);
   });
 
-  it('keeps sidebar-only sections in the shared registry for first-class setup concepts', () => {
+  it('keeps sidebar-only first-class setup concepts in the shared registry', () => {
     const sections = getScenarioSetupSections({ includePlanned: true });
     const attributes = sections.find((section) => section.id === 'attributes');
+    const repeatEncounter = sections.find((section) => section.id === 'repeat-encounter');
 
     expect(attributes).toBeDefined();
     expect(attributes?.status).toBe('available');
     expect(attributes?.surfaces).toEqual(['sidebar']);
+    expect(repeatEncounter?.surfaces).toEqual(['sidebar']);
   });
 
-  it('groups sections into model, rules, and goals in canonical order', () => {
+  it('groups sections into model, requirements, preferences, and optimization in canonical order', () => {
     const grouped = getScenarioSetupSectionsByGroup({ includePlanned: true });
 
-    expect(grouped.map((entry) => entry.group.id)).toEqual(['model', 'rules', 'goals']);
+    expect(grouped.map((entry) => entry.group.id)).toEqual(['model', 'requirements', 'preferences', 'optimization']);
     expect(grouped[0]?.sections.map((section) => section.id)).toEqual([
       'sessions',
       'groups',
       'attributes',
       'people',
     ]);
-    expect(grouped[1]?.sections.map((section) => section.id)).toEqual(['hard', 'soft']);
-    expect(grouped[2]?.sections.map((section) => section.id)).toEqual(['objectives']);
+    expect(grouped[1]?.sections.map((section) => section.id)).toEqual(['immovable-people', 'must-stay-together']);
+    expect(grouped[2]?.sections.map((section) => section.id)).toEqual([
+      'repeat-encounter',
+      'should-not-be-together',
+      'should-stay-together',
+      'attribute-balance',
+      'pair-meeting-count',
+    ]);
+    expect(grouped[3]?.sections.map((section) => section.id)).toEqual(['objectives']);
   });
 
   it('exposes stable group metadata', () => {
     const groups = getScenarioSetupSectionGroups();
 
-    expect(groups.map((group) => group.id)).toEqual(['model', 'rules', 'goals']);
+    expect(groups.map((group) => group.id)).toEqual(['model', 'requirements', 'preferences', 'optimization']);
     expect(groups[0]?.label).toBe('Model');
-    expect(groups[1]?.label).toBe('Rules');
-    expect(groups[2]?.label).toBe('Goals');
+    expect(groups[1]?.label).toBe('Requirements');
+    expect(groups[2]?.label).toBe('Preferences');
+    expect(groups[3]?.label).toBe('Optimization');
   });
 
   it('computes count badges from context via schema helpers', () => {
-    const softSection = getScenarioSetupSectionById('soft');
+    const repeatEncounterSection = getScenarioSetupSectionById('repeat-encounter');
+    const mustStayTogetherSection = getScenarioSetupSectionById('must-stay-together');
     const attributesSection = getScenarioSetupSectionById('attributes');
     const objectivesSection = getScenarioSetupSectionById('objectives');
 
-    expect(softSection).toBeDefined();
+    expect(repeatEncounterSection).toBeDefined();
+    expect(mustStayTogetherSection).toBeDefined();
     expect(attributesSection).toBeDefined();
     expect(objectivesSection).toBeDefined();
 
@@ -72,6 +84,7 @@ describe('scenarioSetupNav', () => {
           { type: 'RepeatEncounter', max_allowed_encounters: 1, penalty_function: 'linear', penalty_weight: 10 },
           { type: 'ShouldStayTogether', people: ['a', 'b'], penalty_weight: 5 },
           { type: 'ImmovablePeople', people: ['a'], group_id: 'g1' },
+          { type: 'MustStayTogether', people: ['a', 'b'] },
         ],
         settings: {
           max_iterations: 1000,
@@ -85,14 +98,19 @@ describe('scenarioSetupNav', () => {
       objectiveCount: 1,
     };
 
-    expect(getScenarioSetupSectionCount(softSection!, context)).toBe(2);
+    expect(getScenarioSetupSectionCount(repeatEncounterSection!, context)).toBe(1);
+    expect(getScenarioSetupSectionCount(mustStayTogetherSection!, context)).toBe(1);
     expect(getScenarioSetupSectionCount(attributesSection!, context)).toBe(1);
     expect(getScenarioSetupSectionCount(objectivesSection!, context)).toBe(1);
   });
 
-  it('validates known section ids', () => {
+  it('resolves and validates known section ids', () => {
     expect(isScenarioSetupSectionId('sessions')).toBe(true);
     expect(isScenarioSetupSectionId('attributes')).toBe(true);
+    expect(isScenarioSetupSectionId('repeat-encounter')).toBe(true);
     expect(isScenarioSetupSectionId('constraints')).toBe(false);
+    expect(resolveScenarioSetupSection('soft')).toBe('repeat-encounter');
+    expect(getScenarioSetupLegacyRedirect('hard')).toBe('immovable-people');
+    expect(getScenarioSetupLegacyRedirect('repeat-encounter')).toBeNull();
   });
 });

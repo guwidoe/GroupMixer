@@ -1,4 +1,16 @@
-import { BarChart3, Calendar, Hash, Lock, Tag, Users, Zap } from 'lucide-react';
+import {
+  BarChart3,
+  Calendar,
+  Hash,
+  Link2,
+  Lock,
+  Scale,
+  Tag,
+  UserLock,
+  Users,
+  UserX,
+  Zap,
+} from 'lucide-react';
 import type {
   ScenarioSetupCountContext,
   ScenarioSetupNavSurface,
@@ -11,14 +23,19 @@ export interface ScenarioSetupResolvedSection extends ScenarioSetupSectionDefini
   resolvedCount?: number;
 }
 
-const HARD_CONSTRAINT_TYPES = new Set(['ImmovablePeople', 'MustStayTogether']);
-const SOFT_CONSTRAINT_TYPES = new Set([
-  'RepeatEncounter',
-  'AttributeBalance',
-  'ShouldNotBeTogether',
-  'ShouldStayTogether',
-  'PairMeetingCount',
-]);
+const LEGACY_ROUTE_REDIRECTS: Record<string, ScenarioSetupSectionId> = {
+  hard: 'immovable-people',
+  soft: 'repeat-encounter',
+  constraints: 'repeat-encounter',
+};
+
+function countConstraintsByType(context: ScenarioSetupCountContext, type: string): number | undefined {
+  if (!context.scenario) {
+    return undefined;
+  }
+
+  return context.scenario.constraints.filter((constraint) => String(constraint.type) === type).length;
+}
 
 export const PROBLEM_SETUP_SECTION_GROUPS: readonly ScenarioSetupSectionGroupDefinition[] = [
   {
@@ -28,16 +45,22 @@ export const PROBLEM_SETUP_SECTION_GROUPS: readonly ScenarioSetupSectionGroupDef
     description: 'Define the structure and entities that make up the scenario.',
   },
   {
-    id: 'rules',
-    label: 'Rules',
+    id: 'requirements',
+    label: 'Requirements',
     order: 2,
-    description: 'Add hard and soft constraints that shape valid and desirable solutions.',
+    description: 'Add constraints that the final schedule must satisfy.',
   },
   {
-    id: 'goals',
-    label: 'Goals',
+    id: 'preferences',
+    label: 'Preferences',
     order: 3,
-    description: 'Configure optimization priorities once the model and rules are defined.',
+    description: 'Add weighted preferences that guide the solver toward better schedules.',
+  },
+  {
+    id: 'optimization',
+    label: 'Optimization',
+    order: 4,
+    description: 'Tune optimization priorities once the model and constraints are defined.',
   },
 ] as const;
 
@@ -52,7 +75,7 @@ export const PROBLEM_SETUP_SECTIONS: readonly ScenarioSetupSectionDefinition[] =
     icon: Calendar,
     status: 'available',
     surfaces: ['legacy-tabs', 'sidebar'],
-    count: ({ scenario }) => scenario?.num_sessions ?? 0,
+    count: ({ scenario }) => (scenario ? scenario.num_sessions : undefined),
   },
   {
     id: 'groups',
@@ -64,7 +87,7 @@ export const PROBLEM_SETUP_SECTIONS: readonly ScenarioSetupSectionDefinition[] =
     icon: Hash,
     status: 'available',
     surfaces: ['legacy-tabs', 'sidebar'],
-    count: ({ scenario }) => scenario?.groups.length ?? 0,
+    count: ({ scenario }) => (scenario ? scenario.groups.length : undefined),
   },
   {
     id: 'attributes',
@@ -77,7 +100,7 @@ export const PROBLEM_SETUP_SECTIONS: readonly ScenarioSetupSectionDefinition[] =
     icon: Tag,
     status: 'available',
     surfaces: ['sidebar'],
-    count: ({ attributeDefinitions }) => attributeDefinitions.length,
+    count: ({ scenario, attributeDefinitions }) => (scenario ? attributeDefinitions.length : undefined),
   },
   {
     id: 'people',
@@ -89,45 +112,103 @@ export const PROBLEM_SETUP_SECTIONS: readonly ScenarioSetupSectionDefinition[] =
     icon: Users,
     status: 'available',
     surfaces: ['legacy-tabs', 'sidebar'],
-    count: ({ scenario }) => scenario?.people.length ?? 0,
+    count: ({ scenario }) => (scenario ? scenario.people.length : undefined),
   },
   {
-    id: 'hard',
-    routeSegment: 'hard',
-    label: 'Hard Constraints',
-    description: 'Add rules that must never be violated by the final solution.',
-    group: 'rules',
+    id: 'immovable-people',
+    routeSegment: 'immovable-people',
+    label: 'Immovable People',
+    description: 'Fix selected people to a specific group in the chosen sessions.',
+    group: 'requirements',
     order: 5,
+    icon: UserLock,
+    status: 'available',
+    surfaces: ['sidebar'],
+    count: (context) => countConstraintsByType(context, 'ImmovablePeople'),
+  },
+  {
+    id: 'must-stay-together',
+    routeSegment: 'must-stay-together',
+    label: 'Must Stay Together',
+    description: 'Require selected people to remain in the same group.',
+    group: 'requirements',
+    order: 6,
     icon: Lock,
     status: 'available',
-    surfaces: ['legacy-tabs', 'sidebar'],
-    hasLocalSubnavigation: true,
-    count: ({ scenario }) => scenario?.constraints.filter((constraint) => HARD_CONSTRAINT_TYPES.has(String(constraint.type))).length ?? 0,
+    surfaces: ['sidebar'],
+    count: (context) => countConstraintsByType(context, 'MustStayTogether'),
   },
   {
-    id: 'soft',
-    routeSegment: 'soft',
-    label: 'Soft Constraints',
-    description: 'Add weighted preferences that improve solution quality without making schedules infeasible.',
-    group: 'rules',
-    order: 6,
+    id: 'repeat-encounter',
+    routeSegment: 'repeat-encounter',
+    label: 'Repeat Encounter',
+    description: 'Limit how often the same people can meet across sessions.',
+    group: 'preferences',
+    order: 7,
     icon: Zap,
     status: 'available',
-    surfaces: ['legacy-tabs', 'sidebar'],
-    hasLocalSubnavigation: true,
-    count: ({ scenario }) => scenario?.constraints.filter((constraint) => SOFT_CONSTRAINT_TYPES.has(String(constraint.type))).length ?? 0,
+    surfaces: ['sidebar'],
+    count: (context) => countConstraintsByType(context, 'RepeatEncounter'),
+  },
+  {
+    id: 'should-not-be-together',
+    routeSegment: 'should-not-be-together',
+    label: 'Should Not Be Together',
+    description: 'Discourage selected people from ending up in the same group.',
+    group: 'preferences',
+    order: 8,
+    icon: UserX,
+    status: 'available',
+    surfaces: ['sidebar'],
+    count: (context) => countConstraintsByType(context, 'ShouldNotBeTogether'),
+  },
+  {
+    id: 'should-stay-together',
+    routeSegment: 'should-stay-together',
+    label: 'Should Stay Together',
+    description: 'Prefer selected people to stay together without making it mandatory.',
+    group: 'preferences',
+    order: 9,
+    icon: Link2,
+    status: 'available',
+    surfaces: ['sidebar'],
+    count: (context) => countConstraintsByType(context, 'ShouldStayTogether'),
+  },
+  {
+    id: 'attribute-balance',
+    routeSegment: 'attribute-balance',
+    label: 'Attribute Balance',
+    description: 'Steer group compositions toward desired attribute distributions.',
+    group: 'preferences',
+    order: 10,
+    icon: Scale,
+    status: 'available',
+    surfaces: ['sidebar'],
+    count: (context) => countConstraintsByType(context, 'AttributeBalance'),
+  },
+  {
+    id: 'pair-meeting-count',
+    routeSegment: 'pair-meeting-count',
+    label: 'Pair Meeting Count',
+    description: 'Target how often important pairs should meet across sessions.',
+    group: 'preferences',
+    order: 11,
+    icon: Users,
+    status: 'available',
+    surfaces: ['sidebar'],
+    count: (context) => countConstraintsByType(context, 'PairMeetingCount'),
   },
   {
     id: 'objectives',
     routeSegment: 'objectives',
     label: 'Objectives',
-    description: 'Tune optimization goals once the model and rules are in place.',
-    group: 'goals',
-    order: 7,
+    description: 'Tune optimization goals once the model and constraints are in place.',
+    group: 'optimization',
+    order: 12,
     icon: BarChart3,
     status: 'available',
     surfaces: ['legacy-tabs', 'sidebar'],
-    count: ({ objectiveCount }) => objectiveCount,
+    count: ({ scenario, objectiveCount }) => (scenario ? objectiveCount : undefined),
   },
 ] as const;
 
@@ -161,6 +242,26 @@ export function getScenarioSetupSectionById(sectionId: string): ScenarioSetupSec
 
 export function isScenarioSetupSectionId(value: string): value is ScenarioSetupSectionId {
   return PROBLEM_SETUP_SECTIONS.some((section) => section.id === value);
+}
+
+export function resolveScenarioSetupSection(section: string | undefined): ScenarioSetupSectionId {
+  if (section && isScenarioSetupSectionId(section)) {
+    return section;
+  }
+
+  if (section && section in LEGACY_ROUTE_REDIRECTS) {
+    return LEGACY_ROUTE_REDIRECTS[section];
+  }
+
+  return 'people';
+}
+
+export function getScenarioSetupLegacyRedirect(section: string | undefined): ScenarioSetupSectionId | null {
+  if (!section) {
+    return null;
+  }
+
+  return LEGACY_ROUTE_REDIRECTS[section] ?? null;
 }
 
 export function getScenarioSetupSectionsByGroup(options?: {

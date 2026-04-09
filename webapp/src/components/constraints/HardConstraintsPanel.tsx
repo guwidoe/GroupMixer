@@ -11,20 +11,37 @@ import {
 } from './constraintMutations';
 
 interface Props {
-  onAddConstraint: (type: 'ImmovablePeople' | 'MustStayTogether') => void;
+  onAddConstraint: (type: HardConstraintFamily) => void;
   onEditConstraint: (constraint: Constraint, index: number) => void;
   onDeleteConstraint: (index: number) => void;
+  forcedTab?: HardConstraintFamily;
+  showFamilyNav?: boolean;
+  title?: string;
+  infoTitle?: string;
+  infoContent?: React.ReactNode;
 }
 
-const HARD_TABS = ['ImmovablePeople', 'MustStayTogether'] as const;
+type HardConstraintFamily = 'ImmovablePeople' | 'MustStayTogether';
+
+const HARD_TABS = ['ImmovablePeople', 'MustStayTogether'] as const satisfies readonly HardConstraintFamily[];
 
 const constraintTypeLabels: Record<typeof HARD_TABS[number], string> = {
   ImmovablePeople: 'Immovable People',
   MustStayTogether: 'Must Stay Together',
 };
 
-function HardConstraintsPanel({ onAddConstraint, onEditConstraint, onDeleteConstraint }: Props) {
-  const [activeTab, setActiveTab] = useState<typeof HARD_TABS[number]>('ImmovablePeople');
+function HardConstraintsPanel({
+  onAddConstraint,
+  onEditConstraint,
+  onDeleteConstraint,
+  forcedTab,
+  showFamilyNav = true,
+  title,
+  infoTitle,
+  infoContent,
+}: Props) {
+  const [localActiveTab, setLocalActiveTab] = useState<typeof HARD_TABS[number]>('ImmovablePeople');
+  const activeTab = forcedTab ?? localActiveTab;
   const [selectedMustIndices, setSelectedMustIndices] = useState<number[]>([]);
   const [showBulkConvert, setShowBulkConvert] = useState(false);
   const [bulkWeight, setBulkWeight] = useState<number | ''>(10);
@@ -90,9 +107,9 @@ function HardConstraintsPanel({ onAddConstraint, onEditConstraint, onDeleteConst
 
   return (
     <ConstraintFamilyPanel
-      title="Hard Constraints"
-      infoTitle="How do these constraints work?"
-      infoContent={(
+      title={title ?? (showFamilyNav ? 'Hard Constraints' : constraintTypeLabels[activeTab])}
+      infoTitle={infoTitle ?? 'How does this requirement work?'}
+      infoContent={infoContent ?? (
         <>
           <p className="mb-2">Hard constraints <strong>must</strong> be satisfied. The solver throws an error if they cannot all be met.</p>
           <ul className="list-disc list-inside space-y-0.5">
@@ -103,9 +120,9 @@ function HardConstraintsPanel({ onAddConstraint, onEditConstraint, onDeleteConst
       )}
       showInfo={showInfo}
       onToggleInfo={() => setShowInfo(!showInfo)}
-      families={familyItems}
-      activeFamilyId={activeTab}
-      onChangeFamily={(familyId) => setActiveTab(familyId as typeof HARD_TABS[number])}
+      families={showFamilyNav ? familyItems : undefined}
+      activeFamilyId={showFamilyNav ? activeTab : undefined}
+      onChangeFamily={showFamilyNav ? (familyId) => setLocalActiveTab(familyId as typeof HARD_TABS[number]) : undefined}
     >
       <div>
         <button
