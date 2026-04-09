@@ -5,7 +5,6 @@ import { ConstraintFormModal } from './ConstraintFormModal';
 import { ScenarioSetupLayout } from './layout/ScenarioSetupLayout';
 import { ScenarioEditorConstraintModals } from './ScenarioEditorConstraintModals';
 import { ScenarioEditorForms } from './ScenarioEditorForms';
-import { ScenarioEditorHeader } from './ScenarioEditorHeader';
 import { ScenarioSetupSectionRenderer } from './ScenarioSetupSectionRenderer';
 import { isScenarioSetupSectionId } from './navigation/scenarioSetupNav';
 import type { ScenarioSetupSectionId } from './navigation/scenarioSetupNavTypes';
@@ -93,21 +92,6 @@ function ScenarioEditorLoaded() {
         objectiveCount={deferredSummary.summaryObjectiveCount}
         activeSection={controller.navigationSection}
         onNavigate={controller.navigateToSection}
-        sidebarHeader={
-          <ScenarioEditorHeader
-            onLoadScenario={controller.handleLoadScenario}
-            onSaveScenario={controller.handleSaveScenario}
-            onDemoCaseClick={controller.handleDemoCaseClick}
-          />
-        }
-        collapsedSidebarHeader={
-          <ScenarioEditorHeader
-            onLoadScenario={controller.handleLoadScenario}
-            onSaveScenario={controller.handleSaveScenario}
-            onDemoCaseClick={controller.handleDemoCaseClick}
-            collapsed
-          />
-        }
       >
         {showSectionLoadingState ? (
           <ScenarioEditorLoadingState label={sectionLoadingLabel} message={sectionLoadingMessage} />
