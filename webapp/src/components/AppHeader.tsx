@@ -14,6 +14,7 @@ interface AppHeaderProps {
   homeTo?: string;
   title?: string;
   logoAlt?: string;
+  hideDesktopUtilityRail?: boolean;
   renderDesktopCenterContent?: () => ReactNode;
   renderMobileCenterContent?: (helpers: { closeMobileMenu: () => void }) => ReactNode;
   renderDesktopActions?: () => ReactNode;
@@ -28,6 +29,7 @@ export function AppHeader({
   homeTo = '/',
   title = 'GroupMixer',
   logoAlt = 'GroupMixer Logo',
+  hideDesktopUtilityRail = false,
   renderDesktopCenterContent,
   renderMobileCenterContent,
   renderDesktopActions,
@@ -88,37 +90,39 @@ export function AppHeader({
           <div className="hidden sm:flex items-center justify-end gap-2 sm:gap-3">
             {desktopActions}
 
-            <div className={HEADER_ACTION_GROUP_CLASS}>
-              <div
-                className={HEADER_ACTION_TOOLBAR_CLASS}
-                style={{ backgroundColor: 'var(--header-rail-surface)', borderColor: 'var(--border-primary)' }}
-              >
-                {desktopUtilityActions}
-                {desktopUtilityActions ? (
+            {!hideDesktopUtilityRail ? (
+              <div className={HEADER_ACTION_GROUP_CLASS}>
+                <div
+                  className={HEADER_ACTION_TOOLBAR_CLASS}
+                  style={{ backgroundColor: 'var(--header-rail-surface)', borderColor: 'var(--border-primary)' }}
+                >
+                  {desktopUtilityActions}
+                  {desktopUtilityActions ? (
+                    <div
+                      className={HEADER_ACTION_DIVIDER_CLASS}
+                      style={{ backgroundColor: 'var(--border-primary)' }}
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                  <a
+                    href={issueHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={issueLabel}
+                    aria-label={issueLabel}
+                    className={HEADER_ACTION_ICON_BUTTON_CLASS}
+                  >
+                    <Bug className="h-4 w-4" />
+                  </a>
                   <div
                     className={HEADER_ACTION_DIVIDER_CLASS}
                     style={{ backgroundColor: 'var(--border-primary)' }}
                     aria-hidden="true"
                   />
-                ) : null}
-                <a
-                  href={issueHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={issueLabel}
-                  aria-label={issueLabel}
-                  className={HEADER_ACTION_ICON_BUTTON_CLASS}
-                >
-                  <Bug className="h-4 w-4" />
-                </a>
-                <div
-                  className={HEADER_ACTION_DIVIDER_CLASS}
-                  style={{ backgroundColor: 'var(--border-primary)' }}
-                  aria-hidden="true"
-                />
-                <ThemeToggle size="md" variant="header" />
+                  <ThemeToggle size="md" variant="header" />
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
         </div>
 
