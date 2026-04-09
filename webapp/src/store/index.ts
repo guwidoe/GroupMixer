@@ -15,9 +15,9 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import type { AppStore } from "./types";
-import type { AttributeDefinition, Scenario, Solution } from "../types";
-import { mergeAttributeDefinitions } from "../services/demoDataService";
-import { scenarioStorage } from "../services/scenarioStorage";
+import type { AttributeDefinition, Scenario, Solution } from '../types';
+import { reconcileScenarioAttributeDefinitions } from '../services/scenarioAttributes';
+import { scenarioStorage } from '../services/scenarioStorage';
 
 import {
   createScenarioSlice,
@@ -33,8 +33,7 @@ import {
   initialUIState,
   initialRuntimeCatalogState,
   DEFAULT_ATTRIBUTE_DEFINITIONS,
-  loadAttributeDefinitions,
-} from "./slices";
+} from './slices';
 
 // Re-export types for easier access
 export type {
@@ -85,11 +84,8 @@ function solverStateFromWorkspaceSolution(solution: Solution | null) {
   };
 }
 
-function mergeWorkspaceAttributes(existing: AttributeDefinition[], incoming?: AttributeDefinition[]) {
-  if (!incoming || incoming.length === 0) {
-    return existing;
-  }
-  return mergeAttributeDefinitions(existing, incoming);
+function resolveWorkspaceAttributes(scenario: Scenario, incoming?: AttributeDefinition[]) {
+  return reconcileScenarioAttributeDefinitions(scenario, incoming);
 }
 
 export const useAppStore = create<AppStore>()(
@@ -127,7 +123,7 @@ export const useAppStore = create<AppStore>()(
           currentResultId: null,
           selectedResultIds: [],
           solverState: solverStateFromWorkspaceSolution(solution),
-          attributeDefinitions: mergeWorkspaceAttributes(state.attributeDefinitions, attributeDefinitions),
+          attributeDefinitions: resolveWorkspaceAttributes(scenario, attributeDefinitions ?? state.attributeDefinitions),
           ui: {
             ...state.ui,
             activeTab: solution ? "results" : "scenario",
@@ -157,10 +153,18 @@ export const useAppStore = create<AppStore>()(
             ...savedScenario,
             name: scenarioName,
             scenario,
+            attributeDefinitions: resolveWorkspaceAttributes(
+              scenario,
+              attributeDefinitions ?? savedScenario.attributeDefinitions,
+            ),
           };
           scenarioStorage.saveScenario(savedScenario);
         } else {
-          savedScenario = scenarioStorage.createScenario(scenarioName, scenario);
+          savedScenario = scenarioStorage.createScenario(
+            scenarioName,
+            scenario,
+            resolveWorkspaceAttributes(scenario, attributeDefinitions ?? DEFAULT_ATTRIBUTE_DEFINITIONS),
+          );
           currentScenarioId = savedScenario.id;
         }
 
@@ -177,7 +181,7 @@ export const useAppStore = create<AppStore>()(
           },
           selectedResultIds: [],
           solverState: solverStateFromWorkspaceSolution(solution),
-          attributeDefinitions: mergeWorkspaceAttributes(state.attributeDefinitions, attributeDefinitions),
+          attributeDefinitions: savedScenario.attributeDefinitions,
           ui: {
             ...state.ui,
             activeTab: solution ? "results" : "scenario",
@@ -194,8 +198,6 @@ export const useAppStore = create<AppStore>()(
       },
 
       initializeApp: () => {
-        set({ attributeDefinitions: loadAttributeDefinitions() });
-
         window.setTimeout(() => {
           get().loadSavedScenarios();
         }, 0);

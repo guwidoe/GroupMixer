@@ -1,4 +1,5 @@
 import type {
+  AttributeDefinition,
   SavedScenario,
   Scenario,
   ScenarioResult,
@@ -7,6 +8,7 @@ import type {
   SolverSettings,
   Solution,
 } from "../types";
+import { migrateSavedScenario, reconcileScenarioAttributeDefinitions } from './scenarioAttributes';
 
 export { compareScenarioConfigurations, type ScenarioConfigDifference } from "./scenarioStorage/compare";
 
@@ -64,7 +66,23 @@ export class ScenarioStorageService {
   getAllScenarios(): Record<string, SavedScenario> {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : {};
+      const parsed = stored ? (JSON.parse(stored) as Record<string, SavedScenario>) : {};
+      let mutated = false;
+      const migrated = Object.fromEntries(
+        Object.entries(parsed).map(([id, scenario]) => {
+          const nextScenario = migrateSavedScenario(scenario);
+          if (JSON.stringify(nextScenario) !== JSON.stringify(scenario)) {
+            mutated = true;
+          }
+          return [id, nextScenario];
+        }),
+      );
+
+      if (mutated) {
+        this.writeScenarios(migrated);
+      }
+
+      return migrated;
     } catch (error) {
       console.error("Failed to load scenarios from storage:", error);
       return {};
@@ -133,8 +151,13 @@ export class ScenarioStorageService {
   createScenario(
     name: string,
     scenario: Scenario,
-    isTemplate = false
+    attributeDefinitionsOrTemplate: AttributeDefinition[] | boolean = [],
+    isTemplate = false,
   ): SavedScenario {
+    const attributeDefinitions = Array.isArray(attributeDefinitionsOrTemplate)
+      ? attributeDefinitionsOrTemplate
+      : [];
+    const templateFlag = typeof attributeDefinitionsOrTemplate === 'boolean' ? attributeDefinitionsOrTemplate : isTemplate;
     const now = Date.now();
     const allScenarios = this.getAllScenarios();
     const allScenarioIds = new Set(Object.keys(allScenarios));
@@ -143,10 +166,11 @@ export class ScenarioStorageService {
       id,
       name,
       scenario,
+      attributeDefinitions: reconcileScenarioAttributeDefinitions(scenario, attributeDefinitions),
       results: [],
       createdAt: now,
       updatedAt: now,
-      isTemplate,
+      isTemplate: templateFlag,
     };
 
     this.saveScenario(savedScenario);
@@ -154,13 +178,17 @@ export class ScenarioStorageService {
   }
 
   // Update scenario definition (triggers auto-save)
-  updateScenario(id: string, scenario: Scenario): void {
+  updateScenario(id: string, scenario: Scenario, attributeDefinitions?: AttributeDefinition[]): void {
     const savedScenario = this.getScenario(id);
     if (!savedScenario) {
       throw new Error(`Scenario with ID ${id} not found`);
     }
 
     savedScenario.scenario = scenario;
+    savedScenario.attributeDefinitions = reconcileScenarioAttributeDefinitions(
+      scenario,
+      attributeDefinitions ?? savedScenario.attributeDefinitions,
+    );
     this.scheduleAutoSave(savedScenario);
   }
 
@@ -269,6 +297,7 @@ export class ScenarioStorageService {
       id: newScenarioId,
       name: newName,
       scenario: JSON.parse(JSON.stringify(originalScenario.scenario)), // Deep clone
+      attributeDefinitions: JSON.parse(JSON.stringify(originalScenario.attributeDefinitions)),
       results: includeResults
         ? JSON.parse(JSON.stringify(originalScenario.results))
         : [],
@@ -331,7 +360,11 @@ export class ScenarioStorageService {
     const defaultName = `${source.name} – ${
       result.name || "Result"
     } (restored)`;
-    const created = this.createScenario(newName || defaultName, restoredScenario);
+    const created = this.createScenario(
+      newName || defaultName,
+      restoredScenario,
+      source.attributeDefinitions,
+    );
 
     // Clone the specific result into the new scenario, generating a fresh local ID
     const newResultId = this.generateGloballyUniqueId(new Set<string>());
@@ -428,13 +461,17 @@ export class ScenarioStorageService {
     const allScenarios = this.getAllScenarios();
     const allScenarioIds = new Set(Object.keys(allScenarios));
     const newScenarioId = this.generateGloballyUniqueId(allScenarioIds);
-    const importedScenario: SavedScenario = {
+    const importedScenario: SavedScenario = migrateSavedScenario({
       ...exportedData.scenario,
       id: newScenarioId, // New ID to avoid conflicts
       name: newName || `${exportedData.scenario.name} (Imported)`,
+      attributeDefinitions:
+        exportedData.scenario.attributeDefinitions ??
+        exportedData.attributeDefinitions ??
+        [],
       createdAt: now,
       updatedAt: now,
-    };
+    });
 
     // Generate new IDs for all results to avoid conflicts (within this scenario)
     const resultIds = new Set<string>();

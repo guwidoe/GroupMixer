@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createScenarioSlice } from "./scenarioSlice";
 import type { AppStore } from "../types";
-import { createSampleScenario, createSavedScenario } from "../../test/fixtures";
+import { createSampleScenario, createSavedScenario } from '../../test/fixtures';
+import { DEFAULT_ATTRIBUTE_DEFINITIONS } from './attributeSlice';
 import { scenarioStorage } from "../../services/scenarioStorage";
 
 vi.mock("../../services/scenarioStorage", () => ({
@@ -26,6 +27,7 @@ function createHarness(overrides: Partial<AppStore> = {}) {
       showResultComparison: false,
       warmStartResultId: null,
     },
+    attributeDefinitions: DEFAULT_ATTRIBUTE_DEFINITIONS,
     addNotification: vi.fn((notification) => {
       state.ui.notifications.push({
         ...notification,
@@ -96,8 +98,9 @@ describe("createScenarioSlice", () => {
     const ensured = harness.slice.ensureScenarioExists();
 
     expect(scenarioStorage.createScenario).toHaveBeenCalledWith(
-      "Untitled Scenario",
-      expect.objectContaining({ num_sessions: 3 })
+      'Untitled Scenario',
+      expect.objectContaining({ num_sessions: 3 }),
+      DEFAULT_ATTRIBUTE_DEFINITIONS,
     );
     expect(ensured.num_sessions).toBe(3);
     expect(harness.getState().currentScenarioId).toBe("created-scenario");

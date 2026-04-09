@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 import { scenarioStorage } from '../services/scenarioStorage';
+import { createAttributeDefinition } from '../services/scenarioAttributes';
 import { createSampleScenario, createSampleSolution, createSavedScenario } from '../test/fixtures';
 import { useAppStore } from './index';
-import { ATTRIBUTE_DEFS_KEY, DEFAULT_ATTRIBUTE_DEFINITIONS } from './slices';
+import { DEFAULT_ATTRIBUTE_DEFINITIONS } from './slices';
 
 describe('useAppStore initialization', () => {
   beforeEach(() => {
@@ -11,15 +12,30 @@ describe('useAppStore initialization', () => {
     useAppStore.getState().reset();
   });
 
-  it('hydrates attribute definitions during initializeApp instead of store import', () => {
-    const persistedDefinitions = [{ key: 'team', values: ['Blue', 'Red'] }];
-    localStorage.setItem(ATTRIBUTE_DEFS_KEY, JSON.stringify(persistedDefinitions));
+  it('hydrates active attribute definitions from the loaded saved scenario', () => {
+    vi.useFakeTimers();
+    const persistedDefinitions = [createAttributeDefinition('team', ['Blue', 'Red'], 'attr-team')];
+    scenarioStorage.saveScenario(
+      createSavedScenario({
+        id: 'scenario-1',
+        attributeDefinitions: persistedDefinitions,
+      }),
+    );
 
     expect(useAppStore.getState().attributeDefinitions).toEqual(DEFAULT_ATTRIBUTE_DEFINITIONS);
 
     useAppStore.getState().initializeApp();
+    vi.runAllTimers();
 
-    expect(useAppStore.getState().attributeDefinitions).toEqual(persistedDefinitions);
+    expect(useAppStore.getState().attributeDefinitions).toEqual([
+      expect.objectContaining({
+        id: 'attr-team',
+        name: 'team',
+        key: 'team',
+        values: ['A', 'B', 'Blue', 'Red'],
+      }),
+    ]);
+    vi.useRealTimers();
   });
 
   it('defers saved scenario hydration to the next task so the shell can paint first', () => {
@@ -56,7 +72,7 @@ describe('useAppStore initialization', () => {
     useAppStore.getState().replaceWorkspace({
       scenario,
       solution,
-      attributeDefinitions: [{ key: 'team', values: ['A', 'B'] }],
+      attributeDefinitions: [createAttributeDefinition('team', ['A', 'B'], 'attr-team')],
     });
 
     const state = useAppStore.getState();
@@ -70,7 +86,9 @@ describe('useAppStore initialization', () => {
     expect(state.solverState.isComplete).toBe(true);
     expect(state.solverState.currentIteration).toBe(solution.iteration_count);
     expect(state.attributeDefinitions).toEqual(
-      expect.arrayContaining([{ key: 'team', values: ['A', 'B'] }]),
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'attr-team', name: 'team', key: 'team', values: ['A', 'B'] }),
+      ]),
     );
   });
 
@@ -82,7 +100,7 @@ describe('useAppStore initialization', () => {
     const createdId = useAppStore.getState().syncWorkspaceDraft({
       scenario: firstScenario,
       solution: null,
-      attributeDefinitions: [{ key: 'team', values: ['A', 'B'] }],
+      attributeDefinitions: [createAttributeDefinition('team', ['A', 'B'], 'attr-team')],
       scenarioName: 'Random Group Generator draft',
     });
 

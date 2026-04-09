@@ -204,7 +204,11 @@ export function persistCompletedRunResult({
   let resolvedScenarioId = activeScenarioId;
 
   if (!resolvedScenarioId && storeState.scenario) {
-    const createdScenario = scenarioStorage.createScenario('Scratchpad Scenario', storeState.scenario);
+    const createdScenario = scenarioStorage.createScenario(
+      'Scratchpad Scenario',
+      storeState.scenario,
+      storeState.attributeDefinitions,
+    );
     scenarioStorage.setCurrentScenarioId(createdScenario.id);
     useAppStore.setState((state) => ({
       currentScenarioId: createdScenario.id,

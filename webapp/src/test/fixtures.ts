@@ -4,7 +4,8 @@ import type {
   SavedScenario,
   Solution,
   SolverSettings,
-} from "../types";
+} from '../types';
+import { reconcileScenarioAttributeDefinitions } from '../services/scenarioAttributes';
 
 export function createSampleSolverSettings(): SolverSettings {
   return {
@@ -92,9 +93,10 @@ export function createSavedScenario(overrides: Partial<SavedScenario> = {}): Sav
   };
 
   return {
-    id: "scenario-1",
-    name: "Sample Scenario",
+    id: 'scenario-1',
+    name: 'Sample Scenario',
     scenario,
+    attributeDefinitions: reconcileScenarioAttributeDefinitions(scenario),
     results: [result],
     createdAt: 1000,
     updatedAt: 1000,

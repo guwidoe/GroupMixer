@@ -4,6 +4,7 @@ import type { ProgressUpdate } from '../services/wasm/types';
 export interface Person {
   id: string;
   attributes: Record<string, string>; // Key-value attributes (e.g., {"gender": "female", "department": "engineering"})
+  attributeValues?: Record<string, string>; // Scenario-local relational attribute assignments keyed by AttributeDefinition.id
   sessions?: number[]; // Optional: specific sessions this person participates in (0-based indices)
 }
 
@@ -23,6 +24,7 @@ export interface RepeatEncounterParams {
 export interface AttributeBalanceParams {
   group_id: string;
   attribute_key: string;
+  attribute_id?: string;
   desired_values: Record<string, number>; // e.g., {"male": 2, "female": 2}
   penalty_weight: number;
   /**
@@ -331,6 +333,7 @@ export interface SavedScenario {
   id: string;
   name: string;
   scenario: Scenario;
+  attributeDefinitions: AttributeDefinition[];
   results: ScenarioResult[];
   createdAt: number;
   updatedAt: number;
@@ -397,7 +400,9 @@ export interface GroupFormData {
 }
 
 export interface AttributeDefinition {
-  key: string;
+  id: string;
+  name: string;
+  key?: string; // Legacy alias retained for migration/compatibility during the schema transition
   values: string[]; // Possible values for this attribute
 }
 
@@ -405,6 +410,6 @@ export interface AttributeDefinition {
 export interface ExportedScenario {
   version: string; // For future compatibility
   scenario: SavedScenario;
-  attributeDefinitions?: AttributeDefinition[];
+  attributeDefinitions?: AttributeDefinition[]; // Legacy export field; authoritative definitions now live on SavedScenario
   exportedAt: number;
 }

@@ -1,5 +1,4 @@
 import { scenarioStorage } from '../../../services/scenarioStorage';
-import { ATTRIBUTE_DEFS_KEY } from '../attributeSlice';
 import type { ScenarioManagerActions, ScenarioManagerState, StoreSlice } from '../../types';
 import { initialSolverState } from '../solverSlice';
 
@@ -49,6 +48,10 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
         currentScenarioId,
         currentResultId: validCurrentResultId,
         solution: currentResult?.solution ?? null,
+        attributeDefinitions:
+          currentScenarioId && savedScenarios[currentScenarioId]
+            ? savedScenarios[currentScenarioId].attributeDefinitions
+            : get().attributeDefinitions,
         solverState: currentResult
           ? {
               ...initialSolverState,
@@ -63,7 +66,10 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
       });
 
       if (currentScenarioId && savedScenarios[currentScenarioId]) {
-        set({ scenario: savedScenarios[currentScenarioId].scenario });
+        set({
+          scenario: savedScenarios[currentScenarioId].scenario,
+          attributeDefinitions: savedScenarios[currentScenarioId].attributeDefinitions,
+        });
       }
 
       set((state) => ({
@@ -83,7 +89,12 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
       }
 
       try {
-        const savedScenario = scenarioStorage.createScenario(name, currentScenario, isTemplate);
+        const savedScenario = scenarioStorage.createScenario(
+          name,
+          currentScenario,
+          get().attributeDefinitions,
+          isTemplate,
+        );
         scenarioStorage.setCurrentScenarioId(savedScenario.id);
 
         set((state) => ({
@@ -124,6 +135,7 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
       scenarioStorage.setCurrentScenarioId(id);
       set({
         scenario: savedScenario.scenario,
+        attributeDefinitions: savedScenario.attributeDefinitions,
         currentScenarioId: id,
         currentResultId: null,
         solution: null,
@@ -151,12 +163,12 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
 
       try {
         if (currentScenarioId) {
-          scenarioStorage.updateScenario(currentScenarioId, scenario);
+          scenarioStorage.updateScenario(currentScenarioId, scenario, get().attributeDefinitions);
           if (name) {
             scenarioStorage.renameScenario(currentScenarioId, name);
           }
         } else {
-          const savedScenario = scenarioStorage.createScenario(name, scenario);
+          const savedScenario = scenarioStorage.createScenario(name, scenario, get().attributeDefinitions);
           scenarioStorage.setCurrentScenarioId(savedScenario.id);
           set((state) => ({
             savedScenarios: {
@@ -324,10 +336,7 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
 
     exportScenario: (id) => {
       try {
-        const exportedData = {
-          ...scenarioStorage.exportScenario(id),
-          attributeDefinitions: get().attributeDefinitions,
-        };
+        const exportedData = scenarioStorage.exportScenario(id);
         const scenarioName = get().savedScenarios[id]?.name || 'scenario';
 
         const blob = new Blob([JSON.stringify(exportedData, null, 2)], {
@@ -363,15 +372,6 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
           const content = event.target?.result as string;
           const exportedData = JSON.parse(content);
 
-          if (exportedData.attributeDefinitions) {
-            try {
-              localStorage.setItem(ATTRIBUTE_DEFS_KEY, JSON.stringify(exportedData.attributeDefinitions));
-            } catch (error) {
-              console.error('Failed to save attribute definitions:', error);
-            }
-            set({ attributeDefinitions: exportedData.attributeDefinitions });
-          }
-
           const importedScenario = scenarioStorage.importScenario(exportedData);
 
           set((state) => ({
@@ -379,6 +379,7 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
               ...state.savedScenarios,
               [importedScenario.id]: importedScenario,
             },
+            attributeDefinitions: importedScenario.attributeDefinitions,
           }));
 
           get().addNotification({

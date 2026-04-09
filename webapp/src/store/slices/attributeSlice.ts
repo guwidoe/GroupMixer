@@ -1,85 +1,121 @@
 /**
- * Attribute slice - manages attribute definitions for person attributes.
+ * Attribute slice - manages attribute definitions for the active scenario workspace.
  */
 
-import type { AttributeDefinition, Person, Scenario } from "../../types";
-import type { AttributeState, AttributeActions, StoreSlice } from "../types";
-
-const ATTRIBUTE_DEFS_KEY = "people-distributor-attribute-definitions";
+import type { AttributeDefinition, Person, Scenario } from '../../types';
+import type { AttributeState, AttributeActions, StoreSlice } from '../types';
+import { createAttributeDefinition, getAttributeDefinitionName, normalizeAttributeName } from '../../services/scenarioAttributes';
 
 export const DEFAULT_ATTRIBUTE_DEFINITIONS: AttributeDefinition[] = [
-  { key: "gender", values: ["male", "female"] },
-  {
-    key: "department",
-    values: ["engineering", "marketing", "sales", "hr", "finance"],
-  },
-  { key: "seniority", values: ["junior", "mid", "senior", "lead"] },
-  { key: "location", values: ["office", "remote", "hybrid"] },
+  createAttributeDefinition('gender', ['male', 'female'], 'default-gender'),
+  createAttributeDefinition('department', ['engineering', 'marketing', 'sales', 'hr', 'finance'], 'default-department'),
+  createAttributeDefinition('seniority', ['junior', 'mid', 'senior', 'lead'], 'default-seniority'),
+  createAttributeDefinition('location', ['office', 'remote', 'hybrid'], 'default-location'),
 ];
 
-export function loadAttributeDefinitions(): AttributeDefinition[] {
-  try {
-    const stored = localStorage.getItem(ATTRIBUTE_DEFS_KEY);
-    if (stored) {
-      return JSON.parse(stored) as AttributeDefinition[];
-    }
-  } catch (error) {
-    console.error("Failed to load attribute definitions from storage:", error);
+function removeAttributeFromScenarioPeople(scenario: Scenario | null, attributeName: string): Scenario | null {
+  if (!scenario) {
+    return scenario;
   }
-  return DEFAULT_ATTRIBUTE_DEFINITIONS;
+
+  return {
+    ...scenario,
+    people: scenario.people.map((person) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { [attributeName]: _removed, ...restAttrs } = person.attributes || {};
+      return { ...person, attributes: { ...restAttrs } } as Person;
+    }),
+  };
 }
 
-function saveAttributeDefinitions(definitions: AttributeDefinition[]): void {
-  try {
-    localStorage.setItem(ATTRIBUTE_DEFS_KEY, JSON.stringify(definitions));
-  } catch (error) {
-    console.error("Failed to save attribute definitions:", error);
-  }
-}
-
-export const createAttributeSlice: StoreSlice<AttributeState & AttributeActions> = (
-  set
-) => ({
+export const createAttributeSlice: StoreSlice<AttributeState & AttributeActions> = (set, get) => ({
   attributeDefinitions: DEFAULT_ATTRIBUTE_DEFINITIONS,
 
   setAttributeDefinitions: (definitions) => {
-    saveAttributeDefinitions(definitions);
-    set({ attributeDefinitions: definitions });
+    const { currentScenarioId } = get();
+    set((state) => ({
+      attributeDefinitions: definitions,
+      savedScenarios:
+        currentScenarioId && state.savedScenarios[currentScenarioId]
+          ? {
+              ...state.savedScenarios,
+              [currentScenarioId]: {
+                ...state.savedScenarios[currentScenarioId],
+                attributeDefinitions: definitions,
+                updatedAt: Date.now(),
+              },
+            }
+          : state.savedScenarios,
+    }));
   },
 
   addAttributeDefinition: (definition) =>
     set((prev) => {
-      const newDefs = [...prev.attributeDefinitions, definition];
-      saveAttributeDefinitions(newDefs);
-      return { attributeDefinitions: newDefs };
+      const normalizedName = normalizeAttributeName(getAttributeDefinitionName(definition));
+      const existing = prev.attributeDefinitions.find(
+        (candidate) => normalizeAttributeName(getAttributeDefinitionName(candidate)) === normalizedName,
+      );
+      const newDefinitions = existing
+        ? prev.attributeDefinitions.map((candidate) =>
+            candidate.id === existing.id
+              ? {
+                  ...candidate,
+                  name: getAttributeDefinitionName(candidate),
+                  key: getAttributeDefinitionName(candidate),
+                  values: Array.from(new Set([...candidate.values, ...definition.values])).sort((left, right) =>
+                    left.localeCompare(right),
+                  ),
+                }
+              : candidate,
+          )
+        : [...prev.attributeDefinitions, definition];
+      const { currentScenarioId } = prev;
+      return {
+        attributeDefinitions: newDefinitions,
+        savedScenarios:
+          currentScenarioId && prev.savedScenarios[currentScenarioId]
+            ? {
+                ...prev.savedScenarios,
+                [currentScenarioId]: {
+                  ...prev.savedScenarios[currentScenarioId],
+                  attributeDefinitions: newDefinitions,
+                  updatedAt: Date.now(),
+                },
+              }
+            : prev.savedScenarios,
+      };
     }),
 
   removeAttributeDefinition: (key) =>
     set((prev) => {
-      const updatedAttrDefs = prev.attributeDefinitions.filter(
-        (def) => def.key !== key
+      const normalizedKey = normalizeAttributeName(key);
+      const definitionToRemove = prev.attributeDefinitions.find(
+        (definition) => normalizeAttributeName(getAttributeDefinitionName(definition)) === normalizedKey,
       );
-
-      saveAttributeDefinitions(updatedAttrDefs);
-
-      let updatedScenario = prev.scenario;
-      if (updatedScenario) {
-        updatedScenario = {
-          ...updatedScenario,
-          people: updatedScenario.people.map((p) => {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { [key]: _removed, ...restAttrs } = p.attributes || {};
-            return { ...p, attributes: { ...restAttrs } } as Person;
-          }),
-        } as Scenario;
-      }
+      const updatedAttrDefs = prev.attributeDefinitions.filter(
+        (definition) => normalizeAttributeName(getAttributeDefinitionName(definition)) !== normalizedKey,
+      );
+      const updatedScenario = removeAttributeFromScenarioPeople(
+        prev.scenario,
+        definitionToRemove ? getAttributeDefinitionName(definitionToRemove) : key,
+      );
+      const { currentScenarioId } = prev;
 
       return {
         attributeDefinitions: updatedAttrDefs,
         scenario: updatedScenario,
+        savedScenarios:
+          currentScenarioId && prev.savedScenarios[currentScenarioId]
+            ? {
+                ...prev.savedScenarios,
+                [currentScenarioId]: {
+                  ...prev.savedScenarios[currentScenarioId],
+                  scenario: updatedScenario ?? prev.savedScenarios[currentScenarioId].scenario,
+                  attributeDefinitions: updatedAttrDefs,
+                  updatedAt: Date.now(),
+                },
+              }
+            : prev.savedScenarios,
       };
     }),
 });
-
-// Export for use in import/export
-export { ATTRIBUTE_DEFS_KEY };
