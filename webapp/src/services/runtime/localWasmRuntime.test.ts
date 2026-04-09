@@ -6,6 +6,14 @@ import type { RuntimeProgressUpdate } from './types';
 import { LocalWasmRuntime } from './localWasmRuntime';
 import { RuntimeCancelledError } from './runtime';
 
+const supportedMailbox = () => ({
+  transport: 'shared-mailbox' as const,
+  supported: true,
+  requiresCrossOriginIsolation: true as const,
+  crossOriginIsolated: true,
+  sharedArrayBufferAvailable: true,
+});
+
 function createBaseTransport(overrides: Partial<SolverContractTransport> = {}): SolverContractTransport {
   return {
     initialize: vi.fn(async () => undefined),
@@ -63,7 +71,11 @@ function createRuntimeHarness(overrides: {
   const solution = createSampleSolution();
   const workerTransport = createBaseTransport(overrides.workerTransport);
   const wasmTransport = createBaseTransport(overrides.wasmTransport);
-  const runtime = new LocalWasmRuntime({ workerTransport, wasmTransport });
+  const runtime = new LocalWasmRuntime({
+    workerTransport,
+    wasmTransport,
+    progressMailboxSupport: supportedMailbox,
+  });
 
   return {
     runtime,
@@ -144,7 +156,12 @@ describe('LocalWasmRuntime', () => {
         return { result: createRustResultFromSolution(), lastProgress: progress };
       }),
     });
-    const runtime = new LocalWasmRuntime({ workerTransport, wasmTransport: createBaseTransport(), now: () => 1234 });
+    const runtime = new LocalWasmRuntime({
+      workerTransport,
+      wasmTransport: createBaseTransport(),
+      now: () => 1234,
+      progressMailboxSupport: supportedMailbox,
+    });
 
     let snapshotDuringCallback = null;
     const result = await runtime.solveWithProgress({
@@ -178,7 +195,11 @@ describe('LocalWasmRuntime', () => {
         rejectSolve?.(new Error('Solver cancelled by user'));
       }),
     });
-    const runtime = new LocalWasmRuntime({ workerTransport, wasmTransport: createBaseTransport() });
+    const runtime = new LocalWasmRuntime({
+      workerTransport,
+      wasmTransport: createBaseTransport(),
+      progressMailboxSupport: supportedMailbox,
+    });
 
     const promise = runtime.solveWithProgress({ scenario });
     await vi.waitFor(() => {
@@ -197,11 +218,45 @@ describe('LocalWasmRuntime', () => {
     const wasmTransport = createBaseTransport({
       evaluateInput: vi.fn(async () => createRustResultFromSolution()),
     });
-    const runtime = new LocalWasmRuntime({ workerTransport: createBaseTransport(), wasmTransport });
+    const runtime = new LocalWasmRuntime({
+      workerTransport: createBaseTransport(),
+      wasmTransport,
+      progressMailboxSupport: supportedMailbox,
+    });
 
     const result = await runtime.evaluateSolution({ scenario, assignments: solution.assignments });
 
     expect(wasmTransport.evaluateInput).toHaveBeenCalledTimes(1);
     expect(result.final_score).toBe(solution.final_score);
+  });
+
+  it('fails explicitly when shared mailbox prerequisites are unavailable', async () => {
+    const { scenario } = createRuntimeHarness();
+    const runtime = new LocalWasmRuntime({
+      workerTransport: createBaseTransport(),
+      wasmTransport: createBaseTransport(),
+      progressMailboxSupport: () => ({
+        transport: 'shared-mailbox',
+        supported: false,
+        requiresCrossOriginIsolation: true,
+        crossOriginIsolated: false,
+        sharedArrayBufferAvailable: true,
+        unavailableReason: 'crossOriginIsolated is false; Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy are required.',
+      }),
+    });
+
+    await expect(runtime.getCapabilities()).resolves.toEqual(
+      expect.objectContaining({
+        supportsStreamingProgress: false,
+        progressMailbox: expect.objectContaining({
+          supported: false,
+          crossOriginIsolated: false,
+        }),
+      }),
+    );
+
+    await expect(runtime.solveWithProgress({ scenario })).rejects.toThrow(
+      'crossOriginIsolated is false; Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy are required.',
+    );
   });
 });

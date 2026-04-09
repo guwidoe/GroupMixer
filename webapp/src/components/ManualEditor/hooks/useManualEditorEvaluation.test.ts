@@ -17,6 +17,14 @@ function createRuntimeMock(overrides: Partial<SolverRuntime> = {}): SolverRuntim
       supportsEvaluation: true,
       supportsRecommendedSettings: true,
       supportsActiveSolveInspection: true,
+      progressTransport: 'shared-mailbox',
+      progressMailbox: {
+        transport: 'shared-mailbox',
+        supported: true,
+        requiresCrossOriginIsolation: true,
+        crossOriginIsolated: true,
+        sharedArrayBufferAvailable: true,
+      },
     })),
     listSolvers: vi.fn(async () => ({ solvers: [] })),
     getSolverDescriptor: vi.fn(async () => ({

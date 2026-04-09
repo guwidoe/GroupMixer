@@ -4,6 +4,7 @@ import { createWasmContractTransport, createWorkerContractTransport, type Solver
 import { normalizeRecommendedSolverSettings } from '../runtimeAdapters/recommendedSettings';
 import { buildWasmRecommendSettingsRequest } from '../wasm/scenarioContract';
 import { RuntimeCancelledError, RuntimeError, type SolverRuntime } from './runtime';
+import { getRuntimeProgressMailboxSupport, type RuntimeProgressMailboxSupport } from './progressMailbox';
 import type {
   RuntimeActiveSolveSnapshot,
   RuntimeCapabilities,
@@ -21,18 +22,6 @@ import type {
   RuntimeWarmStartSchedule,
 } from './types';
 
-const LOCAL_WASM_RUNTIME_CAPABILITIES: RuntimeCapabilities = {
-  runtimeId: 'local-wasm',
-  executionModel: 'local-browser',
-  lifecycle: 'local-active-solve',
-  supportsStreamingProgress: true,
-  supportsWarmStart: true,
-  supportsCancellation: true,
-  supportsEvaluation: true,
-  supportsRecommendedSettings: true,
-  supportsActiveSolveInspection: true,
-};
-
 interface ActiveSolveState {
   runScenario: Scenario;
   selectedSettings: SolverSettings;
@@ -47,6 +36,7 @@ export interface LocalWasmRuntimeDeps {
   workerTransport?: SolverContractTransport;
   wasmTransport?: SolverContractTransport;
   now?: () => number;
+  progressMailboxSupport?: () => RuntimeProgressMailboxSupport;
 }
 
 function cloneValue<T>(value: T): T {
@@ -104,12 +94,43 @@ export class LocalWasmRuntime implements SolverRuntime {
     return this.deps.now?.() ?? Date.now();
   }
 
+  private getProgressMailboxSupport(): RuntimeProgressMailboxSupport {
+    return this.deps.progressMailboxSupport?.() ?? getRuntimeProgressMailboxSupport();
+  }
+
+  private assertProgressMailboxSupport(): void {
+    const mailboxSupport = this.getProgressMailboxSupport();
+    if (!mailboxSupport.supported) {
+      throw new RuntimeError(
+        mailboxSupport.unavailableReason
+          ?? 'Shared progress mailbox is unavailable in this environment.',
+        {
+          code: 'runtime_progress_mailbox_unavailable',
+        },
+      );
+    }
+  }
+
   async initialize(): Promise<void> {
     await this.workerTransport.initialize();
   }
 
   async getCapabilities(): Promise<RuntimeCapabilities> {
-    return LOCAL_WASM_RUNTIME_CAPABILITIES;
+    const progressMailbox = this.getProgressMailboxSupport();
+
+    return {
+      runtimeId: 'local-wasm',
+      executionModel: 'local-browser',
+      lifecycle: 'local-active-solve',
+      supportsStreamingProgress: progressMailbox.supported,
+      supportsWarmStart: true,
+      supportsCancellation: true,
+      supportsEvaluation: true,
+      supportsRecommendedSettings: true,
+      supportsActiveSolveInspection: true,
+      progressTransport: 'shared-mailbox',
+      progressMailbox,
+    };
   }
 
   async listSolvers(): Promise<RuntimeSolverCatalog> {
@@ -159,6 +180,7 @@ export class LocalWasmRuntime implements SolverRuntime {
   }
 
   async solveWithProgress(request: RuntimeSolveRequest): Promise<RuntimeSolveResult> {
+    this.assertProgressMailboxSupport();
     return this.runSolve({
       scenario: request.scenario,
       progressCallback: request.progressCallback,
@@ -166,6 +188,7 @@ export class LocalWasmRuntime implements SolverRuntime {
   }
 
   async solveWarmStart(request: RuntimeWarmStartRequest): Promise<RuntimeSolveResult> {
+    this.assertProgressMailboxSupport();
     return this.runSolve({
       scenario: request.scenario,
       progressCallback: request.progressCallback,
@@ -298,5 +321,3 @@ export class LocalWasmRuntime implements SolverRuntime {
     }
   }
 }
-
-export { LOCAL_WASM_RUNTIME_CAPABILITIES };

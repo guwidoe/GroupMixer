@@ -86,6 +86,13 @@ export function defineSolverRuntimeContractTests(
           supportsEvaluation: true,
           supportsRecommendedSettings: true,
           supportsActiveSolveInspection: true,
+          progressTransport: 'shared-mailbox',
+          progressMailbox: expect.objectContaining({
+            transport: 'shared-mailbox',
+            supported: true,
+            crossOriginIsolated: true,
+            sharedArrayBufferAvailable: true,
+          }),
         }),
       );
     });

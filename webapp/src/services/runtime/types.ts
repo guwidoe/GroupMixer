@@ -5,6 +5,7 @@ import type {
   WasmValidateResponse,
 } from '../wasm/module';
 import type { ProgressUpdate, RustResult } from '../wasm/types';
+import type { RuntimeProgressMailboxSupport } from './progressMailbox';
 
 export type RuntimeWarmStartSchedule = Record<string, Record<string, string[]>>;
 
@@ -38,6 +39,8 @@ export interface RuntimeCapabilities {
   supportsEvaluation: boolean;
   supportsRecommendedSettings: boolean;
   supportsActiveSolveInspection: boolean;
+  progressTransport: 'shared-mailbox';
+  progressMailbox: RuntimeProgressMailboxSupport;
 }
 
 export interface RuntimeRecommendedSettingsRequest {
