@@ -16,6 +16,26 @@ const PROGRESSIVE_PEOPLE_RENDER_THRESHOLD = 150;
 const INITIAL_VISIBLE_PEOPLE = 120;
 const PEOPLE_RENDER_CHUNK_SIZE = 120;
 
+function normalizeAttributeKey(key: string) {
+  return key.trim().toLowerCase();
+}
+
+function getPersonAttributeValue(person: Person, attributeKey: string) {
+  const exactValue = person.attributes?.[attributeKey];
+  if (exactValue !== undefined) {
+    return exactValue;
+  }
+
+  const normalizedTarget = normalizeAttributeKey(attributeKey);
+  for (const [key, value] of Object.entries(person.attributes ?? {})) {
+    if (normalizeAttributeKey(key) === normalizedTarget) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
 interface PeopleDirectoryProps {
   scenario: Scenario | null;
   attributeDefinitions: AttributeDefinition[];
@@ -156,31 +176,31 @@ export function PeopleDirectory({
     [sessionsCount],
   );
   const peopleAttributeColumns = useMemo(() => {
-    const orderedKeys = new Set<string>();
+    const orderedKeys = new Map<string, string>();
 
     for (const definition of attributeDefinitions) {
       if (definition.key !== 'name') {
-        orderedKeys.add(definition.key);
+        orderedKeys.set(normalizeAttributeKey(definition.key), definition.key);
       }
     }
 
     for (const person of basePeople) {
       for (const key of Object.keys(person.attributes ?? {})) {
         if (key !== 'name') {
-          orderedKeys.add(key);
+          orderedKeys.set(normalizeAttributeKey(key), orderedKeys.get(normalizeAttributeKey(key)) ?? key);
         }
       }
     }
 
-    return Array.from(orderedKeys).map((key) => {
-      const definition = attributeDefinitions.find((attribute) => attribute.key === key);
+    return Array.from(orderedKeys.entries()).map(([normalizedKey, displayKey]) => {
+      const definition = attributeDefinitions.find((attribute) => normalizeAttributeKey(attribute.key) === normalizedKey);
       const observedValues = basePeople
-        .map((person) => person.attributes?.[key])
+        .map((person) => getPersonAttributeValue(person, displayKey))
         .filter((value): value is string => typeof value === 'string' && value.length > 0);
       const optionValues = Array.from(new Set([...(definition?.values ?? []), ...observedValues]));
 
       return {
-        key,
+        key: displayKey,
         optionValues,
       };
     });
@@ -350,19 +370,19 @@ export function PeopleDirectory({
               ...peopleAttributeColumns.map((attribute) => ({
                 id: `attribute-${attribute.key}`,
                 header: attribute.key,
-                cell: (person: Person) => person.attributes[attribute.key] ?? '—',
-                searchValue: (person: Person) => String(person.attributes[attribute.key] ?? ''),
-                exportValue: (person: Person) => String(person.attributes[attribute.key] ?? ''),
+                cell: (person: Person) => getPersonAttributeValue(person, attribute.key) ?? '—',
+                searchValue: (person: Person) => String(getPersonAttributeValue(person, attribute.key) ?? ''),
+                exportValue: (person: Person) => String(getPersonAttributeValue(person, attribute.key) ?? ''),
                 filter: {
                   type: 'select' as const,
                   ariaLabel: `Filter people by ${attribute.key}`,
-                  getValue: (person: Person) => String(person.attributes[attribute.key] ?? ''),
+                  getValue: (person: Person) => String(getPersonAttributeValue(person, attribute.key) ?? ''),
                   options: attribute.optionValues.map((value) => ({ value, label: value })),
                 },
                 width: 180,
                 editor: {
                   type: attribute.optionValues.length > 0 ? 'select' as const : 'text' as const,
-                  getValue: (person: Person) => String(person.attributes[attribute.key] ?? attribute.optionValues[0] ?? ''),
+                  getValue: (person: Person) => String(getPersonAttributeValue(person, attribute.key) ?? attribute.optionValues[0] ?? ''),
                   options: attribute.optionValues.map((value) => ({ value, label: value })),
                   onCommit: (person: Person, value: string | number | string[]) =>
                     onInlineUpdatePerson(person.id, { attributes: { [attribute.key]: String(value) } }),

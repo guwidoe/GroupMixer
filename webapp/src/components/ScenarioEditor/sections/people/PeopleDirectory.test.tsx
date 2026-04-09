@@ -103,4 +103,39 @@ describe('PeopleDirectory', () => {
     await user.click(screen.getAllByRole('button', { name: /delete alex/i })[0]!);
     expect(onDeletePerson).toHaveBeenCalledWith('p1');
   });
+
+  it('shows list-view attributes even when stored keys differ in casing', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <PeopleDirectory
+        scenario={createSampleScenario({
+          people: [
+            { id: 'p1', attributes: { name: 'Alex', Gender: 'female', Department: 'Engineering' }, sessions: [0, 1] },
+          ],
+          settings: createSampleSolverSettings(),
+        })}
+        attributeDefinitions={[
+          { key: 'gender', values: ['female', 'male'] },
+          { key: 'department', values: ['Engineering'] },
+        ]}
+        sessionsCount={3}
+        onAddPerson={vi.fn()}
+        onEditPerson={vi.fn()}
+        onDeletePerson={vi.fn()}
+        onInlineUpdatePerson={vi.fn()}
+        onOpenBulkAddForm={vi.fn()}
+        onOpenBulkUpdateForm={vi.fn()}
+        onTriggerCsvUpload={vi.fn()}
+        onTriggerExcelImport={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /list/i }));
+
+    expect(screen.getByRole('columnheader', { name: /gender/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /department/i })).toBeInTheDocument();
+    expect(screen.getAllByText('female').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Engineering').length).toBeGreaterThan(0);
+  });
 });
