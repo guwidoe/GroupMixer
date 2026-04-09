@@ -10,6 +10,10 @@ export interface ScenarioDataGridNumberRangeValue {
   max?: string;
 }
 
+export type ScenarioDataGridTextFilterValue = string[];
+
+export type ScenarioDataGridSelectFilterValue = string[];
+
 export interface ScenarioDataGridColumnFilter<T> {
   type: 'text' | 'select' | 'numberRange';
   getValue?: (row: T) => string | string[] | number | undefined;

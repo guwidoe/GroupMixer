@@ -1,11 +1,13 @@
 import React from 'react';
 import {
+  Check,
   ChevronDown,
   ChevronUp,
   Copy,
   Columns3,
   Download,
   FileSpreadsheet,
+  Funnel,
   PencilLine,
   Search,
   X,
@@ -36,6 +38,8 @@ import type {
   ScenarioDataGridColumnEditor,
   ScenarioDataGridNumberRangeValue,
   ScenarioDataGridOption,
+  ScenarioDataGridSelectFilterValue,
+  ScenarioDataGridTextFilterValue,
 } from './types';
 
 interface ScenarioDataGridProps<T> {
@@ -75,6 +79,45 @@ function normalizeFilterText(value: string | number | string[] | undefined) {
   return value == null ? '' : String(value).toLowerCase();
 }
 
+function normalizeFilterListValue(value: unknown) {
+  if (Array.isArray(value)) {
+    return Array.from(new Set(value.map((entry) => String(entry).trim()).filter((entry) => entry.length > 0)));
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed ? [trimmed] : [];
+  }
+
+  return [];
+}
+
+function isFilterListValueActive(value: unknown) {
+  return normalizeFilterListValue(value).length > 0;
+}
+
+function isNumberRangeFilterActive(value: unknown) {
+  const range = (value ?? {}) as ScenarioDataGridNumberRangeValue;
+  return Boolean(range.min || range.max);
+}
+
+function getColumnFilterCount<T>(sourceColumn: ScenarioDataGridColumn<T>, value: unknown) {
+  if (!sourceColumn.filter) {
+    return 0;
+  }
+
+  if (sourceColumn.filter.type === 'numberRange') {
+    return isNumberRangeFilterActive(value) ? 1 : 0;
+  }
+
+  return normalizeFilterListValue(value).length;
+}
+
+function removeFilterListEntry(value: unknown, entryToRemove: string) {
+  const nextValue = normalizeFilterListValue(value).filter((entry) => entry !== entryToRemove);
+  return nextValue.length > 0 ? nextValue : undefined;
+}
+
 function resolveFilterValue<T>(row: T, column: ScenarioDataGridColumn<T>) {
   if (column.filter?.getValue) {
     return column.filter.getValue(row);
@@ -93,6 +136,10 @@ function resolveFilterOptions<T>(column: ScenarioDataGridColumn<T>, rows: T[]): 
     return [];
   }
   return typeof column.filter.options === 'function' ? column.filter.options(rows) : column.filter.options;
+}
+
+function resolveFilterOptionLabel<T>(column: ScenarioDataGridColumn<T>, rows: T[], value: string) {
+  return resolveFilterOptions(column, rows).find((option) => option.value === value)?.label ?? value;
 }
 
 function normalizeExportValue(value: string | number | string[] | undefined) {
@@ -313,74 +360,265 @@ function ColumnFilterControl<T>({
   column,
   sourceColumn,
   rows,
+  isOpen,
+  onToggle,
+  onClose,
 }: {
   column: Column<T, unknown>;
   sourceColumn: ScenarioDataGridColumn<T>;
   rows: T[];
+  isOpen: boolean;
+  onToggle: () => void;
+  onClose: () => void;
 }) {
   const filter = sourceColumn.filter;
   if (!filter) {
     return null;
   }
 
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const [draftText, setDraftText] = React.useState('');
+  const [optionQuery, setOptionQuery] = React.useState('');
+
+  useOutsideClick({
+    refs: [wrapperRef, triggerRef],
+    enabled: isOpen,
+    onOutsideClick: () => onClose(),
+  });
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      setDraftText('');
+      setOptionQuery('');
+    }
+  }, [isOpen]);
+
   const commonInputClassName = 'input h-8 w-full rounded-lg px-2 text-xs';
+  const activeCount = getColumnFilterCount(sourceColumn, column.getFilterValue());
 
-  if (filter.type === 'text') {
+  const addTextToken = () => {
+    const token = draftText.trim();
+    if (!token) {
+      return;
+    }
+
+    const currentTokens = normalizeFilterListValue(column.getFilterValue());
+    const alreadyExists = currentTokens.some((entry) => entry.toLowerCase() === token.toLowerCase());
+    if (!alreadyExists) {
+      column.setFilterValue([...currentTokens, token] satisfies ScenarioDataGridTextFilterValue);
+    }
+    setDraftText('');
+  };
+
+  const removeTextToken = (token: string) => {
+    column.setFilterValue(removeFilterListEntry(column.getFilterValue(), token));
+  };
+
+  const toggleSelectedValue = (value: string) => {
+    const currentValues = normalizeFilterListValue(column.getFilterValue());
+    const nextValues = currentValues.includes(value)
+      ? currentValues.filter((entry) => entry !== value)
+      : [...currentValues, value];
+    column.setFilterValue(nextValues.length > 0 ? (nextValues satisfies ScenarioDataGridSelectFilterValue) : undefined);
+  };
+
+  const renderPopoverContent = () => {
+    if (filter.type === 'text') {
+      const tokens = normalizeFilterListValue(column.getFilterValue());
+      return (
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <label className="block text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>
+              Contains
+            </label>
+            <input
+              type="text"
+              className={commonInputClassName}
+              value={draftText}
+              onChange={(event) => setDraftText(event.target.value)}
+              placeholder={filter.placeholder ?? `Type and press Enter`}
+              aria-label={filter.ariaLabel ?? `Filter ${sourceColumn.header}`}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  addTextToken();
+                }
+                if (event.key === 'Escape') {
+                  onClose();
+                }
+              }}
+            />
+          </div>
+          {tokens.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {tokens.map((token) => (
+                <button
+                  key={token}
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs"
+                  style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}
+                  onClick={() => removeTextToken(token)}
+                >
+                  <span>{token}</span>
+                  <X className="h-3 w-3" />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+              Press Enter to add one or more filter tokens for this column.
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    if (filter.type === 'select') {
+      const selectedValues = normalizeFilterListValue(column.getFilterValue());
+      const options = resolveFilterOptions(sourceColumn, rows).filter((option) => {
+        const query = normalizeSearchValue(optionQuery);
+        if (!query) {
+          return true;
+        }
+        return normalizeSearchValue(option.label).includes(query);
+      });
+
+      return (
+        <div className="space-y-3">
+          <input
+            type="text"
+            className={commonInputClassName}
+            value={optionQuery}
+            onChange={(event) => setOptionQuery(event.target.value)}
+            placeholder={filter.placeholder ?? 'Search options…'}
+            aria-label={filter.ariaLabel ?? `Filter ${sourceColumn.header}`}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                onClose();
+              }
+            }}
+          />
+          <div className="max-h-56 space-y-1 overflow-auto rounded-lg border p-1" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
+            {options.length > 0 ? options.map((option) => {
+              const checked = selectedValues.includes(option.value);
+              return (
+                <label
+                  key={option.value}
+                  className="flex cursor-pointer items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-[color:var(--bg-primary)]"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  <span className="min-w-0 truncate">{option.label}</span>
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={checked}
+                    onChange={() => toggleSelectedValue(option.value)}
+                    aria-label={`${checked ? 'Remove' : 'Add'} ${option.label} filter`}
+                  />
+                  <span
+                    className="inline-flex h-4 w-4 items-center justify-center rounded border"
+                    style={{
+                      borderColor: checked ? 'var(--color-accent)' : 'var(--border-primary)',
+                      backgroundColor: checked ? 'color-mix(in srgb, var(--color-accent) 16%, transparent)' : 'transparent',
+                      color: checked ? 'var(--color-accent)' : 'transparent',
+                    }}
+                  >
+                    <Check className="h-3 w-3" />
+                  </span>
+                </label>
+              );
+            }) : (
+              <div className="px-2 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                No options match.
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    const rangeValue = (column.getFilterValue() as ScenarioDataGridNumberRangeValue | undefined) ?? {};
     return (
-      <input
-        type="text"
-        className={commonInputClassName}
-        value={String(column.getFilterValue() ?? '')}
-        onChange={(event) => column.setFilterValue(event.target.value)}
-        onClick={(event) => event.stopPropagation()}
-        placeholder={filter.placeholder ?? `Filter ${sourceColumn.header.toLowerCase()}…`}
-        aria-label={filter.ariaLabel ?? `Filter ${sourceColumn.header}`}
-      />
+      <div className="grid grid-cols-2 gap-1.5">
+        <input
+          type="number"
+          className={commonInputClassName}
+          value={rangeValue.min ?? ''}
+          onChange={(event) => column.setFilterValue({ ...rangeValue, min: event.target.value || undefined })}
+          placeholder="Min"
+          aria-label={`${filter.ariaLabel ?? sourceColumn.header} minimum`}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              onClose();
+            }
+          }}
+        />
+        <input
+          type="number"
+          className={commonInputClassName}
+          value={rangeValue.max ?? ''}
+          onChange={(event) => column.setFilterValue({ ...rangeValue, max: event.target.value || undefined })}
+          placeholder="Max"
+          aria-label={`${filter.ariaLabel ?? sourceColumn.header} maximum`}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              onClose();
+            }
+          }}
+        />
+      </div>
     );
-  }
-
-  if (filter.type === 'select') {
-    const options = resolveFilterOptions(sourceColumn, rows);
-    return (
-      <select
-        className={commonInputClassName}
-        value={String(column.getFilterValue() ?? '')}
-        onChange={(event) => column.setFilterValue(event.target.value || undefined)}
-        onClick={(event) => event.stopPropagation()}
-        aria-label={filter.ariaLabel ?? `Filter ${sourceColumn.header}`}
-      >
-        <option value="">All</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    );
-  }
-
-  const rangeValue = (column.getFilterValue() as ScenarioDataGridNumberRangeValue | undefined) ?? {};
+  };
 
   return (
-    <div className="grid grid-cols-2 gap-1.5">
-      <input
-        type="number"
-        className={commonInputClassName}
-        value={rangeValue.min ?? ''}
-        onClick={(event) => event.stopPropagation()}
-        onChange={(event) => column.setFilterValue({ ...rangeValue, min: event.target.value || undefined })}
-        placeholder="Min"
-        aria-label={`${filter.ariaLabel ?? sourceColumn.header} minimum`}
-      />
-      <input
-        type="number"
-        className={commonInputClassName}
-        value={rangeValue.max ?? ''}
-        onClick={(event) => event.stopPropagation()}
-        onChange={(event) => column.setFilterValue({ ...rangeValue, max: event.target.value || undefined })}
-        placeholder="Max"
-        aria-label={`${filter.ariaLabel ?? sourceColumn.header} maximum`}
-      />
+    <div ref={wrapperRef} className="relative flex items-center justify-end">
+      <button
+        ref={triggerRef}
+        type="button"
+        className="inline-flex h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition-colors hover:border-[var(--color-accent)] hover:text-[var(--text-primary)]"
+        style={{
+          borderColor: activeCount > 0 ? 'var(--color-accent)' : 'var(--border-primary)',
+          backgroundColor: isOpen ? 'var(--bg-primary)' : 'transparent',
+          color: activeCount > 0 ? 'var(--color-accent)' : 'var(--text-tertiary)',
+        }}
+        aria-label={`${isOpen ? 'Close' : 'Open'} filter for ${sourceColumn.header}`}
+        aria-expanded={isOpen}
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggle();
+        }}
+      >
+        <Funnel className="h-3.5 w-3.5" />
+        {activeCount > 0 ? <span>{activeCount}</span> : null}
+      </button>
+
+      {isOpen ? (
+        <div
+          className="absolute right-0 top-full z-30 mt-2 w-72 rounded-2xl border p-3 shadow-lg"
+          style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>
+                {sourceColumn.header} filter
+              </div>
+            </div>
+            {activeCount > 0 ? (
+              <button
+                type="button"
+                className="text-xs font-medium underline"
+                style={{ color: 'var(--color-accent)' }}
+                onClick={() => column.setFilterValue(undefined)}
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+          {renderPopoverContent()}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -479,6 +717,7 @@ export function ScenarioDataGrid<T>({
   );
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = React.useState('');
+  const [openFilterId, setOpenFilterId] = React.useState<string | null>(null);
   const [isColumnsMenuOpen, setIsColumnsMenuOpen] = React.useState(false);
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [isCsvPreviewOpen, setIsCsvPreviewOpen] = React.useState(false);
@@ -584,12 +823,22 @@ export function ScenarioDataGrid<T>({
           const rowValue = resolveFilterValue(row.original, column);
 
           if (column.filter.type === 'text') {
-            const query = normalizeSearchValue(String(filterValue ?? ''));
-            return !query || normalizeFilterText(rowValue).includes(query);
+            const queries = normalizeFilterListValue(filterValue).map((value) => normalizeSearchValue(value));
+            return queries.length === 0 || queries.some((query) => normalizeFilterText(rowValue).includes(query));
           }
 
           if (column.filter.type === 'select') {
-            return !filterValue || String(rowValue ?? '') === String(filterValue);
+            const selectedValues = normalizeFilterListValue(filterValue);
+            if (selectedValues.length === 0) {
+              return true;
+            }
+
+            if (Array.isArray(rowValue)) {
+              const normalizedRowValues = rowValue.map((value) => String(value));
+              return selectedValues.some((value) => normalizedRowValues.includes(value));
+            }
+
+            return selectedValues.includes(String(rowValue ?? ''));
           }
 
           const range = (filterValue ?? {}) as ScenarioDataGridNumberRangeValue;
@@ -720,27 +969,32 @@ export function ScenarioDataGrid<T>({
     );
     return [headerLine, ...rowLines].join('\n');
   }, [csvColumns, exportRows]);
-  const activeColumnFilters = table.getState().columnFilters.map((filterState) => {
+  const activeColumnFilters = table.getState().columnFilters.flatMap((filterState) => {
     const sourceColumn = columns.find((candidate) => candidate.id === filterState.id);
     const sourceFilter = sourceColumn?.filter;
     if (!sourceColumn || !sourceFilter) {
-      return null;
+      return [];
     }
 
-    let valueLabel = '';
     if (sourceFilter.type === 'numberRange') {
       const range = filterState.value as ScenarioDataGridNumberRangeValue;
-      valueLabel = `${range.min ? `≥ ${range.min}` : ''}${range.min && range.max ? ' · ' : ''}${range.max ? `≤ ${range.max}` : ''}`;
-    } else {
-      valueLabel = String(filterState.value ?? '');
+      return [{
+        id: filterState.id,
+        filterId: filterState.id,
+        label: sourceColumn.header,
+        valueLabel: `${range.min ? `≥ ${range.min}` : ''}${range.min && range.max ? ' · ' : ''}${range.max ? `≤ ${range.max}` : ''}`,
+        onRemove: () => table.getColumn(filterState.id)?.setFilterValue(undefined),
+      }];
     }
 
-    return {
-      id: filterState.id,
+    return normalizeFilterListValue(filterState.value).map((entry) => ({
+      id: `${filterState.id}:${entry}`,
+      filterId: filterState.id,
       label: sourceColumn.header,
-      valueLabel,
-    };
-  }).filter(Boolean) as Array<{ id: string; label: string; valueLabel: string }>;
+      valueLabel: sourceFilter.type === 'select' ? resolveFilterOptionLabel(sourceColumn, rows, entry) : entry,
+      onRemove: () => table.getColumn(filterState.id)?.setFilterValue(removeFilterListEntry(filterState.value, entry)),
+    }));
+  });
   const summary = searchSummary
     ? searchSummary({ filteredCount, totalCount, query: globalFilter })
     : (
@@ -831,7 +1085,7 @@ export function ScenarioDataGrid<T>({
               type="button"
               className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs"
               style={{ borderColor: 'var(--border-primary)', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-secondary)' }}
-              onClick={() => table.getColumn(filter.id)?.setFilterValue(undefined)}
+              onClick={filter.onRemove}
             >
               <span>{filter.label}: {filter.valueLabel}</span>
               <X className="h-3 w-3" />
@@ -902,17 +1156,24 @@ export function ScenarioDataGrid<T>({
                     >
                       {header.isPlaceholder ? null : (
                         <div className="space-y-2">
-                          <ScenarioDataGridHeader
-                            title={String(header.column.columnDef.header)}
-                            canSort={header.column.getCanSort()}
-                            sorted={header.column.getIsSorted()}
-                            onSort={header.column.getToggleSortingHandler()}
-                          />
-                          {sourceColumn?.filter ? (
-                            <div onClick={(event) => event.stopPropagation()}>
-                              <ColumnFilterControl column={header.column} sourceColumn={sourceColumn} rows={rows} />
-                            </div>
-                          ) : null}
+                          <div className="flex items-start justify-between gap-2">
+                            <ScenarioDataGridHeader
+                              title={String(header.column.columnDef.header)}
+                              canSort={header.column.getCanSort()}
+                              sorted={header.column.getIsSorted()}
+                              onSort={header.column.getToggleSortingHandler()}
+                            />
+                            {sourceColumn?.filter ? (
+                              <ColumnFilterControl
+                                column={header.column}
+                                sourceColumn={sourceColumn}
+                                rows={rows}
+                                isOpen={openFilterId === sourceColumn.id}
+                                onToggle={() => setOpenFilterId((current) => current === sourceColumn.id ? null : sourceColumn.id)}
+                                onClose={() => setOpenFilterId((current) => current === sourceColumn.id ? null : current)}
+                              />
+                            ) : null}
+                          </div>
                         </div>
                       )}
                       {sourceColumn ? (

@@ -68,7 +68,7 @@ describe('ScenarioDataGrid', () => {
     expect(screen.queryByText('Beta')).not.toBeInTheDocument();
   });
 
-  it('supports header-level text and range filters', async () => {
+  it('supports icon-triggered header text tokens and range filters', async () => {
     const user = userEvent.setup();
 
     render(
@@ -103,16 +103,72 @@ describe('ScenarioDataGrid', () => {
       />,
     );
 
-    await user.type(screen.getByRole('textbox', { name: /filter names/i }), 'alpha');
+    expect(screen.queryByRole('textbox', { name: /filter names/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /open filter for name/i }));
+    await user.type(screen.getByRole('textbox', { name: /filter names/i }), 'alpha{enter}');
+
     expect(screen.getByText('Alpha')).toBeInTheDocument();
     expect(screen.queryByText('Beta')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /name: alpha/i })).toBeInTheDocument();
 
-    await user.clear(screen.getByRole('textbox', { name: /filter names/i }));
+    await user.click(screen.getByRole('button', { name: /name: alpha/i }));
+    await user.click(screen.getByRole('button', { name: /open filter for weight/i }));
     await user.type(screen.getByRole('spinbutton', { name: /filter weight minimum/i }), '15');
 
     expect(screen.getByText('Beta')).toBeInTheDocument();
     expect(screen.queryByText('Alpha')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /clear filters/i })).toBeInTheDocument();
+  });
+
+  it('supports multi-select column filtering from the header popover', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ScenarioDataGrid
+        rows={[
+          { id: 'a', name: 'Alex', team: 'Blue' },
+          { id: 'b', name: 'Bea', team: 'Red' },
+          { id: 'c', name: 'Casey', team: 'Green' },
+        ]}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            id: 'name',
+            header: 'Name',
+            cell: (row) => row.name,
+            sortValue: (row) => row.name,
+            searchValue: (row) => row.name,
+          },
+          {
+            id: 'team',
+            header: 'Team',
+            cell: (row) => row.team,
+            sortValue: (row) => row.team,
+            searchValue: (row) => row.team,
+            filter: {
+              type: 'select',
+              ariaLabel: 'Filter team options',
+              options: [
+                { value: 'Blue', label: 'Blue' },
+                { value: 'Red', label: 'Red' },
+                { value: 'Green', label: 'Green' },
+              ],
+            },
+          },
+        ]}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /open filter for team/i }));
+    await user.click(screen.getByRole('checkbox', { name: /add blue filter/i }));
+    await user.click(screen.getByRole('checkbox', { name: /add red filter/i }));
+
+    expect(screen.getByText('Alex')).toBeInTheDocument();
+    expect(screen.getByText('Bea')).toBeInTheDocument();
+    expect(screen.queryByText('Casey')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /team: blue/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /team: red/i })).toBeInTheDocument();
   });
 
   it('toggles column visibility from the shared columns menu', async () => {
