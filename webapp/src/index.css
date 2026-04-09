@@ -423,7 +423,7 @@
   }
 
   .ui-button--toolbar:hover:not(:disabled) {
-    background-color: var(--bg-tertiary);
+    background-color: var(--bg-primary);
     color: var(--text-primary);
     box-shadow: none;
     transform: none;
@@ -460,6 +460,27 @@
     min-height: 2.75rem;
     min-width: 2.75rem;
     padding: 0.65rem;
+  }
+
+  .ui-button--toolbar.ui-button--sm {
+    min-height: 2.25rem;
+    padding: 0.4rem 0.7rem;
+  }
+
+  .ui-button--toolbar.ui-button--md {
+    min-height: 2.5rem;
+    padding: 0.55rem 0.85rem;
+  }
+
+  .ui-button--toolbar.ui-button--lg {
+    min-height: 2.75rem;
+    padding: 0.65rem 1rem;
+  }
+
+  .ui-button--toolbar.ui-button--icon {
+    min-height: 2.5rem;
+    min-width: 2.5rem;
+    padding: 0;
   }
 
   .ui-button--full-width {

@@ -9,9 +9,10 @@ import { getButtonClassName } from '../ui';
 
 interface DemoDataDropdownProps {
   onDemoCaseClick: (demoCaseId: string, demoCaseName: string) => void;
-  variant?: 'default' | 'sidebar';
+  variant?: 'default' | 'sidebar' | 'header';
   placement?: 'bottom' | 'right';
   collapsed?: boolean;
+  triggerLabel?: string;
 }
 
 interface DropdownPosition {
@@ -26,6 +27,7 @@ export function DemoDataDropdown({
   variant = 'default',
   placement = 'bottom',
   collapsed = false,
+  triggerLabel = 'Demo Data',
 }: DemoDataDropdownProps) {
   const addNotification = useAppStore((state) => state.addNotification);
   const demoDropdownRef = useRef<HTMLDivElement>(null);
@@ -182,17 +184,25 @@ export function DemoDataDropdown({
   ) : (
     <button
       onClick={() => setIsOpen((open) => !open)}
-      className={getButtonClassName({ variant: 'secondary', size: 'lg' })}
+      className={getButtonClassName({ variant: variant === 'header' ? 'toolbar' : 'secondary', size: variant === 'header' ? 'md' : 'lg' })}
       style={{
         outline: 'none',
         boxShadow: 'none',
-        backgroundColor: isOpen ? 'var(--bg-tertiary)' : 'var(--bg-primary)',
+        backgroundColor: variant === 'header'
+          ? isOpen
+            ? 'var(--bg-primary)'
+            : 'transparent'
+          : isOpen
+            ? 'var(--bg-tertiary)'
+            : 'var(--bg-primary)',
+        borderColor: variant === 'header' ? 'transparent' : undefined,
       }}
       aria-expanded={isOpen}
       aria-haspopup="menu"
+      aria-label={triggerLabel}
     >
       <Zap className="w-4 h-4 flex-shrink-0" />
-      <span>Demo Data</span>
+      <span>{triggerLabel}</span>
       <ChevronDown className="w-4 h-4 flex-shrink-0" />
     </button>
   );

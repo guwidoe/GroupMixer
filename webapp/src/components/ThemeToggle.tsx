@@ -8,9 +8,15 @@ interface ThemeToggleProps {
   showLabel?: boolean;
   size?: 'sm' | 'md' | 'lg';
   variant?: 'default' | 'header';
+  showHeaderLabel?: boolean;
 }
 
-export function ThemeToggle({ showLabel = false, size = 'md', variant = 'default' }: ThemeToggleProps) {
+export function ThemeToggle({
+  showLabel = false,
+  size = 'md',
+  variant = 'default',
+  showHeaderLabel = false,
+}: ThemeToggleProps) {
   const { theme, setTheme } = useThemeStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [toggleHovered, setToggleHovered] = useState(false);
@@ -87,6 +93,7 @@ export function ThemeToggle({ showLabel = false, size = 'md', variant = 'default
   const Icon = currentTheme.icon;
 
   const isHeaderVariant = variant === 'header';
+  const isCompactHeaderToggle = isHeaderVariant && !showHeaderLabel;
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -95,19 +102,31 @@ export function ThemeToggle({ showLabel = false, size = 'md', variant = 'default
         onMouseEnter={() => setToggleHovered(true)}
         onMouseLeave={() => setToggleHovered(false)}
         className={isHeaderVariant
-          ? getButtonClassName({ variant: 'toolbar', size: 'md' })
+          ? [
+              getButtonClassName({ variant: 'toolbar', size: isCompactHeaderToggle ? 'icon' : 'md' }),
+              isCompactHeaderToggle ? 'h-10 w-10 min-h-10 min-w-10 rounded-xl p-0' : '',
+            ].filter(Boolean).join(' ')
           : `${buttonSizeClasses[size]} flex items-center gap-1 rounded-lg border transition-all duration-200`}
         style={{
-          backgroundColor: dropdownOpen || toggleHovered ? 'var(--bg-tertiary)' : 'var(--bg-primary)',
+          backgroundColor: isHeaderVariant
+            ? dropdownOpen || toggleHovered
+              ? 'var(--bg-primary)'
+              : 'transparent'
+            : dropdownOpen || toggleHovered
+              ? 'var(--bg-tertiary)'
+              : 'var(--bg-primary)',
           color: isHeaderVariant ? 'var(--text-secondary)' : 'var(--text-primary)',
-          borderColor: 'var(--border-primary)',
-          boxShadow: dropdownOpen ? 'var(--shadow)' : 'none',
+          borderColor: isHeaderVariant ? 'transparent' : 'var(--border-primary)',
+          boxShadow: !isHeaderVariant && dropdownOpen ? 'var(--shadow)' : 'none',
         }}
         title={`Current: ${currentTheme.label} mode. Click to change theme.`}
+        aria-label={`Theme: ${currentTheme.label}. Click to change theme.`}
       >
         <Icon className={sizeClasses[size]} />
-        {isHeaderVariant && <span>Theme</span>}
-        <ChevronDown className={`${sizeClasses[size]} transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+        {isHeaderVariant && showHeaderLabel && <span>Theme</span>}
+        {(!isHeaderVariant || showHeaderLabel) && (
+          <ChevronDown className={`${sizeClasses[size]} transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+        )}
       </button>
       
       {dropdownOpen && (

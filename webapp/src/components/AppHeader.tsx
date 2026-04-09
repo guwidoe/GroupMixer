@@ -2,7 +2,12 @@ import { type ReactNode, useState } from 'react';
 import { Bug, Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
-import { HEADER_ACTION_GROUP_CLASS, HEADER_ACTION_TOOLBAR_CLASS } from './headerActionStyles';
+import {
+  HEADER_ACTION_DIVIDER_CLASS,
+  HEADER_ACTION_GROUP_CLASS,
+  HEADER_ACTION_ICON_BUTTON_CLASS,
+  HEADER_ACTION_TOOLBAR_CLASS,
+} from './headerActionStyles';
 import { getButtonClassName } from './ui';
 
 interface AppHeaderProps {
@@ -33,16 +38,16 @@ export function AppHeader({
 
   return (
     <header
-      className="relative z-40 bg-white shadow-sm border-b border-gray-200 transition-colors"
-      style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+      className="relative z-40 border-b transition-colors backdrop-blur-xl"
+      style={{ backgroundColor: 'var(--bg-backdrop)', borderColor: 'var(--border-primary)' }}
     >
       <div className="w-full px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
           <div className="flex items-center justify-between">
-            <Link to={homeTo} className="flex items-center space-x-3 group">
-              <div className="flex items-center space-x-2">
+            <Link to={homeTo} className="flex items-center space-x-3 group min-w-0">
+              <div className="flex items-center space-x-2 min-w-0">
                 <img src={assetBaseUrl + 'logo.svg'} alt={logoAlt} className="h-8 w-8" />
-                <h1 className="text-2xl font-bold transition-colors" style={{ color: 'var(--text-primary)' }}>
+                <h1 className="truncate text-[1.85rem] font-semibold tracking-[-0.03em] transition-colors" style={{ color: 'var(--text-primary)' }}>
                   {title}
                 </h1>
               </div>
@@ -64,26 +69,30 @@ export function AppHeader({
             </button>
           </div>
 
-          <div className="hidden sm:ml-auto sm:flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+          <div className="hidden sm:ml-auto sm:flex items-center gap-2 sm:gap-3">
             {desktopActions}
 
             <div className={HEADER_ACTION_GROUP_CLASS}>
               <div
                 className={HEADER_ACTION_TOOLBAR_CLASS}
-                style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+                style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}
               >
-              <a
-                href={issueHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={issueLabel}
-                className={getButtonClassName({ variant: 'toolbar', size: 'md' })}
-              >
-                <Bug className="h-4 w-4" />
-                <span>Report Issue</span>
-              </a>
-
-              <ThemeToggle size="md" variant="header" />
+                <a
+                  href={issueHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={issueLabel}
+                  aria-label={issueLabel}
+                  className={HEADER_ACTION_ICON_BUTTON_CLASS}
+                >
+                  <Bug className="h-4 w-4" />
+                </a>
+                <div
+                  className={HEADER_ACTION_DIVIDER_CLASS}
+                  style={{ backgroundColor: 'var(--border-primary)' }}
+                  aria-hidden="true"
+                />
+                <ThemeToggle size="md" variant="header" />
               </div>
             </div>
           </div>
@@ -97,23 +106,23 @@ export function AppHeader({
               <div className={HEADER_ACTION_GROUP_CLASS}>
                 <div
                   className={HEADER_ACTION_TOOLBAR_CLASS}
-                  style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+                  style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}
                 >
-                <a
-                  href={issueHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={issueLabel}
-                  className={getButtonClassName({ variant: 'toolbar', size: 'md' })}
-                  onClick={closeMobileMenu}
-                >
-                  <Bug className="h-4 w-4" />
-                  <span>Report Issue</span>
-                </a>
+                  <a
+                    href={issueHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={issueLabel}
+                    className={getButtonClassName({ variant: 'toolbar', size: 'md' })}
+                    onClick={closeMobileMenu}
+                  >
+                    <Bug className="h-4 w-4" />
+                    <span>Report Issue</span>
+                  </a>
 
-                <div className="flex-shrink-0">
-                  <ThemeToggle size="md" variant="header" />
-                </div>
+                  <div className="flex-shrink-0">
+                    <ThemeToggle size="md" variant="header" showHeaderLabel />
+                  </div>
                 </div>
               </div>
             </div>
