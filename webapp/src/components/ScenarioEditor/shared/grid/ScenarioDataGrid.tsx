@@ -1,5 +1,26 @@
 import React from 'react';
-import { ChevronDown, ChevronUp, Columns3, PencilLine, Search, X } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Columns3,
+  PencilLine,
+  Search,
+  X,
+} from 'lucide-react';
+import {
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type ColumnSizingState,
+  type FilterFn,
+  type Row,
+  type SortingState,
+  type Table,
+  type VisibilityState,
+} from '@tanstack/react-table';
 import { useOutsideClick } from '../../../../hooks';
 import { Button } from '../../../ui';
 import type { ScenarioDataGridColumn, ScenarioDataGridColumnEditor, ScenarioDataGridOption } from './types';
@@ -15,8 +36,6 @@ interface ScenarioDataGridProps<T> {
   toolbarActions?: React.ReactNode;
   maxHeight?: string;
 }
-
-type SortDirection = 'asc' | 'desc';
 
 function normalizeSearchValue(value: string | undefined) {
   return value?.trim().toLowerCase() ?? '';
@@ -151,6 +170,81 @@ function InlineEditorCell<T>({ row, editor }: { row: T; editor: ScenarioDataGrid
   );
 }
 
+function ScenarioDataGridHeader<T>({
+  title,
+  canSort,
+  sorted,
+  onSort,
+}: {
+  title: string;
+  canSort: boolean;
+  sorted: false | 'asc' | 'desc';
+  onSort: React.MouseEventHandler<HTMLButtonElement>;
+}) {
+  if (!canSort) {
+    return <span>{title}</span>;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onSort}
+      className="inline-flex items-center gap-1.5 font-semibold text-[inherit] transition-colors hover:text-[var(--text-primary)]"
+    >
+      <span>{title}</span>
+      {sorted === 'asc' ? <ChevronUp className="h-3.5 w-3.5" /> : null}
+      {sorted === 'desc' ? <ChevronDown className="h-3.5 w-3.5" /> : null}
+      {sorted === false ? <ChevronDown className="h-3.5 w-3.5 opacity-25" /> : null}
+    </button>
+  );
+}
+
+function ColumnVisibilityMenu<T>({
+  table,
+  onClose,
+}: {
+  table: Table<T>;
+  onClose: () => void;
+}) {
+  const menuRef = React.useRef<HTMLDivElement>(null);
+
+  useOutsideClick({
+    refs: [menuRef],
+    enabled: true,
+    onOutsideClick: onClose,
+  });
+
+  return (
+    <div
+      ref={menuRef}
+      className="absolute right-0 top-full z-30 mt-2 min-w-56 rounded-2xl border p-3 shadow-lg"
+      style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+    >
+      <div className="mb-2 text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>
+        Visible columns
+      </div>
+      <div className="space-y-2">
+        {table
+          .getAllLeafColumns()
+          .filter((column) => column.getCanHide())
+          .map((column) => {
+            const title = String(column.columnDef.header ?? column.id);
+            return (
+              <label key={column.id} className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-primary)' }}>
+                <input
+                  type="checkbox"
+                  checked={column.getIsVisible()}
+                  onChange={(event) => column.toggleVisibility(event.target.checked)}
+                />
+                <span>{title}</span>
+              </label>
+            );
+          })}
+      </div>
+    </div>
+  );
+}
+
 export function ScenarioDataGrid<T>({
   rows,
   columns,
@@ -162,31 +256,28 @@ export function ScenarioDataGrid<T>({
   toolbarActions,
   maxHeight = 'min(70vh, calc(100vh - 18rem))',
 }: ScenarioDataGridProps<T>) {
-  const [sortState, setSortState] = React.useState<{ columnId: string; direction: SortDirection } | null>(null);
-  const [columnVisibility, setColumnVisibility] = React.useState<Record<string, boolean>>(() =>
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(() =>
     Object.fromEntries(columns.map((column) => [column.id, true])),
   );
-  const [columnWidths, setColumnWidths] = React.useState<Record<string, number>>(() =>
+  const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>(() =>
     Object.fromEntries(columns.map((column) => [column.id, column.width ?? 180])),
   );
+  const [globalFilter, setGlobalFilter] = React.useState('');
   const [isColumnsMenuOpen, setIsColumnsMenuOpen] = React.useState(false);
-  const [localQuery, setLocalQuery] = React.useState('');
   const [isEditMode, setIsEditMode] = React.useState(false);
   const [scrollMetrics, setScrollMetrics] = React.useState({ scrollWidth: 0, clientWidth: 0 });
-  const columnMenuRef = React.useRef<HTMLDivElement>(null);
-  const resizeStateRef = React.useRef<{ columnId: string; startX: number; startWidth: number } | null>(null);
   const topScrollRef = React.useRef<HTMLDivElement>(null);
   const bodyScrollRef = React.useRef<HTMLDivElement>(null);
   const tableRef = React.useRef<HTMLTableElement>(null);
   const syncingScrollRef = React.useRef<'top' | 'body' | null>(null);
+  const resizeStateRef = React.useRef<{ columnId: string; startX: number; startWidth: number } | null>(null);
 
   const hasEditableColumns = React.useMemo(() => columns.some((column) => column.editor), [columns]);
-
-  useOutsideClick({
-    refs: [columnMenuRef],
-    enabled: isColumnsMenuOpen,
-    onOutsideClick: () => setIsColumnsMenuOpen(false),
-  });
+  const mergedQuery = React.useMemo(
+    () => [filterQuery, globalFilter].filter((value) => value.trim().length > 0).join(' ').trim(),
+    [filterQuery, globalFilter],
+  );
 
   React.useEffect(() => {
     setColumnVisibility((current) => {
@@ -201,7 +292,7 @@ export function ScenarioDataGrid<T>({
       return changed ? next : current;
     });
 
-    setColumnWidths((current) => {
+    setColumnSizing((current) => {
       const next = { ...current };
       let changed = false;
       for (const column of columns) {
@@ -221,10 +312,13 @@ export function ScenarioDataGrid<T>({
         return;
       }
 
-      const column = columns.find((candidate) => candidate.id === resizeState.columnId);
-      const minWidth = column?.minWidth ?? 120;
-      const nextWidth = Math.max(minWidth, resizeState.startWidth + (event.clientX - resizeState.startX));
-      setColumnWidths((current) => ({
+      const sourceColumn = columns.find((column) => column.id === resizeState.columnId);
+      const nextWidth = Math.max(
+        sourceColumn?.minWidth ?? 120,
+        resizeState.startWidth + (event.clientX - resizeState.startX),
+      );
+
+      setColumnSizing((current) => ({
         ...current,
         [resizeState.columnId]: nextWidth,
       }));
@@ -243,6 +337,63 @@ export function ScenarioDataGrid<T>({
     };
   }, [columns]);
 
+  const tableColumns = React.useMemo<ColumnDef<T>[]>(
+    () =>
+      columns.map((column) => ({
+        id: column.id,
+        header: column.header,
+        accessorFn: (row) => {
+          if (column.sortValue) {
+            return column.sortValue(row);
+          }
+          if (column.searchValue) {
+            return column.searchValue(row);
+          }
+          return '';
+        },
+        enableSorting: Boolean(column.sortValue),
+        enableHiding: column.hideable !== false,
+        size: column.width ?? 180,
+        minSize: column.minWidth ?? 120,
+        meta: {
+          align: column.align ?? 'left',
+          sourceColumn: column,
+        },
+        cell: ({ row }) =>
+          isEditMode && column.editor ? <InlineEditorCell row={row.original} editor={column.editor} /> : column.cell(row.original),
+      })),
+    [columns, isEditMode],
+  );
+
+  const globalFilterFn = React.useCallback<FilterFn<T>>(
+    (row: Row<T>, _columnId: string, filterValue: string) => matchesQuery(row.original, columns, String(filterValue ?? '')),
+    [columns],
+  );
+
+  const table = useReactTable({
+    data: rows,
+    columns: tableColumns,
+    state: {
+      sorting,
+      columnVisibility,
+      columnSizing,
+      globalFilter: mergedQuery,
+    },
+    meta: {
+      columns,
+    },
+    getRowId: (row, index) => rowKey(row, index),
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange',
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    onColumnSizingChange: setColumnSizing,
+    globalFilterFn,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  });
+
   React.useEffect(() => {
     const updateScrollMetrics = () => {
       const bodyNode = bodyScrollRef.current;
@@ -250,6 +401,7 @@ export function ScenarioDataGrid<T>({
       if (!bodyNode || !tableNode) {
         return;
       }
+
       setScrollMetrics({
         scrollWidth: tableNode.scrollWidth,
         clientWidth: bodyNode.clientWidth,
@@ -269,7 +421,7 @@ export function ScenarioDataGrid<T>({
     observer.observe(bodyNode);
 
     return () => observer.disconnect();
-  }, [columnWidths, columns, rows]);
+  }, [rows, columnSizing, columnVisibility, sorting, mergedQuery]);
 
   const syncScroll = React.useCallback((source: 'top' | 'body') => {
     const topNode = topScrollRef.current;
@@ -290,256 +442,197 @@ export function ScenarioDataGrid<T>({
     });
   }, []);
 
-  const visibleColumns = React.useMemo(
-    () => columns.filter((column) => columnVisibility[column.id] !== false),
-    [columnVisibility, columns],
-  );
-
-  const filteredRows = React.useMemo(() => {
-    const externalQuery = normalizeSearchValue(filterQuery);
-    const internalQuery = normalizeSearchValue(localQuery);
-
-    return rows.filter((row) => matchesQuery(row, columns, externalQuery) && matchesQuery(row, columns, internalQuery));
-  }, [columns, filterQuery, localQuery, rows]);
-
-  const sortedRows = React.useMemo(() => {
-    if (!sortState) {
-      return filteredRows;
-    }
-
-    const sortColumn = columns.find((column) => column.id === sortState.columnId);
-    if (!sortColumn?.sortValue) {
-      return filteredRows;
-    }
-
-    return [...filteredRows].sort((left, right) => {
-      const leftValue = sortColumn.sortValue?.(left);
-      const rightValue = sortColumn.sortValue?.(right);
-      if (leftValue === rightValue) {
-        return 0;
-      }
-      const comparison = leftValue > rightValue ? 1 : -1;
-      return sortState.direction === 'asc' ? comparison : -comparison;
-    });
-  }, [columns, filteredRows, sortState]);
-
-  const gridSummary = searchSummary
-    ? searchSummary({ filteredCount: sortedRows.length, totalCount: rows.length, query: localQuery })
+  const filteredCount = table.getFilteredRowModel().rows.length;
+  const totalCount = rows.length;
+  const summary = searchSummary
+    ? searchSummary({ filteredCount, totalCount, query: globalFilter })
     : (
       <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-        Showing {sortedRows.length} of {rows.length} rows.
+        Showing {filteredCount} of {totalCount} rows.
       </div>
     );
 
   return (
-    <div className="space-y-3">
+    <div
+      className="overflow-hidden rounded-[1.25rem] border shadow-sm"
+      style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+    >
       <div
-        className="flex flex-col gap-3 rounded-2xl border px-4 py-3"
+        className="flex flex-col gap-3 border-b px-4 py-3 lg:flex-row lg:items-center lg:justify-between"
         style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}
       >
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center md:gap-4">
-            <label className="relative block min-w-0 flex-1 md:max-w-sm">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
-              <input
-                type="text"
-                value={localQuery}
-                onChange={(event) => setLocalQuery(event.target.value)}
-                placeholder={searchPlaceholder}
-                className="input w-full pl-9 pr-10"
-                aria-label="Search table"
-              />
-              {localQuery ? (
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5"
-                  style={{ color: 'var(--text-tertiary)' }}
-                  onClick={() => setLocalQuery('')}
-                  aria-label="Clear table search"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
-            </label>
-            {gridSummary}
-          </div>
-          <div className="flex flex-wrap items-center gap-2" ref={columnMenuRef}>
-            {toolbarActions}
-            {hasEditableColumns ? (
-              <Button
-                variant={isEditMode ? 'primary' : 'secondary'}
-                size="sm"
-                leadingIcon={<PencilLine className="h-4 w-4" />}
-                onClick={() => setIsEditMode((current) => !current)}
+        <div className="flex min-w-0 flex-1 flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+          <label className="relative block min-w-0 flex-1 lg:max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
+            <input
+              type="text"
+              value={globalFilter}
+              onChange={(event) => setGlobalFilter(event.target.value)}
+              placeholder={searchPlaceholder}
+              className="input h-10 w-full rounded-xl pl-9 pr-10"
+              aria-label="Search table"
+            />
+            {globalFilter ? (
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5"
+                style={{ color: 'var(--text-tertiary)' }}
+                onClick={() => setGlobalFilter('')}
+                aria-label="Clear table search"
               >
-                {isEditMode ? 'Done editing' : 'Edit table'}
-              </Button>
+                <X className="h-3.5 w-3.5" />
+              </button>
             ) : null}
-            <div className="relative">
-              <Button
-                variant="secondary"
-                size="sm"
-                leadingIcon={<Columns3 className="h-4 w-4" />}
-                onClick={() => setIsColumnsMenuOpen((open) => !open)}
-              >
-                Columns
-              </Button>
-              {isColumnsMenuOpen ? (
-                <div
-                  className="absolute right-0 z-20 mt-2 min-w-56 rounded-xl border px-3 py-3 shadow-lg"
-                  style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
-                >
-                  <div className="mb-2 text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>
-                    Visible columns
-                  </div>
-                  <div className="space-y-2">
-                    {columns
-                      .filter((column) => column.hideable !== false)
-                      .map((column) => (
-                        <label key={column.id} className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-primary)' }}>
-                          <input
-                            type="checkbox"
-                            checked={columnVisibility[column.id] !== false}
-                            onChange={(event) => {
-                              const checked = event.target.checked;
-                              setColumnVisibility((current) => ({
-                                ...current,
-                                [column.id]: checked,
-                              }));
-                            }}
-                          />
-                          <span>{column.header}</span>
-                        </label>
-                      ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </div>
+          </label>
+          <div className="min-w-0">{summary}</div>
         </div>
 
-        {scrollMetrics.scrollWidth > scrollMetrics.clientWidth ? (
-          <div
-            ref={topScrollRef}
-            className="overflow-x-auto overflow-y-hidden rounded-lg border"
-            style={{ borderColor: 'var(--border-primary)' }}
-            onScroll={() => syncScroll('top')}
-            aria-label="Top horizontal scrollbar"
-          >
-            <div style={{ width: `${scrollMetrics.scrollWidth}px`, height: '1px' }} />
+        <div className="flex flex-wrap items-center gap-2">
+          {toolbarActions}
+          {hasEditableColumns ? (
+            <Button
+              variant={isEditMode ? 'primary' : 'secondary'}
+              size="sm"
+              leadingIcon={<PencilLine className="h-4 w-4" />}
+              onClick={() => setIsEditMode((current) => !current)}
+            >
+              {isEditMode ? 'Done editing' : 'Edit table'}
+            </Button>
+          ) : null}
+          <div className="relative">
+            <Button
+              variant="secondary"
+              size="sm"
+              leadingIcon={<Columns3 className="h-4 w-4" />}
+              onClick={() => setIsColumnsMenuOpen((open) => !open)}
+            >
+              Columns
+            </Button>
+            {isColumnsMenuOpen ? <ColumnVisibilityMenu table={table} onClose={() => setIsColumnsMenuOpen(false)} /> : null}
           </div>
-        ) : null}
+        </div>
       </div>
+
+      {scrollMetrics.scrollWidth > scrollMetrics.clientWidth ? (
+        <div
+          ref={topScrollRef}
+          className="overflow-x-auto overflow-y-hidden border-b"
+          style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}
+          onScroll={() => syncScroll('top')}
+          aria-label="Top horizontal scrollbar"
+        >
+          <div style={{ width: `${scrollMetrics.scrollWidth}px`, height: '10px' }} />
+        </div>
+      ) : null}
 
       <div
         ref={bodyScrollRef}
-        className="overflow-auto rounded-2xl border"
-        style={{ borderColor: 'var(--border-primary)', maxHeight }}
+        className="overflow-auto"
+        style={{ maxHeight }}
         onScroll={() => syncScroll('body')}
       >
-        <table ref={tableRef} className="min-w-full table-fixed border-collapse">
+        <table
+          ref={tableRef}
+          className="w-full border-separate border-spacing-0 text-sm"
+          style={{ width: `${table.getTotalSize()}px`, minWidth: '100%' }}
+        >
           <colgroup>
-            {visibleColumns.map((column) => (
-              <col key={column.id} style={{ width: `${columnWidths[column.id] ?? column.width ?? 180}px` }} />
+            {table.getVisibleLeafColumns().map((column) => (
+              <col key={column.id} style={{ width: `${column.getSize()}px` }} />
             ))}
           </colgroup>
           <thead>
-            <tr>
-              {visibleColumns.map((column) => {
-                const isSorted = sortState?.columnId === column.id;
-                return (
-                  <th
-                    key={column.id}
-                    scope="col"
-                    className="group sticky top-0 z-10 border-b border-r px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.08em] last:border-r-0"
-                    style={{
-                      borderColor: 'var(--border-primary)',
-                      backgroundColor: 'var(--bg-secondary)',
-                      color: 'var(--text-tertiary)',
-                    }}
-                  >
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-2"
-                      onClick={() => {
-                        if (!column.sortValue) {
-                          return;
-                        }
-                        setSortState((current) => {
-                          if (!current || current.columnId !== column.id) {
-                            return { columnId: column.id, direction: 'asc' };
-                          }
-                          return {
-                            columnId: column.id,
-                            direction: current.direction === 'asc' ? 'desc' : 'asc',
-                          };
-                        });
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  const columnMeta = header.column.columnDef.meta as
+                    | { sourceColumn?: ScenarioDataGridColumn<T> }
+                    | undefined;
+                  const sourceColumn = columnMeta?.sourceColumn;
+                  return (
+                    <th
+                      key={header.id}
+                      scope="col"
+                      className="group sticky top-0 z-10 border-b border-r px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.08em] last:border-r-0"
+                      style={{
+                        width: header.getSize(),
+                        borderColor: 'var(--border-primary)',
+                        backgroundColor: 'var(--bg-secondary)',
+                        color: 'var(--text-tertiary)',
                       }}
                     >
-                      <span>{column.header}</span>
-                      {column.sortValue && isSorted ? (
-                        sortState?.direction === 'asc' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />
+                      {header.isPlaceholder ? null : (
+                        <div className="flex items-center gap-2">
+                          <ScenarioDataGridHeader
+                            title={String(header.column.columnDef.header)}
+                            canSort={header.column.getCanSort()}
+                            sorted={header.column.getIsSorted()}
+                            onSort={header.column.getToggleSortingHandler()}
+                          />
+                        </div>
+                      )}
+                      {sourceColumn ? (
+                        <div
+                          role="separator"
+                          aria-orientation="vertical"
+                          aria-label={`Resize ${sourceColumn.header} column`}
+                          className="absolute right-0 top-0 h-full w-3 cursor-col-resize"
+                          onPointerDown={(event) => {
+                            resizeStateRef.current = {
+                              columnId: sourceColumn.id,
+                              startX: event.clientX,
+                              startWidth: header.getSize(),
+                            };
+                          }}
+                        >
+                          <div
+                            className="mx-auto h-full w-px transition-colors group-hover:bg-[var(--color-accent)]"
+                            style={{ backgroundColor: header.column.getIsResizing() ? 'var(--color-accent)' : 'var(--border-primary)' }}
+                          />
+                        </div>
                       ) : null}
-                    </button>
-                    <div
-                      role="separator"
-                      aria-orientation="vertical"
-                      aria-label={`Resize ${column.header} column`}
-                      className="absolute right-0 top-0 h-full w-3 cursor-col-resize"
-                      onPointerDown={(event) => {
-                        resizeStateRef.current = {
-                          columnId: column.id,
-                          startX: event.clientX,
-                          startWidth: columnWidths[column.id] ?? column.width ?? 180,
-                        };
-                      }}
-                    >
-                      <div
-                        className="mx-auto h-full w-px transition-colors group-hover:bg-[var(--color-accent)]"
-                        style={{ backgroundColor: 'var(--border-primary)' }}
-                      />
-                    </div>
-                  </th>
-                );
-              })}
-            </tr>
+                    </th>
+                  );
+                })}
+              </tr>
+            ))}
           </thead>
           <tbody>
-            {sortedRows.length === 0 ? (
+            {table.getRowModel().rows.length === 0 ? (
               <tr>
-                <td
-                  colSpan={visibleColumns.length}
-                  className="px-4 py-6 text-sm"
-                  style={{ color: 'var(--text-secondary)' }}
-                >
+                <td colSpan={table.getVisibleLeafColumns().length} className="px-4 py-10 text-sm" style={{ color: 'var(--text-secondary)' }}>
                   {emptyState ?? 'No matching rows.'}
                 </td>
               </tr>
             ) : (
-              sortedRows.map((row, rowIndex) => {
-                const resolvedRowKey = rowKey(row, rowIndex);
-                return (
-                  <tr
-                    key={resolvedRowKey}
-                    className="transition-colors hover:bg-[color:var(--bg-secondary)]"
-                    style={{ backgroundColor: 'var(--bg-primary)' }}
-                  >
-                    {visibleColumns.map((column) => (
+              table.getRowModel().rows.map((row, rowIndex) => (
+                <tr
+                  key={row.id}
+                  className="transition-colors hover:bg-[color:var(--bg-secondary)]"
+                  style={{ backgroundColor: rowIndex % 2 === 0 ? 'var(--bg-primary)' : 'color-mix(in srgb, var(--bg-secondary) 55%, var(--bg-primary) 45%)' }}
+                >
+                  {row.getVisibleCells().map((cell) => {
+                    const columnMeta = cell.column.columnDef.meta as
+                      | { align?: ScenarioDataGridColumn<T>['align'] }
+                      | undefined;
+                    const align = columnMeta?.align ?? 'left';
+                    return (
                       <td
-                        key={column.id}
-                        className="border-b border-r px-4 py-3 align-top text-sm last:border-r-0"
+                        key={cell.id}
+                        className="border-b border-r px-4 py-3 align-top last:border-r-0"
                         style={{
+                          width: cell.column.getSize(),
                           borderColor: 'var(--border-primary)',
                           color: 'var(--text-secondary)',
-                          textAlign: column.align ?? 'left',
+                          textAlign: align,
                         }}
                       >
-                        {isEditMode && column.editor ? <InlineEditorCell row={row} editor={column.editor} /> : column.cell(row)}
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
-                    ))}
-                  </tr>
-                );
-              })
+                    );
+                  })}
+                </tr>
+              ))
             )}
           </tbody>
         </table>
