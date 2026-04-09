@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { FolderOpen, Save, Upload } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { Save, Upload } from 'lucide-react';
 import { useAppStore } from '../store';
 import { AppHeader } from './AppHeader';
+import { HEADER_ACTION_BUTTON_CLASS, HEADER_ACTION_GROUP_CLASS } from './headerActionStyles';
 import { DemoDataWarningModal } from './modals/DemoDataWarningModal';
 import { DemoDataDropdown } from './ScenarioEditor/DemoDataDropdown';
 
-function SetupHeaderActions({ closeMobileMenu }: { closeMobileMenu?: () => void }) {
+function WorkspaceHeaderActions({ closeMobileMenu }: { closeMobileMenu?: () => void }) {
   const {
     scenario,
     currentScenarioId,
@@ -83,19 +83,21 @@ function SetupHeaderActions({ closeMobileMenu }: { closeMobileMenu?: () => void 
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+      <div className={HEADER_ACTION_GROUP_CLASS}>
         <button
           onClick={handleLoadScenario}
-          className="btn-secondary flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start"
+          className={HEADER_ACTION_BUTTON_CLASS}
           title="Load scenario"
+          style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}
         >
           <Upload className="h-4 w-4" />
           <span>Load</span>
         </button>
         <button
           onClick={handleSaveScenario}
-          className="btn-secondary flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start"
+          className={HEADER_ACTION_BUTTON_CLASS}
           title="Save scenario"
+          style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}
         >
           <Save className="h-4 w-4" />
           <span>Save</span>
@@ -115,82 +117,10 @@ function SetupHeaderActions({ closeMobileMenu }: { closeMobileMenu?: () => void 
 }
 
 export function Header() {
-  const location = useLocation();
-  const { currentScenarioId, savedScenarios, setShowScenarioManager } = useAppStore();
-  const currentScenarioName = currentScenarioId ? savedScenarios[currentScenarioId]?.name : null;
-  const isScenarioSetupRoute = location.pathname.startsWith('/app/scenario');
-
   return (
     <AppHeader
-      renderDesktopActions={() =>
-        isScenarioSetupRoute ? (
-          <SetupHeaderActions />
-        ) : !currentScenarioName ? (
-          <button
-            onClick={() => setShowScenarioManager(true)}
-            className="btn-secondary flex items-center space-x-2 w-full sm:w-auto justify-center sm:justify-start"
-            title="Manage scenarios"
-          >
-            <FolderOpen className="h-4 w-4" />
-            <span className="hidden sm:inline">Manage Scenarios</span>
-            <span className="sm:hidden">Manage</span>
-          </button>
-        ) : (
-          <div
-            className="hidden sm:flex items-center space-x-2 text-sm p-2 rounded-md"
-            style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}
-          >
-            <FolderOpen className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
-            <span className="hidden md:inline">
-              Current: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{currentScenarioName}</span>
-            </span>
-            <button
-              onClick={() => setShowScenarioManager(true)}
-              className="ml-1 text-sm font-medium transition-colors hover:opacity-80"
-              style={{ color: 'var(--color-accent)' }}
-            >
-              (Manage)
-            </button>
-          </div>
-        )
-      }
-      renderMobileActions={({ closeMobileMenu }) =>
-        isScenarioSetupRoute ? (
-          <SetupHeaderActions closeMobileMenu={closeMobileMenu} />
-        ) : !currentScenarioName ? (
-          <button
-            onClick={() => {
-              setShowScenarioManager(true);
-              closeMobileMenu();
-            }}
-            className="btn-secondary flex items-center space-x-2 w-full justify-start"
-            title="Manage scenarios"
-          >
-            <FolderOpen className="h-4 w-4" />
-            <span>Manage Scenarios</span>
-          </button>
-        ) : (
-          <div
-            className="flex items-center space-x-2 text-sm p-2 rounded-md"
-            style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}
-          >
-            <FolderOpen className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
-            <span>
-              Current: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{currentScenarioName}</span>
-            </span>
-            <button
-              onClick={() => {
-                setShowScenarioManager(true);
-                closeMobileMenu();
-              }}
-              className="ml-1 text-sm font-medium transition-colors hover:opacity-80"
-              style={{ color: 'var(--color-accent)' }}
-            >
-              (Manage)
-            </button>
-          </div>
-        )
-      }
+      renderDesktopActions={() => <WorkspaceHeaderActions />}
+      renderMobileActions={({ closeMobileMenu }) => <WorkspaceHeaderActions closeMobileMenu={closeMobileMenu} />}
     />
   );
 }

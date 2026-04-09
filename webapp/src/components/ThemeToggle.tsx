@@ -6,9 +6,10 @@ import type { Theme } from '../store/theme';
 interface ThemeToggleProps {
   showLabel?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  variant?: 'default' | 'header';
 }
 
-export function ThemeToggle({ showLabel = false, size = 'md' }: ThemeToggleProps) {
+export function ThemeToggle({ showLabel = false, size = 'md', variant = 'default' }: ThemeToggleProps) {
   const { theme, setTheme } = useThemeStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [toggleHovered, setToggleHovered] = useState(false);
@@ -84,22 +85,27 @@ export function ThemeToggle({ showLabel = false, size = 'md' }: ThemeToggleProps
   const currentTheme = themes.find(t => t.value === theme) || themes[0];
   const Icon = currentTheme.icon;
 
+  const isHeaderVariant = variant === 'header';
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setDropdownOpen(!dropdownOpen)}
         onMouseEnter={() => setToggleHovered(true)}
         onMouseLeave={() => setToggleHovered(false)}
-        className={`${buttonSizeClasses[size]} flex items-center gap-1 rounded-lg border transition-all duration-200`}
+        className={isHeaderVariant
+          ? 'inline-flex h-12 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition-colors whitespace-nowrap'
+          : `${buttonSizeClasses[size]} flex items-center gap-1 rounded-lg border transition-all duration-200`}
         style={{
           backgroundColor: dropdownOpen || toggleHovered ? 'var(--bg-tertiary)' : 'var(--bg-primary)',
-          color: 'var(--text-primary)',
+          color: isHeaderVariant ? 'var(--text-secondary)' : 'var(--text-primary)',
           borderColor: 'var(--border-primary)',
           boxShadow: dropdownOpen ? 'var(--shadow)' : 'none',
         }}
         title={`Current: ${currentTheme.label} mode. Click to change theme.`}
       >
         <Icon className={sizeClasses[size]} />
+        {isHeaderVariant && <span>Theme</span>}
         <ChevronDown className={`${sizeClasses[size]} transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
       </button>
       

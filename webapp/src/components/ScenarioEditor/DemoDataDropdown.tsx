@@ -181,14 +181,20 @@ export function DemoDataDropdown({
   ) : (
     <button
       onClick={() => setIsOpen((open) => !open)}
-      className="flex items-center gap-1 sm:gap-2 justify-center px-1.5 sm:px-3 py-1.5 rounded-md font-medium transition-colors btn-secondary min-w-0 text-xs sm:text-sm focus-visible:outline-none"
-      style={{ outline: 'none', boxShadow: 'none' }}
+      className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition-colors whitespace-nowrap"
+      style={{
+        outline: 'none',
+        boxShadow: 'none',
+        borderColor: 'var(--border-primary)',
+        backgroundColor: isOpen ? 'var(--bg-tertiary)' : 'var(--bg-primary)',
+        color: 'var(--text-secondary)',
+      }}
       aria-expanded={isOpen}
       aria-haspopup="menu"
     >
-      <Zap className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+      <Zap className="w-4 h-4 flex-shrink-0" />
       <span>Demo Data</span>
-      <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+      <ChevronDown className="w-4 h-4 flex-shrink-0" />
     </button>
   );
 

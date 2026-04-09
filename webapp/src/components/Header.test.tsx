@@ -30,7 +30,7 @@ describe('Header', () => {
     vi.clearAllMocks();
   });
 
-  it('shows load/save/demo actions on setup routes instead of the scenario manager button', async () => {
+  it('shows load/save/demo actions across app routes', async () => {
     const user = userEvent.setup();
     const setShowScenarioManager = vi.fn();
     const saveScenario = vi.fn();
@@ -54,7 +54,7 @@ describe('Header', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/app/scenario/people']}>
+      <MemoryRouter initialEntries={['/app/solver']}>
         <Header />
       </MemoryRouter>,
     );
@@ -74,11 +74,16 @@ describe('Header', () => {
     expect(loadDemoCaseOverwrite).toHaveBeenCalledWith('demo-1');
   });
 
-  it('keeps the existing non-setup header actions outside setup routes', () => {
+  it('shows the unified workspace actions even without a saved current scenario', () => {
     useAppStore.setState({
+      scenario: createSampleScenario(),
       currentScenarioId: null,
       savedScenarios: {},
       setShowScenarioManager: vi.fn(),
+      saveScenario: vi.fn(),
+      loadDemoCase: vi.fn(),
+      loadDemoCaseOverwrite: vi.fn(),
+      loadDemoCaseNewScenario: vi.fn(),
     });
 
     render(
@@ -87,7 +92,8 @@ describe('Header', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getAllByText(/manage scenarios/i)[0]).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^load$/i })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^load$/i })[0]).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^save$/i })[0]).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /demo data/i })[0]).toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@ import { type ReactNode, useState } from 'react';
 import { Bug, Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
+import { HEADER_ACTION_BUTTON_CLASS, HEADER_ACTION_GROUP_CLASS } from './headerActionStyles';
 
 interface AppHeaderProps {
   homeTo?: string;
@@ -62,24 +63,23 @@ export function AppHeader({
             </button>
           </div>
 
-          <div className="hidden sm:ml-auto sm:flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+          <div className="hidden sm:ml-auto sm:flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
             {desktopActions}
 
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className={HEADER_ACTION_GROUP_CLASS}>
               <a
                 href={issueHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 title={issueLabel}
-                className="flex items-center space-x-2 text-sm transition-colors p-2 rounded-md hover:bg-opacity-50 flex-1 sm:flex-none justify-center sm:justify-start"
-                style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-tertiary)' }}
+                className={HEADER_ACTION_BUTTON_CLASS}
+                style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
               >
                 <Bug className="h-4 w-4" />
-                <span className="hidden lg:inline">Report Issue</span>
-                <span className="lg:hidden">Issues</span>
+                <span>Report Issue</span>
               </a>
 
-              <ThemeToggle size="md" />
+              <ThemeToggle size="md" variant="header" />
             </div>
           </div>
         </div>
@@ -89,14 +89,14 @@ export function AppHeader({
             <div className="flex flex-col gap-2">
               {mobileActions}
 
-              <div className="flex items-center gap-2">
+              <div className={HEADER_ACTION_GROUP_CLASS}>
                 <a
                   href={issueHref}
                   target="_blank"
                   rel="noopener noreferrer"
                   title={issueLabel}
-                  className="flex items-center space-x-2 text-sm transition-colors p-2 rounded-md flex-1 justify-start"
-                  style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-tertiary)' }}
+                  className={HEADER_ACTION_BUTTON_CLASS}
+                  style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
                   onClick={closeMobileMenu}
                 >
                   <Bug className="h-4 w-4" />
@@ -104,7 +104,7 @@ export function AppHeader({
                 </a>
 
                 <div className="flex-shrink-0">
-                  <ThemeToggle size="md" />
+                  <ThemeToggle size="md" variant="header" />
                 </div>
               </div>
             </div>
