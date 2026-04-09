@@ -254,8 +254,15 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
   const [search, setSearch] = React.useState('');
   const [minMembers, setMinMembers] = React.useState<number | ''>('');
   const [selectedMustIndices, setSelectedMustIndices] = React.useState<number[]>([]);
+  const [isSelectingMust, setIsSelectingMust] = React.useState(false);
   const [showBulkConvert, setShowBulkConvert] = React.useState(false);
   const [bulkWeight, setBulkWeight] = React.useState<number | ''>(10);
+  const handleViewModeChange = React.useCallback((nextMode: SetupCollectionViewMode) => {
+    if (nextMode !== 'cards') {
+      setIsSelectingMust(false);
+      setSelectedMustIndices((current) => (current.length === 0 ? current : []));
+    }
+  }, []);
 
   if (isLoading || !scenario) {
     return <div className="space-y-4 pt-1 pl-0">Loading...</div>;
@@ -298,21 +305,36 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
         actions={
           <>
             {family === 'MustStayTogether' ? (
-              <SetupActionsMenu
-                label="Actions"
-                summary={`Advanced actions · ${selectedMustIndices.length} selected`}
-                items={[
-                  {
-                    label: 'Convert selected to Should Stay Together',
-                    disabled: selectedMustIndices.length === 0,
-                    description:
-                      selectedMustIndices.length === 0
-                        ? 'Select one or more cards to enable this conversion.'
-                        : 'Turn the selected hard cliques into weighted preferences.',
-                    onSelect: () => setShowBulkConvert(true),
-                  },
-                ]}
-              />
+              <>
+                <Button
+                  variant={isSelectingMust ? 'primary' : 'secondary'}
+                  onClick={() => {
+                    setIsSelectingMust((current) => {
+                      if (current) {
+                        setSelectedMustIndices([]);
+                      }
+                      return !current;
+                    });
+                  }}
+                >
+                  {isSelectingMust ? 'Done selecting' : 'Select cards'}
+                </Button>
+                <SetupActionsMenu
+                  label="Actions"
+                  summary={selectedMustIndices.length > 0 ? `Advanced actions · ${selectedMustIndices.length} selected` : 'Advanced actions'}
+                  items={[
+                    {
+                      label: 'Convert selected to Should Stay Together',
+                      disabled: selectedMustIndices.length === 0,
+                      description:
+                        selectedMustIndices.length === 0
+                          ? 'Turn on card selection and choose one or more cliques first.'
+                          : 'Turn the selected hard cliques into weighted preferences.',
+                      onSelect: () => setShowBulkConvert(true),
+                    },
+                  ]}
+                />
+              </>
             ) : null}
             <Button variant="primary" leadingIcon={<Plus className="h-4 w-4" />} onClick={() => onAdd(family)}>
               {copy.addLabel}
@@ -344,6 +366,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
             </div>
           ) : null
         }
+        onViewModeChange={handleViewModeChange}
         defaultViewMode="list"
         hasItems={filteredItems.length > 0}
         emptyState={{
@@ -360,6 +383,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
               renderCard={({ constraint, index }) => (
                 <SetupItemCard
                   key={index}
+                  selected={selectedMustIndices.includes(index)}
                   badges={
                     <>
                       <SetupTypeBadge label={copy.title} />
@@ -369,7 +393,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                   openLabel={`Edit ${copy.title.toLowerCase()} constraint`}
                   actions={
                     <>
-                      {family === 'MustStayTogether' ? (
+                      {family === 'MustStayTogether' && isSelectingMust ? (
                         <SetupSelectionToggle
                           selected={selectedMustIndices.includes(index)}
                           onToggle={() => setSelectedMustIndices((previous) => previous.includes(index) ? previous.filter((value) => value !== index) : [...previous, index])}
@@ -498,7 +522,14 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
   const { scenario, setScenario, isLoading } = useConstraintScenario();
   const [search, setSearch] = React.useState('');
   const [selectedShouldIndices, setSelectedShouldIndices] = React.useState<number[]>([]);
+  const [isSelectingShould, setIsSelectingShould] = React.useState(false);
   const [showPairConvert, setShowPairConvert] = React.useState(false);
+  const handleViewModeChange = React.useCallback((nextMode: SetupCollectionViewMode) => {
+    if (nextMode !== 'cards') {
+      setIsSelectingShould(false);
+      setSelectedShouldIndices((current) => (current.length === 0 ? current : []));
+    }
+  }, []);
 
   if (isLoading || !scenario) {
     return <div className="space-y-4 pt-1 pl-0">Loading...</div>;
@@ -540,21 +571,36 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
         actions={
           <>
             {family === 'ShouldStayTogether' ? (
-              <SetupActionsMenu
-                label="Actions"
-                summary={`Advanced actions · ${selectedShouldIndices.length} selected`}
-                items={[
-                  {
-                    label: 'Convert selected to Pair Meeting Count',
-                    disabled: selectedShouldIndices.length === 0,
-                    description:
-                      selectedShouldIndices.length === 0
-                        ? 'Select one or more cards to enable this conversion.'
-                        : 'Break selected cliques into pair-based contact targets.',
-                    onSelect: () => setShowPairConvert(true),
-                  },
-                ]}
-              />
+              <>
+                <Button
+                  variant={isSelectingShould ? 'primary' : 'secondary'}
+                  onClick={() => {
+                    setIsSelectingShould((current) => {
+                      if (current) {
+                        setSelectedShouldIndices([]);
+                      }
+                      return !current;
+                    });
+                  }}
+                >
+                  {isSelectingShould ? 'Done selecting' : 'Select cards'}
+                </Button>
+                <SetupActionsMenu
+                  label="Actions"
+                  summary={selectedShouldIndices.length > 0 ? `Advanced actions · ${selectedShouldIndices.length} selected` : 'Advanced actions'}
+                  items={[
+                    {
+                      label: 'Convert selected to Pair Meeting Count',
+                      disabled: selectedShouldIndices.length === 0,
+                      description:
+                        selectedShouldIndices.length === 0
+                          ? 'Turn on card selection and choose one or more preferences first.'
+                          : 'Break selected cliques into pair-based contact targets.',
+                      onSelect: () => setShowPairConvert(true),
+                    },
+                  ]}
+                />
+              </>
             ) : null}
             <Button variant="primary" leadingIcon={<Plus className="h-4 w-4" />} onClick={() => onAdd(family)}>
               {copy.addLabel}
@@ -574,6 +620,7 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
           )
         }
         summary={summary}
+        onViewModeChange={handleViewModeChange}
         defaultViewMode="list"
         hasItems={filteredItems.length > 0}
         emptyState={{
@@ -590,6 +637,7 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
               renderCard={({ constraint, index }) => (
                 <SetupItemCard
                   key={index}
+                  selected={selectedShouldIndices.includes(index)}
                   badges={
                     <>
                       <SetupTypeBadge label={copy.title} />
@@ -600,7 +648,7 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                   openLabel={`Edit ${copy.title.toLowerCase()} constraint`}
                   actions={
                     <>
-                      {family === 'ShouldStayTogether' ? (
+                      {family === 'ShouldStayTogether' && isSelectingShould ? (
                         <SetupSelectionToggle
                           selected={selectedShouldIndices.includes(index)}
                           onToggle={() => setSelectedShouldIndices((previous) => previous.includes(index) ? previous.filter((value) => value !== index) : [...previous, index])}

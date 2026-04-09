@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Clock3, Trash2, Weight } from 'lucide-react';
+import { Check, Circle, Clock3, Trash2, Weight } from 'lucide-react';
 import { Button } from '../../ui';
 
 export function SetupBadge({
@@ -98,7 +98,7 @@ export function SetupSelectionToggle({
     <button
       type="button"
       onClick={onToggle}
-      className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors"
+      className="inline-flex h-8 w-8 items-center justify-center rounded-full border transition-colors"
       style={{
         borderColor: selected ? 'var(--color-accent)' : 'var(--border-primary)',
         backgroundColor: selected ? 'color-mix(in srgb, var(--color-accent) 14%, var(--bg-primary) 86%)' : 'var(--bg-primary)',
@@ -107,8 +107,7 @@ export function SetupSelectionToggle({
       aria-pressed={selected}
       aria-label={label ?? (selected ? 'Deselect card' : 'Select card')}
     >
-      {selected ? <Check className="h-3.5 w-3.5" /> : null}
-      <span>{selected ? 'Selected' : 'Select'}</span>
+      {selected ? <Check className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
     </button>
   );
 }
@@ -179,6 +178,7 @@ export function SetupItemCard({
   title,
   titleMeta,
   actions,
+  selected = false,
   onOpen,
   openLabel,
   children,
@@ -187,6 +187,7 @@ export function SetupItemCard({
   title?: React.ReactNode;
   titleMeta?: React.ReactNode;
   actions?: React.ReactNode;
+  selected?: boolean;
   onOpen?: () => void;
   openLabel?: string;
   children: React.ReactNode;
@@ -214,7 +215,10 @@ export function SetupItemCard({
   return (
     <div
       className="h-full rounded-[1.15rem] border p-3.5 shadow-sm transition-shadow hover:shadow-md"
-      style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+      style={{
+        backgroundColor: selected ? 'color-mix(in srgb, var(--color-accent) 8%, var(--bg-primary) 92%)' : 'var(--bg-primary)',
+        borderColor: selected ? 'color-mix(in srgb, var(--color-accent) 55%, var(--border-primary) 45%)' : 'var(--border-primary)',
+      }}
     >
       <div className="flex h-full items-start gap-3">
         <div className="min-w-0 flex-1 space-y-2.5">
