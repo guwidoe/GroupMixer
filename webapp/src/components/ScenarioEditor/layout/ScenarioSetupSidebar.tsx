@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { ScrollArea } from '../../ScrollArea';
 import { Tooltip } from '../../Tooltip';
@@ -28,6 +28,8 @@ export function ScenarioSetupSidebar({
   headerContent,
   collapsedHeaderContent,
 }: ScenarioSetupSidebarProps) {
+  const [isToggleHovered, setIsToggleHovered] = useState(false);
+
   return (
     <aside
       className={`hidden border-r transition-[width] duration-200 ease-out md:flex md:min-h-0 md:flex-shrink-0 ${
@@ -73,8 +75,13 @@ export function ScenarioSetupSidebar({
             <button
               type="button"
               onClick={onToggleCollapsed}
-              className="flex w-full items-center justify-center rounded-md py-1.5 transition-colors"
-              style={{ color: 'var(--text-secondary)' }}
+              onMouseEnter={() => setIsToggleHovered(true)}
+              onMouseLeave={() => setIsToggleHovered(false)}
+              className="flex w-full items-center justify-center rounded-md py-1.5 transition-colors duration-150"
+              style={{
+                color: isToggleHovered ? 'var(--text-primary)' : 'var(--text-secondary)',
+                backgroundColor: isToggleHovered ? 'color-mix(in srgb, var(--bg-tertiary) 72%, transparent)' : 'transparent',
+              }}
               aria-label={isCollapsed ? 'Expand scenario setup sidebar' : 'Collapse scenario setup sidebar'}
             >
               {isCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}

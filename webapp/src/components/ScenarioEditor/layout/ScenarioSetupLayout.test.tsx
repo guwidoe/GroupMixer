@@ -55,6 +55,34 @@ describe('ScenarioSetupLayout', () => {
     expect(within(sidebar).queryByText(/define the attribute schema/i)).not.toBeInTheDocument();
   });
 
+  it('shows a hover affordance for inactive sidebar items without overriding the active state', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ScenarioSetupLayout
+        scenario={createScenario()}
+        attributeDefinitions={[{ key: 'role', values: ['dev', 'pm'] }]}
+        objectiveCount={1}
+        activeSection="attributes"
+        onNavigate={vi.fn()}
+      >
+        <div>Section content</div>
+      </ScenarioSetupLayout>,
+    );
+
+    const peopleItem = screen.getByRole('button', { name: /people/i });
+    const activeItem = screen.getByRole('button', { name: /attribute definitions/i });
+
+    await user.hover(peopleItem);
+
+    expect(peopleItem).toHaveStyle({
+      backgroundColor: 'color-mix(in srgb, var(--bg-tertiary) 82%, transparent)',
+    });
+    expect(activeItem).toHaveStyle({
+      backgroundColor: 'var(--bg-tertiary)',
+    });
+  });
+
   it('collapses the desktop sidebar into an icon rail while keeping count badges', async () => {
     const user = userEvent.setup();
 

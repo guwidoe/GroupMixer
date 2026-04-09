@@ -21,6 +21,7 @@ export function ScenarioSetupSidebarGroup({
   onNavigate,
 }: ScenarioSetupSidebarGroupProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [isHeaderHovered, setIsHeaderHovered] = useState(false);
 
   if (isRailCollapsed) {
     return (
@@ -45,8 +46,13 @@ export function ScenarioSetupSidebarGroup({
         <button
           type="button"
           onClick={() => setIsExpanded((value) => !value)}
-          className="flex w-full items-center justify-between px-[1.375rem] py-1 text-left transition-colors"
-          style={{ color: 'var(--text-tertiary)' }}
+          onMouseEnter={() => setIsHeaderHovered(true)}
+          onMouseLeave={() => setIsHeaderHovered(false)}
+          className="flex w-full items-center justify-between rounded-md px-[1.375rem] py-1 text-left transition-colors duration-150"
+          style={{
+            color: isHeaderHovered ? 'var(--text-secondary)' : 'var(--text-tertiary)',
+            backgroundColor: isHeaderHovered ? 'color-mix(in srgb, var(--bg-tertiary) 55%, transparent)' : 'transparent',
+          }}
           aria-expanded={isExpanded}
           aria-controls={`scenario-setup-group-${group.id}`}
           aria-label={group.label}
