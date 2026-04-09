@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Scenario } from "../types";
 import { createSampleScenario, createSampleSolution, createSampleSolverSettings } from "../test/fixtures";
+import { createProgressMailboxWriter } from "./runtime/progressMailbox";
 import { SolverWorkerService } from "./solverWorker";
 import type { ProgressUpdate } from "./wasm/types";
 import {
@@ -141,9 +142,24 @@ describe("SolverWorkerService", () => {
   beforeEach(() => {
     FakeWorker.reset();
     vi.clearAllMocks();
+    vi.useFakeTimers();
     vi.stubGlobal("Worker", FakeWorker);
+    vi.stubGlobal("crossOriginIsolated", true);
+    if (typeof SharedArrayBuffer !== "function") {
+      vi.stubGlobal("SharedArrayBuffer", class SharedArrayBufferMock {
+        byteLength: number;
+
+        constructor(byteLength: number) {
+          this.byteLength = byteLength;
+        }
+      } as unknown as typeof SharedArrayBuffer);
+    }
     vi.spyOn(console, "error").mockImplementation(() => {});
     vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("initializes successfully and marks the worker as ready", async () => {
@@ -224,10 +240,15 @@ describe("SolverWorkerService", () => {
           },
         },
         useProgress: true,
+        progressMailbox: expect.any(SharedArrayBuffer),
       },
     });
 
-    worker.emit({ type: "PROGRESS", id: "2", data: { progress } });
+    const progressMailbox = worker.postedMessages.at(-1)?.data?.progressMailbox;
+    expect(progressMailbox).toBeInstanceOf(SharedArrayBuffer);
+    createProgressMailboxWriter(progressMailbox as SharedArrayBuffer).writeProgress(progress);
+    await vi.advanceTimersByTimeAsync(60);
+
     worker.emit({
       type: "SOLVE_SUCCESS",
       id: "2",
@@ -270,6 +291,7 @@ describe("SolverWorkerService", () => {
           initial_schedule: { session_0: { g1: ["p1"] } },
         },
         useProgress: true,
+        progressMailbox: expect.any(SharedArrayBuffer),
       },
     });
 

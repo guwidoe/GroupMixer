@@ -60,6 +60,7 @@ export interface SolveRequestMessage {
   data: {
     scenarioPayload: WasmContractSolveInput;
     useProgress?: boolean;
+    progressMailbox?: SharedArrayBuffer;
   };
 }
 
@@ -158,11 +159,12 @@ export function createSolveRequestMessage(
   id: string,
   scenarioPayload: WasmContractSolveInput,
   useProgress = false,
+  progressMailbox?: SharedArrayBuffer,
 ): SolveRequestMessage {
   return {
     type: "SOLVE",
     id,
-    data: { scenarioPayload, useProgress },
+    data: { scenarioPayload, useProgress, progressMailbox },
   };
 }
 

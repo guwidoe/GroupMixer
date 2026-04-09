@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createProgressMailboxReader, getProgressMailboxByteLength } from "../services/runtime/progressMailbox";
 import {
   attachSolverWorkerRuntime,
   createSolverWorkerRuntime,
@@ -151,6 +152,7 @@ describe("solverWorker runtime", () => {
     const { runtime, wasmModule } = createRuntime();
     await initializeRuntime(runtime);
     postedMessages = [];
+    const progressMailbox = new SharedArrayBuffer(getProgressMailboxByteLength());
 
     await runtime.handleMessage({
       type: "SOLVE",
@@ -167,12 +169,12 @@ describe("solverWorker runtime", () => {
           },
         },
         useProgress: true,
+        progressMailbox,
       },
     });
 
     expect(wasmModule.solve_with_progress).toHaveBeenCalledTimes(1);
     expect(postedMessages).toEqual([
-      { type: "PROGRESS", id: "2", data: { progress: { iteration: 1, best_score: 3 } } },
       {
         type: "SOLVE_SUCCESS",
         id: "2",
@@ -193,6 +195,47 @@ describe("solverWorker runtime", () => {
           },
           lastProgress: { iteration: 1, best_score: 3 },
         },
+      },
+    ]);
+
+    const readResult = createProgressMailboxReader(progressMailbox).read();
+    expect(readResult?.snapshot).toEqual(
+      expect.objectContaining({
+        status: "completed",
+        iteration: 1,
+        best_score: 3,
+      }),
+    );
+  });
+
+  it("fails loudly when progress solves omit the shared mailbox", async () => {
+    const { runtime } = createRuntime();
+    await initializeRuntime(runtime);
+    postedMessages = [];
+
+    await runtime.handleMessage({
+      type: "SOLVE",
+      id: "2",
+      data: {
+        scenarioPayload: {
+          scenario: {
+            people: [],
+            groups: [],
+            num_sessions: 1,
+            objectives: [],
+            constraints: [],
+            settings: { solver_type: "SimulatedAnnealing", stop_conditions: {}, solver_params: {} },
+          },
+        },
+        useProgress: true,
+      },
+    });
+
+    expect(postedMessages).toEqual([
+      {
+        type: "ERROR",
+        id: "2",
+        data: { error: "Shared progress mailbox is required for progress-enabled solves" },
       },
     ]);
   });

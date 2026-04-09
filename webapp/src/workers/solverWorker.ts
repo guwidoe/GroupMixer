@@ -2,10 +2,10 @@
 // Uses ESM imports instead of importScripts to work with wasm-pack --target web output
 
 import wasmInit, * as wasmModule from "../services/wasm/runtimeModule";
+import { createProgressMailboxWriter } from "../services/runtime/progressMailbox";
 import type { WasmContractModule } from "../services/wasm/module";
 import {
   createFatalErrorMessage,
-  createProgressMessage,
   createRequestErrorMessage,
   createRpcSuccessMessage,
   createSolveSuccessMessage,
@@ -216,7 +216,7 @@ export function createSolverWorkerRuntime({
         }
 
         case "SOLVE": {
-          const { useProgress } = message.data;
+          const { useProgress, progressMailbox } = message.data;
           const scenarioPayload = requireScenarioPayload(message);
 
           if (!isInitialized) {
@@ -231,17 +231,35 @@ export function createSolverWorkerRuntime({
             throw new Error("WASM module is missing solve_with_progress");
           }
 
-          let lastProgress: ProgressUpdate | null = null;
-          const progressCallback = useProgress
-            ? (progress: ProgressUpdate): boolean => {
-                lastProgress = progress;
-                postMessage(createProgressMessage(id, progress));
-                return true;
-              }
-            : undefined;
+          if (useProgress && !progressMailbox) {
+            throw new Error("Shared progress mailbox is required for progress-enabled solves");
+          }
 
-          const result = wasm.solve_with_progress(scenarioPayload, progressCallback) as RustResult;
-          postMessage(createSolveSuccessMessage(id, result, lastProgress));
+          const mailboxWriter = progressMailbox
+            ? createProgressMailboxWriter(progressMailbox)
+            : null;
+
+          mailboxWriter?.reset();
+          mailboxWriter?.setStatus("running");
+
+          let lastProgress: ProgressUpdate | null = null;
+
+          try {
+            const progressCallback = useProgress
+              ? (progress: ProgressUpdate): boolean => {
+                  lastProgress = progress;
+                  mailboxWriter?.writeProgress(progress);
+                  return true;
+                }
+              : undefined;
+
+            const result = wasm.solve_with_progress(scenarioPayload, progressCallback) as RustResult;
+            mailboxWriter?.setStatus("completed", { stopReason: lastProgress?.stop_reason });
+            postMessage(createSolveSuccessMessage(id, result, lastProgress));
+          } catch (error) {
+            mailboxWriter?.setStatus("failed", { stopReason: lastProgress?.stop_reason });
+            throw error;
+          }
           break;
         }
 

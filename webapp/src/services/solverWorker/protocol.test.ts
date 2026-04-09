@@ -51,10 +51,11 @@ describe("solver worker protocol", () => {
     expect(createInitRequestMessage("1")).toEqual({ type: "INIT", id: "1" });
     expect(createCancelRequestMessage("2")).toEqual({ type: "CANCEL", id: "2" });
     const scenario = createSampleScenario();
-    expect(createSolveRequestMessage("3", { scenario }, true)).toEqual({
+    const progressMailbox = new SharedArrayBuffer(64);
+    expect(createSolveRequestMessage("3", { scenario }, true, progressMailbox)).toEqual({
       type: "SOLVE",
       id: "3",
-      data: { scenarioPayload: { scenario }, useProgress: true },
+      data: { scenarioPayload: { scenario }, useProgress: true, progressMailbox },
     });
     expect(
       createRpcRequestMessage("recommend_settings", "4", {

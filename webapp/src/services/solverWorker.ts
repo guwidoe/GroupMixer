@@ -1,6 +1,13 @@
 import type { Scenario, Solution, SolverSettings } from "../types";
 import type { ProgressUpdate, ProgressCallback } from "./wasm/types";
 import {
+  createProgressMailboxBuffer,
+  createProgressMailboxReader,
+  getRuntimeProgressMailboxSupport,
+  mailboxSnapshotToProgressUpdate,
+  type ProgressMailboxReader,
+} from "./runtime/progressMailbox";
+import {
   createInitRequestMessage,
   createRpcRequestMessage,
   createSolveRequestMessage,
@@ -48,7 +55,17 @@ type PendingMessage =
       resolve: (value: SolverRunResult) => void;
       reject: (error: Error) => void;
       progressCallback?: ProgressCallback;
+      progressReader?: ProgressMailboxReader;
+      progressPollTimer?: ReturnType<typeof setInterval> | null;
+      lastProgress?: ProgressUpdate | null;
+      lastSequence?: number;
     };
+
+interface SolverWorkerServiceDeps {
+  createWorker?: () => Worker;
+  setIntervalFn?: typeof setInterval;
+  clearIntervalFn?: typeof clearInterval;
+}
 
 export class SolverWorkerService {
   private worker: Worker | null = null;
@@ -58,17 +75,86 @@ export class SolverWorkerService {
   private initializationPromise: Promise<void> | null = null;
   private lastProgressUpdate: ProgressUpdate | null = null;
 
+  constructor(private readonly deps: SolverWorkerServiceDeps = {}) {}
+
   private nextMessageId(): string {
     this.messageId += 1;
     return this.messageId.toString();
   }
 
   private rejectAllPending(error: Error): void {
+    this.pendingMessages.forEach((pending) => {
+      if (pending.kind === "solve") {
+        this.stopProgressPolling(pending);
+      }
+    });
     this.pendingMessages.forEach(({ reject }) => reject(error));
     this.pendingMessages.clear();
   }
 
+  private setInterval(callback: () => void, ms: number): ReturnType<typeof setInterval> {
+    return this.deps.setIntervalFn ? this.deps.setIntervalFn(callback, ms) : setInterval(callback, ms);
+  }
+
+  private clearInterval(timer: ReturnType<typeof setInterval> | null | undefined): void {
+    if (!timer) {
+      return;
+    }
+
+    if (this.deps.clearIntervalFn) {
+      this.deps.clearIntervalFn(timer);
+      return;
+    }
+
+    clearInterval(timer);
+  }
+
+  private stopProgressPolling(pending: Extract<PendingMessage, { kind: "solve" }>): void {
+    this.clearInterval(pending.progressPollTimer);
+    pending.progressPollTimer = null;
+  }
+
+  private pollMailboxProgress(pending: Extract<PendingMessage, { kind: "solve" }>): void {
+    if (!pending.progressReader) {
+      return;
+    }
+
+    const readResult = pending.progressReader.read();
+    if (!readResult || readResult.sequence === pending.lastSequence) {
+      return;
+    }
+
+    pending.lastSequence = readResult.sequence;
+    const progress = mailboxSnapshotToProgressUpdate(readResult.snapshot);
+    pending.lastProgress = progress;
+    this.lastProgressUpdate = progress;
+
+    if (pending.progressCallback) {
+      try {
+        pending.progressCallback(progress);
+      } catch (error) {
+        console.error("Failed to handle mailbox progress update:", error);
+      }
+    }
+  }
+
+  private startProgressPolling(pending: Extract<PendingMessage, { kind: "solve" }>): void {
+    if (!pending.progressReader) {
+      return;
+    }
+
+    this.stopProgressPolling(pending);
+    this.pollMailboxProgress(pending);
+    pending.progressPollTimer = this.setInterval(() => {
+      this.pollMailboxProgress(pending);
+    }, 50);
+  }
+
   private createWorker(): Worker {
+    if (this.deps.createWorker) {
+      return this.deps.createWorker();
+    }
+
     return new Worker(new URL("../workers/solverWorker.ts", import.meta.url), {
       type: "module",
     });
@@ -141,6 +227,7 @@ export class SolverWorkerService {
             try {
               const progress = message.data.progress;
               pending.progressCallback(progress);
+              pending.lastProgress = progress;
               this.lastProgressUpdate = progress;
             } catch (error) {
               console.error("Failed to handle progress update:", error);
@@ -150,7 +237,9 @@ export class SolverWorkerService {
 
         case "SOLVE_SUCCESS":
           if (pending?.kind === "solve") {
-            const lastProgress = message.data.lastProgress ?? null;
+            this.pollMailboxProgress(pending);
+            this.stopProgressPolling(pending);
+            const lastProgress = pending.lastProgress ?? message.data.lastProgress ?? null;
             if (lastProgress) {
               this.lastProgressUpdate = lastProgress;
             }
@@ -161,6 +250,9 @@ export class SolverWorkerService {
 
         case "CANCELLED":
           if (pending) {
+            if (pending.kind === "solve") {
+              this.stopProgressPolling(pending);
+            }
             pending.reject(new Error("Solver cancelled"));
             this.pendingMessages.delete(message.id);
           }
@@ -169,6 +261,9 @@ export class SolverWorkerService {
         case "ERROR":
         case "RPC_ERROR": {
           if (pending) {
+            if (pending.kind === "solve") {
+              this.stopProgressPolling(pending);
+            }
             pending.reject(this.buildWorkerError(message.data));
             this.pendingMessages.delete(message.id);
           } else {
@@ -262,13 +357,34 @@ export class SolverWorkerService {
   ): Promise<SolverRunResult> {
     return new Promise((resolve, reject) => {
       const id = this.nextMessageId();
-      this.pendingMessages.set(id, {
+      const pending: Extract<PendingMessage, { kind: "solve" }> = {
         kind: "solve",
         resolve,
         reject,
         progressCallback,
-      });
-      this.postMessage(createSolveRequestMessage(id, scenarioPayload, useProgress));
+        progressPollTimer: null,
+        lastProgress: null,
+      };
+
+      let progressMailbox: SharedArrayBuffer | undefined;
+
+      if (useProgress) {
+        const support = getRuntimeProgressMailboxSupport();
+        if (!support.supported) {
+          reject(new Error(support.unavailableReason ?? "Shared progress mailbox is unavailable."));
+          return;
+        }
+
+        progressMailbox = createProgressMailboxBuffer();
+        pending.progressReader = createProgressMailboxReader(progressMailbox);
+      }
+
+      this.pendingMessages.set(id, pending);
+      this.postMessage(createSolveRequestMessage(id, scenarioPayload, useProgress, progressMailbox));
+
+      if (useProgress) {
+        this.startProgressPolling(pending);
+      }
     });
   }
 
@@ -370,6 +486,11 @@ export class SolverWorkerService {
   }
 
   terminate(): void {
+    this.pendingMessages.forEach((pending) => {
+      if (pending.kind === "solve") {
+        this.stopProgressPolling(pending);
+      }
+    });
     if (this.worker) {
       this.worker.terminate();
       this.worker = null;
