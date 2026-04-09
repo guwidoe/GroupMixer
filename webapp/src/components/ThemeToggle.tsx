@@ -57,7 +57,7 @@ export function ThemeToggle({
 
   if (showLabel) {
     return (
-      <div className="flex items-center space-x-1 rounded-lg p-1" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+      <div className="grid w-full grid-cols-3 gap-1 rounded-xl p-1" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
         {themes.map(({ value, label, icon: Icon }) => {
           const isActive = theme === value;
           const isHovered = hoveredTheme === value;
@@ -67,7 +67,7 @@ export function ThemeToggle({
               onClick={() => setTheme(value)}
               onMouseEnter={() => setHoveredTheme(value)}
               onMouseLeave={() => setHoveredTheme((current) => (current === value ? null : current))}
-              className="flex items-center space-x-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all"
+              className="flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all"
               style={{
                 backgroundColor: isActive
                   ? 'var(--bg-primary)'

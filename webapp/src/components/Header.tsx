@@ -112,7 +112,7 @@ function WorkspaceDesktopMenu({ handlers }: { handlers: WorkspaceActionHandlers 
       {isOpen ? (
         <div
           ref={panelRef}
-          className="absolute right-0 top-[calc(100%+0.6rem)] z-[80] w-[19rem] overflow-hidden rounded-2xl border shadow-lg"
+          className="absolute right-0 top-[calc(100%+0.6rem)] z-[80] w-[18rem] overflow-hidden rounded-2xl border shadow-lg"
           style={{
             backgroundColor: 'var(--bg-primary)',
             borderColor: 'var(--border-primary)',
@@ -125,12 +125,12 @@ function WorkspaceDesktopMenu({ handlers }: { handlers: WorkspaceActionHandlers 
             <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
               Workspace
             </div>
-            <div className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Project actions and app preferences.
+            <div className="mt-1 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+              Project actions
             </div>
           </div>
 
-          <div className="space-y-1 p-2">
+          <div className="p-2" role="none">
             <button
               type="button"
               onClick={() => {
@@ -145,10 +145,10 @@ function WorkspaceDesktopMenu({ handlers }: { handlers: WorkspaceActionHandlers 
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = 'transparent';
               }}
-            >
-              <Upload className="h-4 w-4" style={{ color: 'var(--text-tertiary)' }} />
-              <span>Load scenario</span>
-            </button>
+              >
+                <Upload className="h-4 w-4" style={{ color: 'var(--text-tertiary)' }} />
+                <span>Load scenario</span>
+              </button>
 
             <button
               type="button"
@@ -164,27 +164,34 @@ function WorkspaceDesktopMenu({ handlers }: { handlers: WorkspaceActionHandlers 
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = 'transparent';
               }}
-            >
-              <Save className="h-4 w-4" style={{ color: 'var(--text-tertiary)' }} />
-              <span>Save scenario</span>
-            </button>
+              >
+                <Save className="h-4 w-4" style={{ color: 'var(--text-tertiary)' }} />
+                <span>Save scenario</span>
+              </button>
 
-            <div className="rounded-xl p-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-              <DemoDataDropdown onDemoCaseClick={handlers.onDemoCaseClick} triggerLabel="Demo Data" />
+            <DemoDataDropdown onDemoCaseClick={handlers.onDemoCaseClick} triggerLabel="Demo Data" variant="menu" />
+          </div>
+
+          <div className="border-t px-4 py-3" style={{ borderColor: 'var(--border-primary)' }}>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
+              Appearance
+            </div>
+            <div className="mt-3">
+              <ThemeToggle showLabel size="sm" />
             </div>
           </div>
 
           <div className="border-t px-4 py-3" style={{ borderColor: 'var(--border-primary)' }}>
             <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
-              Preferences
+              Help
             </div>
-            <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="mt-2">
               <a
                 href={ISSUE_HREF}
                 target="_blank"
                 rel="noopener noreferrer"
                 title={ISSUE_LABEL}
-                className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors"
+                className="inline-flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors"
                 style={{ color: 'var(--text-secondary)' }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = 'var(--bg-secondary)';
@@ -196,9 +203,8 @@ function WorkspaceDesktopMenu({ handlers }: { handlers: WorkspaceActionHandlers 
                 }}
               >
                 <Bug className="h-4 w-4" />
-                <span>Report Issue</span>
+                <span>Report issue or request a feature</span>
               </a>
-              <ThemeToggle showLabel size="sm" />
             </div>
           </div>
         </div>

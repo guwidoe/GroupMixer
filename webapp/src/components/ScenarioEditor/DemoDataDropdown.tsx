@@ -9,7 +9,7 @@ import { getButtonClassName } from '../ui';
 
 interface DemoDataDropdownProps {
   onDemoCaseClick: (demoCaseId: string, demoCaseName: string) => void;
-  variant?: 'default' | 'sidebar' | 'header';
+  variant?: 'default' | 'sidebar' | 'header' | 'menu';
   placement?: 'bottom' | 'right';
   collapsed?: boolean;
   triggerLabel?: string;
@@ -187,11 +187,17 @@ export function DemoDataDropdown({
       onClick={() => setIsOpen((open) => !open)}
       onMouseEnter={() => setIsTriggerHovered(true)}
       onMouseLeave={() => setIsTriggerHovered(false)}
-      className={getButtonClassName({ variant: variant === 'header' ? 'toolbar' : 'secondary', size: variant === 'header' ? 'md' : 'lg' })}
+      className={variant === 'menu'
+        ? 'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors'
+        : getButtonClassName({ variant: variant === 'header' ? 'toolbar' : 'secondary', size: variant === 'header' ? 'md' : 'lg' })}
       style={{
         outline: 'none',
         boxShadow: 'none',
-        backgroundColor: variant === 'header'
+        backgroundColor: variant === 'menu'
+          ? isOpen || isTriggerHovered
+            ? 'var(--bg-secondary)'
+            : 'transparent'
+          : variant === 'header'
           ? isOpen || isTriggerHovered
             ? 'var(--bg-primary)'
             : 'transparent'
@@ -199,15 +205,25 @@ export function DemoDataDropdown({
             ? 'var(--bg-tertiary)'
             : 'var(--bg-primary)',
         borderColor: variant === 'header' ? 'transparent' : undefined,
-        color: variant === 'header' && isTriggerHovered ? 'var(--text-primary)' : undefined,
+        color:
+          variant === 'menu'
+            ? isOpen || isTriggerHovered
+              ? 'var(--text-primary)'
+              : 'var(--text-primary)'
+            : variant === 'header' && isTriggerHovered
+              ? 'var(--text-primary)'
+              : undefined,
       }}
       aria-expanded={isOpen}
       aria-haspopup="menu"
       aria-label={triggerLabel}
     >
-      <Zap className="w-4 h-4 flex-shrink-0" />
+      <Zap className="w-4 h-4 flex-shrink-0" style={{ color: variant === 'menu' ? 'var(--text-tertiary)' : undefined }} />
       <span>{triggerLabel}</span>
-      <ChevronDown className="w-4 h-4 flex-shrink-0" />
+      <ChevronDown
+        className={`w-4 h-4 flex-shrink-0 ${variant === 'menu' ? 'ml-auto' : ''}`}
+        style={{ color: variant === 'menu' ? 'var(--text-tertiary)' : undefined }}
+      />
     </button>
   );
 
