@@ -6,7 +6,7 @@ export function normalizeRecommendedSolverSettings(settings: SolverSettings): So
   if (
     !solverParams
     || 'SimulatedAnnealing' in solverParams
-    || normalizeSolverFamilyId(settings.solver_type) !== 'legacy_simulated_annealing'
+    || normalizeSolverFamilyId(settings.solver_type) !== 'solver1'
     || !isFlatLegacySimulatedAnnealingParams(solverParams)
   ) {
     return settings;

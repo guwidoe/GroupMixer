@@ -175,6 +175,26 @@ export interface StopConditions {
 
 export interface SolverParams {
   SimulatedAnnealing?: SimulatedAnnealingParams;
+  solver2?: Solver2Params;
+  solver3?: Solver3Params;
+  solver_type?: 'SimulatedAnnealing' | 'solver2' | 'solver3' | string;
+  initial_temperature?: number;
+  final_temperature?: number;
+  cooling_schedule?: 'geometric' | 'linear' | string;
+  reheat_cycles?: number;
+  reheat_after_no_improvement?: number;
+  correctness_lane?: Solver3CorrectnessLaneParams;
+}
+
+export interface Solver2Params {}
+
+export interface Solver3Params {
+  correctness_lane?: Solver3CorrectnessLaneParams;
+}
+
+export interface Solver3CorrectnessLaneParams {
+  enabled: boolean;
+  sample_every_accepted_moves: number;
 }
 
 export interface SimulatedAnnealingParams {

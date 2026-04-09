@@ -10,20 +10,26 @@ import {
 
 describe('solverCatalog', () => {
   it('normalizes accepted solver type aliases to the canonical family id', () => {
-    expect(normalizeSolverFamilyId('SimulatedAnnealing')).toBe('legacy_simulated_annealing');
-    expect(normalizeSolverFamilyId('simulated_annealing')).toBe('legacy_simulated_annealing');
-    expect(normalizeSolverFamilyId('legacy_simulated_annealing')).toBe('legacy_simulated_annealing');
+    expect(normalizeSolverFamilyId('SimulatedAnnealing')).toBe('solver1');
+    expect(normalizeSolverFamilyId('simulated_annealing')).toBe('solver1');
+    expect(normalizeSolverFamilyId('legacy_simulated_annealing')).toBe('solver1');
+    expect(normalizeSolverFamilyId('solver3')).toBe('solver3');
     expect(normalizeSolverFamilyId('unknown')).toBeNull();
   });
 
-  it('exposes the current solver catalog entry', () => {
+  it('exposes the supported fallback solver catalog entries', () => {
     const catalog = getSolverCatalog();
-    expect(catalog).toHaveLength(1);
+    expect(catalog).toHaveLength(2);
     expect(catalog[0]).toMatchObject({
-      id: 'legacy_simulated_annealing',
-      displayName: 'Legacy Simulated Annealing',
+      id: 'solver1',
+      displayName: 'Solver 1',
+    });
+    expect(catalog[1]).toMatchObject({
+      id: 'solver3',
+      displayName: 'Solver 3',
     });
     expect(getSolverCatalogEntry('SimulatedAnnealing')?.capabilities.supportsRecommendedSettings).toBe(true);
+    expect(getSolverCatalogEntry('solver3')?.capabilities.supportsRecommendedSettings).toBe(false);
   });
 
   it('returns metadata-driven parameter fields for known solver settings', () => {

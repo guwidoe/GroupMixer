@@ -93,7 +93,7 @@ function normalizeSolverSettingsForWasm(settings: SolverSettings): SolverSetting
 
   if (solverParams && typeof solverParams === 'object') {
     if (
-      normalizeSolverFamilyId(settings.solver_type) === 'legacy_simulated_annealing'
+      normalizeSolverFamilyId(settings.solver_type) === 'solver1'
       && 'SimulatedAnnealing' in solverParams
     ) {
       const rawParams =
