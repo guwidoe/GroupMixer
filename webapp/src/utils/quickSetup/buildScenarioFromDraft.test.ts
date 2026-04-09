@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { QuickSetupDraft } from '../../components/LandingTool/types';
+import { createAttributeDefinition } from '../../services/scenarioAttributes';
 import { buildGroups } from './buildGroups';
 import { buildScenarioFromDraft } from './buildScenarioFromDraft';
 import { parseParticipantInput } from './parseParticipantInput';
@@ -93,8 +94,8 @@ describe('quick setup scenario mapping', () => {
       ]),
     );
     expect(attributeDefinitions).toEqual([
-      { key: 'department', values: ['Engineering', 'Sales'] },
-      { key: 'level', values: ['Junior', 'Senior'] },
+      createAttributeDefinition('department', ['Engineering', 'Sales'], attributeDefinitions[0]?.id),
+      createAttributeDefinition('level', ['Junior', 'Senior'], attributeDefinitions[1]?.id),
     ]);
   });
 });

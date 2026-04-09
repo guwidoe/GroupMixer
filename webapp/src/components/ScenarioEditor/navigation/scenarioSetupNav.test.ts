@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createAttributeDefinition } from '../../../services/scenarioAttributes';
 import {
   getScenarioSetupLegacyRedirect,
   getScenarioSetupSectionById,
@@ -94,7 +95,7 @@ describe('scenarioSetupNav', () => {
           verbose: false,
         },
       },
-      attributeDefinitions: [{ key: 'role', values: ['dev', 'pm'] }],
+      attributeDefinitions: [createAttributeDefinition('role', ['dev', 'pm'], 'attr-role')],
       objectiveCount: 1,
     };
 

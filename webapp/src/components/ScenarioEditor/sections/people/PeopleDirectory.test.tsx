@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { act } from 'react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { createAttributeDefinition } from '../../../../services/scenarioAttributes';
 import type { Scenario } from '../../../../types';
 import { createSampleScenario, createSampleSolverSettings } from '../../../../test/fixtures';
 import { PeopleDirectory } from './PeopleDirectory';
@@ -69,7 +70,7 @@ describe('PeopleDirectory', () => {
           ],
           settings: createSampleSolverSettings(),
         })}
-        attributeDefinitions={[{ key: 'role', values: ['dev'] }]}
+        attributeDefinitions={[createAttributeDefinition('role', ['dev'], 'attr-role')]}
         sessionsCount={3}
         onAddPerson={vi.fn()}
         onEditPerson={onEditPerson}
@@ -116,8 +117,8 @@ describe('PeopleDirectory', () => {
           settings: createSampleSolverSettings(),
         })}
         attributeDefinitions={[
-          { key: 'gender', values: ['female', 'male'] },
-          { key: 'department', values: ['Engineering'] },
+          createAttributeDefinition('gender', ['female', 'male'], 'attr-gender'),
+          createAttributeDefinition('department', ['Engineering'], 'attr-department'),
         ]}
         sessionsCount={3}
         onAddPerson={vi.fn()}

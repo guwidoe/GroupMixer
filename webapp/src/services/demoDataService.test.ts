@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createAttributeDefinition } from './scenarioAttributes';
 import { createSampleScenario } from '../test/fixtures';
 import {
   extractAttributesFromScenario,
@@ -184,21 +185,27 @@ describe('demoDataService', () => {
     );
 
     expect(attributes).toEqual([
-      { key: 'team', values: ['Blue', 'Red'] },
-      { key: 'level', values: ['Junior', 'Senior'] },
+      createAttributeDefinition('level', ['Junior', 'Senior'], attributes[0]?.id),
+      createAttributeDefinition('team', ['Blue', 'Red'], attributes[1]?.id),
     ]);
   });
 
   it('merges attribute definitions without losing existing values', () => {
     const merged = mergeAttributeDefinitions(
-      [{ key: 'team', values: ['Blue'] }, { key: 'office', values: ['Vienna'] }],
-      [{ key: 'team', values: ['Red'] }, { key: 'level', values: ['Senior', 'Junior'] }],
+      [
+        createAttributeDefinition('team', ['Blue'], 'attr-team'),
+        createAttributeDefinition('office', ['Vienna'], 'attr-office'),
+      ],
+      [
+        createAttributeDefinition('team', ['Red'], 'attr-team-extracted'),
+        createAttributeDefinition('level', ['Senior', 'Junior'], 'attr-level'),
+      ],
     );
 
     expect(merged).toEqual([
-      { key: 'level', values: ['Junior', 'Senior'] },
-      { key: 'office', values: ['Vienna'] },
-      { key: 'team', values: ['Blue', 'Red'] },
+      createAttributeDefinition('level', ['Junior', 'Senior'], 'attr-level'),
+      createAttributeDefinition('office', ['Vienna'], 'attr-office'),
+      createAttributeDefinition('team', ['Blue', 'Red'], 'attr-team'),
     ]);
   });
 });

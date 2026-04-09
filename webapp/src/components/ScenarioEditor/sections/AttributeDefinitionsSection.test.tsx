@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { createAttributeDefinition } from '../../../services/scenarioAttributes';
 import { AttributeDefinitionsSection } from './AttributeDefinitionsSection';
 
 describe('AttributeDefinitionsSection', () => {
@@ -12,7 +13,7 @@ describe('AttributeDefinitionsSection', () => {
 
     render(
       <AttributeDefinitionsSection
-        attributeDefinitions={[{ key: 'role', values: ['dev', 'pm'] }]}
+        attributeDefinitions={[createAttributeDefinition('role', ['dev', 'pm'], 'attr-role')]}
         onAddAttribute={onAddAttribute}
         onEditAttribute={onEditAttribute}
         onRemoveAttribute={onRemoveAttribute}

@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { createAttributeDefinition } from '../../services/scenarioAttributes';
 import { ScenarioSetupSectionRenderer } from './ScenarioSetupSectionRenderer';
 import type { ScenarioEditorController } from './useScenarioEditorController';
 
@@ -24,7 +25,7 @@ function createController(overrides: Partial<ScenarioEditorController> = {}): Sc
         solver_params: {},
       },
     },
-    attributeDefinitions: [{ key: 'role', values: ['dev', 'pm'] }],
+    attributeDefinitions: [createAttributeDefinition('role', ['dev', 'pm'], 'attr-role')],
     removeAttributeDefinition: vi.fn(),
     addNotification: vi.fn(),
     sessionsCount: 3,
@@ -76,7 +77,7 @@ describe('ScenarioSetupSectionRenderer', () => {
     expect(screen.getByRole('heading', { name: /repeat encounter/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /add repeat limit/i })).toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/filter by limit, weight, or penalty function/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('spinbutton', { name: /filter repeat encounter max encounters minimum/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open filter for limit/i })).toBeInTheDocument();
     expect(screen.getAllByText(/penalty function/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText('linear').length).toBeGreaterThan(0);
   });

@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { createAttributeDefinition } from '../../../services/scenarioAttributes';
 import type { Scenario } from '../../../types';
 import { ScenarioSetupLayout } from './ScenarioSetupLayout';
 
@@ -35,7 +36,7 @@ describe('ScenarioSetupLayout', () => {
     render(
       <ScenarioSetupLayout
         scenario={createScenario()}
-        attributeDefinitions={[{ key: 'role', values: ['dev', 'pm'] }]}
+        attributeDefinitions={[createAttributeDefinition('role', ['dev', 'pm'], 'attr-role')]}
         objectiveCount={1}
         activeSection="attributes"
         onNavigate={onNavigate}
@@ -62,7 +63,7 @@ describe('ScenarioSetupLayout', () => {
     render(
       <ScenarioSetupLayout
         scenario={createScenario()}
-        attributeDefinitions={[{ key: 'role', values: ['dev', 'pm'] }]}
+        attributeDefinitions={[createAttributeDefinition('role', ['dev', 'pm'], 'attr-role')]}
         objectiveCount={1}
         activeSection="attributes"
         onNavigate={vi.fn()}
@@ -90,7 +91,7 @@ describe('ScenarioSetupLayout', () => {
     render(
       <ScenarioSetupLayout
         scenario={createScenario()}
-        attributeDefinitions={[{ key: 'role', values: ['dev', 'pm'] }]}
+        attributeDefinitions={[createAttributeDefinition('role', ['dev', 'pm'], 'attr-role')]}
         objectiveCount={1}
         activeSection="attributes"
         onNavigate={vi.fn()}
@@ -126,7 +127,7 @@ describe('ScenarioSetupLayout', () => {
     render(
       <ScenarioSetupLayout
         scenario={createScenario()}
-        attributeDefinitions={[{ key: 'role', values: ['dev', 'pm'] }]}
+        attributeDefinitions={[createAttributeDefinition('role', ['dev', 'pm'], 'attr-role')]}
         objectiveCount={1}
         activeSection="sessions"
         onNavigate={onNavigate}
@@ -169,7 +170,7 @@ describe('ScenarioSetupLayout', () => {
     rerender(
       <ScenarioSetupLayout
         scenario={createScenario()}
-        attributeDefinitions={[{ key: 'role', values: ['dev', 'pm'] }]}
+        attributeDefinitions={[createAttributeDefinition('role', ['dev', 'pm'], 'attr-role')]}
         objectiveCount={1}
         activeSection="people"
         onNavigate={vi.fn()}

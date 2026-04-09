@@ -1,4 +1,5 @@
 import type { AttributeDefinition, Person } from '../../types';
+import { createAttributeDefinition } from '../../services/scenarioAttributes';
 
 export function buildAttributeDefinitions(people: Person[]): AttributeDefinition[] {
   const valueMap = new Map<string, Set<string>>();
@@ -16,8 +17,5 @@ export function buildAttributeDefinitions(people: Person[]): AttributeDefinition
 
   return [...valueMap.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, values]) => ({
-      key,
-      values: [...values].sort((left, right) => left.localeCompare(right)),
-    }));
+    .map(([key, values]) => createAttributeDefinition(key, [...values].sort((left, right) => left.localeCompare(right))));
 }

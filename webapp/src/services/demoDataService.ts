@@ -1,5 +1,6 @@
-import { Scenario, SolverSettings, AttributeDefinition } from "../types";
-import { createDefaultSolverSettings, normalizeSolverFamilyId } from "./solverUi";
+import { Scenario, SolverSettings, AttributeDefinition } from '../types';
+import { createAttributeDefinition, getAttributeDefinitionName } from './scenarioAttributes';
+import { createDefaultSolverSettings, normalizeSolverFamilyId } from './solverUi';
 
 export interface DemoCase {
   id: string;
@@ -417,13 +418,10 @@ export function extractAttributesFromScenario(
   // Convert to AttributeDefinition array
   const extractedAttributes: AttributeDefinition[] = [];
   attributeMap.forEach((values, key) => {
-    extractedAttributes.push({
-      key,
-      values: Array.from(values).sort(),
-    });
+    extractedAttributes.push(createAttributeDefinition(key, Array.from(values).sort()));
   });
 
-  return extractedAttributes;
+  return extractedAttributes.sort((left, right) => getAttributeDefinitionName(left).localeCompare(getAttributeDefinitionName(right)));
 }
 
 // Merge extracted attributes with existing definitions
@@ -431,35 +429,34 @@ export function mergeAttributeDefinitions(
   existing: AttributeDefinition[],
   extracted: AttributeDefinition[]
 ): AttributeDefinition[] {
-  const merged = new Map<string, Set<string>>();
+  const merged = new Map<string, { id?: string; values: Set<string> }>();
 
   // Add all existing attributes
   existing.forEach((def) => {
-    merged.set(def.key, new Set(def.values));
+    const name = getAttributeDefinitionName(def);
+    merged.set(name, { id: def.id, values: new Set(def.values) });
   });
 
   // Merge in extracted attributes
   extracted.forEach((def) => {
-    if (merged.has(def.key)) {
+    const name = getAttributeDefinitionName(def);
+    if (merged.has(name)) {
       // Add new values to existing attribute
       def.values.forEach((value) => {
-        merged.get(def.key)!.add(value);
+        merged.get(name)!.values.add(value);
       });
     } else {
       // Add new attribute
-      merged.set(def.key, new Set(def.values));
+      merged.set(name, { id: def.id, values: new Set(def.values) });
     }
   });
 
   // Convert back to AttributeDefinition array
   const result: AttributeDefinition[] = [];
-  merged.forEach((values, key) => {
-    result.push({
-      key,
-      values: Array.from(values).sort(),
-    });
+  merged.forEach(({ id, values }, key) => {
+    result.push(createAttributeDefinition(key, Array.from(values).sort(), id));
   });
 
   // Sort by key name for consistent ordering
-  return result.sort((a, b) => a.key.localeCompare(b.key));
+  return result.sort((a, b) => getAttributeDefinitionName(a).localeCompare(getAttributeDefinitionName(b)));
 }

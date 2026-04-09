@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
 import PersonForm from '../components/ScenarioEditor/forms/PersonForm';
+import { createAttributeDefinition } from '../services/scenarioAttributes';
 import type { AttributeDefinition, PersonFormData } from '../types';
 
 /**
@@ -20,9 +21,9 @@ export default meta;
 type Story = StoryObj<typeof PersonForm>;
 
 const sampleAttributes: AttributeDefinition[] = [
-  { key: 'gender', values: ['male', 'female', 'non-binary'] },
-  { key: 'department', values: ['Engineering', 'Marketing', 'Sales', 'HR', 'Finance'] },
-  { key: 'experience', values: ['junior', 'mid', 'senior'] },
+  createAttributeDefinition('gender', ['male', 'female', 'non-binary'], 'attr-gender'),
+  createAttributeDefinition('department', ['Engineering', 'Marketing', 'Sales', 'HR', 'Finance'], 'attr-department'),
+  createAttributeDefinition('experience', ['junior', 'mid', 'senior'], 'attr-experience'),
 ];
 
 const emptyFormData: PersonFormData = {
@@ -120,12 +121,12 @@ export const ManyAttributes: Story = {
     personForm: { attributes: { name: '' }, sessions: [] },
     setPersonForm: fn(),
     attributeDefinitions: [
-      { key: 'gender', values: ['male', 'female', 'non-binary'] },
-      { key: 'department', values: ['Engineering', 'Marketing', 'Sales', 'HR', 'Finance', 'Legal', 'Operations'] },
-      { key: 'experience', values: ['intern', 'junior', 'mid', 'senior', 'staff', 'principal'] },
-      { key: 'location', values: ['New York', 'San Francisco', 'London', 'Berlin', 'Tokyo', 'Remote'] },
-      { key: 'team', values: ['Team Alpha', 'Team Beta', 'Team Gamma', 'Team Delta'] },
-      { key: 'role', values: ['Individual Contributor', 'Tech Lead', 'Manager', 'Director'] },
+      createAttributeDefinition('gender', ['male', 'female', 'non-binary'], 'attr-gender'),
+      createAttributeDefinition('department', ['Engineering', 'Marketing', 'Sales', 'HR', 'Finance', 'Legal', 'Operations'], 'attr-department'),
+      createAttributeDefinition('experience', ['intern', 'junior', 'mid', 'senior', 'staff', 'principal'], 'attr-experience'),
+      createAttributeDefinition('location', ['New York', 'San Francisco', 'London', 'Berlin', 'Tokyo', 'Remote'], 'attr-location'),
+      createAttributeDefinition('team', ['Team Alpha', 'Team Beta', 'Team Gamma', 'Team Delta'], 'attr-team'),
+      createAttributeDefinition('role', ['Individual Contributor', 'Tech Lead', 'Manager', 'Director'], 'attr-role'),
     ],
     sessionsCount: 5,
     onSave: fn(),

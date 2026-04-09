@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { createAttributeDefinition } from '../../services/scenarioAttributes';
 import type { Scenario } from '../../types';
 import { createSampleScenario, createSampleSolverSettings } from '../../test/fixtures';
 import { useDeferredScenarioSectionContent, useDeferredScenarioSetupSummary } from './useDeferredScenarioSectionContent';
@@ -64,7 +65,7 @@ describe('useDeferredScenarioSectionContent', () => {
     vi.useFakeTimers();
 
     const largeScenario = createLargeScenario(250);
-    const attributeDefinitions = [{ key: 'team', values: ['A', 'B'] }];
+    const attributeDefinitions = [createAttributeDefinition('team', ['A', 'B'], 'attr-team')];
     const { result } = renderHook(() =>
       useDeferredScenarioSetupSummary(largeScenario, attributeDefinitions, 3, 'scenario-1'),
     );

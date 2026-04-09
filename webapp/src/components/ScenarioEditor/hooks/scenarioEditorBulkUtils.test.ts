@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createAttributeDefinition } from '../../../services/scenarioAttributes';
 import { createSampleScenario } from '../../../test/fixtures';
 import type { AttributeDefinition } from '../../../types';
 import { buildPeopleCsvFromCurrent, buildScenarioWithGroups, buildScenarioWithPeople } from './scenarioEditorBulkUtils';
@@ -14,8 +15,8 @@ describe('scenarioEditorBulkUtils', () => {
       ],
     });
     const attributeDefinitions: AttributeDefinition[] = [
-      { key: 'team', values: ['Blue'] },
-      { key: 'role', values: ['Speaker'] },
+      createAttributeDefinition('team', ['Blue'], 'attr-team'),
+      createAttributeDefinition('role', ['Speaker'], 'attr-role'),
     ];
 
     const snapshot = buildPeopleCsvFromCurrent(scenario, attributeDefinitions);
