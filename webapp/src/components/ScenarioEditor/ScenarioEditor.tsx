@@ -16,10 +16,13 @@ export function ScenarioEditor() {
     controller.scenario ?? null,
     controller.currentScenarioId,
   );
-
-  if (controller.ui.isLoading) {
-    return <div className="animate-fade-in">Loading...</div>;
-  }
+  const showSectionLoadingState = controller.ui.isLoading || deferredSection.isContentLoading;
+  const sectionLoadingLabel = controller.ui.isLoading
+    ? 'scenario setup'
+    : deferredSection.deferredSectionLabel;
+  const sectionLoadingMessage = controller.ui.isLoading
+    ? 'The setup shell is ready. Scenario data is loading asynchronously to keep navigation responsive.'
+    : 'The setup shell is ready. Large scenario content is loading asynchronously to keep navigation responsive.';
 
   return (
     <div className="space-y-6 md:flex md:h-full md:min-h-0 md:flex-col md:space-y-0">
@@ -45,7 +48,7 @@ export function ScenarioEditor() {
           />
         }
       >
-        {deferredSection.isContentLoading ? (
+        {showSectionLoadingState ? (
           <div
             className="animate-fade-in rounded-2xl border px-6 py-8"
             style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
@@ -53,10 +56,10 @@ export function ScenarioEditor() {
             aria-live="polite"
           >
             <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Loading {deferredSection.deferredSectionLabel}…
+              Loading {sectionLoadingLabel}…
             </div>
             <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              The setup shell is ready. Large scenario content is loading asynchronously to keep navigation responsive.
+              {sectionLoadingMessage}
             </p>
           </div>
         ) : (
@@ -64,7 +67,7 @@ export function ScenarioEditor() {
         )}
       </ScenarioSetupLayout>
 
-      <ScenarioEditorForms
+      {!controller.ui.isLoading && <ScenarioEditorForms
         person={{
           showPersonForm: controller.entities.showPersonForm,
           editingPerson: controller.entities.editingPerson,
@@ -142,8 +145,8 @@ export function ScenarioEditor() {
         onCsvFileSelected={controller.bulk.addPeople.handleCsvFileSelected}
         groupCsvFileInputRef={controller.bulk.addGroups.csvFileInputRef}
         onGroupCsvFileSelected={controller.bulk.addGroups.handleCsvFileSelected}
-      />
-      <ConstraintFormModal
+      />}
+      {!controller.ui.isLoading && <ConstraintFormModal
         isOpen={controller.constraints.showConstraintForm}
         isEditing={controller.constraints.editingConstraint !== null}
         constraintForm={controller.constraints.constraintForm}
@@ -154,8 +157,8 @@ export function ScenarioEditor() {
         onAdd={controller.constraints.handleAddConstraint}
         onUpdate={controller.constraints.handleUpdateConstraint}
         onClose={controller.editorActions.handleCloseConstraintForm}
-      />
-      <ScenarioEditorConstraintModals
+      />}
+      {!controller.ui.isLoading && <ScenarioEditorConstraintModals
         sessionsCount={controller.sessionsCount}
         resolveScenario={controller.resolveScenario}
         setScenario={controller.setScenario}
@@ -177,7 +180,7 @@ export function ScenarioEditor() {
         setShowPairMeetingCountModal={controller.constraints.setShowPairMeetingCountModal}
         editingConstraintIndex={controller.constraints.editingConstraintIndex}
         setEditingConstraintIndex={controller.constraints.setEditingConstraintIndex}
-      />
+      />}
 
       <DemoDataWarningModal
         isOpen={controller.showDemoWarningModal}
