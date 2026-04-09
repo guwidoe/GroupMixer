@@ -20,37 +20,39 @@ describe('PeopleDirectory', () => {
   it('shows the shell immediately and progressively reveals large people lists', () => {
     vi.useFakeTimers();
 
-    render(
-      <PeopleDirectory
-        scenario={createLargeScenario(260)}
-        attributeDefinitions={[]}
-        sessionsCount={3}
-        onAddPerson={vi.fn()}
-        onEditPerson={vi.fn()}
-        onDeletePerson={vi.fn()}
-        onInlineUpdatePerson={vi.fn()}
-        onOpenBulkAddForm={vi.fn()}
-        onOpenBulkUpdateForm={vi.fn()}
-        onTriggerCsvUpload={vi.fn()}
-        onTriggerExcelImport={vi.fn()}
-      />,
-    );
+    try {
+      render(
+        <PeopleDirectory
+          scenario={createLargeScenario(260)}
+          attributeDefinitions={[]}
+          sessionsCount={3}
+          onAddPerson={vi.fn()}
+          onEditPerson={vi.fn()}
+          onDeletePerson={vi.fn()}
+          onInlineUpdatePerson={vi.fn()}
+          onOpenBulkAddForm={vi.fn()}
+          onOpenBulkUpdateForm={vi.fn()}
+          onTriggerCsvUpload={vi.fn()}
+          onTriggerExcelImport={vi.fn()}
+        />,
+      );
 
-    expect(screen.getByRole('heading', { name: /^people$/i })).toBeInTheDocument();
-    expect(screen.getByText('260')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /add person/i })).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent(/loading people asynchronously/i);
-    expect(screen.getByText('Person 0001')).toBeInTheDocument();
-    expect(screen.queryByText('Person 0260')).not.toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /^people$/i })).toBeInTheDocument();
+      expect(screen.getByText('260')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /add person/i })).toBeInTheDocument();
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      expect(screen.getByText('Person 0001')).toBeInTheDocument();
+      expect(screen.queryByText('Person 0260')).not.toBeInTheDocument();
 
-    act(() => {
-      vi.runAllTimers();
-    });
+      act(() => {
+        vi.runAllTimers();
+      });
 
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
-    expect(screen.getByText('Person 0260')).toBeInTheDocument();
-
-    vi.useRealTimers();
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      expect(screen.getByText(/page 1 of/i)).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('supports shared cards/list switching and person actions', async () => {

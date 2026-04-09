@@ -247,4 +247,37 @@ describe('ScenarioDataGrid', () => {
     expect(screen.getByRole('heading', { name: /csv preview/i })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: /csv preview content/i })).toHaveValue('Name,Weight\nAlpha,10');
   });
+
+  it('paginates large row sets to limit rendered rows', async () => {
+    const user = userEvent.setup();
+    const largeRows = Array.from({ length: 120 }, (_, index) => ({
+      id: `row-${index + 1}`,
+      name: `Person ${index + 1}`,
+      weight: index + 1,
+    }));
+
+    render(
+      <ScenarioDataGrid
+        rows={largeRows}
+        rowKey={(row) => row.id}
+        pageSize={50}
+        columns={[
+          {
+            id: 'name',
+            header: 'Name',
+            cell: (row) => row.name,
+            sortValue: (row) => row.name,
+            searchValue: (row) => row.name,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('Person 1')).toBeInTheDocument();
+    expect(screen.queryByText('Person 75')).not.toBeInTheDocument();
+    expect(screen.getByText(/page 1 of 3/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /next/i }));
+    expect(screen.getByText('Person 75')).toBeInTheDocument();
+  });
 });

@@ -102,7 +102,7 @@ export function PeopleDirectory({
     return sortPeople(filteredPeople, 'name', 'asc', sessionsCount);
   }, [basePeople, searchValue, sessionsCount, viewMode]);
 
-  const shouldProgressivelyRender = sortedPeople.length >= PROGRESSIVE_PEOPLE_RENDER_THRESHOLD;
+  const shouldProgressivelyRender = viewMode === 'cards' && sortedPeople.length >= PROGRESSIVE_PEOPLE_RENDER_THRESHOLD;
   const [visiblePeopleCount, setVisiblePeopleCount] = useState(() =>
     shouldProgressivelyRender ? Math.min(INITIAL_VISIBLE_PEOPLE, sortedPeople.length) : sortedPeople.length,
   );

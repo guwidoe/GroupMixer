@@ -17,6 +17,7 @@ import {
   getFacetedUniqueValues,
   getCoreRowModel,
   getFilteredRowModel,
+  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
@@ -47,6 +48,8 @@ interface ScenarioDataGridProps<T> {
   searchSummary?: (args: { filteredCount: number; totalCount: number; query: string }) => React.ReactNode;
   toolbarActions?: React.ReactNode;
   maxHeight?: string;
+  pageSize?: number;
+  pageSizeOptions?: number[];
 }
 
 function normalizeSearchValue(value: string | undefined) {
@@ -464,6 +467,8 @@ export function ScenarioDataGrid<T>({
   searchSummary,
   toolbarActions,
   maxHeight = 'min(70vh, calc(100vh - 18rem))',
+  pageSize = 100,
+  pageSizeOptions = [50, 100, 250, 500],
 }: ScenarioDataGridProps<T>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(() =>
@@ -640,6 +645,12 @@ export function ScenarioDataGrid<T>({
     getFilteredRowModel: getFilteredRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: {
+      pagination: {
+        pageSize,
+      },
+    },
   });
 
   React.useEffect(() => {
@@ -692,6 +703,8 @@ export function ScenarioDataGrid<T>({
 
   const filteredCount = table.getFilteredRowModel().rows.length;
   const totalCount = rows.length;
+  const paginatedRows = table.getRowModel().rows;
+  const exportRows = table.getPrePaginationRowModel().rows;
   const csvColumns = table.getVisibleLeafColumns()
     .map((column) => {
       const sourceColumn = (column.columnDef.meta as { sourceColumn?: ScenarioDataGridColumn<T> } | undefined)?.sourceColumn;
@@ -700,13 +713,13 @@ export function ScenarioDataGrid<T>({
     .filter(Boolean) as Array<{ id: string; header: string; sourceColumn: ScenarioDataGridColumn<T> }>;
   const csvText = React.useMemo(() => {
     const headerLine = csvColumns.map((column) => escapeCsvValue(column.header)).join(',');
-    const rowLines = table.getRowModel().rows.map((row) =>
+    const rowLines = exportRows.map((row) =>
       csvColumns
         .map((column) => escapeCsvValue(resolveExportValue(row.original, column.sourceColumn)))
         .join(','),
     );
     return [headerLine, ...rowLines].join('\n');
-  }, [csvColumns, table]);
+  }, [csvColumns, exportRows]);
   const activeColumnFilters = table.getState().columnFilters.map((filterState) => {
     const sourceColumn = columns.find((candidate) => candidate.id === filterState.id);
     const sourceFilter = sourceColumn?.filter;
@@ -848,7 +861,7 @@ export function ScenarioDataGrid<T>({
       ) : null}
 
       {isCsvPreviewOpen ? (
-        <CsvPreviewDialog csvText={csvText} rowCount={table.getRowModel().rows.length} onClose={() => setIsCsvPreviewOpen(false)} />
+        <CsvPreviewDialog csvText={csvText} rowCount={exportRows.length} onClose={() => setIsCsvPreviewOpen(false)} />
       ) : null}
 
       <div
@@ -929,14 +942,14 @@ export function ScenarioDataGrid<T>({
             ))}
           </thead>
           <tbody>
-            {table.getRowModel().rows.length === 0 ? (
+            {paginatedRows.length === 0 ? (
               <tr>
                 <td colSpan={table.getVisibleLeafColumns().length} className="px-4 py-10 text-sm" style={{ color: 'var(--text-secondary)' }}>
                   {emptyState ?? 'No matching rows.'}
                 </td>
               </tr>
             ) : (
-              table.getRowModel().rows.map((row, rowIndex) => (
+              paginatedRows.map((row, rowIndex) => (
                 <tr
                   key={row.id}
                   className="transition-colors hover:bg-[color:var(--bg-secondary)]"
@@ -968,6 +981,44 @@ export function ScenarioDataGrid<T>({
           </tbody>
         </table>
       </div>
+
+      {filteredCount > pageSize ? (
+        <div className="flex flex-col gap-3 border-t px-4 py-3 md:flex-row md:items-center md:justify-between" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
+          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}
+            {' '}to{' '}
+            {Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, filteredCount)} of {filteredCount} matching rows.
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <span>Rows</span>
+              <select
+                className="input h-9 w-24"
+                value={table.getState().pagination.pageSize}
+                onChange={(event) => table.setPageSize(Number(event.target.value))}
+                aria-label="Rows per page"
+              >
+                {pageSizeOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" disabled={!table.getCanPreviousPage()} onClick={() => table.previousPage()}>
+                Previous
+              </Button>
+              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+              </div>
+              <Button variant="secondary" size="sm" disabled={!table.getCanNextPage()} onClick={() => table.nextPage()}>
+                Next
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
