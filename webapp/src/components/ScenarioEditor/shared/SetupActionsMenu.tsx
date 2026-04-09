@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown } from 'lucide-react';
 import { useOutsideClick } from '../../../hooks';
 import { Button } from '../../ui';
@@ -20,17 +21,68 @@ interface SetupActionsMenuProps {
 
 export function SetupActionsMenu({ label, icon, items, summary }: SetupActionsMenuProps) {
   const menuRef = React.useRef<HTMLDivElement>(null);
+  const popoverRef = React.useRef<HTMLDivElement>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [isOpen, setIsOpen] = React.useState(false);
+  const [popoverStyle, setPopoverStyle] = React.useState<React.CSSProperties | null>(null);
 
   useOutsideClick({
-    refs: [menuRef],
+    refs: [menuRef, popoverRef, triggerRef],
     enabled: isOpen,
     onOutsideClick: () => setIsOpen(false),
   });
 
+  React.useLayoutEffect(() => {
+    if (!isOpen) {
+      setPopoverStyle(null);
+      return;
+    }
+
+    const updatePosition = () => {
+      const triggerNode = triggerRef.current;
+      if (!triggerNode || typeof window === 'undefined') {
+        return;
+      }
+
+      const triggerRect = triggerNode.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const width = Math.min(288, Math.max(220, viewportWidth - 16));
+      const maxLeft = Math.max(8, viewportWidth - width - 8);
+      const left = Math.min(Math.max(triggerRect.right - width, 8), maxLeft);
+      const measuredHeight = popoverRef.current?.offsetHeight ?? 0;
+      const preferredTop = triggerRect.bottom + 8;
+      const availableBelow = viewportHeight - preferredTop - 8;
+      const shouldPlaceAbove = measuredHeight > 0 && availableBelow < Math.min(measuredHeight, 200) && triggerRect.top - measuredHeight - 8 >= 8;
+      const top = shouldPlaceAbove
+        ? Math.max(8, triggerRect.top - measuredHeight - 8)
+        : Math.min(preferredTop, Math.max(8, viewportHeight - Math.max(measuredHeight, 160) - 8));
+
+      setPopoverStyle({
+        position: 'fixed',
+        top,
+        left,
+        width,
+        maxWidth: 'calc(100vw - 16px)',
+        maxHeight: `${Math.max(180, viewportHeight - top - 8)}px`,
+        zIndex: 80,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isOpen]);
+
   return (
     <div className="relative" ref={menuRef}>
       <Button
+        ref={triggerRef}
         variant="secondary"
         leadingIcon={icon}
         trailingIcon={<ChevronDown className="h-3 w-3" />}
@@ -38,10 +90,15 @@ export function SetupActionsMenu({ label, icon, items, summary }: SetupActionsMe
       >
         {label}
       </Button>
-      {isOpen ? (
+      {isOpen && typeof document !== 'undefined' ? createPortal(
         <div
-          className="absolute right-0 z-30 mt-2 w-72 rounded-2xl border p-2 shadow-lg"
-          style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+          ref={popoverRef}
+          className="overflow-auto rounded-2xl border p-2 shadow-lg"
+          style={{
+            ...popoverStyle,
+            backgroundColor: 'var(--bg-primary)',
+            borderColor: 'var(--border-primary)',
+          }}
         >
           {summary ? (
             <div className="px-2 pb-2 pt-1 text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>
@@ -76,7 +133,8 @@ export function SetupActionsMenu({ label, icon, items, summary }: SetupActionsMe
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   );
