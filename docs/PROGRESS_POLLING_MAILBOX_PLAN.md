@@ -1,5 +1,16 @@
 # Progress Polling Mailbox Plan
 
+## Status
+
+Implemented on 2026-04-09.
+
+Current repo state:
+- live browser progress now uses the shared-mailbox polling path as the intended transport
+- unsupported non-COI / non-SAB environments fail explicitly instead of silently falling back
+- heavy live best-schedule telemetry is split off the hot scalar mailbox path
+- production COOP/COEP headers are configured in `webapp/vercel.json`
+- regression coverage and a solver3 Sailing Trip Playwright smoke test are in place
+
 ## Goal
 
 Replace push-based live solver progress with a **best-effort, latest-only polling path** so UI telemetry does not block solver execution, does not queue stale updates, and stays visually closer to real wall clock time.
