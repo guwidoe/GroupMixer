@@ -33,6 +33,7 @@ export function DemoDataDropdown({
   const demoDropdownRef = useRef<HTMLDivElement>(null);
   const dropdownMenuRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [isTriggerHovered, setIsTriggerHovered] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<DropdownPosition | null>(null);
   const [demoCasesWithMetrics, setDemoCasesWithMetrics] = useState<DemoCaseWithMetrics[]>([]);
   const [loadingDemoMetrics, setLoadingDemoMetrics] = useState(false);
@@ -184,18 +185,21 @@ export function DemoDataDropdown({
   ) : (
     <button
       onClick={() => setIsOpen((open) => !open)}
+      onMouseEnter={() => setIsTriggerHovered(true)}
+      onMouseLeave={() => setIsTriggerHovered(false)}
       className={getButtonClassName({ variant: variant === 'header' ? 'toolbar' : 'secondary', size: variant === 'header' ? 'md' : 'lg' })}
       style={{
         outline: 'none',
         boxShadow: 'none',
         backgroundColor: variant === 'header'
-          ? isOpen
+          ? isOpen || isTriggerHovered
             ? 'var(--bg-primary)'
             : 'transparent'
           : isOpen
             ? 'var(--bg-tertiary)'
             : 'var(--bg-primary)',
         borderColor: variant === 'header' ? 'transparent' : undefined,
+        color: variant === 'header' && isTriggerHovered ? 'var(--text-primary)' : undefined,
       }}
       aria-expanded={isOpen}
       aria-haspopup="menu"
