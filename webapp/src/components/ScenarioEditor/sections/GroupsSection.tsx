@@ -194,6 +194,7 @@ export function GroupsSection({
           </Button>
         </>
       }
+      defaultViewMode="list"
       hasItems={groups.length > 0}
       emptyState={{
         icon: <Hash className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,

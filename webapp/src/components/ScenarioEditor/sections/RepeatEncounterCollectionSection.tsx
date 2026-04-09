@@ -222,6 +222,7 @@ export function RepeatEncounterCollectionSection({
           null
         )
       }
+      defaultViewMode="list"
       summary={
         <div className="flex items-start gap-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
           <RotateCcw className="mt-0.5 h-4 w-4 shrink-0" style={{ color: 'var(--color-accent)' }} />

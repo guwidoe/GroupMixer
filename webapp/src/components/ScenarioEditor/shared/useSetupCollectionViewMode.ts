@@ -2,7 +2,7 @@ import React from 'react';
 
 export type SetupCollectionViewMode = 'cards' | 'list';
 
-const VIEW_MODE_STORAGE_KEY = 'gm:scenario-setup:view-modes';
+const VIEW_MODE_STORAGE_KEY = 'gm:scenario-setup:view-modes:v2';
 
 function readStoredViewModes(): Record<string, SetupCollectionViewMode> {
   if (typeof window === 'undefined') {

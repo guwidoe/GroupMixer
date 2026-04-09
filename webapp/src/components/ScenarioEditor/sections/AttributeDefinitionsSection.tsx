@@ -162,6 +162,7 @@ export function AttributeDefinitionsSection({
           Add Attribute
         </Button>
       }
+      defaultViewMode="list"
       hasItems={attributeDefinitions.length > 0}
       emptyState={{
         icon: <Tag className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,

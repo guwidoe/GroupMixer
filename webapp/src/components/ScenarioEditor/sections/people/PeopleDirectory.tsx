@@ -208,6 +208,7 @@ export function PeopleDirectory({
         )
       }
       onViewModeChange={setViewMode}
+      defaultViewMode="list"
       summary={
         shouldProgressivelyRender && visiblePeopleCount < sortedPeople.length ? (
           <div role="status" aria-live="polite" className="text-sm" style={{ color: 'var(--text-secondary)' }}>

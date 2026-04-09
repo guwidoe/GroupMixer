@@ -343,6 +343,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
             </div>
           ) : null
         }
+        defaultViewMode="list"
         hasItems={filteredItems.length > 0}
         emptyState={{
           icon: copy.icon,
@@ -572,6 +573,7 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
           )
         }
         summary={summary}
+        defaultViewMode="list"
         hasItems={filteredItems.length > 0}
         emptyState={{
           icon: copy.icon,
