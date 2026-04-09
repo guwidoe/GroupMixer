@@ -1,4 +1,5 @@
 import { Scenario, SolverSettings, AttributeDefinition } from "../types";
+import { createDefaultSolverSettings, normalizeSolverFamilyId } from "./solverUi";
 
 export interface DemoCase {
   id: string;
@@ -48,21 +49,7 @@ function convertTestCaseToScenario(testCase: any): Scenario {
     throw new Error('Demo case is missing scenario/problem input data');
   }
 
-  // Convert solver settings
-  const solverParams = input.solver.solver_params;
-  const settings: SolverSettings = {
-    solver_type: input.solver.solver_type,
-    stop_conditions: input.solver.stop_conditions,
-    solver_params: {
-      SimulatedAnnealing: {
-        initial_temperature: solverParams.initial_temperature,
-        final_temperature: solverParams.final_temperature,
-        cooling_schedule: solverParams.cooling_schedule,
-        reheat_cycles: solverParams.reheat_cycles ?? 0,
-      },
-    },
-    logging: input.solver.logging,
-  };
+  const settings = convertDemoSolverSettings(input.solver);
 
   // Ensure every person has a "name" attribute (treat names as attributes)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -81,6 +68,56 @@ function convertTestCaseToScenario(testCase: any): Scenario {
     constraints: input.constraints || [],
     settings,
   };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function convertDemoSolverSettings(rawSolver: any): SolverSettings {
+  const familyId = normalizeSolverFamilyId(rawSolver?.solver_type) ?? 'solver1';
+
+  switch (familyId) {
+    case 'solver3':
+      return {
+        ...createDefaultSolverSettings('solver3'),
+        solver_type: 'solver3',
+        stop_conditions: rawSolver?.stop_conditions ?? createDefaultSolverSettings('solver3').stop_conditions,
+        solver_params: {
+          solver_type: 'solver3',
+          correctness_lane: rawSolver?.solver_params?.correctness_lane
+            ?? rawSolver?.solver_params?.solver3?.correctness_lane
+            ?? createDefaultSolverSettings('solver3').solver_params.correctness_lane,
+        },
+        logging: rawSolver?.logging ?? createDefaultSolverSettings('solver3').logging,
+      };
+    case 'solver2':
+      return {
+        ...createDefaultSolverSettings('solver2'),
+        solver_type: 'solver2',
+        stop_conditions: rawSolver?.stop_conditions ?? createDefaultSolverSettings('solver2').stop_conditions,
+        solver_params: {
+          solver_type: 'solver2',
+        },
+        logging: rawSolver?.logging ?? createDefaultSolverSettings('solver2').logging,
+      };
+    case 'solver1':
+    default: {
+      const solverParams = rawSolver?.solver_params ?? {};
+      return {
+        ...createDefaultSolverSettings('solver1'),
+        solver_type: rawSolver?.solver_type ?? 'SimulatedAnnealing',
+        stop_conditions: rawSolver?.stop_conditions ?? createDefaultSolverSettings('solver1').stop_conditions,
+        solver_params: {
+          SimulatedAnnealing: {
+            initial_temperature: solverParams.initial_temperature ?? 1.0,
+            final_temperature: solverParams.final_temperature ?? 0.01,
+            cooling_schedule: solverParams.cooling_schedule ?? 'geometric',
+            reheat_cycles: solverParams.reheat_cycles ?? 0,
+            reheat_after_no_improvement: solverParams.reheat_after_no_improvement ?? 0,
+          },
+        },
+        logging: rawSolver?.logging ?? createDefaultSolverSettings('solver1').logging,
+      };
+    }
+  }
 }
 
 // Load and parse a single test case file
@@ -349,29 +386,10 @@ function createFallbackDemo(): Scenario {
       },
     ],
     settings: {
-      solver_type: "SimulatedAnnealing",
+      ...createDefaultSolverSettings(),
       stop_conditions: {
-        max_iterations: 10000,
-        time_limit_seconds: 30,
+        ...createDefaultSolverSettings().stop_conditions,
         no_improvement_iterations: 1000,
-      },
-      solver_params: {
-        SimulatedAnnealing: {
-          initial_temperature: 1.0,
-          final_temperature: 0.01,
-          cooling_schedule: "geometric",
-          reheat_cycles: 0,
-          reheat_after_no_improvement: 0,
-        },
-      },
-      logging: {
-        log_frequency: 1000,
-        log_initial_state: true,
-        log_duration_and_score: true,
-        display_final_schedule: true,
-        log_initial_score_breakdown: true,
-        log_final_score_breakdown: true,
-        log_stop_condition: true,
       },
     },
   };

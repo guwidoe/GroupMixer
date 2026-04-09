@@ -23,8 +23,10 @@ import {
 import type { ScenarioResult } from '../../types';
 import type { MetricCalculations } from '../../utils/metricCalculations';
 import type { ScenarioConfigDifference } from '../../services/scenarioStorage';
+import { getSolverCatalogEntry } from '../../services/solverCatalog';
+import { summarizeSolverSettings } from '../../services/solverUi';
 import { useOutsideClick } from '../../hooks';
-import { formatDate, formatDuration, formatLargeNumber, formatNumber } from './utils';
+import { formatDate, formatDuration } from './utils';
 
 export interface ResultCardState {
   isExpanded: boolean;
@@ -79,6 +81,8 @@ export function ResultCard({
   actions,
   metrics,
 }: ResultCardProps) {
+  const solverEntry = getSolverCatalogEntry(result.solverSettings.solver_type);
+  const solverSummaryRows = summarizeSolverSettings(result.solverSettings);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
   const configDetailsRef = useRef<HTMLDivElement>(null);
 
@@ -332,50 +336,19 @@ export function ResultCard({
             <div className="p-3 rounded-lg text-sm" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div>
-                  <span style={{ color: 'var(--text-secondary)' }}>Max Iterations:</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>Solver Family:</span>
                   <span className="ml-2 font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {formatLargeNumber(result.solverSettings.stop_conditions.max_iterations)}
+                    {solverEntry?.displayName ?? result.solverSettings.solver_type}
                   </span>
                 </div>
-                <div>
-                  <span style={{ color: 'var(--text-secondary)' }}>Time Limit:</span>
-                  <span className="ml-2 font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {result.solverSettings.stop_conditions.time_limit_seconds}s
-                  </span>
-                </div>
-                <div>
-                  <span style={{ color: 'var(--text-secondary)' }}>No Improvement:</span>
-                  <span className="ml-2 font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {formatLargeNumber(result.solverSettings.stop_conditions.no_improvement_iterations)}
-                  </span>
-                </div>
-                <div>
-                  <span style={{ color: 'var(--text-secondary)' }}>Initial Temp:</span>
-                  <span className="ml-2 font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {formatNumber(result.solverSettings.solver_params.SimulatedAnnealing?.initial_temperature)}
-                  </span>
-                </div>
-                <div>
-                  <span style={{ color: 'var(--text-secondary)' }}>Final Temp:</span>
-                  <span className="ml-2 font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {formatNumber(result.solverSettings.solver_params.SimulatedAnnealing?.final_temperature)}
-                  </span>
-                </div>
-                <div>
-                  <span style={{ color: 'var(--text-secondary)' }}>Cooling:</span>
-                  <span className="ml-2 font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {result.solverSettings.solver_params.SimulatedAnnealing?.cooling_schedule}
-                  </span>
-                </div>
-                <div>
-                  <span style={{ color: 'var(--text-secondary)' }}>Reheat After:</span>
-                  <span className="ml-2 font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {(result.solverSettings.solver_params.SimulatedAnnealing?.reheat_after_no_improvement || 0) === 0
-                      ? 'Disabled'
-                      : formatLargeNumber(result.solverSettings.solver_params.SimulatedAnnealing?.reheat_after_no_improvement || 0)
-                    }
-                  </span>
-                </div>
+                {solverSummaryRows.map((row) => (
+                  <div key={row.label}>
+                    <span style={{ color: 'var(--text-secondary)' }}>{row.label}:</span>
+                    <span className="ml-2 font-medium" style={{ color: 'var(--text-primary)' }}>
+                      {row.value}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

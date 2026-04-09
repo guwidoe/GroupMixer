@@ -3,6 +3,7 @@
  */
 
 import type { Scenario, Person, Group } from "../../types";
+import { createDefaultSolverSettings } from "../../services/solverUi";
 import type { DemoDataState, DemoDataActions, StoreSlice } from "../types";
 import { scenarioStorage } from "../../services/scenarioStorage";
 
@@ -173,28 +174,10 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
           },
         ],
         settings: {
-          solver_type: "SimulatedAnnealing",
+          ...createDefaultSolverSettings(),
           stop_conditions: {
-            max_iterations: 10000,
-            time_limit_seconds: 30,
+            ...createDefaultSolverSettings().stop_conditions,
             no_improvement_iterations: 1000,
-          },
-          solver_params: {
-            SimulatedAnnealing: {
-              initial_temperature: 1.0,
-              final_temperature: 0.01,
-              cooling_schedule: "geometric",
-              reheat_after_no_improvement: 0,
-            },
-          },
-          logging: {
-            log_frequency: 1000,
-            log_initial_state: true,
-            log_duration_and_score: true,
-            display_final_schedule: true,
-            log_initial_score_breakdown: true,
-            log_final_score_breakdown: true,
-            log_stop_condition: true,
           },
         },
       };

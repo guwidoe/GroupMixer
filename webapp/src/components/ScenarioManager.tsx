@@ -11,6 +11,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import type { ScenarioSummary } from '../types';
+import { createDefaultSolverSettings } from '../services/solverUi';
 import { ScenarioList } from './ScenarioManager/ScenarioList';
 import { CreateScenarioDialog } from './ScenarioManager/CreateScenarioDialog';
 import { DeleteConfirmDialog } from './ScenarioManager/DeleteConfirmDialog';
@@ -121,20 +122,7 @@ export function ScenarioManager({ isOpen, onClose }: ScenarioManagerProps) {
       num_sessions: 1,
       constraints: [],
       settings: {
-        solver_type: "SimulatedAnnealing",
-        stop_conditions: {
-          max_iterations: 10000,
-          time_limit_seconds: 30,
-          no_improvement_iterations: 5000,
-        },
-        solver_params: {
-          SimulatedAnnealing: {
-            initial_temperature: 1.0,
-            final_temperature: 0.01,
-            cooling_schedule: "geometric" as const,
-            reheat_after_no_improvement: 0,
-          },
-        },
+        ...createDefaultSolverSettings(),
       },
     };
 

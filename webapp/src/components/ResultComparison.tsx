@@ -12,6 +12,8 @@ import {
   Settings
 } from 'lucide-react';
 import type { ScenarioResult } from '../types';
+import { getSolverCatalogEntry } from '../services/solverCatalog';
+import { summarizeSolverSettings } from '../services/solverUi';
 
 export function ResultComparison() {
   const {
@@ -84,30 +86,13 @@ export function ResultComparison() {
     return <Minus className="w-4 h-4 text-gray-400" />;
   };
 
-  const formatNumber = (num: number | undefined) => {
-    if (num === undefined) return 'N/A';
-    if (num < 0.001 && num !== 0) {
-      return num.toExponential(2);
-    }
-    return num.toLocaleString(undefined, { 
-      maximumFractionDigits: 6,
-      minimumFractionDigits: 0
-    });
-  };
-
-  const formatLargeNumber = (num: number | undefined) => {
-    if (num === undefined) return 'N/A';
-    if (num >= 1000000) {
-      return (num / 1000000).toFixed(1) + 'M';
-    }
-    if (num >= 1000) {
-      return (num / 1000).toFixed(1) + 'K';
-    }
-    return num.toLocaleString();
-  };
-
   const bestResult = getBestResult();
   const worstResult = getWorstResult();
+  const summaryRows = Array.from(
+    new Set(
+      selectedResults.flatMap((result) => summarizeSolverSettings(result.solverSettings).map((row) => row.label)),
+    ),
+  );
 
   if (selectedResults.length === 0) {
     return (
@@ -360,68 +345,40 @@ export function ResultComparison() {
                     <td className="p-4 font-medium" style={{ color: 'var(--text-primary)' }}>
                       <div className="flex items-center space-x-2">
                         <Settings className="w-4 h-4" />
-                        <span>Max Iterations</span>
+                        <span>Solver Family</span>
                       </div>
                     </td>
                     {selectedResults.map((result) => (
                       <td key={result.id} className="p-4">
                         <span style={{ color: 'var(--text-primary)' }}>
-                          {formatLargeNumber(result.solverSettings.stop_conditions.max_iterations)}
+                          {getSolverCatalogEntry(result.solverSettings.solver_type)?.displayName ?? result.solverSettings.solver_type}
                         </span>
                       </td>
                     ))}
                   </tr>
 
-                  <tr className="border-b" style={{ borderColor: 'var(--border-secondary)' }}>
-                    <td className="p-4 font-medium" style={{ color: 'var(--text-primary)' }}>
-                      <div className="flex items-center space-x-2">
-                        <Clock className="w-4 h-4" />
-                        <span>Time Limit</span>
-                      </div>
-                    </td>
-                    {selectedResults.map((result) => (
-                      <td key={result.id} className="p-4">
-                        <span style={{ color: 'var(--text-primary)' }}>
-                          {result.solverSettings.stop_conditions.time_limit_seconds || 'N/A'}s
-                        </span>
+                  {summaryRows.map((label, index) => (
+                    <tr
+                      key={label}
+                      className={index === summaryRows.length - 1 ? '' : 'border-b'}
+                      style={index === summaryRows.length - 1 ? undefined : { borderColor: 'var(--border-secondary)' }}
+                    >
+                      <td className="p-4 font-medium" style={{ color: 'var(--text-primary)' }}>
+                        <div className="flex items-center space-x-2">
+                          <Settings className="w-4 h-4" />
+                          <span>{label}</span>
+                        </div>
                       </td>
-                    ))}
-                  </tr>
-
-                  <tr className="border-b" style={{ borderColor: 'var(--border-secondary)' }}>
-                    <td className="p-4 font-medium" style={{ color: 'var(--text-primary)' }}>
-                      <div className="flex items-center space-x-2">
-                        <Settings className="w-4 h-4" />
-                        <span>Initial Temperature</span>
-                      </div>
-                    </td>
-                    {selectedResults.map((result) => (
-                      <td key={result.id} className="p-4">
-                        <span style={{ color: 'var(--text-primary)' }}>
-                          {formatNumber(result.solverSettings.solver_params.SimulatedAnnealing?.initial_temperature)}
-                        </span>
-                      </td>
-                    ))}
-                  </tr>
-
-                  <tr>
-                    <td className="p-4 font-medium" style={{ color: 'var(--text-primary)' }}>
-                      <div className="flex items-center space-x-2">
-                        <Settings className="w-4 h-4" />
-                        <span>Reheat After</span>
-                      </div>
-                    </td>
-                    {selectedResults.map((result) => (
-                      <td key={result.id} className="p-4">
-                        <span style={{ color: 'var(--text-primary)' }}>
-                          {(result.solverSettings.solver_params.SimulatedAnnealing?.reheat_after_no_improvement || 0) === 0 
-                            ? 'Disabled' 
-                            : formatLargeNumber(result.solverSettings.solver_params.SimulatedAnnealing?.reheat_after_no_improvement || 0)
-                          }
-                        </span>
-                      </td>
-                    ))}
-                  </tr>
+                      {selectedResults.map((result) => {
+                        const value = summarizeSolverSettings(result.solverSettings).find((row) => row.label === label)?.value ?? '—';
+                        return (
+                          <td key={result.id} className="p-4">
+                            <span style={{ color: 'var(--text-primary)' }}>{value}</span>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

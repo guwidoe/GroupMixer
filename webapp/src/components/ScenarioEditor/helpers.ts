@@ -3,6 +3,7 @@
  */
 
 import type { SolverSettings } from '../../types';
+import { createDefaultSolverSettings } from '../../services/solverUi';
 import { useAppStore } from '../../store';
 
 /**
@@ -53,29 +54,4 @@ export const generateUniquePersonId = (currentPeople?: { id: string }[]): string
 /**
  * Get default solver settings.
  */
-export const getDefaultSolverSettings = (): SolverSettings => ({
-  solver_type: "SimulatedAnnealing",
-  stop_conditions: {
-    max_iterations: 10000,
-    time_limit_seconds: 30,
-    no_improvement_iterations: 5000,
-  },
-  solver_params: {
-    SimulatedAnnealing: {
-      initial_temperature: 1.0,
-      final_temperature: 0.01,
-      cooling_schedule: "geometric",
-      reheat_cycles: 0,
-      reheat_after_no_improvement: 0,
-    },
-  },
-  logging: {
-    log_frequency: 1000,
-    log_initial_state: true,
-    log_duration_and_score: true,
-    display_final_schedule: true,
-    log_initial_score_breakdown: true,
-    log_final_score_breakdown: true,
-    log_stop_condition: true,
-  },
-});
+export const getDefaultSolverSettings = (): SolverSettings => createDefaultSolverSettings();
