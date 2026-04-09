@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { vi } from 'vitest';
 import { scenarioStorage } from '../services/scenarioStorage';
 import { createSampleScenario, createSampleSolution, createSavedScenario } from '../test/fixtures';
 import { useAppStore } from './index';
@@ -19,6 +20,23 @@ describe('useAppStore initialization', () => {
     useAppStore.getState().initializeApp();
 
     expect(useAppStore.getState().attributeDefinitions).toEqual(persistedDefinitions);
+  });
+
+  it('defers saved scenario hydration to the next task so the shell can paint first', () => {
+    vi.useFakeTimers();
+
+    const loadSavedScenarios = vi.fn();
+    useAppStore.setState({ loadSavedScenarios });
+
+    useAppStore.getState().initializeApp();
+
+    expect(loadSavedScenarios).not.toHaveBeenCalled();
+
+    vi.runAllTimers();
+
+    expect(loadSavedScenarios).toHaveBeenCalledTimes(1);
+
+    vi.useRealTimers();
   });
 
   it('replaces the workspace explicitly without clobbering a saved scenario id', () => {

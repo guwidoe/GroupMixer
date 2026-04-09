@@ -195,7 +195,10 @@ export const useAppStore = create<AppStore>()(
 
       initializeApp: () => {
         set({ attributeDefinitions: loadAttributeDefinitions() });
-        get().loadSavedScenarios();
+
+        window.setTimeout(() => {
+          get().loadSavedScenarios();
+        }, 0);
       },
     }),
     {
