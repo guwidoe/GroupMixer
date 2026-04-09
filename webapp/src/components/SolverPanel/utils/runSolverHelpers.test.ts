@@ -62,6 +62,7 @@ describe('mapProgressToSolverState', () => {
       }),
     );
 
+    expect(mapped.latestProgress).toBeDefined();
     expect(mapped.temperature).toBe(0);
     expect(mapped.avgAttemptedMoveDelta).toBe(0);
     expect(mapped.biggestAttemptedIncrease).toBe(0);

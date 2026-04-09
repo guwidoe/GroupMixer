@@ -12,6 +12,8 @@ export const initialSolverState: SolverState = {
   bestScore: 0,
   elapsedTime: 0,
   noImprovementCount: 0,
+  latestProgress: null,
+  latestSolution: null,
 };
 
 export const createSolverSlice: StoreSlice<SolverSliceState & SolverActions> = (
@@ -35,6 +37,8 @@ export const createSolverSlice: StoreSlice<SolverSliceState & SolverActions> = (
         elapsedTime: 0,
         noImprovementCount: 0,
         error: undefined,
+        latestProgress: null,
+        latestSolution: null,
       },
     })),
 
@@ -57,6 +61,8 @@ export const createSolverSlice: StoreSlice<SolverSliceState & SolverActions> = (
         elapsedTime: 0,
         noImprovementCount: 0,
         error: undefined,
+        latestProgress: null,
+        latestSolution: null,
       },
     })),
 

@@ -222,6 +222,8 @@ function applyCompletedSolverState({
     currentScore: lastProgress?.current_score ?? (solverState.currentScore ?? 0),
     bestScore: lastProgress?.best_score ?? solution.final_score,
     noImprovementCount: finalNoImprovementCount,
+    latestProgress: lastProgress,
+    latestSolution: solution,
   });
 
   if (!cancelled) {

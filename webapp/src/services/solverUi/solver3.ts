@@ -99,7 +99,12 @@ const SOLVER3_METRICS: readonly SolverMetricSpec[] = [
     label: 'Search Schedule Progress',
     description: 'Solver3 reuses the shared cooling_progress field to report progress through its search schedule.',
     kind: 'solver_specific',
-    render: ({ progress }) => `${((progress?.cooling_progress ?? 0) * 100).toFixed(1)}%`,
+    render: ({ progress }) => {
+      const value = typeof progress?.cooling_progress === 'number' && Number.isFinite(progress.cooling_progress)
+        ? progress.cooling_progress
+        : 0;
+      return `${(value * 100).toFixed(1)}%`;
+    },
   },
   {
     id: 'local_optima_escapes',

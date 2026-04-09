@@ -50,7 +50,6 @@ interface SolverLiveVizControls {
 interface SolverMetricsControls {
   showMetrics: boolean;
   onToggleMetrics: () => void;
-  formatIterationTime: (ms: number) => string;
 }
 
 interface SolverStatusCardProps {
@@ -274,9 +273,9 @@ export function SolverStatusCard({
 
       <DetailedMetrics
         solverState={solverState}
+        displaySettings={liveViz.displaySettings}
         showMetrics={metrics.showMetrics}
         onToggleMetrics={metrics.onToggleMetrics}
-        formatIterationTime={metrics.formatIterationTime}
       />
     </div>
   );

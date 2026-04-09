@@ -115,7 +115,12 @@ const SOLVER1_METRICS: readonly SolverMetricSpec[] = [
     label: 'Cooling Progress',
     description: 'Progress through the simulated annealing cooling schedule.',
     kind: 'solver_specific',
-    render: ({ progress }) => `${((progress?.cooling_progress ?? 0) * 100).toFixed(1)}%`,
+    render: ({ progress }) => {
+      const value = typeof progress?.cooling_progress === 'number' && Number.isFinite(progress.cooling_progress)
+        ? progress.cooling_progress
+        : 0;
+      return `${(value * 100).toFixed(1)}%`;
+    },
   },
   {
     id: 'reheats_performed',

@@ -1,3 +1,5 @@
+import type { ProgressUpdate } from '../services/wasm/types';
+
 // Core data structures matching the Rust gm-core backend exactly
 export interface Person {
   id: string;
@@ -252,6 +254,8 @@ export interface SolverState {
   elapsedTime: number;
   noImprovementCount: number;
   error?: string;
+  latestProgress?: ProgressUpdate | null;
+  latestSolution?: Solution | null;
 
   // === Live Algorithm Metrics ===
   // Temperature and progress

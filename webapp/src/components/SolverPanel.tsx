@@ -173,18 +173,6 @@ export function SolverPanel() {
     handleSettingsChange(nextSettings);
   };
 
-  const formatIterationTime = (ms: number): string => {
-    if (ms >= 1) {
-      return `${ms.toFixed(2)} ms`;
-    }
-    const us = ms * 1000;
-    if (us >= 1) {
-      return `${us.toFixed(2)} µs`;
-    }
-    const ns = us * 1000;
-    return `${ns.toFixed(2)} ns`;
-  };
-
   const {
     runSettings,
     liveVizState,
@@ -270,7 +258,6 @@ export function SolverPanel() {
         metrics={{
           showMetrics,
           onToggleMetrics: toggleMetrics,
-          formatIterationTime,
         }}
       />
 

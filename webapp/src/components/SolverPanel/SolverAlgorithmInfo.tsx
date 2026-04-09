@@ -1,6 +1,7 @@
 import React from 'react';
 import type { SolverSettings } from '../../types';
-import { getSolverCatalogEntry, normalizeSolverFamilyId } from '../../services/solverCatalog';
+import { getSolverCatalogEntry } from '../../services/solverCatalog';
+import { getSolverUiSpecForSettings, summarizeSolverSettings } from '../../services/solverUi';
 
 interface SolverAlgorithmInfoProps {
   displaySettings: SolverSettings;
@@ -8,7 +9,8 @@ interface SolverAlgorithmInfoProps {
 
 export function SolverAlgorithmInfo({ displaySettings }: SolverAlgorithmInfoProps) {
   const solverEntry = getSolverCatalogEntry(displaySettings.solver_type);
-  const familyId = normalizeSolverFamilyId(displaySettings.solver_type);
+  const solverUiSpec = getSolverUiSpecForSettings(displaySettings.solver_type);
+  const summaryRows = summarizeSolverSettings(displaySettings);
 
   return (
     <div className="card">
@@ -18,18 +20,16 @@ export function SolverAlgorithmInfo({ displaySettings }: SolverAlgorithmInfoProp
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <h4 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-            {solverEntry?.displayName ?? displaySettings.solver_type}
+            {solverEntry?.displayName ?? solverUiSpec?.displayName ?? displaySettings.solver_type}
           </h4>
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            {solverEntry?.notes ?? 'Solver-family metadata is unavailable for this configuration.'}
+          <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>
+            {solverEntry?.notes ?? solverUiSpec?.shortDescription ?? 'Solver-family metadata is unavailable for this configuration.'}
           </p>
-          {familyId === 'legacy_simulated_annealing' && (
-            <ul className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              <li>• Starts with high temperature for exploration</li>
-              <li>• Gradually cools to focus on local improvements</li>
-              <li>• Can escape local optima</li>
-              <li>• Optional reheat feature restarts exploration when stuck</li>
-              <li>• Well-suited for combinatorial scenarios</li>
+          {solverUiSpec && (
+            <ul className="text-sm space-y-1" style={{ color: 'var(--text-secondary)' }}>
+              {solverUiSpec.algorithmHighlights.map((item) => (
+                <li key={item}>• {item}</li>
+              ))}
             </ul>
           )}
         </div>
@@ -38,52 +38,14 @@ export function SolverAlgorithmInfo({ displaySettings }: SolverAlgorithmInfoProp
             Current Parameters
           </h4>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span style={{ color: 'var(--text-secondary)' }}>Max Iterations:</span>
-              <span className="font-medium">{(displaySettings.stop_conditions.max_iterations || 0).toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between">
-              <span style={{ color: 'var(--text-secondary)' }}>Time Limit:</span>
-              <span className="font-medium">{displaySettings.stop_conditions.time_limit_seconds || 0}s</span>
-            </div>
-            <div className="flex justify-between">
-              <span style={{ color: 'var(--text-secondary)' }}>No Improvement Limit:</span>
-              <span className="font-medium">
-                {(displaySettings.stop_conditions.no_improvement_iterations || 0).toLocaleString()}
-              </span>
-            </div>
-            {familyId === 'legacy_simulated_annealing' && (
-              <>
-                <div className="flex justify-between">
-                  <span style={{ color: 'var(--text-secondary)' }}>Initial Temperature:</span>
-                  <span className="font-medium">
-                    {displaySettings.solver_params.SimulatedAnnealing?.initial_temperature || 1.0}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span style={{ color: 'var(--text-secondary)' }}>Final Temperature:</span>
-                  <span className="font-medium">
-                    {displaySettings.solver_params.SimulatedAnnealing?.final_temperature || 0.01}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span style={{ color: 'var(--text-secondary)' }}>Reheat After:</span>
-                  <span className="font-medium">
-                    {(displaySettings.solver_params.SimulatedAnnealing?.reheat_after_no_improvement || 0) === 0
-                      ? 'Disabled'
-                      : (displaySettings.solver_params.SimulatedAnnealing?.reheat_after_no_improvement || 0).toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span style={{ color: 'var(--text-secondary)' }}>Reheat Cycles:</span>
-                  <span className="font-medium">
-                    {(displaySettings.solver_params.SimulatedAnnealing?.reheat_cycles || 0) === 0
-                      ? 'Disabled'
-                      : (displaySettings.solver_params.SimulatedAnnealing?.reheat_cycles || 0).toLocaleString()}
-                  </span>
-                </div>
-              </>
-            )}
+            {summaryRows.map((row) => (
+              <div key={row.label} className="flex justify-between gap-3">
+                <span style={{ color: 'var(--text-secondary)' }}>{row.label}:</span>
+                <span className="font-medium text-right" style={{ color: 'var(--text-primary)' }}>
+                  {row.value}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

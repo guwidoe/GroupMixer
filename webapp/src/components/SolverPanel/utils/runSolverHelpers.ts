@@ -55,6 +55,7 @@ function finiteNumber(value: number | undefined): number {
 
 export function mapProgressToSolverState(progress: RuntimeProgressUpdate): Partial<SolverState> {
   return {
+    latestProgress: progress,
     ...(progress.iteration === 0 && { initialConstraintPenalty: finiteNumber(progress.current_constraint_penalty) }),
     currentIteration: finiteNumber(progress.iteration),
     currentScore: finiteNumber(progress.current_score),
