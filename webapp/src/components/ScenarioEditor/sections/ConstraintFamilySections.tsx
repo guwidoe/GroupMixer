@@ -253,11 +253,13 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
   const { scenario, setScenario, isLoading } = useConstraintScenario();
   const [search, setSearch] = React.useState('');
   const [minMembers, setMinMembers] = React.useState<number | ''>('');
+  const [viewMode, setViewMode] = React.useState<SetupCollectionViewMode>('list');
   const [selectedMustIndices, setSelectedMustIndices] = React.useState<number[]>([]);
   const [isSelectingMust, setIsSelectingMust] = React.useState(false);
   const [showBulkConvert, setShowBulkConvert] = React.useState(false);
   const [bulkWeight, setBulkWeight] = React.useState<number | ''>(10);
   const handleViewModeChange = React.useCallback((nextMode: SetupCollectionViewMode) => {
+    setViewMode(nextMode);
     if (nextMode !== 'cards') {
       setIsSelectingMust(false);
       setSelectedMustIndices((current) => (current.length === 0 ? current : []));
@@ -272,7 +274,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
   const items = getIndexedConstraints(scenario, family);
   const searchValue = search.trim().toLowerCase();
 
-  const filteredItems = family === 'MustStayTogether'
+  const filteredItems = family === 'MustStayTogether' && viewMode === 'cards'
     ? items.filter(({ constraint }) => {
         if (minMembers !== '' && constraint.people.length < minMembers) {
           return false;
@@ -341,8 +343,8 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
             </Button>
           </>
         }
-        toolbarLeading={
-          family === 'MustStayTogether' ? (
+        toolbarLeading={(activeViewMode) =>
+          family === 'MustStayTogether' && activeViewMode === 'cards' ? (
             <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
               <SetupSearchField
                 value={search}
@@ -521,10 +523,12 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
 export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }: SoftConstraintFamilySectionProps) {
   const { scenario, setScenario, isLoading } = useConstraintScenario();
   const [search, setSearch] = React.useState('');
+  const [viewMode, setViewMode] = React.useState<SetupCollectionViewMode>('list');
   const [selectedShouldIndices, setSelectedShouldIndices] = React.useState<number[]>([]);
   const [isSelectingShould, setIsSelectingShould] = React.useState(false);
   const [showPairConvert, setShowPairConvert] = React.useState(false);
   const handleViewModeChange = React.useCallback((nextMode: SetupCollectionViewMode) => {
+    setViewMode(nextMode);
     if (nextMode !== 'cards') {
       setIsSelectingShould(false);
       setSelectedShouldIndices((current) => (current.length === 0 ? current : []));
@@ -539,7 +543,7 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
   const items = getIndexedConstraints(scenario, family);
   const searchValue = search.trim().toLowerCase();
 
-  const filteredItems = family === 'ShouldStayTogether'
+  const filteredItems = family === 'ShouldStayTogether' && viewMode === 'cards'
     ? items.filter(({ constraint }) => {
         if (!searchValue) return true;
         const textPool: string[] = [];
@@ -607,8 +611,8 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
             </Button>
           </>
         }
-        toolbarLeading={
-          family === 'ShouldStayTogether' ? (
+        toolbarLeading={(activeViewMode) =>
+          family === 'ShouldStayTogether' && activeViewMode === 'cards' ? (
             <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
               <SetupSearchField value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Filter by person or session" label="Search should stay together preferences" />
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
