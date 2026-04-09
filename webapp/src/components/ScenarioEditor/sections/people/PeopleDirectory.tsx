@@ -1,10 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import { ChevronDown, Edit, Search, Table, Upload, Users } from 'lucide-react';
 import type { AttributeDefinition, Person, Scenario } from '../../../../types';
+import { useOutsideClick } from '../../../../hooks';
+import { Button } from '../../../ui';
+import { SetupCollectionPage } from '../../shared/SetupCollectionPage';
+import { SetupItemActions } from '../../shared/cards';
+import { ScenarioDataGrid } from '../../shared/grid/ScenarioDataGrid';
 import { PeopleGrid } from './PeopleGrid';
-import { PeopleList } from './PeopleList';
-import { PeopleToolbar } from './PeopleToolbar';
 import { sortPeople } from './peopleUtils';
-import type { PeopleSortBy, PeopleSortOrder } from './peopleUtils';
 
 const PROGRESSIVE_PEOPLE_RENDER_THRESHOLD = 150;
 const INITIAL_VISIBLE_PEOPLE = 120;
@@ -23,6 +26,81 @@ interface PeopleDirectoryProps {
   onTriggerExcelImport: () => void;
 }
 
+function PeopleBulkActions({
+  onTriggerCsvUpload,
+  onTriggerExcelImport,
+  onOpenBulkAddForm,
+}: {
+  onTriggerCsvUpload: () => void;
+  onTriggerExcelImport: () => void;
+  onOpenBulkAddForm: () => void;
+}) {
+  const bulkDropdownRef = useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
+
+  useOutsideClick({
+    refs: [bulkDropdownRef],
+    enabled: isOpen,
+    onOutsideClick: () => setIsOpen(false),
+  });
+
+  return (
+    <div className="relative" ref={bulkDropdownRef}>
+      <Button
+        variant="secondary"
+        leadingIcon={<Upload className="h-4 w-4" />}
+        trailingIcon={<ChevronDown className="h-3 w-3" />}
+        onClick={() => setIsOpen((open) => !open)}
+      >
+        Bulk Add
+      </Button>
+      {isOpen ? (
+        <div
+          className="absolute right-0 z-20 mt-2 w-56 rounded-xl border p-1 shadow-lg"
+          style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+        >
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm"
+            style={{ color: 'var(--text-primary)' }}
+            onClick={() => {
+              setIsOpen(false);
+              onTriggerCsvUpload();
+            }}
+          >
+            <Upload className="h-4 w-4" />
+            Upload CSV
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm"
+            style={{ color: 'var(--text-primary)' }}
+            onClick={() => {
+              setIsOpen(false);
+              onTriggerExcelImport();
+            }}
+          >
+            <Upload className="h-4 w-4" />
+            Upload Excel
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm"
+            style={{ color: 'var(--text-primary)' }}
+            onClick={() => {
+              setIsOpen(false);
+              onOpenBulkAddForm();
+            }}
+          >
+            <Table className="h-4 w-4" />
+            Open Bulk Form
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function PeopleDirectory({
   scenario,
   attributeDefinitions,
@@ -35,9 +113,6 @@ export function PeopleDirectory({
   onTriggerCsvUpload,
   onTriggerExcelImport,
 }: PeopleDirectoryProps) {
-  const [peopleViewMode, setPeopleViewMode] = useState<'grid' | 'list'>('grid');
-  const [peopleSortBy, setPeopleSortBy] = useState<PeopleSortBy>('name');
-  const [peopleSortOrder, setPeopleSortOrder] = useState<PeopleSortOrder>('asc');
   const [peopleSearch, setPeopleSearch] = useState('');
 
   const searchValue = peopleSearch.trim().toLowerCase();
@@ -52,8 +127,8 @@ export function PeopleDirectory({
         })
       : basePeople;
 
-    return sortPeople(filteredPeople, peopleSortBy, peopleSortOrder, sessionsCount);
-  }, [basePeople, peopleSortBy, peopleSortOrder, searchValue, sessionsCount]);
+    return sortPeople(filteredPeople, 'name', 'asc', sessionsCount);
+  }, [basePeople, searchValue, sessionsCount]);
 
   const shouldProgressivelyRender = sortedPeople.length >= PROGRESSIVE_PEOPLE_RENDER_THRESHOLD;
   const [visiblePeopleCount, setVisiblePeopleCount] = useState(() =>
@@ -103,52 +178,79 @@ export function PeopleDirectory({
     };
   }, [shouldProgressivelyRender, sortedPeople]);
 
-  const visiblePeople = shouldProgressivelyRender
-    ? sortedPeople.slice(0, visiblePeopleCount)
-    : sortedPeople;
-
-  const handleSortToggle = (sortBy: PeopleSortBy) => {
-    if (peopleSortBy === sortBy) {
-      setPeopleSortOrder(peopleSortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setPeopleSortBy(sortBy);
-      setPeopleSortOrder('asc');
-    }
-  };
+  const visiblePeople = shouldProgressivelyRender ? sortedPeople.slice(0, visiblePeopleCount) : sortedPeople;
+  const searchSummary = searchValue ? (
+    <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+      Showing {sortedPeople.length} of {basePeople.length} people for “{peopleSearch}”.
+      <button type="button" className="ml-2 underline" onClick={() => setPeopleSearch('')}>
+        Clear filter
+      </button>
+    </div>
+  ) : (
+    <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+      Browse the people directory as cards or switch to the data grid for sorting, column control, and scanning.
+    </div>
+  );
 
   return (
-    <div className="rounded-lg border transition-colors" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
-      <PeopleToolbar
-        peopleCount={basePeople.length}
-        peopleSearch={peopleSearch}
-        onPeopleSearchChange={setPeopleSearch}
-        viewMode={peopleViewMode}
-        onViewModeChange={setPeopleViewMode}
-        onTriggerCsvUpload={onTriggerCsvUpload}
-        onTriggerExcelImport={onTriggerExcelImport}
-        onOpenBulkAddForm={onOpenBulkAddForm}
-        onOpenBulkUpdateForm={onOpenBulkUpdateForm}
-        onAddPerson={onAddPerson}
-      />
-
-      <div className="p-6">
-        {shouldProgressivelyRender && visiblePeopleCount < sortedPeople.length ? (
-          <div
-            className="mb-4 rounded-lg border px-3 py-2 text-xs"
-            style={{
-              backgroundColor: 'var(--bg-tertiary)',
-              borderColor: 'var(--border-secondary)',
-              color: 'var(--text-secondary)',
-            }}
-            role="status"
-            aria-live="polite"
-          >
+    <SetupCollectionPage
+      sectionKey="people"
+      title="People"
+      count={basePeople.length}
+      description={
+        <p>
+          Manage participants, their availability, and their attribute values. This directory now uses the same shared
+          setup shell as other collection-style pages while preserving progressive rendering for large scenarios.
+        </p>
+      }
+      actions={
+        <>
+          <PeopleBulkActions
+            onTriggerCsvUpload={onTriggerCsvUpload}
+            onTriggerExcelImport={onTriggerExcelImport}
+            onOpenBulkAddForm={onOpenBulkAddForm}
+          />
+          <Button variant="secondary" leadingIcon={<Edit className="h-4 w-4" />} onClick={onOpenBulkUpdateForm}>
+            Bulk Update
+          </Button>
+          <Button variant="primary" leadingIcon={<Users className="h-4 w-4" />} onClick={onAddPerson}>
+            Add Person
+          </Button>
+        </>
+      }
+      toolbarLeading={
+        <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
+          <label className="relative block min-w-0 flex-1 md:max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
+            <input
+              type="text"
+              className="input w-full pl-9"
+              placeholder="Search people by name or ID..."
+              value={peopleSearch}
+              onChange={(event) => setPeopleSearch(event.target.value)}
+            />
+          </label>
+          {searchSummary}
+        </div>
+      }
+      summary={
+        shouldProgressivelyRender && visiblePeopleCount < sortedPeople.length ? (
+          <div role="status" aria-live="polite" className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             Loading people asynchronously to keep the setup page responsive — showing {visiblePeopleCount.toLocaleString()} of{' '}
             {sortedPeople.length.toLocaleString()}.
           </div>
-        ) : null}
-
-        {peopleViewMode === 'grid' ? (
+        ) : null
+      }
+      hasItems={basePeople.length > 0}
+      emptyState={{
+        icon: <Users className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,
+        title: 'No people added yet',
+        message: attributeDefinitions.length > 0
+          ? 'Add people to get started with your optimization scenario.'
+          : 'Consider defining attributes first, then add people to get started.',
+      }}
+      renderContent={(viewMode) =>
+        viewMode === 'cards' ? (
           <PeopleGrid
             people={visiblePeople}
             totalCount={basePeople.length}
@@ -160,22 +262,68 @@ export function PeopleDirectory({
             onDeletePerson={onDeletePerson}
           />
         ) : (
-          <PeopleList
-            people={visiblePeople}
-            totalCount={basePeople.length}
-            attributeDefinitions={attributeDefinitions}
-            sessionsCount={sessionsCount}
-            sortBy={peopleSortBy}
-            sortOrder={peopleSortOrder}
-            peopleSearch={peopleSearch}
-            searchValue={searchValue}
-            onClearSearch={() => setPeopleSearch('')}
-            onSortToggle={handleSortToggle}
-            onEditPerson={onEditPerson}
-            onDeletePerson={onDeletePerson}
+          <ScenarioDataGrid
+            rows={visiblePeople}
+            rowKey={(person) => person.id}
+            filterQuery=""
+            emptyState={<div className="text-sm" style={{ color: 'var(--text-secondary)' }}>No matching people.</div>}
+            columns={[
+              {
+                id: 'name',
+                header: 'Name',
+                cell: (person) => (
+                  <div className="space-y-0.5">
+                    <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                      {person.attributes.name || person.id}
+                    </div>
+                    {person.attributes.name && (
+                      <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                        {person.id}
+                      </div>
+                    )}
+                  </div>
+                ),
+                sortValue: (person) => (person.attributes.name || person.id).toLowerCase(),
+                searchValue: (person) => `${person.id} ${person.attributes.name || ''}`,
+                width: 240,
+              },
+              {
+                id: 'sessions',
+                header: 'Sessions',
+                cell: (person) =>
+                  person.sessions ? `${person.sessions.map((session) => session + 1).join(', ')}` : `All (${sessionsCount})`,
+                sortValue: (person) => person.sessions?.length ?? sessionsCount,
+                searchValue: (person) => (person.sessions ? person.sessions.join(' ') : `all ${sessionsCount}`),
+                width: 180,
+              },
+              ...attributeDefinitions.map((attribute) => ({
+                id: `attribute-${attribute.key}`,
+                header: attribute.key,
+                cell: (person: Person) => person.attributes[attribute.key] || '—',
+                searchValue: (person: Person) => String(person.attributes[attribute.key] || ''),
+                width: 180,
+              })),
+              {
+                id: 'actions',
+                header: 'Actions',
+                cell: (person) => (
+                  <div className="flex justify-end">
+                    <SetupItemActions
+                      editLabel={`Edit ${person.attributes.name || person.id}`}
+                      deleteLabel={`Delete ${person.attributes.name || person.id}`}
+                      onEdit={() => onEditPerson(person)}
+                      onDelete={() => onDeletePerson(person.id)}
+                    />
+                  </div>
+                ),
+                align: 'right',
+                hideable: false,
+                width: 180,
+              },
+            ]}
           />
-        )}
-      </div>
-    </div>
+        )
+      }
+    />
   );
 }

@@ -1,8 +1,13 @@
-import React, { useRef, useState } from 'react';
-import { ChevronDown, Edit, Hash, Plus, Table, Trash2, Upload } from 'lucide-react';
+import React, { useMemo, useRef, useState } from 'react';
+import { ChevronDown, Hash, Plus, Table, Upload } from 'lucide-react';
 import type { Group, Scenario } from '../../../types';
 import { useOutsideClick } from '../../../hooks';
 import { getGroupCapacityProfile, hasSessionSpecificGroupCapacities } from '../../../utils/groupCapacities';
+import { Button } from '../../ui';
+import { SetupCollectionPage } from '../shared/SetupCollectionPage';
+import { SetupItemActions, SetupItemCard, SetupKeyValueList, SetupTagList } from '../shared/cards';
+import { ScenarioDataGrid } from '../shared/grid/ScenarioDataGrid';
+import type { SetupCollectionViewMode } from '../shared/useSetupCollectionViewMode';
 
 interface GroupsSectionProps {
   scenario: Scenario | null;
@@ -13,6 +18,162 @@ interface GroupsSectionProps {
   onTriggerCsvUpload: () => void;
 }
 
+function GroupsBulkActions({ onOpenBulkAddForm, onTriggerCsvUpload }: { onOpenBulkAddForm: () => void; onTriggerCsvUpload: () => void }) {
+  const bulkDropdownRef = useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
+
+  useOutsideClick({
+    refs: [bulkDropdownRef],
+    enabled: isOpen,
+    onOutsideClick: () => setIsOpen(false),
+  });
+
+  return (
+    <div className="relative" ref={bulkDropdownRef}>
+      <Button
+        variant="secondary"
+        leadingIcon={<Upload className="h-4 w-4" />}
+        trailingIcon={<ChevronDown className="h-3 w-3" />}
+        onClick={() => setIsOpen((open) => !open)}
+      >
+        Bulk Add
+      </Button>
+      {isOpen ? (
+        <div
+          className="absolute right-0 z-20 mt-2 w-56 rounded-xl border p-1 shadow-lg"
+          style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+        >
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors"
+            style={{ color: 'var(--text-primary)' }}
+            onClick={() => {
+              setIsOpen(false);
+              onTriggerCsvUpload();
+            }}
+          >
+            <Upload className="h-4 w-4" />
+            Upload CSV
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors"
+            style={{ color: 'var(--text-primary)' }}
+            onClick={() => {
+              setIsOpen(false);
+              onOpenBulkAddForm();
+            }}
+          >
+            <Table className="h-4 w-4" />
+            Open Bulk Form
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function renderGroupContent(
+  groups: Group[],
+  scenario: Scenario | null,
+  viewMode: SetupCollectionViewMode,
+  onEditGroup: (group: Group) => void,
+  onDeleteGroup: (groupId: string) => void,
+) {
+  if (viewMode === 'list') {
+    return (
+      <ScenarioDataGrid
+        rows={groups}
+        rowKey={(group) => group.id}
+        columns={[
+          {
+            id: 'group',
+            header: 'Group',
+            cell: (group) => <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{group.id}</span>,
+            sortValue: (group) => group.id,
+            searchValue: (group) => group.id,
+            width: 180,
+          },
+          {
+            id: 'capacity',
+            header: 'Default capacity',
+            cell: (group) => `${group.size} people`,
+            sortValue: (group) => group.size,
+            searchValue: (group) => String(group.size),
+            width: 180,
+          },
+          {
+            id: 'session-capacities',
+            header: 'Session capacities',
+            cell: (group) =>
+              scenario && hasSessionSpecificGroupCapacities(group, scenario.num_sessions)
+                ? getGroupCapacityProfile(group, scenario.num_sessions)
+                    .map((capacity, index) => `S${index + 1} ${capacity}`)
+                    .join(' · ')
+                : 'Uses default capacity in every session',
+            searchValue: (group) =>
+              scenario && hasSessionSpecificGroupCapacities(group, scenario.num_sessions)
+                ? getGroupCapacityProfile(group, scenario.num_sessions).join(' ')
+                : 'default capacity',
+            width: 320,
+          },
+          {
+            id: 'actions',
+            header: 'Actions',
+            cell: (group) => (
+              <div className="flex justify-end">
+                <SetupItemActions
+                  editLabel={`Edit ${group.id}`}
+                  deleteLabel={`Delete ${group.id}`}
+                  onEdit={() => onEditGroup(group)}
+                  onDelete={() => onDeleteGroup(group.id)}
+                />
+              </div>
+            ),
+            align: 'right',
+            hideable: false,
+            width: 180,
+          },
+        ]}
+      />
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {groups.map((group) => (
+        <SetupItemCard
+          key={group.id}
+          title={group.id}
+          actions={
+            <SetupItemActions
+              editLabel={`Edit ${group.id}`}
+              deleteLabel={`Delete ${group.id}`}
+              onEdit={() => onEditGroup(group)}
+              onDelete={() => onDeleteGroup(group.id)}
+            />
+          }
+        >
+          <SetupKeyValueList items={[{ label: 'Default capacity', value: `${group.size} people per session` }]} />
+          {scenario && hasSessionSpecificGroupCapacities(group, scenario.num_sessions) ? (
+            <SetupTagList
+              items={getGroupCapacityProfile(group, scenario.num_sessions).map((capacity, index) => (
+                <span
+                  key={`${group.id}-${index}`}
+                  className="rounded-full px-2 py-0.5 text-xs font-medium"
+                  style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}
+                >
+                  S{index + 1} {capacity}
+                </span>
+              ))}
+            />
+          ) : null}
+        </SetupItemCard>
+      ))}
+    </div>
+  );
+}
+
 export function GroupsSection({
   scenario,
   onAddGroup,
@@ -21,117 +182,39 @@ export function GroupsSection({
   onOpenBulkAddForm,
   onTriggerCsvUpload,
 }: GroupsSectionProps) {
-  const bulkDropdownRef = useRef<HTMLDivElement>(null);
-  const [bulkDropdownOpen, setBulkDropdownOpen] = useState(false);
-
-  useOutsideClick({
-    refs: [bulkDropdownRef],
-    onOutsideClick: () => setBulkDropdownOpen(false),
-    enabled: bulkDropdownOpen,
-  });
-
-  const renderGroupCard = (group: Group) => (
-    <div key={group.id} className="rounded-lg border p-4 hover:shadow-md transition-all" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <h4 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>{group.id}</h4>
-          <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-            Default capacity: {group.size} people per session
-          </p>
-          {scenario && hasSessionSpecificGroupCapacities(group, scenario.num_sessions) ? (
-            <p className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>
-              Session capacities: {getGroupCapacityProfile(group, scenario.num_sessions).map((capacity, index) => `S${index + 1} ${capacity}`).join(' · ')}
-            </p>
-          ) : null}
-        </div>
-        <div className="flex gap-1">
-          <button
-            onClick={() => onEditGroup(group)}
-            className="p-1 transition-colors"
-            style={{ color: 'var(--text-tertiary)' }}
-            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-accent)'}
-            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
-          >
-            <Edit className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => onDeleteGroup(group.id)}
-            className="p-1 transition-colors"
-            style={{ color: 'var(--text-tertiary)' }}
-            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-error-600)'}
-            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-tertiary)'}
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  const groups = useMemo(() => scenario?.groups ?? [], [scenario?.groups]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">Groups ({scenario?.groups.length || 0})</h3>
-        <div className="flex items-center gap-2">
-          <div className="relative" ref={bulkDropdownRef}>
-            <button
-              onClick={() => setBulkDropdownOpen(!bulkDropdownOpen)}
-              className="btn-secondary flex items-center gap-2"
-            >
-              <Upload className="w-4 h-4" />
-              Bulk Add
-              <ChevronDown className="w-3 h-3" />
-            </button>
-            {bulkDropdownOpen && (
-              <div className="absolute right-0 mt-1 w-56 rounded-md shadow-lg z-10 border overflow-hidden"
-                   style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
-                <button
-                  onClick={() => {
-                    setBulkDropdownOpen(false);
-                    onTriggerCsvUpload();
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-left transition-colors border-b last:border-b-0"
-                  style={{ borderColor: 'var(--border-primary)', color: 'var(--text-primary)' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-secondary)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                >
-                  <Upload className="w-4 h-4" />
-                  Upload CSV
-                </button>
-                <button
-                  onClick={() => {
-                    setBulkDropdownOpen(false);
-                    onOpenBulkAddForm();
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm text-left transition-colors"
-                  style={{ color: 'var(--text-primary)' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-secondary)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                >
-                  <Table className="w-4 h-4" />
-                  Open Bulk Form
-                </button>
-              </div>
-            )}
-          </div>
-          <button onClick={onAddGroup} className="btn-primary flex items-center gap-2 px-4 py-2">
-            <Plus className="w-4 h-4" />
+    <SetupCollectionPage
+      sectionKey="groups"
+      title="Groups"
+      count={groups.length}
+      description={
+        <p>
+          Define the groups people can be assigned to. Groups can keep one default capacity or override capacities by
+          session when the scenario needs different room sizes over time.
+        </p>
+      }
+      actions={
+        <>
+          <GroupsBulkActions onOpenBulkAddForm={onOpenBulkAddForm} onTriggerCsvUpload={onTriggerCsvUpload} />
+          <Button variant="primary" leadingIcon={<Plus className="h-4 w-4" />} onClick={onAddGroup}>
             Add Group
-          </button>
+          </Button>
+        </>
+      }
+      toolbarLeading={
+        <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          Use cards to scan capacities visually or switch to list view for sorting and column control.
         </div>
-      </div>
-
-      {scenario?.groups.length ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {scenario.groups.map(renderGroupCard)}
-        </div>
-      ) : (
-        <div className="text-center py-12" style={{ color: 'var(--text-secondary)' }}>
-          <Hash className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--text-tertiary)' }} />
-          <p>No groups added yet</p>
-          <p className="text-sm">Add groups where people will be assigned</p>
-        </div>
-      )}
-    </div>
+      }
+      hasItems={groups.length > 0}
+      emptyState={{
+        icon: <Hash className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,
+        title: 'No groups added yet',
+        message: 'Add the groups people can be assigned to before tuning constraints and preferences.',
+      }}
+      renderContent={(viewMode) => renderGroupContent(groups, scenario, viewMode, onEditGroup, onDeleteGroup)}
+    />
   );
 }

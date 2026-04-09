@@ -1,8 +1,9 @@
 import React from 'react';
-import { Clock, Edit, Tag, Trash2, Users } from 'lucide-react';
+import { Tag, Users } from 'lucide-react';
 import type { Person } from '../../../../types';
 import { PeopleEmptyState } from './PeopleEmptyState';
 import { PeopleSearchSummary } from './PeopleSearchSummary';
+import { SetupItemActions, SetupItemCard, SetupKeyValueList, SetupSessionsBadgeList, SetupTagList } from '../../shared/cards';
 
 interface PeopleGridProps {
   people: Person[];
@@ -62,57 +63,38 @@ export function PeopleGrid({
               : 'All sessions';
 
             return (
-              <div
+              <SetupItemCard
                 key={person.id}
-                className="rounded-lg border p-4 hover:shadow-md transition-all"
-                style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+                title={displayName}
+                titleMeta={person.id !== displayName ? person.id : undefined}
+                actions={
+                  <SetupItemActions
+                    editLabel={`Edit ${displayName}`}
+                    deleteLabel={`Delete ${displayName}`}
+                    onEdit={() => onEditPerson(person)}
+                    onDelete={() => onDeletePerson(person.id)}
+                  />
+                }
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h4 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-                      {displayName}
-                    </h4>
-                    <div className="space-y-1">
-                      <p className="text-sm flex items-center gap-1" style={{ color: 'var(--color-accent)' }}>
-                        <Clock className="w-3 h-3" />
-                        {sessionText}
-                      </p>
-                      {Object.entries(person.attributes).map(([key, value]) => {
-                        if (key === 'name') return null;
-                        return (
-                          <div key={key} className="flex items-center gap-1 text-xs">
-                            <Tag className="w-3 h-3" style={{ color: 'var(--text-tertiary)' }} />
-                            <span style={{ color: 'var(--text-secondary)' }}>{key}:</span>
-                            <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                              {value}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => onEditPerson(person)}
-                      className="p-1 transition-colors"
-                      style={{ color: 'var(--text-tertiary)' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-accent)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-tertiary)')}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => onDeletePerson(person.id)}
-                      className="p-1 transition-colors"
-                      style={{ color: 'var(--text-tertiary)' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-error-600)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-tertiary)')}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+                <SetupKeyValueList items={[{ label: 'Availability', value: sessionText }]} />
+                <SetupSessionsBadgeList sessions={person.sessions} />
+                {Object.entries(person.attributes).some(([key]) => key !== 'name') ? (
+                  <SetupTagList
+                    items={Object.entries(person.attributes)
+                      .filter(([key]) => key !== 'name')
+                      .map(([key, value]) => (
+                        <span
+                          key={key}
+                          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                          style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}
+                        >
+                          <Tag className="h-3 w-3" />
+                          <span>{key}: {value}</span>
+                        </span>
+                      ))}
+                  />
+                ) : null}
+              </SetupItemCard>
             );
           })}
         </div>
