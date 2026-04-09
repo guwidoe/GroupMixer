@@ -83,6 +83,11 @@ function renderRepeatEncounterContent(
             ),
             sortValue: (item) => item.constraint.max_allowed_encounters,
             searchValue: (item) => String(item.constraint.max_allowed_encounters),
+            filter: {
+              type: 'numberRange',
+              ariaLabel: 'Filter repeat encounter max encounters',
+              getValue: (item) => item.constraint.max_allowed_encounters,
+            },
             width: 240,
           },
           {
@@ -91,6 +96,12 @@ function renderRepeatEncounterContent(
             cell: (item) => item.constraint.penalty_function,
             sortValue: (item) => item.constraint.penalty_function,
             searchValue: (item) => item.constraint.penalty_function,
+            filter: {
+              type: 'select',
+              ariaLabel: 'Filter repeat encounter penalty function',
+              getValue: (item) => item.constraint.penalty_function,
+              options: (rows) => Array.from(new Set(rows.map((row) => row.constraint.penalty_function))).map((value) => ({ value, label: value })),
+            },
             width: 220,
           },
           {
@@ -99,6 +110,11 @@ function renderRepeatEncounterContent(
             cell: (item) => item.constraint.penalty_weight,
             sortValue: (item) => item.constraint.penalty_weight,
             searchValue: (item) => String(item.constraint.penalty_weight),
+            filter: {
+              type: 'numberRange',
+              ariaLabel: 'Filter repeat encounter weight',
+              getValue: (item) => item.constraint.penalty_weight,
+            },
             width: 140,
           },
           {

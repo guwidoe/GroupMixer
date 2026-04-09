@@ -68,6 +68,53 @@ describe('ScenarioDataGrid', () => {
     expect(screen.queryByText('Beta')).not.toBeInTheDocument();
   });
 
+  it('supports header-level text and range filters', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ScenarioDataGrid
+        rows={rows}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            id: 'name',
+            header: 'Name',
+            cell: (row) => row.name,
+            sortValue: (row) => row.name,
+            searchValue: (row) => row.name,
+            filter: {
+              type: 'text',
+              ariaLabel: 'Filter names',
+            },
+          },
+          {
+            id: 'weight',
+            header: 'Weight',
+            cell: (row) => row.weight,
+            sortValue: (row) => row.weight,
+            searchValue: (row) => String(row.weight),
+            filter: {
+              type: 'numberRange',
+              ariaLabel: 'Filter weight',
+              getValue: (row) => row.weight,
+            },
+          },
+        ]}
+      />,
+    );
+
+    await user.type(screen.getByRole('textbox', { name: /filter names/i }), 'alpha');
+    expect(screen.getByText('Alpha')).toBeInTheDocument();
+    expect(screen.queryByText('Beta')).not.toBeInTheDocument();
+
+    await user.clear(screen.getByRole('textbox', { name: /filter names/i }));
+    await user.type(screen.getByRole('spinbutton', { name: /filter weight minimum/i }), '15');
+
+    expect(screen.getByText('Beta')).toBeInTheDocument();
+    expect(screen.queryByText('Alpha')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /clear filters/i })).toBeInTheDocument();
+  });
+
   it('toggles column visibility from the shared columns menu', async () => {
     const user = userEvent.setup();
 

@@ -70,6 +70,11 @@ function renderAttributeContent(
             cell: (definition) => <span className="font-semibold capitalize" style={{ color: 'var(--text-primary)' }}>{definition.key}</span>,
             sortValue: (definition) => definition.key,
             searchValue: (definition) => definition.key,
+            filter: {
+              type: 'text',
+              placeholder: 'Filter attributes…',
+              ariaLabel: 'Filter attribute definitions by key',
+            },
             width: 220,
           },
           {
@@ -90,6 +95,11 @@ function renderAttributeContent(
             ),
             sortValue: (definition) => definition.values.length,
             searchValue: (definition) => definition.values.join(' '),
+            filter: {
+              type: 'text',
+              placeholder: 'Filter values…',
+              ariaLabel: 'Filter attribute definitions by values',
+            },
             width: 340,
           },
           {

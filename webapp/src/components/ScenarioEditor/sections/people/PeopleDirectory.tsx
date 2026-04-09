@@ -258,6 +258,11 @@ export function PeopleDirectory({
                 ),
                 sortValue: (person) => resolvePersonDisplay(basePeople, person.id).displayName.toLowerCase(),
                 searchValue: (person) => resolvePersonDisplay(basePeople, person.id).searchText,
+                filter: {
+                  type: 'text',
+                  placeholder: 'Filter names…',
+                  ariaLabel: 'Filter people by name',
+                },
                 width: 240,
                 editor: {
                   type: 'text',
@@ -274,6 +279,15 @@ export function PeopleDirectory({
                   person.sessions ? `${person.sessions.map((session) => session + 1).join(', ')}` : `All (${sessionsCount})`,
                 sortValue: (person) => person.sessions?.length ?? sessionsCount,
                 searchValue: (person) => (person.sessions ? person.sessions.join(' ') : `all ${sessionsCount}`),
+                filter: {
+                  type: 'text',
+                  ariaLabel: 'Filter people by session availability',
+                  placeholder: 'Filter sessions…',
+                  getValue: (person) =>
+                    person.sessions && person.sessions.length > 0
+                      ? person.sessions.map((session) => String(session + 1)).join(' ')
+                      : 'all sessions',
+                },
                 width: 180,
                 editor: {
                   type: 'multiselect',
@@ -302,6 +316,12 @@ export function PeopleDirectory({
                 header: attribute.key,
                 cell: (person: Person) => person.attributes[attribute.key] || '—',
                 searchValue: (person: Person) => String(person.attributes[attribute.key] || ''),
+                filter: {
+                  type: 'select' as const,
+                  ariaLabel: `Filter people by ${attribute.key}`,
+                  getValue: (person: Person) => String(person.attributes[attribute.key] || ''),
+                  options: attribute.values.map((value) => ({ value, label: value })),
+                },
                 width: 180,
                 editor: {
                   type: 'select' as const,

@@ -393,6 +393,11 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                   cell: (item) => <SetupPersonListText people={scenario.people} personIds={item.constraint.people} />,
                   sortValue: (item) => item.constraint.people.length,
                   searchValue: (item) => formatPersonSearchList(scenario.people, item.constraint.people),
+                  filter: {
+                    type: 'text',
+                    placeholder: 'Filter people…',
+                    ariaLabel: `Filter ${copy.title} by people`,
+                  },
                   width: 280,
                 },
                 ...(family === 'ImmovablePeople'
@@ -402,6 +407,11 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                       cell: (item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>) => item.constraint.group_id,
                       sortValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>) => item.constraint.group_id,
                       searchValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>) => item.constraint.group_id,
+                      filter: {
+                        type: 'text' as const,
+                        placeholder: 'Filter groups…',
+                        ariaLabel: 'Filter immovable people by group',
+                      },
                       width: 180,
                     }]
                   : []),
@@ -410,6 +420,11 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                   header: 'Sessions',
                   cell: (item) => item.constraint.sessions?.length ? item.constraint.sessions.map((session) => session + 1).join(', ') : 'All sessions',
                   searchValue: (item) => item.constraint.sessions?.join(' ') || 'all sessions',
+                  filter: {
+                    type: 'text',
+                    placeholder: 'Filter sessions…',
+                    ariaLabel: `Filter ${copy.title} by sessions`,
+                  },
                   width: 220,
                 },
                 {
@@ -605,22 +620,32 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
               columns={[
                 ...(family === 'AttributeBalance'
                   ? [
-                      {
-                        id: 'group',
-                        header: 'Group',
-                        cell: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.group_id,
-                        sortValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.group_id,
-                        searchValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => `${item.constraint.group_id} ${item.constraint.attribute_key}`,
-                        width: 180,
-                      },
-                      {
-                        id: 'attribute',
-                        header: 'Attribute',
-                        cell: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.attribute_key,
-                        sortValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.attribute_key,
-                        searchValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.attribute_key,
-                        width: 180,
-                      },
+                        {
+                          id: 'group',
+                          header: 'Group',
+                          cell: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.group_id,
+                          sortValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.group_id,
+                          searchValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => `${item.constraint.group_id} ${item.constraint.attribute_key}`,
+                          filter: {
+                            type: 'text' as const,
+                            placeholder: 'Filter groups…',
+                            ariaLabel: 'Filter attribute balance by group',
+                          },
+                          width: 180,
+                        },
+                        {
+                          id: 'attribute',
+                          header: 'Attribute',
+                          cell: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.attribute_key,
+                          sortValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.attribute_key,
+                          searchValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.attribute_key,
+                          filter: {
+                            type: 'text' as const,
+                            placeholder: 'Filter attributes…',
+                            ariaLabel: 'Filter attribute balance by attribute key',
+                          },
+                          width: 180,
+                        },
                     ]
                   : family === 'PairMeetingCount'
                     ? [
@@ -632,6 +657,11 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                           ),
                           sortValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => formatPersonDisplayList(scenario.people, item.constraint.people, ' & '),
                           searchValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => formatPersonSearchList(scenario.people, item.constraint.people),
+                          filter: {
+                            type: 'text' as const,
+                            placeholder: 'Filter pairs…',
+                            ariaLabel: 'Filter pair meeting counts by pair',
+                          },
                           width: 280,
                         },
                       ]
@@ -644,6 +674,11 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                           ),
                           sortValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => item.constraint.people.length,
                           searchValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => formatPersonSearchList(scenario.people, item.constraint.people),
+                          filter: {
+                            type: 'text' as const,
+                            placeholder: 'Filter people…',
+                            ariaLabel: `Filter ${copy.title} by people`,
+                          },
                           width: 280,
                         },
                       ]),
@@ -654,6 +689,11 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                       cell: (item: IndexedConstraint<Constraint & { penalty_weight: number }>) => item.constraint.penalty_weight,
                       sortValue: (item: IndexedConstraint<Constraint & { penalty_weight: number }>) => item.constraint.penalty_weight,
                       searchValue: (item: IndexedConstraint<Constraint & { penalty_weight: number }>) => String(item.constraint.penalty_weight),
+                      filter: {
+                        type: 'numberRange' as const,
+                        ariaLabel: `Filter ${copy.title} by weight`,
+                        getValue: (item: IndexedConstraint<Constraint & { penalty_weight: number }>) => item.constraint.penalty_weight,
+                      },
                       width: 140,
                     }]
                   : []),
@@ -662,6 +702,11 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                   header: 'Sessions',
                   cell: (item) => 'sessions' in item.constraint && item.constraint.sessions?.length ? item.constraint.sessions.map((session) => session + 1).join(', ') : 'All sessions',
                   searchValue: (item) => ('sessions' in item.constraint && item.constraint.sessions ? item.constraint.sessions.join(' ') : 'all sessions'),
+                  filter: {
+                    type: 'text',
+                    placeholder: 'Filter sessions…',
+                    ariaLabel: `Filter ${copy.title} by sessions`,
+                  },
                   width: 220,
                 },
                 {

@@ -8,12 +8,16 @@ import {
   X,
 } from 'lucide-react';
 import {
+  type Column,
   flexRender,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
   getCoreRowModel,
   getFilteredRowModel,
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
+  type ColumnFiltersState,
   type ColumnSizingState,
   type FilterFn,
   type Row,
@@ -23,7 +27,12 @@ import {
 } from '@tanstack/react-table';
 import { useOutsideClick } from '../../../../hooks';
 import { Button } from '../../../ui';
-import type { ScenarioDataGridColumn, ScenarioDataGridColumnEditor, ScenarioDataGridOption } from './types';
+import type {
+  ScenarioDataGridColumn,
+  ScenarioDataGridColumnEditor,
+  ScenarioDataGridNumberRangeValue,
+  ScenarioDataGridOption,
+} from './types';
 
 interface ScenarioDataGridProps<T> {
   rows: T[];
@@ -51,6 +60,33 @@ function matchesQuery<T>(row: T, columns: Array<ScenarioDataGridColumn<T>>, quer
     const haystack = column.searchValue?.(row);
     return haystack ? haystack.toLowerCase().includes(searchValue) : false;
   });
+}
+
+function normalizeFilterText(value: string | number | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value.join(' ').toLowerCase();
+  }
+  return value == null ? '' : String(value).toLowerCase();
+}
+
+function resolveFilterValue<T>(row: T, column: ScenarioDataGridColumn<T>) {
+  if (column.filter?.getValue) {
+    return column.filter.getValue(row);
+  }
+  if (column.sortValue) {
+    return column.sortValue(row);
+  }
+  if (column.searchValue) {
+    return column.searchValue(row);
+  }
+  return undefined;
+}
+
+function resolveFilterOptions<T>(column: ScenarioDataGridColumn<T>, rows: T[]): ScenarioDataGridOption[] {
+  if (!column.filter?.options) {
+    return [];
+  }
+  return typeof column.filter.options === 'function' ? column.filter.options(rows) : column.filter.options;
 }
 
 function getEditorOptions<T>(editor: ScenarioDataGridColumnEditor<T>, row: T): ScenarioDataGridOption[] {
@@ -245,6 +281,82 @@ function ColumnVisibilityMenu<T>({
   );
 }
 
+function ColumnFilterControl<T>({
+  column,
+  sourceColumn,
+  rows,
+}: {
+  column: Column<T, unknown>;
+  sourceColumn: ScenarioDataGridColumn<T>;
+  rows: T[];
+}) {
+  const filter = sourceColumn.filter;
+  if (!filter) {
+    return null;
+  }
+
+  const commonInputClassName = 'input h-8 w-full rounded-lg px-2 text-xs';
+
+  if (filter.type === 'text') {
+    return (
+      <input
+        type="text"
+        className={commonInputClassName}
+        value={String(column.getFilterValue() ?? '')}
+        onChange={(event) => column.setFilterValue(event.target.value)}
+        onClick={(event) => event.stopPropagation()}
+        placeholder={filter.placeholder ?? `Filter ${sourceColumn.header.toLowerCase()}…`}
+        aria-label={filter.ariaLabel ?? `Filter ${sourceColumn.header}`}
+      />
+    );
+  }
+
+  if (filter.type === 'select') {
+    const options = resolveFilterOptions(sourceColumn, rows);
+    return (
+      <select
+        className={commonInputClassName}
+        value={String(column.getFilterValue() ?? '')}
+        onChange={(event) => column.setFilterValue(event.target.value || undefined)}
+        onClick={(event) => event.stopPropagation()}
+        aria-label={filter.ariaLabel ?? `Filter ${sourceColumn.header}`}
+      >
+        <option value="">All</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  const rangeValue = (column.getFilterValue() as ScenarioDataGridNumberRangeValue | undefined) ?? {};
+
+  return (
+    <div className="grid grid-cols-2 gap-1.5">
+      <input
+        type="number"
+        className={commonInputClassName}
+        value={rangeValue.min ?? ''}
+        onClick={(event) => event.stopPropagation()}
+        onChange={(event) => column.setFilterValue({ ...rangeValue, min: event.target.value || undefined })}
+        placeholder="Min"
+        aria-label={`${filter.ariaLabel ?? sourceColumn.header} minimum`}
+      />
+      <input
+        type="number"
+        className={commonInputClassName}
+        value={rangeValue.max ?? ''}
+        onClick={(event) => event.stopPropagation()}
+        onChange={(event) => column.setFilterValue({ ...rangeValue, max: event.target.value || undefined })}
+        placeholder="Max"
+        aria-label={`${filter.ariaLabel ?? sourceColumn.header} maximum`}
+      />
+    </div>
+  );
+}
+
 export function ScenarioDataGrid<T>({
   rows,
   columns,
@@ -263,6 +375,7 @@ export function ScenarioDataGrid<T>({
   const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>(() =>
     Object.fromEntries(columns.map((column) => [column.id, column.width ?? 180])),
   );
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = React.useState('');
   const [isColumnsMenuOpen, setIsColumnsMenuOpen] = React.useState(false);
   const [isEditMode, setIsEditMode] = React.useState(false);
@@ -352,12 +465,45 @@ export function ScenarioDataGrid<T>({
           return '';
         },
         enableSorting: Boolean(column.sortValue),
+        enableColumnFilter: Boolean(column.filter),
         enableHiding: column.hideable !== false,
         size: column.width ?? 180,
         minSize: column.minWidth ?? 120,
         meta: {
           align: column.align ?? 'left',
           sourceColumn: column,
+        },
+        filterFn: (row, _columnId, filterValue) => {
+          if (!column.filter) {
+            return true;
+          }
+
+          const rowValue = resolveFilterValue(row.original, column);
+
+          if (column.filter.type === 'text') {
+            const query = normalizeSearchValue(String(filterValue ?? ''));
+            return !query || normalizeFilterText(rowValue).includes(query);
+          }
+
+          if (column.filter.type === 'select') {
+            return !filterValue || String(rowValue ?? '') === String(filterValue);
+          }
+
+          const range = (filterValue ?? {}) as ScenarioDataGridNumberRangeValue;
+          const numericValue = typeof rowValue === 'number' ? rowValue : Number(rowValue);
+          if (!Number.isFinite(numericValue)) {
+            return false;
+          }
+
+          const min = range.min == null || range.min === '' ? undefined : Number(range.min);
+          const max = range.max == null || range.max === '' ? undefined : Number(range.max);
+          if (Number.isFinite(min) && numericValue < (min as number)) {
+            return false;
+          }
+          if (Number.isFinite(max) && numericValue > (max as number)) {
+            return false;
+          }
+          return true;
         },
         cell: ({ row }) =>
           isEditMode && column.editor ? <InlineEditorCell row={row.original} editor={column.editor} /> : column.cell(row.original),
@@ -377,6 +523,7 @@ export function ScenarioDataGrid<T>({
       sorting,
       columnVisibility,
       columnSizing,
+      columnFilters,
       globalFilter: mergedQuery,
     },
     meta: {
@@ -388,10 +535,13 @@ export function ScenarioDataGrid<T>({
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
     onColumnSizingChange: setColumnSizing,
+    onColumnFiltersChange: setColumnFilters,
     globalFilterFn,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
   React.useEffect(() => {
@@ -444,6 +594,27 @@ export function ScenarioDataGrid<T>({
 
   const filteredCount = table.getFilteredRowModel().rows.length;
   const totalCount = rows.length;
+  const activeColumnFilters = table.getState().columnFilters.map((filterState) => {
+    const sourceColumn = columns.find((candidate) => candidate.id === filterState.id);
+    const sourceFilter = sourceColumn?.filter;
+    if (!sourceColumn || !sourceFilter) {
+      return null;
+    }
+
+    let valueLabel = '';
+    if (sourceFilter.type === 'numberRange') {
+      const range = filterState.value as ScenarioDataGridNumberRangeValue;
+      valueLabel = `${range.min ? `≥ ${range.min}` : ''}${range.min && range.max ? ' · ' : ''}${range.max ? `≤ ${range.max}` : ''}`;
+    } else {
+      valueLabel = String(filterState.value ?? '');
+    }
+
+    return {
+      id: filterState.id,
+      label: sourceColumn.header,
+      valueLabel,
+    };
+  }).filter(Boolean) as Array<{ id: string; label: string; valueLabel: string }>;
   const summary = searchSummary
     ? searchSummary({ filteredCount, totalCount, query: globalFilter })
     : (
@@ -513,6 +684,34 @@ export function ScenarioDataGrid<T>({
         </div>
       </div>
 
+      {activeColumnFilters.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
+          <span className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>
+            Filters
+          </span>
+          {activeColumnFilters.map((filter) => (
+            <button
+              key={filter.id}
+              type="button"
+              className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs"
+              style={{ borderColor: 'var(--border-primary)', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-secondary)' }}
+              onClick={() => table.getColumn(filter.id)?.setFilterValue(undefined)}
+            >
+              <span>{filter.label}: {filter.valueLabel}</span>
+              <X className="h-3 w-3" />
+            </button>
+          ))}
+          <button
+            type="button"
+            className="text-xs font-medium underline"
+            style={{ color: 'var(--color-accent)' }}
+            onClick={() => table.resetColumnFilters()}
+          >
+            Clear filters
+          </button>
+        </div>
+      ) : null}
+
       {scrollMetrics.scrollWidth > scrollMetrics.clientWidth ? (
         <div
           ref={topScrollRef}
@@ -562,13 +761,18 @@ export function ScenarioDataGrid<T>({
                       }}
                     >
                       {header.isPlaceholder ? null : (
-                        <div className="flex items-center gap-2">
+                        <div className="space-y-2">
                           <ScenarioDataGridHeader
                             title={String(header.column.columnDef.header)}
                             canSort={header.column.getCanSort()}
                             sorted={header.column.getIsSorted()}
                             onSort={header.column.getToggleSortingHandler()}
                           />
+                          {sourceColumn?.filter ? (
+                            <div onClick={(event) => event.stopPropagation()}>
+                              <ColumnFilterControl column={header.column} sourceColumn={sourceColumn} rows={rows} />
+                            </div>
+                          ) : null}
                         </div>
                       )}
                       {sourceColumn ? (

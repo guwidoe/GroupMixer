@@ -5,6 +5,19 @@ export interface ScenarioDataGridOption {
   label: string;
 }
 
+export interface ScenarioDataGridNumberRangeValue {
+  min?: string;
+  max?: string;
+}
+
+export interface ScenarioDataGridColumnFilter<T> {
+  type: 'text' | 'select' | 'numberRange';
+  getValue?: (row: T) => string | string[] | number | undefined;
+  options?: ScenarioDataGridOption[] | ((rows: T[]) => ScenarioDataGridOption[]);
+  placeholder?: string;
+  ariaLabel?: string;
+}
+
 export interface ScenarioDataGridColumnEditor<T> {
   type: 'text' | 'number' | 'select' | 'multiselect';
   getValue: (row: T) => string | number | string[] | undefined;
@@ -22,6 +35,7 @@ export interface ScenarioDataGridColumn<T> {
   cell: (row: T) => React.ReactNode;
   sortValue?: (row: T) => string | number;
   searchValue?: (row: T) => string;
+  filter?: ScenarioDataGridColumnFilter<T>;
   width?: number;
   minWidth?: number;
   align?: 'left' | 'right' | 'center';
