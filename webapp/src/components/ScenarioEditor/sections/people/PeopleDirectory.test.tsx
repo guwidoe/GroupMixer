@@ -91,6 +91,7 @@ describe('PeopleDirectory', () => {
     await user.click(screen.getByRole('button', { name: /list/i }));
     expect(screen.getByRole('columnheader', { name: /name/i })).toBeInTheDocument();
     expect(screen.queryByText('p1')).not.toBeInTheDocument();
+    expect(screen.getAllByText('dev').length).toBeGreaterThan(0);
 
     await user.click(screen.getByRole('button', { name: /edit table/i }));
     const nameInput = screen.getByRole('textbox', { name: /edit name for alex/i });

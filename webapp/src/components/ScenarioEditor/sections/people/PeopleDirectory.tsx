@@ -155,6 +155,36 @@ export function PeopleDirectory({
     () => Array.from({ length: sessionsCount }, (_, index) => ({ value: String(index), label: `Session ${index + 1}` })),
     [sessionsCount],
   );
+  const peopleAttributeColumns = useMemo(() => {
+    const orderedKeys = new Set<string>();
+
+    for (const definition of attributeDefinitions) {
+      if (definition.key !== 'name') {
+        orderedKeys.add(definition.key);
+      }
+    }
+
+    for (const person of basePeople) {
+      for (const key of Object.keys(person.attributes ?? {})) {
+        if (key !== 'name') {
+          orderedKeys.add(key);
+        }
+      }
+    }
+
+    return Array.from(orderedKeys).map((key) => {
+      const definition = attributeDefinitions.find((attribute) => attribute.key === key);
+      const observedValues = basePeople
+        .map((person) => person.attributes?.[key])
+        .filter((value): value is string => typeof value === 'string' && value.length > 0);
+      const optionValues = Array.from(new Set([...(definition?.values ?? []), ...observedValues]));
+
+      return {
+        key,
+        optionValues,
+      };
+    });
+  }, [attributeDefinitions, basePeople]);
   const searchSummary = searchValue ? (
     <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
       Showing {sortedPeople.length} of {basePeople.length} people for “{peopleSearch}”.
@@ -317,29 +347,27 @@ export function PeopleDirectory({
                   ariaLabel: (person) => `Edit sessions for ${person.attributes.name || person.id}`,
                 },
               },
-              ...attributeDefinitions.map((attribute) => ({
+              ...peopleAttributeColumns.map((attribute) => ({
                 id: `attribute-${attribute.key}`,
                 header: attribute.key,
-                cell: (person: Person) => person.attributes[attribute.key] || '—',
-                searchValue: (person: Person) => String(person.attributes[attribute.key] || ''),
-                exportValue: (person: Person) => String(person.attributes[attribute.key] || ''),
+                cell: (person: Person) => person.attributes[attribute.key] ?? '—',
+                searchValue: (person: Person) => String(person.attributes[attribute.key] ?? ''),
+                exportValue: (person: Person) => String(person.attributes[attribute.key] ?? ''),
                 filter: {
                   type: 'select' as const,
                   ariaLabel: `Filter people by ${attribute.key}`,
-                  getValue: (person: Person) => String(person.attributes[attribute.key] || ''),
-                  options: attribute.values.map((value) => ({ value, label: value })),
+                  getValue: (person: Person) => String(person.attributes[attribute.key] ?? ''),
+                  options: attribute.optionValues.map((value) => ({ value, label: value })),
                 },
                 width: 180,
                 editor: {
-                  type: 'select' as const,
-                  getValue: (person: Person) => String(person.attributes[attribute.key] || attribute.values[0] || ''),
-                  options: (() => {
-                    const uniqueValues = new Set(attribute.values);
-                    return Array.from(uniqueValues).map((value) => ({ value, label: value }));
-                  })(),
+                  type: attribute.optionValues.length > 0 ? 'select' as const : 'text' as const,
+                  getValue: (person: Person) => String(person.attributes[attribute.key] ?? attribute.optionValues[0] ?? ''),
+                  options: attribute.optionValues.map((value) => ({ value, label: value })),
                   onCommit: (person: Person, value: string | number | string[]) =>
                     onInlineUpdatePerson(person.id, { attributes: { [attribute.key]: String(value) } }),
                   ariaLabel: (person: Person) => `Edit ${attribute.key} for ${person.attributes.name || person.id}`,
+                  placeholder: `Enter ${attribute.key}`,
                 },
               })),
               {
