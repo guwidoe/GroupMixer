@@ -6,10 +6,16 @@ import { ScenarioEditorConstraintModals } from './ScenarioEditorConstraintModals
 import { ScenarioEditorForms } from './ScenarioEditorForms';
 import { ScenarioEditorHeader } from './ScenarioEditorHeader';
 import { ScenarioSetupSectionRenderer } from './ScenarioSetupSectionRenderer';
+import { useDeferredScenarioSectionContent } from './useDeferredScenarioSectionContent';
 import { useScenarioEditorController } from './useScenarioEditorController';
 
 export function ScenarioEditor() {
   const controller = useScenarioEditorController();
+  const deferredSection = useDeferredScenarioSectionContent(
+    controller.activeSection,
+    controller.scenario ?? null,
+    controller.currentScenarioId,
+  );
 
   if (controller.ui.isLoading) {
     return <div className="animate-fade-in">Loading...</div>;
@@ -39,7 +45,23 @@ export function ScenarioEditor() {
           />
         }
       >
-        <ScenarioSetupSectionRenderer controller={controller} />
+        {deferredSection.isContentLoading ? (
+          <div
+            className="animate-fade-in rounded-2xl border px-6 py-8"
+            style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+            role="status"
+            aria-live="polite"
+          >
+            <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+              Loading {deferredSection.deferredSectionLabel}…
+            </div>
+            <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              The setup shell is ready. Large scenario content is loading asynchronously to keep navigation responsive.
+            </p>
+          </div>
+        ) : (
+          <ScenarioSetupSectionRenderer controller={controller} />
+        )}
       </ScenarioSetupLayout>
 
       <ScenarioEditorForms

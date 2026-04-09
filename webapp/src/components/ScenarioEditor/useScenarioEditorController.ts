@@ -193,6 +193,7 @@ export function useScenarioEditorController() {
     addNotification,
     attributeDefinitions,
     removeAttributeDefinition,
+    currentScenarioId,
     ui,
     sessionsCount,
     activeSection,
