@@ -56,6 +56,8 @@ interface SolverStatusCardProps {
   solverState: SolverState;
   scenario: Scenario | null;
   selectedSolverCatalogEntry: SolverCatalogEntry | null;
+  solverCatalogStatus: 'loading' | 'ready' | 'error';
+  solverCatalogErrorMessage: string | null;
   runtime: SolverRuntimeControls;
   actions: SolverActionControls;
   liveViz: SolverLiveVizControls;
@@ -66,12 +68,17 @@ export function SolverStatusCard({
   solverState,
   scenario,
   selectedSolverCatalogEntry,
+  solverCatalogStatus,
+  solverCatalogErrorMessage,
   runtime,
   actions,
   liveViz,
   metrics,
 }: SolverStatusCardProps) {
-  const supportsRecommendedSettings = selectedSolverCatalogEntry?.capabilities.supportsRecommendedSettings ?? false;
+  const catalogReady = solverCatalogStatus === 'ready';
+  const supportsRecommendedSettings = catalogReady
+    ? selectedSolverCatalogEntry?.capabilities.supportsRecommendedSettings ?? false
+    : false;
 
   return (
     <div className="card">
@@ -90,6 +97,26 @@ export function SolverStatusCard({
           </span>
         </div>
       </div>
+
+      {!catalogReady && (
+        <div
+          className="mb-4 p-3 rounded-lg border text-sm"
+          style={{
+            borderColor: solverCatalogStatus === 'error' ? 'var(--color-danger)' : 'var(--border-secondary)',
+            backgroundColor: 'var(--background-secondary)',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          <div className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+            {solverCatalogStatus === 'loading' ? 'Loading Solver Catalog' : 'Solver Catalog Unavailable'}
+          </div>
+          <p>
+            {solverCatalogStatus === 'loading'
+              ? 'Waiting for authoritative solver discovery from the runtime before enabling solve controls.'
+              : `Runtime solver discovery failed: ${solverCatalogErrorMessage ?? 'unknown error'}`}
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
         <div className="flex flex-col items-start">
@@ -119,11 +146,17 @@ export function SolverStatusCard({
           <button
             onClick={() => actions.onStartSolver(supportsRecommendedSettings)}
             className="btn-success flex-1 flex items-center justify-center space-x-2"
-            disabled={!scenario}
+            disabled={!scenario || !catalogReady}
           >
             <Play className="h-4 w-4" />
             <span>
-              {supportsRecommendedSettings ? 'Start Solver with Automatic Settings' : 'Start Solver with Current Settings'}
+              {catalogReady
+                ? supportsRecommendedSettings
+                  ? 'Start Solver with Automatic Settings'
+                  : 'Start Solver with Current Settings'
+                : solverCatalogStatus === 'loading'
+                  ? 'Loading Solver Catalog...'
+                  : 'Solver Catalog Unavailable'}
             </span>
           </button>
         ) : (

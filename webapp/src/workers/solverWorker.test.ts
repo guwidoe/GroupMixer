@@ -352,6 +352,22 @@ describe("solverWorker runtime", () => {
     ]);
   });
 
+  it("auto-initializes discovery RPCs before handling list_solvers", async () => {
+    const { runtime, wasmInit, wasmModule } = createRuntime();
+
+    await runtime.handleMessage({ type: 'list_solvers', id: '2', data: {} });
+
+    expect(wasmInit).toHaveBeenCalledTimes(1);
+    expect(wasmModule.list_solvers).toHaveBeenCalledTimes(1);
+    expect(postedMessages).toEqual([
+      {
+        type: 'RPC_SUCCESS',
+        id: '2',
+        data: { result: { solvers: [{ canonical_id: 'solver1', display_name: 'Solver 1' }] } },
+      },
+    ]);
+  });
+
   it("returns RPC_ERROR when RPC handlers fail", async () => {
     const { runtime } = createRuntime({
       wasmModule: {

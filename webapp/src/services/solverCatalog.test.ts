@@ -17,7 +17,7 @@ describe('solverCatalog', () => {
     expect(normalizeSolverFamilyId('unknown')).toBeNull();
   });
 
-  it('exposes the supported fallback solver catalog entries', () => {
+  it('exposes locally known solver presentation metadata for supported solver families', () => {
     const catalog = getSolverCatalog();
     expect(catalog).toHaveLength(2);
     expect(catalog[0]).toMatchObject({

@@ -253,7 +253,7 @@ export function createSolverWorkerRuntime({
         default:
           try {
             if (!isInitialized) {
-              throw new Error("WASM module not initialized.");
+              await initWasm();
             }
 
             handleRpcMessage(message as RpcRequestMessage);

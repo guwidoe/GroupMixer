@@ -170,6 +170,36 @@ describe("SolverWorkerService", () => {
     expect(service.isReady()).toBe(false);
   });
 
+  it("waits for in-flight initialization before sending RPC discovery calls", async () => {
+    const service = createService();
+
+    const initPromise = service.initialize();
+    const worker = FakeWorker.latest();
+    const listSolversPromise = service.listSolvers();
+
+    expect(worker.postedMessages).toEqual([{ type: 'INIT', id: '1' }]);
+
+    worker.emit({ type: 'INIT_SUCCESS', id: '1' });
+
+    await vi.waitFor(() => {
+      expect(worker.postedMessages.at(-1)).toEqual({
+        type: 'list_solvers',
+        id: '2',
+        data: {},
+      });
+    });
+
+    worker.emit({
+      type: 'RPC_SUCCESS',
+      id: '2',
+      data: { result: { solvers: [{ canonical_id: 'solver1' }] } },
+    });
+
+    await expect(listSolversPromise).resolves.toEqual({ solvers: [{ canonical_id: 'solver1' }] });
+    await initPromise;
+    expect(FakeWorker.instances).toHaveLength(1);
+  });
+
   it("handles solve-with-progress, captures last progress, and forwards callbacks", async () => {
     const service = createService();
     await initializeService(service);

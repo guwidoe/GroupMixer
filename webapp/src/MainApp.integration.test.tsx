@@ -316,6 +316,27 @@ describe("MainApp stateful integration routes", () => {
     expect(storeState.savedScenarios[createdScenarioId].results).toHaveLength(1);
   });
 
+  it('surfaces runtime catalog discovery errors instead of falling back to a local selector catalog', async () => {
+    const runtime = createRuntimeMock({
+      listSolvers: vi.fn(async () => {
+        throw new Error('catalog boom');
+      }),
+    });
+    setRuntimeForTests(runtime);
+
+    useAppStore.setState({
+      scenario: createSampleScenario({ settings: createSampleSolverSettings() }),
+      currentScenarioId: null,
+      savedScenarios: {},
+    });
+
+    renderAppRoute('/app/solver');
+
+    expect(await screen.findAllByText(/solver catalog unavailable/i)).not.toHaveLength(0);
+    expect(screen.getByText(/catalog boom/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /solver 3 experimental/i })).not.toBeInTheDocument();
+  });
+
   it("renders the real /app/results surface with a saved solution already in state", async () => {
     const savedScenario = createSavedScenario({
       id: "scenario-1",

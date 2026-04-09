@@ -25,6 +25,8 @@ interface SettingsPanelProps {
   onStartSolver: (useRecommended: boolean) => Promise<void>;
   selectedSolverFamilyId: SolverFamilyId;
   solverCatalog: readonly SolverCatalogEntry[];
+  solverCatalogStatus: 'loading' | 'ready' | 'error';
+  solverCatalogErrorMessage: string | null;
   selectedSolverCatalogEntry: SolverCatalogEntry | null;
   selectedSolverUiSpec: SolverUiSpec | null;
   onSelectSolverFamily: (familyId: SolverFamilyId) => void;
@@ -50,6 +52,8 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   onStartSolver,
   selectedSolverFamilyId,
   solverCatalog,
+  solverCatalogStatus,
+  solverCatalogErrorMessage,
   selectedSolverCatalogEntry,
   selectedSolverUiSpec,
   onSelectSolverFamily,
@@ -75,17 +79,39 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
           setDesiredRuntimeSettings={setDesiredRuntimeSettings}
           onAutoSetSettings={onAutoSetSettings}
           isRunning={isRunning}
+          solverCatalogStatus={solverCatalogStatus}
+          solverCatalogErrorMessage={solverCatalogErrorMessage}
           supportsRecommendedSettings={selectedSolverCatalogEntry?.capabilities.supportsRecommendedSettings ?? false}
           solverDisplayName={selectedSolverCatalogEntry?.displayName ?? solverSettings.solver_type}
         />
       </div>
 
-      <SolverSelector
-        selectedSolverFamilyId={selectedSolverFamilyId}
-        solverCatalog={solverCatalog}
-        onSelectSolverFamily={onSelectSolverFamily}
-        isRunning={isRunning}
-      />
+      {solverCatalogStatus === 'ready' ? (
+        <SolverSelector
+          selectedSolverFamilyId={selectedSolverFamilyId}
+          solverCatalog={solverCatalog}
+          onSelectSolverFamily={onSelectSolverFamily}
+          isRunning={isRunning}
+        />
+      ) : (
+        <div
+          className="mb-6 p-4 rounded-lg border text-sm"
+          style={{
+            borderColor: solverCatalogStatus === 'error' ? 'var(--color-danger)' : 'var(--border-secondary)',
+            backgroundColor: 'var(--background-secondary)',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          <div className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+            {solverCatalogStatus === 'loading' ? 'Loading Solver Catalog' : 'Solver Catalog Unavailable'}
+          </div>
+          <p>
+            {solverCatalogStatus === 'loading'
+              ? 'Fetching solver families and capability metadata from the runtime.'
+              : `Runtime solver discovery failed: ${solverCatalogErrorMessage ?? 'unknown error'}`}
+          </p>
+        </div>
+      )}
 
       <WarmStartSelector
         savedScenarios={savedScenarios}
@@ -116,6 +142,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
       <StartSolverButton
         onStartSolver={onStartSolver}
         isRunning={isRunning}
+        solverCatalogStatus={solverCatalogStatus}
         supportsRecommendedSettings={selectedSolverCatalogEntry?.capabilities.supportsRecommendedSettings ?? false}
       />
     </div>

@@ -6,7 +6,6 @@ import { getRuntime } from '../services/runtime';
 import {
   buildSolverCatalog,
   createDefaultSolverSettings,
-  getFallbackSolverCatalog,
   getSolverUiSpec,
   normalizeSolverFamilyId,
   switchSolverFamily,
@@ -108,23 +107,42 @@ export function SolverPanel() {
   const [desiredRuntimeSettings, setDesiredRuntimeSettings] = useState<number>(3);
 
   const [solverFormInputs, setSolverFormInputs] = useState<SolverFormInputs>({});
-  const [solverCatalog, setSolverCatalog] = useState<readonly SolverCatalogEntry[]>(() => getFallbackSolverCatalog());
+  const [solverCatalog, setSolverCatalog] = useState<readonly SolverCatalogEntry[]>([]);
+  const [solverCatalogStatus, setSolverCatalogStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [solverCatalogErrorMessage, setSolverCatalogErrorMessage] = useState<string | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
 
-    void getRuntime().listSolvers()
+    void (async () => {
+      const runtime = getRuntime();
+      await runtime.initialize();
+      return runtime.listSolvers();
+    })()
       .then((response) => {
         if (cancelled) {
           return;
         }
         const catalog = buildSolverCatalog(response.solvers);
-        if (catalog.length > 0) {
-          setSolverCatalog(catalog);
+        if (catalog.length === 0) {
+          setSolverCatalog([]);
+          setSolverCatalogStatus('error');
+          setSolverCatalogErrorMessage('Runtime discovery returned no supported solver families.');
+          return;
         }
+        setSolverCatalog(catalog);
+        setSolverCatalogStatus('ready');
+        setSolverCatalogErrorMessage(null);
       })
       .catch((error) => {
-        console.warn('[SolverPanel] Failed to load solver catalog from runtime, using fallback catalog.', error);
+        if (cancelled) {
+          return;
+        }
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('[SolverPanel] Failed to load solver catalog from runtime.', error);
+        setSolverCatalog([]);
+        setSolverCatalogStatus('error');
+        setSolverCatalogErrorMessage(message || 'Unknown runtime discovery error');
       });
 
     return () => {
@@ -239,6 +257,8 @@ export function SolverPanel() {
         solverState={solverState}
         scenario={scenario}
         selectedSolverCatalogEntry={selectedSolverCatalogEntry}
+        solverCatalogStatus={solverCatalogStatus}
+        solverCatalogErrorMessage={solverCatalogErrorMessage}
         runtime={{
           solverFormInputs,
           setSolverFormInputs,
@@ -287,6 +307,8 @@ export function SolverPanel() {
           onStartSolver={handleStartSolver}
           selectedSolverFamilyId={selectedSolverFamilyId}
           solverCatalog={solverCatalog}
+          solverCatalogStatus={solverCatalogStatus}
+          solverCatalogErrorMessage={solverCatalogErrorMessage}
           selectedSolverCatalogEntry={selectedSolverCatalogEntry}
           selectedSolverUiSpec={selectedSolverUiSpec}
           onSelectSolverFamily={handleSelectSolverFamily}

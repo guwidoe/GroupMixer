@@ -55,6 +55,7 @@ export class SolverWorkerService {
   private messageId = 0;
   private pendingMessages = new Map<string, PendingMessage>();
   private isInitialized = false;
+  private initializationPromise: Promise<void> | null = null;
   private lastProgressUpdate: ProgressUpdate | null = null;
 
   private nextMessageId(): string {
@@ -74,25 +75,36 @@ export class SolverWorkerService {
   }
 
   async initialize(): Promise<void> {
-    if (this.worker || this.isInitialized) {
+    if (this.isInitialized) {
       return;
     }
 
-    try {
-      this.worker = this.createWorker();
-      this.setupMessageHandler();
-      await this.sendInit();
-      this.isInitialized = true;
-    } catch (error) {
-      console.error("Failed to initialize solver worker:", error);
-      this.worker = null;
-      this.isInitialized = false;
-      throw new Error(
-        `Failed to initialize solver worker: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
+    if (this.initializationPromise) {
+      await this.initializationPromise;
+      return;
     }
+
+    this.initializationPromise = (async () => {
+      try {
+        this.worker = this.createWorker();
+        this.setupMessageHandler();
+        await this.sendInit();
+        this.isInitialized = true;
+      } catch (error) {
+        console.error("Failed to initialize solver worker:", error);
+        this.worker = null;
+        this.isInitialized = false;
+        throw new Error(
+          `Failed to initialize solver worker: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      } finally {
+        this.initializationPromise = null;
+      }
+    })();
+
+    await this.initializationPromise;
   }
 
   private buildWorkerError(messageData?: WorkerErrorData): Error {
@@ -363,6 +375,7 @@ export class SolverWorkerService {
       this.worker = null;
       this.isInitialized = false;
     }
+    this.initializationPromise = null;
     this.pendingMessages.clear();
   }
 

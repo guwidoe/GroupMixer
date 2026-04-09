@@ -2,7 +2,7 @@ import type { RuntimeSolverDescriptor } from '../runtime';
 import { LOCAL_SEARCH_METRIC_SECTION, LOCAL_SEARCH_SETTINGS_SECTION, summarizeLocalSearchSettings } from './localSearch';
 import { SOLVER1_UI_SPEC, summarizeSolver1Settings } from './solver1';
 import { SOLVER3_UI_SPEC, summarizeSolver3Settings } from './solver3';
-import { getAcceptedSolverFamilyIds, normalizeSolverFamilyId } from './translate';
+import { normalizeSolverFamilyId } from './translate';
 import type {
   SolverCatalogEntry,
   SolverFamilyId,
@@ -75,41 +75,6 @@ export function buildSolverCatalog(descriptors: RuntimeSolverDescriptor[]): read
   return descriptors
     .map(buildSolverCatalogEntry)
     .filter((entry) => entry.uiSpecAvailable || entry.id === 'solver1' || entry.id === 'solver3');
-}
-
-export function getFallbackSolverCatalog(): readonly SolverCatalogEntry[] {
-  return [
-    {
-      id: 'solver1',
-      displayName: 'Solver 1',
-      acceptedConfigIds: getAcceptedSolverFamilyIds('solver1'),
-      notes: 'Current production solver family backed by simulated annealing.',
-      capabilities: {
-        supportsInitialSchedule: true,
-        supportsProgressCallback: true,
-        supportsBenchmarkObserver: true,
-        supportsRecommendedSettings: true,
-        supportsDeterministicSeed: true,
-      },
-      uiSpecAvailable: true,
-      experimental: false,
-    },
-    {
-      id: 'solver3',
-      displayName: 'Solver 3',
-      acceptedConfigIds: getAcceptedSolverFamilyIds('solver3'),
-      notes: 'Alternative dense-state solver family. Recommendation is currently unsupported.',
-      capabilities: {
-        supportsInitialSchedule: true,
-        supportsProgressCallback: true,
-        supportsBenchmarkObserver: true,
-        supportsRecommendedSettings: false,
-        supportsDeterministicSeed: true,
-      },
-      uiSpecAvailable: true,
-      experimental: true,
-    },
-  ];
 }
 
 export function summarizeSolverSettings(settings: Parameters<SolverUiSpec['summarizeSettings']>[0]): readonly SolverSettingsSummaryRow[] {

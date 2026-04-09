@@ -9,6 +9,8 @@ interface AutoConfigPanelProps {
   setDesiredRuntimeSettings: React.Dispatch<React.SetStateAction<number>>;
   onAutoSetSettings: () => Promise<void>;
   isRunning: boolean;
+  solverCatalogStatus: 'loading' | 'ready' | 'error';
+  solverCatalogErrorMessage: string | null;
   supportsRecommendedSettings: boolean;
   solverDisplayName: string;
 }
@@ -20,9 +22,29 @@ export function AutoConfigPanel({
   setDesiredRuntimeSettings,
   onAutoSetSettings,
   isRunning,
+  solverCatalogStatus,
+  solverCatalogErrorMessage,
   supportsRecommendedSettings,
   solverDisplayName,
 }: AutoConfigPanelProps) {
+  if (solverCatalogStatus !== 'ready') {
+    return (
+      <div
+        className="p-3 rounded-lg text-sm"
+        style={{ border: '1px solid var(--border-secondary)', backgroundColor: 'var(--background-secondary)', color: 'var(--text-secondary)' }}
+      >
+        <div className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+          {solverCatalogStatus === 'loading' ? 'Loading Solver Catalog' : 'Solver Catalog Unavailable'}
+        </div>
+        <p>
+          {solverCatalogStatus === 'loading'
+            ? 'Fetching authoritative solver family capabilities from the runtime.'
+            : `Automatic settings are disabled because runtime solver discovery failed: ${solverCatalogErrorMessage ?? 'unknown error'}`}
+        </p>
+      </div>
+    );
+  }
+
   if (!supportsRecommendedSettings) {
     return (
       <div
