@@ -9,6 +9,8 @@ interface AutoConfigPanelProps {
   setDesiredRuntimeSettings: React.Dispatch<React.SetStateAction<number>>;
   onAutoSetSettings: () => Promise<void>;
   isRunning: boolean;
+  supportsRecommendedSettings: boolean;
+  solverDisplayName: string;
 }
 
 export function AutoConfigPanel({
@@ -18,7 +20,26 @@ export function AutoConfigPanel({
   setDesiredRuntimeSettings,
   onAutoSetSettings,
   isRunning,
+  supportsRecommendedSettings,
+  solverDisplayName,
 }: AutoConfigPanelProps) {
+  if (!supportsRecommendedSettings) {
+    return (
+      <div
+        className="p-3 rounded-lg text-sm"
+        style={{ border: '1px solid var(--border-secondary)', backgroundColor: 'var(--background-secondary)', color: 'var(--text-secondary)' }}
+      >
+        <div className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
+          Automatic Settings Unavailable
+        </div>
+        <p>
+          {solverDisplayName} does not currently expose runtime-aware recommended settings.
+          Use the manual controls below.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div
       className="flex items-end gap-2 p-3 rounded-lg"

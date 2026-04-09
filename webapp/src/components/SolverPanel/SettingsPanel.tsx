@@ -4,12 +4,14 @@
 
 import React from 'react';
 import type { Scenario, SavedScenario, SolverSettings } from '../../types';
+import type { SolverCatalogEntry, SolverFamilyId, SolverUiSpec } from '../../services/solverUi';
 import type { SolverFormInputs } from './SettingsPanel/types';
 import { AutoConfigPanel } from './SettingsPanel/AutoConfigPanel';
 import { WarmStartSelector } from './SettingsPanel/WarmStartSelector';
 import { AllowedSessionsSelector } from './SettingsPanel/AllowedSessionsSelector';
 import { SolverSettingsGrid } from './SettingsPanel/SolverSettingsGrid';
 import { StartSolverButton } from './SettingsPanel/StartSolverButton';
+import { SolverSelector } from './SettingsPanel/SolverSelector';
 
 interface SettingsPanelProps {
   solverSettings: SolverSettings;
@@ -21,6 +23,11 @@ interface SettingsPanelProps {
   setDesiredRuntimeSettings: React.Dispatch<React.SetStateAction<number>>;
   onAutoSetSettings: () => Promise<void>;
   onStartSolver: (useRecommended: boolean) => Promise<void>;
+  selectedSolverFamilyId: SolverFamilyId;
+  solverCatalog: readonly SolverCatalogEntry[];
+  selectedSolverCatalogEntry: SolverCatalogEntry | null;
+  selectedSolverUiSpec: SolverUiSpec | null;
+  onSelectSolverFamily: (familyId: SolverFamilyId) => void;
   scenario: Scenario | null;
   savedScenarios: Record<string, SavedScenario>;
   currentScenarioId: string | null;
@@ -41,6 +48,11 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   setDesiredRuntimeSettings,
   onAutoSetSettings,
   onStartSolver,
+  selectedSolverFamilyId,
+  solverCatalog,
+  selectedSolverCatalogEntry,
+  selectedSolverUiSpec,
+  onSelectSolverFamily,
   scenario,
   savedScenarios,
   currentScenarioId,
@@ -63,8 +75,17 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
           setDesiredRuntimeSettings={setDesiredRuntimeSettings}
           onAutoSetSettings={onAutoSetSettings}
           isRunning={isRunning}
+          supportsRecommendedSettings={selectedSolverCatalogEntry?.capabilities.supportsRecommendedSettings ?? false}
+          solverDisplayName={selectedSolverCatalogEntry?.displayName ?? solverSettings.solver_type}
         />
       </div>
+
+      <SolverSelector
+        selectedSolverFamilyId={selectedSolverFamilyId}
+        solverCatalog={solverCatalog}
+        onSelectSolverFamily={onSelectSolverFamily}
+        isRunning={isRunning}
+      />
 
       <WarmStartSelector
         savedScenarios={savedScenarios}
@@ -85,13 +106,18 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
       <SolverSettingsGrid
         solverSettings={solverSettings}
+        solverUiSpec={selectedSolverUiSpec}
         solverFormInputs={solverFormInputs}
         setSolverFormInputs={setSolverFormInputs}
         handleSettingsChange={handleSettingsChange}
         isRunning={isRunning}
       />
 
-      <StartSolverButton onStartSolver={onStartSolver} isRunning={isRunning} />
+      <StartSolverButton
+        onStartSolver={onStartSolver}
+        isRunning={isRunning}
+        supportsRecommendedSettings={selectedSolverCatalogEntry?.capabilities.supportsRecommendedSettings ?? false}
+      />
     </div>
   );
 };

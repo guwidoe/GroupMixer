@@ -2,6 +2,17 @@ import React, { useRef, useState } from 'react';
 import { Settings } from 'lucide-react';
 import { useAppStore } from '../store';
 import type { Scenario, SolverSettings } from '../types';
+import { getRuntime } from '../services/runtime';
+import {
+  buildSolverCatalog,
+  createDefaultSolverSettings,
+  getFallbackSolverCatalog,
+  getSolverUiSpec,
+  normalizeSolverFamilyId,
+  switchSolverFamily,
+  type SolverCatalogEntry,
+  type SolverFamilyId,
+} from '../services/solverUi';
 import { SettingsPanel } from './SolverPanel/index';
 import { SolverStatusCard } from './SolverPanel/SolverStatusCard';
 import { SolverCancelModal } from './SolverPanel/SolverCancelModal';
@@ -97,38 +108,35 @@ export function SolverPanel() {
   const [desiredRuntimeSettings, setDesiredRuntimeSettings] = useState<number>(3);
 
   const [solverFormInputs, setSolverFormInputs] = useState<SolverFormInputs>({});
+  const [solverCatalog, setSolverCatalog] = useState<readonly SolverCatalogEntry[]>(() => getFallbackSolverCatalog());
 
-  const getDefaultSolverSettings = (): SolverSettings => ({
-    solver_type: 'SimulatedAnnealing',
-    stop_conditions: {
-      max_iterations: 10000,
-      time_limit_seconds: 30,
-      no_improvement_iterations: 5000,
-    },
-    solver_params: {
-      SimulatedAnnealing: {
-        initial_temperature: 1.0,
-        final_temperature: 0.01,
-        cooling_schedule: 'geometric',
-        reheat_cycles: 0,
-        reheat_after_no_improvement: 0,
-      },
-    },
-    logging: {
-      log_frequency: 1000,
-      log_initial_state: true,
-      log_duration_and_score: true,
-      display_final_schedule: true,
-      log_initial_score_breakdown: true,
-      log_final_score_breakdown: true,
-      log_stop_condition: true,
-      debug_validate_invariants: false,
-      debug_dump_invariant_context: false,
-    },
-  });
+  React.useEffect(() => {
+    let cancelled = false;
 
-  const solverSettings = scenario?.settings || getDefaultSolverSettings();
+    void getRuntime().listSolvers()
+      .then((response) => {
+        if (cancelled) {
+          return;
+        }
+        const catalog = buildSolverCatalog(response.solvers);
+        if (catalog.length > 0) {
+          setSolverCatalog(catalog);
+        }
+      })
+      .catch((error) => {
+        console.warn('[SolverPanel] Failed to load solver catalog from runtime, using fallback catalog.', error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const solverSettings = scenario?.settings || createDefaultSolverSettings();
   const [allowedSessionsLocal, setAllowedSessionsLocal] = useState<number[] | null>(null);
+  const selectedSolverFamilyId = normalizeSolverFamilyId(solverSettings.solver_type) ?? 'solver1';
+  const selectedSolverCatalogEntry = solverCatalog.find((entry) => entry.id === selectedSolverFamilyId) ?? null;
+  const selectedSolverUiSpec = getSolverUiSpec(selectedSolverFamilyId);
 
   const handleSettingsChange = (newSettings: Partial<SolverSettings>) => {
     if (scenario && currentScenarioId) {
@@ -153,6 +161,16 @@ export function SolverPanel() {
       };
       updateScenario({ settings: updatedScenario.settings });
     }
+  };
+
+  const handleSelectSolverFamily = (familyId: SolverFamilyId) => {
+    if (familyId === selectedSolverFamilyId) {
+      return;
+    }
+
+    const nextSettings = switchSolverFamily(solverSettings, familyId);
+    setSolverFormInputs({});
+    handleSettingsChange(nextSettings);
   };
 
   const formatIterationTime = (ms: number): string => {
@@ -227,6 +245,7 @@ export function SolverPanel() {
       <SolverStatusCard
         solverState={solverState}
         scenario={scenario}
+        selectedSolverCatalogEntry={selectedSolverCatalogEntry}
         runtime={{
           solverFormInputs,
           setSolverFormInputs,
@@ -274,6 +293,11 @@ export function SolverPanel() {
           setDesiredRuntimeSettings={setDesiredRuntimeSettings}
           onAutoSetSettings={handleAutoSetSettings}
           onStartSolver={handleStartSolver}
+          selectedSolverFamilyId={selectedSolverFamilyId}
+          solverCatalog={solverCatalog}
+          selectedSolverCatalogEntry={selectedSolverCatalogEntry}
+          selectedSolverUiSpec={selectedSolverUiSpec}
+          onSelectSolverFamily={handleSelectSolverFamily}
           scenario={scenario}
           savedScenarios={savedScenarios}
           currentScenarioId={currentScenarioId}

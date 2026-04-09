@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { Scenario, SolverSettings, SolverState } from '../../types';
 import type { RuntimeProgressUpdate } from '../../services/runtime';
+import type { SolverCatalogEntry } from '../../services/solverUi';
 import type { ScheduleSnapshot } from '../../visualizations/types';
 import { VisualizationPanel } from '../../visualizations/VisualizationPanel';
 import { Tooltip } from '../Tooltip';
@@ -55,6 +56,7 @@ interface SolverMetricsControls {
 interface SolverStatusCardProps {
   solverState: SolverState;
   scenario: Scenario | null;
+  selectedSolverCatalogEntry: SolverCatalogEntry | null;
   runtime: SolverRuntimeControls;
   actions: SolverActionControls;
   liveViz: SolverLiveVizControls;
@@ -64,11 +66,14 @@ interface SolverStatusCardProps {
 export function SolverStatusCard({
   solverState,
   scenario,
+  selectedSolverCatalogEntry,
   runtime,
   actions,
   liveViz,
   metrics,
 }: SolverStatusCardProps) {
+  const supportsRecommendedSettings = selectedSolverCatalogEntry?.capabilities.supportsRecommendedSettings ?? false;
+
   return (
     <div className="card">
       <div className="flex items-center justify-between mb-4">
@@ -113,12 +118,14 @@ export function SolverStatusCard({
         </div>
         {!solverState.isRunning ? (
           <button
-            onClick={() => actions.onStartSolver(true)}
+            onClick={() => actions.onStartSolver(supportsRecommendedSettings)}
             className="btn-success flex-1 flex items-center justify-center space-x-2"
             disabled={!scenario}
           >
             <Play className="h-4 w-4" />
-            <span>Start Solver with Automatic Settings</span>
+            <span>
+              {supportsRecommendedSettings ? 'Start Solver with Automatic Settings' : 'Start Solver with Current Settings'}
+            </span>
           </button>
         ) : (
           <div className="flex flex-1 gap-2">
