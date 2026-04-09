@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import type { Constraint, Scenario } from '../../../types';
 import type { ConstraintFormState } from '../ConstraintFormModal';
 
@@ -38,27 +38,6 @@ export function useScenarioEditorConstraints({
   const [showMustStayTogetherModal, setShowMustStayTogetherModal] = useState(false);
   const [showPairMeetingCountModal, setShowPairMeetingCountModal] = useState(false);
   const [editingConstraintIndex, setEditingConstraintIndex] = useState<number | null>(null);
-
-  const SOFT_TYPES = useMemo(
-    () => ['RepeatEncounter', 'AttributeBalance', 'ShouldNotBeTogether', 'ShouldStayTogether', 'PairMeetingCount'] as const,
-    [],
-  );
-  const HARD_TYPES = useMemo(() => ['ImmovablePeople', 'MustStayTogether'] as const, []);
-
-  type SoftConstraintType = (typeof SOFT_TYPES)[number];
-  type HardConstraintType = (typeof HARD_TYPES)[number];
-  type ConstraintCategory = 'soft' | 'hard';
-  type ActiveConstraintTab = SoftConstraintType | HardConstraintType;
-
-  const [constraintCategoryTab, setConstraintCategoryTab] = useState<ConstraintCategory>('soft');
-  const [activeConstraintTab, setActiveConstraintTab] = useState<ActiveConstraintTab>(SOFT_TYPES[0]);
-
-  useEffect(() => {
-    const validTypes: readonly ActiveConstraintTab[] = constraintCategoryTab === 'soft' ? SOFT_TYPES : HARD_TYPES;
-    if (!validTypes.includes(activeConstraintTab)) {
-      setActiveConstraintTab(validTypes[0]);
-    }
-  }, [constraintCategoryTab, activeConstraintTab, SOFT_TYPES, HARD_TYPES]);
 
   const handleAddConstraint = () => {
     let newConstraint: Constraint;
@@ -356,12 +335,6 @@ export function useScenarioEditorConstraints({
     setShowPairMeetingCountModal,
     editingConstraintIndex,
     setEditingConstraintIndex,
-    SOFT_TYPES,
-    HARD_TYPES,
-    constraintCategoryTab,
-    setConstraintCategoryTab,
-    activeConstraintTab,
-    setActiveConstraintTab,
     handleAddConstraint,
     handleEditConstraint,
     handleUpdateConstraint,
