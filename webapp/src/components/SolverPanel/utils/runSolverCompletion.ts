@@ -199,9 +199,24 @@ export function persistCompletedRunResult({
   addResult,
   addNotification,
 }: PersistCompletedRunResultArgs): ScenarioResult | null {
-  const storeScenarioId = useAppStore.getState().currentScenarioId;
+  const storeState = useAppStore.getState();
+  const storeScenarioId = storeState.currentScenarioId;
+  let resolvedScenarioId = activeScenarioId;
 
-  if (!activeScenarioId) {
+  if (!resolvedScenarioId && storeState.scenario) {
+    const createdScenario = scenarioStorage.createScenario('Scratchpad Scenario', storeState.scenario);
+    scenarioStorage.setCurrentScenarioId(createdScenario.id);
+    useAppStore.setState((state) => ({
+      currentScenarioId: createdScenario.id,
+      savedScenarios: {
+        ...state.savedScenarios,
+        [createdScenario.id]: createdScenario,
+      },
+    }));
+    resolvedScenarioId = createdScenario.id;
+  }
+
+  if (!resolvedScenarioId) {
     addNotification({
       type: 'warning',
       title: 'Result Not Saved',
@@ -212,7 +227,7 @@ export function persistCompletedRunResult({
 
   const snapshotScenario = runScenarioSnapshotRef.current || undefined;
 
-  if (storeScenarioId && storeScenarioId === activeScenarioId) {
+  if (storeScenarioId && storeScenarioId === resolvedScenarioId) {
     const directSave = addResult(solution, selectedSettings, undefined, snapshotScenario);
     if (directSave) {
       return directSave;
@@ -220,7 +235,7 @@ export function persistCompletedRunResult({
   }
 
   return persistResultWithExplicitScenarioId({
-    scenarioId: activeScenarioId,
+    scenarioId: resolvedScenarioId,
     solution,
     selectedSettings,
     snapshotScenario,

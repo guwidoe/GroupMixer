@@ -139,17 +139,22 @@ export function SolverPanel() {
   const selectedSolverUiSpec = getSolverUiSpec(selectedSolverFamilyId);
 
   const handleSettingsChange = (newSettings: Partial<SolverSettings>) => {
-    if (scenario && currentScenarioId) {
+    if (scenario) {
+      const replacingSolverFamily = typeof newSettings.solver_type === 'string'
+        && newSettings.solver_type !== solverSettings.solver_type;
+
       const updatedScenario = {
         ...scenario,
         settings: {
           ...solverSettings,
           ...newSettings,
           ...(newSettings.solver_params && {
-            solver_params: {
-              ...solverSettings.solver_params,
-              ...newSettings.solver_params,
-            },
+            solver_params: replacingSolverFamily
+              ? newSettings.solver_params
+              : {
+                  ...solverSettings.solver_params,
+                  ...newSettings.solver_params,
+                },
           }),
           ...(newSettings.stop_conditions && {
             stop_conditions: {

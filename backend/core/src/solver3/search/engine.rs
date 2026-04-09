@@ -1,4 +1,8 @@
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
+
+#[cfg(target_arch = "wasm32")]
+use js_sys;
 
 use rand::{rng, RngExt, SeedableRng};
 use rand_chacha::ChaCha12Rng;
@@ -30,6 +34,36 @@ const MEMETIC_BURST_STAGNATION_THRESHOLD: u64 = 25_000;
 const MEMETIC_TOTAL_DONOR_POLISH_SECONDS: u64 = 2;
 const MEMETIC_DONOR_COUNT: usize = 2;
 const MEMETIC_MIN_REMAINING_TIME_SECONDS: u64 = 4;
+
+#[cfg(not(target_arch = "wasm32"))]
+fn get_current_time() -> Instant {
+    Instant::now()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn get_current_time() -> f64 {
+    js_sys::Date::now()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn get_elapsed_seconds(start: Instant) -> f64 {
+    start.elapsed().as_secs_f64()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn get_elapsed_seconds(start: f64) -> f64 {
+    (js_sys::Date::now() - start) / 1000.0
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn get_elapsed_seconds_between(start: Instant, end: Instant) -> f64 {
+    end.duration_since(start).as_secs_f64()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn get_elapsed_seconds_between(start: f64, end: f64) -> f64 {
+    (end - start) / 1000.0
+}
 
 #[derive(Debug, Clone)]
 pub struct SearchEngine {
@@ -82,7 +116,7 @@ impl SearchEngine {
             }));
         }
 
-        let search_started_at = Instant::now();
+        let search_started_at = get_current_time();
         let mut stop_reason = StopReason::MaxIterationsReached;
         let mut final_progress_emitted = false;
         let mut memetic_burst_attempted = false;
@@ -92,7 +126,7 @@ impl SearchEngine {
 
         for iteration in 0..run_context.max_iterations {
             if iteration % TIME_REFRESH_INTERVAL == 0 {
-                cached_elapsed_seconds = search_started_at.elapsed().as_secs_f64();
+                cached_elapsed_seconds = get_elapsed_seconds(search_started_at);
             }
 
             if time_limit_exceeded(cached_elapsed_seconds, run_context.time_limit_seconds) {
@@ -128,7 +162,7 @@ impl SearchEngine {
                     let offspring_score = offspring_state.total_score;
                     if offspring_score <= search.best_score + temperature {
                         search.current_state = offspring_state;
-                        cached_elapsed_seconds = search_started_at.elapsed().as_secs_f64();
+                        cached_elapsed_seconds = get_elapsed_seconds(search_started_at);
                         search.refresh_best_from_current(iteration, cached_elapsed_seconds);
                         search.record_acceptance_result(true);
                         let ils_memory =
@@ -164,9 +198,9 @@ impl SearchEngine {
                 });
 
                 if acceptance.accepted {
-                    let apply_started_at = Instant::now();
+                    let apply_started_at = get_current_time();
                     apply_previewed_move(&mut search.current_state, &preview)?;
-                    let apply_seconds = apply_started_at.elapsed().as_secs_f64();
+                    let apply_seconds = get_elapsed_seconds_between(apply_started_at, get_current_time());
                     search.record_accepted_move(
                         family,
                         apply_seconds,
@@ -228,7 +262,7 @@ impl SearchEngine {
         if let Some(callback) = progress_callback {
             if !final_progress_emitted {
                 let final_iteration = search.iterations_completed.saturating_sub(1);
-                let final_elapsed = search_started_at.elapsed().as_secs_f64();
+                let final_elapsed = get_elapsed_seconds(search_started_at);
                 let final_progress_val = cooling_progress(
                     final_iteration,
                     run_context.max_iterations,
@@ -246,7 +280,7 @@ impl SearchEngine {
             }
         }
 
-        let search_seconds = search_started_at.elapsed().as_secs_f64();
+        let search_seconds = get_elapsed_seconds(search_started_at);
         let telemetry = search.to_benchmark_telemetry(&run_context, stop_reason, search_seconds);
 
         if let Some(observer) = benchmark_observer {

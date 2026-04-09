@@ -264,6 +264,58 @@ describe("MainApp stateful integration routes", () => {
     expect(screen.getByText(/recommend failed/i)).toBeInTheDocument();
   }, 10000);
 
+  it("updates solver settings in scratchpad mode when switching to solver3", async () => {
+    const user = userEvent.setup();
+    const scenario = createSampleScenario({ settings: createSampleSolverSettings() });
+
+    useAppStore.setState({
+      scenario,
+      currentScenarioId: null,
+      savedScenarios: {},
+    });
+
+    renderAppRoute('/app/solver');
+
+    await user.click(await screen.findByRole('button', { name: /solve with custom settings/i }));
+    await user.click(screen.getByRole('button', { name: /solver 3 experimental/i }));
+
+    await waitFor(() => {
+      expect(useAppStore.getState().scenario?.settings.solver_type).toBe('solver3');
+    });
+
+    expect(useAppStore.getState().scenario?.settings.solver_params).not.toHaveProperty('SimulatedAnnealing');
+
+    expect(screen.getByText(/automatic settings unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/solver 3: dense-state search/i)).toBeInTheDocument();
+    expect(screen.getByText(/enable correctness lane/i)).toBeInTheDocument();
+  });
+
+  it('persists scratchpad solver results by creating a saved scenario on completion', async () => {
+    const user = userEvent.setup();
+    const scenario = createSampleScenario({ settings: createSampleSolverSettings() });
+    const runtime = createRuntimeMock();
+    setRuntimeForTests(runtime);
+
+    useAppStore.setState({
+      scenario,
+      currentScenarioId: null,
+      savedScenarios: {},
+    });
+
+    renderAppRoute('/app/solver');
+
+    await user.click(await screen.findByRole('button', { name: /start solver with automatic settings/i }));
+
+    await waitFor(() => {
+      expect(useAppStore.getState().currentScenarioId).not.toBeNull();
+    });
+
+    const storeState = useAppStore.getState();
+    const createdScenarioId = storeState.currentScenarioId as string;
+    expect(storeState.savedScenarios[createdScenarioId]).toBeDefined();
+    expect(storeState.savedScenarios[createdScenarioId].results).toHaveLength(1);
+  });
+
   it("renders the real /app/results surface with a saved solution already in state", async () => {
     const savedScenario = createSavedScenario({
       id: "scenario-1",

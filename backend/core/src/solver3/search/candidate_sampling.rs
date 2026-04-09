@@ -1,4 +1,8 @@
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
+
+#[cfg(target_arch = "wasm32")]
+use js_sys;
 
 use rand::RngExt;
 use rand_chacha::ChaCha12Rng;
@@ -15,6 +19,26 @@ use super::family_selection::MoveFamilySelector;
 
 const MAX_RANDOM_CANDIDATE_ATTEMPTS: usize = 24;
 const MAX_RANDOM_TARGET_ATTEMPTS: usize = 24;
+
+#[cfg(not(target_arch = "wasm32"))]
+fn get_current_time() -> Instant {
+    Instant::now()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn get_current_time() -> f64 {
+    js_sys::Date::now()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn get_elapsed_seconds_between(start: Instant, end: Instant) -> f64 {
+    end.duration_since(start).as_secs_f64()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn get_elapsed_seconds_between(start: f64, end: f64) -> f64 {
+    (end - start) / 1000.0
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum SearchMovePreview {
@@ -68,9 +92,9 @@ impl CandidateSampler {
     ) -> Option<(MoveFamily, SearchMovePreview, f64)> {
         let ordered_families = family_selector.ordered_families(rng);
         for family in ordered_families {
-            let preview_started_at = Instant::now();
+            let preview_started_at = get_current_time();
             let preview = self.sample_preview_for_family(state, family, allowed_sessions, rng);
-            let preview_seconds = preview_started_at.elapsed().as_secs_f64();
+            let preview_seconds = get_elapsed_seconds_between(preview_started_at, get_current_time());
             if let Some(preview) = preview {
                 return Some((family, preview, preview_seconds));
             }
