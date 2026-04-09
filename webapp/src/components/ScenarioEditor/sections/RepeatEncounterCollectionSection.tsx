@@ -1,0 +1,204 @@
+import React from 'react';
+import { Plus, RotateCcw, Search } from 'lucide-react';
+import type { Constraint, Scenario } from '../../../types';
+import { Button } from '../../ui';
+import { SetupCollectionPage } from '../shared/SetupCollectionPage';
+import type { SetupCollectionViewMode } from '../shared/useSetupCollectionViewMode';
+
+type RepeatEncounterConstraint = Extract<Constraint, { type: 'RepeatEncounter' }>;
+
+interface RepeatEncounterCollectionSectionProps {
+  scenario: Scenario | null;
+  onAdd: (type: 'RepeatEncounter') => void;
+  onEdit: (constraint: Constraint, index: number) => void;
+  onDelete: (index: number) => void;
+}
+
+function RepeatEncounterCard({
+  item,
+  onEdit,
+  onDelete,
+}: {
+  item: { constraint: RepeatEncounterConstraint; index: number };
+  onEdit: (constraint: Constraint, index: number) => void;
+  onDelete: (index: number) => void;
+}) {
+  return (
+    <div
+      className="rounded-2xl border px-4 py-4"
+      style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-2">
+          <div className="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
+            Repeat encounter
+          </div>
+          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Allow pairs to meet up to{' '}
+            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+              {item.constraint.max_allowed_encounters}
+            </span>{' '}
+            time{item.constraint.max_allowed_encounters === 1 ? '' : 's'} before penalties apply.
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+            <span className="rounded-full px-2 py-0.5" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+              Penalty function: {item.constraint.penalty_function}
+            </span>
+            <span className="rounded-full px-2 py-0.5" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+              Weight: {item.constraint.penalty_weight}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={() => onEdit(item.constraint, item.index)}>
+            Edit
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onDelete(item.index)}>
+            Delete
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function renderRepeatEncounterContent(
+  items: Array<{ constraint: RepeatEncounterConstraint; index: number }>,
+  viewMode: SetupCollectionViewMode,
+  onEdit: (constraint: Constraint, index: number) => void,
+  onDelete: (index: number) => void,
+) {
+  if (viewMode === 'list') {
+    return (
+      <div className="overflow-hidden rounded-2xl border" style={{ borderColor: 'var(--border-primary)' }}>
+        <div
+          className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-4 border-b px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em]"
+          style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)', color: 'var(--text-tertiary)' }}
+        >
+          <div>Limit</div>
+          <div>Penalty function</div>
+          <div>Weight</div>
+          <div className="text-right">Actions</div>
+        </div>
+        <div className="divide-y" style={{ borderColor: 'var(--border-primary)' }}>
+          {items.map((item) => (
+            <div
+              key={item.index}
+              className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-4 px-4 py-3 text-sm"
+              style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}
+            >
+              <div>
+                Max {item.constraint.max_allowed_encounters} encounter{item.constraint.max_allowed_encounters === 1 ? '' : 's'}
+              </div>
+              <div>{item.constraint.penalty_function}</div>
+              <div>{item.constraint.penalty_weight}</div>
+              <div className="flex items-center justify-end gap-1">
+                <Button variant="ghost" size="sm" onClick={() => onEdit(item.constraint, item.index)}>
+                  Edit
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => onDelete(item.index)}>
+                  Delete
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+      {items.map((item) => (
+        <RepeatEncounterCard key={item.index} item={item} onEdit={onEdit} onDelete={onDelete} />
+      ))}
+    </div>
+  );
+}
+
+export function RepeatEncounterCollectionSection({
+  scenario,
+  onAdd,
+  onEdit,
+  onDelete,
+}: RepeatEncounterCollectionSectionProps) {
+  const [search, setSearch] = React.useState('');
+
+  const items = React.useMemo(
+    () =>
+      (scenario?.constraints ?? [])
+        .map((constraint, index) => ({ constraint, index }))
+        .filter((item): item is { constraint: RepeatEncounterConstraint; index: number } => item.constraint.type === 'RepeatEncounter'),
+    [scenario?.constraints],
+  );
+
+  const filteredItems = React.useMemo(() => {
+    const searchValue = search.trim().toLowerCase();
+    if (!searchValue) {
+      return items;
+    }
+
+    return items.filter((item) => {
+      const haystack = [
+        String(item.constraint.max_allowed_encounters),
+        item.constraint.penalty_function.toLowerCase(),
+        String(item.constraint.penalty_weight),
+      ];
+      return haystack.some((value) => value.includes(searchValue));
+    });
+  }, [items, search]);
+
+  return (
+    <SetupCollectionPage
+      sectionKey="repeat-encounter"
+      title="Repeat Encounter"
+      count={items.length}
+      description={
+        <p>
+          Limit how often people should meet again. This is a preference, so violations remain possible but become
+          more expensive according to the configured penalty function and weight.
+        </p>
+      }
+      actions={
+        <Button variant="primary" leadingIcon={<Plus className="h-4 w-4" />} onClick={() => onAdd('RepeatEncounter')}>
+          Add Repeat Limit
+        </Button>
+      }
+      toolbarLeading={
+        <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
+          <label className="relative block min-w-0 flex-1 md:max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
+            <input
+              type="text"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Filter by limit, weight, or penalty function"
+              className="input w-full pl-9"
+            />
+          </label>
+          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            {filteredItems.length} of {items.length} preference{items.length === 1 ? '' : 's'} shown
+          </div>
+        </div>
+      }
+      summary={
+        <div className="flex items-start gap-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
+          <RotateCcw className="mt-0.5 h-4 w-4 shrink-0" style={{ color: 'var(--color-accent)' }} />
+          <p>
+            Repeat encounter preferences are typically the first preference families users tune because they have an
+            immediate effect on novelty across the whole schedule.
+          </p>
+        </div>
+      }
+      hasItems={filteredItems.length > 0}
+      emptyState={{
+        icon: <RotateCcw className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,
+        title: search.trim() ? 'No repeat limits match the current filter' : 'No repeat encounter limits yet',
+        message: search.trim()
+          ? 'Try a broader filter or clear the search to see all repeat encounter preferences.'
+          : 'Add a repeat encounter preference to limit how often the same people should meet again.',
+      }}
+      renderContent={(viewMode) => renderRepeatEncounterContent(filteredItems, viewMode, onEdit, onDelete)}
+    />
+  );
+}
