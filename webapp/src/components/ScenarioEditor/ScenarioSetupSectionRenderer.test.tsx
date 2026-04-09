@@ -76,6 +76,7 @@ describe('ScenarioSetupSectionRenderer', () => {
     expect(screen.getByRole('heading', { name: /repeat encounter/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /add repeat limit/i })).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/filter by limit, weight, or penalty function/i)).toBeInTheDocument();
-    expect(screen.getByText(/penalty function: linear/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/penalty function/i).length).toBeGreaterThan(0);
+    expect(screen.getByText('linear')).toBeInTheDocument();
   });
 });

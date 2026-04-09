@@ -3,6 +3,7 @@ import { Plus, RotateCcw, Search } from 'lucide-react';
 import type { Constraint, Scenario } from '../../../types';
 import { Button } from '../../ui';
 import { SetupCollectionPage } from '../shared/SetupCollectionPage';
+import { SetupItemActions, SetupItemCard, SetupKeyValueList, SetupTypeBadge, SetupWeightBadge } from '../shared/cards';
 import type { SetupCollectionViewMode } from '../shared/useSetupCollectionViewMode';
 
 type RepeatEncounterConstraint = Extract<Constraint, { type: 'RepeatEncounter' }>;
@@ -24,41 +25,35 @@ function RepeatEncounterCard({
   onDelete: (index: number) => void;
 }) {
   return (
-    <div
-      className="rounded-2xl border px-4 py-4"
-      style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+    <SetupItemCard
+      badges={
+        <>
+          <SetupTypeBadge label="Repeat encounter" />
+          <SetupWeightBadge weight={item.constraint.penalty_weight} />
+        </>
+      }
+      titleMeta={
+        <>
+          Allow pairs to meet up to <strong>{item.constraint.max_allowed_encounters}</strong> time
+          {item.constraint.max_allowed_encounters === 1 ? '' : 's'} before penalties apply.
+        </>
+      }
+      actions={
+        <SetupItemActions
+          onEdit={() => onEdit(item.constraint, item.index)}
+          onDelete={() => onDelete(item.index)}
+          editLabel="Edit repeat encounter preference"
+          deleteLabel="Delete repeat encounter preference"
+        />
+      }
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-2">
-          <div className="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>
-            Repeat encounter
-          </div>
-          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Allow pairs to meet up to{' '}
-            <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-              {item.constraint.max_allowed_encounters}
-            </span>{' '}
-            time{item.constraint.max_allowed_encounters === 1 ? '' : 's'} before penalties apply.
-          </div>
-          <div className="flex flex-wrap gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-            <span className="rounded-full px-2 py-0.5" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-              Penalty function: {item.constraint.penalty_function}
-            </span>
-            <span className="rounded-full px-2 py-0.5" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-              Weight: {item.constraint.penalty_weight}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={() => onEdit(item.constraint, item.index)}>
-            Edit
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => onDelete(item.index)}>
-            Delete
-          </Button>
-        </div>
-      </div>
-    </div>
+      <SetupKeyValueList
+        items={[
+          { label: 'Penalty function', value: item.constraint.penalty_function },
+          { label: 'Max encounters', value: item.constraint.max_allowed_encounters },
+        ]}
+      />
+    </SetupItemCard>
   );
 }
 
@@ -93,12 +88,12 @@ function renderRepeatEncounterContent(
               <div>{item.constraint.penalty_function}</div>
               <div>{item.constraint.penalty_weight}</div>
               <div className="flex items-center justify-end gap-1">
-                <Button variant="ghost" size="sm" onClick={() => onEdit(item.constraint, item.index)}>
-                  Edit
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => onDelete(item.index)}>
-                  Delete
-                </Button>
+                <SetupItemActions
+                  onEdit={() => onEdit(item.constraint, item.index)}
+                  onDelete={() => onDelete(item.index)}
+                  editLabel="Edit repeat encounter preference"
+                  deleteLabel="Delete repeat encounter preference"
+                />
               </div>
             </div>
           ))}

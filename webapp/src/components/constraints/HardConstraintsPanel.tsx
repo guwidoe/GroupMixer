@@ -1,10 +1,18 @@
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Clock } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { Constraint, Person } from '../../types';
 // PersonCard removed in favor of ConstraintPersonChip
 import ConstraintPersonChip from '../ConstraintPersonChip';
 import { useAppStore } from '../../store';
 import { ConstraintFamilyPanel } from '../ScenarioEditor/sections/constraints/ConstraintFamilyPanel';
+import {
+  SetupItemActions,
+  SetupItemCard,
+  SetupKeyValueList,
+  SetupPeopleNodeList,
+  SetupSessionsBadgeList,
+  SetupTypeBadge,
+} from '../ScenarioEditor/shared/cards';
 import {
   removePersonFromPeopleConstraint,
   replaceConstraintsAtIndices,
@@ -207,12 +215,13 @@ function HardConstraintsPanel({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {(activeTab === 'MustStayTogether' ? filteredMustItems : selectedItems).map(({ constraint, index }) => (
-            <div key={index} className="rounded-lg border p-4 transition-colors hover:shadow-md flex items-start justify-between" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>{constraint.type}</span>
-                  {activeTab === 'MustStayTogether' && (
-                    <label className="ml-2 text-xs inline-flex items-center gap-1 cursor-pointer">
+            <SetupItemCard
+              key={index}
+              badges={
+                <>
+                  <SetupTypeBadge label={constraintTypeLabels[constraint.type as HardConstraintFamily]} />
+                  {activeTab === 'MustStayTogether' ? (
+                    <label className="text-xs inline-flex items-center gap-1 cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
                       <input
                         type="checkbox"
                         checked={selectedMustIndices.includes(index)}
@@ -220,102 +229,71 @@ function HardConstraintsPanel({
                       />
                       <span>Select</span>
                     </label>
-                  )}
-                </div>
-                <div className="text-sm space-y-1" style={{ color: 'var(--text-secondary)' }}>
-                  {constraint.type === 'ImmovablePeople' && (
-                    <>
-                      <div className="flex flex-wrap items-center gap-1">
-                        <span>People:</span>
-                        {constraint.people.map((pid: string, idx: number) => {
-                          return (
-                            <React.Fragment key={pid}>
-                              <ConstraintPersonChip
-                                personId={pid}
-                                people={scenario.people}
-                                onRemove={(removeId) => {
-                                  const newPeople = constraint.people.filter(p => p !== removeId);
-                                  // ImmovablePeople requires at least 1 person to remain; if none, remove entire constraint
-                                  const willBeInvalid = newPeople.length === 0;
-                                  if (willBeInvalid) {
-                                    if (!window.confirm('Removing this person will leave the constraint empty. Remove the entire constraint?')) return;
-                                    setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, 1));
-                                    return;
-                                  }
-                                  setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, 1));
-                                }}
-                              />
-                              {idx < constraint.people.length - 1 && <span></span>}
-                            </React.Fragment>
-                          );
-                        })}
-                      </div>
-                      <div>Group: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{constraint.group_id}</span></div>
-                      <div className="flex items-center gap-1 text-xs" style={{color:'var(--color-accent)'}}>
-                        <Clock className="w-3 h-3" />
-                        <span>Sessions:</span>
-                        {constraint.sessions && constraint.sessions.length > 0 ? constraint.sessions.map((s:number)=>s+1).join(', ') : 'All Sessions'}
-                      </div>
-                    </>
-                  )}
+                  ) : null}
+                </>
+              }
+              actions={
+                <SetupItemActions
+                  onEdit={() => onEditConstraint(constraint, index)}
+                  onDelete={() => onDeleteConstraint(index)}
+                  editLabel={`Edit ${constraintTypeLabels[constraint.type as HardConstraintFamily]}`}
+                  deleteLabel={`Delete ${constraintTypeLabels[constraint.type as HardConstraintFamily]}`}
+                />
+              }
+            >
+              {constraint.type === 'ImmovablePeople' ? (
+                <>
+                  <SetupPeopleNodeList
+                    label="People"
+                    people={constraint.people.map((pid) => (
+                      <ConstraintPersonChip
+                        key={pid}
+                        personId={pid}
+                        people={scenario.people}
+                        onRemove={(removeId) => {
+                          const newPeople = constraint.people.filter((personId) => personId !== removeId);
+                          const willBeInvalid = newPeople.length === 0;
+                          if (willBeInvalid) {
+                            if (!window.confirm('Removing this person will leave the constraint empty. Remove the entire constraint?')) return;
+                            setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, 1));
+                            return;
+                          }
+                          setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, 1));
+                        }}
+                      />
+                    ))}
+                  />
+                  <SetupKeyValueList items={[{ label: 'Group', value: constraint.group_id }]} />
+                  <SetupSessionsBadgeList sessions={constraint.sessions} />
+                </>
+              ) : null}
 
-                  {constraint.type === 'MustStayTogether' && (
-                    <>
-                      <div className="flex flex-wrap items-center gap-1">
-                        <span>People:</span>
-                        {constraint.people.map((pid: string, idx: number) => {
-                          return (
-                            <React.Fragment key={pid}>
-                              <ConstraintPersonChip
-                                personId={pid}
-                                people={scenario.people}
-                                onRemove={(removeId) => {
-                                  const newPeople = constraint.people.filter(p => p !== removeId);
-                                  // MustStayTogether requires at least 2 people; if <2, confirm deletion of entire constraint
-                                  const willBeInvalid = newPeople.length < 2;
-                                  if (willBeInvalid) {
-                                    if (!window.confirm('Removing this person will leave the clique invalid (needs at least two people). Remove the entire constraint?')) return;
-                                    setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, 2));
-                                    return;
-                                  }
-                                  setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, 2));
-                                }}
-                              />
-                              {idx < constraint.people.length - 1 && <span></span>}
-                            </React.Fragment>
-                          );
-                        })}
-                      </div>
-                      <div className="flex items-center gap-1 text-xs" style={{color:'var(--color-accent)'}}>
-                        <Clock className="w-3 h-3" />
-                        <span>Sessions:</span>
-                        {constraint.sessions && constraint.sessions.length > 0 ? constraint.sessions.map((s:number)=>s+1).join(', ') : 'All Sessions'}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="flex gap-1 ml-2">
-                <button
-                  onClick={() => onEditConstraint(constraint, index)}
-                  className="p-1 transition-colors"
-                  style={{ color: 'var(--text-tertiary)' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-accent)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-tertiary)')}
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => onDeleteConstraint(index)}
-                  className="p-1 transition-colors"
-                  style={{ color: 'var(--text-tertiary)' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-error-600)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-tertiary)')}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+              {constraint.type === 'MustStayTogether' ? (
+                <>
+                  <SetupPeopleNodeList
+                    label="People"
+                    people={constraint.people.map((pid) => (
+                      <ConstraintPersonChip
+                        key={pid}
+                        personId={pid}
+                        people={scenario.people}
+                        onRemove={(removeId) => {
+                          const newPeople = constraint.people.filter((personId) => personId !== removeId);
+                          const willBeInvalid = newPeople.length < 2;
+                          if (willBeInvalid) {
+                            if (!window.confirm('Removing this person will leave the clique invalid (needs at least two people). Remove the entire constraint?')) return;
+                            setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, 2));
+                            return;
+                          }
+                          setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, 2));
+                        }}
+                      />
+                    ))}
+                  />
+                  <SetupSessionsBadgeList sessions={constraint.sessions} />
+                </>
+              ) : null}
+            </SetupItemCard>
           ))}
         </div>
       )}

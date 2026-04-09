@@ -1,8 +1,18 @@
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Clock } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { Constraint } from '../../types';
 import { useAppStore } from '../../store';
 import { ConstraintFamilyPanel } from '../ScenarioEditor/sections/constraints/ConstraintFamilyPanel';
+import {
+  SetupItemActions,
+  SetupItemCard,
+  SetupKeyValueList,
+  SetupPeopleNodeList,
+  SetupSessionsBadgeList,
+  SetupTagList,
+  SetupTypeBadge,
+  SetupWeightBadge,
+} from '../ScenarioEditor/shared/cards';
 import AttributeBalanceDashboard from '../AttributeBalanceDashboard';
 // PersonCard removed in favor of ConstraintPersonChip
 import ConstraintPersonChip from '../ConstraintPersonChip';
@@ -191,123 +201,109 @@ const SoftConstraintsPanel: React.FC<Props> = ({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {(activeTab === 'ShouldStayTogether' ? filteredShouldItems : selectedItems).map(({ constraint, index }) => (
-            <div key={index} className="rounded-lg border p-4 transition-colors hover:shadow-md flex items-start justify-between" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-medium px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>{constraint.type}</span>
-                  {activeTab === 'ShouldStayTogether' && (
-                    <label className="ml-2 text-xs inline-flex items-center gap-1 cursor-pointer">
-                      <input type="checkbox" checked={selectedShouldIndices.includes(index)} onChange={() => setSelectedShouldIndices(prev => prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index])} />
+            <SetupItemCard
+              key={index}
+              badges={
+                <>
+                  <SetupTypeBadge label={constraintTypeLabels[constraint.type as SoftConstraintFamily]} />
+                  {(constraint as Constraint & { penalty_weight?: number }).penalty_weight !== undefined ? (
+                    <SetupWeightBadge weight={(constraint as Constraint & { penalty_weight: number }).penalty_weight} />
+                  ) : null}
+                  {activeTab === 'ShouldStayTogether' ? (
+                    <label className="text-xs inline-flex items-center gap-1 cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedShouldIndices.includes(index)}
+                        onChange={() => setSelectedShouldIndices((prev) => (prev.includes(index) ? prev.filter((value) => value !== index) : [...prev, index]))}
+                      />
                       <span>Select</span>
                     </label>
-                  )}
-                  {(constraint as Constraint & { penalty_weight?: number }).penalty_weight !== undefined && (
-                    <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: 'var(--color-accent)', color: 'white' }}>Weight: {(constraint as Constraint & { penalty_weight: number }).penalty_weight}</span>
-                  )}
-                </div>
-                <div className="text-sm space-y-1" style={{ color: 'var(--text-secondary)' }}>
-                  {constraint.type === 'RepeatEncounter' && (
-                    <>
-                      <div>Max encounters: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{(constraint as Extract<Constraint, { type: 'RepeatEncounter' }>).max_allowed_encounters}</span></div>
-                      <div>Penalty function: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{(constraint as Extract<Constraint, { type: 'RepeatEncounter' }>).penalty_function}</span></div>
-                    </>
-                  )}
+                  ) : null}
+                </>
+              }
+              actions={
+                <SetupItemActions
+                  onEdit={() => onEditConstraint(constraint, index)}
+                  onDelete={() => onDeleteConstraint(index)}
+                  editLabel={`Edit ${constraintTypeLabels[constraint.type as SoftConstraintFamily]}`}
+                  deleteLabel={`Delete ${constraintTypeLabels[constraint.type as SoftConstraintFamily]}`}
+                />
+              }
+            >
+              {constraint.type === 'RepeatEncounter' ? (
+                <SetupKeyValueList
+                  items={[
+                    { label: 'Max encounters', value: constraint.max_allowed_encounters },
+                    { label: 'Penalty function', value: constraint.penalty_function },
+                  ]}
+                />
+              ) : null}
 
-                  {constraint.type === 'AttributeBalance' && (
-                    <>
-                      <div>Group: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{(constraint as Extract<Constraint, { type: 'AttributeBalance' }>).group_id}</span></div>
-                      <div>Attribute: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{(constraint as Extract<Constraint, { type: 'AttributeBalance' }>).attribute_key}</span></div>
-                      <div className="flex flex-wrap gap-1 items-center text-xs">
-                        <span style={{color:'var(--text-secondary)'}}>Distribution:</span>
-                        {Object.entries((constraint as Extract<Constraint, { type: 'AttributeBalance' }>).desired_values || {}).map(([k, v]) => (
-                          <span key={k} className="inline-flex px-2 py-0.5 rounded-full font-medium" style={{backgroundColor:'var(--bg-tertiary)',color:'var(--color-accent)',border:`1px solid var(--color-accent)`}}>{k}: {v}</span>
-                        ))}
-                      </div>
-                      <div className="flex items-center gap-1 text-xs" style={{color:'var(--color-accent)'}}>
-                        <Clock className="w-3 h-3" />
-                        <span>Sessions:</span>
-                        {(constraint as Extract<Constraint, { type: 'AttributeBalance' }>).sessions && (constraint as Extract<Constraint, { type: 'AttributeBalance' }>).sessions!.length > 0 ? (constraint as Extract<Constraint, { type: 'AttributeBalance' }>).sessions!.map((s:number)=>s+1).join(', ') : 'All Sessions'}
-                      </div>
-                    </>
-                  )}
+              {constraint.type === 'AttributeBalance' ? (
+                <>
+                  <SetupKeyValueList
+                    items={[
+                      { label: 'Group', value: constraint.group_id },
+                      { label: 'Attribute', value: constraint.attribute_key },
+                    ]}
+                  />
+                  <SetupTagList
+                    items={Object.entries(constraint.desired_values || {}).map(([key, value]) => (
+                      <span key={key} className="inline-flex px-2 py-0.5 rounded-full font-medium text-xs" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--color-accent)', border: '1px solid var(--color-accent)' }}>
+                        {key}: {value}
+                      </span>
+                    ))}
+                  />
+                  <SetupSessionsBadgeList sessions={constraint.sessions} />
+                </>
+              ) : null}
 
-                  {(constraint.type === 'ShouldNotBeTogether' || constraint.type === 'ShouldStayTogether') && (
-                    <>
-                      <div className="flex flex-wrap items-center gap-1">
-                        <span>People:</span>
-                        {(constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>).people.map((pid: string, idx: number) => (
-                          <React.Fragment key={pid}>
-                            <ConstraintPersonChip
-                              personId={pid}
-                              people={scenario.people}
-                              onRemove={(removeId) => {
-                                  const c = constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>;
-                                  const newPeople = c.people.filter(p => p !== removeId);
-                                  const willBeInvalid = newPeople.length < 2;
-                                  if (willBeInvalid) {
-                                    if (!window.confirm('Removing this person will leave the constraint invalid. Remove the entire constraint?')) return;
-                                    setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, 2));
-                                    return;
-                                  }
-                                  setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, 2));
-                              }}
-                            />
-                            {idx < (constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>).people.length - 1 && <span></span>}
-                          </React.Fragment>
-                        ))}
-                      </div>
-                      <div className="flex items-center gap-1 text-xs" style={{color:'var(--color-accent)'}}>
-                        <Clock className="w-3 h-3" />
-                        <span>Sessions:</span>
-                        {(constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>).sessions && (constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>).sessions!.length > 0 ? (constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>).sessions!.map((s:number)=>s+1).join(', ') : 'All Sessions'}
-                      </div>
-                    </>
-                  )}
+              {(constraint.type === 'ShouldNotBeTogether' || constraint.type === 'ShouldStayTogether') ? (
+                <>
+                  <SetupPeopleNodeList
+                    label="People"
+                    people={constraint.people.map((pid) => (
+                      <ConstraintPersonChip
+                        key={pid}
+                        personId={pid}
+                        people={scenario.people}
+                        onRemove={(removeId) => {
+                          const currentConstraint = constraint as Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>;
+                          const newPeople = currentConstraint.people.filter((personId) => personId !== removeId);
+                          const willBeInvalid = newPeople.length < 2;
+                          if (willBeInvalid) {
+                            if (!window.confirm('Removing this person will leave the constraint invalid. Remove the entire constraint?')) return;
+                            setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, 2));
+                            return;
+                          }
+                          setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, 2));
+                        }}
+                      />
+                    ))}
+                  />
+                  <SetupSessionsBadgeList sessions={constraint.sessions} />
+                </>
+              ) : null}
 
-                  {constraint.type === 'PairMeetingCount' && (
-                    <>
-                      <div className="flex flex-wrap items-center gap-1">
-                        <span>Pair:</span>
-                        <ConstraintPersonChip personId={(constraint as PairMeetingCountConstraint).people[0]} people={scenario.people} />
-                        <span>&</span>
-                        <ConstraintPersonChip personId={(constraint as PairMeetingCountConstraint).people[1]} people={scenario.people} />
-                      </div>
-                      <div>
-                        Target meetings: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{(constraint as PairMeetingCountConstraint).target_meetings}</span>
-                      </div>
-                      <div>
-                        Mode: <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{(constraint as PairMeetingCountConstraint).mode || 'at_least'}</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-xs" style={{color:'var(--color-accent)'}}>
-                        <Clock className="w-3 h-3" />
-                        <span>Sessions:</span>
-                        {(constraint as PairMeetingCountConstraint).sessions && (constraint as PairMeetingCountConstraint).sessions.length > 0 ? (constraint as PairMeetingCountConstraint).sessions.map((s:number)=>s+1).join(', ') : 'All Sessions'}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="flex gap-1 ml-2">
-                <button
-                  onClick={() => onEditConstraint(constraint, index)}
-                  className="p-1 transition-colors"
-                  style={{ color: 'var(--text-tertiary)' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-accent)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-tertiary)')}
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => onDeleteConstraint(index)}
-                  className="p-1 transition-colors"
-                  style={{ color: 'var(--text-tertiary)' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-error-600)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-tertiary)')}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+              {constraint.type === 'PairMeetingCount' ? (
+                <>
+                  <SetupPeopleNodeList
+                    label="Pair"
+                    people={[
+                      <ConstraintPersonChip key={constraint.people[0]} personId={constraint.people[0]} people={scenario.people} />,
+                      <ConstraintPersonChip key={constraint.people[1]} personId={constraint.people[1]} people={scenario.people} />,
+                    ]}
+                  />
+                  <SetupKeyValueList
+                    items={[
+                      { label: 'Target meetings', value: constraint.target_meetings },
+                      { label: 'Mode', value: constraint.mode || 'at_least' },
+                    ]}
+                  />
+                  <SetupSessionsBadgeList sessions={constraint.sessions} />
+                </>
+              ) : null}
+            </SetupItemCard>
           ))}
         </div>
       )}
