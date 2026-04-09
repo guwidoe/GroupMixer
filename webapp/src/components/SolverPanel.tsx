@@ -2,10 +2,10 @@ import React, { useRef, useState } from 'react';
 import { Settings } from 'lucide-react';
 import { useAppStore } from '../store';
 import type { Scenario, SolverSettings } from '../types';
-import { getRuntime } from '../services/runtime';
 import {
   buildSolverCatalog,
   createDefaultSolverSettings,
+  findSolverCatalogEntry,
   getSolverUiSpec,
   normalizeSolverFamilyId,
   switchSolverFamily,
@@ -34,6 +34,10 @@ export function SolverPanel() {
   } = useAppStore();
 
   const scenario = useAppStore((state) => state.scenario);
+  const runtimeSolverCatalog = useAppStore((state) => state.runtimeSolverCatalog);
+  const runtimeSolverCatalogStatus = useAppStore((state) => state.runtimeSolverCatalogStatus);
+  const runtimeSolverCatalogError = useAppStore((state) => state.runtimeSolverCatalogError);
+  const loadRuntimeSolverCatalog = useAppStore((state) => state.loadRuntimeSolverCatalog);
   const currentScenarioId = useAppStore((state) => state.currentScenarioId);
   const savedScenarios = useAppStore((state) => state.savedScenarios);
   const warmStartResultId = useAppStore((state) => state.ui.warmStartResultId);
@@ -107,53 +111,23 @@ export function SolverPanel() {
   const [desiredRuntimeSettings, setDesiredRuntimeSettings] = useState<number>(3);
 
   const [solverFormInputs, setSolverFormInputs] = useState<SolverFormInputs>({});
-  const [solverCatalog, setSolverCatalog] = useState<readonly SolverCatalogEntry[]>([]);
-  const [solverCatalogStatus, setSolverCatalogStatus] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [solverCatalogErrorMessage, setSolverCatalogErrorMessage] = useState<string | null>(null);
+  const solverCatalog = React.useMemo<readonly SolverCatalogEntry[]>(
+    () => buildSolverCatalog(runtimeSolverCatalog),
+    [runtimeSolverCatalog],
+  );
 
   React.useEffect(() => {
-    let cancelled = false;
-
-    void (async () => {
-      const runtime = getRuntime();
-      await runtime.initialize();
-      return runtime.listSolvers();
-    })()
-      .then((response) => {
-        if (cancelled) {
-          return;
-        }
-        const catalog = buildSolverCatalog(response.solvers);
-        if (catalog.length === 0) {
-          setSolverCatalog([]);
-          setSolverCatalogStatus('error');
-          setSolverCatalogErrorMessage('Runtime discovery returned no supported solver families.');
-          return;
-        }
-        setSolverCatalog(catalog);
-        setSolverCatalogStatus('ready');
-        setSolverCatalogErrorMessage(null);
-      })
-      .catch((error) => {
-        if (cancelled) {
-          return;
-        }
-        const message = error instanceof Error ? error.message : String(error);
+    if (runtimeSolverCatalogStatus === 'idle') {
+      void loadRuntimeSolverCatalog().catch((error) => {
         console.error('[SolverPanel] Failed to load solver catalog from runtime.', error);
-        setSolverCatalog([]);
-        setSolverCatalogStatus('error');
-        setSolverCatalogErrorMessage(message || 'Unknown runtime discovery error');
       });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    }
+  }, [loadRuntimeSolverCatalog, runtimeSolverCatalogStatus]);
 
   const solverSettings = scenario?.settings || createDefaultSolverSettings();
   const [allowedSessionsLocal, setAllowedSessionsLocal] = useState<number[] | null>(null);
   const selectedSolverFamilyId = normalizeSolverFamilyId(solverSettings.solver_type) ?? 'solver1';
-  const selectedSolverCatalogEntry = solverCatalog.find((entry) => entry.id === selectedSolverFamilyId) ?? null;
+  const selectedSolverCatalogEntry = findSolverCatalogEntry(solverCatalog, selectedSolverFamilyId);
   const selectedSolverUiSpec = getSolverUiSpec(selectedSolverFamilyId);
 
   const handleSettingsChange = (newSettings: Partial<SolverSettings>) => {
@@ -257,8 +231,8 @@ export function SolverPanel() {
         solverState={solverState}
         scenario={scenario}
         selectedSolverCatalogEntry={selectedSolverCatalogEntry}
-        solverCatalogStatus={solverCatalogStatus}
-        solverCatalogErrorMessage={solverCatalogErrorMessage}
+        solverCatalogStatus={runtimeSolverCatalogStatus === 'idle' ? 'loading' : runtimeSolverCatalogStatus}
+        solverCatalogErrorMessage={runtimeSolverCatalogError}
         runtime={{
           solverFormInputs,
           setSolverFormInputs,
@@ -307,8 +281,8 @@ export function SolverPanel() {
           onStartSolver={handleStartSolver}
           selectedSolverFamilyId={selectedSolverFamilyId}
           solverCatalog={solverCatalog}
-          solverCatalogStatus={solverCatalogStatus}
-          solverCatalogErrorMessage={solverCatalogErrorMessage}
+          solverCatalogStatus={runtimeSolverCatalogStatus === 'idle' ? 'loading' : runtimeSolverCatalogStatus}
+          solverCatalogErrorMessage={runtimeSolverCatalogError}
           selectedSolverCatalogEntry={selectedSolverCatalogEntry}
           selectedSolverUiSpec={selectedSolverUiSpec}
           onSelectSolverFamily={handleSelectSolverFamily}
@@ -330,7 +304,7 @@ export function SolverPanel() {
         onSave={handleCancelSave}
       />
 
-      <SolverAlgorithmInfo displaySettings={displaySettings} />
+      <SolverAlgorithmInfo displaySettings={displaySettings} solverCatalogEntry={selectedSolverCatalogEntry} />
     </div>
   );
 }

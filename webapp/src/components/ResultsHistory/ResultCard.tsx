@@ -21,10 +21,10 @@ import {
   Zap,
 } from 'lucide-react';
 import type { ScenarioResult } from '../../types';
+import type { RuntimeSolverDescriptor } from '../../services/runtime';
 import type { MetricCalculations } from '../../utils/metricCalculations';
 import type { ScenarioConfigDifference } from '../../services/scenarioStorage';
-import { getSolverCatalogEntry } from '../../services/solverCatalog';
-import { summarizeSolverSettings } from '../../services/solverUi';
+import { resolveRuntimeSolverDisplayName, summarizeSolverSettings } from '../../services/solverUi';
 import { useOutsideClick } from '../../hooks';
 import { formatDate, formatDuration } from './utils';
 
@@ -70,18 +70,44 @@ export interface ResultCardMetrics {
 
 interface ResultCardProps {
   result: ScenarioResult;
+  runtimeSolverCatalog: readonly RuntimeSolverDescriptor[];
+  runtimeSolverCatalogStatus: 'idle' | 'loading' | 'ready' | 'error';
+  runtimeSolverCatalogError: string | null;
   state: ResultCardState;
   actions: ResultCardActions;
   metrics: ResultCardMetrics;
 }
 
+function formatRuntimeSolverLabel(
+  displayName: string | null,
+  solverType: string,
+  status: 'idle' | 'loading' | 'ready' | 'error',
+): string {
+  if (displayName) {
+    return displayName;
+  }
+
+  if (status === 'error') {
+    return `Catalog unavailable (${solverType})`;
+  }
+
+  if (status === 'ready') {
+    return `Unadvertised (${solverType})`;
+  }
+
+  return `Loading (${solverType})`;
+}
+
 export function ResultCard({
   result,
+  runtimeSolverCatalog,
+  runtimeSolverCatalogStatus,
+  runtimeSolverCatalogError,
   state,
   actions,
   metrics,
 }: ResultCardProps) {
-  const solverEntry = getSolverCatalogEntry(result.solverSettings.solver_type);
+  const solverDisplayName = resolveRuntimeSolverDisplayName(runtimeSolverCatalog, result.solverSettings.solver_type);
   const solverSummaryRows = summarizeSolverSettings(result.solverSettings);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
   const configDetailsRef = useRef<HTMLDivElement>(null);
@@ -180,6 +206,19 @@ export function ResultCard({
                       style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--color-accent)', borderColor: 'var(--color-accent)' }}
                     >
                       Latest
+                    </span>
+                  )}
+                  {runtimeSolverCatalogStatus === 'error' && runtimeSolverCatalogError && (
+                    <span
+                      className="px-2 py-1 rounded-full text-xs border"
+                      style={{
+                        backgroundColor: 'var(--bg-secondary)',
+                        color: 'var(--color-danger)',
+                        borderColor: 'var(--color-danger)',
+                      }}
+                      title={runtimeSolverCatalogError}
+                    >
+                      Solver catalog unavailable
                     </span>
                   )}
                   {metrics.configDiff && metrics.configDiff.isDifferent && (
@@ -338,7 +377,11 @@ export function ResultCard({
                 <div>
                   <span style={{ color: 'var(--text-secondary)' }}>Solver Family:</span>
                   <span className="ml-2 font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {solverEntry?.displayName ?? result.solverSettings.solver_type}
+                    {formatRuntimeSolverLabel(
+                      solverDisplayName,
+                      result.solverSettings.solver_type,
+                      runtimeSolverCatalogStatus,
+                    )}
                   </span>
                 </div>
                 {solverSummaryRows.map((row) => (

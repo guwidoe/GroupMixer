@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useAppStore } from '../store';
 import { 
   X, 
@@ -12,21 +13,49 @@ import {
   Settings
 } from 'lucide-react';
 import type { ScenarioResult } from '../types';
-import { getSolverCatalogEntry } from '../services/solverCatalog';
-import { summarizeSolverSettings } from '../services/solverUi';
+import { resolveRuntimeSolverDisplayName, summarizeSolverSettings } from '../services/solverUi';
+
+function formatRuntimeSolverLabel(
+  displayName: string | null,
+  solverType: string,
+  status: 'idle' | 'loading' | 'ready' | 'error',
+): string {
+  if (displayName) {
+    return displayName;
+  }
+
+  if (status === 'error') {
+    return `Catalog unavailable (${solverType})`;
+  }
+
+  if (status === 'ready') {
+    return `Unadvertised (${solverType})`;
+  }
+
+  return `Loading (${solverType})`;
+}
 
 export function ResultComparison() {
   const {
     currentScenarioId,
+    runtimeSolverCatalog,
+    runtimeSolverCatalogStatus,
     savedScenarios,
     selectedResultIds,
     setShowResultComparison,
     selectResultsForComparison,
+    loadRuntimeSolverCatalog,
   } = useAppStore();
 
   const currentScenario = currentScenarioId ? savedScenarios[currentScenarioId] : null;
   const results = currentScenario?.results || [];
   const selectedResults = results.filter(result => selectedResultIds.includes(result.id));
+
+  useEffect(() => {
+    if (runtimeSolverCatalogStatus === 'idle') {
+      void loadRuntimeSolverCatalog().catch(() => {});
+    }
+  }, [loadRuntimeSolverCatalog, runtimeSolverCatalogStatus]);
 
   const handleClose = () => {
     setShowResultComparison(false);
@@ -351,7 +380,11 @@ export function ResultComparison() {
                     {selectedResults.map((result) => (
                       <td key={result.id} className="p-4">
                         <span style={{ color: 'var(--text-primary)' }}>
-                          {getSolverCatalogEntry(result.solverSettings.solver_type)?.displayName ?? result.solverSettings.solver_type}
+                          {formatRuntimeSolverLabel(
+                            resolveRuntimeSolverDisplayName(runtimeSolverCatalog, result.solverSettings.solver_type),
+                            result.solverSettings.solver_type,
+                            runtimeSolverCatalogStatus,
+                          )}
                         </span>
                       </td>
                     ))}

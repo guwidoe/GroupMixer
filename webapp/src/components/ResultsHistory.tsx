@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3 } from 'lucide-react';
 import { useAppStore } from '../store';
@@ -13,6 +13,9 @@ import { formatDuration, getBestResult } from './ResultsHistory/utils';
 export function ResultsHistory() {
   const {
     currentScenarioId,
+    runtimeSolverCatalog,
+    runtimeSolverCatalogStatus,
+    runtimeSolverCatalogError,
     savedScenarios,
     selectedResultIds,
     selectResultsForComparison,
@@ -21,6 +24,7 @@ export function ResultsHistory() {
     selectCurrentResult,
     setShowResultComparison,
     restoreResultAsNewScenario,
+    loadRuntimeSolverCatalog,
   } = useAppStore();
   const navigate = useNavigate();
 
@@ -29,6 +33,12 @@ export function ResultsHistory() {
   const [editingName, setEditingName] = useState('');
   const [exportDropdownOpenId, setExportDropdownOpenId] = useState<string | null>(null);
   const [configDetailsOpenId, setConfigDetailsOpenId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (runtimeSolverCatalogStatus === 'idle') {
+      void loadRuntimeSolverCatalog().catch(() => {});
+    }
+  }, [loadRuntimeSolverCatalog, runtimeSolverCatalogStatus]);
 
   const currentScenario = currentScenarioId ? savedScenarios[currentScenarioId] : null;
   const results = useMemo(() => currentScenario?.results || [], [currentScenario?.results]);
@@ -206,6 +216,9 @@ export function ResultsHistory() {
         <ResultsHistoryList
           results={results}
           currentScenario={currentScenario}
+          runtimeSolverCatalog={runtimeSolverCatalog}
+          runtimeSolverCatalogStatus={runtimeSolverCatalogStatus}
+          runtimeSolverCatalogError={runtimeSolverCatalogError}
           state={{
             selectedResultIds,
             expandedResults,

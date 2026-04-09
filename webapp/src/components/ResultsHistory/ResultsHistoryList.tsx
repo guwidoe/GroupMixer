@@ -1,4 +1,5 @@
 import React from 'react';
+import type { RuntimeSolverDescriptor } from '../../services/runtime';
 import type { ScenarioResult, SavedScenario } from '../../types';
 import { calculateMetrics, getColorClass } from '../../utils/metricCalculations';
 import { compareScenarioConfigurations } from '../../services/scenarioStorage';
@@ -36,6 +37,9 @@ interface ResultsHistoryListActions {
 interface ResultsHistoryListProps {
   results: ScenarioResult[];
   currentScenario: SavedScenario;
+  runtimeSolverCatalog: readonly RuntimeSolverDescriptor[];
+  runtimeSolverCatalogStatus: 'idle' | 'loading' | 'ready' | 'error';
+  runtimeSolverCatalogError: string | null;
   state: ResultsHistoryListState;
   actions: ResultsHistoryListActions;
 }
@@ -43,6 +47,9 @@ interface ResultsHistoryListProps {
 export function ResultsHistoryList({
   results,
   currentScenario,
+  runtimeSolverCatalog,
+  runtimeSolverCatalogStatus,
+  runtimeSolverCatalogError,
   state,
   actions,
 }: ResultsHistoryListProps) {
@@ -76,6 +83,9 @@ export function ResultsHistoryList({
             <ResultCard
               key={result.id}
               result={result}
+              runtimeSolverCatalog={runtimeSolverCatalog}
+              runtimeSolverCatalogStatus={runtimeSolverCatalogStatus}
+              runtimeSolverCatalogError={runtimeSolverCatalogError}
               state={{
                 isExpanded,
                 isSelected,

@@ -26,6 +26,24 @@ describe('ResultsHistory', () => {
 
     useAppStore.setState({
       currentScenarioId: savedScenario.id,
+      runtimeSolverCatalog: [
+        {
+          kind: 'solver1',
+          canonical_id: 'solver1',
+          display_name: 'Solver 1',
+          accepted_config_ids: ['solver1', 'SimulatedAnnealing'],
+          capabilities: {
+            supports_initial_schedule: true,
+            supports_progress_callback: true,
+            supports_benchmark_observer: true,
+            supports_recommended_settings: true,
+            supports_deterministic_seed: true,
+          },
+          notes: 'Solver 1 notes',
+        },
+      ],
+      runtimeSolverCatalogStatus: 'ready',
+      runtimeSolverCatalogError: null,
       savedScenarios: { [savedScenario.id]: savedScenario },
       solution: savedScenario.results[0].solution,
       selectedResultIds: [],
@@ -35,6 +53,7 @@ describe('ResultsHistory', () => {
       setShowResultComparison: vi.fn(),
       setSolution: vi.fn(),
       restoreResultAsNewScenario: vi.fn(),
+      loadRuntimeSolverCatalog: vi.fn(async () => undefined),
     });
 
     renderWithRouter(<ResultsHistory />, { route: '/app/history' });

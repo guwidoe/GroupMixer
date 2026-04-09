@@ -24,10 +24,43 @@ describe('ResultComparison', () => {
 
     useAppStore.setState({
       currentScenarioId: savedScenario.id,
+      runtimeSolverCatalog: [
+        {
+          kind: 'solver1',
+          canonical_id: 'solver1',
+          display_name: 'Solver 1',
+          accepted_config_ids: ['solver1', 'SimulatedAnnealing'],
+          capabilities: {
+            supports_initial_schedule: true,
+            supports_progress_callback: true,
+            supports_benchmark_observer: true,
+            supports_recommended_settings: true,
+            supports_deterministic_seed: true,
+          },
+          notes: 'Solver 1 notes',
+        },
+        {
+          kind: 'solver3',
+          canonical_id: 'solver3',
+          display_name: 'Solver 3',
+          accepted_config_ids: ['solver3'],
+          capabilities: {
+            supports_initial_schedule: true,
+            supports_progress_callback: true,
+            supports_benchmark_observer: true,
+            supports_recommended_settings: false,
+            supports_deterministic_seed: true,
+          },
+          notes: 'Solver 3 notes',
+        },
+      ],
+      runtimeSolverCatalogStatus: 'ready',
+      runtimeSolverCatalogError: null,
       savedScenarios: { [savedScenario.id]: savedScenario },
       selectedResultIds: savedScenario.results.map((result) => result.id),
       setShowResultComparison: () => {},
       selectResultsForComparison: () => {},
+      loadRuntimeSolverCatalog: async () => undefined,
     });
 
     render(<ResultComparison />);

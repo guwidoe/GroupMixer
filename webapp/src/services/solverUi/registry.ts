@@ -77,6 +77,31 @@ export function buildSolverCatalog(descriptors: RuntimeSolverDescriptor[]): read
     .filter((entry) => entry.uiSpecAvailable || entry.id === 'solver1' || entry.id === 'solver3');
 }
 
+export function findSolverCatalogEntry(
+  catalog: readonly SolverCatalogEntry[],
+  solverType: string | undefined | null,
+): SolverCatalogEntry | null {
+  const familyId = normalizeSolverFamilyId(solverType);
+  if (!familyId) {
+    return null;
+  }
+
+  return catalog.find((entry) => entry.id === familyId) ?? null;
+}
+
+export function resolveRuntimeSolverDisplayName(
+  descriptors: readonly RuntimeSolverDescriptor[],
+  solverType: string | undefined | null,
+): string | null {
+  const familyId = normalizeSolverFamilyId(solverType);
+  if (!familyId) {
+    return null;
+  }
+
+  const descriptor = descriptors.find((entry) => normalizeSolverFamilyId(entry.canonical_id) === familyId);
+  return descriptor?.display_name ?? null;
+}
+
 export function summarizeSolverSettings(settings: Parameters<SolverUiSpec['summarizeSettings']>[0]): readonly SolverSettingsSummaryRow[] {
   const spec = getSolverUiSpecForSettings(settings.solver_type);
   return spec?.summarizeSettings(settings) ?? summarizeUniversalSettings(settings);

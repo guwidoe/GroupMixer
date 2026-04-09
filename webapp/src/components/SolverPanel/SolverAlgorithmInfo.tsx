@@ -1,14 +1,14 @@
 import React from 'react';
 import type { SolverSettings } from '../../types';
-import { getSolverCatalogEntry } from '../../services/solverCatalog';
+import type { SolverCatalogEntry } from '../../services/solverUi';
 import { getSolverUiSpecForSettings, summarizeSolverSettings } from '../../services/solverUi';
 
 interface SolverAlgorithmInfoProps {
   displaySettings: SolverSettings;
+  solverCatalogEntry: SolverCatalogEntry | null;
 }
 
-export function SolverAlgorithmInfo({ displaySettings }: SolverAlgorithmInfoProps) {
-  const solverEntry = getSolverCatalogEntry(displaySettings.solver_type);
+export function SolverAlgorithmInfo({ displaySettings, solverCatalogEntry }: SolverAlgorithmInfoProps) {
   const solverUiSpec = getSolverUiSpecForSettings(displaySettings.solver_type);
   const summaryRows = summarizeSolverSettings(displaySettings);
 
@@ -20,10 +20,10 @@ export function SolverAlgorithmInfo({ displaySettings }: SolverAlgorithmInfoProp
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <h4 className="font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
-            {solverEntry?.displayName ?? solverUiSpec?.displayName ?? displaySettings.solver_type}
+            {solverCatalogEntry?.displayName ?? solverUiSpec?.displayName ?? displaySettings.solver_type}
           </h4>
           <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>
-            {solverEntry?.notes ?? solverUiSpec?.shortDescription ?? 'Solver-family metadata is unavailable for this configuration.'}
+            {solverCatalogEntry?.notes ?? solverUiSpec?.shortDescription ?? 'Solver-family metadata is unavailable for this configuration.'}
           </p>
           {solverUiSpec && (
             <ul className="text-sm space-y-1" style={{ color: 'var(--text-secondary)' }}>

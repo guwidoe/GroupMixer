@@ -13,6 +13,7 @@ import type {
   SavedScenario,
   SolverSettings,
 } from "../types";
+import type { RuntimeSolverDescriptor } from "../services/runtime";
 
 // === Slice State Types ===
 
@@ -37,6 +38,12 @@ export interface UIState {
     showResultComparison: boolean;
     warmStartResultId: string | null;
   };
+}
+
+export interface RuntimeCatalogState {
+  runtimeSolverCatalog: RuntimeSolverDescriptor[];
+  runtimeSolverCatalogStatus: "idle" | "loading" | "ready" | "error";
+  runtimeSolverCatalogError: string | null;
 }
 
 export interface ScenarioManagerState {
@@ -90,6 +97,10 @@ export interface UIActions {
   clearNotifications: () => void;
   setShowScenarioManager: (show: boolean) => void;
   setShowResultComparison: (show: boolean) => void;
+}
+
+export interface RuntimeCatalogActions {
+  loadRuntimeSolverCatalog: () => Promise<void>;
 }
 
 export interface ScenarioManagerActions {
@@ -167,6 +178,7 @@ export interface AppStore
     SolutionState,
     SolverSliceState,
     UIState,
+    RuntimeCatalogState,
     ScenarioManagerState,
     AttributeState,
     DemoDataState,
@@ -175,6 +187,7 @@ export interface AppStore
     SolutionActions,
     SolverActions,
     UIActions,
+    RuntimeCatalogActions,
     ScenarioManagerActions,
     AttributeActions,
     DemoDataActions,
