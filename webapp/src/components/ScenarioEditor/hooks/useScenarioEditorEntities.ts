@@ -179,6 +179,30 @@ export function useScenarioEditorEntities({
     });
   };
 
+  const handleInlineUpdatePerson = (
+    personId: string,
+    updates: { attributes?: Record<string, string>; sessions?: number[] | undefined },
+  ) => {
+    const updatedScenario: Scenario = {
+      people:
+        scenario?.people.map((person) =>
+          person.id === personId
+            ? {
+                ...person,
+                attributes: updates.attributes ? { ...person.attributes, ...updates.attributes } : person.attributes,
+                sessions: updates.sessions !== undefined ? updates.sessions : person.sessions,
+              }
+            : person,
+        ) || [],
+      groups: scenario?.groups || [],
+      num_sessions: scenario?.num_sessions || 3,
+      constraints: scenario?.constraints || [],
+      settings: scenario?.settings || getDefaultSolverSettings(),
+    };
+
+    setScenario(updatedScenario);
+  };
+
   const handleAddGroup = () => {
     if (!groupForm.id?.trim()) {
       addNotification({
@@ -429,6 +453,7 @@ export function useScenarioEditorEntities({
     handleEditPerson,
     handleUpdatePerson,
     handleDeletePerson,
+    handleInlineUpdatePerson,
     handleAddGroup,
     handleEditGroup,
     handleUpdateGroup,

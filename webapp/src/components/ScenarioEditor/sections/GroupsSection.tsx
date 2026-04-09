@@ -85,6 +85,7 @@ function renderGroupContent(
       <ScenarioDataGrid
         rows={groups}
         rowKey={(group) => group.id}
+        searchPlaceholder="Search groups or capacities…"
         columns={[
           {
             id: 'group',

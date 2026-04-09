@@ -11,10 +11,11 @@ interface SetupCollectionPageProps {
   count: number;
   description?: React.ReactNode;
   actions?: React.ReactNode;
-  toolbarLeading?: React.ReactNode;
-  toolbarTrailing?: React.ReactNode;
+  toolbarLeading?: React.ReactNode | ((viewMode: SetupCollectionViewMode) => React.ReactNode);
+  toolbarTrailing?: React.ReactNode | ((viewMode: SetupCollectionViewMode) => React.ReactNode);
   summary?: React.ReactNode;
   defaultViewMode?: SetupCollectionViewMode;
+  onViewModeChange?: (viewMode: SetupCollectionViewMode) => void;
   hasItems: boolean;
   emptyState: {
     icon?: React.ReactNode;
@@ -34,19 +35,31 @@ export function SetupCollectionPage({
   toolbarTrailing,
   summary,
   defaultViewMode = 'cards',
+  onViewModeChange,
   hasItems,
   emptyState,
   renderContent,
 }: SetupCollectionPageProps) {
   const { viewMode, setViewMode } = useSetupCollectionViewMode(sectionKey, defaultViewMode);
+  const resolvedToolbarLeading = typeof toolbarLeading === 'function' ? toolbarLeading(viewMode) : toolbarLeading;
+  const resolvedToolbarTrailing = typeof toolbarTrailing === 'function' ? toolbarTrailing(viewMode) : toolbarTrailing;
+
+  React.useEffect(() => {
+    onViewModeChange?.(viewMode);
+  }, [onViewModeChange, viewMode]);
 
   return (
     <div className="space-y-5">
       <SetupSectionHeader title={title} count={count} description={description} actions={actions} />
 
       <SetupSectionToolbar
-        leading={toolbarLeading}
-        trailing={<SetupViewModeToggle viewMode={viewMode} onChange={setViewMode} />}
+        leading={resolvedToolbarLeading}
+        trailing={
+          <>
+            {resolvedToolbarTrailing}
+            <SetupViewModeToggle viewMode={viewMode} onChange={setViewMode} />
+          </>
+        }
       />
 
       {summary ? (

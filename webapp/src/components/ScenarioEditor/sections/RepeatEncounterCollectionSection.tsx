@@ -69,6 +69,7 @@ function renderRepeatEncounterContent(
       <ScenarioDataGrid
         rows={items}
         rowKey={(item) => String(item.index)}
+        searchPlaceholder="Search by limit, weight, or penalty function…"
         columns={[
           {
             id: 'limit',
@@ -136,6 +137,7 @@ export function RepeatEncounterCollectionSection({
   onDelete,
 }: RepeatEncounterCollectionSectionProps) {
   const [search, setSearch] = React.useState('');
+  const [viewMode, setViewMode] = React.useState<SetupCollectionViewMode>('cards');
 
   const items = React.useMemo(
     () =>
@@ -146,6 +148,10 @@ export function RepeatEncounterCollectionSection({
   );
 
   const filteredItems = React.useMemo(() => {
+    if (viewMode !== 'cards') {
+      return items;
+    }
+
     const searchValue = search.trim().toLowerCase();
     if (!searchValue) {
       return items;
@@ -159,7 +165,7 @@ export function RepeatEncounterCollectionSection({
       ];
       return haystack.some((value) => value.includes(searchValue));
     });
-  }, [items, search]);
+  }, [items, search, viewMode]);
 
   return (
     <SetupCollectionPage
@@ -177,22 +183,29 @@ export function RepeatEncounterCollectionSection({
           Add Repeat Limit
         </Button>
       }
-      toolbarLeading={
-        <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
-          <label className="relative block min-w-0 flex-1 md:max-w-sm">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
-            <input
-              type="text"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Filter by limit, weight, or penalty function"
-              className="input w-full pl-9"
-            />
-          </label>
-          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            {filteredItems.length} of {items.length} preference{items.length === 1 ? '' : 's'} shown
+      onViewModeChange={setViewMode}
+      toolbarLeading={(viewMode) =>
+        viewMode === 'cards' ? (
+          <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
+            <label className="relative block min-w-0 flex-1 md:max-w-sm">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
+              <input
+                type="text"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Filter by limit, weight, or penalty function"
+                className="input w-full pl-9"
+              />
+            </label>
+            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              {filteredItems.length} of {items.length} preference{items.length === 1 ? '' : 's'} shown
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Use the shared grid search and column controls to review repeat-limit preferences quickly.
+          </div>
+        )
       }
       summary={
         <div className="flex items-start gap-3 text-sm" style={{ color: 'var(--text-secondary)' }}>

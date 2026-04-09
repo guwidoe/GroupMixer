@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ScenarioDataGrid } from './ScenarioDataGrid';
 
 const rows = [
@@ -42,12 +42,14 @@ describe('ScenarioDataGrid', () => {
     expect(within(bodyRows[1]!).getByText('Beta')).toBeInTheDocument();
   });
 
-  it('filters rows from the shared data source', () => {
+  it('filters rows from the shared data source', async () => {
+    const user = userEvent.setup();
+
     render(
       <ScenarioDataGrid
         rows={rows}
         rowKey={(row) => row.id}
-        filterQuery="alpha"
+        searchPlaceholder="Search names"
         columns={[
           {
             id: 'name',
@@ -59,6 +61,8 @@ describe('ScenarioDataGrid', () => {
         ]}
       />,
     );
+
+    await user.type(screen.getByRole('textbox', { name: /search table/i }), 'alpha');
 
     expect(screen.getByText('Alpha')).toBeInTheDocument();
     expect(screen.queryByText('Beta')).not.toBeInTheDocument();
@@ -125,5 +129,40 @@ describe('ScenarioDataGrid', () => {
     fireEvent.pointerUp(window);
 
     expect(col).toHaveStyle({ width: '220px' });
+  });
+
+  it('supports inline editing through the shared edit mode', async () => {
+    const user = userEvent.setup();
+    const onCommit = vi.fn();
+
+    render(
+      <ScenarioDataGrid
+        rows={rows}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            id: 'name',
+            header: 'Name',
+            cell: (row) => row.name,
+            sortValue: (row) => row.name,
+            searchValue: (row) => row.name,
+            editor: {
+              type: 'text',
+              getValue: (row) => row.name,
+              onCommit,
+              ariaLabel: (row) => `Edit ${row.name}`,
+            },
+          },
+        ]}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /edit table/i }));
+    const input = screen.getByRole('textbox', { name: /edit beta/i });
+    await user.clear(input);
+    await user.type(input, 'Beta Prime');
+    await user.tab();
+
+    expect(onCommit).toHaveBeenCalledWith(rows[0], 'Beta Prime');
   });
 });

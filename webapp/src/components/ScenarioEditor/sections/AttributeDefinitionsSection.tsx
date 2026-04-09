@@ -61,6 +61,7 @@ function renderAttributeContent(
       <ScenarioDataGrid
         rows={attributeDefinitions}
         rowKey={(definition) => definition.key}
+        searchPlaceholder="Search attributes and values…"
         columns={[
           {
             id: 'attribute',

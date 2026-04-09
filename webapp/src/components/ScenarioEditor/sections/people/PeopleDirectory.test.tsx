@@ -28,6 +28,7 @@ describe('PeopleDirectory', () => {
         onAddPerson={vi.fn()}
         onEditPerson={vi.fn()}
         onDeletePerson={vi.fn()}
+        onInlineUpdatePerson={vi.fn()}
         onOpenBulkAddForm={vi.fn()}
         onOpenBulkUpdateForm={vi.fn()}
         onTriggerCsvUpload={vi.fn()}
@@ -56,6 +57,7 @@ describe('PeopleDirectory', () => {
     const user = userEvent.setup();
     const onEditPerson = vi.fn();
     const onDeletePerson = vi.fn();
+    const onInlineUpdatePerson = vi.fn();
 
     render(
       <PeopleDirectory
@@ -70,6 +72,7 @@ describe('PeopleDirectory', () => {
         onAddPerson={vi.fn()}
         onEditPerson={onEditPerson}
         onDeletePerson={onDeletePerson}
+        onInlineUpdatePerson={onInlineUpdatePerson}
         onOpenBulkAddForm={vi.fn()}
         onOpenBulkUpdateForm={vi.fn()}
         onTriggerCsvUpload={vi.fn()}
@@ -82,6 +85,13 @@ describe('PeopleDirectory', () => {
 
     await user.click(screen.getByRole('button', { name: /list/i }));
     expect(screen.getByRole('columnheader', { name: /name/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /edit table/i }));
+    const nameInput = screen.getByRole('textbox', { name: /edit name for alex/i });
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Alex Rivera');
+    await user.tab();
+    expect(onInlineUpdatePerson).toHaveBeenCalledWith('p1', { attributes: { name: 'Alex Rivera' } });
 
     await user.click(screen.getAllByRole('button', { name: /delete alex/i })[0]!);
     expect(onDeletePerson).toHaveBeenCalledWith('p1');

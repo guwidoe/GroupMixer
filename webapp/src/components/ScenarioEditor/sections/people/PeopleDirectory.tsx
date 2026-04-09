@@ -8,6 +8,7 @@ import { SetupItemActions } from '../../shared/cards';
 import { ScenarioDataGrid } from '../../shared/grid/ScenarioDataGrid';
 import { PeopleGrid } from './PeopleGrid';
 import { sortPeople } from './peopleUtils';
+import type { SetupCollectionViewMode } from '../../shared/useSetupCollectionViewMode';
 
 const PROGRESSIVE_PEOPLE_RENDER_THRESHOLD = 150;
 const INITIAL_VISIBLE_PEOPLE = 120;
@@ -20,6 +21,7 @@ interface PeopleDirectoryProps {
   onAddPerson: () => void;
   onEditPerson: (person: Person) => void;
   onDeletePerson: (personId: string) => void;
+  onInlineUpdatePerson: (personId: string, updates: { attributes?: Record<string, string>; sessions?: number[] | undefined }) => void;
   onOpenBulkAddForm: () => void;
   onOpenBulkUpdateForm: () => void;
   onTriggerCsvUpload: () => void;
@@ -108,18 +110,20 @@ export function PeopleDirectory({
   onAddPerson,
   onEditPerson,
   onDeletePerson,
+  onInlineUpdatePerson,
   onOpenBulkAddForm,
   onOpenBulkUpdateForm,
   onTriggerCsvUpload,
   onTriggerExcelImport,
 }: PeopleDirectoryProps) {
   const [peopleSearch, setPeopleSearch] = useState('');
+  const [viewMode, setViewMode] = useState<SetupCollectionViewMode>('cards');
 
   const searchValue = peopleSearch.trim().toLowerCase();
   const basePeople = useMemo(() => scenario?.people ?? [], [scenario?.people]);
 
   const sortedPeople = useMemo(() => {
-    const filteredPeople = searchValue
+    const filteredPeople = viewMode === 'cards' && searchValue
       ? basePeople.filter((person) => {
           const name = (person.attributes?.name || '').toString().toLowerCase();
           const id = person.id.toLowerCase();
@@ -128,7 +132,7 @@ export function PeopleDirectory({
       : basePeople;
 
     return sortPeople(filteredPeople, 'name', 'asc', sessionsCount);
-  }, [basePeople, searchValue, sessionsCount]);
+  }, [basePeople, searchValue, sessionsCount, viewMode]);
 
   const shouldProgressivelyRender = sortedPeople.length >= PROGRESSIVE_PEOPLE_RENDER_THRESHOLD;
   const [visiblePeopleCount, setVisiblePeopleCount] = useState(() =>
@@ -179,6 +183,10 @@ export function PeopleDirectory({
   }, [shouldProgressivelyRender, sortedPeople]);
 
   const visiblePeople = shouldProgressivelyRender ? sortedPeople.slice(0, visiblePeopleCount) : sortedPeople;
+  const sessionOptions = useMemo(
+    () => Array.from({ length: sessionsCount }, (_, index) => ({ value: String(index), label: `Session ${index + 1}` })),
+    [sessionsCount],
+  );
   const searchSummary = searchValue ? (
     <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
       Showing {sortedPeople.length} of {basePeople.length} people for “{peopleSearch}”.
@@ -218,21 +226,28 @@ export function PeopleDirectory({
           </Button>
         </>
       }
-      toolbarLeading={
-        <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
-          <label className="relative block min-w-0 flex-1 md:max-w-sm">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
-            <input
-              type="text"
-              className="input w-full pl-9"
-              placeholder="Search people by name or ID..."
-              value={peopleSearch}
-              onChange={(event) => setPeopleSearch(event.target.value)}
-            />
-          </label>
-          {searchSummary}
-        </div>
+      toolbarLeading={(viewMode) =>
+        viewMode === 'cards' ? (
+          <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
+            <label className="relative block min-w-0 flex-1 md:max-w-sm">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
+              <input
+                type="text"
+                className="input w-full pl-9"
+                placeholder="Search people by name or ID..."
+                value={peopleSearch}
+                onChange={(event) => setPeopleSearch(event.target.value)}
+              />
+            </label>
+            {searchSummary}
+          </div>
+        ) : (
+          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Use the shared grid search, sort, resize, and inline-edit tools to work through the directory quickly.
+          </div>
+        )
       }
+      onViewModeChange={setViewMode}
       summary={
         shouldProgressivelyRender && visiblePeopleCount < sortedPeople.length ? (
           <div role="status" aria-live="polite" className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -265,8 +280,13 @@ export function PeopleDirectory({
           <ScenarioDataGrid
             rows={visiblePeople}
             rowKey={(person) => person.id}
-            filterQuery=""
             emptyState={<div className="text-sm" style={{ color: 'var(--text-secondary)' }}>No matching people.</div>}
+            searchPlaceholder="Search people by name, ID, or attribute…"
+            searchSummary={({ filteredCount, totalCount, query }) => (
+              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                {query.trim() ? `Showing ${filteredCount} of ${totalCount} matching people.` : `Showing ${filteredCount} people.`}
+              </div>
+            )}
             columns={[
               {
                 id: 'name',
@@ -286,6 +306,13 @@ export function PeopleDirectory({
                 sortValue: (person) => (person.attributes.name || person.id).toLowerCase(),
                 searchValue: (person) => `${person.id} ${person.attributes.name || ''}`,
                 width: 240,
+                editor: {
+                  type: 'text',
+                  getValue: (person) => String(person.attributes.name || ''),
+                  onCommit: (person, value) => onInlineUpdatePerson(person.id, { attributes: { name: String(value).trim() || person.id } }),
+                  ariaLabel: (person) => `Edit name for ${person.attributes.name || person.id}`,
+                  placeholder: 'Person name',
+                },
               },
               {
                 id: 'sessions',
@@ -295,6 +322,27 @@ export function PeopleDirectory({
                 sortValue: (person) => person.sessions?.length ?? sessionsCount,
                 searchValue: (person) => (person.sessions ? person.sessions.join(' ') : `all ${sessionsCount}`),
                 width: 180,
+                editor: {
+                  type: 'multiselect',
+                  getValue: (person) => (person.sessions ?? Array.from({ length: sessionsCount }, (_, index) => index)).map(String),
+                  options: sessionOptions,
+                  parseValue: (value) => {
+                    const selectedSessions = (Array.isArray(value) ? value : [value])
+                      .map((entry) => Number.parseInt(entry, 10))
+                      .filter((entry) => Number.isFinite(entry))
+                      .sort((left, right) => left - right);
+                    return selectedSessions.length === 0 || selectedSessions.length === sessionsCount ? [] : selectedSessions;
+                  },
+                  onCommit: (person, value) => {
+                    const parsed = Array.isArray(value)
+                      ? value.map((entry) => Number.parseInt(String(entry), 10)).filter((entry) => Number.isFinite(entry))
+                      : [];
+                    onInlineUpdatePerson(person.id, {
+                      sessions: parsed.length === 0 || parsed.length === sessionsCount ? undefined : parsed,
+                    });
+                  },
+                  ariaLabel: (person) => `Edit sessions for ${person.attributes.name || person.id}`,
+                },
               },
               ...attributeDefinitions.map((attribute) => ({
                 id: `attribute-${attribute.key}`,
@@ -302,6 +350,17 @@ export function PeopleDirectory({
                 cell: (person: Person) => person.attributes[attribute.key] || '—',
                 searchValue: (person: Person) => String(person.attributes[attribute.key] || ''),
                 width: 180,
+                editor: {
+                  type: 'select' as const,
+                  getValue: (person: Person) => String(person.attributes[attribute.key] || attribute.values[0] || ''),
+                  options: (() => {
+                    const uniqueValues = new Set(attribute.values);
+                    return Array.from(uniqueValues).map((value) => ({ value, label: value }));
+                  })(),
+                  onCommit: (person: Person, value: string | number | string[]) =>
+                    onInlineUpdatePerson(person.id, { attributes: { [attribute.key]: String(value) } }),
+                  ariaLabel: (person: Person) => `Edit ${attribute.key} for ${person.attributes.name || person.id}`,
+                },
               })),
               {
                 id: 'actions',
