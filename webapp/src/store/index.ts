@@ -12,11 +12,11 @@
  * - editorSlice: Manual editor state
  */
 
-import { create } from "zustand";
-import { devtools } from "zustand/middleware";
-import type { AppStore } from "./types";
+import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
+import type { AppStore } from './types';
 import type { AttributeDefinition, Scenario, Solution } from '../types';
-import { reconcileScenarioAttributeDefinitions } from '../services/scenarioAttributes';
+import { reconcileScenarioAttributeDefinitions, reconcileScenarioAttributeState } from '../services/scenarioAttributes';
 import { scenarioStorage } from '../services/scenarioStorage';
 
 import {
@@ -35,7 +35,6 @@ import {
   DEFAULT_ATTRIBUTE_DEFINITIONS,
 } from './slices';
 
-// Re-export types for easier access
 export type {
   AppState,
   Scenario,
@@ -45,12 +44,10 @@ export type {
   Person,
   Group,
   AttributeDefinition,
-} from "../types";
+} from '../types';
 
-// Re-export store types
-export type { AppStore } from "./types";
+export type { AppStore } from './types';
 
-// Initial state for reset functionality
 const getInitialState = () => ({
   scenario: null,
   solution: null,
@@ -84,14 +81,17 @@ function solverStateFromWorkspaceSolution(solution: Solution | null) {
   };
 }
 
-function resolveWorkspaceAttributes(scenario: Scenario, incoming?: AttributeDefinition[]) {
-  return reconcileScenarioAttributeDefinitions(scenario, incoming);
+function resolveWorkspaceState(scenario: Scenario, incoming?: AttributeDefinition[]) {
+  const attributeDefinitions = reconcileScenarioAttributeDefinitions(scenario, incoming);
+  return {
+    scenario: reconcileScenarioAttributeState(scenario, attributeDefinitions),
+    attributeDefinitions,
+  };
 }
 
 export const useAppStore = create<AppStore>()(
   devtools(
     (set, get) => ({
-      // Combine all slices
       ...createScenarioSlice(set, get),
       ...createSolutionSlice(set, get),
       ...createSolverSlice(set, get),
@@ -102,7 +102,6 @@ export const useAppStore = create<AppStore>()(
       ...createDemoDataSlice(set, get),
       ...createEditorSlice(set, get),
 
-      // Utility actions
       reset: () => set(getInitialState()),
 
       replaceWorkspace: ({
@@ -116,25 +115,28 @@ export const useAppStore = create<AppStore>()(
         attributeDefinitions?: AttributeDefinition[];
         currentScenarioId?: string | null;
       }) =>
-        set((state) => ({
-          scenario,
-          solution,
-          currentScenarioId,
-          currentResultId: null,
-          selectedResultIds: [],
-          solverState: solverStateFromWorkspaceSolution(solution),
-          attributeDefinitions: resolveWorkspaceAttributes(scenario, attributeDefinitions ?? state.attributeDefinitions),
-          ui: {
-            ...state.ui,
-            activeTab: solution ? "results" : "scenario",
-            warmStartResultId: null,
-            showResultComparison: false,
-            showScenarioManager: false,
-            isLoading: false,
-          },
-          manualEditorUnsaved: false,
-          manualEditorLeaveHook: null,
-        })),
+        set((state) => {
+          const nextWorkspace = resolveWorkspaceState(scenario, attributeDefinitions ?? state.attributeDefinitions);
+          return {
+            scenario: nextWorkspace.scenario,
+            solution,
+            currentScenarioId,
+            currentResultId: null,
+            selectedResultIds: [],
+            solverState: solverStateFromWorkspaceSolution(solution),
+            attributeDefinitions: nextWorkspace.attributeDefinitions,
+            ui: {
+              ...state.ui,
+              activeTab: solution ? 'results' : 'scenario',
+              warmStartResultId: null,
+              showResultComparison: false,
+              showScenarioManager: false,
+              isLoading: false,
+            },
+            manualEditorUnsaved: false,
+            manualEditorLeaveHook: null,
+          };
+        }),
 
       syncWorkspaceDraft: ({
         scenario,
@@ -149,21 +151,26 @@ export const useAppStore = create<AppStore>()(
         if (matchingScenario) {
           savedScenario = matchingScenario;
         } else if (savedScenario) {
+          const nextWorkspace = resolveWorkspaceState(
+            scenario,
+            attributeDefinitions ?? savedScenario.attributeDefinitions,
+          );
           savedScenario = {
             ...savedScenario,
             name: scenarioName,
-            scenario,
-            attributeDefinitions: resolveWorkspaceAttributes(
-              scenario,
-              attributeDefinitions ?? savedScenario.attributeDefinitions,
-            ),
+            scenario: nextWorkspace.scenario,
+            attributeDefinitions: nextWorkspace.attributeDefinitions,
           };
           scenarioStorage.saveScenario(savedScenario);
         } else {
+          const nextWorkspace = resolveWorkspaceState(
+            scenario,
+            attributeDefinitions ?? DEFAULT_ATTRIBUTE_DEFINITIONS,
+          );
           savedScenario = scenarioStorage.createScenario(
             scenarioName,
-            scenario,
-            resolveWorkspaceAttributes(scenario, attributeDefinitions ?? DEFAULT_ATTRIBUTE_DEFINITIONS),
+            nextWorkspace.scenario,
+            nextWorkspace.attributeDefinitions,
           );
           currentScenarioId = savedScenario.id;
         }
@@ -171,7 +178,7 @@ export const useAppStore = create<AppStore>()(
         scenarioStorage.setCurrentScenarioId(savedScenario.id);
 
         set((state) => ({
-          scenario,
+          scenario: savedScenario.scenario,
           solution,
           currentScenarioId: savedScenario.id,
           currentResultId: null,
@@ -184,7 +191,7 @@ export const useAppStore = create<AppStore>()(
           attributeDefinitions: savedScenario.attributeDefinitions,
           ui: {
             ...state.ui,
-            activeTab: solution ? "results" : "scenario",
+            activeTab: solution ? 'results' : 'scenario',
             warmStartResultId: null,
             showResultComparison: false,
             showScenarioManager: false,
@@ -204,7 +211,7 @@ export const useAppStore = create<AppStore>()(
       },
     }),
     {
-      name: "people-distributor-store",
-    }
-  )
+      name: 'people-distributor-store',
+    },
+  ),
 );

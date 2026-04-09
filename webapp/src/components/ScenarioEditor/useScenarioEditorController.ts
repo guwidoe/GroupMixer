@@ -24,6 +24,7 @@ export function useScenarioEditorController() {
     attributeDefinitions,
     addAttributeDefinition,
     removeAttributeDefinition,
+    setAttributeDefinitions,
     setShowScenarioManager,
     currentScenarioId,
     saveScenario,
@@ -44,14 +45,17 @@ export function useScenarioEditorController() {
 
   const entities = useScenarioEditorEntities({
     scenario,
+    attributeDefinitions,
     addAttributeDefinition,
     removeAttributeDefinition,
+    setAttributeDefinitions,
     addNotification,
     setScenario,
   });
 
   const constraints = useScenarioEditorConstraints({
     scenario,
+    attributeDefinitions,
     sessionsCount,
     addNotification,
     setScenario,

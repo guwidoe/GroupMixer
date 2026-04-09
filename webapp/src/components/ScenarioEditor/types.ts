@@ -20,6 +20,7 @@ export interface DemoCaseWithMetrics {
 export interface AttributeBalanceConstraint {
   type: 'AttributeBalance';
   group_id: string;
+  attribute_id?: string;
   attribute_key: string;
   desired_values: Record<string, number>;
   penalty_weight: number;
@@ -35,6 +36,7 @@ export interface ConstraintFormState {
   penalty_weight?: number;
   // AttributeBalance
   group_id?: string;
+  attribute_id?: string;
   attribute_key?: string;
   desired_values?: Record<string, number>;
   // ImmovablePerson

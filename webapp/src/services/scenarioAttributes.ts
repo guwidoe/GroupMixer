@@ -1,4 +1,4 @@
-import type { AttributeDefinition, Person, SavedScenario, Scenario } from '../types';
+import type { AttributeDefinition, AttributeBalanceParams, Constraint, Person, SavedScenario, Scenario } from '../types';
 
 export const ATTRIBUTE_DEFINITION_NAME_KEY = 'name';
 
@@ -56,6 +56,151 @@ export function coerceAttributeDefinitions(definitions: AttributeDefinition[] | 
   return Array.from(merged.values()).sort((left, right) => left.name.localeCompare(right.name));
 }
 
+export function findAttributeDefinitionById(
+  definitions: AttributeDefinition[],
+  attributeId: string | undefined | null,
+): AttributeDefinition | null {
+  if (!attributeId) {
+    return null;
+  }
+
+  return definitions.find((definition) => definition.id === attributeId) ?? null;
+}
+
+export function findAttributeDefinitionByName(
+  definitions: AttributeDefinition[],
+  attributeName: string | undefined | null,
+): AttributeDefinition | null {
+  if (!attributeName) {
+    return null;
+  }
+
+  const normalizedName = normalizeAttributeName(attributeName);
+  return (
+    definitions.find((definition) => normalizeAttributeName(getAttributeDefinitionName(definition)) === normalizedName) ?? null
+  );
+}
+
+export function findAttributeDefinition(
+  definitions: AttributeDefinition[],
+  selector: { id?: string | null; name?: string | null },
+): AttributeDefinition | null {
+  return (
+    findAttributeDefinitionById(definitions, selector.id) ??
+    findAttributeDefinitionByName(definitions, selector.name) ??
+    null
+  );
+}
+
+export function getPersonAttributeValue(
+  person: Person,
+  definitions: AttributeDefinition[],
+  selector: { id?: string | null; name?: string | null },
+): string | undefined {
+  const definition = findAttributeDefinition(definitions, selector);
+  if (definition) {
+    const relationalValue = person.attributeValues?.[definition.id];
+    if (relationalValue !== undefined) {
+      return relationalValue;
+    }
+    const projectedValue = person.attributes?.[definition.name] ?? person.attributes?.[definition.key ?? definition.name];
+    if (projectedValue !== undefined) {
+      return projectedValue;
+    }
+  }
+
+  if (selector.name) {
+    return person.attributes?.[selector.name];
+  }
+
+  return undefined;
+}
+
+function buildPersonProjectedAttributes(person: Person, definitions: AttributeDefinition[]): Record<string, string> {
+  const projected: Record<string, string> = {};
+
+  if (person.attributes?.name) {
+    projected.name = person.attributes.name;
+  }
+
+  for (const definition of definitions) {
+    const value = person.attributeValues?.[definition.id];
+    if (value !== undefined && value !== '') {
+      projected[definition.name] = value;
+    }
+  }
+
+  for (const [key, value] of Object.entries(person.attributes ?? {})) {
+    if (normalizeAttributeName(key) === ATTRIBUTE_DEFINITION_NAME_KEY) {
+      continue;
+    }
+
+    const definition = findAttributeDefinitionByName(definitions, key);
+    if (!definition) {
+      projected[key] = value;
+    }
+  }
+
+  return projected;
+}
+
+export function reconcilePersonAttributeState(person: Person, definitions: AttributeDefinition[]): Person {
+  const attributeValues = { ...(person.attributeValues ?? {}) };
+
+  for (const [key, value] of Object.entries(person.attributes ?? {})) {
+    if (normalizeAttributeName(key) === ATTRIBUTE_DEFINITION_NAME_KEY) {
+      continue;
+    }
+
+    const definition = findAttributeDefinitionByName(definitions, key);
+    if (definition && attributeValues[definition.id] === undefined) {
+      attributeValues[definition.id] = value;
+    }
+  }
+
+  const nextPerson: Person = {
+    ...person,
+    attributeValues: Object.keys(attributeValues).length > 0 ? attributeValues : undefined,
+  };
+
+  return {
+    ...nextPerson,
+    attributes: buildPersonProjectedAttributes(nextPerson, definitions),
+  };
+}
+
+function reconcileAttributeBalanceConstraint(
+  constraint: Constraint,
+  definitions: AttributeDefinition[],
+): Constraint {
+  if (constraint.type !== 'AttributeBalance') {
+    return constraint;
+  }
+
+  const definition = findAttributeDefinition(definitions, {
+    id: constraint.attribute_id,
+    name: constraint.attribute_key,
+  });
+
+  if (!definition) {
+    return constraint;
+  }
+
+  return {
+    ...constraint,
+    attribute_id: definition.id,
+    attribute_key: definition.name,
+  } satisfies Constraint;
+}
+
+export function reconcileScenarioAttributeState(scenario: Scenario, definitions: AttributeDefinition[]): Scenario {
+  return {
+    ...scenario,
+    people: scenario.people.map((person) => reconcilePersonAttributeState(person, definitions)),
+    constraints: scenario.constraints.map((constraint) => reconcileAttributeBalanceConstraint(constraint, definitions)),
+  };
+}
+
 export function extractAttributeDefinitionsFromScenario(scenario: Scenario): AttributeDefinition[] {
   const collected = new Map<string, { name: string; values: Set<string> }>();
 
@@ -103,12 +248,114 @@ export function reconcileScenarioAttributeDefinitions(
   return Array.from(merged.values()).sort((left, right) => left.name.localeCompare(right.name));
 }
 
+export function applyNamedAttributeValuesToPerson(
+  person: Person,
+  updates: Record<string, string>,
+  definitions: AttributeDefinition[],
+): Person {
+  const nextAttributes = { ...(person.attributes ?? {}) };
+  const nextAttributeValues = { ...(person.attributeValues ?? {}) };
+
+  for (const [key, rawValue] of Object.entries(updates)) {
+    if (normalizeAttributeName(key) === ATTRIBUTE_DEFINITION_NAME_KEY) {
+      if (rawValue) {
+        nextAttributes.name = rawValue;
+      } else {
+        delete nextAttributes.name;
+      }
+      continue;
+    }
+
+    const definition = findAttributeDefinitionByName(definitions, key);
+    if (definition) {
+      if (rawValue === '') {
+        delete nextAttributeValues[definition.id];
+      } else {
+        nextAttributeValues[definition.id] = rawValue;
+      }
+    } else if (rawValue === '') {
+      delete nextAttributes[key];
+    } else {
+      nextAttributes[key] = rawValue;
+    }
+  }
+
+  return reconcilePersonAttributeState(
+    {
+      ...person,
+      attributes: nextAttributes,
+      attributeValues: nextAttributeValues,
+    },
+    definitions,
+  );
+}
+
+export function buildPersonFormAttributes(person: Person, definitions: AttributeDefinition[]): Record<string, string> {
+  return { ...reconcilePersonAttributeState(person, definitions).attributes };
+}
+
+export function removeAttributeDefinitionFromScenario(
+  scenario: Scenario,
+  definition: AttributeDefinition,
+  remainingDefinitions: AttributeDefinition[],
+): Scenario {
+  const nextScenario = reconcileScenarioAttributeState(scenario, remainingDefinitions);
+  return {
+    ...nextScenario,
+    people: nextScenario.people.map((person) => {
+      const nextAttributeValues = { ...(person.attributeValues ?? {}) };
+      delete nextAttributeValues[definition.id];
+      const nextAttributes = { ...(person.attributes ?? {}) };
+      delete nextAttributes[definition.name];
+      if (definition.key) {
+        delete nextAttributes[definition.key];
+      }
+      return reconcilePersonAttributeState(
+        {
+          ...person,
+          attributes: nextAttributes,
+          attributeValues: nextAttributeValues,
+        },
+        remainingDefinitions,
+      );
+    }),
+    constraints: nextScenario.constraints.filter(
+      (constraint) =>
+        constraint.type !== 'AttributeBalance' ||
+        (constraint.attribute_id !== definition.id && normalizeAttributeName(constraint.attribute_key) !== normalizeAttributeName(definition.name)),
+    ),
+  };
+}
+
+export function updateAttributeBalanceConstraintReference(
+  params: Pick<AttributeBalanceParams, 'attribute_id' | 'attribute_key'>,
+  definitions: AttributeDefinition[],
+): Pick<AttributeBalanceParams, 'attribute_id' | 'attribute_key'> {
+  const definition = findAttributeDefinition(definitions, {
+    id: params.attribute_id,
+    name: params.attribute_key,
+  });
+
+  return definition
+    ? {
+        attribute_id: definition.id,
+        attribute_key: definition.name,
+      }
+    : params;
+}
+
 export function migrateSavedScenario(savedScenario: SavedScenario): SavedScenario {
-  const attributeDefinitions = reconcileScenarioAttributeDefinitions(savedScenario.scenario, savedScenario.attributeDefinitions);
+  const attributeDefinitions = coerceAttributeDefinitions(savedScenario.attributeDefinitions);
+  const scenarioWithRelationalState = reconcileScenarioAttributeState(savedScenario.scenario, attributeDefinitions);
+  const reconciledAttributeDefinitions = reconcileScenarioAttributeDefinitions(
+    scenarioWithRelationalState,
+    attributeDefinitions,
+  );
 
   return {
     ...savedScenario,
-    attributeDefinitions,
+    scenario: reconcileScenarioAttributeState(scenarioWithRelationalState, reconciledAttributeDefinitions),
+    attributeDefinitions: reconciledAttributeDefinitions,
   };
 }
 

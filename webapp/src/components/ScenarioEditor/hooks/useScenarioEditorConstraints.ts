@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { Constraint, Scenario } from '../../../types';
+import type { AttributeDefinition, Constraint, Scenario } from '../../../types';
+import { findAttributeDefinition, updateAttributeBalanceConstraintReference } from '../../../services/scenarioAttributes';
 import type { ConstraintFormState } from '../ConstraintFormModal';
 
 type NotificationPayload = {
@@ -10,6 +11,7 @@ type NotificationPayload = {
 
 interface UseScenarioEditorConstraintsArgs {
   scenario: Scenario | null;
+  attributeDefinitions: AttributeDefinition[];
   sessionsCount: number;
   addNotification: (notification: NotificationPayload) => void;
   setScenario: (scenario: Scenario) => void;
@@ -17,6 +19,7 @@ interface UseScenarioEditorConstraintsArgs {
 
 export function useScenarioEditorConstraints({
   scenario,
+  attributeDefinitions,
   sessionsCount,
   addNotification,
   setScenario,
@@ -38,6 +41,19 @@ export function useScenarioEditorConstraints({
   const [showMustStayTogetherModal, setShowMustStayTogetherModal] = useState(false);
   const [showPairMeetingCountModal, setShowPairMeetingCountModal] = useState(false);
   const [editingConstraintIndex, setEditingConstraintIndex] = useState<number | null>(null);
+
+  const resolveConstraintAttribute = () => {
+    const definition = findAttributeDefinition(attributeDefinitions, {
+      id: constraintForm.attribute_id,
+      name: constraintForm.attribute_key,
+    });
+
+    if (!definition) {
+      throw new Error('Please select a valid attribute.');
+    }
+
+    return definition;
+  };
 
   const handleAddConstraint = () => {
     let newConstraint: Constraint;
@@ -67,19 +83,22 @@ export function useScenarioEditorConstraints({
           };
           break;
 
-        case 'AttributeBalance':
-          if (!constraintForm.group_id || !constraintForm.attribute_key || !constraintForm.desired_values) {
+        case 'AttributeBalance': {
+          if (!constraintForm.group_id || !constraintForm.desired_values) {
             throw new Error('Please fill in all required fields for attribute balance');
           }
+          const definition = resolveConstraintAttribute();
           newConstraint = {
             type: 'AttributeBalance',
             group_id: constraintForm.group_id,
-            attribute_key: constraintForm.attribute_key,
+            attribute_id: definition.id,
+            attribute_key: definition.name,
             desired_values: constraintForm.desired_values,
             penalty_weight: constraintForm.penalty_weight || 50,
             sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined,
           };
           break;
+        }
 
         case 'ImmovablePeople': {
           if (!constraintForm.people?.length || !constraintForm.group_id) {
@@ -122,7 +141,11 @@ export function useScenarioEditorConstraints({
 
       const updatedScenario: Scenario = {
         ...scenario!,
-        constraints: [...(scenario?.constraints || []), newConstraint],
+        constraints: [...(scenario?.constraints || []), newConstraint].map((constraint) =>
+          constraint.type === 'AttributeBalance'
+            ? ({ ...constraint, ...updateAttributeBalanceConstraintReference(constraint, attributeDefinitions) } as Constraint)
+            : constraint,
+        ),
       };
 
       setScenario(updatedScenario);
@@ -159,6 +182,7 @@ export function useScenarioEditorConstraints({
         setConstraintForm({
           type: constraint.type,
           group_id: constraint.group_id,
+          attribute_id: constraint.attribute_id,
           attribute_key: constraint.attribute_key,
           desired_values: constraint.desired_values,
           penalty_weight: constraint.penalty_weight,
@@ -214,19 +238,22 @@ export function useScenarioEditorConstraints({
           };
           break;
 
-        case 'AttributeBalance':
-          if (!constraintForm.group_id || !constraintForm.attribute_key || !constraintForm.desired_values) {
+        case 'AttributeBalance': {
+          if (!constraintForm.group_id || !constraintForm.desired_values) {
             throw new Error('Please fill in all required fields for attribute balance');
           }
+          const definition = resolveConstraintAttribute();
           updatedConstraint = {
             type: 'AttributeBalance',
             group_id: constraintForm.group_id,
-            attribute_key: constraintForm.attribute_key,
+            attribute_id: definition.id,
+            attribute_key: definition.name,
             desired_values: constraintForm.desired_values,
             penalty_weight: constraintForm.penalty_weight || 50,
             sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined,
           };
           break;
+        }
 
         case 'ImmovablePeople': {
           if (!constraintForm.people?.length || !constraintForm.group_id) {
@@ -272,7 +299,11 @@ export function useScenarioEditorConstraints({
 
       const updatedScenario: Scenario = {
         ...scenario!,
-        constraints: updatedConstraints,
+        constraints: updatedConstraints.map((constraint) =>
+          constraint.type === 'AttributeBalance'
+            ? ({ ...constraint, ...updateAttributeBalanceConstraintReference(constraint, attributeDefinitions) } as Constraint)
+            : constraint,
+        ),
       };
 
       setScenario(updatedScenario);

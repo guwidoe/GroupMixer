@@ -1,5 +1,12 @@
 import { useState } from 'react';
 import type { AttributeDefinition, Group, GroupFormData, Person, PersonFormData, Scenario } from '../../../types';
+import {
+  applyNamedAttributeValuesToPerson,
+  buildPersonFormAttributes,
+  createAttributeDefinition,
+  getAttributeDefinitionName,
+  reconcileScenarioAttributeState,
+} from '../../../services/scenarioAttributes';
 import { generateUniquePersonId, getDefaultSolverSettings } from '../helpers';
 
 type NotificationPayload = {
@@ -10,8 +17,10 @@ type NotificationPayload = {
 
 interface UseScenarioEditorEntitiesArgs {
   scenario: Scenario | null;
+  attributeDefinitions: AttributeDefinition[];
   addAttributeDefinition: (definition: AttributeDefinition) => void;
-  removeAttributeDefinition: (key: string) => void;
+  removeAttributeDefinition: (keyOrId: string) => void;
+  setAttributeDefinitions: (definitions: AttributeDefinition[]) => void;
   addNotification: (notification: NotificationPayload) => void;
   setScenario: (scenario: Scenario) => void;
 }
@@ -64,8 +73,10 @@ function parseSessionSizes(
 
 export function useScenarioEditorEntities({
   scenario,
+  attributeDefinitions,
   addAttributeDefinition,
   removeAttributeDefinition,
+  setAttributeDefinitions,
   addNotification,
   setScenario,
 }: UseScenarioEditorEntitiesArgs) {
@@ -99,8 +110,14 @@ export function useScenarioEditorEntities({
     }
 
     const newPerson: Person = {
-      id: generateUniquePersonId(),
-      attributes: { ...personForm.attributes },
+      ...applyNamedAttributeValuesToPerson(
+        {
+          id: generateUniquePersonId(),
+          attributes: {},
+        },
+        personForm.attributes,
+        attributeDefinitions,
+      ),
       sessions: personForm.sessions.length > 0 ? personForm.sessions : undefined,
     };
 
@@ -126,7 +143,7 @@ export function useScenarioEditorEntities({
   const handleEditPerson = (person: Person) => {
     setEditingPerson(person);
     setPersonForm({
-      attributes: { ...person.attributes },
+      attributes: buildPersonFormAttributes(person, attributeDefinitions),
       sessions: person.sessions || [],
     });
     setShowPersonForm(true);
@@ -136,8 +153,7 @@ export function useScenarioEditorEntities({
     if (!editingPerson || !personForm.attributes.name?.trim()) return;
 
     const updatedPerson: Person = {
-      ...editingPerson,
-      attributes: { ...personForm.attributes },
+      ...applyNamedAttributeValuesToPerson(editingPerson, personForm.attributes, attributeDefinitions),
       sessions: personForm.sessions.length > 0 ? personForm.sessions : undefined,
     };
 
@@ -188,8 +204,9 @@ export function useScenarioEditorEntities({
         scenario?.people.map((person) =>
           person.id === personId
             ? {
-                ...person,
-                attributes: updates.attributes ? { ...person.attributes, ...updates.attributes } : person.attributes,
+                ...(updates.attributes
+                  ? applyNamedAttributeValuesToPerson(person, updates.attributes, attributeDefinitions)
+                  : person),
                 sessions: updates.sessions !== undefined ? updates.sessions : person.sessions,
               }
             : person,
@@ -373,10 +390,10 @@ export function useScenarioEditorEntities({
       return;
     }
 
-    const definition: AttributeDefinition = {
-      key: newAttribute.key,
-      values: newAttribute.values.filter((value) => value.trim()),
-    };
+    const definition = createAttributeDefinition(
+      newAttribute.key.trim(),
+      newAttribute.values.filter((value) => value.trim()),
+    );
 
     addAttributeDefinition(definition);
     setNewAttribute({ key: '', values: [''] });
@@ -385,14 +402,14 @@ export function useScenarioEditorEntities({
     addNotification({
       type: 'success',
       title: 'Attribute Added',
-      message: `Attribute "${definition.key}" has been added`,
+      message: `Attribute "${definition.name}" has been added`,
     });
   };
 
   const handleEditAttribute = (attribute: AttributeDefinition) => {
     setEditingAttribute(attribute);
     setNewAttribute({
-      key: attribute.key,
+      key: getAttributeDefinitionName(attribute),
       values: [...attribute.values],
     });
     setShowAttributeForm(true);
@@ -408,14 +425,19 @@ export function useScenarioEditorEntities({
       return;
     }
 
-    removeAttributeDefinition(editingAttribute.key);
+    const updatedDefinition = createAttributeDefinition(
+      newAttribute.key.trim(),
+      newAttribute.values.filter((value) => value.trim()),
+      editingAttribute.id,
+    );
 
-    const updatedDefinition: AttributeDefinition = {
-      key: newAttribute.key.trim(),
-      values: newAttribute.values.filter((value) => value.trim()),
-    };
-
-    addAttributeDefinition(updatedDefinition);
+    const nextDefinitions = attributeDefinitions.map((definition) =>
+      definition.id === editingAttribute.id ? updatedDefinition : definition,
+    );
+    setAttributeDefinitions(nextDefinitions);
+    if (scenario) {
+      setScenario(reconcileScenarioAttributeState(scenario, nextDefinitions));
+    }
 
     setNewAttribute({ key: '', values: [''] });
     setEditingAttribute(null);
@@ -424,7 +446,7 @@ export function useScenarioEditorEntities({
     addNotification({
       type: 'success',
       title: 'Attribute Updated',
-      message: `Attribute "${updatedDefinition.key}" has been updated`,
+      message: `Attribute "${updatedDefinition.name}" has been updated`,
     });
   };
 

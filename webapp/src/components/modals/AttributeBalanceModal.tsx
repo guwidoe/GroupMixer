@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import type { Constraint } from '../../types';
+import { findAttributeDefinition } from '../../services/scenarioAttributes';
 import { useAppStore } from '../../store';
 
 interface Props {
@@ -11,11 +12,12 @@ interface Props {
 
 interface FormState {
   group_id: string;
+  attribute_id?: string;
   attribute_key: string;
   desired_values: Record<string, number | null>;
   penalty_weight: number | null;
   sessions: number[];
-  mode: "exact" | "at_least";
+  mode: 'exact' | 'at_least';
 }
 
 export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
@@ -39,6 +41,7 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
     if (editing && initial?.type === 'AttributeBalance') {
       return {
         group_id: initial.group_id || '',
+        attribute_id: initial.attribute_id,
         attribute_key: initial.attribute_key || '',
         desired_values: initial.desired_values || {},
         penalty_weight: initial.penalty_weight || 10,
@@ -48,7 +51,8 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
     }
     return {
       group_id: scenario.groups?.[0]?.id || '',
-      attribute_key: attributeDefinitions?.[0]?.key || '',
+      attribute_id: attributeDefinitions?.[0]?.id,
+      attribute_key: attributeDefinitions?.[0]?.name || '',
       desired_values: {},
       penalty_weight: 10,
       sessions: [],
@@ -112,6 +116,7 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
     const newConstraint: Constraint = {
       type: 'AttributeBalance',
       group_id: formState.group_id,
+      attribute_id: formState.attribute_id,
       attribute_key: formState.attribute_key,
       desired_values: validDesiredValues,
       penalty_weight: formState.penalty_weight!,
@@ -122,7 +127,10 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
     onSave(newConstraint);
   };
 
-  const selectedAttribute = attributeDefinitions.find(a => a.key === formState.attribute_key);
+  const selectedAttribute = findAttributeDefinition(attributeDefinitions, {
+    id: formState.attribute_id,
+    name: formState.attribute_key,
+  });
 
   const toggleSession = (sessionIndex: number) => {
     setFormState(prev => ({
@@ -169,12 +177,20 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Attribute *</label>
             <select 
-              name="attribute_key" 
-              value={formState.attribute_key} 
-              onChange={e => setFormState(p => ({...p, attribute_key: e.target.value, desired_values: {}}))} 
+              name="attribute_id" 
+              value={formState.attribute_id || ''} 
+              onChange={e => {
+                const selectedDefinition = attributeDefinitions.find((definition) => definition.id === e.target.value);
+                setFormState(p => ({
+                  ...p,
+                  attribute_id: selectedDefinition?.id,
+                  attribute_key: selectedDefinition?.name || '',
+                  desired_values: {},
+                }));
+              }} 
               className="select w-full text-base py-3"
             >
-              {attributeDefinitions.map(a => (<option key={a.key} value={a.key}>{a.key}</option>))}
+              {attributeDefinitions.map(a => (<option key={a.id} value={a.id}>{a.name}</option>))}
             </select>
           </div>
 

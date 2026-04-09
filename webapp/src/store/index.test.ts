@@ -76,7 +76,7 @@ describe('useAppStore initialization', () => {
     });
 
     const state = useAppStore.getState();
-    expect(state.scenario).toEqual(scenario);
+    expect(state.scenario).toMatchObject(scenario);
     expect(state.solution).toEqual(solution);
     expect(state.currentScenarioId).toBeNull();
     expect(state.selectedResultIds).toEqual([]);

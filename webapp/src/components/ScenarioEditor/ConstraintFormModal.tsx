@@ -8,6 +8,7 @@ export interface ConstraintFormState {
   penalty_function?: 'linear' | 'squared';
   penalty_weight?: number;
   group_id?: string;
+  attribute_id?: string;
   attribute_key?: string;
   desired_values?: Record<string, number>;
   person_id?: string;
@@ -160,29 +161,33 @@ export function ConstraintFormModal({
                   Attribute to Balance *
                 </label>
                 <select
-                  value={constraintForm.attribute_key || ''}
-                  onChange={(e) => setConstraintForm(prev => ({
-                    ...prev,
-                    attribute_key: e.target.value,
-                    desired_values: {},
-                  }))}
+                  value={constraintForm.attribute_id || ''}
+                  onChange={(e) => {
+                    const selectedDefinition = attributeDefinitions.find((definition) => definition.id === e.target.value);
+                    setConstraintForm(prev => ({
+                      ...prev,
+                      attribute_id: selectedDefinition?.id,
+                      attribute_key: selectedDefinition?.name,
+                      desired_values: {},
+                    }));
+                  }}
                   className="select"
                 >
                   <option value="">Select an attribute</option>
                   {attributeDefinitions.map(def => (
-                    <option key={def.key} value={def.key}>{def.key}</option>
+                    <option key={def.id} value={def.id}>{def.name}</option>
                   ))}
                 </select>
               </div>
 
-              {constraintForm.attribute_key && (
+              {(constraintForm.attribute_id || constraintForm.attribute_key) && (
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
                     Desired Distribution *
                   </label>
                   <div className="space-y-2">
                     {attributeDefinitions
-                      .find(def => def.key === constraintForm.attribute_key)
+                      .find(def => def.id === constraintForm.attribute_id || def.name === constraintForm.attribute_key)
                       ?.values.map(value => (
                         <div key={value} className="flex items-center gap-2">
                           <span className="w-20 text-sm capitalize" style={{ color: 'var(--text-secondary)' }}>{value}:</span>

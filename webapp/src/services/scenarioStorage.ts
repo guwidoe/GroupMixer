@@ -8,7 +8,7 @@ import type {
   SolverSettings,
   Solution,
 } from "../types";
-import { migrateSavedScenario, reconcileScenarioAttributeDefinitions } from './scenarioAttributes';
+import { migrateSavedScenario, reconcileScenarioAttributeDefinitions, reconcileScenarioAttributeState } from './scenarioAttributes';
 
 export { compareScenarioConfigurations, type ScenarioConfigDifference } from "./scenarioStorage/compare";
 
@@ -45,8 +45,15 @@ function hashString(value: string): string {
   return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
+function normalizeScenarioForDraftIdentity(scenario: Scenario): Scenario {
+  return {
+    ...scenario,
+    people: scenario.people.map(({ attributeValues: _attributeValues, ...person }) => person),
+  };
+}
+
 export function buildScenarioDraftIdentityHash(name: string, scenario: Scenario): string {
-  return hashString(stableSerialize({ name, scenario }));
+  return hashString(stableSerialize({ name, scenario: normalizeScenarioForDraftIdentity(scenario) }));
 }
 
 export class ScenarioStorageService {
@@ -162,11 +169,12 @@ export class ScenarioStorageService {
     const allScenarios = this.getAllScenarios();
     const allScenarioIds = new Set(Object.keys(allScenarios));
     const id = this.generateGloballyUniqueId(allScenarioIds);
+    const resolvedAttributeDefinitions = reconcileScenarioAttributeDefinitions(scenario, attributeDefinitions);
     const savedScenario: SavedScenario = {
       id,
       name,
-      scenario,
-      attributeDefinitions: reconcileScenarioAttributeDefinitions(scenario, attributeDefinitions),
+      scenario: reconcileScenarioAttributeState(scenario, resolvedAttributeDefinitions),
+      attributeDefinitions: resolvedAttributeDefinitions,
       results: [],
       createdAt: now,
       updatedAt: now,
@@ -184,11 +192,11 @@ export class ScenarioStorageService {
       throw new Error(`Scenario with ID ${id} not found`);
     }
 
-    savedScenario.scenario = scenario;
     savedScenario.attributeDefinitions = reconcileScenarioAttributeDefinitions(
       scenario,
       attributeDefinitions ?? savedScenario.attributeDefinitions,
     );
+    savedScenario.scenario = reconcileScenarioAttributeState(scenario, savedScenario.attributeDefinitions);
     this.scheduleAutoSave(savedScenario);
   }
 
