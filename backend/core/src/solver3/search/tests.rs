@@ -13,7 +13,7 @@ use super::acceptance::{AcceptanceInputs, SimulatedAnnealingAcceptance};
 use super::candidate_sampling::CandidateSampler;
 use super::context::{SearchProgressState, SearchRunContext};
 use super::family_selection::MoveFamilySelector;
-use super::SearchEngine;
+use super::{engine::should_emit_progress_callback, SearchEngine};
 
 fn solver3_config() -> SolverConfiguration {
     SolverConfiguration {
@@ -190,4 +190,11 @@ fn search_engine_is_seed_stable_for_same_policy() {
     assert_eq!(left_result.final_score, right_result.final_score);
     assert_eq!(left_result.stop_reason, right_result.stop_reason);
     assert_eq!(left_result.schedule, right_result.schedule);
+}
+
+#[test]
+fn progress_callbacks_emit_on_first_iteration_and_after_interval() {
+    assert!(should_emit_progress_callback(0, 0.0));
+    assert!(!should_emit_progress_callback(1, 0.099));
+    assert!(should_emit_progress_callback(1, 0.1));
 }

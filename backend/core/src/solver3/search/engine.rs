@@ -34,6 +34,7 @@ const MEMETIC_BURST_STAGNATION_THRESHOLD: u64 = 25_000;
 const MEMETIC_TOTAL_DONOR_POLISH_SECONDS: u64 = 2;
 const MEMETIC_DONOR_COUNT: usize = 2;
 const MEMETIC_MIN_REMAINING_TIME_SECONDS: u64 = 4;
+const PROGRESS_CALLBACK_INTERVAL_SECONDS: f64 = 0.1;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn get_current_time() -> Instant {
@@ -120,6 +121,7 @@ impl SearchEngine {
         let mut stop_reason = StopReason::MaxIterationsReached;
         let mut final_progress_emitted = false;
         let mut memetic_burst_attempted = false;
+        let mut last_progress_callback_at = search_started_at;
 
         const TIME_REFRESH_INTERVAL: u64 = 64;
         let mut cached_elapsed_seconds: f64 = 0.0;
@@ -200,7 +202,8 @@ impl SearchEngine {
                 if acceptance.accepted {
                     let apply_started_at = get_current_time();
                     apply_previewed_move(&mut search.current_state, &preview)?;
-                    let apply_seconds = get_elapsed_seconds_between(apply_started_at, get_current_time());
+                    let apply_seconds =
+                        get_elapsed_seconds_between(apply_started_at, get_current_time());
                     search.record_accepted_move(
                         family,
                         apply_seconds,
@@ -228,26 +231,35 @@ impl SearchEngine {
             search.finish_iteration(iteration);
 
             if let Some(callback) = progress_callback {
-                let progress = search.to_progress_update(
-                    &run_context,
-                    iteration,
-                    temperature,
-                    cached_elapsed_seconds,
-                    None,
-                );
+                let current_time = get_current_time();
+                let elapsed_since_last_callback =
+                    get_elapsed_seconds_between(last_progress_callback_at, current_time);
 
-                if !(callback)(&progress) {
-                    stop_reason = StopReason::ProgressCallbackRequestedStop;
-                    let final_progress = search.to_progress_update(
+                if should_emit_progress_callback(iteration, elapsed_since_last_callback) {
+                    let callback_elapsed_seconds = get_elapsed_seconds(search_started_at);
+                    let progress = search.to_progress_update(
                         &run_context,
                         iteration,
                         temperature,
-                        cached_elapsed_seconds,
-                        Some(stop_reason),
+                        callback_elapsed_seconds,
+                        None,
                     );
-                    let _ = (callback)(&final_progress);
-                    final_progress_emitted = true;
-                    break;
+
+                    if !(callback)(&progress) {
+                        stop_reason = StopReason::ProgressCallbackRequestedStop;
+                        let final_progress = search.to_progress_update(
+                            &run_context,
+                            iteration,
+                            temperature,
+                            callback_elapsed_seconds,
+                            Some(stop_reason),
+                        );
+                        let _ = (callback)(&final_progress);
+                        final_progress_emitted = true;
+                        break;
+                    }
+
+                    last_progress_callback_at = current_time;
                 }
             }
 
@@ -423,6 +435,14 @@ fn apply_previewed_move(
 #[inline]
 fn time_limit_exceeded(elapsed_seconds: f64, time_limit_seconds: Option<u64>) -> bool {
     time_limit_seconds.is_some_and(|limit| elapsed_seconds >= limit as f64)
+}
+
+#[inline]
+pub(crate) fn should_emit_progress_callback(
+    iteration: u64,
+    elapsed_since_last_callback: f64,
+) -> bool {
+    iteration == 0 || elapsed_since_last_callback >= PROGRESS_CALLBACK_INTERVAL_SECONDS
 }
 
 #[inline]
