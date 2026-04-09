@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { ScenarioEditor } from './ScenarioEditor';
 import type { ScenarioEditorController } from './useScenarioEditorController';
@@ -214,7 +215,8 @@ function createController(overrides: Partial<ScenarioEditorController> = {}): Sc
 }
 
 describe('ScenarioEditor', () => {
-  it('renders the setup sidebar immediately while scenario data is still loading', () => {
+  it('renders the setup sidebar immediately before mounting the heavy controller', () => {
+    vi.useFakeTimers();
     mockUseScenarioEditorController.mockReturnValue(createController());
     mockUseDeferredScenarioSectionContent.mockReturnValue({
       isContentReady: true,
@@ -228,10 +230,24 @@ describe('ScenarioEditor', () => {
       summaryObjectiveCount: 0,
     });
 
-    render(<ScenarioEditor />);
+    render(
+      <MemoryRouter initialEntries={['/app/scenario/people']}>
+        <Routes>
+          <Route path="/app/scenario/:section" element={<ScenarioEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
 
     expect(screen.getByLabelText('Scenario Setup navigation')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent(/loading scenario setup/i);
+    expect(screen.getByRole('status')).toHaveTextContent(/loading people/i);
+    expect(mockUseScenarioEditorController).not.toHaveBeenCalled();
     expect(screen.queryByText('Forms')).not.toBeInTheDocument();
+
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(mockUseScenarioEditorController).toHaveBeenCalled();
+    vi.useRealTimers();
   });
 });
