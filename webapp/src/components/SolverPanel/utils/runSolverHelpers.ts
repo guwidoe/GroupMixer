@@ -109,15 +109,29 @@ export function createProgressCallback({
   setLiveVizState: (value: { schedule: Record<string, Record<string, string[]>>; progress: RuntimeProgressUpdate | null } | null) => void;
   liveVizLastUiUpdateRef: MutableRefObject<number>;
 }) {
+  let lastDisplayedElapsedMs = 0;
+  let lastUiTimestamp = 0;
+
   return (progress: RuntimeProgressUpdate): void => {
     if (solverCompletedRef.current || cancelledRef.current) {
       return;
     }
 
-    setSolverState(mapProgressToSolverState(progress));
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const solverElapsedMs = finiteNumber(progress.elapsed_seconds) * 1000;
+    const interpolatedElapsedMs = lastUiTimestamp > 0
+      ? lastDisplayedElapsedMs + Math.max(0, now - lastUiTimestamp)
+      : solverElapsedMs;
+    const displayElapsedMs = Math.max(solverElapsedMs, interpolatedElapsedMs);
+    lastDisplayedElapsedMs = displayElapsedMs;
+    lastUiTimestamp = now;
+
+    setSolverState({
+      ...mapProgressToSolverState(progress),
+      elapsedTime: displayElapsedMs,
+    });
 
     if (showLiveVizRef.current && progress.best_schedule) {
-      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
       if (now - liveVizLastUiUpdateRef.current > 200) {
         liveVizLastUiUpdateRef.current = now;
         setLiveVizState({

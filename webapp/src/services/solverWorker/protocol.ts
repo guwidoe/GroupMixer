@@ -1,5 +1,6 @@
 import type { WasmContractSolveInput, WasmRecommendSettingsRequest } from "../wasm/module";
 import type { ProgressUpdate, RustResult } from "../wasm/types";
+import type { WarmStartSchedule } from "../wasm/scenarioContract";
 
 export type SolverRpcMethod =
   | "capabilities"
@@ -97,6 +98,14 @@ export interface ProgressMessage {
   };
 }
 
+export interface BestScheduleMessage {
+  type: "BEST_SCHEDULE";
+  id: string;
+  data: {
+    schedule: WarmStartSchedule;
+  };
+}
+
 export interface SolveSuccessMessage {
   type: "SOLVE_SUCCESS";
   id: string;
@@ -191,6 +200,17 @@ export function createProgressMessage(
   };
 }
 
+export function createBestScheduleMessage(
+  id: string,
+  schedule: WarmStartSchedule,
+): BestScheduleMessage {
+  return {
+    type: "BEST_SCHEDULE",
+    id,
+    data: { schedule },
+  };
+}
+
 export function createSolveSuccessMessage(
   id: string,
   result: RustResult,
@@ -236,6 +256,7 @@ export function createFatalErrorMessage(data: WorkerErrorData): FatalErrorMessag
 export type WorkerResponseMessage =
   | InitSuccessMessage
   | ProgressMessage
+  | BestScheduleMessage
   | SolveSuccessMessage
   | CancelledMessage
   | RequestErrorMessage

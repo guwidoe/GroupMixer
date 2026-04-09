@@ -37,8 +37,13 @@ describe("solverWorker runtime", () => {
         callback?.({ iteration: 1, best_score: 3 });
         return { schedule: {}, final_score: 1, input };
       }),
-      solve_with_progress_snapshot: vi.fn((input: Record<string, unknown>, callback?: ((progress: Record<string, unknown>) => boolean) | null) => {
+      solve_with_progress_snapshot: vi.fn((
+        input: Record<string, unknown>,
+        callback?: ((progress: Record<string, unknown>) => boolean) | null,
+        bestScheduleCallback?: ((schedule: Record<string, unknown>) => void) | null,
+      ) => {
         callback?.({ iteration: 1, best_score: 3 });
+        bestScheduleCallback?.({ session_0: { g1: ["p1", "p2"] } });
         return { schedule: {}, final_score: 1, input };
       }),
       validate_scenario: vi.fn((input: Record<string, unknown>) => ({ valid: true, issues: [], input })),
@@ -179,6 +184,11 @@ describe("solverWorker runtime", () => {
 
     expect(wasmModule.solve_with_progress_snapshot).toHaveBeenCalledTimes(1);
     expect(postedMessages).toEqual([
+      {
+        type: "BEST_SCHEDULE",
+        id: "2",
+        data: { schedule: { session_0: { g1: ["p1", "p2"] } } },
+      },
       {
         type: "SOLVE_SUCCESS",
         id: "2",

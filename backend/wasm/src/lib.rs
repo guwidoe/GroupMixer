@@ -89,9 +89,14 @@ pub fn solve_with_progress(
 pub fn solve_with_progress_snapshot(
     input: JsValue,
     progress_callback: Option<js_sys::Function>,
+    best_schedule_callback: Option<js_sys::Function>,
 ) -> Result<JsValue, JsValue> {
     init_panic_hook();
-    contract_runtime::solve_with_progress_snapshot_js(input, progress_callback)
+    contract_runtime::solve_with_progress_snapshot_js(
+        input,
+        progress_callback,
+        best_schedule_callback,
+    )
 }
 
 #[wasm_bindgen]
@@ -309,7 +314,7 @@ mod tests {
             .unchecked_ref::<js_sys::Function>()
             .clone();
         let result_value =
-            solve_with_progress_snapshot(valid_input_js(), Some(function)).unwrap();
+            solve_with_progress_snapshot(valid_input_js(), Some(function), None).unwrap();
         let result: serde_json::Value = serde_wasm_bindgen::from_value(result_value).unwrap();
 
         assert!(*calls.borrow() >= 1);
@@ -319,6 +324,39 @@ mod tests {
                 && payload.get("move_policy").is_none()
         }));
         assert!(result.get("schedule").is_some());
+    }
+
+    #[wasm_bindgen_test]
+    fn solve_with_progress_snapshot_can_emit_best_schedule_separately() {
+        let schedules = Rc::new(RefCell::new(Vec::<serde_json::Value>::new()));
+        let schedules_clone = Rc::clone(&schedules);
+        let progress_callback = Closure::wrap(Box::new(move |_progress: JsValue| -> JsValue {
+            JsValue::from_bool(false)
+        }) as Box<dyn FnMut(JsValue) -> JsValue>);
+        let best_schedule_callback = Closure::wrap(Box::new(move |schedule: JsValue| {
+            schedules_clone
+                .borrow_mut()
+                .push(serde_wasm_bindgen::from_value(schedule).unwrap());
+        }) as Box<dyn FnMut(JsValue)>);
+
+        let progress_function: js_sys::Function = progress_callback
+            .as_ref()
+            .unchecked_ref::<js_sys::Function>()
+            .clone();
+        let best_schedule_function: js_sys::Function = best_schedule_callback
+            .as_ref()
+            .unchecked_ref::<js_sys::Function>()
+            .clone();
+
+        solve_with_progress_snapshot(
+            valid_input_js(),
+            Some(progress_function),
+            Some(best_schedule_function),
+        )
+        .unwrap();
+
+        assert!(!schedules.borrow().is_empty());
+        assert!(schedules.borrow().iter().all(|schedule| schedule.get("session_0").is_some()));
     }
 
     #[wasm_bindgen_test]

@@ -250,6 +250,12 @@ describe("SolverWorkerService", () => {
     await vi.advanceTimersByTimeAsync(60);
 
     worker.emit({
+      type: "BEST_SCHEDULE",
+      id: "2",
+      data: { schedule: { session_0: { g1: ["p1", "p2"] } } },
+    });
+
+    worker.emit({
       type: "SOLVE_SUCCESS",
       id: "2",
       data: { result: { schedule: {}, final_score: 9 }, lastProgress: progress },
@@ -258,9 +264,20 @@ describe("SolverWorkerService", () => {
     const result = await solvePromise;
 
     expect(callback).toHaveBeenCalledWith(progress);
-    expect(result.lastProgress).toEqual(progress);
-    expect(parseRustSolutionResult).toHaveBeenCalledWith({ schedule: {}, final_score: 9 }, progress, progress);
-    expect(service.getLastProgressUpdate()).toEqual(progress);
+    expect(callback).toHaveBeenCalledWith(
+      expect.objectContaining({ best_schedule: { session_0: { g1: ["p1", "p2"] } } }),
+    );
+    expect(result.lastProgress).toEqual(
+      expect.objectContaining({ best_schedule: { session_0: { g1: ["p1", "p2"] } } }),
+    );
+    expect(parseRustSolutionResult).toHaveBeenCalledWith(
+      { schedule: {}, final_score: 9 },
+      expect.objectContaining({ best_schedule: { session_0: { g1: ["p1", "p2"] } } }),
+      expect.objectContaining({ best_schedule: { session_0: { g1: ["p1", "p2"] } } }),
+    );
+    expect(service.getLastProgressUpdate()).toEqual(
+      expect.objectContaining({ best_schedule: { session_0: { g1: ["p1", "p2"] } } }),
+    );
   });
 
   it("uses the warm-start payload builder for warm-start solves", async () => {

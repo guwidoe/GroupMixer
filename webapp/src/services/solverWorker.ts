@@ -1,5 +1,6 @@
 import type { Scenario, Solution, SolverSettings } from "../types";
 import type { ProgressUpdate, ProgressCallback } from "./wasm/types";
+import type { WarmStartSchedule } from "./wasm/scenarioContract";
 import {
   createProgressMailboxBuffer,
   createProgressMailboxReader,
@@ -59,6 +60,7 @@ type PendingMessage =
       progressPollTimer?: ReturnType<typeof setInterval> | null;
       lastProgress?: ProgressUpdate | null;
       lastSequence?: number;
+      latestBestSchedule?: WarmStartSchedule | null;
     };
 
 interface SolverWorkerServiceDeps {
@@ -126,6 +128,9 @@ export class SolverWorkerService {
 
     pending.lastSequence = readResult.sequence;
     const progress = mailboxSnapshotToProgressUpdate(readResult.snapshot);
+    if (pending.latestBestSchedule) {
+      progress.best_schedule = pending.latestBestSchedule;
+    }
     pending.lastProgress = progress;
     this.lastProgressUpdate = progress;
 
@@ -226,11 +231,33 @@ export class SolverWorkerService {
           if (pending?.kind === "solve" && pending.progressCallback) {
             try {
               const progress = message.data.progress;
+              if (pending.latestBestSchedule) {
+                progress.best_schedule = pending.latestBestSchedule;
+              }
               pending.progressCallback(progress);
               pending.lastProgress = progress;
               this.lastProgressUpdate = progress;
             } catch (error) {
               console.error("Failed to handle progress update:", error);
+            }
+          }
+          break;
+
+        case "BEST_SCHEDULE":
+          if (pending?.kind === "solve") {
+            pending.latestBestSchedule = message.data.schedule;
+            if (pending.lastProgress && pending.progressCallback) {
+              try {
+                const progress = {
+                  ...pending.lastProgress,
+                  best_schedule: message.data.schedule,
+                };
+                pending.lastProgress = progress;
+                this.lastProgressUpdate = progress;
+                pending.progressCallback(progress);
+              } catch (error) {
+                console.error("Failed to handle best schedule update:", error);
+              }
             }
           }
           break;
@@ -364,6 +391,7 @@ export class SolverWorkerService {
         progressCallback,
         progressPollTimer: null,
         lastProgress: null,
+        latestBestSchedule: null,
       };
 
       let progressMailbox: SharedArrayBuffer | undefined;

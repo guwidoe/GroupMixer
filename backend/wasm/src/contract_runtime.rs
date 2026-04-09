@@ -143,9 +143,14 @@ pub fn solve_with_progress_js(
 pub fn solve_with_progress_snapshot_js(
     input: JsValue,
     progress_callback: Option<js_sys::Function>,
+    best_schedule_callback: Option<js_sys::Function>,
 ) -> Result<JsValue, JsValue> {
     let request = parse_wasm_scenario_input(input, "solve", &["solve-request"])?;
-    let result = solve_with_progress_snapshot_contract(&request, progress_callback)
+    let result = solve_with_progress_snapshot_contract(
+        &request,
+        progress_callback,
+        best_schedule_callback,
+    )
         .map_err(|error| public_error_to_js_value(&error))?;
     serialize_output(&result, "solve")
 }
@@ -194,21 +199,28 @@ pub fn solve_with_progress_contract(
     request: &ApiInput,
     progress_callback: Option<js_sys::Function>,
 ) -> Result<SolverResult, PublicErrorEnvelope> {
-    solve_with_mapped_progress_contract(request, progress_callback, |progress| progress.clone())
+    solve_with_mapped_progress_contract(request, progress_callback, None, |progress| {
+        progress.clone()
+    })
 }
 
 pub fn solve_with_progress_snapshot_contract(
     request: &ApiInput,
     progress_callback: Option<js_sys::Function>,
+    best_schedule_callback: Option<js_sys::Function>,
 ) -> Result<SolverResult, PublicErrorEnvelope> {
-    solve_with_mapped_progress_contract(request, progress_callback, |progress| {
-        WasmProgressSnapshot::from(progress)
-    })
+    solve_with_mapped_progress_contract(
+        request,
+        progress_callback,
+        best_schedule_callback,
+        |progress| WasmProgressSnapshot::from(progress),
+    )
 }
 
 fn solve_with_mapped_progress_contract<T, F>(
     request: &ApiInput,
     progress_callback: Option<js_sys::Function>,
+    best_schedule_callback: Option<js_sys::Function>,
     map_progress: F,
 ) -> Result<SolverResult, PublicErrorEnvelope>
 where
@@ -229,6 +241,32 @@ where
                     return true;
                 }
             };
+
+            if let Some(best_schedule_callback) = &best_schedule_callback {
+                if let Some(best_schedule) = &progress.best_schedule {
+                    let schedule_value = match serde_wasm_bindgen::to_value(best_schedule) {
+                        Ok(value) => value,
+                        Err(error) => {
+                            web_sys::console::error_1(
+                                &format!(
+                                    "Failed to serialize best schedule update: {}",
+                                    error
+                                )
+                                .into(),
+                            );
+                            return true;
+                        }
+                    };
+
+                    if let Err(error) =
+                        best_schedule_callback.call1(&JsValue::NULL, &schedule_value)
+                    {
+                        web_sys::console::error_1(
+                            &format!("Best schedule callback error: {:?}", error).into(),
+                        );
+                    }
+                }
+            }
 
             match js_callback.call1(&JsValue::NULL, &progress_value) {
                 Ok(result) => result.as_bool().unwrap_or(true),

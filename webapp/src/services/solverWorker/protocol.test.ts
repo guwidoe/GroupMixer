@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createSampleScenario } from "../../test/fixtures";
 import {
   SOLVER_RPC_METHODS,
+  createBestScheduleMessage,
   createCancelRequestMessage,
   createFatalErrorMessage,
   createInitRequestMessage,
@@ -81,6 +82,11 @@ describe("solver worker protocol", () => {
       type: "PROGRESS",
       id: "5",
       data: { progress: { iteration: 1 } },
+    });
+    expect(createBestScheduleMessage("5a", { session_0: { g1: ["p1"] } })).toEqual({
+      type: "BEST_SCHEDULE",
+      id: "5a",
+      data: { schedule: { session_0: { g1: ["p1"] } } },
     });
     expect(createSolveSuccessMessage("6", { final_score: 1 } as never, { iteration: 2 } as never)).toEqual({
       type: "SOLVE_SUCCESS",

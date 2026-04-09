@@ -5,6 +5,7 @@ import wasmInit, * as wasmModule from "../services/wasm/runtimeModule";
 import { createProgressMailboxWriter } from "../services/runtime/progressMailbox";
 import type { WasmContractModule, WasmProgressSnapshot } from "../services/wasm/module";
 import {
+  createBestScheduleMessage,
   createFatalErrorMessage,
   createRequestErrorMessage,
   createRpcSuccessMessage,
@@ -20,6 +21,7 @@ import type {
   WasmContractSolveInput,
   WasmRecommendSettingsRequest,
 } from "../services/wasm/module";
+import type { WarmStartSchedule } from "../services/wasm/scenarioContract";
 
 type WorkerConsole = Pick<Console, "warn" | "error">;
 
@@ -254,6 +256,9 @@ export function createSolverWorkerRuntime({
                   (progress: WasmProgressSnapshot): boolean => {
                     mailboxWriter?.writeProgress(progress);
                     return true;
+                  },
+                  (schedule: WarmStartSchedule): void => {
+                    postMessage(createBestScheduleMessage(id, schedule));
                   },
                 ) as RustResult)
               : (wasm.solve_with_progress!(scenarioPayload, undefined) as RustResult);

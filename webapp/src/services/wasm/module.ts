@@ -236,6 +236,7 @@ export interface WasmContractModule {
   solve_with_progress_snapshot?: (
     input: WasmContractSolveInput,
     progressCallback?: ((progress: WasmProgressSnapshot) => boolean) | null,
+    bestScheduleCallback?: ((schedule: WarmStartSchedule) => void) | null,
   ) => RustResult;
   validate_scenario: (input: WasmContractSolveInput) => WasmValidateResponse;
   get_default_solver_configuration: () => SolverSettings;
