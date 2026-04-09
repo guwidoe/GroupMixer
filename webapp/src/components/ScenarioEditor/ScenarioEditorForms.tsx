@@ -1,6 +1,6 @@
 import React from 'react';
 import type { AttributeDefinition, Group, GroupFormData, Person, PersonFormData } from '../../types';
-import { BulkAddGroupsForm, BulkAddPeopleForm, BulkUpdatePeopleForm } from './bulk';
+import { BulkAddGroupsForm, BulkAddPeopleForm } from './bulk';
 import { AttributeForm, GroupForm, PersonForm } from './forms';
 
 interface PersonFormConfig {
@@ -53,21 +53,6 @@ interface BulkAddPeopleFormConfig {
   onCloseBulkPeople: () => void;
 }
 
-interface BulkUpdatePeopleFormConfig {
-  showBulkUpdateForm: boolean;
-  bulkUpdateTextMode: 'text' | 'grid';
-  setBulkUpdateTextMode: React.Dispatch<React.SetStateAction<'text' | 'grid'>>;
-  bulkUpdateCsvInput: string;
-  setBulkUpdateCsvInput: React.Dispatch<React.SetStateAction<string>>;
-  bulkUpdateHeaders: string[];
-  setBulkUpdateHeaders: React.Dispatch<React.SetStateAction<string[]>>;
-  bulkUpdateRows: Record<string, string>[];
-  setBulkUpdateRows: React.Dispatch<React.SetStateAction<Record<string, string>[]>>;
-  onRefreshBulkUpdate: () => void;
-  onApplyBulkUpdate: () => void;
-  onCloseBulkUpdate: () => void;
-}
-
 interface BulkAddGroupsFormConfig {
   showGroupBulkForm: boolean;
   groupBulkTextMode: 'text' | 'grid';
@@ -87,7 +72,6 @@ interface ScenarioEditorFormsProps {
   group: GroupFormConfig;
   attribute: AttributeFormConfig;
   bulkAddPeople: BulkAddPeopleFormConfig;
-  bulkUpdatePeople: BulkUpdatePeopleFormConfig;
   bulkAddGroups: BulkAddGroupsFormConfig;
   csvFileInputRef: React.RefObject<HTMLInputElement>;
   onCsvFileSelected: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -100,7 +84,6 @@ export function ScenarioEditorForms({
   group,
   attribute,
   bulkAddPeople,
-  bulkUpdatePeople,
   bulkAddGroups,
   csvFileInputRef,
   onCsvFileSelected,
@@ -162,22 +145,6 @@ export function ScenarioEditorForms({
           setBulkRows={bulkAddPeople.setBulkRows}
           onSave={bulkAddPeople.onSaveBulkPeople}
           onClose={bulkAddPeople.onCloseBulkPeople}
-        />
-      )}
-
-      {bulkUpdatePeople.showBulkUpdateForm && (
-        <BulkUpdatePeopleForm
-          bulkUpdateTextMode={bulkUpdatePeople.bulkUpdateTextMode}
-          setBulkUpdateTextMode={bulkUpdatePeople.setBulkUpdateTextMode}
-          bulkUpdateCsvInput={bulkUpdatePeople.bulkUpdateCsvInput}
-          setBulkUpdateCsvInput={bulkUpdatePeople.setBulkUpdateCsvInput}
-          bulkUpdateHeaders={bulkUpdatePeople.bulkUpdateHeaders}
-          setBulkUpdateHeaders={bulkUpdatePeople.setBulkUpdateHeaders}
-          bulkUpdateRows={bulkUpdatePeople.bulkUpdateRows}
-          setBulkUpdateRows={bulkUpdatePeople.setBulkUpdateRows}
-          onRefreshFromCurrent={bulkUpdatePeople.onRefreshBulkUpdate}
-          onApply={bulkUpdatePeople.onApplyBulkUpdate}
-          onClose={bulkUpdatePeople.onCloseBulkUpdate}
         />
       )}
 

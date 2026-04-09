@@ -17,6 +17,23 @@ function createLargeScenario(peopleCount: number): Scenario {
   });
 }
 
+function createBulkUpdateProps() {
+  return {
+    bulkUpdateActive: false,
+    bulkUpdateTextMode: 'grid' as const,
+    setBulkUpdateTextMode: vi.fn(),
+    bulkUpdateCsvInput: '',
+    setBulkUpdateCsvInput: vi.fn(),
+    bulkUpdateHeaders: ['id', 'name'],
+    setBulkUpdateHeaders: vi.fn(),
+    bulkUpdateRows: [],
+    setBulkUpdateRows: vi.fn(),
+    onRefreshBulkUpdate: vi.fn(),
+    onApplyBulkUpdate: vi.fn(),
+    onCloseBulkUpdate: vi.fn(),
+  };
+}
+
 describe('PeopleDirectory', () => {
   it('shows the shell immediately and progressively reveals large people lists', () => {
     vi.useFakeTimers();
@@ -33,6 +50,7 @@ describe('PeopleDirectory', () => {
           onInlineUpdatePerson={vi.fn()}
           onOpenBulkAddForm={vi.fn()}
           onOpenBulkUpdateForm={vi.fn()}
+          {...createBulkUpdateProps()}
           onTriggerCsvUpload={vi.fn()}
           onTriggerExcelImport={vi.fn()}
         />,
@@ -78,6 +96,7 @@ describe('PeopleDirectory', () => {
         onInlineUpdatePerson={onInlineUpdatePerson}
         onOpenBulkAddForm={vi.fn()}
         onOpenBulkUpdateForm={vi.fn()}
+        {...createBulkUpdateProps()}
         onTriggerCsvUpload={vi.fn()}
         onTriggerExcelImport={vi.fn()}
       />,
@@ -128,6 +147,7 @@ describe('PeopleDirectory', () => {
         onInlineUpdatePerson={vi.fn()}
         onOpenBulkAddForm={vi.fn()}
         onOpenBulkUpdateForm={vi.fn()}
+        {...createBulkUpdateProps()}
         onTriggerCsvUpload={vi.fn()}
         onTriggerExcelImport={vi.fn()}
       />,
@@ -139,5 +159,31 @@ describe('PeopleDirectory', () => {
     expect(screen.getByRole('columnheader', { name: /department/i })).toBeInTheDocument();
     expect(screen.getAllByText('female').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Engineering').length).toBeGreaterThan(0);
+  });
+
+  it('renders the inline bulk edit workspace instead of the old modal flow', () => {
+    render(
+      <PeopleDirectory
+        scenario={createSampleScenario({ settings: createSampleSolverSettings() })}
+        attributeDefinitions={[]}
+        sessionsCount={3}
+        onAddPerson={vi.fn()}
+        onEditPerson={vi.fn()}
+        onDeletePerson={vi.fn()}
+        onInlineUpdatePerson={vi.fn()}
+        onOpenBulkAddForm={vi.fn()}
+        onOpenBulkUpdateForm={vi.fn()}
+        {...createBulkUpdateProps()}
+        bulkUpdateActive
+        bulkUpdateHeaders={['id', 'name']}
+        bulkUpdateRows={[{ id: 'p1', name: 'Alex' }]}
+        onTriggerCsvUpload={vi.fn()}
+        onTriggerExcelImport={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('heading', { name: /bulk edit people/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /apply changes/i })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /edit name for bulk row 1/i })).toHaveValue('Alex');
   });
 });

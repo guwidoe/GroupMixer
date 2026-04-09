@@ -51,6 +51,9 @@ interface ScenarioDataGridProps<T> {
   emptyState?: React.ReactNode;
   searchPlaceholder?: string;
   showGlobalSearch?: boolean;
+  showCsvExport?: boolean;
+  showEditToggle?: boolean;
+  defaultEditMode?: boolean;
   searchSummary?: (args: { filteredCount: number; totalCount: number; query: string }) => React.ReactNode;
   toolbarActions?: React.ReactNode;
   maxHeight?: string;
@@ -772,6 +775,9 @@ export function ScenarioDataGrid<T>({
   emptyState,
   searchPlaceholder = 'Search table…',
   showGlobalSearch = true,
+  showCsvExport = true,
+  showEditToggle = true,
+  defaultEditMode = false,
   searchSummary,
   toolbarActions,
   maxHeight = 'min(70vh, calc(100vh - 18rem))',
@@ -789,7 +795,7 @@ export function ScenarioDataGrid<T>({
   const [globalFilter, setGlobalFilter] = React.useState('');
   const [openFilterId, setOpenFilterId] = React.useState<string | null>(null);
   const [isColumnsMenuOpen, setIsColumnsMenuOpen] = React.useState(false);
-  const [isEditMode, setIsEditMode] = React.useState(false);
+  const [isEditMode, setIsEditMode] = React.useState(defaultEditMode);
   const [isCsvPreviewOpen, setIsCsvPreviewOpen] = React.useState(false);
   const [scrollMetrics, setScrollMetrics] = React.useState({ scrollWidth: 0, clientWidth: 0 });
   const topScrollRef = React.useRef<HTMLDivElement>(null);
@@ -1112,7 +1118,7 @@ export function ScenarioDataGrid<T>({
 
         <div className="flex flex-wrap items-center gap-2">
           {toolbarActions}
-          {csvColumns.length > 0 && table.getRowModel().rows.length > 0 ? (
+          {showCsvExport && csvColumns.length > 0 && table.getRowModel().rows.length > 0 ? (
             <Button
               variant="secondary"
               size="sm"
@@ -1122,7 +1128,7 @@ export function ScenarioDataGrid<T>({
               CSV
             </Button>
           ) : null}
-          {hasEditableColumns ? (
+          {showEditToggle && hasEditableColumns ? (
             <Button
               variant={isEditMode ? 'primary' : 'secondary'}
               size="sm"

@@ -8,6 +8,7 @@ import { SetupSearchField } from '../../shared/SetupSearchField';
 import { SetupItemActions } from '../../shared/cards';
 import { ScenarioDataGrid } from '../../shared/grid/ScenarioDataGrid';
 import { SetupPersonName, resolvePersonDisplay } from '../../shared/personDisplay';
+import { PeopleBulkEditWorkspace } from './PeopleBulkEditWorkspace';
 import { PeopleGrid } from './PeopleGrid';
 import { sortPeople } from './peopleUtils';
 import type { SetupCollectionViewMode } from '../../shared/useSetupCollectionViewMode';
@@ -46,6 +47,18 @@ interface PeopleDirectoryProps {
   onInlineUpdatePerson: (personId: string, updates: { attributes?: Record<string, string>; sessions?: number[] | undefined }) => void;
   onOpenBulkAddForm: () => void;
   onOpenBulkUpdateForm: () => void;
+  bulkUpdateActive: boolean;
+  bulkUpdateTextMode: 'text' | 'grid';
+  setBulkUpdateTextMode: React.Dispatch<React.SetStateAction<'text' | 'grid'>>;
+  bulkUpdateCsvInput: string;
+  setBulkUpdateCsvInput: React.Dispatch<React.SetStateAction<string>>;
+  bulkUpdateHeaders: string[];
+  setBulkUpdateHeaders: React.Dispatch<React.SetStateAction<string[]>>;
+  bulkUpdateRows: Record<string, string>[];
+  setBulkUpdateRows: React.Dispatch<React.SetStateAction<Record<string, string>[]>>;
+  onRefreshBulkUpdate: () => void;
+  onApplyBulkUpdate: () => void;
+  onCloseBulkUpdate: () => void;
   onTriggerCsvUpload: () => void;
   onTriggerExcelImport: () => void;
 }
@@ -82,7 +95,8 @@ function PeopleBulkActions({
           onSelect: onOpenBulkAddForm,
         },
         {
-          label: 'Bulk update people',
+          label: 'Bulk edit people',
+          description: 'Open the inline grid and CSV workspace',
           icon: <Table className="h-4 w-4" />,
           onSelect: onOpenBulkUpdateForm,
         },
@@ -101,6 +115,18 @@ export function PeopleDirectory({
   onInlineUpdatePerson,
   onOpenBulkAddForm,
   onOpenBulkUpdateForm,
+  bulkUpdateActive,
+  bulkUpdateTextMode,
+  setBulkUpdateTextMode,
+  bulkUpdateCsvInput,
+  setBulkUpdateCsvInput,
+  bulkUpdateHeaders,
+  setBulkUpdateHeaders,
+  bulkUpdateRows,
+  setBulkUpdateRows,
+  onRefreshBulkUpdate,
+  onApplyBulkUpdate,
+  onCloseBulkUpdate,
   onTriggerCsvUpload,
   onTriggerExcelImport,
 }: PeopleDirectoryProps) {
@@ -217,6 +243,24 @@ export function PeopleDirectory({
       Browse the people directory as cards or switch to the data grid for sorting, column control, and scanning.
     </div>
   );
+
+  if (bulkUpdateActive) {
+    return (
+      <PeopleBulkEditWorkspace
+        textMode={bulkUpdateTextMode}
+        setTextMode={setBulkUpdateTextMode}
+        csvInput={bulkUpdateCsvInput}
+        setCsvInput={setBulkUpdateCsvInput}
+        headers={bulkUpdateHeaders}
+        setHeaders={setBulkUpdateHeaders}
+        rows={bulkUpdateRows}
+        setRows={setBulkUpdateRows}
+        onRefreshFromCurrent={onRefreshBulkUpdate}
+        onApply={onApplyBulkUpdate}
+        onClose={onCloseBulkUpdate}
+      />
+    );
+  }
 
   return (
     <SetupCollectionPage

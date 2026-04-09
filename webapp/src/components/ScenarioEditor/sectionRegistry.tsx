@@ -26,6 +26,18 @@ export const scenarioSetupSectionRegistry: Record<ScenarioSetupSectionId, Scenar
       onInlineUpdatePerson={controller.entities.handleInlineUpdatePerson}
       onOpenBulkAddForm={controller.bulk.addPeople.openForm}
       onOpenBulkUpdateForm={controller.bulk.updatePeople.openForm}
+      bulkUpdateActive={controller.bulk.updatePeople.showForm}
+      bulkUpdateTextMode={controller.bulk.updatePeople.textMode}
+      setBulkUpdateTextMode={controller.bulk.updatePeople.setTextMode}
+      bulkUpdateCsvInput={controller.bulk.updatePeople.csvInput}
+      setBulkUpdateCsvInput={controller.bulk.updatePeople.setCsvInput}
+      bulkUpdateHeaders={controller.bulk.updatePeople.headers}
+      setBulkUpdateHeaders={controller.bulk.updatePeople.setHeaders}
+      bulkUpdateRows={controller.bulk.updatePeople.rows}
+      setBulkUpdateRows={controller.bulk.updatePeople.setRows}
+      onRefreshBulkUpdate={controller.bulk.updatePeople.refreshFromCurrent}
+      onApplyBulkUpdate={controller.bulk.updatePeople.apply}
+      onCloseBulkUpdate={() => controller.bulk.updatePeople.setShowForm(false)}
       onTriggerCsvUpload={() => controller.bulk.addPeople.csvFileInputRef.current?.click()}
       onTriggerExcelImport={() =>
         controller.addNotification({

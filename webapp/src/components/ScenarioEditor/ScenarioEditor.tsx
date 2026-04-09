@@ -147,20 +147,6 @@ function ScenarioEditorLoaded() {
             onSaveBulkPeople: controller.bulk.addPeople.save,
             onCloseBulkPeople: () => controller.bulk.addPeople.setShowForm(false),
           }}
-          bulkUpdatePeople={{
-            showBulkUpdateForm: controller.bulk.updatePeople.showForm,
-            bulkUpdateTextMode: controller.bulk.updatePeople.textMode,
-            setBulkUpdateTextMode: controller.bulk.updatePeople.setTextMode,
-            bulkUpdateCsvInput: controller.bulk.updatePeople.csvInput,
-            setBulkUpdateCsvInput: controller.bulk.updatePeople.setCsvInput,
-            bulkUpdateHeaders: controller.bulk.updatePeople.headers,
-            setBulkUpdateHeaders: controller.bulk.updatePeople.setHeaders,
-            bulkUpdateRows: controller.bulk.updatePeople.rows,
-            setBulkUpdateRows: controller.bulk.updatePeople.setRows,
-            onRefreshBulkUpdate: controller.bulk.updatePeople.refreshFromCurrent,
-            onApplyBulkUpdate: controller.bulk.updatePeople.apply,
-            onCloseBulkUpdate: () => controller.bulk.updatePeople.setShowForm(false),
-          }}
           bulkAddGroups={{
             showGroupBulkForm: controller.bulk.addGroups.showForm,
             groupBulkTextMode: controller.bulk.addGroups.textMode,
