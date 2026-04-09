@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import type { AttributeDefinition, Person, Scenario } from '../../../types';
+import { applyNamedAttributeValuesToPerson, reconcileScenarioAttributeState } from '../../../services/scenarioAttributes';
 import { generateUniquePersonId, parseCsv } from '../helpers';
 import type { ScenarioEditorBulkNotification } from './scenarioEditorBulkNotifications';
 import { applyAttributeDefinitionUpdates, buildScenarioWithPeople } from './scenarioEditorBulkUtils';
@@ -9,6 +10,7 @@ interface UseScenarioEditorBulkAddPeopleArgs {
   attributeDefinitions: AttributeDefinition[];
   addAttributeDefinition: (definition: AttributeDefinition) => void;
   removeAttributeDefinition: (key: string) => void;
+  setAttributeDefinitions: (definitions: AttributeDefinition[]) => void;
   addNotification: (notification: ScenarioEditorBulkNotification) => void;
   setScenario: (scenario: Scenario) => void;
 }
@@ -16,8 +18,7 @@ interface UseScenarioEditorBulkAddPeopleArgs {
 export function useScenarioEditorBulkAddPeople({
   scenario,
   attributeDefinitions,
-  addAttributeDefinition,
-  removeAttributeDefinition,
+  setAttributeDefinitions,
   addNotification,
   setScenario,
 }: UseScenarioEditorBulkAddPeopleArgs) {
@@ -86,11 +87,15 @@ export function useScenarioEditorBulkAddPeople({
         attributes.name = `Person ${Date.now()}`;
       }
 
-      return {
-        id: generateUniquePersonId(),
+      return applyNamedAttributeValuesToPerson(
+        {
+          id: generateUniquePersonId(),
+          attributes: {},
+          sessions: undefined,
+        },
         attributes,
-        sessions: undefined,
-      };
+        attributeDefinitions,
+      );
     });
 
     const valueSets: Record<string, Set<string>> = {};
@@ -108,14 +113,18 @@ export function useScenarioEditorBulkAddPeople({
       });
     });
 
-    applyAttributeDefinitionUpdates({
+    const nextDefinitions = applyAttributeDefinitionUpdates({
       attributeDefinitions,
-      addAttributeDefinition,
-      removeAttributeDefinition,
+      setAttributeDefinitions,
       valueSets,
     });
 
-    setScenario(buildScenarioWithPeople(scenario, [...(scenario?.people || []), ...newPeople]));
+    setScenario(
+      reconcileScenarioAttributeState(
+        buildScenarioWithPeople(scenario, [...(scenario?.people || []), ...newPeople]),
+        nextDefinitions,
+      ),
+    );
     setShowForm(false);
     setCsvInput('');
     setHeaders([]);

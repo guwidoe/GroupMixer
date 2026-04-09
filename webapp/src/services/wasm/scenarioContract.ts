@@ -9,6 +9,7 @@ import type {
   Scenario,
   SolverSettings,
 } from '../../types';
+import { reconcileScenarioAttributeDefinitions, reconcileScenarioAttributeState } from '../scenarioAttributes';
 import { normalizeSolverFamilyId } from '../solverCatalog';
 
 export type WarmStartSchedule = Record<string, Record<string, string[]>>;
@@ -31,7 +32,7 @@ function cloneOptionalNumberArray(values?: number[]): number[] | undefined {
 function clonePeople(people: Person[]): Person[] {
   return people.map((person) => {
     const clonedPerson: Person = {
-      ...person,
+      id: person.id,
       attributes: { ...person.attributes },
     };
 
@@ -158,8 +159,9 @@ function normalizeConstraintForWasm(constraint: Constraint, allSessions: number[
         penalty_weight: constraint.penalty_weight ?? 1,
       };
     case 'AttributeBalance': {
+      const { attribute_id: _attributeId, ...restConstraint } = constraint as AttributeBalanceParams & { attribute_id?: string };
       const normalized: Constraint = {
-        ...constraint,
+        ...restConstraint,
         desired_values: { ...(constraint as AttributeBalanceParams).desired_values },
         penalty_weight: constraint.penalty_weight ?? 50,
       };
@@ -229,16 +231,18 @@ function normalizeConstraintForWasm(constraint: Constraint, allSessions: number[
  */
 export function normalizeScenarioForWasm(scenario: Scenario): Scenario {
   const allSessions = Array.from({ length: scenario.num_sessions }, (_, i) => i);
+  const attributeDefinitions = reconcileScenarioAttributeDefinitions(scenario);
+  const relationalScenario = reconcileScenarioAttributeState(scenario, attributeDefinitions);
 
   return {
-    ...scenario,
-    people: clonePeople(scenario.people),
-    groups: cloneGroups(scenario.groups),
-    objectives: normalizeObjectivesForWasm(scenario.objectives),
-    constraints: (scenario.constraints || []).map((constraint) =>
+    ...relationalScenario,
+    people: clonePeople(relationalScenario.people),
+    groups: cloneGroups(relationalScenario.groups),
+    objectives: normalizeObjectivesForWasm(relationalScenario.objectives),
+    constraints: (relationalScenario.constraints || []).map((constraint) =>
       normalizeConstraintForWasm(constraint, allSessions),
     ),
-    settings: normalizeSolverSettingsForWasm(scenario.settings),
+    settings: normalizeSolverSettingsForWasm(relationalScenario.settings),
   };
 }
 

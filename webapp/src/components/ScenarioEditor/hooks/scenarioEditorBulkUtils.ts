@@ -1,36 +1,45 @@
 import type { AttributeDefinition, Scenario, Group, Person } from '../../../types';
+import {
+  createAttributeDefinition,
+  findAttributeDefinitionByName,
+  getAttributeDefinitionName,
+  getPersonAttributeValue,
+} from '../../../services/scenarioAttributes';
 import { getDefaultSolverSettings } from '../helpers';
 
 export type CsvGridRow = Record<string, string>;
 
 interface ApplyAttributeDefinitionUpdatesArgs {
   attributeDefinitions: AttributeDefinition[];
-  addAttributeDefinition: (definition: AttributeDefinition) => void;
-  removeAttributeDefinition: (key: string) => void;
+  setAttributeDefinitions: (definitions: AttributeDefinition[]) => void;
   valueSets: Record<string, Set<string>>;
 }
 
 export function applyAttributeDefinitionUpdates({
   attributeDefinitions,
-  addAttributeDefinition,
-  removeAttributeDefinition,
+  setAttributeDefinitions,
   valueSets,
-}: ApplyAttributeDefinitionUpdatesArgs) {
+}: ApplyAttributeDefinitionUpdatesArgs): AttributeDefinition[] {
+  const merged = [...attributeDefinitions];
+
   Object.entries(valueSets).forEach(([key, valueSet]) => {
-    const existing = attributeDefinitions.find((definition) => definition.key === key);
-    const nextValues = Array.from(valueSet);
+    const nextValues = Array.from(valueSet).filter((value) => value.trim().length > 0);
+    const existing = findAttributeDefinitionByName(merged, key);
 
     if (!existing) {
-      addAttributeDefinition({ key, values: nextValues });
+      merged.push(createAttributeDefinition(key, nextValues));
       return;
     }
 
-    const mergedValues = Array.from(new Set([...(existing.values || []), ...nextValues]));
-    if (mergedValues.length !== existing.values.length) {
-      removeAttributeDefinition(existing.key);
-      addAttributeDefinition({ key: existing.key, values: mergedValues });
-    }
+    const mergedValues = Array.from(new Set([...(existing.values || []), ...nextValues])).sort((left, right) =>
+      left.localeCompare(right),
+    );
+    const index = merged.findIndex((definition) => definition.id === existing.id);
+    merged[index] = createAttributeDefinition(getAttributeDefinitionName(existing), mergedValues, existing.id);
   });
+
+  setAttributeDefinitions(merged);
+  return merged;
 }
 
 export function buildScenarioWithPeople(scenario: Scenario | null, people: Person[]): Scenario {
@@ -69,8 +78,9 @@ export function buildPeopleCsvFromCurrent(
   });
 
   attributeDefinitions.forEach((definition) => {
-    if (definition.key !== 'name') {
-      headerSet.add(definition.key);
+    const name = getAttributeDefinitionName(definition);
+    if (name !== 'name') {
+      headerSet.add(name);
     }
   });
 
@@ -83,7 +93,7 @@ export function buildPeopleCsvFromCurrent(
       } else if (header === 'name') {
         row[header] = person.attributes?.name || '';
       } else {
-        row[header] = person.attributes?.[header] ?? '';
+        row[header] = getPersonAttributeValue(person, attributeDefinitions, { name: header }) ?? '';
       }
     });
     return row;

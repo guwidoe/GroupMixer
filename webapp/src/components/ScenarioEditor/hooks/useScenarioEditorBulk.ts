@@ -9,6 +9,7 @@ interface UseScenarioEditorBulkArgs {
   attributeDefinitions: AttributeDefinition[];
   addAttributeDefinition: (definition: AttributeDefinition) => void;
   removeAttributeDefinition: (key: string) => void;
+  setAttributeDefinitions: (definitions: AttributeDefinition[]) => void;
   addNotification: (notification: ScenarioEditorBulkNotification) => void;
   setScenario: (scenario: Scenario) => void;
 }

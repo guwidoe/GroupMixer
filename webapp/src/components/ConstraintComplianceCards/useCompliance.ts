@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { Person, Scenario, Solution } from '../../types';
+import { getPersonAttributeValue, reconcileScenarioAttributeDefinitions } from '../../services/scenarioAttributes';
 import type { CardData, ViolationDetail } from './types';
 
 type ScheduleMap = Record<number, Record<string, string[]>>;
@@ -25,6 +26,7 @@ function useSchedule(solution: Solution): ScheduleMap {
 export function useCompliance(scenario: Scenario, solution: Solution): CardData[] {
   const schedule = useSchedule(solution);
   const personMap = useMemo(() => new Map<string, Person>(scenario.people.map((person) => [person.id, person])), [scenario.people]);
+  const attributeDefinitions = useMemo(() => reconcileScenarioAttributeDefinitions(scenario), [scenario]);
 
   return useMemo(() => {
     const cards: CardData[] = [];
@@ -149,7 +151,12 @@ export function useCompliance(scenario: Scenario, solution: Solution): CardData[
             const counts: Record<string, number> = {};
             peopleIds.forEach((pid) => {
               const person = personMap.get(pid);
-              const val = person?.attributes?.[constraint.attribute_key] ?? '__UNKNOWN__';
+              const val = person
+                ? getPersonAttributeValue(person, attributeDefinitions, {
+                    id: constraint.attribute_id,
+                    name: constraint.attribute_key,
+                  }) ?? '__UNKNOWN__'
+                : '__UNKNOWN__';
               counts[val] = (counts[val] || 0) + 1;
             });
             Object.entries(constraint.desired_values).forEach(([val, desired]) => {
@@ -310,5 +317,5 @@ export function useCompliance(scenario: Scenario, solution: Solution): CardData[
     });
 
     return cards;
-  }, [personMap, scenario.constraints, scenario.num_sessions, schedule]);
+  }, [attributeDefinitions, personMap, scenario.constraints, scenario.num_sessions, schedule]);
 }

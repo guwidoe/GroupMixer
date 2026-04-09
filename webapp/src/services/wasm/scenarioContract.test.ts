@@ -5,6 +5,11 @@ import { normalizeScenarioForWasm } from './scenarioContract';
 describe('scenarioContract', () => {
   it('normalizes scenario inputs without mutating the original scenario', () => {
     const scenario = createSampleScenario({
+      people: createSampleScenario().people.map((person, index) =>
+        index === 0
+          ? { ...person, attributeValues: { 'attr-team': person.attributes.team } }
+          : person,
+      ),
       objectives: [],
       constraints: [
         {
@@ -22,6 +27,7 @@ describe('scenarioContract', () => {
         {
           type: 'AttributeBalance',
           group_id: 'g1',
+          attribute_id: 'attr-team',
           attribute_key: 'team',
           desired_values: { A: 1 },
           penalty_weight: undefined as unknown as number,
@@ -82,7 +88,9 @@ describe('scenarioContract', () => {
     expect(Object.hasOwn(normalized.settings, 'logging')).toBe(false);
     expect(Object.hasOwn(normalized.settings, 'telemetry')).toBe(false);
     expect(Object.hasOwn(normalized.people[0], 'sessions')).toBe(false);
+    expect(Object.hasOwn(normalized.people[0], 'attributeValues')).toBe(false);
     expect(Object.hasOwn(normalized.groups[0], 'session_sizes')).toBe(false);
+    expect(Object.hasOwn(normalized.constraints[2], 'attribute_id')).toBe(false);
 
     expect(scenario.objectives).toEqual([]);
     expect(scenario.constraints[0]).toMatchObject({

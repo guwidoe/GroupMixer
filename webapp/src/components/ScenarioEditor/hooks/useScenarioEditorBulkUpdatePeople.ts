@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { AttributeDefinition, Person, Scenario } from '../../../types';
+import { applyNamedAttributeValuesToPerson, reconcileScenarioAttributeState } from '../../../services/scenarioAttributes';
 import { generateUniquePersonId, parseCsv, rowsToCsv } from '../helpers';
 import type { ScenarioEditorBulkNotification } from './scenarioEditorBulkNotifications';
 import {
@@ -13,6 +14,7 @@ interface UseScenarioEditorBulkUpdatePeopleArgs {
   attributeDefinitions: AttributeDefinition[];
   addAttributeDefinition: (definition: AttributeDefinition) => void;
   removeAttributeDefinition: (key: string) => void;
+  setAttributeDefinitions: (definitions: AttributeDefinition[]) => void;
   addNotification: (notification: ScenarioEditorBulkNotification) => void;
   setScenario: (scenario: Scenario) => void;
 }
@@ -20,8 +22,7 @@ interface UseScenarioEditorBulkUpdatePeopleArgs {
 export function useScenarioEditorBulkUpdatePeople({
   scenario,
   attributeDefinitions,
-  addAttributeDefinition,
-  removeAttributeDefinition,
+  setAttributeDefinitions,
   addNotification,
   setScenario,
 }: UseScenarioEditorBulkUpdatePeopleArgs) {
@@ -69,7 +70,7 @@ export function useScenarioEditorBulkUpdatePeople({
     const updatedById = new Map<string, Person>();
 
     existingPeople.forEach((person) => {
-      updatedById.set(person.id, { ...person, attributes: { ...person.attributes } });
+      updatedById.set(person.id, { ...person });
     });
 
     const newPeopleToAdd: Person[] = [];
@@ -79,18 +80,17 @@ export function useScenarioEditorBulkUpdatePeople({
 
       if (isExisting) {
         const person = updatedById.get(rawId)!;
+        const attributeUpdates: Record<string, string> = {};
         nextHeaders.forEach((header) => {
           if (header === 'id') return;
           const value = (row[header] ?? '').trim();
           if (value === '__DELETE__') {
-            if (header in person.attributes) {
-              delete person.attributes[header];
-            }
+            attributeUpdates[header] = '';
           } else if (value.length > 0) {
-            person.attributes[header] = value;
+            attributeUpdates[header] = value;
           }
         });
-        updatedById.set(rawId, person);
+        updatedById.set(rawId, applyNamedAttributeValuesToPerson(person, attributeUpdates, attributeDefinitions));
         return;
       }
 
@@ -114,7 +114,13 @@ export function useScenarioEditorBulkUpdatePeople({
         }
       });
 
-      newPeopleToAdd.push({ id: newId, attributes, sessions: undefined });
+      newPeopleToAdd.push(
+        applyNamedAttributeValuesToPerson(
+          { id: newId, attributes, sessions: undefined },
+          attributes,
+          attributeDefinitions,
+        ),
+      );
     });
 
     const finalPeople = [...updatedById.values(), ...newPeopleToAdd];
@@ -146,14 +152,15 @@ export function useScenarioEditorBulkUpdatePeople({
       }
     });
 
-    applyAttributeDefinitionUpdates({
+    const nextDefinitions = applyAttributeDefinitionUpdates({
       attributeDefinitions,
-      addAttributeDefinition,
-      removeAttributeDefinition,
+      setAttributeDefinitions,
       valueSets,
     });
 
-    setScenario(buildScenarioWithPeople(scenario, finalPeople));
+    setScenario(
+      reconcileScenarioAttributeState(buildScenarioWithPeople(scenario, finalPeople), nextDefinitions),
+    );
     setShowForm(false);
     addNotification({ type: 'success', title: 'Bulk Update Applied', message: `Updated ${nextRows.length} row(s).` });
   };

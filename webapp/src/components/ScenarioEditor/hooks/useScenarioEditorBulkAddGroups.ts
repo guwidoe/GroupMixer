@@ -9,6 +9,7 @@ interface UseScenarioEditorBulkAddGroupsArgs {
   attributeDefinitions: AttributeDefinition[];
   addAttributeDefinition: (definition: AttributeDefinition) => void;
   removeAttributeDefinition: (key: string) => void;
+  setAttributeDefinitions: (definitions: AttributeDefinition[]) => void;
   addNotification: (notification: ScenarioEditorBulkNotification) => void;
   setScenario: (scenario: Scenario) => void;
 }
@@ -16,8 +17,7 @@ interface UseScenarioEditorBulkAddGroupsArgs {
 export function useScenarioEditorBulkAddGroups({
   scenario,
   attributeDefinitions,
-  addAttributeDefinition,
-  removeAttributeDefinition,
+  setAttributeDefinitions,
   addNotification,
   setScenario,
 }: UseScenarioEditorBulkAddGroupsArgs) {
@@ -117,8 +117,7 @@ export function useScenarioEditorBulkAddGroups({
 
     applyAttributeDefinitionUpdates({
       attributeDefinitions,
-      addAttributeDefinition,
-      removeAttributeDefinition,
+      setAttributeDefinitions,
       valueSets,
     });
 
