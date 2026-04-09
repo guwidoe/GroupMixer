@@ -171,6 +171,66 @@ describe('ScenarioDataGrid', () => {
     expect(screen.getByRole('button', { name: /team: red/i })).toBeInTheDocument();
   });
 
+  it('renders filter popovers in a viewport layer instead of inside the scroller', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ScenarioDataGrid
+        rows={rows}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            id: 'name',
+            header: 'Name',
+            cell: (row) => row.name,
+            sortValue: (row) => row.name,
+            searchValue: (row) => row.name,
+            filter: {
+              type: 'text',
+              ariaLabel: 'Filter names',
+            },
+          },
+        ]}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /open filter for name/i }));
+
+    const filterInput = screen.getByRole('textbox', { name: /filter names/i });
+    const scroller = document.querySelector('.overflow-auto');
+    expect(scroller).not.toContainElement(filterInput);
+    expect(document.body).toContainElement(filterInput);
+  });
+
+  it('keeps long headers readable with truncation tooltips and a stronger minimum width', () => {
+    render(
+      <ScenarioDataGrid
+        rows={rows}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            id: 'very-long',
+            header: 'Very Long Column Header Name',
+            cell: (row) => row.name,
+            sortValue: (row) => row.name,
+            searchValue: (row) => row.name,
+            filter: {
+              type: 'text',
+              ariaLabel: 'Filter very long header values',
+            },
+            width: 90,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByTitle('Very Long Column Header Name')).toBeInTheDocument();
+
+    const col = document.querySelector('col');
+    expect(col).not.toBeNull();
+    expect(Number.parseInt((col as HTMLTableColElement).style.width, 10)).toBeGreaterThan(90);
+  });
+
   it('toggles column visibility from the shared columns menu', async () => {
     const user = userEvent.setup();
 

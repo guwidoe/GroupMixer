@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import {
   Check,
   ChevronDown,
@@ -116,6 +117,13 @@ function getColumnFilterCount<T>(sourceColumn: ScenarioDataGridColumn<T>, value:
 function removeFilterListEntry(value: unknown, entryToRemove: string) {
   const nextValue = normalizeFilterListValue(value).filter((entry) => entry !== entryToRemove);
   return nextValue.length > 0 ? nextValue : undefined;
+}
+
+function estimateHeaderMinWidth<T>(column: ScenarioDataGridColumn<T>) {
+  const textWidth = Math.min(220, Math.max(96, column.header.length * 8 + 32));
+  const sortAllowance = column.sortValue ? 24 : 0;
+  const filterAllowance = column.filter ? 52 : 0;
+  return Math.max(column.minWidth ?? 120, textWidth + sortAllowance + filterAllowance);
 }
 
 function resolveFilterValue<T>(row: T, column: ScenarioDataGridColumn<T>) {
@@ -293,19 +301,24 @@ function ScenarioDataGridHeader<T>({
   onSort: React.MouseEventHandler<HTMLButtonElement>;
 }) {
   if (!canSort) {
-    return <span>{title}</span>;
+    return (
+      <span className="block truncate" title={title}>
+        {title}
+      </span>
+    );
   }
 
   return (
     <button
       type="button"
       onClick={onSort}
-      className="inline-flex items-center gap-1.5 font-semibold text-[inherit] transition-colors hover:text-[var(--text-primary)]"
+      className="inline-flex min-w-0 items-center gap-1.5 font-semibold text-[inherit] transition-colors hover:text-[var(--text-primary)]"
+      title={title}
     >
-      <span>{title}</span>
-      {sorted === 'asc' ? <ChevronUp className="h-3.5 w-3.5" /> : null}
-      {sorted === 'desc' ? <ChevronDown className="h-3.5 w-3.5" /> : null}
-      {sorted === false ? <ChevronDown className="h-3.5 w-3.5 opacity-25" /> : null}
+      <span className="truncate">{title}</span>
+      {sorted === 'asc' ? <ChevronUp className="h-3.5 w-3.5 shrink-0" /> : null}
+      {sorted === 'desc' ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : null}
+      {sorted === false ? <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-25" /> : null}
     </button>
   );
 }
@@ -377,12 +390,14 @@ function ColumnFilterControl<T>({
   }
 
   const wrapperRef = React.useRef<HTMLDivElement>(null);
+  const popoverRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [draftText, setDraftText] = React.useState('');
   const [optionQuery, setOptionQuery] = React.useState('');
+  const [popoverStyle, setPopoverStyle] = React.useState<React.CSSProperties | null>(null);
 
   useOutsideClick({
-    refs: [wrapperRef, triggerRef],
+    refs: [wrapperRef, popoverRef, triggerRef],
     enabled: isOpen,
     onOutsideClick: () => onClose(),
   });
@@ -391,7 +406,54 @@ function ColumnFilterControl<T>({
     if (!isOpen) {
       setDraftText('');
       setOptionQuery('');
+      setPopoverStyle(null);
     }
+  }, [isOpen]);
+
+  React.useLayoutEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const updatePopoverPosition = () => {
+      const triggerNode = triggerRef.current;
+      if (!triggerNode || typeof window === 'undefined') {
+        return;
+      }
+
+      const triggerRect = triggerNode.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const width = Math.min(320, Math.max(220, viewportWidth - 16));
+      const maxLeft = Math.max(8, viewportWidth - width - 8);
+      const left = Math.min(Math.max(triggerRect.right - width, 8), maxLeft);
+      const measuredHeight = popoverRef.current?.offsetHeight ?? 0;
+      const preferredTop = triggerRect.bottom + 8;
+      const availableBelow = viewportHeight - preferredTop - 8;
+      const shouldPlaceAbove = measuredHeight > 0 && availableBelow < Math.min(measuredHeight, 220) && triggerRect.top - measuredHeight - 8 >= 8;
+      const top = shouldPlaceAbove
+        ? Math.max(8, triggerRect.top - measuredHeight - 8)
+        : Math.min(preferredTop, Math.max(8, viewportHeight - Math.max(measuredHeight, 160) - 8));
+
+      setPopoverStyle({
+        position: 'fixed',
+        top,
+        left,
+        width,
+        maxWidth: 'calc(100vw - 16px)',
+        maxHeight: `${Math.max(180, viewportHeight - top - 8)}px`,
+        zIndex: 80,
+      });
+    };
+
+    updatePopoverPosition();
+    window.addEventListener('resize', updatePopoverPosition);
+    window.addEventListener('scroll', updatePopoverPosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updatePopoverPosition);
+      window.removeEventListener('scroll', updatePopoverPosition, true);
+    };
   }, [isOpen]);
 
   const commonInputClassName = 'input h-8 w-full rounded-lg px-2 text-xs';
@@ -593,10 +655,15 @@ function ColumnFilterControl<T>({
         {activeCount > 0 ? <span>{activeCount}</span> : null}
       </button>
 
-      {isOpen ? (
+      {isOpen && typeof document !== 'undefined' ? createPortal(
         <div
-          className="absolute right-0 top-full z-30 mt-2 w-72 rounded-2xl border p-3 shadow-lg"
-          style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+          ref={popoverRef}
+          className="overflow-auto rounded-2xl border p-3 shadow-xl"
+          style={{
+            ...popoverStyle,
+            backgroundColor: 'var(--bg-primary)',
+            borderColor: 'var(--border-primary)',
+          }}
           onClick={(event) => event.stopPropagation()}
         >
           <div className="mb-3 flex items-center justify-between gap-3">
@@ -617,7 +684,8 @@ function ColumnFilterControl<T>({
             ) : null}
           </div>
           {renderPopoverContent()}
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   );
@@ -713,7 +781,7 @@ export function ScenarioDataGrid<T>({
     Object.fromEntries(columns.map((column) => [column.id, true])),
   );
   const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>(() =>
-    Object.fromEntries(columns.map((column) => [column.id, column.width ?? 180])),
+    Object.fromEntries(columns.map((column) => [column.id, Math.max(column.width ?? 180, estimateHeaderMinWidth(column))])),
   );
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = React.useState('');
@@ -752,7 +820,7 @@ export function ScenarioDataGrid<T>({
       let changed = false;
       for (const column of columns) {
         if (!(column.id in next)) {
-          next[column.id] = column.width ?? 180;
+          next[column.id] = Math.max(column.width ?? 180, estimateHeaderMinWidth(column));
           changed = true;
         }
       }
@@ -769,7 +837,7 @@ export function ScenarioDataGrid<T>({
 
       const sourceColumn = columns.find((column) => column.id === resizeState.columnId);
       const nextWidth = Math.max(
-        sourceColumn?.minWidth ?? 120,
+        sourceColumn ? estimateHeaderMinWidth(sourceColumn) : 120,
         resizeState.startWidth + (event.clientX - resizeState.startX),
       );
 
@@ -809,8 +877,8 @@ export function ScenarioDataGrid<T>({
         enableSorting: Boolean(column.sortValue),
         enableColumnFilter: Boolean(column.filter),
         enableHiding: column.hideable !== false,
-        size: column.width ?? 180,
-        minSize: column.minWidth ?? 120,
+        size: Math.max(column.width ?? 180, estimateHeaderMinWidth(column)),
+        minSize: estimateHeaderMinWidth(column),
         meta: {
           align: column.align ?? 'left',
           sourceColumn: column,
@@ -1156,13 +1224,15 @@ export function ScenarioDataGrid<T>({
                     >
                       {header.isPlaceholder ? null : (
                         <div className="space-y-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <ScenarioDataGridHeader
-                              title={String(header.column.columnDef.header)}
-                              canSort={header.column.getCanSort()}
-                              sorted={header.column.getIsSorted()}
-                              onSort={header.column.getToggleSortingHandler()}
-                            />
+                          <div className="flex min-w-0 items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <ScenarioDataGridHeader
+                                title={String(header.column.columnDef.header)}
+                                canSort={header.column.getCanSort()}
+                                sorted={header.column.getIsSorted()}
+                                onSort={header.column.getToggleSortingHandler()}
+                              />
+                            </div>
                             {sourceColumn?.filter ? (
                               <ColumnFilterControl
                                 column={header.column}
