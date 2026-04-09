@@ -14,6 +14,8 @@ interface AppHeaderProps {
   homeTo?: string;
   title?: string;
   logoAlt?: string;
+  renderDesktopCenterContent?: () => ReactNode;
+  renderMobileCenterContent?: (helpers: { closeMobileMenu: () => void }) => ReactNode;
   renderDesktopActions?: () => ReactNode;
   renderMobileActions?: (helpers: { closeMobileMenu: () => void }) => ReactNode;
   renderDesktopUtilityActions?: () => ReactNode;
@@ -26,6 +28,8 @@ export function AppHeader({
   homeTo = '/',
   title = 'GroupMixer',
   logoAlt = 'GroupMixer Logo',
+  renderDesktopCenterContent,
+  renderMobileCenterContent,
   renderDesktopActions,
   renderMobileActions,
   renderDesktopUtilityActions,
@@ -37,6 +41,8 @@ export function AppHeader({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
+  const desktopCenterContent = renderDesktopCenterContent?.();
+  const mobileCenterContent = renderMobileCenterContent?.({ closeMobileMenu });
   const desktopActions = renderDesktopActions?.();
   const mobileActions = renderMobileActions?.({ closeMobileMenu });
   const desktopUtilityActions = renderDesktopUtilityActions?.();
@@ -48,7 +54,7 @@ export function AppHeader({
       style={{ backgroundColor: 'var(--header-surface)', borderColor: 'var(--border-primary)' }}
     >
       <div className="w-full px-4 py-3 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+        <div className="flex flex-col gap-3 sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-4">
           <div className="flex items-center justify-between">
             <Link to={homeTo} className="flex items-center space-x-3 group min-w-0">
               <div className="flex items-center space-x-2 min-w-0">
@@ -75,7 +81,11 @@ export function AppHeader({
             </button>
           </div>
 
-          <div className="hidden sm:ml-auto sm:flex items-center gap-2 sm:gap-3">
+          <div className="hidden min-w-0 sm:block">
+            {desktopCenterContent}
+          </div>
+
+          <div className="hidden sm:flex items-center justify-end gap-2 sm:gap-3">
             {desktopActions}
 
             <div className={HEADER_ACTION_GROUP_CLASS}>
@@ -115,6 +125,7 @@ export function AppHeader({
         {mobileMenuOpen && (
           <div className="sm:hidden mt-3 pt-3 border-t" style={{ borderColor: 'var(--border-primary)' }}>
             <div className="flex flex-col gap-2">
+              {mobileCenterContent}
               {mobileActions}
 
               <div className={HEADER_ACTION_GROUP_CLASS}>

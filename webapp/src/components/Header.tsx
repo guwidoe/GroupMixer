@@ -140,9 +140,16 @@ function WorkspaceHeaderActions({ closeMobileMenu }: { closeMobileMenu?: () => v
   );
 }
 
-export function Header() {
+interface HeaderProps {
+  renderDesktopCenterContent?: () => React.ReactNode;
+  renderMobileCenterContent?: (helpers: { closeMobileMenu: () => void }) => React.ReactNode;
+}
+
+export function Header({ renderDesktopCenterContent, renderMobileCenterContent }: HeaderProps = {}) {
   return (
     <AppHeader
+      renderDesktopCenterContent={renderDesktopCenterContent}
+      renderMobileCenterContent={renderMobileCenterContent}
       renderDesktopActions={() => <WorkspaceHeaderActions />}
       renderMobileActions={({ closeMobileMenu }) => <WorkspaceHeaderActions closeMobileMenu={closeMobileMenu} />}
     />

@@ -16,7 +16,6 @@ function MainApp() {
   const location = useLocation();
   const hasTrackedAppEntryRef = useRef(false);
   const headerRef = useRef<HTMLDivElement>(null);
-  const navigationRef = useRef<HTMLDivElement>(null);
   const [scenarioShellHeight, setScenarioShellHeight] = useState<string>('20rem');
   const seo = getAppSeo(location.pathname);
   const isScenarioSetupRoute = location.pathname.startsWith('/app/scenario');
@@ -50,8 +49,7 @@ function MainApp() {
 
     const updateScenarioShellHeight = () => {
       const headerHeight = headerRef.current?.getBoundingClientRect().height ?? 0;
-      const navigationHeight = navigationRef.current?.getBoundingClientRect().height ?? 0;
-      const chromeHeight = Math.ceil(headerHeight + navigationHeight);
+      const chromeHeight = Math.ceil(headerHeight);
       const nextHeight = `max(20rem, calc(100vh - ${chromeHeight}px))`;
       setScenarioShellHeight((currentHeight) => (currentHeight === nextHeight ? currentHeight : nextHeight));
     };
@@ -66,10 +64,6 @@ function MainApp() {
 
     if (resizeObserver && headerRef.current) {
       resizeObserver.observe(headerRef.current);
-    }
-
-    if (resizeObserver && navigationRef.current) {
-      resizeObserver.observe(navigationRef.current);
     }
 
     window.addEventListener('resize', updateScenarioShellHeight);
@@ -91,10 +85,12 @@ function MainApp() {
       />
 
       <div ref={headerRef}>
-        <Header />
-      </div>
-      <div ref={navigationRef}>
-        <Navigation />
+        <Header
+          renderDesktopCenterContent={() => <Navigation variant="embedded" />}
+          renderMobileCenterContent={({ closeMobileMenu }) => (
+            <Navigation variant="mobile-menu" closeMobileMenu={closeMobileMenu} />
+          )}
+        />
       </div>
 
       <main
