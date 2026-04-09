@@ -70,8 +70,13 @@ export function useSolverActions({
   const restartAfterSaveRef = useRef(false);
   const saveInProgressRef = useRef(false);
   const runScenarioSnapshotRef = useRef<Scenario | null>(null);
+  const cancelInFlightRef = useRef<Promise<void> | null>(null);
 
   const handleStartSolver = async (useRecommended: boolean = true) => {
+    if (cancelInFlightRef.current) {
+      await cancelInFlightRef.current;
+    }
+
     await runSolver({
       useRecommended,
       scenario,
@@ -113,9 +118,15 @@ export function useSolverActions({
     });
 
     try {
-      await getRuntime().cancel();
+      const cancelPromise = getRuntime().cancel();
+      cancelInFlightRef.current = cancelPromise;
+      await cancelPromise;
     } catch (error) {
       console.error('Cancellation error:', error);
+    } finally {
+      if (cancelInFlightRef.current) {
+        cancelInFlightRef.current = null;
+      }
     }
   };
 

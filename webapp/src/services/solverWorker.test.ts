@@ -484,6 +484,48 @@ describe("SolverWorkerService", () => {
     expect(service.isReady()).toBe(true);
   });
 
+  it("ignores stale worker errors from a terminated worker after restart", async () => {
+    const service = createService();
+    await initializeService(service);
+
+    const firstSolvePromise = service.solveWithProgress(createScenario(), vi.fn());
+    const firstWorker = FakeWorker.latest();
+
+    const cancelPromise = service.cancel();
+    const replacementWorker = FakeWorker.latest();
+    expect(replacementWorker).not.toBe(firstWorker);
+    replacementWorker.emit({ type: "INIT_SUCCESS", id: "3" });
+    await cancelPromise;
+    await expect(firstSolvePromise).rejects.toThrow("Solver cancelled by user");
+
+    const restartCallback = vi.fn();
+    const restartSolvePromise = service.solveWithProgress(createScenario(), restartCallback);
+    expect(replacementWorker.postedMessages.at(-1)).toEqual(
+      expect.objectContaining({ type: "SOLVE", id: "4" }),
+    );
+
+    firstWorker.emit({
+      type: "ERROR",
+      id: "2",
+      data: { error: "stale worker failure" },
+    });
+
+    const restartMailbox = replacementWorker.postedMessages.at(-1)?.data?.progressMailbox;
+    expect(restartMailbox).toBeInstanceOf(SharedArrayBuffer);
+    createProgressMailboxWriter(restartMailbox as SharedArrayBuffer).writeProgress(progress);
+    await vi.advanceTimersByTimeAsync(60);
+    replacementWorker.emit({
+      type: "SOLVE_SUCCESS",
+      id: "4",
+      data: { result: { schedule: {}, final_score: 9 }, lastProgress: null },
+    });
+
+    await expect(restartSolvePromise).resolves.toEqual(
+      expect.objectContaining({ lastProgress: expect.objectContaining({ iteration: 7 }) }),
+    );
+    expect(restartCallback).toHaveBeenCalledWith(expect.objectContaining({ iteration: 7 }));
+  });
+
   it("rejects pending work when the underlying worker errors", async () => {
     const service = createService();
     await initializeService(service);

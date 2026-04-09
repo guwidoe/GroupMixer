@@ -213,7 +213,13 @@ export class SolverWorkerService {
   private setupMessageHandler(): void {
     if (!this.worker) return;
 
-    this.worker.onmessage = (e: MessageEvent<WorkerResponseMessage>) => {
+    const attachedWorker = this.worker;
+
+    attachedWorker.onmessage = (e: MessageEvent<WorkerResponseMessage>) => {
+      if (this.worker !== attachedWorker) {
+        return;
+      }
+
       const message = e.data;
       const pending = "id" in message && message.id
         ? this.pendingMessages.get(message.id)
@@ -345,7 +351,11 @@ export class SolverWorkerService {
       }
     };
 
-    this.worker.onerror = () => {
+    attachedWorker.onerror = () => {
+      if (this.worker !== attachedWorker) {
+        return;
+      }
+
       console.error("Worker error occurred");
       this.rejectAllPending(new Error("Worker error"));
     };
