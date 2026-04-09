@@ -91,7 +91,7 @@ function WorkspaceHeaderActions({ closeMobileMenu }: { closeMobileMenu?: () => v
       <div className={HEADER_ACTION_GROUP_CLASS}>
         <div
           className={HEADER_ACTION_TOOLBAR_CLASS}
-          style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}
+          style={{ backgroundColor: 'var(--header-rail-surface)', borderColor: 'var(--border-primary)' }}
         >
           <Button
             onClick={handleLoadScenario}

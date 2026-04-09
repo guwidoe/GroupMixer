@@ -2,7 +2,7 @@ import { getButtonClassName } from './ui';
 
 export const HEADER_ACTION_GROUP_CLASS = 'flex flex-wrap items-center gap-2 w-full sm:w-auto';
 export const HEADER_ACTION_TOOLBAR_CLASS =
-  'inline-flex w-full sm:w-auto items-center rounded-[1.15rem] border px-1.5 py-1';
+  'flex w-full flex-wrap items-center rounded-[1.15rem] border px-1.5 py-1 sm:w-auto';
 export const HEADER_ACTION_DIVIDER_CLASS = 'hidden sm:block h-5 w-px shrink-0';
 
 export const HEADER_ACTION_BUTTON_CLASS = getButtonClassName({

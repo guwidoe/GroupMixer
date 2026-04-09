@@ -465,11 +465,6 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
         logoAlt="GroupMixer logo"
         renderDesktopActions={() => (
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <LandingLanguageSelector
-              currentLocale={config.locale}
-              options={languageOptions}
-              className="h-10 appearance-none rounded-md border pl-9 pr-8 text-sm font-medium outline-none transition-colors"
-            />
             <button
               type="button"
               onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
@@ -480,13 +475,15 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
             </button>
           </div>
         )}
+        renderDesktopUtilityActions={() => (
+          <LandingLanguageSelector
+            currentLocale={config.locale}
+            options={languageOptions}
+            variant="header"
+          />
+        )}
         renderMobileActions={() => (
           <>
-            <LandingLanguageSelector
-              currentLocale={config.locale}
-              options={languageOptions}
-              className="h-10 w-full appearance-none rounded-md border pl-9 pr-8 text-sm font-medium outline-none transition-colors"
-            />
             <button
               type="button"
               onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
@@ -496,6 +493,13 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </>
+        )}
+        renderMobileUtilityActions={() => (
+          <LandingLanguageSelector
+            currentLocale={config.locale}
+            options={languageOptions}
+            className="h-10 w-full appearance-none rounded-md border pl-9 pr-8 text-sm font-medium outline-none transition-colors"
+          />
         )}
       />
 

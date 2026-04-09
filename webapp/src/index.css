@@ -74,6 +74,8 @@
   --number-input-spinner-color: #374151; /* Gray for light mode */
   --bg-backdrop-rgb: 255, 255, 255;
   --bg-backdrop: rgba(var(--bg-backdrop-rgb), 0.8); /* Translucent white for light mode */
+  --header-surface: rgba(255, 255, 255, 0.82);
+  --header-rail-surface: #f5f7fa;
   --landing-backdrop-rgb: 255, 255, 255;
   --landing-backdrop-opacity: 0.95; /* More opaque for landing page */
   --tooltip-bg: color-mix(in srgb, var(--text-primary) 92%, var(--bg-primary) 8%);
@@ -108,6 +110,8 @@
     --number-input-spinner-color: #bfc7d5; /* Lighter gray for dark mode */
     --bg-backdrop-rgb: 0, 0, 0;
     --bg-backdrop: rgba(var(--bg-backdrop-rgb), 0.6); /* Translucent black for dark mode */
+    --header-surface: rgba(26, 27, 31, 0.88);
+    --header-rail-surface: #23262d;
     --landing-backdrop-rgb: 0, 0, 0;
     --landing-backdrop-opacity: 0.9; /* More opaque for landing page in dark mode */
     --tooltip-bg: color-mix(in srgb, var(--bg-tertiary) 92%, black 8%);
@@ -498,6 +502,13 @@
     color: var(--text-primary);
     box-shadow: var(--shadow);
     transform: translateY(-1px);
+  }
+
+  .landing-header-language-selector:hover,
+  .landing-header-language-selector:focus-visible {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    box-shadow: none;
   }
 
   .landing-action-button:focus-visible {

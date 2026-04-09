@@ -16,6 +16,8 @@ interface AppHeaderProps {
   logoAlt?: string;
   renderDesktopActions?: () => ReactNode;
   renderMobileActions?: (helpers: { closeMobileMenu: () => void }) => ReactNode;
+  renderDesktopUtilityActions?: () => ReactNode;
+  renderMobileUtilityActions?: (helpers: { closeMobileMenu: () => void }) => ReactNode;
   issueHref?: string;
   issueLabel?: string;
 }
@@ -26,6 +28,8 @@ export function AppHeader({
   logoAlt = 'GroupMixer Logo',
   renderDesktopActions,
   renderMobileActions,
+  renderDesktopUtilityActions,
+  renderMobileUtilityActions,
   issueHref = 'https://github.com/guwidoe/GroupMixer/issues',
   issueLabel = 'Report an issue or suggest a feature',
 }: AppHeaderProps) {
@@ -35,11 +39,13 @@ export function AppHeader({
   const closeMobileMenu = () => setMobileMenuOpen(false);
   const desktopActions = renderDesktopActions?.();
   const mobileActions = renderMobileActions?.({ closeMobileMenu });
+  const desktopUtilityActions = renderDesktopUtilityActions?.();
+  const mobileUtilityActions = renderMobileUtilityActions?.({ closeMobileMenu });
 
   return (
     <header
       className="relative z-40 border-b transition-colors backdrop-blur-xl"
-      style={{ backgroundColor: 'var(--bg-backdrop)', borderColor: 'var(--border-primary)' }}
+      style={{ backgroundColor: 'var(--header-surface)', borderColor: 'var(--border-primary)' }}
     >
       <div className="w-full px-4 py-3 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
@@ -75,8 +81,16 @@ export function AppHeader({
             <div className={HEADER_ACTION_GROUP_CLASS}>
               <div
                 className={HEADER_ACTION_TOOLBAR_CLASS}
-                style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}
+                style={{ backgroundColor: 'var(--header-rail-surface)', borderColor: 'var(--border-primary)' }}
               >
+                {desktopUtilityActions}
+                {desktopUtilityActions ? (
+                  <div
+                    className={HEADER_ACTION_DIVIDER_CLASS}
+                    style={{ backgroundColor: 'var(--border-primary)' }}
+                    aria-hidden="true"
+                  />
+                ) : null}
                 <a
                   href={issueHref}
                   target="_blank"
@@ -106,8 +120,16 @@ export function AppHeader({
               <div className={HEADER_ACTION_GROUP_CLASS}>
                 <div
                   className={HEADER_ACTION_TOOLBAR_CLASS}
-                  style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}
+                  style={{ backgroundColor: 'var(--header-rail-surface)', borderColor: 'var(--border-primary)' }}
                 >
+                  {mobileUtilityActions}
+                  {mobileUtilityActions ? (
+                    <div
+                      className="my-1 h-px w-full sm:hidden"
+                      style={{ backgroundColor: 'var(--border-primary)' }}
+                      aria-hidden="true"
+                    />
+                  ) : null}
                   <a
                     href={issueHref}
                     target="_blank"
