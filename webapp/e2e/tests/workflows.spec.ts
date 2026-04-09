@@ -135,7 +135,7 @@ test.describe('Workflow coverage', () => {
       page.getByText(/algorithm settings have been automatically configured\./i).first(),
     ).toBeVisible();
 
-    const customStart = page.getByRole('button', { name: /start solver with custom settings/i });
+    const customStart = page.getByRole('button', { name: /start solver with current settings/i }).last();
     await customStart.click();
 
     await waitForSolverRunToStartOrComplete(page, 1);
@@ -193,5 +193,45 @@ test.describe('Workflow coverage', () => {
     await page.getByRole('button', { name: /start solver with automatic settings/i }).click();
 
     await expect(page.getByText(/solver error/i).first()).toBeVisible({ timeout: 10000 });
+  });
+
+  test('runs solver3 on the Sailing Trip demo through mailbox progress and saves the result', async ({ page }) => {
+    test.setTimeout(90000);
+
+    const consoleMessages: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error' || message.type() === 'warning') {
+        consoleMessages.push(`${message.type()}: ${message.text()}`);
+      }
+    });
+
+    await openApp(page);
+
+    await page.getByRole('button', { name: /demo data/i }).click();
+    await page.getByRole('menuitem', { name: /sailing trip 115 11 5 large/i }).click();
+    await expect(page.getByRole('heading', { name: /people \(115\)/i })).toBeVisible({ timeout: 15000 });
+
+    await openSolver(page);
+    await page.getByRole('button', { name: /solve with custom settings/i }).click();
+    await page.getByRole('button', { name: /solver 3 experimental/i }).click();
+    await expect(page.getByText(/automatic settings unavailable/i).first()).toBeVisible();
+
+    const customStart = page.getByRole('button', { name: /start solver with current settings/i }).last();
+    await customStart.click();
+
+    await expect
+      .poll(async () => {
+        const currentScenarioId = await page.evaluate(() => window.localStorage.getItem('people-distributor-current-scenario'));
+        const rawScenarios = await page.evaluate(() => window.localStorage.getItem('people-distributor-scenarios'));
+        const savedScenarios = rawScenarios ? JSON.parse(rawScenarios) as Record<string, { results?: unknown[] }> : {};
+        return currentScenarioId && savedScenarios[currentScenarioId]
+          ? savedScenarios[currentScenarioId].results?.length ?? 0
+          : 0;
+      }, { timeout: 90000 })
+      .toBe(1);
+
+    await expect(customStart).toBeVisible({ timeout: 60000 });
+
+    expect(consoleMessages).toEqual([]);
   });
 });

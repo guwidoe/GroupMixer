@@ -88,6 +88,7 @@ export const init_panic_hook = bindRuntimeFunction("init_panic_hook");
 export const recommend_settings = bindRuntimeFunction("recommend_settings");
 export const solve = bindRuntimeFunction("solve");
 export const solve_with_progress = bindRuntimeFunction("solve_with_progress");
+export const solve_with_progress_snapshot = bindRuntimeFunction("solve_with_progress_snapshot");
 export const validate_scenario = bindRuntimeFunction("validate_scenario");
 export const evaluate_input = bindRuntimeFunction("evaluate_input");
 export const inspect_result = bindRuntimeFunction("inspect_result");
