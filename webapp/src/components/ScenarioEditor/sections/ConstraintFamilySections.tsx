@@ -1,7 +1,8 @@
 import React from 'react';
-import { Filter, Link2, Plus, Search, UserLock, UserMinus, Users } from 'lucide-react';
+import { Ellipsis, Filter, Link2, Plus, Search, UserLock, UserMinus, Users } from 'lucide-react';
 import type { Constraint, Scenario } from '../../../types';
 import { useAppStore } from '../../../store';
+import { useOutsideClick } from '../../../hooks';
 import { Button } from '../../ui';
 import AttributeBalanceDashboard from '../../AttributeBalanceDashboard';
 import ConstraintPersonChip from '../../ConstraintPersonChip';
@@ -121,6 +122,70 @@ const SOFT_SECTION_COPY: Record<SoftConstraintFamily, { title: string; descripti
     addLabel: 'Add Pair Meeting Count',
   },
 };
+
+function ConstraintAdvancedActionsMenu({
+  selectedCount,
+  items,
+}: {
+  selectedCount: number;
+  items: Array<{ label: string; disabled?: boolean; onSelect: () => void; helperText?: string }>;
+}) {
+  const menuRef = React.useRef<HTMLDivElement>(null);
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  useOutsideClick({
+    refs: [menuRef],
+    enabled: isOpen,
+    onOutsideClick: () => setIsOpen(false),
+  });
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <Button
+        variant="secondary"
+        leadingIcon={<Ellipsis className="h-4 w-4" />}
+        onClick={() => setIsOpen((open) => !open)}
+      >
+        Actions
+      </Button>
+      {isOpen ? (
+        <div
+          className="absolute right-0 z-30 mt-2 w-72 rounded-2xl border p-2 shadow-lg"
+          style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+        >
+          <div className="px-2 pb-2 pt-1 text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>
+            Advanced actions · {selectedCount} selected
+          </div>
+          <div className="space-y-1">
+            {items.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                disabled={item.disabled}
+                className="flex w-full flex-col items-start rounded-xl px-3 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ color: 'var(--text-primary)' }}
+                onClick={() => {
+                  if (item.disabled) {
+                    return;
+                  }
+                  setIsOpen(false);
+                  item.onSelect();
+                }}
+              >
+                <span className="text-sm font-medium">{item.label}</span>
+                {item.helperText ? (
+                  <span className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    {item.helperText}
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function useConstraintScenario() {
   const { resolveScenario, setScenario, ui } = useAppStore();
@@ -294,10 +359,21 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
         description={copy.description}
         actions={
           <>
-            {family === 'MustStayTogether' && selectedMustIndices.length > 0 ? (
-              <Button variant="secondary" onClick={() => setShowBulkConvert(true)}>
-                Convert Selected to Should Stay Together
-              </Button>
+            {family === 'MustStayTogether' ? (
+              <ConstraintAdvancedActionsMenu
+                selectedCount={selectedMustIndices.length}
+                items={[
+                  {
+                    label: 'Convert selected to Should Stay Together',
+                    disabled: selectedMustIndices.length === 0,
+                    helperText:
+                      selectedMustIndices.length === 0
+                        ? 'Select one or more cards to enable this conversion.'
+                        : 'Turn the selected hard cliques into weighted preferences.',
+                    onSelect: () => setShowBulkConvert(true),
+                  },
+                ]}
+              />
             ) : null}
             <Button variant="primary" leadingIcon={<Plus className="h-4 w-4" />} onClick={() => onAdd(family)}>
               {copy.addLabel}
@@ -513,10 +589,21 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
         description={copy.description}
         actions={
           <>
-            {family === 'ShouldStayTogether' && selectedShouldIndices.length > 0 ? (
-              <Button variant="secondary" onClick={() => setShowPairConvert(true)}>
-                Convert Selected to Pair Meeting Count
-              </Button>
+            {family === 'ShouldStayTogether' ? (
+              <ConstraintAdvancedActionsMenu
+                selectedCount={selectedShouldIndices.length}
+                items={[
+                  {
+                    label: 'Convert selected to Pair Meeting Count',
+                    disabled: selectedShouldIndices.length === 0,
+                    helperText:
+                      selectedShouldIndices.length === 0
+                        ? 'Select one or more cards to enable this conversion.'
+                        : 'Break selected cliques into pair-based contact targets.',
+                    onSelect: () => setShowPairConvert(true),
+                  },
+                ]}
+              />
             ) : null}
             <Button variant="primary" leadingIcon={<Plus className="h-4 w-4" />} onClick={() => onAdd(family)}>
               {copy.addLabel}
