@@ -146,12 +146,13 @@ function renderGroupContent(
         <SetupItemCard
           key={group.id}
           title={group.id}
+          onOpen={() => onEditGroup(group)}
+          openLabel={`Edit ${group.id}`}
           actions={
             <SetupItemActions
-              editLabel={`Edit ${group.id}`}
               deleteLabel={`Delete ${group.id}`}
-              onEdit={() => onEditGroup(group)}
               onDelete={() => onDeleteGroup(group.id)}
+              variant="card"
             />
           }
         >

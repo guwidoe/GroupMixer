@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock3, Weight } from 'lucide-react';
+import { Check, Clock3, Trash2, Weight } from 'lucide-react';
 import { Button } from '../../ui';
 
 export function SetupBadge({
@@ -85,22 +85,62 @@ export function SetupKeyValueList({
   );
 }
 
+export function SetupSelectionToggle({
+  selected,
+  onToggle,
+  label,
+}: {
+  selected: boolean;
+  onToggle: () => void;
+  label?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors"
+      style={{
+        borderColor: selected ? 'var(--color-accent)' : 'var(--border-primary)',
+        backgroundColor: selected ? 'color-mix(in srgb, var(--color-accent) 14%, var(--bg-primary) 86%)' : 'var(--bg-primary)',
+        color: selected ? 'var(--color-accent)' : 'var(--text-secondary)',
+      }}
+      aria-pressed={selected}
+      aria-label={label ?? (selected ? 'Deselect card' : 'Select card')}
+    >
+      {selected ? <Check className="h-3.5 w-3.5" /> : null}
+      <span>{selected ? 'Selected' : 'Select'}</span>
+    </button>
+  );
+}
+
 export function SetupItemActions({
   onEdit,
   onDelete,
   editLabel = 'Edit item',
   deleteLabel = 'Delete item',
+  variant = 'table',
 }: {
-  onEdit: () => void;
+  onEdit?: () => void;
   onDelete: () => void;
   editLabel?: string;
   deleteLabel?: string;
+  variant?: 'table' | 'card';
 }) {
+  if (variant === 'card') {
+    return (
+      <Button variant="ghost" size="icon" aria-label={deleteLabel} onClick={onDelete} title={deleteLabel}>
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    );
+  }
+
   return (
     <div className="flex items-center gap-1">
-      <Button variant="ghost" size="sm" aria-label={editLabel} onClick={onEdit}>
-        Edit
-      </Button>
+      {onEdit ? (
+        <Button variant="ghost" size="sm" aria-label={editLabel} onClick={onEdit}>
+          Edit
+        </Button>
+      ) : null}
       <Button variant="ghost" size="sm" aria-label={deleteLabel} onClick={onDelete}>
         Delete
       </Button>
@@ -113,40 +153,61 @@ export function SetupItemCard({
   title,
   titleMeta,
   actions,
+  onOpen,
+  openLabel,
   children,
 }: {
   badges?: React.ReactNode;
   title?: React.ReactNode;
   titleMeta?: React.ReactNode;
   actions?: React.ReactNode;
+  onOpen?: () => void;
+  openLabel?: string;
   children: React.ReactNode;
 }) {
-  return (
-    <div
-      className="rounded-2xl border px-4 py-4"
-      style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1 space-y-3">
-          {badges ? <div className="flex flex-wrap items-center gap-2">{badges}</div> : null}
-          {title || titleMeta ? (
-            <div className="space-y-1">
-              {title ? (
-                <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  {title}
-                </div>
-              ) : null}
-              {titleMeta ? (
-                <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  {titleMeta}
-                </div>
-              ) : null}
+  const content = (
+    <div className="space-y-3">
+      {(title || titleMeta) ? (
+        <div className="space-y-1">
+          {title ? (
+            <div className="text-base font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>
+              {title}
             </div>
           ) : null}
-          <div className="space-y-3">{children}</div>
+          {titleMeta ? (
+            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              {titleMeta}
+            </div>
+          ) : null}
         </div>
-        {actions ? <div className="shrink-0">{actions}</div> : null}
-      </div>
+      ) : null}
+      <div className="space-y-3">{children}</div>
+    </div>
+  );
+
+  return (
+    <div
+      className="rounded-2xl border p-4 transition-shadow hover:shadow-md"
+      style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+    >
+      {(badges || actions) ? (
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">{badges ? <div className="flex flex-wrap items-center gap-2">{badges}</div> : null}</div>
+          {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+        </div>
+      ) : null}
+      {onOpen ? (
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={openLabel}
+          className="block w-full rounded-xl text-left transition-colors hover:bg-[color:var(--bg-secondary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-primary)]"
+        >
+          <div className="p-1">{content}</div>
+        </button>
+      ) : (
+        content
+      )}
     </div>
   );
 }

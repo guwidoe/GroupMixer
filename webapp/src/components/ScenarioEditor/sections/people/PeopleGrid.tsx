@@ -67,12 +67,13 @@ export function PeopleGrid({
                 key={person.id}
                 title={displayName}
                 titleMeta={person.id !== displayName ? person.id : undefined}
+                onOpen={() => onEditPerson(person)}
+                openLabel={`Edit ${displayName}`}
                 actions={
                   <SetupItemActions
-                    editLabel={`Edit ${displayName}`}
                     deleteLabel={`Delete ${displayName}`}
-                    onEdit={() => onEditPerson(person)}
                     onDelete={() => onDeletePerson(person.id)}
+                    variant="card"
                   />
                 }
               >

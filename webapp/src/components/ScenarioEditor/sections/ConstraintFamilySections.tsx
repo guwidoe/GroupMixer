@@ -13,6 +13,7 @@ import {
   SetupItemCard,
   SetupKeyValueList,
   SetupPeopleNodeList,
+  SetupSelectionToggle,
   SetupSessionsBadgeList,
   SetupTagList,
   SetupTypeBadge,
@@ -354,19 +355,22 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                   badges={
                     <>
                       <SetupTypeBadge label={copy.title} />
-                      {family === 'MustStayTogether' ? (
-                        <label className="text-xs inline-flex items-center gap-1 cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
-                          <input
-                            type="checkbox"
-                            checked={selectedMustIndices.includes(index)}
-                            onChange={() => setSelectedMustIndices((previous) => previous.includes(index) ? previous.filter((value) => value !== index) : [...previous, index])}
-                          />
-                          <span>Select</span>
-                        </label>
-                      ) : null}
                     </>
                   }
-                  actions={<SetupItemActions onEdit={() => onEdit(constraint, index)} onDelete={() => onDelete(index)} />}
+                  onOpen={() => onEdit(constraint, index)}
+                  openLabel={`Edit ${copy.title.toLowerCase()} constraint`}
+                  actions={
+                    <>
+                      {family === 'MustStayTogether' ? (
+                        <SetupSelectionToggle
+                          selected={selectedMustIndices.includes(index)}
+                          onToggle={() => setSelectedMustIndices((previous) => previous.includes(index) ? previous.filter((value) => value !== index) : [...previous, index])}
+                          label={`${selectedMustIndices.includes(index) ? 'Deselect' : 'Select'} must stay together clique`}
+                        />
+                      ) : null}
+                      <SetupItemActions onDelete={() => onDelete(index)} variant="card" />
+                    </>
+                  }
                 >
                   {renderPeopleConstraintContent(scenario, constraint as PeopleConstraint, index, setScenario)}
                 </SetupItemCard>
@@ -556,19 +560,22 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                     <>
                       <SetupTypeBadge label={copy.title} />
                       {'penalty_weight' in constraint ? <SetupWeightBadge weight={constraint.penalty_weight} /> : null}
-                      {family === 'ShouldStayTogether' ? (
-                        <label className="text-xs inline-flex items-center gap-1 cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
-                          <input
-                            type="checkbox"
-                            checked={selectedShouldIndices.includes(index)}
-                            onChange={() => setSelectedShouldIndices((previous) => previous.includes(index) ? previous.filter((value) => value !== index) : [...previous, index])}
-                          />
-                          <span>Select</span>
-                        </label>
-                      ) : null}
                     </>
                   }
-                  actions={<SetupItemActions onEdit={() => onEdit(constraint, index)} onDelete={() => onDelete(index)} />}
+                  onOpen={() => onEdit(constraint, index)}
+                  openLabel={`Edit ${copy.title.toLowerCase()} constraint`}
+                  actions={
+                    <>
+                      {family === 'ShouldStayTogether' ? (
+                        <SetupSelectionToggle
+                          selected={selectedShouldIndices.includes(index)}
+                          onToggle={() => setSelectedShouldIndices((previous) => previous.includes(index) ? previous.filter((value) => value !== index) : [...previous, index])}
+                          label={`${selectedShouldIndices.includes(index) ? 'Deselect' : 'Select'} should stay together preference`}
+                        />
+                      ) : null}
+                      <SetupItemActions onDelete={() => onDelete(index)} variant="card" />
+                    </>
+                  }
                 >
                   {constraint.type === 'ShouldNotBeTogether' || constraint.type === 'ShouldStayTogether'
                     ? renderPeopleConstraintContent(scenario, constraint as PeopleConstraint, index, setScenario)

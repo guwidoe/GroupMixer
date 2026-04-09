@@ -26,12 +26,13 @@ function AttributeListRow({
   return (
     <SetupItemCard
       title={definition.key}
+      onOpen={() => onEditAttribute(definition)}
+      openLabel={`Edit ${definition.key}`}
       actions={
         <SetupItemActions
-          editLabel={`Edit ${definition.key}`}
           deleteLabel={`Delete ${definition.key}`}
-          onEdit={() => onEditAttribute(definition)}
           onDelete={() => onRemoveAttribute(definition.key)}
+          variant="card"
         />
       }
     >

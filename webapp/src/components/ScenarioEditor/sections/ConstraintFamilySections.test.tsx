@@ -75,7 +75,7 @@ describe('ConstraintFamilySections', () => {
     expect(screen.getByPlaceholderText(/filter by person or session/i)).toBeInTheDocument();
     expect(screen.queryByText(/soft constraints/i)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('checkbox', { name: /select/i }));
+    await user.click(screen.getByRole('button', { name: /select should stay together preference/i }));
     expect(screen.getByRole('button', { name: /convert selected to pair meeting count/i })).toBeInTheDocument();
   });
 });

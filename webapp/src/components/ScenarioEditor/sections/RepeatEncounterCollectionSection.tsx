@@ -33,6 +33,8 @@ function RepeatEncounterCard({
           <SetupWeightBadge weight={item.constraint.penalty_weight} />
         </>
       }
+      onOpen={() => onEdit(item.constraint, item.index)}
+      openLabel="Edit repeat encounter preference"
       titleMeta={
         <>
           Allow pairs to meet up to <strong>{item.constraint.max_allowed_encounters}</strong> time
@@ -41,10 +43,9 @@ function RepeatEncounterCard({
       }
       actions={
         <SetupItemActions
-          onEdit={() => onEdit(item.constraint, item.index)}
           onDelete={() => onDelete(item.index)}
-          editLabel="Edit repeat encounter preference"
           deleteLabel="Delete repeat encounter preference"
+          variant="card"
         />
       }
     >
