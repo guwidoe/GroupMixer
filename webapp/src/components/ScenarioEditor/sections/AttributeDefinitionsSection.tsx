@@ -3,7 +3,7 @@ import { Plus, Tag } from 'lucide-react';
 import type { AttributeDefinition } from '../../../types';
 import { Button } from '../../ui';
 import { SetupCollectionPage } from '../shared/SetupCollectionPage';
-import { SetupItemActions, SetupItemCard, SetupTagList } from '../shared/cards';
+import { SetupCardGrid, SetupItemActions, SetupItemCard, SetupTagList } from '../shared/cards';
 import { ScenarioDataGrid } from '../shared/grid/ScenarioDataGrid';
 import type { SetupCollectionViewMode } from '../shared/useSetupCollectionViewMode';
 
@@ -127,7 +127,7 @@ function renderAttributeContent(
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+    <SetupCardGrid minColumnWidth="17rem">
       {attributeDefinitions.map((definition) => (
         <AttributeListRow
           key={definition.key}
@@ -136,7 +136,7 @@ function renderAttributeContent(
           onRemoveAttribute={onRemoveAttribute}
         />
       ))}
-    </div>
+    </SetupCardGrid>
   );
 }
 

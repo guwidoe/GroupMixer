@@ -3,7 +3,7 @@ import { Users } from 'lucide-react';
 import type { Person } from '../../../../types';
 import { PeopleEmptyState } from './PeopleEmptyState';
 import { PeopleSearchSummary } from './PeopleSearchSummary';
-import { SetupItemActions, SetupItemCard, SetupKeyValueList, SetupSessionsBadgeList } from '../../shared/cards';
+import { SetupCardGrid, SetupItemActions, SetupItemCard, SetupKeyValueList, SetupSessionsBadgeList } from '../../shared/cards';
 import { SetupPersonName } from '../../shared/personDisplay';
 
 interface PeopleGridProps {
@@ -56,7 +56,7 @@ export function PeopleGrid({
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <SetupCardGrid minColumnWidth="18rem">
           {people.map((person) => {
             const displayName = person.attributes.name || person.id;
             const detailItems = Object.entries(person.attributes)
@@ -85,7 +85,7 @@ export function PeopleGrid({
               </SetupItemCard>
             );
           })}
-        </div>
+        </SetupCardGrid>
       )}
     </>
   );

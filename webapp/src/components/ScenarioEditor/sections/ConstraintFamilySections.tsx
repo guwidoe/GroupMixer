@@ -11,6 +11,7 @@ import { SetupActionsMenu } from '../shared/SetupActionsMenu';
 import { SetupCollectionPage } from '../shared/SetupCollectionPage';
 import { SetupSearchField } from '../shared/SetupSearchField';
 import {
+  SetupCardGrid,
   SetupItemActions,
   SetupItemCard,
   SetupKeyValueList,
@@ -245,7 +246,7 @@ function ConstraintCards<T extends Constraint>({
   items: Array<IndexedConstraint<T>>;
   renderCard: (item: IndexedConstraint<T>) => React.ReactNode;
 }) {
-  return <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">{items.map(renderCard)}</div>;
+  return <SetupCardGrid minColumnWidth="19rem">{items.map(renderCard)}</SetupCardGrid>;
 }
 
 export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }: HardConstraintFamilySectionProps) {

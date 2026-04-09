@@ -5,7 +5,7 @@ import { getGroupCapacityProfile, hasSessionSpecificGroupCapacities } from '../.
 import { Button } from '../../ui';
 import { SetupActionsMenu } from '../shared/SetupActionsMenu';
 import { SetupCollectionPage } from '../shared/SetupCollectionPage';
-import { SetupItemActions, SetupItemCard, SetupKeyValueList, SetupTagList } from '../shared/cards';
+import { SetupCardGrid, SetupItemActions, SetupItemCard, SetupKeyValueList, SetupTagList } from '../shared/cards';
 import { ScenarioDataGrid } from '../shared/grid/ScenarioDataGrid';
 import type { SetupCollectionViewMode } from '../shared/useSetupCollectionViewMode';
 
@@ -130,7 +130,7 @@ function renderGroupContent(
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+    <SetupCardGrid minColumnWidth="17rem">
       {groups.map((group) => (
         <SetupItemCard
           key={group.id}
@@ -161,7 +161,7 @@ function renderGroupContent(
           ) : null}
         </SetupItemCard>
       ))}
-    </div>
+    </SetupCardGrid>
   );
 }
 

@@ -4,7 +4,7 @@ import type { Constraint, Scenario } from '../../../types';
 import { Button } from '../../ui';
 import { SetupCollectionPage } from '../shared/SetupCollectionPage';
 import { SetupSearchField } from '../shared/SetupSearchField';
-import { SetupItemActions, SetupItemCard, SetupKeyValueList, SetupTypeBadge, SetupWeightBadge } from '../shared/cards';
+import { SetupCardGrid, SetupItemActions, SetupItemCard, SetupKeyValueList, SetupTypeBadge, SetupWeightBadge } from '../shared/cards';
 import { ScenarioDataGrid } from '../shared/grid/ScenarioDataGrid';
 import type { SetupCollectionViewMode } from '../shared/useSetupCollectionViewMode';
 
@@ -143,11 +143,11 @@ function renderRepeatEncounterContent(
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+    <SetupCardGrid minColumnWidth="19rem">
       {items.map((item) => (
         <RepeatEncounterCard key={item.index} item={item} onEdit={onEdit} onDelete={onDelete} />
       ))}
-    </div>
+    </SetupCardGrid>
   );
 }
 

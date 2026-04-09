@@ -13,8 +13,8 @@ export function SetupBadge({
     tone === 'solid'
       ? { backgroundColor: 'var(--color-accent)', color: 'white' }
       : tone === 'accent'
-        ? { backgroundColor: 'var(--bg-tertiary)', color: 'var(--color-accent)', border: '1px solid var(--color-accent)' }
-        : { backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' };
+        ? { backgroundColor: 'var(--bg-secondary)', color: 'var(--color-accent)', border: '1px solid color-mix(in srgb, var(--color-accent) 35%, transparent)' }
+        : { backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' };
 
   return (
     <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold" style={style}>
@@ -37,7 +37,7 @@ export function SetupWeightBadge({ weight }: { weight: number }) {
 }
 
 export function SetupTagList({ items }: { items: Array<React.ReactNode> }) {
-  return <div className="mt-2 flex flex-wrap gap-1.5">{items}</div>;
+  return <div className="flex flex-wrap gap-1.5">{items}</div>;
 }
 
 export function SetupSessionsBadgeList({ sessions }: { sessions?: number[] }) {
@@ -72,13 +72,13 @@ export function SetupKeyValueList({
   items: Array<{ label: string; value: React.ReactNode }>;
 }) {
   return (
-    <dl className="grid gap-2">
+    <dl className="grid gap-1.5">
       {items.map((item) => (
-        <div key={item.label} className="flex flex-wrap items-start gap-2 text-sm">
+        <div key={item.label} className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-sm">
           <dt className="font-medium" style={{ color: 'var(--text-tertiary)' }}>
             {item.label}
           </dt>
-          <dd style={{ color: 'var(--text-primary)' }}>{item.value}</dd>
+          <dd className="min-w-0" style={{ color: 'var(--text-primary)' }}>{item.value}</dd>
         </div>
       ))}
     </dl>
@@ -128,9 +128,16 @@ export function SetupItemActions({
 }) {
   if (variant === 'card') {
     return (
-      <Button variant="ghost" size="icon" aria-label={deleteLabel} onClick={onDelete} title={deleteLabel}>
+      <button
+        type="button"
+        aria-label={deleteLabel}
+        title={deleteLabel}
+        onClick={onDelete}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-colors hover:bg-[color:var(--bg-secondary)]"
+        style={{ borderColor: 'var(--border-primary)', color: 'var(--text-secondary)' }}
+      >
         <Trash2 className="h-4 w-4" />
-      </Button>
+      </button>
     );
   }
 
@@ -144,6 +151,25 @@ export function SetupItemActions({
       <Button variant="ghost" size="sm" aria-label={deleteLabel} onClick={onDelete}>
         Delete
       </Button>
+    </div>
+  );
+}
+
+export function SetupCardGrid({
+  children,
+  minColumnWidth = '18rem',
+}: {
+  children: React.ReactNode;
+  minColumnWidth?: string;
+}) {
+  return (
+    <div
+      className="grid gap-3"
+      style={{
+        gridTemplateColumns: `repeat(auto-fill, minmax(${minColumnWidth}, 1fr))`,
+      }}
+    >
+      {children}
     </div>
   );
 }
@@ -165,17 +191,17 @@ export function SetupItemCard({
   openLabel?: string;
   children: React.ReactNode;
 }) {
-  const content = (
+  const body = (
     <div className="space-y-3">
       {(title || titleMeta) ? (
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           {title ? (
-            <div className="text-base font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>
+            <div className="text-[0.98rem] font-semibold leading-tight" style={{ color: 'var(--text-primary)' }}>
               {title}
             </div>
           ) : null}
           {titleMeta ? (
-            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <div className="text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
               {titleMeta}
             </div>
           ) : null}
@@ -187,27 +213,27 @@ export function SetupItemCard({
 
   return (
     <div
-      className="rounded-2xl border p-4 transition-shadow hover:shadow-md"
+      className="h-full rounded-[1.15rem] border p-3.5 shadow-sm transition-shadow hover:shadow-md"
       style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
     >
-      {(badges || actions) ? (
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">{badges ? <div className="flex flex-wrap items-center gap-2">{badges}</div> : null}</div>
-          {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+      <div className="flex h-full items-start gap-3">
+        <div className="min-w-0 flex-1 space-y-2.5">
+          {badges ? <div className="flex flex-wrap items-center gap-2">{badges}</div> : null}
+          {onOpen ? (
+            <button
+              type="button"
+              onClick={onOpen}
+              aria-label={openLabel}
+              className="block w-full rounded-xl p-1 text-left transition-colors hover:bg-[color:var(--bg-secondary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-primary)]"
+            >
+              {body}
+            </button>
+          ) : (
+            <div className="p-1">{body}</div>
+          )}
         </div>
-      ) : null}
-      {onOpen ? (
-        <button
-          type="button"
-          onClick={onOpen}
-          aria-label={openLabel}
-          className="block w-full rounded-xl text-left transition-colors hover:bg-[color:var(--bg-secondary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-primary)]"
-        >
-          <div className="p-1">{content}</div>
-        </button>
-      ) : (
-        content
-      )}
+        {actions ? <div className="flex shrink-0 items-start gap-2 pt-1">{actions}</div> : null}
+      </div>
     </div>
   );
 }
