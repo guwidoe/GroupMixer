@@ -29,6 +29,8 @@ describe("solverWorker runtime", () => {
       get_schema: vi.fn((schemaId: string) => ({ id: schemaId, version: "1.0.0", schema: {} })),
       list_public_errors: vi.fn(() => [{ error: { code: "invalid-input", message: "bad input" } }]),
       get_public_error: vi.fn((errorCode: string) => ({ error: { code: errorCode, message: "bad input" } })),
+      list_solvers: vi.fn(() => ({ solvers: [{ canonical_id: "solver1", display_name: "Solver 1" }] })),
+      get_solver_descriptor: vi.fn((solverId: string) => ({ canonical_id: solverId, display_name: `Solver ${solverId}` })),
       init_panic_hook: vi.fn(),
       solve_with_progress: vi.fn((input: Record<string, unknown>, callback?: ((progress: Record<string, unknown>) => boolean) | null) => {
         callback?.({ iteration: 1, best_score: 3 });
@@ -266,9 +268,11 @@ describe("solverWorker runtime", () => {
 
     await runtime.handleMessage({ type: "capabilities", id: "2", data: {} });
     await runtime.handleMessage({ type: "get_operation_help", id: "3", data: { args: ["solve"] } });
+    await runtime.handleMessage({ type: "list_solvers", id: "4", data: {} });
+    await runtime.handleMessage({ type: "get_solver_descriptor", id: "5", data: { args: ["solver3"] } });
     await runtime.handleMessage({
       type: "validate_scenario",
-      id: "4",
+      id: "6",
       data: {
         scenarioPayload: {
           scenario: {
@@ -282,10 +286,12 @@ describe("solverWorker runtime", () => {
         },
       },
     });
-    await runtime.handleMessage({ type: "inspect_result", id: "5", data: { resultPayload: { schedule: {}, final_score: 7 } as never } });
+    await runtime.handleMessage({ type: "inspect_result", id: "7", data: { resultPayload: { schedule: {}, final_score: 7 } as never } });
 
     expect(wasmModule.capabilities).toHaveBeenCalledTimes(1);
     expect(wasmModule.get_operation_help).toHaveBeenCalledWith("solve");
+    expect(wasmModule.list_solvers).toHaveBeenCalledTimes(1);
+    expect(wasmModule.get_solver_descriptor).toHaveBeenCalledWith("solver3");
     expect(wasmModule.validate_scenario).toHaveBeenCalledWith({
       scenario: {
         people: [],
@@ -311,6 +317,16 @@ describe("solverWorker runtime", () => {
       {
         type: "RPC_SUCCESS",
         id: "4",
+        data: { result: { solvers: [{ canonical_id: "solver1", display_name: "Solver 1" }] } },
+      },
+      {
+        type: "RPC_SUCCESS",
+        id: "5",
+        data: { result: { canonical_id: "solver3", display_name: "Solver solver3" } },
+      },
+      {
+        type: "RPC_SUCCESS",
+        id: "6",
         data: {
           result: {
             valid: true,
@@ -330,7 +346,7 @@ describe("solverWorker runtime", () => {
       },
       {
         type: "RPC_SUCCESS",
-        id: "5",
+        id: "7",
         data: { result: { final_score: 7 } },
       },
     ]);
@@ -364,8 +380,9 @@ describe("solverWorker runtime", () => {
     postedMessages = [];
 
     await runtime.handleMessage({ type: "recommend_settings", id: "2", data: {} });
-    await runtime.handleMessage({ type: "validate_scenario", id: "3", data: {} });
-    await runtime.handleMessage({ type: "inspect_result", id: "4", data: {} });
+    await runtime.handleMessage({ type: "get_solver_descriptor", id: "3", data: {} });
+    await runtime.handleMessage({ type: "validate_scenario", id: "4", data: {} });
+    await runtime.handleMessage({ type: "inspect_result", id: "5", data: {} });
 
     expect(postedMessages).toEqual([
       {
@@ -376,11 +393,16 @@ describe("solverWorker runtime", () => {
       {
         type: "RPC_ERROR",
         id: "3",
-        data: { error: "Worker RPC validate_scenario requires scenarioPayload" },
+        data: { error: "Worker RPC get_solver_descriptor requires solverId" },
       },
       {
         type: "RPC_ERROR",
         id: "4",
+        data: { error: "Worker RPC validate_scenario requires scenarioPayload" },
+      },
+      {
+        type: "RPC_ERROR",
+        id: "5",
         data: { error: "Worker RPC inspect_result requires resultPayload" },
       },
     ]);

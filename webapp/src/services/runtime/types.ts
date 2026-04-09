@@ -1,5 +1,9 @@
 import type { Assignment, Scenario, Solution, SolverSettings } from '../../types';
-import type { WasmValidateResponse } from '../wasm/module';
+import type {
+  WasmSolverCatalogResponse,
+  WasmSolverDescriptor,
+  WasmValidateResponse,
+} from '../wasm/module';
 import type { ProgressUpdate, RustResult } from '../wasm/types';
 
 export type RuntimeWarmStartSchedule = Record<string, Record<string, string[]>>;
@@ -21,6 +25,8 @@ export type RuntimeRawResult = RustResult;
 
 export type RuntimeValidationResult = WasmValidateResponse;
 export type RuntimeEvaluationResult = Solution;
+export type RuntimeSolverDescriptor = WasmSolverDescriptor;
+export type RuntimeSolverCatalog = WasmSolverCatalogResponse;
 
 export interface RuntimeCapabilities {
   runtimeId: string;

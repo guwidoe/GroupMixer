@@ -14,6 +14,8 @@ import {
   type WasmPublicErrorEnvelope,
   type WasmOperationHelpResponse,
   type WasmRecommendSettingsRequest,
+  type WasmSolverCatalogResponse,
+  type WasmSolverDescriptor,
   type WasmSchemaLookupResponse,
   type WasmSchemaSummary,
   type WasmValidateResponse,
@@ -237,6 +239,38 @@ export class WasmContractClient {
       return module.get_public_error(errorCode);
     } catch (error) {
       throw normalizeContractError(error, `Failed to get public error ${errorCode}`);
+    }
+  }
+
+  async listSolvers(): Promise<WasmSolverCatalogResponse> {
+    const module = await this.requireModule();
+
+    if (typeof module.list_solvers !== "function") {
+      throw new WasmContractClientError(
+        "Failed to list solvers: runtime does not expose list_solvers",
+      );
+    }
+
+    try {
+      return module.list_solvers();
+    } catch (error) {
+      throw normalizeContractError(error, "Failed to list solvers");
+    }
+  }
+
+  async getSolverDescriptor(solverId: string): Promise<WasmSolverDescriptor> {
+    const module = await this.requireModule();
+
+    if (typeof module.get_solver_descriptor !== "function") {
+      throw new WasmContractClientError(
+        "Failed to get solver descriptor: runtime does not expose get_solver_descriptor",
+      );
+    }
+
+    try {
+      return module.get_solver_descriptor(solverId);
+    } catch (error) {
+      throw normalizeContractError(error, `Failed to get solver descriptor ${solverId}`);
     }
   }
 

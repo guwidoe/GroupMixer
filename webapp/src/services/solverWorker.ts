@@ -26,6 +26,8 @@ import type {
   WasmResultSummary,
   WasmSchemaLookupResponse,
   WasmSchemaSummary,
+  WasmSolverCatalogResponse,
+  WasmSolverDescriptor,
   WasmValidateResponse,
 } from "./wasm/module";
 import type { RustResult } from "./wasm/types";
@@ -406,6 +408,16 @@ export class SolverWorkerService {
   public async getPublicError(errorCode: string): Promise<WasmErrorLookupResponse> {
     return this.callSolver<WasmErrorLookupResponse>("get_public_error", {
       args: [errorCode],
+    });
+  }
+
+  public async listSolvers(): Promise<WasmSolverCatalogResponse> {
+    return this.callSolver<WasmSolverCatalogResponse>("list_solvers", {});
+  }
+
+  public async getSolverDescriptor(solverId: string): Promise<WasmSolverDescriptor> {
+    return this.callSolver<WasmSolverDescriptor>("get_solver_descriptor", {
+      args: [solverId],
     });
   }
 

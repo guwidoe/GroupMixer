@@ -31,6 +31,8 @@ type WorkerWasmModule = Partial<Pick<
   | "get_schema"
   | "list_public_errors"
   | "get_public_error"
+  | "list_solvers"
+  | "get_solver_descriptor"
   | "solve_with_progress"
   | "validate_scenario"
   | "get_default_solver_configuration"
@@ -175,6 +177,12 @@ export function createSolverWorkerRuntime({
         break;
       case "get_public_error":
         result = requireMethod("get_public_error")(requireStringArg(message, "errorCode"));
+        break;
+      case "list_solvers":
+        result = requireMethod("list_solvers")();
+        break;
+      case "get_solver_descriptor":
+        result = requireMethod("get_solver_descriptor")(requireStringArg(message, "solverId"));
         break;
       case "validate_scenario":
         result = requireMethod("validate_scenario")(requireScenarioPayload(message));

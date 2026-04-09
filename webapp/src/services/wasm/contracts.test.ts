@@ -68,6 +68,8 @@ type FakeContractModule = {
   get_schema: ReturnType<typeof vi.fn>;
   list_public_errors: ReturnType<typeof vi.fn>;
   get_public_error: ReturnType<typeof vi.fn>;
+  list_solvers: ReturnType<typeof vi.fn>;
+  get_solver_descriptor: ReturnType<typeof vi.fn>;
   solve: ReturnType<typeof vi.fn>;
   solve_with_progress: ReturnType<typeof vi.fn>;
   validate_scenario: ReturnType<typeof vi.fn>;
@@ -90,6 +92,8 @@ function createContractModule(): FakeContractModule {
     get_schema: vi.fn((schemaId: string) => ({ id: schemaId, version: "1.0.0", schema: {} })),
     list_public_errors: vi.fn(() => [{ error: { code: "invalid-input", message: "bad input" } }]),
     get_public_error: vi.fn((errorCode: string) => ({ error: { code: errorCode, message: "bad input" } })),
+    list_solvers: vi.fn(() => ({ solvers: [{ canonical_id: "solver1", display_name: "Solver 1" }] })),
+    get_solver_descriptor: vi.fn((solverId: string) => ({ canonical_id: solverId, display_name: `Solver ${solverId}` })),
     solve: vi.fn(() => ({ schedule: {}, final_score: 8, unique_contacts: 2 })),
     solve_with_progress: vi.fn((_: Record<string, unknown>, callback?: ((progress: unknown) => boolean) | null) => {
       callback?.({ iteration: 5, elapsed_seconds: 1.5, best_score: 7 });
@@ -173,6 +177,13 @@ describe("WasmContractClient", () => {
     ]);
     await expect(client.getPublicError("invalid-input")).resolves.toEqual({
       error: { code: "invalid-input", message: "bad input" },
+    });
+    await expect(client.listSolvers()).resolves.toEqual({
+      solvers: [{ canonical_id: "solver1", display_name: "Solver 1" }],
+    });
+    await expect(client.getSolverDescriptor("solver3")).resolves.toEqual({
+      canonical_id: "solver3",
+      display_name: "Solver solver3",
     });
   });
 

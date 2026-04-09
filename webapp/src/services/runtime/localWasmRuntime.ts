@@ -12,6 +12,8 @@ import type {
   RuntimeProgressCallback,
   RuntimeProgressUpdate,
   RuntimeRecommendedSettingsRequest,
+  RuntimeSolverCatalog,
+  RuntimeSolverDescriptor,
   RuntimeSolveRequest,
   RuntimeSolveResult,
   RuntimeValidationResult,
@@ -108,6 +110,22 @@ export class LocalWasmRuntime implements SolverRuntime {
 
   async getCapabilities(): Promise<RuntimeCapabilities> {
     return LOCAL_WASM_RUNTIME_CAPABILITIES;
+  }
+
+  async listSolvers(): Promise<RuntimeSolverCatalog> {
+    try {
+      return await this.workerTransport.listSolvers();
+    } catch (error) {
+      throw toRuntimeError(error, 'Failed to list solvers');
+    }
+  }
+
+  async getSolverDescriptor(solverId: string): Promise<RuntimeSolverDescriptor> {
+    try {
+      return await this.workerTransport.getSolverDescriptor(solverId);
+    } catch (error) {
+      throw toRuntimeError(error, `Failed to get solver descriptor ${solverId}`);
+    }
   }
 
   async getDefaultSolverSettings(): Promise<SolverSettings> {

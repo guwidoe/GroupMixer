@@ -9,6 +9,8 @@ import type {
   WasmResultSummary,
   WasmSchemaLookupResponse,
   WasmSchemaSummary,
+  WasmSolverCatalogResponse,
+  WasmSolverDescriptor,
   WasmValidateResponse,
 } from '../wasm/module';
 import type { ProgressCallback, ProgressUpdate, RustResult } from '../wasm/types';
@@ -23,6 +25,8 @@ export interface SolverContractTransport {
   getSchema(schemaId: string): Promise<WasmSchemaLookupResponse>;
   listPublicErrors(): Promise<WasmErrorLookupResponse[]>;
   getPublicError(errorCode: string): Promise<WasmErrorLookupResponse>;
+  listSolvers(): Promise<WasmSolverCatalogResponse>;
+  getSolverDescriptor(solverId: string): Promise<WasmSolverDescriptor>;
   solve(input: WasmContractSolveInput): Promise<RustResult>;
   solveWithProgress(
     input: WasmContractSolveInput,
@@ -71,6 +75,14 @@ export class WasmContractTransport implements SolverContractTransport {
 
   getPublicError(errorCode: string): Promise<WasmErrorLookupResponse> {
     return this.client.getPublicError(errorCode);
+  }
+
+  listSolvers(): Promise<WasmSolverCatalogResponse> {
+    return this.client.listSolvers();
+  }
+
+  getSolverDescriptor(solverId: string): Promise<WasmSolverDescriptor> {
+    return this.client.getSolverDescriptor(solverId);
   }
 
   solve(input: WasmContractSolveInput): Promise<RustResult> {
@@ -138,6 +150,14 @@ export class WorkerContractTransport implements SolverContractTransport {
 
   getPublicError(errorCode: string): Promise<WasmErrorLookupResponse> {
     return this.worker.getPublicError(errorCode);
+  }
+
+  listSolvers(): Promise<WasmSolverCatalogResponse> {
+    return this.worker.listSolvers();
+  }
+
+  getSolverDescriptor(solverId: string): Promise<WasmSolverDescriptor> {
+    return this.worker.getSolverDescriptor(solverId);
   }
 
   solve(input: WasmContractSolveInput): Promise<RustResult> {

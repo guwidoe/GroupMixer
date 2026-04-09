@@ -16,6 +16,8 @@ function createBaseTransport(overrides: Partial<SolverContractTransport> = {}): 
     getSchema: vi.fn(async () => ({ id: 'solve-request', version: '1.0.0', schema: {} })),
     listPublicErrors: vi.fn(async () => []),
     getPublicError: vi.fn(async () => ({ error: { code: 'x', message: 'y' } })),
+    listSolvers: vi.fn(async () => ({ solvers: [{ canonical_id: 'solver1', display_name: 'Solver 1' }] })),
+    getSolverDescriptor: vi.fn(async (solverId: string) => ({ canonical_id: solverId, display_name: `Solver ${solverId}` })),
     solve: vi.fn(async () => ({ schedule: {}, final_score: 0, unique_contacts: 0, repetition_penalty: 0, attribute_balance_penalty: 0, constraint_penalty: 0, weighted_repetition_penalty: 0, weighted_constraint_penalty: 0 })),
     solveWithProgress: vi.fn(async () => ({ result: { schedule: {}, final_score: 0, unique_contacts: 0, repetition_penalty: 0, attribute_balance_penalty: 0, constraint_penalty: 0, weighted_repetition_penalty: 0, weighted_constraint_penalty: 0 }, lastProgress: null })),
     validateScenario: vi.fn(async () => ({ valid: true, issues: [] })),
@@ -75,6 +77,21 @@ function createRuntimeHarness(overrides: {
 defineSolverRuntimeContractTests('LocalWasmRuntime', createRuntimeHarness);
 
 describe('LocalWasmRuntime', () => {
+  it('lists solvers and resolves descriptors through the worker transport', async () => {
+    const { runtime, workerTransport } = createRuntimeHarness();
+
+    await expect(runtime.listSolvers()).resolves.toEqual({
+      solvers: [{ canonical_id: 'solver1', display_name: 'Solver 1' }],
+    });
+    await expect(runtime.getSolverDescriptor('solver3')).resolves.toEqual({
+      canonical_id: 'solver3',
+      display_name: 'Solver solver3',
+    });
+
+    expect(workerTransport.listSolvers).toHaveBeenCalledTimes(1);
+    expect(workerTransport.getSolverDescriptor).toHaveBeenCalledWith('solver3');
+  });
+
   it('tracks active solve snapshots during worker progress and clears them after completion', async () => {
     const scenario = createSampleScenario();
     const progress: RuntimeProgressUpdate = {

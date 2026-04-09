@@ -5,6 +5,8 @@ import type {
   RuntimeEvaluationRequest,
   RuntimeEvaluationResult,
   RuntimeRecommendedSettingsRequest,
+  RuntimeSolverCatalog,
+  RuntimeSolverDescriptor,
   RuntimeSolveRequest,
   RuntimeSolveResult,
   RuntimeValidationResult,
@@ -38,6 +40,8 @@ export function isRuntimeCancelledError(error: unknown): error is RuntimeCancell
 export interface SolverRuntime {
   initialize(): Promise<void>;
   getCapabilities(): Promise<RuntimeCapabilities>;
+  listSolvers(): Promise<RuntimeSolverCatalog>;
+  getSolverDescriptor(solverId: string): Promise<RuntimeSolverDescriptor>;
   getDefaultSolverSettings(): Promise<SolverSettings>;
   validateScenario(scenario: Scenario): Promise<RuntimeValidationResult>;
   recommendSettings(request: RuntimeRecommendedSettingsRequest): Promise<SolverSettings>;

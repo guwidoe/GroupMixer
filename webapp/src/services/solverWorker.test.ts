@@ -314,15 +314,41 @@ describe("SolverWorkerService", () => {
     });
     await expect(helpPromise).resolves.toEqual({ operation: { id: "solve" } });
 
-    const validatePromise = service.validateScenarioContract({ scenario: createScenario() });
+    const listSolversPromise = service.listSolvers();
     expect(worker.postedMessages.at(-1)).toEqual({
-      type: "validate_scenario",
+      type: "list_solvers",
       id: "4",
-      data: { scenarioPayload: { scenario: createScenario() } },
+      data: {},
     });
     worker.emit({
       type: "RPC_SUCCESS",
       id: "4",
+      data: { result: { solvers: [{ canonical_id: "solver1" }] } },
+    });
+    await expect(listSolversPromise).resolves.toEqual({ solvers: [{ canonical_id: "solver1" }] });
+
+    const descriptorPromise = service.getSolverDescriptor("solver3");
+    expect(worker.postedMessages.at(-1)).toEqual({
+      type: "get_solver_descriptor",
+      id: "5",
+      data: { args: ["solver3"] },
+    });
+    worker.emit({
+      type: "RPC_SUCCESS",
+      id: "5",
+      data: { result: { canonical_id: "solver3", display_name: "Solver 3" } },
+    });
+    await expect(descriptorPromise).resolves.toEqual({ canonical_id: "solver3", display_name: "Solver 3" });
+
+    const validatePromise = service.validateScenarioContract({ scenario: createScenario() });
+    expect(worker.postedMessages.at(-1)).toEqual({
+      type: "validate_scenario",
+      id: "6",
+      data: { scenarioPayload: { scenario: createScenario() } },
+    });
+    worker.emit({
+      type: "RPC_SUCCESS",
+      id: "6",
       data: { result: { valid: true, issues: [] } },
     });
     await expect(validatePromise).resolves.toEqual({ valid: true, issues: [] });
@@ -330,12 +356,12 @@ describe("SolverWorkerService", () => {
     const solvePromise = service.solveContract({ scenario: createScenario() });
     expect(worker.postedMessages.at(-1)).toEqual({
       type: "SOLVE",
-      id: "5",
+      id: "7",
       data: { scenarioPayload: { scenario: createScenario() }, useProgress: false },
     });
     worker.emit({
       type: "SOLVE_SUCCESS",
-      id: "5",
+      id: "7",
       data: { result: { schedule: {}, final_score: 4 } },
     });
     await expect(solvePromise).resolves.toEqual({ schedule: {}, final_score: 4 });

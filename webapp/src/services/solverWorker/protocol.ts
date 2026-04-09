@@ -8,6 +8,8 @@ export type SolverRpcMethod =
   | "get_schema"
   | "list_public_errors"
   | "get_public_error"
+  | "list_solvers"
+  | "get_solver_descriptor"
   | "validate_scenario"
   | "get_default_solver_configuration"
   | "recommend_settings"
@@ -21,6 +23,8 @@ export const SOLVER_RPC_METHODS = [
   "get_schema",
   "list_public_errors",
   "get_public_error",
+  "list_solvers",
+  "get_solver_descriptor",
   "validate_scenario",
   "get_default_solver_configuration",
   "recommend_settings",

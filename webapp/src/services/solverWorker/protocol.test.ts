@@ -23,6 +23,8 @@ describe("solver worker protocol", () => {
       "get_schema",
       "list_public_errors",
       "get_public_error",
+      "list_solvers",
+      "get_solver_descriptor",
       "validate_scenario",
       "get_default_solver_configuration",
       "recommend_settings",
@@ -35,6 +37,8 @@ describe("solver worker protocol", () => {
     expect(isSolverRpcMethod("get_schema")).toBe(true);
     expect(isSolverRpcMethod("list_public_errors")).toBe(true);
     expect(isSolverRpcMethod("get_public_error")).toBe(true);
+    expect(isSolverRpcMethod("list_solvers")).toBe(true);
+    expect(isSolverRpcMethod("get_solver_descriptor")).toBe(true);
     expect(isSolverRpcMethod("validate_scenario")).toBe(true);
     expect(isSolverRpcMethod("get_default_solver_configuration")).toBe(true);
     expect(isSolverRpcMethod("recommend_settings")).toBe(true);
