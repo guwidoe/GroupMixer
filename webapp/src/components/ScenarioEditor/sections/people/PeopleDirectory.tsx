@@ -6,6 +6,7 @@ import { Button } from '../../../ui';
 import { SetupCollectionPage } from '../../shared/SetupCollectionPage';
 import { SetupItemActions } from '../../shared/cards';
 import { ScenarioDataGrid } from '../../shared/grid/ScenarioDataGrid';
+import { SetupPersonName, resolvePersonDisplay } from '../../shared/personDisplay';
 import { PeopleGrid } from './PeopleGrid';
 import { sortPeople } from './peopleUtils';
 import type { SetupCollectionViewMode } from '../../shared/useSetupCollectionViewMode';
@@ -292,19 +293,12 @@ export function PeopleDirectory({
                 id: 'name',
                 header: 'Name',
                 cell: (person) => (
-                  <div className="space-y-0.5">
-                    <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-                      {person.attributes.name || person.id}
-                    </div>
-                    {person.attributes.name && (
-                      <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                        {person.id}
-                      </div>
-                    )}
+                  <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    <SetupPersonName people={basePeople} personId={person.id} className="font-semibold" />
                   </div>
                 ),
-                sortValue: (person) => (person.attributes.name || person.id).toLowerCase(),
-                searchValue: (person) => `${person.id} ${person.attributes.name || ''}`,
+                sortValue: (person) => resolvePersonDisplay(basePeople, person.id).displayName.toLowerCase(),
+                searchValue: (person) => resolvePersonDisplay(basePeople, person.id).searchText,
                 width: 240,
                 editor: {
                   type: 'text',

@@ -19,6 +19,7 @@ import {
   SetupWeightBadge,
 } from '../shared/cards';
 import { ScenarioDataGrid } from '../shared/grid/ScenarioDataGrid';
+import { SetupPersonListText, formatPersonDisplayList, formatPersonSearchList } from '../shared/personDisplay';
 import type { SetupCollectionViewMode } from '../shared/useSetupCollectionViewMode';
 
 type HardConstraintFamily = 'ImmovablePeople' | 'MustStayTogether';
@@ -379,9 +380,9 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                 {
                   id: 'people',
                   header: 'People',
-                  cell: (item) => item.constraint.people.join(', '),
+                  cell: (item) => <SetupPersonListText people={scenario.people} personIds={item.constraint.people} />,
                   sortValue: (item) => item.constraint.people.length,
-                  searchValue: (item) => item.constraint.people.join(' '),
+                  searchValue: (item) => formatPersonSearchList(scenario.people, item.constraint.people),
                   width: 280,
                 },
                 ...(family === 'ImmovablePeople'
@@ -606,9 +607,11 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                         {
                           id: 'pair',
                           header: 'Pair',
-                          cell: (item: IndexedConstraint<PairMeetingCountConstraint>) => item.constraint.people.join(' & '),
-                          sortValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => item.constraint.people.join(' '),
-                          searchValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => item.constraint.people.join(' '),
+                          cell: (item: IndexedConstraint<PairMeetingCountConstraint>) => (
+                            <SetupPersonListText people={scenario.people} personIds={item.constraint.people} separator=" & " />
+                          ),
+                          sortValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => formatPersonDisplayList(scenario.people, item.constraint.people, ' & '),
+                          searchValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => formatPersonSearchList(scenario.people, item.constraint.people),
                           width: 280,
                         },
                       ]
@@ -616,9 +619,11 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                         {
                           id: 'people',
                           header: 'People',
-                          cell: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => item.constraint.people.join(', '),
+                          cell: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => (
+                            <SetupPersonListText people={scenario.people} personIds={item.constraint.people} />
+                          ),
                           sortValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => item.constraint.people.length,
-                          searchValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => item.constraint.people.join(' '),
+                          searchValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => formatPersonSearchList(scenario.people, item.constraint.people),
                           width: 280,
                         },
                       ]),

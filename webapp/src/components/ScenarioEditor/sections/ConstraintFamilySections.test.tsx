@@ -60,6 +60,8 @@ describe('ConstraintFamilySections', () => {
 
     await user.click(screen.getByRole('button', { name: /list/i }));
     expect(screen.getByRole('columnheader', { name: /group/i })).toBeInTheDocument();
+    expect(screen.getByText('Alex')).toBeInTheDocument();
+    expect(screen.queryByText('p1')).not.toBeInTheDocument();
   });
 
   it('renders soft constraint family conversion affordances without the old family tabs', async () => {
