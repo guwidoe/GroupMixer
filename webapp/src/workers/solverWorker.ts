@@ -3,7 +3,7 @@
 
 import wasmInit, * as wasmModule from "../services/wasm/runtimeModule";
 import { createProgressMailboxWriter } from "../services/runtime/progressMailbox";
-import type { WasmContractModule } from "../services/wasm/module";
+import type { WasmContractModule, WasmProgressSnapshot } from "../services/wasm/module";
 import {
   createFatalErrorMessage,
   createRequestErrorMessage,
@@ -15,7 +15,7 @@ import {
   type WorkerRequestMessage,
   type WorkerResponseMessage,
 } from "../services/solverWorker/protocol";
-import type { ProgressUpdate, RustResult } from "../services/wasm/types";
+import type { RustResult } from "../services/wasm/types";
 import type {
   WasmContractSolveInput,
   WasmRecommendSettingsRequest,
@@ -34,6 +34,7 @@ type WorkerWasmModule = Partial<Pick<
   | "list_solvers"
   | "get_solver_descriptor"
   | "solve_with_progress"
+  | "solve_with_progress_snapshot"
   | "validate_scenario"
   | "get_default_solver_configuration"
   | "recommend_settings"
@@ -227,12 +228,16 @@ export function createSolverWorkerRuntime({
             throw new Error("WASM module not initialized");
           }
 
-          if (typeof wasm.solve_with_progress !== "function") {
-            throw new Error("WASM module is missing solve_with_progress");
-          }
-
           if (useProgress && !progressMailbox) {
             throw new Error("Shared progress mailbox is required for progress-enabled solves");
+          }
+
+          if (useProgress && typeof wasm.solve_with_progress_snapshot !== "function") {
+            throw new Error("WASM module is missing solve_with_progress_snapshot");
+          }
+
+          if (!useProgress && typeof wasm.solve_with_progress !== "function") {
+            throw new Error("WASM module is missing solve_with_progress");
           }
 
           const mailboxWriter = progressMailbox
@@ -242,22 +247,21 @@ export function createSolverWorkerRuntime({
           mailboxWriter?.reset();
           mailboxWriter?.setStatus("running");
 
-          let lastProgress: ProgressUpdate | null = null;
-
           try {
-            const progressCallback = useProgress
-              ? (progress: ProgressUpdate): boolean => {
-                  lastProgress = progress;
-                  mailboxWriter?.writeProgress(progress);
-                  return true;
-                }
-              : undefined;
+            const result = useProgress
+              ? (wasm.solve_with_progress_snapshot!(
+                  scenarioPayload,
+                  (progress: WasmProgressSnapshot): boolean => {
+                    mailboxWriter?.writeProgress(progress);
+                    return true;
+                  },
+                ) as RustResult)
+              : (wasm.solve_with_progress!(scenarioPayload, undefined) as RustResult);
 
-            const result = wasm.solve_with_progress(scenarioPayload, progressCallback) as RustResult;
-            mailboxWriter?.setStatus("completed", { stopReason: lastProgress?.stop_reason });
-            postMessage(createSolveSuccessMessage(id, result, lastProgress));
+            mailboxWriter?.setStatus("completed");
+            postMessage(createSolveSuccessMessage(id, result, null));
           } catch (error) {
-            mailboxWriter?.setStatus("failed", { stopReason: lastProgress?.stop_reason });
+            mailboxWriter?.setStatus("failed");
             throw error;
           }
           break;

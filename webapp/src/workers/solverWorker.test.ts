@@ -37,6 +37,10 @@ describe("solverWorker runtime", () => {
         callback?.({ iteration: 1, best_score: 3 });
         return { schedule: {}, final_score: 1, input };
       }),
+      solve_with_progress_snapshot: vi.fn((input: Record<string, unknown>, callback?: ((progress: Record<string, unknown>) => boolean) | null) => {
+        callback?.({ iteration: 1, best_score: 3 });
+        return { schedule: {}, final_score: 1, input };
+      }),
       validate_scenario: vi.fn((input: Record<string, unknown>) => ({ valid: true, issues: [], input })),
       get_default_solver_configuration: vi.fn(() => ({ solver_type: "SimulatedAnnealing" })),
       recommend_settings: vi.fn((request: Record<string, unknown>) => ({ request })),
@@ -173,7 +177,7 @@ describe("solverWorker runtime", () => {
       },
     });
 
-    expect(wasmModule.solve_with_progress).toHaveBeenCalledTimes(1);
+    expect(wasmModule.solve_with_progress_snapshot).toHaveBeenCalledTimes(1);
     expect(postedMessages).toEqual([
       {
         type: "SOLVE_SUCCESS",
@@ -193,7 +197,7 @@ describe("solverWorker runtime", () => {
               },
             },
           },
-          lastProgress: { iteration: 1, best_score: 3 },
+          lastProgress: null,
         },
       },
     ]);
@@ -206,6 +210,43 @@ describe("solverWorker runtime", () => {
         best_score: 3,
       }),
     );
+  });
+
+  it("fails loudly when mailbox snapshot export is missing", async () => {
+    const { runtime } = createRuntime({
+      wasmModule: {
+        solve_with_progress_snapshot: undefined,
+      },
+    });
+    await initializeRuntime(runtime);
+    postedMessages = [];
+
+    await runtime.handleMessage({
+      type: "SOLVE",
+      id: "2",
+      data: {
+        scenarioPayload: {
+          scenario: {
+            people: [],
+            groups: [],
+            num_sessions: 1,
+            objectives: [],
+            constraints: [],
+            settings: { solver_type: "SimulatedAnnealing", stop_conditions: {}, solver_params: {} },
+          },
+        },
+        useProgress: true,
+        progressMailbox: new SharedArrayBuffer(getProgressMailboxByteLength()),
+      },
+    });
+
+    expect(postedMessages).toEqual([
+      {
+        type: "ERROR",
+        id: "2",
+        data: { error: "WASM module is missing solve_with_progress_snapshot" },
+      },
+    ]);
   });
 
   it("fails loudly when progress solves omit the shared mailbox", async () => {

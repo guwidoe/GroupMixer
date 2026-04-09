@@ -64,6 +64,11 @@ const WASM_BINDINGS: &[WasmContractBinding] = &[
         note: "Contract-native solve export returning structured JS values with optional progress callbacks.",
     },
     WasmContractBinding {
+        export_name: "solve_with_progress_snapshot",
+        operation_id: Some(SOLVE_OPERATION_ID),
+        note: "Mailbox-oriented solve export returning structured solve results while emitting scalar-only progress snapshots.",
+    },
+    WasmContractBinding {
         export_name: "validate_scenario",
         operation_id: Some(VALIDATE_SCENARIO_OPERATION_ID),
         note: "Contract-native validation export returning the shared validation shape.",

@@ -86,6 +86,15 @@ pub fn solve_with_progress(
 }
 
 #[wasm_bindgen]
+pub fn solve_with_progress_snapshot(
+    input: JsValue,
+    progress_callback: Option<js_sys::Function>,
+) -> Result<JsValue, JsValue> {
+    init_panic_hook();
+    contract_runtime::solve_with_progress_snapshot_js(input, progress_callback)
+}
+
+#[wasm_bindgen]
 pub fn validate_scenario(input: JsValue) -> Result<JsValue, JsValue> {
     init_panic_hook();
     contract_runtime::validate_scenario_contract_js(input)
@@ -277,6 +286,38 @@ mod tests {
             .borrow()
             .iter()
             .all(|payload| payload.get("iteration").is_some()));
+        assert!(result.get("schedule").is_some());
+    }
+
+    #[wasm_bindgen_test]
+    fn solve_with_progress_snapshot_invokes_callback_with_scalar_payloads() {
+        let calls = Rc::new(RefCell::new(0usize));
+        let payloads = Rc::new(RefCell::new(Vec::<serde_json::Value>::new()));
+
+        let calls_clone = Rc::clone(&calls);
+        let payloads_clone = Rc::clone(&payloads);
+        let callback = Closure::wrap(Box::new(move |progress: JsValue| -> JsValue {
+            *calls_clone.borrow_mut() += 1;
+            payloads_clone
+                .borrow_mut()
+                .push(serde_wasm_bindgen::from_value(progress).unwrap());
+            JsValue::from_bool(false)
+        }) as Box<dyn FnMut(JsValue) -> JsValue>);
+
+        let function: js_sys::Function = callback
+            .as_ref()
+            .unchecked_ref::<js_sys::Function>()
+            .clone();
+        let result_value =
+            solve_with_progress_snapshot(valid_input_js(), Some(function)).unwrap();
+        let result: serde_json::Value = serde_wasm_bindgen::from_value(result_value).unwrap();
+
+        assert!(*calls.borrow() >= 1);
+        assert!(payloads.borrow().iter().all(|payload| {
+            payload.get("iteration").is_some()
+                && payload.get("best_schedule").is_none()
+                && payload.get("move_policy").is_none()
+        }));
         assert!(result.get("schedule").is_some());
     }
 

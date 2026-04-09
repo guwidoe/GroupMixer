@@ -26,6 +26,55 @@ const MAX_SAFE_JS_INTEGER: u64 = 9_007_199_254_740_991;
 type WasmInitialSchedule =
     std::collections::HashMap<String, std::collections::HashMap<String, Vec<String>>>;
 
+#[derive(Debug, Clone, Serialize)]
+struct WasmProgressSnapshot {
+    iteration: u64,
+    max_iterations: u64,
+    temperature: f64,
+    current_score: f64,
+    best_score: f64,
+    current_contacts: i32,
+    best_contacts: i32,
+    repetition_penalty: i32,
+    elapsed_seconds: f64,
+    no_improvement_count: u64,
+    clique_swaps_tried: u64,
+    clique_swaps_accepted: u64,
+    clique_swaps_rejected: u64,
+    transfers_tried: u64,
+    transfers_accepted: u64,
+    transfers_rejected: u64,
+    swaps_tried: u64,
+    swaps_accepted: u64,
+    swaps_rejected: u64,
+    overall_acceptance_rate: f64,
+    recent_acceptance_rate: f64,
+    avg_attempted_move_delta: f64,
+    avg_accepted_move_delta: f64,
+    biggest_accepted_increase: f64,
+    biggest_attempted_increase: f64,
+    current_repetition_penalty: f64,
+    current_balance_penalty: f64,
+    current_constraint_penalty: f64,
+    best_repetition_penalty: f64,
+    best_balance_penalty: f64,
+    best_constraint_penalty: f64,
+    reheats_performed: u64,
+    iterations_since_last_reheat: u64,
+    local_optima_escapes: u64,
+    avg_time_per_iteration_ms: f64,
+    cooling_progress: f64,
+    clique_swap_success_rate: f64,
+    transfer_success_rate: f64,
+    swap_success_rate: f64,
+    score_variance: f64,
+    search_efficiency: f64,
+    #[serde(default)]
+    effective_seed: Option<u64>,
+    #[serde(default)]
+    stop_reason: Option<gm_core::models::StopReason>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 struct WasmScenarioContractInput {
     scenario: WasmScenario,
@@ -91,6 +140,16 @@ pub fn solve_with_progress_js(
     serialize_output(&result, "solve")
 }
 
+pub fn solve_with_progress_snapshot_js(
+    input: JsValue,
+    progress_callback: Option<js_sys::Function>,
+) -> Result<JsValue, JsValue> {
+    let request = parse_wasm_scenario_input(input, "solve", &["solve-request"])?;
+    let result = solve_with_progress_snapshot_contract(&request, progress_callback)
+        .map_err(|error| public_error_to_js_value(&error))?;
+    serialize_output(&result, "solve")
+}
+
 pub fn validate_scenario_contract_js(input: JsValue) -> Result<JsValue, JsValue> {
     let request = parse_wasm_scenario_input(input, "validate-scenario", &["validate-request"])?;
     let response = validate_scenario_contract(&request);
@@ -135,11 +194,33 @@ pub fn solve_with_progress_contract(
     request: &ApiInput,
     progress_callback: Option<js_sys::Function>,
 ) -> Result<SolverResult, PublicErrorEnvelope> {
+    solve_with_mapped_progress_contract(request, progress_callback, |progress| progress.clone())
+}
+
+pub fn solve_with_progress_snapshot_contract(
+    request: &ApiInput,
+    progress_callback: Option<js_sys::Function>,
+) -> Result<SolverResult, PublicErrorEnvelope> {
+    solve_with_mapped_progress_contract(request, progress_callback, |progress| {
+        WasmProgressSnapshot::from(progress)
+    })
+}
+
+fn solve_with_mapped_progress_contract<T, F>(
+    request: &ApiInput,
+    progress_callback: Option<js_sys::Function>,
+    map_progress: F,
+) -> Result<SolverResult, PublicErrorEnvelope>
+where
+    T: Serialize + 'static,
+    F: Fn(&ProgressUpdate) -> T + 'static,
+{
     let adjusted = ensure_browser_safe_seed(request)?;
 
     if let Some(js_callback) = progress_callback {
         let rust_callback = Box::new(move |progress: &ProgressUpdate| -> bool {
-            let progress_value = match serde_wasm_bindgen::to_value(progress) {
+            let payload = map_progress(progress);
+            let progress_value = match serde_wasm_bindgen::to_value(&payload) {
                 Ok(value) => value,
                 Err(error) => {
                     web_sys::console::error_1(
@@ -167,6 +248,56 @@ pub fn solve_with_progress_contract(
             .map_err(|error| infeasible_scenario_error("solve", error.to_string()))
     } else {
         run_solver(&adjusted).map_err(|error| infeasible_scenario_error("solve", error.to_string()))
+    }
+}
+
+impl From<&ProgressUpdate> for WasmProgressSnapshot {
+    fn from(progress: &ProgressUpdate) -> Self {
+        Self {
+            iteration: progress.iteration,
+            max_iterations: progress.max_iterations,
+            temperature: progress.temperature,
+            current_score: progress.current_score,
+            best_score: progress.best_score,
+            current_contacts: progress.current_contacts,
+            best_contacts: progress.best_contacts,
+            repetition_penalty: progress.repetition_penalty,
+            elapsed_seconds: progress.elapsed_seconds,
+            no_improvement_count: progress.no_improvement_count,
+            clique_swaps_tried: progress.clique_swaps_tried,
+            clique_swaps_accepted: progress.clique_swaps_accepted,
+            clique_swaps_rejected: progress.clique_swaps_rejected,
+            transfers_tried: progress.transfers_tried,
+            transfers_accepted: progress.transfers_accepted,
+            transfers_rejected: progress.transfers_rejected,
+            swaps_tried: progress.swaps_tried,
+            swaps_accepted: progress.swaps_accepted,
+            swaps_rejected: progress.swaps_rejected,
+            overall_acceptance_rate: progress.overall_acceptance_rate,
+            recent_acceptance_rate: progress.recent_acceptance_rate,
+            avg_attempted_move_delta: progress.avg_attempted_move_delta,
+            avg_accepted_move_delta: progress.avg_accepted_move_delta,
+            biggest_accepted_increase: progress.biggest_accepted_increase,
+            biggest_attempted_increase: progress.biggest_attempted_increase,
+            current_repetition_penalty: progress.current_repetition_penalty,
+            current_balance_penalty: progress.current_balance_penalty,
+            current_constraint_penalty: progress.current_constraint_penalty,
+            best_repetition_penalty: progress.best_repetition_penalty,
+            best_balance_penalty: progress.best_balance_penalty,
+            best_constraint_penalty: progress.best_constraint_penalty,
+            reheats_performed: progress.reheats_performed,
+            iterations_since_last_reheat: progress.iterations_since_last_reheat,
+            local_optima_escapes: progress.local_optima_escapes,
+            avg_time_per_iteration_ms: progress.avg_time_per_iteration_ms,
+            cooling_progress: progress.cooling_progress,
+            clique_swap_success_rate: progress.clique_swap_success_rate,
+            transfer_success_rate: progress.transfer_success_rate,
+            swap_success_rate: progress.swap_success_rate,
+            score_variance: progress.score_variance,
+            search_efficiency: progress.search_efficiency,
+            effective_seed: progress.effective_seed,
+            stop_reason: progress.stop_reason,
+        }
     }
 }
 
@@ -336,12 +467,12 @@ mod tests {
     use super::{
         evaluate_input_contract, get_default_solver_configuration, inspect_result_contract,
         recommend_settings_contract, solve_contract, solve_with_progress_contract,
-        validate_scenario_contract, MAX_SAFE_JS_INTEGER,
+        validate_scenario_contract, WasmProgressSnapshot, MAX_SAFE_JS_INTEGER,
     };
     use gm_contracts::types::RecommendSettingsRequest;
     use gm_core::models::{
-        Group, Objective, Person, ProblemDefinition, SimulatedAnnealingParams, SolverConfiguration,
-        SolverParams, StopConditions,
+        Group, Objective, Person, ProblemDefinition, ProgressUpdate, SimulatedAnnealingParams,
+        SolverConfiguration, SolverParams, StopConditions, StopReason,
     };
     use std::collections::HashMap;
 
@@ -480,5 +611,68 @@ mod tests {
         let summary = inspect_result_contract(&solve_result);
         assert!(summary.final_score.is_finite());
         assert!(summary.unique_contacts >= 0);
+    }
+
+    #[test]
+    fn progress_snapshot_conversion_drops_heavy_progress_fields() {
+        let progress = ProgressUpdate {
+            iteration: 5,
+            max_iterations: 100,
+            temperature: 0.25,
+            current_score: 12.0,
+            best_score: 10.0,
+            current_contacts: 3,
+            best_contacts: 4,
+            repetition_penalty: 1,
+            elapsed_seconds: 1.5,
+            no_improvement_count: 2,
+            clique_swaps_tried: 1,
+            clique_swaps_accepted: 1,
+            clique_swaps_rejected: 0,
+            transfers_tried: 2,
+            transfers_accepted: 1,
+            transfers_rejected: 1,
+            swaps_tried: 3,
+            swaps_accepted: 2,
+            swaps_rejected: 1,
+            overall_acceptance_rate: 0.5,
+            recent_acceptance_rate: 0.4,
+            avg_attempted_move_delta: -0.1,
+            avg_accepted_move_delta: -0.2,
+            biggest_accepted_increase: 1.0,
+            biggest_attempted_increase: 2.0,
+            current_repetition_penalty: 1.0,
+            current_balance_penalty: 2.0,
+            current_constraint_penalty: 3.0,
+            best_repetition_penalty: 0.5,
+            best_balance_penalty: 1.5,
+            best_constraint_penalty: 2.5,
+            reheats_performed: 0,
+            iterations_since_last_reheat: 5,
+            local_optima_escapes: 1,
+            avg_time_per_iteration_ms: 0.01,
+            cooling_progress: 0.25,
+            clique_swap_success_rate: 1.0,
+            transfer_success_rate: 0.5,
+            swap_success_rate: 0.66,
+            score_variance: 0.1,
+            search_efficiency: 0.2,
+            best_schedule: Some(HashMap::from([(
+                "session_0".to_string(),
+                HashMap::from([("g0".to_string(), vec!["p0".to_string()])]),
+            )])),
+            effective_seed: Some(42),
+            move_policy: None,
+            stop_reason: Some(StopReason::MaxIterationsReached),
+        };
+
+        let snapshot = WasmProgressSnapshot::from(&progress);
+        let value = serde_json::to_value(&snapshot).expect("snapshot serializes");
+
+        assert_eq!(value["iteration"], serde_json::Value::from(5));
+        assert_eq!(value["effective_seed"], serde_json::Value::from(42));
+        assert_eq!(value["stop_reason"], serde_json::Value::from("max_iterations_reached"));
+        assert!(value.get("best_schedule").is_none());
+        assert!(value.get("move_policy").is_none());
     }
 }

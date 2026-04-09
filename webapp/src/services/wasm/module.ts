@@ -1,8 +1,53 @@
 import type { Scenario, SolverSettings } from "../../types";
-import type { ProgressUpdate, RustResult } from "./types";
+import type { ProgressUpdate, RustResult, StopReason } from "./types";
 import type { WarmStartSchedule } from "./scenarioContract";
 
 export type WasmContractProgressCallback = (progress: ProgressUpdate) => boolean;
+export interface WasmProgressSnapshot {
+  iteration: number;
+  max_iterations: number;
+  temperature: number;
+  current_score: number;
+  best_score: number;
+  current_contacts: number;
+  best_contacts: number;
+  repetition_penalty: number;
+  elapsed_seconds: number;
+  no_improvement_count: number;
+  clique_swaps_tried: number;
+  clique_swaps_accepted: number;
+  clique_swaps_rejected: number;
+  transfers_tried: number;
+  transfers_accepted: number;
+  transfers_rejected: number;
+  swaps_tried: number;
+  swaps_accepted: number;
+  swaps_rejected: number;
+  overall_acceptance_rate: number;
+  recent_acceptance_rate: number;
+  avg_attempted_move_delta: number;
+  avg_accepted_move_delta: number;
+  biggest_accepted_increase: number;
+  biggest_attempted_increase: number;
+  current_repetition_penalty: number;
+  current_balance_penalty: number;
+  current_constraint_penalty: number;
+  best_repetition_penalty: number;
+  best_balance_penalty: number;
+  best_constraint_penalty: number;
+  reheats_performed: number;
+  iterations_since_last_reheat: number;
+  local_optima_escapes: number;
+  avg_time_per_iteration_ms: number;
+  cooling_progress: number;
+  clique_swap_success_rate: number;
+  transfer_success_rate: number;
+  swap_success_rate: number;
+  score_variance: number;
+  search_efficiency: number;
+  effective_seed?: number;
+  stop_reason?: StopReason;
+}
 export type WasmModuleLoader = () => Promise<WasmContractModule>;
 
 export interface WasmContractSolveInput {
@@ -188,6 +233,10 @@ export interface WasmContractModule {
     input: WasmContractSolveInput,
     progressCallback?: WasmContractProgressCallback | null,
   ) => RustResult;
+  solve_with_progress_snapshot?: (
+    input: WasmContractSolveInput,
+    progressCallback?: ((progress: WasmProgressSnapshot) => boolean) | null,
+  ) => RustResult;
   validate_scenario: (input: WasmContractSolveInput) => WasmValidateResponse;
   get_default_solver_configuration: () => SolverSettings;
   recommend_settings: (input: WasmRecommendSettingsRequest) => SolverSettings;
@@ -225,6 +274,7 @@ export const WASM_RUNTIME_EXPORT_NAMES = {
   get_solver_descriptor: "get_solver_descriptor",
   solve: "solve",
   solve_with_progress: "solve_with_progress",
+  solve_with_progress_snapshot: "solve_with_progress_snapshot",
   validate_scenario: "validate_scenario",
   get_default_solver_configuration: "get_default_solver_configuration",
   recommend_settings: "recommend_settings",
