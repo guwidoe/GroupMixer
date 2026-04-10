@@ -62,7 +62,7 @@ describe('ConstraintFamilySections', () => {
     expect(screen.getByRole('columnheader', { name: /group/i })).toBeInTheDocument();
     expect(screen.getByText('Alex')).toBeInTheDocument();
     expect(screen.queryByText('p1')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /edit table/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^csv$/i })).toBeInTheDocument();
   });
 
@@ -75,7 +75,7 @@ describe('ConstraintFamilySections', () => {
 
     expect(screen.getByRole('heading', { name: /should stay together/i })).toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/filter by person or session/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /edit table/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^csv$/i })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /open filter for people/i }));
     expect(screen.getByRole('textbox', { name: /filter people/i })).toBeInTheDocument();
