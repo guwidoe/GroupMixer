@@ -28,6 +28,8 @@ describe('AttributeDefinitionsSection', () => {
 
     await user.click(screen.getByRole('button', { name: /list/i }));
     expect(screen.getByRole('columnheader', { name: /attribute/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /edit table/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^csv$/i })).toBeInTheDocument();
 
     await user.click(screen.getAllByRole('button', { name: /delete role/i })[0]!);
     expect(onRemoveAttribute).toHaveBeenCalledWith('role');

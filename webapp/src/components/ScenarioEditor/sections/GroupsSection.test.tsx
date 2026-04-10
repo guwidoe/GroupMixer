@@ -44,6 +44,13 @@ describe('GroupsSection', () => {
 
     await user.click(screen.getByRole('button', { name: /list/i }));
     expect(screen.getByRole('columnheader', { name: /default capacity/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /edit table/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    expect(screen.getByRole('heading', { name: /csv preview/i })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /csv preview content/i })).toHaveValue(
+      'Group,Default capacity,Session capacities,Actions\ng1,4,Uses default capacity in every session,',
+    );
 
     await user.click(screen.getAllByRole('button', { name: /delete g1/i })[0]!);
     expect(onDeleteGroup).toHaveBeenCalledWith('g1');
