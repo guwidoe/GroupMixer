@@ -16,6 +16,7 @@ function shouldIgnoreRowOpen(target: EventTarget | null) {
 
 export function GridBody<T>({ emptyState, onRowOpen, rowOpenLabel, table }: GridBodyProps<T>) {
   const paginatedRows = table.getRowModel().rows;
+  const [highlightedRowId, setHighlightedRowId] = React.useState<string | null>(null);
 
   return (
     <tbody>
@@ -30,57 +31,60 @@ export function GridBody<T>({ emptyState, onRowOpen, rowOpenLabel, table }: Grid
           const baseRowBackground = rowIndex % 2 === 0
             ? 'var(--bg-primary)'
             : 'color-mix(in srgb, var(--bg-secondary) 55%, var(--bg-primary) 45%)';
+          const hoverBackground = onRowOpen ? 'var(--bg-tertiary)' : 'var(--bg-secondary)';
+          const rowBackground = highlightedRowId === row.id ? hoverBackground : baseRowBackground;
 
           return (
-          <tr
-            key={row.id}
-            aria-label={onRowOpen ? rowOpenLabel?.(row.original, rowIndex) : undefined}
-            className={[
-              'transition-colors',
-              onRowOpen
-                ? 'cursor-pointer hover:[--grid-row-bg:var(--bg-tertiary)] focus-visible:[--grid-row-bg:var(--bg-tertiary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-accent)] focus-visible:ring-offset-[-2px]'
-                : 'hover:[--grid-row-bg:var(--bg-secondary)]',
-            ].join(' ')}
-            style={{ '--grid-row-bg': baseRowBackground, backgroundColor: 'var(--grid-row-bg)' } as React.CSSProperties}
-            tabIndex={onRowOpen ? 0 : undefined}
-            onClick={onRowOpen ? (event) => {
-              if (shouldIgnoreRowOpen(event.target)) {
-                return;
-              }
-              onRowOpen(row.original);
-            } : undefined}
-            onKeyDown={onRowOpen ? (event) => {
-              if (event.key !== 'Enter' && event.key !== ' ') {
-                return;
-              }
-              if (shouldIgnoreRowOpen(event.target)) {
-                return;
-              }
-              event.preventDefault();
-              onRowOpen(row.original);
-            } : undefined}
-          >
-            {row.getVisibleCells().map((cell) => {
-              const columnMeta = cell.column.columnDef.meta as { align?: ScenarioDataGridColumn<T>['align'] } | undefined;
-              const align = columnMeta?.align ?? 'left';
-              return (
-                <td
-                  key={cell.id}
-                  className="border-b border-r px-4 py-3 align-top transition-colors last:border-r-0"
-                  style={{
-                    width: cell.column.getSize(),
-                    borderColor: 'var(--border-primary)',
-                    backgroundColor: 'var(--grid-row-bg)',
-                    color: 'var(--text-secondary)',
-                    textAlign: align,
-                  }}
-                >
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              );
-            })}
-          </tr>
-        );
+            <tr
+              key={row.id}
+              aria-label={onRowOpen ? rowOpenLabel?.(row.original, rowIndex) : undefined}
+              className={[
+                'transition-colors',
+                onRowOpen ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-accent)] focus-visible:ring-offset-[-2px]' : '',
+              ].join(' ')}
+              tabIndex={onRowOpen ? 0 : undefined}
+              onMouseEnter={() => setHighlightedRowId(row.id)}
+              onMouseLeave={() => setHighlightedRowId((current) => (current === row.id ? null : current))}
+              onFocus={() => setHighlightedRowId(row.id)}
+              onBlur={() => setHighlightedRowId((current) => (current === row.id ? null : current))}
+              onClick={onRowOpen ? (event) => {
+                if (shouldIgnoreRowOpen(event.target)) {
+                  return;
+                }
+                onRowOpen(row.original);
+              } : undefined}
+              onKeyDown={onRowOpen ? (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') {
+                  return;
+                }
+                if (shouldIgnoreRowOpen(event.target)) {
+                  return;
+                }
+                event.preventDefault();
+                onRowOpen(row.original);
+              } : undefined}
+            >
+              {row.getVisibleCells().map((cell) => {
+                const columnMeta = cell.column.columnDef.meta as { align?: ScenarioDataGridColumn<T>['align'] } | undefined;
+                const align = columnMeta?.align ?? 'left';
+                return (
+                  <td
+                    key={cell.id}
+                    className="border-b border-r px-4 py-3 align-top transition-colors last:border-r-0"
+                    style={{
+                      width: cell.column.getSize(),
+                      borderColor: 'var(--border-primary)',
+                      backgroundColor: rowBackground,
+                      color: 'var(--text-secondary)',
+                      textAlign: align,
+                    }}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                );
+              })}
+            </tr>
+          );
         })
       )}
     </tbody>

@@ -180,7 +180,11 @@ describe('ScenarioDataGrid', () => {
     );
 
     const betaRow = screen.getByRole('row', { name: /edit beta/i });
-    expect(betaRow).toHaveClass('hover:[--grid-row-bg:var(--bg-tertiary)]');
+    const betaNameCell = screen.getByText('Beta').closest('td');
+    expect(betaNameCell).toHaveStyle({ backgroundColor: 'var(--bg-primary)' });
+
+    fireEvent.mouseEnter(betaRow);
+    expect(betaNameCell).toHaveStyle({ backgroundColor: 'var(--bg-tertiary)' });
 
     await user.click(screen.getByText('Beta'));
     expect(onRowOpen).toHaveBeenCalledWith(rows[0]);
