@@ -68,7 +68,7 @@ function renderGroupContent(
               ariaLabel: 'Groups grid CSV',
               helperText: (
                 <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  <strong>Session capacities</strong> uses <code>|</code>. Listing the default capacity for every session collapses back to the single default capacity on apply.
+                  <strong>Session capacities</strong> uses JSON arrays in CSV mode, e.g. <code>[2,2,2]</code>. Listing the default capacity for every session collapses back to the single default capacity on apply.
                 </div>
               ),
             },

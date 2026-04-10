@@ -22,8 +22,8 @@ test.describe('Scenario data-grid workspace', () => {
     const peopleCsv = page.getByRole('textbox', { name: /people grid csv/i });
     await expect(peopleCsv).toBeVisible();
     await expect(peopleCsv).toHaveValue(/Name,Sessions/);
-    await expect(peopleCsv).toHaveValue(/1 \| 2 \| 3/);
-    await expect(page.getByText(/arrays use/i)).toBeVisible();
+    await expect(peopleCsv).toHaveValue(/"\[1,2,3\]"/);
+    await expect(page.getByText(/arrays use json/i)).toBeVisible();
 
     await page.getByRole('button', { name: /^edit table$/i }).click();
     await expect(page.getByRole('button', { name: /apply changes/i })).toBeVisible();
@@ -46,7 +46,7 @@ test.describe('Scenario data-grid workspace', () => {
     const groupsCsv = page.getByRole('textbox', { name: /groups grid csv/i });
     await expect(groupsCsv).toBeVisible();
     await expect(groupsCsv).toHaveValue(/Group,Default capacity,Session capacities/);
-    await expect(groupsCsv).toHaveValue(/Team Alpha,2,2 \| 2 \| 2/);
+    await expect(groupsCsv).toHaveValue(/Team Alpha,2,"\[2,2,2\]"/);
 
     await page.getByRole('button', { name: /^edit table$/i }).click();
     await expect(page.getByRole('button', { name: /apply changes/i })).toBeVisible();
@@ -54,7 +54,7 @@ test.describe('Scenario data-grid workspace', () => {
     await expect(page.getByRole('button', { name: /add row/i })).toBeVisible();
   });
 
-  test('uses structured attribute-balance columns in the shared grid workspace', async ({ page }) => {
+  test('uses json-backed targets for attribute-balance in the shared grid workspace', async ({ page }) => {
     test.setTimeout(60000);
 
     await openApp(page);
@@ -88,13 +88,14 @@ test.describe('Scenario data-grid workspace', () => {
     await page.locator('.modal-content button').filter({ hasText: /^save$/i }).click();
 
     await expect(page.getByRole('button', { name: /edit table/i })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: /female/i })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: /^male /i })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /targets/i })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /attribute/i })).toBeVisible();
+    await expect(page.getByText(/female: 2 · male: 1/i)).toBeVisible();
 
     await page.getByRole('button', { name: /^csv$/i }).click();
     const attributeBalanceCsv = page.getByRole('textbox', { name: /attribute balance csv/i });
     await expect(attributeBalanceCsv).toBeVisible();
-    await expect(attributeBalanceCsv).toHaveValue(/Group,Attribute,female,male,Mode,Weight,Sessions/);
-    await expect(attributeBalanceCsv).toHaveValue(/G1,[^,\n]+,2,1,exact,10,1 \| 2 \| 3/);
+    await expect(attributeBalanceCsv).toHaveValue(/Group,Attribute,Targets,Mode,Weight,Sessions/);
+    await expect(attributeBalanceCsv).toHaveValue(/G1,gender,"\{""female"":2,""male"":1\}",exact,10,"\[1,2,3\]"/);
   });
 });

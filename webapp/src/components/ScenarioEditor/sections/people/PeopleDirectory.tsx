@@ -309,7 +309,7 @@ export function PeopleDirectory({
                   placeholder: 'Name,Weight,Sessions,...',
                   helperText: (
                     <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      Arrays use <code>|</code> in CSV mode. For <strong>Sessions</strong>, listing every session means “all sessions”. Blank attribute cells clear that value; blank names fall back to the person ID on apply.
+                      Arrays use JSON in CSV mode, e.g. <code>[1,2,3]</code>. For <strong>Sessions</strong>, listing every session still means “all sessions”. Blank attribute cells clear that value; blank names fall back to the person ID on apply.
                     </div>
                   ),
                 },

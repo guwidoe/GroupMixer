@@ -141,7 +141,7 @@ describe('ConstraintFamilySections', () => {
 
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     expect(screen.getByRole('textbox', { name: /attribute balance csv/i })).toHaveValue(
-      'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""male"":1}",exact,30,1 | 2',
+      'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""male"":1}",exact,30,"[1,2]"',
     );
   });
 });

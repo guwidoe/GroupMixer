@@ -1,6 +1,6 @@
 import type { ScenarioDataGridColumn, ScenarioDataGridRawParseResult } from '../types';
 import { isCustomColumn, isPrimitiveColumn } from './columnMaterialization';
-import { parsePrimitiveCsvValue, resolvePrimitiveExportValue } from './primitiveBehavior';
+import { getPrimitiveOptions, parsePrimitiveCsvValue, resolvePrimitiveExportValue } from './primitiveBehavior';
 
 function normalizeRawText(value: string | number | string[] | undefined) {
   if (Array.isArray(value)) {
@@ -14,6 +14,12 @@ export function formatColumnRawValue<T>(row: T, column: ScenarioDataGridColumn<T
     if (column.rawCodec) {
       return column.rawCodec.format(column.getValue(row), row);
     }
+
+    if (column.primitive === 'array') {
+      const value = column.getValue(row);
+      return JSON.stringify(Array.isArray(value) ? value : []);
+    }
+
     return normalizeRawText(resolvePrimitiveExportValue(column, row));
   }
 
@@ -37,6 +43,23 @@ export function parseColumnRawValue<T>(column: ScenarioDataGridColumn<T>, rawVal
   if (isPrimitiveColumn(column)) {
     if (column.rawCodec) {
       return column.rawCodec.parse(rawValue, row) as ScenarioDataGridRawParseResult<unknown>;
+    }
+
+    if (column.primitive === 'array') {
+      const allowedValues = new Set(
+        getPrimitiveOptions(column, row).map((option) => (
+          column.itemType === 'number' ? String(Number(option.value)) : option.value
+        )),
+      );
+
+      return createJsonRawCodec<Array<string | number>, T>({
+        header: column.header,
+        validate: (value) => validateJsonArrayValue({
+          header: column.header,
+          itemType: column.itemType,
+          allowedValues: allowedValues.size > 0 ? allowedValues : undefined,
+        })(value),
+      }).parse(rawValue, row) as ScenarioDataGridRawParseResult<unknown>;
     }
 
     const parsed = parsePrimitiveCsvValue(column, rawValue, row);
@@ -100,6 +123,9 @@ export function validateJsonArrayValue({
       if (itemType === 'number') {
         if (typeof entry !== 'number' || !Number.isFinite(entry)) {
           return { ok: false, error: `Expected ${header} entries to be finite numbers.` };
+        }
+        if (allowedValues && !allowedValues.has(String(entry))) {
+          return { ok: false, error: `Expected ${header} entries to be one of ${Array.from(allowedValues).join(', ')}.` };
         }
         parsedValues.push(entry);
         continue;

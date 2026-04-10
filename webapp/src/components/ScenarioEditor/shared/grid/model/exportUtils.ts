@@ -12,7 +12,7 @@ export function normalizeExportValue(value: string | number | string[] | undefin
 }
 
 export function resolveExportValue<T>(row: T, column: ScenarioDataGridColumn<T>) {
-  if ((isPrimitiveColumn(column) && column.rawCodec) || (isCustomColumn(column) && column.rawCodec)) {
+  if ((isPrimitiveColumn(column) && (column.rawCodec || column.primitive === 'array')) || (isCustomColumn(column) && column.rawCodec)) {
     return formatColumnRawValue(row, column);
   }
 

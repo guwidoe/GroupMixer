@@ -53,7 +53,7 @@ describe('GroupsSection', () => {
 
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     expect(screen.getByRole('textbox', { name: /groups grid csv/i })).toHaveValue(
-      'Group,Default capacity,Session capacities\ng1,4,4 | 4 | 4',
+      'Group,Default capacity,Session capacities\ng1,4,"[4,4,4]"',
     );
   });
 });

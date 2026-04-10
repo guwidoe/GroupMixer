@@ -156,6 +156,6 @@ describe('PeopleDirectory', () => {
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     const csvInput = screen.getByRole('textbox', { name: /people grid csv/i });
     expect(String((csvInput as HTMLTextAreaElement).value)).toMatch(/Name,Sessions,role/i);
-    expect(String((csvInput as HTMLTextAreaElement).value)).toMatch(/1 \| 2/);
+    expect(String((csvInput as HTMLTextAreaElement).value)).toMatch(/"\[1,2\]"/);
   });
 });

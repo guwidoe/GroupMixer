@@ -625,10 +625,11 @@ describe('ScenarioDataGrid', () => {
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
 
     const csvInput = screen.getByRole('textbox', { name: /typed csv editor/i });
-    expect(csvInput).toHaveValue('Name,Weight,Sessions,Team\nBeta,20,1 | 2,Blue');
+    expect(csvInput).toHaveValue('Name,Weight,Sessions,Team\nBeta,20,"[1,2]",Blue');
 
-    await user.clear(csvInput);
-    await user.type(csvInput, 'Name,Weight,Sessions,Team\nBeta Prime,25,1 | 3,Red');
+    fireEvent.change(csvInput, {
+      target: { value: 'Name,Weight,Sessions,Team\nBeta Prime,25,"[1,3]",Red' },
+    });
     await user.click(screen.getByRole('button', { name: /apply changes/i }));
 
     expect(onApply).toHaveBeenCalledWith([
@@ -637,8 +638,9 @@ describe('ScenarioDataGrid', () => {
 
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     const invalidCsvInput = screen.getByRole('textbox', { name: /typed csv editor/i });
-    await user.clear(invalidCsvInput);
-    await user.type(invalidCsvInput, 'Name,Weight,Sessions,Team\nBroken,nope,1 | 2,Green');
+    fireEvent.change(invalidCsvInput, {
+      target: { value: 'Name,Weight,Sessions,Team\nBroken,nope,"[1,2]",Green' },
+    });
     await user.click(screen.getByRole('button', { name: /apply changes/i }));
 
     expect(screen.getByText(/csv validation errors/i)).toBeInTheDocument();
