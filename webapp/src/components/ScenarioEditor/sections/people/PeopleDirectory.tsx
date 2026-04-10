@@ -8,6 +8,7 @@ import { SetupCollectionPage } from '../../shared/SetupCollectionPage';
 import { SetupSearchField } from '../../shared/SetupSearchField';
 import { SetupItemActions } from '../../shared/cards';
 import { ScenarioDataGrid } from '../../shared/grid/ScenarioDataGrid';
+import { createOptionalSessionScopeColumn } from '../../shared/grid/sessionScopeColumn';
 import { PeopleGrid } from './PeopleGrid';
 import { sortPeople } from './peopleUtils';
 import type { SetupCollectionViewMode } from '../../shared/useSetupCollectionViewMode';
@@ -167,11 +168,6 @@ export function PeopleDirectory({
   }, [shouldProgressivelyRender, sortedPeople]);
 
   const visiblePeople = shouldProgressivelyRender ? sortedPeople.slice(0, visiblePeopleCount) : sortedPeople;
-  const sessionOptions = useMemo(
-    () => Array.from({ length: sessionsCount }, (_, index) => ({ value: String(index + 1), label: String(index + 1) })),
-    [sessionsCount],
-  );
-
   const peopleAttributeColumns = useMemo(() => {
     const orderedKeys = new Map<string, string>();
 
@@ -309,7 +305,7 @@ export function PeopleDirectory({
                   placeholder: 'Name,Weight,Sessions,...',
                   helperText: (
                     <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      Arrays use JSON in CSV mode, e.g. <code>[1,2,3]</code>. For <strong>Sessions</strong>, listing every session still means “all sessions”. Blank attribute cells clear that value; blank names fall back to the person ID on apply.
+                      <strong>Sessions</strong> use JSON session-scope objects such as <code>{'{"mode":"all"}'}</code> or <code>{'{"mode":"selected","sessions":[0,1]}'}</code>. Blank attribute cells clear that value; blank names fall back to the person ID on apply.
                     </div>
                   ),
                 },
@@ -337,35 +333,15 @@ export function PeopleDirectory({
                 searchText: (value, person) => `${String(value ?? '')} ${person.id}`.trim(),
                 width: 240,
               },
-              {
-                kind: 'primitive' as const,
-                id: 'sessions',
-                header: 'Sessions',
-                primitive: 'array' as const,
-                itemType: 'number' as const,
-                options: sessionOptions,
-                getValue: (person: Person) =>
-                  (person.sessions ?? Array.from({ length: sessionsCount }, (_, index) => index)).map((session) => session + 1),
-                setValue: (person: Person, value) => {
-                  const nextSessions = Array.isArray(value)
-                    ? value.map((entry) => Number(entry)).filter((entry) => Number.isFinite(entry)).map((entry) => entry - 1).sort((left, right) => left - right)
-                    : [];
-
-                  return {
-                    ...person,
-                    sessions: nextSessions.length === 0 || nextSessions.length === sessionsCount ? undefined : nextSessions,
-                  };
-                },
-                renderValue: (value) =>
-                  Array.isArray(value) && value.length > 0 && value.length < sessionsCount
-                    ? value.map((session) => String(session)).join(', ')
-                    : `All (${sessionsCount})`,
-                searchText: (value) =>
-                  Array.isArray(value) && value.length > 0 && value.length < sessionsCount
-                    ? value.join(' ')
-                    : 'all sessions',
+              createOptionalSessionScopeColumn<Person>({
+                totalSessions: sessionsCount,
+                getSessions: (person) => person.sessions,
+                setSessions: (person, sessions) => ({
+                  ...person,
+                  sessions,
+                }),
                 width: 180,
-              },
+              }),
               ...peopleAttributeColumns.map((attribute) => {
                 const definition = findAttributeDefinitionByName(attributeDefinitions, attribute.key) ?? attribute.definition;
                 const validatedOptions = definition?.values ?? [];

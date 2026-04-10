@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -136,6 +136,7 @@ describe('PeopleDirectory', () => {
 
   it('uses the shared typed grid csv workflow for people columns including sessions', async () => {
     const user = userEvent.setup();
+    const onApplyGridPeople = vi.fn();
 
     render(
       <PeopleDirectory
@@ -146,6 +147,7 @@ describe('PeopleDirectory', () => {
           }),
           attributeDefinitions: [createAttributeDefinition('role', ['dev', 'design'], 'attr-role')],
           createGridPersonRow: () => ({ id: 'p2', attributes: { name: '' }, sessions: undefined }),
+          onApplyGridPeople,
         })}
       />,
     );
@@ -156,6 +158,20 @@ describe('PeopleDirectory', () => {
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     const csvInput = screen.getByRole('textbox', { name: /people grid csv/i });
     expect(String((csvInput as HTMLTextAreaElement).value)).toMatch(/Name,Sessions,role/i);
-    expect(String((csvInput as HTMLTextAreaElement).value)).toMatch(/"\[1,2\]"/);
+    expect(String((csvInput as HTMLTextAreaElement).value)).toMatch(/"\{""mode"":""selected"",""sessions"":\[0,1\]\}"/);
+
+    fireEvent.change(csvInput, {
+      target: {
+        value: 'Name,Sessions,role\nAlex,"{""mode"":""selected"",""sessions"":[0,1,2]}",dev',
+      },
+    });
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(onApplyGridPeople).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 'p1',
+        sessions: [0, 1, 2],
+      }),
+    ]);
   });
 });

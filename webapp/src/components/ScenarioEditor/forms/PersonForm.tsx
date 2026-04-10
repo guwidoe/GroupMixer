@@ -5,6 +5,8 @@
 import React from 'react';
 import { X, Plus } from 'lucide-react';
 import type { Person, PersonFormData, AttributeDefinition } from '../../../types';
+import { SessionScopeField } from '../shared/SessionScopeField';
+import { optionalSessionsToDraft, sessionScopeDraftToOptionalSessions } from '../shared/sessionScope';
 
 interface PersonFormProps {
   isEditing: boolean;
@@ -30,7 +32,7 @@ const PersonForm: React.FC<PersonFormProps> = ({
   onCancel,
   onShowAttributeForm,
 }) => {
-  const sessions = Array.from({ length: sessionsCount }, (_, i) => i);
+  const sessionScope = optionalSessionsToDraft(personForm.sessions.length > 0 ? personForm.sessions : undefined, sessionsCount);
 
   return (
     <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4">
@@ -106,40 +108,15 @@ const PersonForm: React.FC<PersonFormProps> = ({
           </div>
 
           {/* Sessions */}
-          <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-              Session Participation
-            </label>
-            <p className="text-xs mb-2" style={{ color: 'var(--text-tertiary)' }}>
-              Leave empty for all sessions. Select specific sessions for late arrivals/early departures.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {sessions.map(sessionIdx => (
-                <label key={sessionIdx} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={personForm.sessions.includes(sessionIdx)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setPersonForm(prev => ({
-                          ...prev,
-                          sessions: [...prev.sessions, sessionIdx].sort()
-                        }));
-                      } else {
-                        setPersonForm(prev => ({
-                          ...prev,
-                          sessions: prev.sessions.filter(s => s !== sessionIdx)
-                        }));
-                      }
-                    }}
-                    className="rounded border-gray-300 focus:ring-2"
-                    style={{ color: 'var(--color-accent)', accentColor: 'var(--color-accent)' }}
-                  />
-                  Session {sessionIdx + 1}
-                </label>
-              ))}
-            </div>
-          </div>
+          <SessionScopeField
+            label="Session Participation"
+            totalSessions={sessionsCount}
+            value={sessionScope}
+            onChange={(nextScope) => setPersonForm((prev) => ({
+              ...prev,
+              sessions: sessionScopeDraftToOptionalSessions(nextScope, sessionsCount) ?? [],
+            }))}
+          />
         </div>
 
         <div className="flex gap-2 mt-6">

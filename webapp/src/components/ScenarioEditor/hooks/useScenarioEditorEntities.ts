@@ -51,7 +51,6 @@ function generateUniqueGroupId(existingGroups: Group[] | undefined) {
 
 function parseSessionSizes(
   rawValues: string[] | undefined,
-  fallbackSize: number,
   sessionCount: number,
 ): { ok: true; value?: number[] } | { ok: false; message: string } {
   if (!rawValues || rawValues.length === 0) {
@@ -79,7 +78,7 @@ function parseSessionSizes(
 
   return {
     ok: true,
-    value: parsed.every((value) => value === fallbackSize) ? undefined : parsed,
+    value: parsed,
   };
 }
 
@@ -265,7 +264,6 @@ export function useScenarioEditorEntities({
 
     const sessionSizesResult = parseSessionSizes(
       groupFormInputs.sessionSizes,
-      size,
       scenario?.num_sessions || 3,
     );
     if (!sessionSizesResult.ok) {
@@ -334,7 +332,6 @@ export function useScenarioEditorEntities({
 
     const sessionSizesResult = parseSessionSizes(
       groupFormInputs.sessionSizes,
-      size,
       scenario?.num_sessions || 3,
     );
     if (!sessionSizesResult.ok) {
@@ -411,10 +408,9 @@ export function useScenarioEditorEntities({
           ...group,
           id: group.id.trim() || generateUniqueGroupId(scenario?.groups),
           size,
-          session_sizes:
-            normalizedSessionSizes && normalizedSessionSizes.length === sessionsTotal && normalizedSessionSizes.some((value) => value !== size)
-              ? normalizedSessionSizes
-              : undefined,
+          session_sizes: normalizedSessionSizes && normalizedSessionSizes.length > 0
+            ? normalizedSessionSizes
+            : undefined,
         } satisfies Group;
       })
       .filter((group) => group.id.length > 0);

@@ -35,10 +35,7 @@ function sanitizeGridPeopleRows(people: Person[], sessionsCount: number): Person
     return {
       ...person,
       attributes: cleanedAttributes,
-      sessions:
-        normalizedSessions && normalizedSessions.length > 0 && normalizedSessions.length < sessionsCount
-          ? normalizedSessions
-          : undefined,
+      sessions: normalizedSessions && normalizedSessions.length > 0 ? normalizedSessions : undefined,
     } satisfies Person;
   });
 }
