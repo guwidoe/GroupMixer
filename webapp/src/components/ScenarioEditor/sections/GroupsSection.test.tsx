@@ -31,8 +31,6 @@ describe('GroupsSection', () => {
         onAddGroup={onAddGroup}
         onEditGroup={onEditGroup}
         onDeleteGroup={onDeleteGroup}
-        onOpenBulkAddForm={vi.fn()}
-        onTriggerCsvUpload={vi.fn()}
         onApplyGridGroups={vi.fn()}
         createGridGroupRow={() => ({ id: 'g2', size: 4, session_sizes: undefined })}
       />,
@@ -40,6 +38,7 @@ describe('GroupsSection', () => {
 
     await user.click(screen.getByRole('button', { name: /add group/i }));
     expect(onAddGroup).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: /import & bulk/i })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /edit g1/i }));
     expect(onEditGroup).toHaveBeenCalledTimes(1);

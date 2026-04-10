@@ -26,11 +26,8 @@ function createBaseProps(overrides: Partial<React.ComponentProps<typeof PeopleDi
     onAddPerson: vi.fn(),
     onEditPerson: vi.fn(),
     onDeletePerson: vi.fn(),
-    onOpenBulkAddForm: vi.fn(),
     onApplyGridPeople: vi.fn(),
     createGridPersonRow: () => ({ id: 'new-person', attributes: { name: '' }, sessions: undefined } satisfies Person),
-    onTriggerCsvUpload: vi.fn(),
-    onTriggerExcelImport: vi.fn(),
     ...overrides,
   };
 }
@@ -51,6 +48,7 @@ describe('PeopleDirectory', () => {
       expect(screen.getByRole('heading', { name: /^people$/i })).toBeInTheDocument();
       expect(screen.getByText('180')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /add person/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /import & bulk/i })).not.toBeInTheDocument();
       expect(screen.queryByRole('status')).not.toBeInTheDocument();
       expect(screen.getByText('Person 0001')).toBeInTheDocument();
       expect(screen.queryByText('Person 0180')).not.toBeInTheDocument();

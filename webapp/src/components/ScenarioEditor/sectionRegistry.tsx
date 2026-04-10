@@ -23,17 +23,8 @@ export const scenarioSetupSectionRegistry: Record<ScenarioSetupSectionId, Scenar
       onAddPerson={() => controller.entities.setShowPersonForm(true)}
       onEditPerson={controller.entities.handleEditPerson}
       onDeletePerson={controller.entities.handleDeletePerson}
-      onOpenBulkAddForm={controller.bulk.addPeople.openForm}
       onApplyGridPeople={controller.bulk.updatePeople.applyRows}
       createGridPersonRow={controller.bulk.updatePeople.createRow}
-      onTriggerCsvUpload={() => controller.bulk.addPeople.csvFileInputRef.current?.click()}
-      onTriggerExcelImport={() =>
-        controller.addNotification({
-          type: 'info',
-          title: 'Coming Soon',
-          message: 'Excel import is not yet implemented.',
-        })
-      }
     />
   ),
   attributes: (controller) => (
@@ -52,8 +43,6 @@ export const scenarioSetupSectionRegistry: Record<ScenarioSetupSectionId, Scenar
       onAddGroup={() => controller.entities.setShowGroupForm(true)}
       onEditGroup={controller.entities.handleEditGroup}
       onDeleteGroup={controller.entities.handleDeleteGroup}
-      onOpenBulkAddForm={controller.bulk.addGroups.openForm}
-      onTriggerCsvUpload={() => controller.bulk.addGroups.csvFileInputRef.current?.click()}
       onApplyGridGroups={controller.entities.applyGridGroups}
       createGridGroupRow={controller.entities.createGridGroupRow}
     />

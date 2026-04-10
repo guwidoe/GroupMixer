@@ -1,9 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Table, Upload, Users } from 'lucide-react';
+import { Users } from 'lucide-react';
 import type { AttributeDefinition, Person, Scenario } from '../../../../types';
 import { applyNamedAttributeValuesToPerson, createAttributeDefinition, findAttributeDefinitionByName } from '../../../../services/scenarioAttributes';
 import { Button } from '../../../ui';
-import { SetupActionsMenu } from '../../shared/SetupActionsMenu';
 import { SetupCollectionPage } from '../../shared/SetupCollectionPage';
 import { SetupSearchField } from '../../shared/SetupSearchField';
 import { SetupItemActions } from '../../shared/cards';
@@ -44,45 +43,8 @@ interface PeopleDirectoryProps {
   onAddPerson: () => void;
   onEditPerson: (person: Person) => void;
   onDeletePerson: (personId: string) => void;
-  onOpenBulkAddForm: () => void;
   onApplyGridPeople: (people: Person[]) => void;
   createGridPersonRow: () => Person;
-  onTriggerCsvUpload: () => void;
-  onTriggerExcelImport: () => void;
-}
-
-function PeopleBulkActions({
-  onTriggerCsvUpload,
-  onTriggerExcelImport,
-  onOpenBulkAddForm,
-}: {
-  onTriggerCsvUpload: () => void;
-  onTriggerExcelImport: () => void;
-  onOpenBulkAddForm: () => void;
-}) {
-  return (
-    <SetupActionsMenu
-      label="Import & Bulk"
-      icon={<Upload className="h-4 w-4" />}
-      items={[
-        {
-          label: 'Upload CSV',
-          icon: <Upload className="h-4 w-4" />,
-          onSelect: onTriggerCsvUpload,
-        },
-        {
-          label: 'Upload Excel',
-          icon: <Upload className="h-4 w-4" />,
-          onSelect: onTriggerExcelImport,
-        },
-        {
-          label: 'Open bulk add form',
-          icon: <Table className="h-4 w-4" />,
-          onSelect: onOpenBulkAddForm,
-        },
-      ]}
-    />
-  );
 }
 
 export function PeopleDirectory({
@@ -92,11 +54,8 @@ export function PeopleDirectory({
   onAddPerson,
   onEditPerson,
   onDeletePerson,
-  onOpenBulkAddForm,
   onApplyGridPeople,
   createGridPersonRow,
-  onTriggerCsvUpload,
-  onTriggerExcelImport,
 }: PeopleDirectoryProps) {
   const [peopleSearch, setPeopleSearch] = useState('');
   const [viewMode, setViewMode] = useState<SetupCollectionViewMode>('cards');
@@ -222,16 +181,9 @@ export function PeopleDirectory({
         </p>
       }
       actions={
-        <>
-          <PeopleBulkActions
-            onTriggerCsvUpload={onTriggerCsvUpload}
-            onTriggerExcelImport={onTriggerExcelImport}
-            onOpenBulkAddForm={onOpenBulkAddForm}
-          />
-          <Button variant="primary" leadingIcon={<Users className="h-4 w-4" />} onClick={onAddPerson}>
-            Add Person
-          </Button>
-        </>
+        <Button variant="primary" leadingIcon={<Users className="h-4 w-4" />} onClick={onAddPerson}>
+          Add Person
+        </Button>
       }
       toolbarLeading={(activeViewMode) =>
         activeViewMode === 'cards' ? (

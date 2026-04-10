@@ -1,9 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Hash, Plus, Table, Upload } from 'lucide-react';
+import { Hash, Plus } from 'lucide-react';
 import type { Group, Scenario } from '../../../types';
 import { getGroupCapacityProfile, hasSessionSpecificGroupCapacities } from '../../../utils/groupCapacities';
 import { Button } from '../../ui';
-import { SetupActionsMenu } from '../shared/SetupActionsMenu';
 import { SetupCollectionPage } from '../shared/SetupCollectionPage';
 import { SetupCardGrid, SetupItemActions, SetupItemCard, SetupKeyValueList, SetupTagList } from '../shared/cards';
 import { ScenarioDataGrid } from '../shared/grid/ScenarioDataGrid';
@@ -14,31 +13,8 @@ interface GroupsSectionProps {
   onAddGroup: () => void;
   onEditGroup: (group: Group) => void;
   onDeleteGroup: (groupId: string) => void;
-  onOpenBulkAddForm: () => void;
-  onTriggerCsvUpload: () => void;
   onApplyGridGroups: (groups: Group[]) => void;
   createGridGroupRow: () => Group;
-}
-
-function GroupsBulkActions({ onOpenBulkAddForm, onTriggerCsvUpload }: { onOpenBulkAddForm: () => void; onTriggerCsvUpload: () => void }) {
-  return (
-    <SetupActionsMenu
-      label="Import & Bulk"
-      icon={<Upload className="h-4 w-4" />}
-      items={[
-        {
-          label: 'Upload CSV',
-          icon: <Upload className="h-4 w-4" />,
-          onSelect: onTriggerCsvUpload,
-        },
-        {
-          label: 'Open bulk add form',
-          icon: <Table className="h-4 w-4" />,
-          onSelect: onOpenBulkAddForm,
-        },
-      ]}
-    />
-  );
 }
 
 function renderGroupContent(
@@ -189,8 +165,6 @@ export function GroupsSection({
   onAddGroup,
   onEditGroup,
   onDeleteGroup,
-  onOpenBulkAddForm,
-  onTriggerCsvUpload,
   onApplyGridGroups,
   createGridGroupRow,
 }: GroupsSectionProps) {
@@ -209,12 +183,9 @@ export function GroupsSection({
         </p>
       }
       actions={
-        <>
-          <GroupsBulkActions onOpenBulkAddForm={onOpenBulkAddForm} onTriggerCsvUpload={onTriggerCsvUpload} />
-          <Button variant="primary" leadingIcon={<Plus className="h-4 w-4" />} onClick={onAddGroup}>
-            Add Group
-          </Button>
-        </>
+        <Button variant="primary" leadingIcon={<Plus className="h-4 w-4" />} onClick={onAddGroup}>
+          Add Group
+        </Button>
       }
       defaultViewMode="list"
       onViewModeChange={(nextMode) => {

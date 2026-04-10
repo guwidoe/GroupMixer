@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAppStore } from '../../store';
 import type { Scenario } from '../../types';
 import { getDefaultSolverSettings } from './helpers';
-import { useScenarioEditorBulk } from './hooks/useScenarioEditorBulk';
+import { useScenarioEditorBulkUpdatePeople } from './hooks/useScenarioEditorBulkUpdatePeople';
 import { useScenarioEditorConstraints } from './hooks/useScenarioEditorConstraints';
 import { useScenarioEditorEntities } from './hooks/useScenarioEditorEntities';
 import { resolveScenarioSetupSection } from './navigation/scenarioSetupNav';
@@ -60,15 +60,15 @@ export function useScenarioEditorController() {
     setScenario,
   });
 
-  const bulk = useScenarioEditorBulk({
-    scenario,
-    attributeDefinitions,
-    addAttributeDefinition,
-    removeAttributeDefinition,
-    setAttributeDefinitions,
-    addNotification,
-    setScenario,
-  });
+  const bulk = {
+    updatePeople: useScenarioEditorBulkUpdatePeople({
+      scenario,
+      attributeDefinitions,
+      addNotification,
+      setAttributeDefinitions,
+      setScenario,
+    }),
+  };
 
   const editorActions = createScenarioEditorActions({
     scenario,

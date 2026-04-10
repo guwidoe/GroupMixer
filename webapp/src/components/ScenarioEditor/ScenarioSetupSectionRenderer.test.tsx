@@ -42,9 +42,7 @@ function createController(overrides: Partial<ScenarioEditorController> = {}): Sc
       handleDeleteGroup: vi.fn(),
     },
     bulk: {
-      addPeople: { openForm: vi.fn(), csvFileInputRef: { current: null } },
-      updatePeople: { openForm: vi.fn() },
-      addGroups: { openForm: vi.fn(), csvFileInputRef: { current: null } },
+      updatePeople: { createRow: vi.fn(), applyRows: vi.fn() },
     },
     constraints: {
       handleDeleteConstraint: vi.fn(),

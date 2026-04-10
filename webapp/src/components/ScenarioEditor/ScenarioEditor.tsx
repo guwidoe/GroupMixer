@@ -134,36 +134,6 @@ function ScenarioEditorLoaded() {
             onUpdateAttribute: controller.entities.handleUpdateAttribute,
             onCancelAttribute: controller.editorActions.handleCancelAttributeForm,
           }}
-          bulkAddPeople={{
-            showBulkForm: controller.bulk.addPeople.showForm,
-            bulkTextMode: controller.bulk.addPeople.textMode,
-            setBulkTextMode: controller.bulk.addPeople.setTextMode,
-            bulkCsvInput: controller.bulk.addPeople.csvInput,
-            setBulkCsvInput: controller.bulk.addPeople.setCsvInput,
-            bulkHeaders: controller.bulk.addPeople.headers,
-            setBulkHeaders: controller.bulk.addPeople.setHeaders,
-            bulkRows: controller.bulk.addPeople.rows,
-            setBulkRows: controller.bulk.addPeople.setRows,
-            onSaveBulkPeople: controller.bulk.addPeople.save,
-            onCloseBulkPeople: () => controller.bulk.addPeople.setShowForm(false),
-          }}
-          bulkAddGroups={{
-            showGroupBulkForm: controller.bulk.addGroups.showForm,
-            groupBulkTextMode: controller.bulk.addGroups.textMode,
-            setGroupBulkTextMode: controller.bulk.addGroups.setTextMode,
-            groupBulkCsvInput: controller.bulk.addGroups.csvInput,
-            setGroupBulkCsvInput: controller.bulk.addGroups.setCsvInput,
-            groupBulkHeaders: controller.bulk.addGroups.headers,
-            setGroupBulkHeaders: controller.bulk.addGroups.setHeaders,
-            groupBulkRows: controller.bulk.addGroups.rows,
-            setGroupBulkRows: controller.bulk.addGroups.setRows,
-            onSaveGroupBulk: controller.bulk.addGroups.save,
-            onCloseGroupBulk: () => controller.bulk.addGroups.setShowForm(false),
-          }}
-          csvFileInputRef={controller.bulk.addPeople.csvFileInputRef}
-          onCsvFileSelected={controller.bulk.addPeople.handleCsvFileSelected}
-          groupCsvFileInputRef={controller.bulk.addGroups.csvFileInputRef}
-          onGroupCsvFileSelected={controller.bulk.addGroups.handleCsvFileSelected}
         />
       )}
       {!controller.ui.isLoading && (
