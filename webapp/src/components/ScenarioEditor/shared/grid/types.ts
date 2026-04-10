@@ -1,5 +1,30 @@
 import type React from 'react';
 
+/**
+ * `ScenarioDataGrid` stays generic by keeping section-specific bulk semantics in the host.
+ * Hosts may swap rows/columns by mode (browse/edit/csv), while the shared grid owns
+ * the mode controls and inline CSV surface.
+ */
+export type ScenarioDataGridWorkspaceMode = 'browse' | 'edit' | 'csv';
+
+export interface ScenarioDataGridInlineCsvConfig {
+  value: string;
+  onChange: (value: string) => void;
+  ariaLabel?: string;
+  placeholder?: string;
+  helperText?: React.ReactNode;
+}
+
+export interface ScenarioDataGridWorkspaceConfig {
+  mode: ScenarioDataGridWorkspaceMode;
+  onModeChange: (mode: ScenarioDataGridWorkspaceMode) => void;
+  csv?: ScenarioDataGridInlineCsvConfig;
+  editLabel?: string;
+  doneEditingLabel?: string;
+  csvLabel?: string;
+  toolbarActions?: React.ReactNode | ((mode: ScenarioDataGridWorkspaceMode) => React.ReactNode);
+}
+
 export interface ScenarioDataGridOption {
   value: string;
   label: string;
