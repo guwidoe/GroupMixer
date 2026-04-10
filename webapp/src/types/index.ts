@@ -190,7 +190,7 @@ export interface SolverParams {
   correctness_lane?: Solver3CorrectnessLaneParams;
 }
 
-export interface Solver2Params {}
+export type Solver2Params = Record<string, never>;
 
 export interface Solver3Params {
   correctness_lane?: Solver3CorrectnessLaneParams;

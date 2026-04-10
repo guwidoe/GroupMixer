@@ -47,7 +47,6 @@ export function useScenarioEditorController() {
     scenario,
     attributeDefinitions,
     addAttributeDefinition,
-    removeAttributeDefinition,
     setAttributeDefinitions,
     addNotification,
     setScenario,

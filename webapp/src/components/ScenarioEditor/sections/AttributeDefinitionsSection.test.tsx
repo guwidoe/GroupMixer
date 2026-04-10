@@ -38,7 +38,7 @@ describe('AttributeDefinitionsSection', () => {
 
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     expect(screen.getByRole('textbox', { name: /attribute definitions csv/i })).toHaveValue(
-      'Attribute,Values\nrole,dev | pm',
+      'Attribute,Values\nrole,"[""dev"",""pm""]"',
     );
   });
 });

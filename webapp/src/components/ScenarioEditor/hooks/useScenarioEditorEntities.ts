@@ -20,7 +20,6 @@ interface UseScenarioEditorEntitiesArgs {
   scenario: Scenario | null;
   attributeDefinitions: AttributeDefinition[];
   addAttributeDefinition: (definition: AttributeDefinition) => void;
-  removeAttributeDefinition: (keyOrId: string) => void;
   setAttributeDefinitions: (definitions: AttributeDefinition[]) => void;
   addNotification: (notification: NotificationPayload) => void;
   setScenario: (scenario: Scenario) => void;
@@ -86,7 +85,6 @@ export function useScenarioEditorEntities({
   scenario,
   attributeDefinitions,
   addAttributeDefinition,
-  removeAttributeDefinition,
   setAttributeDefinitions,
   addNotification,
   setScenario,

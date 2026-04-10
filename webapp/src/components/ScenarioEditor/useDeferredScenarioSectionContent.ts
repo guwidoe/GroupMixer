@@ -99,23 +99,24 @@ export function useDeferredScenarioSectionContent(
   currentScenarioId: string | null,
 ) {
   const shouldDefer = shouldDeferScenarioSectionContent(activeSection, scenario);
-  const [isContentReady, setIsContentReady] = useState(!shouldDefer);
+  const contentKey = `${currentScenarioId ?? 'unsaved'}:${activeSection}`;
+  const [readyContentKey, setReadyContentKey] = useState(() => (shouldDefer ? null : contentKey));
 
   useEffect(() => {
-    if (!shouldDefer) {
-      setIsContentReady(true);
-      return;
+    if (!shouldDefer || readyContentKey === contentKey) {
+      return undefined;
     }
 
-    setIsContentReady(false);
     const timeoutId = window.setTimeout(() => {
-      setIsContentReady(true);
+      setReadyContentKey(contentKey);
     }, 0);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [activeSection, currentScenarioId, shouldDefer]);
+  }, [contentKey, readyContentKey, shouldDefer]);
+
+  const isContentReady = !shouldDefer || readyContentKey === contentKey;
 
   return {
     isContentReady,
@@ -131,23 +132,24 @@ export function useDeferredScenarioSetupSummary(
   currentScenarioId: string | null,
 ) {
   const shouldDefer = isLargeScenario(scenario);
-  const [areSummaryCountsReady, setAreSummaryCountsReady] = useState(!shouldDefer);
+  const summaryKey = `${currentScenarioId ?? 'unsaved'}:${scenario?.people.length ?? 0}:${scenario?.groups.length ?? 0}:${scenario?.constraints.length ?? 0}:${attributeDefinitions.length}:${objectiveCount}`;
+  const [readySummaryKey, setReadySummaryKey] = useState(() => (shouldDefer ? null : summaryKey));
 
   useEffect(() => {
-    if (!shouldDefer) {
-      setAreSummaryCountsReady(true);
-      return;
+    if (!shouldDefer || readySummaryKey === summaryKey) {
+      return undefined;
     }
 
-    setAreSummaryCountsReady(false);
     const timeoutId = window.setTimeout(() => {
-      setAreSummaryCountsReady(true);
+      setReadySummaryKey(summaryKey);
     }, 0);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [currentScenarioId, shouldDefer]);
+  }, [readySummaryKey, shouldDefer, summaryKey]);
+
+  const areSummaryCountsReady = !shouldDefer || readySummaryKey === summaryKey;
 
   return {
     areSummaryCountsReady,

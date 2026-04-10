@@ -33,7 +33,6 @@ import {
   renderAttributeBalanceContent,
   renderPairMeetingCountContent,
   renderPeopleConstraintContent,
-  resolveAttributeBalanceDefinition,
   useConstraintScenario,
 } from './shared';
 import type {

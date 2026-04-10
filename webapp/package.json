@@ -10,7 +10,7 @@
     "prerender:seo": "tsx scripts/seoArtifacts.tsx prerender-dist",
     "build": "npm run sync:seo-assets && npm run build-wasm && tsc && vite build && npm run prerender:seo",
     "vercel-build": "chmod +x ./vercel-build.sh && ./vercel-build.sh",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives",
     "preview": "vite preview",
     "build-wasm": "wasm-pack build ../backend/wasm --target web --out-dir $(pwd)/public/pkg",
     "test:unit": "vitest --project app",

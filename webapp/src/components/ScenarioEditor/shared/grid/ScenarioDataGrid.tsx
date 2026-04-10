@@ -10,11 +10,6 @@ import { InlineCsvEditor } from './components/InlineCsvEditor';
 import { isCustomColumn, isPrimitiveColumn, materializeColumns } from './model/columnMaterialization';
 import { escapeCsvValue } from './model/csvCodec';
 import { resolveExportValue } from './model/exportUtils';
-import {
-  isFilterListValueActive,
-  isNumberRangeFilterActive,
-} from './model/filterUtils';
-import { resolvePrimitiveExportValue } from './model/primitiveBehavior';
 import { useGridColumnResize } from './hooks/useGridColumnResize';
 import { useGridColumnState } from './hooks/useGridColumnState';
 import { useGridScrollSync } from './hooks/useGridScrollSync';
@@ -82,7 +77,6 @@ export function ScenarioDataGrid<T>({
     csvDraftText,
     csvErrors,
     draftConfig,
-    draftRows,
     hasDraftEditing,
     inlineCsvConfig,
     isInlineCsvMode,
@@ -137,7 +131,7 @@ export function ScenarioDataGrid<T>({
       ? workspace.toolbarActions(workspaceMode)
       : workspace.toolbarActions;
   }, [workspace, workspaceMode]);
-  const { activeColumnFilters, csvColumns, exportRows, filteredCount, paginatedRows, table, totalCount } = useScenarioDataTable({
+  const { activeColumnFilters, csvColumns, exportRows, filteredCount, table, totalCount } = useScenarioDataTable({
     activeRows,
     columnFilters,
     columnSizing,

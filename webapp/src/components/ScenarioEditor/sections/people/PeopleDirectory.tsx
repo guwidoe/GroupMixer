@@ -44,7 +44,6 @@ interface PeopleDirectoryProps {
   onAddPerson: () => void;
   onEditPerson: (person: Person) => void;
   onDeletePerson: (personId: string) => void;
-  onInlineUpdatePerson: (personId: string, updates: { attributes?: Record<string, string>; sessions?: number[] | undefined }) => void;
   onOpenBulkAddForm: () => void;
   onApplyGridPeople: (people: Person[]) => void;
   createGridPersonRow: () => Person;
@@ -93,7 +92,6 @@ export function PeopleDirectory({
   onAddPerson,
   onEditPerson,
   onDeletePerson,
-  onInlineUpdatePerson: _onInlineUpdatePerson,
   onOpenBulkAddForm,
   onApplyGridPeople,
   createGridPersonRow,

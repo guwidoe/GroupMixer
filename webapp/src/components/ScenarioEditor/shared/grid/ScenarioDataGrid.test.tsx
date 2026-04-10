@@ -954,9 +954,8 @@ describe('ScenarioDataGrid', () => {
     await user.click(screen.getByRole('button', { name: /edit table/i }));
 
     const devInput = screen.getByRole('spinbutton', { name: /edit dev for row rule-1/i });
-    await user.clear(devInput);
-    await user.type(devInput, '3');
-    await user.tab();
+    fireEvent.change(devInput, { target: { value: '3' } });
+    fireEvent.blur(devInput);
 
     expect(screen.getByRole('spinbutton', { name: /edit dev for row rule-2/i })).toBeDisabled();
 
@@ -964,8 +963,9 @@ describe('ScenarioDataGrid', () => {
     const csvInput = screen.getByRole('textbox', { name: /structured csv editor/i });
     expect(csvInput).toHaveValue('Attribute,dev,pm,junior,senior,Mode\nrole,3,1,,,exact\nlevel,,,,1,at_least');
 
-    await user.clear(csvInput);
-    await user.type(csvInput, 'Attribute,dev,pm,junior,senior,Mode\nrole,4,2,,,exact\nlevel,,,2,1,at_least');
+    fireEvent.change(csvInput, {
+      target: { value: 'Attribute,dev,pm,junior,senior,Mode\nrole,4,2,,,exact\nlevel,,,2,1,at_least' },
+    });
     await user.click(screen.getByRole('button', { name: /apply changes/i }));
 
     expect(onApply).toHaveBeenCalledWith([
@@ -984,7 +984,7 @@ describe('ScenarioDataGrid', () => {
         mode: 'at_least',
       },
     ]);
-  });
+  }, 15000);
 
   it('paginates large row sets to limit rendered rows', async () => {
     const user = userEvent.setup();

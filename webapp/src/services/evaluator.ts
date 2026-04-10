@@ -5,7 +5,6 @@ import type {
   Solution,
   Assignment,
 } from '../types';
-import { getPersonAttributeValue, reconcileScenarioAttributeDefinitions } from './scenarioAttributes';
 
 export type ScheduleMap = Record<number, Record<string, string[]>>; // session -> group -> peopleIds
 
@@ -75,8 +74,6 @@ export function evaluateCompliance(
   const personMap = new Map<string, Person>(
     scenario.people.map((p) => [p.id, p])
   );
-  const attributeDefinitions = reconcileScenarioAttributeDefinitions(scenario);
-
   const cards: ComplianceCardData[] = [];
 
   scenario.constraints.forEach((c, index) => {

@@ -13,6 +13,8 @@ describe('AutoConfigPanel', () => {
         setDesiredRuntimeSettings={vi.fn()}
         onAutoSetSettings={vi.fn()}
         isRunning={false}
+        solverCatalogStatus="ready"
+        solverCatalogErrorMessage={null}
         supportsRecommendedSettings={false}
         solverDisplayName="Solver 3"
       />,
@@ -34,6 +36,8 @@ describe('AutoConfigPanel', () => {
         setDesiredRuntimeSettings={vi.fn()}
         onAutoSetSettings={onAutoSetSettings}
         isRunning={false}
+        solverCatalogStatus="ready"
+        solverCatalogErrorMessage={null}
         supportsRecommendedSettings
         solverDisplayName="Solver 1"
       />,

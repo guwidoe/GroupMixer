@@ -23,7 +23,6 @@ export const scenarioSetupSectionRegistry: Record<ScenarioSetupSectionId, Scenar
       onAddPerson={() => controller.entities.setShowPersonForm(true)}
       onEditPerson={controller.entities.handleEditPerson}
       onDeletePerson={controller.entities.handleDeletePerson}
-      onInlineUpdatePerson={controller.entities.handleInlineUpdatePerson}
       onOpenBulkAddForm={controller.bulk.addPeople.openForm}
       onApplyGridPeople={controller.bulk.updatePeople.applyRows}
       createGridPersonRow={controller.bulk.updatePeople.createRow}

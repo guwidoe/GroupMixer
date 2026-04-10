@@ -94,7 +94,7 @@ export function createJsonRawCodec<TValue, TRow = unknown>({
       try {
         const parsed = JSON.parse(trimmed) as unknown;
         return validate(parsed, row);
-      } catch (error) {
+      } catch {
         return {
           ok: false,
           error: `Expected valid JSON for ${header}, received ${JSON.stringify(text)}.`,

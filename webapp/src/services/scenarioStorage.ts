@@ -48,7 +48,11 @@ function hashString(value: string): string {
 function normalizeScenarioForDraftIdentity(scenario: Scenario): Scenario {
   return {
     ...scenario,
-    people: scenario.people.map(({ attributeValues: _attributeValues, ...person }) => person),
+    people: scenario.people.map((person) => {
+      const normalizedPerson = { ...person };
+      delete normalizedPerson.attributeValues;
+      return normalizedPerson;
+    }),
   };
 }
 

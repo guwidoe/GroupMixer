@@ -9,7 +9,6 @@ interface PeopleSectionProps {
   onAddPerson: () => void;
   onEditPerson: (person: Person) => void;
   onDeletePerson: (personId: string) => void;
-  onInlineUpdatePerson: (personId: string, updates: { attributes?: Record<string, string>; sessions?: number[] | undefined }) => void;
   onOpenBulkAddForm: () => void;
   onApplyGridPeople: (people: Person[]) => void;
   createGridPersonRow: () => Person;
@@ -24,7 +23,6 @@ export function PeopleSection({
   onAddPerson,
   onEditPerson,
   onDeletePerson,
-  onInlineUpdatePerson,
   onOpenBulkAddForm,
   onApplyGridPeople,
   createGridPersonRow,
@@ -39,7 +37,6 @@ export function PeopleSection({
       onAddPerson={onAddPerson}
       onEditPerson={onEditPerson}
       onDeletePerson={onDeletePerson}
-      onInlineUpdatePerson={onInlineUpdatePerson}
       onOpenBulkAddForm={onOpenBulkAddForm}
       onApplyGridPeople={onApplyGridPeople}
       createGridPersonRow={createGridPersonRow}

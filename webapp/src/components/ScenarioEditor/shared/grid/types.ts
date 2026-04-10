@@ -113,7 +113,7 @@ export type ScenarioDataGridPrimitiveType = 'string' | 'number' | 'array' | 'enu
 export type ScenarioDataGridArrayItemType = 'string' | 'number';
 export type ScenarioDataGridStructuredChildPrimitiveType = 'string' | 'number' | 'enum';
 
-export interface ScenarioDataGridColumnBase<T> {
+export interface ScenarioDataGridColumnBase {
   id: string;
   header: string;
   width?: number;
@@ -143,7 +143,7 @@ export interface ScenarioDataGridPrimitiveCsvConfig {
   acceptedSeparators?: string[];
 }
 
-export interface ScenarioDataGridPrimitiveBase<T, TValue> extends ScenarioDataGridColumnBase<T> {
+export interface ScenarioDataGridPrimitiveBase<T, TValue> extends ScenarioDataGridColumnBase {
   kind: 'primitive';
   primitive: ScenarioDataGridPrimitiveType;
   getValue: (row: T) => TValue | undefined;
@@ -189,7 +189,7 @@ export interface ScenarioDataGridPrimitiveBase<T, TValue> extends ScenarioDataGr
  * - do not default to opaque dictionary/blob cells for known finite-key data
  */
 export interface ScenarioDataGridStructuredFiniteKeyColumnBase<T, TValue extends string | number>
-  extends ScenarioDataGridColumnBase<T> {
+  extends ScenarioDataGridColumnBase {
   kind: 'structured';
   structured: 'finite-key-map';
   childPrimitive: ScenarioDataGridStructuredChildPrimitiveType;
@@ -225,7 +225,7 @@ export interface ScenarioDataGridStructuredFiniteKeyColumnBase<T, TValue extends
  * - richer objects that need a custom browse renderer and custom editor UI
  * - values that should round-trip through raw mode using canonical JSON
  */
-export interface ScenarioDataGridCustomColumn<T, TValue> extends ScenarioDataGridColumnBase<T> {
+export interface ScenarioDataGridCustomColumn<T, TValue> extends ScenarioDataGridColumnBase {
   kind: 'custom';
   getValue: (row: T) => TValue | undefined;
   setValue?: (row: T, value: TValue | undefined) => T;
@@ -285,7 +285,7 @@ export interface ScenarioDataGridStructuredFiniteKeyEnumColumn<T>
   childOptions: ScenarioDataGridOption[] | ((args: { row: T; key: string }) => ScenarioDataGridOption[]);
 }
 
-export interface ScenarioDataGridDisplayColumn<T> extends ScenarioDataGridColumnBase<T> {
+export interface ScenarioDataGridDisplayColumn<T> extends ScenarioDataGridColumnBase {
   kind: 'display';
   cell: (row: T) => React.ReactNode;
   sortValue?: (row: T) => string | number;
@@ -299,7 +299,7 @@ export interface ScenarioDataGridDisplayColumn<T> extends ScenarioDataGridColumn
  * Transitional legacy shape. This stays supported while sections migrate to the typed primitive model.
  * New data columns should prefer the typed primitive variants above.
  */
-export interface ScenarioDataGridLegacyColumn<T> extends ScenarioDataGridColumnBase<T> {
+export interface ScenarioDataGridLegacyColumn<T> extends ScenarioDataGridColumnBase {
   kind?: undefined;
   cell: (row: T) => React.ReactNode;
   sortValue?: (row: T) => string | number;

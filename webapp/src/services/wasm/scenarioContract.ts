@@ -159,7 +159,8 @@ function normalizeConstraintForWasm(constraint: Constraint, allSessions: number[
         penalty_weight: constraint.penalty_weight ?? 1,
       };
     case 'AttributeBalance': {
-      const { attribute_id: _attributeId, ...restConstraint } = constraint as AttributeBalanceParams & { attribute_id?: string };
+      const restConstraint = { ...(constraint as AttributeBalanceParams & { attribute_id?: string }) };
+      delete restConstraint.attribute_id;
       const normalized: Constraint = {
         ...restConstraint,
         desired_values: { ...(constraint as AttributeBalanceParams).desired_values },

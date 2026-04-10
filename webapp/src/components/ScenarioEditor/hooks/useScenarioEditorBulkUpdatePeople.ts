@@ -15,7 +15,7 @@ interface UseScenarioEditorBulkUpdatePeopleArgs {
   setScenario: (scenario: Scenario) => void;
 }
 
-function sanitizeGridPeopleRows(people: Person[], sessionsCount: number): Person[] {
+function sanitizeGridPeopleRows(people: Person[]): Person[] {
   return people.map((person) => {
     const cleanedAttributes = Object.fromEntries(
       Object.entries(person.attributes ?? {}).filter(([key, value]) => {
@@ -54,7 +54,7 @@ export function useScenarioEditorBulkUpdatePeople({
   } satisfies Person);
 
   const applyRows = (people: Person[]) => {
-    const normalizedPeople = sanitizeGridPeopleRows(people, scenario?.num_sessions ?? 3);
+    const normalizedPeople = sanitizeGridPeopleRows(people);
     const nextScenario = buildScenarioWithPeople(scenario, normalizedPeople);
     const nextDefinitions = reconcileScenarioAttributeDefinitions(nextScenario, attributeDefinitions);
 

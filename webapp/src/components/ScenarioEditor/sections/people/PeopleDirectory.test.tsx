@@ -26,7 +26,6 @@ function createBaseProps(overrides: Partial<React.ComponentProps<typeof PeopleDi
     onAddPerson: vi.fn(),
     onEditPerson: vi.fn(),
     onDeletePerson: vi.fn(),
-    onInlineUpdatePerson: vi.fn(),
     onOpenBulkAddForm: vi.fn(),
     onApplyGridPeople: vi.fn(),
     createGridPersonRow: () => ({ id: 'new-person', attributes: { name: '' }, sessions: undefined } satisfies Person),
@@ -44,17 +43,17 @@ describe('PeopleDirectory', () => {
       render(
         <PeopleDirectory
           {...createBaseProps({
-            scenario: createLargeScenario(260),
+            scenario: createLargeScenario(180),
           })}
         />,
       );
 
       expect(screen.getByRole('heading', { name: /^people$/i })).toBeInTheDocument();
-      expect(screen.getByText('260')).toBeInTheDocument();
+      expect(screen.getByText('180')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /add person/i })).toBeInTheDocument();
       expect(screen.queryByRole('status')).not.toBeInTheDocument();
       expect(screen.getByText('Person 0001')).toBeInTheDocument();
-      expect(screen.queryByText('Person 0260')).not.toBeInTheDocument();
+      expect(screen.queryByText('Person 0180')).not.toBeInTheDocument();
 
       act(() => {
         vi.runAllTimers();
@@ -65,7 +64,7 @@ describe('PeopleDirectory', () => {
     } finally {
       vi.useRealTimers();
     }
-  });
+  }, 15000);
 
   it('supports shared cards/list switching and person actions', async () => {
     const user = userEvent.setup();

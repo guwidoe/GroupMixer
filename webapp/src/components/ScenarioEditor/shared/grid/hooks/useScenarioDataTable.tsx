@@ -1,6 +1,8 @@
 import React from 'react';
 import {
+  type ColumnFiltersState,
   getCoreRowModel,
+  type OnChangeFn,
   getFacetedRowModel,
   getFacetedUniqueValues,
   getFilteredRowModel,
@@ -8,9 +10,11 @@ import {
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
+  type ColumnSizingState,
   type FilterFn,
   type Row,
   type SortingState,
+  type VisibilityState,
 } from '@tanstack/react-table';
 import { InlineEditorCell } from '../components/editors/InlineEditorCell';
 import type { MaterializedScenarioDataGridColumn } from '../model/columnMaterialization';
@@ -18,21 +22,21 @@ import { isCustomColumn, isPrimitiveColumn } from '../model/columnMaterializatio
 import { resolveFilterOptionLabel, resolveFilterValue, matchesQuery, normalizeFilterListValue, normalizeFilterText, removeFilterListEntry } from '../model/filterUtils';
 import { estimateHeaderMinWidth } from '../model/layoutUtils';
 import { getArrayCsvSeparators, getPrimitiveOptions, parsePrimitiveCsvValue, renderPrimitiveValue, resolvePrimitiveFilter, resolvePrimitiveSortValue } from '../model/primitiveBehavior';
-import type { ScenarioDataGridColumn, ScenarioDataGridColumnEditor, ScenarioDataGridNumberRangeValue, ScenarioDataGridPrimitiveColumn } from '../types';
+import type { ScenarioDataGridColumn, ScenarioDataGridColumnEditor, ScenarioDataGridNumberRangeValue } from '../types';
 
 interface UseScenarioDataTableArgs<T> {
   activeRows: T[];
-  columnFilters: any;
-  columnSizing: any;
-  columnVisibility: any;
+  columnFilters: ColumnFiltersState;
+  columnSizing: ColumnSizingState;
+  columnVisibility: VisibilityState;
   effectiveEditMode: boolean;
   globalFilter: string;
   materializedColumns: Array<MaterializedScenarioDataGridColumn<T>>;
   pageSize: number;
   rowKey: (row: T, index: number) => string;
-  setColumnFilters: (updater: any) => void;
-  setColumnSizing: (updater: any) => void;
-  setColumnVisibility: (updater: any) => void;
+  setColumnFilters: OnChangeFn<ColumnFiltersState>;
+  setColumnSizing: OnChangeFn<ColumnSizingState>;
+  setColumnVisibility: OnChangeFn<VisibilityState>;
   setDraftRows: React.Dispatch<React.SetStateAction<T[]>>;
   sorting: SortingState;
   setSorting: React.Dispatch<React.SetStateAction<SortingState>>;
