@@ -66,6 +66,25 @@ describe("createScenarioSlice", () => {
     expect(harness.getState().scenario?.people).toHaveLength(4);
   });
 
+  it("populates missing person names from ids when scenarios enter workspace state", () => {
+    const harness = createHarness();
+    const scenario = createSampleScenario({
+      people: [
+        { id: 'p1', attributes: { team: 'A' } },
+        { id: 'p2', attributes: { name: '', team: 'B' } },
+        { id: 'p3', attributes: { Name: 'Cara', team: 'C' } },
+      ],
+    });
+
+    harness.slice.setScenario(scenario);
+
+    expect(harness.getState().scenario?.people).toEqual([
+      expect.objectContaining({ id: 'p1', attributes: expect.objectContaining({ name: 'p1', team: 'A' }) }),
+      expect.objectContaining({ id: 'p2', attributes: expect.objectContaining({ name: 'p2', team: 'B' }) }),
+      expect.objectContaining({ id: 'p3', attributes: expect.objectContaining({ name: 'Cara', team: 'C' }) }),
+    ]);
+  });
+
   it("returns a temporary empty scenario while the UI is loading", () => {
     const harness = createHarness({
       ui: {
@@ -109,14 +128,19 @@ describe("createScenarioSlice", () => {
   });
 
   it("loads the first saved scenario when no current scenario is selected", () => {
-    const saved = createSavedScenario();
+    const saved = createSavedScenario({
+      scenario: createSampleScenario({
+        people: [{ id: 'p1', attributes: { team: 'A' } }],
+      }),
+      attributeDefinitions: DEFAULT_ATTRIBUTE_DEFINITIONS,
+    });
     const harness = createHarness({
       savedScenarios: { [saved.id]: saved },
     });
 
     const scenario = harness.slice.resolveScenario();
 
-    expect(scenario).toEqual(saved.scenario);
+    expect(scenario.people[0]?.attributes).toEqual(expect.objectContaining({ name: 'p1', team: 'A' }));
     expect(scenarioStorage.setCurrentScenarioId).toHaveBeenCalledWith(saved.id);
     expect(harness.getState().currentScenarioId).toBe(saved.id);
   });

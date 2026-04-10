@@ -116,12 +116,22 @@ export function getPersonAttributeValue(
   return undefined;
 }
 
+function readCanonicalPersonName(person: Person): string {
+  for (const [key, value] of Object.entries(person.attributes ?? {})) {
+    if (normalizeAttributeName(key) === ATTRIBUTE_DEFINITION_NAME_KEY) {
+      const trimmed = String(value ?? '').trim();
+      if (trimmed) {
+        return trimmed;
+      }
+    }
+  }
+
+  return String(person.id ?? '').trim();
+}
+
 function buildPersonProjectedAttributes(person: Person, definitions: AttributeDefinition[]): Record<string, string> {
   const projected: Record<string, string> = {};
-
-  if (person.attributes?.name) {
-    projected.name = person.attributes.name;
-  }
+  projected.name = readCanonicalPersonName(person);
 
   for (const definition of definitions) {
     const value = person.attributeValues?.[definition.id];
@@ -198,6 +208,20 @@ export function reconcileScenarioAttributeState(scenario: Scenario, definitions:
     ...scenario,
     people: scenario.people.map((person) => reconcilePersonAttributeState(person, definitions)),
     constraints: scenario.constraints.map((constraint) => reconcileAttributeBalanceConstraint(constraint, definitions)),
+  };
+}
+
+export function resolveScenarioWorkspaceState(
+  scenario: Scenario,
+  definitions?: AttributeDefinition[] | null,
+): { scenario: Scenario; attributeDefinitions: AttributeDefinition[] } {
+  const baseDefinitions = coerceAttributeDefinitions(definitions);
+  const normalizedScenario = reconcileScenarioAttributeState(scenario, baseDefinitions);
+  const attributeDefinitions = reconcileScenarioAttributeDefinitions(normalizedScenario, baseDefinitions);
+
+  return {
+    scenario: reconcileScenarioAttributeState(normalizedScenario, attributeDefinitions),
+    attributeDefinitions,
   };
 }
 
@@ -345,20 +369,15 @@ export function updateAttributeBalanceConstraintReference(
 }
 
 export function migrateSavedScenario(savedScenario: SavedScenario): SavedScenario {
-  const attributeDefinitions = coerceAttributeDefinitions(savedScenario.attributeDefinitions);
-  const scenarioWithRelationalState = reconcileScenarioAttributeState(savedScenario.scenario, attributeDefinitions);
-  const reconciledAttributeDefinitions = reconcileScenarioAttributeDefinitions(
-    scenarioWithRelationalState,
-    attributeDefinitions,
-  );
+  const resolvedWorkspace = resolveScenarioWorkspaceState(savedScenario.scenario, savedScenario.attributeDefinitions);
 
   return {
     ...savedScenario,
-    scenario: reconcileScenarioAttributeState(scenarioWithRelationalState, reconciledAttributeDefinitions),
-    attributeDefinitions: reconciledAttributeDefinitions,
+    scenario: resolvedWorkspace.scenario,
+    attributeDefinitions: resolvedWorkspace.attributeDefinitions,
   };
 }
 
 export function getPersonDisplayName(person: Person): string {
-  return person.attributes?.name || person.id;
+  return readCanonicalPersonName(person);
 }

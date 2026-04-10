@@ -52,18 +52,8 @@ function convertTestCaseToScenario(testCase: any): Scenario {
 
   const settings = convertDemoSolverSettings(input.solver);
 
-  // Ensure every person has a "name" attribute (treat names as attributes)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const peopleWithNames = scenarioInput.people.map((p: any) => {
-    const attrs = { ...(p.attributes || {}) };
-    if (!attrs.name) {
-      attrs.name = p.id; // Fallback to id if name is missing
-    }
-    return { ...p, attributes: attrs };
-  });
-
   return {
-    people: peopleWithNames,
+    people: scenarioInput.people,
     groups: scenarioInput.groups,
     num_sessions: scenarioInput.num_sessions,
     constraints: input.constraints || [],

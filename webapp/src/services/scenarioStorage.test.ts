@@ -42,6 +42,26 @@ describe("ScenarioStorageService", () => {
     ]);
   });
 
+  it("normalizes missing person names from ids when scenarios are stored", () => {
+    const service = createService();
+    const created = service.createScenario(
+      'Workshop',
+      createSampleScenario({
+        people: [
+          { id: 'p1', attributes: { team: 'A' } },
+          { id: 'p2', attributes: { name: '', team: 'B' } },
+          { id: 'p3', attributes: { Name: 'Cara', team: 'C' } },
+        ],
+      }),
+    );
+
+    expect(created.scenario.people).toEqual([
+      expect.objectContaining({ id: 'p1', attributes: expect.objectContaining({ name: 'p1', team: 'A' }) }),
+      expect.objectContaining({ id: 'p2', attributes: expect.objectContaining({ name: 'p2', team: 'B' }) }),
+      expect.objectContaining({ id: 'p3', attributes: expect.objectContaining({ name: 'Cara', team: 'C' }) }),
+    ]);
+  });
+
   it("falls back to an empty scenario map when localStorage contains malformed JSON", () => {
     localStorage.setItem("people-distributor-scenarios", "{not-json");
 

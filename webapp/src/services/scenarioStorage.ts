@@ -8,7 +8,7 @@ import type {
   SolverSettings,
   Solution,
 } from "../types";
-import { migrateSavedScenario, reconcileScenarioAttributeDefinitions, reconcileScenarioAttributeState } from './scenarioAttributes';
+import { migrateSavedScenario, resolveScenarioWorkspaceState } from './scenarioAttributes';
 
 export { compareScenarioConfigurations, type ScenarioConfigDifference } from "./scenarioStorage/compare";
 
@@ -173,12 +173,12 @@ export class ScenarioStorageService {
     const allScenarios = this.getAllScenarios();
     const allScenarioIds = new Set(Object.keys(allScenarios));
     const id = this.generateGloballyUniqueId(allScenarioIds);
-    const resolvedAttributeDefinitions = reconcileScenarioAttributeDefinitions(scenario, attributeDefinitions);
+    const resolvedWorkspace = resolveScenarioWorkspaceState(scenario, attributeDefinitions);
     const savedScenario: SavedScenario = {
       id,
       name,
-      scenario: reconcileScenarioAttributeState(scenario, resolvedAttributeDefinitions),
-      attributeDefinitions: resolvedAttributeDefinitions,
+      scenario: resolvedWorkspace.scenario,
+      attributeDefinitions: resolvedWorkspace.attributeDefinitions,
       results: [],
       createdAt: now,
       updatedAt: now,
@@ -196,11 +196,12 @@ export class ScenarioStorageService {
       throw new Error(`Scenario with ID ${id} not found`);
     }
 
-    savedScenario.attributeDefinitions = reconcileScenarioAttributeDefinitions(
+    const resolvedWorkspace = resolveScenarioWorkspaceState(
       scenario,
       attributeDefinitions ?? savedScenario.attributeDefinitions,
     );
-    savedScenario.scenario = reconcileScenarioAttributeState(scenario, savedScenario.attributeDefinitions);
+    savedScenario.attributeDefinitions = resolvedWorkspace.attributeDefinitions;
+    savedScenario.scenario = resolvedWorkspace.scenario;
     this.scheduleAutoSave(savedScenario);
   }
 

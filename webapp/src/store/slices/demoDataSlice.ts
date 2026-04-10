@@ -3,7 +3,7 @@
  */
 
 import type { Scenario, Person, Group } from '../../types';
-import { reconcileScenarioAttributeDefinitions } from '../../services/scenarioAttributes';
+import { resolveScenarioWorkspaceState } from '../../services/scenarioAttributes';
 import { createDefaultSolverSettings } from '../../services/solverUi';
 import type { DemoDataState, DemoDataActions, StoreSlice } from '../types';
 import { scenarioStorage } from '../../services/scenarioStorage';
@@ -203,19 +203,18 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
 
       set({ demoDropdownOpen: false });
 
-      const scenario = await loadDemoCase(demoCaseId);
-      const attributeDefinitions = reconcileScenarioAttributeDefinitions(scenario);
+      const resolvedWorkspace = resolveScenarioWorkspaceState(await loadDemoCase(demoCaseId));
 
       set({
-        scenario,
-        attributeDefinitions,
+        scenario: resolvedWorkspace.scenario,
+        attributeDefinitions: resolvedWorkspace.attributeDefinitions,
         solution: null,
       });
 
       get().addNotification({
         type: 'success',
         title: 'Demo Case Loaded',
-        message: `Loaded demo case with ${scenario.people.length} people, ${scenario.groups.length} groups, and ${attributeDefinitions.length} attributes`,
+        message: `Loaded demo case with ${resolvedWorkspace.scenario.people.length} people, ${resolvedWorkspace.scenario.groups.length} groups, and ${resolvedWorkspace.attributeDefinitions.length} attributes`,
       });
     } catch (error) {
       console.error('Failed to load demo case:', error);
@@ -233,19 +232,18 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
     try {
       const { loadDemoCase } = await import('../../services/demoDataService');
 
-      const scenario = await loadDemoCase(demoCaseId);
-      const attributeDefinitions = reconcileScenarioAttributeDefinitions(scenario);
+      const resolvedWorkspace = resolveScenarioWorkspaceState(await loadDemoCase(demoCaseId));
 
       set({
-        scenario,
-        attributeDefinitions,
+        scenario: resolvedWorkspace.scenario,
+        attributeDefinitions: resolvedWorkspace.attributeDefinitions,
         solution: null,
       });
 
       get().addNotification({
         type: 'success',
         title: 'Demo Case Loaded',
-        message: `Overwrote the current scenario with ${scenario.people.length} people, ${scenario.groups.length} groups, and ${attributeDefinitions.length} attributes`,
+        message: `Overwrote the current scenario with ${resolvedWorkspace.scenario.people.length} people, ${resolvedWorkspace.scenario.groups.length} groups, and ${resolvedWorkspace.attributeDefinitions.length} attributes`,
       });
     } catch (error) {
       console.error('Failed to load demo case:', error);
@@ -261,8 +259,9 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
     try {
       const { loadDemoCase } = await import('../../services/demoDataService');
 
-      const demoScenario = await loadDemoCase(demoCaseId);
-      const attributeDefinitions = reconcileScenarioAttributeDefinitions(demoScenario);
+      const resolvedWorkspace = resolveScenarioWorkspaceState(await loadDemoCase(demoCaseId));
+      const demoScenario = resolvedWorkspace.scenario;
+      const attributeDefinitions = resolvedWorkspace.attributeDefinitions;
 
       const currentScenario = get().scenario;
       const currentScenarioId = get().currentScenarioId;

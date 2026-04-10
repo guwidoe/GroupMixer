@@ -16,7 +16,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { AppStore } from './types';
 import type { AttributeDefinition, Scenario, Solution } from '../types';
-import { reconcileScenarioAttributeDefinitions, reconcileScenarioAttributeState } from '../services/scenarioAttributes';
+import { resolveScenarioWorkspaceState } from '../services/scenarioAttributes';
 import { scenarioStorage } from '../services/scenarioStorage';
 
 import {
@@ -81,14 +81,6 @@ function solverStateFromWorkspaceSolution(solution: Solution | null) {
   };
 }
 
-function resolveWorkspaceState(scenario: Scenario, incoming?: AttributeDefinition[]) {
-  const attributeDefinitions = reconcileScenarioAttributeDefinitions(scenario, incoming);
-  return {
-    scenario: reconcileScenarioAttributeState(scenario, attributeDefinitions),
-    attributeDefinitions,
-  };
-}
-
 export const useAppStore = create<AppStore>()(
   devtools(
     (set, get) => ({
@@ -116,7 +108,7 @@ export const useAppStore = create<AppStore>()(
         currentScenarioId?: string | null;
       }) =>
         set((state) => {
-          const nextWorkspace = resolveWorkspaceState(scenario, attributeDefinitions ?? state.attributeDefinitions);
+          const nextWorkspace = resolveScenarioWorkspaceState(scenario, attributeDefinitions ?? state.attributeDefinitions);
           return {
             scenario: nextWorkspace.scenario,
             solution,
@@ -151,7 +143,7 @@ export const useAppStore = create<AppStore>()(
         if (matchingScenario) {
           savedScenario = matchingScenario;
         } else if (savedScenario) {
-          const nextWorkspace = resolveWorkspaceState(
+          const nextWorkspace = resolveScenarioWorkspaceState(
             scenario,
             attributeDefinitions ?? savedScenario.attributeDefinitions,
           );
@@ -163,7 +155,7 @@ export const useAppStore = create<AppStore>()(
           };
           scenarioStorage.saveScenario(savedScenario);
         } else {
-          const nextWorkspace = resolveWorkspaceState(
+          const nextWorkspace = resolveScenarioWorkspaceState(
             scenario,
             attributeDefinitions ?? DEFAULT_ATTRIBUTE_DEFINITIONS,
           );
