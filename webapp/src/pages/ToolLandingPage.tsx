@@ -8,6 +8,7 @@ import { QuickSetupFaq } from '../components/LandingTool/QuickSetupFaq';
 import { useQuickSetup } from '../components/LandingTool/useQuickSetup';
 import { LandingFooter } from '../components/LandingPage/LandingFooter';
 import { LandingLanguageSelector } from '../components/LandingPage/LandingLanguageSelector';
+import { DemoDataWarningModal } from '../components/modals/DemoDataWarningModal';
 import { ResultsScheduleGrid } from '../components/ResultsView/ResultsScheduleGrid';
 import { buildResultsSessionData } from '../components/results/buildResultsViewModel';
 import { interpolate } from '../i18n/interpolate';
@@ -102,11 +103,16 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const ui = getLandingUiContent(locale);
   const controller = useQuickSetup(config);
   const syncWorkspaceDraft = useAppStore((state) => state.syncWorkspaceDraft);
+  const currentWorkspaceScenario = useAppStore((state) => state.scenario);
+  const currentScenarioId = useAppStore((state) => state.currentScenarioId);
+  const savedScenarios = useAppStore((state) => state.savedScenarios);
   const navigate = useNavigate();
   const location = useLocation();
   const resultsRef = useRef<HTMLDivElement>(null);
   const [resultFormat, setResultFormat] = useState<ResultFormat>('cards');
   const [copiedFormat, setCopiedFormat] = useState<ResultFormat | null>(null);
+  const [showWorkspaceOverwriteModal, setShowWorkspaceOverwriteModal] = useState(false);
+  const [pendingAdvancedWorkspaceTarget, setPendingAdvancedWorkspaceTarget] = useState<'results' | 'people' | null>(null);
   const languageOptions = useMemo(
     () =>
       config.liveLocales.map((liveLocale) => ({
@@ -212,6 +218,45 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
     };
   }, [controller.result?.generatedAt]);
 
+  const currentWorkspaceName = currentScenarioId
+    ? savedScenarios[currentScenarioId]?.name ?? 'Untitled Scenario'
+    : 'Current workspace';
+
+  const currentWorkspaceHasContent = Boolean(
+    currentWorkspaceScenario
+    && (currentWorkspaceScenario.people.length > 0
+      || currentWorkspaceScenario.groups.length > 0
+      || currentWorkspaceScenario.constraints.length > 0),
+  );
+
+  const navigateToAdvancedWorkspace = (target: 'results' | 'people', useLandingWorkspace: boolean) => {
+    if (useLandingWorkspace) {
+      const syncedScenarioId = syncWorkspaceDraft({
+        ...workspacePayload,
+        currentScenarioId: controller.draft.workspaceScenarioId,
+        scenarioName: `${config.hero.title} draft`,
+      });
+
+      if (syncedScenarioId !== controller.draft.workspaceScenarioId) {
+        controller.updateDraft((current) => ({
+          ...current,
+          workspaceScenarioId: syncedScenarioId,
+        }));
+      }
+    }
+
+    navigate(
+      buildTrackedAppPath(
+        target === 'results'
+          ? '/app/results'
+          : useLandingWorkspace
+            ? '/app/scenario/people'
+            : '/app/scenario',
+        telemetryAttribution,
+      ),
+    );
+  };
+
   const openAdvancedWorkspace = (target: 'results' | 'people') => {
     trackLandingEvent(
       'landing_open_advanced_workspace',
@@ -224,22 +269,13 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       ),
     );
 
-    const syncedScenarioId = syncWorkspaceDraft({
-      ...workspacePayload,
-      currentScenarioId: controller.draft.workspaceScenarioId,
-      scenarioName: `${config.hero.title} draft`,
-    });
-
-    if (syncedScenarioId !== controller.draft.workspaceScenarioId) {
-      controller.updateDraft((current) => ({
-        ...current,
-        workspaceScenarioId: syncedScenarioId,
-      }));
+    if (currentWorkspaceHasContent) {
+      setPendingAdvancedWorkspaceTarget(target);
+      setShowWorkspaceOverwriteModal(true);
+      return;
     }
 
-    navigate(
-      buildTrackedAppPath(target === 'results' ? '/app/results' : '/app/scenario/people', telemetryAttribution),
-    );
+    navigateToAdvancedWorkspace(target, true);
   };
 
   const { draft, participantCount, estimatedGroupCount, estimatedGroupSize, updateDraft } = controller;
@@ -808,6 +844,35 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
         tagline={config.chrome.footerTagline}
         feedbackLabel={config.chrome.feedbackLabel}
         privacyNote={config.chrome.privacyNote}
+      />
+
+      <DemoDataWarningModal
+        isOpen={showWorkspaceOverwriteModal}
+        onClose={() => {
+          setShowWorkspaceOverwriteModal(false);
+          setPendingAdvancedWorkspaceTarget(null);
+        }}
+        onOverwrite={() => {
+          if (pendingAdvancedWorkspaceTarget) {
+            navigateToAdvancedWorkspace(pendingAdvancedWorkspaceTarget, true);
+          }
+          setShowWorkspaceOverwriteModal(false);
+          setPendingAdvancedWorkspaceTarget(null);
+        }}
+        onLoadNew={() => {
+          if (pendingAdvancedWorkspaceTarget) {
+            navigateToAdvancedWorkspace(pendingAdvancedWorkspaceTarget, false);
+          }
+          setShowWorkspaceOverwriteModal(false);
+          setPendingAdvancedWorkspaceTarget(null);
+        }}
+        demoCaseName={config.hero.title}
+        title="Overwrite Current Workspace?"
+        description="Opening the advanced editor with this landing-page data will overwrite your current workspace settings, including all people, groups, and constraints."
+        panelTitle={`Current workspace: ${currentWorkspaceName}`}
+        panelDescription="Choose Keep current workspace if you want to open the advanced editor without importing this landing-page draft."
+        overwriteLabel="Open with landing data"
+        loadNewLabel="Keep current workspace"
       />
     </div>
   );

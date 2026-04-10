@@ -7,6 +7,13 @@ interface DemoDataWarningModalProps {
   onOverwrite: () => void;
   onLoadNew: () => void;
   demoCaseName: string;
+  title?: string;
+  description?: string;
+  panelTitle?: string;
+  panelDescription?: string;
+  overwriteLabel?: string;
+  loadNewLabel?: string;
+  cancelLabel?: string;
 }
 
 export function DemoDataWarningModal({
@@ -15,8 +22,21 @@ export function DemoDataWarningModal({
   onOverwrite,
   onLoadNew,
   demoCaseName,
+  title,
+  description,
+  panelTitle,
+  panelDescription,
+  overwriteLabel = 'Overwrite',
+  loadNewLabel = 'Load in New Scenario',
+  cancelLabel = 'Cancel',
 }: DemoDataWarningModalProps) {
   if (!isOpen || typeof document === 'undefined') return null;
+
+  const resolvedTitle = title ?? 'Overwrite Current Scenario?';
+  const resolvedDescription = description
+    ?? `Loading "${demoCaseName}" will overwrite your current scenario settings, including all people, groups, and constraints.`;
+  const resolvedPanelTitle = panelTitle ?? `Current scenario: ${demoCaseName}`;
+  const resolvedPanelDescription = panelDescription ?? 'This action cannot be undone. Your current settings will be lost.';
 
   return createPortal(
     <div className="fixed inset-0 modal-backdrop z-[70] overflow-y-auto p-4">
@@ -28,11 +48,10 @@ export function DemoDataWarningModal({
             </div>
             <div className="flex-1">
               <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                Overwrite Current Scenario?
+                {resolvedTitle}
               </h3>
               <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                Loading &quot;{demoCaseName}&quot; will overwrite your current scenario settings, including all people,
-                groups, and constraints.
+                {resolvedDescription}
               </p>
             </div>
             <button
@@ -59,10 +78,10 @@ export function DemoDataWarningModal({
               style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-primary)' }}
             >
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                <strong>Current scenario:</strong> {demoCaseName}
+                <strong>{resolvedPanelTitle}</strong>
               </p>
               <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                This action cannot be undone. Your current settings will be lost.
+                {resolvedPanelDescription}
               </p>
             </div>
 
@@ -78,7 +97,7 @@ export function DemoDataWarningModal({
                   e.currentTarget.style.backgroundColor = 'var(--color-error-600)';
                 }}
               >
-                Overwrite
+                {overwriteLabel}
               </button>
               <button
                 onClick={onLoadNew}
@@ -91,11 +110,11 @@ export function DemoDataWarningModal({
                   e.currentTarget.style.opacity = '1';
                 }}
               >
-                Load in New Scenario
+                {loadNewLabel}
               </button>
             </div>
             <button onClick={onClose} className="btn-secondary w-full rounded-md px-4 py-2 font-medium transition-colors">
-              Cancel
+              {cancelLabel}
             </button>
           </div>
         </div>

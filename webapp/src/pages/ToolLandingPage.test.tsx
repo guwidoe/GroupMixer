@@ -1,13 +1,19 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store';
 import { solveScenario } from '../services/solver/solveScenario';
+import { createSampleScenario, createSampleSolverSettings } from '../test/fixtures';
 import ToolLandingPage from './ToolLandingPage';
 import { getToolPageConfig, TOOL_PAGE_CONFIGS } from './toolPageConfigs';
 
 const scrollIntoViewMock = vi.fn();
+
+function LocationProbe() {
+  const location = useLocation();
+  return <div data-testid="location-probe">{location.pathname}</div>;
+}
 
 vi.mock('../services/solver/solveScenario', () => ({
   solveScenario: vi.fn(async ({ scenario }: { scenario: { people: Array<{ id: string }>; groups: Array<{ id: string }>; num_sessions: number } }) => ({
@@ -286,6 +292,69 @@ describe('ToolLandingPage SEO wiring', () => {
       'Linus',
       'Margaret',
     ]);
+  }, 10000);
+
+  it('warns before overwriting an existing advanced workspace and can keep the current workspace instead', async () => {
+    const user = userEvent.setup();
+
+    useAppStore.getState().syncWorkspaceDraft({
+      scenario: createSampleScenario({
+        people: [{ id: 'Existing', attributes: { name: 'Existing' } }],
+        settings: createSampleSolverSettings(),
+      }),
+      scenarioName: 'Existing workspace',
+    });
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+
+    const textarea = screen.getByLabelText(/participants/i);
+    await user.clear(textarea);
+    await user.type(textarea, 'Ada\nGrace\nLinus\nMargaret');
+
+    await user.click(screen.getAllByRole('button', { name: /advanced editor/i })[0]);
+
+    expect(screen.getByRole('heading', { name: /overwrite current workspace/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /keep current workspace/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /keep current workspace/i }));
+
+    expect(screen.queryByRole('heading', { name: /overwrite current workspace/i })).not.toBeInTheDocument();
+    expect(screen.getByTestId('location-probe')).toHaveTextContent('/app/scenario');
+    expect(useAppStore.getState().scenario?.people.map((person) => person.id)).toEqual(['Existing']);
+  }, 10000);
+
+  it('can overwrite the existing advanced workspace with landing-page data after confirmation', async () => {
+    const user = userEvent.setup();
+
+    useAppStore.getState().syncWorkspaceDraft({
+      scenario: createSampleScenario({
+        people: [{ id: 'Existing', attributes: { name: 'Existing' } }],
+        settings: createSampleSolverSettings(),
+      }),
+      scenarioName: 'Existing workspace',
+    });
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+
+    const textarea = screen.getByLabelText(/participants/i);
+    await user.clear(textarea);
+    await user.type(textarea, 'Ada\nGrace\nLinus\nMargaret');
+
+    await user.click(screen.getAllByRole('button', { name: /advanced editor/i })[0]);
+    await user.click(screen.getByRole('button', { name: /open with landing data/i }));
+
+    expect(screen.getByTestId('location-probe')).toHaveTextContent('/app/scenario/people');
+    expect(useAppStore.getState().scenario?.people.map((person) => person.id)).toEqual(['Ada', 'Grace', 'Linus', 'Margaret']);
   }, 10000);
 
   it('shows the tool form above the fold with participants input and generate button', () => {
