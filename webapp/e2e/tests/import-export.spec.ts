@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { closeTransientUi, openApp, openScenarioManager, openScenarioSetupControls } from './helpers';
+import { closeTransientUi, openApp, openScenarioManager, openWorkspaceActions } from './helpers';
 
 test.describe('Import/Export and Demo Data', () => {
   test.beforeEach(async ({ page }) => {
@@ -8,9 +8,8 @@ test.describe('Import/Export and Demo Data', () => {
   });
 
   test('demo data dropdown is accessible', async ({ page }) => {
-    await openScenarioSetupControls(page);
+    await openWorkspaceActions(page);
 
-    // Find the Demo Data button in the header
     const demoButton = page.getByRole('button', { name: /Demo Data/i });
     await expect(demoButton).toBeVisible();
 
@@ -22,18 +21,16 @@ test.describe('Import/Export and Demo Data', () => {
   });
 
   test('save button is accessible', async ({ page }) => {
-    await openScenarioSetupControls(page);
+    await openWorkspaceActions(page);
 
-    // Find the Save button in the header
-    const saveButton = page.getByRole('button', { name: /Save/i });
+    const saveButton = page.getByRole('button', { name: /Save scenario|Save/i });
     await expect(saveButton).toBeVisible();
   });
 
   test('load button is accessible', async ({ page }) => {
-    await openScenarioSetupControls(page);
+    await openWorkspaceActions(page);
 
-    // Find the Load button in the header
-    const loadButton = page.getByRole('button', { name: /Load/i });
+    const loadButton = page.getByRole('button', { name: /Load scenario|Load/i });
     await expect(loadButton).toBeVisible();
   });
 

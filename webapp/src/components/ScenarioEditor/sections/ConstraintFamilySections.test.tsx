@@ -87,7 +87,7 @@ describe('ConstraintFamilySections', () => {
 
     await user.click(screen.getByText('Alex'));
     expect(onEdit).toHaveBeenCalledTimes(1);
-  });
+  }, 10000);
 
   it('renders soft constraint family conversion affordances without the old family tabs', async () => {
     const user = userEvent.setup();

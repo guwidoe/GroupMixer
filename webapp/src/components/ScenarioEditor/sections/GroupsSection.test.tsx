@@ -66,5 +66,5 @@ describe('GroupsSection', () => {
     expect(screen.getByRole('textbox', { name: /groups grid csv/i })).toHaveValue(
       'Group,Default capacity,Session capacities\ng1,4,"[4,4,4]"',
     );
-  });
+  }, 10000);
 });

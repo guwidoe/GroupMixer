@@ -78,11 +78,7 @@ fn all_solver_families_complete_partial_construction_seed() {
             for members in session.values() {
                 count += members.len();
             }
-            assert_eq!(
-                count, 4,
-                "all people should be assigned in session {} for {:?}",
-                session_idx, kind
-            );
+            assert_eq!(count, 4, "all people should be assigned in every seeded session");
         }
     }
 }

@@ -340,7 +340,7 @@ describe("MainApp stateful integration routes", () => {
 
     renderAppRoute('/app/solver');
 
-    expect(await screen.findAllByText(/solver catalog unavailable/i)).not.toHaveLength(0);
+    expect(await screen.findAllByText(/available solvers unavailable/i)).not.toHaveLength(0);
     expect(screen.getByText(/catalog boom/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /solver 3 experimental/i })).not.toBeInTheDocument();
   });

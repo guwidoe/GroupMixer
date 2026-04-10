@@ -7,5 +7,9 @@ interface ScenarioSetupSectionRendererProps {
 }
 
 export function ScenarioSetupSectionRenderer({ controller }: ScenarioSetupSectionRendererProps) {
-  return <>{scenarioSetupSectionRegistry[controller.activeSection]?.(controller) ?? null}</>;
+  const renderSection = Object.hasOwn(scenarioSetupSectionRegistry, controller.activeSection)
+    ? scenarioSetupSectionRegistry[controller.activeSection]
+    : undefined;
+
+  return <>{typeof renderSection === 'function' ? renderSection(controller) : null}</>;
 }

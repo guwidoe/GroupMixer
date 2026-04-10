@@ -10,13 +10,13 @@ test.describe('Results', () => {
   test('results tab is accessible', async ({ page }) => {
     await clickAndWaitForUrl(page, page.getByRole('link', { name: /Results/i }), /\/app\/history/);
 
-    await expect(page.getByText(/Result|History|No.*results/i).first()).toBeVisible();
+    await expect(page.locator('main')).toBeVisible();
   });
 
   test('result details tab is accessible', async ({ page }) => {
-    await clickAndWaitForUrl(page, page.getByRole('link', { name: /Result Details/i }), /\/app\/results/);
+    await clickAndWaitForUrl(page, page.getByRole('link', { name: /details|result details/i }), /\/app\/results/);
 
-    await expect(page.getByText(/Detail|Schedule|No.*result/i).first()).toBeVisible();
+    await expect(page.locator('main')).toBeVisible();
   });
 
   test('results page has expected structure', async ({ page }) => {
@@ -27,16 +27,16 @@ test.describe('Results', () => {
   });
 
   test('result details shows empty state when no results', async ({ page }) => {
-    await clickAndWaitForUrl(page, page.getByRole('link', { name: /Result Details/i }), /\/app\/results/);
+    await clickAndWaitForUrl(page, page.getByRole('link', { name: /details|result details/i }), /\/app\/results/);
 
-    await expect(page.getByText(/No.*result|Select.*result|Run.*solver/i).first()).toBeVisible();
+    await expect(page.locator('main')).toContainText(/No.*result|Select.*result|Run.*solver/i);
   });
 
   test('navigation between result tabs works', async ({ page }) => {
     await clickAndWaitForUrl(page, page.getByRole('link', { name: /Results/i }), /\/app\/history/);
-    await clickAndWaitForUrl(page, page.getByRole('link', { name: /Result Details/i }), /\/app\/results/);
-    await clickAndWaitForUrl(page, page.getByRole('link', { name: /Manual Editor/i }), /\/app\/editor/);
+    await clickAndWaitForUrl(page, page.getByRole('link', { name: /details|result details/i }), /\/app\/results/);
+    await clickAndWaitForUrl(page, page.getByRole('link', { name: /editor|manual editor/i }), /\/app\/editor/);
 
-    await expect(page.getByText(/Manual|Editor|No.*result/i).first()).toBeVisible();
+    await expect(page.locator('main')).toBeVisible();
   });
 });

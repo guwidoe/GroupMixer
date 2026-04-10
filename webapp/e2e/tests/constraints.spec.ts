@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { closeTransientUi, navigateScenarioSetupSection, openApp, openScenarioSetupControls } from './helpers';
+import { closeTransientUi, navigateScenarioSetupSection, openApp } from './helpers';
 
 test.describe('Constraints', () => {
   test.beforeEach(async ({ page }) => {
@@ -7,84 +7,45 @@ test.describe('Constraints', () => {
     await closeTransientUi(page);
   });
 
-  test('can navigate to hard constraints section', async ({ page }) => {
-    await navigateScenarioSetupSection(page, /Hard Constraints/i);
-
-    // Should show hard constraints panel - look for any constraint-related content
-    await expect(page.getByText(/Immovable|Must Stay Together/i).first()).toBeVisible({ timeout: 5000 });
+  test('can navigate to fixed placements', async ({ page }) => {
+    await navigateScenarioSetupSection(page, /^fixed placements$/i);
+    await expect(page.getByRole('heading', { name: /^fixed placements$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /add fixed placements/i })).toBeVisible();
   });
 
-  test('can navigate to soft constraints section', async ({ page }) => {
-    await navigateScenarioSetupSection(page, /Soft Constraints/i);
-
-    // Should show soft constraints panel
-    await expect(page.getByText(/Repeat Encounter|Attribute Balance/i).first()).toBeVisible({ timeout: 5000 });
+  test('can navigate to keep together', async ({ page }) => {
+    await navigateScenarioSetupSection(page, /^keep together$/i);
+    await expect(page.getByRole('heading', { name: /^keep together$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /add keep together/i })).toBeVisible();
   });
 
-  test('can open Immovable People modal', async ({ page }) => {
-    await navigateScenarioSetupSection(page, /Hard Constraints/i);
-
-    const immovableSection = page.getByText(/Immovable/i).first();
-    await expect(immovableSection).toBeVisible();
+  test('can navigate to repeat limit', async ({ page }) => {
+    await navigateScenarioSetupSection(page, /repeat limit/i);
+    await expect(page.getByRole('heading', { name: /repeat limit/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /add repeat limit/i })).toBeVisible();
   });
 
-  test('can open Must Stay Together modal', async ({ page }) => {
-    await navigateScenarioSetupSection(page, /Hard Constraints/i);
-
-    const mustStaySection = page.getByText(/Must Stay Together/i).first();
-    await expect(mustStaySection).toBeVisible();
+  test('can navigate to balance attributes', async ({ page }) => {
+    await navigateScenarioSetupSection(page, /^balance attributes$/i);
+    await expect(page.getByRole('heading', { name: /^balance attributes$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /add balance attributes/i })).toBeVisible();
   });
 
-  test('can open Repeat Encounter section', async ({ page }) => {
-    await navigateScenarioSetupSection(page, /Soft Constraints/i);
-
-    const repeatSection = page.getByText(/Repeat.*Encounter|Max.*Encounters/i).first();
-    await expect(repeatSection).toBeVisible();
+  test('can navigate to prefer apart', async ({ page }) => {
+    await navigateScenarioSetupSection(page, /^prefer apart$/i);
+    await expect(page.getByRole('heading', { name: /^prefer apart$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /add prefer apart/i })).toBeVisible();
   });
 
-  test('can open Attribute Balance section', async ({ page }) => {
-    await navigateScenarioSetupSection(page, /Soft Constraints/i);
-
-    const attrBalanceSection = page.getByText(/Attribute Balance/i).first();
-    await expect(attrBalanceSection).toBeVisible();
+  test('can navigate to prefer together', async ({ page }) => {
+    await navigateScenarioSetupSection(page, /^prefer together$/i);
+    await expect(page.getByRole('heading', { name: /^prefer together$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /add prefer together/i })).toBeVisible();
   });
 
-  test('can open Should Not Be Together section', async ({ page }) => {
-    await navigateScenarioSetupSection(page, /Soft Constraints/i);
-
-    const sntSection = page.getByText(/Should Not Be Together/i).first();
-    await expect(sntSection).toBeVisible();
-  });
-
-  test('can open Should Stay Together section', async ({ page }) => {
-    await navigateScenarioSetupSection(page, /Soft Constraints/i);
-
-    const sstSection = page.getByText(/Should Stay Together/i).first();
-    await expect(sstSection).toBeVisible();
-  });
-
-  test('can open Pair Meeting Count section', async ({ page }) => {
-    await navigateScenarioSetupSection(page, /Soft Constraints/i);
-
-    const pairMeetingSection = page.getByText(/Pair Meeting Count/i).first();
-    await expect(pairMeetingSection).toBeVisible();
-  });
-
-  test('constraint tabs are accessible', async ({ page }) => {
-    await openScenarioSetupControls(page);
-
-    // Check that the constraint tabs are visible and clickable
-    const hardTab = page.getByRole('button', { name: /Hard Constraints/i });
-    const softTab = page.getByRole('button', { name: /Soft Constraints/i });
-
-    await expect(hardTab).toBeVisible();
-    await expect(softTab).toBeVisible();
-
-    await hardTab.click();
-    await expect(page.getByText(/Immovable|Must Stay Together/i).first()).toBeVisible();
-    await navigateScenarioSetupSection(page, /Soft Constraints/i);
-    await expect(page.getByText(/Repeat Encounter|Attribute Balance/i).first()).toBeVisible();
-    await navigateScenarioSetupSection(page, /Hard Constraints/i);
-    await expect(page.getByText(/Immovable|Must Stay Together/i).first()).toBeVisible();
+  test('can navigate to pair encounters', async ({ page }) => {
+    await navigateScenarioSetupSection(page, /^pair encounters$/i);
+    await expect(page.getByRole('heading', { name: /^pair encounters$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /add pair encounters/i })).toBeVisible();
   });
 });

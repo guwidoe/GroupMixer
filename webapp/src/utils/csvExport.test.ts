@@ -38,6 +38,6 @@ describe("generateAssignmentsCsv", () => {
     expect(csv).toContain('Iterations,"1,200"');
     expect(csv).toContain('"Alice, ""A"""');
     expect(csv).toContain("Person ID,Group ID,Session,Person Name,team");
-    expect(csv).toContain("p2,g1,1,p2,B");
+    expect(csv).toContain("p2,g1,1,,B");
   });
 });

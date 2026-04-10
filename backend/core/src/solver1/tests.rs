@@ -487,8 +487,7 @@ fn test_error_on_clique_too_large() {
         let is_general_error = msg.contains("Could not place clique");
         assert!(
             is_capacity_error || is_specific_error || is_general_error,
-            "Error message did not match expected patterns. Got: {}",
-            msg
+            "Error message did not match the expected validation patterns"
         );
     } else {
         panic!("Expected a ValidationError");

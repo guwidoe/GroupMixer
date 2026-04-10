@@ -174,8 +174,19 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const resultCsv = useMemo(() => buildResultCsv(displaySessions, ui.results), [displaySessions, ui.results]);
   const activeResultFormat = controller.result ? resultFormat : 'cards';
   const activeCopiedFormat = controller.result ? copiedFormat : null;
+  const currentWorkspaceHasContent = Boolean(
+    currentWorkspaceScenario
+    && (currentWorkspaceScenario.people.length > 0
+      || currentWorkspaceScenario.groups.length > 0
+      || currentWorkspaceScenario.constraints.length > 0),
+  );
+  const hasForeignWorkspaceContent = currentWorkspaceHasContent && currentScenarioId !== controller.draft.workspaceScenarioId;
 
   useEffect(() => {
+    if (hasForeignWorkspaceContent) {
+      return;
+    }
+
     const timeout = window.setTimeout(() => {
       const syncedScenarioId = syncWorkspaceDraft({
         ...workspacePayload,
@@ -196,6 +207,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
     config.hero.title,
     controller,
     controller.draft.workspaceScenarioId,
+    hasForeignWorkspaceContent,
     syncWorkspaceDraft,
     workspacePayload,
   ]);
@@ -222,18 +234,11 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
     ? savedScenarios[currentScenarioId]?.name ?? 'Untitled Scenario'
     : 'Current workspace';
 
-  const currentWorkspaceHasContent = Boolean(
-    currentWorkspaceScenario
-    && (currentWorkspaceScenario.people.length > 0
-      || currentWorkspaceScenario.groups.length > 0
-      || currentWorkspaceScenario.constraints.length > 0),
-  );
-
   const navigateToAdvancedWorkspace = (target: 'results' | 'people', useLandingWorkspace: boolean) => {
     if (useLandingWorkspace) {
       const syncedScenarioId = syncWorkspaceDraft({
         ...workspacePayload,
-        currentScenarioId: controller.draft.workspaceScenarioId,
+        currentScenarioId: hasForeignWorkspaceContent ? currentScenarioId : controller.draft.workspaceScenarioId,
         scenarioName: `${config.hero.title} draft`,
       });
 
@@ -269,7 +274,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       ),
     );
 
-    if (currentWorkspaceHasContent) {
+    if (hasForeignWorkspaceContent) {
       setPendingAdvancedWorkspaceTarget(target);
       setShowWorkspaceOverwriteModal(true);
       return;

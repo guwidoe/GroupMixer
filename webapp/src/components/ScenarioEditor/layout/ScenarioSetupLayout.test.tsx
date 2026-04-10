@@ -51,7 +51,7 @@ describe('ScenarioSetupLayout', () => {
     expect(within(sidebar).getByText('Preferences')).toBeInTheDocument();
     expect(within(sidebar).getByText('Optimization')).toBeInTheDocument();
 
-    const activeItem = within(sidebar).getByRole('button', { name: /attribute definitions/i });
+    const activeItem = within(sidebar).getByRole('button', { name: /^attributes$/i });
     expect(activeItem).toHaveAttribute('aria-current', 'page');
     expect(within(activeItem).getByText('1')).toBeInTheDocument();
     expect(within(sidebar).queryByText(/define the attribute schema/i)).not.toBeInTheDocument();
@@ -73,7 +73,7 @@ describe('ScenarioSetupLayout', () => {
     );
 
     const peopleItem = screen.getByRole('button', { name: /^people$/i });
-    const activeItem = screen.getByRole('button', { name: /attribute definitions/i });
+    const activeItem = screen.getByRole('button', { name: /^attributes$/i });
 
     await user.hover(peopleItem);
 
@@ -116,7 +116,7 @@ describe('ScenarioSetupLayout', () => {
     expect(within(sidebar).getByRole('button', { name: /save/i })).toBeInTheDocument();
     expect(within(sidebar).getByRole('button', { name: /demo data/i })).toBeInTheDocument();
 
-    const attributesButton = within(sidebar).getByRole('button', { name: /attribute definitions/i });
+    const attributesButton = within(sidebar).getByRole('button', { name: /^attributes$/i });
     expect(within(attributesButton).getByText('1')).toBeInTheDocument();
   });
 
@@ -144,7 +144,7 @@ describe('ScenarioSetupLayout', () => {
     expect(openButton).toHaveAttribute('aria-expanded', 'true');
 
     const dialog = screen.getByRole('dialog', { name: /scenario setup navigation drawer/i });
-    await user.click(within(dialog).getByRole('button', { name: /repeat encounter/i }));
+    await user.click(within(dialog).getByRole('button', { name: /repeat limit/i }));
 
     expect(onNavigate).toHaveBeenCalledWith('repeat-encounter');
     expect(screen.queryByRole('dialog', { name: /scenario setup navigation drawer/i })).not.toBeInTheDocument();
