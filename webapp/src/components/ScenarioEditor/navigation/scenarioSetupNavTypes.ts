@@ -32,6 +32,7 @@ export interface ScenarioSetupSectionDefinition {
   routeSegment: ScenarioSetupSectionId;
   label: string;
   shortLabel?: string;
+  tooltipDescription?: string;
   description: string;
   group: ScenarioSetupSectionGroupId;
   order: number;

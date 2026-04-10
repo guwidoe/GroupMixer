@@ -114,4 +114,46 @@ describe('scenarioSetupNav', () => {
     expect(getScenarioSetupLegacyRedirect('hard')).toBe('immovable-people');
     expect(getScenarioSetupLegacyRedirect('repeat-encounter')).toBeNull();
   });
+
+  it('exposes compact sidebar labels and short tooltip descriptions for long constraint sections', () => {
+    expect(getScenarioSetupSectionById('immovable-people')).toEqual(
+      expect.objectContaining({
+        shortLabel: 'Fixed Placements',
+        tooltipDescription: 'Pin people to specific groups.',
+      }),
+    );
+    expect(getScenarioSetupSectionById('must-stay-together')).toEqual(
+      expect.objectContaining({
+        shortLabel: 'Keep Together',
+        tooltipDescription: 'Require people to share a group.',
+      }),
+    );
+    expect(getScenarioSetupSectionById('repeat-encounter')).toEqual(
+      expect.objectContaining({
+        shortLabel: 'Repeat Limit',
+        tooltipDescription: 'Cap repeat meetings across sessions.',
+      }),
+    );
+    expect(getScenarioSetupSectionById('should-not-be-together')).toEqual(
+      expect.objectContaining({
+        shortLabel: 'Prefer Apart',
+      }),
+    );
+    expect(getScenarioSetupSectionById('should-stay-together')).toEqual(
+      expect.objectContaining({
+        shortLabel: 'Prefer Together',
+      }),
+    );
+    expect(getScenarioSetupSectionById('attribute-balance')).toEqual(
+      expect.objectContaining({
+        shortLabel: 'Balance Attributes',
+      }),
+    );
+    expect(getScenarioSetupSectionById('pair-meeting-count')).toEqual(
+      expect.objectContaining({
+        shortLabel: 'Pair Encounters',
+        tooltipDescription: 'Target how often pairs should meet.',
+      }),
+    );
+  });
 });

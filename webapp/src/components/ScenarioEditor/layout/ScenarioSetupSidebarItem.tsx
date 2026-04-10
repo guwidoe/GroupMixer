@@ -20,16 +20,24 @@ export function ScenarioSetupSidebarItem({
   const [isHovered, setIsHovered] = useState(false);
 
   const showHoverState = isHovered && !isActive;
+  const tooltipContent = (
+    <div className="space-y-1">
+      <div className="font-semibold">{section.shortLabel ?? section.label}</div>
+      {section.tooltipDescription ? (
+        <div>{section.tooltipDescription}</div>
+      ) : null}
+    </div>
+  );
 
   return (
-    <Tooltip content={section.label} className="block w-full" placement="right">
+    <Tooltip content={tooltipContent} className="block w-full" placement="right">
       <button
         type="button"
         onClick={() => onNavigate(section.id)}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         aria-current={isActive ? 'page' : undefined}
-        aria-label={section.label}
+        aria-label={section.shortLabel ?? section.label}
         className={`relative flex items-center gap-2.5 rounded-md py-2 text-sm font-medium transition-colors duration-150 ${
           isCollapsed ? 'w-full justify-center px-0' : 'w-full px-[1.375rem] text-left'
         }`}
