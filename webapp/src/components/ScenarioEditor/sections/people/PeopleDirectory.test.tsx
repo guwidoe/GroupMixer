@@ -4,7 +4,7 @@ import { act } from 'react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { createAttributeDefinition } from '../../../../services/scenarioAttributes';
-import type { Scenario } from '../../../../types';
+import type { Person, Scenario } from '../../../../types';
 import { createSampleScenario, createSampleSolverSettings } from '../../../../test/fixtures';
 import { PeopleDirectory } from './PeopleDirectory';
 
@@ -18,20 +18,21 @@ function createLargeScenario(peopleCount: number): Scenario {
   });
 }
 
-function createBulkUpdateProps() {
+function createBaseProps(overrides: Partial<React.ComponentProps<typeof PeopleDirectory>> = {}) {
   return {
-    bulkUpdateActive: false,
-    bulkUpdateTextMode: 'grid' as const,
-    setBulkUpdateTextMode: vi.fn(),
-    bulkUpdateCsvInput: '',
-    setBulkUpdateCsvInput: vi.fn(),
-    bulkUpdateHeaders: ['id', 'name'],
-    setBulkUpdateHeaders: vi.fn(),
-    bulkUpdateRows: [],
-    setBulkUpdateRows: vi.fn(),
-    onRefreshBulkUpdate: vi.fn(),
-    onApplyBulkUpdate: vi.fn(),
-    onCloseBulkUpdate: vi.fn(),
+    scenario: createSampleScenario({ settings: createSampleSolverSettings() }),
+    attributeDefinitions: [],
+    sessionsCount: 3,
+    onAddPerson: vi.fn(),
+    onEditPerson: vi.fn(),
+    onDeletePerson: vi.fn(),
+    onInlineUpdatePerson: vi.fn(),
+    onOpenBulkAddForm: vi.fn(),
+    onApplyGridPeople: vi.fn(),
+    createGridPersonRow: () => ({ id: 'new-person', attributes: { name: '' }, sessions: undefined } satisfies Person),
+    onTriggerCsvUpload: vi.fn(),
+    onTriggerExcelImport: vi.fn(),
+    ...overrides,
   };
 }
 
@@ -42,18 +43,9 @@ describe('PeopleDirectory', () => {
     try {
       render(
         <PeopleDirectory
-          scenario={createLargeScenario(260)}
-          attributeDefinitions={[]}
-          sessionsCount={3}
-          onAddPerson={vi.fn()}
-          onEditPerson={vi.fn()}
-          onDeletePerson={vi.fn()}
-          onInlineUpdatePerson={vi.fn()}
-          onOpenBulkAddForm={vi.fn()}
-          onOpenBulkUpdateForm={vi.fn()}
-          {...createBulkUpdateProps()}
-          onTriggerCsvUpload={vi.fn()}
-          onTriggerExcelImport={vi.fn()}
+          {...createBaseProps({
+            scenario: createLargeScenario(260),
+          })}
         />,
       );
 
@@ -82,23 +74,17 @@ describe('PeopleDirectory', () => {
 
     render(
       <PeopleDirectory
-        scenario={createSampleScenario({
-          people: [
-            { id: 'p1', attributes: { name: 'Alex', role: 'dev' }, sessions: [0, 1] },
-          ],
-          settings: createSampleSolverSettings(),
+        {...createBaseProps({
+          scenario: createSampleScenario({
+            people: [
+              { id: 'p1', attributes: { name: 'Alex', role: 'dev' }, sessions: [0, 1] },
+            ],
+            settings: createSampleSolverSettings(),
+          }),
+          attributeDefinitions: [createAttributeDefinition('role', ['dev'], 'attr-role')],
+          onEditPerson,
+          onDeletePerson,
         })}
-        attributeDefinitions={[createAttributeDefinition('role', ['dev'], 'attr-role')]}
-        sessionsCount={3}
-        onAddPerson={vi.fn()}
-        onEditPerson={onEditPerson}
-        onDeletePerson={onDeletePerson}
-        onInlineUpdatePerson={vi.fn()}
-        onOpenBulkAddForm={vi.fn()}
-        onOpenBulkUpdateForm={vi.fn()}
-        {...createBulkUpdateProps()}
-        onTriggerCsvUpload={vi.fn()}
-        onTriggerExcelImport={vi.fn()}
       />,
     );
 
@@ -125,26 +111,18 @@ describe('PeopleDirectory', () => {
 
     render(
       <PeopleDirectory
-        scenario={createSampleScenario({
-          people: [
-            { id: 'p1', attributes: { name: 'Alex', Gender: 'female', Department: 'Engineering' }, sessions: [0, 1] },
+        {...createBaseProps({
+          scenario: createSampleScenario({
+            people: [
+              { id: 'p1', attributes: { name: 'Alex', Gender: 'female', Department: 'Engineering' }, sessions: [0, 1] },
+            ],
+            settings: createSampleSolverSettings(),
+          }),
+          attributeDefinitions: [
+            createAttributeDefinition('gender', ['female', 'male'], 'attr-gender'),
+            createAttributeDefinition('department', ['Engineering'], 'attr-department'),
           ],
-          settings: createSampleSolverSettings(),
         })}
-        attributeDefinitions={[
-          createAttributeDefinition('gender', ['female', 'male'], 'attr-gender'),
-          createAttributeDefinition('department', ['Engineering'], 'attr-department'),
-        ]}
-        sessionsCount={3}
-        onAddPerson={vi.fn()}
-        onEditPerson={vi.fn()}
-        onDeletePerson={vi.fn()}
-        onInlineUpdatePerson={vi.fn()}
-        onOpenBulkAddForm={vi.fn()}
-        onOpenBulkUpdateForm={vi.fn()}
-        {...createBulkUpdateProps()}
-        onTriggerCsvUpload={vi.fn()}
-        onTriggerExcelImport={vi.fn()}
       />,
     );
 
@@ -156,63 +134,28 @@ describe('PeopleDirectory', () => {
     expect(screen.getAllByText('Engineering').length).toBeGreaterThan(0);
   });
 
-  it('uses the shared data-grid edit and csv controls as the only bulk-edit surface', async () => {
+  it('uses the shared typed grid csv workflow for people columns including sessions', async () => {
     const user = userEvent.setup();
 
-    function Harness() {
-      const [bulkUpdateActive, setBulkUpdateActive] = React.useState(false);
-      const [bulkUpdateTextMode, setBulkUpdateTextMode] = React.useState<'text' | 'grid'>('grid');
-      const [bulkUpdateCsvInput, setBulkUpdateCsvInput] = React.useState('id,name\np1,Alex');
-      const [bulkUpdateHeaders, setBulkUpdateHeaders] = React.useState(['id', 'name']);
-      const [bulkUpdateRows, setBulkUpdateRows] = React.useState([{ id: 'p1', name: 'Alex' }]);
-
-      return (
-        <PeopleDirectory
-          scenario={createSampleScenario({
-            people: [{ id: 'p1', attributes: { name: 'Alex' } }],
+    render(
+      <PeopleDirectory
+        {...createBaseProps({
+          scenario: createSampleScenario({
+            people: [{ id: 'p1', attributes: { name: 'Alex', role: 'dev' }, sessions: [0, 1] }],
             settings: createSampleSolverSettings(),
-          })}
-          attributeDefinitions={[]}
-          sessionsCount={3}
-          onAddPerson={vi.fn()}
-          onEditPerson={vi.fn()}
-          onDeletePerson={vi.fn()}
-          onInlineUpdatePerson={vi.fn()}
-          onOpenBulkAddForm={vi.fn()}
-          onOpenBulkUpdateForm={() => {
-            setBulkUpdateActive(true);
-            setBulkUpdateTextMode('grid');
-          }}
-          bulkUpdateActive={bulkUpdateActive}
-          bulkUpdateTextMode={bulkUpdateTextMode}
-          setBulkUpdateTextMode={setBulkUpdateTextMode}
-          bulkUpdateCsvInput={bulkUpdateCsvInput}
-          setBulkUpdateCsvInput={setBulkUpdateCsvInput}
-          bulkUpdateHeaders={bulkUpdateHeaders}
-          setBulkUpdateHeaders={setBulkUpdateHeaders}
-          bulkUpdateRows={bulkUpdateRows}
-          setBulkUpdateRows={setBulkUpdateRows}
-          onRefreshBulkUpdate={vi.fn()}
-          onApplyBulkUpdate={vi.fn()}
-          onCloseBulkUpdate={() => setBulkUpdateActive(false)}
-          onTriggerCsvUpload={vi.fn()}
-          onTriggerExcelImport={vi.fn()}
-        />
-      );
-    }
-
-    render(<Harness />);
+          }),
+          attributeDefinitions: [createAttributeDefinition('role', ['dev', 'design'], 'attr-role')],
+          createGridPersonRow: () => ({ id: 'p2', attributes: { name: '' }, sessions: undefined }),
+        })}
+      />,
+    );
 
     await user.click(screen.getByRole('button', { name: /list/i }));
-    await user.click(screen.getByRole('button', { name: /edit table/i }));
-
-    expect(screen.queryByRole('heading', { name: /bulk edit people/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /apply changes/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /back to directory/i })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: /edit name for bulk row 1/i })).toHaveValue('Alex');
+    expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
-
-    expect(screen.getByRole('textbox', { name: /people bulk edit csv/i })).toHaveValue('id,name\np1,Alex');
+    const csvInput = screen.getByRole('textbox', { name: /people grid csv/i });
+    expect(String((csvInput as HTMLTextAreaElement).value)).toMatch(/Name,Sessions,role/i);
+    expect(String((csvInput as HTMLTextAreaElement).value)).toMatch(/1 \| 2/);
   });
 });

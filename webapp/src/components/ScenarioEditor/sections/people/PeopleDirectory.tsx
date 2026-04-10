@@ -1,14 +1,13 @@
 import React, { useMemo, useState } from 'react';
-import { Plus, RefreshCcw, Table, Upload, Users } from 'lucide-react';
+import { Table, Upload, Users } from 'lucide-react';
 import type { AttributeDefinition, Person, Scenario } from '../../../../types';
+import { applyNamedAttributeValuesToPerson, createAttributeDefinition, findAttributeDefinitionByName } from '../../../../services/scenarioAttributes';
 import { Button } from '../../../ui';
-import { parseCsv, rowsToCsv } from '../../helpers';
 import { SetupActionsMenu } from '../../shared/SetupActionsMenu';
 import { SetupCollectionPage } from '../../shared/SetupCollectionPage';
 import { SetupSearchField } from '../../shared/SetupSearchField';
 import { SetupItemActions } from '../../shared/cards';
 import { ScenarioDataGrid } from '../../shared/grid/ScenarioDataGrid';
-import { SetupPersonName, resolvePersonDisplay } from '../../shared/personDisplay';
 import { PeopleGrid } from './PeopleGrid';
 import { sortPeople } from './peopleUtils';
 import type { SetupCollectionViewMode } from '../../shared/useSetupCollectionViewMode';
@@ -46,35 +45,20 @@ interface PeopleDirectoryProps {
   onDeletePerson: (personId: string) => void;
   onInlineUpdatePerson: (personId: string, updates: { attributes?: Record<string, string>; sessions?: number[] | undefined }) => void;
   onOpenBulkAddForm: () => void;
-  onOpenBulkUpdateForm: () => void;
-  bulkUpdateActive: boolean;
-  bulkUpdateTextMode: 'text' | 'grid';
-  setBulkUpdateTextMode: React.Dispatch<React.SetStateAction<'text' | 'grid'>>;
-  bulkUpdateCsvInput: string;
-  setBulkUpdateCsvInput: React.Dispatch<React.SetStateAction<string>>;
-  bulkUpdateHeaders: string[];
-  setBulkUpdateHeaders: React.Dispatch<React.SetStateAction<string[]>>;
-  bulkUpdateRows: Record<string, string>[];
-  setBulkUpdateRows: React.Dispatch<React.SetStateAction<Record<string, string>[]>>;
-  onRefreshBulkUpdate: () => void;
-  onApplyBulkUpdate: () => void;
-  onCloseBulkUpdate: () => void;
+  onApplyGridPeople: (people: Person[]) => void;
+  createGridPersonRow: () => Person;
   onTriggerCsvUpload: () => void;
   onTriggerExcelImport: () => void;
 }
-
-type BulkWorkspaceRow = Record<string, string> & { __rowIndex: number };
 
 function PeopleBulkActions({
   onTriggerCsvUpload,
   onTriggerExcelImport,
   onOpenBulkAddForm,
-  onOpenBulkUpdateForm,
 }: {
   onTriggerCsvUpload: () => void;
   onTriggerExcelImport: () => void;
   onOpenBulkAddForm: () => void;
-  onOpenBulkUpdateForm: () => void;
 }) {
   return (
     <SetupActionsMenu
@@ -96,12 +80,6 @@ function PeopleBulkActions({
           icon: <Table className="h-4 w-4" />,
           onSelect: onOpenBulkAddForm,
         },
-        {
-          label: 'Bulk edit people',
-          description: 'Open the inline grid and CSV workspace',
-          icon: <Table className="h-4 w-4" />,
-          onSelect: onOpenBulkUpdateForm,
-        },
       ]}
     />
   );
@@ -114,27 +92,16 @@ export function PeopleDirectory({
   onAddPerson,
   onEditPerson,
   onDeletePerson,
-  onInlineUpdatePerson,
+  onInlineUpdatePerson: _onInlineUpdatePerson,
   onOpenBulkAddForm,
-  onOpenBulkUpdateForm,
-  bulkUpdateActive,
-  bulkUpdateTextMode,
-  setBulkUpdateTextMode,
-  bulkUpdateCsvInput,
-  setBulkUpdateCsvInput,
-  bulkUpdateHeaders,
-  setBulkUpdateHeaders,
-  bulkUpdateRows,
-  setBulkUpdateRows,
-  onRefreshBulkUpdate,
-  onApplyBulkUpdate,
-  onCloseBulkUpdate,
+  onApplyGridPeople,
+  createGridPersonRow,
   onTriggerCsvUpload,
   onTriggerExcelImport,
 }: PeopleDirectoryProps) {
   const [peopleSearch, setPeopleSearch] = useState('');
   const [viewMode, setViewMode] = useState<SetupCollectionViewMode>('cards');
-  const [newBulkColumnName, setNewBulkColumnName] = useState('');
+  const [gridWorkspaceMode, setGridWorkspaceMode] = useState<'browse' | 'edit' | 'csv'>('browse');
 
   const searchValue = peopleSearch.trim().toLowerCase();
   const basePeople = useMemo(() => scenario?.people ?? [], [scenario?.people]);
@@ -201,15 +168,17 @@ export function PeopleDirectory({
 
   const visiblePeople = shouldProgressivelyRender ? sortedPeople.slice(0, visiblePeopleCount) : sortedPeople;
   const sessionOptions = useMemo(
-    () => Array.from({ length: sessionsCount }, (_, index) => ({ value: String(index), label: `Session ${index + 1}` })),
+    () => Array.from({ length: sessionsCount }, (_, index) => ({ value: String(index + 1), label: String(index + 1) })),
     [sessionsCount],
   );
+
   const peopleAttributeColumns = useMemo(() => {
     const orderedKeys = new Map<string, string>();
 
     for (const definition of attributeDefinitions) {
-      if (definition.key !== 'name') {
-        orderedKeys.set(normalizeAttributeKey(definition.key), definition.key);
+      const name = definition.name || definition.key;
+      if (name !== 'name') {
+        orderedKeys.set(normalizeAttributeKey(name), name);
       }
     }
 
@@ -222,18 +191,17 @@ export function PeopleDirectory({
     }
 
     return Array.from(orderedKeys.entries()).map(([normalizedKey, displayKey]) => {
-      const definition = attributeDefinitions.find((attribute) => normalizeAttributeKey(attribute.key) === normalizedKey);
-      const observedValues = basePeople
-        .map((person) => getPersonAttributeValue(person, displayKey))
-        .filter((value): value is string => typeof value === 'string' && value.length > 0);
-      const optionValues = Array.from(new Set([...(definition?.values ?? []), ...observedValues]));
+      const definition = attributeDefinitions.find((attribute) => normalizeAttributeKey(attribute.name || attribute.key) === normalizedKey)
+        ?? createAttributeDefinition(displayKey);
 
       return {
         key: displayKey,
-        optionValues,
+        definition,
+        validatedOptions: definition.values ?? [],
       };
     });
   }, [attributeDefinitions, basePeople]);
+
   const searchSummary = searchValue ? (
     <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
       Showing {sortedPeople.length} of {basePeople.length} people for “{peopleSearch}”.
@@ -243,90 +211,9 @@ export function PeopleDirectory({
     </div>
   ) : (
     <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-      Browse the people directory as cards or switch to the data grid for sorting, column control, and scanning.
+      Browse the people directory as cards or switch to the data grid for sorting, filtering, editing, and CSV round-tripping.
     </div>
   );
-
-  const bulkWorkspaceMode = bulkUpdateActive ? (bulkUpdateTextMode === 'text' ? 'csv' : 'edit') : 'browse';
-  const bulkGridRows = useMemo<BulkWorkspaceRow[]>(
-    () => bulkUpdateRows.map((row, index) => ({ __rowIndex: index, ...row })),
-    [bulkUpdateRows],
-  );
-  const updateBulkCell = React.useCallback((rowIndex: number, header: string, value: string) => {
-    setBulkUpdateRows((current) => current.map((row, index) => (index === rowIndex ? { ...row, [header]: value } : row)));
-  }, [setBulkUpdateRows]);
-  const addBulkRow = React.useCallback(() => {
-    const emptyRow = Object.fromEntries(bulkUpdateHeaders.map((header) => [header, ''])) as Record<string, string>;
-    setBulkUpdateRows((current) => [...current, emptyRow]);
-  }, [bulkUpdateHeaders, setBulkUpdateRows]);
-  const addBulkColumn = React.useCallback(() => {
-    const trimmedName = newBulkColumnName.trim();
-    if (!trimmedName || bulkUpdateHeaders.includes(trimmedName)) {
-      return;
-    }
-
-    setBulkUpdateHeaders((current) => [...current, trimmedName]);
-    setBulkUpdateRows((current) => current.map((row) => ({ ...row, [trimmedName]: row[trimmedName] ?? '' })));
-    setNewBulkColumnName('');
-  }, [bulkUpdateHeaders, newBulkColumnName, setBulkUpdateHeaders, setBulkUpdateRows]);
-  const bulkGridColumns = useMemo(
-    () => bulkUpdateHeaders.map((header) => ({
-      id: header,
-      header: header === 'id' ? 'ID' : header === 'name' ? 'Name' : header,
-      cell: (row: BulkWorkspaceRow) => row[header] || '',
-      searchValue: (row: BulkWorkspaceRow) => row[header] || '',
-      exportValue: (row: BulkWorkspaceRow) => row[header] || '',
-      width: header === 'id' ? 160 : header === 'name' ? 220 : 200,
-      editor: {
-        type: 'text' as const,
-        getValue: (row: BulkWorkspaceRow) => row[header] || '',
-        onCommit: (row: BulkWorkspaceRow, value: string | number | string[]) => updateBulkCell(row.__rowIndex, header, String(value)),
-        ariaLabel: (row: BulkWorkspaceRow) => `Edit ${header} for bulk row ${row.__rowIndex + 1}`,
-      },
-    })),
-    [bulkUpdateHeaders, updateBulkCell],
-  );
-  const handleBulkWorkspaceModeChange = React.useCallback((nextMode: 'browse' | 'edit' | 'csv') => {
-    if (nextMode === 'browse') {
-      onCloseBulkUpdate();
-      return;
-    }
-
-    setViewMode('list');
-
-    if (!bulkUpdateActive) {
-      onOpenBulkUpdateForm();
-      if (nextMode === 'csv') {
-        setBulkUpdateTextMode('text');
-      }
-      return;
-    }
-
-    if (nextMode === 'csv') {
-      setBulkUpdateCsvInput(rowsToCsv(bulkUpdateHeaders, bulkUpdateRows));
-      setBulkUpdateTextMode('text');
-      return;
-    }
-
-    if (bulkUpdateTextMode === 'text') {
-      const parsed = parseCsv(bulkUpdateCsvInput);
-      setBulkUpdateHeaders(parsed.headers);
-      setBulkUpdateRows(parsed.rows);
-    }
-    setBulkUpdateTextMode('grid');
-  }, [
-    bulkUpdateActive,
-    bulkUpdateCsvInput,
-    bulkUpdateHeaders,
-    bulkUpdateRows,
-    bulkUpdateTextMode,
-    onCloseBulkUpdate,
-    onOpenBulkUpdateForm,
-    setBulkUpdateCsvInput,
-    setBulkUpdateHeaders,
-    setBulkUpdateRows,
-    setBulkUpdateTextMode,
-  ]);
 
   return (
     <SetupCollectionPage
@@ -345,18 +232,14 @@ export function PeopleDirectory({
             onTriggerCsvUpload={onTriggerCsvUpload}
             onTriggerExcelImport={onTriggerExcelImport}
             onOpenBulkAddForm={onOpenBulkAddForm}
-            onOpenBulkUpdateForm={() => {
-              setViewMode('list');
-              onOpenBulkUpdateForm();
-            }}
           />
           <Button variant="primary" leadingIcon={<Users className="h-4 w-4" />} onClick={onAddPerson}>
             Add Person
           </Button>
         </>
       }
-      toolbarLeading={(viewMode) =>
-        viewMode === 'cards' ? (
+      toolbarLeading={(activeViewMode) =>
+        activeViewMode === 'cards' ? (
           <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
             <SetupSearchField
               label="Search people"
@@ -366,14 +249,12 @@ export function PeopleDirectory({
             />
             {searchSummary}
           </div>
-        ) : (
-          null
-        )
+        ) : null
       }
       onViewModeChange={(nextMode) => {
         setViewMode(nextMode);
-        if (nextMode !== 'list' && bulkUpdateActive) {
-          onCloseBulkUpdate();
+        if (nextMode !== 'list' && gridWorkspaceMode !== 'browse') {
+          setGridWorkspaceMode('browse');
         }
       }}
       defaultViewMode="list"
@@ -393,8 +274,8 @@ export function PeopleDirectory({
           ? 'Add people to get started with your optimization scenario.'
           : 'Consider defining attributes first, then add people to get started.',
       }}
-      renderContent={(viewMode) =>
-        viewMode === 'cards' ? (
+      renderContent={(activeViewMode) =>
+        activeViewMode === 'cards' ? (
           <PeopleGrid
             people={visiblePeople}
             totalCount={basePeople.length}
@@ -406,207 +287,142 @@ export function PeopleDirectory({
             onDeletePerson={onDeletePerson}
           />
         ) : (
-          bulkUpdateActive ? (
-            <ScenarioDataGrid
-              rows={bulkGridRows}
-              rowKey={(row) => String(row.__rowIndex)}
-              columns={bulkGridColumns}
-              emptyState={<div className="text-sm" style={{ color: 'var(--text-secondary)' }}>No bulk rows yet.</div>}
-              showGlobalSearch={false}
-              showCsvExport={false}
-              searchSummary={({ filteredCount }) => (
-                <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  Editing {filteredCount} row{filteredCount === 1 ? '' : 's'}.
-                </div>
-              )}
-              maxHeight="min(62vh, calc(100vh - 21rem))"
-              workspace={{
-                mode: bulkWorkspaceMode,
-                onModeChange: handleBulkWorkspaceModeChange,
-                doneEditingLabel: 'Back to directory',
+          <ScenarioDataGrid
+            rows={visiblePeople}
+            rowKey={(person) => person.id}
+            emptyState={<div className="text-sm" style={{ color: 'var(--text-secondary)' }}>No matching people.</div>}
+            showGlobalSearch={false}
+            showCsvExport={false}
+            searchSummary={({ filteredCount }) => (
+              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Showing {filteredCount} people.
+              </div>
+            )}
+            workspace={{
+              mode: gridWorkspaceMode,
+              onModeChange: setGridWorkspaceMode,
+              draft: {
+                onApply: onApplyGridPeople,
+                createRow: createGridPersonRow,
                 csv: {
-                  value: bulkUpdateCsvInput,
-                  onChange: setBulkUpdateCsvInput,
-                  ariaLabel: 'People bulk edit CSV',
-                  placeholder: 'id,name,attribute1,attribute2',
+                  ariaLabel: 'People grid CSV',
+                  placeholder: 'Name,Weight,Sessions,...',
                   helperText: (
                     <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      Existing rows update by <strong>id</strong>, blank cells keep current values, and <code>__DELETE__</code> removes an attribute value.
+                      Arrays use <code>|</code> in CSV mode. For <strong>Sessions</strong>, listing every session means “all sessions”. Blank attribute cells clear that value; blank names fall back to the person ID on apply.
                     </div>
                   ),
                 },
-                toolbarActions: (mode) => (
-                  <>
-                    <Button variant="secondary" size="sm" leadingIcon={<RefreshCcw className="h-4 w-4" />} onClick={onRefreshBulkUpdate}>
-                      Refresh from current
-                    </Button>
-                    {mode === 'edit' ? (
-                      <>
-                        <Button variant="secondary" size="sm" leadingIcon={<Plus className="h-4 w-4" />} onClick={addBulkRow}>
-                          Add row
-                        </Button>
-                        <div className="flex items-center gap-2 rounded-xl border px-2 py-2" style={{ borderColor: 'var(--border-primary)' }}>
-                          <input
-                            type="text"
-                            value={newBulkColumnName}
-                            onChange={(event) => setNewBulkColumnName(event.target.value)}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter') {
-                                event.preventDefault();
-                                addBulkColumn();
-                              }
-                            }}
-                            placeholder="New column"
-                            className="input h-9 w-40"
-                            aria-label="New bulk-edit column name"
-                          />
-                          <Button variant="secondary" size="sm" onClick={addBulkColumn} disabled={!newBulkColumnName.trim() || bulkUpdateHeaders.includes(newBulkColumnName.trim())}>
-                            Add column
-                          </Button>
-                        </div>
-                      </>
-                    ) : null}
-                    <Button variant="primary" size="sm" leadingIcon={<Table className="h-4 w-4" />} onClick={onApplyBulkUpdate}>
-                      Apply changes
-                    </Button>
-                  </>
+              },
+            }}
+            columns={[
+              {
+                kind: 'primitive' as const,
+                id: 'name',
+                header: 'Name',
+                primitive: 'string' as const,
+                getValue: (person: Person) => String(person.attributes?.name ?? ''),
+                setValue: (person: Person, value) => ({
+                  ...person,
+                  attributes: {
+                    ...(person.attributes ?? {}),
+                    name: value ?? '',
+                  },
+                }),
+                renderValue: (value, person) => (
+                  <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    {String(value ?? '').trim() || person.id}
+                  </span>
                 ),
-              }}
-            />
-          ) : (
-            <ScenarioDataGrid
-              rows={visiblePeople}
-              rowKey={(person) => person.id}
-              emptyState={<div className="text-sm" style={{ color: 'var(--text-secondary)' }}>No matching people.</div>}
-              showGlobalSearch={false}
-              showCsvExport={false}
-              searchSummary={({ filteredCount }) => (
-                <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  Showing {filteredCount} people.
-                </div>
-              )}
-              workspace={{
-                mode: 'browse',
-                onModeChange: handleBulkWorkspaceModeChange,
-                doneEditingLabel: 'Back to directory',
-                csv: {
-                  value: bulkUpdateCsvInput,
-                  onChange: setBulkUpdateCsvInput,
-                  ariaLabel: 'People bulk edit CSV',
+                searchText: (value, person) => `${String(value ?? '')} ${person.id}`.trim(),
+                width: 240,
+              },
+              {
+                kind: 'primitive' as const,
+                id: 'sessions',
+                header: 'Sessions',
+                primitive: 'array' as const,
+                itemType: 'number' as const,
+                options: sessionOptions,
+                getValue: (person: Person) =>
+                  (person.sessions ?? Array.from({ length: sessionsCount }, (_, index) => index)).map((session) => session + 1),
+                setValue: (person: Person, value) => {
+                  const nextSessions = Array.isArray(value)
+                    ? value.map((entry) => Number(entry)).filter((entry) => Number.isFinite(entry)).map((entry) => entry - 1).sort((left, right) => left - right)
+                    : [];
+
+                  return {
+                    ...person,
+                    sessions: nextSessions.length === 0 || nextSessions.length === sessionsCount ? undefined : nextSessions,
+                  };
                 },
-              }}
-              columns={[
-                {
-                  id: 'name',
-                  header: 'Name',
-                  cell: (person) => (
-                    <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-                      <SetupPersonName people={basePeople} personId={person.id} className="font-semibold" />
-                    </div>
-                  ),
-                  sortValue: (person) => resolvePersonDisplay(basePeople, person.id).displayName.toLowerCase(),
-                  searchValue: (person) => resolvePersonDisplay(basePeople, person.id).searchText,
-                  exportValue: (person) => resolvePersonDisplay(basePeople, person.id).displayName,
-                  filter: {
-                    type: 'text',
-                    placeholder: 'Filter names…',
-                    ariaLabel: 'Filter people by name',
-                  },
-                  width: 240,
-                  editor: {
-                    type: 'text',
-                    getValue: (person) => String(person.attributes.name || ''),
-                    onCommit: (person, value) => onInlineUpdatePerson(person.id, { attributes: { name: String(value).trim() || person.id } }),
-                    ariaLabel: (person) => `Edit name for ${person.attributes.name || person.id}`,
-                    placeholder: 'Person name',
-                  },
-                },
-                {
-                  id: 'sessions',
-                  header: 'Sessions',
-                  cell: (person) =>
-                    person.sessions ? `${person.sessions.map((session) => session + 1).join(', ')}` : `All (${sessionsCount})`,
-                  sortValue: (person) => person.sessions?.length ?? sessionsCount,
-                  searchValue: (person) => (person.sessions ? person.sessions.join(' ') : `all ${sessionsCount}`),
-                  exportValue: (person) =>
-                    person.sessions && person.sessions.length > 0
-                      ? person.sessions.map((session) => String(session + 1)).join(', ')
-                      : 'All sessions',
-                  filter: {
-                    type: 'text',
-                    ariaLabel: 'Filter people by session availability',
-                    placeholder: 'Filter sessions…',
-                    getValue: (person) =>
-                      person.sessions && person.sessions.length > 0
-                        ? person.sessions.map((session) => String(session + 1)).join(' ')
-                        : 'all sessions',
-                  },
-                  width: 180,
-                  editor: {
-                    type: 'multiselect',
-                    getValue: (person) => (person.sessions ?? Array.from({ length: sessionsCount }, (_, index) => index)).map(String),
-                    options: sessionOptions,
-                    parseValue: (value) => {
-                      const selectedSessions = (Array.isArray(value) ? value : [value])
-                        .map((entry) => Number.parseInt(entry, 10))
-                        .filter((entry) => Number.isFinite(entry))
-                        .sort((left, right) => left - right);
-                      return selectedSessions.length === 0 || selectedSessions.length === sessionsCount ? [] : selectedSessions;
-                    },
-                    onCommit: (person, value) => {
-                      const parsed = Array.isArray(value)
-                        ? value.map((entry) => Number.parseInt(String(entry), 10)).filter((entry) => Number.isFinite(entry))
-                        : [];
-                      onInlineUpdatePerson(person.id, {
-                        sessions: parsed.length === 0 || parsed.length === sessionsCount ? undefined : parsed,
-                      });
-                    },
-                    ariaLabel: (person) => `Edit sessions for ${person.attributes.name || person.id}`,
-                  },
-                },
-                ...peopleAttributeColumns.map((attribute) => ({
+                renderValue: (value) =>
+                  Array.isArray(value) && value.length > 0 && value.length < sessionsCount
+                    ? value.map((session) => String(session)).join(', ')
+                    : `All (${sessionsCount})`,
+                searchText: (value) =>
+                  Array.isArray(value) && value.length > 0 && value.length < sessionsCount
+                    ? value.join(' ')
+                    : 'all sessions',
+                width: 180,
+              },
+              ...peopleAttributeColumns.map((attribute) => {
+                const definition = findAttributeDefinitionByName(attributeDefinitions, attribute.key) ?? attribute.definition;
+                const validatedOptions = definition?.values ?? [];
+                const isEnum = validatedOptions.length > 0;
+
+                return {
+                  kind: 'primitive' as const,
                   id: `attribute-${attribute.key}`,
                   header: attribute.key,
-                  cell: (person: Person) => getPersonAttributeValue(person, attribute.key) ?? '—',
-                  searchValue: (person: Person) => String(getPersonAttributeValue(person, attribute.key) ?? ''),
-                  exportValue: (person: Person) => String(getPersonAttributeValue(person, attribute.key) ?? ''),
-                  filter: {
-                    type: 'select' as const,
-                    ariaLabel: `Filter people by ${attribute.key}`,
-                    getValue: (person: Person) => String(getPersonAttributeValue(person, attribute.key) ?? ''),
-                    options: attribute.optionValues.map((value) => ({ value, label: value })),
+                  primitive: isEnum ? ('enum' as const) : ('string' as const),
+                  options: isEnum ? validatedOptions.map((value) => ({ value, label: value })) : undefined,
+                  getValue: (person: Person) => {
+                    const value = getPersonAttributeValue(person, attribute.key);
+                    return typeof value === 'string' ? value : '';
                   },
-                  width: 180,
-                  editor: {
-                    type: attribute.optionValues.length > 0 ? 'select' as const : 'text' as const,
-                    getValue: (person: Person) => String(getPersonAttributeValue(person, attribute.key) ?? attribute.optionValues[0] ?? ''),
-                    options: attribute.optionValues.map((value) => ({ value, label: value })),
-                    onCommit: (person: Person, value: string | number | string[]) =>
-                      onInlineUpdatePerson(person.id, { attributes: { [attribute.key]: String(value) } }),
-                    ariaLabel: (person: Person) => `Edit ${attribute.key} for ${person.attributes.name || person.id}`,
-                    placeholder: `Enter ${attribute.key}`,
+                  setValue: (person: Person, value: string | undefined) => {
+                    const existingDefinition = findAttributeDefinitionByName(attributeDefinitions, attribute.key);
+                    if (existingDefinition) {
+                      return applyNamedAttributeValuesToPerson(person, { [attribute.key]: value ?? '' }, attributeDefinitions);
+                    }
+
+                    const nextAttributes = { ...(person.attributes ?? {}) };
+                    if (value == null || value === '') {
+                      delete nextAttributes[attribute.key];
+                    } else {
+                      nextAttributes[attribute.key] = value;
+                    }
+
+                    return {
+                      ...person,
+                      attributes: nextAttributes,
+                    };
                   },
-                })),
-                {
-                  id: 'actions',
-                  header: 'Actions',
-                  cell: (person) => (
-                    <div className="flex justify-end">
-                      <SetupItemActions
-                        editLabel={`Edit ${person.attributes.name || person.id}`}
-                        deleteLabel={`Delete ${person.attributes.name || person.id}`}
-                        onEdit={() => onEditPerson(person)}
-                        onDelete={() => onDeletePerson(person.id)}
-                      />
-                    </div>
-                  ),
-                  align: 'right',
-                  hideable: false,
+                  renderValue: (value: string | undefined) => value && value.length > 0 ? value : '—',
                   width: 180,
-                },
-              ]}
-            />
-          )
+                };
+              }),
+              {
+                kind: 'display' as const,
+                id: 'actions',
+                header: 'Actions',
+                cell: (person: Person) => (
+                  <div className="flex justify-end">
+                    <SetupItemActions
+                      editLabel={`Edit ${person.attributes?.name || person.id}`}
+                      deleteLabel={`Delete ${person.attributes?.name || person.id}`}
+                      onEdit={() => onEditPerson(person)}
+                      onDelete={() => onDeletePerson(person.id)}
+                    />
+                  </div>
+                ),
+                align: 'right',
+                hideable: false,
+                width: 180,
+              },
+            ]}
+          />
         )
       }
     />
