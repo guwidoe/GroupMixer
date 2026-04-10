@@ -1,5 +1,5 @@
 import type { ScenarioDataGridColumn, ScenarioDataGridNumberRangeValue, ScenarioDataGridOption } from '../types';
-import { isPrimitiveColumn, type MaterializedScenarioDataGridColumn } from './columnMaterialization';
+import { isCustomColumn, isPrimitiveColumn, type MaterializedScenarioDataGridColumn } from './columnMaterialization';
 import { resolvePrimitiveFilter, resolvePrimitiveSearchText } from './primitiveBehavior';
 
 export function normalizeSearchValue(value: string | undefined) {
@@ -15,7 +15,9 @@ export function matchesQuery<T>(row: T, columns: Array<MaterializedScenarioDataG
   return columns.some((column) => {
     const haystack = isPrimitiveColumn(column)
       ? resolvePrimitiveSearchText(column, row)
-      : column.searchValue?.(row);
+      : isCustomColumn(column)
+        ? column.searchText?.(column.getValue(row), row)
+        : column.searchValue?.(row);
     return haystack ? haystack.toLowerCase().includes(searchValue) : false;
   });
 }
@@ -78,6 +80,9 @@ export function resolveFilterValue<T>(row: T, column: ScenarioDataGridColumn<T>)
 
   if (column.filter?.getValue) {
     return column.filter.getValue(row);
+  }
+  if (isCustomColumn(column)) {
+    return column.getValue(row);
   }
   if (column.sortValue) {
     return column.sortValue(row);

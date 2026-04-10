@@ -14,7 +14,7 @@ import {
 } from '@tanstack/react-table';
 import { InlineEditorCell } from '../components/editors/InlineEditorCell';
 import type { MaterializedScenarioDataGridColumn } from '../model/columnMaterialization';
-import { isPrimitiveColumn } from '../model/columnMaterialization';
+import { isCustomColumn, isPrimitiveColumn } from '../model/columnMaterialization';
 import { resolveFilterOptionLabel, resolveFilterValue, matchesQuery, normalizeFilterListValue, normalizeFilterText, removeFilterListEntry } from '../model/filterUtils';
 import { estimateHeaderMinWidth } from '../model/layoutUtils';
 import { getArrayCsvSeparators, getPrimitiveOptions, parsePrimitiveCsvValue, renderPrimitiveValue, resolvePrimitiveFilter, resolvePrimitiveSortValue } from '../model/primitiveBehavior';
@@ -63,15 +63,21 @@ export function useScenarioDataTable<T>({
         if (isPrimitiveColumn(column)) {
           return resolvePrimitiveSortValue(column, row);
         }
+        if (isCustomColumn(column) && column.sortValue) {
+          return column.sortValue(column.getValue(row), row);
+        }
         if (column.sortValue) {
           return column.sortValue(row);
         }
-        if (column.searchValue) {
+        if (isCustomColumn(column) && column.searchText) {
+          return column.searchText(column.getValue(row), row);
+        }
+        if ('searchValue' in column && column.searchValue) {
           return column.searchValue(row);
         }
         return '';
       },
-      enableSorting: isPrimitiveColumn(column) || Boolean(column.sortValue),
+      enableSorting: isPrimitiveColumn(column) || (isCustomColumn(column) ? Boolean(column.sortValue) : Boolean(column.sortValue)),
       enableColumnFilter: Boolean(isPrimitiveColumn(column) ? resolvePrimitiveFilter(column) : column.filter),
       enableHiding: column.hideable !== false,
       size: Math.max(column.width ?? 180, estimateHeaderMinWidth(column)),
@@ -139,8 +145,23 @@ export function useScenarioDataTable<T>({
         if (effectiveEditMode && 'editor' in column && column.editor) {
           return <InlineEditorCell row={row.original} editor={column.editor} />;
         }
+        if (effectiveEditMode && isCustomColumn(column) && column.setValue && column.renderEditor) {
+          return column.renderEditor({
+            row: row.original,
+            value: column.getValue(row.original),
+            onCommit: (nextValue) => {
+              setDraftRows((current) => current.map((candidate) => (
+                candidate === row.original && column.setValue ? column.setValue(candidate, nextValue) : candidate
+              )));
+            },
+            disabled: column.disabled?.(row.original),
+          });
+        }
         if (isPrimitiveColumn(column)) {
           return renderPrimitiveValue(column, row.original);
+        }
+        if (isCustomColumn(column)) {
+          return column.renderValue(column.getValue(row.original), row.original);
         }
         return column.cell(row.original);
       },

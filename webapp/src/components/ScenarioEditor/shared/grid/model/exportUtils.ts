@@ -1,7 +1,8 @@
 import type { ScenarioDataGridColumn } from '../types';
-import { isPrimitiveColumn } from './columnMaterialization';
+import { isCustomColumn, isPrimitiveColumn } from './columnMaterialization';
 import { resolveFilterValue } from './filterUtils';
 import { resolvePrimitiveExportValue } from './primitiveBehavior';
+import { formatColumnRawValue } from './rawCodec';
 
 export function normalizeExportValue(value: string | number | string[] | undefined) {
   if (Array.isArray(value)) {
@@ -11,6 +12,10 @@ export function normalizeExportValue(value: string | number | string[] | undefin
 }
 
 export function resolveExportValue<T>(row: T, column: ScenarioDataGridColumn<T>) {
+  if ((isPrimitiveColumn(column) && column.rawCodec) || (isCustomColumn(column) && column.rawCodec)) {
+    return formatColumnRawValue(row, column);
+  }
+
   if (isPrimitiveColumn(column)) {
     return normalizeExportValue(resolvePrimitiveExportValue(column, row));
   }

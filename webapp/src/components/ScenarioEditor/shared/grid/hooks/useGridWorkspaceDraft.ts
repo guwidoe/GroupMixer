@@ -1,8 +1,7 @@
 import React from 'react';
-import type { ScenarioDataGridPrimitiveColumn, ScenarioDataGridWorkspaceConfig } from '../types';
+import type { ScenarioDataGridColumn, ScenarioDataGridWorkspaceConfig } from '../types';
 import { escapeCsvValue, parseCsvText } from '../model/csvCodec';
-import { normalizeExportValue } from '../model/exportUtils';
-import { parsePrimitiveCsvValue, resolvePrimitiveExportValue } from '../model/primitiveBehavior';
+import { formatColumnRawValue, parseColumnRawValue } from '../model/rawCodec';
 
 function cloneRow<T>(row: T): T {
   if (typeof structuredClone === 'function') {
@@ -18,7 +17,7 @@ function cloneRows<T>(rows: T[]): T[] {
 interface UseGridWorkspaceDraftArgs<T> {
   rows: T[];
   workspace?: ScenarioDataGridWorkspaceConfig<T>;
-  draftEditableColumns: ScenarioDataGridPrimitiveColumn<T>[];
+  draftEditableColumns: ScenarioDataGridColumn<T>[];
 }
 
 export function useGridWorkspaceDraft<T>({ rows, workspace, draftEditableColumns }: UseGridWorkspaceDraftArgs<T>) {
@@ -38,7 +37,7 @@ export function useGridWorkspaceDraft<T>({ rows, workspace, draftEditableColumns
     const headerLine = draftEditableColumns.map((column) => escapeCsvValue(column.header)).join(',');
     const rowLines = sourceRows.map((row) =>
       draftEditableColumns
-        .map((column) => escapeCsvValue(normalizeExportValue(resolvePrimitiveExportValue(column, row))))
+        .map((column) => escapeCsvValue(formatColumnRawValue(row, column)))
         .join(','),
     );
 
@@ -80,12 +79,12 @@ export function useGridWorkspaceDraft<T>({ rows, workspace, draftEditableColumns
 
       draftEditableColumns.forEach((column, columnIndex) => {
         const rawValue = record[columnIndex] ?? '';
-        const parsed = parsePrimitiveCsvValue(column, rawValue, nextRow as T);
-        if ('error' in parsed) {
+        const parsed = parseColumnRawValue(column, rawValue, nextRow as T);
+        if (!parsed.ok) {
           errors.push(`Row ${rowIndex + 2}, ${column.header}: ${parsed.error}`);
           return;
         }
-        nextRow = column.setValue ? column.setValue(nextRow as T, parsed.value) : nextRow;
+        nextRow = 'setValue' in column && column.setValue ? column.setValue(nextRow as T, parsed.value as never) : nextRow;
       });
 
       if (nextRow) {

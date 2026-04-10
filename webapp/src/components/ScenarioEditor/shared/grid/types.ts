@@ -231,6 +231,7 @@ export interface ScenarioDataGridCustomColumn<T, TValue> extends ScenarioDataGri
   setValue?: (row: T, value: TValue | undefined) => T;
   renderValue: (value: TValue | undefined, row: T) => React.ReactNode;
   renderEditor?: (args: ScenarioDataGridCustomEditorArgs<T, TValue>) => React.ReactNode;
+  sortValue?: (value: TValue | undefined, row: T) => string | number;
   searchText?: (value: TValue | undefined, row: T) => string;
   exportValue?: (value: TValue | undefined, row: T) => string | number | string[] | undefined;
   rawCodec?: ScenarioDataGridRawCodec<TValue, T>;

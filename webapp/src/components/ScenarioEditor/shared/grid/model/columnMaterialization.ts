@@ -1,5 +1,6 @@
 import type {
   ScenarioDataGridColumn,
+  ScenarioDataGridCustomColumn,
   ScenarioDataGridEnumColumn,
   ScenarioDataGridOption,
   ScenarioDataGridPrimitiveColumn,
@@ -12,6 +13,10 @@ export function isPrimitiveColumn<T>(column: ScenarioDataGridColumn<T>): column 
 
 export function isStructuredColumn<T>(column: ScenarioDataGridColumn<T>): column is ScenarioDataGridStructuredColumn<T> {
   return column.kind === 'structured';
+}
+
+export function isCustomColumn<T>(column: ScenarioDataGridColumn<T>): column is ScenarioDataGridCustomColumn<T, unknown> {
+  return column.kind === 'custom';
 }
 
 export type MaterializedScenarioDataGridColumn<T> = Exclude<ScenarioDataGridColumn<T>, ScenarioDataGridStructuredColumn<T>>;

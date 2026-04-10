@@ -7,7 +7,7 @@ import { GridTable } from './components/GridTable';
 import { GridToolbar } from './components/GridToolbar';
 import { GridTopScrollbar } from './components/GridTopScrollbar';
 import { InlineCsvEditor } from './components/InlineCsvEditor';
-import { isPrimitiveColumn, materializeColumns } from './model/columnMaterialization';
+import { isCustomColumn, isPrimitiveColumn, materializeColumns } from './model/columnMaterialization';
 import { escapeCsvValue } from './model/csvCodec';
 import { resolveExportValue } from './model/exportUtils';
 import {
@@ -20,11 +20,7 @@ import { useGridColumnState } from './hooks/useGridColumnState';
 import { useGridScrollSync } from './hooks/useGridScrollSync';
 import { useScenarioDataTable } from './hooks/useScenarioDataTable';
 import { useGridWorkspaceDraft } from './hooks/useGridWorkspaceDraft';
-import type {
-  ScenarioDataGridColumn,
-  ScenarioDataGridPrimitiveColumn,
-  ScenarioDataGridWorkspaceConfig,
-} from './types';
+import type { ScenarioDataGridColumn, ScenarioDataGridWorkspaceConfig } from './types';
 
 interface ScenarioDataGridProps<T> {
   rows: T[];
@@ -75,7 +71,10 @@ export function ScenarioDataGrid<T>({
   const [isCsvPreviewOpen, setIsCsvPreviewOpen] = React.useState(false);
 
   const draftEditableColumns = React.useMemo(
-    () => materializedColumns.filter((column): column is ScenarioDataGridPrimitiveColumn<T> => isPrimitiveColumn(column) && Boolean(column.setValue)),
+    () => materializedColumns.filter((column) => (
+      (isPrimitiveColumn(column) && Boolean(column.setValue))
+      || (isCustomColumn(column) && Boolean(column.setValue) && Boolean(column.rawCodec))
+    )),
     [materializedColumns],
   );
   const {
@@ -122,7 +121,11 @@ export function ScenarioDataGrid<T>({
   const { startColumnResize } = useGridColumnResize({ columns: materializedColumns, setColumnSizing });
 
   const hasEditableColumns = React.useMemo(
-    () => materializedColumns.some((column) => (isPrimitiveColumn(column) && Boolean(column.setValue)) || ('editor' in column && Boolean(column.editor))),
+    () => materializedColumns.some((column) => (
+      (isPrimitiveColumn(column) && Boolean(column.setValue))
+      || ('editor' in column && Boolean(column.editor))
+      || (isCustomColumn(column) && Boolean(column.setValue) && Boolean(column.renderEditor))
+    )),
     [materializedColumns],
   );
   const resolvedWorkspaceActions = React.useMemo(() => {

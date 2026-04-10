@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ScenarioDataGrid } from './ScenarioDataGrid';
 import type { ScenarioDataGridWorkspaceMode } from './types';
+import { createJsonRawCodec, validateStringNumberRecordValue } from './model/rawCodec';
 
 const rows = [
   { id: 'a', name: 'Beta', weight: 20 },
@@ -642,6 +643,94 @@ describe('ScenarioDataGrid', () => {
 
     expect(screen.getByText(/csv validation errors/i)).toBeInTheDocument();
     expect(screen.getByText(/expected a number for weight/i)).toBeInTheDocument();
+    expect(onApply).toHaveBeenCalledTimes(1);
+  });
+
+  it('supports custom columns with JSON raw codecs in shared csv mode', async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn();
+
+    function CustomJsonHarness() {
+      const [mode, setMode] = React.useState<ScenarioDataGridWorkspaceMode>('browse');
+
+      return (
+        <ScenarioDataGrid
+          rows={[
+            {
+              id: 'rule-1',
+              attribute: 'Gender',
+              targets: { female: 2, 'asdf | asdf:': 1 },
+            },
+          ]}
+          rowKey={(row) => row.id}
+          columns={[
+            {
+              kind: 'primitive',
+              id: 'attribute',
+              header: 'Attribute',
+              primitive: 'string',
+              getValue: (row) => row.attribute,
+              setValue: (row, value) => ({ ...row, attribute: value ?? '' }),
+            },
+            {
+              kind: 'custom',
+              id: 'targets',
+              header: 'Targets',
+              getValue: (row) => row.targets,
+              setValue: (row, value) => ({ ...row, targets: (value as Record<string, number> | undefined) ?? {} }),
+              renderValue: (value) => Object.entries(value ?? {}).map(([key, count]) => `${key}: ${count}`).join(' · ') || '—',
+              searchText: (value) => Object.entries(value ?? {}).map(([key, count]) => `${key} ${count}`).join(' '),
+              rawCodec: createJsonRawCodec({
+                header: 'Targets',
+                validate: validateStringNumberRecordValue({ header: 'Targets' }),
+              }),
+            },
+          ]}
+          workspace={{
+            mode,
+            onModeChange: setMode,
+            draft: {
+              onApply,
+              csv: {
+                ariaLabel: 'Custom JSON CSV editor',
+              },
+            },
+          }}
+        />
+      );
+    }
+
+    render(<CustomJsonHarness />);
+
+    expect(screen.getByText(/female: 2/i)).toBeInTheDocument();
+    expect(screen.getByText(/asdf \| asdf:: 1/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    const csvInput = screen.getByRole('textbox', { name: /custom json csv editor/i });
+    expect(csvInput).toHaveValue('Attribute,Targets\nGender,"{""female"":2,""asdf | asdf:"":1}"');
+
+    fireEvent.change(csvInput, {
+      target: { value: 'Attribute,Targets\nGender,"{""female"":3,""asdf | asdf:"":2}"' },
+    });
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(onApply).toHaveBeenCalledWith([
+      {
+        id: 'rule-1',
+        attribute: 'Gender',
+        targets: { female: 3, 'asdf | asdf:': 2 },
+      },
+    ]);
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    const invalidCsvInput = screen.getByRole('textbox', { name: /custom json csv editor/i });
+    fireEvent.change(invalidCsvInput, {
+      target: { value: 'Attribute,Targets\nGender,not-json' },
+    });
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(screen.getByText(/csv validation errors/i)).toBeInTheDocument();
+    expect(screen.getByText(/expected valid json for targets/i)).toBeInTheDocument();
     expect(onApply).toHaveBeenCalledTimes(1);
   });
 
