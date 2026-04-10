@@ -11,6 +11,13 @@ interface ThemeToggleProps {
   showHeaderLabel?: boolean;
 }
 
+function getThemeIconClassName(theme: Theme, sizeClassName: string): string {
+  return [
+    sizeClassName,
+    theme === 'system' ? 'scale-110' : '',
+  ].filter(Boolean).join(' ');
+}
+
 export function ThemeToggle({
   showLabel = false,
   size = 'md',
@@ -79,7 +86,7 @@ export function ThemeToggle({
               }}
               title={`Switch to ${label.toLowerCase()} mode`}
             >
-              <Icon className={sizeClasses[size]} />
+              <Icon className={getThemeIconClassName(value, sizeClasses[size])} />
               <span>{label}</span>
             </button>
           );
@@ -122,7 +129,7 @@ export function ThemeToggle({
         title={`Current: ${currentTheme.label} mode. Click to change theme.`}
         aria-label={`Theme: ${currentTheme.label}. Click to change theme.`}
       >
-        <Icon className={sizeClasses[size]} />
+        <Icon className={getThemeIconClassName(currentTheme.value, sizeClasses[size])} />
         {isHeaderVariant && showHeaderLabel && <span>Theme</span>}
         {(!isHeaderVariant || showHeaderLabel) && (
           <ChevronDown className={`${sizeClasses[size]} transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
@@ -157,7 +164,7 @@ export function ThemeToggle({
                       : 'transparent'
                 }}
               >
-                <ThemeIcon className={`${sizeClasses[size]} mr-2 flex-shrink-0`} />
+                <ThemeIcon className={`${getThemeIconClassName(value, sizeClasses[size])} mr-2 flex-shrink-0`} />
                 <span>{label}</span>
                 {isActive && (
                   <div className="ml-auto w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }} />
