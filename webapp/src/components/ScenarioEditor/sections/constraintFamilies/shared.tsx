@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Constraint, Scenario } from '../../../../types';
-import { findAttributeDefinition } from '../../../../services/scenarioAttributes';
+import { findAttributeDefinition, getAttributeDefinitionName } from '../../../../services/scenarioAttributes';
 import { useAppStore } from '../../../../store';
 import ConstraintPersonChip from '../../../ConstraintPersonChip';
 import { removePersonFromPeopleConstraint } from '../../../constraints/constraintMutations';
@@ -40,29 +40,42 @@ export function getIndexedConstraints<T extends Constraint['type']>(scenario: Sc
     .filter((item): item is IndexedConstraint<Extract<Constraint, { type: T }>> => item.constraint.type === type);
 }
 
-export function getAttributeBalanceStructuredKeys(
-  items: Array<IndexedConstraint<AttributeBalanceConstraint>>,
+export function resolveAttributeBalanceDefinition(
+  constraint: AttributeBalanceConstraint,
   attributeDefinitions: ReturnType<typeof useAppStore.getState>['attributeDefinitions'],
 ) {
-  const seen = new Set<string>();
-  const keys = items.flatMap(({ constraint }) => {
-    const definition = findAttributeDefinition(attributeDefinitions, {
-      id: constraint.attribute_id,
-      name: constraint.attribute_key,
-    });
-    return definition?.values ?? Object.keys(constraint.desired_values ?? {});
+  return findAttributeDefinition(attributeDefinitions, {
+    id: constraint.attribute_id,
+    name: constraint.attribute_key,
   });
+}
 
-  return keys
-    .map((value) => String(value).trim())
-    .filter((value) => {
-      if (!value || seen.has(value)) {
-        return false;
-      }
-      seen.add(value);
-      return true;
-    })
-    .map((value) => ({ value, label: value }));
+export function getAttributeBalanceAttributeName(
+  constraint: AttributeBalanceConstraint,
+  attributeDefinitions: ReturnType<typeof useAppStore.getState>['attributeDefinitions'],
+) {
+  const definition = resolveAttributeBalanceDefinition(constraint, attributeDefinitions);
+  return definition ? getAttributeDefinitionName(definition) : constraint.attribute_key;
+}
+
+export function getAttributeBalanceTargetOptions(
+  constraint: AttributeBalanceConstraint,
+  attributeDefinitions: ReturnType<typeof useAppStore.getState>['attributeDefinitions'],
+) {
+  const definition = resolveAttributeBalanceDefinition(constraint, attributeDefinitions);
+  return definition?.values ?? [];
+}
+
+export function formatAttributeBalanceTargets(targets: Record<string, number> | undefined) {
+  const entries = Object.entries(targets ?? {});
+  if (entries.length === 0) {
+    return '—';
+  }
+
+  return entries
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => `${key}: ${value}`)
+    .join(' · ');
 }
 
 function createPeopleNodes(

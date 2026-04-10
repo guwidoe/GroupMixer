@@ -2,6 +2,7 @@ import React from 'react';
 import { Plus } from 'lucide-react';
 import type { Constraint } from '../../../../types';
 import { findAttributeDefinition, getAttributeDefinitionName } from '../../../../services/scenarioAttributes';
+import { createJsonRawCodec, validateStringNumberRecordValue } from '../../shared/grid/model/rawCodec';
 import AttributeBalanceDashboard from '../../../AttributeBalanceDashboard';
 import PairMeetingCountBulkConvertModal from '../../../modals/PairMeetingCountBulkConvertModal';
 import { replaceConstraintsAtIndices } from '../../../constraints/constraintMutations';
@@ -19,14 +20,18 @@ import {
 import { ScenarioDataGrid } from '../../shared/grid/ScenarioDataGrid';
 import { SetupPersonListText, formatPersonDisplayList, formatPersonSearchList } from '../../shared/personDisplay';
 import type { SetupCollectionViewMode } from '../../shared/useSetupCollectionViewMode';
+import { AttributeBalanceTargetsEditor } from './AttributeBalanceTargetsEditor';
 import { SOFT_SECTION_COPY } from './copy';
 import {
   ConstraintCards,
-  getAttributeBalanceStructuredKeys,
+  formatAttributeBalanceTargets,
+  getAttributeBalanceAttributeName,
+  getAttributeBalanceTargetOptions,
   getIndexedConstraints,
   renderAttributeBalanceContent,
   renderPairMeetingCountContent,
   renderPeopleConstraintContent,
+  resolveAttributeBalanceDefinition,
   useConstraintScenario,
 } from './shared';
 import type {
@@ -357,6 +362,9 @@ export function SoftConstraintFamilySection({
                           id: item.constraint.attribute_id,
                           name: item.constraint.attribute_key,
                         })?.id ?? item.constraint.attribute_id ?? '',
+                        renderValue: (_value, item: IndexedConstraint<AttributeBalanceConstraint>) => getAttributeBalanceAttributeName(item.constraint, attributeDefinitions) || '—',
+                        searchText: (_value, item: IndexedConstraint<AttributeBalanceConstraint>) => getAttributeBalanceAttributeName(item.constraint, attributeDefinitions) || '',
+                        exportValue: (_value, item: IndexedConstraint<AttributeBalanceConstraint>) => getAttributeBalanceAttributeName(item.constraint, attributeDefinitions) || '',
                         setValue: (item: IndexedConstraint<AttributeBalanceConstraint>, value) => {
                           const definition = findAttributeDefinition(attributeDefinitions, { id: value, name: value });
                           const allowedValues = new Set(definition?.values ?? []);
@@ -377,38 +385,40 @@ export function SoftConstraintFamilySection({
                         width: 180,
                       },
                       {
-                        kind: 'structured' as const,
-                        structured: 'finite-key-map' as const,
-                        id: 'desired-values',
-                        header: 'Desired values',
-                        childPrimitive: 'number' as const,
-                        keys: (rows: Array<IndexedConstraint<AttributeBalanceConstraint>>) =>
-                          getAttributeBalanceStructuredKeys(rows, attributeDefinitions),
-                        getValue: (item: IndexedConstraint<AttributeBalanceConstraint>, key: string) => item.constraint.desired_values?.[key],
-                        setValue: (item: IndexedConstraint<AttributeBalanceConstraint>, key: string, value) => {
-                          const nextDesiredValues = { ...(item.constraint.desired_values ?? {}) };
-                          if (value == null || !Number.isFinite(Number(value))) {
-                            delete nextDesiredValues[key];
-                          } else {
-                            nextDesiredValues[key] = Number(value);
-                          }
-
-                          return {
-                            ...item,
-                            constraint: {
-                              ...item.constraint,
-                              desired_values: nextDesiredValues,
-                            },
-                          };
+                        kind: 'custom' as const,
+                        id: 'targets',
+                        header: 'Targets',
+                        getValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.desired_values ?? {},
+                        setValue: (item: IndexedConstraint<AttributeBalanceConstraint>, value) => ({
+                          ...item,
+                          constraint: {
+                            ...item.constraint,
+                            desired_values: Object.fromEntries(
+                              Object.entries((value as Record<string, number> | undefined) ?? {}).filter(([, targetValue]) => Number.isFinite(Number(targetValue))),
+                            ),
+                          },
+                        }),
+                        renderValue: (value) => formatAttributeBalanceTargets((value as Record<string, number> | undefined) ?? {}),
+                        searchText: (value, item: IndexedConstraint<AttributeBalanceConstraint>) => {
+                          const attributeName = getAttributeBalanceAttributeName(item.constraint, attributeDefinitions) || '';
+                          return `${attributeName} ${formatAttributeBalanceTargets((value as Record<string, number> | undefined) ?? {})}`.trim();
                         },
-                        isKeyAvailable: (item: IndexedConstraint<AttributeBalanceConstraint>, key: string) => {
-                          const definition = findAttributeDefinition(attributeDefinitions, {
-                            id: item.constraint.attribute_id,
-                            name: item.constraint.attribute_key,
-                          });
-                          return Boolean(definition?.values.includes(key) || key in (item.constraint.desired_values ?? {}));
-                        },
-                        childWidth: 120,
+                        rawCodec: createJsonRawCodec<Record<string, number>, IndexedConstraint<AttributeBalanceConstraint>>({
+                          header: 'Targets',
+                          validate: (rawValue, item) => validateStringNumberRecordValue({
+                            header: 'Targets',
+                            allowedKeys: new Set(getAttributeBalanceTargetOptions(item.constraint, attributeDefinitions)),
+                          })(rawValue),
+                        }),
+                        renderEditor: ({ row, value, onCommit, disabled }) => (
+                          <AttributeBalanceTargetsEditor
+                            disabled={disabled}
+                            options={getAttributeBalanceTargetOptions(row.constraint, attributeDefinitions)}
+                            value={(value as Record<string, number> | undefined) ?? {}}
+                            onCommit={onCommit}
+                          />
+                        ),
+                        width: 260,
                       },
                       {
                         kind: 'primitive' as const,

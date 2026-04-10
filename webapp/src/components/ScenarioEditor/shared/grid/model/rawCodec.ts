@@ -53,16 +53,16 @@ export function parseColumnRawValue<T>(column: ScenarioDataGridColumn<T>, rawVal
   return { ok: false, error: `${column.header} does not support raw CSV editing.` };
 }
 
-export function createJsonRawCodec<TValue>({
+export function createJsonRawCodec<TValue, TRow = unknown>({
   header,
   validate,
 }: {
   header: string;
-  validate: (value: unknown) => ScenarioDataGridRawParseResult<TValue | undefined>;
+  validate: (value: unknown, row: TRow) => ScenarioDataGridRawParseResult<TValue | undefined>;
 }) {
   return {
     format: (value: TValue | undefined) => value == null ? '' : JSON.stringify(value),
-    parse: (text: string) => {
+    parse: (text: string, row: TRow) => {
       const trimmed = text.trim();
       if (!trimmed) {
         return { ok: true, value: undefined } as const;
@@ -70,7 +70,7 @@ export function createJsonRawCodec<TValue>({
 
       try {
         const parsed = JSON.parse(trimmed) as unknown;
-        return validate(parsed);
+        return validate(parsed, row);
       } catch (error) {
         return {
           ok: false,

@@ -101,7 +101,7 @@ describe('ConstraintFamilySections', () => {
     expect(screen.getByRole('button', { name: /convert selected to pair meeting count/i })).toBeInTheDocument();
   });
 
-  it('uses structured desired-value columns for attribute balance list editing and csv', async () => {
+  it('uses attribute names plus a single targets column for attribute balance list editing and csv', async () => {
     const user = userEvent.setup();
     const onApplyAttributeBalanceRows = vi.fn();
 
@@ -129,12 +129,19 @@ describe('ConstraintFamilySections', () => {
     );
 
     expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: /female/i })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: /^male /i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /targets/i })).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: /female/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: /^male /i })).not.toBeInTheDocument();
+    expect(screen.getByText('gender')).toBeInTheDocument();
+    expect(screen.getByText(/female: 2 · male: 1/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /edit table/i }));
+    expect(screen.getByRole('spinbutton', { name: /target for female/i })).toHaveValue(2);
+    expect(screen.getByRole('spinbutton', { name: /target for male/i })).toHaveValue(1);
 
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     expect(screen.getByRole('textbox', { name: /attribute balance csv/i })).toHaveValue(
-      'Group,Attribute,female,male,Mode,Weight,Sessions\ng1,attr-gender,2,1,exact,30,1 | 2',
+      'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""male"":1}",exact,30,1 | 2',
     );
   });
 });
