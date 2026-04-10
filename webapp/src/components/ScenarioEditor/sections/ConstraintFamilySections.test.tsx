@@ -140,9 +140,25 @@ describe('ConstraintFamilySections', () => {
     expect(screen.getByRole('spinbutton', { name: /target for male/i })).toHaveValue(1);
 
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
-    expect(screen.getByRole('textbox', { name: /attribute balance csv/i })).toHaveValue(
+    const csvInput = screen.getByRole('textbox', { name: /attribute balance csv/i });
+    expect(csvInput).toHaveValue(
       'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""male"":1}",exact,30,"{""mode"":""selected"",""sessions"":[0,1]}"',
     );
+
+    fireEvent.change(csvInput, {
+      target: {
+        value: 'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""male"":1}",exact,30,"{""mode"":""selected"",""sessions"":[0,1,2]}"',
+      },
+    });
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(onApplyAttributeBalanceRows).toHaveBeenCalledWith([
+      expect.objectContaining({
+        constraint: expect.objectContaining({
+          sessions: [0, 1, 2],
+        }),
+      }),
+    ]);
   });
 
   it('validates attribute-balance target JSON keys against the selected attribute options', async () => {

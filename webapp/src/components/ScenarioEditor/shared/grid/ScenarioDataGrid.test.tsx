@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ScenarioDataGrid } from './ScenarioDataGrid';
+import { createOptionalSessionScopeColumn } from './sessionScopeColumn';
 import type { ScenarioDataGridWorkspaceMode } from './types';
 import { createJsonRawCodec, validateStringNumberRecordValue } from './model/rawCodec';
 
@@ -734,6 +735,70 @@ describe('ScenarioDataGrid', () => {
     expect(screen.getByText(/csv validation errors/i)).toBeInTheDocument();
     expect(screen.getByText(/expected valid json for targets/i)).toBeInTheDocument();
     expect(onApply).toHaveBeenCalledTimes(1);
+  });
+
+  it('round-trips optional session-scope custom columns through shared csv mode', async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn();
+
+    function TestGrid() {
+      const [mode, setMode] = React.useState<ScenarioDataGridWorkspaceMode>('browse');
+
+      return (
+        <ScenarioDataGrid
+          rows={[
+            { id: 'a', name: 'Alpha', sessions: undefined as number[] | undefined },
+            { id: 'b', name: 'Beta', sessions: [0, 1, 2] as number[] | undefined },
+          ]}
+          rowKey={(row) => row.id}
+          columns={[
+            {
+              kind: 'primitive',
+              id: 'name',
+              header: 'Name',
+              primitive: 'string',
+              getValue: (row) => row.name,
+              setValue: (row, value) => ({ ...row, name: value ?? '' }),
+            },
+            createOptionalSessionScopeColumn({
+              totalSessions: 3,
+              getSessions: (row) => row.sessions,
+              setSessions: (row, sessions) => ({ ...row, sessions }),
+            }),
+          ]}
+          workspace={{
+            mode,
+            onModeChange: setMode,
+            draft: {
+              onApply,
+              csv: {
+                ariaLabel: 'Session scope csv editor',
+              },
+            },
+          }}
+        />
+      );
+    }
+
+    render(<TestGrid />);
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    const csvInput = screen.getByRole('textbox', { name: /session scope csv editor/i });
+    expect(csvInput).toHaveValue(
+      'Name,Sessions\nAlpha,"{""mode"":""all""}"\nBeta,"{""mode"":""selected"",""sessions"":[0,1,2]}"',
+    );
+
+    fireEvent.change(csvInput, {
+      target: {
+        value: 'Name,Sessions\nAlpha,"{""mode"":""selected"",""sessions"":[0,1,2]}"\nBeta,"{""mode"":""all""}"',
+      },
+    });
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(onApply).toHaveBeenCalledWith([
+      { id: 'a', name: 'Alpha', sessions: [0, 1, 2] },
+      { id: 'b', name: 'Beta', sessions: undefined },
+    ]);
   });
 
   it('round-trips punctuation-heavy string arrays safely through JSON raw csv mode', async () => {
