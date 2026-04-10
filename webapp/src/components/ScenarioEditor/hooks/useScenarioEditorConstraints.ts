@@ -4,6 +4,7 @@ import { findAttributeDefinition, getAttributeDefinitionName, updateAttributeBal
 import type { ConstraintFormState } from '../ConstraintFormModal';
 import {
   createAllSessionScopeDraft,
+  normalizeSessionSelection,
   optionalSessionsToDraft,
   sessionScopeDraftToOptionalSessions,
 } from '../shared/sessionScope';
@@ -446,7 +447,7 @@ export function useScenarioEditorConstraints({
       }
 
       const normalizedSessions = constraint.sessions?.length
-        ? Array.from(new Set(constraint.sessions.map((session) => Math.max(0, Math.round(Number(session) || 0))))).sort((left, right) => left - right)
+        ? normalizeSessionSelection(constraint.sessions, scenario.num_sessions)
         : undefined;
 
       return [{
@@ -455,9 +456,7 @@ export function useScenarioEditorConstraints({
         desired_values: desiredValues,
         penalty_weight: Math.max(0, Number(constraint.penalty_weight) || 0),
         mode: constraint.mode === 'at_least' ? 'at_least' : 'exact',
-        sessions: normalizedSessions && normalizedSessions.length === scenario.num_sessions
-          ? undefined
-          : normalizedSessions,
+        sessions: normalizedSessions,
       } satisfies Constraint];
     });
 

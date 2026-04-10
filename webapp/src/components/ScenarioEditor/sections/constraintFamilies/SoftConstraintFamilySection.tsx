@@ -10,6 +10,7 @@ import { Button } from '../../../ui';
 import { SetupActionsMenu } from '../../shared/SetupActionsMenu';
 import { SetupCollectionPage } from '../../shared/SetupCollectionPage';
 import { SetupSearchField } from '../../shared/SetupSearchField';
+import { normalizeSessionSelection } from '../../shared/sessionScope';
 import {
   SetupItemActions,
   SetupItemCard,
@@ -18,6 +19,7 @@ import {
   SetupWeightBadge,
 } from '../../shared/cards';
 import { ScenarioDataGrid } from '../../shared/grid/ScenarioDataGrid';
+import { createOptionalSessionScopeColumn } from '../../shared/grid/sessionScopeColumn';
 import { SetupPersonListText, formatPersonDisplayList, formatPersonSearchList } from '../../shared/personDisplay';
 import type { SetupCollectionViewMode } from '../../shared/useSetupCollectionViewMode';
 import { AttributeBalanceTargetsEditor } from './AttributeBalanceTargetsEditor';
@@ -146,16 +148,14 @@ export function SoftConstraintFamilySection({
         }
 
         const normalizedSessions = constraint.sessions?.length
-          ? Array.from(new Set(constraint.sessions.map((session) => Math.max(0, Math.round(Number(session) || 0))))).sort((left, right) => left - right)
+          ? normalizeSessionSelection(constraint.sessions, scenario.num_sessions)
           : undefined;
 
         return [{
           ...constraint,
           people,
           penalty_weight: Math.max(0, Number(constraint.penalty_weight) || 0),
-          sessions: normalizedSessions && normalizedSessions.length === scenario.num_sessions
-            ? undefined
-            : normalizedSessions,
+          sessions: normalizedSessions,
         } satisfies Constraint];
       }
 
@@ -321,8 +321,10 @@ export function SoftConstraintFamilySection({
                         helperText: (
                           <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                             {family === 'AttributeBalance'
-                              ? <><strong>Desired value columns</strong> expand from the selected attribute values and round-trip directly through CSV.</>
-                              : 'Use the shared grid editor or CSV mode to update these constraints in bulk.'}
+                              ? <><strong>Targets</strong> use JSON objects and <strong>Sessions</strong> use JSON session-scope objects such as <code>{'{"mode":"all"}'}</code> or <code>{'{"mode":"selected","sessions":[0,1]}'}</code>.</>
+                              : family === 'ShouldNotBeTogether' || family === 'ShouldStayTogether'
+                                ? <><strong>Sessions</strong> use JSON session-scope objects such as <code>{'{"mode":"all"}'}</code> or <code>{'{"mode":"selected","sessions":[0,1]}'}</code>.</>
+                                : 'Use the shared grid editor or CSV mode to update these constraints in bulk.'}
                           </div>
                         ),
                       },
@@ -566,22 +568,33 @@ export function SoftConstraintFamilySection({
                       width: 140,
                     }]
                   : []),
-                {
-                  kind: 'primitive' as const,
-                  id: 'sessions',
-                  header: 'Sessions',
-                  primitive: 'array' as const,
-                  itemType: 'number' as const,
-                  options: Array.from({ length: scenario.num_sessions }, (_, index) => ({
-                    value: String(index + 1),
-                    label: String(index + 1),
-                  })),
-                  getValue: (item) => 'sessions' in item.constraint && item.constraint.sessions?.length
-                    ? item.constraint.sessions.map((session) => session + 1)
-                    : Array.from({ length: scenario.num_sessions }, (_, index) => index + 1),
-                  setValue:
-                    family === 'AttributeBalance'
-                      ? (item: IndexedConstraint<AttributeBalanceConstraint>, value) => {
+                ...(family === 'AttributeBalance'
+                  ? [createOptionalSessionScopeColumn<IndexedConstraint<AttributeBalanceConstraint>>({
+                      totalSessions: scenario.num_sessions,
+                      getSessions: (item) => item.constraint.sessions,
+                      setSessions: (item, sessions) => ({
+                        ...item,
+                        constraint: {
+                          ...item.constraint,
+                          sessions,
+                        },
+                      }),
+                    })]
+                  : family === 'PairMeetingCount'
+                    ? [{
+                        kind: 'primitive' as const,
+                        id: 'sessions',
+                        header: 'Sessions',
+                        primitive: 'array' as const,
+                        itemType: 'number' as const,
+                        options: Array.from({ length: scenario.num_sessions }, (_, index) => ({
+                          value: String(index + 1),
+                          label: String(index + 1),
+                        })),
+                        getValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => item.constraint.sessions?.length
+                          ? item.constraint.sessions.map((session) => session + 1)
+                          : Array.from({ length: scenario.num_sessions }, (_, index) => index + 1),
+                        setValue: (item: IndexedConstraint<PairMeetingCountConstraint>, value) => {
                           const normalized = Array.isArray(value)
                             ? Array.from(new Set(value.map((entry) => Math.max(1, Math.round(Number(entry) || 1))))).sort((left, right) => left - right)
                             : [];
@@ -590,51 +603,29 @@ export function SoftConstraintFamilySection({
                             ...item,
                             constraint: {
                               ...item.constraint,
-                              sessions: normalized.length === 0 || normalized.length === scenario.num_sessions
-                                ? undefined
-                                : normalized.map((session) => session - 1),
+                              sessions: (normalized.length > 0
+                                ? normalized
+                                : Array.from({ length: scenario.num_sessions }, (_, index) => index + 1)).map((session) => session - 1),
                             },
                           };
-                        }
-                      : family === 'PairMeetingCount'
-                        ? (item: IndexedConstraint<PairMeetingCountConstraint>, value) => {
-                            const normalized = Array.isArray(value)
-                              ? Array.from(new Set(value.map((entry) => Math.max(1, Math.round(Number(entry) || 1))))).sort((left, right) => left - right)
-                              : [];
-
-                            return {
-                              ...item,
-                              constraint: {
-                                ...item.constraint,
-                                sessions: (normalized.length > 0
-                                  ? normalized
-                                  : Array.from({ length: scenario.num_sessions }, (_, index) => index + 1)).map((session) => session - 1),
-                              },
-                            };
-                          }
-                        : family === 'ShouldNotBeTogether' || family === 'ShouldStayTogether'
-                          ? (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>, value) => {
-                              const normalized = Array.isArray(value)
-                                ? Array.from(new Set(value.map((entry) => Math.max(1, Math.round(Number(entry) || 1))))).sort((left, right) => left - right)
-                                : [];
-
-                              return {
-                                ...item,
-                                constraint: {
-                                  ...item.constraint,
-                                  sessions: normalized.length === 0 || normalized.length === scenario.num_sessions
-                                    ? undefined
-                                    : normalized.map((session) => session - 1),
-                                },
-                              };
-                            }
-                          : undefined,
-                  renderValue: (value) => Array.isArray(value) && value.length > 0 && value.length < scenario.num_sessions
-                    ? value.join(', ')
-                    : 'All sessions',
-                  searchText: (_value, item) => ('sessions' in item.constraint && item.constraint.sessions ? item.constraint.sessions.join(' ') : 'all sessions'),
-                  width: 220,
-                },
+                        },
+                        renderValue: (value: unknown) => Array.isArray(value) && value.length > 0 && value.length < scenario.num_sessions
+                          ? value.join(', ')
+                          : 'All sessions',
+                        searchText: (_value: unknown, item: IndexedConstraint<PairMeetingCountConstraint>) => item.constraint.sessions.join(' '),
+                        width: 220,
+                      }]
+                    : [createOptionalSessionScopeColumn<IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>>({
+                        totalSessions: scenario.num_sessions,
+                        getSessions: (item) => item.constraint.sessions,
+                        setSessions: (item, sessions) => ({
+                          ...item,
+                          constraint: {
+                            ...item.constraint,
+                            sessions,
+                          },
+                        }),
+                      })]),
                 {
                   kind: 'display' as const,
                   id: 'actions',

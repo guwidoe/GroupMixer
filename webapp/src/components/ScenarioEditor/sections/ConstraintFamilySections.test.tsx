@@ -141,7 +141,7 @@ describe('ConstraintFamilySections', () => {
 
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     expect(screen.getByRole('textbox', { name: /attribute balance csv/i })).toHaveValue(
-      'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""male"":1}",exact,30,"[1,2]"',
+      'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""male"":1}",exact,30,"{""mode"":""selected"",""sessions"":[0,1]}"',
     );
   });
 
@@ -195,11 +195,11 @@ describe('ConstraintFamilySections', () => {
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     const csvInput = screen.getByRole('textbox', { name: /attribute balance csv/i });
     expect(csvInput).toHaveValue(
-      'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""asdf | asdf:"":1}",exact,30,"[1,2]"',
+      'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""asdf | asdf:"":1}",exact,30,"{""mode"":""selected"",""sessions"":[0,1]}"',
     );
 
     fireEvent.change(csvInput, {
-      target: { value: 'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":3,""unknown"":2}",exact,30,"[1,2]"' },
+      target: { value: 'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":3,""unknown"":2}",exact,30,"{""mode"":""selected"",""sessions"":[0,1]}"' },
     });
     await user.click(screen.getByRole('button', { name: /apply changes/i }));
 

@@ -6,6 +6,7 @@ import { replaceConstraintsAtIndices } from '../../../constraints/constraintMuta
 import { SetupActionsMenu } from '../../shared/SetupActionsMenu';
 import { SetupCollectionPage } from '../../shared/SetupCollectionPage';
 import { SetupSearchField } from '../../shared/SetupSearchField';
+import { normalizeSessionSelection } from '../../shared/sessionScope';
 import {
   SetupItemActions,
   SetupItemCard,
@@ -13,6 +14,7 @@ import {
   SetupTypeBadge,
 } from '../../shared/cards';
 import { ScenarioDataGrid } from '../../shared/grid/ScenarioDataGrid';
+import { createOptionalSessionScopeColumn } from '../../shared/grid/sessionScopeColumn';
 import { SetupPersonListText, formatPersonSearchList } from '../../shared/personDisplay';
 import type { SetupCollectionViewMode } from '../../shared/useSetupCollectionViewMode';
 import { HARD_SECTION_COPY } from './copy';
@@ -110,7 +112,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
 
     const nextConstraints = nextItems.flatMap(({ constraint }) => {
       const people = Array.from(new Set(constraint.people.filter(Boolean)));
-      const normalizedSessions = Array.from(new Set((constraint.sessions ?? []).map((session) => Math.max(0, Math.round(Number(session) || 0))))).sort((left, right) => left - right);
+      const normalizedSessions = normalizeSessionSelection(constraint.sessions ?? [], scenario.num_sessions);
 
       if (family === 'ImmovablePeople') {
         if (people.length < 1 || !constraint.group_id) {
@@ -138,7 +140,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
       return [{
         type: 'MustStayTogether',
         people,
-        sessions: normalizedSessions.length === 0 || normalizedSessions.length === scenario.num_sessions ? undefined : normalizedSessions,
+        sessions: normalizedSessions.length === 0 ? undefined : normalizedSessions,
       } satisfies Constraint];
     });
 
@@ -322,47 +324,52 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                       width: 180,
                     }]
                   : []),
-                {
-                  kind: 'primitive' as const,
-                  id: 'sessions',
-                  header: 'Sessions',
-                  primitive: 'array' as const,
-                  itemType: 'number' as const,
-                  options: Array.from({ length: scenario.num_sessions }, (_, index) => ({
-                    value: String(index + 1),
-                    label: String(index + 1),
-                  })),
-                  getValue: (item) => item.constraint.sessions?.length
-                    ? item.constraint.sessions.map((session) => session + 1)
-                    : Array.from({ length: scenario.num_sessions }, (_, index) => index + 1),
-                  setValue: (item, value) => {
-                    const normalized = Array.isArray(value)
-                      ? Array.from(new Set(value.map((entry) => Math.max(1, Math.round(Number(entry) || 1))))).sort((left, right) => left - right)
-                      : [];
+                ...(family === 'ImmovablePeople'
+                  ? [{
+                      kind: 'primitive' as const,
+                      id: 'sessions',
+                      header: 'Sessions',
+                      primitive: 'array' as const,
+                      itemType: 'number' as const,
+                      options: Array.from({ length: scenario.num_sessions }, (_, index) => ({
+                        value: String(index + 1),
+                        label: String(index + 1),
+                      })),
+                      getValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>) => item.constraint.sessions?.length
+                        ? item.constraint.sessions.map((session) => session + 1)
+                        : Array.from({ length: scenario.num_sessions }, (_, index) => index + 1),
+                      setValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>, value) => {
+                        const normalized = Array.isArray(value)
+                          ? Array.from(new Set(value.map((entry) => Math.max(1, Math.round(Number(entry) || 1))))).sort((left, right) => left - right)
+                          : [];
 
-                    return {
-                      ...item,
-                      constraint: item.constraint.type === 'ImmovablePeople'
-                        ? {
+                        return {
+                          ...item,
+                          constraint: {
                             ...item.constraint,
                             sessions: normalized.length > 0
                               ? normalized.map((session) => session - 1)
                               : Array.from({ length: scenario.num_sessions }, (_, index) => index),
-                          }
-                        : {
-                            ...item.constraint,
-                            sessions: normalized.length === 0 || normalized.length === scenario.num_sessions
-                              ? undefined
-                              : normalized.map((session) => session - 1),
                           },
-                    };
-                  },
-                  renderValue: (value) => Array.isArray(value) && value.length > 0 && value.length < scenario.num_sessions
-                    ? value.join(', ')
-                    : 'All sessions',
-                  searchText: (_value, item) => item.constraint.sessions?.join(' ') || 'all sessions',
-                  width: 220,
-                },
+                        };
+                      },
+                      renderValue: (value: unknown) => Array.isArray(value) && value.length > 0 && value.length < scenario.num_sessions
+                        ? value.join(', ')
+                        : 'All sessions',
+                      searchText: (_value: unknown, item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>) => item.constraint.sessions?.join(' ') || 'all sessions',
+                      width: 220,
+                    }]
+                  : [createOptionalSessionScopeColumn<IndexedConstraint<Extract<Constraint, { type: 'MustStayTogether' }>>>({
+                      totalSessions: scenario.num_sessions,
+                      getSessions: (item) => item.constraint.sessions,
+                      setSessions: (item, sessions) => ({
+                        ...item,
+                        constraint: {
+                          ...item.constraint,
+                          sessions,
+                        },
+                      }),
+                    })]),
                 {
                   kind: 'display' as const,
                   id: 'actions',
