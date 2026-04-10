@@ -8,6 +8,7 @@ import {
   reconcileScenarioAttributeState,
 } from '../../../services/scenarioAttributes';
 import { generateUniquePersonId, getDefaultSolverSettings } from '../helpers';
+import { buildScenarioWithGroups } from './scenarioEditorBulkUtils';
 
 type NotificationPayload = {
   type: 'success' | 'error' | 'info';
@@ -35,6 +36,17 @@ function resetGroupFormState() {
     form: { size: 4 } as GroupFormData,
     inputs: {} as GroupFormInputs,
   };
+}
+
+function generateUniqueGroupId(existingGroups: Group[] | undefined) {
+  const usedIds = new Set((existingGroups ?? []).map((group) => group.id));
+  let nextIndex = (existingGroups?.length ?? 0) + 1;
+  let nextId = `group_${nextIndex}`;
+  while (usedIds.has(nextId)) {
+    nextIndex += 1;
+    nextId = `group_${nextIndex}`;
+  }
+  return nextId;
 }
 
 function parseSessionSizes(
@@ -380,6 +392,41 @@ export function useScenarioEditorEntities({
     });
   };
 
+  const createGridGroupRow = () => ({
+    id: generateUniqueGroupId(scenario?.groups),
+    size: 4,
+    session_sizes: undefined,
+  } satisfies Group);
+
+  const applyGridGroups = (groups: Group[]) => {
+    const sessionsTotal = scenario?.num_sessions || 3;
+    const normalizedGroups = groups
+      .map((group) => {
+        const size = Number.isFinite(group.size) && group.size > 0 ? Math.max(1, Math.round(group.size)) : 1;
+        const normalizedSessionSizes = Array.isArray(group.session_sizes)
+          ? group.session_sizes.map((value) => Math.max(0, Math.round(Number(value) || 0))).slice(0, sessionsTotal)
+          : undefined;
+
+        return {
+          ...group,
+          id: group.id.trim() || generateUniqueGroupId(scenario?.groups),
+          size,
+          session_sizes:
+            normalizedSessionSizes && normalizedSessionSizes.length === sessionsTotal && normalizedSessionSizes.some((value) => value !== size)
+              ? normalizedSessionSizes
+              : undefined,
+        } satisfies Group;
+      })
+      .filter((group) => group.id.length > 0);
+
+    setScenario(buildScenarioWithGroups(scenario, normalizedGroups));
+    addNotification({
+      type: 'success',
+      title: 'Groups Updated',
+      message: `Applied ${normalizedGroups.length} grid row${normalizedGroups.length === 1 ? '' : 's'}.`,
+    });
+  };
+
   const handleAddAttribute = () => {
     if (!newAttribute.key.trim() || newAttribute.values.some((value) => !value.trim())) {
       addNotification({
@@ -450,6 +497,27 @@ export function useScenarioEditorEntities({
     });
   };
 
+  const createGridAttributeRow = () => createAttributeDefinition(`attribute_${attributeDefinitions.length + 1}`, []);
+
+  const applyGridAttributes = (definitions: AttributeDefinition[]) => {
+    const normalizedDefinitions = definitions
+      .map((definition, index) => createAttributeDefinition(
+        getAttributeDefinitionName(definition).trim() || `attribute_${index + 1}`,
+        (definition.values ?? []).map((value) => value.trim()).filter(Boolean),
+        definition.id,
+      ));
+
+    setAttributeDefinitions(normalizedDefinitions);
+    if (scenario) {
+      setScenario(reconcileScenarioAttributeState(scenario, normalizedDefinitions));
+    }
+    addNotification({
+      type: 'success',
+      title: 'Attributes Updated',
+      message: `Applied ${normalizedDefinitions.length} attribute row${normalizedDefinitions.length === 1 ? '' : 's'}.`,
+    });
+  };
+
   return {
     showPersonForm,
     setShowPersonForm,
@@ -480,8 +548,12 @@ export function useScenarioEditorEntities({
     handleEditGroup,
     handleUpdateGroup,
     handleDeleteGroup,
+    createGridGroupRow,
+    applyGridGroups,
     handleAddAttribute,
     handleEditAttribute,
     handleUpdateAttribute,
+    createGridAttributeRow,
+    applyGridAttributes,
   };
 }

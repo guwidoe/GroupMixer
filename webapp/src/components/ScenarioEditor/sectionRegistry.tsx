@@ -43,6 +43,8 @@ export const scenarioSetupSectionRegistry: Record<ScenarioSetupSectionId, Scenar
       onAddAttribute={() => controller.entities.setShowAttributeForm(true)}
       onEditAttribute={controller.entities.handleEditAttribute}
       onRemoveAttribute={controller.removeAttributeDefinition}
+      onApplyGridAttributes={controller.entities.applyGridAttributes}
+      createGridAttributeRow={controller.entities.createGridAttributeRow}
     />
   ),
   groups: (controller) => (
@@ -53,6 +55,8 @@ export const scenarioSetupSectionRegistry: Record<ScenarioSetupSectionId, Scenar
       onDeleteGroup={controller.entities.handleDeleteGroup}
       onOpenBulkAddForm={controller.bulk.addGroups.openForm}
       onTriggerCsvUpload={() => controller.bulk.addGroups.csvFileInputRef.current?.click()}
+      onApplyGridGroups={controller.entities.applyGridGroups}
+      createGridGroupRow={controller.entities.createGridGroupRow}
     />
   ),
   sessions: (controller) => (
@@ -86,6 +90,8 @@ export const scenarioSetupSectionRegistry: Record<ScenarioSetupSectionId, Scenar
       onAdd={controller.editorActions.handleSoftConstraintAdd}
       onEdit={controller.editorActions.handleSoftConstraintEdit}
       onDelete={controller.constraints.handleDeleteConstraint}
+      onApplyGridRows={controller.constraints.applyRepeatEncounterGridRows}
+      createGridRow={controller.constraints.createRepeatEncounterGridRow}
     />
   ),
   'should-not-be-together': (controller) => (

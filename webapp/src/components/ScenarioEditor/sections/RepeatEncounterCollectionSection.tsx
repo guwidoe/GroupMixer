@@ -9,12 +9,15 @@ import { ScenarioDataGrid } from '../shared/grid/ScenarioDataGrid';
 import type { SetupCollectionViewMode } from '../shared/useSetupCollectionViewMode';
 
 type RepeatEncounterConstraint = Extract<Constraint, { type: 'RepeatEncounter' }>;
+type RepeatEncounterRow = { constraint: RepeatEncounterConstraint; index: number };
 
 interface RepeatEncounterCollectionSectionProps {
   scenario: Scenario | null;
   onAdd: (type: 'RepeatEncounter') => void;
   onEdit: (constraint: Constraint, index: number) => void;
   onDelete: (index: number) => void;
+  onApplyGridRows: (items: RepeatEncounterRow[]) => void;
+  createGridRow: () => RepeatEncounterRow;
 }
 
 function RepeatEncounterCard({
@@ -22,7 +25,7 @@ function RepeatEncounterCard({
   onEdit,
   onDelete,
 }: {
-  item: { constraint: RepeatEncounterConstraint; index: number };
+  item: RepeatEncounterRow;
   onEdit: (constraint: Constraint, index: number) => void;
   onDelete: (index: number) => void;
 }) {
@@ -61,69 +64,89 @@ function RepeatEncounterCard({
 }
 
 function renderRepeatEncounterContent(
-  items: Array<{ constraint: RepeatEncounterConstraint; index: number }>,
+  items: RepeatEncounterRow[],
   viewMode: SetupCollectionViewMode,
+  gridWorkspaceMode: 'browse' | 'edit' | 'csv',
+  setGridWorkspaceMode: React.Dispatch<React.SetStateAction<'browse' | 'edit' | 'csv'>>,
   onEdit: (constraint: Constraint, index: number) => void,
   onDelete: (index: number) => void,
+  onApplyGridRows: (items: RepeatEncounterRow[]) => void,
+  createGridRow: () => RepeatEncounterRow,
 ) {
   if (viewMode === 'list') {
     return (
       <ScenarioDataGrid
         rows={items}
-        rowKey={(item) => String(item.index)}
+        rowKey={(item, index) => `${item.index}-${index}`}
         searchPlaceholder="Search by limit, weight, or penalty function…"
+        workspace={{
+          mode: gridWorkspaceMode,
+          onModeChange: setGridWorkspaceMode,
+          draft: {
+            onApply: onApplyGridRows,
+            createRow: createGridRow,
+            csv: {
+              ariaLabel: 'Repeat encounter CSV',
+            },
+          },
+        }}
         columns={[
           {
+            kind: 'primitive' as const,
             id: 'limit',
             header: 'Limit',
-            cell: (item) => (
-              <span>
-                Max {item.constraint.max_allowed_encounters} encounter{item.constraint.max_allowed_encounters === 1 ? '' : 's'}
-              </span>
-            ),
-            sortValue: (item) => item.constraint.max_allowed_encounters,
-            searchValue: (item) => String(item.constraint.max_allowed_encounters),
-            exportValue: (item) => String(item.constraint.max_allowed_encounters),
-            filter: {
-              type: 'numberRange',
-              ariaLabel: 'Filter repeat encounter max encounters',
-              getValue: (item) => item.constraint.max_allowed_encounters,
-            },
+            primitive: 'number' as const,
+            getValue: (item: RepeatEncounterRow) => item.constraint.max_allowed_encounters,
+            setValue: (item: RepeatEncounterRow, value) => ({
+              ...item,
+              constraint: {
+                ...item.constraint,
+                max_allowed_encounters: value ?? 1,
+              },
+            }),
+            renderValue: (value) => `Max ${value ?? 0} encounter${value === 1 ? '' : 's'}`,
             width: 240,
           },
           {
+            kind: 'primitive' as const,
             id: 'penalty-function',
             header: 'Penalty function',
-            cell: (item) => item.constraint.penalty_function,
-            sortValue: (item) => item.constraint.penalty_function,
-            searchValue: (item) => item.constraint.penalty_function,
-            exportValue: (item) => item.constraint.penalty_function,
-            filter: {
-              type: 'select',
-              ariaLabel: 'Filter repeat encounter penalty function',
-              getValue: (item) => item.constraint.penalty_function,
-              options: (rows) => Array.from(new Set(rows.map((row) => row.constraint.penalty_function))).map((value) => ({ value, label: value })),
-            },
+            primitive: 'enum' as const,
+            options: [
+              { value: 'linear', label: 'linear' },
+              { value: 'quadratic', label: 'quadratic' },
+              { value: 'exponential', label: 'exponential' },
+            ],
+            getValue: (item: RepeatEncounterRow) => item.constraint.penalty_function,
+            setValue: (item: RepeatEncounterRow, value) => ({
+              ...item,
+              constraint: {
+                ...item.constraint,
+                penalty_function: value ?? 'linear',
+              },
+            }),
             width: 220,
           },
           {
+            kind: 'primitive' as const,
             id: 'weight',
             header: 'Weight',
-            cell: (item) => item.constraint.penalty_weight,
-            sortValue: (item) => item.constraint.penalty_weight,
-            searchValue: (item) => String(item.constraint.penalty_weight),
-            exportValue: (item) => String(item.constraint.penalty_weight),
-            filter: {
-              type: 'numberRange',
-              ariaLabel: 'Filter repeat encounter weight',
-              getValue: (item) => item.constraint.penalty_weight,
-            },
+            primitive: 'number' as const,
+            getValue: (item: RepeatEncounterRow) => item.constraint.penalty_weight,
+            setValue: (item: RepeatEncounterRow, value) => ({
+              ...item,
+              constraint: {
+                ...item.constraint,
+                penalty_weight: value ?? 0,
+              },
+            }),
             width: 140,
           },
           {
+            kind: 'display' as const,
             id: 'actions',
             header: 'Actions',
-            cell: (item) => (
+            cell: (item: RepeatEncounterRow) => (
               <div className="flex justify-end">
                 <SetupItemActions
                   onEdit={() => onEdit(item.constraint, item.index)}
@@ -156,15 +179,18 @@ export function RepeatEncounterCollectionSection({
   onAdd,
   onEdit,
   onDelete,
+  onApplyGridRows,
+  createGridRow,
 }: RepeatEncounterCollectionSectionProps) {
   const [search, setSearch] = React.useState('');
   const [viewMode, setViewMode] = React.useState<SetupCollectionViewMode>('cards');
+  const [gridWorkspaceMode, setGridWorkspaceMode] = React.useState<'browse' | 'edit' | 'csv'>('browse');
 
   const items = React.useMemo(
     () =>
       (scenario?.constraints ?? [])
         .map((constraint, index) => ({ constraint, index }))
-        .filter((item): item is { constraint: RepeatEncounterConstraint; index: number } => item.constraint.type === 'RepeatEncounter'),
+        .filter((item): item is RepeatEncounterRow => item.constraint.type === 'RepeatEncounter'),
     [scenario?.constraints],
   );
 
@@ -204,9 +230,14 @@ export function RepeatEncounterCollectionSection({
           Add Repeat Limit
         </Button>
       }
-      onViewModeChange={setViewMode}
-      toolbarLeading={(viewMode) =>
-        viewMode === 'cards' ? (
+      onViewModeChange={(nextMode) => {
+        setViewMode(nextMode);
+        if (nextMode !== 'list') {
+          setGridWorkspaceMode('browse');
+        }
+      }}
+      toolbarLeading={(activeViewMode) =>
+        activeViewMode === 'cards' ? (
           <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
             <SetupSearchField
               label="Search repeat encounter preferences"
@@ -240,7 +271,7 @@ export function RepeatEncounterCollectionSection({
           ? 'Try a broader filter or clear the search to see all repeat encounter preferences.'
           : 'Add a repeat encounter preference to limit how often the same people should meet again.',
       }}
-      renderContent={(viewMode) => renderRepeatEncounterContent(filteredItems, viewMode, onEdit, onDelete)}
+      renderContent={(activeViewMode) => renderRepeatEncounterContent(filteredItems, activeViewMode, gridWorkspaceMode, setGridWorkspaceMode, onEdit, onDelete, onApplyGridRows, createGridRow)}
     />
   );
 }

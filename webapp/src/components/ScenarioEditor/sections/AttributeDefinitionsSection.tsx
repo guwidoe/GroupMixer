@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Plus, Tag } from 'lucide-react';
 import type { AttributeDefinition } from '../../../types';
+import { getAttributeDefinitionName } from '../../../services/scenarioAttributes';
 import { Button } from '../../ui';
 import { SetupCollectionPage } from '../shared/SetupCollectionPage';
 import { SetupCardGrid, SetupItemActions, SetupItemCard, SetupTagList } from '../shared/cards';
@@ -12,6 +13,8 @@ interface AttributeDefinitionsSectionProps {
   onAddAttribute: () => void;
   onEditAttribute: (definition: AttributeDefinition) => void;
   onRemoveAttribute: (key: string) => void;
+  onApplyGridAttributes: (definitions: AttributeDefinition[]) => void;
+  createGridAttributeRow: () => AttributeDefinition;
 }
 
 function AttributeListRow({
@@ -54,60 +57,81 @@ function AttributeListRow({
 function renderAttributeContent(
   attributeDefinitions: AttributeDefinition[],
   viewMode: SetupCollectionViewMode,
+  gridWorkspaceMode: 'browse' | 'edit' | 'csv',
+  setGridWorkspaceMode: React.Dispatch<React.SetStateAction<'browse' | 'edit' | 'csv'>>,
   onEditAttribute: (definition: AttributeDefinition) => void,
   onRemoveAttribute: (key: string) => void,
+  onApplyGridAttributes: (definitions: AttributeDefinition[]) => void,
+  createGridAttributeRow: () => AttributeDefinition,
 ) {
   if (viewMode === 'list') {
     return (
       <ScenarioDataGrid
         rows={attributeDefinitions}
-        rowKey={(definition) => definition.key}
+        rowKey={(definition) => definition.id}
         searchPlaceholder="Search attributes and values…"
+        workspace={{
+          mode: gridWorkspaceMode,
+          onModeChange: setGridWorkspaceMode,
+          draft: {
+            onApply: onApplyGridAttributes,
+            createRow: createGridAttributeRow,
+            csv: {
+              ariaLabel: 'Attribute definitions CSV',
+              helperText: (
+                <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <strong>Values</strong> uses <code>|</code> in CSV mode.
+                </div>
+              ),
+            },
+          },
+        }}
         columns={[
           {
+            kind: 'primitive' as const,
             id: 'attribute',
             header: 'Attribute',
-            cell: (definition) => <span className="font-semibold capitalize" style={{ color: 'var(--text-primary)' }}>{definition.key}</span>,
-            sortValue: (definition) => definition.key,
-            searchValue: (definition) => definition.key,
-            exportValue: (definition) => definition.key,
-            filter: {
-              type: 'text',
-              placeholder: 'Filter attributes…',
-              ariaLabel: 'Filter attribute definitions by key',
-            },
+            primitive: 'string' as const,
+            getValue: (definition: AttributeDefinition) => getAttributeDefinitionName(definition),
+            setValue: (definition: AttributeDefinition, value) => ({
+              ...definition,
+              name: value ?? '',
+              key: value ?? '',
+            }),
+            renderValue: (value) => <span className="font-semibold capitalize" style={{ color: 'var(--text-primary)' }}>{value}</span>,
             width: 220,
           },
           {
+            kind: 'primitive' as const,
             id: 'values',
             header: 'Values',
-            cell: (definition) => (
+            primitive: 'array' as const,
+            itemType: 'string' as const,
+            getValue: (definition: AttributeDefinition) => definition.values,
+            setValue: (definition: AttributeDefinition, value) => ({
+              ...definition,
+              values: Array.isArray(value) ? value.map((entry) => String(entry)) : [],
+            }),
+            renderValue: (value) => (
               <div className="flex flex-wrap gap-1.5">
-                {definition.values.map((value) => (
+                {(Array.isArray(value) ? value : []).map((entry) => (
                   <span
-                    key={value}
+                    key={String(entry)}
                     className="rounded-full px-2 py-0.5 text-xs font-medium"
                     style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}
                   >
-                    {value}
+                    {String(entry)}
                   </span>
                 ))}
               </div>
             ),
-            sortValue: (definition) => definition.values.length,
-            searchValue: (definition) => definition.values.join(' '),
-            exportValue: (definition) => definition.values.join('; '),
-            filter: {
-              type: 'text',
-              placeholder: 'Filter values…',
-              ariaLabel: 'Filter attribute definitions by values',
-            },
             width: 340,
           },
           {
+            kind: 'display' as const,
             id: 'actions',
             header: 'Actions',
-            cell: (definition) => (
+            cell: (definition: AttributeDefinition) => (
               <div className="flex justify-end">
                 <SetupItemActions
                   editLabel={`Edit ${definition.key}`}
@@ -145,7 +169,11 @@ export function AttributeDefinitionsSection({
   onAddAttribute,
   onEditAttribute,
   onRemoveAttribute,
+  onApplyGridAttributes,
+  createGridAttributeRow,
 }: AttributeDefinitionsSectionProps) {
+  const [gridWorkspaceMode, setGridWorkspaceMode] = useState<'browse' | 'edit' | 'csv'>('browse');
+
   return (
     <SetupCollectionPage
       sectionKey="attributes"
@@ -163,13 +191,18 @@ export function AttributeDefinitionsSection({
         </Button>
       }
       defaultViewMode="list"
+      onViewModeChange={(nextMode) => {
+        if (nextMode !== 'list') {
+          setGridWorkspaceMode('browse');
+        }
+      }}
       hasItems={attributeDefinitions.length > 0}
       emptyState={{
         icon: <Tag className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,
         title: 'No attributes defined yet',
         message: 'Create your first attribute to describe people and unlock attribute-based setup flows.',
       }}
-      renderContent={(viewMode) => renderAttributeContent(attributeDefinitions, viewMode, onEditAttribute, onRemoveAttribute)}
+      renderContent={(viewMode) => renderAttributeContent(attributeDefinitions, viewMode, gridWorkspaceMode, setGridWorkspaceMode, onEditAttribute, onRemoveAttribute, onApplyGridAttributes, createGridAttributeRow)}
     />
   );
 }

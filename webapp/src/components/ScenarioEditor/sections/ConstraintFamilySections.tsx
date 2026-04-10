@@ -416,49 +416,44 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
               rowKey={(item) => `${item.constraint.type}-${item.index}`}
               columns={[
                 {
+                  kind: 'primitive' as const,
                   id: 'people',
                   header: 'People',
-                  cell: (item) => <SetupPersonListText people={scenario.people} personIds={item.constraint.people} />,
-                  sortValue: (item) => item.constraint.people.length,
-                  searchValue: (item) => formatPersonSearchList(scenario.people, item.constraint.people),
-                  exportValue: (item) => formatPersonDisplayList(scenario.people, item.constraint.people),
-                  filter: {
-                    type: 'text',
-                    placeholder: 'Filter people…',
-                    ariaLabel: `Filter ${copy.title} by people`,
-                  },
+                  primitive: 'array' as const,
+                  itemType: 'string' as const,
+                  getValue: (item) => item.constraint.people,
+                  renderValue: (value) => <SetupPersonListText people={scenario.people} personIds={(value as string[]) ?? []} />,
+                  sortValue: (value) => Array.isArray(value) ? value.length : 0,
+                  searchText: (_value, item) => formatPersonSearchList(scenario.people, item.constraint.people),
                   width: 280,
                 },
                 ...(family === 'ImmovablePeople'
                   ? [{
+                      kind: 'primitive' as const,
                       id: 'group',
                       header: 'Group',
-                      cell: (item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>) => item.constraint.group_id,
-                      sortValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>) => item.constraint.group_id,
-                      searchValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>) => item.constraint.group_id,
-                      exportValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>) => item.constraint.group_id,
-                      filter: {
-                        type: 'text' as const,
-                        placeholder: 'Filter groups…',
-                        ariaLabel: 'Filter immovable people by group',
-                      },
+                      primitive: 'string' as const,
+                      getValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>) => item.constraint.group_id,
                       width: 180,
                     }]
                   : []),
                 {
+                  kind: 'primitive' as const,
                   id: 'sessions',
                   header: 'Sessions',
-                  cell: (item) => item.constraint.sessions?.length ? item.constraint.sessions.map((session) => session + 1).join(', ') : 'All sessions',
-                  searchValue: (item) => item.constraint.sessions?.join(' ') || 'all sessions',
-                  exportValue: (item) => item.constraint.sessions?.length ? item.constraint.sessions.map((session) => session + 1).join(', ') : 'All sessions',
-                  filter: {
-                    type: 'text',
-                    placeholder: 'Filter sessions…',
-                    ariaLabel: `Filter ${copy.title} by sessions`,
-                  },
+                  primitive: 'array' as const,
+                  itemType: 'number' as const,
+                  getValue: (item) => item.constraint.sessions?.length
+                    ? item.constraint.sessions.map((session) => session + 1)
+                    : Array.from({ length: scenario.num_sessions }, (_, index) => index + 1),
+                  renderValue: (value) => Array.isArray(value) && value.length > 0 && value.length < scenario.num_sessions
+                    ? value.join(', ')
+                    : 'All sessions',
+                  searchText: (_value, item) => item.constraint.sessions?.join(' ') || 'all sessions',
                   width: 220,
                 },
                 {
+                  kind: 'display' as const,
                   id: 'actions',
                   header: 'Actions',
                   cell: (item) => (
@@ -679,101 +674,83 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                 ...(family === 'AttributeBalance'
                   ? [
                         {
+                          kind: 'primitive' as const,
                           id: 'group',
                           header: 'Group',
-                          cell: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.group_id,
-                          sortValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.group_id,
-                          searchValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => `${item.constraint.group_id} ${item.constraint.attribute_key}`,
-                          exportValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.group_id,
-                          filter: {
-                            type: 'text' as const,
-                            placeholder: 'Filter groups…',
-                            ariaLabel: 'Filter attribute balance by group',
-                          },
+                          primitive: 'string' as const,
+                          getValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.group_id,
+                          searchText: (value, item) => `${value ?? ''} ${item.constraint.attribute_key}`.trim(),
                           width: 180,
                         },
                         {
+                          kind: 'primitive' as const,
                           id: 'attribute',
                           header: 'Attribute',
-                          cell: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.attribute_key,
-                          sortValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.attribute_key,
-                          searchValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.attribute_key,
-                          exportValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.attribute_key,
-                          filter: {
-                            type: 'text' as const,
-                            placeholder: 'Filter attributes…',
-                            ariaLabel: 'Filter attribute balance by attribute key',
-                          },
+                          primitive: 'string' as const,
+                          getValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.attribute_key,
                           width: 180,
                         },
                     ]
                   : family === 'PairMeetingCount'
                     ? [
                         {
+                          kind: 'primitive' as const,
                           id: 'pair',
                           header: 'Pair',
-                          cell: (item: IndexedConstraint<PairMeetingCountConstraint>) => (
-                            <SetupPersonListText people={scenario.people} personIds={item.constraint.people} separator=" & " />
+                          primitive: 'array' as const,
+                          itemType: 'string' as const,
+                          getValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => item.constraint.people,
+                          renderValue: (value) => (
+                            <SetupPersonListText people={scenario.people} personIds={(value as string[]) ?? []} separator=" & " />
                           ),
-                          sortValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => formatPersonDisplayList(scenario.people, item.constraint.people, ' & '),
-                          searchValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => formatPersonSearchList(scenario.people, item.constraint.people),
-                          exportValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => formatPersonDisplayList(scenario.people, item.constraint.people, ' & '),
-                          filter: {
-                            type: 'text' as const,
-                            placeholder: 'Filter pairs…',
-                            ariaLabel: 'Filter pair meeting counts by pair',
-                          },
+                          sortValue: (_value, item: IndexedConstraint<PairMeetingCountConstraint>) => formatPersonDisplayList(scenario.people, item.constraint.people, ' & '),
+                          searchText: (_value, item: IndexedConstraint<PairMeetingCountConstraint>) => formatPersonSearchList(scenario.people, item.constraint.people),
+                          exportValue: (_value, item: IndexedConstraint<PairMeetingCountConstraint>) => formatPersonDisplayList(scenario.people, item.constraint.people, ' & '),
                           width: 280,
                         },
                       ]
                     : [
                         {
+                          kind: 'primitive' as const,
                           id: 'people',
                           header: 'People',
-                          cell: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => (
-                            <SetupPersonListText people={scenario.people} personIds={item.constraint.people} />
-                          ),
-                          sortValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => item.constraint.people.length,
-                          searchValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => formatPersonSearchList(scenario.people, item.constraint.people),
-                          exportValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => formatPersonDisplayList(scenario.people, item.constraint.people),
-                          filter: {
-                            type: 'text' as const,
-                            placeholder: 'Filter people…',
-                            ariaLabel: `Filter ${copy.title} by people`,
-                          },
+                          primitive: 'array' as const,
+                          itemType: 'string' as const,
+                          getValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => item.constraint.people,
+                          renderValue: (value) => <SetupPersonListText people={scenario.people} personIds={(value as string[]) ?? []} />,
+                          sortValue: (value) => Array.isArray(value) ? value.length : 0,
+                          searchText: (_value, item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => formatPersonSearchList(scenario.people, item.constraint.people),
+                          exportValue: (_value, item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => formatPersonDisplayList(scenario.people, item.constraint.people),
                           width: 280,
                         },
                       ]),
                 ...('penalty_weight' in (filteredItems[0]?.constraint ?? {})
                   ? [{
+                      kind: 'primitive' as const,
                       id: 'weight',
                       header: 'Weight',
-                      cell: (item: IndexedConstraint<Constraint & { penalty_weight: number }>) => item.constraint.penalty_weight,
-                      sortValue: (item: IndexedConstraint<Constraint & { penalty_weight: number }>) => item.constraint.penalty_weight,
-                      searchValue: (item: IndexedConstraint<Constraint & { penalty_weight: number }>) => String(item.constraint.penalty_weight),
-                      exportValue: (item: IndexedConstraint<Constraint & { penalty_weight: number }>) => String(item.constraint.penalty_weight),
-                      filter: {
-                        type: 'numberRange' as const,
-                        ariaLabel: `Filter ${copy.title} by weight`,
-                        getValue: (item: IndexedConstraint<Constraint & { penalty_weight: number }>) => item.constraint.penalty_weight,
-                      },
+                      primitive: 'number' as const,
+                      getValue: (item: IndexedConstraint<Constraint & { penalty_weight: number }>) => item.constraint.penalty_weight,
                       width: 140,
                     }]
                   : []),
                 {
+                  kind: 'primitive' as const,
                   id: 'sessions',
                   header: 'Sessions',
-                  cell: (item) => 'sessions' in item.constraint && item.constraint.sessions?.length ? item.constraint.sessions.map((session) => session + 1).join(', ') : 'All sessions',
-                  searchValue: (item) => ('sessions' in item.constraint && item.constraint.sessions ? item.constraint.sessions.join(' ') : 'all sessions'),
-                  exportValue: (item) => 'sessions' in item.constraint && item.constraint.sessions?.length ? item.constraint.sessions.map((session) => session + 1).join(', ') : 'All sessions',
-                  filter: {
-                    type: 'text',
-                    placeholder: 'Filter sessions…',
-                    ariaLabel: `Filter ${copy.title} by sessions`,
-                  },
+                  primitive: 'array' as const,
+                  itemType: 'number' as const,
+                  getValue: (item) => 'sessions' in item.constraint && item.constraint.sessions?.length
+                    ? item.constraint.sessions.map((session) => session + 1)
+                    : Array.from({ length: scenario.num_sessions }, (_, index) => index + 1),
+                  renderValue: (value) => Array.isArray(value) && value.length > 0 && value.length < scenario.num_sessions
+                    ? value.join(', ')
+                    : 'All sessions',
+                  searchText: (_value, item) => ('sessions' in item.constraint && item.constraint.sessions ? item.constraint.sessions.join(' ') : 'all sessions'),
                   width: 220,
                 },
                 {
+                  kind: 'display' as const,
                   id: 'actions',
                   header: 'Actions',
                   cell: (item) => (

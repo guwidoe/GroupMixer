@@ -17,6 +17,8 @@ describe('AttributeDefinitionsSection', () => {
         onAddAttribute={onAddAttribute}
         onEditAttribute={onEditAttribute}
         onRemoveAttribute={onRemoveAttribute}
+        onApplyGridAttributes={vi.fn()}
+        createGridAttributeRow={() => createAttributeDefinition('track', ['design'], 'attr-track')}
       />,
     );
 
@@ -28,10 +30,15 @@ describe('AttributeDefinitionsSection', () => {
 
     await user.click(screen.getByRole('button', { name: /list/i }));
     expect(screen.getByRole('columnheader', { name: /attribute/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /edit table/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^csv$/i })).toBeInTheDocument();
 
     await user.click(screen.getAllByRole('button', { name: /delete role/i })[0]!);
     expect(onRemoveAttribute).toHaveBeenCalledWith('role');
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    expect(screen.getByRole('textbox', { name: /attribute definitions csv/i })).toHaveValue(
+      'Attribute,Values\nrole,dev | pm',
+    );
   });
 });

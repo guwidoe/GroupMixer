@@ -341,6 +341,42 @@ export function useScenarioEditorConstraints({
     });
   };
 
+  const createRepeatEncounterGridRow = () => ({
+    constraint: {
+      type: 'RepeatEncounter',
+      max_allowed_encounters: 1,
+      penalty_function: 'linear',
+      penalty_weight: 1,
+    } satisfies Constraint,
+    index: -1,
+  });
+
+  const applyRepeatEncounterGridRows = (
+    items: Array<{ constraint: Extract<Constraint, { type: 'RepeatEncounter' }>; index: number }>,
+  ) => {
+    if (!scenario) {
+      return;
+    }
+
+    const otherConstraints = scenario.constraints.filter((constraint) => constraint.type !== 'RepeatEncounter');
+    const nextRepeatConstraints = items.map(({ constraint }) => ({
+      ...constraint,
+      max_allowed_encounters: Math.max(1, Math.round(Number(constraint.max_allowed_encounters) || 1)),
+      penalty_weight: Math.max(0, Number(constraint.penalty_weight) || 0),
+    }) satisfies Constraint);
+
+    setScenario({
+      ...scenario,
+      constraints: [...otherConstraints, ...nextRepeatConstraints],
+    });
+
+    addNotification({
+      type: 'success',
+      title: 'Repeat Encounter Updated',
+      message: `Applied ${nextRepeatConstraints.length} repeat-encounter row${nextRepeatConstraints.length === 1 ? '' : 's'}.`,
+    });
+  };
+
   return {
     showConstraintForm,
     setShowConstraintForm,
@@ -370,5 +406,7 @@ export function useScenarioEditorConstraints({
     handleEditConstraint,
     handleUpdateConstraint,
     handleDeleteConstraint,
+    createRepeatEncounterGridRow,
+    applyRepeatEncounterGridRows,
   };
 }

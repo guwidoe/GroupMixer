@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Hash, Plus, Table, Upload } from 'lucide-react';
 import type { Group, Scenario } from '../../../types';
 import { getGroupCapacityProfile, hasSessionSpecificGroupCapacities } from '../../../utils/groupCapacities';
@@ -16,6 +16,8 @@ interface GroupsSectionProps {
   onDeleteGroup: (groupId: string) => void;
   onOpenBulkAddForm: () => void;
   onTriggerCsvUpload: () => void;
+  onApplyGridGroups: (groups: Group[]) => void;
+  createGridGroupRow: () => Group;
 }
 
 function GroupsBulkActions({ onOpenBulkAddForm, onTriggerCsvUpload }: { onOpenBulkAddForm: () => void; onTriggerCsvUpload: () => void }) {
@@ -43,8 +45,12 @@ function renderGroupContent(
   groups: Group[],
   scenario: Scenario | null,
   viewMode: SetupCollectionViewMode,
+  gridWorkspaceMode: 'browse' | 'edit' | 'csv',
+  setGridWorkspaceMode: React.Dispatch<React.SetStateAction<'browse' | 'edit' | 'csv'>>,
   onEditGroup: (group: Group) => void,
   onDeleteGroup: (groupId: string) => void,
+  onApplyGridGroups: (groups: Group[]) => void,
+  createGridGroupRow: () => Group,
 ) {
   if (viewMode === 'list') {
     return (
@@ -52,65 +58,78 @@ function renderGroupContent(
         rows={groups}
         rowKey={(group) => group.id}
         searchPlaceholder="Search groups or capacities…"
+        workspace={{
+          mode: gridWorkspaceMode,
+          onModeChange: setGridWorkspaceMode,
+          draft: {
+            onApply: onApplyGridGroups,
+            createRow: createGridGroupRow,
+            csv: {
+              ariaLabel: 'Groups grid CSV',
+              helperText: (
+                <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <strong>Session capacities</strong> uses <code>|</code>. Listing the default capacity for every session collapses back to the single default capacity on apply.
+                </div>
+              ),
+            },
+          },
+        }}
         columns={[
           {
+            kind: 'primitive' as const,
             id: 'group',
             header: 'Group',
-            cell: (group) => <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{group.id}</span>,
-            sortValue: (group) => group.id,
-            searchValue: (group) => group.id,
-            exportValue: (group) => group.id,
-            filter: {
-              type: 'text',
-              placeholder: 'Filter groups…',
-              ariaLabel: 'Filter groups by id',
-            },
+            primitive: 'string' as const,
+            getValue: (group: Group) => group.id,
+            setValue: (group: Group, value) => ({ ...group, id: value ?? '' }),
+            renderValue: (value) => <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{value}</span>,
             width: 180,
           },
           {
+            kind: 'primitive' as const,
             id: 'capacity',
             header: 'Default capacity',
-            cell: (group) => `${group.size} people`,
-            sortValue: (group) => group.size,
-            searchValue: (group) => String(group.size),
-            exportValue: (group) => String(group.size),
-            filter: {
-              type: 'numberRange',
-              ariaLabel: 'Filter groups by default capacity',
-              getValue: (group) => group.size,
-            },
+            primitive: 'number' as const,
+            getValue: (group: Group) => group.size,
+            setValue: (group: Group, value) => ({ ...group, size: value ?? 1 }),
+            renderValue: (value) => `${value ?? 0} people`,
             width: 180,
           },
           {
+            kind: 'primitive' as const,
             id: 'session-capacities',
             header: 'Session capacities',
-            cell: (group) =>
-              scenario && hasSessionSpecificGroupCapacities(group, scenario.num_sessions)
+            primitive: 'array' as const,
+            itemType: 'number' as const,
+            getValue: (group: Group) =>
+              scenario
                 ? getGroupCapacityProfile(group, scenario.num_sessions)
-                    .map((capacity, index) => `S${index + 1} ${capacity}`)
-                    .join(' · ')
-                : 'Uses default capacity in every session',
-            searchValue: (group) =>
-              scenario && hasSessionSpecificGroupCapacities(group, scenario.num_sessions)
-                ? getGroupCapacityProfile(group, scenario.num_sessions).join(' ')
-                : 'default capacity',
-            exportValue: (group) =>
-              scenario && hasSessionSpecificGroupCapacities(group, scenario.num_sessions)
-                ? getGroupCapacityProfile(group, scenario.num_sessions)
-                    .map((capacity, index) => `${index + 1}: ${capacity}`)
-                    .join('; ')
-                : 'Uses default capacity in every session',
-            filter: {
-              type: 'text',
-              placeholder: 'Filter session capacities…',
-              ariaLabel: 'Filter groups by session capacities',
+                : [],
+            setValue: (group: Group, value) => {
+              const parsed = Array.isArray(value)
+                ? value.map((entry) => Number(entry)).filter((entry) => Number.isFinite(entry))
+                : [];
+
+              return {
+                ...group,
+                session_sizes:
+                  parsed.length === 0 || parsed.every((entry) => entry === group.size)
+                    ? undefined
+                    : parsed,
+              };
             },
+            renderValue: (value) =>
+              scenario && Array.isArray(value) && value.some((entry) => entry !== value[0])
+                ? value.map((capacity, index) => `S${index + 1} ${capacity}`).join(' · ')
+                : 'Uses default capacity in every session',
+            searchText: (value) => Array.isArray(value) ? value.join(' ') : 'default capacity',
             width: 320,
           },
           {
+            kind: 'display' as const,
             id: 'actions',
             header: 'Actions',
-            cell: (group) => (
+            cell: (group: Group) => (
               <div className="flex justify-end">
                 <SetupItemActions
                   editLabel={`Edit ${group.id}`}
@@ -172,8 +191,11 @@ export function GroupsSection({
   onDeleteGroup,
   onOpenBulkAddForm,
   onTriggerCsvUpload,
+  onApplyGridGroups,
+  createGridGroupRow,
 }: GroupsSectionProps) {
   const groups = useMemo(() => scenario?.groups ?? [], [scenario?.groups]);
+  const [gridWorkspaceMode, setGridWorkspaceMode] = useState<'browse' | 'edit' | 'csv'>('browse');
 
   return (
     <SetupCollectionPage
@@ -195,13 +217,18 @@ export function GroupsSection({
         </>
       }
       defaultViewMode="list"
+      onViewModeChange={(nextMode) => {
+        if (nextMode !== 'list') {
+          setGridWorkspaceMode('browse');
+        }
+      }}
       hasItems={groups.length > 0}
       emptyState={{
         icon: <Hash className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,
         title: 'No groups added yet',
         message: 'Add the groups people can be assigned to before tuning constraints and preferences.',
       }}
-      renderContent={(viewMode) => renderGroupContent(groups, scenario, viewMode, onEditGroup, onDeleteGroup)}
+      renderContent={(viewMode) => renderGroupContent(groups, scenario, viewMode, gridWorkspaceMode, setGridWorkspaceMode, onEditGroup, onDeleteGroup, onApplyGridGroups, createGridGroupRow)}
     />
   );
 }

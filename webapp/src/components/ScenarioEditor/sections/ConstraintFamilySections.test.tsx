@@ -78,7 +78,7 @@ describe('ConstraintFamilySections', () => {
     expect(screen.queryByRole('button', { name: /edit table/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^csv$/i })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /open filter for people/i }));
-    expect(screen.getByRole('textbox', { name: /filter should stay together by people/i })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /filter people/i })).toBeInTheDocument();
     expect(screen.queryByText(/soft constraints/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /^cards$/i }));

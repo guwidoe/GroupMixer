@@ -33,6 +33,8 @@ describe('GroupsSection', () => {
         onDeleteGroup={onDeleteGroup}
         onOpenBulkAddForm={vi.fn()}
         onTriggerCsvUpload={vi.fn()}
+        onApplyGridGroups={vi.fn()}
+        createGridGroupRow={() => ({ id: 'g2', size: 4, session_sizes: undefined })}
       />,
     );
 
@@ -44,15 +46,14 @@ describe('GroupsSection', () => {
 
     await user.click(screen.getByRole('button', { name: /list/i }));
     expect(screen.getByRole('columnheader', { name: /default capacity/i })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /edit table/i })).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: /^csv$/i }));
-    expect(screen.getByRole('heading', { name: /csv preview/i })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: /csv preview content/i })).toHaveValue(
-      'Group,Default capacity,Session capacities,Actions\ng1,4,Uses default capacity in every session,',
-    );
+    expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
 
     await user.click(screen.getAllByRole('button', { name: /delete g1/i })[0]!);
     expect(onDeleteGroup).toHaveBeenCalledWith('g1');
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    expect(screen.getByRole('textbox', { name: /groups grid csv/i })).toHaveValue(
+      'Group,Default capacity,Session capacities\ng1,4,4 | 4 | 4',
+    );
   });
 });
