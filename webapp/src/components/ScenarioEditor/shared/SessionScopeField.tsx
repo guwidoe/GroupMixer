@@ -61,10 +61,10 @@ export function SessionScopeField({
 
   const toneClass = compact ? 'space-y-2 rounded-lg p-2.5' : 'space-y-3 rounded-xl p-3';
   const optionClass = compact
-    ? 'rounded-md border px-2.5 py-2'
+    ? 'block rounded-md border px-2.5 py-2'
     : 'rounded-lg border px-3 py-2.5';
   const sessionGridClass = compact
-    ? 'grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-6'
+    ? 'grid grid-cols-3 gap-2'
     : 'grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4';
 
   const allModeDescription = 'Applies to all current sessions and automatically includes future sessions.';
@@ -93,18 +93,18 @@ export function SessionScopeField({
       <div className={toneClass} style={{ border: '1px solid var(--border-secondary)' }}>
         <div className="space-y-2">
           <label className={optionClass} style={{ borderColor: 'var(--border-secondary)' }}>
-            <div className="flex items-start gap-3">
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1">
               <input
                 type="radio"
                 name={inputName}
                 checked={value.mode === 'all'}
                 onChange={switchToAll}
                 disabled={disabled}
-                className="mt-0.5 h-4 w-4"
+                className="mt-0.5 h-4 w-4 shrink-0"
                 style={{ accentColor: 'var(--color-accent)' }}
               />
-              <div>
-                <div className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-1.5 text-sm font-medium leading-5" style={{ color: 'var(--text-primary)' }}>
                   <span>All sessions</span>
                   {renderModeHelp(allModeDescription, 'Why choose all sessions?')}
                 </div>
@@ -118,18 +118,18 @@ export function SessionScopeField({
           </label>
 
           <label className={optionClass} style={{ borderColor: 'var(--border-secondary)' }}>
-            <div className="flex items-start gap-3">
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-1">
               <input
                 type="radio"
                 name={inputName}
                 checked={value.mode === 'selected'}
                 onChange={switchToSelected}
                 disabled={disabled}
-                className="mt-0.5 h-4 w-4"
+                className="mt-0.5 h-4 w-4 shrink-0"
                 style={{ accentColor: 'var(--color-accent)' }}
               />
-              <div>
-                <div className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-1.5 text-sm font-medium leading-5" style={{ color: 'var(--text-primary)' }}>
                   <span>Only selected sessions</span>
                   {renderModeHelp(selectedModeDescription, 'Why choose only selected sessions?')}
                 </div>
@@ -149,7 +149,7 @@ export function SessionScopeField({
               {Array.from({ length: totalSessions }, (_, index) => (
                 <label
                   key={index}
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm"
+                  className="flex min-w-0 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm"
                   style={{ color: 'var(--text-secondary)' }}
                 >
                   <input
@@ -157,10 +157,10 @@ export function SessionScopeField({
                     checked={selectedSessions.includes(index)}
                     onChange={() => toggleSession(index)}
                     disabled={disabled}
-                    className="h-4 w-4"
+                    className="h-4 w-4 shrink-0"
                     style={{ accentColor: 'var(--color-accent)' }}
                   />
-                  <span>{compact ? String(index + 1) : `Session ${index + 1}`}</span>
+                  <span className="leading-none">{compact ? String(index + 1) : `Session ${index + 1}`}</span>
                 </label>
               ))}
             </div>
