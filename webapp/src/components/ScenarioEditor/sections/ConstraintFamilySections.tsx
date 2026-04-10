@@ -1,283 +1,44 @@
 import React from 'react';
-import { Filter, Link2, Plus, UserLock, UserMinus, Users } from 'lucide-react';
-import type { Constraint, Scenario } from '../../../types';
+import { Plus } from 'lucide-react';
+import type { Constraint } from '../../../types';
 import { findAttributeDefinition, getAttributeDefinitionName } from '../../../services/scenarioAttributes';
-import { useAppStore } from '../../../store';
 import { Button } from '../../ui';
 import AttributeBalanceDashboard from '../../AttributeBalanceDashboard';
-import ConstraintPersonChip from '../../ConstraintPersonChip';
 import PairMeetingCountBulkConvertModal from '../../modals/PairMeetingCountBulkConvertModal';
-import { removePersonFromPeopleConstraint, replaceConstraintsAtIndices } from '../../constraints/constraintMutations';
+import { replaceConstraintsAtIndices } from '../../constraints/constraintMutations';
 import { SetupActionsMenu } from '../shared/SetupActionsMenu';
 import { SetupCollectionPage } from '../shared/SetupCollectionPage';
 import { SetupSearchField } from '../shared/SetupSearchField';
 import {
-  SetupCardGrid,
   SetupItemActions,
   SetupItemCard,
-  SetupKeyValueList,
-  SetupPeopleNodeList,
   SetupSelectionToggle,
-  SetupSessionsBadgeList,
-  SetupTagList,
   SetupTypeBadge,
   SetupWeightBadge,
 } from '../shared/cards';
 import { ScenarioDataGrid } from '../shared/grid/ScenarioDataGrid';
 import { SetupPersonListText, formatPersonDisplayList, formatPersonSearchList } from '../shared/personDisplay';
 import type { SetupCollectionViewMode } from '../shared/useSetupCollectionViewMode';
-
-type HardConstraintFamily = 'ImmovablePeople' | 'MustStayTogether';
-type SoftConstraintFamily =
-  | 'ShouldNotBeTogether'
-  | 'ShouldStayTogether'
-  | 'AttributeBalance'
-  | 'PairMeetingCount';
-
-type IndexedConstraint<T extends Constraint> = { constraint: T; index: number };
-
-type PeopleConstraint = Extract<Constraint, { type: 'ImmovablePeople' | 'MustStayTogether' | 'ShouldNotBeTogether' | 'ShouldStayTogether' }>;
-type AttributeBalanceConstraint = Extract<Constraint, { type: 'AttributeBalance' }>;
-type PairMeetingCountConstraint = Extract<Constraint, { type: 'PairMeetingCount' }>;
-
-interface HardConstraintFamilySectionProps {
-  family: HardConstraintFamily;
-  onAdd: (type: HardConstraintFamily) => void;
-  onEdit: (constraint: Constraint, index: number) => void;
-  onDelete: (index: number) => void;
-}
-
-interface SoftConstraintFamilySectionProps {
-  family: SoftConstraintFamily;
-  onAdd: (type: SoftConstraintFamily) => void;
-  onEdit: (constraint: Constraint, index: number) => void;
-  onDelete: (index: number) => void;
-  onApplyAttributeBalanceRows?: (items: Array<IndexedConstraint<AttributeBalanceConstraint>>) => void;
-  createAttributeBalanceRow?: () => IndexedConstraint<AttributeBalanceConstraint>;
-}
-
-const HARD_SECTION_COPY: Record<HardConstraintFamily, { title: string; description: React.ReactNode; icon: React.ReactNode; addLabel: string }> = {
-  ImmovablePeople: {
-    title: 'Immovable People',
-    description: (
-      <p>
-        Fix selected people to a specific group in selected sessions. Use this for presenters, hosts, or any other
-        participants whose placement is predetermined.
-      </p>
-    ),
-    icon: <UserLock className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,
-    addLabel: 'Add Immovable People',
-  },
-  MustStayTogether: {
-    title: 'Must Stay Together',
-    description: (
-      <p>
-        Require selected people to stay in the same group. This is a requirement, so breaking the set would make the
-        solution invalid.
-      </p>
-    ),
-    icon: <Users className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,
-    addLabel: 'Add Clique',
-  },
-};
-
-const SOFT_SECTION_COPY: Record<SoftConstraintFamily, { title: string; description: React.ReactNode; icon: React.ReactNode; addLabel: string }> = {
-  ShouldNotBeTogether: {
-    title: 'Should Not Be Together',
-    description: (
-      <p>
-        Discourage selected people from landing in the same group. Violations remain possible, but they add weighted
-        cost to the schedule.
-      </p>
-    ),
-    icon: <UserMinus className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,
-    addLabel: 'Add Should Not Be Together',
-  },
-  ShouldStayTogether: {
-    title: 'Should Stay Together',
-    description: (
-      <p>
-        Prefer selected people to remain together without making it mandatory. Use this when feasibility matters more
-        than enforcing a hard grouping rule.
-      </p>
-    ),
-    icon: <Link2 className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,
-    addLabel: 'Add Should Stay Together',
-  },
-  AttributeBalance: {
-    title: 'Attribute Balance',
-    description: (
-      <p>
-        Guide group composition toward a target attribute distribution. This is useful for balancing roles, tracks, or
-        other categorical attributes.
-      </p>
-    ),
-    icon: <Filter className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,
-    addLabel: 'Add Attribute Balance',
-  },
-  PairMeetingCount: {
-    title: 'Pair Meeting Count',
-    description: (
-      <p>
-        Target how often important pairs should meet. Use this to capture at-least, at-most, or exact pair-contact
-        goals.
-      </p>
-    ),
-    icon: <Users className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,
-    addLabel: 'Add Pair Meeting Count',
-  },
-};
-
-function useConstraintScenario() {
-  const { resolveScenario, setScenario, ui, attributeDefinitions, addNotification } = useAppStore();
-
-  if (ui.isLoading) {
-    return { scenario: null, setScenario, attributeDefinitions: [], addNotification, isLoading: true } as const;
-  }
-
-  return {
-    scenario: resolveScenario(),
-    setScenario,
-    attributeDefinitions,
-    addNotification,
-    isLoading: false,
-  } as const;
-}
-
-function getAttributeBalanceStructuredKeys(
-  items: Array<IndexedConstraint<AttributeBalanceConstraint>>,
-  attributeDefinitions: ReturnType<typeof useAppStore.getState>['attributeDefinitions'],
-) {
-  const seen = new Set<string>();
-  const keys = items.flatMap(({ constraint }) => {
-    const definition = findAttributeDefinition(attributeDefinitions, {
-      id: constraint.attribute_id,
-      name: constraint.attribute_key,
-    });
-    return definition?.values ?? Object.keys(constraint.desired_values ?? {});
-  });
-
-  return keys
-    .map((value) => String(value).trim())
-    .filter((value) => {
-      if (!value || seen.has(value)) {
-        return false;
-      }
-      seen.add(value);
-      return true;
-    })
-    .map((value) => ({ value, label: value }));
-}
-
-function getIndexedConstraints<T extends Constraint['type']>(scenario: Scenario, type: T) {
-  return scenario.constraints
-    .map((constraint, index) => ({ constraint, index }))
-    .filter((item): item is IndexedConstraint<Extract<Constraint, { type: T }>> => item.constraint.type === type);
-}
-
-function createPeopleNodes(
-  scenario: Scenario,
-  people: string[],
-  index: number,
-  minimumRemainingPeople: number,
-  setScenario: (scenario: Scenario) => void,
-  invalidRemovalMessage: string,
-) {
-  return people.map((personId) => (
-    <ConstraintPersonChip
-      key={personId}
-      personId={personId}
-      people={scenario.people}
-      onRemove={(removeId) => {
-        const remainingPeople = people.filter((id) => id !== removeId);
-        const willBeInvalid = remainingPeople.length < minimumRemainingPeople;
-        if (willBeInvalid) {
-          if (!window.confirm(invalidRemovalMessage)) return;
-        }
-        setScenario(removePersonFromPeopleConstraint(scenario, index, removeId, minimumRemainingPeople));
-      }}
-    />
-  ));
-}
-
-function renderPeopleConstraintContent(
-  scenario: Scenario,
-  constraint: PeopleConstraint,
-  index: number,
-  setScenario: (scenario: Scenario) => void,
-) {
-  const minimumRemainingPeople = constraint.type === 'ImmovablePeople' ? 1 : 2;
-  const invalidRemovalMessage =
-    constraint.type === 'ImmovablePeople'
-      ? 'Removing this person will leave the constraint empty. Remove the entire constraint?'
-      : 'Removing this person will leave the constraint invalid. Remove the entire constraint?';
-
-  return (
-    <>
-      <SetupPeopleNodeList
-        label={constraint.type === 'PairMeetingCount' ? 'Pair' : 'People'}
-        people={createPeopleNodes(scenario, constraint.people, index, minimumRemainingPeople, setScenario, invalidRemovalMessage)}
-      />
-      {'group_id' in constraint ? <SetupKeyValueList items={[{ label: 'Group', value: constraint.group_id }]} /> : null}
-      <SetupSessionsBadgeList sessions={constraint.sessions} />
-    </>
-  );
-}
-
-function renderAttributeBalanceContent(constraint: AttributeBalanceConstraint) {
-  return (
-    <>
-      <SetupKeyValueList
-        items={[
-          { label: 'Group', value: constraint.group_id },
-          { label: 'Attribute', value: constraint.attribute_key },
-        ]}
-      />
-      <SetupTagList
-        items={Object.entries(constraint.desired_values || {}).map(([key, value]) => (
-          <span
-            key={key}
-            className="rounded-full px-2 py-0.5 text-xs font-medium"
-            style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--color-accent)', border: '1px solid var(--color-accent)' }}
-          >
-            {key}: {value}
-          </span>
-        ))}
-      />
-      <SetupSessionsBadgeList sessions={constraint.sessions} />
-    </>
-  );
-}
-
-function renderPairMeetingCountContent(scenario: Scenario, constraint: PairMeetingCountConstraint) {
-  return (
-    <>
-      <SetupPeopleNodeList
-        label="Pair"
-        people={constraint.people.map((personId) => (
-          <ConstraintPersonChip key={personId} personId={personId} people={scenario.people} />
-        ))}
-      />
-      <SetupKeyValueList
-        items={[
-          { label: 'Target meetings', value: constraint.target_meetings },
-          { label: 'Mode', value: constraint.mode || 'at_least' },
-        ]}
-      />
-      <SetupSessionsBadgeList sessions={constraint.sessions} />
-    </>
-  );
-}
-
-function ConstraintCards<T extends Constraint>({
-  items,
-  renderCard,
-}: {
-  items: Array<IndexedConstraint<T>>;
-  renderCard: (item: IndexedConstraint<T>) => React.ReactNode;
-}) {
-  return <SetupCardGrid minColumnWidth="19rem">{items.map(renderCard)}</SetupCardGrid>;
-}
+import { HARD_SECTION_COPY, SOFT_SECTION_COPY } from './constraintFamilies/copy';
+import {
+  ConstraintCards,
+  getAttributeBalanceStructuredKeys,
+  getIndexedConstraints,
+  renderAttributeBalanceContent,
+  renderPairMeetingCountContent,
+  renderPeopleConstraintContent,
+  useConstraintScenario,
+} from './constraintFamilies/shared';
+import type {
+  AttributeBalanceConstraint,
+  HardConstraintFamily,
+  HardConstraintFamilySectionProps,
+  IndexedConstraint,
+  PairMeetingCountConstraint,
+  PeopleConstraint,
+  SoftConstraintFamily,
+  SoftConstraintFamilySectionProps,
+} from './constraintFamilies/types';
 
 export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }: HardConstraintFamilySectionProps) {
   const { scenario, setScenario, addNotification, isLoading } = useConstraintScenario();
