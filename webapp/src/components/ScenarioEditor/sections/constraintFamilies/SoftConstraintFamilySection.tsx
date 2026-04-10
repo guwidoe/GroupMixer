@@ -1,0 +1,691 @@
+import React from 'react';
+import { Plus } from 'lucide-react';
+import type { Constraint } from '../../../../types';
+import { findAttributeDefinition, getAttributeDefinitionName } from '../../../../services/scenarioAttributes';
+import AttributeBalanceDashboard from '../../../AttributeBalanceDashboard';
+import PairMeetingCountBulkConvertModal from '../../../modals/PairMeetingCountBulkConvertModal';
+import { replaceConstraintsAtIndices } from '../../../constraints/constraintMutations';
+import { Button } from '../../../ui';
+import { SetupActionsMenu } from '../../shared/SetupActionsMenu';
+import { SetupCollectionPage } from '../../shared/SetupCollectionPage';
+import { SetupSearchField } from '../../shared/SetupSearchField';
+import {
+  SetupItemActions,
+  SetupItemCard,
+  SetupSelectionToggle,
+  SetupTypeBadge,
+  SetupWeightBadge,
+} from '../../shared/cards';
+import { ScenarioDataGrid } from '../../shared/grid/ScenarioDataGrid';
+import { SetupPersonListText, formatPersonDisplayList, formatPersonSearchList } from '../../shared/personDisplay';
+import type { SetupCollectionViewMode } from '../../shared/useSetupCollectionViewMode';
+import { SOFT_SECTION_COPY } from './copy';
+import {
+  ConstraintCards,
+  getAttributeBalanceStructuredKeys,
+  getIndexedConstraints,
+  renderAttributeBalanceContent,
+  renderPairMeetingCountContent,
+  renderPeopleConstraintContent,
+  useConstraintScenario,
+} from './shared';
+import type {
+  AttributeBalanceConstraint,
+  IndexedConstraint,
+  PairMeetingCountConstraint,
+  SoftConstraintFamily,
+  SoftConstraintFamilySectionProps,
+} from './types';
+
+export function SoftConstraintFamilySection({
+  family,
+  onAdd,
+  onEdit,
+  onDelete,
+  onApplyAttributeBalanceRows,
+  createAttributeBalanceRow,
+}: SoftConstraintFamilySectionProps) {
+  const { scenario, setScenario, attributeDefinitions, addNotification, isLoading } = useConstraintScenario();
+  const [search, setSearch] = React.useState('');
+  const [viewMode, setViewMode] = React.useState<SetupCollectionViewMode>('list');
+  const [gridWorkspaceMode, setGridWorkspaceMode] = React.useState<'browse' | 'edit' | 'csv'>('browse');
+  const [selectedShouldIndices, setSelectedShouldIndices] = React.useState<number[]>([]);
+  const [isSelectingShould, setIsSelectingShould] = React.useState(false);
+  const [showPairConvert, setShowPairConvert] = React.useState(false);
+  const handleViewModeChange = React.useCallback((nextMode: SetupCollectionViewMode) => {
+    setViewMode(nextMode);
+    if (nextMode !== 'cards') {
+      setIsSelectingShould(false);
+      setSelectedShouldIndices((current) => (current.length === 0 ? current : []));
+    }
+    if (nextMode !== 'list') {
+      setGridWorkspaceMode('browse');
+    }
+  }, []);
+
+  if (isLoading || !scenario) {
+    return <div className="space-y-4 pt-1 pl-0">Loading...</div>;
+  }
+
+  const copy = SOFT_SECTION_COPY[family];
+  const items = getIndexedConstraints(scenario, family);
+  const searchValue = search.trim().toLowerCase();
+
+  const filteredItems = family === 'ShouldStayTogether' && viewMode === 'cards'
+    ? items.filter(({ constraint }) => {
+        if (!searchValue) return true;
+        const textPool: string[] = [];
+        for (const personId of constraint.people) {
+          textPool.push(personId.toLowerCase());
+          const person = scenario.people.find((candidate) => candidate.id === personId);
+          if (person?.attributes?.name) {
+            textPool.push(String(person.attributes.name).toLowerCase());
+          }
+        }
+        if (constraint.sessions) {
+          textPool.push(...constraint.sessions.map((session) => String(session + 1)));
+        }
+        return textPool.some((value) => value.includes(searchValue));
+      })
+    : items;
+
+  const summary = family === 'AttributeBalance' && items.length > 0 ? (
+    <AttributeBalanceDashboard constraints={items.map((item) => item.constraint as AttributeBalanceConstraint)} scenario={scenario} />
+  ) : null;
+
+  const createLocalGridRow = (): IndexedConstraint<Extract<Constraint, { type: SoftConstraintFamily }>> => {
+    if (family === 'ShouldNotBeTogether' || family === 'ShouldStayTogether') {
+      return {
+        constraint: {
+          type: family,
+          people: [],
+          penalty_weight: family === 'ShouldStayTogether' ? 10 : 1000,
+          sessions: undefined,
+        },
+        index: -1,
+      } as IndexedConstraint<Extract<Constraint, { type: SoftConstraintFamily }>>;
+    }
+
+    if (family === 'PairMeetingCount') {
+      return {
+        constraint: {
+          type: 'PairMeetingCount',
+          people: ['', ''],
+          sessions: Array.from({ length: scenario.num_sessions }, (_, index) => index),
+          target_meetings: 1,
+          mode: 'at_least',
+          penalty_weight: 10,
+        },
+        index: -1,
+      } as IndexedConstraint<Extract<Constraint, { type: SoftConstraintFamily }>>;
+    }
+
+    return createAttributeBalanceRow?.() as IndexedConstraint<Extract<Constraint, { type: SoftConstraintFamily }>>;
+  };
+
+  const applyLocalGridRows = (nextItems: Array<IndexedConstraint<Extract<Constraint, { type: SoftConstraintFamily }>>>) => {
+    if (family === 'AttributeBalance') {
+      onApplyAttributeBalanceRows?.(nextItems as Array<IndexedConstraint<AttributeBalanceConstraint>>);
+      return;
+    }
+
+    const otherConstraints = scenario.constraints.filter((constraint) => constraint.type !== family);
+    let skippedRows = 0;
+
+    const nextConstraints = nextItems.flatMap(({ constraint }) => {
+      if (constraint.type === 'ShouldNotBeTogether' || constraint.type === 'ShouldStayTogether') {
+        const people = Array.from(new Set(constraint.people.filter(Boolean)));
+        if (people.length < 2) {
+          skippedRows += 1;
+          return [];
+        }
+
+        const normalizedSessions = constraint.sessions?.length
+          ? Array.from(new Set(constraint.sessions.map((session) => Math.max(0, Math.round(Number(session) || 0))))).sort((left, right) => left - right)
+          : undefined;
+
+        return [{
+          ...constraint,
+          people,
+          penalty_weight: Math.max(0, Number(constraint.penalty_weight) || 0),
+          sessions: normalizedSessions && normalizedSessions.length === scenario.num_sessions
+            ? undefined
+            : normalizedSessions,
+        } satisfies Constraint];
+      }
+
+      if (constraint.type === 'PairMeetingCount') {
+        const people = Array.from(new Set(constraint.people.filter(Boolean))).slice(0, 2);
+        if (people.length < 2) {
+          skippedRows += 1;
+          return [];
+        }
+
+        const normalizedSessions = constraint.sessions?.length
+          ? Array.from(new Set(constraint.sessions.map((session) => Math.max(0, Math.round(Number(session) || 0))))).sort((left, right) => left - right)
+          : Array.from({ length: scenario.num_sessions }, (_, index) => index);
+        const maxMeetings = normalizedSessions.length;
+
+        return [{
+          ...constraint,
+          people: [people[0], people[1]] as [string, string],
+          sessions: normalizedSessions,
+          target_meetings: Math.min(Math.max(0, Math.round(Number(constraint.target_meetings) || 0)), maxMeetings),
+          mode: constraint.mode === 'exact' || constraint.mode === 'at_most' ? constraint.mode : 'at_least',
+          penalty_weight: Math.max(0, Number(constraint.penalty_weight) || 0),
+        } satisfies Constraint];
+      }
+
+      return [];
+    });
+
+    setScenario({
+      ...scenario,
+      constraints: [...otherConstraints, ...nextConstraints],
+    });
+
+    addNotification({
+      type: skippedRows > 0 ? 'info' : 'success',
+      title: skippedRows > 0 ? 'Some Rows Skipped' : 'Constraints Updated',
+      message: skippedRows > 0
+        ? `Applied ${nextConstraints.length} ${copy.title.toLowerCase()} row${nextConstraints.length === 1 ? '' : 's'} and skipped ${skippedRows} incomplete row${skippedRows === 1 ? '' : 's'}.`
+        : `Applied ${nextConstraints.length} ${copy.title.toLowerCase()} row${nextConstraints.length === 1 ? '' : 's'}.`,
+    });
+  };
+
+  return (
+    <>
+      <SetupCollectionPage
+        sectionKey={family}
+        title={copy.title}
+        count={items.length}
+        description={copy.description}
+        actions={
+          <>
+            {family === 'ShouldStayTogether' ? (
+              <>
+                <Button
+                  variant={isSelectingShould ? 'primary' : 'secondary'}
+                  onClick={() => {
+                    setIsSelectingShould((current) => {
+                      if (current) {
+                        setSelectedShouldIndices([]);
+                      }
+                      return !current;
+                    });
+                  }}
+                >
+                  {isSelectingShould ? 'Done selecting' : 'Select cards'}
+                </Button>
+                <SetupActionsMenu
+                  label="Actions"
+                  summary={selectedShouldIndices.length > 0 ? `Advanced actions · ${selectedShouldIndices.length} selected` : 'Advanced actions'}
+                  items={[
+                    {
+                      label: 'Convert selected to Pair Meeting Count',
+                      disabled: selectedShouldIndices.length === 0,
+                      description:
+                        selectedShouldIndices.length === 0
+                          ? 'Turn on card selection and choose one or more preferences first.'
+                          : 'Break selected cliques into pair-based contact targets.',
+                      onSelect: () => setShowPairConvert(true),
+                    },
+                  ]}
+                />
+              </>
+            ) : null}
+            <Button variant="primary" leadingIcon={<Plus className="h-4 w-4" />} onClick={() => onAdd(family)}>
+              {copy.addLabel}
+            </Button>
+          </>
+        }
+        toolbarLeading={(activeViewMode) =>
+          family === 'ShouldStayTogether' && activeViewMode === 'cards' ? (
+            <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
+              <SetupSearchField value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Filter by person or session" label="Search should stay together preferences" />
+              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                Showing {filteredItems.length} of {items.length}. Selected {selectedShouldIndices.length}.
+              </div>
+            </div>
+          ) : null
+        }
+        summary={summary}
+        onViewModeChange={handleViewModeChange}
+        defaultViewMode="list"
+        hasItems={filteredItems.length > 0}
+        emptyState={{
+          icon: copy.icon,
+          title: searchValue ? `No ${copy.title.toLowerCase()} match the current filter` : `No ${copy.title.toLowerCase()} yet`,
+          message: searchValue
+            ? 'Try a broader filter or clear the search to see all matching constraints.'
+            : 'Add the first preference in this family to guide the solver more precisely.',
+        }}
+        renderContent={(nextViewMode: SetupCollectionViewMode) =>
+          nextViewMode === 'cards' ? (
+            <ConstraintCards
+              items={filteredItems}
+              renderCard={({ constraint, index }) => (
+                <SetupItemCard
+                  key={index}
+                  selected={selectedShouldIndices.includes(index)}
+                  badges={
+                    <>
+                      <SetupTypeBadge label={copy.title} />
+                      {'penalty_weight' in constraint ? <SetupWeightBadge weight={constraint.penalty_weight} /> : null}
+                    </>
+                  }
+                  onOpen={() => onEdit(constraint, index)}
+                  openLabel={`Edit ${copy.title.toLowerCase()} constraint`}
+                  actions={
+                    <>
+                      {family === 'ShouldStayTogether' && isSelectingShould ? (
+                        <SetupSelectionToggle
+                          selected={selectedShouldIndices.includes(index)}
+                          onToggle={() => setSelectedShouldIndices((previous) => previous.includes(index) ? previous.filter((value) => value !== index) : [...previous, index])}
+                          label={`${selectedShouldIndices.includes(index) ? 'Deselect' : 'Select'} should stay together preference`}
+                        />
+                      ) : null}
+                      <SetupItemActions onDelete={() => onDelete(index)} variant="card" />
+                    </>
+                  }
+                >
+                  {constraint.type === 'ShouldNotBeTogether' || constraint.type === 'ShouldStayTogether'
+                    ? renderPeopleConstraintContent(scenario, constraint, index, setScenario)
+                    : null}
+                  {constraint.type === 'AttributeBalance' ? renderAttributeBalanceContent(constraint) : null}
+                  {constraint.type === 'PairMeetingCount' ? renderPairMeetingCountContent(scenario, constraint) : null}
+                </SetupItemCard>
+              )}
+            />
+          ) : (
+            <ScenarioDataGrid
+              rows={filteredItems}
+              rowKey={(item) => `${item.constraint.type}-${item.index}`}
+              workspace={((family === 'AttributeBalance' && onApplyAttributeBalanceRows && createAttributeBalanceRow)
+                || family === 'ShouldNotBeTogether'
+                || family === 'ShouldStayTogether'
+                || family === 'PairMeetingCount')
+                ? {
+                    mode: gridWorkspaceMode,
+                    onModeChange: setGridWorkspaceMode,
+                    draft: {
+                      onApply: applyLocalGridRows,
+                      createRow: createLocalGridRow,
+                      csv: {
+                        ariaLabel: `${copy.title} CSV`,
+                        helperText: (
+                          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                            {family === 'AttributeBalance'
+                              ? <><strong>Desired value columns</strong> expand from the selected attribute values and round-trip directly through CSV.</>
+                              : 'Use the shared grid editor or CSV mode to update these constraints in bulk.'}
+                          </div>
+                        ),
+                      },
+                    },
+                  }
+                : undefined}
+              columns={[
+                ...(family === 'AttributeBalance'
+                  ? [
+                      {
+                        kind: 'primitive' as const,
+                        id: 'group',
+                        header: 'Group',
+                        primitive: 'enum' as const,
+                        options: scenario.groups.map((group) => ({ value: group.id, label: group.id })),
+                        getValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.group_id,
+                        setValue: (item: IndexedConstraint<AttributeBalanceConstraint>, value) => ({
+                          ...item,
+                          constraint: {
+                            ...item.constraint,
+                            group_id: value ?? '',
+                          },
+                        }),
+                        searchText: (value, item) => `${value ?? ''} ${item.constraint.attribute_key}`.trim(),
+                        width: 180,
+                      },
+                      {
+                        kind: 'primitive' as const,
+                        id: 'attribute',
+                        header: 'Attribute',
+                        primitive: 'enum' as const,
+                        options: attributeDefinitions.map((definition) => ({
+                          value: definition.id,
+                          label: getAttributeDefinitionName(definition),
+                        })),
+                        getValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => findAttributeDefinition(attributeDefinitions, {
+                          id: item.constraint.attribute_id,
+                          name: item.constraint.attribute_key,
+                        })?.id ?? item.constraint.attribute_id ?? '',
+                        setValue: (item: IndexedConstraint<AttributeBalanceConstraint>, value) => {
+                          const definition = findAttributeDefinition(attributeDefinitions, { id: value, name: value });
+                          const allowedValues = new Set(definition?.values ?? []);
+                          const desiredValues = Object.fromEntries(
+                            Object.entries(item.constraint.desired_values ?? {}).filter(([key]) => allowedValues.size === 0 || allowedValues.has(key)),
+                          );
+
+                          return {
+                            ...item,
+                            constraint: {
+                              ...item.constraint,
+                              attribute_id: definition?.id,
+                              attribute_key: definition ? getAttributeDefinitionName(definition) : (value ?? ''),
+                              desired_values: desiredValues,
+                            },
+                          };
+                        },
+                        width: 180,
+                      },
+                      {
+                        kind: 'structured' as const,
+                        structured: 'finite-key-map' as const,
+                        id: 'desired-values',
+                        header: 'Desired values',
+                        childPrimitive: 'number' as const,
+                        keys: (rows: Array<IndexedConstraint<AttributeBalanceConstraint>>) =>
+                          getAttributeBalanceStructuredKeys(rows, attributeDefinitions),
+                        getValue: (item: IndexedConstraint<AttributeBalanceConstraint>, key: string) => item.constraint.desired_values?.[key],
+                        setValue: (item: IndexedConstraint<AttributeBalanceConstraint>, key: string, value) => {
+                          const nextDesiredValues = { ...(item.constraint.desired_values ?? {}) };
+                          if (value == null || !Number.isFinite(Number(value))) {
+                            delete nextDesiredValues[key];
+                          } else {
+                            nextDesiredValues[key] = Number(value);
+                          }
+
+                          return {
+                            ...item,
+                            constraint: {
+                              ...item.constraint,
+                              desired_values: nextDesiredValues,
+                            },
+                          };
+                        },
+                        isKeyAvailable: (item: IndexedConstraint<AttributeBalanceConstraint>, key: string) => {
+                          const definition = findAttributeDefinition(attributeDefinitions, {
+                            id: item.constraint.attribute_id,
+                            name: item.constraint.attribute_key,
+                          });
+                          return Boolean(definition?.values.includes(key) || key in (item.constraint.desired_values ?? {}));
+                        },
+                        childWidth: 120,
+                      },
+                      {
+                        kind: 'primitive' as const,
+                        id: 'mode',
+                        header: 'Mode',
+                        primitive: 'enum' as const,
+                        options: [
+                          { value: 'exact', label: 'exact' },
+                          { value: 'at_least', label: 'at least' },
+                        ],
+                        getValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.mode ?? 'exact',
+                        setValue: (item: IndexedConstraint<AttributeBalanceConstraint>, value) => ({
+                          ...item,
+                          constraint: {
+                            ...item.constraint,
+                            mode: value === 'at_least' ? 'at_least' : 'exact',
+                          },
+                        }),
+                        width: 160,
+                      },
+                    ]
+                  : family === 'PairMeetingCount'
+                    ? [
+                        {
+                          kind: 'primitive' as const,
+                          id: 'pair',
+                          header: 'Pair',
+                          primitive: 'array' as const,
+                          itemType: 'string' as const,
+                          options: scenario.people.map((person) => ({
+                            value: person.id,
+                            label: person.attributes.name || person.id,
+                          })),
+                          getValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => item.constraint.people,
+                          setValue: (item: IndexedConstraint<PairMeetingCountConstraint>, value) => ({
+                            ...item,
+                            constraint: {
+                              ...item.constraint,
+                              people: Array.from(new Set((Array.isArray(value) ? value : []).map(String))).slice(0, 2) as [string, string],
+                            },
+                          }),
+                          renderValue: (value) => (
+                            <SetupPersonListText people={scenario.people} personIds={(value as string[]) ?? []} separator=" & " />
+                          ),
+                          sortValue: (_value, item: IndexedConstraint<PairMeetingCountConstraint>) => formatPersonDisplayList(scenario.people, item.constraint.people, ' & '),
+                          searchText: (_value, item: IndexedConstraint<PairMeetingCountConstraint>) => formatPersonSearchList(scenario.people, item.constraint.people),
+                          exportValue: (_value, item: IndexedConstraint<PairMeetingCountConstraint>) => formatPersonDisplayList(scenario.people, item.constraint.people, ' & '),
+                          width: 280,
+                        },
+                        {
+                          kind: 'primitive' as const,
+                          id: 'target-meetings',
+                          header: 'Target meetings',
+                          primitive: 'number' as const,
+                          getValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => item.constraint.target_meetings,
+                          setValue: (item: IndexedConstraint<PairMeetingCountConstraint>, value) => ({
+                            ...item,
+                            constraint: {
+                              ...item.constraint,
+                              target_meetings: value ?? 0,
+                            },
+                          }),
+                          width: 170,
+                        },
+                        {
+                          kind: 'primitive' as const,
+                          id: 'mode',
+                          header: 'Mode',
+                          primitive: 'enum' as const,
+                          options: [
+                            { value: 'at_least', label: 'at least' },
+                            { value: 'exact', label: 'exact' },
+                            { value: 'at_most', label: 'at most' },
+                          ],
+                          getValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => item.constraint.mode ?? 'at_least',
+                          setValue: (item: IndexedConstraint<PairMeetingCountConstraint>, value) => ({
+                            ...item,
+                            constraint: {
+                              ...item.constraint,
+                              mode: value === 'exact' || value === 'at_most' ? value : 'at_least',
+                            },
+                          }),
+                          width: 160,
+                        },
+                      ]
+                    : [
+                        {
+                          kind: 'primitive' as const,
+                          id: 'people',
+                          header: 'People',
+                          primitive: 'array' as const,
+                          itemType: 'string' as const,
+                          options: scenario.people.map((person) => ({
+                            value: person.id,
+                            label: person.attributes.name || person.id,
+                          })),
+                          getValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => item.constraint.people,
+                          setValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>, value) => ({
+                            ...item,
+                            constraint: {
+                              ...item.constraint,
+                              people: Array.from(new Set((Array.isArray(value) ? value : []).map(String))),
+                            },
+                          }),
+                          renderValue: (value) => <SetupPersonListText people={scenario.people} personIds={(value as string[]) ?? []} />,
+                          sortValue: (value) => Array.isArray(value) ? value.length : 0,
+                          searchText: (_value, item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => formatPersonSearchList(scenario.people, item.constraint.people),
+                          exportValue: (_value, item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => formatPersonDisplayList(scenario.people, item.constraint.people),
+                          width: 280,
+                        },
+                      ]),
+                ...('penalty_weight' in (filteredItems[0]?.constraint ?? {})
+                  ? [{
+                      kind: 'primitive' as const,
+                      id: 'weight',
+                      header: 'Weight',
+                      primitive: 'number' as const,
+                      getValue: (item: IndexedConstraint<Constraint & { penalty_weight: number }>) => item.constraint.penalty_weight,
+                      setValue:
+                        family === 'AttributeBalance'
+                          ? (item: IndexedConstraint<AttributeBalanceConstraint>, value) => ({
+                              ...item,
+                              constraint: {
+                                ...item.constraint,
+                                penalty_weight: value ?? 0,
+                              },
+                            })
+                          : family === 'PairMeetingCount'
+                            ? (item: IndexedConstraint<PairMeetingCountConstraint>, value) => ({
+                                ...item,
+                                constraint: {
+                                  ...item.constraint,
+                                  penalty_weight: value ?? 0,
+                                },
+                              })
+                            : family === 'ShouldNotBeTogether' || family === 'ShouldStayTogether'
+                              ? (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>, value) => ({
+                                  ...item,
+                                  constraint: {
+                                    ...item.constraint,
+                                    penalty_weight: value ?? 0,
+                                  },
+                                })
+                              : undefined,
+                      width: 140,
+                    }]
+                  : []),
+                {
+                  kind: 'primitive' as const,
+                  id: 'sessions',
+                  header: 'Sessions',
+                  primitive: 'array' as const,
+                  itemType: 'number' as const,
+                  options: Array.from({ length: scenario.num_sessions }, (_, index) => ({
+                    value: String(index + 1),
+                    label: String(index + 1),
+                  })),
+                  getValue: (item) => 'sessions' in item.constraint && item.constraint.sessions?.length
+                    ? item.constraint.sessions.map((session) => session + 1)
+                    : Array.from({ length: scenario.num_sessions }, (_, index) => index + 1),
+                  setValue:
+                    family === 'AttributeBalance'
+                      ? (item: IndexedConstraint<AttributeBalanceConstraint>, value) => {
+                          const normalized = Array.isArray(value)
+                            ? Array.from(new Set(value.map((entry) => Math.max(1, Math.round(Number(entry) || 1))))).sort((left, right) => left - right)
+                            : [];
+
+                          return {
+                            ...item,
+                            constraint: {
+                              ...item.constraint,
+                              sessions: normalized.length === 0 || normalized.length === scenario.num_sessions
+                                ? undefined
+                                : normalized.map((session) => session - 1),
+                            },
+                          };
+                        }
+                      : family === 'PairMeetingCount'
+                        ? (item: IndexedConstraint<PairMeetingCountConstraint>, value) => {
+                            const normalized = Array.isArray(value)
+                              ? Array.from(new Set(value.map((entry) => Math.max(1, Math.round(Number(entry) || 1))))).sort((left, right) => left - right)
+                              : [];
+
+                            return {
+                              ...item,
+                              constraint: {
+                                ...item.constraint,
+                                sessions: (normalized.length > 0
+                                  ? normalized
+                                  : Array.from({ length: scenario.num_sessions }, (_, index) => index + 1)).map((session) => session - 1),
+                              },
+                            };
+                          }
+                        : family === 'ShouldNotBeTogether' || family === 'ShouldStayTogether'
+                          ? (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>, value) => {
+                              const normalized = Array.isArray(value)
+                                ? Array.from(new Set(value.map((entry) => Math.max(1, Math.round(Number(entry) || 1))))).sort((left, right) => left - right)
+                                : [];
+
+                              return {
+                                ...item,
+                                constraint: {
+                                  ...item.constraint,
+                                  sessions: normalized.length === 0 || normalized.length === scenario.num_sessions
+                                    ? undefined
+                                    : normalized.map((session) => session - 1),
+                                },
+                              };
+                            }
+                          : undefined,
+                  renderValue: (value) => Array.isArray(value) && value.length > 0 && value.length < scenario.num_sessions
+                    ? value.join(', ')
+                    : 'All sessions',
+                  searchText: (_value, item) => ('sessions' in item.constraint && item.constraint.sessions ? item.constraint.sessions.join(' ') : 'all sessions'),
+                  width: 220,
+                },
+                {
+                  kind: 'display' as const,
+                  id: 'actions',
+                  header: 'Actions',
+                  cell: (item) => (
+                    <div className="flex justify-end">
+                      <SetupItemActions onEdit={() => onEdit(item.constraint, item.index)} onDelete={() => onDelete(item.index)} />
+                    </div>
+                  ),
+                  align: 'right',
+                  hideable: false,
+                  width: 180,
+                },
+              ]}
+            />
+          )
+        }
+      />
+
+      {showPairConvert ? (
+        <PairMeetingCountBulkConvertModal
+          selectedCount={selectedShouldIndices.length}
+          totalSessions={scenario.num_sessions}
+          people={scenario.people}
+          selectedConstraints={filteredItems
+            .filter(({ index }) => selectedShouldIndices.includes(index))
+            .map(({ index, constraint }) => ({ index, people: (constraint as Extract<Constraint, { type: 'ShouldStayTogether' }>).people }))}
+          onCancel={() => setShowPairConvert(false)}
+          onConvert={({ retainOriginal, sessions, target, mode, useSourceWeight, overrideWeight, anchorsByIndex }) => {
+            setScenario(replaceConstraintsAtIndices(scenario, selectedShouldIndices, (currentConstraint, index) => {
+              if (currentConstraint.type !== 'ShouldStayTogether') {
+                return [currentConstraint];
+              }
+
+              const baseWeight = currentConstraint.penalty_weight;
+              const weight = useSourceWeight && typeof baseWeight === 'number' ? baseWeight : (overrideWeight as number);
+              const people = currentConstraint.people;
+              const perConstraintAnchor = anchorsByIndex && anchorsByIndex[index];
+              const anchor = perConstraintAnchor && people.includes(perConstraintAnchor) ? perConstraintAnchor : people[0];
+              const pairConstraints = people.flatMap((personId) => {
+                if (personId === anchor) {
+                  return [];
+                }
+
+                return [{
+                  type: 'PairMeetingCount',
+                  people: [anchor, personId],
+                  sessions,
+                  target_meetings: target,
+                  mode,
+                  penalty_weight: weight,
+                } satisfies Constraint];
+              });
+
+              return retainOriginal ? [...pairConstraints, currentConstraint] : pairConstraints;
+            }));
+            setSelectedShouldIndices([]);
+            setShowPairConvert(false);
+          }}
+        />
+      ) : null}
+    </>
+  );
+}
