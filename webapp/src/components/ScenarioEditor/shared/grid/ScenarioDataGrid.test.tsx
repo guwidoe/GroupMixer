@@ -46,14 +46,11 @@ describe('ScenarioDataGrid', () => {
     expect(within(bodyRows[1]!).getByText('Beta')).toBeInTheDocument();
   });
 
-  it('filters rows from the shared data source', async () => {
-    const user = userEvent.setup();
-
+  it('does not render the obsolete global search box', () => {
     render(
       <ScenarioDataGrid
         rows={rows}
         rowKey={(row) => row.id}
-        searchPlaceholder="Search names"
         columns={[
           {
             id: 'name',
@@ -66,18 +63,16 @@ describe('ScenarioDataGrid', () => {
       />,
     );
 
-    await user.type(screen.getByRole('textbox', { name: /search table/i }), 'alpha');
-
-    expect(screen.getByText('Alpha')).toBeInTheDocument();
-    expect(screen.queryByText('Beta')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /search table/i })).not.toBeInTheDocument();
   });
 
-  it('can hide the global search row when a section relies on column filters instead', () => {
+  it('shows filtered counts inside the filters bar instead of the toolbar', async () => {
+    const user = userEvent.setup();
+
     render(
       <ScenarioDataGrid
         rows={rows}
         rowKey={(row) => row.id}
-        showGlobalSearch={false}
         columns={[
           {
             id: 'name',
@@ -95,7 +90,11 @@ describe('ScenarioDataGrid', () => {
     );
 
     expect(screen.queryByRole('textbox', { name: /search table/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/showing 2 of 2 rows/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /open filter for name/i }));
+    await user.type(screen.getByRole('textbox', { name: /filter names/i }), 'alpha{enter}');
+
+    expect(screen.getByText(/showing 1\/2 rows/i)).toBeInTheDocument();
   });
 
   it('supports icon-triggered header text tokens and range filters', async () => {
@@ -374,6 +373,10 @@ describe('ScenarioDataGrid', () => {
             sortValue: (row) => row.name,
             searchValue: (row) => row.name,
             exportValue: (row) => row.name,
+            filter: {
+              type: 'text',
+              ariaLabel: 'Filter names',
+            },
           },
           {
             id: 'weight',
@@ -387,7 +390,8 @@ describe('ScenarioDataGrid', () => {
       />,
     );
 
-    await user.type(screen.getByRole('textbox', { name: /search table/i }), 'alpha');
+    await user.click(screen.getByRole('button', { name: /open filter for name/i }));
+    await user.type(screen.getByRole('textbox', { name: /filter names/i }), 'alpha{enter}');
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
 
     expect(screen.getByRole('heading', { name: /csv preview/i })).toBeInTheDocument();
@@ -483,7 +487,7 @@ describe('ScenarioDataGrid', () => {
 
     await user.click(screen.getByRole('button', { name: /edit table/i }));
 
-    expect(screen.getByRole('button', { name: /done editing/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit table/i })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: /add row/i })).toBeInTheDocument();
 
     const input = screen.getByRole('textbox', { name: /edit beta/i });
@@ -547,6 +551,73 @@ describe('ScenarioDataGrid', () => {
     expect(onApply).toHaveBeenCalledWith([
       { id: 'row-a', name: 'Beta Prime', weight: 25 },
     ]);
+  });
+
+  it('only shows add row when the workspace can actually create rows, and adds a visible draft row', async () => {
+    const user = userEvent.setup();
+
+    function AddRowHarness() {
+      const [mode, setMode] = React.useState<ScenarioDataGridWorkspaceMode>('edit');
+
+      return (
+        <ScenarioDataGrid
+          rows={[{ id: 'row-a', name: 'Beta' }]}
+          rowKey={(row) => row.id}
+          columns={[
+            {
+              kind: 'primitive',
+              id: 'name',
+              header: 'Name',
+              primitive: 'string',
+              getValue: (row) => row.name,
+              setValue: (row, value) => ({ ...row, name: value ?? '' }),
+            },
+          ]}
+          workspace={{
+            mode,
+            onModeChange: setMode,
+            draft: {
+              onApply: vi.fn(),
+              createRow: () => ({ id: 'row-b', name: '' }),
+            },
+          }}
+        />
+      );
+    }
+
+    render(<AddRowHarness />);
+
+    await user.click(screen.getByRole('button', { name: /add row/i }));
+
+    expect(screen.getByRole('textbox', { name: /edit name for row row-b/i })).toBeInTheDocument();
+  });
+
+  it('hides add row when the draft workspace has no createRow handler', () => {
+    render(
+      <ScenarioDataGrid
+        rows={[{ id: 'row-a', name: 'Beta' }]}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            kind: 'primitive',
+            id: 'name',
+            header: 'Name',
+            primitive: 'string',
+            getValue: (row) => row.name,
+            setValue: (row, value) => ({ ...row, name: value ?? '' }),
+          },
+        ]}
+        workspace={{
+          mode: 'edit',
+          onModeChange: vi.fn(),
+          draft: {
+            onApply: vi.fn(),
+          },
+        }}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: /add row/i })).not.toBeInTheDocument();
   });
 
   it('round-trips typed primitive columns through shared csv mode and validates invalid values', async () => {

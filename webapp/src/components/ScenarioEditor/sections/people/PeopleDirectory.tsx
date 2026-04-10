@@ -238,11 +238,10 @@ export function PeopleDirectory({
             rows={visiblePeople}
             rowKey={(person) => person.id}
             emptyState={<div className="text-sm" style={{ color: 'var(--text-secondary)' }}>No matching people.</div>}
-            showGlobalSearch={false}
             showCsvExport={false}
-            searchSummary={({ filteredCount }) => (
+            searchSummary={({ filteredCount, totalCount }) => (
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                Showing {filteredCount} people.
+                Showing {filteredCount}/{totalCount} people.
               </div>
             )}
             workspace={{

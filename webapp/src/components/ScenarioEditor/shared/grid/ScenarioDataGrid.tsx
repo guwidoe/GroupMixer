@@ -24,7 +24,6 @@ interface ScenarioDataGridProps<T> {
   filterQuery?: string;
   emptyState?: React.ReactNode;
   searchPlaceholder?: string;
-  showGlobalSearch?: boolean;
   showCsvExport?: boolean;
   showEditToggle?: boolean;
   defaultEditMode?: boolean;
@@ -42,8 +41,6 @@ export function ScenarioDataGrid<T>({
   rowKey,
   filterQuery = '',
   emptyState,
-  searchPlaceholder = 'Search table…',
-  showGlobalSearch = true,
   showCsvExport = true,
   showEditToggle = true,
   defaultEditMode = false,
@@ -59,7 +56,6 @@ export function ScenarioDataGrid<T>({
     [columns, rows],
   );
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [globalFilter, setGlobalFilter] = React.useState('');
   const [openFilterId, setOpenFilterId] = React.useState<string | null>(null);
   const [isColumnsMenuOpen, setIsColumnsMenuOpen] = React.useState(false);
   const [isEditMode, setIsEditMode] = React.useState(defaultEditMode);
@@ -103,10 +99,7 @@ export function ScenarioDataGrid<T>({
     setColumnVisibility,
   } = useGridColumnState({ columns: materializedColumns });
 
-  const mergedQuery = React.useMemo(
-    () => [filterQuery, globalFilter].filter((value) => value.trim().length > 0).join(' ').trim(),
-    [filterQuery, globalFilter],
-  );
+  const mergedQuery = React.useMemo(() => filterQuery.trim(), [filterQuery]);
 
   const { bodyScrollRef, scrollMetrics, syncScroll, tableRef, topScrollRef } = useGridScrollSync({
     deps: [activeRows, columnSizing, columnVisibility, sorting, mergedQuery],
@@ -149,6 +142,9 @@ export function ScenarioDataGrid<T>({
     setSorting,
   });
   const hasDraftCsvColumns = draftEditableColumns.length > 0;
+  const canCreateRows = Boolean(draftConfig?.createRow);
+  const hasModeTabs = Boolean(workspace?.onModeChange)
+    && ((showEditToggle && hasEditableColumns) || hasDraftCsvColumns || Boolean(inlineCsvConfig));
   const csvText = React.useMemo(() => {
     const headerLine = csvColumns.map((column) => escapeCsvValue(column.header)).join(',');
     const rowLines = exportRows.map((row) =>
@@ -158,17 +154,15 @@ export function ScenarioDataGrid<T>({
     );
     return [headerLine, ...rowLines].join('\n');
   }, [csvColumns, exportRows]);
-  const summary = searchSummary
-    ? searchSummary({ filteredCount, totalCount, query: globalFilter })
+  const filteredSummary = filteredCount < totalCount
+    ? (searchSummary
+    ? searchSummary({ filteredCount, totalCount, query: filterQuery })
     : (
       <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-        Showing {filteredCount} of {totalCount} rows.
+        Showing {filteredCount}/{totalCount} rows.
       </div>
-    );
-  const toolbarSummary = isInlineCsvMode
-    ? (hasDraftEditing ? (draftConfig?.csv?.helperText ?? summary) : (inlineCsvConfig?.helperText ?? summary))
-    : summary;
-  const showToolbarSearch = showGlobalSearch && !isInlineCsvMode;
+    ))
+    : null;
   const handleToggleCsv = React.useCallback(() => {
     if (workspace?.onModeChange && (hasDraftEditing || inlineCsvConfig)) {
       requestWorkspaceMode(isInlineCsvMode ? 'browse' : 'csv');
@@ -192,36 +186,32 @@ export function ScenarioDataGrid<T>({
       style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
     >
       <GridToolbar
+        canCreateRows={canCreateRows}
         csvLabel={workspace?.csvLabel ?? 'CSV'}
-        doneEditingLabel={workspace?.doneEditingLabel ?? 'Done editing'}
-        editLabel={workspace?.editLabel ?? 'Edit table'}
-        globalFilter={globalFilter}
         hasDraftCsvColumns={hasDraftCsvColumns}
         hasDraftEditing={hasDraftEditing}
         hasEditableColumns={hasEditableColumns}
+        hasModeTabs={hasModeTabs}
         inlineCsvConfigPresent={Boolean(inlineCsvConfig)}
         isColumnsMenuOpen={isColumnsMenuOpen}
         isInlineCsvMode={isInlineCsvMode}
-        setGlobalFilter={setGlobalFilter}
         onToggleColumnsMenu={() => setIsColumnsMenuOpen((open) => !open)}
         onCloseColumnsMenu={() => setIsColumnsMenuOpen(false)}
         onToggleCsv={handleToggleCsv}
         onToggleEdit={handleToggleEdit}
+        onSelectBrowse={() => requestWorkspaceMode('browse')}
         onDiscardChanges={() => requestWorkspaceMode('browse')}
         onApplyChanges={handleApplyDraftChanges}
         onAddRow={handleAddDraftRow}
         resolvedWorkspaceActions={resolvedWorkspaceActions}
-        searchPlaceholder={searchPlaceholder}
         showCsvExport={showCsvExport && csvColumns.length > 0}
         showEditToggle={showEditToggle}
-        showToolbarSearch={showToolbarSearch}
-        summary={toolbarSummary}
         table={table}
         toolbarActions={toolbarActions}
         workspaceMode={effectiveEditMode ? 'edit' : workspaceMode}
       />
 
-      {!isInlineCsvMode ? <GridActiveFiltersBar activeColumnFilters={activeColumnFilters} onClearFilters={() => table.resetColumnFilters()} /> : null}
+      {!isInlineCsvMode ? <GridActiveFiltersBar activeColumnFilters={activeColumnFilters} summary={filteredSummary} onClearFilters={() => table.resetColumnFilters()} /> : null}
 
       {!isInlineCsvMode ? <GridTopScrollbar scrollWidth={scrollMetrics.scrollWidth} clientWidth={scrollMetrics.clientWidth} topScrollRef={topScrollRef} onScroll={() => syncScroll('top')} /> : null}
 
@@ -233,7 +223,7 @@ export function ScenarioDataGrid<T>({
         <InlineCsvEditor
           ariaLabel={hasDraftEditing ? (draftConfig?.csv?.ariaLabel ?? 'Inline CSV editor') : (inlineCsvConfig?.ariaLabel ?? 'Inline CSV editor')}
           csvErrors={hasDraftEditing ? csvErrors : []}
-          helperText={undefined}
+          helperText={hasDraftEditing ? draftConfig?.csv?.helperText : inlineCsvConfig?.helperText}
           onChange={(value) => {
             if (hasDraftEditing) {
               setCsvDraftText(value);

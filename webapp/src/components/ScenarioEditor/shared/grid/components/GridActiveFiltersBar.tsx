@@ -11,10 +11,11 @@ interface ActiveFilterChip {
 interface GridActiveFiltersBarProps {
   activeColumnFilters: ActiveFilterChip[];
   onClearFilters: () => void;
+  summary?: React.ReactNode;
 }
 
-export function GridActiveFiltersBar({ activeColumnFilters, onClearFilters }: GridActiveFiltersBarProps) {
-  if (activeColumnFilters.length === 0) {
+export function GridActiveFiltersBar({ activeColumnFilters, onClearFilters, summary }: GridActiveFiltersBarProps) {
+  if (activeColumnFilters.length === 0 && !summary) {
     return null;
   }
 
@@ -23,6 +24,7 @@ export function GridActiveFiltersBar({ activeColumnFilters, onClearFilters }: Gr
       <span className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>
         Filters
       </span>
+      {summary ? <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>{summary}</div> : null}
       {activeColumnFilters.map((filter) => (
         <button
           key={filter.id}
