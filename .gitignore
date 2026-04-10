@@ -389,3 +389,5 @@ tools/remote_benchmark.env
 autoresearch.last_run_metrics.json
 
 papers/
+
+docs/market-research
