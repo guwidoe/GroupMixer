@@ -1380,7 +1380,9 @@ export function ScenarioDataGrid<T>({
       return;
     }
 
-    const nextDraftRows = cloneRows(rows);
+    const nextDraftRows = workspaceMode === 'edit'
+      ? cloneRows(draftRows)
+      : cloneRows(rows);
     setDraftRows(nextDraftRows);
     setCsvDraftText(buildDraftCsvText(nextDraftRows));
     setCsvErrors([]);

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createAttributeDefinition } from '../../../services/scenarioAttributes';
 import { useAppStore } from '../../../store';
 import type { Scenario } from '../../../types';
 import { HardConstraintFamilySection, SoftConstraintFamilySection } from './ConstraintFamilySections';
@@ -17,6 +18,16 @@ function createScenario(): Scenario {
     constraints: [
       { type: 'ImmovablePeople', people: ['p1'], group_id: 'g1', sessions: [0] },
       { type: 'ShouldStayTogether', people: ['p2', 'p3'], penalty_weight: 20, sessions: [0, 1] },
+      {
+        type: 'AttributeBalance',
+        group_id: 'g1',
+        attribute_id: 'attr-gender',
+        attribute_key: 'gender',
+        desired_values: { female: 2, male: 1 },
+        penalty_weight: 30,
+        mode: 'exact',
+        sessions: [0, 1],
+      },
     ],
     settings: {
       solver_type: 'simulated_annealing',
@@ -35,7 +46,9 @@ describe('ConstraintFamilySections', () => {
       ...originalState,
       ui: { ...originalState.ui, isLoading: false },
       resolveScenario: () => scenario,
+      attributeDefinitions: [createAttributeDefinition('gender', ['female', 'male'], 'attr-gender')],
       setScenario: vi.fn(),
+      addNotification: vi.fn(),
     });
   });
 
@@ -86,5 +99,42 @@ describe('ConstraintFamilySections', () => {
     await user.click(screen.getByRole('button', { name: /select should stay together preference/i }));
     await user.click(screen.getByRole('button', { name: /^actions$/i }));
     expect(screen.getByRole('button', { name: /convert selected to pair meeting count/i })).toBeInTheDocument();
+  });
+
+  it('uses structured desired-value columns for attribute balance list editing and csv', async () => {
+    const user = userEvent.setup();
+    const onApplyAttributeBalanceRows = vi.fn();
+
+    render(
+      <SoftConstraintFamilySection
+        family="AttributeBalance"
+        onAdd={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onApplyAttributeBalanceRows={onApplyAttributeBalanceRows}
+        createAttributeBalanceRow={() => ({
+          constraint: {
+            type: 'AttributeBalance',
+            group_id: 'g1',
+            attribute_id: 'attr-gender',
+            attribute_key: 'gender',
+            desired_values: {},
+            penalty_weight: 50,
+            mode: 'exact',
+            sessions: undefined,
+          },
+          index: -1,
+        })}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /female/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /^male /i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    expect(screen.getByRole('textbox', { name: /attribute balance csv/i })).toHaveValue(
+      'Group,Attribute,female,male,Mode,Weight,Sessions\ng1,attr-gender,2,1,exact,30,1 | 2',
+    );
   });
 });

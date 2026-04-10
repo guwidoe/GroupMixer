@@ -645,6 +645,128 @@ describe('ScenarioDataGrid', () => {
     expect(onApply).toHaveBeenCalledTimes(1);
   });
 
+  it('expands structured finite-key fields into shared edit and csv columns', async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn();
+
+    function StructuredHarness() {
+      const [mode, setMode] = React.useState<ScenarioDataGridWorkspaceMode>('browse');
+
+      return (
+        <ScenarioDataGrid
+          rows={[
+            {
+              id: 'rule-1',
+              attribute: 'role',
+              desired: { dev: 2, pm: 1 },
+              availableKeys: ['dev', 'pm'],
+              mode: 'exact',
+            },
+            {
+              id: 'rule-2',
+              attribute: 'level',
+              desired: { senior: 1 },
+              availableKeys: ['junior', 'senior'],
+              mode: 'at_least',
+            },
+          ]}
+          rowKey={(row) => row.id}
+          columns={[
+            {
+              kind: 'primitive',
+              id: 'attribute',
+              header: 'Attribute',
+              primitive: 'string',
+              getValue: (row) => row.attribute,
+              setValue: (row, value) => ({ ...row, attribute: value ?? '' }),
+            },
+            {
+              kind: 'structured',
+              structured: 'finite-key-map',
+              id: 'desired-values',
+              header: 'Desired values',
+              childPrimitive: 'number',
+              keys: (structuredRows) => {
+                const keySet = new Set(structuredRows.flatMap((row) => row.availableKeys));
+                return Array.from(keySet.values()).map((key) => ({ value: key, label: key }));
+              },
+              getValue: (row, key) => row.desired[key],
+              setValue: (row, key, value) => ({
+                ...row,
+                desired: value == null
+                  ? Object.fromEntries(Object.entries(row.desired).filter(([entryKey]) => entryKey !== key))
+                  : { ...row.desired, [key]: value },
+              }),
+              isKeyAvailable: (row, key) => row.availableKeys.includes(key),
+            },
+            {
+              kind: 'primitive',
+              id: 'mode',
+              header: 'Mode',
+              primitive: 'enum',
+              options: [
+                { value: 'exact', label: 'exact' },
+                { value: 'at_least', label: 'at least' },
+              ],
+              getValue: (row) => row.mode,
+              setValue: (row, value) => ({ ...row, mode: value ?? 'exact' }),
+            },
+          ]}
+          workspace={{
+            mode,
+            onModeChange: setMode,
+            draft: {
+              onApply,
+              csv: {
+                ariaLabel: 'Structured CSV editor',
+              },
+            },
+          }}
+        />
+      );
+    }
+
+    render(<StructuredHarness />);
+
+    expect(screen.getByRole('columnheader', { name: /dev/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /pm/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /senior/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /edit table/i }));
+
+    const devInput = screen.getByRole('spinbutton', { name: /edit dev for row rule-1/i });
+    await user.clear(devInput);
+    await user.type(devInput, '3');
+    await user.tab();
+
+    expect(screen.getByRole('spinbutton', { name: /edit dev for row rule-2/i })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    const csvInput = screen.getByRole('textbox', { name: /structured csv editor/i });
+    expect(csvInput).toHaveValue('Attribute,dev,pm,junior,senior,Mode\nrole,3,1,,,exact\nlevel,,,,1,at_least');
+
+    await user.clear(csvInput);
+    await user.type(csvInput, 'Attribute,dev,pm,junior,senior,Mode\nrole,4,2,,,exact\nlevel,,,2,1,at_least');
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(onApply).toHaveBeenCalledWith([
+      {
+        id: 'rule-1',
+        attribute: 'role',
+        desired: { dev: 4, pm: 2 },
+        availableKeys: ['dev', 'pm'],
+        mode: 'exact',
+      },
+      {
+        id: 'rule-2',
+        attribute: 'level',
+        desired: { junior: 2, senior: 1 },
+        availableKeys: ['junior', 'senior'],
+        mode: 'at_least',
+      },
+    ]);
+  });
+
   it('paginates large row sets to limit rendered rows', async () => {
     const user = userEvent.setup();
     const largeRows = Array.from({ length: 120 }, (_, index) => ({
