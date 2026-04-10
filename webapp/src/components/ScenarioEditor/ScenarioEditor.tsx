@@ -10,6 +10,7 @@ import { getScenarioSetupLegacyRedirect, resolveScenarioSetupSection } from './n
 import type { ScenarioSetupSectionId } from './navigation/scenarioSetupNavTypes';
 import { useDeferredScenarioSectionContent, useDeferredScenarioSetupSummary } from './useDeferredScenarioSectionContent';
 import { useScenarioEditorController, type ScenarioEditorSection } from './useScenarioEditorController';
+import { useAppStore } from '../../store';
 
 function ScenarioEditorLoadingState({ label, message }: { label: string; message: string }) {
   return (
@@ -190,6 +191,7 @@ function ScenarioEditorLoaded() {
 export function ScenarioEditor() {
   const { section } = useParams<{ section: string }>();
   const navigate = useNavigate();
+  const setLastScenarioSetupSection = useAppStore((state) => state.setLastScenarioSetupSection);
   const { activeSection, navigationSection } = resolveRouteSection(section);
   const [shouldMountController, setShouldMountController] = React.useState(false);
 
@@ -199,6 +201,10 @@ export function ScenarioEditor() {
       navigate(`/app/scenario/${redirectSection}`, { replace: true });
     }
   }, [navigate, section]);
+
+  React.useEffect(() => {
+    setLastScenarioSetupSection(navigationSection);
+  }, [navigationSection, setLastScenarioSetupSection]);
 
   React.useEffect(() => {
     setShouldMountController(false);

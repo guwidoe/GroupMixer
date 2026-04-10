@@ -8,6 +8,9 @@ import { renderWithRouter } from "../test/utils";
 const mockStoreState = {
   manualEditorUnsaved: false,
   manualEditorLeaveHook: null as null | ((nextPath: string) => void),
+  ui: {
+    lastScenarioSetupSection: 'people',
+  },
 };
 
 vi.mock("../store", () => ({
@@ -23,6 +26,7 @@ describe("Navigation", () => {
   beforeEach(() => {
     mockStoreState.manualEditorUnsaved = false;
     mockStoreState.manualEditorLeaveHook = null;
+    mockStoreState.ui.lastScenarioSetupSection = 'people';
   });
 
   it("renders primary navigation tabs as sticky app chrome and allows normal navigation", async () => {
@@ -63,5 +67,22 @@ describe("Navigation", () => {
 
     expect(leaveHook).toHaveBeenCalledWith("/app/solver");
     expect(screen.getByTestId("location")).toHaveTextContent("/app/editor");
+  });
+
+  it("returns to the last visited setup section when switching back to setup", async () => {
+    const user = userEvent.setup();
+    mockStoreState.ui.lastScenarioSetupSection = 'groups';
+
+    renderWithRouter(
+      <>
+        <Navigation />
+        <LocationProbe />
+      </>,
+      { route: "/app/solver" }
+    );
+
+    await user.click(screen.getByRole("link", { name: /setup/i }));
+
+    expect(screen.getByTestId("location")).toHaveTextContent("/app/scenario/groups");
   });
 });

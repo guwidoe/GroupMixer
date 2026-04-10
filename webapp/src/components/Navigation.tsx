@@ -2,6 +2,7 @@ import { useState, type MouseEvent } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ScrollArea } from './ScrollArea';
 import { useAppStore } from '../store';
+import { getScenarioSetupPath } from './ScenarioEditor/navigation/scenarioSetupNav';
 
 const WORKFLOW_TABS = [
   {
@@ -54,8 +55,13 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
   const location = useLocation();
   const unsaved = useAppStore((s) => s.manualEditorUnsaved);
   const leaveHook = useAppStore((s) => s.manualEditorLeaveHook);
+  const lastScenarioSetupSection = useAppStore((s) => s.ui.lastScenarioSetupSection);
   const activeIndex = resolveWorkflowIndex(location.pathname);
   const [hoveredTabId, setHoveredTabId] = useState<string | null>(null);
+
+  const getTabPath = (tabId: (typeof WORKFLOW_TABS)[number]['id'], path: string) => (tabId === 'scenario'
+    ? getScenarioSetupPath(lastScenarioSetupSection)
+    : path);
 
   const handleNavigate = (event: MouseEvent, path: string) => {
     if (unsaved && location.pathname.startsWith('/app/editor') && path !== '/app/editor') {
@@ -77,6 +83,7 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
         Workflow
       </div>
       {WORKFLOW_TABS.map((tab, index) => {
+        const tabPath = getTabPath(tab.id, tab.path);
         const isActive = activeIndex === index;
         const isPast = activeIndex > index;
         const isHovered = hoveredTabId === tab.id;
@@ -84,8 +91,8 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
         return (
           <NavLink
             key={tab.id}
-            to={tab.path}
-            onClick={(event) => handleNavigate(event, tab.path)}
+            to={tabPath}
+            onClick={(event) => handleNavigate(event, tabPath)}
             onMouseEnter={() => setHoveredTabId(tab.id)}
             onMouseLeave={() => setHoveredTabId((current) => (current === tab.id ? null : current))}
             className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-150"
@@ -136,6 +143,7 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
           }}
         >
           {WORKFLOW_TABS.map((tab, index) => {
+            const tabPath = getTabPath(tab.id, tab.path);
             const isActive = activeIndex === index;
             const isPast = activeIndex > index;
             const isFuture = !isActive && !isPast;
@@ -144,8 +152,8 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
             return (
               <div key={tab.id} className="flex items-center">
                 <NavLink
-                  to={tab.path}
-                  onClick={(event) => handleNavigate(event, tab.path)}
+                  to={tabPath}
+                  onClick={(event) => handleNavigate(event, tabPath)}
                   onMouseEnter={() => setHoveredTabId(tab.id)}
                   onMouseLeave={() => setHoveredTabId((current) => (current === tab.id ? null : current))}
                   className="group inline-flex h-9 shrink-0 items-center gap-2 rounded-[0.9rem] px-3 text-sm font-medium transition-colors duration-150 md:px-3.5"

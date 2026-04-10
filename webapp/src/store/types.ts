@@ -37,6 +37,7 @@ export interface UIState {
     showScenarioManager: boolean;
     showResultComparison: boolean;
     warmStartResultId: string | null;
+    lastScenarioSetupSection: string | null;
   };
 }
 
@@ -92,6 +93,7 @@ export interface SolverActions {
 export interface UIActions {
   setActiveTab: (tab: "scenario" | "solver" | "results" | "manage") => void;
   setLoading: (loading: boolean) => void;
+  setLastScenarioSetupSection: (section: string | null) => void;
   addNotification: (notification: Omit<Notification, "id">) => void;
   removeNotification: (id: string) => void;
   clearNotifications: () => void;

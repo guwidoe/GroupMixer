@@ -12,6 +12,7 @@ export const initialUIState: UIState["ui"] = {
   showScenarioManager: false,
   showResultComparison: false,
   warmStartResultId: null,
+  lastScenarioSetupSection: 'people',
 };
 
 export const createUISlice: StoreSlice<UIState & UIActions> = (set, get) => ({
@@ -25,6 +26,11 @@ export const createUISlice: StoreSlice<UIState & UIActions> = (set, get) => ({
   setLoading: (isLoading) =>
     set((state) => ({
       ui: { ...state.ui, isLoading },
+    })),
+
+  setLastScenarioSetupSection: (lastScenarioSetupSection) =>
+    set((state) => ({
+      ui: { ...state.ui, lastScenarioSetupSection },
     })),
 
   addNotification: (notification) => {

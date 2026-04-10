@@ -375,6 +375,7 @@ export interface AppState {
     showScenarioManager: boolean;
     showResultComparison: boolean;
     warmStartResultId?: string | null;
+    lastScenarioSetupSection?: string | null;
   };
 }
 

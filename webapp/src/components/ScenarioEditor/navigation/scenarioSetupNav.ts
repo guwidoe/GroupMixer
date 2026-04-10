@@ -227,6 +227,8 @@ export const PROBLEM_SETUP_SECTIONS: readonly ScenarioSetupSectionDefinition[] =
   },
 ] as const;
 
+export const DEFAULT_SCENARIO_SETUP_SECTION = 'people' as const;
+
 export function getScenarioSetupSectionCount(
   section: ScenarioSetupSectionDefinition,
   context: ScenarioSetupCountContext,
@@ -255,6 +257,11 @@ export function getScenarioSetupSectionById(sectionId: string): ScenarioSetupSec
   return PROBLEM_SETUP_SECTIONS.find((section) => section.id === sectionId);
 }
 
+export function getScenarioSetupPath(sectionId: string | null | undefined): string {
+  const resolvedSection = sectionId ? getScenarioSetupSectionById(sectionId) : undefined;
+  return `/app/scenario/${resolvedSection?.routeSegment ?? DEFAULT_SCENARIO_SETUP_SECTION}`;
+}
+
 export function isScenarioSetupSectionId(value: string): value is ScenarioSetupSectionId {
   return PROBLEM_SETUP_SECTIONS.some((section) => section.id === value);
 }
@@ -268,7 +275,7 @@ export function resolveScenarioSetupSection(section: string | undefined): Scenar
     return LEGACY_ROUTE_REDIRECTS[section];
   }
 
-  return 'people';
+  return DEFAULT_SCENARIO_SETUP_SECTION;
 }
 
 export function getScenarioSetupLegacyRedirect(section: string | undefined): ScenarioSetupSectionId | null {

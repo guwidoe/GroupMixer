@@ -39,12 +39,14 @@ describe("createUISlice", () => {
 
     harness.slice.setActiveTab("solver");
     harness.slice.setLoading(false);
+    harness.slice.setLastScenarioSetupSection("groups");
     harness.slice.setShowScenarioManager(true);
     harness.slice.setShowResultComparison(true);
 
     expect(harness.getState().ui).toMatchObject({
       activeTab: "solver",
       isLoading: false,
+      lastScenarioSetupSection: "groups",
       showScenarioManager: true,
       showResultComparison: true,
     });
