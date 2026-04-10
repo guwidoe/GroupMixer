@@ -37,6 +37,7 @@ import { Button } from '../../../ui';
 import type {
   ScenarioDataGridColumn,
   ScenarioDataGridColumnEditor,
+  ScenarioDataGridWorkspaceConfig,
   ScenarioDataGridNumberRangeValue,
   ScenarioDataGridOption,
   ScenarioDataGridSelectFilterValue,
@@ -54,6 +55,7 @@ interface ScenarioDataGridProps<T> {
   showCsvExport?: boolean;
   showEditToggle?: boolean;
   defaultEditMode?: boolean;
+  workspace?: ScenarioDataGridWorkspaceConfig;
   searchSummary?: (args: { filteredCount: number; totalCount: number; query: string }) => React.ReactNode;
   toolbarActions?: React.ReactNode;
   maxHeight?: string;
@@ -778,6 +780,7 @@ export function ScenarioDataGrid<T>({
   showCsvExport = true,
   showEditToggle = true,
   defaultEditMode = false,
+  workspace,
   searchSummary,
   toolbarActions,
   maxHeight = 'min(70vh, calc(100vh - 18rem))',
@@ -805,6 +808,19 @@ export function ScenarioDataGrid<T>({
   const resizeStateRef = React.useRef<{ columnId: string; startX: number; startWidth: number } | null>(null);
 
   const hasEditableColumns = React.useMemo(() => columns.some((column) => column.editor), [columns]);
+  const workspaceMode = workspace?.mode ?? 'browse';
+  const inlineCsvConfig = workspace?.csv;
+  const isInlineCsvMode = workspaceMode === 'csv' && Boolean(inlineCsvConfig);
+  const effectiveEditMode = workspace ? workspaceMode === 'edit' : isEditMode;
+  const resolvedWorkspaceActions = React.useMemo(() => {
+    if (!workspace?.toolbarActions) {
+      return null;
+    }
+
+    return typeof workspace.toolbarActions === 'function'
+      ? workspace.toolbarActions(workspaceMode)
+      : workspace.toolbarActions;
+  }, [workspace, workspaceMode]);
   const mergedQuery = React.useMemo(
     () => [filterQuery, globalFilter].filter((value) => value.trim().length > 0).join(' ').trim(),
     [filterQuery, globalFilter],
@@ -934,9 +950,9 @@ export function ScenarioDataGrid<T>({
           return true;
         },
         cell: ({ row }) =>
-          isEditMode && column.editor ? <InlineEditorCell row={row.original} editor={column.editor} /> : column.cell(row.original),
+          effectiveEditMode && column.editor ? <InlineEditorCell row={row.original} editor={column.editor} /> : column.cell(row.original),
       })),
-    [columns, isEditMode],
+    [columns, effectiveEditMode],
   );
 
   const globalFilterFn = React.useCallback<FilterFn<T>>(
@@ -1078,6 +1094,24 @@ export function ScenarioDataGrid<T>({
         Showing {filteredCount} of {totalCount} rows.
       </div>
     );
+  const toolbarSummary = isInlineCsvMode && inlineCsvConfig?.helperText ? inlineCsvConfig.helperText : summary;
+  const showToolbarSearch = showGlobalSearch && !isInlineCsvMode;
+  const handleToggleCsv = React.useCallback(() => {
+    if (inlineCsvConfig && workspace?.onModeChange) {
+      workspace.onModeChange(isInlineCsvMode ? 'browse' : 'csv');
+      return;
+    }
+
+    setIsCsvPreviewOpen(true);
+  }, [inlineCsvConfig, isInlineCsvMode, workspace]);
+  const handleToggleEdit = React.useCallback(() => {
+    if (workspace?.onModeChange) {
+      workspace.onModeChange(effectiveEditMode ? 'browse' : 'edit');
+      return;
+    }
+
+    setIsEditMode((current) => !current);
+  }, [effectiveEditMode, workspace]);
 
   return (
     <div
@@ -1088,8 +1122,8 @@ export function ScenarioDataGrid<T>({
         className={`flex border-b px-4 ${showGlobalSearch ? 'py-3' : 'py-2.5'} flex-col gap-3 lg:flex-row lg:items-center lg:justify-between`}
         style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}
       >
-        <div className={`flex min-w-0 flex-1 ${showGlobalSearch ? 'flex-col gap-3 lg:flex-row lg:items-center lg:gap-4' : 'items-center'}`}>
-          {showGlobalSearch ? (
+        <div className={`flex min-w-0 flex-1 ${showToolbarSearch ? 'flex-col gap-3 lg:flex-row lg:items-center lg:gap-4' : 'items-center'}`}>
+          {showToolbarSearch ? (
             <label className="relative block min-w-0 flex-1 lg:max-w-sm">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
               <input
@@ -1113,46 +1147,49 @@ export function ScenarioDataGrid<T>({
               ) : null}
             </label>
           ) : null}
-          <div className="min-w-0">{summary}</div>
+          <div className="min-w-0">{toolbarSummary}</div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {toolbarActions}
-          {showCsvExport && csvColumns.length > 0 && table.getRowModel().rows.length > 0 ? (
+          {resolvedWorkspaceActions}
+          {(showCsvExport && csvColumns.length > 0 && table.getRowModel().rows.length > 0) || inlineCsvConfig ? (
             <Button
-              variant="secondary"
+              variant={isInlineCsvMode ? 'primary' : 'secondary'}
               size="sm"
               leadingIcon={<FileSpreadsheet className="h-4 w-4" />}
-              onClick={() => setIsCsvPreviewOpen(true)}
+              onClick={handleToggleCsv}
             >
-              CSV
+              {workspace?.csvLabel ?? 'CSV'}
             </Button>
           ) : null}
           {showEditToggle && hasEditableColumns ? (
             <Button
-              variant={isEditMode ? 'primary' : 'secondary'}
+              variant={effectiveEditMode ? 'primary' : 'secondary'}
               size="sm"
               leadingIcon={<PencilLine className="h-4 w-4" />}
-              onClick={() => setIsEditMode((current) => !current)}
+              onClick={handleToggleEdit}
             >
-              {isEditMode ? 'Done editing' : 'Edit table'}
+              {effectiveEditMode ? (workspace?.doneEditingLabel ?? 'Done editing') : (workspace?.editLabel ?? 'Edit table')}
             </Button>
           ) : null}
-          <div className="relative">
-            <Button
-              variant="secondary"
-              size="sm"
-              leadingIcon={<Columns3 className="h-4 w-4" />}
-              onClick={() => setIsColumnsMenuOpen((open) => !open)}
-            >
-              Columns
-            </Button>
-            {isColumnsMenuOpen ? <ColumnVisibilityMenu table={table} onClose={() => setIsColumnsMenuOpen(false)} /> : null}
-          </div>
+          {!isInlineCsvMode ? (
+            <div className="relative">
+              <Button
+                variant="secondary"
+                size="sm"
+                leadingIcon={<Columns3 className="h-4 w-4" />}
+                onClick={() => setIsColumnsMenuOpen((open) => !open)}
+              >
+                Columns
+              </Button>
+              {isColumnsMenuOpen ? <ColumnVisibilityMenu table={table} onClose={() => setIsColumnsMenuOpen(false)} /> : null}
+            </div>
+          ) : null}
         </div>
       </div>
 
-      {activeColumnFilters.length > 0 ? (
+      {!isInlineCsvMode && activeColumnFilters.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
           <span className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>
             Filters
@@ -1180,7 +1217,7 @@ export function ScenarioDataGrid<T>({
         </div>
       ) : null}
 
-      {scrollMetrics.scrollWidth > scrollMetrics.clientWidth ? (
+      {!isInlineCsvMode && scrollMetrics.scrollWidth > scrollMetrics.clientWidth ? (
         <div
           ref={topScrollRef}
           className="overflow-x-auto overflow-y-hidden border-b"
@@ -1196,17 +1233,33 @@ export function ScenarioDataGrid<T>({
         <CsvPreviewDialog csvText={csvText} rowCount={exportRows.length} onClose={() => setIsCsvPreviewOpen(false)} />
       ) : null}
 
-      <div
-        ref={bodyScrollRef}
-        className="overflow-auto"
-        style={{ maxHeight }}
-        onScroll={() => syncScroll('body')}
-      >
-        <table
-          ref={tableRef}
-          className="w-full border-separate border-spacing-0 text-sm"
-          style={{ width: `${table.getTotalSize()}px`, minWidth: '100%' }}
+      {isInlineCsvMode && inlineCsvConfig ? (
+        <div className="border-t px-4 py-4" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
+          <textarea
+            value={inlineCsvConfig.value}
+            onChange={(event) => inlineCsvConfig.onChange(event.target.value)}
+            className="min-h-[24rem] w-full rounded-2xl border p-3 font-mono text-sm"
+            style={{
+              backgroundColor: 'var(--bg-secondary)',
+              borderColor: 'var(--border-primary)',
+              color: 'var(--text-primary)',
+            }}
+            aria-label={inlineCsvConfig.ariaLabel ?? 'Inline CSV editor'}
+            placeholder={inlineCsvConfig.placeholder}
+          />
+        </div>
+      ) : (
+        <div
+          ref={bodyScrollRef}
+          className="overflow-auto"
+          style={{ maxHeight }}
+          onScroll={() => syncScroll('body')}
         >
+          <table
+            ref={tableRef}
+            className="w-full border-separate border-spacing-0 text-sm"
+            style={{ width: `${table.getTotalSize()}px`, minWidth: '100%' }}
+          >
           <colgroup>
             {table.getVisibleLeafColumns().map((column) => (
               <col key={column.id} style={{ width: `${column.getSize()}px` }} />
@@ -1320,10 +1373,11 @@ export function ScenarioDataGrid<T>({
               ))
             )}
           </tbody>
-        </table>
-      </div>
+          </table>
+        </div>
+      )}
 
-      {filteredCount > pageSize ? (
+      {!isInlineCsvMode && filteredCount > pageSize ? (
         <div className="flex flex-col gap-3 border-t px-4 py-3 md:flex-row md:items-center md:justify-between" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
           <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}

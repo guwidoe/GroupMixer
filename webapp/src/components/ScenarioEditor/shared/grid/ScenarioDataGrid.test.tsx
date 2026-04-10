@@ -1,7 +1,9 @@
+import React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ScenarioDataGrid } from './ScenarioDataGrid';
+import type { ScenarioDataGridWorkspaceMode } from './types';
 
 const rows = [
   { id: 'a', name: 'Beta', weight: 20 },
@@ -388,6 +390,106 @@ describe('ScenarioDataGrid', () => {
 
     expect(screen.getByRole('heading', { name: /csv preview/i })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: /csv preview content/i })).toHaveValue('Name,Weight\nAlpha,10');
+  });
+
+  it('supports inline csv mode inside the shared grid surface when a workspace is configured', async () => {
+    const user = userEvent.setup();
+
+    function WorkspaceHarness() {
+      const [mode, setMode] = React.useState<ScenarioDataGridWorkspaceMode>('browse');
+      const [csv, setCsv] = React.useState('Name\nBeta');
+
+      return (
+        <ScenarioDataGrid
+          rows={rows}
+          rowKey={(row) => row.id}
+          columns={[
+            {
+              id: 'name',
+              header: 'Name',
+              cell: (row) => row.name,
+              sortValue: (row) => row.name,
+              searchValue: (row) => row.name,
+              exportValue: (row) => row.name,
+            },
+          ]}
+          workspace={{
+            mode,
+            onModeChange: setMode,
+            csv: {
+              value: csv,
+              onChange: setCsv,
+              helperText: <div>Edit raw CSV inline.</div>,
+              ariaLabel: 'Inline CSV workspace',
+            },
+          }}
+        />
+      );
+    }
+
+    render(<WorkspaceHarness />);
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+
+    expect(screen.queryByRole('heading', { name: /csv preview/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/edit raw csv inline/i)).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /inline csv workspace/i })).toHaveValue('Name\nBeta');
+    expect(screen.queryByRole('button', { name: /columns/i })).not.toBeInTheDocument();
+
+    await user.clear(screen.getByRole('textbox', { name: /inline csv workspace/i }));
+    await user.type(screen.getByRole('textbox', { name: /inline csv workspace/i }), 'Name\nBeta Prime');
+
+    expect(screen.getByRole('textbox', { name: /inline csv workspace/i })).toHaveValue('Name\nBeta Prime');
+  });
+
+  it('supports controlled edit mode and mode-specific toolbar actions through the workspace api', async () => {
+    const user = userEvent.setup();
+    const onCommit = vi.fn();
+
+    function WorkspaceHarness() {
+      const [mode, setMode] = React.useState<ScenarioDataGridWorkspaceMode>('browse');
+
+      return (
+        <ScenarioDataGrid
+          rows={rows}
+          rowKey={(row) => row.id}
+          columns={[
+            {
+              id: 'name',
+              header: 'Name',
+              cell: (row) => row.name,
+              sortValue: (row) => row.name,
+              searchValue: (row) => row.name,
+              editor: {
+                type: 'text',
+                getValue: (row) => row.name,
+                onCommit,
+                ariaLabel: (row) => `Edit ${row.name}`,
+              },
+            },
+          ]}
+          workspace={{
+            mode,
+            onModeChange: setMode,
+            toolbarActions: (activeMode) => activeMode === 'edit' ? <button type="button">Add row</button> : null,
+          }}
+        />
+      );
+    }
+
+    render(<WorkspaceHarness />);
+
+    await user.click(screen.getByRole('button', { name: /edit table/i }));
+
+    expect(screen.getByRole('button', { name: /done editing/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add row/i })).toBeInTheDocument();
+
+    const input = screen.getByRole('textbox', { name: /edit beta/i });
+    await user.clear(input);
+    await user.type(input, 'Beta Prime');
+    await user.tab();
+
+    expect(onCommit).toHaveBeenCalledWith(rows[0], 'Beta Prime');
   });
 
   it('paginates large row sets to limit rendered rows', async () => {
