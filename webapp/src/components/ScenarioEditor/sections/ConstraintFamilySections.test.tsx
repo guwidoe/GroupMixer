@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAttributeDefinition } from '../../../services/scenarioAttributes';
@@ -143,5 +143,68 @@ describe('ConstraintFamilySections', () => {
     expect(screen.getByRole('textbox', { name: /attribute balance csv/i })).toHaveValue(
       'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""male"":1}",exact,30,"[1,2]"',
     );
+  });
+
+  it('validates attribute-balance target JSON keys against the selected attribute options', async () => {
+    const user = userEvent.setup();
+    const onApplyAttributeBalanceRows = vi.fn();
+
+    useAppStore.setState({
+      ...useAppStore.getState(),
+      resolveScenario: () => ({
+        ...createScenario(),
+        constraints: [
+          {
+            type: 'AttributeBalance',
+            group_id: 'g1',
+            attribute_id: 'attr-gender',
+            attribute_key: 'gender',
+            desired_values: { female: 2, 'asdf | asdf:': 1 },
+            penalty_weight: 30,
+            mode: 'exact',
+            sessions: [0, 1],
+          },
+        ],
+      }),
+      attributeDefinitions: [createAttributeDefinition('gender', ['female', 'asdf | asdf:'], 'attr-gender')],
+    });
+
+    render(
+      <SoftConstraintFamilySection
+        family="AttributeBalance"
+        onAdd={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onApplyAttributeBalanceRows={onApplyAttributeBalanceRows}
+        createAttributeBalanceRow={() => ({
+          constraint: {
+            type: 'AttributeBalance',
+            group_id: 'g1',
+            attribute_id: 'attr-gender',
+            attribute_key: 'gender',
+            desired_values: {},
+            penalty_weight: 50,
+            mode: 'exact',
+            sessions: undefined,
+          },
+          index: -1,
+        })}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    const csvInput = screen.getByRole('textbox', { name: /attribute balance csv/i });
+    expect(csvInput).toHaveValue(
+      'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""asdf | asdf:"":1}",exact,30,"[1,2]"',
+    );
+
+    fireEvent.change(csvInput, {
+      target: { value: 'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":3,""unknown"":2}",exact,30,"[1,2]"' },
+    });
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(screen.getByText(/csv validation errors/i)).toBeInTheDocument();
+    expect(screen.getByText(/expected targets keys to be one of/i)).toBeInTheDocument();
+    expect(onApplyAttributeBalanceRows).not.toHaveBeenCalled();
   });
 });

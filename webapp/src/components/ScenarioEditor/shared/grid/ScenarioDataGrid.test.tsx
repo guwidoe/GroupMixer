@@ -736,6 +736,66 @@ describe('ScenarioDataGrid', () => {
     expect(onApply).toHaveBeenCalledTimes(1);
   });
 
+  it('round-trips punctuation-heavy string arrays safely through JSON raw csv mode', async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn();
+
+    function ArrayJsonHarness() {
+      const [mode, setMode] = React.useState<ScenarioDataGridWorkspaceMode>('browse');
+
+      return (
+        <ScenarioDataGrid
+          rows={[
+            {
+              id: 'row-a',
+              labels: ['alpha', 'asdf | asdf:', 'hello, world'],
+            },
+          ]}
+          rowKey={(row) => row.id}
+          columns={[
+            {
+              kind: 'primitive',
+              id: 'labels',
+              header: 'Labels',
+              primitive: 'array',
+              itemType: 'string',
+              getValue: (row) => row.labels,
+              setValue: (row, value) => ({ ...row, labels: Array.isArray(value) ? value.map(String) : [] }),
+            },
+          ]}
+          workspace={{
+            mode,
+            onModeChange: setMode,
+            draft: {
+              onApply,
+              csv: {
+                ariaLabel: 'Array JSON CSV editor',
+              },
+            },
+          }}
+        />
+      );
+    }
+
+    render(<ArrayJsonHarness />);
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    const csvInput = screen.getByRole('textbox', { name: /array json csv editor/i });
+    expect(csvInput).toHaveValue('Labels\n"[""alpha"",""asdf | asdf:"",""hello, world""]"');
+
+    fireEvent.change(csvInput, {
+      target: { value: 'Labels\n"[""alpha"",""semi;colon"",""pipe | thing"",""hello, world""]"' },
+    });
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(onApply).toHaveBeenCalledWith([
+      {
+        id: 'row-a',
+        labels: ['alpha', 'semi;colon', 'pipe | thing', 'hello, world'],
+      },
+    ]);
+  });
+
   it('expands structured finite-key fields into shared edit and csv columns', async () => {
     const user = userEvent.setup();
     const onApply = vi.fn();

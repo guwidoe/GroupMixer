@@ -65,7 +65,7 @@ test.describe('Scenario data-grid workspace', () => {
     await page.getByPlaceholder(/department, experience/i).fill('gender');
     await page.getByPlaceholder(/value 1/i).fill('female');
     await page.getByRole('button', { name: /add value/i }).click();
-    await page.getByPlaceholder(/value 2/i).fill('male');
+    await page.getByPlaceholder(/value 2/i).fill('asdf | asdf:');
     await page.locator('.modal-content button').filter({ hasText: /^add attribute$/i }).click();
 
     await navigateScenarioSetupSection(page, /groups/i);
@@ -90,12 +90,20 @@ test.describe('Scenario data-grid workspace', () => {
     await expect(page.getByRole('button', { name: /edit table/i })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: /targets/i })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: /attribute/i })).toBeVisible();
-    await expect(page.getByText(/female: 2 · male: 1/i)).toBeVisible();
+    await expect(page.getByRole('row', { name: /G1 gender .*asdf \| asdf:: 2 .*female: 1/i })).toBeVisible();
 
     await page.getByRole('button', { name: /^csv$/i }).click();
     const attributeBalanceCsv = page.getByRole('textbox', { name: /attribute balance csv/i });
     await expect(attributeBalanceCsv).toBeVisible();
     await expect(attributeBalanceCsv).toHaveValue(/Group,Attribute,Targets,Mode,Weight,Sessions/);
-    await expect(attributeBalanceCsv).toHaveValue(/G1,gender,"\{""female"":2,""male"":1\}",exact,10,"\[1,2,3\]"/);
+    await expect(attributeBalanceCsv).toHaveValue(/G1,gender,"\{""asdf \\| asdf:"":2,""female"":1\}",exact,10,"\[1,2,3\]"/);
+
+    await attributeBalanceCsv.fill('Group,Attribute,Targets,Mode,Weight,Sessions\nG1,gender,"{""asdf | asdf:"":2,""female"":3}",exact,10,"[1,2,3]"');
+    await page.getByRole('button', { name: /apply changes/i }).click();
+
+    await expect(page.getByRole('row', { name: /G1 gender .*asdf \| asdf:: 2 .*female: 3/i })).toBeVisible();
+
+    await page.getByRole('button', { name: /^csv$/i }).click();
+    await expect(page.getByRole('textbox', { name: /attribute balance csv/i })).toHaveValue(/G1,gender,"\{""asdf \\| asdf:"":2,""female"":3\}",exact,10,"\[1,2,3\]"/);
   });
 });
