@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { act } from 'react';
 import userEvent from '@testing-library/user-event';
@@ -78,7 +79,6 @@ describe('PeopleDirectory', () => {
     const user = userEvent.setup();
     const onEditPerson = vi.fn();
     const onDeletePerson = vi.fn();
-    const onInlineUpdatePerson = vi.fn();
 
     render(
       <PeopleDirectory
@@ -93,7 +93,7 @@ describe('PeopleDirectory', () => {
         onAddPerson={vi.fn()}
         onEditPerson={onEditPerson}
         onDeletePerson={onDeletePerson}
-        onInlineUpdatePerson={onInlineUpdatePerson}
+        onInlineUpdatePerson={vi.fn()}
         onOpenBulkAddForm={vi.fn()}
         onOpenBulkUpdateForm={vi.fn()}
         {...createBulkUpdateProps()}
@@ -113,13 +113,8 @@ describe('PeopleDirectory', () => {
     expect(screen.queryByRole('textbox', { name: /search table/i })).not.toBeInTheDocument();
     expect(screen.queryByText('p1')).not.toBeInTheDocument();
     expect(screen.getAllByText('dev').length).toBeGreaterThan(0);
-
-    await user.click(screen.getByRole('button', { name: /edit table/i }));
-    const nameInput = screen.getByRole('textbox', { name: /edit name for alex/i });
-    await user.clear(nameInput);
-    await user.type(nameInput, 'Alex Rivera');
-    await user.tab();
-    expect(onInlineUpdatePerson).toHaveBeenCalledWith('p1', { attributes: { name: 'Alex Rivera' } });
+    expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^csv$/i })).toBeInTheDocument();
 
     await user.click(screen.getAllByRole('button', { name: /delete alex/i })[0]!);
     expect(onDeletePerson).toHaveBeenCalledWith('p1');
@@ -161,29 +156,63 @@ describe('PeopleDirectory', () => {
     expect(screen.getAllByText('Engineering').length).toBeGreaterThan(0);
   });
 
-  it('renders the inline bulk edit workspace instead of the old modal flow', () => {
-    render(
-      <PeopleDirectory
-        scenario={createSampleScenario({ settings: createSampleSolverSettings() })}
-        attributeDefinitions={[]}
-        sessionsCount={3}
-        onAddPerson={vi.fn()}
-        onEditPerson={vi.fn()}
-        onDeletePerson={vi.fn()}
-        onInlineUpdatePerson={vi.fn()}
-        onOpenBulkAddForm={vi.fn()}
-        onOpenBulkUpdateForm={vi.fn()}
-        {...createBulkUpdateProps()}
-        bulkUpdateActive
-        bulkUpdateHeaders={['id', 'name']}
-        bulkUpdateRows={[{ id: 'p1', name: 'Alex' }]}
-        onTriggerCsvUpload={vi.fn()}
-        onTriggerExcelImport={vi.fn()}
-      />,
-    );
+  it('uses the shared data-grid edit and csv controls as the only bulk-edit surface', async () => {
+    const user = userEvent.setup();
 
-    expect(screen.getByRole('heading', { name: /bulk edit people/i })).toBeInTheDocument();
+    function Harness() {
+      const [bulkUpdateActive, setBulkUpdateActive] = React.useState(false);
+      const [bulkUpdateTextMode, setBulkUpdateTextMode] = React.useState<'text' | 'grid'>('grid');
+      const [bulkUpdateCsvInput, setBulkUpdateCsvInput] = React.useState('id,name\np1,Alex');
+      const [bulkUpdateHeaders, setBulkUpdateHeaders] = React.useState(['id', 'name']);
+      const [bulkUpdateRows, setBulkUpdateRows] = React.useState([{ id: 'p1', name: 'Alex' }]);
+
+      return (
+        <PeopleDirectory
+          scenario={createSampleScenario({
+            people: [{ id: 'p1', attributes: { name: 'Alex' } }],
+            settings: createSampleSolverSettings(),
+          })}
+          attributeDefinitions={[]}
+          sessionsCount={3}
+          onAddPerson={vi.fn()}
+          onEditPerson={vi.fn()}
+          onDeletePerson={vi.fn()}
+          onInlineUpdatePerson={vi.fn()}
+          onOpenBulkAddForm={vi.fn()}
+          onOpenBulkUpdateForm={() => {
+            setBulkUpdateActive(true);
+            setBulkUpdateTextMode('grid');
+          }}
+          bulkUpdateActive={bulkUpdateActive}
+          bulkUpdateTextMode={bulkUpdateTextMode}
+          setBulkUpdateTextMode={setBulkUpdateTextMode}
+          bulkUpdateCsvInput={bulkUpdateCsvInput}
+          setBulkUpdateCsvInput={setBulkUpdateCsvInput}
+          bulkUpdateHeaders={bulkUpdateHeaders}
+          setBulkUpdateHeaders={setBulkUpdateHeaders}
+          bulkUpdateRows={bulkUpdateRows}
+          setBulkUpdateRows={setBulkUpdateRows}
+          onRefreshBulkUpdate={vi.fn()}
+          onApplyBulkUpdate={vi.fn()}
+          onCloseBulkUpdate={() => setBulkUpdateActive(false)}
+          onTriggerCsvUpload={vi.fn()}
+          onTriggerExcelImport={vi.fn()}
+        />
+      );
+    }
+
+    render(<Harness />);
+
+    await user.click(screen.getByRole('button', { name: /list/i }));
+    await user.click(screen.getByRole('button', { name: /edit table/i }));
+
+    expect(screen.queryByRole('heading', { name: /bulk edit people/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /apply changes/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /back to directory/i })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: /edit name for bulk row 1/i })).toHaveValue('Alex');
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+
+    expect(screen.getByRole('textbox', { name: /people bulk edit csv/i })).toHaveValue('id,name\np1,Alex');
   });
 });
