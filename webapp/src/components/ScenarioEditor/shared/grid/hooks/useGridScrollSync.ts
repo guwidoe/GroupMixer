@@ -4,6 +4,13 @@ interface UseGridScrollSyncArgs {
   deps: React.DependencyList;
 }
 
+export function hasScrollMetricChange(
+  current: { scrollWidth: number; clientWidth: number },
+  next: { scrollWidth: number; clientWidth: number },
+) {
+  return current.scrollWidth !== next.scrollWidth || current.clientWidth !== next.clientWidth;
+}
+
 export function useGridScrollSync({ deps }: UseGridScrollSyncArgs) {
   const [scrollMetrics, setScrollMetrics] = React.useState({ scrollWidth: 0, clientWidth: 0 });
   const topScrollRef = React.useRef<HTMLDivElement>(null);
@@ -38,10 +45,12 @@ export function useGridScrollSync({ deps }: UseGridScrollSyncArgs) {
         return;
       }
 
-      setScrollMetrics({
+      const nextMetrics = {
         scrollWidth: tableNode.scrollWidth,
         clientWidth: bodyNode.clientWidth,
-      });
+      };
+
+      setScrollMetrics((current) => (hasScrollMetricChange(current, nextMetrics) ? nextMetrics : current));
     };
 
     updateScrollMetrics();

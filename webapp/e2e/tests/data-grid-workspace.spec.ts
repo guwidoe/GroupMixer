@@ -2,6 +2,23 @@ import { test, expect } from '@playwright/test';
 import { navigateScenarioSetupSection, openApp, waitForModal } from './helpers';
 
 test.describe('Scenario data-grid workspace', () => {
+  test('does not hit a maximum update-depth loop when opening setup grids', async ({ page }) => {
+    test.setTimeout(60000);
+
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => {
+      pageErrors.push(error.message);
+    });
+
+    await openApp(page);
+    await expect(page.getByRole('heading', { name: /^people$/i })).toBeVisible();
+
+    await navigateScenarioSetupSection(page, /attributes|attribute definitions/i);
+    await expect(page.getByRole('heading', { name: /attribute definitions/i })).toBeVisible();
+
+    expect(pageErrors).not.toContainEqual(expect.stringMatching(/maximum update depth exceeded/i));
+  });
+
   test('reuses typed grid edit and csv modes across People and Groups', async ({ page }) => {
     test.setTimeout(60000);
 
