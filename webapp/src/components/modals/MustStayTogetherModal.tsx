@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Constraint } from '../../types';
+import { getConstraintAddLabel, getConstraintEditLabel } from '../../utils/constraintDisplay';
 import PersonCard from '../PersonCard';
 import { useAppStore } from '../../store';
 import { ModalWrapper, ModalHeader, ModalFooter, FormValidationError } from '../ui';
@@ -86,7 +87,7 @@ export function MustStayTogetherModal({ sessionsCount, initial, onCancel, onSave
   return (
     <ModalWrapper maxWidth="lg">
       <ModalHeader
-        title={editing ? 'Edit Must Stay Together' : 'Add Must Stay Together'}
+        title={editing ? getConstraintEditLabel('MustStayTogether') : getConstraintAddLabel('MustStayTogether')}
         onClose={onCancel}
       />
 

@@ -5,6 +5,7 @@ import { Button } from '../../ui';
 import { SetupCollectionPage } from '../shared/SetupCollectionPage';
 import { SetupSearchField } from '../shared/SetupSearchField';
 import { SetupCardGrid, SetupItemActions, SetupItemCard, SetupKeyValueList, SetupTypeBadge, SetupWeightBadge } from '../shared/cards';
+import { getConstraintAddLabel, getConstraintDisplayName } from '../../../utils/constraintDisplay';
 import { ScenarioDataGrid } from '../shared/grid/ScenarioDataGrid';
 import type { SetupCollectionViewMode } from '../shared/useSetupCollectionViewMode';
 
@@ -217,7 +218,7 @@ export function RepeatEncounterCollectionSection({
   return (
     <SetupCollectionPage
       sectionKey="repeat-encounter"
-      title="Repeat Encounter"
+      title={getConstraintDisplayName('RepeatEncounter')}
       count={items.length}
       description={
         <p>
@@ -227,7 +228,7 @@ export function RepeatEncounterCollectionSection({
       }
       actions={
         <Button variant="primary" leadingIcon={<Plus className="h-4 w-4" />} onClick={() => onAdd('RepeatEncounter')}>
-          Add Repeat Limit
+          {getConstraintAddLabel('RepeatEncounter')}
         </Button>
       }
       onViewModeChange={(nextMode) => {

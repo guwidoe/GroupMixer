@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { getConstraintDisplayName } from '../utils/constraintDisplay';
 import FormValidationError from '../components/ui/FormValidationError';
 
 /**
@@ -54,7 +55,7 @@ export const LongErrorMessage: Story = {
 
 export const ConstraintError: Story = {
   args: {
-    error: 'Invalid constraint: The selected people cannot be in a "Must Stay Together" constraint because they participate in different sessions.',
+    error: `Invalid constraint: The selected people cannot be in a "${getConstraintDisplayName('MustStayTogether')}" constraint because they participate in different sessions.`,
   },
 };
 

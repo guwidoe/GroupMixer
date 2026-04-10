@@ -1,4 +1,5 @@
 import type { Constraint } from '../../types';
+import { getConstraintDisplayName } from '../../utils/constraintDisplay';
 
 export type ConstraintType = Constraint['type'];
 
@@ -34,11 +35,12 @@ export interface CardData extends BaseCardData {
 }
 
 export const typeLabels: Partial<Record<ConstraintType, string>> = {
-  RepeatEncounter: 'Repeat Encounter',
-  ShouldNotBeTogether: 'Should Not Be Together',
-  ShouldStayTogether: 'Should Stay Together',
-  MustStayTogether: 'Must Stay Together',
-  AttributeBalance: 'Attribute Balance',
-  ImmovablePerson: 'Immovable Person',
-  ImmovablePeople: 'Immovable People',
+  RepeatEncounter: getConstraintDisplayName('RepeatEncounter'),
+  ShouldNotBeTogether: getConstraintDisplayName('ShouldNotBeTogether'),
+  ShouldStayTogether: getConstraintDisplayName('ShouldStayTogether'),
+  MustStayTogether: getConstraintDisplayName('MustStayTogether'),
+  AttributeBalance: getConstraintDisplayName('AttributeBalance'),
+  ImmovablePerson: getConstraintDisplayName('ImmovablePerson'),
+  ImmovablePeople: getConstraintDisplayName('ImmovablePeople'),
+  PairMeetingCount: getConstraintDisplayName('PairMeetingCount'),
 };

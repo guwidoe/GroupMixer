@@ -3,6 +3,7 @@ import { AlertTriangle, PieChart, RefreshCw, Scale, Target, Users } from 'lucide
 import type { MetricCalculations } from '../../utils/metricCalculations';
 import { getColorClass } from '../../utils/metricCalculations';
 import type { SolverState, Solution } from '../../types';
+import { getConstraintDisplayName } from '../../utils/constraintDisplay';
 import { MetricCard } from './MetricCard';
 
 interface ResultsMetricsProps {
@@ -51,7 +52,7 @@ export function ResultsMetrics({
         colorClass={getColorClass(repetitionPenalty / repetitionBaseline, true)}
       />
       <MetricCard
-        title="Attribute Balance"
+        title={getConstraintDisplayName('AttributeBalance')}
         value={balancePenalty.toFixed(1)}
         icon={Scale}
         colorClass={getColorClass(balancePenalty / balanceBaseline, true)}

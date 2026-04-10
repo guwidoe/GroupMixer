@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { Person, Scenario, Solution } from '../../types';
 import { getPersonAttributeValue, reconcileScenarioAttributeDefinitions } from '../../services/scenarioAttributes';
+import { getConstraintDisplayName } from '../../utils/constraintDisplay';
 import type { CardData, ViolationDetail } from './types';
 
 type ScheduleMap = Record<number, Record<string, string[]>>;
@@ -85,7 +86,7 @@ export function useCompliance(scenario: Scenario, solution: Solution): CardData[
             id: index,
             constraint,
             type: constraint.type,
-            title: `Pair Meeting Count (${mode.replace('_', ' ')})`,
+            title: `${getConstraintDisplayName('PairMeetingCount')} (${mode.replace('_', ' ')})`,
             subtitle: `${formatSessions(sessions, scenario.num_sessions)} • Target: ${target} • Weight: ${constraint.penalty_weight}`,
             adheres: deviations === 0,
             violationsCount: deviations,
@@ -133,7 +134,7 @@ export function useCompliance(scenario: Scenario, solution: Solution): CardData[
             id: index,
             constraint,
             type: constraint.type,
-            title: `Repeat Encounter (max ${constraint.max_allowed_encounters})`,
+            title: `${getConstraintDisplayName('RepeatEncounter')} (max ${constraint.max_allowed_encounters})`,
             subtitle: `Penalty: ${constraint.penalty_function}, Weight: ${constraint.penalty_weight}`,
             adheres: violations === 0,
             violationsCount: violations,
@@ -176,7 +177,7 @@ export function useCompliance(scenario: Scenario, solution: Solution): CardData[
             id: index,
             constraint,
             type: constraint.type,
-            title: `Attribute Balance – ${constraint.group_id} (${constraint.attribute_key})`,
+            title: `${getConstraintDisplayName('AttributeBalance')} – ${constraint.group_id} (${constraint.attribute_key})`,
             subtitle:
               `${formatSessions(constraint.sessions, scenario.num_sessions)} • Weight: ${constraint.penalty_weight}` +
               (mode === 'at_least' ? ' • Mode: At least' : ''),
@@ -210,7 +211,7 @@ export function useCompliance(scenario: Scenario, solution: Solution): CardData[
             id: index,
             constraint,
             type: constraint.type,
-            title: 'Immovable Person',
+            title: getConstraintDisplayName('ImmovablePerson'),
             subtitle: `${formatSessions(constraint.sessions, scenario.num_sessions)} • Group: ${constraint.group_id}`,
             adheres: violations === 0,
             violationsCount: violations,
@@ -235,7 +236,7 @@ export function useCompliance(scenario: Scenario, solution: Solution): CardData[
             id: index,
             constraint,
             type: constraint.type,
-            title: 'Immovable People',
+            title: getConstraintDisplayName('ImmovablePeople'),
             subtitle: `${formatSessions(constraint.sessions, scenario.num_sessions)} • Group: ${constraint.group_id}`,
             adheres: violations === 0,
             violationsCount: violations,
@@ -268,7 +269,7 @@ export function useCompliance(scenario: Scenario, solution: Solution): CardData[
             id: index,
             constraint,
             type: constraint.type,
-            title: constraint.type === 'MustStayTogether' ? 'Must Stay Together' : 'Should Stay Together',
+            title: getConstraintDisplayName(constraint.type),
             subtitle: formatSessions(constraint.sessions, scenario.num_sessions),
             adheres: violations === 0,
             violationsCount: violations,
@@ -294,7 +295,7 @@ export function useCompliance(scenario: Scenario, solution: Solution): CardData[
             id: index,
             constraint,
             type: constraint.type,
-            title: 'Should Not Be Together',
+            title: getConstraintDisplayName('ShouldNotBeTogether'),
             subtitle: `${formatSessions(constraint.sessions, scenario.num_sessions)} • Weight: ${constraint.penalty_weight}`,
             adheres: violations === 0,
             violationsCount: violations,
@@ -307,7 +308,7 @@ export function useCompliance(scenario: Scenario, solution: Solution): CardData[
             id: index,
             constraint,
             type: constraint.type,
-            title: constraint.type,
+            title: getConstraintDisplayName(constraint.type),
             adheres: true,
             violationsCount: 0,
             details: [],

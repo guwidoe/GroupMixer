@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Scenario } from '../types';
+import { getConstraintDisplayName } from '../utils/constraintDisplay';
 
 interface AttributeBalanceConstraint {
   type: 'AttributeBalance';
@@ -28,7 +29,7 @@ const AttributeBalanceDashboard: React.FC<Props> = ({ constraints, scenario }) =
 
   if (filteredConstraints.length === 0) return (
     <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-      No Attribute Balance constraints for selected session.
+      No {getConstraintDisplayName('AttributeBalance')} constraints for the selected session.
     </div>
   );
 

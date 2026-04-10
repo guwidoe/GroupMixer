@@ -1,6 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import type { AttributeDefinition, Constraint, Scenario } from '../../types';
+import { getConstraintDisplayName } from '../../utils/constraintDisplay';
 import { SessionScopeField } from './shared/SessionScopeField';
 import { createAllSessionScopeDraft, type SessionScopeDraft } from './shared/sessionScope';
 
@@ -79,11 +80,11 @@ export function ConstraintFormModal({
               className="select"
               disabled={isEditing}
             >
-              <option value="RepeatEncounter">Repeat Encounter Limit</option>
-              <option value="AttributeBalance">Attribute Balance</option>
-              <option value="MustStayTogether">Must Stay Together</option>
-              <option value="ShouldNotBeTogether">Should Not Be Together</option>
-              <option value="ImmovablePeople">Immovable People</option>
+              <option value="RepeatEncounter">{getConstraintDisplayName('RepeatEncounter')}</option>
+              <option value="AttributeBalance">{getConstraintDisplayName('AttributeBalance')}</option>
+              <option value="MustStayTogether">{getConstraintDisplayName('MustStayTogether')}</option>
+              <option value="ShouldNotBeTogether">{getConstraintDisplayName('ShouldNotBeTogether')}</option>
+              <option value="ImmovablePeople">{getConstraintDisplayName('ImmovablePeople')}</option>
             </select>
             {isEditing && (
               <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>

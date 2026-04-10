@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import type { Constraint, Person } from '../../types';
+import { getConstraintAddLabel, getConstraintEditLabel } from '../../utils/constraintDisplay';
 import ConstraintPersonChip from '../ConstraintPersonChip';
 import PersonCard from '../PersonCard';
 
@@ -90,7 +91,7 @@ export function PairMeetingCountModal({ people, totalSessions, initial, onCancel
     <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4">
       <div className="rounded-lg p-4 sm:p-6 w-full max-w-md mx-auto modal-content max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{editing ? 'Edit Pair Meeting Count' : 'Add Pair Meeting Count'}</h3>
+          <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{editing ? getConstraintEditLabel('PairMeetingCount') : getConstraintAddLabel('PairMeetingCount')}</h3>
           <button onClick={onCancel} className="transition-colors p-2 -m-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800" style={{ color: 'var(--text-tertiary)' }}>
             <X className="w-5 h-5" />
           </button>

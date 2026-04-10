@@ -5,6 +5,7 @@ import type {
   Solution,
   Assignment,
 } from '../types';
+import { getConstraintDisplayName } from '../utils/constraintDisplay';
 
 export type ScheduleMap = Record<number, Record<string, string[]>>; // session -> group -> peopleIds
 
@@ -138,7 +139,7 @@ export function evaluateCompliance(
           id: index,
           constraint: c,
           type: c.type,
-          title: `Pair Meeting Count (${mode.replace("_", " ")})`,
+          title: `${getConstraintDisplayName('PairMeetingCount')} (${mode.replace("_", " ")})`,
           subtitle: `${formatSessions(
             sessions,
             scenario.num_sessions
@@ -197,7 +198,7 @@ export function evaluateCompliance(
           id: index,
           constraint: c,
           type: c.type,
-          title: `Repeat Encounter (max ${c.max_allowed_encounters})`,
+          title: `${getConstraintDisplayName('RepeatEncounter')} (max ${c.max_allowed_encounters})`,
           subtitle: `Penalty: ${c.penalty_function}, Weight: ${c.penalty_weight}`,
           adheres: violations === 0,
           violationsCount: violations,
@@ -253,7 +254,7 @@ export function evaluateCompliance(
           id: index,
           constraint: c,
           type: c.type,
-          title: `Attribute Balance – ${c.group_id} (${c.attribute_key})`,
+          title: `${getConstraintDisplayName('AttributeBalance')} – ${c.group_id} (${c.attribute_key})`,
           subtitle:
             `${formatSessions(
               (c as unknown as { sessions?: number[] }).sessions,
@@ -290,7 +291,7 @@ export function evaluateCompliance(
           id: index,
           constraint: c,
           type: c.type,
-          title: "Immovable Person",
+          title: getConstraintDisplayName('ImmovablePerson'),
           subtitle: `${formatSessions(
             (c as unknown as { sessions?: number[] }).sessions,
             scenario.num_sessions
@@ -334,7 +335,7 @@ export function evaluateCompliance(
           id: index,
           constraint: c,
           type: c.type,
-          title: "Immovable People",
+          title: getConstraintDisplayName('ImmovablePeople'),
           subtitle: `${formatSessions(
             (c as unknown as { sessions?: number[] }).sessions,
             scenario.num_sessions
@@ -380,10 +381,7 @@ export function evaluateCompliance(
             });
           }
         });
-        const title =
-          c.type === "MustStayTogether"
-            ? "Must Stay Together"
-            : "Should Stay Together";
+        const title = getConstraintDisplayName(c.type);
         cards.push({
           id: index,
           constraint: c,
@@ -426,7 +424,7 @@ export function evaluateCompliance(
           id: index,
           constraint: c,
           type: c.type,
-          title: "Should Not Be Together",
+          title: getConstraintDisplayName('ShouldNotBeTogether'),
           subtitle: `${formatSessions(
             (c as unknown as { sessions?: number[] }).sessions,
             scenario.num_sessions
@@ -445,7 +443,7 @@ export function evaluateCompliance(
           id: index,
           constraint: anyConstraint,
           type: anyConstraint.type,
-          title: anyConstraint.type,
+          title: getConstraintDisplayName(anyConstraint.type),
           adheres: true,
           violationsCount: 0,
           details: [],

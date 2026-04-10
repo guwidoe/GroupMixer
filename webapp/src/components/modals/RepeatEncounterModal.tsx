@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { Constraint } from '../../types';
+import { getConstraintAddLabel, getConstraintEditLabel } from '../../utils/constraintDisplay';
 import { ModalWrapper, ModalHeader, ModalFooter, FormValidationError } from '../ui';
 
 interface Props {
@@ -81,7 +82,7 @@ export function RepeatEncounterModal({ initial, onCancel, onSave }: Props) {
   return (
     <ModalWrapper maxWidth="md">
       <ModalHeader
-        title={editing ? 'Edit Repeat Encounter' : 'Add Repeat Encounter'}
+        title={editing ? getConstraintEditLabel('RepeatEncounter') : getConstraintAddLabel('RepeatEncounter')}
         onClose={onCancel}
       />
 

@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import type { Constraint } from '../../types';
 import { findAttributeDefinition } from '../../services/scenarioAttributes';
 import { useAppStore } from '../../store';
+import { getConstraintAddLabel, getConstraintEditLabel } from '../../utils/constraintDisplay';
 import { SessionScopeField } from '../ScenarioEditor/shared/SessionScopeField';
 import {
   createAllSessionScopeDraft,
@@ -143,7 +144,7 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
     <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4">
       <div className="rounded-lg p-4 sm:p-6 w-full max-w-lg mx-auto modal-content max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{editing ? 'Edit Attribute Balance' : 'Add Attribute Balance'}</h3>
+          <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{editing ? getConstraintEditLabel('AttributeBalance') : getConstraintAddLabel('AttributeBalance')}</h3>
           <button 
             onClick={onCancel} 
             className="transition-colors p-2 -m-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800" 

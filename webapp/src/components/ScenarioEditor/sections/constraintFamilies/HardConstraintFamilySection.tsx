@@ -17,6 +17,7 @@ import { ScenarioDataGrid } from '../../shared/grid/ScenarioDataGrid';
 import { createOptionalSessionScopeColumn } from '../../shared/grid/sessionScopeColumn';
 import { SetupPersonListText, formatPersonSearchList } from '../../shared/personDisplay';
 import type { SetupCollectionViewMode } from '../../shared/useSetupCollectionViewMode';
+import { getConstraintDisplayName } from '../../../../utils/constraintDisplay';
 import { HARD_SECTION_COPY } from './copy';
 import {
   ConstraintCards,
@@ -187,7 +188,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                   summary={selectedMustIndices.length > 0 ? `Advanced actions · ${selectedMustIndices.length} selected` : 'Advanced actions'}
                   items={[
                     {
-                      label: 'Convert selected to Should Stay Together',
+                      label: `Convert selected to ${getConstraintDisplayName('ShouldStayTogether')}`,
                       disabled: selectedMustIndices.length === 0,
                       description:
                         selectedMustIndices.length === 0
@@ -211,7 +212,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Filter by person or session"
-                label="Search must stay together cliques"
+                label={`Search ${copy.title.toLowerCase()} items`}
               />
               <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
                 <span>Min members</span>
@@ -256,7 +257,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                         <SetupSelectionToggle
                           selected={selectedMustIndices.includes(index)}
                           onToggle={() => setSelectedMustIndices((previous) => previous.includes(index) ? previous.filter((value) => value !== index) : [...previous, index])}
-                          label={`${selectedMustIndices.includes(index) ? 'Deselect' : 'Select'} must stay together clique`}
+                          label={`${selectedMustIndices.includes(index) ? 'Deselect' : 'Select'} ${copy.title.toLowerCase()} item`}
                         />
                       ) : null}
                       <SetupItemActions onDelete={() => onDelete(index)} variant="card" />
@@ -395,10 +396,10 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
           <div className="w-full max-w-md rounded-2xl border px-6 py-6" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
             <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Convert to Should Stay Together
+              Convert to {getConstraintDisplayName('ShouldStayTogether')}
             </h3>
             <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              {selectedMustIndices.length} selected clique{selectedMustIndices.length === 1 ? '' : 's'} will be converted to Should Stay Together with the chosen penalty weight.
+              {selectedMustIndices.length} selected clique{selectedMustIndices.length === 1 ? '' : 's'} will be converted to {getConstraintDisplayName('ShouldStayTogether')} with the chosen penalty weight.
             </p>
             <label className="mt-4 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
               Penalty weight

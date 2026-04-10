@@ -18,6 +18,7 @@ import {
   SetupTypeBadge,
   SetupWeightBadge,
 } from '../../shared/cards';
+import { getConstraintDisplayName } from '../../../../utils/constraintDisplay';
 import { ScenarioDataGrid } from '../../shared/grid/ScenarioDataGrid';
 import { createOptionalSessionScopeColumn } from '../../shared/grid/sessionScopeColumn';
 import { SetupPersonListText, formatPersonDisplayList, formatPersonSearchList } from '../../shared/personDisplay';
@@ -226,7 +227,7 @@ export function SoftConstraintFamilySection({
                   summary={selectedShouldIndices.length > 0 ? `Advanced actions · ${selectedShouldIndices.length} selected` : 'Advanced actions'}
                   items={[
                     {
-                      label: 'Convert selected to Pair Meeting Count',
+                      label: `Convert selected to ${getConstraintDisplayName('PairMeetingCount')}`,
                       disabled: selectedShouldIndices.length === 0,
                       description:
                         selectedShouldIndices.length === 0
@@ -246,7 +247,7 @@ export function SoftConstraintFamilySection({
         toolbarLeading={(activeViewMode) =>
           family === 'ShouldStayTogether' && activeViewMode === 'cards' ? (
             <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
-              <SetupSearchField value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Filter by person or session" label="Search should stay together preferences" />
+              <SetupSearchField value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Filter by person or session" label={`Search ${copy.title.toLowerCase()} items`} />
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Showing {filteredItems.length} of {items.length}. Selected {selectedShouldIndices.length}.
               </div>
@@ -286,7 +287,7 @@ export function SoftConstraintFamilySection({
                         <SetupSelectionToggle
                           selected={selectedShouldIndices.includes(index)}
                           onToggle={() => setSelectedShouldIndices((previous) => previous.includes(index) ? previous.filter((value) => value !== index) : [...previous, index])}
-                          label={`${selectedShouldIndices.includes(index) ? 'Deselect' : 'Select'} should stay together preference`}
+                          label={`${selectedShouldIndices.includes(index) ? 'Deselect' : 'Select'} ${copy.title.toLowerCase()} item`}
                         />
                       ) : null}
                       <SetupItemActions onDelete={() => onDelete(index)} variant="card" />

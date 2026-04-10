@@ -66,9 +66,9 @@ describe('ConstraintFamilySections', () => {
       <HardConstraintFamilySection family="ImmovablePeople" onAdd={onAdd} onEdit={onEdit} onDelete={onDelete} />,
     );
 
-    expect(screen.getByRole('heading', { name: /immovable people/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /fixed placements/i })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /add immovable people/i }));
+    await user.click(screen.getByRole('button', { name: /add fixed placements/i }));
     expect(onAdd).toHaveBeenCalledWith('ImmovablePeople');
 
     await user.click(screen.getByRole('button', { name: /list/i }));
@@ -89,7 +89,7 @@ describe('ConstraintFamilySections', () => {
       <SoftConstraintFamilySection family="ShouldStayTogether" onAdd={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
     );
 
-    expect(screen.getByRole('heading', { name: /should stay together/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /prefer together/i })).toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/filter by person or session/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^csv$/i })).toBeInTheDocument();
@@ -99,9 +99,9 @@ describe('ConstraintFamilySections', () => {
 
     await user.click(screen.getByRole('button', { name: /^cards$/i }));
     await user.click(screen.getByRole('button', { name: /select cards/i }));
-    await user.click(screen.getByRole('button', { name: /select should stay together preference/i }));
+    await user.click(screen.getByRole('button', { name: /select prefer together item/i }));
     await user.click(screen.getByRole('button', { name: /^actions$/i }));
-    expect(screen.getByRole('button', { name: /convert selected to pair meeting count/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /convert selected to pair encounters/i })).toBeInTheDocument();
   });
 
   it('uses attribute names plus a single targets column for attribute balance list editing and csv', async () => {
@@ -143,7 +143,7 @@ describe('ConstraintFamilySections', () => {
     expect(screen.getByRole('spinbutton', { name: /target for male/i })).toHaveValue(1);
 
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
-    const csvInput = screen.getByRole('textbox', { name: /attribute balance csv/i });
+    const csvInput = screen.getByRole('textbox', { name: /balance attributes csv/i });
     expect(csvInput).toHaveValue(
       'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""male"":1}",exact,30,"{""mode"":""selected"",""sessions"":[0,1]}"',
     );
@@ -212,7 +212,7 @@ describe('ConstraintFamilySections', () => {
     );
 
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
-    const csvInput = screen.getByRole('textbox', { name: /attribute balance csv/i });
+    const csvInput = screen.getByRole('textbox', { name: /balance attributes csv/i });
     expect(csvInput).toHaveValue(
       'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""asdf | asdf:"":1}",exact,30,"{""mode"":""selected"",""sessions"":[0,1]}"',
     );

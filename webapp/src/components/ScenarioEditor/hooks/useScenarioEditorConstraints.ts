@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { AttributeDefinition, Constraint, Scenario } from '../../../types';
 import { findAttributeDefinition, getAttributeDefinitionName, updateAttributeBalanceConstraintReference } from '../../../services/scenarioAttributes';
 import type { ConstraintFormState } from '../ConstraintFormModal';
+import { getConstraintDisplayName, getConstraintUpdatedLabel } from '../../../utils/constraintDisplay';
 import {
   createAllSessionScopeDraft,
   normalizeSessionSelection,
@@ -397,8 +398,8 @@ export function useScenarioEditorConstraints({
 
     addNotification({
       type: 'success',
-      title: 'Repeat Encounter Updated',
-      message: `Applied ${nextRepeatConstraints.length} repeat-encounter row${nextRepeatConstraints.length === 1 ? '' : 's'}.`,
+      title: getConstraintUpdatedLabel('RepeatEncounter'),
+      message: `Applied ${nextRepeatConstraints.length} ${getConstraintDisplayName('RepeatEncounter')} row${nextRepeatConstraints.length === 1 ? '' : 's'}.`,
     });
   };
 
@@ -467,8 +468,8 @@ export function useScenarioEditorConstraints({
 
     addNotification({
       type: 'success',
-      title: 'Attribute Balance Updated',
-      message: `Applied ${nextAttributeBalanceConstraints.length} attribute-balance row${nextAttributeBalanceConstraints.length === 1 ? '' : 's'}.`,
+      title: getConstraintUpdatedLabel('AttributeBalance'),
+      message: `Applied ${nextAttributeBalanceConstraints.length} ${getConstraintDisplayName('AttributeBalance')} row${nextAttributeBalanceConstraints.length === 1 ? '' : 's'}.`,
     });
   };
 

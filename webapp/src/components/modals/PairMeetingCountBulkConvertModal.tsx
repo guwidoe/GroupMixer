@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { Person } from '../../types';
+import { getConstraintDisplayName } from '../../utils/constraintDisplay';
 
 type Mode = 'at_least' | 'exact' | 'at_most';
 
@@ -56,9 +57,9 @@ const PairMeetingCountBulkConvertModal: React.FC<Props> = ({ selectedCount, tota
   return (
     <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4">
       <div className="rounded-lg p-4 sm:p-6 w-full max-w-lg mx-auto modal-content max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Convert to Pair Meeting Count</h3>
+        <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Convert to {getConstraintDisplayName('PairMeetingCount')}</h3>
         <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>
-          {selectedCount} selected Should Stay Together constraint(s) will be converted.
+          {selectedCount} selected {getConstraintDisplayName('ShouldStayTogether')} constraint(s) will be converted.
         </p>
 
         {error && (

@@ -5,6 +5,7 @@ import ConstraintPersonChip from './ConstraintPersonChip';
 import { formatSessions, useCompliance } from './ConstraintComplianceCards/useCompliance';
 import type { CardData, ConstraintType, ViolationDetail } from './ConstraintComplianceCards/types';
 import { typeLabels } from './ConstraintComplianceCards/types';
+import { getConstraintDisplayName } from '../utils/constraintDisplay';
 
 interface Props {
   scenario: Scenario;
@@ -48,11 +49,11 @@ const ConstraintComplianceCards: React.FC<Props> = ({ scenario, solution }) => {
     <div className="flex items-start justify-between">
       <div className="min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span
-            className="text-xs font-medium px-2 py-0.5 rounded"
-            style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}
-          >
-            {card.type}
+            <span
+              className="text-xs font-medium px-2 py-0.5 rounded"
+              style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}
+            >
+            {getConstraintDisplayName(card.type)}
           </span>
           {card.subtitle && (
             <span
