@@ -150,6 +150,43 @@ describe('ScenarioDataGrid', () => {
     expect(screen.getByRole('button', { name: /clear filters/i })).toBeInTheDocument();
   });
 
+  it('opens browse rows on click while ignoring inline row actions', async () => {
+    const user = userEvent.setup();
+    const onRowOpen = vi.fn();
+    const onDelete = vi.fn();
+
+    render(
+      <ScenarioDataGrid
+        rows={rows}
+        rowKey={(row) => row.id}
+        onRowOpen={onRowOpen}
+        rowOpenLabel={(row) => `Edit ${row.name}`}
+        columns={[
+          {
+            id: 'name',
+            header: 'Name',
+            cell: (row) => row.name,
+            sortValue: (row) => row.name,
+            searchValue: (row) => row.name,
+          },
+          {
+            kind: 'display',
+            id: 'actions',
+            header: 'Actions',
+            cell: (row) => <button type="button" aria-label={`Delete ${row.name}`} onClick={() => onDelete(row.id)}>Delete</button>,
+          },
+        ]}
+      />,
+    );
+
+    await user.click(screen.getByText('Beta'));
+    expect(onRowOpen).toHaveBeenCalledWith(rows[0]);
+
+    await user.click(screen.getByRole('button', { name: /delete beta/i }));
+    expect(onDelete).toHaveBeenCalledWith('a');
+    expect(onRowOpen).toHaveBeenCalledTimes(1);
+  });
+
   it('supports multi-select column filtering from the header popover', async () => {
     const user = userEvent.setup();
 

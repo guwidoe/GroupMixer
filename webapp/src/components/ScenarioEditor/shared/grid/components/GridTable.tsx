@@ -11,9 +11,11 @@ interface GridTableProps<T> {
   maxHeight: string;
   onBodyScroll: () => void;
   onCloseFilter: (columnId: string) => void;
+  onRowOpen?: (row: T) => void;
   onStartResize: (columnId: string, startX: number, startWidth: number) => void;
   onToggleFilter: (columnId: string) => void;
   openFilterId: string | null;
+  rowOpenLabel?: (row: T, rowIndex: number) => string;
   table: Table<T>;
   tableRef: React.RefObject<HTMLTableElement | null>;
 }
@@ -25,9 +27,11 @@ export function GridTable<T>({
   maxHeight,
   onBodyScroll,
   onCloseFilter,
+  onRowOpen,
   onStartResize,
   onToggleFilter,
   openFilterId,
+  rowOpenLabel,
   table,
   tableRef,
 }: GridTableProps<T>) {
@@ -60,7 +64,7 @@ export function GridTable<T>({
             </tr>
           ))}
         </thead>
-        <GridBody table={table} emptyState={emptyState} />
+        <GridBody table={table} emptyState={emptyState} onRowOpen={onRowOpen} rowOpenLabel={rowOpenLabel} />
       </table>
     </div>
   );

@@ -69,6 +69,8 @@ function renderAttributeContent(
       <ScenarioDataGrid
         rows={attributeDefinitions}
         rowKey={(definition) => definition.id}
+        onRowOpen={onEditAttribute}
+        rowOpenLabel={(definition) => `Edit ${definition.key}`}
         searchPlaceholder="Search attributes and values…"
         workspace={{
           mode: gridWorkspaceMode,
@@ -134,9 +136,7 @@ function renderAttributeContent(
             cell: (definition: AttributeDefinition) => (
               <div className="flex justify-end">
                 <SetupItemActions
-                  editLabel={`Edit ${definition.key}`}
                   deleteLabel={`Delete ${definition.key}`}
-                  onEdit={() => onEditAttribute(definition)}
                   onDelete={() => onRemoveAttribute(definition.key)}
                 />
               </div>

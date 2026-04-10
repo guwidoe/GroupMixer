@@ -40,12 +40,15 @@ describe('GroupsSection', () => {
     expect(onAddGroup).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('button', { name: /import & bulk/i })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /edit g1/i }));
+    await user.click(screen.getByText('g1'));
     expect(onEditGroup).toHaveBeenCalledTimes(1);
 
     await user.click(screen.getByRole('button', { name: /list/i }));
     expect(screen.getByRole('columnheader', { name: /default capacity/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
+
+    await user.click(screen.getByText('g1'));
+    expect(onEditGroup).toHaveBeenCalledTimes(2);
 
     await user.click(screen.getAllByRole('button', { name: /delete g1/i })[0]!);
     expect(onDeleteGroup).toHaveBeenCalledWith('g1');

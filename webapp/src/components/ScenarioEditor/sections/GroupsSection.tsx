@@ -33,6 +33,8 @@ function renderGroupContent(
       <ScenarioDataGrid
         rows={groups}
         rowKey={(group) => group.id}
+        onRowOpen={onEditGroup}
+        rowOpenLabel={(group) => `Edit ${group.id}`}
         searchPlaceholder="Search groups or capacities…"
         workspace={{
           mode: gridWorkspaceMode,
@@ -108,9 +110,7 @@ function renderGroupContent(
             cell: (group: Group) => (
               <div className="flex justify-end">
                 <SetupItemActions
-                  editLabel={`Edit ${group.id}`}
                   deleteLabel={`Delete ${group.id}`}
-                  onEdit={() => onEditGroup(group)}
                   onDelete={() => onDeleteGroup(group.id)}
                 />
               </div>

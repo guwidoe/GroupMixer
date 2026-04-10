@@ -28,12 +28,13 @@ function createScenario(): Scenario {
 describe('RepeatEncounterCollectionSection', () => {
   it('uses shared typed grid editing and csv controls', async () => {
     const user = userEvent.setup();
+    const onEdit = vi.fn();
 
     render(
       <RepeatEncounterCollectionSection
         scenario={createScenario()}
         onAdd={vi.fn()}
-        onEdit={vi.fn()}
+        onEdit={onEdit}
         onDelete={vi.fn()}
         onApplyGridRows={vi.fn()}
         createGridRow={() => ({
@@ -50,6 +51,9 @@ describe('RepeatEncounterCollectionSection', () => {
 
     expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^csv$/i })).toBeInTheDocument();
+
+    await user.click(screen.getByText(/max 1 encounter/i));
+    expect(onEdit).toHaveBeenCalledTimes(1);
 
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     expect(screen.getByRole('textbox', { name: /repeat encounter csv/i })).toHaveValue(

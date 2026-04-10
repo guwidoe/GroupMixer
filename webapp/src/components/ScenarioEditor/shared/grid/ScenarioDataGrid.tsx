@@ -23,6 +23,8 @@ interface ScenarioDataGridProps<T> {
   rowKey: (row: T, index: number) => string;
   filterQuery?: string;
   emptyState?: React.ReactNode;
+  onRowOpen?: (row: T) => void;
+  rowOpenLabel?: (row: T, index: number) => string;
   searchPlaceholder?: string;
   showCsvExport?: boolean;
   showEditToggle?: boolean;
@@ -41,6 +43,8 @@ export function ScenarioDataGrid<T>({
   rowKey,
   filterQuery = '',
   emptyState,
+  onRowOpen,
+  rowOpenLabel,
   showCsvExport = true,
   showEditToggle = true,
   defaultEditMode = false,
@@ -245,9 +249,11 @@ export function ScenarioDataGrid<T>({
           maxHeight={maxHeight}
           onBodyScroll={() => syncScroll('body')}
           onCloseFilter={(columnId) => setOpenFilterId((current) => current === columnId ? null : current)}
+          onRowOpen={!effectiveEditMode && !isInlineCsvMode ? onRowOpen : undefined}
           onStartResize={startColumnResize}
           onToggleFilter={(columnId) => setOpenFilterId((current) => current === columnId ? null : columnId)}
           openFilterId={openFilterId}
+          rowOpenLabel={rowOpenLabel}
           table={table}
           tableRef={tableRef}
         />

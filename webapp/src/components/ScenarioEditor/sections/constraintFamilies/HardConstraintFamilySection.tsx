@@ -271,6 +271,8 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
             <ScenarioDataGrid
               rows={filteredItems}
               rowKey={(item) => `${item.constraint.type}-${item.index}`}
+              onRowOpen={(item) => onEdit(item.constraint, item.index)}
+              rowOpenLabel={() => `Edit ${copy.title.toLowerCase()} constraint`}
               workspace={{
                 mode: gridWorkspaceMode,
                 onModeChange: setGridWorkspaceMode,
@@ -376,7 +378,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                   header: 'Actions',
                   cell: (item) => (
                     <div className="flex justify-end">
-                      <SetupItemActions onEdit={() => onEdit(item.constraint, item.index)} onDelete={() => onDelete(item.index)} />
+                      <SetupItemActions onDelete={() => onDelete(item.index)} />
                     </div>
                   ),
                   align: 'right',

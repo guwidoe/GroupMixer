@@ -77,6 +77,9 @@ describe('ConstraintFamilySections', () => {
     expect(screen.queryByText('p1')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^csv$/i })).toBeInTheDocument();
+
+    await user.click(screen.getByText('Alex'));
+    expect(onEdit).toHaveBeenCalledTimes(1);
   });
 
   it('renders soft constraint family conversion affordances without the old family tabs', async () => {

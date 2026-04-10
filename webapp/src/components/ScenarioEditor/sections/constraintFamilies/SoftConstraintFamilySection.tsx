@@ -305,6 +305,8 @@ export function SoftConstraintFamilySection({
             <ScenarioDataGrid
               rows={filteredItems}
               rowKey={(item) => `${item.constraint.type}-${item.index}`}
+              onRowOpen={(item) => onEdit(item.constraint, item.index)}
+              rowOpenLabel={() => `Edit ${copy.title.toLowerCase()} constraint`}
               workspace={((family === 'AttributeBalance' && onApplyAttributeBalanceRows && createAttributeBalanceRow)
                 || family === 'ShouldNotBeTogether'
                 || family === 'ShouldStayTogether'
@@ -631,7 +633,7 @@ export function SoftConstraintFamilySection({
                   header: 'Actions',
                   cell: (item) => (
                     <div className="flex justify-end">
-                      <SetupItemActions onEdit={() => onEdit(item.constraint, item.index)} onDelete={() => onDelete(item.index)} />
+                      <SetupItemActions onDelete={() => onDelete(item.index)} />
                     </div>
                   ),
                   align: 'right',

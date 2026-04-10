@@ -4,10 +4,17 @@ import type { ScenarioDataGridColumn } from '../types';
 
 interface GridBodyProps<T> {
   emptyState?: React.ReactNode;
+  onRowOpen?: (row: T) => void;
+  rowOpenLabel?: (row: T, rowIndex: number) => string;
   table: Table<T>;
 }
 
-export function GridBody<T>({ emptyState, table }: GridBodyProps<T>) {
+function shouldIgnoreRowOpen(target: EventTarget | null) {
+  return target instanceof HTMLElement
+    && Boolean(target.closest('button, a, input, select, textarea, summary, [role="button"], [data-grid-row-click-ignore="true"]'));
+}
+
+export function GridBody<T>({ emptyState, onRowOpen, rowOpenLabel, table }: GridBodyProps<T>) {
   const paginatedRows = table.getRowModel().rows;
 
   return (
@@ -20,7 +27,32 @@ export function GridBody<T>({ emptyState, table }: GridBodyProps<T>) {
         </tr>
       ) : (
         paginatedRows.map((row, rowIndex) => (
-          <tr key={row.id} className="transition-colors hover:bg-[color:var(--bg-secondary)]" style={{ backgroundColor: rowIndex % 2 === 0 ? 'var(--bg-primary)' : 'color-mix(in srgb, var(--bg-secondary) 55%, var(--bg-primary) 45%)' }}>
+          <tr
+            key={row.id}
+            aria-label={onRowOpen ? rowOpenLabel?.(row.original, rowIndex) : undefined}
+            className={[
+              'transition-colors',
+              onRowOpen ? 'cursor-pointer hover:bg-[color:var(--bg-tertiary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-accent)] focus-visible:ring-offset-[-2px]' : 'hover:bg-[color:var(--bg-secondary)]',
+            ].join(' ')}
+            style={{ backgroundColor: rowIndex % 2 === 0 ? 'var(--bg-primary)' : 'color-mix(in srgb, var(--bg-secondary) 55%, var(--bg-primary) 45%)' }}
+            tabIndex={onRowOpen ? 0 : undefined}
+            onClick={onRowOpen ? (event) => {
+              if (shouldIgnoreRowOpen(event.target)) {
+                return;
+              }
+              onRowOpen(row.original);
+            } : undefined}
+            onKeyDown={onRowOpen ? (event) => {
+              if (event.key !== 'Enter' && event.key !== ' ') {
+                return;
+              }
+              if (shouldIgnoreRowOpen(event.target)) {
+                return;
+              }
+              event.preventDefault();
+              onRowOpen(row.original);
+            } : undefined}
+          >
             {row.getVisibleCells().map((cell) => {
               const columnMeta = cell.column.columnDef.meta as { align?: ScenarioDataGridColumn<T>['align'] } | undefined;
               const align = columnMeta?.align ?? 'left';

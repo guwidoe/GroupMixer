@@ -88,7 +88,7 @@ describe('PeopleDirectory', () => {
     expect(screen.queryByText(/^availability$/i)).not.toBeInTheDocument();
     expect(screen.queryByText('p1')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /edit alex/i }));
+    await user.click(screen.getByText('Alex'));
     expect(onEditPerson).toHaveBeenCalledTimes(1);
 
     await user.click(screen.getByRole('button', { name: /list/i }));
@@ -98,6 +98,9 @@ describe('PeopleDirectory', () => {
     expect(screen.getAllByText('dev').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^csv$/i })).toBeInTheDocument();
+
+    await user.click(screen.getByText('Alex'));
+    expect(onEditPerson).toHaveBeenCalledTimes(2);
 
     await user.click(screen.getAllByRole('button', { name: /delete alex/i })[0]!);
     expect(onDeletePerson).toHaveBeenCalledWith('p1');

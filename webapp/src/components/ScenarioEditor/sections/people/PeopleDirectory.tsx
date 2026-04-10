@@ -238,6 +238,8 @@ export function PeopleDirectory({
             rows={visiblePeople}
             rowKey={(person) => person.id}
             emptyState={<div className="text-sm" style={{ color: 'var(--text-secondary)' }}>No matching people.</div>}
+            onRowOpen={onEditPerson}
+            rowOpenLabel={(person) => `Edit ${person.attributes.name}`}
             showCsvExport={false}
             searchSummary={({ filteredCount, totalCount }) => (
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -336,9 +338,7 @@ export function PeopleDirectory({
                 cell: (person: Person) => (
                   <div className="flex justify-end">
                     <SetupItemActions
-                      editLabel={`Edit ${person.attributes.name}`}
                       deleteLabel={`Delete ${person.attributes.name}`}
-                      onEdit={() => onEditPerson(person)}
                       onDelete={() => onDeletePerson(person.id)}
                     />
                   </div>

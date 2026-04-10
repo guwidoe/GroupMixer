@@ -78,6 +78,8 @@ function renderRepeatEncounterContent(
       <ScenarioDataGrid
         rows={items}
         rowKey={(item, index) => `${item.index}-${index}`}
+        onRowOpen={(item) => onEdit(item.constraint, item.index)}
+        rowOpenLabel={() => 'Edit repeat encounter preference'}
         searchPlaceholder="Search by limit, weight, or penalty function…"
         workspace={{
           mode: gridWorkspaceMode,
@@ -149,9 +151,7 @@ function renderRepeatEncounterContent(
             cell: (item: RepeatEncounterRow) => (
               <div className="flex justify-end">
                 <SetupItemActions
-                  onEdit={() => onEdit(item.constraint, item.index)}
                   onDelete={() => onDelete(item.index)}
-                  editLabel="Edit repeat encounter preference"
                   deleteLabel="Delete repeat encounter preference"
                 />
               </div>
