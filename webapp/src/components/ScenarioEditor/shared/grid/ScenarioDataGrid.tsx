@@ -63,15 +63,15 @@ import {
   resolvePrimitiveSearchText,
   resolvePrimitiveSortValue,
 } from './model/primitiveBehavior';
+import { useGridColumnResize } from './hooks/useGridColumnResize';
+import { useGridColumnState } from './hooks/useGridColumnState';
+import { useGridScrollSync } from './hooks/useGridScrollSync';
+import { useScenarioDataTable } from './hooks/useScenarioDataTable';
+import { useGridWorkspaceDraft } from './hooks/useGridWorkspaceDraft';
 import type {
   ScenarioDataGridColumn,
-  ScenarioDataGridColumnEditor,
   ScenarioDataGridPrimitiveColumn,
   ScenarioDataGridWorkspaceConfig,
-  ScenarioDataGridNumberRangeValue,
-  ScenarioDataGridOption,
-  ScenarioDataGridSelectFilterValue,
-  ScenarioDataGridTextFilterValue,
 } from './types';
 
 interface ScenarioDataGridProps<T> {
@@ -202,49 +202,68 @@ export function ScenarioDataGrid<T>({
   pageSize = 100,
   pageSizeOptions = [50, 100, 250, 500],
 }: ScenarioDataGridProps<T>) {
-  const [draftRows, setDraftRows] = React.useState<T[]>(() => cloneRows(rows));
-  const [csvDraftText, setCsvDraftText] = React.useState('');
-  const [csvErrors, setCsvErrors] = React.useState<string[]>([]);
-  const workspaceMode = workspace?.mode ?? 'browse';
-  const rowsForMaterializedColumns = workspace?.draft && workspaceMode !== 'browse' ? draftRows : rows;
   const materializedColumns = React.useMemo(
-    () => materializeColumns(columns, rowsForMaterializedColumns),
-    [columns, rowsForMaterializedColumns],
+    () => materializeColumns(columns, rows),
+    [columns, rows],
   );
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(() =>
-    Object.fromEntries(materializedColumns.map((column) => [column.id, true])),
-  );
-  const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>(() =>
-    Object.fromEntries(materializedColumns.map((column) => [column.id, Math.max(column.width ?? 180, estimateHeaderMinWidth(column))])),
-  );
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = React.useState('');
   const [openFilterId, setOpenFilterId] = React.useState<string | null>(null);
   const [isColumnsMenuOpen, setIsColumnsMenuOpen] = React.useState(false);
   const [isEditMode, setIsEditMode] = React.useState(defaultEditMode);
   const [isCsvPreviewOpen, setIsCsvPreviewOpen] = React.useState(false);
-  const [scrollMetrics, setScrollMetrics] = React.useState({ scrollWidth: 0, clientWidth: 0 });
-  const topScrollRef = React.useRef<HTMLDivElement>(null);
-  const bodyScrollRef = React.useRef<HTMLDivElement>(null);
-  const tableRef = React.useRef<HTMLTableElement>(null);
-  const syncingScrollRef = React.useRef<'top' | 'body' | null>(null);
-  const resizeStateRef = React.useRef<{ columnId: string; startX: number; startWidth: number } | null>(null);
+
+  const draftEditableColumns = React.useMemo(
+    () => materializedColumns.filter((column): column is ScenarioDataGridPrimitiveColumn<T> => isPrimitiveColumn(column) && Boolean(column.setValue)),
+    [materializedColumns],
+  );
+  const {
+    activeRows,
+    csvDraftText,
+    csvErrors,
+    draftConfig,
+    draftRows,
+    hasDraftEditing,
+    inlineCsvConfig,
+    isInlineCsvMode,
+    requestWorkspaceMode,
+    setCsvDraftText,
+    setCsvErrors,
+    setDraftRows,
+    workspaceMode,
+    handleAddDraftRow,
+    handleApplyDraftChanges,
+  } = useGridWorkspaceDraft({
+    rows,
+    workspace,
+    draftEditableColumns,
+  });
+  const effectiveEditMode = workspace ? workspaceMode === 'edit' : isEditMode;
+
+  const {
+    columnFilters,
+    columnSizing,
+    columnVisibility,
+    setColumnFilters,
+    setColumnSizing,
+    setColumnVisibility,
+  } = useGridColumnState({ columns: materializedColumns });
+
+  const mergedQuery = React.useMemo(
+    () => [filterQuery, globalFilter].filter((value) => value.trim().length > 0).join(' ').trim(),
+    [filterQuery, globalFilter],
+  );
+
+  const { bodyScrollRef, scrollMetrics, syncScroll, tableRef, topScrollRef } = useGridScrollSync({
+    deps: [activeRows, columnSizing, columnVisibility, sorting, mergedQuery],
+  });
+
+  const { startColumnResize } = useGridColumnResize({ columns: materializedColumns, setColumnSizing });
 
   const hasEditableColumns = React.useMemo(
     () => materializedColumns.some((column) => (isPrimitiveColumn(column) && Boolean(column.setValue)) || ('editor' in column && Boolean(column.editor))),
     [materializedColumns],
   );
-  const draftConfig = workspace?.draft;
-  const inlineCsvConfig = workspace?.csv;
-  const draftEditableColumns = React.useMemo(
-    () => materializedColumns.filter((column): column is ScenarioDataGridPrimitiveColumn<T> => isPrimitiveColumn(column) && Boolean(column.setValue)),
-    [materializedColumns],
-  );
-  const hasDraftEditing = Boolean(draftConfig) && draftEditableColumns.length > 0;
-  const isInlineCsvMode = workspaceMode === 'csv' && (hasDraftEditing || Boolean(inlineCsvConfig));
-  const effectiveEditMode = workspace ? workspaceMode === 'edit' : isEditMode;
-  const activeRows = hasDraftEditing && workspaceMode !== 'browse' ? draftRows : rows;
   const resolvedWorkspaceActions = React.useMemo(() => {
     if (!workspace?.toolbarActions) {
       return null;
@@ -254,451 +273,23 @@ export function ScenarioDataGrid<T>({
       ? workspace.toolbarActions(workspaceMode)
       : workspace.toolbarActions;
   }, [workspace, workspaceMode]);
-  const buildDraftCsvText = React.useCallback((sourceRows: T[]) => {
-    const headerLine = draftEditableColumns.map((column) => escapeCsvValue(column.header)).join(',');
-    const rowLines = sourceRows.map((row) =>
-      draftEditableColumns
-        .map((column) => escapeCsvValue(normalizeExportValue(resolvePrimitiveExportValue(column, row))))
-        .join(','),
-    );
-
-    return [headerLine, ...rowLines].join('\n');
-  }, [draftEditableColumns]);
-  const parseDraftCsvText = React.useCallback((text: string, sourceRows: T[]) => {
-    const trimmed = text.trim();
-    if (!trimmed) {
-      return { rows: [] as T[], errors: [] as string[] };
-    }
-
-    const records = parseCsvText(trimmed);
-    if (records.length === 0) {
-      return { rows: [] as T[], errors: [] as string[] };
-    }
-
-    const [headerRecord, ...dataRecords] = records;
-    const expectedHeaders = draftEditableColumns.map((column) => column.header);
-    const actualHeaders = headerRecord.map((cell) => cell.trim());
-    if (expectedHeaders.length !== actualHeaders.length || expectedHeaders.some((header, index) => header !== actualHeaders[index])) {
-      return {
-        rows: sourceRows,
-        errors: [`CSV headers must exactly match: ${expectedHeaders.join(', ')}.`],
-      };
-    }
-
-    const nextRows: T[] = [];
-    const errors: string[] = [];
-
-    dataRecords.forEach((record, rowIndex) => {
-      let nextRow = rowIndex < sourceRows.length
-        ? cloneRow(sourceRows[rowIndex] as T)
-        : draftConfig?.createRow
-          ? cloneRow(draftConfig.createRow())
-          : null;
-
-      if (!nextRow) {
-        errors.push(`CSV row ${rowIndex + 2} adds a new row, but this grid has no createRow handler.`);
-        return;
-      }
-
-      draftEditableColumns.forEach((column, columnIndex) => {
-        const rawValue = record[columnIndex] ?? '';
-        const parsed = parsePrimitiveCsvValue(column, rawValue, nextRow as T);
-        if ('error' in parsed) {
-          errors.push(`Row ${rowIndex + 2}, ${column.header}: ${parsed.error}`);
-          return;
-        }
-
-        nextRow = column.setValue ? column.setValue(nextRow as T, parsed.value) : nextRow;
-      });
-
-      if (nextRow) {
-        nextRows.push(nextRow as T);
-      }
-    });
-
-    return {
-      rows: errors.length > 0 ? sourceRows : nextRows,
-      errors,
-    };
-  }, [draftConfig, draftEditableColumns]);
-  const requestWorkspaceMode = React.useCallback((nextMode: 'browse' | 'edit' | 'csv') => {
-    if (!workspace?.onModeChange) {
-      return;
-    }
-
-    if (!hasDraftEditing) {
-      workspace.onModeChange(nextMode);
-      return;
-    }
-
-    if (nextMode === 'browse') {
-      setDraftRows(cloneRows(rows));
-      setCsvDraftText('');
-      setCsvErrors([]);
-      workspace.onModeChange('browse');
-      return;
-    }
-
-    if (workspaceMode === 'csv') {
-      const parsed = parseDraftCsvText(csvDraftText, draftRows);
-      if (parsed.errors.length > 0) {
-        setCsvErrors(parsed.errors);
-        return;
-      }
-      setDraftRows(parsed.rows);
-      setCsvErrors([]);
-      if (nextMode === 'edit') {
-        workspace.onModeChange('edit');
-        return;
-      }
-      setCsvDraftText(buildDraftCsvText(parsed.rows));
-      workspace.onModeChange('csv');
-      return;
-    }
-
-    if (nextMode === 'edit') {
-      setDraftRows(cloneRows(rows));
-      setCsvErrors([]);
-      workspace.onModeChange('edit');
-      return;
-    }
-
-    const nextDraftRows = workspaceMode === 'edit'
-      ? cloneRows(draftRows)
-      : cloneRows(rows);
-    setDraftRows(nextDraftRows);
-    setCsvDraftText(buildDraftCsvText(nextDraftRows));
-    setCsvErrors([]);
-    workspace.onModeChange('csv');
-  }, [buildDraftCsvText, csvDraftText, draftRows, hasDraftEditing, parseDraftCsvText, rows, workspace, workspaceMode]);
-  const handleApplyDraftChanges = React.useCallback(() => {
-    if (!draftConfig) {
-      return;
-    }
-
-    if (workspaceMode === 'csv') {
-      const parsed = parseDraftCsvText(csvDraftText, draftRows);
-      if (parsed.errors.length > 0) {
-        setCsvErrors(parsed.errors);
-        return;
-      }
-      draftConfig.onApply(parsed.rows);
-      setDraftRows(cloneRows(parsed.rows));
-      setCsvErrors([]);
-      workspace?.onModeChange('browse');
-      return;
-    }
-
-    draftConfig.onApply(draftRows);
-    setCsvErrors([]);
-    workspace?.onModeChange('browse');
-  }, [csvDraftText, draftConfig, draftRows, parseDraftCsvText, workspace, workspaceMode]);
-  const handleAddDraftRow = React.useCallback(() => {
-    if (!draftConfig?.createRow) {
-      return;
-    }
-
-    setDraftRows((current) => [...current, cloneRow(draftConfig.createRow!())]);
-  }, [draftConfig]);
-  const mergedQuery = React.useMemo(
-    () => [filterQuery, globalFilter].filter((value) => value.trim().length > 0).join(' ').trim(),
-    [filterQuery, globalFilter],
-  );
-
-  React.useEffect(() => {
-    setColumnVisibility((current) => {
-      const next = { ...current };
-      let changed = false;
-      for (const column of materializedColumns) {
-        if (!(column.id in next)) {
-          next[column.id] = true;
-          changed = true;
-        }
-      }
-      return changed ? next : current;
-    });
-
-    setColumnSizing((current) => {
-      const next = { ...current };
-      let changed = false;
-      for (const column of materializedColumns) {
-        if (!(column.id in next)) {
-          next[column.id] = Math.max(column.width ?? 180, estimateHeaderMinWidth(column));
-          changed = true;
-        }
-      }
-      return changed ? next : current;
-    });
-  }, [materializedColumns]);
-
-  React.useEffect(() => {
-    if (!hasDraftEditing || workspaceMode !== 'browse') {
-      return;
-    }
-
-    setDraftRows(cloneRows(rows));
-    setCsvDraftText('');
-    setCsvErrors([]);
-  }, [hasDraftEditing, rows, workspaceMode]);
-
-  React.useEffect(() => {
-    const handlePointerMove = (event: PointerEvent) => {
-      const resizeState = resizeStateRef.current;
-      if (!resizeState) {
-        return;
-      }
-
-      const sourceColumn = materializedColumns.find((column) => column.id === resizeState.columnId);
-      const nextWidth = Math.max(
-        sourceColumn ? estimateHeaderMinWidth(sourceColumn) : 120,
-        resizeState.startWidth + (event.clientX - resizeState.startX),
-      );
-
-      setColumnSizing((current) => ({
-        ...current,
-        [resizeState.columnId]: nextWidth,
-      }));
-    };
-
-    const handlePointerUp = () => {
-      resizeStateRef.current = null;
-    };
-
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', handlePointerUp);
-
-    return () => {
-      window.removeEventListener('pointermove', handlePointerMove);
-      window.removeEventListener('pointerup', handlePointerUp);
-    };
-  }, [materializedColumns]);
-
-  const tableColumns = React.useMemo<ColumnDef<T>[]>(
-    () =>
-      materializedColumns.map((column) => ({
-        id: column.id,
-        header: column.header,
-        accessorFn: (row) => {
-          if (isPrimitiveColumn(column)) {
-            return resolvePrimitiveSortValue(column, row);
-          }
-          if (column.sortValue) {
-            return column.sortValue(row);
-          }
-          if (column.searchValue) {
-            return column.searchValue(row);
-          }
-          return '';
-        },
-        enableSorting: isPrimitiveColumn(column) || Boolean(column.sortValue),
-        enableColumnFilter: Boolean(isPrimitiveColumn(column) ? resolvePrimitiveFilter(column) : column.filter),
-        enableHiding: column.hideable !== false,
-        size: Math.max(column.width ?? 180, estimateHeaderMinWidth(column)),
-        minSize: estimateHeaderMinWidth(column),
-        meta: {
-          align: column.align ?? 'left',
-          sourceColumn: column,
-        },
-        filterFn: (row, _columnId, filterValue) => {
-          const filter = isPrimitiveColumn(column) ? resolvePrimitiveFilter(column) : column.filter;
-          if (!filter) {
-            return true;
-          }
-
-          const rowValue = resolveFilterValue(row.original, column);
-
-          if (filter.type === 'text') {
-            const queries = normalizeFilterListValue(filterValue).map((value) => normalizeSearchValue(value));
-            return queries.length === 0 || queries.some((query) => normalizeFilterText(rowValue).includes(query));
-          }
-
-          if (filter.type === 'select') {
-            const selectedValues = normalizeFilterListValue(filterValue);
-            if (selectedValues.length === 0) {
-              return true;
-            }
-
-            if (Array.isArray(rowValue)) {
-              const normalizedRowValues = rowValue.map((value) => String(value));
-              return selectedValues.some((value) => normalizedRowValues.includes(value));
-            }
-
-            return selectedValues.includes(String(rowValue ?? ''));
-          }
-
-          const range = (filterValue ?? {}) as ScenarioDataGridNumberRangeValue;
-          const numericValue = typeof rowValue === 'number' ? rowValue : Number(rowValue);
-          if (!Number.isFinite(numericValue)) {
-            return false;
-          }
-
-          const min = range.min == null || range.min === '' ? undefined : Number(range.min);
-          const max = range.max == null || range.max === '' ? undefined : Number(range.max);
-          if (Number.isFinite(min) && numericValue < (min as number)) {
-            return false;
-          }
-          if (Number.isFinite(max) && numericValue > (max as number)) {
-            return false;
-          }
-          return true;
-        },
-        cell: ({ row }) => {
-          if (effectiveEditMode && isPrimitiveColumn(column) && column.setValue) {
-            const editor: ScenarioDataGridColumnEditor<T> = {
-              type: column.primitive === 'number'
-                ? 'number'
-                : column.primitive === 'enum'
-                  ? 'select'
-                  : column.primitive === 'array' && column.options
-                    ? 'multiselect'
-                    : 'text',
-              getValue: (targetRow) => {
-                const value = column.getValue(targetRow);
-                if (column.primitive === 'array') {
-                  if (column.options) {
-                    return Array.isArray(value) ? value.map((entry) => String(entry)) : [];
-                  }
-                  const { stableSeparator } = getArrayCsvSeparators(column);
-                  return Array.isArray(value) ? value.map((entry) => String(entry)).join(` ${stableSeparator} `) : '';
-                }
-                return value == null ? '' : String(value);
-              },
-              onCommit: (targetRow, nextValue) => {
-                const parsed = Array.isArray(nextValue)
-                  ? parsePrimitiveCsvValue(column, nextValue.join('|'), targetRow)
-                  : parsePrimitiveCsvValue(column, String(nextValue), targetRow);
-                if ('error' in parsed) {
-                  return;
-                }
-
-                setDraftRows((current) => current.map((candidate) => (
-                  candidate === targetRow && column.setValue
-                    ? column.setValue(candidate, parsed.value)
-                    : candidate
-                )));
-              },
-              options: column.primitive === 'enum' || (column.primitive === 'array' && column.options)
-                ? (targetRow) => getPrimitiveOptions(column, targetRow)
-                : undefined,
-              ariaLabel: (targetRow) => `Edit ${column.header} for row ${rowKey(targetRow, row.index)}`,
-              placeholder: 'placeholder' in column ? column.placeholder : undefined,
-              disabled: column.disabled,
-            };
-
-            return <InlineEditorCell row={row.original} editor={editor} />;
-          }
-
-          if (effectiveEditMode && 'editor' in column && column.editor) {
-            return <InlineEditorCell row={row.original} editor={column.editor} />;
-          }
-
-          if (isPrimitiveColumn(column)) {
-            return renderPrimitiveValue(column, row.original);
-          }
-
-          return column.cell(row.original);
-        },
-      })),
-    [effectiveEditMode, materializedColumns, rowKey],
-  );
-
-  const globalFilterFn = React.useCallback<FilterFn<T>>(
-    (row: Row<T>, _columnId: string, filterValue: string) => matchesQuery(row.original, materializedColumns, String(filterValue ?? '')),
-    [materializedColumns],
-  );
-
-  const table = useReactTable({
-    data: activeRows,
-    columns: tableColumns,
-    state: {
-      sorting,
-      columnVisibility,
-      columnSizing,
-      columnFilters,
-      globalFilter: mergedQuery,
-    },
-    meta: {
-      columns: materializedColumns,
-    },
-    getRowId: (row, index) => rowKey(row, index),
-    enableColumnResizing: true,
-    columnResizeMode: 'onChange',
-    onSortingChange: setSorting,
-    onColumnVisibilityChange: setColumnVisibility,
-    onColumnSizingChange: setColumnSizing,
-    onColumnFiltersChange: setColumnFilters,
-    globalFilterFn,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: {
-      pagination: {
-        pageSize,
-      },
-    },
+  const { activeColumnFilters, csvColumns, exportRows, filteredCount, paginatedRows, table, totalCount } = useScenarioDataTable({
+    activeRows,
+    columnFilters,
+    columnSizing,
+    columnVisibility,
+    effectiveEditMode,
+    globalFilter: mergedQuery,
+    materializedColumns,
+    pageSize,
+    rowKey,
+    setColumnFilters,
+    setColumnSizing,
+    setColumnVisibility,
+    setDraftRows,
+    sorting,
+    setSorting,
   });
-
-  React.useEffect(() => {
-    const updateScrollMetrics = () => {
-      const bodyNode = bodyScrollRef.current;
-      const tableNode = tableRef.current;
-      if (!bodyNode || !tableNode) {
-        return;
-      }
-
-      setScrollMetrics({
-        scrollWidth: tableNode.scrollWidth,
-        clientWidth: bodyNode.clientWidth,
-      });
-    };
-
-    updateScrollMetrics();
-
-    const tableNode = tableRef.current;
-    const bodyNode = bodyScrollRef.current;
-    if (typeof ResizeObserver === 'undefined' || !tableNode || !bodyNode) {
-      return;
-    }
-
-    const observer = new ResizeObserver(updateScrollMetrics);
-    observer.observe(tableNode);
-    observer.observe(bodyNode);
-
-    return () => observer.disconnect();
-  }, [activeRows, columnSizing, columnVisibility, sorting, mergedQuery]);
-
-  const syncScroll = React.useCallback((source: 'top' | 'body') => {
-    const topNode = topScrollRef.current;
-    const bodyNode = bodyScrollRef.current;
-    if (!topNode || !bodyNode || syncingScrollRef.current === source) {
-      return;
-    }
-
-    syncingScrollRef.current = source;
-    if (source === 'top') {
-      bodyNode.scrollLeft = topNode.scrollLeft;
-    } else {
-      topNode.scrollLeft = bodyNode.scrollLeft;
-    }
-
-    window.requestAnimationFrame(() => {
-      syncingScrollRef.current = null;
-    });
-  }, []);
-
-  const filteredCount = table.getFilteredRowModel().rows.length;
-  const totalCount = activeRows.length;
-  const paginatedRows = table.getRowModel().rows;
-  const exportRows = table.getPrePaginationRowModel().rows;
-  const csvColumns = table.getVisibleLeafColumns()
-    .map((column) => {
-      const sourceColumn = (column.columnDef.meta as { sourceColumn?: ScenarioDataGridColumn<T> } | undefined)?.sourceColumn;
-      return sourceColumn ? { id: column.id, header: sourceColumn.header, sourceColumn } : null;
-    })
-    .filter(Boolean) as Array<{ id: string; header: string; sourceColumn: ScenarioDataGridColumn<T> }>;
   const hasDraftCsvColumns = draftEditableColumns.length > 0;
   const csvText = React.useMemo(() => {
     const headerLine = csvColumns.map((column) => escapeCsvValue(column.header)).join(',');
@@ -709,32 +300,6 @@ export function ScenarioDataGrid<T>({
     );
     return [headerLine, ...rowLines].join('\n');
   }, [csvColumns, exportRows]);
-  const activeColumnFilters = table.getState().columnFilters.flatMap((filterState) => {
-    const sourceColumn = materializedColumns.find((candidate) => candidate.id === filterState.id);
-    const sourceFilter = sourceColumn ? (isPrimitiveColumn(sourceColumn) ? resolvePrimitiveFilter(sourceColumn) : sourceColumn.filter) : undefined;
-    if (!sourceColumn || !sourceFilter) {
-      return [];
-    }
-
-    if (sourceFilter.type === 'numberRange') {
-      const range = filterState.value as ScenarioDataGridNumberRangeValue;
-      return [{
-        id: filterState.id,
-        filterId: filterState.id,
-        label: sourceColumn.header,
-        valueLabel: `${range.min ? `≥ ${range.min}` : ''}${range.min && range.max ? ' · ' : ''}${range.max ? `≤ ${range.max}` : ''}`,
-        onRemove: () => table.getColumn(filterState.id)?.setFilterValue(undefined),
-      }];
-    }
-
-    return normalizeFilterListValue(filterState.value).map((entry) => ({
-      id: `${filterState.id}:${entry}`,
-      filterId: filterState.id,
-      label: sourceColumn.header,
-      valueLabel: sourceFilter.type === 'select' ? resolveFilterOptionLabel(sourceColumn, activeRows, entry) : entry,
-      onRemove: () => table.getColumn(filterState.id)?.setFilterValue(removeFilterListEntry(filterState.value, entry)),
-    }));
-  });
   const summary = searchSummary
     ? searchSummary({ filteredCount, totalCount, query: globalFilter })
     : (
@@ -1001,11 +566,7 @@ export function ScenarioDataGrid<T>({
                           aria-label={`Resize ${sourceColumn.header} column`}
                           className="absolute right-0 top-0 h-full w-3 cursor-col-resize"
                           onPointerDown={(event) => {
-                            resizeStateRef.current = {
-                              columnId: sourceColumn.id,
-                              startX: event.clientX,
-                              startWidth: header.getSize(),
-                            };
+                            startColumnResize(sourceColumn.id, event.clientX, header.getSize());
                           }}
                         >
                           <div
