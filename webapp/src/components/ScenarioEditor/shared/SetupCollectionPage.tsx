@@ -41,6 +41,7 @@ export function SetupCollectionPage({
   renderContent,
 }: SetupCollectionPageProps) {
   const { viewMode, setViewMode } = useSetupCollectionViewMode(sectionKey, defaultViewMode);
+  const onViewModeChangeRef = React.useRef(onViewModeChange);
   const resolvedToolbarLeading = typeof toolbarLeading === 'function' ? toolbarLeading(viewMode) : toolbarLeading;
   const resolvedToolbarTrailing = typeof toolbarTrailing === 'function' ? toolbarTrailing(viewMode) : toolbarTrailing;
   const hasDedicatedToolbarContent = Boolean(resolvedToolbarLeading || resolvedToolbarTrailing);
@@ -53,8 +54,12 @@ export function SetupCollectionPage({
   );
 
   React.useEffect(() => {
-    onViewModeChange?.(viewMode);
-  }, [onViewModeChange, viewMode]);
+    onViewModeChangeRef.current = onViewModeChange;
+  }, [onViewModeChange]);
+
+  React.useEffect(() => {
+    onViewModeChangeRef.current?.(viewMode);
+  }, [viewMode]);
 
   return (
     <div className="space-y-5">

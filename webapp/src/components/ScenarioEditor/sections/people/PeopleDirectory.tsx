@@ -124,11 +124,12 @@ export function PeopleDirectory({
 
   React.useEffect(() => {
     if (!shouldProgressivelyRender) {
-      setVisiblePeopleCount(sortedPeople.length);
+      setVisiblePeopleCount((current) => (current === sortedPeople.length ? current : sortedPeople.length));
       return;
     }
 
-    setVisiblePeopleCount(Math.min(INITIAL_VISIBLE_PEOPLE, sortedPeople.length));
+    const initialVisibleCount = Math.min(INITIAL_VISIBLE_PEOPLE, sortedPeople.length);
+    setVisiblePeopleCount((current) => (current === initialVisibleCount ? current : initialVisibleCount));
 
     let cancelled = false;
     let timeoutId: number | null = null;
@@ -163,7 +164,7 @@ export function PeopleDirectory({
         window.clearTimeout(timeoutId);
       }
     };
-  }, [shouldProgressivelyRender, sortedPeople]);
+  }, [shouldProgressivelyRender, sortedPeople.length]);
 
   const visiblePeople = shouldProgressivelyRender ? sortedPeople.slice(0, visiblePeopleCount) : sortedPeople;
   const peopleAttributeColumns = useMemo(() => {

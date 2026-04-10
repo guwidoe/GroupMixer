@@ -1,6 +1,26 @@
 import { test, expect } from '@playwright/test';
 import { navigateScenarioSetupSection, openApp, openScenarioSetupControls, waitForModal } from './helpers';
 
+test('opening advanced editor from the landing page does not trigger a maximum update-depth crash', async ({ page }) => {
+  test.setTimeout(60000);
+
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => {
+    pageErrors.push(error.message);
+  });
+
+  await page.goto('/');
+  await page.getByRole('link', { name: /advanced editor|advanced workspace/i }).click();
+
+  await expect(page).toHaveURL(/\/app(?:\/scenario\/people)?(?:\?lp=home)?/);
+  await expect(page.getByRole('heading', { name: /^people$/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /add person/i })).toBeVisible();
+  await page.waitForTimeout(3000);
+  await expect(page.getByRole('button', { name: /add person/i })).toBeVisible();
+
+  expect(pageErrors).not.toContainEqual(expect.stringMatching(/maximum update depth exceeded/i));
+});
+
 test.describe('Scenario Editor', () => {
   test.beforeEach(async ({ page }) => {
     await openApp(page);

@@ -1,6 +1,7 @@
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { SetupCollectionPage } from './SetupCollectionPage';
 
 describe('SetupCollectionPage', () => {
@@ -81,5 +82,39 @@ describe('SetupCollectionPage', () => {
     expect(screen.getByText('Toolbar search')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /cards/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /list/i })).toBeInTheDocument();
+  });
+
+  it('does not loop when onViewModeChange gets a fresh callback identity on rerender', async () => {
+    const user = userEvent.setup();
+    const onViewModeChange = vi.fn();
+
+    function Harness() {
+      const [tick, setTick] = React.useState(0);
+
+      return (
+        <>
+          <button type="button" onClick={() => setTick((current) => current + 1)}>
+            Rerender {tick}
+          </button>
+          <SetupCollectionPage
+            sectionKey="callback-loop-shell"
+            title="Callback Loop Section"
+            count={2}
+            hasItems
+            emptyState={{ title: 'Empty', message: 'Nothing here yet.' }}
+            onViewModeChange={(viewMode) => onViewModeChange(viewMode)}
+            renderContent={() => <div>Card content</div>}
+          />
+        </>
+      );
+    }
+
+    render(<Harness />);
+
+    expect(onViewModeChange).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole('button', { name: /rerender/i }));
+
+    expect(onViewModeChange).toHaveBeenCalledTimes(1);
   });
 });

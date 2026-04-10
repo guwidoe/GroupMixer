@@ -11,8 +11,16 @@ export function hasScrollMetricChange(
   return current.scrollWidth !== next.scrollWidth || current.clientWidth !== next.clientWidth;
 }
 
+export function resolveScrollMetricUpdate(
+  current: { scrollWidth: number; clientWidth: number },
+  next: { scrollWidth: number; clientWidth: number },
+) {
+  return hasScrollMetricChange(current, next) ? next : null;
+}
+
 export function useGridScrollSync({ deps }: UseGridScrollSyncArgs) {
   const [scrollMetrics, setScrollMetrics] = React.useState({ scrollWidth: 0, clientWidth: 0 });
+  const scrollMetricsRef = React.useRef(scrollMetrics);
   const topScrollRef = React.useRef<HTMLDivElement>(null);
   const bodyScrollRef = React.useRef<HTMLDivElement>(null);
   const tableRef = React.useRef<HTMLTableElement>(null);
@@ -50,7 +58,13 @@ export function useGridScrollSync({ deps }: UseGridScrollSyncArgs) {
         clientWidth: bodyNode.clientWidth,
       };
 
-      setScrollMetrics((current) => (hasScrollMetricChange(current, nextMetrics) ? nextMetrics : current));
+      const resolvedMetrics = resolveScrollMetricUpdate(scrollMetricsRef.current, nextMetrics);
+      if (!resolvedMetrics) {
+        return;
+      }
+
+      scrollMetricsRef.current = resolvedMetrics;
+      setScrollMetrics(resolvedMetrics);
     };
 
     updateScrollMetrics();
