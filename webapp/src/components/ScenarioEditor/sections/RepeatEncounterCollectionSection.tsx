@@ -253,15 +253,6 @@ export function RepeatEncounterCollectionSection({
         )
       }
       defaultViewMode="list"
-      summary={
-        <div className="flex items-start gap-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
-          <RotateCcw className="mt-0.5 h-4 w-4 shrink-0" style={{ color: 'var(--color-accent)' }} />
-          <p>
-            Repeat encounter preferences are typically the first preference families users tune because they have an
-            immediate effect on novelty across the whole schedule.
-          </p>
-        </div>
-      }
       hasItems={filteredItems.length > 0}
       emptyState={{
         icon: <RotateCcw className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,
