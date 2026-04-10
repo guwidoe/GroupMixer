@@ -14,6 +14,7 @@ import type React from 'react';
  * - array
  * - enum string
  * - structured finite-key fields that expand into typed subcolumns
+ * - custom structured values with explicit raw codecs
  *
  * Display-only columns such as action buttons remain allowed through a dedicated display-column shape.
  */
@@ -54,6 +55,31 @@ export interface ScenarioDataGridWorkspaceConfig<T = unknown> {
 export interface ScenarioDataGridOption {
   value: string;
   label: string;
+}
+
+export type ScenarioDataGridRawParseResult<TValue> =
+  | { ok: true; value: TValue }
+  | { ok: false; error: string };
+
+/**
+ * Raw codecs govern CSV / raw-table round-tripping.
+ *
+ * Important doctrine:
+ * - browse rendering and edit rendering are separate concerns from raw serialization
+ * - simple scalar columns may keep lightweight scalar codecs
+ * - array/map/object-like values should prefer JSON raw codecs
+ * - parse failures must stay explicit; no silent coercion or delimiter magic for arbitrary user strings
+ */
+export interface ScenarioDataGridRawCodec<TValue, TRow> {
+  format: (value: TValue | undefined, row: TRow) => string;
+  parse: (text: string, row: TRow) => ScenarioDataGridRawParseResult<TValue | undefined>;
+}
+
+export interface ScenarioDataGridCustomEditorArgs<T, TValue> {
+  row: T;
+  value: TValue | undefined;
+  onCommit: (value: TValue | undefined) => void;
+  disabled?: boolean;
 }
 
 export interface ScenarioDataGridNumberRangeValue {
@@ -100,11 +126,19 @@ export interface ScenarioDataGridPrimitiveCsvConfig {
   /**
    * Stable delimiter used when the grid serializes array values into a CSV cell.
    * Default target separator should remain `|` so commas stay available for CSV itself.
+   *
+   * Transitional note:
+   * - this is only safe when array items are guaranteed not to contain arbitrary separator text
+   * - array columns with user-supplied string members should prefer an explicit JSON raw codec instead
    */
   separator?: string;
   /**
    * Extra delimiters accepted while parsing user-authored CSV back into typed values.
    * This allows forgiving input (`|`, `;`, or `,`) while still writing one stable format.
+   *
+   * Transitional note:
+   * - this compatibility path should not be extended to new complex/user-text-heavy fields
+   * - prefer JSON raw codecs for arrays/maps with arbitrary strings
    */
   acceptedSeparators?: string[];
 }
@@ -130,6 +164,13 @@ export interface ScenarioDataGridPrimitiveBase<T, TValue> extends ScenarioDataGr
   searchText?: (value: TValue | undefined, row: T) => string;
   exportValue?: (value: TValue | undefined, row: T) => string | number | string[] | undefined;
   parseValue?: (value: string, row: T) => TValue | undefined;
+  /**
+   * Optional raw codec override for CSV / raw editing.
+   *
+   * Use this when the browse/edit UI remains primitive-like but the raw representation must be safer
+   * than the primitive default, e.g. JSON arrays for user-supplied string lists.
+   */
+  rawCodec?: ScenarioDataGridRawCodec<TValue, T>;
   filter?: ScenarioDataGridColumnFilter<T>;
   csv?: ScenarioDataGridPrimitiveCsvConfig;
 }
@@ -174,6 +215,27 @@ export interface ScenarioDataGridStructuredFiniteKeyColumnBase<T, TValue extends
   childWidth?: number;
   childMinWidth?: number;
   childPlaceholder?: string | ((key: ScenarioDataGridOption) => string);
+}
+
+/**
+ * Row-local structured values should use a custom column instead of pretending they are a shared table-global schema.
+ *
+ * Preferred use cases:
+ * - map/dictionary values whose keys depend on another field in the same row
+ * - richer objects that need a custom browse renderer and custom editor UI
+ * - values that should round-trip through raw mode using canonical JSON
+ */
+export interface ScenarioDataGridCustomColumn<T, TValue> extends ScenarioDataGridColumnBase<T> {
+  kind: 'custom';
+  getValue: (row: T) => TValue | undefined;
+  setValue?: (row: T, value: TValue | undefined) => T;
+  renderValue: (value: TValue | undefined, row: T) => React.ReactNode;
+  renderEditor?: (args: ScenarioDataGridCustomEditorArgs<T, TValue>) => React.ReactNode;
+  searchText?: (value: TValue | undefined, row: T) => string;
+  exportValue?: (value: TValue | undefined, row: T) => string | number | string[] | undefined;
+  rawCodec?: ScenarioDataGridRawCodec<TValue, T>;
+  filter?: ScenarioDataGridColumnFilter<T>;
+  disabled?: (row: T) => boolean;
 }
 
 export interface ScenarioDataGridStringColumn<T>
@@ -260,5 +322,6 @@ export type ScenarioDataGridStructuredColumn<T> =
 export type ScenarioDataGridColumn<T> =
   | ScenarioDataGridPrimitiveColumn<T>
   | ScenarioDataGridStructuredColumn<T>
+  | ScenarioDataGridCustomColumn<T, unknown>
   | ScenarioDataGridDisplayColumn<T>
   | ScenarioDataGridLegacyColumn<T>;
