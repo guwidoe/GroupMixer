@@ -210,7 +210,7 @@ export function ScheduleMatrixVisualization({ data }: VisualizationComponentProp
                         <div className="flex flex-wrap gap-1">
                           {cell.peopleIds.map((pid) => {
                             const p = peopleById.get(pid);
-                            const label = p?.attributes?.name || pid;
+                            const label = p ? p.attributes.name : pid;
                             return (
                               <span
                                 key={pid}

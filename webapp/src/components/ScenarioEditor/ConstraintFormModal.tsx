@@ -266,7 +266,7 @@ export function ConstraintFormModal({
                         className="rounded border-gray-300 focus:ring-2"
                         style={{ color: 'var(--color-accent)', accentColor: 'var(--color-accent)' }}
                       />
-                      {person.attributes.name || person.id}
+                      {person.attributes.name}
                     </label>
                   ))}
                 </div>
@@ -325,7 +325,7 @@ export function ConstraintFormModal({
                         className="rounded border-gray-300 focus:ring-2"
                         style={{ color: 'var(--color-accent)', accentColor: 'var(--color-accent)' }}
                       />
-                      {person.attributes.name || person.id}
+                      {person.attributes.name}
                     </label>
                   ))}
                 </div>

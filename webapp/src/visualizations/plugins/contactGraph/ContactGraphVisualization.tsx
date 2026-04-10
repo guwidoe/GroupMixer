@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
+import { getPersonDisplayName } from '../../../services/scenarioAttributes';
 import type { VisualizationComponentProps } from "../../types";
 import { computeContactsFromSnapshot, computeContactsFromSolution } from "./buildContactGraph";
 
@@ -39,7 +40,7 @@ export function ContactGraphVisualization({ data }: VisualizationComponentProps)
   const labelById = useMemo(() => {
     const m = new Map<string, string>();
     for (const p of scenario.people) {
-      m.set(p.id, p.attributes?.name || p.id);
+      m.set(p.id, getPersonDisplayName(p));
     }
     return m;
   }, [scenario.people]);

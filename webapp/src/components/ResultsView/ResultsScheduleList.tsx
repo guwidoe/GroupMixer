@@ -1,5 +1,6 @@
 import React from 'react';
 import { Users } from 'lucide-react';
+import { getPersonDisplayName } from '../../services/scenarioAttributes';
 import type { Scenario, Solution } from '../../types';
 
 interface ResultsScheduleListProps {
@@ -30,7 +31,7 @@ export function ResultsScheduleList({ effectiveScenario, solution }: ResultsSche
           <tbody className="divide-y" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-secondary)' }}>
             {effectiveScenario.people.map((person) => {
               const personAssignments = solution.assignments.filter(a => a.person_id === person.id);
-              const displayName = person.attributes?.name || person.id;
+              const displayName = getPersonDisplayName(person);
 
               return (
                 <tr

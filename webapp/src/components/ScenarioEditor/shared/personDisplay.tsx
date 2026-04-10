@@ -1,10 +1,11 @@
 import React from 'react';
 import type { Person } from '../../../types';
+import { getPersonDisplayName } from '../../../services/scenarioAttributes';
 import { Tooltip } from '../../Tooltip';
 
 export function resolvePersonDisplay(people: Person[], personId: string) {
   const person = people.find((candidate) => candidate.id === personId);
-  const displayName = person?.attributes?.name || person?.id || personId;
+  const displayName = person ? getPersonDisplayName(person) : personId;
   const stableId = person?.id || personId;
 
   return {

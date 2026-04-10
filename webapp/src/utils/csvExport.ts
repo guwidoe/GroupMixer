@@ -41,7 +41,7 @@ export function generateAssignmentsCsv(
 
   const rows = solution.assignments.map((assignment) => {
     const person = scenario.people.find((p) => p.id === assignment.person_id);
-    const personName = person?.attributes?.name || assignment.person_id;
+    const personName = person ? person.attributes.name : assignment.person_id;
     const attributeValues = attributeKeys.map(
       (key) => person?.attributes?.[key] ?? ""
     );

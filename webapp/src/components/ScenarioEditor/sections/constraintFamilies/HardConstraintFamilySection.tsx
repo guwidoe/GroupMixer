@@ -291,7 +291,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                   itemType: 'string' as const,
                   options: scenario.people.map((person) => ({
                     value: person.id,
-                    label: person.attributes.name || person.id,
+                    label: person.attributes.name,
                   })),
                   getValue: (item) => item.constraint.people,
                   setValue: (item, value) => ({

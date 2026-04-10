@@ -303,7 +303,7 @@ export function PeopleDirectory({
                   placeholder: 'Name,Weight,Sessions,...',
                   helperText: (
                     <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      <strong>Sessions</strong> use JSON session-scope objects such as <code>{'{"mode":"all"}'}</code> or <code>{'{"mode":"selected","sessions":[0,1]}'}</code>. Blank attribute cells clear that value; blank names fall back to the person ID on apply.
+                      <strong>Sessions</strong> use JSON session-scope objects such as <code>{'{"mode":"all"}'}</code> or <code>{'{"mode":"selected","sessions":[0,1]}'}</code>. Blank attribute cells clear that value; blank names normalize to the person ID on apply.
                     </div>
                   ),
                 },
@@ -323,9 +323,9 @@ export function PeopleDirectory({
                     name: value ?? '',
                   },
                 }),
-                renderValue: (value, person) => (
+                renderValue: (value) => (
                   <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-                    {String(value ?? '').trim() || person.id}
+                    {String(value ?? '').trim()}
                   </span>
                 ),
                 searchText: (value, person) => `${String(value ?? '')} ${person.id}`.trim(),
@@ -384,8 +384,8 @@ export function PeopleDirectory({
                 cell: (person: Person) => (
                   <div className="flex justify-end">
                     <SetupItemActions
-                      editLabel={`Edit ${person.attributes?.name || person.id}`}
-                      deleteLabel={`Delete ${person.attributes?.name || person.id}`}
+                      editLabel={`Edit ${person.attributes.name}`}
+                      deleteLabel={`Delete ${person.attributes.name}`}
                       onEdit={() => onEditPerson(person)}
                       onDelete={() => onDeletePerson(person.id)}
                     />

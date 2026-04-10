@@ -128,7 +128,7 @@ export function MustStayTogetherModal({ sessionsCount, initial, onCancel, onSave
                   className="w-4 h-4"
                   style={{ accentColor: 'var(--color-accent)' }}
                   />
-                  <span className="text-sm">{p.attributes.name || p.id}</span>
+                  <span className="text-sm">{p.attributes.name}</span>
                 </label>
               ))
             ) : (

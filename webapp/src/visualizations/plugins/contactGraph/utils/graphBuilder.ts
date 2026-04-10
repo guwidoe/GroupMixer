@@ -1,5 +1,6 @@
 import Graph from "graphology";
 import forceAtlas2 from "graphology-layout-forceatlas2";
+import { getPersonDisplayName } from '../../../../services/scenarioAttributes';
 import type { ContactEdgeStats } from "../buildContactGraph";
 import type { CircleOrder, EdgeColorMode, LayoutMode } from "../types";
 import { countToColor, hashToHex, hslToRgb, lerp, rgbToHex, sessionHue } from "./colorUtils";
@@ -33,7 +34,7 @@ export function buildGraphData({
 
   const attrKey = nodeColorAttributeKey;
   for (const p of people) {
-    const label = p.attributes.name || p.id;
+    const label = getPersonDisplayName(p);
     const color =
       attrKey && p.attributes[attrKey]
         ? hashToHex(`${attrKey}:${p.attributes[attrKey]}`, 55, 55)

@@ -58,7 +58,7 @@ export function PeopleGrid({
       ) : (
         <SetupCardGrid minColumnWidth="18rem">
           {people.map((person) => {
-            const displayName = person.attributes.name || person.id;
+            const displayName = person.attributes.name;
             const detailItems = Object.entries(person.attributes)
               .filter(([key]) => key !== 'name')
               .map(([key, value]) => ({

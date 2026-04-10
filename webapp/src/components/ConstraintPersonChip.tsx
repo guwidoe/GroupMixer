@@ -1,5 +1,6 @@
 import React from 'react';
 import { Users, X as CloseIcon } from 'lucide-react';
+import { getPersonDisplayName } from '../services/scenarioAttributes';
 import type { Person } from '../types';
 import { Tooltip } from './Tooltip';
 
@@ -16,7 +17,7 @@ interface ConstraintPersonChipProps {
 const ConstraintPersonChip: React.FC<ConstraintPersonChipProps> = ({ personId, people, onRemove }) => {
   const person = people.find(p => p.id === personId);
   const hasRemove = typeof onRemove === 'function';
-  const displayName = person ? (person.attributes?.name || person.id) : personId;
+  const displayName = person ? getPersonDisplayName(person) : personId;
 
   const isMissing = !person;
 
