@@ -37,7 +37,9 @@ import { Button } from '../../../ui';
 import type {
   ScenarioDataGridColumn,
   ScenarioDataGridColumnEditor,
+  ScenarioDataGridEnumColumn,
   ScenarioDataGridPrimitiveColumn,
+  ScenarioDataGridStructuredColumn,
   ScenarioDataGridWorkspaceConfig,
   ScenarioDataGridNumberRangeValue,
   ScenarioDataGridOption,
@@ -77,6 +79,87 @@ function cloneRows<T>(rows: T[]): T[] {
 
 function isPrimitiveColumn<T>(column: ScenarioDataGridColumn<T>): column is ScenarioDataGridPrimitiveColumn<T> {
   return column.kind === 'primitive';
+}
+
+function isStructuredColumn<T>(column: ScenarioDataGridColumn<T>): column is ScenarioDataGridStructuredColumn<T> {
+  return column.kind === 'structured';
+}
+
+type MaterializedScenarioDataGridColumn<T> = Exclude<ScenarioDataGridColumn<T>, ScenarioDataGridStructuredColumn<T>>;
+
+function getStructuredColumnKeys<T>(column: ScenarioDataGridStructuredColumn<T>, rows: T[]): ScenarioDataGridOption[] {
+  const resolved = typeof column.keys === 'function' ? column.keys(rows) : column.keys;
+  const seen = new Set<string>();
+  return resolved.filter((option) => {
+    const key = option.value.trim();
+    if (!key || seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+function materializeStructuredColumn<T>(
+  column: ScenarioDataGridStructuredColumn<T>,
+  rows: T[],
+): MaterializedScenarioDataGridColumn<T>[] {
+  return getStructuredColumnKeys(column, rows).map((keyOption) => {
+    const childBase = {
+      kind: 'primitive' as const,
+      id: `${column.id}:${keyOption.value}`,
+      header: keyOption.label,
+      width: column.childWidth ?? column.width,
+      minWidth: column.childMinWidth ?? column.minWidth,
+      align: column.align,
+      hideable: column.hideable,
+      getValue: (row: T) => {
+        if (column.isKeyAvailable && !column.isKeyAvailable(row, keyOption.value)) {
+          return undefined;
+        }
+        return column.getValue(row, keyOption.value);
+      },
+      setValue: column.setValue
+        ? (row: T, value: string | number | undefined) => column.setValue?.(row, keyOption.value, value)
+        : undefined,
+      renderValue: column.renderValue
+        ? (value: string | number | undefined, row: T) => column.renderValue?.(value, row, keyOption.value)
+        : undefined,
+      searchText: column.searchText
+        ? (value: string | number | undefined, row: T) => column.searchText?.(value, row, keyOption.value)
+        : undefined,
+      exportValue: column.exportValue
+        ? (value: string | number | undefined, row: T) => column.exportValue?.(value, row, keyOption.value)
+        : undefined,
+      parseValue: column.parseValue
+        ? (value: string, row: T) => column.parseValue?.(value, row, keyOption.value)
+        : undefined,
+      placeholder: typeof column.childPlaceholder === 'function'
+        ? column.childPlaceholder(keyOption)
+        : column.childPlaceholder,
+    };
+
+    if (column.childPrimitive === 'enum') {
+      const enumColumn: ScenarioDataGridEnumColumn<T> = {
+        ...childBase,
+        primitive: 'enum',
+        options: typeof column.childOptions === 'function'
+          ? (row: T) => column.childOptions({ row, key: keyOption.value })
+          : column.childOptions,
+      };
+
+      return enumColumn;
+    }
+
+    return {
+      ...childBase,
+      primitive: column.childPrimitive,
+    } as MaterializedScenarioDataGridColumn<T>;
+  });
+}
+
+function materializeColumns<T>(columns: Array<ScenarioDataGridColumn<T>>, rows: T[]): Array<MaterializedScenarioDataGridColumn<T>> {
+  return columns.flatMap((column) => (isStructuredColumn(column) ? materializeStructuredColumn(column, rows) : [column]));
 }
 
 function getPrimitiveOptions<T>(column: ScenarioDataGridPrimitiveColumn<T>, row: T): ScenarioDataGridOption[] {
@@ -397,14 +480,16 @@ function normalizeSearchValue(value: string | undefined) {
   return value?.trim().toLowerCase() ?? '';
 }
 
-function matchesQuery<T>(row: T, columns: Array<ScenarioDataGridColumn<T>>, query: string) {
+function matchesQuery<T>(row: T, columns: Array<MaterializedScenarioDataGridColumn<T>>, query: string) {
   const searchValue = normalizeSearchValue(query);
   if (!searchValue) {
     return true;
   }
 
   return columns.some((column) => {
-    const haystack = column.searchValue?.(row);
+    const haystack = isPrimitiveColumn(column)
+      ? resolvePrimitiveSearchText(column, row)
+      : column.searchValue?.(row);
     return haystack ? haystack.toLowerCase().includes(searchValue) : false;
   });
 }
@@ -1131,12 +1216,21 @@ export function ScenarioDataGrid<T>({
   pageSize = 100,
   pageSizeOptions = [50, 100, 250, 500],
 }: ScenarioDataGridProps<T>) {
+  const [draftRows, setDraftRows] = React.useState<T[]>(() => cloneRows(rows));
+  const [csvDraftText, setCsvDraftText] = React.useState('');
+  const [csvErrors, setCsvErrors] = React.useState<string[]>([]);
+  const workspaceMode = workspace?.mode ?? 'browse';
+  const rowsForMaterializedColumns = workspace?.draft && workspaceMode !== 'browse' ? draftRows : rows;
+  const materializedColumns = React.useMemo(
+    () => materializeColumns(columns, rowsForMaterializedColumns),
+    [columns, rowsForMaterializedColumns],
+  );
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(() =>
-    Object.fromEntries(columns.map((column) => [column.id, true])),
+    Object.fromEntries(materializedColumns.map((column) => [column.id, true])),
   );
   const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>(() =>
-    Object.fromEntries(columns.map((column) => [column.id, Math.max(column.width ?? 180, estimateHeaderMinWidth(column))])),
+    Object.fromEntries(materializedColumns.map((column) => [column.id, Math.max(column.width ?? 180, estimateHeaderMinWidth(column))])),
   );
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = React.useState('');
@@ -1150,20 +1244,16 @@ export function ScenarioDataGrid<T>({
   const tableRef = React.useRef<HTMLTableElement>(null);
   const syncingScrollRef = React.useRef<'top' | 'body' | null>(null);
   const resizeStateRef = React.useRef<{ columnId: string; startX: number; startWidth: number } | null>(null);
-  const [draftRows, setDraftRows] = React.useState<T[]>(() => cloneRows(rows));
-  const [csvDraftText, setCsvDraftText] = React.useState('');
-  const [csvErrors, setCsvErrors] = React.useState<string[]>([]);
 
   const hasEditableColumns = React.useMemo(
-    () => columns.some((column) => (isPrimitiveColumn(column) && Boolean(column.setValue)) || ('editor' in column && Boolean(column.editor))),
-    [columns],
+    () => materializedColumns.some((column) => (isPrimitiveColumn(column) && Boolean(column.setValue)) || ('editor' in column && Boolean(column.editor))),
+    [materializedColumns],
   );
-  const workspaceMode = workspace?.mode ?? 'browse';
   const draftConfig = workspace?.draft;
   const inlineCsvConfig = workspace?.csv;
   const draftEditableColumns = React.useMemo(
-    () => columns.filter((column): column is ScenarioDataGridPrimitiveColumn<T> => isPrimitiveColumn(column) && Boolean(column.setValue)),
-    [columns],
+    () => materializedColumns.filter((column): column is ScenarioDataGridPrimitiveColumn<T> => isPrimitiveColumn(column) && Boolean(column.setValue)),
+    [materializedColumns],
   );
   const hasDraftEditing = Boolean(draftConfig) && draftEditableColumns.length > 0;
   const isInlineCsvMode = workspaceMode === 'csv' && (hasDraftEditing || Boolean(inlineCsvConfig));
@@ -1331,7 +1421,7 @@ export function ScenarioDataGrid<T>({
     setColumnVisibility((current) => {
       const next = { ...current };
       let changed = false;
-      for (const column of columns) {
+      for (const column of materializedColumns) {
         if (!(column.id in next)) {
           next[column.id] = true;
           changed = true;
@@ -1343,7 +1433,7 @@ export function ScenarioDataGrid<T>({
     setColumnSizing((current) => {
       const next = { ...current };
       let changed = false;
-      for (const column of columns) {
+      for (const column of materializedColumns) {
         if (!(column.id in next)) {
           next[column.id] = Math.max(column.width ?? 180, estimateHeaderMinWidth(column));
           changed = true;
@@ -1351,7 +1441,7 @@ export function ScenarioDataGrid<T>({
       }
       return changed ? next : current;
     });
-  }, [columns]);
+  }, [materializedColumns]);
 
   React.useEffect(() => {
     if (!hasDraftEditing || workspaceMode !== 'browse') {
@@ -1370,7 +1460,7 @@ export function ScenarioDataGrid<T>({
         return;
       }
 
-      const sourceColumn = columns.find((column) => column.id === resizeState.columnId);
+      const sourceColumn = materializedColumns.find((column) => column.id === resizeState.columnId);
       const nextWidth = Math.max(
         sourceColumn ? estimateHeaderMinWidth(sourceColumn) : 120,
         resizeState.startWidth + (event.clientX - resizeState.startX),
@@ -1393,11 +1483,11 @@ export function ScenarioDataGrid<T>({
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
     };
-  }, [columns]);
+  }, [materializedColumns]);
 
   const tableColumns = React.useMemo<ColumnDef<T>[]>(
     () =>
-      columns.map((column) => ({
+      materializedColumns.map((column) => ({
         id: column.id,
         header: column.header,
         accessorFn: (row) => {
@@ -1520,12 +1610,12 @@ export function ScenarioDataGrid<T>({
           return column.cell(row.original);
         },
       })),
-    [columns, effectiveEditMode, rowKey],
+    [effectiveEditMode, materializedColumns, rowKey],
   );
 
   const globalFilterFn = React.useCallback<FilterFn<T>>(
-    (row: Row<T>, _columnId: string, filterValue: string) => matchesQuery(row.original, columns, String(filterValue ?? '')),
-    [columns],
+    (row: Row<T>, _columnId: string, filterValue: string) => matchesQuery(row.original, materializedColumns, String(filterValue ?? '')),
+    [materializedColumns],
   );
 
   const table = useReactTable({
@@ -1539,7 +1629,7 @@ export function ScenarioDataGrid<T>({
       globalFilter: mergedQuery,
     },
     meta: {
-      columns,
+      columns: materializedColumns,
     },
     getRowId: (row, index) => rowKey(row, index),
     enableColumnResizing: true,
@@ -1631,7 +1721,7 @@ export function ScenarioDataGrid<T>({
     return [headerLine, ...rowLines].join('\n');
   }, [csvColumns, exportRows]);
   const activeColumnFilters = table.getState().columnFilters.flatMap((filterState) => {
-    const sourceColumn = columns.find((candidate) => candidate.id === filterState.id);
+    const sourceColumn = materializedColumns.find((candidate) => candidate.id === filterState.id);
     const sourceFilter = sourceColumn ? (isPrimitiveColumn(sourceColumn) ? resolvePrimitiveFilter(sourceColumn) : sourceColumn.filter) : undefined;
     if (!sourceColumn || !sourceFilter) {
       return [];
