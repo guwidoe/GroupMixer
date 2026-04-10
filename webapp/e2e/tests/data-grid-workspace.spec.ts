@@ -22,8 +22,8 @@ test.describe('Scenario data-grid workspace', () => {
     const peopleCsv = page.getByRole('textbox', { name: /people grid csv/i });
     await expect(peopleCsv).toBeVisible();
     await expect(peopleCsv).toHaveValue(/Name,Sessions/);
-    await expect(peopleCsv).toHaveValue(/"\[1,2,3\]"/);
-    await expect(page.getByText(/arrays use json/i)).toBeVisible();
+    await expect(peopleCsv).toHaveValue(/"\{""mode"":""all""\}"/);
+    await expect(page.getByText(/sessions use json session-scope objects/i)).toBeVisible();
 
     await page.getByRole('button', { name: /^edit table$/i }).click();
     await expect(page.getByRole('button', { name: /apply changes/i })).toBeVisible();
@@ -102,7 +102,7 @@ test.describe('Scenario data-grid workspace', () => {
     await page.getByRole('button', { name: /apply changes/i }).click();
 
     await expect(page.getByRole('row', { name: /G1 gender .*asdf \| asdf:: 2 .*female: 3/i })).toBeVisible();
-    await expect(page.getByText(/Selected: 1, 2, 3/i)).toBeVisible();
+    await expect(page.getByText(/^1, 2, 3$/i)).toBeVisible();
 
     await page.getByRole('button', { name: /^csv$/i }).click();
     await expect(page.getByRole('textbox', { name: /attribute balance csv/i })).toHaveValue(/G1,gender,"\{""asdf \\| asdf:"":2,""female"":3\}",exact,10,"\{""mode"":""selected"",""sessions"":\[0,1,2\]\}"/);

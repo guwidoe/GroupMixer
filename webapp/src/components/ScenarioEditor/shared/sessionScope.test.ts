@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createAllSessionScopeDraft,
   describeSessionScopeDraft,
+  formatSessionScopeDraftCompact,
   formatSessionScopeDraft,
   normalizeSessionSelection,
   optionalSessionsToDraft,
@@ -26,6 +27,7 @@ describe('sessionScope', () => {
   it('formats implicit all differently from explicit selected sessions', () => {
     expect(formatSessionScopeDraft({ mode: 'all' }, 3)).toBe('All sessions');
     expect(formatSessionScopeDraft({ mode: 'selected', sessions: [0, 1, 2] }, 3)).toBe('Selected: 1, 2, 3');
+    expect(formatSessionScopeDraftCompact({ mode: 'selected', sessions: [0, 1, 2] }, 3)).toBe('1, 2, 3');
   });
 
   it('describes implicit all as future-proof and explicit full selection as fixed', () => {

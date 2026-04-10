@@ -782,6 +782,9 @@ describe('ScenarioDataGrid', () => {
 
     render(<TestGrid />);
 
+    expect(screen.getByText('All sessions')).toBeInTheDocument();
+    expect(screen.getByText('1, 2, 3')).toBeInTheDocument();
+
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     const csvInput = screen.getByRole('textbox', { name: /session scope csv editor/i });
     expect(csvInput).toHaveValue(

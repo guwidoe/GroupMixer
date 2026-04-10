@@ -3,6 +3,7 @@ import type { ScenarioDataGridCustomColumn } from './types';
 import { SessionScopeField } from '../SessionScopeField';
 import {
   createAllSessionScopeDraft,
+  formatSessionScopeDraftCompact,
   formatSessionScopeDraft,
   optionalSessionsToDraft,
   sessionScopeDraftToOptionalSessions,
@@ -53,7 +54,7 @@ export function createOptionalSessionScopeColumn<T>({
       row,
       sessionScopeDraftToOptionalSessions(value ?? createAllSessionScopeDraft(), totalSessions),
     ),
-    renderValue: (value) => formatSessionScopeDraft((value as SessionScopeDraft | undefined) ?? createAllSessionScopeDraft(), totalSessions),
+    renderValue: (value) => formatSessionScopeDraftCompact((value as SessionScopeDraft | undefined) ?? createAllSessionScopeDraft(), totalSessions),
     searchText: (value) => getSessionScopeSearchText(
       (value as SessionScopeDraft | undefined) ?? createAllSessionScopeDraft(),
       totalSessions,

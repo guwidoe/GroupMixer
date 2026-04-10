@@ -86,6 +86,22 @@ export function formatSessionScopeDraft(
   return `Selected: ${selected.join(', ')}`;
 }
 
+export function formatSessionScopeDraftCompact(
+  draft: SessionScopeDraft,
+  totalSessions?: number,
+): string {
+  if (draft.mode === 'all') {
+    return 'All sessions';
+  }
+
+  const selected = normalizeSessionSelection(draft.sessions, totalSessions).map((session) => String(session + 1));
+  if (selected.length === 0) {
+    return '—';
+  }
+
+  return selected.join(', ');
+}
+
 export function describeSessionScopeDraft(
   draft: SessionScopeDraft,
   totalSessions: number,

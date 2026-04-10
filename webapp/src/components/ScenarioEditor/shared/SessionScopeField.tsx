@@ -1,4 +1,6 @@
 import React from 'react';
+import { Info } from 'lucide-react';
+import { Tooltip } from '../../Tooltip';
 import {
   createAllSessionIndices,
   createAllSessionScopeDraft,
@@ -59,11 +61,27 @@ export function SessionScopeField({
 
   const toneClass = compact ? 'space-y-2 rounded-lg p-2.5' : 'space-y-3 rounded-xl p-3';
   const optionClass = compact
-    ? 'rounded-md border px-3 py-2'
+    ? 'rounded-md border px-2.5 py-2'
     : 'rounded-lg border px-3 py-2.5';
   const sessionGridClass = compact
-    ? 'grid grid-cols-2 gap-2 sm:grid-cols-3'
+    ? 'grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-6'
     : 'grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4';
+
+  const allModeDescription = 'Applies to all current sessions and automatically includes future sessions.';
+  const selectedModeDescription = 'Freezes the current selection even if more sessions are added later.';
+
+  const renderModeHelp = (content: string, ariaLabel: string) => compact ? (
+    <Tooltip content={content} placement="top">
+      <span
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full"
+        style={{ color: 'var(--text-tertiary)' }}
+        aria-label={ariaLabel}
+        tabIndex={0}
+      >
+        <Info className="h-3.5 w-3.5" />
+      </span>
+    </Tooltip>
+  ) : null;
 
   return (
     <div>
@@ -86,12 +104,15 @@ export function SessionScopeField({
                 style={{ accentColor: 'var(--color-accent)' }}
               />
               <div>
-                <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                  All sessions
+                <div className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  <span>All sessions</span>
+                  {renderModeHelp(allModeDescription, 'Why choose all sessions?')}
                 </div>
-                <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                  Applies to all current sessions and automatically includes future sessions.
-                </div>
+                {!compact ? (
+                  <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                    {allModeDescription}
+                  </div>
+                ) : null}
               </div>
             </div>
           </label>
@@ -108,12 +129,15 @@ export function SessionScopeField({
                 style={{ accentColor: 'var(--color-accent)' }}
               />
               <div>
-                <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                  Only selected sessions
+                <div className="flex items-center gap-1.5 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  <span>Only selected sessions</span>
+                  {renderModeHelp(selectedModeDescription, 'Why choose only selected sessions?')}
                 </div>
-                <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                  Freezes the current selection even if more sessions are added later.
-                </div>
+                {!compact ? (
+                  <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                    {selectedModeDescription}
+                  </div>
+                ) : null}
               </div>
             </div>
           </label>
@@ -136,7 +160,7 @@ export function SessionScopeField({
                     className="h-4 w-4"
                     style={{ accentColor: 'var(--color-accent)' }}
                   />
-                  <span>Session {index + 1}</span>
+                  <span>{compact ? String(index + 1) : `Session ${index + 1}`}</span>
                 </label>
               ))}
             </div>
@@ -147,9 +171,11 @@ export function SessionScopeField({
           )
         ) : null}
 
-        <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-          {describeSessionScopeDraft(value, totalSessions)}
-        </p>
+        {!compact ? (
+          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+            {describeSessionScopeDraft(value, totalSessions)}
+          </p>
+        ) : null}
       </div>
     </div>
   );
