@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAttributeDefinition } from '../../services/scenarioAttributes';
 import { useAppStore } from '../../store';
 import { AttributeBalanceModal } from './AttributeBalanceModal';
+import { ImmovablePeopleModal } from './ImmovablePeopleModal';
 import { ShouldStayTogetherModal } from './ShouldStayTogetherModal';
 
 describe('session-scope modals', () => {
@@ -97,6 +98,57 @@ describe('session-scope modals', () => {
       penalty_weight: 10,
       mode: 'exact',
       sessions: undefined,
+    });
+  });
+
+  it('uses the shared compact session-scope field in modals', () => {
+    render(
+      <ShouldStayTogetherModal
+        sessionsCount={3}
+        initial={{
+          type: 'ShouldStayTogether',
+          people: ['p1', 'p2'],
+          penalty_weight: 10,
+          sessions: [0, 2],
+        }}
+        onCancel={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText(/automatically includes future sessions/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/why choose all sessions/i)).toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.queryByText(/session 1/i)).not.toBeInTheDocument();
+  });
+
+  it('migrates immovable-people modal to the shared session-scope model', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+
+    render(
+      <ImmovablePeopleModal
+        sessionsCount={3}
+        initial={{
+          type: 'ImmovablePeople',
+          people: ['p1'],
+          group_id: 'g1',
+          sessions: undefined,
+        }}
+        onCancel={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    await user.click(screen.getByRole('radio', { name: /only selected sessions/i }));
+    await user.click(screen.getByRole('checkbox', { name: '2' }));
+    await user.click(screen.getByRole('button', { name: /^save$/i }));
+
+    expect(onSave).toHaveBeenCalledWith({
+      type: 'ImmovablePeople',
+      people: ['p1'],
+      group_id: 'g1',
+      sessions: [0, 2],
     });
   });
 });

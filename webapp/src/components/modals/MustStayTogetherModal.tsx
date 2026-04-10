@@ -142,6 +142,7 @@ export function MustStayTogetherModal({ sessionsCount, initial, onCancel, onSave
 
         {/* Sessions select */}
         <SessionScopeField
+          compact
           label="Sessions"
           totalSessions={sessionsCount}
           value={sessionScope}

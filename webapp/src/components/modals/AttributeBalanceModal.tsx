@@ -226,6 +226,7 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
           )}
           
           <SessionScopeField
+            compact
             label="Sessions"
             totalSessions={sessionsCount}
             value={formState.sessionScope}

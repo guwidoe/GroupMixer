@@ -109,6 +109,7 @@ const PersonForm: React.FC<PersonFormProps> = ({
 
           {/* Sessions */}
           <SessionScopeField
+            compact
             label="Session Participation"
             totalSessions={sessionsCount}
             value={sessionScope}

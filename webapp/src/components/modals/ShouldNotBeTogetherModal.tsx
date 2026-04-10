@@ -150,6 +150,7 @@ export function ShouldNotBeTogetherModal({ sessionsCount, initial, onCancel, onS
           </div>
 
           <SessionScopeField
+            compact
             label={<><Check className="mr-1 inline-block h-4 w-4" /> Sessions</>}
             totalSessions={sessionsCount}
             value={sessionScope}

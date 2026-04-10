@@ -230,6 +230,7 @@ export function ConstraintFormModal({
               )}
 
               <SessionScopeField
+                compact
                 label="Apply to Sessions (optional)"
                 totalSessions={sessionsCount}
                 value={currentSessionScope}
@@ -289,6 +290,7 @@ export function ConstraintFormModal({
               </div>
 
               <SessionScopeField
+                compact
                 label="Apply to Sessions (optional)"
                 totalSessions={sessionsCount}
                 value={currentSessionScope}

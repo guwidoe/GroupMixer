@@ -3,6 +3,13 @@ import { X } from 'lucide-react';
 import type { Constraint } from '../../types';
 import PersonCard from '../PersonCard';
 import { useAppStore } from '../../store';
+import { SessionScopeField } from '../ScenarioEditor/shared/SessionScopeField';
+import {
+  createAllSessionScopeDraft,
+  optionalSessionsToDraft,
+  sessionScopeDraftToOptionalSessions,
+  type SessionScopeDraft,
+} from '../ScenarioEditor/shared/sessionScope';
 
 interface Props {
   sessionsCount: number;
@@ -19,7 +26,7 @@ export function ImmovablePeopleModal({ sessionsCount, initial, onCancel, onSave 
       return {
         selectedPeople: [] as string[],
         groupId: '',
-        selectedSessions: [] as number[],
+        sessionScope: createAllSessionScopeDraft() as SessionScopeDraft,
         validationError: '',
       };
     }
@@ -28,12 +35,14 @@ export function ImmovablePeopleModal({ sessionsCount, initial, onCancel, onSave 
     const editing = !!initial;
     const initPeople: string[] = editing && initial?.type === 'ImmovablePeople' ? initial.people : [];
     const initGroup: string = editing && initial?.type === 'ImmovablePeople' ? initial.group_id : ((scenario.groups && scenario.groups.length > 0) ? scenario.groups[0].id : '');
-    const initSessions: number[] = (editing && initial?.type === 'ImmovablePeople' && initial.sessions) ? initial.sessions : [];
+    const initSessionScope: SessionScopeDraft = editing && initial?.type === 'ImmovablePeople'
+      ? optionalSessionsToDraft(initial.sessions, sessionsCount)
+      : createAllSessionScopeDraft();
 
     return {
       selectedPeople: initPeople,
       groupId: initGroup,
-      selectedSessions: initSessions,
+      sessionScope: initSessionScope,
       validationError: '',
     };
   };
@@ -41,7 +50,7 @@ export function ImmovablePeopleModal({ sessionsCount, initial, onCancel, onSave 
   const initialState = getInitialState();
   const [selectedPeople, setSelectedPeople] = useState<string[]>(initialState.selectedPeople);
   const [groupId, setGroupId] = useState<string>(initialState.groupId);
-  const [selectedSessions, setSelectedSessions] = useState<number[]>(initialState.selectedSessions);
+  const [sessionScope, setSessionScope] = useState<SessionScopeDraft>(initialState.sessionScope);
   const [validationError, setValidationError] = useState<string>(initialState.validationError);
   const [personSearch, setPersonSearch] = useState<string>('');
   
@@ -55,11 +64,6 @@ export function ImmovablePeopleModal({ sessionsCount, initial, onCancel, onSave 
 
   const togglePerson = (pid: string) => {
     setSelectedPeople(prev => prev.includes(pid) ? prev.filter(p => p !== pid) : [...prev, pid]);
-    if (validationError) setValidationError(''); // Clear error when user makes changes
-  };
-
-  const toggleSession = (idx: number) => {
-    setSelectedSessions(prev => prev.includes(idx) ? prev.filter(s => s !== idx) : [...prev, idx]);
     if (validationError) setValidationError(''); // Clear error when user makes changes
   };
 
@@ -88,12 +92,11 @@ export function ImmovablePeopleModal({ sessionsCount, initial, onCancel, onSave 
       return;
     }
     
-    // Create sessions array - if none selected, leave undefined to apply to all sessions
     const newConstraint: Constraint = {
       type: 'ImmovablePeople',
       people: selectedPeople,
       group_id: groupId,
-      sessions: selectedSessions.length === 0 ? undefined : selectedSessions,
+      sessions: sessionScopeDraftToOptionalSessions(sessionScope, sessionsCount),
     } as Constraint;
     
     onSave(newConstraint);
@@ -187,26 +190,16 @@ export function ImmovablePeopleModal({ sessionsCount, initial, onCancel, onSave 
             )}
           </div>
 
-          {/* Sessions select */}
-          <div>
-            <label className="block text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>Sessions</label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-              {Array.from({length: sessionsCount},(_,i)=>i).map(i=> (
-                <label key={i} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800" style={{color:'var(--text-secondary)'}}>
-                  <input 
-                    type="checkbox" 
-                    checked={selectedSessions.includes(i)} 
-                    onChange={()=>toggleSession(i)} 
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm">Session {i+1}</span>
-                </label>
-              ))}
-            </div>
-            <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>
-              {selectedSessions.length === 0 ? 'No sessions selected - will apply to all sessions' : `Selected ${selectedSessions.length} session(s)`}
-            </p>
-          </div>
+          <SessionScopeField
+            compact
+            label="Sessions"
+            totalSessions={sessionsCount}
+            value={sessionScope}
+            onChange={(nextScope) => {
+              setSessionScope(nextScope);
+              if (validationError) setValidationError('');
+            }}
+          />
         </div>
 
         <div className="flex flex-col sm:flex-row justify-end gap-3 mt-8 pt-4 border-t" style={{ borderColor: 'var(--border-primary)' }}>

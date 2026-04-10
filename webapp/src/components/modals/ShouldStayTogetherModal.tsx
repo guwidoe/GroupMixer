@@ -140,6 +140,7 @@ export function ShouldStayTogetherModal({ sessionsCount, initial, onCancel, onSa
           </div>
 
           <SessionScopeField
+            compact
             label={<><Check className="mr-1 inline-block h-4 w-4" /> Sessions</>}
             totalSessions={sessionsCount}
             value={sessionScope}
@@ -172,4 +173,3 @@ export function ShouldStayTogetherModal({ sessionsCount, initial, onCancel, onSa
     </div>
   );
 }
-
