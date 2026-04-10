@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
 import { SetupSectionHeader } from '../shared/SetupSectionHeader';
 
 interface SessionsSectionProps {
@@ -8,7 +7,6 @@ interface SessionsSectionProps {
 }
 
 export function SessionsSection({ sessionsCount, onChangeSessionsCount }: SessionsSectionProps) {
-  const [showInfo, setShowInfo] = useState(false);
   const [inputValue, setInputValue] = useState<string | undefined>(undefined);
 
   const isInvalid = (() => {
@@ -30,29 +28,6 @@ export function SessionsSection({ sessionsCount, onChangeSessionsCount }: Sessio
           </p>
         }
       />
-
-      <div className="rounded-2xl border" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
-        <button className="flex w-full items-center gap-2 px-4 py-4 text-left" onClick={() => setShowInfo(!showInfo)}>
-          {showInfo ? (
-            <ChevronDown className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
-          ) : (
-            <ChevronRight className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
-          )}
-          <h4 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-            How do sessions work?
-          </h4>
-        </button>
-        {showInfo ? (
-          <div className="px-4 pb-4 pt-0">
-            <ul className="space-y-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              <li>• Each session represents a time period such as morning, afternoon, day 1, or day 2.</li>
-              <li>• People are assigned to one group per session.</li>
-              <li>• The solver maximizes unique contacts across all sessions.</li>
-              <li>• People can participate in every session or only selected ones.</li>
-            </ul>
-          </div>
-        ) : null}
-      </div>
 
       <div className="rounded-2xl border px-6 py-6" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
         <div className="space-y-4">

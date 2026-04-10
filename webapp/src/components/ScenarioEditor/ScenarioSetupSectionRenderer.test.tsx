@@ -69,10 +69,10 @@ describe('ScenarioSetupSectionRenderer', () => {
     expect(screen.getByText(/attributes are key-value pairs/i)).toBeInTheDocument();
   });
 
-  it('renders Repeat Encounter through the shared collection shell', () => {
+  it('renders Repeat Limit through the shared collection shell', () => {
     render(<ScenarioSetupSectionRenderer controller={createController({ activeSection: 'repeat-encounter' })} />);
 
-    expect(screen.getByRole('heading', { name: /repeat encounter/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /repeat limit/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /add repeat limit/i })).toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/filter by limit, weight, or penalty function/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /open filter for limit/i })).toBeInTheDocument();
