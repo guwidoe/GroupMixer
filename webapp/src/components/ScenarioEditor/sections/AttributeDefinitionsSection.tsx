@@ -3,6 +3,7 @@ import { Plus, Tag } from 'lucide-react';
 import type { AttributeDefinition } from '../../../types';
 import { getAttributeDefinitionName } from '../../../services/scenarioAttributes';
 import { Button } from '../../ui';
+import { SetupCardSearchToolbar } from '../shared/SetupCardSearchToolbar';
 import { SetupCollectionPage } from '../shared/SetupCollectionPage';
 import { SetupCardGrid, SetupItemActions, SetupItemCard, SetupTagList } from '../shared/cards';
 import { ScenarioDataGrid } from '../shared/grid/ScenarioDataGrid';
@@ -172,7 +173,26 @@ export function AttributeDefinitionsSection({
   onApplyGridAttributes,
   createGridAttributeRow,
 }: AttributeDefinitionsSectionProps) {
+  const [search, setSearch] = useState('');
+  const [viewMode, setViewMode] = useState<SetupCollectionViewMode>('list');
   const [gridWorkspaceMode, setGridWorkspaceMode] = useState<'browse' | 'edit' | 'csv'>('browse');
+  const searchValue = search.trim().toLowerCase();
+
+  const filteredDefinitions = React.useMemo(() => {
+    if (viewMode !== 'cards' || !searchValue) {
+      return attributeDefinitions;
+    }
+
+    return attributeDefinitions.filter((definition) => {
+      const haystack = [
+        getAttributeDefinitionName(definition).toLowerCase(),
+        definition.key.toLowerCase(),
+        ...definition.values.map((value) => value.toLowerCase()),
+      ];
+
+      return haystack.some((value) => value.includes(searchValue));
+    });
+  }, [attributeDefinitions, searchValue, viewMode]);
 
   return (
     <SetupCollectionPage
@@ -192,17 +212,32 @@ export function AttributeDefinitionsSection({
       }
       defaultViewMode="list"
       onViewModeChange={(nextMode) => {
+        setViewMode(nextMode);
         if (nextMode !== 'list') {
           setGridWorkspaceMode('browse');
         }
       }}
-      hasItems={attributeDefinitions.length > 0}
+      toolbarLeading={(activeViewMode) =>
+        activeViewMode === 'cards' ? (
+          <SetupCardSearchToolbar
+            label="Search attributes"
+            placeholder="Search attributes and values..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            onClear={() => setSearch('')}
+            status={searchValue ? `Showing ${filteredDefinitions.length} of ${attributeDefinitions.length} attributes` : undefined}
+          />
+        ) : null
+      }
+      hasItems={filteredDefinitions.length > 0}
       emptyState={{
         icon: <Tag className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,
-        title: 'No attributes defined yet',
-        message: 'Create your first attribute to describe people and unlock attribute-based setup flows.',
+        title: searchValue ? 'No attributes match this search' : 'No attributes defined yet',
+        message: searchValue
+          ? 'Try a broader search or clear it to see every attribute.'
+          : 'Create your first attribute to describe people and unlock attribute-based setup flows.',
       }}
-      renderContent={(viewMode) => renderAttributeContent(attributeDefinitions, viewMode, gridWorkspaceMode, setGridWorkspaceMode, onEditAttribute, onRemoveAttribute, onApplyGridAttributes, createGridAttributeRow)}
+      renderContent={(activeViewMode) => renderAttributeContent(filteredDefinitions, activeViewMode, gridWorkspaceMode, setGridWorkspaceMode, onEditAttribute, onRemoveAttribute, onApplyGridAttributes, createGridAttributeRow)}
     />
   );
 }

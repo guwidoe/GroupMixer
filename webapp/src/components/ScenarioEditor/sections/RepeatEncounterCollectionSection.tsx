@@ -2,8 +2,8 @@ import React from 'react';
 import { Plus, RotateCcw } from 'lucide-react';
 import type { Constraint, Scenario } from '../../../types';
 import { Button } from '../../ui';
+import { SetupCardSearchToolbar } from '../shared/SetupCardSearchToolbar';
 import { SetupCollectionPage } from '../shared/SetupCollectionPage';
-import { SetupSearchField } from '../shared/SetupSearchField';
 import { SetupCardGrid, SetupItemActions, SetupItemCard, SetupKeyValueList, SetupTypeBadge, SetupWeightBadge } from '../shared/cards';
 import { getConstraintAddLabel, getConstraintDisplayName } from '../../../utils/constraintDisplay';
 import { ScenarioDataGrid } from '../shared/grid/ScenarioDataGrid';
@@ -195,12 +195,13 @@ export function RepeatEncounterCollectionSection({
     [scenario?.constraints],
   );
 
+  const searchValue = search.trim().toLowerCase();
+
   const filteredItems = React.useMemo(() => {
     if (viewMode !== 'cards') {
       return items;
     }
 
-    const searchValue = search.trim().toLowerCase();
     if (!searchValue) {
       return items;
     }
@@ -239,17 +240,14 @@ export function RepeatEncounterCollectionSection({
       }}
       toolbarLeading={(activeViewMode) =>
         activeViewMode === 'cards' ? (
-          <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
-            <SetupSearchField
-              label="Search repeat encounter preferences"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Filter by limit, weight, or penalty function"
-            />
-            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              {filteredItems.length} of {items.length} preference{items.length === 1 ? '' : 's'} shown
-            </div>
-          </div>
+          <SetupCardSearchToolbar
+            label="Search repeat encounter preferences"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            onClear={() => setSearch('')}
+            placeholder="Filter by limit, weight, or penalty function"
+            status={searchValue ? `Showing ${filteredItems.length} of ${items.length} preferences` : undefined}
+          />
         ) : (
           null
         )
@@ -267,9 +265,9 @@ export function RepeatEncounterCollectionSection({
       hasItems={filteredItems.length > 0}
       emptyState={{
         icon: <RotateCcw className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,
-        title: search.trim() ? 'No repeat limits match the current filter' : 'No repeat encounter limits yet',
-        message: search.trim()
-          ? 'Try a broader filter or clear the search to see all repeat encounter preferences.'
+        title: searchValue ? 'No repeat limits match this search' : 'No repeat encounter limits yet',
+        message: searchValue
+          ? 'Try a broader search or clear it to see every repeat limit.'
           : 'Add a repeat encounter preference to limit how often the same people should meet again.',
       }}
       renderContent={(activeViewMode) => renderRepeatEncounterContent(filteredItems, activeViewMode, gridWorkspaceMode, setGridWorkspaceMode, onEdit, onDelete, onApplyGridRows, createGridRow)}

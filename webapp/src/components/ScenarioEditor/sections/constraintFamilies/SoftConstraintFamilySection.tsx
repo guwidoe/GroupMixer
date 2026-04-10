@@ -8,8 +8,8 @@ import PairMeetingCountBulkConvertModal from '../../../modals/PairMeetingCountBu
 import { replaceConstraintsAtIndices } from '../../../constraints/constraintMutations';
 import { Button } from '../../../ui';
 import { SetupActionsMenu } from '../../shared/SetupActionsMenu';
+import { SetupCardSearchToolbar } from '../../shared/SetupCardSearchToolbar';
 import { SetupCollectionPage } from '../../shared/SetupCollectionPage';
-import { SetupSearchField } from '../../shared/SetupSearchField';
 import { normalizeSessionSelection } from '../../shared/sessionScope';
 import {
   SetupItemActions,
@@ -78,21 +78,40 @@ export function SoftConstraintFamilySection({
   const items = getIndexedConstraints(scenario, family);
   const searchValue = search.trim().toLowerCase();
 
-  const filteredItems = family === 'ShouldStayTogether' && viewMode === 'cards'
+  const filteredItems = viewMode === 'cards'
     ? items.filter(({ constraint }) => {
-        if (!searchValue) return true;
-        const textPool: string[] = [];
-        for (const personId of constraint.people) {
-          textPool.push(personId.toLowerCase());
-          const person = scenario.people.find((candidate) => candidate.id === personId);
-          if (person?.attributes?.name) {
-            textPool.push(String(person.attributes.name).toLowerCase());
+        if (!searchValue) {
+          return true;
+        }
+
+        if (constraint.type === 'ShouldNotBeTogether' || constraint.type === 'ShouldStayTogether') {
+          const textPool = [formatPersonSearchList(scenario.people, constraint.people)];
+          if (constraint.sessions) {
+            textPool.push(...constraint.sessions.map((session) => String(session + 1)));
           }
+          return textPool.some((value) => value.includes(searchValue));
         }
-        if (constraint.sessions) {
-          textPool.push(...constraint.sessions.map((session) => String(session + 1)));
+
+        if (constraint.type === 'AttributeBalance') {
+          const attributeName = getAttributeBalanceAttributeName(constraint, attributeDefinitions).toLowerCase();
+          const targets = formatAttributeBalanceTargets(constraint.desired_values ?? {}).toLowerCase();
+          const sessionText = (constraint.sessions ?? []).map((session) => String(session + 1)).join(' ');
+          return [constraint.group_id.toLowerCase(), attributeName, targets, constraint.mode.toLowerCase(), String(constraint.penalty_weight), sessionText]
+            .some((value) => value.includes(searchValue));
         }
-        return textPool.some((value) => value.includes(searchValue));
+
+        if (constraint.type === 'PairMeetingCount') {
+          const sessionText = (constraint.sessions ?? []).map((session) => String(session + 1)).join(' ');
+          return [
+            formatPersonSearchList(scenario.people, constraint.people),
+            String(constraint.target_meetings),
+            constraint.mode.toLowerCase(),
+            String(constraint.penalty_weight),
+            sessionText,
+          ].some((value) => value.includes(searchValue));
+        }
+
+        return true;
       })
     : items;
 
@@ -245,13 +264,15 @@ export function SoftConstraintFamilySection({
           </>
         }
         toolbarLeading={(activeViewMode) =>
-          family === 'ShouldStayTogether' && activeViewMode === 'cards' ? (
-            <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
-              <SetupSearchField value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Filter by person or session" label={`Search ${copy.title.toLowerCase()} items`} />
-              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                Showing {filteredItems.length} of {items.length}. Selected {selectedShouldIndices.length}.
-              </div>
-            </div>
+          activeViewMode === 'cards' ? (
+            <SetupCardSearchToolbar
+              label={`Search ${copy.title.toLowerCase()} items`}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              onClear={() => setSearch('')}
+              placeholder={family === 'AttributeBalance' ? 'Filter by group, attribute, target, or session' : 'Filter by person or session'}
+              status={searchValue ? `Showing ${filteredItems.length} of ${items.length}` : undefined}
+            />
           ) : null
         }
         summary={summary}

@@ -85,6 +85,10 @@ describe('PeopleDirectory', () => {
       />,
     );
 
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+    expect(screen.getByRole('textbox', { name: /search people/i })).toBeInTheDocument();
+    expect(screen.queryByText(/browse the people directory as cards/i)).not.toBeInTheDocument();
+
     expect(screen.queryByText(/^availability$/i)).not.toBeInTheDocument();
     expect(screen.queryByText('p1')).not.toBeInTheDocument();
 

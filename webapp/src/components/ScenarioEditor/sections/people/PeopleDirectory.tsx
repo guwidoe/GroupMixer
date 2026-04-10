@@ -4,7 +4,7 @@ import type { AttributeDefinition, Person, Scenario } from '../../../../types';
 import { applyNamedAttributeValuesToPerson, createAttributeDefinition, findAttributeDefinitionByName } from '../../../../services/scenarioAttributes';
 import { Button } from '../../../ui';
 import { SetupCollectionPage } from '../../shared/SetupCollectionPage';
-import { SetupSearchField } from '../../shared/SetupSearchField';
+import { SetupCardSearchToolbar } from '../../shared/SetupCardSearchToolbar';
 import { SetupItemActions } from '../../shared/cards';
 import { ScenarioDataGrid } from '../../shared/grid/ScenarioDataGrid';
 import { createOptionalSessionScopeColumn } from '../../shared/grid/sessionScopeColumn';
@@ -156,19 +156,6 @@ export function PeopleDirectory({
     });
   }, [attributeDefinitions, basePeople]);
 
-  const searchSummary = searchValue ? (
-    <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-      Showing {sortedPeople.length} of {basePeople.length} people for “{peopleSearch}”.
-      <button type="button" className="ml-2 underline" onClick={() => setPeopleSearch('')}>
-        Clear filter
-      </button>
-    </div>
-  ) : (
-    <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-      Browse the people directory as cards or switch to the data grid for sorting, filtering, editing, and CSV round-tripping.
-    </div>
-  );
-
   return (
     <SetupCollectionPage
       sectionKey="people"
@@ -182,15 +169,14 @@ export function PeopleDirectory({
       }
       toolbarLeading={(activeViewMode) =>
         activeViewMode === 'cards' ? (
-          <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
-            <SetupSearchField
-              label="Search people"
-              placeholder="Search people by name or ID..."
-              value={peopleSearch}
-              onChange={(event) => setPeopleSearch(event.target.value)}
-            />
-            {searchSummary}
-          </div>
+          <SetupCardSearchToolbar
+            label="Search people"
+            placeholder="Search people by name or ID..."
+            value={peopleSearch}
+            onChange={(event) => setPeopleSearch(event.target.value)}
+            onClear={() => setPeopleSearch('')}
+            status={searchValue ? `Showing ${sortedPeople.length} of ${basePeople.length} people` : undefined}
+          />
         ) : null
       }
       onViewModeChange={(nextMode) => {

@@ -40,6 +40,15 @@ describe('GroupsSection', () => {
     expect(onAddGroup).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('button', { name: /import & bulk/i })).not.toBeInTheDocument();
 
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+    expect(screen.getByRole('textbox', { name: /search groups/i })).toBeInTheDocument();
+
+    await user.type(screen.getByRole('textbox', { name: /search groups/i }), 'zzz');
+    expect(screen.getByText(/no groups match this search/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /clear/i }));
+    expect(screen.getByText('g1')).toBeInTheDocument();
+
     await user.click(screen.getByText('g1'));
     expect(onEditGroup).toHaveBeenCalledTimes(1);
 

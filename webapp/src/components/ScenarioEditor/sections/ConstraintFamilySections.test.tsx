@@ -71,6 +71,13 @@ describe('ConstraintFamilySections', () => {
     await user.click(screen.getByRole('button', { name: /add fixed placements/i }));
     expect(onAdd).toHaveBeenCalledWith('ImmovablePeople');
 
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+    expect(screen.getByRole('textbox', { name: /search fixed placements items/i })).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: /search fixed placements items/i }), 'zzz');
+    expect(screen.getByText(/no fixed placements match the current filter|no fixed placements match this search/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /clear/i }));
+    expect(screen.getByText('Alex')).toBeInTheDocument();
+
     await user.click(screen.getByRole('button', { name: /list/i }));
     expect(screen.getByRole('columnheader', { name: /group/i })).toBeInTheDocument();
     expect(screen.getByText('Alex')).toBeInTheDocument();
@@ -98,6 +105,7 @@ describe('ConstraintFamilySections', () => {
     expect(screen.queryByText(/soft constraints/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /^cards$/i }));
+    expect(screen.getByRole('textbox', { name: /search prefer together items/i })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /select cards/i }));
     await user.click(screen.getByRole('button', { name: /select prefer together item/i }));
     await user.click(screen.getByRole('button', { name: /^actions$/i }));

@@ -4,8 +4,8 @@ import type { Constraint } from '../../../../types';
 import { Button } from '../../../ui';
 import { replaceConstraintsAtIndices } from '../../../constraints/constraintMutations';
 import { SetupActionsMenu } from '../../shared/SetupActionsMenu';
+import { SetupCardSearchToolbar } from '../../shared/SetupCardSearchToolbar';
 import { SetupCollectionPage } from '../../shared/SetupCollectionPage';
-import { SetupSearchField } from '../../shared/SetupSearchField';
 import { normalizeSessionSelection } from '../../shared/sessionScope';
 import {
   SetupItemActions,
@@ -61,25 +61,25 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
   const items = getIndexedConstraints(scenario, family);
   const searchValue = search.trim().toLowerCase();
 
-  const filteredItems = family === 'MustStayTogether' && viewMode === 'cards'
+  const filteredItems = viewMode === 'cards'
     ? items.filter(({ constraint }) => {
-        if (minMembers !== '' && constraint.people.length < minMembers) {
+        if (family === 'MustStayTogether' && minMembers !== '' && constraint.people.length < minMembers) {
           return false;
         }
+
         if (!searchValue) {
           return true;
         }
-        const textPool: string[] = [];
-        for (const personId of constraint.people) {
-          textPool.push(personId.toLowerCase());
-          const person = scenario.people.find((candidate) => candidate.id === personId);
-          if (person?.attributes?.name) {
-            textPool.push(String(person.attributes.name).toLowerCase());
-          }
-        }
-        if (Array.isArray(constraint.sessions)) {
+
+        const textPool = [formatPersonSearchList(scenario.people, constraint.people)];
+
+        if (constraint.type === 'ImmovablePeople') {
+          textPool.push(constraint.group_id.toLowerCase());
+          textPool.push(...constraint.sessions.map((session) => String(session + 1)));
+        } else if (Array.isArray(constraint.sessions)) {
           textPool.push(...constraint.sessions.map((session) => String(session + 1)));
         }
+
         return textPool.some((value) => value.includes(searchValue));
       })
     : items;
@@ -206,28 +206,27 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
           </>
         }
         toolbarLeading={(activeViewMode) =>
-          family === 'MustStayTogether' && activeViewMode === 'cards' ? (
-            <div className="flex min-w-0 flex-1 flex-col gap-3 md:flex-row md:items-center">
-              <SetupSearchField
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Filter by person or session"
-                label={`Search ${copy.title.toLowerCase()} items`}
-              />
-              <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                <span>Min members</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={minMembers}
-                  onChange={(event) => setMinMembers(event.target.value === '' ? '' : Math.max(0, parseInt(event.target.value, 10) || 0))}
-                  className="input w-24"
-                />
-              </label>
-              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                Showing {filteredItems.length} of {items.length}. Selected {selectedMustIndices.length}.
-              </div>
-            </div>
+          activeViewMode === 'cards' ? (
+            <SetupCardSearchToolbar
+              label={`Search ${copy.title.toLowerCase()} items`}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              onClear={() => setSearch('')}
+              placeholder={family === 'ImmovablePeople' ? 'Filter by person, group, or session' : 'Filter by person or session'}
+              status={searchValue || minMembers !== '' ? `Showing ${filteredItems.length} of ${items.length}` : undefined}
+              extra={family === 'MustStayTogether' ? (
+                <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <span>Min members</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={minMembers}
+                    onChange={(event) => setMinMembers(event.target.value === '' ? '' : Math.max(0, parseInt(event.target.value, 10) || 0))}
+                    className="input w-24"
+                  />
+                </label>
+              ) : null}
+            />
           ) : null
         }
         onViewModeChange={handleViewModeChange}

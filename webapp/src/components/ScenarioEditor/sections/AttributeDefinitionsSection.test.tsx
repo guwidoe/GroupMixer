@@ -25,6 +25,15 @@ describe('AttributeDefinitionsSection', () => {
     await user.click(screen.getByRole('button', { name: /add attribute/i }));
     expect(onAddAttribute).toHaveBeenCalledTimes(1);
 
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+    expect(screen.getByRole('textbox', { name: /search attributes/i })).toBeInTheDocument();
+
+    await user.type(screen.getByRole('textbox', { name: /search attributes/i }), 'zzz');
+    expect(screen.getByText(/no attributes match this search/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /clear/i }));
+    expect(screen.getByText('role')).toBeInTheDocument();
+
     await user.click(screen.getByText('role'));
     expect(onEditAttribute).toHaveBeenCalledTimes(1);
 

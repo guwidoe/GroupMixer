@@ -52,9 +52,19 @@ describe('RepeatEncounterCollectionSection', () => {
     expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^csv$/i })).toBeInTheDocument();
 
-    await user.click(screen.getByText(/max 1 encounter/i));
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+    expect(screen.getByRole('textbox', { name: /search repeat encounter preferences/i })).toBeInTheDocument();
+
+    await user.type(screen.getByRole('textbox', { name: /search repeat encounter preferences/i }), 'zzz');
+    expect(screen.getByText(/no repeat limits match this search/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /clear/i }));
+    expect(screen.getByRole('button', { name: /edit repeat encounter preference/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /edit repeat encounter preference/i }));
     expect(onEdit).toHaveBeenCalledTimes(1);
 
+    await user.click(screen.getByRole('button', { name: /^list$/i }));
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     expect(screen.getByRole('textbox', { name: /repeat encounter csv/i })).toHaveValue(
       'Limit,Penalty function,Weight\n1,linear,5',

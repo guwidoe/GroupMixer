@@ -3,6 +3,7 @@ import { Hash, Plus } from 'lucide-react';
 import type { Group, Scenario } from '../../../types';
 import { getGroupCapacityProfile, hasSessionSpecificGroupCapacities } from '../../../utils/groupCapacities';
 import { Button } from '../../ui';
+import { SetupCardSearchToolbar } from '../shared/SetupCardSearchToolbar';
 import { SetupCollectionPage } from '../shared/SetupCollectionPage';
 import { SetupCardGrid, SetupItemActions, SetupItemCard, SetupKeyValueList, SetupTagList } from '../shared/cards';
 import { ScenarioDataGrid } from '../shared/grid/ScenarioDataGrid';
@@ -169,7 +170,27 @@ export function GroupsSection({
   createGridGroupRow,
 }: GroupsSectionProps) {
   const groups = useMemo(() => scenario?.groups ?? [], [scenario?.groups]);
+  const [search, setSearch] = useState('');
+  const [viewMode, setViewMode] = useState<SetupCollectionViewMode>('list');
   const [gridWorkspaceMode, setGridWorkspaceMode] = useState<'browse' | 'edit' | 'csv'>('browse');
+  const searchValue = search.trim().toLowerCase();
+
+  const filteredGroups = useMemo(() => {
+    if (viewMode !== 'cards' || !searchValue) {
+      return groups;
+    }
+
+    return groups.filter((group) => {
+      const capacityProfile = scenario ? getGroupCapacityProfile(group, scenario.num_sessions) : [];
+      const haystack = [
+        group.id.toLowerCase(),
+        String(group.size),
+        capacityProfile.join(' '),
+      ];
+
+      return haystack.some((value) => value.includes(searchValue));
+    });
+  }, [groups, scenario, searchValue, viewMode]);
 
   return (
     <SetupCollectionPage
@@ -189,17 +210,32 @@ export function GroupsSection({
       }
       defaultViewMode="list"
       onViewModeChange={(nextMode) => {
+        setViewMode(nextMode);
         if (nextMode !== 'list') {
           setGridWorkspaceMode('browse');
         }
       }}
-      hasItems={groups.length > 0}
+      toolbarLeading={(activeViewMode) =>
+        activeViewMode === 'cards' ? (
+          <SetupCardSearchToolbar
+            label="Search groups"
+            placeholder="Search groups or capacities..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            onClear={() => setSearch('')}
+            status={searchValue ? `Showing ${filteredGroups.length} of ${groups.length} groups` : undefined}
+          />
+        ) : null
+      }
+      hasItems={filteredGroups.length > 0}
       emptyState={{
         icon: <Hash className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,
-        title: 'No groups added yet',
-        message: 'Add the groups people can be assigned to before tuning constraints and preferences.',
+        title: searchValue ? 'No groups match this search' : 'No groups added yet',
+        message: searchValue
+          ? 'Try a broader search or clear it to see every group.'
+          : 'Add the groups people can be assigned to before tuning constraints and preferences.',
       }}
-      renderContent={(viewMode) => renderGroupContent(groups, scenario, viewMode, gridWorkspaceMode, setGridWorkspaceMode, onEditGroup, onDeleteGroup, onApplyGridGroups, createGridGroupRow)}
+      renderContent={(activeViewMode) => renderGroupContent(filteredGroups, scenario, activeViewMode, gridWorkspaceMode, setGridWorkspaceMode, onEditGroup, onDeleteGroup, onApplyGridGroups, createGridGroupRow)}
     />
   );
 }
