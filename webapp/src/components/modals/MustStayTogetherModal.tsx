@@ -3,6 +3,13 @@ import type { Constraint } from '../../types';
 import PersonCard from '../PersonCard';
 import { useAppStore } from '../../store';
 import { ModalWrapper, ModalHeader, ModalFooter, FormValidationError } from '../ui';
+import { SessionScopeField } from '../ScenarioEditor/shared/SessionScopeField';
+import {
+  createAllSessionScopeDraft,
+  optionalSessionsToDraft,
+  sessionScopeDraftToOptionalSessions,
+  type SessionScopeDraft,
+} from '../ScenarioEditor/shared/sessionScope';
 
 interface Props {
   sessionsCount: number;
@@ -18,25 +25,26 @@ export function MustStayTogetherModal({ sessionsCount, initial, onCancel, onSave
     if (ui.isLoading) {
       return {
         selectedPeople: [] as string[],
-        selectedSessions: [] as number[],
+        sessionScope: createAllSessionScopeDraft() as SessionScopeDraft,
         validationError: '',
       };
     }
 
     const editing = !!initial;
     const initPeople: string[] = editing && initial?.type === 'MustStayTogether' ? initial.people : [];
-    const initSessions: number[] = (editing && initial?.type === 'MustStayTogether' && initial.sessions) ? initial.sessions : [];
 
     return {
       selectedPeople: initPeople,
-      selectedSessions: initSessions,
+      sessionScope: editing && initial?.type === 'MustStayTogether'
+        ? optionalSessionsToDraft(initial.sessions, sessionsCount)
+        : createAllSessionScopeDraft(),
       validationError: '',
     };
   };
 
   const initialState = getInitialState();
   const [selectedPeople, setSelectedPeople] = useState<string[]>(initialState.selectedPeople);
-  const [selectedSessions, setSelectedSessions] = useState<number[]>(initialState.selectedSessions);
+  const [sessionScope, setSessionScope] = useState<SessionScopeDraft>(initialState.sessionScope);
   const [validationError, setValidationError] = useState<string>(initialState.validationError);
   const [personSearch, setPersonSearch] = useState<string>('');
 
@@ -53,11 +61,6 @@ export function MustStayTogetherModal({ sessionsCount, initial, onCancel, onSave
     if (validationError) setValidationError('');
   };
 
-  const toggleSession = (idx: number) => {
-    setSelectedSessions(prev => prev.includes(idx) ? prev.filter(s => s !== idx) : [...prev, idx]);
-    if (validationError) setValidationError('');
-  };
-
   const handleSave = () => {
     setValidationError('');
 
@@ -71,12 +74,10 @@ export function MustStayTogetherModal({ sessionsCount, initial, onCancel, onSave
       return;
     }
 
-    const sessions = selectedSessions.length > 0 ? selectedSessions : undefined;
-
     const newConstraint: Constraint = {
       type: 'MustStayTogether',
       people: selectedPeople,
-      sessions,
+      sessions: sessionScopeDraftToOptionalSessions(sessionScope, sessionsCount),
     };
 
     onSave(newConstraint);
@@ -140,25 +141,15 @@ export function MustStayTogetherModal({ sessionsCount, initial, onCancel, onSave
         </div>
 
         {/* Sessions select */}
-        <div>
-          <label className="block text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>Sessions</label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {Array.from({length: sessionsCount},(_,i)=>i).map(i=> (
-              <label key={i} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800" style={{color:'var(--text-secondary)'}}>
-                <input
-                  type="checkbox"
-                  checked={selectedSessions.includes(i)}
-                  onChange={()=>toggleSession(i)}
-                  className="w-4 h-4"
-                />
-                <span className="text-sm">Session {i+1}</span>
-              </label>
-            ))}
-          </div>
-          <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>
-            {selectedSessions.length === 0 ? 'No sessions selected - will apply to all sessions' : `Selected ${selectedSessions.length} session(s)`}
-          </p>
-        </div>
+        <SessionScopeField
+          label="Sessions"
+          totalSessions={sessionsCount}
+          value={sessionScope}
+          onChange={(nextScope) => {
+            setSessionScope(nextScope);
+            if (validationError) setValidationError('');
+          }}
+        />
       </div>
 
       <ModalFooter onCancel={onCancel} onSave={handleSave} />

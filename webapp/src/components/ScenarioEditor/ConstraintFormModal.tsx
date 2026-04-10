@@ -1,6 +1,8 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import type { AttributeDefinition, Constraint, Scenario } from '../../types';
+import { SessionScopeField } from './shared/SessionScopeField';
+import { createAllSessionScopeDraft, type SessionScopeDraft } from './shared/sessionScope';
 
 export interface ConstraintFormState {
   type: Constraint['type'];
@@ -14,6 +16,7 @@ export interface ConstraintFormState {
   person_id?: string;
   people?: string[];
   sessions?: number[];
+  sessionScope?: SessionScopeDraft;
 }
 
 interface ConstraintFormModalProps {
@@ -44,6 +47,7 @@ export function ConstraintFormModal({
   if (!isOpen) return null;
 
   const sessions = Array.from({ length: sessionsCount }, (_, i) => i);
+  const currentSessionScope = constraintForm.sessionScope ?? createAllSessionScopeDraft();
 
   return (
     <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50">
@@ -225,40 +229,12 @@ export function ConstraintFormModal({
                 </div>
               )}
 
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  Apply to Sessions (optional)
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {sessions.map(sessionIdx => (
-                    <label key={sessionIdx} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={constraintForm.sessions?.includes(sessionIdx) || false}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setConstraintForm(prev => ({
-                              ...prev,
-                              sessions: [...(prev.sessions || []), sessionIdx].sort(),
-                            }));
-                          } else {
-                            setConstraintForm(prev => ({
-                              ...prev,
-                              sessions: (prev.sessions || []).filter(s => s !== sessionIdx),
-                            }));
-                          }
-                        }}
-                        className="rounded border-gray-300 focus:ring-2"
-                        style={{ color: 'var(--color-accent)', accentColor: 'var(--color-accent)' }}
-                      />
-                      Session {sessionIdx + 1}
-                    </label>
-                  ))}
-                </div>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-                  Leave empty to apply to all sessions
-                </p>
-              </div>
+              <SessionScopeField
+                label="Apply to Sessions (optional)"
+                totalSessions={sessionsCount}
+                value={currentSessionScope}
+                onChange={(sessionScope) => setConstraintForm((prev) => ({ ...prev, sessionScope }))}
+              />
             </>
           )}
 
@@ -312,40 +288,12 @@ export function ConstraintFormModal({
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  Apply to Sessions (optional)
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {sessions.map(sessionIdx => (
-                    <label key={sessionIdx} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={constraintForm.sessions?.includes(sessionIdx) || false}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setConstraintForm(prev => ({
-                              ...prev,
-                              sessions: [...(prev.sessions || []), sessionIdx].sort(),
-                            }));
-                          } else {
-                            setConstraintForm(prev => ({
-                              ...prev,
-                              sessions: (prev.sessions || []).filter(s => s !== sessionIdx),
-                            }));
-                          }
-                        }}
-                        className="rounded border-gray-300 focus:ring-2"
-                        style={{ color: 'var(--color-accent)', accentColor: 'var(--color-accent)' }}
-                      />
-                      Session {sessionIdx + 1}
-                    </label>
-                  ))}
-                </div>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-                  Leave empty to apply to all sessions
-                </p>
-              </div>
+              <SessionScopeField
+                label="Apply to Sessions (optional)"
+                totalSessions={sessionsCount}
+                value={currentSessionScope}
+                onChange={(sessionScope) => setConstraintForm((prev) => ({ ...prev, sessionScope }))}
+              />
             </>
           )}
 

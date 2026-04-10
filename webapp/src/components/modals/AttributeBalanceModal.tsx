@@ -3,6 +3,13 @@ import { X } from 'lucide-react';
 import type { Constraint } from '../../types';
 import { findAttributeDefinition } from '../../services/scenarioAttributes';
 import { useAppStore } from '../../store';
+import { SessionScopeField } from '../ScenarioEditor/shared/SessionScopeField';
+import {
+  createAllSessionScopeDraft,
+  optionalSessionsToDraft,
+  sessionScopeDraftToOptionalSessions,
+  type SessionScopeDraft,
+} from '../ScenarioEditor/shared/sessionScope';
 
 interface Props {
   initial?: Constraint | null;
@@ -16,7 +23,7 @@ interface FormState {
   attribute_key: string;
   desired_values: Record<string, number | null>;
   penalty_weight: number | null;
-  sessions: number[];
+  sessionScope: SessionScopeDraft;
   mode: 'exact' | 'at_least';
 }
 
@@ -30,7 +37,7 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
         attribute_key: '',
         desired_values: {},
         penalty_weight: 10,
-        sessions: [],
+        sessionScope: createAllSessionScopeDraft(),
         mode: 'exact',
       };
     }
@@ -45,7 +52,7 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
         attribute_key: initial.attribute_key || '',
         desired_values: initial.desired_values || {},
         penalty_weight: initial.penalty_weight || 10,
-        sessions: initial.sessions || [],
+        sessionScope: optionalSessionsToDraft(initial.sessions, scenario.num_sessions),
         mode: initial.mode ?? 'exact',
       };
     }
@@ -55,7 +62,7 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
       attribute_key: attributeDefinitions?.[0]?.name || '',
       desired_values: {},
       penalty_weight: 10,
-      sessions: [],
+      sessionScope: createAllSessionScopeDraft(),
       mode: 'exact',
     };
   };
@@ -121,7 +128,7 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
       desired_values: validDesiredValues,
       penalty_weight: formState.penalty_weight!,
       mode: formState.mode,
-      sessions: formState.sessions.length > 0 ? formState.sessions : undefined,
+      sessions: sessionScopeDraftToOptionalSessions(formState.sessionScope, sessionsCount),
     };
 
     onSave(newConstraint);
@@ -131,17 +138,6 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
     id: formState.attribute_id,
     name: formState.attribute_key,
   });
-
-  const toggleSession = (sessionIndex: number) => {
-    setFormState(prev => ({
-      ...prev,
-      sessions: prev.sessions.includes(sessionIndex)
-        ? prev.sessions.filter(s => s !== sessionIndex)
-        : [...prev.sessions, sessionIndex],
-    }));
-  };
-
-  const allSessionsSelected = formState.sessions.length === 0 || formState.sessions.length === sessionsCount;
 
   return (
     <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4">
@@ -229,29 +225,12 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
             </div>
           )}
           
-          {/* Sessions Selection */}
-          <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Sessions</label>
-            <div className="border rounded p-3" style={{ borderColor: 'var(--border-secondary)' }}>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
-                {Array.from({ length: sessionsCount }, (_, i) => (
-                  <label key={i} className="flex items-center space-x-2 cursor-pointer p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <input
-                      type="checkbox"
-                      id={`ab-session-${i}`}
-                      checked={formState.sessions.includes(i)}
-                      onChange={() => toggleSession(i)}
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>Session {i + 1}</span>
-                  </label>
-                ))}
-              </div>
-              <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>
-                {allSessionsSelected ? "Applies to all sessions." : `Applies to ${formState.sessions.length} selected session(s).`} Leave all unchecked to apply to all.
-              </p>
-            </div>
-          </div>
+          <SessionScopeField
+            label="Sessions"
+            totalSessions={sessionsCount}
+            value={formState.sessionScope}
+            onChange={(sessionScope) => setFormState((prev) => ({ ...prev, sessionScope }))}
+          />
           
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Penalty Weight</label>

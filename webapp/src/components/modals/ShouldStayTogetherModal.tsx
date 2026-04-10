@@ -3,6 +3,13 @@ import { X, Check } from 'lucide-react';
 import type { Constraint } from '../../types';
 import PersonCard from '../PersonCard';
 import { useAppStore } from '../../store';
+import { SessionScopeField } from '../ScenarioEditor/shared/SessionScopeField';
+import {
+  createAllSessionScopeDraft,
+  optionalSessionsToDraft,
+  sessionScopeDraftToOptionalSessions,
+  type SessionScopeDraft,
+} from '../ScenarioEditor/shared/sessionScope';
 
 interface Props {
   sessionsCount: number;
@@ -18,7 +25,7 @@ export function ShouldStayTogetherModal({ sessionsCount, initial, onCancel, onSa
     if (ui.isLoading) {
       return {
         selectedPeople: [] as string[],
-        selectedSessions: [] as number[],
+        sessionScope: createAllSessionScopeDraft() as SessionScopeDraft,
         penaltyWeight: 10 as number | null,
         personSearch: '',
         validationError: '',
@@ -27,12 +34,13 @@ export function ShouldStayTogetherModal({ sessionsCount, initial, onCancel, onSa
 
     const editing = !!initial;
     const initPeople: string[] = editing && initial?.type === 'ShouldStayTogether' ? initial.people : [];
-    const initSessions: number[] = (editing && initial?.type === 'ShouldStayTogether' && initial.sessions) ? initial.sessions : [];
     const initWeight: number = editing && initial?.type === 'ShouldStayTogether' ? initial.penalty_weight : 10;
 
     return {
       selectedPeople: initPeople,
-      selectedSessions: initSessions,
+      sessionScope: editing && initial?.type === 'ShouldStayTogether'
+        ? optionalSessionsToDraft(initial.sessions, sessionsCount)
+        : createAllSessionScopeDraft(),
       penaltyWeight: initWeight,
       personSearch: '',
       validationError: '',
@@ -41,7 +49,7 @@ export function ShouldStayTogetherModal({ sessionsCount, initial, onCancel, onSa
 
   const initialState = getInitialState();
   const [selectedPeople, setSelectedPeople] = useState<string[]>(initialState.selectedPeople);
-  const [selectedSessions, setSelectedSessions] = useState<number[]>(initialState.selectedSessions);
+  const [sessionScope, setSessionScope] = useState<SessionScopeDraft>(initialState.sessionScope);
   const [penaltyWeight, setPenaltyWeight] = useState<number | null>(initialState.penaltyWeight);
   const [personSearch, setPersonSearch] = useState(initialState.personSearch);
   const [validationError, setValidationError] = useState<string>(initialState.validationError);
@@ -75,17 +83,11 @@ export function ShouldStayTogetherModal({ sessionsCount, initial, onCancel, onSa
       type: 'ShouldStayTogether',
       people: selectedPeople,
       penalty_weight: penaltyWeight!,
-      sessions: selectedSessions.length > 0 && selectedSessions.length < sessionsCount ? selectedSessions : undefined,
+      sessions: sessionScopeDraftToOptionalSessions(sessionScope, sessionsCount),
     };
 
     onSave(newConstraint);
   };
-
-  const toggleSession = (sessionIndex: number) => {
-    setSelectedSessions(prev => prev.includes(sessionIndex) ? prev.filter(s => s !== sessionIndex) : [...prev, sessionIndex]);
-  };
-
-  const allSessionsSelected = selectedSessions.length === 0 || selectedSessions.length === sessionsCount;
 
   return (
     <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4">
@@ -137,31 +139,12 @@ export function ShouldStayTogetherModal({ sessionsCount, initial, onCancel, onSa
             <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>Select two or more people who should be placed in the same group.</p>
           </div>
 
-          {/* Sessions Selection */}
-          <div>
-            <label className="text-sm font-medium mb-3 block" style={{ color: 'var(--text-secondary)' }}>
-              <Check className="inline-block w-4 h-4 mr-1" /> Sessions
-            </label>
-            <div className="border rounded p-3" style={{ borderColor: 'var(--border-secondary)' }}>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
-                {Array.from({ length: sessionsCount }, (_, i) => (
-                  <label key={i} className="flex items-center space-x-2 cursor-pointer p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <input
-                      type="checkbox"
-                      id={`session-${i}`}
-                      checked={selectedSessions.includes(i)}
-                      onChange={() => toggleSession(i)}
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>Session {i + 1}</span>
-                  </label>
-                ))}
-              </div>
-              <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>
-                {allSessionsSelected ? "Applies to all sessions." : `Applies to ${selectedSessions.length} selected session(s).`} Leave all unchecked to apply to all.
-              </p>
-            </div>
-          </div>
+          <SessionScopeField
+            label={<><Check className="mr-1 inline-block h-4 w-4" /> Sessions</>}
+            totalSessions={sessionsCount}
+            value={sessionScope}
+            onChange={setSessionScope}
+          />
 
           {/* Penalty Weight */}
           <div>
@@ -189,5 +172,4 @@ export function ShouldStayTogetherModal({ sessionsCount, initial, onCancel, onSa
     </div>
   );
 }
-
 

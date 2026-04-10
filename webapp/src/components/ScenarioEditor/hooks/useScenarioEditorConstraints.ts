@@ -2,6 +2,11 @@ import { useState } from 'react';
 import type { AttributeDefinition, Constraint, Scenario } from '../../../types';
 import { findAttributeDefinition, getAttributeDefinitionName, updateAttributeBalanceConstraintReference } from '../../../services/scenarioAttributes';
 import type { ConstraintFormState } from '../ConstraintFormModal';
+import {
+  createAllSessionScopeDraft,
+  optionalSessionsToDraft,
+  sessionScopeDraftToOptionalSessions,
+} from '../shared/sessionScope';
 
 type NotificationPayload = {
   type: 'success' | 'error' | 'info';
@@ -29,6 +34,7 @@ export function useScenarioEditorConstraints({
   const [constraintForm, setConstraintForm] = useState<ConstraintFormState>({
     type: 'RepeatEncounter',
     penalty_weight: 1,
+    sessionScope: createAllSessionScopeDraft(),
   });
 
   const [showImmovableModal, setShowImmovableModal] = useState(false);
@@ -95,7 +101,10 @@ export function useScenarioEditorConstraints({
             attribute_key: definition.name,
             desired_values: constraintForm.desired_values,
             penalty_weight: constraintForm.penalty_weight || 50,
-            sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined,
+            sessions: sessionScopeDraftToOptionalSessions(
+              constraintForm.sessionScope ?? createAllSessionScopeDraft(),
+              sessionsCount,
+            ),
           };
           break;
         }
@@ -125,13 +134,19 @@ export function useScenarioEditorConstraints({
               ? {
                   type: 'MustStayTogether',
                   people: constraintForm.people,
-                  sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined,
+                  sessions: sessionScopeDraftToOptionalSessions(
+                    constraintForm.sessionScope ?? createAllSessionScopeDraft(),
+                    sessionsCount,
+                  ),
                 }
               : {
                   type: 'ShouldNotBeTogether',
                   people: constraintForm.people,
                   penalty_weight: constraintForm.penalty_weight || 1000,
-                  sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined,
+                  sessions: sessionScopeDraftToOptionalSessions(
+                    constraintForm.sessionScope ?? createAllSessionScopeDraft(),
+                    sessionsCount,
+                  ),
                 };
           break;
 
@@ -149,7 +164,7 @@ export function useScenarioEditorConstraints({
       };
 
       setScenario(updatedScenario);
-      setConstraintForm({ type: 'RepeatEncounter', penalty_weight: 1 });
+      setConstraintForm({ type: 'RepeatEncounter', penalty_weight: 1, sessionScope: createAllSessionScopeDraft() });
       setShowConstraintForm(false);
 
       addNotification({
@@ -186,7 +201,7 @@ export function useScenarioEditorConstraints({
           attribute_key: constraint.attribute_key,
           desired_values: constraint.desired_values,
           penalty_weight: constraint.penalty_weight,
-          sessions: constraint.sessions,
+          sessionScope: optionalSessionsToDraft(constraint.sessions, sessionsCount),
         });
         break;
       case 'ImmovablePeople':
@@ -202,7 +217,7 @@ export function useScenarioEditorConstraints({
         setConstraintForm({
           type: 'MustStayTogether',
           people: constraint.people,
-          sessions: constraint.sessions,
+          sessionScope: optionalSessionsToDraft(constraint.sessions, sessionsCount),
           penalty_weight: undefined,
         });
         break;
@@ -210,7 +225,7 @@ export function useScenarioEditorConstraints({
         setConstraintForm({
           type: 'ShouldNotBeTogether',
           people: constraint.people,
-          sessions: constraint.sessions,
+          sessionScope: optionalSessionsToDraft(constraint.sessions, sessionsCount),
           penalty_weight: constraint.penalty_weight,
         });
         break;
@@ -250,7 +265,10 @@ export function useScenarioEditorConstraints({
             attribute_key: definition.name,
             desired_values: constraintForm.desired_values,
             penalty_weight: constraintForm.penalty_weight || 50,
-            sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined,
+            sessions: sessionScopeDraftToOptionalSessions(
+              constraintForm.sessionScope ?? createAllSessionScopeDraft(),
+              sessionsCount,
+            ),
           };
           break;
         }
@@ -280,13 +298,19 @@ export function useScenarioEditorConstraints({
               ? {
                   type: 'MustStayTogether',
                   people: constraintForm.people,
-                  sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined,
+                  sessions: sessionScopeDraftToOptionalSessions(
+                    constraintForm.sessionScope ?? createAllSessionScopeDraft(),
+                    sessionsCount,
+                  ),
                 }
               : {
                   type: 'ShouldNotBeTogether',
                   people: constraintForm.people,
                   penalty_weight: constraintForm.penalty_weight || 1000,
-                  sessions: constraintForm.sessions?.length ? constraintForm.sessions : undefined,
+                  sessions: sessionScopeDraftToOptionalSessions(
+                    constraintForm.sessionScope ?? createAllSessionScopeDraft(),
+                    sessionsCount,
+                  ),
                 };
           break;
 
@@ -308,7 +332,7 @@ export function useScenarioEditorConstraints({
 
       setScenario(updatedScenario);
       setEditingConstraint(null);
-      setConstraintForm({ type: 'RepeatEncounter', penalty_weight: 1 });
+      setConstraintForm({ type: 'RepeatEncounter', penalty_weight: 1, sessionScope: createAllSessionScopeDraft() });
       setShowConstraintForm(false);
 
       addNotification({
