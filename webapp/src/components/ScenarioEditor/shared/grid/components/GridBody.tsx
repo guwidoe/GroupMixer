@@ -26,15 +26,22 @@ export function GridBody<T>({ emptyState, onRowOpen, rowOpenLabel, table }: Grid
           </td>
         </tr>
       ) : (
-        paginatedRows.map((row, rowIndex) => (
+        paginatedRows.map((row, rowIndex) => {
+          const baseRowBackground = rowIndex % 2 === 0
+            ? 'var(--bg-primary)'
+            : 'color-mix(in srgb, var(--bg-secondary) 55%, var(--bg-primary) 45%)';
+
+          return (
           <tr
             key={row.id}
             aria-label={onRowOpen ? rowOpenLabel?.(row.original, rowIndex) : undefined}
             className={[
               'transition-colors',
-              onRowOpen ? 'cursor-pointer hover:bg-[color:var(--bg-tertiary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-accent)] focus-visible:ring-offset-[-2px]' : 'hover:bg-[color:var(--bg-secondary)]',
+              onRowOpen
+                ? 'cursor-pointer hover:[--grid-row-bg:var(--bg-tertiary)] focus-visible:[--grid-row-bg:var(--bg-tertiary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-accent)] focus-visible:ring-offset-[-2px]'
+                : 'hover:[--grid-row-bg:var(--bg-secondary)]',
             ].join(' ')}
-            style={{ backgroundColor: rowIndex % 2 === 0 ? 'var(--bg-primary)' : 'color-mix(in srgb, var(--bg-secondary) 55%, var(--bg-primary) 45%)' }}
+            style={{ '--grid-row-bg': baseRowBackground, backgroundColor: 'var(--grid-row-bg)' } as React.CSSProperties}
             tabIndex={onRowOpen ? 0 : undefined}
             onClick={onRowOpen ? (event) => {
               if (shouldIgnoreRowOpen(event.target)) {
@@ -63,7 +70,8 @@ export function GridBody<T>({ emptyState, onRowOpen, rowOpenLabel, table }: Grid
               );
             })}
           </tr>
-        ))
+        );
+        })
       )}
     </tbody>
   );
