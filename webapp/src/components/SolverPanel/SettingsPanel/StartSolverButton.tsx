@@ -25,8 +25,8 @@ export function StartSolverButton({ onStartSolver, isRunning, solverCatalogStatu
               ? 'Start Solver with Custom Settings'
               : 'Start Solver with Current Settings'
             : solverCatalogStatus === 'loading'
-              ? 'Loading Solver Catalog...'
-              : 'Solver Catalog Unavailable'}
+              ? 'Loading Available Solvers...'
+              : 'Available Solvers Unavailable'}
         </span>
       </button>
     </div>

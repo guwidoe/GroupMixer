@@ -108,12 +108,12 @@ export function SolverStatusCard({
           }}
         >
           <div className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
-            {solverCatalogStatus === 'loading' ? 'Loading Solver Catalog' : 'Solver Catalog Unavailable'}
+            {solverCatalogStatus === 'loading' ? 'Loading Available Solvers' : 'Available Solvers Unavailable'}
           </div>
           <p>
             {solverCatalogStatus === 'loading'
-              ? 'Waiting for authoritative solver discovery from the runtime before enabling solve controls.'
-              : `Runtime solver discovery failed: ${solverCatalogErrorMessage ?? 'unknown error'}`}
+              ? 'Loading the available solvers before enabling solve controls.'
+              : `Could not load the available solvers: ${solverCatalogErrorMessage ?? 'unknown error'}`}
           </p>
         </div>
       )}
@@ -155,8 +155,8 @@ export function SolverStatusCard({
                   ? 'Start Solver with Automatic Settings'
                   : 'Start Solver with Current Settings'
                 : solverCatalogStatus === 'loading'
-                  ? 'Loading Solver Catalog...'
-                  : 'Solver Catalog Unavailable'}
+                  ? 'Loading Available Solvers...'
+                  : 'Available Solvers Unavailable'}
             </span>
           </button>
         ) : (

@@ -326,7 +326,7 @@ export function SoftConstraintFamilySection({
                               ? <><strong>Targets</strong> use JSON objects and <strong>Sessions</strong> use JSON session-scope objects such as <code>{'{"mode":"all"}'}</code> or <code>{'{"mode":"selected","sessions":[0,1]}'}</code>.</>
                               : family === 'ShouldNotBeTogether' || family === 'ShouldStayTogether'
                                 ? <><strong>Sessions</strong> use JSON session-scope objects such as <code>{'{"mode":"all"}'}</code> or <code>{'{"mode":"selected","sessions":[0,1]}'}</code>.</>
-                                : 'Use the shared grid editor or CSV mode to update these constraints in bulk.'}
+                                : 'Use Edit table or CSV to update these constraints in bulk.'}
                           </div>
                         ),
                       },

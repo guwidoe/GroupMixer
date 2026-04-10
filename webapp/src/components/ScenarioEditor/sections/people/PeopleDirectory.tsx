@@ -174,12 +174,7 @@ export function PeopleDirectory({
       sectionKey="people"
       title="People"
       count={basePeople.length}
-      description={
-        <p>
-          Manage participants, their availability, and their attribute values. This directory now uses the same shared
-          setup shell as other collection-style pages while preserving progressive rendering for large scenarios.
-        </p>
-      }
+      description={<p>Manage participants, their availability, and their attribute values.</p>}
       actions={
         <Button variant="primary" leadingIcon={<Users className="h-4 w-4" />} onClick={onAddPerson}>
           Add Person

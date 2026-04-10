@@ -25,11 +25,11 @@ function formatRuntimeSolverLabel(
   }
 
   if (status === 'error') {
-    return `Catalog unavailable (${solverType})`;
+    return `Solver info unavailable (${solverType})`;
   }
 
   if (status === 'ready') {
-    return `Unadvertised (${solverType})`;
+    return `Unknown solver (${solverType})`;
   }
 
   return `Loading (${solverType})`;

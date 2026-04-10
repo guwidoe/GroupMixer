@@ -103,12 +103,12 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
           }}
         >
           <div className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
-            {solverCatalogStatus === 'loading' ? 'Loading Solver Catalog' : 'Solver Catalog Unavailable'}
+            {solverCatalogStatus === 'loading' ? 'Loading Available Solvers' : 'Available Solvers Unavailable'}
           </div>
           <p>
             {solverCatalogStatus === 'loading'
-              ? 'Fetching solver families and capability metadata from the runtime.'
-              : `Runtime solver discovery failed: ${solverCatalogErrorMessage ?? 'unknown error'}`}
+              ? 'Loading the available solvers for this app.'
+              : `Could not load the available solvers: ${solverCatalogErrorMessage ?? 'unknown error'}`}
           </p>
         </div>
       )}

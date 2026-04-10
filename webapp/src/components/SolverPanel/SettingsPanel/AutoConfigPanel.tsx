@@ -34,12 +34,12 @@ export function AutoConfigPanel({
         style={{ border: '1px solid var(--border-secondary)', backgroundColor: 'var(--background-secondary)', color: 'var(--text-secondary)' }}
       >
         <div className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>
-          {solverCatalogStatus === 'loading' ? 'Loading Solver Catalog' : 'Solver Catalog Unavailable'}
+          {solverCatalogStatus === 'loading' ? 'Loading Available Solvers' : 'Available Solvers Unavailable'}
         </div>
         <p>
           {solverCatalogStatus === 'loading'
-            ? 'Fetching authoritative solver family capabilities from the runtime.'
-            : `Automatic settings are disabled because runtime solver discovery failed: ${solverCatalogErrorMessage ?? 'unknown error'}`}
+            ? 'Loading the available solvers for this app.'
+            : `Automatic settings are unavailable because the solver list could not be loaded: ${solverCatalogErrorMessage ?? 'unknown error'}`}
         </p>
       </div>
     );
@@ -55,7 +55,7 @@ export function AutoConfigPanel({
           Automatic Settings Unavailable
         </div>
         <p>
-          {solverDisplayName} does not currently expose runtime-aware recommended settings.
+          Automatic settings are not available for {solverDisplayName} yet.
           Use the manual controls below.
         </p>
       </div>

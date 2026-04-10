@@ -88,11 +88,11 @@ function formatRuntimeSolverLabel(
   }
 
   if (status === 'error') {
-    return `Catalog unavailable (${solverType})`;
+    return `Solver info unavailable (${solverType})`;
   }
 
   if (status === 'ready') {
-    return `Unadvertised (${solverType})`;
+    return `Unknown solver (${solverType})`;
   }
 
   return `Loading (${solverType})`;
@@ -218,7 +218,7 @@ export function ResultCard({
                       }}
                       title={runtimeSolverCatalogError}
                     >
-                      Solver catalog unavailable
+                      Solver info unavailable
                     </span>
                   )}
                   {metrics.configDiff && metrics.configDiff.isDifferent && (
