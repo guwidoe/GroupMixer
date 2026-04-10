@@ -98,33 +98,31 @@ export const createScenarioSlice: StoreSlice<ScenarioState & ScenarioActions> = 
     const { currentScenarioId, savedScenarios } = get();
     if (currentScenarioId && savedScenarios[currentScenarioId]) {
       const savedScenario = savedScenarios[currentScenarioId];
-      const nextWorkspace = resolveScenarioWorkspaceState(savedScenario.scenario, savedScenario.attributeDefinitions);
       set({
-        scenario: nextWorkspace.scenario,
-        attributeDefinitions: nextWorkspace.attributeDefinitions,
+        scenario: savedScenario.scenario,
+        attributeDefinitions: savedScenario.attributeDefinitions,
         currentResultId: null,
         solution: null,
         solverState: initialSolverState,
       });
-      return nextWorkspace.scenario;
+      return savedScenario.scenario;
     }
 
     // Check if there are any saved scenarios we can load
     const allScenarios = Object.values(savedScenarios);
     if (allScenarios.length > 0) {
       const firstScenario = allScenarios[0];
-      const nextWorkspace = resolveScenarioWorkspaceState(firstScenario.scenario, firstScenario.attributeDefinitions);
       scenarioStorage.setCurrentScenarioId(firstScenario.id);
       set({
-        scenario: nextWorkspace.scenario,
-        attributeDefinitions: nextWorkspace.attributeDefinitions,
+        scenario: firstScenario.scenario,
+        attributeDefinitions: firstScenario.attributeDefinitions,
         currentScenarioId: firstScenario.id,
         currentResultId: null,
         solution: null,
         selectedResultIds: [],
         solverState: initialSolverState,
       });
-      return nextWorkspace.scenario;
+      return firstScenario.scenario;
     }
 
     // Only create a new scenario if there are truly no scenarios available
@@ -157,33 +155,31 @@ export const createScenarioSlice: StoreSlice<ScenarioState & ScenarioActions> = 
     const { currentScenarioId, savedScenarios } = get();
     if (currentScenarioId && savedScenarios[currentScenarioId]) {
       const savedScenario = savedScenarios[currentScenarioId];
-      const nextWorkspace = resolveScenarioWorkspaceState(savedScenario.scenario, savedScenario.attributeDefinitions);
       set({
-        scenario: nextWorkspace.scenario,
-        attributeDefinitions: nextWorkspace.attributeDefinitions,
+        scenario: savedScenario.scenario,
+        attributeDefinitions: savedScenario.attributeDefinitions,
         currentResultId: null,
         solution: null,
         solverState: initialSolverState,
       });
-      return nextWorkspace.scenario;
+      return savedScenario.scenario;
     }
 
     // Check if there are any saved scenarios we can load
     const allScenarios = Object.values(savedScenarios);
     if (allScenarios.length > 0) {
       const firstScenario = allScenarios[0];
-      const nextWorkspace = resolveScenarioWorkspaceState(firstScenario.scenario, firstScenario.attributeDefinitions);
       scenarioStorage.setCurrentScenarioId(firstScenario.id);
       set({
-        scenario: nextWorkspace.scenario,
-        attributeDefinitions: nextWorkspace.attributeDefinitions,
+        scenario: firstScenario.scenario,
+        attributeDefinitions: firstScenario.attributeDefinitions,
         currentScenarioId: firstScenario.id,
         currentResultId: null,
         solution: null,
         selectedResultIds: [],
         solverState: initialSolverState,
       });
-      return nextWorkspace.scenario;
+      return firstScenario.scenario;
     }
 
     // Create a new scenario if none exists

@@ -128,19 +128,14 @@ describe("createScenarioSlice", () => {
   });
 
   it("loads the first saved scenario when no current scenario is selected", () => {
-    const saved = createSavedScenario({
-      scenario: createSampleScenario({
-        people: [{ id: 'p1', attributes: { team: 'A' } }],
-      }),
-      attributeDefinitions: DEFAULT_ATTRIBUTE_DEFINITIONS,
-    });
+    const saved = createSavedScenario();
     const harness = createHarness({
       savedScenarios: { [saved.id]: saved },
     });
 
     const scenario = harness.slice.resolveScenario();
 
-    expect(scenario.people[0]?.attributes).toEqual(expect.objectContaining({ name: 'p1', team: 'A' }));
+    expect(scenario).toEqual(saved.scenario);
     expect(scenarioStorage.setCurrentScenarioId).toHaveBeenCalledWith(saved.id);
     expect(harness.getState().currentScenarioId).toBe(saved.id);
   });

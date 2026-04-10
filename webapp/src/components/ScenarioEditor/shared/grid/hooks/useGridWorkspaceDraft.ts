@@ -24,6 +24,7 @@ export function useGridWorkspaceDraft<T>({ rows, workspace, draftEditableColumns
   const [draftRows, setDraftRows] = React.useState<T[]>(() => cloneRows(rows));
   const [csvDraftText, setCsvDraftText] = React.useState('');
   const [csvErrors, setCsvErrors] = React.useState<string[]>([]);
+  const previousWorkspaceModeRef = React.useRef<'browse' | 'edit' | 'csv'>(workspace?.mode ?? 'browse');
 
   const workspaceMode = workspace?.mode ?? 'browse';
   const draftConfig = workspace?.draft;
@@ -175,9 +176,17 @@ export function useGridWorkspaceDraft<T>({ rows, workspace, draftEditableColumns
   }, [draftConfig]);
 
   React.useEffect(() => {
-    if (!hasDraftEditing || workspaceMode !== 'browse') {
+    const previousWorkspaceMode = previousWorkspaceModeRef.current;
+    previousWorkspaceModeRef.current = workspaceMode;
+
+    if (!hasDraftEditing) {
       return;
     }
+
+    if (workspaceMode !== 'browse' || previousWorkspaceMode === 'browse') {
+      return;
+    }
+
     setDraftRows(cloneRows(rows));
     setCsvDraftText('');
     setCsvErrors([]);
