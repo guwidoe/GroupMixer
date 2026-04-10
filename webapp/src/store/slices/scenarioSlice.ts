@@ -72,8 +72,6 @@ export const createScenarioSlice: StoreSlice<ScenarioState & ScenarioActions> = 
     const nextWorkspace = resolveScenarioWorkspaceState(scenario, get().attributeDefinitions);
     scenarioStorage.updateScenario(scenarioId, nextWorkspace.scenario, nextWorkspace.attributeDefinitions);
     set((state) => ({
-      scenario: nextWorkspace.scenario,
-      attributeDefinitions: nextWorkspace.attributeDefinitions,
       savedScenarios: state.savedScenarios[scenarioId]
         ? {
             ...state.savedScenarios,

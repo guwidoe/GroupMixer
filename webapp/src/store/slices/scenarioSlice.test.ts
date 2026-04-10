@@ -150,4 +150,29 @@ describe("createScenarioSlice", () => {
 
     expect(() => harness.slice.updateCurrentScenario('scenario-1', createSampleScenario())).toThrow('disk full');
   });
+
+  it("persists the current scenario without rewriting the live workspace snapshot", () => {
+    vi.mocked(scenarioStorage.updateScenario).mockImplementation(() => undefined);
+    const scenario = createSampleScenario();
+    const savedScenario = createSavedScenario({ id: 'scenario-1', scenario });
+    const harness = createHarness({
+      scenario,
+      currentScenarioId: 'scenario-1',
+      savedScenarios: { 'scenario-1': savedScenario },
+    });
+
+    harness.slice.updateCurrentScenario('scenario-1', scenario);
+
+    expect(scenarioStorage.updateScenario).toHaveBeenCalledWith(
+      'scenario-1',
+      expect.any(Object),
+      expect.any(Array),
+    );
+    expect(harness.getState().scenario).toBe(scenario);
+    expect(harness.getState().savedScenarios['scenario-1']).toEqual(
+      expect.objectContaining({
+        scenario: expect.any(Object),
+      }),
+    );
+  });
 });

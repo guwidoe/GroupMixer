@@ -10,6 +10,7 @@ test('opening advanced editor from the landing page does not trigger a maximum u
   });
 
   await page.goto('/');
+  await page.waitForTimeout(750);
   await page.getByRole('link', { name: /advanced editor|advanced workspace/i }).click();
 
   await expect(page).toHaveURL(/\/app(?:\/scenario\/people)?(?:\?lp=home)?/);
