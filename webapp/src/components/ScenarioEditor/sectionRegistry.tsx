@@ -116,6 +116,8 @@ export const scenarioSetupSectionRegistry: Record<ScenarioSetupSectionId, Scenar
       onAdd={controller.editorActions.handleSoftConstraintAdd}
       onEdit={controller.editorActions.handleSoftConstraintEdit}
       onDelete={controller.constraints.handleDeleteConstraint}
+      onApplyAttributeBalanceRows={controller.constraints.applyAttributeBalanceGridRows}
+      createAttributeBalanceRow={controller.constraints.createAttributeBalanceGridRow}
     />
   ),
   'pair-meeting-count': (controller) => (

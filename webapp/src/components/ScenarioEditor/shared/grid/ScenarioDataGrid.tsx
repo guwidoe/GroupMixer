@@ -113,6 +113,9 @@ function materializeStructuredColumn<T>(
       minWidth: column.childMinWidth ?? column.minWidth,
       align: column.align,
       hideable: column.hideable,
+      disabled: column.isKeyAvailable
+        ? (row: T) => !column.isKeyAvailable?.(row, keyOption.value)
+        : undefined,
       getValue: (row: T) => {
         if (column.isKeyAvailable && !column.isKeyAvailable(row, keyOption.value)) {
           return undefined;
@@ -1594,6 +1597,7 @@ export function ScenarioDataGrid<T>({
                 : undefined,
               ariaLabel: (targetRow) => `Edit ${column.header} for row ${rowKey(targetRow, row.index)}`,
               placeholder: 'placeholder' in column ? column.placeholder : undefined,
+              disabled: column.disabled,
             };
 
             return <InlineEditorCell row={row.original} editor={editor} />;

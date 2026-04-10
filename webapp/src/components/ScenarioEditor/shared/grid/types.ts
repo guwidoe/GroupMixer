@@ -113,6 +113,7 @@ export interface ScenarioDataGridPrimitiveBase<T, TValue> extends ScenarioDataGr
   kind: 'primitive';
   primitive: ScenarioDataGridPrimitiveType;
   getValue: (row: T) => TValue | undefined;
+  disabled?: (row: T) => boolean;
   sortValue?: (value: TValue | undefined, row: T) => string | number;
   /**
    * Returns the updated row after applying an edited or CSV-parsed typed value.

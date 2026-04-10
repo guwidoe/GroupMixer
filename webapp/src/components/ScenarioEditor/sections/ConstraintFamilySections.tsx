@@ -1,6 +1,7 @@
 import React from 'react';
 import { Filter, Link2, Plus, UserLock, UserMinus, Users } from 'lucide-react';
 import type { Constraint, Scenario } from '../../../types';
+import { findAttributeDefinition, getAttributeDefinitionName } from '../../../services/scenarioAttributes';
 import { useAppStore } from '../../../store';
 import { Button } from '../../ui';
 import AttributeBalanceDashboard from '../../AttributeBalanceDashboard';
@@ -51,6 +52,8 @@ interface SoftConstraintFamilySectionProps {
   onAdd: (type: SoftConstraintFamily) => void;
   onEdit: (constraint: Constraint, index: number) => void;
   onDelete: (index: number) => void;
+  onApplyAttributeBalanceRows?: (items: Array<IndexedConstraint<AttributeBalanceConstraint>>) => void;
+  createAttributeBalanceRow?: () => IndexedConstraint<AttributeBalanceConstraint>;
 }
 
 const HARD_SECTION_COPY: Record<HardConstraintFamily, { title: string; description: React.ReactNode; icon: React.ReactNode; addLabel: string }> = {
@@ -126,17 +129,43 @@ const SOFT_SECTION_COPY: Record<SoftConstraintFamily, { title: string; descripti
 };
 
 function useConstraintScenario() {
-  const { resolveScenario, setScenario, ui } = useAppStore();
+  const { resolveScenario, setScenario, ui, attributeDefinitions } = useAppStore();
 
   if (ui.isLoading) {
-    return { scenario: null, setScenario, isLoading: true } as const;
+    return { scenario: null, setScenario, attributeDefinitions: [], isLoading: true } as const;
   }
 
   return {
     scenario: resolveScenario(),
     setScenario,
+    attributeDefinitions,
     isLoading: false,
   } as const;
+}
+
+function getAttributeBalanceStructuredKeys(
+  items: Array<IndexedConstraint<AttributeBalanceConstraint>>,
+  attributeDefinitions: ReturnType<typeof useAppStore.getState>['attributeDefinitions'],
+) {
+  const seen = new Set<string>();
+  const keys = items.flatMap(({ constraint }) => {
+    const definition = findAttributeDefinition(attributeDefinitions, {
+      id: constraint.attribute_id,
+      name: constraint.attribute_key,
+    });
+    return definition?.values ?? Object.keys(constraint.desired_values ?? {});
+  });
+
+  return keys
+    .map((value) => String(value).trim())
+    .filter((value) => {
+      if (!value || seen.has(value)) {
+        return false;
+      }
+      seen.add(value);
+      return true;
+    })
+    .map((value) => ({ value, label: value }));
 }
 
 function getIndexedConstraints<T extends Constraint['type']>(scenario: Scenario, type: T) {
@@ -515,10 +544,18 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
   );
 }
 
-export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }: SoftConstraintFamilySectionProps) {
-  const { scenario, setScenario, isLoading } = useConstraintScenario();
+export function SoftConstraintFamilySection({
+  family,
+  onAdd,
+  onEdit,
+  onDelete,
+  onApplyAttributeBalanceRows,
+  createAttributeBalanceRow,
+}: SoftConstraintFamilySectionProps) {
+  const { scenario, setScenario, attributeDefinitions, isLoading } = useConstraintScenario();
   const [search, setSearch] = React.useState('');
   const [viewMode, setViewMode] = React.useState<SetupCollectionViewMode>('list');
+  const [gridWorkspaceMode, setGridWorkspaceMode] = React.useState<'browse' | 'edit' | 'csv'>('browse');
   const [selectedShouldIndices, setSelectedShouldIndices] = React.useState<number[]>([]);
   const [isSelectingShould, setIsSelectingShould] = React.useState(false);
   const [showPairConvert, setShowPairConvert] = React.useState(false);
@@ -527,6 +564,9 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
     if (nextMode !== 'cards') {
       setIsSelectingShould(false);
       setSelectedShouldIndices((current) => (current.length === 0 ? current : []));
+    }
+    if (nextMode !== 'list') {
+      setGridWorkspaceMode('browse');
     }
   }, []);
 
@@ -670,6 +710,24 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
             <ScenarioDataGrid
               rows={filteredItems}
               rowKey={(item) => `${item.constraint.type}-${item.index}`}
+              workspace={family === 'AttributeBalance' && onApplyAttributeBalanceRows && createAttributeBalanceRow
+                ? {
+                    mode: gridWorkspaceMode,
+                    onModeChange: setGridWorkspaceMode,
+                    draft: {
+                      onApply: onApplyAttributeBalanceRows,
+                      createRow: createAttributeBalanceRow,
+                      csv: {
+                        ariaLabel: 'Attribute balance CSV',
+                        helperText: (
+                          <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                            <strong>Desired value columns</strong> expand from the selected attribute values and round-trip directly through CSV.
+                          </div>
+                        ),
+                      },
+                    },
+                  }
+                : undefined}
               columns={[
                 ...(family === 'AttributeBalance'
                   ? [
@@ -677,8 +735,16 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                           kind: 'primitive' as const,
                           id: 'group',
                           header: 'Group',
-                          primitive: 'string' as const,
+                          primitive: 'enum' as const,
+                          options: scenario.groups.map((group) => ({ value: group.id, label: group.id })),
                           getValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.group_id,
+                          setValue: (item: IndexedConstraint<AttributeBalanceConstraint>, value) => ({
+                            ...item,
+                            constraint: {
+                              ...item.constraint,
+                              group_id: value ?? '',
+                            },
+                          }),
                           searchText: (value, item) => `${value ?? ''} ${item.constraint.attribute_key}`.trim(),
                           width: 180,
                         },
@@ -686,9 +752,86 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                           kind: 'primitive' as const,
                           id: 'attribute',
                           header: 'Attribute',
-                          primitive: 'string' as const,
-                          getValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.attribute_key,
+                          primitive: 'enum' as const,
+                          options: attributeDefinitions.map((definition) => ({
+                            value: definition.id,
+                            label: getAttributeDefinitionName(definition),
+                          })),
+                          getValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => findAttributeDefinition(attributeDefinitions, {
+                            id: item.constraint.attribute_id,
+                            name: item.constraint.attribute_key,
+                          })?.id ?? item.constraint.attribute_id ?? '',
+                          setValue: (item: IndexedConstraint<AttributeBalanceConstraint>, value) => {
+                            const definition = findAttributeDefinition(attributeDefinitions, { id: value, name: value });
+                            const allowedValues = new Set(definition?.values ?? []);
+                            const desiredValues = Object.fromEntries(
+                              Object.entries(item.constraint.desired_values ?? {}).filter(([key]) => allowedValues.size === 0 || allowedValues.has(key)),
+                            );
+
+                            return {
+                              ...item,
+                              constraint: {
+                                ...item.constraint,
+                                attribute_id: definition?.id,
+                                attribute_key: definition ? getAttributeDefinitionName(definition) : (value ?? ''),
+                                desired_values: desiredValues,
+                              },
+                            };
+                          },
                           width: 180,
+                        },
+                        {
+                          kind: 'structured' as const,
+                          structured: 'finite-key-map' as const,
+                          id: 'desired-values',
+                          header: 'Desired values',
+                          childPrimitive: 'number' as const,
+                          keys: (rows: Array<IndexedConstraint<AttributeBalanceConstraint>>) =>
+                            getAttributeBalanceStructuredKeys(rows, attributeDefinitions),
+                          getValue: (item: IndexedConstraint<AttributeBalanceConstraint>, key: string) => item.constraint.desired_values?.[key],
+                          setValue: (item: IndexedConstraint<AttributeBalanceConstraint>, key: string, value) => {
+                            const nextDesiredValues = { ...(item.constraint.desired_values ?? {}) };
+                            if (value == null || !Number.isFinite(Number(value))) {
+                              delete nextDesiredValues[key];
+                            } else {
+                              nextDesiredValues[key] = Number(value);
+                            }
+
+                            return {
+                              ...item,
+                              constraint: {
+                                ...item.constraint,
+                                desired_values: nextDesiredValues,
+                              },
+                            };
+                          },
+                          isKeyAvailable: (item: IndexedConstraint<AttributeBalanceConstraint>, key: string) => {
+                            const definition = findAttributeDefinition(attributeDefinitions, {
+                              id: item.constraint.attribute_id,
+                              name: item.constraint.attribute_key,
+                            });
+                            return Boolean(definition?.values.includes(key) || key in (item.constraint.desired_values ?? {}));
+                          },
+                          childWidth: 120,
+                        },
+                        {
+                          kind: 'primitive' as const,
+                          id: 'mode',
+                          header: 'Mode',
+                          primitive: 'enum' as const,
+                          options: [
+                            { value: 'exact', label: 'exact' },
+                            { value: 'at_least', label: 'at least' },
+                          ],
+                          getValue: (item: IndexedConstraint<AttributeBalanceConstraint>) => item.constraint.mode ?? 'exact',
+                          setValue: (item: IndexedConstraint<AttributeBalanceConstraint>, value) => ({
+                            ...item,
+                            constraint: {
+                              ...item.constraint,
+                              mode: value === 'at_least' ? 'at_least' : 'exact',
+                            },
+                          }),
+                          width: 160,
                         },
                     ]
                   : family === 'PairMeetingCount'
@@ -731,6 +874,15 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                       header: 'Weight',
                       primitive: 'number' as const,
                       getValue: (item: IndexedConstraint<Constraint & { penalty_weight: number }>) => item.constraint.penalty_weight,
+                      setValue: family === 'AttributeBalance'
+                        ? (item: IndexedConstraint<AttributeBalanceConstraint>, value) => ({
+                            ...item,
+                            constraint: {
+                              ...item.constraint,
+                              penalty_weight: value ?? 0,
+                            },
+                          })
+                        : undefined,
                       width: 140,
                     }]
                   : []),
@@ -740,9 +892,30 @@ export function SoftConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                   header: 'Sessions',
                   primitive: 'array' as const,
                   itemType: 'number' as const,
+                  options: Array.from({ length: scenario.num_sessions }, (_, index) => ({
+                    value: String(index + 1),
+                    label: String(index + 1),
+                  })),
                   getValue: (item) => 'sessions' in item.constraint && item.constraint.sessions?.length
                     ? item.constraint.sessions.map((session) => session + 1)
                     : Array.from({ length: scenario.num_sessions }, (_, index) => index + 1),
+                  setValue: family === 'AttributeBalance'
+                    ? (item: IndexedConstraint<AttributeBalanceConstraint>, value) => {
+                        const normalized = Array.isArray(value)
+                          ? Array.from(new Set(value.map((entry) => Math.max(1, Math.round(Number(entry) || 1))))).sort((left, right) => left - right)
+                          : [];
+
+                        return {
+                          ...item,
+                          constraint: {
+                            ...item.constraint,
+                            sessions: normalized.length === 0 || normalized.length === scenario.num_sessions
+                              ? undefined
+                              : normalized.map((session) => session - 1),
+                          },
+                        };
+                      }
+                    : undefined,
                   renderValue: (value) => Array.isArray(value) && value.length > 0 && value.length < scenario.num_sessions
                     ? value.join(', ')
                     : 'All sessions',

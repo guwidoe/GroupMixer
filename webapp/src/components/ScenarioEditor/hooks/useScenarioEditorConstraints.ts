@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { AttributeDefinition, Constraint, Scenario } from '../../../types';
-import { findAttributeDefinition, updateAttributeBalanceConstraintReference } from '../../../services/scenarioAttributes';
+import { findAttributeDefinition, getAttributeDefinitionName, updateAttributeBalanceConstraintReference } from '../../../services/scenarioAttributes';
 import type { ConstraintFormState } from '../ConstraintFormModal';
 
 type NotificationPayload = {
@@ -377,6 +377,78 @@ export function useScenarioEditorConstraints({
     });
   };
 
+  const createAttributeBalanceGridRow = () => {
+    const definition = attributeDefinitions[0];
+    return {
+      constraint: {
+        type: 'AttributeBalance',
+        group_id: scenario?.groups[0]?.id ?? '',
+        attribute_id: definition?.id,
+        attribute_key: definition ? getAttributeDefinitionName(definition) : '',
+        desired_values: {},
+        penalty_weight: 50,
+        mode: 'exact',
+        sessions: undefined,
+      } satisfies Extract<Constraint, { type: 'AttributeBalance' }>,
+      index: -1,
+    };
+  };
+
+  const applyAttributeBalanceGridRows = (
+    items: Array<{ constraint: Extract<Constraint, { type: 'AttributeBalance' }>; index: number }>,
+  ) => {
+    if (!scenario) {
+      return;
+    }
+
+    const otherConstraints = scenario.constraints.filter((constraint) => constraint.type !== 'AttributeBalance');
+    const nextAttributeBalanceConstraints = items.flatMap(({ constraint }) => {
+      const reference = updateAttributeBalanceConstraintReference(constraint, attributeDefinitions);
+      const definition = findAttributeDefinition(attributeDefinitions, {
+        id: reference.attribute_id,
+        name: reference.attribute_key,
+      });
+
+      const allowedKeys = new Set(definition?.values ?? Object.keys(constraint.desired_values ?? {}));
+      const desiredValues = Object.fromEntries(
+        Object.entries(constraint.desired_values ?? {}).filter(([key, value]) => {
+          const numericValue = Number(value);
+          return allowedKeys.has(key) && Number.isFinite(numericValue);
+        }).map(([key, value]) => [key, Number(value)]),
+      );
+
+      if (!constraint.group_id || !reference.attribute_key) {
+        return [];
+      }
+
+      const normalizedSessions = constraint.sessions?.length
+        ? Array.from(new Set(constraint.sessions.map((session) => Math.max(0, Math.round(Number(session) || 0))))).sort((left, right) => left - right)
+        : undefined;
+
+      return [{
+        ...constraint,
+        ...reference,
+        desired_values: desiredValues,
+        penalty_weight: Math.max(0, Number(constraint.penalty_weight) || 0),
+        mode: constraint.mode === 'at_least' ? 'at_least' : 'exact',
+        sessions: normalizedSessions && normalizedSessions.length === scenario.num_sessions
+          ? undefined
+          : normalizedSessions,
+      } satisfies Constraint];
+    });
+
+    setScenario({
+      ...scenario,
+      constraints: [...otherConstraints, ...nextAttributeBalanceConstraints],
+    });
+
+    addNotification({
+      type: 'success',
+      title: 'Attribute Balance Updated',
+      message: `Applied ${nextAttributeBalanceConstraints.length} attribute-balance row${nextAttributeBalanceConstraints.length === 1 ? '' : 's'}.`,
+    });
+  };
+
   return {
     showConstraintForm,
     setShowConstraintForm,
@@ -408,5 +480,7 @@ export function useScenarioEditorConstraints({
     handleDeleteConstraint,
     createRepeatEncounterGridRow,
     applyRepeatEncounterGridRows,
+    createAttributeBalanceGridRow,
+    applyAttributeBalanceGridRows,
   };
 }
