@@ -14,7 +14,7 @@ interface ThemeToggleProps {
 function getThemeIconClassName(theme: Theme, sizeClassName: string): string {
   return [
     sizeClassName,
-    theme === 'system' ? 'scale-110' : '',
+    'shrink-0',
   ].filter(Boolean).join(' ');
 }
 
@@ -74,7 +74,7 @@ export function ThemeToggle({
               onClick={() => setTheme(value)}
               onMouseEnter={() => setHoveredTheme(value)}
               onMouseLeave={() => setHoveredTheme((current) => (current === value ? null : current))}
-              className="flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all"
+              className="flex min-w-0 items-center justify-center gap-0.5 rounded-lg px-1 py-2 text-[13px] font-medium transition-all"
               style={{
                 backgroundColor: isActive
                   ? 'var(--bg-primary)'
@@ -87,7 +87,7 @@ export function ThemeToggle({
               title={`Switch to ${label.toLowerCase()} mode`}
             >
               <Icon className={getThemeIconClassName(value, sizeClasses[size])} />
-              <span>{label}</span>
+              <span className="min-w-0 truncate">{label}</span>
             </button>
           );
         })}
