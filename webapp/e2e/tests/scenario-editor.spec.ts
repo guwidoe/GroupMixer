@@ -22,6 +22,23 @@ test('opening advanced editor from the landing page does not trigger a maximum u
   expect(pageErrors).not.toContainEqual(expect.stringMatching(/maximum update depth exceeded/i));
 });
 
+test('demo data loads from the desktop workspace menu', async ({ page }) => {
+  await page.goto('/app');
+  await page.evaluate(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
+  await page.reload();
+
+  await expect(page).toHaveURL(/\/app\/scenario\/people$/);
+  await page.getByRole('button', { name: /open workspace menu/i }).click();
+  await page.getByRole('button', { name: /^demo data$/i }).click();
+  await page.getByRole('menuitem').filter({ hasText: /company team demo/i }).first().click();
+
+  await expect(page.getByText(/demo case loaded/i)).toBeVisible();
+  await expect(page.getByText(/alice johnson/i)).toBeVisible();
+});
+
 test.describe('Scenario Editor', () => {
   test.beforeEach(async ({ page }) => {
     await openApp(page);

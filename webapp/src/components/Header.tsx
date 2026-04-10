@@ -83,6 +83,7 @@ function WorkspaceDesktopMenu({ handlers }: { handlers: WorkspaceActionHandlers 
     refs: [triggerRef, panelRef],
     onOutsideClick: closeMenu,
     enabled: isOpen,
+    ignoreSelectors: ['[data-outside-click-owner="workspace-menu"]'],
   });
 
   const menuItemClassName =
@@ -169,7 +170,12 @@ function WorkspaceDesktopMenu({ handlers }: { handlers: WorkspaceActionHandlers 
                 <span>Save scenario</span>
               </button>
 
-            <DemoDataDropdown onDemoCaseClick={handlers.onDemoCaseClick} triggerLabel="Demo Data" variant="menu" />
+            <DemoDataDropdown
+              onDemoCaseClick={handlers.onDemoCaseClick}
+              triggerLabel="Demo Data"
+              variant="menu"
+              popupOwnerId="workspace-menu"
+            />
           </div>
 
           <div className="border-t px-4 py-3" style={{ borderColor: 'var(--border-primary)' }}>

@@ -13,6 +13,7 @@ interface DemoDataDropdownProps {
   placement?: 'bottom' | 'right';
   collapsed?: boolean;
   triggerLabel?: string;
+  popupOwnerId?: string;
 }
 
 interface DropdownPosition {
@@ -28,6 +29,7 @@ export function DemoDataDropdown({
   placement = 'bottom',
   collapsed = false,
   triggerLabel = 'Demo Data',
+  popupOwnerId,
 }: DemoDataDropdownProps) {
   const addNotification = useAppStore((state) => state.addNotification);
   const demoDropdownRef = useRef<HTMLDivElement>(null);
@@ -236,6 +238,7 @@ export function DemoDataDropdown({
       {isOpen && dropdownPosition && createPortal(
         <div
           ref={dropdownMenuRef}
+          data-outside-click-owner={popupOwnerId}
           className="theme-scrollbar fixed z-50 overflow-y-auto rounded-md border shadow-lg"
           style={{
             top: dropdownPosition.top,
