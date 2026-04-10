@@ -8,39 +8,24 @@ interface UseGridColumnStateArgs<T> {
 }
 
 export function useGridColumnState<T>({ columns }: UseGridColumnStateArgs<T>) {
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(() =>
-    Object.fromEntries(columns.map((column) => [column.id, true])),
-  );
-  const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>(() =>
-    Object.fromEntries(columns.map((column) => [column.id, Math.max(column.width ?? 180, estimateHeaderMinWidth(column))])),
-  );
+  const [columnVisibilityOverrides, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [columnSizingOverrides, setColumnSizing] = React.useState<ColumnSizingState>({});
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
 
-  React.useEffect(() => {
-    setColumnVisibility((current) => {
-      const next = { ...current };
-      let changed = false;
-      for (const column of columns) {
-        if (!(column.id in next)) {
-          next[column.id] = true;
-          changed = true;
-        }
-      }
-      return changed ? next : current;
-    });
+  const columnVisibility = React.useMemo<VisibilityState>(() =>
+    Object.fromEntries(
+      columns.map((column) => [column.id, columnVisibilityOverrides[column.id] ?? true]),
+    ),
+  [columns, columnVisibilityOverrides]);
 
-    setColumnSizing((current) => {
-      const next = { ...current };
-      let changed = false;
-      for (const column of columns) {
-        if (!(column.id in next)) {
-          next[column.id] = Math.max(column.width ?? 180, estimateHeaderMinWidth(column));
-          changed = true;
-        }
-      }
-      return changed ? next : current;
-    });
-  }, [columns]);
+  const columnSizing = React.useMemo<ColumnSizingState>(() =>
+    Object.fromEntries(
+      columns.map((column) => [
+        column.id,
+        columnSizingOverrides[column.id] ?? Math.max(column.width ?? 180, estimateHeaderMinWidth(column)),
+      ]),
+    ),
+  [columns, columnSizingOverrides]);
 
   return {
     columnFilters,
