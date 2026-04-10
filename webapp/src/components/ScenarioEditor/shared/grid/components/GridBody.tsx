@@ -64,7 +64,17 @@ export function GridBody<T>({ emptyState, onRowOpen, rowOpenLabel, table }: Grid
               const columnMeta = cell.column.columnDef.meta as { align?: ScenarioDataGridColumn<T>['align'] } | undefined;
               const align = columnMeta?.align ?? 'left';
               return (
-                <td key={cell.id} className="border-b border-r px-4 py-3 align-top last:border-r-0" style={{ width: cell.column.getSize(), borderColor: 'var(--border-primary)', color: 'var(--text-secondary)', textAlign: align }}>
+                <td
+                  key={cell.id}
+                  className="border-b border-r px-4 py-3 align-top transition-colors last:border-r-0"
+                  style={{
+                    width: cell.column.getSize(),
+                    borderColor: 'var(--border-primary)',
+                    backgroundColor: 'var(--grid-row-bg)',
+                    color: 'var(--text-secondary)',
+                    textAlign: align,
+                  }}
+                >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               );
