@@ -3,9 +3,31 @@
   "demo_metadata": {
     "id": "synthetic-partial-attendance-capacity-pressure",
     "display_name": "Synthetic Partial Attendance Capacity Pressure",
-    "description": "Large synthetic stress case with heavy partial participation, exact balance targets, dense pair/stay constraints, and strongly session-specific capacities.",
+    "description": "Deterministic planted-feasible synthetic stretch workload with heavy non-contiguous partial attendance, strongly session-specific capacities, and dense session-scoped constraint pressure.",
     "category": "Benchmark"
   },
+  "schema_version": 1,
+  "id": "stretch.synthetic-partial-attendance-capacity-pressure-152p",
+  "class": "stretch",
+  "case_role": "canonical",
+  "purpose": "objective_target.stretch.synthetic_partial_attendance_capacity_pressure_152p",
+  "provenance": "generated_by_tools/benchmarking/generate_partial_attendance_capacity_case.py_using_a_deterministic_planted_feasible_builder",
+  "declared_budget": {
+    "max_iterations": 4500000,
+    "time_limit_seconds": 15
+  },
+  "tags": [
+    "stretch",
+    "synthetic",
+    "planted-feasible",
+    "partial-attendance",
+    "session-capacity",
+    "session-scoped-constraints",
+    "152p",
+    "objective-research"
+  ],
+  "title": "Synthetic partial-attendance capacity-pressure stretch",
+  "description": "Deterministic planted-feasible synthetic stretch workload with heavy non-contiguous partial attendance, strongly session-specific capacities, and dense session-scoped constraint pressure.",
   "input": {
     "initial_schedule": null,
     "problem": {

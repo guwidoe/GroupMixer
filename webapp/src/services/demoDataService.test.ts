@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { createAttributeDefinition } from './scenarioAttributes';
 import { createSampleScenario } from '../test/fixtures';
 import {
@@ -171,6 +173,25 @@ describe('demoDataService', () => {
     expect(scenario.groups.length).toBeGreaterThan(0);
     expect(scenario.constraints.length).toBeGreaterThan(0);
     expect(scenario.settings.solver_type).toBe('SimulatedAnnealing');
+  });
+
+  it('keeps the synthetic partial-attendance demo fixture aligned with the benchmark case input', () => {
+    const benchmarkFixture = JSON.parse(
+      readFileSync(
+        resolve(process.cwd(), '../backend/benchmarking/cases/stretch/synthetic_partial_attendance_capacity_pressure_152p.json'),
+        'utf8',
+      ),
+    );
+    const demoFixture = JSON.parse(
+      readFileSync(
+        resolve(process.cwd(), 'public/test_cases/synthetic_partial_attendance_capacity_pressure_152p.json'),
+        'utf8',
+      ),
+    );
+
+    expect(demoFixture.input).toEqual(benchmarkFixture.input);
+    expect(demoFixture.description).toBe(benchmarkFixture.description);
+    expect(demoFixture.id).toBe(benchmarkFixture.id);
   });
 
   it('extracts non-name attributes and sorts their values', () => {
