@@ -492,6 +492,159 @@ describe('ScenarioDataGrid', () => {
     expect(onCommit).toHaveBeenCalledWith(rows[0], 'Beta Prime');
   });
 
+  it('round-trips typed primitive columns through shared draft edit mode', async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn();
+
+    render(
+      <ScenarioDataGrid
+        rows={[
+          { id: 'row-a', name: 'Beta', weight: 20 },
+        ]}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            kind: 'primitive',
+            id: 'name',
+            header: 'Name',
+            primitive: 'string',
+            getValue: (row) => row.name,
+            setValue: (row, value) => ({ ...row, name: value ?? '' }),
+          },
+          {
+            kind: 'primitive',
+            id: 'weight',
+            header: 'Weight',
+            primitive: 'number',
+            getValue: (row) => row.weight,
+            setValue: (row, value) => ({ ...row, weight: value ?? 0 }),
+          },
+        ]}
+        workspace={{
+          mode: 'edit',
+          onModeChange: vi.fn(),
+          draft: {
+            onApply,
+          },
+        }}
+      />, 
+    );
+
+    const nameInput = screen.getByRole('textbox', { name: /edit name for row row-a/i });
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Beta Prime');
+    await user.tab();
+
+    const weightInput = screen.getByRole('spinbutton', { name: /edit weight for row row-a/i });
+    await user.clear(weightInput);
+    await user.type(weightInput, '25');
+    await user.tab();
+
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(onApply).toHaveBeenCalledWith([
+      { id: 'row-a', name: 'Beta Prime', weight: 25 },
+    ]);
+  });
+
+  it('round-trips typed primitive columns through shared csv mode and validates invalid values', async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn();
+
+    function TypedCsvHarness() {
+      const [mode, setMode] = React.useState<ScenarioDataGridWorkspaceMode>('browse');
+
+      return (
+        <ScenarioDataGrid
+          rows={[
+            { id: 'row-a', name: 'Beta', weight: 20, sessions: [1, 2], team: 'Blue' },
+          ]}
+          rowKey={(row) => row.id}
+          columns={[
+            {
+              kind: 'primitive',
+              id: 'name',
+              header: 'Name',
+              primitive: 'string',
+              getValue: (row) => row.name,
+              setValue: (row, value) => ({ ...row, name: value ?? '' }),
+            },
+            {
+              kind: 'primitive',
+              id: 'weight',
+              header: 'Weight',
+              primitive: 'number',
+              getValue: (row) => row.weight,
+              setValue: (row, value) => ({ ...row, weight: value ?? 0 }),
+            },
+            {
+              kind: 'primitive',
+              id: 'sessions',
+              header: 'Sessions',
+              primitive: 'array',
+              itemType: 'number',
+              options: [
+                { value: '1', label: '1' },
+                { value: '2', label: '2' },
+                { value: '3', label: '3' },
+              ],
+              getValue: (row) => row.sessions,
+              setValue: (row, value) => ({ ...row, sessions: (value as number[] | undefined) ?? [] }),
+            },
+            {
+              kind: 'primitive',
+              id: 'team',
+              header: 'Team',
+              primitive: 'enum',
+              options: [
+                { value: 'Blue', label: 'Blue' },
+                { value: 'Red', label: 'Red' },
+              ],
+              getValue: (row) => row.team,
+              setValue: (row, value) => ({ ...row, team: value ?? 'Blue' }),
+            },
+          ]}
+          workspace={{
+            mode,
+            onModeChange: setMode,
+            draft: {
+              onApply,
+              csv: {
+                ariaLabel: 'Typed CSV editor',
+                helperText: <div>Typed CSV helper</div>,
+              },
+            },
+          }}
+        />
+      );
+    }
+
+    render(<TypedCsvHarness />);
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+
+    const csvInput = screen.getByRole('textbox', { name: /typed csv editor/i });
+    expect(csvInput).toHaveValue('Name,Weight,Sessions,Team\nBeta,20,1 | 2,Blue');
+
+    await user.clear(csvInput);
+    await user.type(csvInput, 'Name,Weight,Sessions,Team\nBeta Prime,25,1 | 3,Red');
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(onApply).toHaveBeenCalledWith([
+      { id: 'row-a', name: 'Beta Prime', weight: 25, sessions: [1, 3], team: 'Red' },
+    ]);
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    const invalidCsvInput = screen.getByRole('textbox', { name: /typed csv editor/i });
+    await user.clear(invalidCsvInput);
+    await user.type(invalidCsvInput, 'Name,Weight,Sessions,Team\nBroken,nope,1 | 2,Green');
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(screen.getByText(/csv validation errors/i)).toBeInTheDocument();
+    expect(screen.getByText(/expected a number for weight/i)).toBeInTheDocument();
+    expect(onApply).toHaveBeenCalledTimes(1);
+  });
+
   it('paginates large row sets to limit rendered rows', async () => {
     const user = userEvent.setup();
     const largeRows = Array.from({ length: 120 }, (_, index) => ({

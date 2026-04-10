@@ -27,9 +27,22 @@ export interface ScenarioDataGridInlineCsvConfig {
   helperText?: React.ReactNode;
 }
 
-export interface ScenarioDataGridWorkspaceConfig {
+export interface ScenarioDataGridDraftCsvConfig {
+  ariaLabel?: string;
+  placeholder?: string;
+  helperText?: React.ReactNode;
+}
+
+export interface ScenarioDataGridDraftConfig<T> {
+  onApply: (rows: T[]) => void;
+  createRow?: () => T;
+  csv?: ScenarioDataGridDraftCsvConfig;
+}
+
+export interface ScenarioDataGridWorkspaceConfig<T = unknown> {
   mode: ScenarioDataGridWorkspaceMode;
   onModeChange: (mode: ScenarioDataGridWorkspaceMode) => void;
+  draft?: ScenarioDataGridDraftConfig<T>;
   csv?: ScenarioDataGridInlineCsvConfig;
   editLabel?: string;
   doneEditingLabel?: string;
@@ -98,6 +111,7 @@ export interface ScenarioDataGridPrimitiveBase<T, TValue> extends ScenarioDataGr
   kind: 'primitive';
   primitive: ScenarioDataGridPrimitiveType;
   getValue: (row: T) => TValue | undefined;
+  sortValue?: (value: TValue | undefined, row: T) => string | number;
   /**
    * Returns the updated row after applying an edited or CSV-parsed typed value.
    * The grid should use this in edit/csv workflows instead of delegating row mutation to page-local bulk UIs.
@@ -111,6 +125,8 @@ export interface ScenarioDataGridPrimitiveBase<T, TValue> extends ScenarioDataGr
    * Optional search text override. If omitted, the grid should derive search/filter/export text from the typed value.
    */
   searchText?: (value: TValue | undefined, row: T) => string;
+  exportValue?: (value: TValue | undefined, row: T) => string | number | string[] | undefined;
+  parseValue?: (value: string, row: T) => TValue | undefined;
   filter?: ScenarioDataGridColumnFilter<T>;
   csv?: ScenarioDataGridPrimitiveCsvConfig;
 }
