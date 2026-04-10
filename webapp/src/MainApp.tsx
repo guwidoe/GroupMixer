@@ -7,6 +7,7 @@ import { NotificationContainer } from './components/NotificationContainer';
 import { ScenarioManager } from './components/ScenarioManager';
 import { ResultComparison } from './components/ResultComparison';
 import { Seo } from './components/Seo';
+import { WorkflowGuideButton } from './components/workflow/WorkflowGuideButton';
 import { buildTelemetryPayload, getActiveTelemetryAttribution, trackLandingEvent } from './services/landingInstrumentation';
 import { getAppSeo } from './seo/appRouteSeo';
 import { useAppStore } from './store';
@@ -128,6 +129,8 @@ function MainApp() {
           <Outlet />
         </div>
       </main>
+
+      <WorkflowGuideButton />
 
       <NotificationContainer />
 
