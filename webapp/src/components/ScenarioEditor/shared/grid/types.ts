@@ -13,6 +13,7 @@ import type React from 'react';
  * - number
  * - array
  * - enum string
+ * - structured finite-key fields that expand into typed subcolumns
  *
  * Display-only columns such as action buttons remain allowed through a dedicated display-column shape.
  */
@@ -84,6 +85,7 @@ export interface ScenarioDataGridColumnEditor<T> {
 
 export type ScenarioDataGridPrimitiveType = 'string' | 'number' | 'array' | 'enum';
 export type ScenarioDataGridArrayItemType = 'string' | 'number';
+export type ScenarioDataGridStructuredChildPrimitiveType = 'string' | 'number' | 'enum';
 
 export interface ScenarioDataGridColumnBase<T> {
   id: string;
@@ -131,6 +133,48 @@ export interface ScenarioDataGridPrimitiveBase<T, TValue> extends ScenarioDataGr
   csv?: ScenarioDataGridPrimitiveCsvConfig;
 }
 
+/**
+ * Structured finite-key fields are the next layer of reuse after primitive columns.
+ *
+ * Use this when one logical field is conceptually a map, but the key set is known at render time.
+ *
+ * Preferred shape for GroupMixer:
+ * - expand one logical structured field into multiple typed child columns
+ * - each child column behaves like a normal primitive in browse/edit/csv
+ * - CSV stays spreadsheet-friendly because the keys become explicit columns
+ *
+ * Explicit non-goal:
+ * - do not default to opaque dictionary/blob cells for known finite-key data
+ */
+export interface ScenarioDataGridStructuredFiniteKeyColumnBase<T, TValue extends string | number>
+  extends ScenarioDataGridColumnBase<T> {
+  kind: 'structured';
+  structured: 'finite-key-map';
+  childPrimitive: ScenarioDataGridStructuredChildPrimitiveType;
+  /**
+   * Logical label for the grouped field. The individual child headers come from `keys`.
+   */
+  header: string;
+  /**
+   * Known finite keys available at render time. The grid expands one child column per key.
+   */
+  keys: ScenarioDataGridOption[] | ((rows: T[]) => ScenarioDataGridOption[]);
+  getValue: (row: T, key: string) => TValue | undefined;
+  setValue?: (row: T, key: string, value: TValue | undefined) => T;
+  /**
+   * Optional per-row availability gate. Disabled/irrelevant child cells should stay visible
+   * as explicit columns rather than disappearing entirely.
+   */
+  isKeyAvailable?: (row: T, key: string) => boolean;
+  renderValue?: (value: TValue | undefined, row: T, key: string) => React.ReactNode;
+  searchText?: (value: TValue | undefined, row: T, key: string) => string;
+  exportValue?: (value: TValue | undefined, row: T, key: string) => string | number | undefined;
+  parseValue?: (value: string, row: T, key: string) => TValue | undefined;
+  childWidth?: number;
+  childMinWidth?: number;
+  childPlaceholder?: string | ((key: ScenarioDataGridOption) => string);
+}
+
 export interface ScenarioDataGridStringColumn<T>
   extends ScenarioDataGridPrimitiveBase<T, string> {
   primitive: 'string';
@@ -159,6 +203,22 @@ export interface ScenarioDataGridEnumColumn<T>
   primitive: 'enum';
   options: ScenarioDataGridOption[] | ((row: T) => ScenarioDataGridOption[]);
   placeholder?: string;
+}
+
+export interface ScenarioDataGridStructuredFiniteKeyNumberColumn<T>
+  extends ScenarioDataGridStructuredFiniteKeyColumnBase<T, number> {
+  childPrimitive: 'number';
+}
+
+export interface ScenarioDataGridStructuredFiniteKeyStringColumn<T>
+  extends ScenarioDataGridStructuredFiniteKeyColumnBase<T, string> {
+  childPrimitive: 'string';
+}
+
+export interface ScenarioDataGridStructuredFiniteKeyEnumColumn<T>
+  extends ScenarioDataGridStructuredFiniteKeyColumnBase<T, string> {
+  childPrimitive: 'enum';
+  childOptions: ScenarioDataGridOption[] | ((args: { row: T; key: string }) => ScenarioDataGridOption[]);
 }
 
 export interface ScenarioDataGridDisplayColumn<T> extends ScenarioDataGridColumnBase<T> {
@@ -191,7 +251,13 @@ export type ScenarioDataGridPrimitiveColumn<T> =
   | ScenarioDataGridArrayColumn<T>
   | ScenarioDataGridEnumColumn<T>;
 
+export type ScenarioDataGridStructuredColumn<T> =
+  | ScenarioDataGridStructuredFiniteKeyNumberColumn<T>
+  | ScenarioDataGridStructuredFiniteKeyStringColumn<T>
+  | ScenarioDataGridStructuredFiniteKeyEnumColumn<T>;
+
 export type ScenarioDataGridColumn<T> =
   | ScenarioDataGridPrimitiveColumn<T>
+  | ScenarioDataGridStructuredColumn<T>
   | ScenarioDataGridDisplayColumn<T>
   | ScenarioDataGridLegacyColumn<T>;
