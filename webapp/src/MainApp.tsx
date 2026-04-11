@@ -17,9 +17,9 @@ function MainApp() {
   const location = useLocation();
   const hasTrackedAppEntryRef = useRef(false);
   const headerRef = useRef<HTMLDivElement>(null);
-  const [scenarioShellHeight, setScenarioShellHeight] = useState<string>('20rem');
+  const [workspaceShellHeight, setWorkspaceShellHeight] = useState<string>('20rem');
   const seo = getAppSeo(location.pathname);
-  const isScenarioSetupRoute = location.pathname.startsWith('/app/scenario');
+  const isWorkspaceRoute = location.pathname.startsWith('/app/scenario') || location.pathname.startsWith('/app/solver');
 
   useEffect(() => {
     initializeApp();
@@ -44,36 +44,36 @@ function MainApp() {
   }, [location.pathname, location.search]);
 
   useLayoutEffect(() => {
-    if (!isScenarioSetupRoute) {
+    if (!isWorkspaceRoute) {
       return;
     }
 
-    const updateScenarioShellHeight = () => {
+    const updateWorkspaceShellHeight = () => {
       const headerHeight = headerRef.current?.getBoundingClientRect().height ?? 0;
       const chromeHeight = Math.ceil(headerHeight);
       const nextHeight = `max(20rem, calc(100vh - ${chromeHeight}px))`;
-      setScenarioShellHeight((currentHeight) => (currentHeight === nextHeight ? currentHeight : nextHeight));
+      setWorkspaceShellHeight((currentHeight) => (currentHeight === nextHeight ? currentHeight : nextHeight));
     };
 
-    updateScenarioShellHeight();
+    updateWorkspaceShellHeight();
 
     const resizeObserver = typeof ResizeObserver === 'undefined'
       ? null
       : new ResizeObserver(() => {
-          updateScenarioShellHeight();
+          updateWorkspaceShellHeight();
         });
 
     if (resizeObserver && headerRef.current) {
       resizeObserver.observe(headerRef.current);
     }
 
-    window.addEventListener('resize', updateScenarioShellHeight);
+    window.addEventListener('resize', updateWorkspaceShellHeight);
 
     return () => {
       resizeObserver?.disconnect();
-      window.removeEventListener('resize', updateScenarioShellHeight);
+      window.removeEventListener('resize', updateWorkspaceShellHeight);
     };
-  }, [isScenarioSetupRoute]);
+  }, [isWorkspaceRoute]);
 
   return (
     <div className="flex min-h-screen flex-col transition-colors" style={{ backgroundColor: 'var(--bg-secondary)' }}>
@@ -95,13 +95,13 @@ function MainApp() {
       </div>
 
       <main
-        className={isScenarioSetupRoute
-          ? 'w-full px-4 py-4 md:flex md:h-[var(--scenario-shell-height)] md:flex-col md:overflow-hidden md:px-0 md:py-0'
+        className={isWorkspaceRoute
+          ? 'w-full px-4 py-4 md:flex md:h-[var(--workspace-shell-height)] md:flex-col md:overflow-hidden md:px-0 md:py-0'
           : 'container mx-auto w-full flex-1 px-4 py-6'}
-        style={isScenarioSetupRoute ? ({ '--scenario-shell-height': scenarioShellHeight } as CSSProperties) : undefined}
+        style={isWorkspaceRoute ? ({ '--workspace-shell-height': workspaceShellHeight } as CSSProperties) : undefined}
       >
         {scenario && !currentScenarioId && (
-          <div className={isScenarioSetupRoute ? 'px-4 pt-6' : ''}>
+          <div className={isWorkspaceRoute ? 'px-4 pt-6' : ''}>
             <div
               className="mb-6 flex flex-col gap-3 rounded-2xl border px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
               style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
@@ -125,7 +125,7 @@ function MainApp() {
           </div>
         )}
 
-        <div className={isScenarioSetupRoute ? 'animate-fade-in md:min-h-0 md:flex-1' : 'animate-fade-in mt-6'}>
+        <div className={isWorkspaceRoute ? 'animate-fade-in md:min-h-0 md:flex-1' : 'animate-fade-in mt-6'}>
           <Outlet />
         </div>
       </main>

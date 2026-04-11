@@ -104,8 +104,9 @@ Owns desktop/mobile navigation chrome only:
 Suggested files:
 
 - `layout/ScenarioSetupLayout.tsx`
-- `layout/ScenarioSetupSidebar.tsx`
-- `layout/ScenarioSetupMobileNav.tsx`
+- `../../workspace/layout/WorkspaceLayout.tsx`
+- `../../workspace/layout/WorkspaceSidebar.tsx`
+- `../../workspace/layout/WorkspaceMobileNav.tsx`
 
 ### Controller/orchestration layer
 

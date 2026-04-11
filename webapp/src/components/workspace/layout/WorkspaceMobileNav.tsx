@@ -1,37 +1,36 @@
 import React, { useMemo, useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { ScrollArea } from '../../ScrollArea';
-import type { ScenarioSetupResolvedSection } from '../navigation/scenarioSetupNav';
-import type { ScenarioSetupSectionGroupDefinition, ScenarioSetupSectionId } from '../navigation/scenarioSetupNavTypes';
-import { ScenarioSetupSidebarGroup } from './ScenarioSetupSidebarGroup';
+import type { WorkspaceNavGroup } from './types';
+import { WorkspaceSidebarGroup } from './WorkspaceSidebarGroup';
 
-interface ScenarioSetupMobileNavProps {
-  groupedSections: Array<{
-    group: ScenarioSetupSectionGroupDefinition;
-    sections: ScenarioSetupResolvedSection[];
-  }>;
-  activeSection: ScenarioSetupSectionId | null;
-  onNavigate: (sectionId: ScenarioSetupSectionId) => void;
+interface WorkspaceMobileNavProps {
+  workspaceLabel: string;
+  groupedItems: WorkspaceNavGroup[];
+  activeItemId: string | null;
+  onNavigate: (itemId: string) => void;
   headerContent?: React.ReactNode;
 }
 
-export function ScenarioSetupMobileNav({
-  groupedSections,
-  activeSection,
+export function WorkspaceMobileNav({
+  workspaceLabel,
+  groupedItems,
+  activeItemId,
   onNavigate,
   headerContent,
-}: ScenarioSetupMobileNavProps) {
+}: WorkspaceMobileNavProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const activeLabel = useMemo(() => {
-    for (const entry of groupedSections) {
-      const match = entry.sections.find((section) => section.id === activeSection);
+    for (const group of groupedItems) {
+      const match = group.items.find((item) => item.id === activeItemId);
       if (match) {
         return match.shortLabel ?? match.label;
       }
     }
+
     return 'Choose section';
-  }, [activeSection, groupedSections]);
+  }, [activeItemId, groupedItems]);
 
   return (
     <div className="md:hidden">
@@ -41,13 +40,13 @@ export function ScenarioSetupMobileNav({
         className="flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left"
         style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
         aria-expanded={isOpen}
-        aria-label="Open scenario setup navigation"
+        aria-label={`Open ${workspaceLabel.toLowerCase()} navigation`}
       >
         <div className="flex items-center gap-3">
           <Menu className="h-5 w-5" style={{ color: 'var(--text-secondary)' }} />
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
-              Scenario Setup
+              {workspaceLabel}
             </div>
             <div className="mt-1 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
               {activeLabel}
@@ -56,13 +55,13 @@ export function ScenarioSetupMobileNav({
         </div>
       </button>
 
-      {isOpen && (
-        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Scenario Setup navigation drawer">
+      {isOpen ? (
+        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label={`${workspaceLabel} navigation drawer`}>
           <button
             type="button"
             className="absolute inset-0"
             style={{ backgroundColor: 'rgba(0, 0, 0, 0.45)' }}
-            aria-label="Close scenario setup navigation"
+            aria-label={`Close ${workspaceLabel.toLowerCase()} navigation`}
             onClick={() => setIsOpen(false)}
           />
 
@@ -73,34 +72,33 @@ export function ScenarioSetupMobileNav({
           >
             <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: 'var(--border-primary)' }}>
               <h2 className="text-sm font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
-                Scenario Setup
+                {workspaceLabel}
               </h2>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
                 className="rounded-md p-2"
-                aria-label="Close scenario setup navigation"
+                aria-label={`Close ${workspaceLabel.toLowerCase()} navigation`}
               >
                 <X className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
               </button>
             </div>
 
-            {headerContent && (
+            {headerContent ? (
               <div className="border-b px-4 py-4" style={{ borderColor: 'var(--border-primary)' }}>
                 {headerContent}
               </div>
-            )}
+            ) : null}
 
             <div className="px-4 py-3">
-              {groupedSections.map(({ group, sections }) => (
-                <ScenarioSetupSidebarGroup
+              {groupedItems.map((group) => (
+                <WorkspaceSidebarGroup
                   key={group.id}
                   group={group}
-                  sections={sections}
-                  activeSection={activeSection}
+                  activeItemId={activeItemId}
                   isRailCollapsed={false}
-                  onNavigate={(sectionId) => {
-                    onNavigate(sectionId);
+                  onNavigate={(itemId) => {
+                    onNavigate(itemId);
                     setIsOpen(false);
                   }}
                 />
@@ -108,7 +106,7 @@ export function ScenarioSetupMobileNav({
             </div>
           </ScrollArea>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

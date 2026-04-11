@@ -1,25 +1,17 @@
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Tooltip } from '../../Tooltip';
-import type { ScenarioSetupSectionGroupDefinition, ScenarioSetupSectionId } from '../navigation/scenarioSetupNavTypes';
-import type { ScenarioSetupResolvedSection } from '../navigation/scenarioSetupNav';
-import { ScenarioSetupSidebarItem } from './ScenarioSetupSidebarItem';
+import type { WorkspaceNavGroup } from './types';
+import { WorkspaceSidebarItem } from './WorkspaceSidebarItem';
 
-interface ScenarioSetupSidebarGroupProps {
-  group: ScenarioSetupSectionGroupDefinition;
-  sections: ScenarioSetupResolvedSection[];
-  activeSection: ScenarioSetupSectionId | null;
+interface WorkspaceSidebarGroupProps {
+  group: WorkspaceNavGroup;
+  activeItemId: string | null;
   isRailCollapsed: boolean;
-  onNavigate: (sectionId: ScenarioSetupSectionId) => void;
+  onNavigate: (itemId: string) => void;
 }
 
-export function ScenarioSetupSidebarGroup({
-  group,
-  sections,
-  activeSection,
-  isRailCollapsed,
-  onNavigate,
-}: ScenarioSetupSidebarGroupProps) {
+export function WorkspaceSidebarGroup({ group, activeItemId, isRailCollapsed, onNavigate }: WorkspaceSidebarGroupProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isHeaderHovered, setIsHeaderHovered] = useState(false);
 
@@ -27,11 +19,11 @@ export function ScenarioSetupSidebarGroup({
     return (
       <section className="mt-3 flex flex-col gap-0.5 first:mt-2" aria-label={group.label}>
         <div className="mx-auto mb-1 h-px w-4" style={{ backgroundColor: 'var(--border-primary)' }} />
-        {sections.map((section) => (
-          <ScenarioSetupSidebarItem
-            key={section.id}
-            section={section}
-            isActive={activeSection === section.id}
+        {group.items.map((item) => (
+          <WorkspaceSidebarItem
+            key={item.id}
+            item={item}
+            isActive={activeItemId === item.id}
             isCollapsed
             onNavigate={onNavigate}
           />
@@ -42,7 +34,7 @@ export function ScenarioSetupSidebarGroup({
 
   return (
     <section className="mt-3 first:mt-2" aria-label={group.label}>
-      <Tooltip content={group.label} className="block w-full" placement="right">
+      <Tooltip content={group.description ?? group.label} className="block w-full" placement="right">
         <button
           type="button"
           onClick={() => setIsExpanded((value) => !value)}
@@ -54,7 +46,7 @@ export function ScenarioSetupSidebarGroup({
             backgroundColor: isHeaderHovered ? 'color-mix(in srgb, var(--bg-tertiary) 55%, transparent)' : 'transparent',
           }}
           aria-expanded={isExpanded}
-          aria-controls={`scenario-setup-group-${group.id}`}
+          aria-controls={`workspace-group-${group.id}`}
           aria-label={group.label}
         >
           <span className="truncate text-[10px] font-semibold uppercase tracking-[0.08em]">{group.label}</span>
@@ -62,19 +54,19 @@ export function ScenarioSetupSidebarGroup({
         </button>
       </Tooltip>
 
-      {isExpanded && (
-        <div id={`scenario-setup-group-${group.id}`} className="mt-0.5 flex flex-col gap-0.5">
-          {sections.map((section) => (
-            <ScenarioSetupSidebarItem
-              key={section.id}
-              section={section}
-              isActive={activeSection === section.id}
+      {isExpanded ? (
+        <div id={`workspace-group-${group.id}`} className="mt-0.5 flex flex-col gap-0.5">
+          {group.items.map((item) => (
+            <WorkspaceSidebarItem
+              key={item.id}
+              item={item}
+              isActive={activeItemId === item.id}
               isCollapsed={false}
               onNavigate={onNavigate}
             />
           ))}
         </div>
-      )}
+      ) : null}
     </section>
   );
 }

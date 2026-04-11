@@ -2,33 +2,32 @@ import React, { useState } from 'react';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { ScrollArea } from '../../ScrollArea';
 import { Tooltip } from '../../Tooltip';
-import type { ScenarioSetupResolvedSection } from '../navigation/scenarioSetupNav';
-import type { ScenarioSetupSectionGroupDefinition, ScenarioSetupSectionId } from '../navigation/scenarioSetupNavTypes';
-import { ScenarioSetupSidebarGroup } from './ScenarioSetupSidebarGroup';
+import type { WorkspaceNavGroup } from './types';
+import { WorkspaceSidebarGroup } from './WorkspaceSidebarGroup';
 
-interface ScenarioSetupSidebarProps {
-  groupedSections: Array<{
-    group: ScenarioSetupSectionGroupDefinition;
-    sections: ScenarioSetupResolvedSection[];
-  }>;
-  activeSection: ScenarioSetupSectionId | null;
+interface WorkspaceSidebarProps {
+  workspaceLabel: string;
+  groupedItems: WorkspaceNavGroup[];
+  activeItemId: string | null;
   isCollapsed: boolean;
   onToggleCollapsed: () => void;
-  onNavigate: (sectionId: ScenarioSetupSectionId) => void;
+  onNavigate: (itemId: string) => void;
   headerContent?: React.ReactNode;
   collapsedHeaderContent?: React.ReactNode;
 }
 
-export function ScenarioSetupSidebar({
-  groupedSections,
-  activeSection,
+export function WorkspaceSidebar({
+  workspaceLabel,
+  groupedItems,
+  activeItemId,
   isCollapsed,
   onToggleCollapsed,
   onNavigate,
   headerContent,
   collapsedHeaderContent,
-}: ScenarioSetupSidebarProps) {
+}: WorkspaceSidebarProps) {
   const [isToggleHovered, setIsToggleHovered] = useState(false);
+  const collapseLabel = `${isCollapsed ? 'Expand' : 'Collapse'} ${workspaceLabel.toLowerCase()} sidebar`;
 
   return (
     <aside
@@ -36,29 +35,28 @@ export function ScenarioSetupSidebar({
         isCollapsed ? 'md:w-14' : 'md:w-56'
       }`}
       style={{ borderColor: 'var(--border-primary)' }}
-      aria-label="Scenario Setup navigation"
+      aria-label={`${workspaceLabel} navigation`}
     >
       <div className="flex h-full min-h-0 max-h-full w-full flex-col overflow-hidden">
-        {!isCollapsed && headerContent && (
+        {!isCollapsed && headerContent ? (
           <div className="shrink-0 border-b px-3 py-2" style={{ borderColor: 'var(--border-primary)' }}>
             {headerContent}
           </div>
-        )}
+        ) : null}
 
-        {isCollapsed && collapsedHeaderContent && (
+        {isCollapsed && collapsedHeaderContent ? (
           <div className="shrink-0 border-b px-1 py-2" style={{ borderColor: 'var(--border-primary)' }}>
             {collapsedHeaderContent}
           </div>
-        )}
+        ) : null}
 
         <ScrollArea orientation="vertical" className="min-h-0 flex-1">
           <nav className="flex min-h-full flex-col px-0 pb-0 pt-2">
-            {groupedSections.map(({ group, sections }) => (
-              <ScenarioSetupSidebarGroup
+            {groupedItems.map((group) => (
+              <WorkspaceSidebarGroup
                 key={group.id}
                 group={group}
-                sections={sections}
-                activeSection={activeSection}
+                activeItemId={activeItemId}
                 isRailCollapsed={isCollapsed}
                 onNavigate={onNavigate}
               />
@@ -67,11 +65,7 @@ export function ScenarioSetupSidebar({
         </ScrollArea>
 
         <div className="shrink-0 border-t p-2" style={{ borderColor: 'var(--border-primary)' }}>
-          <Tooltip
-            content={isCollapsed ? 'Expand scenario setup sidebar' : 'Collapse scenario setup sidebar'}
-            className="block w-full"
-            placement="right"
-          >
+          <Tooltip content={collapseLabel} className="block w-full" placement="right">
             <button
               type="button"
               onClick={onToggleCollapsed}
@@ -82,7 +76,7 @@ export function ScenarioSetupSidebar({
                 color: isToggleHovered ? 'var(--text-primary)' : 'var(--text-secondary)',
                 backgroundColor: isToggleHovered ? 'color-mix(in srgb, var(--bg-tertiary) 72%, transparent)' : 'transparent',
               }}
-              aria-label={isCollapsed ? 'Expand scenario setup sidebar' : 'Collapse scenario setup sidebar'}
+              aria-label={collapseLabel}
             >
               {isCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
             </button>
