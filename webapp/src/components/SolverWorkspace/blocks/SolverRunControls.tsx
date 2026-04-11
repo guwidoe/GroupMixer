@@ -1,0 +1,138 @@
+import React from 'react';
+import { Pause, Play, RotateCcw, TrendingUp } from 'lucide-react';
+import type { Scenario, SolverState } from '../../../types';
+import type { SolverCatalogEntry } from '../../../services/solverUi';
+import type { SolverFormInputs } from '../../SolverPanel/types';
+
+interface SolverRunControlsProps {
+  solverState: SolverState;
+  scenario: Scenario | null;
+  selectedSolverCatalogEntry: SolverCatalogEntry | null;
+  solverCatalogStatus: 'loading' | 'ready' | 'error';
+  solverCatalogErrorMessage: string | null;
+  solverFormInputs: SolverFormInputs;
+  setSolverFormInputs: React.Dispatch<React.SetStateAction<SolverFormInputs>>;
+  desiredRuntimeMain: number | null;
+  setDesiredRuntimeMain: React.Dispatch<React.SetStateAction<number | null>>;
+  onStartSolver: (useRecommended: boolean) => void;
+  onCancelSolver: () => void;
+  onSaveBestSoFar: () => void;
+  onResetSolver: () => void;
+}
+
+export function SolverRunControls({
+  solverState,
+  scenario,
+  selectedSolverCatalogEntry,
+  solverCatalogStatus,
+  solverCatalogErrorMessage,
+  solverFormInputs,
+  setSolverFormInputs,
+  desiredRuntimeMain,
+  setDesiredRuntimeMain,
+  onStartSolver,
+  onCancelSolver,
+  onSaveBestSoFar,
+  onResetSolver,
+}: SolverRunControlsProps) {
+  const catalogReady = solverCatalogStatus === 'ready';
+  const supportsRecommendedSettings = catalogReady
+    ? selectedSolverCatalogEntry?.capabilities.supportsRecommendedSettings ?? false
+    : false;
+
+  return (
+    <section
+      className="rounded-2xl border p-4 md:p-5"
+      style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+    >
+      {!catalogReady ? (
+        <div
+          className="mb-4 rounded-lg border p-3 text-sm"
+          style={{
+            borderColor: solverCatalogStatus === 'error' ? 'var(--color-danger)' : 'var(--border-secondary)',
+            backgroundColor: 'var(--background-secondary)',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          <div className="mb-1 font-medium" style={{ color: 'var(--text-primary)' }}>
+            {solverCatalogStatus === 'loading' ? 'Loading Available Solvers' : 'Available Solvers Unavailable'}
+          </div>
+          <p>
+            {solverCatalogStatus === 'loading'
+              ? 'Loading the available solvers before enabling solve controls.'
+              : `Could not load the available solvers: ${solverCatalogErrorMessage ?? 'unknown error'}`}
+          </p>
+        </div>
+      ) : null}
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="flex flex-col items-start">
+          <label className="mb-1 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+            Desired Runtime (s)
+          </label>
+          <input
+            type="number"
+            value={solverFormInputs.desiredRuntimeMain ?? (desiredRuntimeMain?.toString() || '')}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setSolverFormInputs((prev) => ({ ...prev, desiredRuntimeMain: e.target.value }))
+            }
+            onBlur={() => {
+              const inputValue = solverFormInputs.desiredRuntimeMain ?? (desiredRuntimeMain?.toString() || '');
+              const numValue = inputValue === '' ? null : Number(inputValue);
+              if (numValue === null || (!Number.isNaN(numValue) && numValue >= 1)) {
+                setDesiredRuntimeMain(numValue);
+                setSolverFormInputs((prev) => ({ ...prev, desiredRuntimeMain: undefined }));
+              }
+            }}
+            disabled={solverState.isRunning}
+            className="input w-full sm:w-28"
+            min="1"
+          />
+        </div>
+
+        {!solverState.isRunning ? (
+          <button
+            onClick={() => onStartSolver(supportsRecommendedSettings)}
+            className="btn-success flex flex-1 items-center justify-center space-x-2"
+            disabled={!scenario || !catalogReady}
+          >
+            <Play className="h-4 w-4" />
+            <span>
+              {catalogReady
+                ? supportsRecommendedSettings
+                  ? 'Start Solver with Automatic Settings'
+                  : 'Start Solver with Current Settings'
+                : solverCatalogStatus === 'loading'
+                  ? 'Loading Available Solvers...'
+                  : 'Available Solvers Unavailable'}
+            </span>
+          </button>
+        ) : (
+          <div className="flex flex-1 gap-2">
+            <button onClick={onCancelSolver} className="btn-warning flex-1 flex items-center justify-center space-x-2">
+              <Pause className="h-4 w-4" />
+              <span>Cancel Solver</span>
+            </button>
+            <button
+              onClick={onSaveBestSoFar}
+              className="btn-secondary flex-1 flex items-center justify-center space-x-2"
+              title="Save best-so-far and continue solving"
+            >
+              <TrendingUp className="h-4 w-4" />
+              <span>Save Best So Far</span>
+            </button>
+          </div>
+        )}
+
+        <button
+          onClick={onResetSolver}
+          className="btn-secondary flex items-center justify-center space-x-2"
+          disabled={solverState.isRunning}
+        >
+          <RotateCcw className="h-4 w-4" />
+          <span>Reset</span>
+        </button>
+      </div>
+    </section>
+  );
+}

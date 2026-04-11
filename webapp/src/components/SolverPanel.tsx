@@ -1,226 +1,27 @@
-import React, { useRef, useState } from 'react';
-import { Settings } from 'lucide-react';
-import { useAppStore } from '../store';
-import type { Scenario, SolverSettings } from '../types';
-import {
-  buildSolverCatalog,
-  createDefaultSolverSettings,
-  findSolverCatalogEntry,
-  getSolverUiSpec,
-  normalizeSolverFamilyId,
-  switchSolverFamily,
-  type SolverCatalogEntry,
-  type SolverFamilyId,
-} from '../services/solverUi';
-import { SettingsPanel } from './SolverPanel/index';
-import { SolverStatusCard } from './SolverPanel/SolverStatusCard';
+import React from 'react';
 import { SolverCancelModal } from './SolverPanel/SolverCancelModal';
-import { SolverAlgorithmInfo } from './SolverPanel/SolverAlgorithmInfo';
-import type { SolverFormInputs } from './SolverPanel/types';
-import { useSolverActions } from './SolverPanel/hooks/useSolverActions';
+import { useSolverWorkspaceRunController } from './SolverWorkspace/useSolverWorkspaceRunController';
+import { AllowedSessionsPanel } from './SolverWorkspace/blocks/AllowedSessionsPanel';
+import { DetailedMetricsPanel } from './SolverWorkspace/blocks/DetailedMetricsPanel';
+import { LiveVisualizationPanel } from './SolverWorkspace/blocks/LiveVisualizationPanel';
+import { RecommendedSettingsPanel } from './SolverWorkspace/blocks/RecommendedSettingsPanel';
+import { SolverFamilyChooser } from './SolverWorkspace/blocks/SolverFamilyChooser';
+import { SolverFamilyInfoPanel } from './SolverWorkspace/blocks/SolverFamilyInfoPanel';
+import { SolverRunControls } from './SolverWorkspace/blocks/SolverRunControls';
+import { SolverSettingsSections } from './SolverWorkspace/blocks/SolverSettingsSections';
+import { SolverStatusDashboard } from './SolverWorkspace/blocks/SolverStatusDashboard';
+import { WarmStartPanel } from './SolverWorkspace/blocks/WarmStartPanel';
 
 interface SolverPanelProps {
   hidePageHeader?: boolean;
 }
 
 export function SolverPanel({ hidePageHeader = false }: SolverPanelProps) {
-  const {
-    solverState,
-    startSolver,
-    stopSolver,
-    resetSolver,
-    setSolverState,
-    setSolution,
-    addNotification,
-    addResult,
-    updateScenario,
-    ensureScenarioExists,
-  } = useAppStore();
-
-  const scenario = useAppStore((state) => state.scenario);
-  const runtimeSolverCatalog = useAppStore((state) => state.runtimeSolverCatalog);
-  const runtimeSolverCatalogStatus = useAppStore((state) => state.runtimeSolverCatalogStatus);
-  const runtimeSolverCatalogError = useAppStore((state) => state.runtimeSolverCatalogError);
-  const loadRuntimeSolverCatalog = useAppStore((state) => state.loadRuntimeSolverCatalog);
-  const currentScenarioId = useAppStore((state) => state.currentScenarioId);
-  const savedScenarios = useAppStore((state) => state.savedScenarios);
-  const warmStartResultId = useAppStore((state) => state.ui.warmStartResultId);
-  const setWarmStartFromResult = useAppStore((state) => state.setWarmStartFromResult);
-
-  const [warmStartSelection, setWarmStartSelection] = useState<string | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showMetrics, setShowMetrics] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('solverMetricsExpanded') === 'true';
-    } catch {
-      return false;
-    }
-  });
-
-  const toggleMetrics = () => {
-    setShowMetrics((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('solverMetricsExpanded', String(next));
-      } catch {
-        // Ignore localStorage errors
-      }
-      return next;
-    });
-  };
-
-  const [showLiveViz, setShowLiveViz] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('solverLiveVizEnabled') === 'true';
-    } catch {
-      return false;
-    }
-  });
-  const showLiveVizRef = useRef(showLiveViz);
-  React.useEffect(() => {
-    showLiveVizRef.current = showLiveViz;
-  }, [showLiveViz]);
-
-  const toggleLiveViz = () => {
-    setShowLiveViz((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('solverLiveVizEnabled', String(next));
-      } catch {
-        // Ignore localStorage errors
-      }
-      return next;
-    });
-  };
-
-  const [liveVizPluginId, setLiveVizPluginId] = useState<string>(() => {
-    try {
-      return localStorage.getItem('solverLiveVizPlugin') || 'scheduleMatrix';
-    } catch {
-      return 'scheduleMatrix';
-    }
-  });
-
-  const handleLiveVizPluginChange = (id: string) => {
-    setLiveVizPluginId(id);
-    try {
-      localStorage.setItem('solverLiveVizPlugin', id);
-    } catch {
-      // Ignore localStorage errors
-    }
-  };
-
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [desiredRuntimeMain, setDesiredRuntimeMain] = useState<number | null>(3);
-  const [desiredRuntimeSettings, setDesiredRuntimeSettings] = useState<number>(3);
-
-  const [solverFormInputs, setSolverFormInputs] = useState<SolverFormInputs>({});
-  const solverCatalog = React.useMemo<readonly SolverCatalogEntry[]>(
-    () => buildSolverCatalog(runtimeSolverCatalog),
-    [runtimeSolverCatalog],
-  );
-
-  React.useEffect(() => {
-    if (runtimeSolverCatalogStatus === 'idle') {
-      void loadRuntimeSolverCatalog().catch((error) => {
-        console.error('[SolverPanel] Failed to load solver catalog from runtime.', error);
-      });
-    }
-  }, [loadRuntimeSolverCatalog, runtimeSolverCatalogStatus]);
-
-  const solverSettings = scenario?.settings || createDefaultSolverSettings();
-  const [allowedSessionsLocal, setAllowedSessionsLocal] = useState<number[] | null>(null);
-  const selectedSolverFamilyId = normalizeSolverFamilyId(solverSettings.solver_type) ?? 'solver1';
-  const selectedSolverCatalogEntry = findSolverCatalogEntry(solverCatalog, selectedSolverFamilyId);
-  const selectedSolverUiSpec = getSolverUiSpec(selectedSolverFamilyId);
-
-  const handleSettingsChange = (newSettings: Partial<SolverSettings>) => {
-    if (scenario) {
-      const replacingSolverFamily = typeof newSettings.solver_type === 'string'
-        && newSettings.solver_type !== solverSettings.solver_type;
-
-      const updatedScenario = {
-        ...scenario,
-        settings: {
-          ...solverSettings,
-          ...newSettings,
-          ...(newSettings.solver_params && {
-            solver_params: replacingSolverFamily
-              ? newSettings.solver_params
-              : {
-                  ...solverSettings.solver_params,
-                  ...newSettings.solver_params,
-                },
-          }),
-          ...(newSettings.stop_conditions && {
-            stop_conditions: {
-              ...solverSettings.stop_conditions,
-              ...newSettings.stop_conditions,
-            },
-          }),
-        },
-      };
-      updateScenario({ settings: updatedScenario.settings });
-    }
-  };
-
-  const handleSelectSolverFamily = (familyId: SolverFamilyId) => {
-    if (familyId === selectedSolverFamilyId) {
-      return;
-    }
-
-    const nextSettings = switchSolverFamily(solverSettings, familyId);
-    setSolverFormInputs({});
-    handleSettingsChange(nextSettings);
-  };
-
-  const {
-    runSettings,
-    liveVizState,
-    runScenarioSnapshotRef,
-    handleStartSolver,
-    handleCancelDiscard,
-    handleCancelSave,
-    handleSaveBestSoFar,
-    handleResetSolver,
-    handleAutoSetSettings,
-  } = useSolverActions({
-    scenario,
-    currentScenarioId,
-    savedScenarios,
-    warmStartResultId,
-    setWarmStartFromResult,
-    solverSettings,
-    solverState,
-    desiredRuntimeMain,
-    desiredRuntimeSettings,
-    showLiveVizRef,
-    startSolver,
-    stopSolver,
-    resetSolver,
-    setSolverState,
-    setSolution,
-    addNotification,
-    addResult,
-    ensureScenarioExists,
-    handleSettingsChange,
-    setShowCancelConfirm,
-  });
-
-  const displaySettings = runSettings || solverSettings;
-
-  const getLiveVizScenario = (): Scenario | null => {
-    const base = runScenarioSnapshotRef.current || scenario;
-    if (!base) return null;
-    return {
-      ...base,
-      settings: runSettings || solverSettings,
-    };
-  };
+  const controller = useSolverWorkspaceRunController();
 
   return (
     <div className="space-y-6">
-      {!hidePageHeader && (
+      {!hidePageHeader ? (
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
@@ -231,86 +32,97 @@ export function SolverPanel({ hidePageHeader = false }: SolverPanelProps) {
             </p>
           </div>
         </div>
-      )}
+      ) : null}
 
-      <SolverStatusCard
-        solverState={solverState}
-        scenario={scenario}
-        selectedSolverCatalogEntry={selectedSolverCatalogEntry}
-        solverCatalogStatus={runtimeSolverCatalogStatus === 'idle' ? 'loading' : runtimeSolverCatalogStatus}
-        solverCatalogErrorMessage={runtimeSolverCatalogError}
-        runtime={{
-          solverFormInputs,
-          setSolverFormInputs,
-          desiredRuntimeMain,
-          setDesiredRuntimeMain,
-        }}
-        actions={{
-          onStartSolver: handleStartSolver,
-          onCancelSolver: () => setShowCancelConfirm(true),
-          onSaveBestSoFar: handleSaveBestSoFar,
-          onResetSolver: handleResetSolver,
-        }}
-        liveViz={{
-          displaySettings,
-          showLiveViz,
-          onToggleLiveViz: toggleLiveViz,
-          liveVizState,
-          liveVizPluginId,
-          onLiveVizPluginChange: handleLiveVizPluginChange,
-          getLiveVizScenario,
-        }}
-        metrics={{
-          showMetrics,
-          onToggleMetrics: toggleMetrics,
-        }}
+      <SolverRunControls
+        solverState={controller.solverState}
+        scenario={controller.scenario}
+        selectedSolverCatalogEntry={controller.selectedSolverCatalogEntry}
+        solverCatalogStatus={controller.solverCatalogStatus}
+        solverCatalogErrorMessage={controller.solverCatalogErrorMessage}
+        solverFormInputs={controller.solverFormInputs}
+        setSolverFormInputs={controller.setSolverFormInputs}
+        desiredRuntimeMain={controller.desiredRuntimeMain}
+        setDesiredRuntimeMain={controller.setDesiredRuntimeMain}
+        onStartSolver={controller.handleStartSolver}
+        onCancelSolver={() => controller.setShowCancelConfirm(true)}
+        onSaveBestSoFar={controller.handleSaveBestSoFar}
+        onResetSolver={controller.handleResetSolver}
       />
 
-      <button
-        onClick={() => setShowSettings(!showSettings)}
-        className="btn-secondary flex items-center space-x-2 min-w-fit"
-      >
-        <Settings className="h-5 w-5 flex-shrink-0" />
-        <span>Solve with Custom Settings</span>
-      </button>
+      <SolverStatusDashboard solverState={controller.solverState} displaySettings={controller.displaySettings} />
 
-      {showSettings && (
-        <SettingsPanel
-          solverSettings={solverSettings}
-          solverFormInputs={solverFormInputs}
-          setSolverFormInputs={setSolverFormInputs}
-          handleSettingsChange={handleSettingsChange}
-          isRunning={solverState.isRunning}
-          desiredRuntimeSettings={desiredRuntimeSettings}
-          setDesiredRuntimeSettings={setDesiredRuntimeSettings}
-          onAutoSetSettings={handleAutoSetSettings}
-          onStartSolver={handleStartSolver}
-          selectedSolverFamilyId={selectedSolverFamilyId}
-          solverCatalog={solverCatalog}
-          solverCatalogStatus={runtimeSolverCatalogStatus === 'idle' ? 'loading' : runtimeSolverCatalogStatus}
-          solverCatalogErrorMessage={runtimeSolverCatalogError}
-          selectedSolverCatalogEntry={selectedSolverCatalogEntry}
-          selectedSolverUiSpec={selectedSolverUiSpec}
-          onSelectSolverFamily={handleSelectSolverFamily}
-          scenario={scenario}
-          savedScenarios={savedScenarios}
-          currentScenarioId={currentScenarioId}
-          warmStartSelection={warmStartSelection}
-          setWarmStartSelection={setWarmStartSelection}
-          setWarmStartFromResult={setWarmStartFromResult}
-          allowedSessionsLocal={allowedSessionsLocal}
-          setAllowedSessionsLocal={setAllowedSessionsLocal}
-        />
-      )}
+      <LiveVisualizationPanel
+        solverStateIsRunning={controller.solverState.isRunning}
+        showLiveViz={controller.showLiveViz}
+        onToggleLiveViz={controller.toggleLiveViz}
+        liveVizState={controller.liveVizState}
+        liveVizPluginId={controller.liveVizPluginId}
+        onLiveVizPluginChange={controller.handleLiveVizPluginChange}
+        getLiveVizScenario={controller.getLiveVizScenario}
+      />
+
+      <DetailedMetricsPanel
+        solverState={controller.solverState}
+        displaySettings={controller.displaySettings}
+        showMetrics={controller.showMetrics}
+        onToggleMetrics={controller.toggleMetrics}
+      />
+
+      <SolverFamilyChooser
+        selectedSolverFamilyId={controller.selectedSolverFamilyId}
+        solverCatalog={controller.solverCatalog}
+        onSelectSolverFamily={controller.handleSelectSolverFamily}
+        isRunning={controller.solverState.isRunning}
+      />
+
+      <RecommendedSettingsPanel
+        solverFormInputs={controller.solverFormInputs}
+        setSolverFormInputs={controller.setSolverFormInputs}
+        desiredRuntimeSettings={controller.desiredRuntimeSettings}
+        setDesiredRuntimeSettings={controller.setDesiredRuntimeSettings}
+        onAutoSetSettings={controller.handleAutoSetSettings}
+        isRunning={controller.solverState.isRunning}
+        solverCatalogStatus={controller.solverCatalogStatus}
+        solverCatalogErrorMessage={controller.solverCatalogErrorMessage}
+        supportsRecommendedSettings={controller.selectedSolverCatalogEntry?.capabilities.supportsRecommendedSettings ?? false}
+        solverDisplayName={controller.selectedSolverCatalogEntry?.displayName ?? controller.solverSettings.solver_type}
+      />
+
+      <WarmStartPanel
+        savedScenarios={controller.savedScenarios}
+        currentScenarioId={controller.currentScenarioId}
+        warmStartSelection={controller.warmStartSelection}
+        setWarmStartSelection={controller.setWarmStartSelection}
+        setWarmStartFromResult={controller.setWarmStartFromResult}
+      />
+
+      <AllowedSessionsPanel
+        scenario={controller.scenario}
+        solverSettings={controller.solverSettings}
+        allowedSessionsLocal={controller.allowedSessionsLocal}
+        setAllowedSessionsLocal={controller.setAllowedSessionsLocal}
+        handleSettingsChange={controller.handleSettingsChange}
+        isRunning={controller.solverState.isRunning}
+      />
+
+      <SolverSettingsSections
+        solverSettings={controller.solverSettings}
+        solverUiSpec={controller.selectedSolverUiSpec}
+        solverFormInputs={controller.solverFormInputs}
+        setSolverFormInputs={controller.setSolverFormInputs}
+        handleSettingsChange={controller.handleSettingsChange}
+        isRunning={controller.solverState.isRunning}
+      />
+
+      <SolverFamilyInfoPanel displaySettings={controller.displaySettings} solverCatalogEntry={controller.selectedSolverCatalogEntry} />
 
       <SolverCancelModal
-        open={showCancelConfirm}
-        onClose={() => setShowCancelConfirm(false)}
-        onDiscard={handleCancelDiscard}
-        onSave={handleCancelSave}
+        open={controller.showCancelConfirm}
+        onClose={() => controller.setShowCancelConfirm(false)}
+        onDiscard={controller.handleCancelDiscard}
+        onSave={controller.handleCancelSave}
       />
-
-      <SolverAlgorithmInfo displaySettings={displaySettings} solverCatalogEntry={selectedSolverCatalogEntry} />
     </div>
   );
 }
