@@ -5,7 +5,7 @@ use crate::models::{
     MoveFamilyBenchmarkTelemetrySummary, MovePolicy, ProgressUpdate, SolverBenchmarkTelemetry,
     SolverConfiguration, StopReason,
 };
-use crate::runtime_target::estimated_total_iterations;
+use crate::runtime_target::displayed_total_iterations;
 use crate::solver_support::SolverError;
 
 use super::super::runtime_state::RuntimeState;
@@ -278,11 +278,12 @@ impl SearchProgressState {
 
         ProgressUpdate {
             iteration,
-            max_iterations: estimated_total_iterations(
+            max_iterations: displayed_total_iterations(
                 iteration.saturating_add(1),
                 run_context.max_iterations,
                 elapsed_seconds,
                 run_context.time_limit_seconds,
+                stop_reason,
             ),
             temperature,
             current_score: self.current_state.total_score,

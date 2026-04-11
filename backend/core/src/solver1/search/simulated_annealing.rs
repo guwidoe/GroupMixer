@@ -28,7 +28,7 @@ use crate::models::{
     MoveSelectionMode, ProgressCallback, ProgressUpdate, SolverBenchmarkTelemetry,
     SolverConfiguration, SolverResult, StopReason,
 };
-use crate::runtime_target::estimated_total_iterations;
+use crate::runtime_target::displayed_total_iterations;
 use crate::solver1::search::Solver;
 use crate::solver1::{derive_phase_seed, State, SEARCH_SEED_SALT};
 use crate::solver_support::SolverError;
@@ -1188,11 +1188,12 @@ impl Solver for SimulatedAnnealing {
                     let progress = ProgressUpdate {
                         // Basic progress information
                         iteration: i + 1, // Report 1-based iteration numbers
-                        max_iterations: estimated_total_iterations(
+                        max_iterations: displayed_total_iterations(
                             i + 1,
                             self.max_iterations,
                             elapsed,
                             self.time_limit_seconds,
+                            None,
                         ),
                         temperature,
                         current_score: current_cost,
@@ -1863,11 +1864,12 @@ impl Solver for SimulatedAnnealing {
             let final_progress = ProgressUpdate {
                 // Basic progress information
                 iteration: final_iteration + 1, // Report 1-based iteration numbers
-                max_iterations: estimated_total_iterations(
+                max_iterations: displayed_total_iterations(
                     final_iteration + 1,
                     self.max_iterations,
                     elapsed,
                     self.time_limit_seconds,
+                    Some(stop_reason),
                 ),
                 temperature: final_temperature,
                 current_score: final_cost, // Use the recalculated final_cost

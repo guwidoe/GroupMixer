@@ -1,3 +1,5 @@
+use crate::models::StopReason;
+
 const DEFAULT_RUNTIME_TARGET_MAX_ITERATIONS_PER_SECOND: u64 = 1_000_000;
 const MIN_RUNTIME_TARGET_MAX_ITERATIONS: u64 = 100_000;
 
@@ -35,9 +37,29 @@ pub(crate) fn estimated_total_iterations(
         .min(configured_max_iterations.max(completed_iterations))
 }
 
+pub(crate) fn displayed_total_iterations(
+    completed_iterations: u64,
+    configured_max_iterations: u64,
+    elapsed_seconds: f64,
+    time_limit_seconds: Option<u64>,
+    stop_reason: Option<StopReason>,
+) -> u64 {
+    if matches!(stop_reason, Some(StopReason::TimeLimitReached)) {
+        return completed_iterations.max(1);
+    }
+
+    estimated_total_iterations(
+        completed_iterations,
+        configured_max_iterations,
+        elapsed_seconds,
+        time_limit_seconds,
+    )
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{estimated_total_iterations, runtime_target_iteration_cap};
+    use super::{displayed_total_iterations, estimated_total_iterations, runtime_target_iteration_cap};
+    use crate::models::StopReason;
 
     #[test]
     fn runtime_target_iteration_cap_scales_with_requested_seconds() {
@@ -55,6 +77,18 @@ mod tests {
     fn estimated_total_iterations_never_drops_below_completed_iterations() {
         let estimate = estimated_total_iterations(10_000, 3_000_000, 30.0, Some(3));
         assert_eq!(estimate, 10_000);
+    }
+
+    #[test]
+    fn displayed_total_iterations_matches_completed_iterations_after_time_stop() {
+        let displayed = displayed_total_iterations(
+            8_765,
+            3_000_000,
+            3.01,
+            Some(3),
+            Some(StopReason::TimeLimitReached),
+        );
+        assert_eq!(displayed, 8_765);
     }
 
 }
