@@ -17,6 +17,23 @@ This plan is specifically about the **frontend configuration and analytics exper
 - `solver1` / legacy simulated annealing
 - `solver3`
 
+## Current implementation status
+
+The repo now includes the first route-based solver workspace refactor:
+
+- shared workspace shell used by scenario setup and solver
+- route-based solver workspace under `/app/solver/:section`
+- default `Run Solver` page for the recommended workflow
+- manual solver-family pages for `solver1` and `solver3`
+- reusable solver workspace blocks for run controls, status, diagnostics, and tuning surfaces
+
+Implementation details now live in:
+
+- `docs/SOLVER_WORKSPACE_REFACTOR_PLAN.md`
+- `webapp/src/components/SolverWorkspace/ARCHITECTURE.md`
+
+The rest of this document remains useful as the broader multi-solver truthfulness and UI-model reference.
+
 ## Why this work is needed
 
 The current repo is only partially ready for this UX:

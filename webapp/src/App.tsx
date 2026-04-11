@@ -1,3 +1,4 @@
+/* eslint-disable react/no-multi-comp */
 import React, { useEffect } from 'react';
 import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { ManualEditor } from './components/ManualEditor';

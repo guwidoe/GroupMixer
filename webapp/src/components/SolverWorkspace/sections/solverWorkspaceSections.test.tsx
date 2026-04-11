@@ -111,6 +111,8 @@ describe('solver workspace sections', () => {
     expect(screen.getByText('SolverFamilyChooser')).toBeInTheDocument();
     expect(screen.getByText('SolverRunControls')).toBeInTheDocument();
     expect(screen.getByText('RecommendedSettingsPanel')).toBeInTheDocument();
+    expect(screen.getByText('LiveVisualizationPanel')).toBeInTheDocument();
+    expect(screen.getByText('DetailedMetricsPanel')).toBeInTheDocument();
     expect(screen.queryByText('SolverSettingsSections')).not.toBeInTheDocument();
   });
 
@@ -149,6 +151,8 @@ describe('solver workspace sections', () => {
     expect(screen.getByRole('heading', { name: 'Solver 3' })).toBeInTheDocument();
     expect(screen.getByText('Experimental')).toBeInTheDocument();
     expect(screen.getByText('SolverSettingsSections')).toBeInTheDocument();
+    expect(screen.getByText('LiveVisualizationPanel')).toBeInTheDocument();
+    expect(screen.getByText('DetailedMetricsPanel')).toBeInTheDocument();
     expect(screen.queryByText('SolverFamilyChooser')).not.toBeInTheDocument();
   });
 });
