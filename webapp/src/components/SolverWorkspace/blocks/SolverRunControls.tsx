@@ -14,6 +14,7 @@ interface SolverRunControlsProps {
   setSolverFormInputs: React.Dispatch<React.SetStateAction<SolverFormInputs>>;
   desiredRuntimeMain: number | null;
   setDesiredRuntimeMain: React.Dispatch<React.SetStateAction<number | null>>;
+  startMode: 'recommended' | 'manual';
   onStartSolver: (useRecommended: boolean) => void;
   onCancelSolver: () => void;
   onSaveBestSoFar: () => void;
@@ -30,6 +31,7 @@ export function SolverRunControls({
   setSolverFormInputs,
   desiredRuntimeMain,
   setDesiredRuntimeMain,
+  startMode,
   onStartSolver,
   onCancelSolver,
   onSaveBestSoFar,
@@ -39,6 +41,16 @@ export function SolverRunControls({
   const supportsRecommendedSettings = catalogReady
     ? selectedSolverCatalogEntry?.capabilities.supportsRecommendedSettings ?? false
     : false;
+  const shouldUseRecommended = startMode === 'recommended' && supportsRecommendedSettings;
+  const idleButtonLabel = catalogReady
+    ? startMode === 'manual'
+      ? 'Run with Manual Settings'
+      : shouldUseRecommended
+        ? 'Start Recommended Run'
+        : 'Start Solver'
+    : solverCatalogStatus === 'loading'
+      ? 'Loading Available Solvers...'
+      : 'Available Solvers Unavailable';
 
   return (
     <section
@@ -92,20 +104,12 @@ export function SolverRunControls({
 
         {!solverState.isRunning ? (
           <button
-            onClick={() => onStartSolver(supportsRecommendedSettings)}
+            onClick={() => onStartSolver(shouldUseRecommended)}
             className="btn-success flex flex-1 items-center justify-center space-x-2"
             disabled={!scenario || !catalogReady}
           >
             <Play className="h-4 w-4" />
-            <span>
-              {catalogReady
-                ? supportsRecommendedSettings
-                  ? 'Start Solver with Automatic Settings'
-                  : 'Start Solver with Current Settings'
-                : solverCatalogStatus === 'loading'
-                  ? 'Loading Available Solvers...'
-                  : 'Available Solvers Unavailable'}
-            </span>
+            <span>{idleButtonLabel}</span>
           </button>
         ) : (
           <div className="flex flex-1 gap-2">

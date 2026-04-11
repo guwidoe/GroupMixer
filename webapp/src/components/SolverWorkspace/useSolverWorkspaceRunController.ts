@@ -14,38 +14,6 @@ import type { Scenario, SolverSettings } from '../../types';
 import type { SolverFormInputs } from '../SolverPanel/types';
 import { useSolverActions } from '../SolverPanel/hooks/useSolverActions';
 
-function readStoredBoolean(key: string): boolean {
-  try {
-    return localStorage.getItem(key) === 'true';
-  } catch {
-    return false;
-  }
-}
-
-function writeStoredBoolean(key: string, value: boolean) {
-  try {
-    localStorage.setItem(key, String(value));
-  } catch {
-    // Ignore localStorage errors.
-  }
-}
-
-function readStoredString(key: string, fallback: string): string {
-  try {
-    return localStorage.getItem(key) || fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeStoredString(key: string, value: string) {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // Ignore localStorage errors.
-  }
-}
-
 export interface SolverWorkspaceRunController {
   scenario: Scenario | null;
   solverState: ReturnType<typeof useAppStore.getState>['solverState'];
@@ -72,14 +40,8 @@ export interface SolverWorkspaceRunController {
   setAllowedSessionsLocal: React.Dispatch<React.SetStateAction<number[] | null>>;
   showMetrics: boolean;
   toggleMetrics: () => void;
-  showLiveViz: boolean;
-  toggleLiveViz: () => void;
-  liveVizPluginId: string;
-  handleLiveVizPluginChange: (id: string) => void;
   showCancelConfirm: boolean;
   setShowCancelConfirm: React.Dispatch<React.SetStateAction<boolean>>;
-  liveVizState: Awaited<ReturnType<typeof useSolverActions>>['liveVizState'];
-  runScenarioSnapshotRef: Awaited<ReturnType<typeof useSolverActions>>['runScenarioSnapshotRef'];
   handleSettingsChange: (newSettings: Partial<SolverSettings>) => void;
   handleSelectSolverFamily: (familyId: SolverFamilyId) => void;
   handleStartSolver: (useRecommended?: boolean) => Promise<void>;
@@ -88,7 +50,6 @@ export interface SolverWorkspaceRunController {
   handleSaveBestSoFar: () => Promise<void>;
   handleResetSolver: () => void;
   handleAutoSetSettings: () => Promise<void>;
-  getLiveVizScenario: () => Scenario | null;
 }
 
 export function useSolverWorkspaceRunController(): SolverWorkspaceRunController {
@@ -115,14 +76,9 @@ export function useSolverWorkspaceRunController(): SolverWorkspaceRunController 
   const setWarmStartFromResult = useAppStore((state) => state.setWarmStartFromResult);
 
   const [warmStartSelection, setWarmStartSelection] = useState<string | null>(null);
-  const [showMetrics, setShowMetrics] = useState<boolean>(() => readStoredBoolean('solverMetricsExpanded'));
-  const [showLiveViz, setShowLiveViz] = useState<boolean>(() => readStoredBoolean('solverLiveVizEnabled'));
-  const showLiveVizRef = useRef(showLiveViz);
-  React.useEffect(() => {
-    showLiveVizRef.current = showLiveViz;
-  }, [showLiveViz]);
+  const [showMetrics, setShowMetrics] = useState(false);
+  const showLiveVizRef = useRef(false);
 
-  const [liveVizPluginId, setLiveVizPluginId] = useState<string>(() => readStoredString('solverLiveVizPlugin', 'scheduleMatrix'));
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [desiredRuntimeMain, setDesiredRuntimeMain] = useState<number | null>(3);
   const [desiredRuntimeSettings, setDesiredRuntimeSettings] = useState<number>(3);
@@ -184,8 +140,6 @@ export function useSolverWorkspaceRunController(): SolverWorkspaceRunController 
 
   const {
     runSettings,
-    liveVizState,
-    runScenarioSnapshotRef,
     handleStartSolver,
     handleCancelDiscard,
     handleCancelSave,
@@ -217,18 +171,6 @@ export function useSolverWorkspaceRunController(): SolverWorkspaceRunController 
 
   const displaySettings = runSettings || solverSettings;
 
-  const getLiveVizScenario = (): Scenario | null => {
-    const base = runScenarioSnapshotRef.current || scenario;
-    if (!base) {
-      return null;
-    }
-
-    return {
-      ...base,
-      settings: runSettings || solverSettings,
-    };
-  };
-
   return {
     scenario,
     solverState,
@@ -255,29 +197,10 @@ export function useSolverWorkspaceRunController(): SolverWorkspaceRunController 
     setAllowedSessionsLocal,
     showMetrics,
     toggleMetrics: () => {
-      setShowMetrics((previous) => {
-        const next = !previous;
-        writeStoredBoolean('solverMetricsExpanded', next);
-        return next;
-      });
-    },
-    showLiveViz,
-    toggleLiveViz: () => {
-      setShowLiveViz((previous) => {
-        const next = !previous;
-        writeStoredBoolean('solverLiveVizEnabled', next);
-        return next;
-      });
-    },
-    liveVizPluginId,
-    handleLiveVizPluginChange: (id: string) => {
-      setLiveVizPluginId(id);
-      writeStoredString('solverLiveVizPlugin', id);
+      setShowMetrics((previous) => !previous);
     },
     showCancelConfirm,
     setShowCancelConfirm,
-    liveVizState,
-    runScenarioSnapshotRef,
     handleSettingsChange,
     handleSelectSolverFamily,
     handleStartSolver,
@@ -286,6 +209,5 @@ export function useSolverWorkspaceRunController(): SolverWorkspaceRunController 
     handleSaveBestSoFar,
     handleResetSolver,
     handleAutoSetSettings,
-    getLiveVizScenario,
   };
 }

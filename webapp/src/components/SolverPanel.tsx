@@ -3,7 +3,6 @@ import { SolverCancelModal } from './SolverPanel/SolverCancelModal';
 import { useSolverWorkspaceRunController } from './SolverWorkspace/useSolverWorkspaceRunController';
 import { AllowedSessionsPanel } from './SolverWorkspace/blocks/AllowedSessionsPanel';
 import { DetailedMetricsPanel } from './SolverWorkspace/blocks/DetailedMetricsPanel';
-import { LiveVisualizationPanel } from './SolverWorkspace/blocks/LiveVisualizationPanel';
 import { RecommendedSettingsPanel } from './SolverWorkspace/blocks/RecommendedSettingsPanel';
 import { SolverFamilyChooser } from './SolverWorkspace/blocks/SolverFamilyChooser';
 import { SolverFamilyInfoPanel } from './SolverWorkspace/blocks/SolverFamilyInfoPanel';
@@ -44,6 +43,7 @@ export function SolverPanel({ hidePageHeader = false }: SolverPanelProps) {
         setSolverFormInputs={controller.setSolverFormInputs}
         desiredRuntimeMain={controller.desiredRuntimeMain}
         setDesiredRuntimeMain={controller.setDesiredRuntimeMain}
+        startMode="manual"
         onStartSolver={controller.handleStartSolver}
         onCancelSolver={() => controller.setShowCancelConfirm(true)}
         onSaveBestSoFar={controller.handleSaveBestSoFar}
@@ -51,16 +51,6 @@ export function SolverPanel({ hidePageHeader = false }: SolverPanelProps) {
       />
 
       <SolverStatusDashboard solverState={controller.solverState} displaySettings={controller.displaySettings} />
-
-      <LiveVisualizationPanel
-        solverStateIsRunning={controller.solverState.isRunning}
-        showLiveViz={controller.showLiveViz}
-        onToggleLiveViz={controller.toggleLiveViz}
-        liveVizState={controller.liveVizState}
-        liveVizPluginId={controller.liveVizPluginId}
-        onLiveVizPluginChange={controller.handleLiveVizPluginChange}
-        getLiveVizScenario={controller.getLiveVizScenario}
-      />
 
       <DetailedMetricsPanel
         solverState={controller.solverState}

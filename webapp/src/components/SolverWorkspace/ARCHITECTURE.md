@@ -96,7 +96,6 @@ Files:
 - `blocks/WarmStartPanel.tsx`
 - `blocks/AllowedSessionsPanel.tsx`
 - `blocks/SolverSettingsSections.tsx`
-- `blocks/LiveVisualizationPanel.tsx`
 - `blocks/DetailedMetricsPanel.tsx`
 - `blocks/SolverFamilyInfoPanel.tsx`
 

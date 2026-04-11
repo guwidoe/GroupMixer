@@ -1,10 +1,7 @@
 import React from 'react';
 import { AllowedSessionsPanel } from '../blocks/AllowedSessionsPanel';
-import { DetailedMetricsPanel } from '../blocks/DetailedMetricsPanel';
-import { LiveVisualizationPanel } from '../blocks/LiveVisualizationPanel';
 import { RecommendedSettingsPanel } from '../blocks/RecommendedSettingsPanel';
 import { SolverFamilyChooser } from '../blocks/SolverFamilyChooser';
-import { SolverFamilyInfoPanel } from '../blocks/SolverFamilyInfoPanel';
 import { SolverRunControls } from '../blocks/SolverRunControls';
 import { SolverStatusDashboard } from '../blocks/SolverStatusDashboard';
 import { WarmStartPanel } from '../blocks/WarmStartPanel';
@@ -24,7 +21,7 @@ export function RunSolverSection() {
             Run Solver
           </h1>
           <p className="mt-2 max-w-3xl text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Choose a solver family, apply recommended settings when supported, and monitor diagnostics without dropping into the full manual tuning surface.
+            Pick a solver family, optionally warm-start from an existing result, and launch the recommended workflow.
           </p>
         </div>
       </header>
@@ -36,7 +33,7 @@ export function RunSolverSection() {
         isRunning={controller.solverState.isRunning}
       />
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.95fr)]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.85fr)]">
         <div className="space-y-6">
           <SolverRunControls
             solverState={controller.solverState}
@@ -48,6 +45,7 @@ export function RunSolverSection() {
             setSolverFormInputs={controller.setSolverFormInputs}
             desiredRuntimeMain={controller.desiredRuntimeMain}
             setDesiredRuntimeMain={controller.setDesiredRuntimeMain}
+            startMode="recommended"
             onStartSolver={controller.handleStartSolver}
             onCancelSolver={() => controller.setShowCancelConfirm(true)}
             onSaveBestSoFar={controller.handleSaveBestSoFar}
@@ -90,29 +88,6 @@ export function RunSolverSection() {
         </div>
       </div>
 
-      <div className="space-y-6">
-        <LiveVisualizationPanel
-          solverStateIsRunning={controller.solverState.isRunning}
-          showLiveViz={controller.showLiveViz}
-          onToggleLiveViz={controller.toggleLiveViz}
-          liveVizState={controller.liveVizState}
-          liveVizPluginId={controller.liveVizPluginId}
-          onLiveVizPluginChange={controller.handleLiveVizPluginChange}
-          getLiveVizScenario={controller.getLiveVizScenario}
-        />
-
-        <DetailedMetricsPanel
-          solverState={controller.solverState}
-          displaySettings={controller.displaySettings}
-          showMetrics={controller.showMetrics}
-          onToggleMetrics={controller.toggleMetrics}
-        />
-
-        <SolverFamilyInfoPanel
-          displaySettings={controller.displaySettings}
-          solverCatalogEntry={controller.selectedSolverCatalogEntry}
-        />
-      </div>
     </section>
   );
 }

@@ -84,10 +84,6 @@ vi.mock('../blocks/SolverSettingsSections', () => ({
   SolverSettingsSections: () => <div>SolverSettingsSections</div>,
 }));
 
-vi.mock('../blocks/LiveVisualizationPanel', () => ({
-  LiveVisualizationPanel: () => <div>LiveVisualizationPanel</div>,
-}));
-
 vi.mock('../blocks/DetailedMetricsPanel', () => ({
   DetailedMetricsPanel: () => <div>DetailedMetricsPanel</div>,
 }));
@@ -111,8 +107,9 @@ describe('solver workspace sections', () => {
     expect(screen.getByText('SolverFamilyChooser')).toBeInTheDocument();
     expect(screen.getByText('SolverRunControls')).toBeInTheDocument();
     expect(screen.getByText('RecommendedSettingsPanel')).toBeInTheDocument();
-    expect(screen.getByText('LiveVisualizationPanel')).toBeInTheDocument();
-    expect(screen.getByText('DetailedMetricsPanel')).toBeInTheDocument();
+    expect(screen.queryByText('LiveVisualizationPanel')).not.toBeInTheDocument();
+    expect(screen.queryByText('DetailedMetricsPanel')).not.toBeInTheDocument();
+    expect(screen.queryByText('SolverFamilyInfoPanel')).not.toBeInTheDocument();
     expect(screen.queryByText('SolverSettingsSections')).not.toBeInTheDocument();
   });
 
@@ -151,8 +148,9 @@ describe('solver workspace sections', () => {
     expect(screen.getByRole('heading', { name: 'Solver 3' })).toBeInTheDocument();
     expect(screen.getByText('Experimental')).toBeInTheDocument();
     expect(screen.getByText('SolverSettingsSections')).toBeInTheDocument();
-    expect(screen.getByText('LiveVisualizationPanel')).toBeInTheDocument();
+    expect(screen.queryByText('LiveVisualizationPanel')).not.toBeInTheDocument();
     expect(screen.getByText('DetailedMetricsPanel')).toBeInTheDocument();
+    expect(screen.getByText('SolverFamilyInfoPanel')).toBeInTheDocument();
     expect(screen.queryByText('SolverFamilyChooser')).not.toBeInTheDocument();
   });
 });

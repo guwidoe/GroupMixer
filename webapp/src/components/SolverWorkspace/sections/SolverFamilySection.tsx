@@ -1,8 +1,8 @@
 import React from 'react';
 import type { SolverWorkspaceResolvedSection } from '../navigation/solverWorkspaceNavTypes';
+import { getSolverUiSpec } from '../../../services/solverUi';
 import { AllowedSessionsPanel } from '../blocks/AllowedSessionsPanel';
 import { DetailedMetricsPanel } from '../blocks/DetailedMetricsPanel';
-import { LiveVisualizationPanel } from '../blocks/LiveVisualizationPanel';
 import { RecommendedSettingsPanel } from '../blocks/RecommendedSettingsPanel';
 import { SolverFamilyInfoPanel } from '../blocks/SolverFamilyInfoPanel';
 import { SolverRunControls } from '../blocks/SolverRunControls';
@@ -17,6 +17,8 @@ interface SolverFamilySectionProps {
 
 export function SolverFamilySection({ section }: SolverFamilySectionProps) {
   const controller = useSolverWorkspaceRunController();
+  const solverUiSpec = section.familyId ? getSolverUiSpec(section.familyId) : null;
+  const description = solverUiSpec?.shortDescription ?? section.description;
 
   return (
     <section className="space-y-6">
@@ -42,7 +44,7 @@ export function SolverFamilySection({ section }: SolverFamilySectionProps) {
           ) : null}
         </div>
         <p className="max-w-3xl text-sm" style={{ color: 'var(--text-secondary)' }}>
-          {section.tooltipDescription ?? section.description}
+          {description}
         </p>
       </header>
 
@@ -58,6 +60,7 @@ export function SolverFamilySection({ section }: SolverFamilySectionProps) {
             setSolverFormInputs={controller.setSolverFormInputs}
             desiredRuntimeMain={controller.desiredRuntimeMain}
             setDesiredRuntimeMain={controller.setDesiredRuntimeMain}
+            startMode="manual"
             onStartSolver={controller.handleStartSolver}
             onCancelSolver={() => controller.setShowCancelConfirm(true)}
             onSaveBestSoFar={controller.handleSaveBestSoFar}
@@ -110,16 +113,6 @@ export function SolverFamilySection({ section }: SolverFamilySectionProps) {
       />
 
       <div className="space-y-6">
-        <LiveVisualizationPanel
-          solverStateIsRunning={controller.solverState.isRunning}
-          showLiveViz={controller.showLiveViz}
-          onToggleLiveViz={controller.toggleLiveViz}
-          liveVizState={controller.liveVizState}
-          liveVizPluginId={controller.liveVizPluginId}
-          onLiveVizPluginChange={controller.handleLiveVizPluginChange}
-          getLiveVizScenario={controller.getLiveVizScenario}
-        />
-
         <DetailedMetricsPanel
           solverState={controller.solverState}
           displaySettings={controller.displaySettings}
