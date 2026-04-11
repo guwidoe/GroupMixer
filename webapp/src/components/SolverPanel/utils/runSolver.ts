@@ -61,6 +61,30 @@ interface SolveExecutionResult {
   runScenario: Scenario;
 }
 
+function normalizeCompletedRunSettings(
+  selectedSettings: SolverSettings,
+  lastProgress: RuntimeProgressUpdate | null,
+): SolverSettings {
+  const finalMaxIterations = lastProgress?.max_iterations;
+
+  if (
+    !selectedSettings.stop_conditions.time_limit_seconds
+    || typeof finalMaxIterations !== 'number'
+    || !Number.isFinite(finalMaxIterations)
+    || finalMaxIterations <= 0
+  ) {
+    return selectedSettings;
+  }
+
+  return {
+    ...selectedSettings,
+    stop_conditions: {
+      ...selectedSettings.stop_conditions,
+      max_iterations: finalMaxIterations,
+    },
+  };
+}
+
 function beginRunLifecycle({
   currentScenario,
   useRecommended,
@@ -304,6 +328,9 @@ export async function runSolver(args: RunSolverArgs) {
       setRunSettings: args.setRunSettings,
       addNotification: args.addNotification,
     });
+    const completedRunSettings = normalizeCompletedRunSettings(selectedSettings, lastProgress);
+
+    args.setRunSettings(completedRunSettings);
 
     args.solverCompletedRef.current = true;
     args.setSolution(solution);
@@ -323,7 +350,7 @@ export async function runSolver(args: RunSolverArgs) {
     const savedResult = persistCompletedRunResult({
       activeScenarioId,
       solution,
-      selectedSettings,
+      selectedSettings: completedRunSettings,
       runScenarioSnapshotRef: args.runScenarioSnapshotRef,
       addResult: args.addResult,
       addNotification: args.addNotification,

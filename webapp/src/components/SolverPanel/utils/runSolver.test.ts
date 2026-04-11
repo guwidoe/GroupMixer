@@ -274,6 +274,61 @@ describe('runSolver', () => {
     );
   });
 
+  it('persists the final runtime iteration total instead of the safety cap', async () => {
+    const args = createArgs({ useRecommended: true });
+    const selectedSettings = createSampleSolverSettings();
+    selectedSettings.stop_conditions.max_iterations = 150000000;
+    selectedSettings.stop_conditions.time_limit_seconds = 3;
+    const solution = createSampleSolution({ iteration_count: 84237 });
+    const lastProgress = {
+      iteration: 84237,
+      max_iterations: 84237,
+      elapsed_seconds: 3.0,
+      current_score: 15,
+      best_score: 10,
+      no_improvement_count: 3,
+      current_constraint_penalty: 0,
+      current_repetition_penalty: 0,
+      current_balance_penalty: 0,
+      best_constraint_penalty: 0,
+      best_repetition_penalty: 0,
+      best_balance_penalty: 0,
+      stop_reason: 'time_limit_reached' as const,
+    };
+
+    vi.mocked(solveScenario).mockResolvedValue({
+      solution,
+      lastProgress,
+      selectedSettings,
+      runScenario: {
+        ...args.scenario,
+        settings: selectedSettings,
+      },
+    });
+
+    await runSolver(args);
+
+    expect(args.setRunSettings).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        stop_conditions: expect.objectContaining({
+          max_iterations: 84237,
+          time_limit_seconds: 3,
+        }),
+      }),
+    );
+    expect(args.addResult).toHaveBeenCalledWith(
+      solution,
+      expect.objectContaining({
+        stop_conditions: expect.objectContaining({
+          max_iterations: 84237,
+          time_limit_seconds: 3,
+        }),
+      }),
+      undefined,
+      expect.any(Object),
+    );
+  });
+
   it('falls back to a normal solve when the selected warm-start result is missing', async () => {
     const args = createArgs({
       warmStartResultId: 'missing-result',
