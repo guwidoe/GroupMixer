@@ -45,6 +45,25 @@ export function RunSolverSection() {
         onResetSolver={controller.handleResetSolver}
       />
 
+      {controller.solverCatalogStatus === 'error' ? (
+        <div
+          className="rounded-2xl border px-4 py-3"
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--color-danger) 10%, var(--bg-primary))',
+            borderColor: 'color-mix(in srgb, var(--color-danger) 24%, var(--border-primary))',
+          }}
+        >
+          <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            Available solvers unavailable
+          </div>
+          {controller.solverCatalogErrorMessage ? (
+            <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              {controller.solverCatalogErrorMessage}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="rounded-2xl border p-4" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
         <button
           type="button"

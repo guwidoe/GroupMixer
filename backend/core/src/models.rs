@@ -1147,7 +1147,7 @@ pub struct ProgressUpdate {
     // === Basic Progress Information ===
     /// Current iteration number (0-based)
     pub iteration: u64,
-    /// Total number of iterations planned
+    /// Total iterations planned for the run, or the current runtime-budget estimate when the solver is pacing to a time target.
     pub max_iterations: u64,
     /// Current temperature (for simulated annealing)
     pub temperature: f64,

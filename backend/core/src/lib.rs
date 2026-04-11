@@ -93,6 +93,7 @@ pub mod solver1;
 pub mod solver2;
 pub mod solver3;
 pub mod solver_support;
+mod runtime_target;
 
 /// Runs the optimization solver with the given input configuration.
 ///

@@ -127,6 +127,9 @@ impl From<&gm_core::engines::SolverDescriptor> for SolverDescriptorContract {
 pub struct RecommendSettingsRequest {
     /// The scenario definition to analyze for runtime-aware recommendation.
     pub scenario: ScenarioDefinitionContract,
+    /// Optional solver configuration whose selected family should receive the runtime-targeted recommendation.
+    #[serde(default)]
+    pub solver: Option<SolverConfigurationContract>,
     #[serde(default)]
     pub objectives: Vec<gm_core::models::Objective>,
     #[serde(default)]

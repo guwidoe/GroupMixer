@@ -28,6 +28,7 @@ use crate::models::{
     MoveSelectionMode, ProgressCallback, ProgressUpdate, SolverBenchmarkTelemetry,
     SolverConfiguration, SolverResult, StopReason,
 };
+use crate::runtime_target::estimated_total_iterations;
 use crate::solver1::search::Solver;
 use crate::solver1::{derive_phase_seed, State, SEARCH_SEED_SALT};
 use crate::solver_support::SolverError;
@@ -175,15 +176,33 @@ fn get_elapsed_seconds_between(start: f64, end: f64) -> f64 {
     (end - start) / 1000.0 // Convert milliseconds to seconds
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-fn get_elapsed_seconds_since_start(start_time: Instant) -> u64 {
-    start_time.elapsed().as_secs()
+fn cooling_progress_since_reheat(
+    iterations_since_last_reheat: u64,
+    remaining_iterations: u64,
+    elapsed_since_last_reheat: f64,
+    remaining_time_seconds: Option<f64>,
+) -> f64 {
+    let iter_progress = if remaining_iterations <= 1 {
+        1.0
+    } else {
+        (iterations_since_last_reheat as f64 / (remaining_iterations - 1) as f64).clamp(0.0, 1.0)
+    };
+
+    let time_progress = match remaining_time_seconds {
+        Some(limit) if limit > 0.0 => (elapsed_since_last_reheat / limit).clamp(0.0, 1.0),
+        _ => 0.0,
+    };
+
+    iter_progress.max(time_progress)
 }
 
-#[cfg(target_arch = "wasm32")]
-fn get_elapsed_seconds_since_start(start_time: f64) -> u64 {
-    let now = js_sys::Date::now();
-    ((now - start_time) / 1000.0) as u64 // Convert milliseconds to seconds
+fn temperature_for_cooling_progress(
+    initial_temperature: f64,
+    final_temperature: f64,
+    cooling_progress: f64,
+) -> f64 {
+    initial_temperature
+        * (final_temperature / initial_temperature).powf(cooling_progress.clamp(0.0, 1.0))
 }
 
 /// Comprehensive tracking structure for algorithm metrics.
@@ -994,6 +1013,7 @@ impl Solver for SimulatedAnnealing {
         // Track reheating state
         let mut reheat_count = 0;
         let mut last_reheat_iteration = 0u64;
+        let mut last_reheat_elapsed_seconds = 0.0_f64;
         let cycle_length = if self.reheat_cycles > 0 {
             // Avoid division by zero; ensure at least length 1
             (self.max_iterations / self.reheat_cycles).max(1)
@@ -1025,6 +1045,7 @@ impl Solver for SimulatedAnnealing {
 
         for i in 0..self.max_iterations {
             final_iteration = i;
+            let elapsed_since_start = get_elapsed_seconds(start_time);
 
             // Two reheating modes:
             // 1) Fixed cycle-based reheats if reheat_cycles > 0
@@ -1036,6 +1057,7 @@ impl Solver for SimulatedAnnealing {
                         // We crossed a cycle boundary: perform a reheat
                         reheat_count += 1;
                         last_reheat_iteration = cycle_index * cycle_length;
+                        last_reheat_elapsed_seconds = elapsed_since_start;
                         no_improvement_counter = 0;
                         if state.logging.log_stop_condition {
                             println!(
@@ -1057,6 +1079,7 @@ impl Solver for SimulatedAnnealing {
                 // Only reheat if we haven't reheated recently
                 reheat_count += 1;
                 last_reheat_iteration = i;
+                last_reheat_elapsed_seconds = elapsed_since_start;
                 no_improvement_counter = 0; // Reset the no improvement counter
 
                 if state.logging.log_stop_condition {
@@ -1079,13 +1102,22 @@ impl Solver for SimulatedAnnealing {
                     (iterations_since_last_reheat, remaining_iterations)
                 };
 
-            let temperature = if remaining_for_cooling > 0 {
-                self.initial_temperature
-                    * (self.final_temperature / self.initial_temperature)
-                        .powf(iterations_since_last_reheat as f64 / remaining_for_cooling as f64)
-            } else {
-                self.final_temperature
-            };
+            let elapsed_since_last_reheat =
+                (elapsed_since_start - last_reheat_elapsed_seconds).max(0.0);
+            let remaining_time_for_cooling = self.time_limit_seconds.map(|limit| {
+                (limit as f64 - last_reheat_elapsed_seconds).max(0.0)
+            });
+            let cooling_progress = cooling_progress_since_reheat(
+                iterations_since_last_reheat,
+                remaining_for_cooling,
+                elapsed_since_last_reheat,
+                remaining_time_for_cooling,
+            );
+            let temperature = temperature_for_cooling_progress(
+                self.initial_temperature,
+                self.final_temperature,
+                cooling_progress,
+            );
 
             let mut improvement_found = false;
 
@@ -1101,7 +1133,7 @@ impl Solver for SimulatedAnnealing {
                 if i == 0 || elapsed_since_last_callback >= 0.1 {
                     progress_callback_count += 1;
                     let current_cost = current_state.current_cost;
-                    let elapsed = get_elapsed_seconds(start_time);
+                    let elapsed = elapsed_since_start;
                     let iterations_since_last_reheat = if self.reheat_cycles > 0 && cycle_length > 0
                     {
                         i - ((i / cycle_length) * cycle_length)
@@ -1122,15 +1154,22 @@ impl Solver for SimulatedAnnealing {
                         search_efficiency,
                     ) = metrics.calculate_metrics(elapsed);
 
-                    // Calculate cooling progress
-                    let cooling_progress = if self.reheat_cycles > 0 && cycle_length > 0 {
-                        (iterations_since_last_reheat as f64) / (cycle_length as f64)
-                    } else if self.max_iterations > 0 {
-                        iterations_since_last_reheat as f64
-                            / (self.max_iterations - last_reheat_iteration) as f64
+                    let remaining_iterations_for_progress = if self.reheat_cycles > 0 && cycle_length > 0 {
+                        cycle_length
                     } else {
-                        0.0
+                        self.max_iterations - last_reheat_iteration
                     };
+                    let elapsed_since_last_reheat =
+                        (elapsed - last_reheat_elapsed_seconds).max(0.0);
+                    let remaining_time_for_progress = self.time_limit_seconds.map(|limit| {
+                        (limit as f64 - last_reheat_elapsed_seconds).max(0.0)
+                    });
+                    let cooling_progress = cooling_progress_since_reheat(
+                        iterations_since_last_reheat,
+                        remaining_iterations_for_progress,
+                        elapsed_since_last_reheat,
+                        remaining_time_for_progress,
+                    );
 
                     // Calculate average time per iteration
                     let avg_time_per_iteration_ms = if i > 0 {
@@ -1149,7 +1188,12 @@ impl Solver for SimulatedAnnealing {
                     let progress = ProgressUpdate {
                         // Basic progress information
                         iteration: i + 1, // Report 1-based iteration numbers
-                        max_iterations: self.max_iterations,
+                        max_iterations: estimated_total_iterations(
+                            i + 1,
+                            self.max_iterations,
+                            elapsed,
+                            self.time_limit_seconds,
+                        ),
                         temperature,
                         current_score: current_cost,
                         best_score: best_cost,
@@ -1691,7 +1735,7 @@ impl Solver for SimulatedAnnealing {
             }
 
             if let Some(time_limit) = self.time_limit_seconds {
-                if get_elapsed_seconds_since_start(start_time) >= time_limit {
+                if elapsed_since_start >= time_limit as f64 {
                     stop_reason = StopReason::TimeLimitReached;
                     if state.logging.log_stop_condition {
                         println!("Stopping early: time limit of {time_limit} seconds reached.");
@@ -1781,15 +1825,23 @@ impl Solver for SimulatedAnnealing {
                     (iterations_since_last_reheat, remaining_iterations)
                 };
 
-            let final_temperature = if remaining_for_cooling > 0 {
-                self.initial_temperature
-                    * (self.final_temperature / self.initial_temperature)
-                        .powf(iterations_since_last_reheat as f64 / remaining_for_cooling as f64)
-            } else {
-                self.final_temperature
-            };
-
             let elapsed = get_elapsed_seconds(start_time);
+            let elapsed_since_last_reheat = (elapsed - last_reheat_elapsed_seconds).max(0.0);
+            let remaining_time_for_cooling = self.time_limit_seconds.map(|limit| {
+                (limit as f64 - last_reheat_elapsed_seconds).max(0.0)
+            });
+            let cooling_progress = cooling_progress_since_reheat(
+                iterations_since_last_reheat,
+                remaining_for_cooling,
+                elapsed_since_last_reheat,
+                remaining_time_for_cooling,
+            );
+            let final_temperature = temperature_for_cooling_progress(
+                self.initial_temperature,
+                self.final_temperature,
+                cooling_progress,
+            );
+
             let (
                 overall_acceptance_rate,
                 recent_acceptance_rate,
@@ -1802,15 +1854,6 @@ impl Solver for SimulatedAnnealing {
                 search_efficiency,
             ) = metrics.calculate_metrics(elapsed);
 
-            let cooling_progress = if self.reheat_cycles > 0 && cycle_length > 0 {
-                (iterations_since_last_reheat as f64) / (cycle_length as f64)
-            } else if self.max_iterations > 0 {
-                iterations_since_last_reheat as f64
-                    / (self.max_iterations - last_reheat_iteration) as f64
-            } else {
-                1.0 // Completed
-            };
-
             let avg_time_per_iteration_ms = if final_iteration > 0 {
                 (elapsed * 1000.0) / final_iteration as f64
             } else {
@@ -1820,7 +1863,12 @@ impl Solver for SimulatedAnnealing {
             let final_progress = ProgressUpdate {
                 // Basic progress information
                 iteration: final_iteration + 1, // Report 1-based iteration numbers
-                max_iterations: self.max_iterations,
+                max_iterations: estimated_total_iterations(
+                    final_iteration + 1,
+                    self.max_iterations,
+                    elapsed,
+                    self.time_limit_seconds,
+                ),
                 temperature: final_temperature,
                 current_score: final_cost, // Use the recalculated final_cost
                 // Report the tracked best_cost (kept consistent when recording bests)
@@ -1928,7 +1976,10 @@ impl Solver for SimulatedAnnealing {
 
 #[cfg(test)]
 mod tests {
-    use super::select_clique_source_group;
+    use super::{
+        cooling_progress_since_reheat, select_clique_source_group,
+        temperature_for_cooling_progress,
+    };
     use crate::models::{
         ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
         SimulatedAnnealingParams, SolverConfiguration, SolverParams, StopConditions,
@@ -1965,6 +2016,15 @@ mod tests {
             move_policy: None,
             allowed_sessions: None,
         }
+    }
+
+    #[test]
+    fn runtime_budget_progress_can_be_driven_by_elapsed_time() {
+        let progress = cooling_progress_since_reheat(50, 10_000, 2.7, Some(3.0));
+        assert!(progress > 0.85, "expected time progress to dominate, got {progress}");
+
+        let temperature = temperature_for_cooling_progress(10.0, 0.1, progress);
+        assert!(temperature < 0.25, "expected near-final temperature, got {temperature}");
     }
 
     #[test]

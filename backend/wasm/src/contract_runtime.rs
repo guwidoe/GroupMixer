@@ -8,7 +8,7 @@ use gm_contracts::types::{
     PublicErrorEnvelope, RecommendSettingsRequest, ResultSummary, ValidateResponse, ValidationIssue,
 };
 use gm_core::{
-    calculate_recommended_settings, default_solver_configuration,
+    calculate_recommended_settings_for, default_solver_configuration, default_solver_kind,
     models::{
         ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, ProgressUpdate,
         SolverConfiguration, SolverResult,
@@ -364,7 +364,24 @@ pub fn recommend_settings_contract(
     request: &RecommendSettingsRequest,
 ) -> Result<SolverConfiguration, PublicErrorEnvelope> {
     let scenario_definition: ProblemDefinition = (&request.scenario).into();
-    calculate_recommended_settings(
+    let solver_kind = request
+        .solver
+        .as_ref()
+        .map(|solver| {
+            solver
+                .validate_solver_selection()
+                .map_err(|error| invalid_input_error(
+                    "recommend-settings",
+                    error,
+                    Some("solver.solver_type".to_string()),
+                    vec![],
+                ))
+        })
+        .transpose()?
+        .unwrap_or_else(default_solver_kind);
+
+    calculate_recommended_settings_for(
+        solver_kind,
         &scenario_definition,
         &request.objectives,
         &request.constraints,
@@ -477,11 +494,12 @@ impl From<WasmScenarioRecommendSettingsRequest> for RecommendSettingsRequest {
 
         RecommendSettingsRequest {
             scenario: ProblemDefinition {
-                people: scenario.people,
-                groups: scenario.groups,
+                people: scenario.people.clone(),
+                groups: scenario.groups.clone(),
                 num_sessions: scenario.num_sessions,
             }
             .into(),
+            solver: Some(scenario.settings),
             objectives: default_objectives(scenario.objectives),
             constraints: scenario.constraints,
             desired_runtime_seconds,
@@ -619,12 +637,30 @@ mod tests {
         let input = valid_input();
         let request = RecommendSettingsRequest {
             scenario: input.problem.into(),
+            solver: None,
             objectives: input.objectives,
             constraints: input.constraints,
             desired_runtime_seconds: 11,
         };
         let configuration = recommend_settings_contract(&request).expect("recommend succeeds");
         assert_eq!(configuration.stop_conditions.time_limit_seconds, Some(11));
+    }
+
+    #[test]
+    fn recommend_settings_contract_routes_to_requested_solver_family() {
+        let mut input = valid_input();
+        input.solver = gm_core::default_solver_configuration_for(gm_core::models::SolverKind::Solver3);
+        let request = RecommendSettingsRequest {
+            scenario: input.problem.into(),
+            solver: Some(input.solver),
+            objectives: input.objectives,
+            constraints: input.constraints,
+            desired_runtime_seconds: 7,
+        };
+
+        let configuration = recommend_settings_contract(&request).expect("recommend succeeds");
+        assert_eq!(configuration.solver_type, "solver3");
+        assert_eq!(configuration.stop_conditions.time_limit_seconds, Some(7));
     }
 
     #[test]

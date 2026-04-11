@@ -434,6 +434,6 @@ mod tests {
         assert!(descriptor.capabilities.supports_progress_callback);
         assert!(descriptor.capabilities.supports_benchmark_observer);
         assert!(descriptor.capabilities.supports_deterministic_seed);
-        assert!(!descriptor.capabilities.supports_recommended_settings);
+        assert!(descriptor.capabilities.supports_recommended_settings);
     }
 }

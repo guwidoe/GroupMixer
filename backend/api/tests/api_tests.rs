@@ -241,6 +241,7 @@ async fn contract_solver_endpoints_return_public_shapes() {
                 .body(Body::from(
                     serde_json::to_vec(&RecommendSettingsRequest {
                         scenario: valid_input().problem.into(),
+                        solver: None,
                         objectives: Vec::new(),
                         constraints: Vec::new(),
                         desired_runtime_seconds: 11,

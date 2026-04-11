@@ -3,12 +3,13 @@
  */
 
 import React from 'react';
-import type { SolverSettings } from '../../types';
+import type { ProgressUpdate, SolverSettings } from '../../types';
 
 interface SolverState {
   currentIteration: number;
   elapsedTime: number;
   noImprovementCount: number;
+  latestProgress?: ProgressUpdate | null;
 }
 
 interface ProgressBarsProps {
@@ -17,10 +18,14 @@ interface ProgressBarsProps {
 }
 
 const ProgressBars: React.FC<ProgressBarsProps> = ({ solverState, displaySettings }) => {
+  const effectiveMaxIterations = solverState.latestProgress?.max_iterations
+    ?? displaySettings.stop_conditions.max_iterations
+    ?? 0;
+
   const getProgressPercentage = () => {
-    if (!displaySettings.stop_conditions.max_iterations) return 0;
+    if (!effectiveMaxIterations) return 0;
     return Math.min(
-      (solverState.currentIteration / displaySettings.stop_conditions.max_iterations) * 100,
+      (solverState.currentIteration / effectiveMaxIterations) * 100,
       100
     );
   };
@@ -44,7 +49,7 @@ const ProgressBars: React.FC<ProgressBarsProps> = ({ solverState, displaySetting
       <div>
         <div className="flex justify-between text-sm" style={{ color: 'var(--text-secondary)' }}>
           <span>Iteration Progress</span>
-          <span>{solverState.currentIteration.toLocaleString()} / {(displaySettings.stop_conditions.max_iterations || 0).toLocaleString()}</span>
+          <span>{solverState.currentIteration.toLocaleString()} / {effectiveMaxIterations.toLocaleString()}</span>
         </div>
         <div className="w-full" style={{ backgroundColor: 'var(--border-secondary)' }}>
           <div

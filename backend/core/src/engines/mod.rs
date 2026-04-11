@@ -1,9 +1,10 @@
 use crate::models::{
     ApiInput, BenchmarkObserver, Constraint, LoggingOptions, Objective, ProblemDefinition,
-    ProgressCallback, ProgressUpdate, SimulatedAnnealingParams, Solver2Params, Solver3Params,
+    ProgressCallback, SimulatedAnnealingParams, Solver2Params, Solver3Params,
     SolverConfiguration, SolverKind, SolverParams, SolverResult, StopConditions,
     DEFAULT_SOLVER_KIND,
 };
+use crate::runtime_target::runtime_target_iteration_cap;
 use crate::solver1::search::simulated_annealing::SimulatedAnnealing;
 use crate::solver1::search::Solver as _;
 use crate::solver1::State;
@@ -86,7 +87,7 @@ const SOLVER3_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
         supports_initial_schedule: true,
         supports_progress_callback: true,
         supports_benchmark_observer: true,
-        supports_recommended_settings: false,
+        supports_recommended_settings: true,
         supports_deterministic_seed: true,
     },
     notes: SOLVER3_BOOTSTRAP_NOTES,
@@ -151,7 +152,10 @@ impl SolverEngine for Solver1Engine {
         &self,
         request: RecommendationRequest<'_>,
     ) -> Result<SolverConfiguration, SolverError> {
-        recommend_solver1_configuration(request)
+        Ok(runtime_target_configuration(
+            self.default_configuration(),
+            request.desired_runtime_seconds,
+        ))
     }
 }
 
@@ -231,10 +235,11 @@ impl SolverEngine for Solver3Engine {
 
     fn recommend_configuration(
         &self,
-        _request: RecommendationRequest<'_>,
+        request: RecommendationRequest<'_>,
     ) -> Result<SolverConfiguration, SolverError> {
-        Err(crate::solver3::not_yet_implemented(
-            "runtime-aware recommendation for solver3",
+        Ok(runtime_target_configuration(
+            self.default_configuration(),
+            request.desired_runtime_seconds,
         ))
     }
 }
@@ -283,121 +288,16 @@ fn create_solver_engine(kind: SolverKind) -> Box<dyn SolverEngine> {
     }
 }
 
-fn recommend_solver1_configuration(
-    request: RecommendationRequest<'_>,
-) -> Result<SolverConfiguration, SolverError> {
-    const TRIAL_ITERS: u64 = 10_000;
-
-    let trial_cfg = SolverConfiguration {
-        solver_type: "SimulatedAnnealing".into(),
-        stop_conditions: StopConditions {
-            max_iterations: Some(TRIAL_ITERS),
-            time_limit_seconds: None,
-            no_improvement_iterations: None,
-        },
-        solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
-            initial_temperature: 1_000_000.0,
-            final_temperature: 1_000_000.0,
-            cooling_schedule: "geometric".into(),
-            reheat_cycles: Some(0),
-            reheat_after_no_improvement: Some(0),
-        }),
-        logging: Default::default(),
-        telemetry: Default::default(),
-        seed: None,
-        move_policy: None,
-        allowed_sessions: None,
-    };
-
-    let trial_objectives: Vec<Objective> = if request.objectives.is_empty() {
-        vec![Objective {
-            r#type: "maximize_unique_contacts".into(),
-            weight: 1.0,
-        }]
-    } else {
-        request.objectives.to_vec()
-    };
-
-    let trial_input = ApiInput {
-        initial_schedule: None,
-        construction_seed_schedule: None,
-        problem: request.problem.clone(),
-        objectives: trial_objectives,
-        constraints: request.constraints.to_vec(),
-        solver: trial_cfg.clone(),
-    };
-
-    use std::sync::{Arc, Mutex};
-    let last_prog: Arc<Mutex<Option<ProgressUpdate>>> = Arc::new(Mutex::new(None));
-    let cb_holder = last_prog.clone();
-    let progress: ProgressCallback = Box::new(move |p: &ProgressUpdate| {
-        *cb_holder.lock().unwrap() = Some(p.clone());
-        true
-    });
-
-    let mut state = State::new(&trial_input)?;
-    let solver = SimulatedAnnealing::new(&trial_cfg);
-
-    #[cfg(not(target_arch = "wasm32"))]
-    let trial_secs = {
-        let start = std::time::Instant::now();
-        solver.solve(&mut state, Some(&progress), None)?;
-        start.elapsed().as_secs_f64()
-    };
-
-    #[cfg(target_arch = "wasm32")]
-    let trial_secs = {
-        use js_sys::Date;
-        let start = Date::now();
-        solver.solve(&mut state, Some(&progress), None)?;
-        (Date::now() - start) / 1000.0
-    };
-
-    let metrics = last_prog
-        .lock()
-        .unwrap()
-        .clone()
-        .ok_or_else(|| SolverError::ValidationError("Trial run produced no progress".into()))?;
-
-    let max_uphill_delta = metrics
-        .biggest_attempted_increase
-        .max(metrics.biggest_accepted_increase);
-
-    let init_temp = if max_uphill_delta > 0.0 {
-        -max_uphill_delta / 0.01_f64.ln()
-    } else {
-        1.0
-    };
-
-    let final_temp = -1.0 / (0.00001f64).ln();
-    let t_per_iter = trial_secs / TRIAL_ITERS as f64;
-    let target_secs = request.desired_runtime_seconds as f64 * 0.9;
-    let total_iters = if t_per_iter > 0.0 {
-        (target_secs / t_per_iter).round() as u64
-    } else {
-        2_000_000
-    };
-
-    Ok(SolverConfiguration {
-        solver_type: "SimulatedAnnealing".into(),
-        stop_conditions: StopConditions {
-            max_iterations: Some(total_iters),
-            time_limit_seconds: Some(request.desired_runtime_seconds),
-            no_improvement_iterations: Some(total_iters / 2),
-        },
-        solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
-            initial_temperature: init_temp,
-            final_temperature: final_temp,
-            cooling_schedule: "geometric".into(),
-            reheat_cycles: Some(0),
-            reheat_after_no_improvement: Some(total_iters / 3),
-        }),
-        logging: Default::default(),
-        telemetry: Default::default(),
-        seed: None,
-        move_policy: None,
-        allowed_sessions: None,
-    })
+fn runtime_target_configuration(
+    mut configuration: SolverConfiguration,
+    desired_runtime_seconds: u64,
+) -> SolverConfiguration {
+    let desired_runtime_seconds = desired_runtime_seconds.max(1);
+    configuration.stop_conditions.max_iterations =
+        Some(runtime_target_iteration_cap(desired_runtime_seconds));
+    configuration.stop_conditions.time_limit_seconds = Some(desired_runtime_seconds);
+    configuration.stop_conditions.no_improvement_iterations = None;
+    configuration
 }
 
 #[cfg(test)]
@@ -485,6 +385,9 @@ mod tests {
             config.solver_params,
             SolverParams::SimulatedAnnealing(_)
         ));
+        assert_eq!(config.stop_conditions.time_limit_seconds, Some(1));
+        assert_eq!(config.stop_conditions.no_improvement_iterations, None);
+        assert!(config.stop_conditions.max_iterations.unwrap_or_default() >= 1_000_000);
     }
 
     #[test]
@@ -563,7 +466,7 @@ mod tests {
         assert!(descriptor.capabilities.supports_initial_schedule);
         assert!(descriptor.capabilities.supports_progress_callback);
         assert!(descriptor.capabilities.supports_benchmark_observer);
-        assert!(!descriptor.capabilities.supports_recommended_settings);
+        assert!(descriptor.capabilities.supports_recommended_settings);
         assert!(descriptor.capabilities.supports_deterministic_seed);
         assert!(descriptor.notes.contains("solver3"));
         assert!(descriptor.notes.contains(
@@ -585,20 +488,26 @@ mod tests {
     }
 
     #[test]
-    fn solver3_recommendation_fails_explicitly_until_implemented() {
-        let error = calculate_recommended_settings_for(
+    fn solver3_recommendation_returns_runtime_targeted_configuration() {
+        let config = calculate_recommended_settings_for(
             SolverKind::Solver3,
             RecommendationRequest {
                 problem: &simple_problem(),
                 objectives: &[],
                 constraints: &[],
-                desired_runtime_seconds: 1,
+                desired_runtime_seconds: 4,
             },
         )
-        .unwrap_err();
+        .unwrap();
 
-        assert!(error.to_string().contains("solver3"));
-        assert!(error.to_string().contains("not implemented"));
+        assert_eq!(
+            config.validate_solver_selection().unwrap(),
+            SolverKind::Solver3
+        );
+        assert_eq!(config.stop_conditions.time_limit_seconds, Some(4));
+        assert_eq!(config.stop_conditions.no_improvement_iterations, None);
+        assert!(config.stop_conditions.max_iterations.unwrap_or_default() >= 4_000_000);
+        assert!(matches!(config.solver_params, SolverParams::Solver3(_)));
     }
 
     #[test]
