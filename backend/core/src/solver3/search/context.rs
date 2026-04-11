@@ -259,6 +259,7 @@ impl SearchProgressState {
         elapsed_seconds: f64,
         stop_reason: Option<StopReason>,
     ) -> ProgressUpdate {
+        let completed_iterations = self.iterations_completed.max(iteration.saturating_add(1));
         let total_attempts = self.move_metrics.swap.attempts
             + self.move_metrics.transfer.attempts
             + self.move_metrics.clique_swap.attempts;
@@ -277,9 +278,9 @@ impl SearchProgressState {
         };
 
         ProgressUpdate {
-            iteration,
+            iteration: completed_iterations,
             max_iterations: displayed_total_iterations(
-                iteration.saturating_add(1),
+                completed_iterations,
                 run_context.max_iterations,
                 elapsed_seconds,
                 run_context.time_limit_seconds,
@@ -315,12 +316,12 @@ impl SearchProgressState {
             best_balance_penalty: self.best_state.attribute_balance_penalty,
             best_constraint_penalty: self.best_state.constraint_penalty_weighted,
             reheats_performed: 0,
-            iterations_since_last_reheat: iteration,
+            iterations_since_last_reheat: completed_iterations,
             local_optima_escapes: self.local_optima_escapes,
-            avg_time_per_iteration_ms: if iteration == 0 {
+            avg_time_per_iteration_ms: if completed_iterations == 0 {
                 0.0
             } else {
-                elapsed_seconds * 1000.0 / iteration as f64
+                elapsed_seconds * 1000.0 / completed_iterations as f64
             },
             cooling_progress: super::acceptance::cooling_progress(
                 iteration,
@@ -589,5 +590,18 @@ mod tests {
             progress.best_state.total_score,
             progress.current_state.total_score
         );
+    }
+
+    #[test]
+    fn progress_update_reports_completed_iterations_for_ui() {
+        let state = simple_state();
+        let run_context = SearchRunContext::from_solver(&solver3_config(), &state, 7).unwrap();
+        let mut progress = SearchProgressState::new(state);
+        progress.finish_iteration(4);
+
+        let update = progress.to_progress_update(&run_context, 4, 1.0, 0.5, None);
+
+        assert_eq!(update.iteration, 5);
+        assert_eq!(update.iterations_since_last_reheat, 5);
     }
 }
