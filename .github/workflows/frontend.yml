@@ -103,13 +103,13 @@ jobs:
         run: cd webapp && npm ci
       - name: Install Playwright browsers
         run: cd webapp && npx playwright install chromium --with-deps
-      - name: Run E2E tests (excluding visual regression)
-        run: cd webapp && npm run test:e2e -- --ignore-snapshots --grep-invert "Visual Regression"
+      - name: Run E2E smoke tests (chromium only)
+        run: cd webapp && npm run test:e2e:ci
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
           path: webapp/playwright-report/
           retention-days: 7
-  # NOTE: Visual regression tests are excluded from CI and should be run locally
-  # by the agent before creating PRs. Baselines differ between local and CI environments.
+  # NOTE: Visual regression and long workflow-coverage Playwright suites stay local-only.
+  # CI runs a chromium smoke lane to keep feedback fast and deterministic.

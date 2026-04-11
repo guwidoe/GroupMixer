@@ -1,9 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Navigate, Route, Routes } from "react-router-dom";
 import MainApp from "./MainApp";
-import { SolverPanel } from "./components/SolverPanel";
+import { SolverWorkspace } from "./components/SolverWorkspace/SolverWorkspace";
 import { ResultsView } from "./components/ResultsView";
 import { ResultsHistory } from "./components/ResultsHistory";
 import { scenarioStorage } from "./services/scenarioStorage";
@@ -58,7 +58,7 @@ function createRuntimeMock(overrides: Partial<SolverRuntime> = {}): SolverRuntim
             supports_initial_schedule: true,
             supports_progress_callback: true,
             supports_benchmark_observer: true,
-            supports_recommended_settings: false,
+            supports_recommended_settings: true,
             supports_deterministic_seed: true,
           },
           notes: 'Solver 3 notes',
@@ -74,7 +74,7 @@ function createRuntimeMock(overrides: Partial<SolverRuntime> = {}): SolverRuntim
         supports_initial_schedule: true,
         supports_progress_callback: true,
         supports_benchmark_observer: true,
-        supports_recommended_settings: solverId !== 'solver3',
+        supports_recommended_settings: true,
         supports_deterministic_seed: true,
       },
       notes: `${solverId} notes`,
@@ -119,7 +119,8 @@ function renderAppRoute(route: string) {
     <MemoryRouter initialEntries={[route]}>
       <Routes>
         <Route path="/app" element={<MainApp />}>
-          <Route path="solver" element={<SolverPanel />} />
+          <Route path="solver" element={<Navigate to="/app/solver/run" replace />} />
+          <Route path="solver/:section" element={<SolverWorkspace />} />
           <Route path="results" element={<ResultsView />} />
           <Route path="history" element={<ResultsHistory />} />
         </Route>
@@ -136,6 +137,10 @@ function createDeferred<T>() {
     reject = rej;
   });
   return { promise, resolve, reject };
+}
+
+function getPrimaryRunSolverButton() {
+  return screen.getByTitle(/recommended solver configuration automatically/i);
 }
 
 describe("MainApp stateful integration routes", () => {
@@ -183,12 +188,12 @@ describe("MainApp stateful integration routes", () => {
     expect(document.title).toBe('Solver Workspace | GroupMixer App');
     expect(document.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('noindex,nofollow');
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
-      'https://www.groupmixer.app/app/solver',
+      'https://www.groupmixer.app/app/solver/run',
     );
     expect(document.getElementById('groupmixer-route-schema')?.textContent ?? '').toBe('');
   });
 
-  it("renders the real /app/solver surface with loaded state, warm-start history, and auto-set success", async () => {
+  it("renders the real solver workspace with warm-start history and auto-set success", async () => {
     const user = userEvent.setup();
     const savedScenario = createSavedScenario({
       id: "scenario-1",
@@ -223,11 +228,11 @@ describe("MainApp stateful integration routes", () => {
 
     renderAppRoute("/app/solver");
 
-    expect(await screen.findByRole("heading", { name: /^solver$/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /start solver with automatic settings/i })).toBeEnabled();
+    expect(await screen.findByRole("heading", { name: /run solver/i })).toBeInTheDocument();
+    expect(getPrimaryRunSolverButton()).toBeEnabled();
 
-    await user.click(screen.getByRole("button", { name: /solve with custom settings/i }));
-    expect(await screen.findByRole("heading", { name: /manual solver configuration/i })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /^solver 1$/i }));
+    expect(await screen.findByRole("heading", { name: /^solver 1$/i, level: 1 })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /start from random \(default\)/i }));
     await user.click(screen.getByRole("button", { name: /baseline/i }));
@@ -265,7 +270,7 @@ describe("MainApp stateful integration routes", () => {
 
     renderAppRoute("/app/solver");
 
-    await user.click(screen.getByRole("button", { name: /solve with custom settings/i }));
+    await user.click(screen.getByRole('button', { name: /^solver 1$/i }));
     await user.click(screen.getByRole("button", { name: /auto-set/i }));
 
     expect(await screen.findByText(/auto-set failed/i)).toBeInTheDocument();
@@ -284,8 +289,7 @@ describe("MainApp stateful integration routes", () => {
 
     renderAppRoute('/app/solver');
 
-    await user.click(await screen.findByRole('button', { name: /solve with custom settings/i }));
-    await user.click(screen.getByRole('button', { name: /solver 3 experimental/i }));
+    await user.click(await screen.findByRole('button', { name: /^solver 3$/i }));
 
     await waitFor(() => {
       expect(useAppStore.getState().scenario?.settings.solver_type).toBe('solver3');
@@ -293,7 +297,7 @@ describe("MainApp stateful integration routes", () => {
 
     expect(useAppStore.getState().scenario?.settings.solver_params).not.toHaveProperty('SimulatedAnnealing');
 
-    expect(screen.getByText(/automatic settings unavailable/i)).toBeInTheDocument();
+    expect(screen.getByText(/recommended settings/i)).toBeInTheDocument();
     expect(screen.getByText(/solver 3: dense-state search/i)).toBeInTheDocument();
     expect(screen.getByText(/enable correctness lane/i)).toBeInTheDocument();
   });
@@ -312,7 +316,7 @@ describe("MainApp stateful integration routes", () => {
 
     renderAppRoute('/app/solver');
 
-    await user.click(await screen.findByRole('button', { name: /start solver with automatic settings/i }));
+    await user.click(await screen.findByTitle(/recommended solver configuration automatically/i));
 
     await waitFor(() => {
       expect(useAppStore.getState().currentScenarioId).not.toBeNull();
@@ -341,8 +345,7 @@ describe("MainApp stateful integration routes", () => {
     renderAppRoute('/app/solver');
 
     expect(await screen.findAllByText(/available solvers unavailable/i)).not.toHaveLength(0);
-    expect(screen.getByText(/catalog boom/i)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /solver 3 experimental/i })).not.toBeInTheDocument();
+    expect(screen.getAllByText(/catalog boom/i)).not.toHaveLength(0);
   });
 
   it("renders the real /app/results surface with a saved solution already in state", async () => {
@@ -421,7 +424,7 @@ describe("MainApp stateful integration routes", () => {
 
     renderAppRoute("/app/solver");
 
-    await user.click(await screen.findByRole("button", { name: /start solver with automatic settings/i }));
+    await user.click(await screen.findByTitle(/recommended solver configuration automatically/i));
 
     expect(await screen.findByText("0 / 486,486")).toBeInTheDocument();
     expect(screen.getByText("0.0s / 2s")).toBeInTheDocument();

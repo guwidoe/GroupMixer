@@ -129,8 +129,8 @@ test.describe('Workflow coverage', () => {
     await saveCurrentScenario(page);
     await openSolver(page);
 
-    await page.getByRole('button', { name: /solve with custom settings/i }).click();
-    const desiredRuntime = page.locator('#desiredRuntime');
+    await page.getByRole('button', { name: /^solver 1$/i }).click();
+    const desiredRuntime = page.locator('#recommended-desired-runtime');
     await desiredRuntime.fill('2');
     await desiredRuntime.blur();
     await page.getByRole('button', { name: /auto-set/i }).click();
@@ -138,7 +138,7 @@ test.describe('Workflow coverage', () => {
       page.getByText(/algorithm settings have been automatically configured\./i).first(),
     ).toBeVisible();
 
-    const customStart = page.getByRole('button', { name: /start solver with (custom|current) settings/i }).last();
+    const customStart = page.getByRole('button', { name: /run with manual settings/i }).last();
     await customStart.click();
 
     await waitForSolverRunToStartOrComplete(page, 1);
@@ -149,7 +149,7 @@ test.describe('Workflow coverage', () => {
     await waitForAppShell(page);
     await openSolver(page);
 
-    await page.getByRole('button', { name: /solve with custom settings/i }).click();
+    await page.getByRole('button', { name: /^solver 1$/i }).click();
     await page.getByRole('button', { name: /start from random \(default\)/i }).click();
     await page.getByRole('button', { name: /result 1/i }).first().click();
     await expect(page.getByRole('button', { name: /result 1 • score/i })).toBeVisible();
@@ -224,11 +224,11 @@ test.describe('Workflow coverage', () => {
     await expect(page.getByText(/alice johnson/i).first()).toBeVisible({ timeout: 15000 });
 
     await openSolver(page);
-    await page.getByRole('button', { name: /solve with custom settings/i }).click();
-    await page.getByRole('button', { name: /solver 3 experimental/i }).click();
-    await expect(page.getByText(/automatic settings unavailable/i).first()).toBeVisible();
+    await page.getByRole('button', { name: /^solver 3$/i }).click();
+    await expect(page.getByRole('heading', { name: /^solver 3$/i, level: 1 })).toBeVisible();
+    await expect(page.getByText(/enable correctness lane/i).first()).toBeVisible();
 
-    const customStart = page.getByRole('button', { name: /start solver with current settings/i }).last();
+    const customStart = page.getByRole('button', { name: /run with manual settings/i }).last();
     await customStart.click();
 
     await expect

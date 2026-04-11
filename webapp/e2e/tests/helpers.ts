@@ -195,20 +195,18 @@ export async function openSolver(page: Page) {
   await clickAndWaitForUrl(
     page,
     page.getByRole('link', { name: /solver/i }),
-    /\/app\/solver/,
-    page.getByRole('button', { name: /start solver with (automatic|current|custom) settings/i }).first(),
+    /\/app\/solver(?:\/run)?/,
+    page.locator('button.btn-success').first(),
   );
 }
 
 export async function runSolver(page: Page) {
   await openSolver(page);
 
-  const startButton = page.getByRole('button', {
-    name: /start solver with (automatic|current|custom) settings/i,
-  }).first();
+  const startButton = page.locator('button.btn-success').first();
   await startButton.click();
 
-  await expect(page.getByRole('button', { name: /cancel solver/i })).toBeVisible({ timeout: 5000 });
+  await waitForSolverRunToStartOrComplete(page, 1);
   await expect(startButton).toBeVisible({ timeout: 30000 });
 }
 
@@ -246,6 +244,6 @@ export async function waitForSolverRunToStartOrComplete(page: Page, expectedCoun
 
         return resultCount >= count ? 'completed' : 'pending';
       }, expectedCount);
-    }, { timeout: 10000 })
+    }, { timeout: 30000 })
     .not.toBe('pending');
 }

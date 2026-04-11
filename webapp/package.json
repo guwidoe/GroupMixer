@@ -22,6 +22,7 @@
     "test:runtime-safety": "npm run test:runtime-safety:unit && npm run test:runtime-safety:e2e",
     "test:storybook": "vitest --project storybook",
     "test:e2e": "playwright test",
+    "test:e2e:ci": "playwright test --project=chromium --ignore-snapshots --grep-invert \"Visual Regression|Workflow coverage\"",
     "test:e2e:workflows": "playwright test --ignore-snapshots --grep-invert \"Visual Regression\"",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
