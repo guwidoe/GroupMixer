@@ -24,8 +24,8 @@ vi.mock("./components/ScenarioEditor/ScenarioEditor", () => ({
   ScenarioEditor: () => <div>Scenario editor test stub</div>,
 }));
 
-vi.mock("./components/SolverPanel", () => ({
-  SolverPanel: () => <div>Solver panel test stub</div>,
+vi.mock("./components/SolverWorkspace/SolverWorkspace", () => ({
+  SolverWorkspace: () => <div>Solver workspace test stub</div>,
 }));
 
 vi.mock("./components/ResultsView", () => ({
@@ -121,5 +121,12 @@ describe("App routing", () => {
     expect(
       await screen.findByText("Scenario editor test stub")
     ).toBeInTheDocument();
+  });
+
+  it("redirects /app/solver to the default run workspace", async () => {
+    renderWithRouter(<App />, { route: "/app/solver" });
+
+    expect(await screen.findByText("Main app shell")).toBeInTheDocument();
+    expect(await screen.findByText("Solver workspace test stub")).toBeInTheDocument();
   });
 });

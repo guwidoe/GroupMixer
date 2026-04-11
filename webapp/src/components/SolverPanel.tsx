@@ -19,7 +19,11 @@ import { SolverAlgorithmInfo } from './SolverPanel/SolverAlgorithmInfo';
 import type { SolverFormInputs } from './SolverPanel/types';
 import { useSolverActions } from './SolverPanel/hooks/useSolverActions';
 
-export function SolverPanel() {
+interface SolverPanelProps {
+  hidePageHeader?: boolean;
+}
+
+export function SolverPanel({ hidePageHeader = false }: SolverPanelProps) {
   const {
     solverState,
     startSolver,
@@ -216,16 +220,18 @@ export function SolverPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            Solver
-          </h2>
-          <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
-            Run the optimization algorithm to find the best solution
-          </p>
+      {!hidePageHeader && (
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+              Solver
+            </h2>
+            <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
+              Run the optimization algorithm to find the best solution
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       <SolverStatusCard
         solverState={solverState}

@@ -4,7 +4,7 @@ import { ManualEditor } from './components/ManualEditor';
 import { ScenarioEditor } from './components/ScenarioEditor/ScenarioEditor';
 import { ResultsHistory } from './components/ResultsHistory';
 import { ResultsView } from './components/ResultsView';
-import { SolverPanel } from './components/SolverPanel';
+import { SolverWorkspace } from './components/SolverWorkspace/SolverWorkspace';
 import MainApp from './MainApp';
 import ToolLandingPage from './pages/ToolLandingPage';
 import { TOOL_PAGE_ROUTES } from './pages/toolPageConfigs';
@@ -21,6 +21,10 @@ function SetupRouteRedirect() {
 function LegacySetupRouteRedirect() {
   const { section } = useParams<{ section?: string }>();
   return <Navigate to={getScenarioSetupPath(section ? resolveScenarioSetupSection(section) : null)} replace />;
+}
+
+function SolverRouteRedirect() {
+  return <Navigate to="/app/solver/run" replace />;
 }
 
 function App() {
@@ -41,7 +45,8 @@ function App() {
           <Route path="problem/:section" element={<LegacySetupRouteRedirect />} />
           <Route path="scenario" element={<SetupRouteRedirect />} />
           <Route path="scenario/:section" element={<ScenarioEditor />} />
-          <Route path="solver" element={<SolverPanel />} />
+          <Route path="solver" element={<SolverRouteRedirect />} />
+          <Route path="solver/:section" element={<SolverWorkspace />} />
           <Route path="results" element={<ResultsView />} />
           <Route path="editor" element={<ManualEditor />} />
           <Route path="history" element={<ResultsHistory />} />
