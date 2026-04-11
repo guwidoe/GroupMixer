@@ -1,5 +1,6 @@
 /* eslint-disable react/no-multi-comp */
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { PlayCircle } from 'lucide-react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
@@ -25,12 +26,6 @@ const mockRunController = {
     stop_conditions: {},
     solver_params: {},
   },
-  showLiveViz: false,
-  toggleLiveViz: vi.fn(),
-  liveVizState: null,
-  liveVizPluginId: 'scheduleMatrix',
-  handleLiveVizPluginChange: vi.fn(),
-  getLiveVizScenario: vi.fn(),
   showMetrics: false,
   toggleMetrics: vi.fn(),
   desiredRuntimeSettings: 3,
@@ -68,10 +63,6 @@ vi.mock('../blocks/SolverStatusDashboard', () => ({
   SolverStatusDashboard: () => <div>SolverStatusDashboard</div>,
 }));
 
-vi.mock('../blocks/RecommendedSettingsPanel', () => ({
-  RecommendedSettingsPanel: () => <div>RecommendedSettingsPanel</div>,
-}));
-
 vi.mock('../blocks/WarmStartPanel', () => ({
   WarmStartPanel: () => <div>WarmStartPanel</div>,
 }));
@@ -100,17 +91,25 @@ describe('solver workspace sections', () => {
     vi.clearAllMocks();
   });
 
-  it('renders the recommended run page with chooser and without manual settings sections', () => {
+  it('renders the recommended run page as a one-click flow with hidden options by default', async () => {
+    const user = userEvent.setup();
     render(<RunSolverSection />);
 
     expect(screen.getByRole('heading', { name: 'Run Solver' })).toBeInTheDocument();
-    expect(screen.getByText('SolverFamilyChooser')).toBeInTheDocument();
     expect(screen.getByText('SolverRunControls')).toBeInTheDocument();
-    expect(screen.getByText('RecommendedSettingsPanel')).toBeInTheDocument();
-    expect(screen.queryByText('LiveVisualizationPanel')).not.toBeInTheDocument();
+    expect(screen.getByText('SolverStatusDashboard')).toBeInTheDocument();
+    expect(screen.queryByText('SolverFamilyChooser')).not.toBeInTheDocument();
+    expect(screen.queryByText('WarmStartPanel')).not.toBeInTheDocument();
+    expect(screen.queryByText('AllowedSessionsPanel')).not.toBeInTheDocument();
     expect(screen.queryByText('DetailedMetricsPanel')).not.toBeInTheDocument();
     expect(screen.queryByText('SolverFamilyInfoPanel')).not.toBeInTheDocument();
     expect(screen.queryByText('SolverSettingsSections')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /options/i }));
+
+    expect(screen.getByText('SolverFamilyChooser')).toBeInTheDocument();
+    expect(screen.getByText('WarmStartPanel')).toBeInTheDocument();
+    expect(screen.getByText('AllowedSessionsPanel')).toBeInTheDocument();
   });
 
   it('renders the manual solver-family page without duplicating the family chooser', () => {

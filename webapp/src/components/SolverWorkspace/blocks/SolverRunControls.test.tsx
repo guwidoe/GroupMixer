@@ -50,10 +50,11 @@ const baseProps = {
 };
 
 describe('SolverRunControls', () => {
-  it('shows the recommended-run CTA on the Run Solver page', () => {
-    render(<SolverRunControls {...baseProps} startMode="recommended" />);
+  it('shows the one-click run CTA on the Run Solver page', () => {
+    render(<SolverRunControls {...baseProps} startMode="recommended" runtimeHelpText="help text" />);
 
-    expect(screen.getByRole('button', { name: 'Start Recommended Run' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Run Solver' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Runtime target help' })).toBeInTheDocument();
   });
 
   it('shows the manual-run CTA on manual tuning pages', () => {

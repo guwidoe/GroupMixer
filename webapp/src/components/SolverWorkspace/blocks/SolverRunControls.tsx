@@ -1,7 +1,8 @@
 import React from 'react';
-import { Pause, Play, RotateCcw, TrendingUp } from 'lucide-react';
+import { Info, Pause, Play, RotateCcw, TrendingUp } from 'lucide-react';
 import type { Scenario, SolverState } from '../../../types';
 import type { SolverCatalogEntry } from '../../../services/solverUi';
+import { Tooltip } from '../../Tooltip';
 import type { SolverFormInputs } from '../../SolverPanel/types';
 
 interface SolverRunControlsProps {
@@ -15,6 +16,7 @@ interface SolverRunControlsProps {
   desiredRuntimeMain: number | null;
   setDesiredRuntimeMain: React.Dispatch<React.SetStateAction<number | null>>;
   startMode: 'recommended' | 'manual';
+  runtimeHelpText?: string;
   onStartSolver: (useRecommended: boolean) => void;
   onCancelSolver: () => void;
   onSaveBestSoFar: () => void;
@@ -32,6 +34,7 @@ export function SolverRunControls({
   desiredRuntimeMain,
   setDesiredRuntimeMain,
   startMode,
+  runtimeHelpText,
   onStartSolver,
   onCancelSolver,
   onSaveBestSoFar,
@@ -45,9 +48,7 @@ export function SolverRunControls({
   const idleButtonLabel = catalogReady
     ? startMode === 'manual'
       ? 'Run with Manual Settings'
-      : shouldUseRecommended
-        ? 'Start Recommended Run'
-        : 'Start Solver'
+      : 'Run Solver'
     : solverCatalogStatus === 'loading'
       ? 'Loading Available Solvers...'
       : 'Available Solvers Unavailable';
@@ -79,9 +80,22 @@ export function SolverRunControls({
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex flex-col items-start">
-          <label className="mb-1 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-            Desired Runtime (s)
-          </label>
+          <div className="mb-1 flex items-center gap-1.5">
+            <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+              Desired Runtime (s)
+            </label>
+            {runtimeHelpText ? (
+              <Tooltip content={runtimeHelpText} placement="top">
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center"
+                  aria-label="Runtime target help"
+                >
+                  <Info className="h-3.5 w-3.5" style={{ color: 'var(--text-tertiary)' }} />
+                </button>
+              </Tooltip>
+            ) : null}
+          </div>
           <input
             type="number"
             value={solverFormInputs.desiredRuntimeMain ?? (desiredRuntimeMain?.toString() || '')}
@@ -107,6 +121,7 @@ export function SolverRunControls({
             onClick={() => onStartSolver(shouldUseRecommended)}
             className="btn-success flex flex-1 items-center justify-center space-x-2"
             disabled={!scenario || !catalogReady}
+            title={startMode === 'recommended' && shouldUseRecommended ? 'Runs with the recommended solver configuration automatically.' : undefined}
           >
             <Play className="h-4 w-4" />
             <span>{idleButtonLabel}</span>
