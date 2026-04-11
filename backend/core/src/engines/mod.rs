@@ -468,13 +468,9 @@ mod tests {
         assert!(descriptor.capabilities.supports_benchmark_observer);
         assert!(descriptor.capabilities.supports_recommended_settings);
         assert!(descriptor.capabilities.supports_deterministic_seed);
-        assert!(descriptor.notes.contains("solver3"));
-        assert!(descriptor.notes.contains(
-            "swap + transfer + clique-swap move kernels plus a runnable bounded-sampling search baseline"
-        ));
-        assert!(descriptor
-            .notes
-            .contains("Construction uses the shared baseline constructor path"));
+        assert!(descriptor.notes.contains("Solver 3"));
+        assert!(descriptor.notes.contains("recommended runtime mode"));
+        assert!(descriptor.notes.contains("correctness checks"));
     }
 
     #[test]

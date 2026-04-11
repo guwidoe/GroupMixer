@@ -37,11 +37,9 @@ pub use validation::validate_invariants;
 use crate::solver_support::SolverError;
 
 pub const SOLVER3_BOOTSTRAP_NOTES: &str =
-    "Internal `solver3` family — performance-oriented dense-state solver with packed-pair index. \
-Phase 2 foundation (compiled problem, flat runtime state, oracle, invariants) is implemented, and \
-swap + transfer + clique-swap move kernels plus a runnable bounded-sampling search baseline exist. \
-Construction uses the shared baseline constructor path in `solver_support::construction` with solver3 runtime ingestion. \
-No fallback to solver1 or solver2 occurs.";
+    "Solver 3 is an advanced dense-state solver family focused on fast search. Supports recommended runtime mode, \
+manual tuning, and optional correctness checks for debugging and validation. For normal runs, leave \
+correctness checks off.";
 
 pub(crate) fn not_yet_implemented(feature: &str) -> SolverError {
     SolverError::ValidationError(format!(
