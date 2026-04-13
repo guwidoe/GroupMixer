@@ -9,7 +9,7 @@ import { SolverWorkspace } from './components/SolverWorkspace/SolverWorkspace';
 import MainApp from './MainApp';
 import ToolLandingPage from './pages/ToolLandingPage';
 import LegalPage from './pages/LegalPage';
-import { TOOL_PAGE_ROUTES } from './pages/toolPageConfigs';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, TOOL_PAGE_ROUTES } from './pages/toolPageConfigs';
 import { getScenarioSetupPath, resolveScenarioSetupSection } from './components/ScenarioEditor/navigation/scenarioSetupNav';
 import { useAppStore } from './store';
 import { initializeThemeStore, useThemeStore } from './store/theme';
@@ -40,7 +40,10 @@ function App() {
         {TOOL_PAGE_ROUTES.map(({ key, locale, path }) => (
           <Route key={`${locale}:${key}`} path={path} element={<ToolLandingPage pageKey={key} locale={locale} />} />
         ))}
-        <Route path="/legal" element={<LegalPage />} />
+        <Route path="/legal" element={<LegalPage locale={DEFAULT_LOCALE} />} />
+        {SUPPORTED_LOCALES.filter((locale) => locale !== DEFAULT_LOCALE).map((locale) => (
+          <Route key={`legal:${locale}`} path={`/${locale}/legal`} element={<LegalPage locale={locale} />} />
+        ))}
         <Route path="/landingpage" element={<Navigate to="/" replace />} />
         <Route path="/app" element={<MainApp />}>
           <Route index element={<SetupRouteRedirect />} />
