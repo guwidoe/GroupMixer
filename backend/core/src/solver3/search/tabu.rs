@@ -1,22 +1,31 @@
 use rand::RngExt;
 use rand_chacha::ChaCha12Rng;
 
+use crate::models::Solver3SgpWeekPairTabuTenureMode;
 use crate::solver3::compiled_problem::CompiledProblem;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct SgpWeekPairTabuConfig {
+    pub(crate) tenure_mode: Solver3SgpWeekPairTabuTenureMode,
     pub(crate) tenure_min: u64,
     pub(crate) tenure_max: u64,
     pub(crate) retry_cap: usize,
     pub(crate) aspiration_enabled: bool,
+    pub(crate) session_scale_reference_participants: u64,
+    pub(crate) reactive_no_improvement_window: u64,
+    pub(crate) reactive_max_multiplier: u64,
     pub(crate) conflict_restricted_swap_sampling_enabled: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SgpWeekPairTabuState {
     num_pairs: usize,
+    tenure_mode: Solver3SgpWeekPairTabuTenureMode,
     tenure_min: u64,
     tenure_max: u64,
+    session_scale_reference_participants: u64,
+    reactive_no_improvement_window: u64,
+    reactive_max_multiplier: u64,
     session_pair_expiry: Vec<u64>,
 }
 
@@ -24,8 +33,12 @@ impl SgpWeekPairTabuState {
     pub(crate) fn new(compiled: &CompiledProblem, config: SgpWeekPairTabuConfig) -> Self {
         Self {
             num_pairs: compiled.num_pairs,
+            tenure_mode: config.tenure_mode,
             tenure_min: config.tenure_min,
             tenure_max: config.tenure_max,
+            session_scale_reference_participants: config.session_scale_reference_participants,
+            reactive_no_improvement_window: config.reactive_no_improvement_window,
+            reactive_max_multiplier: config.reactive_max_multiplier,
             session_pair_expiry: vec![0; compiled.num_sessions * compiled.num_pairs],
         }
     }
@@ -86,9 +99,10 @@ impl SgpWeekPairTabuState {
         left_person_idx: usize,
         right_person_idx: usize,
         iteration: u64,
+        no_improvement_count: u64,
         rng: &mut ChaCha12Rng,
     ) -> u64 {
-        let tenure = self.sample_tenure(rng);
+        let tenure = self.sample_tenure(compiled, session_idx, no_improvement_count, rng);
         let slot = self.pair_slot(compiled, session_idx, left_person_idx, right_person_idx);
         let expiry = iteration.saturating_add(tenure);
         self.session_pair_expiry[slot] = expiry;
@@ -96,11 +110,38 @@ impl SgpWeekPairTabuState {
     }
 
     #[inline]
-    fn sample_tenure(&self, rng: &mut ChaCha12Rng) -> u64 {
-        if self.tenure_min >= self.tenure_max {
+    fn sample_tenure(
+        &self,
+        compiled: &CompiledProblem,
+        session_idx: usize,
+        no_improvement_count: u64,
+        rng: &mut ChaCha12Rng,
+    ) -> u64 {
+        let base = if self.tenure_min >= self.tenure_max {
             self.tenure_min
         } else {
             rng.random_range(self.tenure_min..=self.tenure_max)
+        };
+
+        match self.tenure_mode {
+            Solver3SgpWeekPairTabuTenureMode::FixedInterval => base,
+            Solver3SgpWeekPairTabuTenureMode::SessionParticipantScaled => {
+                let reference = self.session_scale_reference_participants.max(1);
+                let participants = compiled
+                    .session_participant_counts
+                    .get(session_idx)
+                    .copied()
+                    .unwrap_or(1)
+                    .max(1) as u64;
+                let scaled = base.saturating_mul(participants).div_ceil(reference);
+                scaled.max(base)
+            }
+            Solver3SgpWeekPairTabuTenureMode::ReactiveNoImprovementScaled => {
+                let window = self.reactive_no_improvement_window.max(1);
+                let max_multiplier = self.reactive_max_multiplier.max(1);
+                let multiplier = (1 + (no_improvement_count / window)).min(max_multiplier);
+                base.saturating_mul(multiplier)
+            }
         }
     }
 }
@@ -113,8 +154,8 @@ mod tests {
     use rand_chacha::ChaCha12Rng;
 
     use crate::models::{
-        ApiInput, Group, Objective, Person, ProblemDefinition, Solver3Params, SolverConfiguration,
-        SolverParams, StopConditions,
+        ApiInput, Group, Objective, Person, ProblemDefinition, Solver3Params,
+        Solver3SgpWeekPairTabuTenureMode, SolverConfiguration, SolverParams, StopConditions,
     };
     use crate::solver3::runtime_state::RuntimeState;
 
@@ -172,10 +213,14 @@ mod tests {
 
     fn config() -> SgpWeekPairTabuConfig {
         SgpWeekPairTabuConfig {
+            tenure_mode: Solver3SgpWeekPairTabuTenureMode::FixedInterval,
             tenure_min: 3,
             tenure_max: 7,
             retry_cap: 5,
             aspiration_enabled: true,
+            session_scale_reference_participants: 32,
+            reactive_no_improvement_window: 100_000,
+            reactive_max_multiplier: 4,
             conflict_restricted_swap_sampling_enabled: false,
         }
     }
@@ -211,7 +256,7 @@ mod tests {
         let mut tabu = SgpWeekPairTabuState::new(&state.compiled, config());
         let mut rng = ChaCha12Rng::seed_from_u64(11);
 
-        let expiry = tabu.record_swap(&state.compiled, 2, 0, 3, 10, &mut rng);
+        let expiry = tabu.record_swap(&state.compiled, 2, 0, 3, 10, 0, &mut rng);
         let slot = tabu.pair_slot(&state.compiled, 2, 0, 3);
 
         assert_eq!(tabu.expiry_at_slot(slot), expiry);
@@ -225,7 +270,7 @@ mod tests {
         let mut tabu = SgpWeekPairTabuState::new(&state.compiled, config());
         let mut rng = ChaCha12Rng::seed_from_u64(19);
 
-        tabu.record_swap(&state.compiled, 0, 0, 3, 4, &mut rng);
+        tabu.record_swap(&state.compiled, 0, 0, 3, 4, 0, &mut rng);
 
         assert!(tabu.is_tabu(&state.compiled, 0, 0, 3, 4));
         assert!(!tabu.is_tabu(&state.compiled, 1, 0, 3, 4));
@@ -238,16 +283,20 @@ mod tests {
         let mut tabu = SgpWeekPairTabuState::new(
             &state.compiled,
             SgpWeekPairTabuConfig {
+                tenure_mode: Solver3SgpWeekPairTabuTenureMode::FixedInterval,
                 tenure_min: 3,
                 tenure_max: 3,
                 retry_cap: 5,
                 aspiration_enabled: true,
+                session_scale_reference_participants: 32,
+                reactive_no_improvement_window: 100_000,
+                reactive_max_multiplier: 4,
                 conflict_restricted_swap_sampling_enabled: false,
             },
         );
         let mut rng = ChaCha12Rng::seed_from_u64(23);
 
-        let expiry = tabu.record_swap(&state.compiled, 1, 0, 2, 10, &mut rng);
+        let expiry = tabu.record_swap(&state.compiled, 1, 0, 2, 10, 0, &mut rng);
         assert_eq!(expiry, 13);
         assert!(tabu.is_tabu(&state.compiled, 1, 0, 2, 12));
         assert!(!tabu.is_tabu(&state.compiled, 1, 0, 2, 13));
@@ -262,14 +311,14 @@ mod tests {
         let mut right_rng = ChaCha12Rng::seed_from_u64(29);
 
         let left_expiries = [
-            left.record_swap(&state.compiled, 0, 0, 1, 0, &mut left_rng),
-            left.record_swap(&state.compiled, 1, 0, 2, 5, &mut left_rng),
-            left.record_swap(&state.compiled, 2, 1, 3, 9, &mut left_rng),
+            left.record_swap(&state.compiled, 0, 0, 1, 0, 0, &mut left_rng),
+            left.record_swap(&state.compiled, 1, 0, 2, 5, 0, &mut left_rng),
+            left.record_swap(&state.compiled, 2, 1, 3, 9, 0, &mut left_rng),
         ];
         let right_expiries = [
-            right.record_swap(&state.compiled, 0, 0, 1, 0, &mut right_rng),
-            right.record_swap(&state.compiled, 1, 0, 2, 5, &mut right_rng),
-            right.record_swap(&state.compiled, 2, 1, 3, 9, &mut right_rng),
+            right.record_swap(&state.compiled, 0, 0, 1, 0, 0, &mut right_rng),
+            right.record_swap(&state.compiled, 1, 0, 2, 5, 0, &mut right_rng),
+            right.record_swap(&state.compiled, 2, 1, 3, 9, 0, &mut right_rng),
         ];
 
         assert_eq!(left_expiries, right_expiries);
@@ -281,20 +330,72 @@ mod tests {
         let mut tabu = SgpWeekPairTabuState::new(
             &state.compiled,
             SgpWeekPairTabuConfig {
+                tenure_mode: Solver3SgpWeekPairTabuTenureMode::FixedInterval,
                 tenure_min: 4,
                 tenure_max: 4,
                 retry_cap: 5,
                 aspiration_enabled: true,
+                session_scale_reference_participants: 32,
+                reactive_no_improvement_window: 100_000,
+                reactive_max_multiplier: 4,
                 conflict_restricted_swap_sampling_enabled: false,
             },
         );
         let mut rng = ChaCha12Rng::seed_from_u64(31);
 
-        let first_expiry = tabu.record_swap(&state.compiled, 1, 0, 3, 2, &mut rng);
-        let second_expiry = tabu.record_swap(&state.compiled, 1, 3, 0, 8, &mut rng);
+        let first_expiry = tabu.record_swap(&state.compiled, 1, 0, 3, 2, 0, &mut rng);
+        let second_expiry = tabu.record_swap(&state.compiled, 1, 3, 0, 8, 0, &mut rng);
 
         assert_eq!(first_expiry, 6);
         assert_eq!(second_expiry, 12);
         assert_eq!(tabu.expiry_for_pair(&state.compiled, 1, 0, 3), 12);
+    }
+
+    #[test]
+    fn session_participant_scaled_tenure_only_grows_on_larger_sessions() {
+        let state = compiled_problem();
+        let mut tabu = SgpWeekPairTabuState::new(
+            &state.compiled,
+            SgpWeekPairTabuConfig {
+                tenure_mode: Solver3SgpWeekPairTabuTenureMode::SessionParticipantScaled,
+                tenure_min: 4,
+                tenure_max: 4,
+                retry_cap: 5,
+                aspiration_enabled: true,
+                session_scale_reference_participants: 2,
+                reactive_no_improvement_window: 100_000,
+                reactive_max_multiplier: 4,
+                conflict_restricted_swap_sampling_enabled: false,
+            },
+        );
+        let mut rng = ChaCha12Rng::seed_from_u64(37);
+
+        let expiry = tabu.record_swap(&state.compiled, 0, 0, 1, 10, 0, &mut rng);
+
+        assert_eq!(expiry, 18);
+    }
+
+    #[test]
+    fn reactive_tenure_scales_with_no_improvement_streak() {
+        let state = compiled_problem();
+        let mut tabu = SgpWeekPairTabuState::new(
+            &state.compiled,
+            SgpWeekPairTabuConfig {
+                tenure_mode: Solver3SgpWeekPairTabuTenureMode::ReactiveNoImprovementScaled,
+                tenure_min: 4,
+                tenure_max: 4,
+                retry_cap: 5,
+                aspiration_enabled: true,
+                session_scale_reference_participants: 32,
+                reactive_no_improvement_window: 5,
+                reactive_max_multiplier: 4,
+                conflict_restricted_swap_sampling_enabled: false,
+            },
+        );
+        let mut rng = ChaCha12Rng::seed_from_u64(41);
+
+        let expiry = tabu.record_swap(&state.compiled, 0, 0, 1, 10, 12, &mut rng);
+
+        assert_eq!(expiry, 22);
     }
 }

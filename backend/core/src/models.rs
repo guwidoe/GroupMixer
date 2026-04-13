@@ -1039,6 +1039,19 @@ pub enum Solver3LocalImproverMode {
     SgpWeekPairTabu,
 }
 
+/// Tenure-sampling mode for the `solver3` SGP week-pair tabu improver.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Solver3SgpWeekPairTabuTenureMode {
+    /// Sample a tabu tenure directly from the configured bounded interval.
+    #[default]
+    FixedInterval,
+    /// Scale the sampled tenure upward for sessions with more active participants.
+    SessionParticipantScaled,
+    /// Scale the sampled tenure upward as the no-improvement streak grows.
+    ReactiveNoImprovementScaled,
+}
+
 /// Driver configuration for `solver3`.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Default)]
 pub struct Solver3SearchDriverParams {
@@ -1101,6 +1114,9 @@ pub struct Solver3LocalImproverParams {
 /// Config for the SGP-shaped swapped-pair tabu improver.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct Solver3SgpWeekPairTabuParams {
+    /// How tabu tenure should be derived from the configured base interval.
+    #[serde(default)]
+    pub tenure_mode: Solver3SgpWeekPairTabuTenureMode,
     /// Dynamic tenure lower bound in accepted-move iterations.
     #[serde(default = "default_solver3_sgp_week_pair_tabu_tenure_min")]
     pub tenure_min: u32,
@@ -1113,6 +1129,15 @@ pub struct Solver3SgpWeekPairTabuParams {
     /// Whether tabu aspiration may override a tabooed move after preview.
     #[serde(default = "default_solver3_sgp_week_pair_tabu_aspiration")]
     pub aspiration_enabled: bool,
+    /// Reference participant count for `session_participant_scaled` tenure.
+    #[serde(default = "default_solver3_sgp_week_pair_tabu_session_scale_reference_participants")]
+    pub session_scale_reference_participants: u32,
+    /// No-improvement window for `reactive_no_improvement_scaled` tenure.
+    #[serde(default = "default_solver3_sgp_week_pair_tabu_reactive_window")]
+    pub reactive_no_improvement_window: u32,
+    /// Maximum multiplier for `reactive_no_improvement_scaled` tenure.
+    #[serde(default = "default_solver3_sgp_week_pair_tabu_reactive_max_multiplier")]
+    pub reactive_max_multiplier: u32,
     /// Whether swap sampling should be restricted to repeat-conflict positions when conflicts exist.
     #[serde(default)]
     pub conflict_restricted_swap_sampling_enabled: bool,
@@ -1121,10 +1146,17 @@ pub struct Solver3SgpWeekPairTabuParams {
 impl Default for Solver3SgpWeekPairTabuParams {
     fn default() -> Self {
         Self {
+            tenure_mode: Solver3SgpWeekPairTabuTenureMode::default(),
             tenure_min: default_solver3_sgp_week_pair_tabu_tenure_min(),
             tenure_max: default_solver3_sgp_week_pair_tabu_tenure_max(),
             retry_cap: default_solver3_sgp_week_pair_tabu_retry_cap(),
             aspiration_enabled: default_solver3_sgp_week_pair_tabu_aspiration(),
+            session_scale_reference_participants:
+                default_solver3_sgp_week_pair_tabu_session_scale_reference_participants(),
+            reactive_no_improvement_window:
+                default_solver3_sgp_week_pair_tabu_reactive_window(),
+            reactive_max_multiplier:
+                default_solver3_sgp_week_pair_tabu_reactive_max_multiplier(),
             conflict_restricted_swap_sampling_enabled: false,
         }
     }
@@ -1243,6 +1275,18 @@ fn default_solver3_sgp_week_pair_tabu_retry_cap() -> u32 {
 
 fn default_solver3_sgp_week_pair_tabu_aspiration() -> bool {
     true
+}
+
+fn default_solver3_sgp_week_pair_tabu_session_scale_reference_participants() -> u32 {
+    32
+}
+
+fn default_solver3_sgp_week_pair_tabu_reactive_window() -> u32 {
+    100_000
+}
+
+fn default_solver3_sgp_week_pair_tabu_reactive_max_multiplier() -> u32 {
+    4
 }
 
 /// Parameters specific to the Simulated Annealing algorithm.

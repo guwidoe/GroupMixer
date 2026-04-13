@@ -120,6 +120,27 @@ impl SearchRunContext {
             ));
         }
 
+        if sgp_week_pair_tabu.session_scale_reference_participants == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 local_improver.sgp_week_pair_tabu.session_scale_reference_participants must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if sgp_week_pair_tabu.reactive_no_improvement_window == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 local_improver.sgp_week_pair_tabu.reactive_no_improvement_window must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if sgp_week_pair_tabu.reactive_max_multiplier == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 local_improver.sgp_week_pair_tabu.reactive_max_multiplier must be >= 1"
+                    .into(),
+            ));
+        }
+
         if steady_state_memetic.population_size < 2 {
             return Err(SolverError::ValidationError(
                 "solver3 search_driver.steady_state_memetic.population_size must be >= 2".into(),
@@ -261,10 +282,16 @@ impl SearchRunContext {
             repeat_guided_swap_candidate_preview_budget: repeat_guided_swap_candidate_preview_budget
                 as usize,
             sgp_week_pair_tabu: Some(SgpWeekPairTabuConfig {
+                tenure_mode: sgp_week_pair_tabu.tenure_mode,
                 tenure_min: sgp_week_pair_tabu.tenure_min as u64,
                 tenure_max: sgp_week_pair_tabu.tenure_max as u64,
                 retry_cap: sgp_week_pair_tabu.retry_cap as usize,
                 aspiration_enabled: sgp_week_pair_tabu.aspiration_enabled,
+                session_scale_reference_participants: sgp_week_pair_tabu
+                    .session_scale_reference_participants as u64,
+                reactive_no_improvement_window: sgp_week_pair_tabu
+                    .reactive_no_improvement_window as u64,
+                reactive_max_multiplier: sgp_week_pair_tabu.reactive_max_multiplier as u64,
                 conflict_restricted_swap_sampling_enabled: sgp_week_pair_tabu
                     .conflict_restricted_swap_sampling_enabled,
             }),
@@ -725,7 +752,8 @@ mod tests {
         ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, RepeatEncounterParams,
         Solver3CorrectnessLaneParams, Solver3HotspotGuidanceParams, Solver3LocalImproverMode,
         Solver3LocalImproverParams, Solver3Params, Solver3RepeatGuidedSwapParams,
-        Solver3SearchDriverMode, Solver3SearchDriverParams, Solver3SgpWeekPairTabuParams,
+        Solver3SearchDriverMode, Solver3SearchDriverParams,
+        Solver3SgpWeekPairTabuParams, Solver3SgpWeekPairTabuTenureMode,
         SolverConfiguration, SolverParams, StopConditions,
     };
 
@@ -853,6 +881,34 @@ mod tests {
         assert_eq!(context.sgp_week_pair_tabu.as_ref().unwrap().tenure_max, 32);
         assert_eq!(context.sgp_week_pair_tabu.as_ref().unwrap().retry_cap, 16);
         assert_eq!(
+            context.sgp_week_pair_tabu.as_ref().unwrap().tenure_mode,
+            Solver3SgpWeekPairTabuTenureMode::FixedInterval
+        );
+        assert_eq!(
+            context
+                .sgp_week_pair_tabu
+                .as_ref()
+                .unwrap()
+                .session_scale_reference_participants,
+            32
+        );
+        assert_eq!(
+            context
+                .sgp_week_pair_tabu
+                .as_ref()
+                .unwrap()
+                .reactive_no_improvement_window,
+            100_000
+        );
+        assert_eq!(
+            context
+                .sgp_week_pair_tabu
+                .as_ref()
+                .unwrap()
+                .reactive_max_multiplier,
+            4
+        );
+        assert_eq!(
             context
                 .steady_state_memetic
                 .as_ref()
@@ -965,6 +1021,75 @@ mod tests {
     }
 
     #[test]
+    fn run_context_rejects_zero_session_scale_reference_participants() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            local_improver: Solver3LocalImproverParams {
+                sgp_week_pair_tabu: Solver3SgpWeekPairTabuParams {
+                    session_scale_reference_participants: 0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("sgp_week_pair_tabu.session_scale_reference_participants"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn run_context_rejects_zero_reactive_tabu_window() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            local_improver: Solver3LocalImproverParams {
+                sgp_week_pair_tabu: Solver3SgpWeekPairTabuParams {
+                    reactive_no_improvement_window: 0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("sgp_week_pair_tabu.reactive_no_improvement_window"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn run_context_rejects_zero_reactive_tabu_max_multiplier() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            local_improver: Solver3LocalImproverParams {
+                sgp_week_pair_tabu: Solver3SgpWeekPairTabuParams {
+                    reactive_max_multiplier: 0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("sgp_week_pair_tabu.reactive_max_multiplier"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
     fn run_context_accepts_memetic_driver_with_record_to_record() {
         let state = simple_state();
         let mut config = solver3_config();
@@ -1031,6 +1156,56 @@ mod tests {
                 .unwrap()
                 .conflict_restricted_swap_sampling_enabled
         );
+    }
+
+    #[test]
+    fn run_context_captures_scaled_tenure_mode() {
+        let state = repeat_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            local_improver: Solver3LocalImproverParams {
+                mode: Solver3LocalImproverMode::SgpWeekPairTabu,
+                sgp_week_pair_tabu: Solver3SgpWeekPairTabuParams {
+                    tenure_mode: Solver3SgpWeekPairTabuTenureMode::SessionParticipantScaled,
+                    session_scale_reference_participants: 24,
+                    ..Default::default()
+                },
+            },
+            ..Default::default()
+        });
+
+        let context = SearchRunContext::from_solver(&config, &state, 7).unwrap();
+        assert_eq!(
+            context.sgp_week_pair_tabu.unwrap().tenure_mode,
+            Solver3SgpWeekPairTabuTenureMode::SessionParticipantScaled
+        );
+    }
+
+    #[test]
+    fn run_context_captures_reactive_tenure_mode() {
+        let state = repeat_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            local_improver: Solver3LocalImproverParams {
+                mode: Solver3LocalImproverMode::SgpWeekPairTabu,
+                sgp_week_pair_tabu: Solver3SgpWeekPairTabuParams {
+                    tenure_mode: Solver3SgpWeekPairTabuTenureMode::ReactiveNoImprovementScaled,
+                    reactive_no_improvement_window: 50_000,
+                    reactive_max_multiplier: 5,
+                    ..Default::default()
+                },
+            },
+            ..Default::default()
+        });
+
+        let context = SearchRunContext::from_solver(&config, &state, 7).unwrap();
+        let tabu = context.sgp_week_pair_tabu.unwrap();
+        assert_eq!(
+            tabu.tenure_mode,
+            Solver3SgpWeekPairTabuTenureMode::ReactiveNoImprovementScaled
+        );
+        assert_eq!(tabu.reactive_no_improvement_window, 50_000);
+        assert_eq!(tabu.reactive_max_multiplier, 5);
     }
 
     #[test]

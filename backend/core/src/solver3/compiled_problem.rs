@@ -163,6 +163,8 @@ pub struct CompiledProblem {
     // ------------------------------------------------------------------
     /// `[person_idx][session_idx] -> participates`.
     pub person_participation: Vec<Vec<bool>>,
+    /// `[session_idx] -> number of participating people in that session`.
+    pub session_participant_counts: Vec<usize>,
 
     // ------------------------------------------------------------------
     // Construction seed schedule (optional, used for bootstrap seeding)
@@ -260,6 +262,7 @@ impl CompiledProblem {
             .collect::<Vec<_>>();
 
         let person_participation = build_person_participation(input)?;
+        let session_participant_counts = build_session_participant_counts(&person_participation);
 
         let (
             group_capacities,
@@ -389,6 +392,7 @@ impl CompiledProblem {
             attr_idx_to_val,
             person_attribute_value_indices,
             person_participation,
+            session_participant_counts,
             compiled_construction_seed_schedule,
             cliques,
             person_to_clique_id,
@@ -487,6 +491,19 @@ impl CompiledProblem {
             .cloned()
             .unwrap_or_else(|| format!("group#{}", group_idx))
     }
+}
+
+fn build_session_participant_counts(person_participation: &[Vec<bool>]) -> Vec<usize> {
+    let num_sessions = person_participation.first().map_or(0, |sessions| sessions.len());
+    let mut counts = vec![0usize; num_sessions];
+    for participation_by_session in person_participation {
+        for (session_idx, participates) in participation_by_session.iter().copied().enumerate() {
+            if participates {
+                counts[session_idx] += 1;
+            }
+        }
+    }
+    counts
 }
 
 // ---------------------------------------------------------------------------

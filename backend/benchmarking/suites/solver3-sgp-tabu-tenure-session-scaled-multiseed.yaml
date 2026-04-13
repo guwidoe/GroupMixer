@@ -1,0 +1,152 @@
+schema_version: 1
+suite_id: solver3-sgp-tabu-tenure-session-scaled-multiseed
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: stretch
+title: Solver3 SGP tabu tenure sweep (session-scaled 8..32, multiseed)
+description: Multi-seed varied-scenario solver3 suite using session-participant-scaled SGP week-pair tabu tenure on top of the 8..32 base interval.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 1000000
+    time_limit_seconds: 60
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+    local_improver:
+      mode: sgp_week_pair_tabu
+      sgp_week_pair_tabu:
+        tenure_mode: session_participant_scaled
+        tenure_min: 8
+        tenure_max: 32
+        retry_cap: 4
+        aspiration_enabled: true
+        session_scale_reference_participants: 32
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.tenure.social_golfer_32x8x10.seed_1
+    provenance: canonical_social_golfer_multiseed_tabu_tenure_sweep
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320810
+    max_iterations: 10000000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.tenure.social_golfer_32x8x10.seed_2
+    provenance: canonical_social_golfer_multiseed_tabu_tenure_sweep
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320811
+    max_iterations: 10000000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.tenure.social_golfer_32x8x10.seed_3
+    provenance: canonical_social_golfer_multiseed_tabu_tenure_sweep
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320812
+    max_iterations: 10000000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.tenure.kirkman_schoolgirls_15x5x7.seed_1
+    provenance: canonical_kirkman_multiseed_tabu_tenure_sweep
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150507
+    max_iterations: 1500000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.tenure.kirkman_schoolgirls_15x5x7.seed_2
+    provenance: canonical_kirkman_multiseed_tabu_tenure_sweep
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150508
+    max_iterations: 1500000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.tenure.kirkman_schoolgirls_15x5x7.seed_3
+    provenance: canonical_kirkman_multiseed_tabu_tenure_sweep
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150509
+    max_iterations: 1500000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/sailing_trip_demo_real.json
+    case_role: canonical
+    purpose: diagnostic.tenure.sailing_trip_demo_real.seed_1
+    provenance: canonical_sailing_demo_multiseed_tabu_tenure_sweep
+    declared_budget:
+      max_iterations: 1000000
+      time_limit_seconds: 15
+    seed: 624485344291700314
+    max_iterations: 1000000
+    time_limit_seconds: 15
+  - manifest: ../cases/stretch/sailing_trip_demo_real.json
+    case_role: canonical
+    purpose: diagnostic.tenure.sailing_trip_demo_real.seed_2
+    provenance: canonical_sailing_demo_multiseed_tabu_tenure_sweep
+    declared_budget:
+      max_iterations: 1000000
+      time_limit_seconds: 15
+    seed: 624485344291700315
+    max_iterations: 1000000
+    time_limit_seconds: 15
+  - manifest: ../cases/stretch/sailing_trip_demo_real.json
+    case_role: canonical
+    purpose: diagnostic.tenure.sailing_trip_demo_real.seed_3
+    provenance: canonical_sailing_demo_multiseed_tabu_tenure_sweep
+    declared_budget:
+      max_iterations: 1000000
+      time_limit_seconds: 15
+    seed: 624485344291700316
+    max_iterations: 1000000
+    time_limit_seconds: 15
+  - manifest: ../cases/stretch/synthetic_partial_attendance_capacity_pressure_152p.json
+    case_role: canonical
+    purpose: diagnostic.tenure.synthetic_partial_attendance_capacity_pressure_152p.seed_1
+    provenance: canonical_partial_attendance_multiseed_tabu_tenure_sweep
+    declared_budget:
+      max_iterations: 4500000
+      time_limit_seconds: 15
+    seed: 152605
+    max_iterations: 4500000
+    time_limit_seconds: 15
+  - manifest: ../cases/stretch/synthetic_partial_attendance_capacity_pressure_152p.json
+    case_role: canonical
+    purpose: diagnostic.tenure.synthetic_partial_attendance_capacity_pressure_152p.seed_2
+    provenance: canonical_partial_attendance_multiseed_tabu_tenure_sweep
+    declared_budget:
+      max_iterations: 4500000
+      time_limit_seconds: 15
+    seed: 152606
+    max_iterations: 4500000
+    time_limit_seconds: 15
+  - manifest: ../cases/stretch/synthetic_partial_attendance_capacity_pressure_152p.json
+    case_role: canonical
+    purpose: diagnostic.tenure.synthetic_partial_attendance_capacity_pressure_152p.seed_3
+    provenance: canonical_partial_attendance_multiseed_tabu_tenure_sweep
+    declared_budget:
+      max_iterations: 4500000
+      time_limit_seconds: 15
+    seed: 152607
+    max_iterations: 4500000
+    time_limit_seconds: 15

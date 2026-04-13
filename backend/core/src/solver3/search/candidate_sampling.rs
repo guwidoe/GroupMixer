@@ -1354,10 +1354,14 @@ mod tests {
 
     fn tabu_config() -> SgpWeekPairTabuConfig {
         SgpWeekPairTabuConfig {
+            tenure_mode: crate::models::Solver3SgpWeekPairTabuTenureMode::FixedInterval,
             tenure_min: 10,
             tenure_max: 10,
             retry_cap: 4,
             aspiration_enabled: true,
+            session_scale_reference_participants: 32,
+            reactive_no_improvement_window: 100_000,
+            reactive_max_multiplier: 4,
             conflict_restricted_swap_sampling_enabled: false,
         }
     }
@@ -1406,7 +1410,7 @@ mod tests {
         let mut tabu = SgpWeekPairTabuState::new(&state.compiled, tabu_config());
         let mut tabu_rng = ChaCha12Rng::seed_from_u64(13);
         for &(left, right) in &[(0, 2), (0, 3), (1, 2), (1, 3)] {
-            tabu.record_swap(&state.compiled, 0, left, right, 0, &mut tabu_rng);
+            tabu.record_swap(&state.compiled, 0, left, right, 0, 0, &mut tabu_rng);
         }
 
         let mut rng = ChaCha12Rng::seed_from_u64(7);
@@ -1543,7 +1547,15 @@ mod tests {
         let mut tabu_rng = ChaCha12Rng::seed_from_u64(17);
         for session_idx in [0usize, 1usize] {
             for &(left, right) in &[(0, 2), (0, 3), (1, 2), (1, 3)] {
-                tabu.record_swap(&state.compiled, session_idx, left, right, 0, &mut tabu_rng);
+                tabu.record_swap(
+                    &state.compiled,
+                    session_idx,
+                    left,
+                    right,
+                    0,
+                    0,
+                    &mut tabu_rng,
+                );
             }
         }
 
@@ -1644,7 +1656,7 @@ mod tests {
         let mut tabu = SgpWeekPairTabuState::new(&state.compiled, tabu_config());
         let mut tabu_rng = ChaCha12Rng::seed_from_u64(21);
         for &(left, right) in &[(0, 2), (0, 3), (1, 2), (1, 3)] {
-            tabu.record_swap(&state.compiled, 0, left, right, 0, &mut tabu_rng);
+            tabu.record_swap(&state.compiled, 0, left, right, 0, 0, &mut tabu_rng);
         }
 
         let mut rng = ChaCha12Rng::seed_from_u64(7);

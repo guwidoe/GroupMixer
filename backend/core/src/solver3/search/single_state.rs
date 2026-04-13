@@ -343,6 +343,7 @@ fn run_local_improver(
                                     swap.left_person_idx,
                                     swap.right_person_idx,
                                     iteration,
+                                    search.no_improvement_count,
                                     &mut rng,
                                 );
                                 search
