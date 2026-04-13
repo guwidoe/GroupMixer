@@ -39,13 +39,7 @@ impl SearchEngine {
             (
                 Solver3SearchDriverMode::SingleState,
                 Solver3LocalImproverMode::RecordToRecord,
-            ) => single_state::run(
-                &self.configuration,
-                state,
-                run_context,
-                progress_callback,
-                benchmark_observer,
-            ),
+            ) => single_state::run(state, run_context, progress_callback, benchmark_observer),
             (search_driver_mode, local_improver_mode) => Err(SolverError::ValidationError(
                 format!(
                     "solver3 search mode dispatch reached unsupported combination {:?} + {:?}",

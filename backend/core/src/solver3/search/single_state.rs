@@ -9,7 +9,7 @@ use rand_chacha::ChaCha12Rng;
 
 use crate::models::{
     BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, MoveFamily, MovePolicy,
-    ProgressCallback, SolverBenchmarkTelemetry, SolverConfiguration, SolverResult, StopReason,
+    ProgressCallback, SolverBenchmarkTelemetry, SolverResult, StopReason,
 };
 use crate::solver_support::SolverError;
 
@@ -27,14 +27,10 @@ use super::acceptance::{
     RecordToRecordInputs,
 };
 use super::candidate_sampling::{CandidateSampler, SearchMovePreview, SwapSamplingOptions};
-use super::context::{IteratedLocalSearchMemory, SearchProgressState, SearchRunContext};
+use super::context::{SearchProgressState, SearchRunContext};
 use super::family_selection::MoveFamilySelector;
 use super::repeat_guidance::RepeatGuidanceState;
 
-const MEMETIC_BURST_STAGNATION_THRESHOLD: u64 = 25_000;
-const MEMETIC_TOTAL_DONOR_POLISH_SECONDS: u64 = 2;
-const MEMETIC_DONOR_COUNT: usize = 2;
-const MEMETIC_MIN_REMAINING_TIME_SECONDS: u64 = 4;
 const PROGRESS_CALLBACK_INTERVAL_SECONDS: f64 = 0.1;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -68,29 +64,10 @@ fn get_elapsed_seconds_between(start: f64, end: f64) -> f64 {
 }
 
 pub(crate) fn run(
-    configuration: &SolverConfiguration,
     state: &mut RuntimeState,
     run_context: SearchRunContext,
     progress_callback: Option<&ProgressCallback>,
     benchmark_observer: Option<&BenchmarkObserver>,
-) -> Result<SolverResult, SolverError> {
-    run_with_configuration(
-        configuration,
-        state,
-        run_context,
-        progress_callback,
-        benchmark_observer,
-        true,
-    )
-}
-
-fn run_with_configuration(
-    configuration: &SolverConfiguration,
-    state: &mut RuntimeState,
-    run_context: SearchRunContext,
-    progress_callback: Option<&ProgressCallback>,
-    benchmark_observer: Option<&BenchmarkObserver>,
-    allow_memetic_burst: bool,
 ) -> Result<SolverResult, SolverError> {
     let mut rng = ChaCha12Rng::seed_from_u64(run_context.effective_seed);
     let acceptance_policy = RecordToRecordAcceptance;
@@ -114,7 +91,6 @@ fn run_with_configuration(
     let search_started_at = get_current_time();
     let mut stop_reason = StopReason::MaxIterationsReached;
     let mut final_progress_emitted = false;
-    let mut memetic_burst_attempted = false;
     let mut last_progress_callback_at = search_started_at;
 
     const TIME_REFRESH_INTERVAL: u64 = 64;
@@ -143,41 +119,6 @@ fn run_with_configuration(
                 run_context.time_limit_seconds,
             );
             let temperature = record_to_record_threshold_for_progress(progress);
-
-            if allow_memetic_burst
-                && !memetic_burst_attempted
-                && should_attempt_memetic_burst(
-                    search.no_improvement_count,
-                    run_context.time_limit_seconds,
-                    cached_elapsed_seconds,
-                )
-            {
-                memetic_burst_attempted = true;
-                if let Some(offspring_state) = try_memetic_offspring_burst(
-                    configuration,
-                    &search.best_state,
-                    &run_context,
-                    iteration,
-                    progress,
-                )? {
-                    let offspring_score = offspring_state.total_score;
-                    if offspring_score <= search.best_score + temperature {
-                        search.current_state = offspring_state;
-                        if let Some(guidance) = repeat_guidance.as_mut() {
-                            guidance.rebuild_from_state(&search.current_state);
-                        }
-                        cached_elapsed_seconds = get_elapsed_seconds(search_started_at);
-                        search.refresh_best_from_current(iteration, cached_elapsed_seconds);
-                        search.record_acceptance_result(true);
-                        let ils_memory = search.policy_memory.ils.get_or_insert(
-                            IteratedLocalSearchMemory {
-                                perturbation_round: 0,
-                            },
-                        );
-                        ils_memory.perturbation_round += 1;
-                    }
-                }
-            }
 
             let candidate_selection = candidate_sampler.select_previewed_move(
                 &search.current_state,
@@ -347,89 +288,6 @@ fn run_with_configuration(
     )
 }
 
-fn try_memetic_offspring_burst(
-    configuration: &SolverConfiguration,
-    recipient_state: &RuntimeState,
-    run_context: &SearchRunContext,
-    iteration: u64,
-    progress: f64,
-) -> Result<Option<RuntimeState>, SolverError> {
-    let mut best_offspring = None;
-    let mut best_score = f64::INFINITY;
-    let mut polished_donors = Vec::new();
-
-    for donor_ordinal in 0..MEMETIC_DONOR_COUNT {
-        let donor_seed = diversify_seed(
-            run_context.effective_seed,
-            iteration
-                .saturating_add(1)
-                .saturating_add(donor_ordinal as u64),
-        );
-        let Ok(mut donor_state) =
-            RuntimeState::from_compiled_with_seed(recipient_state.compiled.clone(), donor_seed)
-        else {
-            continue;
-        };
-
-        let mut donor_configuration = configuration.clone();
-        donor_configuration.seed = Some(donor_seed);
-        donor_configuration.stop_conditions.time_limit_seconds =
-            Some(memetic_per_donor_polish_seconds());
-        donor_configuration.stop_conditions.no_improvement_iterations = None;
-
-        let donor_run_context = SearchRunContext::from_solver(
-            &donor_configuration,
-            &donor_state,
-            donor_seed,
-        )?;
-        run_with_configuration(
-            &donor_configuration,
-            &mut donor_state,
-            donor_run_context,
-            None,
-            None,
-            false,
-        )?;
-
-        polished_donors.push(donor_state.clone());
-
-        let Some(offspring) = select_best_offspring_session(
-            recipient_state,
-            &donor_state,
-            &run_context.allowed_sessions,
-        )?
-        else {
-            continue;
-        };
-
-        if offspring.total_score < best_score {
-            best_score = offspring.total_score;
-            best_offspring = Some(offspring);
-        }
-    }
-
-    if let Some(offspring) =
-        select_best_cross_donor_bundle(recipient_state, &polished_donors, &run_context.allowed_sessions)?
-    {
-        if offspring.total_score < best_score {
-            best_offspring = Some(offspring);
-        }
-    }
-
-    let Some(offspring) = best_offspring else {
-        return Ok(None);
-    };
-
-    let threshold = record_to_record_threshold_for_progress(progress);
-    if offspring.total_score <= recipient_state.total_score
-        || offspring.total_score <= recipient_state.total_score + threshold
-    {
-        return Ok(Some(offspring));
-    }
-
-    Ok(None)
-}
-
 fn build_solver_result(
     state: &RuntimeState,
     no_improvement_count: u64,
@@ -480,103 +338,6 @@ pub(crate) fn should_emit_progress_callback(
     iteration == 0 || elapsed_since_last_callback >= PROGRESS_CALLBACK_INTERVAL_SECONDS
 }
 
-#[inline]
-fn should_attempt_memetic_burst(
-    no_improvement_count: u64,
-    time_limit_seconds: Option<u64>,
-    elapsed_seconds: f64,
-) -> bool {
-    if no_improvement_count < MEMETIC_BURST_STAGNATION_THRESHOLD {
-        return false;
-    }
-
-    time_limit_seconds.is_some_and(|limit| {
-        elapsed_seconds + MEMETIC_TOTAL_DONOR_POLISH_SECONDS as f64 + 0.5
-            < limit as f64 - MEMETIC_MIN_REMAINING_TIME_SECONDS as f64
-    })
-}
-
-#[inline]
-fn memetic_per_donor_polish_seconds() -> u64 {
-    (MEMETIC_TOTAL_DONOR_POLISH_SECONDS / MEMETIC_DONOR_COUNT as u64).max(1)
-}
-
-fn select_best_offspring_session(
-    recipient_state: &RuntimeState,
-    donor_state: &RuntimeState,
-    allowed_sessions: &[usize],
-) -> Result<Option<RuntimeState>, SolverError> {
-    let mut best_offspring = None;
-    let mut best_score = f64::INFINITY;
-
-    for &session_idx in allowed_sessions {
-        let mut offspring = recipient_state.clone();
-        offspring.overwrite_session_from(donor_state, session_idx)?;
-        offspring.rebuild_pair_contacts();
-        offspring.sync_score_from_oracle()?;
-        if offspring.total_score < best_score {
-            best_score = offspring.total_score;
-            best_offspring = Some(offspring);
-        }
-    }
-
-    Ok(best_offspring)
-}
-
-fn select_best_cross_donor_bundle(
-    recipient_state: &RuntimeState,
-    donors: &[RuntimeState],
-    allowed_sessions: &[usize],
-) -> Result<Option<RuntimeState>, SolverError> {
-    if donors.len() < 2 {
-        return Ok(None);
-    }
-
-    let mut best_offspring = None;
-    let mut best_score = f64::INFINITY;
-
-    for left_donor_idx in 0..donors.len() {
-        for right_donor_idx in (left_donor_idx + 1)..donors.len() {
-            for (left_session_pos, &left_session_idx) in allowed_sessions.iter().enumerate() {
-                for &right_session_idx in allowed_sessions.iter().skip(left_session_pos + 1) {
-                    let offspring = transplant_mixed_donor_sessions(
-                        recipient_state,
-                        &donors[left_donor_idx],
-                        left_session_idx,
-                        &donors[right_donor_idx],
-                        right_session_idx,
-                    )?;
-                    if offspring.total_score < best_score {
-                        best_score = offspring.total_score;
-                        best_offspring = Some(offspring);
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(best_offspring)
-}
-
-fn transplant_mixed_donor_sessions(
-    recipient_state: &RuntimeState,
-    left_donor: &RuntimeState,
-    left_session_idx: usize,
-    right_donor: &RuntimeState,
-    right_session_idx: usize,
-) -> Result<RuntimeState, SolverError> {
-    let mut offspring = recipient_state.clone();
-    offspring.overwrite_session_from(left_donor, left_session_idx)?;
-    offspring.overwrite_session_from(right_donor, right_session_idx)?;
-    offspring.rebuild_pair_contacts();
-    offspring.sync_score_from_oracle()?;
-    Ok(offspring)
-}
-
-#[inline]
-fn diversify_seed(base_seed: u64, salt: u64) -> u64 {
-    base_seed ^ 0x9e37_79b9_7f4a_7c15u64.wrapping_mul(salt.saturating_add(1))
-}
 
 fn maybe_run_sampled_correctness_check(
     run_context: &SearchRunContext,
