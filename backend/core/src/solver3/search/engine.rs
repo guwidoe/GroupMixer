@@ -26,7 +26,7 @@ use super::acceptance::{
     cooling_progress, record_to_record_threshold_for_progress, RecordToRecordAcceptance,
     RecordToRecordInputs,
 };
-use super::candidate_sampling::{CandidateSampler, SearchMovePreview};
+use super::candidate_sampling::{CandidateSampler, SearchMovePreview, SwapSamplingOptions};
 use super::context::{IteratedLocalSearchMemory, SearchProgressState, SearchRunContext};
 use super::family_selection::MoveFamilySelector;
 use super::repeat_guidance::RepeatGuidanceState;
@@ -200,6 +200,13 @@ impl SearchEngine {
                         &search.current_state,
                         &family_selector,
                         &run_context.allowed_sessions,
+                        SwapSamplingOptions {
+                            repeat_guidance: repeat_guidance.as_ref(),
+                            repeat_guided_swap_probability: run_context
+                                .repeat_guided_swap_probability,
+                            repeat_guided_swap_candidate_preview_budget: run_context
+                                .repeat_guided_swap_candidate_preview_budget,
+                        },
                         &mut rng,
                     )
                 {

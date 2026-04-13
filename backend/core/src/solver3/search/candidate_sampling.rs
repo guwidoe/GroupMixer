@@ -4,7 +4,7 @@ use std::time::Instant;
 #[cfg(target_arch = "wasm32")]
 use js_sys;
 
-use rand::RngExt;
+use rand::{seq::SliceRandom, RngExt};
 use rand_chacha::ChaCha12Rng;
 
 use crate::models::MoveFamily;
@@ -16,6 +16,7 @@ use super::super::moves::{
 };
 use super::super::runtime_state::RuntimeState;
 use super::family_selection::MoveFamilySelector;
+use super::repeat_guidance::RepeatGuidanceState;
 
 const MAX_RANDOM_CANDIDATE_ATTEMPTS: usize = 24;
 const MAX_RANDOM_TARGET_ATTEMPTS: usize = 24;
@@ -90,6 +91,23 @@ impl SearchMovePreview {
 #[derive(Debug, Default, Clone, Copy)]
 pub(crate) struct CandidateSampler;
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct SwapSamplingOptions<'a> {
+    pub(crate) repeat_guidance: Option<&'a RepeatGuidanceState>,
+    pub(crate) repeat_guided_swap_probability: f64,
+    pub(crate) repeat_guided_swap_candidate_preview_budget: usize,
+}
+
+impl Default for SwapSamplingOptions<'_> {
+    fn default() -> Self {
+        Self {
+            repeat_guidance: None,
+            repeat_guided_swap_probability: 0.0,
+            repeat_guided_swap_candidate_preview_budget: 0,
+        }
+    }
+}
+
 impl CandidateSampler {
     #[inline]
     pub(crate) fn select_previewed_move(
@@ -97,12 +115,14 @@ impl CandidateSampler {
         state: &RuntimeState,
         family_selector: &MoveFamilySelector,
         allowed_sessions: &[usize],
+        swap_sampling: SwapSamplingOptions<'_>,
         rng: &mut ChaCha12Rng,
     ) -> Option<(MoveFamily, SearchMovePreview, f64)> {
         let ordered_families = family_selector.ordered_families(rng);
         for family in ordered_families {
             let preview_started_at = get_current_time();
-            let preview = self.sample_preview_for_family(state, family, allowed_sessions, rng);
+            let preview =
+                self.sample_preview_for_family(state, family, allowed_sessions, swap_sampling, rng);
             let preview_seconds =
                 get_elapsed_seconds_between(preview_started_at, get_current_time());
             if let Some(preview) = preview {
@@ -119,11 +139,12 @@ impl CandidateSampler {
         state: &RuntimeState,
         family: MoveFamily,
         allowed_sessions: &[usize],
+        swap_sampling: SwapSamplingOptions<'_>,
         rng: &mut ChaCha12Rng,
     ) -> Option<SearchMovePreview> {
         match family {
             MoveFamily::Swap => self
-                .sample_swap_preview(state, allowed_sessions, rng)
+                .sample_swap_preview(state, allowed_sessions, swap_sampling, rng)
                 .map(SearchMovePreview::Swap),
             MoveFamily::Transfer => self
                 .sample_transfer_preview(state, allowed_sessions, rng)
@@ -135,6 +156,40 @@ impl CandidateSampler {
     }
 
     fn sample_swap_preview(
+        &self,
+        state: &RuntimeState,
+        allowed_sessions: &[usize],
+        swap_sampling: SwapSamplingOptions<'_>,
+        rng: &mut ChaCha12Rng,
+    ) -> Option<SwapRuntimePreview> {
+        if allowed_sessions.is_empty() || state.compiled.num_groups < 2 {
+            return None;
+        }
+
+        let guided_preview = if swap_sampling.repeat_guided_swap_candidate_preview_budget > 0
+            && rng.random::<f64>() < swap_sampling.repeat_guided_swap_probability
+        {
+            swap_sampling.repeat_guidance.and_then(|guidance| {
+                self.sample_repeat_guided_swap_preview(
+                    state,
+                    allowed_sessions,
+                    guidance,
+                    swap_sampling.repeat_guided_swap_candidate_preview_budget,
+                    rng,
+                )
+            })
+        } else {
+            None
+        };
+
+        if guided_preview.is_some() {
+            return guided_preview;
+        }
+
+        self.sample_random_swap_preview(state, allowed_sessions, rng)
+    }
+
+    fn sample_random_swap_preview(
         &self,
         state: &RuntimeState,
         allowed_sessions: &[usize],
@@ -169,6 +224,82 @@ impl CandidateSampler {
         }
 
         None
+    }
+
+    fn sample_repeat_guided_swap_preview(
+        &self,
+        state: &RuntimeState,
+        allowed_sessions: &[usize],
+        guidance: &RepeatGuidanceState,
+        candidate_preview_budget: usize,
+        rng: &mut ChaCha12Rng,
+    ) -> Option<SwapRuntimePreview> {
+        if candidate_preview_budget == 0 || guidance.active_pair_count() == 0 {
+            return None;
+        }
+
+        let offender_pair_idx = guidance.sample_pair_from_highest_bucket(rng)?;
+        let (left_person_idx, right_person_idx) = state.compiled.pair_members(offender_pair_idx);
+        let session_idx = pick_repeat_meeting_session(
+            state,
+            allowed_sessions,
+            left_person_idx,
+            right_person_idx,
+            rng,
+        )?;
+        let anchor_person_idx = choose_repeat_guided_anchor_person(
+            guidance,
+            left_person_idx,
+            right_person_idx,
+            rng,
+        );
+        let source_group_idx =
+            state.person_location[state.people_slot(session_idx, anchor_person_idx)]?;
+
+        let mut target_groups = (0..state.compiled.num_groups)
+            .filter(|group_idx| *group_idx != source_group_idx)
+            .collect::<Vec<_>>();
+        if target_groups.is_empty() {
+            return None;
+        }
+        target_groups.shuffle(rng);
+
+        let mut best_preview = None;
+        let mut previewed_candidates = 0usize;
+        for target_group_idx in target_groups {
+            let target_slot = state.group_slot(session_idx, target_group_idx);
+            let target_members = &state.group_members[target_slot];
+            if target_members.is_empty() {
+                continue;
+            }
+
+            let start = rng.random_range(0..target_members.len());
+            for offset in 0..target_members.len() {
+                let target_person_idx = target_members[(start + offset) % target_members.len()];
+                if target_person_idx == anchor_person_idx {
+                    continue;
+                }
+
+                let swap = SwapMove::new(session_idx, anchor_person_idx, target_person_idx);
+                if let Ok(preview) = preview_swap_runtime_lightweight(state, &swap) {
+                    previewed_candidates += 1;
+                    if best_preview
+                        .as_ref()
+                        .is_none_or(|best: &SwapRuntimePreview| {
+                            preview.delta_score < best.delta_score
+                        })
+                    {
+                        best_preview = Some(preview);
+                    }
+
+                    if previewed_candidates >= candidate_preview_budget {
+                        return best_preview;
+                    }
+                }
+            }
+        }
+
+        best_preview
     }
 
     fn sample_transfer_preview(
@@ -362,6 +493,64 @@ impl CandidateSampler {
     }
 }
 
+fn pick_repeat_meeting_session(
+    state: &RuntimeState,
+    allowed_sessions: &[usize],
+    left_person_idx: usize,
+    right_person_idx: usize,
+    rng: &mut ChaCha12Rng,
+) -> Option<usize> {
+    let mut meeting_sessions = Vec::new();
+    for &session_idx in allowed_sessions {
+        if !state.compiled.person_participation[left_person_idx][session_idx]
+            || !state.compiled.person_participation[right_person_idx][session_idx]
+        {
+            continue;
+        }
+
+        let left_group = state.person_location[state.people_slot(session_idx, left_person_idx)];
+        let right_group = state.person_location[state.people_slot(session_idx, right_person_idx)];
+        if left_group.is_some() && left_group == right_group {
+            meeting_sessions.push(session_idx);
+        }
+    }
+
+    if meeting_sessions.is_empty() {
+        None
+    } else {
+        Some(meeting_sessions[rng.random_range(0..meeting_sessions.len())])
+    }
+}
+
+fn choose_repeat_guided_anchor_person(
+    guidance: &RepeatGuidanceState,
+    left_person_idx: usize,
+    right_person_idx: usize,
+    rng: &mut ChaCha12Rng,
+) -> usize {
+    let left_incidents = guidance.person_incident_count(left_person_idx);
+    let right_incidents = guidance.person_incident_count(right_person_idx);
+
+    if left_incidents == right_incidents {
+        if rng.random::<bool>() {
+            left_person_idx
+        } else {
+            right_person_idx
+        }
+    } else {
+        let (heavier, lighter) = if left_incidents > right_incidents {
+            (left_person_idx, right_person_idx)
+        } else {
+            (right_person_idx, left_person_idx)
+        };
+        if rng.random::<f64>() < 0.75 {
+            heavier
+        } else {
+            lighter
+        }
+    }
+}
+
 fn participating_clique_members(
     state: &RuntimeState,
     session_idx: usize,
@@ -546,7 +735,8 @@ mod tests {
 
     use super::super::super::runtime_state::RuntimeState;
     use super::super::family_selection::MoveFamilySelector;
-    use super::CandidateSampler;
+    use super::super::repeat_guidance::RepeatGuidanceState;
+    use super::{CandidateSampler, SearchMovePreview, SwapSamplingOptions};
 
     fn solver3_config() -> SolverConfiguration {
         SolverConfiguration {
@@ -602,6 +792,63 @@ mod tests {
         RuntimeState::from_input(&input).unwrap()
     }
 
+    fn repeated_pair_runtime_state() -> RuntimeState {
+        let input = ApiInput {
+            problem: ProblemDefinition {
+                people: (0..4)
+                    .map(|i| Person {
+                        id: format!("p{}", i),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    })
+                    .collect(),
+                groups: vec![
+                    Group {
+                        id: "g0".into(),
+                        size: 2,
+                        session_sizes: None,
+                    },
+                    Group {
+                        id: "g1".into(),
+                        size: 2,
+                        session_sizes: None,
+                    },
+                ],
+                num_sessions: 2,
+            },
+            initial_schedule: Some(HashMap::from([
+                (
+                    "session_0".to_string(),
+                    HashMap::from([
+                        ("g0".to_string(), vec!["p0".to_string(), "p1".to_string()]),
+                        ("g1".to_string(), vec!["p2".to_string(), "p3".to_string()]),
+                    ]),
+                ),
+                (
+                    "session_1".to_string(),
+                    HashMap::from([
+                        ("g0".to_string(), vec!["p0".to_string(), "p1".to_string()]),
+                        ("g1".to_string(), vec!["p2".to_string(), "p3".to_string()]),
+                    ]),
+                ),
+            ])),
+            construction_seed_schedule: None,
+            objectives: vec![Objective {
+                r#type: "maximize_unique_contacts".into(),
+                weight: 1.0,
+            }],
+            constraints: vec![crate::models::Constraint::RepeatEncounter(
+                crate::models::RepeatEncounterParams {
+                    max_allowed_encounters: 1,
+                    penalty_function: "linear".into(),
+                    penalty_weight: 100.0,
+                },
+            )],
+            solver: solver3_config(),
+        };
+        RuntimeState::from_input(&input).unwrap()
+    }
+
     #[test]
     fn sampler_returns_none_when_no_sessions_allowed() {
         let state = simple_runtime_state();
@@ -609,7 +856,7 @@ mod tests {
         let mut rng = ChaCha12Rng::seed_from_u64(7);
         let sampler = CandidateSampler;
         assert!(sampler
-            .select_previewed_move(&state, &selector, &[], &mut rng)
+            .select_previewed_move(&state, &selector, &[], SwapSamplingOptions::default(), &mut rng)
             .is_none());
     }
 
@@ -619,7 +866,107 @@ mod tests {
         let selector = MoveFamilySelector::new(&Default::default());
         let mut rng = ChaCha12Rng::seed_from_u64(7);
         let sampler = CandidateSampler;
-        let sampled = sampler.select_previewed_move(&state, &selector, &[0], &mut rng);
+        let sampled = sampler.select_previewed_move(
+            &state,
+            &selector,
+            &[0],
+            SwapSamplingOptions::default(),
+            &mut rng,
+        );
         assert!(sampled.is_some());
+    }
+
+    #[test]
+    fn repeat_guided_sampler_honors_allowed_sessions() {
+        let state = repeated_pair_runtime_state();
+        let guidance = RepeatGuidanceState::build_from_state(&state).unwrap();
+        let selector = MoveFamilySelector::new(&crate::models::MovePolicy {
+            forced_family: Some(crate::models::MoveFamily::Swap),
+            ..Default::default()
+        });
+        let mut rng = ChaCha12Rng::seed_from_u64(7);
+        let sampler = CandidateSampler;
+
+        let (_family, preview, _seconds) = sampler
+            .select_previewed_move(
+                &state,
+                &selector,
+                &[1],
+                SwapSamplingOptions {
+                    repeat_guidance: Some(&guidance),
+                    repeat_guided_swap_probability: 1.0,
+                    repeat_guided_swap_candidate_preview_budget: 8,
+                },
+                &mut rng,
+            )
+            .expect("guided swap preview should be sampled");
+
+        assert_eq!(preview.session_idx(), 1);
+    }
+
+    #[test]
+    fn repeat_guided_sampler_falls_back_to_random_without_guidance() {
+        let state = simple_runtime_state();
+        let selector = MoveFamilySelector::new(&crate::models::MovePolicy {
+            forced_family: Some(crate::models::MoveFamily::Swap),
+            ..Default::default()
+        });
+        let mut rng = ChaCha12Rng::seed_from_u64(7);
+        let sampler = CandidateSampler;
+
+        let sampled = sampler.select_previewed_move(
+            &state,
+            &selector,
+            &[0],
+            SwapSamplingOptions {
+                repeat_guidance: None,
+                repeat_guided_swap_probability: 1.0,
+                repeat_guided_swap_candidate_preview_budget: 8,
+            },
+            &mut rng,
+        );
+
+        assert!(sampled.is_some());
+    }
+
+    #[test]
+    fn repeat_guided_sampler_centers_swap_on_active_offender_pair() {
+        let state = repeated_pair_runtime_state();
+        let guidance = RepeatGuidanceState::build_from_state(&state).unwrap();
+        let selector = MoveFamilySelector::new(&crate::models::MovePolicy {
+            forced_family: Some(crate::models::MoveFamily::Swap),
+            ..Default::default()
+        });
+        let mut rng = ChaCha12Rng::seed_from_u64(3);
+        let sampler = CandidateSampler;
+
+        let (_family, preview, _seconds) = sampler
+            .select_previewed_move(
+                &state,
+                &selector,
+                &[0, 1],
+                SwapSamplingOptions {
+                    repeat_guidance: Some(&guidance),
+                    repeat_guided_swap_probability: 1.0,
+                    repeat_guided_swap_candidate_preview_budget: 8,
+                },
+                &mut rng,
+            )
+            .expect("guided swap preview should be sampled");
+
+        match preview {
+            SearchMovePreview::Swap(preview) => {
+                let swap = preview.analysis.swap;
+                assert!(
+                    swap.left_person_idx == 0
+                        || swap.left_person_idx == 1
+                        || swap.right_person_idx == 0
+                        || swap.right_person_idx == 1,
+                    "guided swap should involve one offender endpoint: {:?}",
+                    swap
+                );
+            }
+            other => panic!("expected swap preview, got {other:?}"),
+        }
     }
 }

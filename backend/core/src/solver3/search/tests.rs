@@ -10,7 +10,7 @@ use crate::models::{
 use crate::solver3::runtime_state::RuntimeState;
 
 use super::acceptance::{AcceptanceInputs, SimulatedAnnealingAcceptance};
-use super::candidate_sampling::CandidateSampler;
+use super::candidate_sampling::{CandidateSampler, SwapSamplingOptions};
 use super::context::{SearchProgressState, SearchRunContext};
 use super::family_selection::MoveFamilySelector;
 use super::{engine::should_emit_progress_callback, SearchEngine};
@@ -128,7 +128,7 @@ fn candidate_sampler_respects_allowed_sessions() {
     let sampler = CandidateSampler;
     let mut rng = ChaCha12Rng::seed_from_u64(7);
     let (_family, preview, _seconds) = sampler
-        .select_previewed_move(&state, &selector, &[1], &mut rng)
+        .select_previewed_move(&state, &selector, &[1], SwapSamplingOptions::default(), &mut rng)
         .expect("swap preview should be sampled");
     assert_eq!(preview.session_idx(), 1);
 }
