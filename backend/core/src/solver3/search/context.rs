@@ -3,8 +3,9 @@ use std::collections::VecDeque;
 use crate::models::{
     BestScoreTimelinePoint, MemeticBenchmarkTelemetry, MoveFamily,
     MoveFamilyBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
-    ProgressUpdate, RepeatGuidedSwapBenchmarkTelemetry, Solver3LocalImproverMode,
-    Solver3SearchDriverMode, SolverBenchmarkTelemetry, SolverConfiguration, StopReason,
+    ProgressUpdate, RepeatGuidedSwapBenchmarkTelemetry, SgpWeekPairTabuBenchmarkTelemetry,
+    Solver3LocalImproverMode, Solver3SearchDriverMode, SolverBenchmarkTelemetry,
+    SolverConfiguration, StopReason,
 };
 use crate::runtime_target::displayed_total_iterations;
 use crate::solver_support::SolverError;
@@ -326,6 +327,7 @@ pub(crate) struct SearchProgressState {
     pub(crate) recent_acceptance: VecDeque<bool>,
     pub(crate) best_score_timeline: Vec<BestScoreTimelinePoint>,
     pub(crate) repeat_guided_swap_telemetry: RepeatGuidedSwapBenchmarkTelemetry,
+    pub(crate) sgp_week_pair_tabu_telemetry: Option<SgpWeekPairTabuBenchmarkTelemetry>,
     pub(crate) memetic_telemetry: Option<MemeticBenchmarkTelemetry>,
     pub(crate) move_metrics: MoveFamilyBenchmarkTelemetrySummary,
     #[allow(dead_code)]
@@ -358,6 +360,7 @@ impl SearchProgressState {
                 best_score: initial_score,
             }],
             repeat_guided_swap_telemetry: RepeatGuidedSwapBenchmarkTelemetry::default(),
+            sgp_week_pair_tabu_telemetry: None,
             memetic_telemetry: None,
             move_metrics: MoveFamilyBenchmarkTelemetrySummary::default(),
             policy_memory: SearchPolicyMemory::default(),
@@ -376,6 +379,57 @@ impl SearchProgressState {
         self.repeat_guided_swap_telemetry.guided_fallback_to_random += guided_fallback_to_random;
         self.repeat_guided_swap_telemetry.guided_previewed_candidates +=
             guided_previewed_candidates;
+    }
+
+    pub(crate) fn record_tabu_sampling(
+        &mut self,
+        raw_tabu_hits: u64,
+        prefilter_skips: u64,
+        retry_exhaustions: u64,
+        hard_blocks: u64,
+        aspiration_preview_surfaces: u64,
+    ) {
+        if raw_tabu_hits == 0
+            && prefilter_skips == 0
+            && retry_exhaustions == 0
+            && hard_blocks == 0
+            && aspiration_preview_surfaces == 0
+        {
+            return;
+        }
+        let telemetry = self
+            .sgp_week_pair_tabu_telemetry
+            .get_or_insert_with(SgpWeekPairTabuBenchmarkTelemetry::default);
+        telemetry.raw_tabu_hits += raw_tabu_hits;
+        telemetry.prefilter_skips += prefilter_skips;
+        telemetry.retry_exhaustions += retry_exhaustions;
+        telemetry.hard_blocks += hard_blocks;
+        telemetry.aspiration_preview_surfaces += aspiration_preview_surfaces;
+    }
+
+    pub(crate) fn record_tabu_aspiration_override(&mut self) {
+        let telemetry = self
+            .sgp_week_pair_tabu_telemetry
+            .get_or_insert_with(SgpWeekPairTabuBenchmarkTelemetry::default);
+        telemetry.aspiration_overrides += 1;
+    }
+
+    pub(crate) fn record_tabu_realized_tenure(&mut self, tenure: u64) {
+        let telemetry = self
+            .sgp_week_pair_tabu_telemetry
+            .get_or_insert_with(SgpWeekPairTabuBenchmarkTelemetry::default);
+        telemetry.recorded_swaps += 1;
+        telemetry.realized_tenure_sum += tenure;
+        telemetry.realized_tenure_min = Some(
+            telemetry
+                .realized_tenure_min
+                .map_or(tenure, |current| current.min(tenure)),
+        );
+        telemetry.realized_tenure_max = Some(
+            telemetry
+                .realized_tenure_max
+                .map_or(tenure, |current| current.max(tenure)),
+        );
     }
 
     pub(crate) fn record_preview_attempt(
@@ -610,6 +664,7 @@ impl SearchProgressState {
             },
             best_score_timeline: self.best_score_timeline.clone(),
             repeat_guided_swaps: self.repeat_guided_swap_telemetry.clone(),
+            sgp_week_pair_tabu: self.sgp_week_pair_tabu_telemetry.clone(),
             memetic: self.memetic_telemetry.clone(),
             moves: self.move_metrics.clone(),
         }

@@ -1841,6 +1841,7 @@ impl Solver for SimulatedAnnealing {
             },
             best_score_timeline,
             repeat_guided_swaps: crate::models::RepeatGuidedSwapBenchmarkTelemetry::default(),
+            sgp_week_pair_tabu: None,
             memetic: None,
             moves: benchmark_moves.into_summary(),
         };

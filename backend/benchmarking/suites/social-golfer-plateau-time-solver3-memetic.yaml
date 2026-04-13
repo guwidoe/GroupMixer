@@ -1,0 +1,44 @@
+schema_version: 1
+suite_id: social-golfer-plateau-time-solver3-memetic
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: stretch
+title: Social Golfer plateau diagnosis (time-limited, solver3 memetic)
+description: Dedicated single-case solver3 suite for studying time-budget utilization and plateau behavior on the canonical Social Golfer workload with steady-state memetic search enabled.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 1000000
+    time_limit_seconds: 60
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+    search_driver:
+      mode: steady_state_memetic
+      steady_state_memetic:
+        population_size: 6
+        parent_tournament_size: 2
+        mutation_swaps_min: 2
+        mutation_swaps_max: 5
+        child_polish_max_iterations: 64
+        child_polish_no_improvement_iterations: 32
+    local_improver:
+      mode: record_to_record
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.plateau.time_limited.social_golfer_steady_state_memetic
+    provenance: dedicated_single_case_plateau_diagnosis_suite_for_solver3_steady_state_memetic
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320810
+    max_iterations: 10000000
+    time_limit_seconds: 25

@@ -68,6 +68,7 @@ struct MutationStats {
 struct LocalImproverStats {
     child_polish_iterations: u64,
     child_polish_improving_moves: u64,
+    child_polish_seconds: f64,
 }
 
 impl PopulationMember {
@@ -100,6 +101,9 @@ pub(crate) fn run(
     search.memetic_telemetry = Some(MemeticBenchmarkTelemetry {
         population_size: memetic_config.population_size as u32,
         parent_tournament_size: memetic_config.parent_tournament_size as u32,
+        child_polish_local_improver_mode: Some(run_context.local_improver_mode),
+        child_polish_max_iterations: memetic_config.child_polish_max_iterations,
+        child_polish_no_improvement_iterations: memetic_config.child_polish_no_improvement_iterations,
         ..Default::default()
     });
 
@@ -143,7 +147,7 @@ pub(crate) fn run(
                 .memetic_telemetry
                 .as_mut()
                 .expect("memetic telemetry should exist")
-                .offspring_generated += 1;
+                .offspring_attempted += 1;
             let mutation_stats = mutate_child(
                 &mut child,
                 &run_context,
@@ -157,6 +161,21 @@ pub(crate) fn run(
                 .expect("memetic telemetry should exist");
             memetic_telemetry.mutation_attempted_swaps += mutation_stats.attempted_swaps;
             memetic_telemetry.mutation_applied_swaps += mutation_stats.applied_swaps;
+            memetic_telemetry.mutation_length_sum += mutation_stats.attempted_swaps;
+            memetic_telemetry.mutation_length_min = Some(
+                memetic_telemetry
+                    .mutation_length_min
+                    .map_or(mutation_stats.attempted_swaps, |current| {
+                        current.min(mutation_stats.attempted_swaps)
+                    }),
+            );
+            memetic_telemetry.mutation_length_max = Some(
+                memetic_telemetry
+                    .mutation_length_max
+                    .map_or(mutation_stats.attempted_swaps, |current| {
+                        current.max(mutation_stats.attempted_swaps)
+                    }),
+            );
 
             let remaining_time_seconds = run_context.time_limit_seconds.map(|limit| {
                 (limit as f64 - get_elapsed_seconds(total_started_at)).max(0.0)
@@ -174,14 +193,20 @@ pub(crate) fn run(
                 },
             )?;
             let polished_child = polish_outcome.search.best_state.clone();
-            let local_improver_stats = absorb_local_improver_metrics(&mut search, &polish_outcome.search);
+            let local_improver_stats = absorb_local_improver_metrics(
+                &mut search,
+                &polish_outcome.search,
+                polish_outcome.search_seconds,
+            );
             let memetic_telemetry = search
                 .memetic_telemetry
                 .as_mut()
                 .expect("memetic telemetry should exist");
+            memetic_telemetry.offspring_polished += 1;
             memetic_telemetry.child_polish_iterations += local_improver_stats.child_polish_iterations;
             memetic_telemetry.child_polish_improving_moves +=
                 local_improver_stats.child_polish_improving_moves;
+            memetic_telemetry.child_polish_seconds += local_improver_stats.child_polish_seconds;
             search.current_state = polished_child.clone();
 
             if let Some(replacement_idx) = find_replacement_target(&population, polished_child.total_score) {
@@ -190,7 +215,13 @@ pub(crate) fn run(
                     .memetic_telemetry
                     .as_mut()
                     .expect("memetic telemetry should exist")
-                    .replacements += 1;
+                    .offspring_replaced += 1;
+            } else {
+                search
+                    .memetic_telemetry
+                    .as_mut()
+                    .expect("memetic telemetry should exist")
+                    .offspring_discarded += 1;
             }
 
             let elapsed_after_child = get_elapsed_seconds(total_started_at);
@@ -356,11 +387,13 @@ fn mutate_child(
 
         let session_idx =
             run_context.allowed_sessions[rng.random_range(0..run_context.allowed_sessions.len())];
+        let mut noop_tabu_telemetry = super::candidate_sampling::TabuSwapSamplingDelta::default();
         let preview_started_at = get_current_time();
         let preview = candidate_sampler.sample_random_swap_preview_in_session(
             child,
             session_idx,
             SwapSamplingOptions::default(),
+            &mut noop_tabu_telemetry,
             rng,
         );
         let preview_seconds = get_elapsed_seconds_between(preview_started_at, get_current_time());
@@ -392,6 +425,7 @@ fn mutate_child(
 fn absorb_local_improver_metrics(
     aggregate: &mut SearchProgressState,
     local: &SearchProgressState,
+    local_search_seconds: f64,
 ) -> LocalImproverStats {
     aggregate.accepted_uphill_moves += local.accepted_uphill_moves;
     aggregate.accepted_downhill_moves += local.accepted_downhill_moves;
@@ -421,6 +455,7 @@ fn absorb_local_improver_metrics(
         child_polish_improving_moves: local.move_metrics.swap.improving_accepts
             + local.move_metrics.transfer.improving_accepts
             + local.move_metrics.clique_swap.improving_accepts,
+        child_polish_seconds: local_search_seconds,
     }
 }
 

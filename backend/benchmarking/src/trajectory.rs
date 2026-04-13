@@ -455,6 +455,7 @@ mod tests {
                         },
                     ],
                     repeat_guided_swaps: Default::default(),
+                    sgp_week_pair_tabu: None,
                     memetic: None,
                 }),
                 moves: MoveFamilyBenchmarkTelemetrySummary::default(),

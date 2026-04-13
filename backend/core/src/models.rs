@@ -1561,17 +1561,60 @@ pub struct MemeticBenchmarkTelemetry {
     #[serde(default)]
     pub parent_tournament_size: u32,
     #[serde(default)]
-    pub offspring_generated: u64,
+    pub child_polish_local_improver_mode: Option<Solver3LocalImproverMode>,
+    #[serde(default)]
+    pub child_polish_max_iterations: u64,
+    #[serde(default)]
+    pub child_polish_no_improvement_iterations: u64,
+    #[serde(default)]
+    pub offspring_attempted: u64,
+    #[serde(default)]
+    pub offspring_polished: u64,
+    #[serde(default)]
+    pub offspring_replaced: u64,
+    #[serde(default)]
+    pub offspring_discarded: u64,
     #[serde(default)]
     pub mutation_attempted_swaps: u64,
     #[serde(default)]
     pub mutation_applied_swaps: u64,
     #[serde(default)]
+    pub mutation_length_sum: u64,
+    #[serde(default)]
+    pub mutation_length_min: Option<u64>,
+    #[serde(default)]
+    pub mutation_length_max: Option<u64>,
+    #[serde(default)]
     pub child_polish_iterations: u64,
     #[serde(default)]
     pub child_polish_improving_moves: u64,
     #[serde(default)]
-    pub replacements: u64,
+    pub child_polish_seconds: f64,
+}
+
+/// Benchmark telemetry for the SGP week-pair tabu local improver.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
+pub struct SgpWeekPairTabuBenchmarkTelemetry {
+    #[serde(default)]
+    pub raw_tabu_hits: u64,
+    #[serde(default)]
+    pub prefilter_skips: u64,
+    #[serde(default)]
+    pub retry_exhaustions: u64,
+    #[serde(default)]
+    pub hard_blocks: u64,
+    #[serde(default)]
+    pub aspiration_preview_surfaces: u64,
+    #[serde(default)]
+    pub aspiration_overrides: u64,
+    #[serde(default)]
+    pub recorded_swaps: u64,
+    #[serde(default)]
+    pub realized_tenure_sum: u64,
+    #[serde(default)]
+    pub realized_tenure_min: Option<u64>,
+    #[serde(default)]
+    pub realized_tenure_max: Option<u64>,
 }
 
 /// End-of-run benchmark telemetry intended for regression / benchmark artifacts.
@@ -1608,6 +1651,8 @@ pub struct SolverBenchmarkTelemetry {
     pub best_score_timeline: Vec<BestScoreTimelinePoint>,
     #[serde(default)]
     pub repeat_guided_swaps: RepeatGuidedSwapBenchmarkTelemetry,
+    #[serde(default)]
+    pub sgp_week_pair_tabu: Option<SgpWeekPairTabuBenchmarkTelemetry>,
     #[serde(default)]
     pub memetic: Option<MemeticBenchmarkTelemetry>,
     pub moves: MoveFamilyBenchmarkTelemetrySummary,

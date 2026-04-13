@@ -222,6 +222,74 @@ gm-cli benchmark run \
 
 For this phase, do **not** accept quality claims based only on raw throughput or only on guided-attempt counts. The feature must show that longer budgets are converted into real late-run search progress at an acceptable throughput cost.
 
+### Solver3 tabu + memetic validation workflow
+
+When validating SGP-specialized advanced search modes, keep the baseline Social Golfer lanes as the anchor and compare against the dedicated mode-specific manifests.
+
+#### Baseline manifests
+
+- `backend/benchmarking/suites/social-golfer-plateau-time-solver3.yaml`
+- `backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3.yaml`
+
+#### SGP tabu manifests
+
+- `backend/benchmarking/suites/social-golfer-plateau-time-solver3-sgp-tabu.yaml`
+- `backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-sgp-tabu.yaml`
+
+#### Steady-state memetic manifests
+
+- `backend/benchmarking/suites/social-golfer-plateau-time-solver3-memetic.yaml`
+- `backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-memetic.yaml`
+
+#### Steady-state memetic + tabu child-polish manifests
+
+- `backend/benchmarking/suites/social-golfer-plateau-time-solver3-memetic-tabu.yaml`
+- `backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-memetic-tabu.yaml`
+
+Recommended command sequence:
+
+```bash
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3.yaml
+
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-sgp-tabu.yaml
+
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-memetic.yaml
+
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-memetic-tabu.yaml
+
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3.yaml
+
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-sgp-tabu.yaml
+
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-memetic.yaml
+
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-memetic-tabu.yaml
+
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/hotpath-search-iteration-sailing-trip-demo-solver3.yaml
+```
+
+Interpretation checklist:
+
+- final score
+- last-improvement timing from `best_score_timeline`
+- iterations / offspring per second
+- `search_telemetry.sgp_week_pair_tabu.*` for tabu prefilter / aspiration behavior
+- `search_telemetry.memetic.*` for offspring, mutation-length, child-polish, and replacement behavior
+
+Do **not** describe tabu or memetic paths as default-path upgrades unless:
+
+- the dedicated Social Golfer comparisons beat baseline honestly,
+- and the default hotpath lane remains separately measurable and stable.
+
 ### Solver3 oracle/debug correctness feature
 
 `gm-core` exposes `solver3-oracle-checks` as an explicit correctness/debug feature flag.

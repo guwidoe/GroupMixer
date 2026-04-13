@@ -156,6 +156,9 @@ fn run_local_improver(
     let candidate_sampler = CandidateSampler;
     let family_selector = MoveFamilySelector::new(&run_context.move_policy);
     let mut search = SearchProgressState::new(initial_state);
+    if run_context.local_improver_mode == Solver3LocalImproverMode::SgpWeekPairTabu {
+        search.sgp_week_pair_tabu_telemetry = Some(Default::default());
+    }
     let mut repeat_guidance = if run_context.repeat_guided_swaps_enabled {
         RepeatGuidanceState::build_from_state(&search.current_state)
     } else {
@@ -242,6 +245,15 @@ fn run_local_improver(
                     .repeat_guided_swap_sampling
                     .guided_previewed_candidates,
             );
+            search.record_tabu_sampling(
+                candidate_selection.tabu_swap_sampling.raw_tabu_hits,
+                candidate_selection.tabu_swap_sampling.prefilter_skips,
+                candidate_selection.tabu_swap_sampling.retry_exhaustions,
+                candidate_selection.tabu_swap_sampling.hard_blocks,
+                candidate_selection
+                    .tabu_swap_sampling
+                    .aspiration_preview_surfaces,
+            );
 
             if let Some((family, preview, preview_seconds)) = candidate_selection.selection {
                 let delta_cost = preview.delta_score();
@@ -258,6 +270,9 @@ fn run_local_improver(
                 let acceptance = if swap_is_tabu && candidate_score >= search.best_score {
                     None
                 } else {
+                    if swap_is_tabu {
+                        search.record_tabu_aspiration_override();
+                    }
                     Some(acceptance_policy.decide(RecordToRecordInputs {
                         current_score,
                         best_score: search.best_score,
@@ -296,17 +311,18 @@ fn run_local_improver(
 
                         if let Some(tabu) = tabu_state.as_mut() {
                             if let SearchMovePreview::Swap(preview) = &preview {
-                                let swap = preview.analysis.swap;
-                                tabu.record_swap(
-                                    &search.current_state.compiled,
-                                    swap.session_idx,
-                                    swap.left_person_idx,
-                                    swap.right_person_idx,
-                                    iteration,
-                                    &mut rng,
-                                );
-                            }
+                            let swap = preview.analysis.swap;
+                            let expiry = tabu.record_swap(
+                                &search.current_state.compiled,
+                                swap.session_idx,
+                                swap.left_person_idx,
+                                swap.right_person_idx,
+                                iteration,
+                                &mut rng,
+                            );
+                            search.record_tabu_realized_tenure(expiry.saturating_sub(iteration));
                         }
+                    }
 
                         let improvement_elapsed_seconds = get_elapsed_seconds(search_started_at);
                         cached_elapsed_seconds = cached_elapsed_seconds.max(improvement_elapsed_seconds);

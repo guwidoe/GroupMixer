@@ -100,16 +100,27 @@ pub(crate) struct RepeatGuidedSwapSamplingDelta {
     pub(crate) guided_previewed_candidates: u64,
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct TabuSwapSamplingDelta {
+    pub(crate) raw_tabu_hits: u64,
+    pub(crate) prefilter_skips: u64,
+    pub(crate) retry_exhaustions: u64,
+    pub(crate) hard_blocks: u64,
+    pub(crate) aspiration_preview_surfaces: u64,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct CandidateSelectionResult {
     pub(crate) selection: Option<(MoveFamily, SearchMovePreview, f64)>,
     pub(crate) repeat_guided_swap_sampling: RepeatGuidedSwapSamplingDelta,
+    pub(crate) tabu_swap_sampling: TabuSwapSamplingDelta,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 struct GuidedSwapSamplingPreviewResult {
     preview: Option<SwapRuntimePreview>,
     previewed_candidates: u64,
+    tabu_sampling: TabuSwapSamplingDelta,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -149,9 +160,10 @@ impl CandidateSampler {
     ) -> CandidateSelectionResult {
         let ordered_families = family_selector.ordered_families(rng);
         let mut repeat_guided_swap_sampling = RepeatGuidedSwapSamplingDelta::default();
+        let mut tabu_swap_sampling = TabuSwapSamplingDelta::default();
         for family in ordered_families {
             let preview_started_at = get_current_time();
-            let (preview, sampling_delta) =
+            let (preview, sampling_delta, tabu_delta) =
                 self.sample_preview_for_family(state, family, allowed_sessions, swap_sampling, rng);
             repeat_guided_swap_sampling.guided_attempts += sampling_delta.guided_attempts;
             repeat_guided_swap_sampling.guided_successes += sampling_delta.guided_successes;
@@ -159,12 +171,19 @@ impl CandidateSampler {
                 sampling_delta.guided_fallback_to_random;
             repeat_guided_swap_sampling.guided_previewed_candidates +=
                 sampling_delta.guided_previewed_candidates;
+            tabu_swap_sampling.raw_tabu_hits += tabu_delta.raw_tabu_hits;
+            tabu_swap_sampling.prefilter_skips += tabu_delta.prefilter_skips;
+            tabu_swap_sampling.retry_exhaustions += tabu_delta.retry_exhaustions;
+            tabu_swap_sampling.hard_blocks += tabu_delta.hard_blocks;
+            tabu_swap_sampling.aspiration_preview_surfaces +=
+                tabu_delta.aspiration_preview_surfaces;
             let preview_seconds =
                 get_elapsed_seconds_between(preview_started_at, get_current_time());
             if let Some(preview) = preview {
                 return CandidateSelectionResult {
                     selection: Some((family, preview, preview_seconds)),
                     repeat_guided_swap_sampling,
+                    tabu_swap_sampling,
                 };
             }
         }
@@ -172,6 +191,7 @@ impl CandidateSampler {
         CandidateSelectionResult {
             selection: None,
             repeat_guided_swap_sampling,
+            tabu_swap_sampling,
         }
     }
 
@@ -183,21 +203,39 @@ impl CandidateSampler {
         allowed_sessions: &[usize],
         swap_sampling: SwapSamplingOptions<'_>,
         rng: &mut ChaCha12Rng,
-    ) -> (Option<SearchMovePreview>, RepeatGuidedSwapSamplingDelta) {
+    ) -> (
+        Option<SearchMovePreview>,
+        RepeatGuidedSwapSamplingDelta,
+        TabuSwapSamplingDelta,
+    ) {
         match family {
             MoveFamily::Swap => self
                 .sample_swap_preview(state, allowed_sessions, swap_sampling, rng)
-                .map(|(preview, telemetry)| (preview.map(SearchMovePreview::Swap), telemetry))
+                .map(|(preview, telemetry, tabu)| {
+                    (preview.map(SearchMovePreview::Swap), telemetry, tabu)
+                })
                 .unwrap_or_default(),
             MoveFamily::Transfer => self
                 .sample_transfer_preview(state, allowed_sessions, rng)
                 .map(SearchMovePreview::Transfer)
-                .map(|preview| (Some(preview), RepeatGuidedSwapSamplingDelta::default()))
+                .map(|preview| {
+                    (
+                        Some(preview),
+                        RepeatGuidedSwapSamplingDelta::default(),
+                        TabuSwapSamplingDelta::default(),
+                    )
+                })
                 .unwrap_or_default(),
             MoveFamily::CliqueSwap => self
                 .sample_clique_swap_preview(state, allowed_sessions, rng)
                 .map(SearchMovePreview::CliqueSwap)
-                .map(|preview| (Some(preview), RepeatGuidedSwapSamplingDelta::default()))
+                .map(|preview| {
+                    (
+                        Some(preview),
+                        RepeatGuidedSwapSamplingDelta::default(),
+                        TabuSwapSamplingDelta::default(),
+                    )
+                })
                 .unwrap_or_default(),
         }
     }
@@ -208,12 +246,21 @@ impl CandidateSampler {
         allowed_sessions: &[usize],
         swap_sampling: SwapSamplingOptions<'_>,
         rng: &mut ChaCha12Rng,
-    ) -> Option<(Option<SwapRuntimePreview>, RepeatGuidedSwapSamplingDelta)> {
+    ) -> Option<(
+        Option<SwapRuntimePreview>,
+        RepeatGuidedSwapSamplingDelta,
+        TabuSwapSamplingDelta,
+    )> {
         if allowed_sessions.is_empty() || state.compiled.num_groups < 2 {
-            return Some((None, RepeatGuidedSwapSamplingDelta::default()));
+            return Some((
+                None,
+                RepeatGuidedSwapSamplingDelta::default(),
+                TabuSwapSamplingDelta::default(),
+            ));
         }
 
         let mut telemetry = RepeatGuidedSwapSamplingDelta::default();
+        let mut tabu_telemetry = TabuSwapSamplingDelta::default();
 
         let guided_preview = if swap_sampling.repeat_guided_swap_candidate_preview_budget > 0
             && rng.random::<f64>() < swap_sampling.repeat_guided_swap_probability
@@ -235,17 +282,31 @@ impl CandidateSampler {
 
         if let Some(guided_preview) = guided_preview {
             telemetry.guided_previewed_candidates += guided_preview.previewed_candidates;
+            tabu_telemetry.raw_tabu_hits += guided_preview.tabu_sampling.raw_tabu_hits;
+            tabu_telemetry.prefilter_skips += guided_preview.tabu_sampling.prefilter_skips;
+            tabu_telemetry.retry_exhaustions += guided_preview.tabu_sampling.retry_exhaustions;
+            tabu_telemetry.hard_blocks += guided_preview.tabu_sampling.hard_blocks;
+            tabu_telemetry.aspiration_preview_surfaces +=
+                guided_preview.tabu_sampling.aspiration_preview_surfaces;
             if let Some(preview) = guided_preview.preview {
                 telemetry.guided_successes += 1;
-                return Some((Some(preview), telemetry));
+                return Some((Some(preview), telemetry, tabu_telemetry));
             }
             telemetry.guided_fallback_to_random += 1;
         }
 
-        Some((
-            self.sample_random_swap_preview(state, allowed_sessions, swap_sampling, rng),
-            telemetry,
-        ))
+        let preview = self.sample_random_swap_preview(
+            state,
+            allowed_sessions,
+            swap_sampling,
+            &mut tabu_telemetry,
+            rng,
+        );
+        if preview.is_none() && tabu_telemetry.retry_exhaustions > 0 {
+            tabu_telemetry.hard_blocks += 1;
+        }
+
+        Some((preview, telemetry, tabu_telemetry))
     }
 
     fn sample_random_swap_preview(
@@ -253,6 +314,7 @@ impl CandidateSampler {
         state: &RuntimeState,
         allowed_sessions: &[usize],
         swap_sampling: SwapSamplingOptions<'_>,
+        tabu_telemetry: &mut TabuSwapSamplingDelta,
         rng: &mut ChaCha12Rng,
     ) -> Option<SwapRuntimePreview> {
         if allowed_sessions.is_empty() || state.compiled.num_groups < 2 {
@@ -264,6 +326,7 @@ impl CandidateSampler {
                 state,
                 allowed_sessions[0],
                 swap_sampling,
+                tabu_telemetry,
                 rng,
             );
         }
@@ -276,6 +339,7 @@ impl CandidateSampler {
                 state,
                 session_idx,
                 swap_sampling,
+                tabu_telemetry,
                 rng,
                 &mut tabu_retry_count,
                 &mut fallback_tabu_swap,
@@ -283,11 +347,17 @@ impl CandidateSampler {
                 return Some(preview);
             }
             if tabu_retry_count >= swap_sampling.tabu_retry_cap {
+                tabu_telemetry.retry_exhaustions += 1;
                 break;
             }
         }
 
-        fallback_tabu_swap.and_then(|swap| preview_swap_runtime_lightweight(state, &swap).ok())
+        let fallback = fallback_tabu_swap
+            .and_then(|swap| preview_swap_runtime_lightweight(state, &swap).ok());
+        if fallback.is_some() {
+            tabu_telemetry.aspiration_preview_surfaces += 1;
+        }
+        fallback
     }
 
     pub(crate) fn sample_random_swap_preview_in_session(
@@ -295,6 +365,7 @@ impl CandidateSampler {
         state: &RuntimeState,
         session_idx: usize,
         swap_sampling: SwapSamplingOptions<'_>,
+        tabu_telemetry: &mut TabuSwapSamplingDelta,
         rng: &mut ChaCha12Rng,
     ) -> Option<SwapRuntimePreview> {
         if state.compiled.num_groups < 2 {
@@ -308,6 +379,7 @@ impl CandidateSampler {
                 state,
                 session_idx,
                 swap_sampling,
+                tabu_telemetry,
                 rng,
                 &mut tabu_retry_count,
                 &mut fallback_tabu_swap,
@@ -315,11 +387,17 @@ impl CandidateSampler {
                 return Some(preview);
             }
             if tabu_retry_count >= swap_sampling.tabu_retry_cap {
+                tabu_telemetry.retry_exhaustions += 1;
                 break;
             }
         }
 
-        fallback_tabu_swap.and_then(|swap| preview_swap_runtime_lightweight(state, &swap).ok())
+        let fallback = fallback_tabu_swap
+            .and_then(|swap| preview_swap_runtime_lightweight(state, &swap).ok());
+        if fallback.is_some() {
+            tabu_telemetry.aspiration_preview_surfaces += 1;
+        }
+        fallback
     }
 
     fn sample_random_swap_preview_for_session(
@@ -327,6 +405,7 @@ impl CandidateSampler {
         state: &RuntimeState,
         session_idx: usize,
         swap_sampling: SwapSamplingOptions<'_>,
+        tabu_telemetry: &mut TabuSwapSamplingDelta,
         rng: &mut ChaCha12Rng,
         tabu_retry_count: &mut usize,
         fallback_tabu_swap: &mut Option<SwapMove>,
@@ -355,6 +434,7 @@ impl CandidateSampler {
                 session_idx,
                 left_person_idx,
                 right_person_idx,
+                tabu_telemetry,
                 tabu_retry_count,
             ) {
                 if swap_sampling.tabu_allow_aspiration_preview && fallback_tabu_swap.is_none() {
@@ -416,6 +496,7 @@ impl CandidateSampler {
         let mut previewed_candidates = 0usize;
         let mut tabu_retry_count = 0usize;
         let mut fallback_tabu_swap = None;
+        let mut guided_tabu_telemetry = TabuSwapSamplingDelta::default();
         for target_group_idx in target_groups {
             let target_slot = state.group_slot(session_idx, target_group_idx);
             let target_members = &state.group_members[target_slot];
@@ -436,6 +517,7 @@ impl CandidateSampler {
                     session_idx,
                     anchor_person_idx,
                     target_person_idx,
+                    &mut guided_tabu_telemetry,
                     &mut tabu_retry_count,
                 ) {
                     if swap_sampling.tabu_allow_aspiration_preview && fallback_tabu_swap.is_none() {
@@ -464,9 +546,13 @@ impl CandidateSampler {
                     }
 
                     if previewed_candidates >= candidate_preview_budget {
+                        if best_preview.is_none() && tabu_retry_count >= swap_sampling.tabu_retry_cap {
+                            guided_tabu_telemetry.retry_exhaustions += 1;
+                        }
                         return Some(GuidedSwapSamplingPreviewResult {
                             preview: best_preview,
                             previewed_candidates: previewed_candidates as u64,
+                            tabu_sampling: guided_tabu_telemetry,
                         });
                     }
                 }
@@ -482,13 +568,20 @@ impl CandidateSampler {
                 if let Ok(preview) = preview_swap_runtime_lightweight(state, &swap) {
                     best_preview = Some(preview);
                     previewed_candidates += 1;
+                    guided_tabu_telemetry.aspiration_preview_surfaces += 1;
                 }
             }
+        }
+
+        if best_preview.is_none() && tabu_retry_count >= swap_sampling.tabu_retry_cap {
+            guided_tabu_telemetry.retry_exhaustions += 1;
+            guided_tabu_telemetry.hard_blocks += 1;
         }
 
         Some(GuidedSwapSamplingPreviewResult {
             preview: best_preview,
             previewed_candidates: previewed_candidates as u64,
+            tabu_sampling: guided_tabu_telemetry,
         })
     }
 
@@ -690,6 +783,7 @@ fn should_skip_tabu_swap_proposal(
     session_idx: usize,
     left_person_idx: usize,
     right_person_idx: usize,
+    tabu_telemetry: &mut TabuSwapSamplingDelta,
     tabu_retry_count: &mut usize,
 ) -> bool {
     let Some(tabu) = swap_sampling.tabu else {
@@ -706,6 +800,8 @@ fn should_skip_tabu_swap_proposal(
         return false;
     }
 
+    tabu_telemetry.raw_tabu_hits += 1;
+    tabu_telemetry.prefilter_skips += 1;
     *tabu_retry_count = tabu_retry_count.saturating_add(1);
     true
 }
@@ -1133,6 +1229,11 @@ mod tests {
         );
 
         assert!(sampled.selection.is_none());
+        assert_eq!(sampled.tabu_swap_sampling.prefilter_skips, 4);
+        assert_eq!(sampled.tabu_swap_sampling.raw_tabu_hits, 4);
+        assert_eq!(sampled.tabu_swap_sampling.retry_exhaustions, 1);
+        assert_eq!(sampled.tabu_swap_sampling.hard_blocks, 1);
+        assert_eq!(sampled.tabu_swap_sampling.aspiration_preview_surfaces, 0);
     }
 
     #[test]
@@ -1301,5 +1402,9 @@ mod tests {
         );
 
         assert!(sampled.selection.is_some());
+        assert_eq!(sampled.tabu_swap_sampling.prefilter_skips, 4);
+        assert_eq!(sampled.tabu_swap_sampling.retry_exhaustions, 1);
+        assert_eq!(sampled.tabu_swap_sampling.hard_blocks, 0);
+        assert_eq!(sampled.tabu_swap_sampling.aspiration_preview_surfaces, 1);
     }
 }

@@ -736,7 +736,8 @@ fn solver3_sgp_week_pair_tabu_mode_runs_through_public_entry_point() {
     });
 
     let result = run_solver(&input).expect("tabu local improver solve should succeed");
-    assert!(result.benchmark_telemetry.is_some());
+    let telemetry = result.benchmark_telemetry.expect("tabu telemetry should exist");
+    assert!(telemetry.sgp_week_pair_tabu.is_some());
 }
 
 #[test]
@@ -755,7 +756,8 @@ fn solver3_steady_state_memetic_mode_runs_through_public_entry_point() {
 
     let memetic = telemetry.memetic.expect("memetic benchmark telemetry should exist");
     assert!(memetic.population_size >= 2);
-    assert!(memetic.offspring_generated > 0);
+    assert!(memetic.offspring_attempted > 0);
+    assert!(memetic.offspring_polished > 0);
     assert!(memetic.child_polish_iterations > 0);
 }
 
@@ -781,7 +783,11 @@ fn solver3_steady_state_memetic_mode_is_seed_stable() {
     let telemetry_a = result_a.benchmark_telemetry.expect("memetic telemetry a");
     let telemetry_b = result_b.benchmark_telemetry.expect("memetic telemetry b");
     assert_eq!(telemetry_a.best_score_timeline, telemetry_b.best_score_timeline);
-    assert_eq!(telemetry_a.memetic, telemetry_b.memetic);
+    let mut memetic_a = telemetry_a.memetic.expect("memetic telemetry a details");
+    let mut memetic_b = telemetry_b.memetic.expect("memetic telemetry b details");
+    memetic_a.child_polish_seconds = 0.0;
+    memetic_b.child_polish_seconds = 0.0;
+    assert_eq!(memetic_a, memetic_b);
 }
 
 #[test]

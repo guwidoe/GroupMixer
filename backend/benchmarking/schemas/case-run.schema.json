@@ -99,6 +99,7 @@
         "iterations_per_second",
         "best_score_timeline",
         "repeat_guided_swaps",
+        "sgp_week_pair_tabu",
         "memetic"
       ],
       "properties": {
@@ -136,27 +137,72 @@
             "guided_previewed_candidates": { "type": "integer" }
           }
         },
+        "sgp_week_pair_tabu": {
+          "type": ["object", "null"],
+          "required": [
+            "raw_tabu_hits",
+            "prefilter_skips",
+            "retry_exhaustions",
+            "hard_blocks",
+            "aspiration_preview_surfaces",
+            "aspiration_overrides",
+            "recorded_swaps",
+            "realized_tenure_sum",
+            "realized_tenure_min",
+            "realized_tenure_max"
+          ],
+          "properties": {
+            "raw_tabu_hits": { "type": "integer" },
+            "prefilter_skips": { "type": "integer" },
+            "retry_exhaustions": { "type": "integer" },
+            "hard_blocks": { "type": "integer" },
+            "aspiration_preview_surfaces": { "type": "integer" },
+            "aspiration_overrides": { "type": "integer" },
+            "recorded_swaps": { "type": "integer" },
+            "realized_tenure_sum": { "type": "integer" },
+            "realized_tenure_min": { "type": ["integer", "null"] },
+            "realized_tenure_max": { "type": ["integer", "null"] }
+          }
+        },
         "memetic": {
           "type": ["object", "null"],
           "required": [
             "population_size",
             "parent_tournament_size",
-            "offspring_generated",
+            "child_polish_local_improver_mode",
+            "child_polish_max_iterations",
+            "child_polish_no_improvement_iterations",
+            "offspring_attempted",
+            "offspring_polished",
+            "offspring_replaced",
+            "offspring_discarded",
             "mutation_attempted_swaps",
             "mutation_applied_swaps",
+            "mutation_length_sum",
+            "mutation_length_min",
+            "mutation_length_max",
             "child_polish_iterations",
             "child_polish_improving_moves",
-            "replacements"
+            "child_polish_seconds"
           ],
           "properties": {
             "population_size": { "type": "integer" },
             "parent_tournament_size": { "type": "integer" },
-            "offspring_generated": { "type": "integer" },
+            "child_polish_local_improver_mode": { "type": ["string", "null"] },
+            "child_polish_max_iterations": { "type": "integer" },
+            "child_polish_no_improvement_iterations": { "type": "integer" },
+            "offspring_attempted": { "type": "integer" },
+            "offspring_polished": { "type": "integer" },
+            "offspring_replaced": { "type": "integer" },
+            "offspring_discarded": { "type": "integer" },
             "mutation_attempted_swaps": { "type": "integer" },
             "mutation_applied_swaps": { "type": "integer" },
+            "mutation_length_sum": { "type": "integer" },
+            "mutation_length_min": { "type": ["integer", "null"] },
+            "mutation_length_max": { "type": ["integer", "null"] },
             "child_polish_iterations": { "type": "integer" },
             "child_polish_improving_moves": { "type": "integer" },
-            "replacements": { "type": "integer" }
+            "child_polish_seconds": { "type": "number" }
           }
         }
       }
