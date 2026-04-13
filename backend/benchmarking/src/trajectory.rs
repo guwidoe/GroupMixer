@@ -455,6 +455,7 @@ mod tests {
                         },
                     ],
                     repeat_guided_swaps: Default::default(),
+                    memetic: None,
                 }),
                 moves: MoveFamilyBenchmarkTelemetrySummary::default(),
                 hotpath_metrics: None,

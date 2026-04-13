@@ -1,8 +1,8 @@
 use crate::manifest::{BenchmarkCaseRole, BenchmarkSuiteClass, DeclaredBenchmarkBudget};
 use crate::validation::ExternalValidationReport;
 use gm_core::models::{
-    BestScoreTimelinePoint, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
-    RepeatGuidedSwapBenchmarkTelemetry, StopReason,
+    BestScoreTimelinePoint, MemeticBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary,
+    MovePolicy, RepeatGuidedSwapBenchmarkTelemetry, StopReason,
 };
 use serde::{Deserialize, Serialize};
 
@@ -232,6 +232,8 @@ pub struct SearchTelemetryArtifact {
     pub best_score_timeline: Vec<BestScoreTimelinePoint>,
     #[serde(default)]
     pub repeat_guided_swaps: RepeatGuidedSwapBenchmarkTelemetry,
+    #[serde(default)]
+    pub memetic: Option<MemeticBenchmarkTelemetry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

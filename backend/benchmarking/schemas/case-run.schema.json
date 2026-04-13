@@ -98,7 +98,8 @@
         "perturbation_count",
         "iterations_per_second",
         "best_score_timeline",
-        "repeat_guided_swaps"
+        "repeat_guided_swaps",
+        "memetic"
       ],
       "properties": {
         "accepted_uphill_moves": { "type": "integer" },
@@ -133,6 +134,29 @@
             "guided_successes": { "type": "integer" },
             "guided_fallback_to_random": { "type": "integer" },
             "guided_previewed_candidates": { "type": "integer" }
+          }
+        },
+        "memetic": {
+          "type": ["object", "null"],
+          "required": [
+            "population_size",
+            "parent_tournament_size",
+            "offspring_generated",
+            "mutation_attempted_swaps",
+            "mutation_applied_swaps",
+            "child_polish_iterations",
+            "child_polish_improving_moves",
+            "replacements"
+          ],
+          "properties": {
+            "population_size": { "type": "integer" },
+            "parent_tournament_size": { "type": "integer" },
+            "offspring_generated": { "type": "integer" },
+            "mutation_attempted_swaps": { "type": "integer" },
+            "mutation_applied_swaps": { "type": "integer" },
+            "child_polish_iterations": { "type": "integer" },
+            "child_polish_improving_moves": { "type": "integer" },
+            "replacements": { "type": "integer" }
           }
         }
       }

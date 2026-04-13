@@ -285,6 +285,7 @@ fn run_case(
                 iterations_per_second: telemetry.iterations_per_second,
                 best_score_timeline: telemetry.best_score_timeline.clone(),
                 repeat_guided_swaps: telemetry.repeat_guided_swaps.clone(),
+                memetic: telemetry.memetic.clone(),
             });
             let validation = validate_final_solution(&input, &result);
             let score_decomposition =

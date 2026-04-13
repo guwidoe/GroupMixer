@@ -4,9 +4,9 @@ use common::{default_solver_config, make_initial_schedule};
 use gm_core::models::{
     ApiInput, BenchmarkEvent, Constraint, Group, MoveFamily, MovePolicy, Objective,
     PairMeetingCountParams, PairMeetingMode, Person, ProblemDefinition, ProgressCallback,
-    SimulatedAnnealingParams, Solver3CorrectnessLaneParams, Solver3LocalImproverMode,
-    Solver3LocalImproverParams, Solver3Params, Solver3SearchDriverMode,
-    Solver3SearchDriverParams, SolverKind, SolverParams, StopReason,
+    RepeatEncounterParams, SimulatedAnnealingParams, Solver3CorrectnessLaneParams,
+    Solver3LocalImproverMode, Solver3LocalImproverParams, Solver3Params,
+    Solver3SearchDriverMode, Solver3SearchDriverParams, SolverKind, SolverParams, StopReason,
 };
 use gm_core::{
     default_solver_configuration_for, run_solver, run_solver_with_benchmark_observer,
@@ -106,6 +106,16 @@ fn solver3_driver_input() -> ApiInput {
         ..MovePolicy::default()
     });
     input.solver = solver;
+    input
+}
+
+fn solver3_repeat_driver_input() -> ApiInput {
+    let mut input = solver3_driver_input();
+    input.constraints = vec![Constraint::RepeatEncounter(RepeatEncounterParams {
+        max_allowed_encounters: 1,
+        penalty_function: "linear".to_string(),
+        penalty_weight: 100.0,
+    })];
     input
 }
 
@@ -666,6 +676,7 @@ fn solver3_explicit_default_modes_match_implicit_default_run() {
     explicit.solver.solver_params = SolverParams::Solver3(Solver3Params {
         search_driver: Solver3SearchDriverParams {
             mode: Solver3SearchDriverMode::SingleState,
+            ..Default::default()
         },
         local_improver: Solver3LocalImproverParams {
             mode: Solver3LocalImproverMode::RecordToRecord,
@@ -715,7 +726,7 @@ fn solver3_explicit_default_modes_match_implicit_default_run() {
 
 #[test]
 fn solver3_sgp_week_pair_tabu_mode_runs_through_public_entry_point() {
-    let mut input = solver3_driver_input();
+    let mut input = solver3_repeat_driver_input();
     input.solver.solver_params = SolverParams::Solver3(Solver3Params {
         local_improver: Solver3LocalImproverParams {
             mode: Solver3LocalImproverMode::SgpWeekPairTabu,
@@ -726,6 +737,89 @@ fn solver3_sgp_week_pair_tabu_mode_runs_through_public_entry_point() {
 
     let result = run_solver(&input).expect("tabu local improver solve should succeed");
     assert!(result.benchmark_telemetry.is_some());
+}
+
+#[test]
+fn solver3_steady_state_memetic_mode_runs_through_public_entry_point() {
+    let mut input = solver3_driver_input();
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        search_driver: Solver3SearchDriverParams {
+            mode: Solver3SearchDriverMode::SteadyStateMemetic,
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    let result = run_solver(&input).expect("steady-state memetic solve should succeed");
+    let telemetry = result.benchmark_telemetry.expect("memetic telemetry should exist");
+
+    let memetic = telemetry.memetic.expect("memetic benchmark telemetry should exist");
+    assert!(memetic.population_size >= 2);
+    assert!(memetic.offspring_generated > 0);
+    assert!(memetic.child_polish_iterations > 0);
+}
+
+#[test]
+fn solver3_steady_state_memetic_mode_is_seed_stable() {
+    let mut input_a = solver3_driver_input();
+    input_a.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        search_driver: Solver3SearchDriverParams {
+            mode: Solver3SearchDriverMode::SteadyStateMemetic,
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+    let input_b = input_a.clone();
+
+    let result_a = run_solver(&input_a).expect("memetic solve a should succeed");
+    let result_b = run_solver(&input_b).expect("memetic solve b should succeed");
+
+    assert_eq!(result_a.final_score, result_b.final_score);
+    assert_eq!(result_a.schedule, result_b.schedule);
+    assert_eq!(result_a.stop_reason, result_b.stop_reason);
+
+    let telemetry_a = result_a.benchmark_telemetry.expect("memetic telemetry a");
+    let telemetry_b = result_b.benchmark_telemetry.expect("memetic telemetry b");
+    assert_eq!(telemetry_a.best_score_timeline, telemetry_b.best_score_timeline);
+    assert_eq!(telemetry_a.memetic, telemetry_b.memetic);
+}
+
+#[test]
+fn solver3_steady_state_memetic_supports_tabu_child_polish_when_repeat_constraint_exists() {
+    let mut input = solver3_repeat_driver_input();
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        search_driver: Solver3SearchDriverParams {
+            mode: Solver3SearchDriverMode::SteadyStateMemetic,
+            ..Default::default()
+        },
+        local_improver: Solver3LocalImproverParams {
+            mode: Solver3LocalImproverMode::SgpWeekPairTabu,
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    let result = run_solver(&input).expect("memetic tabu-child solve should succeed");
+    let telemetry = result.benchmark_telemetry.expect("memetic telemetry should exist");
+    assert!(telemetry.memetic.is_some());
+}
+
+#[test]
+fn solver3_steady_state_memetic_rejects_active_cliques() {
+    let mut input = solver3_clique_driver_input();
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        search_driver: Solver3SearchDriverParams {
+            mode: Solver3SearchDriverMode::SteadyStateMemetic,
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    let err = run_solver(&input).expect_err("memetic mode should reject active cliques");
+    assert!(
+        err.to_string().contains("does not yet support active cliques"),
+        "unexpected error: {err}"
+    );
 }
 
 #[cfg(not(feature = "solver3-oracle-checks"))]
