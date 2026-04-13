@@ -34,6 +34,7 @@ use super::repeat_guidance::RepeatGuidanceState;
 use super::tabu::SgpWeekPairTabuState;
 
 const PROGRESS_CALLBACK_INTERVAL_SECONDS: f64 = 0.1;
+const TIME_REFRESH_INTERVAL: u64 = 64;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn get_current_time() -> Instant {
@@ -65,17 +66,96 @@ fn get_elapsed_seconds_between(start: f64, end: f64) -> f64 {
     (end - start) / 1000.0
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct LocalImproverBudget {
+    pub(crate) effective_seed: u64,
+    pub(crate) max_iterations: u64,
+    pub(crate) no_improvement_limit: Option<u64>,
+    pub(crate) time_limit_seconds: Option<f64>,
+    pub(crate) stop_on_optimal_score: bool,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct LocalImproverRunResult {
+    pub(crate) search: SearchProgressState,
+    pub(crate) stop_reason: StopReason,
+    pub(crate) search_seconds: f64,
+}
+
+#[derive(Clone, Copy)]
+struct LocalImproverHooks<'a> {
+    progress_callback: Option<&'a ProgressCallback>,
+    benchmark_observer: Option<&'a BenchmarkObserver>,
+}
+
 pub(crate) fn run(
     state: &mut RuntimeState,
     run_context: SearchRunContext,
     progress_callback: Option<&ProgressCallback>,
     benchmark_observer: Option<&BenchmarkObserver>,
 ) -> Result<SolverResult, SolverError> {
-    let mut rng = ChaCha12Rng::seed_from_u64(run_context.effective_seed);
+    let outcome = run_local_improver(
+        state.clone(),
+        &run_context,
+        LocalImproverBudget {
+            effective_seed: run_context.effective_seed,
+            max_iterations: run_context.max_iterations,
+            no_improvement_limit: run_context.no_improvement_limit,
+            time_limit_seconds: run_context.time_limit_seconds.map(|limit| limit as f64),
+            stop_on_optimal_score: run_context.stop_on_optimal_score,
+        },
+        LocalImproverHooks {
+            progress_callback,
+            benchmark_observer,
+        },
+    )?;
+
+    let telemetry = outcome
+        .search
+        .to_benchmark_telemetry(&run_context, outcome.stop_reason, outcome.search_seconds);
+
+    if let Some(observer) = benchmark_observer {
+        observer(&BenchmarkEvent::RunCompleted(telemetry.clone()));
+    }
+
+    *state = outcome.search.best_state.clone();
+    build_solver_result(
+        &outcome.search.best_state,
+        outcome.search.no_improvement_count,
+        run_context.effective_seed,
+        run_context.move_policy,
+        outcome.stop_reason,
+        telemetry,
+    )
+}
+
+pub(crate) fn polish_state(
+    initial_state: RuntimeState,
+    run_context: &SearchRunContext,
+    budget: LocalImproverBudget,
+) -> Result<LocalImproverRunResult, SolverError> {
+    run_local_improver(
+        initial_state,
+        run_context,
+        budget,
+        LocalImproverHooks {
+            progress_callback: None,
+            benchmark_observer: None,
+        },
+    )
+}
+
+fn run_local_improver(
+    initial_state: RuntimeState,
+    run_context: &SearchRunContext,
+    budget: LocalImproverBudget,
+    hooks: LocalImproverHooks<'_>,
+) -> Result<LocalImproverRunResult, SolverError> {
+    let mut rng = ChaCha12Rng::seed_from_u64(budget.effective_seed);
     let acceptance_policy = RecordToRecordAcceptance;
     let candidate_sampler = CandidateSampler;
     let family_selector = MoveFamilySelector::new(&run_context.move_policy);
-    let mut search = SearchProgressState::new(state.clone());
+    let mut search = SearchProgressState::new(initial_state);
     let mut repeat_guidance = if run_context.repeat_guided_swaps_enabled {
         RepeatGuidanceState::build_from_state(&search.current_state)
     } else {
@@ -89,9 +169,9 @@ pub(crate) fn run(
         None
     };
 
-    if let Some(observer) = benchmark_observer {
+    if let Some(observer) = hooks.benchmark_observer {
         observer(&BenchmarkEvent::RunStarted(BenchmarkRunStarted {
-            effective_seed: run_context.effective_seed,
+            effective_seed: budget.effective_seed,
             move_policy: run_context.move_policy.clone(),
             initial_score: search.initial_score,
         }));
@@ -101,31 +181,28 @@ pub(crate) fn run(
     let mut stop_reason = StopReason::MaxIterationsReached;
     let mut final_progress_emitted = false;
     let mut last_progress_callback_at = search_started_at;
-
-    const TIME_REFRESH_INTERVAL: u64 = 64;
     let mut cached_elapsed_seconds: f64 = 0.0;
 
-    if run_context.stop_on_optimal_score && search.best_score <= crate::models::OPTIMAL_SCORE_TOLERANCE
-    {
+    if budget.stop_on_optimal_score && search.best_score <= crate::models::OPTIMAL_SCORE_TOLERANCE {
         stop_reason = StopReason::OptimalScoreReached;
     }
 
     if stop_reason != StopReason::OptimalScoreReached {
-        for iteration in 0..run_context.max_iterations {
+        for iteration in 0..budget.max_iterations {
             if iteration % TIME_REFRESH_INTERVAL == 0 {
                 cached_elapsed_seconds = get_elapsed_seconds(search_started_at);
             }
 
-            if time_limit_exceeded(cached_elapsed_seconds, run_context.time_limit_seconds) {
+            if time_limit_exceeded(cached_elapsed_seconds, budget.time_limit_seconds) {
                 stop_reason = StopReason::TimeLimitReached;
                 break;
             }
 
             let progress = cooling_progress(
                 iteration,
-                run_context.max_iterations,
+                budget.max_iterations,
                 cached_elapsed_seconds,
-                run_context.time_limit_seconds,
+                budget.time_limit_seconds.map(|limit| limit.max(0.0).floor() as u64),
             );
             let temperature = record_to_record_threshold_for_progress(progress);
 
@@ -196,45 +273,45 @@ pub(crate) fn run(
                         let apply_seconds =
                             get_elapsed_seconds_between(apply_started_at, get_current_time());
                         search.record_accepted_move(
-                        family,
-                        apply_seconds,
-                        delta_cost,
-                        acceptance.escaped_local_optimum,
-                    );
-
-                    maybe_run_sampled_correctness_check(
-                        &run_context,
-                        &search.current_state,
-                        search.total_accepted_moves(),
-                        family,
-                        &preview,
-                    )?;
-
-                    if let Some(guidance) = repeat_guidance.as_mut() {
-                        guidance.apply_pair_contact_updates(
-                            &search.current_state.compiled,
-                            preview.pair_contact_updates(),
+                            family,
+                            apply_seconds,
+                            delta_cost,
+                            acceptance.escaped_local_optimum,
                         );
-                    }
 
-                    if let Some(tabu) = tabu_state.as_mut() {
-                        if let SearchMovePreview::Swap(preview) = &preview {
-                            let swap = preview.analysis.swap;
-                            tabu.record_swap(
+                        maybe_run_sampled_correctness_check(
+                            run_context,
+                            &search.current_state,
+                            search.total_accepted_moves(),
+                            family,
+                            &preview,
+                        )?;
+
+                        if let Some(guidance) = repeat_guidance.as_mut() {
+                            guidance.apply_pair_contact_updates(
                                 &search.current_state.compiled,
-                                swap.session_idx,
-                                swap.left_person_idx,
-                                swap.right_person_idx,
-                                iteration,
-                                &mut rng,
+                                preview.pair_contact_updates(),
                             );
                         }
-                    }
 
-                    let improvement_elapsed_seconds = get_elapsed_seconds(search_started_at);
-                    cached_elapsed_seconds = cached_elapsed_seconds.max(improvement_elapsed_seconds);
-                    search.refresh_best_from_current(iteration, improvement_elapsed_seconds);
-                    search.record_acceptance_result(true);
+                        if let Some(tabu) = tabu_state.as_mut() {
+                            if let SearchMovePreview::Swap(preview) = &preview {
+                                let swap = preview.analysis.swap;
+                                tabu.record_swap(
+                                    &search.current_state.compiled,
+                                    swap.session_idx,
+                                    swap.left_person_idx,
+                                    swap.right_person_idx,
+                                    iteration,
+                                    &mut rng,
+                                );
+                            }
+                        }
+
+                        let improvement_elapsed_seconds = get_elapsed_seconds(search_started_at);
+                        cached_elapsed_seconds = cached_elapsed_seconds.max(improvement_elapsed_seconds);
+                        search.refresh_best_from_current(iteration, improvement_elapsed_seconds);
+                        search.record_acceptance_result(true);
                     } else {
                         search.record_rejected_move(family);
                     }
@@ -247,7 +324,7 @@ pub(crate) fn run(
 
             search.finish_iteration(iteration);
 
-            if let Some(callback) = progress_callback {
+            if let Some(callback) = hooks.progress_callback {
                 let current_time = get_current_time();
                 let elapsed_since_last_callback =
                     get_elapsed_seconds_between(last_progress_callback_at, current_time);
@@ -255,7 +332,7 @@ pub(crate) fn run(
                 if should_emit_progress_callback(iteration, elapsed_since_last_callback) {
                     let callback_elapsed_seconds = get_elapsed_seconds(search_started_at);
                     let progress = search.to_progress_update(
-                        &run_context,
+                        run_context,
                         iteration,
                         temperature,
                         callback_elapsed_seconds,
@@ -265,7 +342,7 @@ pub(crate) fn run(
                     if !(callback)(&progress) {
                         stop_reason = StopReason::ProgressCallbackRequestedStop;
                         let final_progress = search.to_progress_update(
-                            &run_context,
+                            run_context,
                             iteration,
                             temperature,
                             callback_elapsed_seconds,
@@ -280,14 +357,14 @@ pub(crate) fn run(
                 }
             }
 
-            if run_context.stop_on_optimal_score
+            if budget.stop_on_optimal_score
                 && search.best_score <= crate::models::OPTIMAL_SCORE_TOLERANCE
             {
                 stop_reason = StopReason::OptimalScoreReached;
                 break;
             }
 
-            if let Some(limit) = run_context.no_improvement_limit {
+            if let Some(limit) = budget.no_improvement_limit {
                 if search.no_improvement_count >= limit {
                     stop_reason = StopReason::NoImprovementLimitReached;
                     break;
@@ -297,17 +374,17 @@ pub(crate) fn run(
     }
 
     if !final_progress_emitted {
-        if let Some(callback) = progress_callback {
+        if let Some(callback) = hooks.progress_callback {
             let final_iteration = search.iterations_completed.saturating_sub(1);
             let final_elapsed = get_elapsed_seconds(search_started_at);
             let final_progress_val = cooling_progress(
                 final_iteration,
-                run_context.max_iterations,
+                budget.max_iterations,
                 final_elapsed,
-                run_context.time_limit_seconds,
+                budget.time_limit_seconds.map(|limit| limit.max(0.0).floor() as u64),
             );
             let final_progress = search.to_progress_update(
-                &run_context,
+                run_context,
                 final_iteration,
                 record_to_record_threshold_for_progress(final_progress_val),
                 final_elapsed,
@@ -317,22 +394,11 @@ pub(crate) fn run(
         }
     }
 
-    let search_seconds = get_elapsed_seconds(search_started_at);
-    let telemetry = search.to_benchmark_telemetry(&run_context, stop_reason, search_seconds);
-
-    if let Some(observer) = benchmark_observer {
-        observer(&BenchmarkEvent::RunCompleted(telemetry.clone()));
-    }
-
-    *state = search.best_state.clone();
-    build_solver_result(
-        &search.best_state,
-        search.no_improvement_count,
-        run_context.effective_seed,
-        run_context.move_policy,
+    Ok(LocalImproverRunResult {
+        search,
         stop_reason,
-        telemetry,
-    )
+        search_seconds: get_elapsed_seconds(search_started_at),
+    })
 }
 
 fn is_tabu_swap_preview(
@@ -357,7 +423,7 @@ fn is_tabu_swap_preview(
     )
 }
 
-fn build_solver_result(
+pub(crate) fn build_solver_result(
     state: &RuntimeState,
     no_improvement_count: u64,
     effective_seed: u64,
@@ -383,7 +449,7 @@ fn build_solver_result(
     })
 }
 
-fn apply_previewed_move(
+pub(crate) fn apply_previewed_move(
     state: &mut RuntimeState,
     preview: &SearchMovePreview,
 ) -> Result<(), SolverError> {
@@ -395,8 +461,8 @@ fn apply_previewed_move(
 }
 
 #[inline]
-fn time_limit_exceeded(elapsed_seconds: f64, time_limit_seconds: Option<u64>) -> bool {
-    time_limit_seconds.is_some_and(|limit| elapsed_seconds >= limit as f64)
+fn time_limit_exceeded(elapsed_seconds: f64, time_limit_seconds: Option<f64>) -> bool {
+    time_limit_seconds.is_some_and(|limit| elapsed_seconds >= limit)
 }
 
 #[inline]
@@ -407,8 +473,7 @@ pub(crate) fn should_emit_progress_callback(
     iteration == 0 || elapsed_since_last_callback >= PROGRESS_CALLBACK_INTERVAL_SECONDS
 }
 
-
-fn maybe_run_sampled_correctness_check(
+pub(crate) fn maybe_run_sampled_correctness_check(
     run_context: &SearchRunContext,
     state: &RuntimeState,
     accepted_move_count: u64,

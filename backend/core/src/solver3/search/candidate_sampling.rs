@@ -259,10 +259,79 @@ impl CandidateSampler {
             return None;
         }
 
+        if allowed_sessions.len() == 1 {
+            return self.sample_random_swap_preview_in_session(
+                state,
+                allowed_sessions[0],
+                swap_sampling,
+                rng,
+            );
+        }
+
         let mut tabu_retry_count = 0usize;
         let mut fallback_tabu_swap = None;
         for _ in 0..MAX_RANDOM_CANDIDATE_ATTEMPTS {
             let session_idx = allowed_sessions[rng.random_range(0..allowed_sessions.len())];
+            if let Some(preview) = self.sample_random_swap_preview_for_session(
+                state,
+                session_idx,
+                swap_sampling,
+                rng,
+                &mut tabu_retry_count,
+                &mut fallback_tabu_swap,
+            ) {
+                return Some(preview);
+            }
+            if tabu_retry_count >= swap_sampling.tabu_retry_cap {
+                break;
+            }
+        }
+
+        fallback_tabu_swap.and_then(|swap| preview_swap_runtime_lightweight(state, &swap).ok())
+    }
+
+    pub(crate) fn sample_random_swap_preview_in_session(
+        &self,
+        state: &RuntimeState,
+        session_idx: usize,
+        swap_sampling: SwapSamplingOptions<'_>,
+        rng: &mut ChaCha12Rng,
+    ) -> Option<SwapRuntimePreview> {
+        if state.compiled.num_groups < 2 {
+            return None;
+        }
+
+        let mut tabu_retry_count = 0usize;
+        let mut fallback_tabu_swap = None;
+        for _ in 0..MAX_RANDOM_CANDIDATE_ATTEMPTS {
+            if let Some(preview) = self.sample_random_swap_preview_for_session(
+                state,
+                session_idx,
+                swap_sampling,
+                rng,
+                &mut tabu_retry_count,
+                &mut fallback_tabu_swap,
+            ) {
+                return Some(preview);
+            }
+            if tabu_retry_count >= swap_sampling.tabu_retry_cap {
+                break;
+            }
+        }
+
+        fallback_tabu_swap.and_then(|swap| preview_swap_runtime_lightweight(state, &swap).ok())
+    }
+
+    fn sample_random_swap_preview_for_session(
+        &self,
+        state: &RuntimeState,
+        session_idx: usize,
+        swap_sampling: SwapSamplingOptions<'_>,
+        rng: &mut ChaCha12Rng,
+        tabu_retry_count: &mut usize,
+        fallback_tabu_swap: &mut Option<SwapMove>,
+    ) -> Option<SwapRuntimePreview> {
+        for _ in 0..MAX_RANDOM_TARGET_ATTEMPTS {
             let left_group_idx = rng.random_range(0..state.compiled.num_groups);
             let mut right_group_idx = rng.random_range(0..state.compiled.num_groups);
             if right_group_idx == left_group_idx {
@@ -286,12 +355,12 @@ impl CandidateSampler {
                 session_idx,
                 left_person_idx,
                 right_person_idx,
-                &mut tabu_retry_count,
+                tabu_retry_count,
             ) {
                 if swap_sampling.tabu_allow_aspiration_preview && fallback_tabu_swap.is_none() {
-                    fallback_tabu_swap = Some(swap);
+                    *fallback_tabu_swap = Some(swap);
                 }
-                if tabu_retry_count >= swap_sampling.tabu_retry_cap {
+                if *tabu_retry_count >= swap_sampling.tabu_retry_cap {
                     break;
                 }
                 continue;
@@ -301,7 +370,7 @@ impl CandidateSampler {
             }
         }
 
-        fallback_tabu_swap.and_then(|swap| preview_swap_runtime_lightweight(state, &swap).ok())
+        None
     }
 
     fn sample_repeat_guided_swap_preview(

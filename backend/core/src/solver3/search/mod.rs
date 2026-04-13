@@ -5,6 +5,7 @@ mod candidate_sampling;
 mod context;
 mod engine;
 mod family_selection;
+mod memetic;
 mod repeat_guidance;
 mod single_state;
 mod tabu;

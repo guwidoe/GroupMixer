@@ -8,7 +8,7 @@ use crate::solver_support::SolverError;
 
 use super::super::runtime_state::RuntimeState;
 use super::context::SearchRunContext;
-use super::single_state;
+use super::{memetic, single_state};
 
 #[derive(Debug, Clone)]
 pub struct SearchEngine {
@@ -44,12 +44,14 @@ impl SearchEngine {
                 Solver3SearchDriverMode::SingleState,
                 Solver3LocalImproverMode::SgpWeekPairTabu,
             ) => single_state::run(state, run_context, progress_callback, benchmark_observer),
-            (search_driver_mode, local_improver_mode) => Err(SolverError::ValidationError(
-                format!(
-                    "solver3 search mode dispatch reached unsupported combination {:?} + {:?}",
-                    search_driver_mode, local_improver_mode
-                ),
-            )),
+            (
+                Solver3SearchDriverMode::SteadyStateMemetic,
+                Solver3LocalImproverMode::RecordToRecord,
+            )
+            | (
+                Solver3SearchDriverMode::SteadyStateMemetic,
+                Solver3LocalImproverMode::SgpWeekPairTabu,
+            ) => memetic::run(state, run_context, progress_callback, benchmark_observer),
         }
     }
 }
