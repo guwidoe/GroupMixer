@@ -54,6 +54,18 @@ impl SgpWeekPairTabuState {
     }
 
     #[inline]
+    pub(crate) fn expiry_for_pair(
+        &self,
+        compiled: &CompiledProblem,
+        session_idx: usize,
+        left_person_idx: usize,
+        right_person_idx: usize,
+    ) -> u64 {
+        let slot = self.pair_slot(compiled, session_idx, left_person_idx, right_person_idx);
+        self.expiry_at_slot(slot)
+    }
+
+    #[inline]
     pub(crate) fn is_tabu(
         &self,
         compiled: &CompiledProblem,
@@ -200,5 +212,82 @@ mod tests {
         assert_eq!(tabu.expiry_at_slot(slot), expiry);
         assert!(expiry >= 13);
         assert!(expiry <= 17);
+    }
+
+    #[test]
+    fn tabu_is_isolated_per_session() {
+        let state = compiled_problem();
+        let mut tabu = SgpWeekPairTabuState::new(&state.compiled, config());
+        let mut rng = ChaCha12Rng::seed_from_u64(19);
+
+        tabu.record_swap(&state.compiled, 0, 0, 3, 4, &mut rng);
+
+        assert!(tabu.is_tabu(&state.compiled, 0, 0, 3, 4));
+        assert!(!tabu.is_tabu(&state.compiled, 1, 0, 3, 4));
+        assert!(!tabu.is_tabu(&state.compiled, 2, 0, 3, 4));
+    }
+
+    #[test]
+    fn is_tabu_uses_strict_expiry_boundary() {
+        let state = compiled_problem();
+        let mut tabu = SgpWeekPairTabuState::new(
+            &state.compiled,
+            SgpWeekPairTabuConfig {
+                tenure_min: 3,
+                tenure_max: 3,
+                retry_cap: 5,
+                aspiration_enabled: true,
+            },
+        );
+        let mut rng = ChaCha12Rng::seed_from_u64(23);
+
+        let expiry = tabu.record_swap(&state.compiled, 1, 0, 2, 10, &mut rng);
+        assert_eq!(expiry, 13);
+        assert!(tabu.is_tabu(&state.compiled, 1, 0, 2, 12));
+        assert!(!tabu.is_tabu(&state.compiled, 1, 0, 2, 13));
+    }
+
+    #[test]
+    fn sampled_tenures_are_deterministic_for_fixed_seed() {
+        let state = compiled_problem();
+        let mut left = SgpWeekPairTabuState::new(&state.compiled, config());
+        let mut right = SgpWeekPairTabuState::new(&state.compiled, config());
+        let mut left_rng = ChaCha12Rng::seed_from_u64(29);
+        let mut right_rng = ChaCha12Rng::seed_from_u64(29);
+
+        let left_expiries = [
+            left.record_swap(&state.compiled, 0, 0, 1, 0, &mut left_rng),
+            left.record_swap(&state.compiled, 1, 0, 2, 5, &mut left_rng),
+            left.record_swap(&state.compiled, 2, 1, 3, 9, &mut left_rng),
+        ];
+        let right_expiries = [
+            right.record_swap(&state.compiled, 0, 0, 1, 0, &mut right_rng),
+            right.record_swap(&state.compiled, 1, 0, 2, 5, &mut right_rng),
+            right.record_swap(&state.compiled, 2, 1, 3, 9, &mut right_rng),
+        ];
+
+        assert_eq!(left_expiries, right_expiries);
+    }
+
+    #[test]
+    fn recording_same_slot_overwrites_expiry() {
+        let state = compiled_problem();
+        let mut tabu = SgpWeekPairTabuState::new(
+            &state.compiled,
+            SgpWeekPairTabuConfig {
+                tenure_min: 4,
+                tenure_max: 4,
+                retry_cap: 5,
+                aspiration_enabled: true,
+            },
+        );
+        let mut rng = ChaCha12Rng::seed_from_u64(31);
+
+        let first_expiry = tabu.record_swap(&state.compiled, 1, 0, 3, 2, &mut rng);
+        let second_expiry = tabu.record_swap(&state.compiled, 1, 3, 0, 8, &mut rng);
+
+        assert_eq!(first_expiry, 6);
+        assert_eq!(second_expiry, 12);
+        assert_eq!(tabu.expiry_for_pair(&state.compiled, 1, 0, 3), 12);
     }
 }
