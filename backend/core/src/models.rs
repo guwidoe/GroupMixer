@@ -1103,7 +1103,8 @@ impl Default for Solver3DonorSessionTransplantParams {
             recombination_cooldown_window: default_solver3_donor_session_cooldown_window(),
             max_recombination_events_per_run: default_solver3_donor_session_max_events_per_run(),
             early_discard_score_delta: default_solver3_donor_session_early_discard_score_delta(),
-            child_polish_max_iterations: default_solver3_donor_session_child_polish_max_iterations(),
+            child_polish_max_iterations: default_solver3_donor_session_child_polish_max_iterations(
+            ),
             child_polish_no_improvement_iterations:
                 default_solver3_donor_session_child_polish_no_improvement_iterations(),
         }
@@ -1200,10 +1201,8 @@ impl Default for Solver3SgpWeekPairTabuParams {
             aspiration_enabled: default_solver3_sgp_week_pair_tabu_aspiration(),
             session_scale_reference_participants:
                 default_solver3_sgp_week_pair_tabu_session_scale_reference_participants(),
-            reactive_no_improvement_window:
-                default_solver3_sgp_week_pair_tabu_reactive_window(),
-            reactive_max_multiplier:
-                default_solver3_sgp_week_pair_tabu_reactive_max_multiplier(),
+            reactive_no_improvement_window: default_solver3_sgp_week_pair_tabu_reactive_window(),
+            reactive_max_multiplier: default_solver3_sgp_week_pair_tabu_reactive_max_multiplier(),
             conflict_restricted_swap_sampling_enabled: false,
         }
     }
@@ -1753,6 +1752,12 @@ pub struct DonorSessionTransplantBenchmarkTelemetry {
     pub archive_rejected_near_duplicates: u64,
     #[serde(default)]
     pub archive_rejected_not_competitive: u64,
+    #[serde(default)]
+    pub trigger_blocked_not_armed: u64,
+    #[serde(default)]
+    pub trigger_armed_no_viable_donor: u64,
+    #[serde(default)]
+    pub trigger_armed_no_viable_session: u64,
     #[serde(default)]
     pub recombination_events_fired: u64,
     #[serde(default)]

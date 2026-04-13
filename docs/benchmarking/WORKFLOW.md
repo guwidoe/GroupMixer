@@ -254,6 +254,7 @@ When validating SGP-specialized advanced search modes, keep the baseline Social 
 #### Donor-session transplant manifests
 
 - `backend/benchmarking/suites/social-golfer-plateau-time-solver3-donor-session.yaml`
+- `backend/benchmarking/suites/social-golfer-plateau-time-solver3-donor-session-forced-fire.yaml`
 - `backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-donor-session.yaml`
 - `backend/benchmarking/suites/solver3-donor-session-transplant-multiseed.yaml`
 
@@ -277,6 +278,9 @@ gm-cli benchmark run \
 
 gm-cli benchmark run \
   --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-donor-session.yaml
+
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-donor-session-forced-fire.yaml
 
 gm-cli benchmark run \
   --manifest backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3.yaml
@@ -313,7 +317,7 @@ Interpretation checklist:
 - iterations / offspring per second
 - `search_telemetry.sgp_week_pair_tabu.*` for tabu prefilter / aspiration behavior
 - `search_telemetry.memetic.*` for offspring, mutation-length, child-polish, and replacement behavior
-- `search_telemetry.donor_session_transplant.*` for archive admissions, recombination events, donor/session choices, immediate discards, and bounded post-transplant polish cost
+- `search_telemetry.donor_session_transplant.*` for archive admissions, trigger-block reasons, recombination events, donor/session choices, immediate discards, and bounded post-transplant polish cost
 
 For conflict-restricted tabu specifically, compare it against plain tabu before comparing it against memetic variants. If the restriction helps, it should beat the plain tabu lane honestly; if it starves exploration, that should show up immediately in final score or in much earlier stagnation.
 

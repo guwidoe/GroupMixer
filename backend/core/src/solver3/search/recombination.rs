@@ -15,11 +15,11 @@ use crate::models::{
 };
 use crate::solver_support::SolverError;
 
+use super::super::runtime_state::RuntimeState;
 use super::archive::{
     build_session_conflict_burden, build_session_fingerprints, ArchiveUpdateReason, EliteArchive,
     EliteArchiveConfig,
 };
-use super::super::runtime_state::RuntimeState;
 use super::context::{DonorSessionTransplantConfig, SearchProgressState, SearchRunContext};
 use super::single_state::{
     build_solver_result, polish_state, should_emit_progress_callback, LocalImproverBudget,
@@ -31,6 +31,13 @@ pub(crate) struct DonorSessionChoice {
     pub(crate) session_idx: usize,
     pub(crate) session_disagreement_count: usize,
     pub(crate) conflict_burden_advantage: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DonorSessionSelectionOutcome {
+    Selected(DonorSessionChoice),
+    NoViableDonor,
+    NoViableSession,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,14 +60,12 @@ impl DonorSessionTriggerState {
         Self::default()
     }
 
-    pub(crate) fn should_fire(
+    pub(crate) fn is_armed(
         &self,
         config: DonorSessionTransplantConfig,
         no_improvement_count: u64,
-        donor_available: bool,
     ) -> bool {
-        donor_available
-            && self.recombination_events_fired < config.max_recombination_events_per_run
+        self.recombination_events_fired < config.max_recombination_events_per_run
             && no_improvement_count >= config.recombination_no_improvement_window
             && self.iterations_since_last_recombination >= config.recombination_cooldown_window
     }
@@ -97,20 +102,24 @@ pub(crate) fn select_donor_session(
 ) -> Option<DonorSessionChoice> {
     let base_session_fingerprints = build_session_fingerprints(base_state);
     let base_session_conflict_burden = build_session_conflict_burden(base_state);
-    select_donor_session_from_summary(
+    match select_donor_session_from_summary(
         &base_session_fingerprints,
         &base_session_conflict_burden,
         archive,
-    )
+    ) {
+        DonorSessionSelectionOutcome::Selected(choice) => Some(choice),
+        DonorSessionSelectionOutcome::NoViableDonor
+        | DonorSessionSelectionOutcome::NoViableSession => None,
+    }
 }
 
 fn select_donor_session_from_summary(
     base_session_fingerprints: &[u64],
     base_session_conflict_burden: &[u32],
     archive: &EliteArchive,
-) -> Option<DonorSessionChoice> {
+) -> DonorSessionSelectionOutcome {
     if archive.entries().is_empty() {
-        return None;
+        return DonorSessionSelectionOutcome::NoViableDonor;
     }
 
     let mut ranked_archive_indices = (0..archive.entries().len()).collect::<Vec<_>>();
@@ -122,45 +131,60 @@ fn select_donor_session_from_summary(
     });
 
     let competitive_count = ranked_archive_indices.len().div_ceil(2);
-    ranked_archive_indices
-        .into_iter()
-        .take(competitive_count)
-        .filter_map(|archive_idx| {
-            score_competitive_donor_choice(
-                archive_idx,
-                &archive.entries()[archive_idx],
-                base_session_fingerprints,
-                base_session_conflict_burden,
-                archive.near_duplicate_session_threshold(),
-            )
-        })
-        .max_by(|left, right| {
-            compare_donor_session_choice(left, right).then_with(|| {
-                archive.entries()[right.donor_archive_idx]
-                    .score
-                    .total_cmp(&archive.entries()[left.donor_archive_idx].score)
-            })
-        })
-}
+    let mut found_viable_donor = false;
+    let mut best_choice = None;
+    for archive_idx in ranked_archive_indices.into_iter().take(competitive_count) {
+        let donor = &archive.entries()[archive_idx];
+        let session_disagreement_count = donor
+            .session_fingerprints
+            .iter()
+            .zip(base_session_fingerprints.iter())
+            .filter(|(left, right)| left != right)
+            .count();
 
-fn score_competitive_donor_choice(
-    archive_idx: usize,
-    donor: &super::archive::ArchivedElite,
-    base_session_fingerprints: &[u64],
-    base_session_conflict_burden: &[u32],
-    near_duplicate_session_threshold: usize,
-) -> Option<DonorSessionChoice> {
-    let session_disagreement_count = donor
-        .session_fingerprints
-        .iter()
-        .zip(base_session_fingerprints.iter())
-        .filter(|(left, right)| left != right)
-        .count();
+        if session_disagreement_count <= archive.near_duplicate_session_threshold() {
+            continue;
+        }
+        found_viable_donor = true;
 
-    if session_disagreement_count <= near_duplicate_session_threshold {
-        return None;
+        let Some(choice) = best_session_choice_for_donor(
+            archive_idx,
+            donor,
+            session_disagreement_count,
+            base_session_fingerprints,
+            base_session_conflict_burden,
+        ) else {
+            continue;
+        };
+
+        let should_replace = best_choice
+            .as_ref()
+            .is_none_or(|best: &DonorSessionChoice| {
+                compare_donor_session_choice(&choice, best).then_with(|| {
+                    archive.entries()[best.donor_archive_idx]
+                        .score
+                        .total_cmp(&archive.entries()[choice.donor_archive_idx].score)
+                }) == Ordering::Greater
+            });
+        if should_replace {
+            best_choice = Some(choice);
+        }
     }
 
+    match (best_choice, found_viable_donor) {
+        (Some(choice), _) => DonorSessionSelectionOutcome::Selected(choice),
+        (None, true) => DonorSessionSelectionOutcome::NoViableSession,
+        (None, false) => DonorSessionSelectionOutcome::NoViableDonor,
+    }
+}
+
+fn best_session_choice_for_donor(
+    archive_idx: usize,
+    donor: &super::archive::ArchivedElite,
+    session_disagreement_count: usize,
+    base_session_fingerprints: &[u64],
+    base_session_conflict_burden: &[u32],
+) -> Option<DonorSessionChoice> {
     donor
         .session_fingerprints
         .iter()
@@ -174,9 +198,14 @@ fn score_competitive_donor_choice(
         .filter_map(
             |(
                 session_idx,
-                ((donor_fingerprint, donor_conflict_burden), (base_fingerprint, base_conflict_burden)),
+                (
+                    (donor_fingerprint, donor_conflict_burden),
+                    (base_fingerprint, base_conflict_burden),
+                ),
             )| {
-                if donor_fingerprint == base_fingerprint || donor_conflict_burden >= base_conflict_burden {
+                if donor_fingerprint == base_fingerprint
+                    || donor_conflict_burden >= base_conflict_burden
+                {
                     return None;
                 }
                 Some(DonorSessionChoice {
@@ -194,13 +223,13 @@ fn score_competitive_donor_choice(
         })
 }
 
-fn compare_donor_session_choice(
-    left: &DonorSessionChoice,
-    right: &DonorSessionChoice,
-) -> Ordering {
+fn compare_donor_session_choice(left: &DonorSessionChoice, right: &DonorSessionChoice) -> Ordering {
     left.session_disagreement_count
         .cmp(&right.session_disagreement_count)
-        .then_with(|| left.conflict_burden_advantage.cmp(&right.conflict_burden_advantage))
+        .then_with(|| {
+            left.conflict_burden_advantage
+                .cmp(&right.conflict_burden_advantage)
+        })
         .then_with(|| right.donor_archive_idx.cmp(&left.donor_archive_idx))
 }
 
@@ -274,11 +303,13 @@ pub(crate) fn run(
     );
 
     if let Some(observer) = benchmark_observer {
-        observer(&BenchmarkEvent::RunStarted(crate::models::BenchmarkRunStarted {
-            effective_seed: run_context.effective_seed,
-            move_policy: run_context.move_policy.clone(),
-            initial_score: aggregate.initial_score,
-        }));
+        observer(&BenchmarkEvent::RunStarted(
+            crate::models::BenchmarkRunStarted {
+                effective_seed: run_context.effective_seed,
+                move_policy: run_context.move_policy.clone(),
+                initial_score: aggregate.initial_score,
+            },
+        ));
     }
 
     let mut stop_reason = StopReason::MaxIterationsReached;
@@ -287,7 +318,9 @@ pub(crate) fn run(
     let mut final_progress_emitted = false;
     let mut last_progress_callback_at = total_started_at;
 
-    if run_context.stop_on_optimal_score && aggregate.best_score <= crate::models::OPTIMAL_SCORE_TOLERANCE {
+    if run_context.stop_on_optimal_score
+        && aggregate.best_score <= crate::models::OPTIMAL_SCORE_TOLERANCE
+    {
         stop_reason = StopReason::OptimalScoreReached;
     }
 
@@ -303,9 +336,8 @@ pub(crate) fn run(
             }
 
             let remaining_iterations = run_context.max_iterations - total_iterations_completed;
-            let chunk_iterations = remaining_iterations.min(
-                transplant_config.recombination_no_improvement_window.max(1),
-            );
+            let chunk_iterations = remaining_iterations
+                .min(transplant_config.recombination_no_improvement_window.max(1));
             let chunk_outcome = polish_state(
                 current_incumbent.clone(),
                 &run_context,
@@ -313,9 +345,9 @@ pub(crate) fn run(
                     effective_seed: rng.random::<u64>(),
                     max_iterations: chunk_iterations,
                     no_improvement_limit: None,
-                    time_limit_seconds: run_context.time_limit_seconds.map(|limit| {
-                        (limit as f64 - elapsed_before_chunk).max(0.0)
-                    }),
+                    time_limit_seconds: run_context
+                        .time_limit_seconds
+                        .map(|limit| (limit as f64 - elapsed_before_chunk).max(0.0)),
                     stop_on_optimal_score: run_context.stop_on_optimal_score,
                 },
             )?;
@@ -380,12 +412,35 @@ pub(crate) fn run(
                 }
             }
 
-            let Some(choice) = select_donor_session(&current_incumbent, &archive) else {
-                continue;
-            };
-            if !trigger_state.should_fire(transplant_config, global_no_improvement_count, true) {
+            if !trigger_state.is_armed(transplant_config, global_no_improvement_count) {
+                aggregate
+                    .donor_session_transplant_telemetry
+                    .get_or_insert_with(Default::default)
+                    .trigger_blocked_not_armed += 1;
                 continue;
             }
+
+            let choice = match select_donor_session_from_summary(
+                &build_session_fingerprints(&current_incumbent),
+                &build_session_conflict_burden(&current_incumbent),
+                &archive,
+            ) {
+                DonorSessionSelectionOutcome::Selected(choice) => choice,
+                DonorSessionSelectionOutcome::NoViableDonor => {
+                    aggregate
+                        .donor_session_transplant_telemetry
+                        .get_or_insert_with(Default::default)
+                        .trigger_armed_no_viable_donor += 1;
+                    continue;
+                }
+                DonorSessionSelectionOutcome::NoViableSession => {
+                    aggregate
+                        .donor_session_transplant_telemetry
+                        .get_or_insert_with(Default::default)
+                        .trigger_armed_no_viable_session += 1;
+                    continue;
+                }
+            };
 
             trigger_state.record_recombination_event();
             aggregate
@@ -403,11 +458,8 @@ pub(crate) fn run(
                     conflict_burden_advantage: choice.conflict_burden_advantage,
                 });
             let donor = &archive.entries()[choice.donor_archive_idx];
-            let transplanted_child = transplant_donor_session(
-                &current_incumbent,
-                donor,
-                choice.session_idx,
-            )?;
+            let transplanted_child =
+                transplant_donor_session(&current_incumbent, donor, choice.session_idx)?;
 
             if transplanted_child.total_score
                 > current_incumbent.total_score + transplant_config.early_discard_score_delta
@@ -445,9 +497,9 @@ pub(crate) fn run(
                             .child_polish_no_improvement_iterations
                             .min(polish_iterations),
                     ),
-                    time_limit_seconds: run_context.time_limit_seconds.map(|limit| {
-                        (limit as f64 - elapsed_before_polish).max(0.0)
-                    }),
+                    time_limit_seconds: run_context
+                        .time_limit_seconds
+                        .map(|limit| (limit as f64 - elapsed_before_polish).max(0.0)),
                     stop_on_optimal_score: run_context.stop_on_optimal_score,
                 },
             )?;
@@ -642,10 +694,15 @@ fn absorb_local_search_chunk(
         local.repeat_guided_swap_telemetry.guided_attempts,
         local.repeat_guided_swap_telemetry.guided_successes,
         local.repeat_guided_swap_telemetry.guided_fallback_to_random,
-        local.repeat_guided_swap_telemetry.guided_previewed_candidates,
+        local
+            .repeat_guided_swap_telemetry
+            .guided_previewed_candidates,
     );
     absorb_family_metrics(&mut aggregate.move_metrics.swap, &local.move_metrics.swap);
-    absorb_family_metrics(&mut aggregate.move_metrics.transfer, &local.move_metrics.transfer);
+    absorb_family_metrics(
+        &mut aggregate.move_metrics.transfer,
+        &local.move_metrics.transfer,
+    );
     absorb_family_metrics(
         &mut aggregate.move_metrics.clique_swap,
         &local.move_metrics.clique_swap,
@@ -654,11 +711,13 @@ fn absorb_local_search_chunk(
 
     for point in local.best_score_timeline.iter().skip(1) {
         if point.best_score < aggregate.best_score {
-            aggregate.best_score_timeline.push(crate::models::BestScoreTimelinePoint {
-                iteration: iteration_offset + point.iteration,
-                elapsed_seconds: elapsed_offset + point.elapsed_seconds,
-                best_score: point.best_score,
-            });
+            aggregate
+                .best_score_timeline
+                .push(crate::models::BestScoreTimelinePoint {
+                    iteration: iteration_offset + point.iteration,
+                    elapsed_seconds: elapsed_offset + point.elapsed_seconds,
+                    best_score: point.best_score,
+                });
             aggregate.best_score = point.best_score;
             aggregate.best_state = local.best_state.clone();
         }
@@ -695,7 +754,9 @@ fn record_archive_update(search: &mut SearchProgressState, reason: ArchiveUpdate
         ArchiveUpdateReason::RejectedExactDuplicate => {
             telemetry.archive_rejected_exact_duplicates += 1
         }
-        ArchiveUpdateReason::RejectedNearDuplicate => telemetry.archive_rejected_near_duplicates += 1,
+        ArchiveUpdateReason::RejectedNearDuplicate => {
+            telemetry.archive_rejected_near_duplicates += 1
+        }
         ArchiveUpdateReason::RejectedNotCompetitive => {
             telemetry.archive_rejected_not_competitive += 1
         }
@@ -758,16 +819,17 @@ mod tests {
     use std::collections::HashMap;
 
     use super::{
-        archive_config_for_donor_session_mode, select_donor_session, transplant_donor_session,
+        archive_config_for_donor_session_mode, select_donor_session,
+        select_donor_session_from_summary, transplant_donor_session, DonorSessionSelectionOutcome,
         DonorSessionTriggerState,
     };
     use crate::default_solver_configuration_for;
     use crate::models::{
-        ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
-        RepeatEncounterParams, SolverKind,
+        ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, RepeatEncounterParams,
+        SolverKind,
     };
     use crate::solver3::runtime_state::RuntimeState;
-    use crate::solver3::search::archive::EliteArchive;
+    use crate::solver3::search::archive::{ArchivedElite, EliteArchive};
     use crate::solver3::search::context::DonorSessionTransplantConfig;
 
     fn config() -> DonorSessionTransplantConfig {
@@ -800,7 +862,10 @@ mod tests {
             for (group_idx, members) in session_groups.into_iter().enumerate() {
                 session.insert(
                     groups[group_idx].to_string(),
-                    members.into_iter().map(|member| member.to_string()).collect(),
+                    members
+                        .into_iter()
+                        .map(|member| member.to_string())
+                        .collect(),
                 );
             }
             schedule.insert(format!("session_{session_idx}"), session);
@@ -847,7 +912,8 @@ mod tests {
             constraints,
             solver: default_solver_configuration_for(SolverKind::Solver3),
         };
-        let mut state = RuntimeState::from_input(&input).expect("schedule should build runtime state");
+        let mut state =
+            RuntimeState::from_input(&input).expect("schedule should build runtime state");
         state.total_score = score_override;
         state
     }
@@ -855,21 +921,20 @@ mod tests {
     #[test]
     fn trigger_waits_for_stagnation_and_donor_availability() {
         let state = DonorSessionTriggerState::new();
-        assert!(!state.should_fire(config(), 19, true));
-        assert!(!state.should_fire(config(), 20, false));
-        assert!(state.should_fire(config(), 20, true));
+        assert!(!state.is_armed(config(), 19));
+        assert!(state.is_armed(config(), 20));
     }
 
     #[test]
     fn trigger_respects_cooldown_and_event_cap() {
         let mut state = DonorSessionTriggerState::new();
         state.record_recombination_event();
-        assert!(!state.should_fire(config(), 100, true));
+        assert!(!state.is_armed(config(), 100));
         state.finish_iterations(10);
-        assert!(state.should_fire(config(), 100, true));
+        assert!(state.is_armed(config(), 100));
         state.record_recombination_event();
         state.finish_iterations(10);
-        assert!(!state.should_fire(config(), 100, true));
+        assert!(!state.is_armed(config(), 100));
     }
 
     #[test]
@@ -916,7 +981,8 @@ mod tests {
         archive.consider_state(more_diverse_competitive);
         archive.consider_state(more_diverse_not_competitive);
 
-        let choice = select_donor_session(&base, &archive).expect("expected a viable donor session");
+        let choice =
+            select_donor_session(&base, &archive).expect("expected a viable donor session");
         assert_eq!(choice.donor_archive_idx, 1);
         assert_eq!(choice.session_idx, 0);
         assert_eq!(choice.session_disagreement_count, 3);
@@ -951,6 +1017,34 @@ mod tests {
     }
 
     #[test]
+    fn donor_selection_reports_no_viable_session_when_donor_lacks_local_advantage() {
+        let base = state_from_schedule(
+            vec![
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+                vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+            ],
+            true,
+            10.0,
+        );
+
+        let mut archive = EliteArchive::new(archive_config_for_donor_session_mode(config()));
+        archive.consider_elite(ArchivedElite {
+            state: base.clone(),
+            score: 9.0,
+            session_fingerprints: vec![11, 22, 33],
+            session_conflict_burden: vec![5, 6, 7],
+        });
+
+        let outcome = select_donor_session_from_summary(
+            &[44, 22, 55],
+            &[5, 6, 7],
+            &archive,
+        );
+        assert_eq!(outcome, DonorSessionSelectionOutcome::NoViableSession);
+    }
+
+    #[test]
     fn donor_selection_chooses_session_with_largest_conflict_burden_advantage() {
         let base = state_from_schedule(
             vec![
@@ -974,7 +1068,8 @@ mod tests {
         let mut archive = EliteArchive::new(archive_config_for_donor_session_mode(config()));
         archive.consider_state(donor);
 
-        let choice = select_donor_session(&base, &archive).expect("expected a viable donor session");
+        let choice =
+            select_donor_session(&base, &archive).expect("expected a viable donor session");
         assert_eq!(choice.session_idx, 1);
         assert_eq!(choice.conflict_burden_advantage, 4);
     }
@@ -1025,8 +1120,16 @@ mod tests {
                 problem: ProblemDefinition {
                     people: vec![person("p0"), person("p1"), person("p2"), person("p3")],
                     groups: vec![
-                        Group { id: "g0".into(), size: 2, session_sizes: None },
-                        Group { id: "g1".into(), size: 2, session_sizes: None },
+                        Group {
+                            id: "g0".into(),
+                            size: 2,
+                            session_sizes: None
+                        },
+                        Group {
+                            id: "g1".into(),
+                            size: 2,
+                            session_sizes: None
+                        },
                     ],
                     num_sessions: 3,
                 },
