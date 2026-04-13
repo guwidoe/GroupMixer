@@ -5,8 +5,9 @@ use gm_core::models::{
     ApiInput, BenchmarkEvent, Constraint, Group, MoveFamily, MovePolicy, Objective,
     PairMeetingCountParams, PairMeetingMode, Person, ProblemDefinition, ProgressCallback,
     RepeatEncounterParams, SimulatedAnnealingParams, Solver3CorrectnessLaneParams,
-    Solver3LocalImproverMode, Solver3LocalImproverParams, Solver3Params, Solver3SearchDriverMode,
-    Solver3SearchDriverParams, Solver3SgpWeekPairTabuParams, SolverKind, SolverParams, StopReason,
+    Solver3DonorSessionTransplantParams, Solver3LocalImproverMode, Solver3LocalImproverParams,
+    Solver3Params, Solver3SearchDriverMode, Solver3SearchDriverParams,
+    Solver3SgpWeekPairTabuParams, SolverKind, SolverParams, StopReason,
 };
 use gm_core::{
     default_solver_configuration_for, run_solver, run_solver_with_benchmark_observer,
@@ -857,6 +858,33 @@ fn solver3_steady_state_memetic_rejects_active_cliques() {
     assert!(
         err.to_string()
             .contains("does not yet support active cliques"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
+fn solver3_donor_session_transplant_mode_is_explicitly_rejected_until_implemented() {
+    let mut input = solver3_repeat_driver_input();
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        search_driver: Solver3SearchDriverParams {
+            mode: Solver3SearchDriverMode::DonorSessionTransplant,
+            donor_session_transplant: Solver3DonorSessionTransplantParams {
+                archive_size: 5,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        local_improver: Solver3LocalImproverParams {
+            mode: Solver3LocalImproverMode::SgpWeekPairTabu,
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    let err = run_solver(&input)
+        .expect_err("donor-session transplant mode should fail explicitly until implemented");
+    assert!(
+        err.to_string().contains("donor_session_transplant"),
         "unexpected error: {err}"
     );
 }

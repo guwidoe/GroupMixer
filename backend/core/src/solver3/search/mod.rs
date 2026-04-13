@@ -7,6 +7,7 @@ mod context;
 mod engine;
 mod family_selection;
 mod memetic;
+mod recombination;
 mod repeat_guidance;
 mod sgp_conflicts;
 mod single_state;

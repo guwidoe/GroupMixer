@@ -34,6 +34,7 @@ pub(crate) struct SearchRunContext {
     pub(crate) repeat_guided_swap_candidate_preview_budget: usize,
     pub(crate) sgp_week_pair_tabu: Option<SgpWeekPairTabuConfig>,
     pub(crate) steady_state_memetic: Option<SteadyStateMemeticConfig>,
+    pub(crate) donor_session_transplant: Option<DonorSessionTransplantConfig>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,6 +43,17 @@ pub(crate) struct SteadyStateMemeticConfig {
     pub(crate) parent_tournament_size: usize,
     pub(crate) mutation_swaps_min: usize,
     pub(crate) mutation_swaps_max: usize,
+    pub(crate) child_polish_max_iterations: u64,
+    pub(crate) child_polish_no_improvement_iterations: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct DonorSessionTransplantConfig {
+    pub(crate) archive_size: usize,
+    pub(crate) recombination_no_improvement_window: u64,
+    pub(crate) recombination_cooldown_window: u64,
+    pub(crate) max_recombination_events_per_run: u64,
+    pub(crate) early_discard_score_delta: f64,
     pub(crate) child_polish_max_iterations: u64,
     pub(crate) child_polish_no_improvement_iterations: u64,
 }
@@ -71,6 +83,7 @@ impl SearchRunContext {
         let local_improver_mode = solver3_params.local_improver.mode;
         let sgp_week_pair_tabu = &solver3_params.local_improver.sgp_week_pair_tabu;
         let steady_state_memetic = &solver3_params.search_driver.steady_state_memetic;
+        let donor_session_transplant = &solver3_params.search_driver.donor_session_transplant;
         let correctness_sample_every_accepted_moves =
             solver3_params.correctness_lane.sample_every_accepted_moves;
         let repeat_guided_swap_probability = solver3_params
@@ -197,6 +210,65 @@ impl SearchRunContext {
             ));
         }
 
+        if donor_session_transplant.archive_size == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.donor_session_transplant.archive_size must be >= 1".into(),
+            ));
+        }
+
+        if donor_session_transplant.recombination_no_improvement_window == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.donor_session_transplant.recombination_no_improvement_window must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if donor_session_transplant.recombination_cooldown_window == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.donor_session_transplant.recombination_cooldown_window must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if donor_session_transplant.max_recombination_events_per_run == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.donor_session_transplant.max_recombination_events_per_run must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if !donor_session_transplant.early_discard_score_delta.is_finite()
+            || donor_session_transplant.early_discard_score_delta < 0.0
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.donor_session_transplant.early_discard_score_delta must be finite and >= 0.0"
+                    .into(),
+            ));
+        }
+
+        if donor_session_transplant.child_polish_max_iterations == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.donor_session_transplant.child_polish_max_iterations must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if donor_session_transplant.child_polish_no_improvement_iterations == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.donor_session_transplant.child_polish_no_improvement_iterations must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if donor_session_transplant.child_polish_no_improvement_iterations
+            > donor_session_transplant.child_polish_max_iterations
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.donor_session_transplant.child_polish_no_improvement_iterations must be <= child_polish_max_iterations"
+                    .into(),
+            ));
+        }
+
         #[cfg(not(feature = "solver3-oracle-checks"))]
         if correctness_lane_enabled {
             return Err(SolverError::ValidationError(
@@ -240,6 +312,24 @@ impl SearchRunContext {
             ));
         }
 
+        if search_driver_mode == Solver3SearchDriverMode::DonorSessionTransplant
+            && !allows_swap_family
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.mode=donor_session_transplant requires move_policy to allow swap moves"
+                    .into(),
+            ));
+        }
+
+        if search_driver_mode == Solver3SearchDriverMode::DonorSessionTransplant
+            && !state.compiled.cliques.is_empty()
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.mode=donor_session_transplant does not yet support active cliques / must_stay_together constraints"
+                    .into(),
+            ));
+        }
+
         match (search_driver_mode, local_improver_mode) {
             (Solver3SearchDriverMode::SingleState, Solver3LocalImproverMode::RecordToRecord)
             | (Solver3SearchDriverMode::SingleState, Solver3LocalImproverMode::SgpWeekPairTabu) => {
@@ -250,6 +340,14 @@ impl SearchRunContext {
             )
             | (
                 Solver3SearchDriverMode::SteadyStateMemetic,
+                Solver3LocalImproverMode::SgpWeekPairTabu,
+            )
+            | (
+                Solver3SearchDriverMode::DonorSessionTransplant,
+                Solver3LocalImproverMode::RecordToRecord,
+            )
+            | (
+                Solver3SearchDriverMode::DonorSessionTransplant,
                 Solver3LocalImproverMode::SgpWeekPairTabu,
             ) => {}
         }
@@ -305,6 +403,20 @@ impl SearchRunContext {
                 child_polish_no_improvement_iterations: steady_state_memetic
                     .child_polish_no_improvement_iterations
                     as u64,
+            }),
+            donor_session_transplant: Some(DonorSessionTransplantConfig {
+                archive_size: donor_session_transplant.archive_size as usize,
+                recombination_no_improvement_window: donor_session_transplant
+                    .recombination_no_improvement_window as u64,
+                recombination_cooldown_window: donor_session_transplant
+                    .recombination_cooldown_window as u64,
+                max_recombination_events_per_run: donor_session_transplant
+                    .max_recombination_events_per_run as u64,
+                early_discard_score_delta: donor_session_transplant.early_discard_score_delta,
+                child_polish_max_iterations: donor_session_transplant
+                    .child_polish_max_iterations as u64,
+                child_polish_no_improvement_iterations: donor_session_transplant
+                    .child_polish_no_improvement_iterations as u64,
             }),
         })
     }
@@ -750,9 +862,10 @@ mod tests {
 
     use crate::models::{
         ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, RepeatEncounterParams,
-        Solver3CorrectnessLaneParams, Solver3HotspotGuidanceParams, Solver3LocalImproverMode,
-        Solver3LocalImproverParams, Solver3Params, Solver3RepeatGuidedSwapParams,
-        Solver3SearchDriverMode, Solver3SearchDriverParams,
+        Solver3CorrectnessLaneParams, Solver3DonorSessionTransplantParams,
+        Solver3HotspotGuidanceParams, Solver3LocalImproverMode, Solver3LocalImproverParams,
+        Solver3Params, Solver3RepeatGuidedSwapParams, Solver3SearchDriverMode,
+        Solver3SearchDriverParams,
         Solver3SgpWeekPairTabuParams, Solver3SgpWeekPairTabuTenureMode,
         SolverConfiguration, SolverParams, StopConditions,
     };
@@ -923,6 +1036,30 @@ mod tests {
                 .unwrap()
                 .child_polish_max_iterations,
             64
+        );
+        assert_eq!(
+            context
+                .donor_session_transplant
+                .as_ref()
+                .unwrap()
+                .archive_size,
+            4
+        );
+        assert_eq!(
+            context
+                .donor_session_transplant
+                .as_ref()
+                .unwrap()
+                .recombination_no_improvement_window,
+            200_000
+        );
+        assert_eq!(
+            context
+                .donor_session_transplant
+                .as_ref()
+                .unwrap()
+                .recombination_cooldown_window,
+            100_000
         );
         assert!(
             context
@@ -1109,6 +1246,26 @@ mod tests {
     }
 
     #[test]
+    fn run_context_accepts_donor_session_transplant_driver_with_record_to_record() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                mode: Solver3SearchDriverMode::DonorSessionTransplant,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let context = SearchRunContext::from_solver(&config, &state, 7).unwrap();
+        assert_eq!(
+            context.search_driver_mode,
+            Solver3SearchDriverMode::DonorSessionTransplant
+        );
+        assert_eq!(context.donor_session_transplant.unwrap().archive_size, 4);
+    }
+
+    #[test]
     fn run_context_accepts_sgp_week_pair_tabu_local_improver_mode() {
         let state = repeat_state();
         let mut config = solver3_config();
@@ -1248,6 +1405,170 @@ mod tests {
         assert!(
             err.to_string()
                 .contains("steady_state_memetic requires move_policy to allow swap"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn run_context_rejects_zero_donor_archive_size() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                donor_session_transplant: Solver3DonorSessionTransplantParams {
+                    archive_size: 0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("donor_session_transplant.archive_size"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn run_context_rejects_nonpositive_donor_recombination_windows() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                donor_session_transplant: Solver3DonorSessionTransplantParams {
+                    recombination_no_improvement_window: 0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string().contains(
+                "donor_session_transplant.recombination_no_improvement_window"
+            ),
+            "unexpected error: {err}"
+        );
+
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                donor_session_transplant: Solver3DonorSessionTransplantParams {
+                    recombination_cooldown_window: 0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("donor_session_transplant.recombination_cooldown_window"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn run_context_rejects_invalid_donor_recombination_budgets() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                donor_session_transplant: Solver3DonorSessionTransplantParams {
+                    max_recombination_events_per_run: 0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string().contains(
+                "donor_session_transplant.max_recombination_events_per_run"
+            ),
+            "unexpected error: {err}"
+        );
+
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                donor_session_transplant: Solver3DonorSessionTransplantParams {
+                    early_discard_score_delta: -1.0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("donor_session_transplant.early_discard_score_delta"),
+            "unexpected error: {err}"
+        );
+
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                donor_session_transplant: Solver3DonorSessionTransplantParams {
+                    child_polish_max_iterations: 0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("donor_session_transplant.child_polish_max_iterations"),
+            "unexpected error: {err}"
+        );
+
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                donor_session_transplant: Solver3DonorSessionTransplantParams {
+                    child_polish_max_iterations: 4,
+                    child_polish_no_improvement_iterations: 5,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string().contains(
+                "donor_session_transplant.child_polish_no_improvement_iterations"
+            ),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn run_context_rejects_donor_driver_when_move_policy_disallows_swap() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.move_policy = Some(crate::models::MovePolicy {
+            allowed_families: Some(vec![crate::models::MoveFamily::Transfer]),
+            ..Default::default()
+        });
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                mode: Solver3SearchDriverMode::DonorSessionTransplant,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("donor_session_transplant requires move_policy to allow swap"),
             "unexpected error: {err}"
         );
     }

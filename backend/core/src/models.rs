@@ -1026,6 +1026,8 @@ pub enum Solver3SearchDriverMode {
     SingleState,
     /// Future steady-state memetic outer loop.
     SteadyStateMemetic,
+    /// Rare archive-based donor-session transplant outer loop.
+    DonorSessionTransplant,
 }
 
 /// Explicit local-improver selection for `solver3`.
@@ -1061,6 +1063,51 @@ pub struct Solver3SearchDriverParams {
     /// Config for the steady-state memetic outer driver.
     #[serde(default)]
     pub steady_state_memetic: Solver3SteadyStateMemeticParams,
+    /// Config for the rare donor-session transplant outer driver.
+    #[serde(default)]
+    pub donor_session_transplant: Solver3DonorSessionTransplantParams,
+}
+
+/// Config for the rare donor-session transplant outer driver.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+pub struct Solver3DonorSessionTransplantParams {
+    /// Maximum number of elites retained in the small archive.
+    #[serde(default = "default_solver3_donor_session_archive_size")]
+    pub archive_size: u32,
+    /// Recombination only becomes eligible after this many non-improving iterations.
+    #[serde(default = "default_solver3_donor_session_no_improvement_window")]
+    pub recombination_no_improvement_window: u32,
+    /// Minimum number of iterations between recombination events.
+    #[serde(default = "default_solver3_donor_session_cooldown_window")]
+    pub recombination_cooldown_window: u32,
+    /// Hard cap on recombination events in a single run.
+    #[serde(default = "default_solver3_donor_session_max_events_per_run")]
+    pub max_recombination_events_per_run: u32,
+    /// Discard immediate post-transplant children when they are worse than the incumbent by more than this margin.
+    #[serde(default = "default_solver3_donor_session_early_discard_score_delta")]
+    pub early_discard_score_delta: f64,
+    /// Bounded local-polish iteration cap applied after a surviving transplant.
+    #[serde(default = "default_solver3_donor_session_child_polish_max_iterations")]
+    pub child_polish_max_iterations: u32,
+    /// Early-stop cap after this many non-improving post-transplant polish iterations.
+    #[serde(default = "default_solver3_donor_session_child_polish_no_improvement_iterations")]
+    pub child_polish_no_improvement_iterations: u32,
+}
+
+impl Default for Solver3DonorSessionTransplantParams {
+    fn default() -> Self {
+        Self {
+            archive_size: default_solver3_donor_session_archive_size(),
+            recombination_no_improvement_window:
+                default_solver3_donor_session_no_improvement_window(),
+            recombination_cooldown_window: default_solver3_donor_session_cooldown_window(),
+            max_recombination_events_per_run: default_solver3_donor_session_max_events_per_run(),
+            early_discard_score_delta: default_solver3_donor_session_early_discard_score_delta(),
+            child_polish_max_iterations: default_solver3_donor_session_child_polish_max_iterations(),
+            child_polish_no_improvement_iterations:
+                default_solver3_donor_session_child_polish_no_improvement_iterations(),
+        }
+    }
 }
 
 /// Config for the steady-state memetic outer driver.
@@ -1250,6 +1297,34 @@ fn default_solver3_memetic_child_polish_max_iterations() -> u32 {
 }
 
 fn default_solver3_memetic_child_polish_no_improvement_iterations() -> u32 {
+    32
+}
+
+fn default_solver3_donor_session_archive_size() -> u32 {
+    4
+}
+
+fn default_solver3_donor_session_no_improvement_window() -> u32 {
+    200_000
+}
+
+fn default_solver3_donor_session_cooldown_window() -> u32 {
+    100_000
+}
+
+fn default_solver3_donor_session_max_events_per_run() -> u32 {
+    2
+}
+
+fn default_solver3_donor_session_early_discard_score_delta() -> f64 {
+    250.0
+}
+
+fn default_solver3_donor_session_child_polish_max_iterations() -> u32 {
+    64
+}
+
+fn default_solver3_donor_session_child_polish_no_improvement_iterations() -> u32 {
     32
 }
 
