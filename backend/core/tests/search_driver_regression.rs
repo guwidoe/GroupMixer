@@ -863,12 +863,17 @@ fn solver3_steady_state_memetic_rejects_active_cliques() {
 }
 
 #[test]
-fn solver3_donor_session_transplant_mode_is_explicitly_rejected_until_implemented() {
+fn solver3_donor_session_transplant_mode_runs_through_public_entry_point() {
     let mut input = solver3_repeat_driver_input();
     input.solver.solver_params = SolverParams::Solver3(Solver3Params {
         search_driver: Solver3SearchDriverParams {
             mode: Solver3SearchDriverMode::DonorSessionTransplant,
             donor_session_transplant: Solver3DonorSessionTransplantParams {
+                recombination_no_improvement_window: 8,
+                recombination_cooldown_window: 8,
+                max_recombination_events_per_run: 1,
+                child_polish_max_iterations: 16,
+                child_polish_no_improvement_iterations: 8,
                 archive_size: 5,
                 ..Default::default()
             },
@@ -881,12 +886,11 @@ fn solver3_donor_session_transplant_mode_is_explicitly_rejected_until_implemente
         ..Default::default()
     });
 
-    let err = run_solver(&input)
-        .expect_err("donor-session transplant mode should fail explicitly until implemented");
-    assert!(
-        err.to_string().contains("donor_session_transplant"),
-        "unexpected error: {err}"
-    );
+    let result = run_solver(&input).expect("donor-session transplant solve should succeed");
+    let telemetry = result
+        .benchmark_telemetry
+        .expect("donor-session transplant telemetry should exist");
+    assert!(telemetry.iterations_completed > 0);
 }
 
 #[cfg(not(feature = "solver3-oracle-checks"))]

@@ -34,15 +34,7 @@ pub use scoring::{recompute_oracle_score, OracleSnapshot};
 pub use search::SearchEngine;
 pub use validation::validate_invariants;
 
-use crate::solver_support::SolverError;
-
 pub const SOLVER3_BOOTSTRAP_NOTES: &str =
     "Solver 3 is an advanced dense-state solver family focused on fast search. Supports recommended runtime mode, \
 manual tuning, and optional correctness checks for debugging and validation. For normal runs, leave \
 correctness checks off.";
-
-pub(crate) fn not_yet_implemented(feature: &str) -> SolverError {
-    SolverError::ValidationError(format!(
-        "solver family 'solver3' is registered, but {feature} is not implemented yet"
-    ))
-}

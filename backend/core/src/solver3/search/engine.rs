@@ -4,12 +4,11 @@ use crate::models::{
     BenchmarkObserver, ProgressCallback, Solver3LocalImproverMode, Solver3SearchDriverMode,
     SolverConfiguration, SolverResult,
 };
-use crate::solver3::not_yet_implemented;
 use crate::solver_support::SolverError;
 
 use super::super::runtime_state::RuntimeState;
 use super::context::SearchRunContext;
-use super::{memetic, single_state};
+use super::{memetic, recombination, single_state};
 
 #[derive(Debug, Clone)]
 pub struct SearchEngine {
@@ -60,9 +59,7 @@ impl SearchEngine {
             | (
                 Solver3SearchDriverMode::DonorSessionTransplant,
                 Solver3LocalImproverMode::SgpWeekPairTabu,
-            ) => Err(not_yet_implemented(
-                "search_driver.mode=donor_session_transplant",
-            )),
+            ) => recombination::run(state, run_context, progress_callback, benchmark_observer),
         }
     }
 }
