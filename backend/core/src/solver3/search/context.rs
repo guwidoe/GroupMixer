@@ -1,9 +1,9 @@
 use std::collections::VecDeque;
 
 use crate::models::{
-    BestScoreTimelinePoint, MemeticBenchmarkTelemetry, MoveFamily,
-    MoveFamilyBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
-    ProgressUpdate, RepeatGuidedSwapBenchmarkTelemetry, SgpWeekPairTabuBenchmarkTelemetry,
+    BestScoreTimelinePoint, MemeticBenchmarkTelemetry, MoveFamily, MoveFamilyBenchmarkTelemetry,
+    MoveFamilyBenchmarkTelemetrySummary, MovePolicy, ProgressUpdate,
+    RepeatGuidedSwapBenchmarkTelemetry, SgpWeekPairTabuBenchmarkTelemetry,
     Solver3LocalImproverMode, Solver3SearchDriverMode, SolverBenchmarkTelemetry,
     SolverConfiguration, StopReason,
 };
@@ -110,8 +110,7 @@ impl SearchRunContext {
 
         if sgp_week_pair_tabu.tenure_max < sgp_week_pair_tabu.tenure_min {
             return Err(SolverError::ValidationError(
-                "solver3 local_improver.sgp_week_pair_tabu.tenure_max must be >= tenure_min"
-                    .into(),
+                "solver3 local_improver.sgp_week_pair_tabu.tenure_max must be >= tenure_min".into(),
             ));
         }
 
@@ -123,8 +122,7 @@ impl SearchRunContext {
 
         if steady_state_memetic.population_size < 2 {
             return Err(SolverError::ValidationError(
-                "solver3 search_driver.steady_state_memetic.population_size must be >= 2"
-                    .into(),
+                "solver3 search_driver.steady_state_memetic.population_size must be >= 2".into(),
             ));
         }
 
@@ -144,8 +142,7 @@ impl SearchRunContext {
 
         if steady_state_memetic.mutation_swaps_min == 0 {
             return Err(SolverError::ValidationError(
-                "solver3 search_driver.steady_state_memetic.mutation_swaps_min must be >= 1"
-                    .into(),
+                "solver3 search_driver.steady_state_memetic.mutation_swaps_min must be >= 1".into(),
             ));
         }
 
@@ -205,7 +202,8 @@ impl SearchRunContext {
             ));
         }
 
-        if search_driver_mode == Solver3SearchDriverMode::SteadyStateMemetic && !allows_swap_family {
+        if search_driver_mode == Solver3SearchDriverMode::SteadyStateMemetic && !allows_swap_family
+        {
             return Err(SolverError::ValidationError(
                 "solver3 search_driver.mode=steady_state_memetic requires move_policy to allow swap moves"
                     .into(),
@@ -223,7 +221,8 @@ impl SearchRunContext {
 
         match (search_driver_mode, local_improver_mode) {
             (Solver3SearchDriverMode::SingleState, Solver3LocalImproverMode::RecordToRecord)
-            | (Solver3SearchDriverMode::SingleState, Solver3LocalImproverMode::SgpWeekPairTabu) => {}
+            | (Solver3SearchDriverMode::SingleState, Solver3LocalImproverMode::SgpWeekPairTabu) => {
+            }
             (
                 Solver3SearchDriverMode::SteadyStateMemetic,
                 Solver3LocalImproverMode::RecordToRecord,
@@ -253,16 +252,21 @@ impl SearchRunContext {
                 .unwrap_or_else(|| (0..state.compiled.num_sessions).collect()),
             correctness_lane_enabled,
             correctness_sample_every_accepted_moves,
-            repeat_guided_swaps_enabled: solver3_params.hotspot_guidance.repeat_guided_swaps.enabled
+            repeat_guided_swaps_enabled: solver3_params
+                .hotspot_guidance
+                .repeat_guided_swaps
+                .enabled
                 && state.compiled.repeat_encounter.is_some(),
             repeat_guided_swap_probability,
-            repeat_guided_swap_candidate_preview_budget:
-                repeat_guided_swap_candidate_preview_budget as usize,
+            repeat_guided_swap_candidate_preview_budget: repeat_guided_swap_candidate_preview_budget
+                as usize,
             sgp_week_pair_tabu: Some(SgpWeekPairTabuConfig {
                 tenure_min: sgp_week_pair_tabu.tenure_min as u64,
                 tenure_max: sgp_week_pair_tabu.tenure_max as u64,
                 retry_cap: sgp_week_pair_tabu.retry_cap as usize,
                 aspiration_enabled: sgp_week_pair_tabu.aspiration_enabled,
+                conflict_restricted_swap_sampling_enabled: sgp_week_pair_tabu
+                    .conflict_restricted_swap_sampling_enabled,
             }),
             steady_state_memetic: Some(SteadyStateMemeticConfig {
                 population_size: steady_state_memetic.population_size as usize,
@@ -271,8 +275,9 @@ impl SearchRunContext {
                 mutation_swaps_max: steady_state_memetic.mutation_swaps_max as usize,
                 child_polish_max_iterations: steady_state_memetic.child_polish_max_iterations
                     as u64,
-                child_polish_no_improvement_iterations:
-                    steady_state_memetic.child_polish_no_improvement_iterations as u64,
+                child_polish_no_improvement_iterations: steady_state_memetic
+                    .child_polish_no_improvement_iterations
+                    as u64,
             }),
         })
     }
@@ -377,8 +382,8 @@ impl SearchProgressState {
         self.repeat_guided_swap_telemetry.guided_attempts += guided_attempts;
         self.repeat_guided_swap_telemetry.guided_successes += guided_successes;
         self.repeat_guided_swap_telemetry.guided_fallback_to_random += guided_fallback_to_random;
-        self.repeat_guided_swap_telemetry.guided_previewed_candidates +=
-            guided_previewed_candidates;
+        self.repeat_guided_swap_telemetry
+            .guided_previewed_candidates += guided_previewed_candidates;
     }
 
     pub(crate) fn record_tabu_sampling(
@@ -717,11 +722,11 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::models::{
-        ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
-        RepeatEncounterParams, Solver3CorrectnessLaneParams, Solver3HotspotGuidanceParams,
-        Solver3LocalImproverMode, Solver3LocalImproverParams, Solver3Params,
-        Solver3RepeatGuidedSwapParams, Solver3SearchDriverMode, Solver3SearchDriverParams,
-        Solver3SgpWeekPairTabuParams, SolverConfiguration, SolverParams, StopConditions,
+        ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, RepeatEncounterParams,
+        Solver3CorrectnessLaneParams, Solver3HotspotGuidanceParams, Solver3LocalImproverMode,
+        Solver3LocalImproverParams, Solver3Params, Solver3RepeatGuidedSwapParams,
+        Solver3SearchDriverMode, Solver3SearchDriverParams, Solver3SgpWeekPairTabuParams,
+        SolverConfiguration, SolverParams, StopConditions,
     };
 
     use super::{SearchProgressState, SearchRunContext};
@@ -827,8 +832,14 @@ mod tests {
         let state = simple_state();
         let context = SearchRunContext::from_solver(&solver3_config(), &state, 7).unwrap();
         assert_eq!(context.effective_seed, 7);
-        assert_eq!(context.search_driver_mode, Solver3SearchDriverMode::SingleState);
-        assert_eq!(context.local_improver_mode, Solver3LocalImproverMode::RecordToRecord);
+        assert_eq!(
+            context.search_driver_mode,
+            Solver3SearchDriverMode::SingleState
+        );
+        assert_eq!(
+            context.local_improver_mode,
+            Solver3LocalImproverMode::RecordToRecord
+        );
         assert_eq!(context.max_iterations, 123);
         assert_eq!(context.no_improvement_limit, Some(17));
         assert_eq!(context.time_limit_seconds, Some(9));
@@ -841,7 +852,14 @@ mod tests {
         assert_eq!(context.sgp_week_pair_tabu.as_ref().unwrap().tenure_min, 8);
         assert_eq!(context.sgp_week_pair_tabu.as_ref().unwrap().tenure_max, 32);
         assert_eq!(context.sgp_week_pair_tabu.as_ref().unwrap().retry_cap, 16);
-        assert_eq!(context.steady_state_memetic.as_ref().unwrap().population_size, 6);
+        assert_eq!(
+            context
+                .steady_state_memetic
+                .as_ref()
+                .unwrap()
+                .population_size,
+            6
+        );
         assert_eq!(
             context
                 .steady_state_memetic
@@ -850,11 +868,13 @@ mod tests {
                 .child_polish_max_iterations,
             64
         );
-        assert!(context
-            .sgp_week_pair_tabu
-            .as_ref()
-            .unwrap()
-            .aspiration_enabled);
+        assert!(
+            context
+                .sgp_week_pair_tabu
+                .as_ref()
+                .unwrap()
+                .aspiration_enabled
+        );
     }
 
     #[test]
@@ -980,6 +1000,37 @@ mod tests {
             context.local_improver_mode,
             Solver3LocalImproverMode::SgpWeekPairTabu
         );
+        assert!(context.sgp_week_pair_tabu.is_some());
+        assert!(
+            !context
+                .sgp_week_pair_tabu
+                .unwrap()
+                .conflict_restricted_swap_sampling_enabled
+        );
+    }
+
+    #[test]
+    fn run_context_captures_conflict_restricted_tabu_sampling_flag() {
+        let state = repeat_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            local_improver: Solver3LocalImproverParams {
+                mode: Solver3LocalImproverMode::SgpWeekPairTabu,
+                sgp_week_pair_tabu: Solver3SgpWeekPairTabuParams {
+                    conflict_restricted_swap_sampling_enabled: true,
+                    ..Default::default()
+                },
+            },
+            ..Default::default()
+        });
+
+        let context = SearchRunContext::from_solver(&config, &state, 7).unwrap();
+        assert!(
+            context
+                .sgp_week_pair_tabu
+                .unwrap()
+                .conflict_restricted_swap_sampling_enabled
+        );
     }
 
     #[test]
@@ -996,7 +1047,8 @@ mod tests {
 
         let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
         assert!(
-            err.to_string().contains("requires a repeat_encounter constraint"),
+            err.to_string()
+                .contains("requires a repeat_encounter constraint"),
             "unexpected error: {err}"
         );
     }
@@ -1019,7 +1071,8 @@ mod tests {
 
         let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
         assert!(
-            err.to_string().contains("steady_state_memetic requires move_policy to allow swap"),
+            err.to_string()
+                .contains("steady_state_memetic requires move_policy to allow swap"),
             "unexpected error: {err}"
         );
     }

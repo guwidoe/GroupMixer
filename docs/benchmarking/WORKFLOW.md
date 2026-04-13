@@ -236,6 +236,11 @@ When validating SGP-specialized advanced search modes, keep the baseline Social 
 - `backend/benchmarking/suites/social-golfer-plateau-time-solver3-sgp-tabu.yaml`
 - `backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-sgp-tabu.yaml`
 
+#### SGP tabu + conflict-restricted manifests
+
+- `backend/benchmarking/suites/social-golfer-plateau-time-solver3-sgp-tabu-conflict.yaml`
+- `backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-sgp-tabu-conflict.yaml`
+
 #### Steady-state memetic manifests
 
 - `backend/benchmarking/suites/social-golfer-plateau-time-solver3-memetic.yaml`
@@ -256,6 +261,9 @@ gm-cli benchmark run \
   --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-sgp-tabu.yaml
 
 gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-sgp-tabu-conflict.yaml
+
+gm-cli benchmark run \
   --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-memetic.yaml
 
 gm-cli benchmark run \
@@ -266,6 +274,9 @@ gm-cli benchmark run \
 
 gm-cli benchmark run \
   --manifest backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-sgp-tabu.yaml
+
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-sgp-tabu-conflict.yaml
 
 gm-cli benchmark run \
   --manifest backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-memetic.yaml
@@ -284,6 +295,8 @@ Interpretation checklist:
 - iterations / offspring per second
 - `search_telemetry.sgp_week_pair_tabu.*` for tabu prefilter / aspiration behavior
 - `search_telemetry.memetic.*` for offspring, mutation-length, child-polish, and replacement behavior
+
+For conflict-restricted tabu specifically, compare it against plain tabu before comparing it against memetic variants. If the restriction helps, it should beat the plain tabu lane honestly; if it starves exploration, that should show up immediately in final score or in much earlier stagnation.
 
 Do **not** describe tabu or memetic paths as default-path upgrades unless:
 

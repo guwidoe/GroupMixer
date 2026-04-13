@@ -9,6 +9,7 @@ pub(crate) struct SgpWeekPairTabuConfig {
     pub(crate) tenure_max: u64,
     pub(crate) retry_cap: usize,
     pub(crate) aspiration_enabled: bool,
+    pub(crate) conflict_restricted_swap_sampling_enabled: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -112,8 +113,8 @@ mod tests {
     use rand_chacha::ChaCha12Rng;
 
     use crate::models::{
-        ApiInput, Group, Objective, Person, ProblemDefinition, Solver3Params,
-        SolverConfiguration, SolverParams, StopConditions,
+        ApiInput, Group, Objective, Person, ProblemDefinition, Solver3Params, SolverConfiguration,
+        SolverParams, StopConditions,
     };
     use crate::solver3::runtime_state::RuntimeState;
 
@@ -175,6 +176,7 @@ mod tests {
             tenure_max: 7,
             retry_cap: 5,
             aspiration_enabled: true,
+            conflict_restricted_swap_sampling_enabled: false,
         }
     }
 
@@ -186,7 +188,10 @@ mod tests {
 
         assert_eq!(tabu.slot(0, pair_idx), pair_idx);
         assert_eq!(tabu.slot(1, pair_idx), state.compiled.num_pairs + pair_idx);
-        assert_eq!(tabu.slot(2, pair_idx), 2 * state.compiled.num_pairs + pair_idx);
+        assert_eq!(
+            tabu.slot(2, pair_idx),
+            2 * state.compiled.num_pairs + pair_idx
+        );
     }
 
     #[test]
@@ -237,6 +242,7 @@ mod tests {
                 tenure_max: 3,
                 retry_cap: 5,
                 aspiration_enabled: true,
+                conflict_restricted_swap_sampling_enabled: false,
             },
         );
         let mut rng = ChaCha12Rng::seed_from_u64(23);
@@ -279,6 +285,7 @@ mod tests {
                 tenure_max: 4,
                 retry_cap: 5,
                 aspiration_enabled: true,
+                conflict_restricted_swap_sampling_enabled: false,
             },
         );
         let mut rng = ChaCha12Rng::seed_from_u64(31);

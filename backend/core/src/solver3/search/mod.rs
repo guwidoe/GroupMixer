@@ -7,6 +7,7 @@ mod engine;
 mod family_selection;
 mod memetic;
 mod repeat_guidance;
+mod sgp_conflicts;
 mod single_state;
 mod tabu;
 

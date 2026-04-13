@@ -5,8 +5,8 @@ use gm_core::models::{
     ApiInput, BenchmarkEvent, Constraint, Group, MoveFamily, MovePolicy, Objective,
     PairMeetingCountParams, PairMeetingMode, Person, ProblemDefinition, ProgressCallback,
     RepeatEncounterParams, SimulatedAnnealingParams, Solver3CorrectnessLaneParams,
-    Solver3LocalImproverMode, Solver3LocalImproverParams, Solver3Params,
-    Solver3SearchDriverMode, Solver3SearchDriverParams, SolverKind, SolverParams, StopReason,
+    Solver3LocalImproverMode, Solver3LocalImproverParams, Solver3Params, Solver3SearchDriverMode,
+    Solver3SearchDriverParams, Solver3SgpWeekPairTabuParams, SolverKind, SolverParams, StopReason,
 };
 use gm_core::{
     default_solver_configuration_for, run_solver, run_solver_with_benchmark_observer,
@@ -736,7 +736,30 @@ fn solver3_sgp_week_pair_tabu_mode_runs_through_public_entry_point() {
     });
 
     let result = run_solver(&input).expect("tabu local improver solve should succeed");
-    let telemetry = result.benchmark_telemetry.expect("tabu telemetry should exist");
+    let telemetry = result
+        .benchmark_telemetry
+        .expect("tabu telemetry should exist");
+    assert!(telemetry.sgp_week_pair_tabu.is_some());
+}
+
+#[test]
+fn solver3_conflict_restricted_tabu_mode_runs_through_public_entry_point() {
+    let mut input = solver3_repeat_driver_input();
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        local_improver: Solver3LocalImproverParams {
+            mode: Solver3LocalImproverMode::SgpWeekPairTabu,
+            sgp_week_pair_tabu: Solver3SgpWeekPairTabuParams {
+                conflict_restricted_swap_sampling_enabled: true,
+                ..Default::default()
+            },
+        },
+        ..Default::default()
+    });
+
+    let result = run_solver(&input).expect("conflict-restricted tabu solve should succeed");
+    let telemetry = result
+        .benchmark_telemetry
+        .expect("tabu telemetry should exist");
     assert!(telemetry.sgp_week_pair_tabu.is_some());
 }
 
@@ -752,9 +775,13 @@ fn solver3_steady_state_memetic_mode_runs_through_public_entry_point() {
     });
 
     let result = run_solver(&input).expect("steady-state memetic solve should succeed");
-    let telemetry = result.benchmark_telemetry.expect("memetic telemetry should exist");
+    let telemetry = result
+        .benchmark_telemetry
+        .expect("memetic telemetry should exist");
 
-    let memetic = telemetry.memetic.expect("memetic benchmark telemetry should exist");
+    let memetic = telemetry
+        .memetic
+        .expect("memetic benchmark telemetry should exist");
     assert!(memetic.population_size >= 2);
     assert!(memetic.offspring_attempted > 0);
     assert!(memetic.offspring_polished > 0);
@@ -782,7 +809,10 @@ fn solver3_steady_state_memetic_mode_is_seed_stable() {
 
     let telemetry_a = result_a.benchmark_telemetry.expect("memetic telemetry a");
     let telemetry_b = result_b.benchmark_telemetry.expect("memetic telemetry b");
-    assert_eq!(telemetry_a.best_score_timeline, telemetry_b.best_score_timeline);
+    assert_eq!(
+        telemetry_a.best_score_timeline,
+        telemetry_b.best_score_timeline
+    );
     let mut memetic_a = telemetry_a.memetic.expect("memetic telemetry a details");
     let mut memetic_b = telemetry_b.memetic.expect("memetic telemetry b details");
     memetic_a.child_polish_seconds = 0.0;
@@ -806,7 +836,9 @@ fn solver3_steady_state_memetic_supports_tabu_child_polish_when_repeat_constrain
     });
 
     let result = run_solver(&input).expect("memetic tabu-child solve should succeed");
-    let telemetry = result.benchmark_telemetry.expect("memetic telemetry should exist");
+    let telemetry = result
+        .benchmark_telemetry
+        .expect("memetic telemetry should exist");
     assert!(telemetry.memetic.is_some());
 }
 
@@ -823,7 +855,8 @@ fn solver3_steady_state_memetic_rejects_active_cliques() {
 
     let err = run_solver(&input).expect_err("memetic mode should reject active cliques");
     assert!(
-        err.to_string().contains("does not yet support active cliques"),
+        err.to_string()
+            .contains("does not yet support active cliques"),
         "unexpected error: {err}"
     );
 }

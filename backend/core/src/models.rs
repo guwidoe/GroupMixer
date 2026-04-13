@@ -1113,6 +1113,9 @@ pub struct Solver3SgpWeekPairTabuParams {
     /// Whether tabu aspiration may override a tabooed move after preview.
     #[serde(default = "default_solver3_sgp_week_pair_tabu_aspiration")]
     pub aspiration_enabled: bool,
+    /// Whether swap sampling should be restricted to repeat-conflict positions when conflicts exist.
+    #[serde(default)]
+    pub conflict_restricted_swap_sampling_enabled: bool,
 }
 
 impl Default for Solver3SgpWeekPairTabuParams {
@@ -1122,6 +1125,7 @@ impl Default for Solver3SgpWeekPairTabuParams {
             tenure_max: default_solver3_sgp_week_pair_tabu_tenure_max(),
             retry_cap: default_solver3_sgp_week_pair_tabu_retry_cap(),
             aspiration_enabled: default_solver3_sgp_week_pair_tabu_aspiration(),
+            conflict_restricted_swap_sampling_enabled: false,
         }
     }
 }

@@ -9,8 +9,7 @@ use rand_chacha::ChaCha12Rng;
 
 use crate::models::{
     BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, MoveFamily, MovePolicy,
-    ProgressCallback, Solver3LocalImproverMode, SolverBenchmarkTelemetry, SolverResult,
-    StopReason,
+    ProgressCallback, Solver3LocalImproverMode, SolverBenchmarkTelemetry, SolverResult, StopReason,
 };
 use crate::solver_support::SolverError;
 
@@ -31,6 +30,7 @@ use super::candidate_sampling::{CandidateSampler, SearchMovePreview, SwapSamplin
 use super::context::{SearchProgressState, SearchRunContext};
 use super::family_selection::MoveFamilySelector;
 use super::repeat_guidance::RepeatGuidanceState;
+use super::sgp_conflicts::SgpConflictState;
 use super::tabu::SgpWeekPairTabuState;
 
 const PROGRESS_CALLBACK_INTERVAL_SECONDS: f64 = 0.1;
@@ -110,9 +110,11 @@ pub(crate) fn run(
         },
     )?;
 
-    let telemetry = outcome
-        .search
-        .to_benchmark_telemetry(&run_context, outcome.stop_reason, outcome.search_seconds);
+    let telemetry = outcome.search.to_benchmark_telemetry(
+        &run_context,
+        outcome.stop_reason,
+        outcome.search_seconds,
+    );
 
     if let Some(observer) = benchmark_observer {
         observer(&BenchmarkEvent::RunCompleted(telemetry.clone()));
@@ -164,10 +166,21 @@ fn run_local_improver(
     } else {
         None
     };
-    let mut tabu_state = if run_context.local_improver_mode == Solver3LocalImproverMode::SgpWeekPairTabu {
-        run_context
+    let mut tabu_state =
+        if run_context.local_improver_mode == Solver3LocalImproverMode::SgpWeekPairTabu {
+            run_context
+                .sgp_week_pair_tabu
+                .map(|config| SgpWeekPairTabuState::new(&search.current_state.compiled, config))
+        } else {
+            None
+        };
+    let mut sgp_conflicts = if run_context.local_improver_mode
+        == Solver3LocalImproverMode::SgpWeekPairTabu
+        && run_context
             .sgp_week_pair_tabu
-            .map(|config| SgpWeekPairTabuState::new(&search.current_state.compiled, config))
+            .is_some_and(|config| config.conflict_restricted_swap_sampling_enabled)
+    {
+        SgpConflictState::build_from_state(&search.current_state, &run_context.allowed_sessions)
     } else {
         None
     };
@@ -205,7 +218,9 @@ fn run_local_improver(
                 iteration,
                 budget.max_iterations,
                 cached_elapsed_seconds,
-                budget.time_limit_seconds.map(|limit| limit.max(0.0).floor() as u64),
+                budget
+                    .time_limit_seconds
+                    .map(|limit| limit.max(0.0).floor() as u64),
             );
             let temperature = record_to_record_threshold_for_progress(progress);
 
@@ -215,6 +230,7 @@ fn run_local_improver(
                 &run_context.allowed_sessions,
                 SwapSamplingOptions {
                     repeat_guidance: repeat_guidance.as_ref(),
+                    sgp_conflicts: sgp_conflicts.as_ref(),
                     repeat_guided_swap_probability: run_context.repeat_guided_swap_probability,
                     repeat_guided_swap_candidate_preview_budget: run_context
                         .repeat_guided_swap_candidate_preview_budget,
@@ -309,23 +325,34 @@ fn run_local_improver(
                             );
                         }
 
+                        if let Some(conflicts) = sgp_conflicts.as_mut() {
+                            conflicts.refresh_after_move(
+                                &search.current_state,
+                                &run_context.allowed_sessions,
+                                preview.session_idx(),
+                                preview.pair_contact_updates(),
+                            );
+                        }
+
                         if let Some(tabu) = tabu_state.as_mut() {
                             if let SearchMovePreview::Swap(preview) = &preview {
-                            let swap = preview.analysis.swap;
-                            let expiry = tabu.record_swap(
-                                &search.current_state.compiled,
-                                swap.session_idx,
-                                swap.left_person_idx,
-                                swap.right_person_idx,
-                                iteration,
-                                &mut rng,
-                            );
-                            search.record_tabu_realized_tenure(expiry.saturating_sub(iteration));
+                                let swap = preview.analysis.swap;
+                                let expiry = tabu.record_swap(
+                                    &search.current_state.compiled,
+                                    swap.session_idx,
+                                    swap.left_person_idx,
+                                    swap.right_person_idx,
+                                    iteration,
+                                    &mut rng,
+                                );
+                                search
+                                    .record_tabu_realized_tenure(expiry.saturating_sub(iteration));
+                            }
                         }
-                    }
 
                         let improvement_elapsed_seconds = get_elapsed_seconds(search_started_at);
-                        cached_elapsed_seconds = cached_elapsed_seconds.max(improvement_elapsed_seconds);
+                        cached_elapsed_seconds =
+                            cached_elapsed_seconds.max(improvement_elapsed_seconds);
                         search.refresh_best_from_current(iteration, improvement_elapsed_seconds);
                         search.record_acceptance_result(true);
                     } else {
@@ -397,7 +424,9 @@ fn run_local_improver(
                 final_iteration,
                 budget.max_iterations,
                 final_elapsed,
-                budget.time_limit_seconds.map(|limit| limit.max(0.0).floor() as u64),
+                budget
+                    .time_limit_seconds
+                    .map(|limit| limit.max(0.0).floor() as u64),
             );
             let final_progress = search.to_progress_update(
                 run_context,
