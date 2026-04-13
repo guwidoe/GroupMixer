@@ -226,7 +226,9 @@ impl SearchEngine {
                             &preview,
                         )?;
 
-                        search.refresh_best_from_current(iteration, cached_elapsed_seconds);
+                        let improvement_elapsed_seconds = get_elapsed_seconds(search_started_at);
+                        cached_elapsed_seconds = cached_elapsed_seconds.max(improvement_elapsed_seconds);
+                        search.refresh_best_from_current(iteration, improvement_elapsed_seconds);
                         search.record_acceptance_result(true);
                     } else {
                         search.record_rejected_move(family);

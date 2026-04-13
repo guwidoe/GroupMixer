@@ -200,3 +200,29 @@ fn progress_callbacks_emit_on_first_iteration_and_after_interval() {
     assert!(!should_emit_progress_callback(1, 0.099));
     assert!(should_emit_progress_callback(1, 0.1));
 }
+
+#[test]
+fn benchmark_timeline_elapsed_seconds_are_monotonic_and_progressive() {
+    let mut input = search_input();
+    input.solver.stop_conditions.max_iterations = Some(200);
+    input.solver.stop_conditions.stop_on_optimal_score = false;
+
+    let mut state = RuntimeState::from_input(&input).unwrap();
+    let result = SearchEngine::new(&input.solver)
+        .solve(&mut state, None, None)
+        .unwrap();
+    let telemetry = result.benchmark_telemetry.expect("telemetry should exist");
+    let timeline = telemetry.best_score_timeline;
+
+    assert!(!timeline.is_empty());
+    assert_eq!(timeline[0].elapsed_seconds, 0.0);
+    assert!(timeline
+        .windows(2)
+        .all(|window| window[1].elapsed_seconds >= window[0].elapsed_seconds));
+
+    if timeline.len() > 1 {
+        assert!(timeline
+            .windows(2)
+            .any(|window| window[1].elapsed_seconds > window[0].elapsed_seconds));
+    }
+}
