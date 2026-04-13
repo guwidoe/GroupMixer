@@ -1715,6 +1715,64 @@ pub struct MemeticBenchmarkTelemetry {
     pub child_polish_seconds: f64,
 }
 
+/// One donor/session choice made during donor-session recombination.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq, Default)]
+pub struct DonorSessionChoiceTelemetry {
+    #[serde(default)]
+    pub donor_archive_idx: u32,
+    #[serde(default)]
+    pub session_idx: u32,
+    #[serde(default)]
+    pub session_disagreement_count: u32,
+    #[serde(default)]
+    pub conflict_burden_advantage: u32,
+}
+
+/// Benchmark telemetry for the donor-session transplant outer driver.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
+pub struct DonorSessionTransplantBenchmarkTelemetry {
+    #[serde(default)]
+    pub archive_size: u32,
+    #[serde(default)]
+    pub child_polish_local_improver_mode: Option<Solver3LocalImproverMode>,
+    #[serde(default)]
+    pub child_polish_max_iterations: u64,
+    #[serde(default)]
+    pub child_polish_no_improvement_iterations: u64,
+    #[serde(default)]
+    pub archive_additions: u64,
+    #[serde(default)]
+    pub archive_exact_duplicate_replacements: u64,
+    #[serde(default)]
+    pub archive_near_duplicate_replacements: u64,
+    #[serde(default)]
+    pub archive_redundant_evictions: u64,
+    #[serde(default)]
+    pub archive_rejected_exact_duplicates: u64,
+    #[serde(default)]
+    pub archive_rejected_near_duplicates: u64,
+    #[serde(default)]
+    pub archive_rejected_not_competitive: u64,
+    #[serde(default)]
+    pub recombination_events_fired: u64,
+    #[serde(default)]
+    pub donor_choices: Vec<DonorSessionChoiceTelemetry>,
+    #[serde(default)]
+    pub immediate_discards: u64,
+    #[serde(default)]
+    pub polished_children: u64,
+    #[serde(default)]
+    pub polished_children_kept: u64,
+    #[serde(default)]
+    pub polished_children_discarded: u64,
+    #[serde(default)]
+    pub child_polish_iterations: u64,
+    #[serde(default)]
+    pub child_polish_improving_moves: u64,
+    #[serde(default)]
+    pub child_polish_seconds: f64,
+}
+
 /// Benchmark telemetry for the SGP week-pair tabu local improver.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
 pub struct SgpWeekPairTabuBenchmarkTelemetry {
@@ -1778,6 +1836,8 @@ pub struct SolverBenchmarkTelemetry {
     pub sgp_week_pair_tabu: Option<SgpWeekPairTabuBenchmarkTelemetry>,
     #[serde(default)]
     pub memetic: Option<MemeticBenchmarkTelemetry>,
+    #[serde(default)]
+    pub donor_session_transplant: Option<DonorSessionTransplantBenchmarkTelemetry>,
     pub moves: MoveFamilyBenchmarkTelemetrySummary,
 }
 

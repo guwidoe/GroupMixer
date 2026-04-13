@@ -100,7 +100,8 @@
         "best_score_timeline",
         "repeat_guided_swaps",
         "sgp_week_pair_tabu",
-        "memetic"
+        "memetic",
+        "donor_session_transplant"
       ],
       "properties": {
         "accepted_uphill_moves": { "type": "integer" },
@@ -200,6 +201,70 @@
             "mutation_length_sum": { "type": "integer" },
             "mutation_length_min": { "type": ["integer", "null"] },
             "mutation_length_max": { "type": ["integer", "null"] },
+            "child_polish_iterations": { "type": "integer" },
+            "child_polish_improving_moves": { "type": "integer" },
+            "child_polish_seconds": { "type": "number" }
+          }
+        },
+        "donor_session_transplant": {
+          "type": ["object", "null"],
+          "required": [
+            "archive_size",
+            "child_polish_local_improver_mode",
+            "child_polish_max_iterations",
+            "child_polish_no_improvement_iterations",
+            "archive_additions",
+            "archive_exact_duplicate_replacements",
+            "archive_near_duplicate_replacements",
+            "archive_redundant_evictions",
+            "archive_rejected_exact_duplicates",
+            "archive_rejected_near_duplicates",
+            "archive_rejected_not_competitive",
+            "recombination_events_fired",
+            "donor_choices",
+            "immediate_discards",
+            "polished_children",
+            "polished_children_kept",
+            "polished_children_discarded",
+            "child_polish_iterations",
+            "child_polish_improving_moves",
+            "child_polish_seconds"
+          ],
+          "properties": {
+            "archive_size": { "type": "integer" },
+            "child_polish_local_improver_mode": { "type": ["string", "null"] },
+            "child_polish_max_iterations": { "type": "integer" },
+            "child_polish_no_improvement_iterations": { "type": "integer" },
+            "archive_additions": { "type": "integer" },
+            "archive_exact_duplicate_replacements": { "type": "integer" },
+            "archive_near_duplicate_replacements": { "type": "integer" },
+            "archive_redundant_evictions": { "type": "integer" },
+            "archive_rejected_exact_duplicates": { "type": "integer" },
+            "archive_rejected_near_duplicates": { "type": "integer" },
+            "archive_rejected_not_competitive": { "type": "integer" },
+            "recombination_events_fired": { "type": "integer" },
+            "donor_choices": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "donor_archive_idx",
+                  "session_idx",
+                  "session_disagreement_count",
+                  "conflict_burden_advantage"
+                ],
+                "properties": {
+                  "donor_archive_idx": { "type": "integer" },
+                  "session_idx": { "type": "integer" },
+                  "session_disagreement_count": { "type": "integer" },
+                  "conflict_burden_advantage": { "type": "integer" }
+                }
+              }
+            },
+            "immediate_discards": { "type": "integer" },
+            "polished_children": { "type": "integer" },
+            "polished_children_kept": { "type": "integer" },
+            "polished_children_discarded": { "type": "integer" },
             "child_polish_iterations": { "type": "integer" },
             "child_polish_improving_moves": { "type": "integer" },
             "child_polish_seconds": { "type": "number" }

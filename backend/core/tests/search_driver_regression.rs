@@ -891,6 +891,10 @@ fn solver3_donor_session_transplant_mode_runs_through_public_entry_point() {
         .benchmark_telemetry
         .expect("donor-session transplant telemetry should exist");
     assert!(telemetry.iterations_completed > 0);
+    let donor = telemetry
+        .donor_session_transplant
+        .expect("donor-session donor telemetry should exist");
+    assert!(donor.archive_size >= 1);
 }
 
 #[cfg(not(feature = "solver3-oracle-checks"))]

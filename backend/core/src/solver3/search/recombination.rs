@@ -10,12 +10,14 @@ use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha12Rng;
 
 use crate::models::{
-    BenchmarkEvent, BenchmarkObserver, ProgressCallback, SolverResult, StopReason,
+    BenchmarkEvent, BenchmarkObserver, DonorSessionChoiceTelemetry,
+    DonorSessionTransplantBenchmarkTelemetry, ProgressCallback, SolverResult, StopReason,
 };
 use crate::solver_support::SolverError;
 
 use super::archive::{
-    build_session_conflict_burden, build_session_fingerprints, EliteArchive, EliteArchiveConfig,
+    build_session_conflict_burden, build_session_fingerprints, ArchiveUpdateReason, EliteArchive,
+    EliteArchiveConfig,
 };
 use super::super::runtime_state::RuntimeState;
 use super::context::{DonorSessionTransplantConfig, SearchProgressState, SearchRunContext};
@@ -258,7 +260,18 @@ pub(crate) fn run(
     let mut archive = EliteArchive::new(archive_config_for_donor_session_mode(transplant_config));
     let mut current_incumbent = state.clone();
     let mut aggregate = SearchProgressState::new(current_incumbent.clone());
-    archive.consider_state(current_incumbent.clone());
+    aggregate.donor_session_transplant_telemetry = Some(DonorSessionTransplantBenchmarkTelemetry {
+        archive_size: transplant_config.archive_size as u32,
+        child_polish_local_improver_mode: Some(run_context.local_improver_mode),
+        child_polish_max_iterations: transplant_config.child_polish_max_iterations,
+        child_polish_no_improvement_iterations: transplant_config
+            .child_polish_no_improvement_iterations,
+        ..Default::default()
+    });
+    record_archive_update(
+        &mut aggregate,
+        archive.consider_state(current_incumbent.clone()).reason,
+    );
 
     if let Some(observer) = benchmark_observer {
         observer(&BenchmarkEvent::RunStarted(crate::models::BenchmarkRunStarted {
@@ -320,7 +333,10 @@ pub(crate) fn run(
                 chunk_outcome.search.best_state.total_score < current_incumbent.total_score;
             if improved_incumbent {
                 current_incumbent = chunk_outcome.search.best_state.clone();
-                archive.consider_state(current_incumbent.clone());
+                record_archive_update(
+                    &mut aggregate,
+                    archive.consider_state(current_incumbent.clone()).reason,
+                );
                 global_no_improvement_count = chunk_outcome.search.no_improvement_count;
             } else {
                 global_no_improvement_count = global_no_improvement_count
@@ -372,6 +388,20 @@ pub(crate) fn run(
             }
 
             trigger_state.record_recombination_event();
+            aggregate
+                .donor_session_transplant_telemetry
+                .get_or_insert_with(Default::default)
+                .recombination_events_fired += 1;
+            aggregate
+                .donor_session_transplant_telemetry
+                .get_or_insert_with(Default::default)
+                .donor_choices
+                .push(DonorSessionChoiceTelemetry {
+                    donor_archive_idx: choice.donor_archive_idx as u32,
+                    session_idx: choice.session_idx as u32,
+                    session_disagreement_count: choice.session_disagreement_count as u32,
+                    conflict_burden_advantage: choice.conflict_burden_advantage,
+                });
             let donor = &archive.entries()[choice.donor_archive_idx];
             let transplanted_child = transplant_donor_session(
                 &current_incumbent,
@@ -382,6 +412,10 @@ pub(crate) fn run(
             if transplanted_child.total_score
                 > current_incumbent.total_score + transplant_config.early_discard_score_delta
             {
+                aggregate
+                    .donor_session_transplant_telemetry
+                    .get_or_insert_with(Default::default)
+                    .immediate_discards += 1;
                 continue;
             }
 
@@ -417,6 +451,11 @@ pub(crate) fn run(
                     stop_on_optimal_score: run_context.stop_on_optimal_score,
                 },
             )?;
+            record_child_polish(
+                &mut aggregate,
+                &polish_outcome.search,
+                polish_outcome.search_seconds,
+            );
 
             absorb_local_search_chunk(
                 &mut aggregate,
@@ -429,9 +468,20 @@ pub(crate) fn run(
 
             if polish_outcome.search.best_state.total_score < current_incumbent.total_score {
                 current_incumbent = polish_outcome.search.best_state.clone();
-                archive.consider_state(current_incumbent.clone());
+                aggregate
+                    .donor_session_transplant_telemetry
+                    .get_or_insert_with(Default::default)
+                    .polished_children_kept += 1;
+                record_archive_update(
+                    &mut aggregate,
+                    archive.consider_state(current_incumbent.clone()).reason,
+                );
                 global_no_improvement_count = polish_outcome.search.no_improvement_count;
             } else {
+                aggregate
+                    .donor_session_transplant_telemetry
+                    .get_or_insert_with(Default::default)
+                    .polished_children_discarded += 1;
                 global_no_improvement_count = global_no_improvement_count
                     .saturating_add(polish_outcome.search.iterations_completed);
             }
@@ -627,6 +677,45 @@ fn absorb_family_metrics(
     aggregate.apply_seconds += local.apply_seconds;
     aggregate.full_recalculation_count += local.full_recalculation_count;
     aggregate.full_recalculation_seconds += local.full_recalculation_seconds;
+}
+
+fn record_archive_update(search: &mut SearchProgressState, reason: ArchiveUpdateReason) {
+    let telemetry = search
+        .donor_session_transplant_telemetry
+        .get_or_insert_with(Default::default);
+    match reason {
+        ArchiveUpdateReason::Added => telemetry.archive_additions += 1,
+        ArchiveUpdateReason::ReplacedExactDuplicate => {
+            telemetry.archive_exact_duplicate_replacements += 1
+        }
+        ArchiveUpdateReason::ReplacedNearDuplicate => {
+            telemetry.archive_near_duplicate_replacements += 1
+        }
+        ArchiveUpdateReason::ReplacedRedundantMember => telemetry.archive_redundant_evictions += 1,
+        ArchiveUpdateReason::RejectedExactDuplicate => {
+            telemetry.archive_rejected_exact_duplicates += 1
+        }
+        ArchiveUpdateReason::RejectedNearDuplicate => telemetry.archive_rejected_near_duplicates += 1,
+        ArchiveUpdateReason::RejectedNotCompetitive => {
+            telemetry.archive_rejected_not_competitive += 1
+        }
+    }
+}
+
+fn record_child_polish(
+    search: &mut SearchProgressState,
+    local: &SearchProgressState,
+    search_seconds: f64,
+) {
+    let telemetry = search
+        .donor_session_transplant_telemetry
+        .get_or_insert_with(Default::default);
+    telemetry.polished_children += 1;
+    telemetry.child_polish_iterations += local.iterations_completed;
+    telemetry.child_polish_improving_moves += local.move_metrics.swap.improving_accepts
+        + local.move_metrics.transfer.improving_accepts
+        + local.move_metrics.clique_swap.improving_accepts;
+    telemetry.child_polish_seconds += search_seconds;
 }
 
 fn absorb_tabu_metrics(aggregate: &mut SearchProgressState, local: &SearchProgressState) {

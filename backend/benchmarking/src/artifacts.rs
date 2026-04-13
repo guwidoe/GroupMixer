@@ -1,9 +1,9 @@
 use crate::manifest::{BenchmarkCaseRole, BenchmarkSuiteClass, DeclaredBenchmarkBudget};
 use crate::validation::ExternalValidationReport;
 use gm_core::models::{
-    BestScoreTimelinePoint, MemeticBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary,
-    MovePolicy, RepeatGuidedSwapBenchmarkTelemetry, SgpWeekPairTabuBenchmarkTelemetry,
-    StopReason,
+    BestScoreTimelinePoint, DonorSessionTransplantBenchmarkTelemetry,
+    MemeticBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
+    RepeatGuidedSwapBenchmarkTelemetry, SgpWeekPairTabuBenchmarkTelemetry, StopReason,
 };
 use serde::{Deserialize, Serialize};
 
@@ -237,6 +237,8 @@ pub struct SearchTelemetryArtifact {
     pub sgp_week_pair_tabu: Option<SgpWeekPairTabuBenchmarkTelemetry>,
     #[serde(default)]
     pub memetic: Option<MemeticBenchmarkTelemetry>,
+    #[serde(default)]
+    pub donor_session_transplant: Option<DonorSessionTransplantBenchmarkTelemetry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

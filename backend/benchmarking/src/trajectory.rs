@@ -457,6 +457,7 @@ mod tests {
                     repeat_guided_swaps: Default::default(),
                     sgp_week_pair_tabu: None,
                     memetic: None,
+                    donor_session_transplant: None,
                 }),
                 moves: MoveFamilyBenchmarkTelemetrySummary::default(),
                 hotpath_metrics: None,

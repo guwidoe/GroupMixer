@@ -398,6 +398,7 @@ impl SearchEngine {
             repeat_guided_swaps: crate::models::RepeatGuidedSwapBenchmarkTelemetry::default(),
             sgp_week_pair_tabu: None,
             memetic: None,
+            donor_session_transplant: None,
             moves: move_metrics.clone(),
         };
 

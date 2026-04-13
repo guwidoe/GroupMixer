@@ -1,0 +1,50 @@
+schema_version: 1
+suite_id: social-golfer-plateau-fixed-iteration-solver3-donor-session
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: stretch
+title: Social Golfer plateau diagnosis (fixed-iteration, solver3 donor-session transplant)
+description: Dedicated single-case solver3 suite for studying quality per unit of search effort on the canonical Social Golfer workload with rare donor-session transplant recombination enabled.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 1000000
+    time_limit_seconds: 60
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+    search_driver:
+      mode: donor_session_transplant
+      donor_session_transplant:
+        archive_size: 4
+        recombination_no_improvement_window: 100000
+        recombination_cooldown_window: 100000
+        max_recombination_events_per_run: 2
+        early_discard_score_delta: 250.0
+        child_polish_max_iterations: 64
+        child_polish_no_improvement_iterations: 32
+    local_improver:
+      mode: sgp_week_pair_tabu
+      sgp_week_pair_tabu:
+        tenure_mode: fixed_interval
+        tenure_min: 8
+        tenure_max: 32
+        retry_cap: 4
+        aspiration_enabled: true
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.plateau.fixed_iteration.social_golfer_donor_session_transplant
+    provenance: dedicated_single_case_plateau_diagnosis_suite_for_solver3_donor_session_transplant
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320810
+    max_iterations: 10000000

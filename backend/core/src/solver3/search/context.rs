@@ -1,7 +1,8 @@
 use std::collections::VecDeque;
 
 use crate::models::{
-    BestScoreTimelinePoint, MemeticBenchmarkTelemetry, MoveFamily, MoveFamilyBenchmarkTelemetry,
+    BestScoreTimelinePoint, DonorSessionTransplantBenchmarkTelemetry,
+    MemeticBenchmarkTelemetry, MoveFamily, MoveFamilyBenchmarkTelemetry,
     MoveFamilyBenchmarkTelemetrySummary, MovePolicy, ProgressUpdate,
     RepeatGuidedSwapBenchmarkTelemetry, SgpWeekPairTabuBenchmarkTelemetry,
     Solver3LocalImproverMode, Solver3SearchDriverMode, SolverBenchmarkTelemetry,
@@ -473,6 +474,7 @@ pub(crate) struct SearchProgressState {
     pub(crate) repeat_guided_swap_telemetry: RepeatGuidedSwapBenchmarkTelemetry,
     pub(crate) sgp_week_pair_tabu_telemetry: Option<SgpWeekPairTabuBenchmarkTelemetry>,
     pub(crate) memetic_telemetry: Option<MemeticBenchmarkTelemetry>,
+    pub(crate) donor_session_transplant_telemetry: Option<DonorSessionTransplantBenchmarkTelemetry>,
     pub(crate) move_metrics: MoveFamilyBenchmarkTelemetrySummary,
     #[allow(dead_code)]
     pub(crate) policy_memory: SearchPolicyMemory,
@@ -506,6 +508,7 @@ impl SearchProgressState {
             repeat_guided_swap_telemetry: RepeatGuidedSwapBenchmarkTelemetry::default(),
             sgp_week_pair_tabu_telemetry: None,
             memetic_telemetry: None,
+            donor_session_transplant_telemetry: None,
             move_metrics: MoveFamilyBenchmarkTelemetrySummary::default(),
             policy_memory: SearchPolicyMemory::default(),
         }
@@ -810,6 +813,7 @@ impl SearchProgressState {
             repeat_guided_swaps: self.repeat_guided_swap_telemetry.clone(),
             sgp_week_pair_tabu: self.sgp_week_pair_tabu_telemetry.clone(),
             memetic: self.memetic_telemetry.clone(),
+            donor_session_transplant: self.donor_session_transplant_telemetry.clone(),
             moves: self.move_metrics.clone(),
         }
     }

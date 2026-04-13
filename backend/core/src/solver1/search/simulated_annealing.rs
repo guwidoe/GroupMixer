@@ -1843,6 +1843,7 @@ impl Solver for SimulatedAnnealing {
             repeat_guided_swaps: crate::models::RepeatGuidedSwapBenchmarkTelemetry::default(),
             sgp_week_pair_tabu: None,
             memetic: None,
+            donor_session_transplant: None,
             moves: benchmark_moves.into_summary(),
         };
 

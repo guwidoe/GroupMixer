@@ -287,6 +287,7 @@ fn run_case(
                 repeat_guided_swaps: telemetry.repeat_guided_swaps.clone(),
                 sgp_week_pair_tabu: telemetry.sgp_week_pair_tabu.clone(),
                 memetic: telemetry.memetic.clone(),
+                donor_session_transplant: telemetry.donor_session_transplant.clone(),
             });
             let validation = validate_final_solution(&input, &result);
             let score_decomposition =

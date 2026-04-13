@@ -1,0 +1,161 @@
+schema_version: 1
+suite_id: solver3-donor-session-transplant-multiseed
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: stretch
+title: Solver3 donor-session transplant multiseed varied-scenario suite
+description: Multi-seed varied-scenario solver3 suite using rare donor-session transplant recombination on top of the fixed bounded SGP week-pair tabu reference improver.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 1000000
+    time_limit_seconds: 60
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+    search_driver:
+      mode: donor_session_transplant
+      donor_session_transplant:
+        archive_size: 4
+        recombination_no_improvement_window: 100000
+        recombination_cooldown_window: 100000
+        max_recombination_events_per_run: 2
+        early_discard_score_delta: 250.0
+        child_polish_max_iterations: 64
+        child_polish_no_improvement_iterations: 32
+    local_improver:
+      mode: sgp_week_pair_tabu
+      sgp_week_pair_tabu:
+        tenure_mode: fixed_interval
+        tenure_min: 8
+        tenure_max: 32
+        retry_cap: 4
+        aspiration_enabled: true
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.donor_session.social_golfer_32x8x10.seed_1
+    provenance: canonical_social_golfer_multiseed_donor_session_transplant
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320810
+    max_iterations: 10000000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.donor_session.social_golfer_32x8x10.seed_2
+    provenance: canonical_social_golfer_multiseed_donor_session_transplant
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320811
+    max_iterations: 10000000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.donor_session.social_golfer_32x8x10.seed_3
+    provenance: canonical_social_golfer_multiseed_donor_session_transplant
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320812
+    max_iterations: 10000000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.donor_session.kirkman_schoolgirls_15x5x7.seed_1
+    provenance: canonical_kirkman_multiseed_donor_session_transplant
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150507
+    max_iterations: 1500000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.donor_session.kirkman_schoolgirls_15x5x7.seed_2
+    provenance: canonical_kirkman_multiseed_donor_session_transplant
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150508
+    max_iterations: 1500000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.donor_session.kirkman_schoolgirls_15x5x7.seed_3
+    provenance: canonical_kirkman_multiseed_donor_session_transplant
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150509
+    max_iterations: 1500000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/sailing_trip_demo_real.json
+    case_role: canonical
+    purpose: diagnostic.donor_session.sailing_trip_demo_real.seed_1
+    provenance: canonical_sailing_demo_multiseed_donor_session_transplant
+    declared_budget:
+      max_iterations: 1000000
+      time_limit_seconds: 15
+    seed: 624485344291700314
+    max_iterations: 1000000
+    time_limit_seconds: 15
+  - manifest: ../cases/stretch/sailing_trip_demo_real.json
+    case_role: canonical
+    purpose: diagnostic.donor_session.sailing_trip_demo_real.seed_2
+    provenance: canonical_sailing_demo_multiseed_donor_session_transplant
+    declared_budget:
+      max_iterations: 1000000
+      time_limit_seconds: 15
+    seed: 624485344291700315
+    max_iterations: 1000000
+    time_limit_seconds: 15
+  - manifest: ../cases/stretch/sailing_trip_demo_real.json
+    case_role: canonical
+    purpose: diagnostic.donor_session.sailing_trip_demo_real.seed_3
+    provenance: canonical_sailing_demo_multiseed_donor_session_transplant
+    declared_budget:
+      max_iterations: 1000000
+      time_limit_seconds: 15
+    seed: 624485344291700316
+    max_iterations: 1000000
+    time_limit_seconds: 15
+  - manifest: ../cases/stretch/synthetic_partial_attendance_capacity_pressure_152p.json
+    case_role: canonical
+    purpose: diagnostic.donor_session.synthetic_partial_attendance_capacity_pressure_152p.seed_1
+    provenance: canonical_partial_attendance_multiseed_donor_session_transplant
+    declared_budget:
+      max_iterations: 4500000
+      time_limit_seconds: 15
+    seed: 152605
+    max_iterations: 4500000
+    time_limit_seconds: 15
+  - manifest: ../cases/stretch/synthetic_partial_attendance_capacity_pressure_152p.json
+    case_role: canonical
+    purpose: diagnostic.donor_session.synthetic_partial_attendance_capacity_pressure_152p.seed_2
+    provenance: canonical_partial_attendance_multiseed_donor_session_transplant
+    declared_budget:
+      max_iterations: 4500000
+      time_limit_seconds: 15
+    seed: 152606
+    max_iterations: 4500000
+    time_limit_seconds: 15
+  - manifest: ../cases/stretch/synthetic_partial_attendance_capacity_pressure_152p.json
+    case_role: canonical
+    purpose: diagnostic.donor_session.synthetic_partial_attendance_capacity_pressure_152p.seed_3
+    provenance: canonical_partial_attendance_multiseed_donor_session_transplant
+    declared_budget:
+      max_iterations: 4500000
+      time_limit_seconds: 15
+    seed: 152607
+    max_iterations: 4500000
+    time_limit_seconds: 15
