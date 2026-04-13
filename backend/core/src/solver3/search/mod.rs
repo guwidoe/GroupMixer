@@ -6,6 +6,7 @@ mod context;
 mod engine;
 mod family_selection;
 mod repeat_guidance;
+mod single_state;
 
 #[cfg(test)]
 mod tests;

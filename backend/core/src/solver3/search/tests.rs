@@ -15,7 +15,8 @@ use super::acceptance::{AcceptanceInputs, SimulatedAnnealingAcceptance};
 use super::candidate_sampling::{CandidateSampler, SwapSamplingOptions};
 use super::context::{SearchProgressState, SearchRunContext};
 use super::family_selection::MoveFamilySelector;
-use super::{engine::should_emit_progress_callback, SearchEngine};
+use super::single_state::should_emit_progress_callback;
+use super::SearchEngine;
 
 fn solver3_config() -> SolverConfiguration {
     SolverConfiguration {
