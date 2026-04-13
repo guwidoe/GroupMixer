@@ -1045,6 +1045,46 @@ pub struct Solver3SearchDriverParams {
     /// Which outer search driver to run.
     #[serde(default)]
     pub mode: Solver3SearchDriverMode,
+    /// Config for the steady-state memetic outer driver.
+    #[serde(default)]
+    pub steady_state_memetic: Solver3SteadyStateMemeticParams,
+}
+
+/// Config for the steady-state memetic outer driver.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+pub struct Solver3SteadyStateMemeticParams {
+    /// Small fixed population size maintained by the memetic outer loop.
+    #[serde(default = "default_solver3_memetic_population_size")]
+    pub population_size: u32,
+    /// Tournament size used for parent selection.
+    #[serde(default = "default_solver3_memetic_parent_tournament_size")]
+    pub parent_tournament_size: u32,
+    /// Minimum number of same-session swaps applied during macro mutation.
+    #[serde(default = "default_solver3_memetic_mutation_swaps_min")]
+    pub mutation_swaps_min: u32,
+    /// Maximum number of same-session swaps applied during macro mutation.
+    #[serde(default = "default_solver3_memetic_mutation_swaps_max")]
+    pub mutation_swaps_max: u32,
+    /// Per-child bounded local-polish iteration cap.
+    #[serde(default = "default_solver3_memetic_child_polish_max_iterations")]
+    pub child_polish_max_iterations: u32,
+    /// Per-child early-stop cap after this many non-improving local-improver iterations.
+    #[serde(default = "default_solver3_memetic_child_polish_no_improvement_iterations")]
+    pub child_polish_no_improvement_iterations: u32,
+}
+
+impl Default for Solver3SteadyStateMemeticParams {
+    fn default() -> Self {
+        Self {
+            population_size: default_solver3_memetic_population_size(),
+            parent_tournament_size: default_solver3_memetic_parent_tournament_size(),
+            mutation_swaps_min: default_solver3_memetic_mutation_swaps_min(),
+            mutation_swaps_max: default_solver3_memetic_mutation_swaps_max(),
+            child_polish_max_iterations: default_solver3_memetic_child_polish_max_iterations(),
+            child_polish_no_improvement_iterations:
+                default_solver3_memetic_child_polish_no_improvement_iterations(),
+        }
+    }
 }
 
 /// Local-improver configuration for `solver3`.
@@ -1151,6 +1191,30 @@ impl Default for Solver3CorrectnessLaneParams {
 
 fn default_solver3_correctness_lane_sample_every_accepted_moves() -> u64 {
     16
+}
+
+fn default_solver3_memetic_population_size() -> u32 {
+    6
+}
+
+fn default_solver3_memetic_parent_tournament_size() -> u32 {
+    2
+}
+
+fn default_solver3_memetic_mutation_swaps_min() -> u32 {
+    2
+}
+
+fn default_solver3_memetic_mutation_swaps_max() -> u32 {
+    5
+}
+
+fn default_solver3_memetic_child_polish_max_iterations() -> u32 {
+    64
+}
+
+fn default_solver3_memetic_child_polish_no_improvement_iterations() -> u32 {
+    32
 }
 
 fn default_solver3_repeat_guided_swap_probability() -> f64 {
@@ -1489,6 +1553,27 @@ pub struct RepeatGuidedSwapBenchmarkTelemetry {
     pub guided_previewed_candidates: u64,
 }
 
+/// Benchmark telemetry for the steady-state memetic outer driver.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
+pub struct MemeticBenchmarkTelemetry {
+    #[serde(default)]
+    pub population_size: u32,
+    #[serde(default)]
+    pub parent_tournament_size: u32,
+    #[serde(default)]
+    pub offspring_generated: u64,
+    #[serde(default)]
+    pub mutation_attempted_swaps: u64,
+    #[serde(default)]
+    pub mutation_applied_swaps: u64,
+    #[serde(default)]
+    pub child_polish_iterations: u64,
+    #[serde(default)]
+    pub child_polish_improving_moves: u64,
+    #[serde(default)]
+    pub replacements: u64,
+}
+
 /// End-of-run benchmark telemetry intended for regression / benchmark artifacts.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct SolverBenchmarkTelemetry {
@@ -1523,6 +1608,8 @@ pub struct SolverBenchmarkTelemetry {
     pub best_score_timeline: Vec<BestScoreTimelinePoint>,
     #[serde(default)]
     pub repeat_guided_swaps: RepeatGuidedSwapBenchmarkTelemetry,
+    #[serde(default)]
+    pub memetic: Option<MemeticBenchmarkTelemetry>,
     pub moves: MoveFamilyBenchmarkTelemetrySummary,
 }
 

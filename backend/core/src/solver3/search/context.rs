@@ -1,10 +1,10 @@
 use std::collections::VecDeque;
 
 use crate::models::{
-    BestScoreTimelinePoint, MoveFamily, MoveFamilyBenchmarkTelemetry,
-    MoveFamilyBenchmarkTelemetrySummary, MovePolicy, ProgressUpdate,
-    RepeatGuidedSwapBenchmarkTelemetry, Solver3LocalImproverMode, Solver3SearchDriverMode,
-    SolverBenchmarkTelemetry, SolverConfiguration, StopReason,
+    BestScoreTimelinePoint, MemeticBenchmarkTelemetry, MoveFamily,
+    MoveFamilyBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
+    ProgressUpdate, RepeatGuidedSwapBenchmarkTelemetry, Solver3LocalImproverMode,
+    Solver3SearchDriverMode, SolverBenchmarkTelemetry, SolverConfiguration, StopReason,
 };
 use crate::runtime_target::displayed_total_iterations;
 use crate::solver_support::SolverError;
@@ -32,6 +32,17 @@ pub(crate) struct SearchRunContext {
     pub(crate) repeat_guided_swap_probability: f64,
     pub(crate) repeat_guided_swap_candidate_preview_budget: usize,
     pub(crate) sgp_week_pair_tabu: Option<SgpWeekPairTabuConfig>,
+    pub(crate) steady_state_memetic: Option<SteadyStateMemeticConfig>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct SteadyStateMemeticConfig {
+    pub(crate) population_size: usize,
+    pub(crate) parent_tournament_size: usize,
+    pub(crate) mutation_swaps_min: usize,
+    pub(crate) mutation_swaps_max: usize,
+    pub(crate) child_polish_max_iterations: u64,
+    pub(crate) child_polish_no_improvement_iterations: u64,
 }
 
 impl SearchRunContext {
@@ -58,6 +69,7 @@ impl SearchRunContext {
         let search_driver_mode = solver3_params.search_driver.mode;
         let local_improver_mode = solver3_params.local_improver.mode;
         let sgp_week_pair_tabu = &solver3_params.local_improver.sgp_week_pair_tabu;
+        let steady_state_memetic = &solver3_params.search_driver.steady_state_memetic;
         let correctness_sample_every_accepted_moves =
             solver3_params.correctness_lane.sample_every_accepted_moves;
         let repeat_guided_swap_probability = solver3_params
@@ -108,10 +120,102 @@ impl SearchRunContext {
             ));
         }
 
+        if steady_state_memetic.population_size < 2 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.steady_state_memetic.population_size must be >= 2"
+                    .into(),
+            ));
+        }
+
+        if steady_state_memetic.parent_tournament_size == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.steady_state_memetic.parent_tournament_size must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if steady_state_memetic.parent_tournament_size > steady_state_memetic.population_size {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.steady_state_memetic.parent_tournament_size must be <= population_size"
+                    .into(),
+            ));
+        }
+
+        if steady_state_memetic.mutation_swaps_min == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.steady_state_memetic.mutation_swaps_min must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if steady_state_memetic.mutation_swaps_max < steady_state_memetic.mutation_swaps_min {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.steady_state_memetic.mutation_swaps_max must be >= mutation_swaps_min"
+                    .into(),
+            ));
+        }
+
+        if steady_state_memetic.child_polish_max_iterations == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.steady_state_memetic.child_polish_max_iterations must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if steady_state_memetic.child_polish_no_improvement_iterations == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.steady_state_memetic.child_polish_no_improvement_iterations must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if steady_state_memetic.child_polish_no_improvement_iterations
+            > steady_state_memetic.child_polish_max_iterations
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.steady_state_memetic.child_polish_no_improvement_iterations must be <= child_polish_max_iterations"
+                    .into(),
+            ));
+        }
+
         #[cfg(not(feature = "solver3-oracle-checks"))]
         if correctness_lane_enabled {
             return Err(SolverError::ValidationError(
                 "solver3 correctness lane requires compiling gm-core with feature `solver3-oracle-checks`"
+                    .into(),
+            ));
+        }
+
+        let allows_swap_family = move_policy.allowed_families().contains(&MoveFamily::Swap);
+
+        if local_improver_mode == Solver3LocalImproverMode::SgpWeekPairTabu
+            && state.compiled.repeat_encounter.is_none()
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 local_improver.mode=sgp_week_pair_tabu requires a repeat_encounter constraint"
+                    .into(),
+            ));
+        }
+
+        if local_improver_mode == Solver3LocalImproverMode::SgpWeekPairTabu && !allows_swap_family {
+            return Err(SolverError::ValidationError(
+                "solver3 local_improver.mode=sgp_week_pair_tabu requires move_policy to allow swap moves"
+                    .into(),
+            ));
+        }
+
+        if search_driver_mode == Solver3SearchDriverMode::SteadyStateMemetic && !allows_swap_family {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.mode=steady_state_memetic requires move_policy to allow swap moves"
+                    .into(),
+            ));
+        }
+
+        if search_driver_mode == Solver3SearchDriverMode::SteadyStateMemetic
+            && !state.compiled.cliques.is_empty()
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.mode=steady_state_memetic does not yet support active cliques / must_stay_together constraints"
                     .into(),
             ));
         }
@@ -122,21 +226,11 @@ impl SearchRunContext {
             (
                 Solver3SearchDriverMode::SteadyStateMemetic,
                 Solver3LocalImproverMode::RecordToRecord,
-            ) => {
-                return Err(SolverError::ValidationError(
-                    "solver3 search_driver.mode=steady_state_memetic is not implemented yet"
-                        .into(),
-                ));
-            }
-            (
+            )
+            | (
                 Solver3SearchDriverMode::SteadyStateMemetic,
                 Solver3LocalImproverMode::SgpWeekPairTabu,
-            ) => {
-                return Err(SolverError::ValidationError(
-                    "solver3 search_driver.mode=steady_state_memetic with local_improver.mode=sgp_week_pair_tabu is not implemented yet"
-                        .into(),
-                ));
-            }
+            ) => {}
         }
 
         Ok(Self {
@@ -168,6 +262,16 @@ impl SearchRunContext {
                 tenure_max: sgp_week_pair_tabu.tenure_max as u64,
                 retry_cap: sgp_week_pair_tabu.retry_cap as usize,
                 aspiration_enabled: sgp_week_pair_tabu.aspiration_enabled,
+            }),
+            steady_state_memetic: Some(SteadyStateMemeticConfig {
+                population_size: steady_state_memetic.population_size as usize,
+                parent_tournament_size: steady_state_memetic.parent_tournament_size as usize,
+                mutation_swaps_min: steady_state_memetic.mutation_swaps_min as usize,
+                mutation_swaps_max: steady_state_memetic.mutation_swaps_max as usize,
+                child_polish_max_iterations: steady_state_memetic.child_polish_max_iterations
+                    as u64,
+                child_polish_no_improvement_iterations:
+                    steady_state_memetic.child_polish_no_improvement_iterations as u64,
             }),
         })
     }
@@ -222,6 +326,7 @@ pub(crate) struct SearchProgressState {
     pub(crate) recent_acceptance: VecDeque<bool>,
     pub(crate) best_score_timeline: Vec<BestScoreTimelinePoint>,
     pub(crate) repeat_guided_swap_telemetry: RepeatGuidedSwapBenchmarkTelemetry,
+    pub(crate) memetic_telemetry: Option<MemeticBenchmarkTelemetry>,
     pub(crate) move_metrics: MoveFamilyBenchmarkTelemetrySummary,
     #[allow(dead_code)]
     pub(crate) policy_memory: SearchPolicyMemory,
@@ -253,6 +358,7 @@ impl SearchProgressState {
                 best_score: initial_score,
             }],
             repeat_guided_swap_telemetry: RepeatGuidedSwapBenchmarkTelemetry::default(),
+            memetic_telemetry: None,
             move_metrics: MoveFamilyBenchmarkTelemetrySummary::default(),
             policy_memory: SearchPolicyMemory::default(),
         }
@@ -504,6 +610,7 @@ impl SearchProgressState {
             },
             best_score_timeline: self.best_score_timeline.clone(),
             repeat_guided_swaps: self.repeat_guided_swap_telemetry.clone(),
+            memetic: self.memetic_telemetry.clone(),
             moves: self.move_metrics.clone(),
         }
     }
@@ -555,11 +662,11 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::models::{
-        ApiInput, Group, Objective, Person, ProblemDefinition, Solver3CorrectnessLaneParams,
-        Solver3HotspotGuidanceParams, Solver3LocalImproverMode, Solver3LocalImproverParams,
-        Solver3Params, Solver3RepeatGuidedSwapParams, Solver3SearchDriverMode,
-        Solver3SearchDriverParams, Solver3SgpWeekPairTabuParams, SolverConfiguration,
-        SolverParams, StopConditions,
+        ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
+        RepeatEncounterParams, Solver3CorrectnessLaneParams, Solver3HotspotGuidanceParams,
+        Solver3LocalImproverMode, Solver3LocalImproverParams, Solver3Params,
+        Solver3RepeatGuidedSwapParams, Solver3SearchDriverMode, Solver3SearchDriverParams,
+        Solver3SgpWeekPairTabuParams, SolverConfiguration, SolverParams, StopConditions,
     };
 
     use super::{SearchProgressState, SearchRunContext};
@@ -619,6 +726,47 @@ mod tests {
         RuntimeState::from_input(&input).unwrap()
     }
 
+    fn repeat_state() -> RuntimeState {
+        let mut input = ApiInput {
+            problem: ProblemDefinition {
+                people: (0..4)
+                    .map(|i| Person {
+                        id: format!("p{}", i),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    })
+                    .collect(),
+                groups: vec![
+                    Group {
+                        id: "g0".into(),
+                        size: 2,
+                        session_sizes: None,
+                    },
+                    Group {
+                        id: "g1".into(),
+                        size: 2,
+                        session_sizes: None,
+                    },
+                ],
+                num_sessions: 2,
+            },
+            initial_schedule: None,
+            construction_seed_schedule: None,
+            objectives: vec![Objective {
+                r#type: "maximize_unique_contacts".into(),
+                weight: 1.0,
+            }],
+            constraints: vec![],
+            solver: solver3_config(),
+        };
+        input.constraints = vec![Constraint::RepeatEncounter(RepeatEncounterParams {
+            max_allowed_encounters: 1,
+            penalty_function: "linear".into(),
+            penalty_weight: 100.0,
+        })];
+        RuntimeState::from_input(&input).unwrap()
+    }
+
     #[test]
     fn run_context_captures_search_limits_and_allowed_sessions() {
         let state = simple_state();
@@ -638,6 +786,15 @@ mod tests {
         assert_eq!(context.sgp_week_pair_tabu.as_ref().unwrap().tenure_min, 8);
         assert_eq!(context.sgp_week_pair_tabu.as_ref().unwrap().tenure_max, 32);
         assert_eq!(context.sgp_week_pair_tabu.as_ref().unwrap().retry_cap, 16);
+        assert_eq!(context.steady_state_memetic.as_ref().unwrap().population_size, 6);
+        assert_eq!(
+            context
+                .steady_state_memetic
+                .as_ref()
+                .unwrap()
+                .child_polish_max_iterations,
+            64
+        );
         assert!(context
             .sgp_week_pair_tabu
             .as_ref()
@@ -733,26 +890,27 @@ mod tests {
     }
 
     #[test]
-    fn run_context_rejects_unimplemented_search_driver_mode() {
+    fn run_context_accepts_memetic_driver_with_record_to_record() {
         let state = simple_state();
         let mut config = solver3_config();
         config.solver_params = SolverParams::Solver3(Solver3Params {
             search_driver: Solver3SearchDriverParams {
                 mode: Solver3SearchDriverMode::SteadyStateMemetic,
+                ..Default::default()
             },
             ..Default::default()
         });
 
-        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
-        assert!(
-            err.to_string().contains("search_driver.mode=steady_state_memetic"),
-            "unexpected error: {err}"
+        let context = SearchRunContext::from_solver(&config, &state, 7).unwrap();
+        assert_eq!(
+            context.search_driver_mode,
+            Solver3SearchDriverMode::SteadyStateMemetic
         );
     }
 
     #[test]
     fn run_context_accepts_sgp_week_pair_tabu_local_improver_mode() {
-        let state = simple_state();
+        let state = repeat_state();
         let mut config = solver3_config();
         config.solver_params = SolverParams::Solver3(Solver3Params {
             local_improver: Solver3LocalImproverParams {
@@ -766,6 +924,48 @@ mod tests {
         assert_eq!(
             context.local_improver_mode,
             Solver3LocalImproverMode::SgpWeekPairTabu
+        );
+    }
+
+    #[test]
+    fn run_context_rejects_tabu_local_improver_without_repeat_constraint() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            local_improver: Solver3LocalImproverParams {
+                mode: Solver3LocalImproverMode::SgpWeekPairTabu,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string().contains("requires a repeat_encounter constraint"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn run_context_rejects_memetic_driver_when_move_policy_disallows_swap() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.move_policy = Some(crate::models::MovePolicy {
+            allowed_families: Some(vec![crate::models::MoveFamily::Transfer]),
+            ..Default::default()
+        });
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                mode: Solver3SearchDriverMode::SteadyStateMemetic,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string().contains("steady_state_memetic requires move_policy to allow swap"),
+            "unexpected error: {err}"
         );
     }
 
