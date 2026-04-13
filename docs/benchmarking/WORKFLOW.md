@@ -94,6 +94,39 @@ gm-cli benchmark run --manifest backend/benchmarking/suites/stretch-partial-atte
 
 This benchmark is intentionally kept separate from the current primary objective aggregate. See `docs/benchmarking/SYNTHETIC_PARTIAL_ATTENDANCE_CAPACITY_BENCHMARK.md` for construction method, workload shape, and current measured behavior.
 
+## Search trajectory and plateau diagnosis
+
+For search-quality investigations, prefer the existing persisted full-solve search telemetry before adding new runtime instrumentation.
+
+Current full-solve run artifacts already persist, per case:
+
+- `search_telemetry.best_score_timeline`
+- accepted uphill/downhill/neutral move counts
+- `max_no_improvement_streak`
+- restart / perturbation counts when available
+- iterations per second
+
+That means the raw signal needed to study:
+
+- fast early improvement
+- last-improvement time
+- long post-plateau budget waste
+- fixed-time vs fixed-iteration trajectory shape
+
+is already available in benchmark artifacts today.
+
+Primary references for this workflow:
+
+- `backend/core/src/solver3/HOTSPOT_GUIDED_SEARCH_PLAN.md`
+- `backend/core/src/solver3/HOTSPOT_GUIDED_SEARCH_PHASE_0_PLAN.md`
+
+Practical guidance:
+
+- treat trajectory diagnosis as a benchmark/reporting problem first, not a telemetry-capture problem first
+- prefer surfacing and deriving metrics from `best_score_timeline` over adding per-attempt logs
+- use the Social Golfer fixed-time and fixed-iteration lanes together when diagnosing poor time-budget utilization
+- if trajectory timestamps look suspiciously coarse, verify the solver's timeline-fidelity implementation before drawing strong conclusions
+
 ### Solver3 oracle/debug correctness feature
 
 `gm-core` exposes `solver3-oracle-checks` as an explicit correctness/debug feature flag.
