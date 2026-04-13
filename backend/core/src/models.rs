@@ -1080,9 +1080,12 @@ pub struct Solver3DonorSessionTransplantParams {
     /// Minimum number of iterations between recombination events.
     #[serde(default = "default_solver3_donor_session_cooldown_window")]
     pub recombination_cooldown_window: u32,
-    /// Hard cap on recombination events in a single run.
-    #[serde(default = "default_solver3_donor_session_max_events_per_run")]
-    pub max_recombination_events_per_run: u32,
+    /// Optional non-binding safety cap on recombination events in a single run.
+    ///
+    /// `None` means the trigger is governed only by stagnation, cooldown, donor availability,
+    /// and child quality rather than by a fixed per-run event ceiling.
+    #[serde(default)]
+    pub max_recombination_events_per_run: Option<u32>,
     /// Discard immediate post-transplant children when they are worse than the incumbent by more than this margin.
     #[serde(default = "default_solver3_donor_session_early_discard_score_delta")]
     pub early_discard_score_delta: f64,
@@ -1101,7 +1104,7 @@ impl Default for Solver3DonorSessionTransplantParams {
             recombination_no_improvement_window:
                 default_solver3_donor_session_no_improvement_window(),
             recombination_cooldown_window: default_solver3_donor_session_cooldown_window(),
-            max_recombination_events_per_run: default_solver3_donor_session_max_events_per_run(),
+            max_recombination_events_per_run: None,
             early_discard_score_delta: default_solver3_donor_session_early_discard_score_delta(),
             child_polish_max_iterations: default_solver3_donor_session_child_polish_max_iterations(
             ),
@@ -1309,10 +1312,6 @@ fn default_solver3_donor_session_no_improvement_window() -> u32 {
 
 fn default_solver3_donor_session_cooldown_window() -> u32 {
     100_000
-}
-
-fn default_solver3_donor_session_max_events_per_run() -> u32 {
-    2
 }
 
 fn default_solver3_donor_session_early_discard_score_delta() -> f64 {
@@ -1776,6 +1775,8 @@ pub struct DonorSessionTransplantBenchmarkTelemetry {
     pub archive_rejected_not_competitive: u64,
     #[serde(default)]
     pub trigger_blocked_not_armed: u64,
+    #[serde(default)]
+    pub trigger_blocked_event_cap: u64,
     #[serde(default)]
     pub trigger_armed_no_viable_donor: u64,
     #[serde(default)]

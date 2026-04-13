@@ -53,7 +53,7 @@ pub(crate) struct DonorSessionTransplantConfig {
     pub(crate) archive_size: usize,
     pub(crate) recombination_no_improvement_window: u64,
     pub(crate) recombination_cooldown_window: u64,
-    pub(crate) max_recombination_events_per_run: u64,
+    pub(crate) max_recombination_events_per_run: Option<u64>,
     pub(crate) early_discard_score_delta: f64,
     pub(crate) child_polish_max_iterations: u64,
     pub(crate) child_polish_no_improvement_iterations: u64,
@@ -231,7 +231,7 @@ impl SearchRunContext {
             ));
         }
 
-        if donor_session_transplant.max_recombination_events_per_run == 0 {
+        if donor_session_transplant.max_recombination_events_per_run == Some(0) {
             return Err(SolverError::ValidationError(
                 "solver3 search_driver.donor_session_transplant.max_recombination_events_per_run must be >= 1"
                     .into(),
@@ -412,7 +412,8 @@ impl SearchRunContext {
                 recombination_cooldown_window: donor_session_transplant
                     .recombination_cooldown_window as u64,
                 max_recombination_events_per_run: donor_session_transplant
-                    .max_recombination_events_per_run as u64,
+                    .max_recombination_events_per_run
+                    .map(u64::from),
                 early_discard_score_delta: donor_session_transplant.early_discard_score_delta,
                 child_polish_max_iterations: donor_session_transplant
                     .child_polish_max_iterations as u64,
@@ -1484,7 +1485,7 @@ mod tests {
         config.solver_params = SolverParams::Solver3(Solver3Params {
             search_driver: Solver3SearchDriverParams {
                 donor_session_transplant: Solver3DonorSessionTransplantParams {
-                    max_recombination_events_per_run: 0,
+                    max_recombination_events_per_run: Some(0),
                     ..Default::default()
                 },
                 ..Default::default()

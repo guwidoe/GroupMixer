@@ -84,6 +84,13 @@ enum DonorSessionSelectionOutcome {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DonorSessionTriggerEligibility {
+    Armed,
+    NotArmed,
+    EventCapReached,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct DonorSessionTriggerState {
     pub(crate) recombination_events_fired: u64,
     pub(crate) iterations_since_last_recombination: u64,
@@ -107,10 +114,21 @@ impl DonorSessionTriggerState {
         &self,
         config: DonorSessionTransplantConfig,
         no_improvement_count: u64,
-    ) -> bool {
-        self.recombination_events_fired < config.max_recombination_events_per_run
-            && no_improvement_count >= config.recombination_no_improvement_window
+    ) -> DonorSessionTriggerEligibility {
+        if config
+            .max_recombination_events_per_run
+            .is_some_and(|cap| self.recombination_events_fired >= cap)
+        {
+            return DonorSessionTriggerEligibility::EventCapReached;
+        }
+
+        if no_improvement_count >= config.recombination_no_improvement_window
             && self.iterations_since_last_recombination >= config.recombination_cooldown_window
+        {
+            DonorSessionTriggerEligibility::Armed
+        } else {
+            DonorSessionTriggerEligibility::NotArmed
+        }
     }
 
     pub(crate) fn finish_iteration(&mut self) {
@@ -503,12 +521,22 @@ pub(crate) fn run(
                 }
             }
 
-            if !trigger_state.is_armed(transplant_config, global_no_improvement_count) {
-                aggregate
-                    .donor_session_transplant_telemetry
-                    .get_or_insert_with(Default::default)
-                    .trigger_blocked_not_armed += 1;
-                continue;
+            match trigger_state.is_armed(transplant_config, global_no_improvement_count) {
+                DonorSessionTriggerEligibility::Armed => {}
+                DonorSessionTriggerEligibility::NotArmed => {
+                    aggregate
+                        .donor_session_transplant_telemetry
+                        .get_or_insert_with(Default::default)
+                        .trigger_blocked_not_armed += 1;
+                    continue;
+                }
+                DonorSessionTriggerEligibility::EventCapReached => {
+                    aggregate
+                        .donor_session_transplant_telemetry
+                        .get_or_insert_with(Default::default)
+                        .trigger_blocked_event_cap += 1;
+                    continue;
+                }
             }
 
             let choice = match select_donor_session_from_summary(
@@ -914,8 +942,8 @@ mod tests {
     use super::{
         archive_config_for_donor_session_mode, select_donor_session,
         select_donor_session_from_summary, transplant_donor_session, DonorCandidatePool,
-        DonorSessionChoice, DonorSessionSelectionOutcome, DonorSessionTriggerState,
-        DonorSessionViabilityTier,
+        DonorSessionChoice, DonorSessionSelectionOutcome, DonorSessionTriggerEligibility,
+        DonorSessionTriggerState, DonorSessionViabilityTier,
     };
     use crate::default_solver_configuration_for;
     use crate::models::{
@@ -931,7 +959,7 @@ mod tests {
             archive_size: 4,
             recombination_no_improvement_window: 20,
             recombination_cooldown_window: 10,
-            max_recombination_events_per_run: 2,
+            max_recombination_events_per_run: Some(2),
             early_discard_score_delta: 250.0,
             child_polish_max_iterations: 64,
             child_polish_no_improvement_iterations: 32,
@@ -1015,20 +1043,35 @@ mod tests {
     #[test]
     fn trigger_waits_for_stagnation_and_donor_availability() {
         let state = DonorSessionTriggerState::new();
-        assert!(!state.is_armed(config(), 19));
-        assert!(state.is_armed(config(), 20));
+        assert_eq!(
+            state.is_armed(config(), 19),
+            DonorSessionTriggerEligibility::NotArmed
+        );
+        assert_eq!(
+            state.is_armed(config(), 20),
+            DonorSessionTriggerEligibility::Armed
+        );
     }
 
     #[test]
     fn trigger_respects_cooldown_and_event_cap() {
         let mut state = DonorSessionTriggerState::new();
         state.record_recombination_event();
-        assert!(!state.is_armed(config(), 100));
+        assert_eq!(
+            state.is_armed(config(), 100),
+            DonorSessionTriggerEligibility::NotArmed
+        );
         state.finish_iterations(10);
-        assert!(state.is_armed(config(), 100));
+        assert_eq!(
+            state.is_armed(config(), 100),
+            DonorSessionTriggerEligibility::Armed
+        );
         state.record_recombination_event();
         state.finish_iterations(10);
-        assert!(!state.is_armed(config(), 100));
+        assert_eq!(
+            state.is_armed(config(), 100),
+            DonorSessionTriggerEligibility::EventCapReached
+        );
     }
 
     #[test]

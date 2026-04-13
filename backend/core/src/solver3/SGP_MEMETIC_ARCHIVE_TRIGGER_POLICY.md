@@ -181,7 +181,7 @@ Keep this explicit and conservative.
 Suggested v1 policy:
 - `recombination_no_improvement_window`: large enough that cheap tabu clearly had time to work first
 - `recombination_cooldown_window`: prevents repeated expensive firing
-- `max_recombination_events_per_run`: small fixed cap
+- optional recombination event cap: non-binding safety guard only; normal trigger semantics should come from stagnation + cooldown + donor availability + child quality, not from a tiny fixed event ceiling
 
 The exact numeric values should be benchmark-tuned later, but the qualitative rule is:
 - **rare enough that local search still dominates runtime by a wide margin**

@@ -21,7 +21,6 @@ default_solver:
         archive_size: 4
         recombination_no_improvement_window: 100000
         recombination_cooldown_window: 100000
-        max_recombination_events_per_run: 2
         early_discard_score_delta: 250.0
         child_polish_max_iterations: 64
         child_polish_no_improvement_iterations: 32

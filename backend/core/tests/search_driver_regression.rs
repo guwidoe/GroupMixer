@@ -871,7 +871,7 @@ fn solver3_donor_session_transplant_mode_runs_through_public_entry_point() {
             donor_session_transplant: Solver3DonorSessionTransplantParams {
                 recombination_no_improvement_window: 8,
                 recombination_cooldown_window: 8,
-                max_recombination_events_per_run: 1,
+                max_recombination_events_per_run: Some(1),
                 child_polish_max_iterations: 16,
                 child_polish_no_improvement_iterations: 8,
                 archive_size: 5,
