@@ -1,6 +1,7 @@
 //! Search baseline for `solver3`.
 
 mod acceptance;
+mod archive;
 mod candidate_sampling;
 mod context;
 mod engine;
