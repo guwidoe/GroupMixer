@@ -150,7 +150,6 @@ pub fn render_trajectory_text(
             summary.seconds_after_last_improvement
         ),
         format!("- sparkline (higher blocks = lower/better score): {}", sparkline),
-        "Checkpoint scores:".to_string(),
     ];
 
     if let Some(value) = summary.last_improvement_fraction_of_runtime_budget {
@@ -174,6 +173,7 @@ pub fn render_trajectory_text(
         summary.improvements_after_50_percent_run,
         summary.improvements_after_75_percent_run,
     ));
+    lines.push("Checkpoint scores:".to_string());
 
     for checkpoint in &summary.checkpoint_scores {
         lines.push(format!(

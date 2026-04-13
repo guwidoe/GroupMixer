@@ -127,6 +127,53 @@ Practical guidance:
 - use the Social Golfer fixed-time and fixed-iteration lanes together when diagnosing poor time-budget utilization
 - if trajectory timestamps look suspiciously coarse, verify the solver's timeline-fidelity implementation before drawing strong conclusions
 
+### Social Golfer plateau-diagnosis workflow for solver3
+
+Use the dedicated single-case manifests when the question is specifically:
+
+- does solver3 improve very quickly and then stall?
+- how much extra budget is wasted after the last best improvement?
+- does a change help per-second quality, per-iteration quality, or both?
+
+#### 1) Run the time-limited lane
+
+```bash
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3.yaml
+```
+
+#### 2) Inspect the improvement curve
+
+```bash
+gm-cli benchmark trajectory \
+  --run backend/benchmarking/artifacts/runs/<run-id>/run-report.json \
+  --case stretch.social-golfer-32x8x10 \
+  --format text
+```
+
+Useful alternatives:
+
+```bash
+gm-cli benchmark trajectory --run <run-report.json> --case stretch.social-golfer-32x8x10 --format json
+gm-cli benchmark trajectory --run <run-report.json> --case stretch.social-golfer-32x8x10 --format csv
+```
+
+#### 3) Run the fixed-iteration diagnostic lane
+
+```bash
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3.yaml
+```
+
+#### 4) Interpret the outputs together
+
+- use the time-limited lane to judge real budget utilization and late-run progress
+- use the fixed-iteration lane to judge quality per unit of search effort
+- use `gm-cli benchmark compare ...` plus the trajectory-aware comparison output to distinguish:
+  - faster early descent but earlier stagnation
+  - similar early descent but better late-budget use
+  - quality-per-second gains caused mostly by raw throughput vs by better search navigation
+
 ### Solver3 oracle/debug correctness feature
 
 `gm-core` exposes `solver3-oracle-checks` as an explicit correctness/debug feature flag.

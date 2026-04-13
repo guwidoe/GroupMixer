@@ -1697,6 +1697,102 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
+    fn write_sample_run_report(temp: &TempDir) -> PathBuf {
+        let run_path = temp.path().join("run-report.json");
+        fs::write(
+            &run_path,
+            r#"{
+  "schema_version": 1,
+  "suite": {
+    "suite_id": "social-golfer-plateau-time-solver3",
+    "benchmark_mode": "full_solve",
+    "comparison_category": "score_quality",
+    "solver_families": ["solver3"],
+    "class": "stretch",
+    "manifest_path": "backend/benchmarking/suites/social-golfer-plateau-time-solver3.yaml"
+  },
+  "run": {
+    "run_id": "sample-run",
+    "generated_at": "2026-04-13T00:00:00Z",
+    "git": {},
+    "machine": {}
+  },
+  "totals": {
+    "total_cases": 1,
+    "successful_cases": 1,
+    "failed_cases": 0,
+    "total_runtime_seconds": 10.0
+  },
+  "class_rollups": [],
+  "cases": [
+    {
+      "schema_version": 1,
+      "run_id": "sample-run",
+      "generated_at": "2026-04-13T00:00:00Z",
+      "suite_id": "social-golfer-plateau-time-solver3",
+      "benchmark_mode": "full_solve",
+      "suite_class": "stretch",
+      "case_id": "stretch.social-golfer-32x8x10",
+      "case_class": "stretch",
+      "case_manifest_path": "backend/benchmarking/cases/stretch/social_golfer_32x8x10.json",
+      "git": {},
+      "machine": {},
+      "solver": {
+        "solver_family": "solver3",
+        "solver_config_id": "solver3",
+        "display_name": "Solver 3",
+        "seed_policy": "explicit",
+        "capabilities": {
+          "supports_initial_schedule": true,
+          "supports_progress_callback": true,
+          "supports_benchmark_observer": true,
+          "supports_recommended_settings": true,
+          "supports_deterministic_seed": true
+        }
+      },
+      "effective_budget": {
+        "max_iterations": 10000000,
+        "time_limit_seconds": 25,
+        "no_improvement_iterations": null
+      },
+      "artifact_kind": "full_solve",
+      "status": "success",
+      "timing": {
+        "initialization_seconds": 0.0,
+        "search_seconds": 10.0,
+        "finalization_seconds": 0.0,
+        "total_seconds": 10.0
+      },
+      "runtime_seconds": 10.0,
+      "moves": {
+        "swap": {},
+        "transfer": {},
+        "clique_swap": {}
+      },
+      "search_telemetry": {
+        "accepted_uphill_moves": 1,
+        "accepted_downhill_moves": 2,
+        "accepted_neutral_moves": 3,
+        "max_no_improvement_streak": 50,
+        "restart_count": null,
+        "perturbation_count": null,
+        "iterations_per_second": 100.0,
+        "best_score_timeline": [
+          { "iteration": 0, "elapsed_seconds": 0.0, "best_score": 100.0 },
+          { "iteration": 10, "elapsed_seconds": 1.0, "best_score": 80.0 },
+          { "iteration": 100, "elapsed_seconds": 5.0, "best_score": 60.0 },
+          { "iteration": 150, "elapsed_seconds": 7.0, "best_score": 50.0 }
+        ]
+      }
+    }
+  ]
+}
+"#,
+        )
+        .expect("write sample run report");
+        run_path
+    }
+
     #[test]
     fn suite_manifest_defaults_to_builtin_path_manifest() {
         let path = resolve_suite_manifest_path(&BenchmarkSuiteArg::Path, None);
@@ -1768,5 +1864,18 @@ mod tests {
         assert!(error.contains("error[invalid-input]"));
         assert!(error.contains("initial_schedule"));
         assert!(error.contains("gm-cli evaluate --help"));
+    }
+
+    #[test]
+    fn benchmark_trajectory_command_supports_text_json_and_csv_formats() {
+        let temp = TempDir::new().expect("temp dir");
+        let run_path = write_sample_run_report(&temp);
+
+        cmd_benchmark_trajectory(run_path.clone(), None, TrajectoryFormat::Text, 16)
+            .expect("text trajectory should render");
+        cmd_benchmark_trajectory(run_path.clone(), None, TrajectoryFormat::Json, 16)
+            .expect("json trajectory should render");
+        cmd_benchmark_trajectory(run_path, None, TrajectoryFormat::Csv, 16)
+            .expect("csv trajectory should render");
     }
 }
