@@ -1003,12 +1003,56 @@ pub struct Solver2Params {}
 /// keep representative performance by default.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Default)]
 pub struct Solver3Params {
+    /// Outer search-driver mode for solver3.
+    #[serde(default)]
+    pub search_driver: Solver3SearchDriverParams,
+    /// Local-improver mode used by the selected driver.
+    #[serde(default)]
+    pub local_improver: Solver3LocalImproverParams,
     /// Correctness-lane controls for sampled runtime validation during real search runs.
     #[serde(default)]
     pub correctness_lane: Solver3CorrectnessLaneParams,
     /// Experimental hotspot-guidance controls for proposal-generation research.
     #[serde(default)]
     pub hotspot_guidance: Solver3HotspotGuidanceParams,
+}
+
+/// Explicit outer-driver selection for `solver3`.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Solver3SearchDriverMode {
+    /// Baseline single-state search loop.
+    #[default]
+    SingleState,
+    /// Future steady-state memetic outer loop.
+    SteadyStateMemetic,
+}
+
+/// Explicit local-improver selection for `solver3`.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Solver3LocalImproverMode {
+    /// Baseline record-to-record acceptance loop.
+    #[default]
+    RecordToRecord,
+    /// Future SGP-shaped week-local swapped-pair tabu improver.
+    SgpWeekPairTabu,
+}
+
+/// Driver configuration for `solver3`.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Default)]
+pub struct Solver3SearchDriverParams {
+    /// Which outer search driver to run.
+    #[serde(default)]
+    pub mode: Solver3SearchDriverMode,
+}
+
+/// Local-improver configuration for `solver3`.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Default)]
+pub struct Solver3LocalImproverParams {
+    /// Which local improver the selected driver should call.
+    #[serde(default)]
+    pub mode: Solver3LocalImproverMode,
 }
 
 /// Experimental hotspot-guidance controls for `solver3`.

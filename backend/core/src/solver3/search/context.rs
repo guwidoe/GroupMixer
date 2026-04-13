@@ -3,8 +3,8 @@ use std::collections::VecDeque;
 use crate::models::{
     BestScoreTimelinePoint, MoveFamily, MoveFamilyBenchmarkTelemetry,
     MoveFamilyBenchmarkTelemetrySummary, MovePolicy, ProgressUpdate,
-    RepeatGuidedSwapBenchmarkTelemetry, SolverBenchmarkTelemetry, SolverConfiguration,
-    StopReason,
+    RepeatGuidedSwapBenchmarkTelemetry, Solver3LocalImproverMode,
+    Solver3SearchDriverMode, SolverBenchmarkTelemetry, SolverConfiguration, StopReason,
 };
 use crate::runtime_target::displayed_total_iterations;
 use crate::solver_support::SolverError;
@@ -18,6 +18,8 @@ const RECENT_WINDOW: usize = 100;
 pub(crate) struct SearchRunContext {
     pub(crate) effective_seed: u64,
     pub(crate) move_policy: MovePolicy,
+    pub(crate) search_driver_mode: Solver3SearchDriverMode,
+    pub(crate) local_improver_mode: Solver3LocalImproverMode,
     pub(crate) max_iterations: u64,
     pub(crate) no_improvement_limit: Option<u64>,
     pub(crate) time_limit_seconds: Option<u64>,
@@ -51,6 +53,8 @@ impl SearchRunContext {
                 )
             })?;
         let correctness_lane_enabled = solver3_params.correctness_lane.enabled;
+        let search_driver_mode = solver3_params.search_driver.mode;
+        let local_improver_mode = solver3_params.local_improver.mode;
         let correctness_sample_every_accepted_moves =
             solver3_params.correctness_lane.sample_every_accepted_moves;
         let repeat_guided_swap_probability = solver3_params
@@ -90,9 +94,39 @@ impl SearchRunContext {
             ));
         }
 
+        match (search_driver_mode, local_improver_mode) {
+            (Solver3SearchDriverMode::SingleState, Solver3LocalImproverMode::RecordToRecord) => {}
+            (Solver3SearchDriverMode::SingleState, Solver3LocalImproverMode::SgpWeekPairTabu) => {
+                return Err(SolverError::ValidationError(
+                    "solver3 local_improver.mode=sgp_week_pair_tabu is not implemented yet"
+                        .into(),
+                ));
+            }
+            (
+                Solver3SearchDriverMode::SteadyStateMemetic,
+                Solver3LocalImproverMode::RecordToRecord,
+            ) => {
+                return Err(SolverError::ValidationError(
+                    "solver3 search_driver.mode=steady_state_memetic is not implemented yet"
+                        .into(),
+                ));
+            }
+            (
+                Solver3SearchDriverMode::SteadyStateMemetic,
+                Solver3LocalImproverMode::SgpWeekPairTabu,
+            ) => {
+                return Err(SolverError::ValidationError(
+                    "solver3 search_driver.mode=steady_state_memetic with local_improver.mode=sgp_week_pair_tabu is not implemented yet"
+                        .into(),
+                ));
+            }
+        }
+
         Ok(Self {
             effective_seed,
             move_policy,
+            search_driver_mode,
+            local_improver_mode,
             max_iterations: configuration
                 .stop_conditions
                 .max_iterations
@@ -499,8 +533,9 @@ mod tests {
 
     use crate::models::{
         ApiInput, Group, Objective, Person, ProblemDefinition, Solver3CorrectnessLaneParams,
-        Solver3HotspotGuidanceParams, Solver3Params, Solver3RepeatGuidedSwapParams,
-        SolverConfiguration, SolverParams, StopConditions,
+        Solver3HotspotGuidanceParams, Solver3LocalImproverMode, Solver3LocalImproverParams,
+        Solver3Params, Solver3RepeatGuidedSwapParams, Solver3SearchDriverMode,
+        Solver3SearchDriverParams, SolverConfiguration, SolverParams, StopConditions,
     };
 
     use super::{SearchProgressState, SearchRunContext};
@@ -565,6 +600,8 @@ mod tests {
         let state = simple_state();
         let context = SearchRunContext::from_solver(&solver3_config(), &state, 7).unwrap();
         assert_eq!(context.effective_seed, 7);
+        assert_eq!(context.search_driver_mode, Solver3SearchDriverMode::SingleState);
+        assert_eq!(context.local_improver_mode, Solver3LocalImproverMode::RecordToRecord);
         assert_eq!(context.max_iterations, 123);
         assert_eq!(context.no_improvement_limit, Some(17));
         assert_eq!(context.time_limit_seconds, Some(9));
@@ -592,6 +629,43 @@ mod tests {
         assert!(
             err.to_string()
                 .contains("correctness_lane.sample_every_accepted_moves"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn run_context_rejects_unimplemented_search_driver_mode() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                mode: Solver3SearchDriverMode::SteadyStateMemetic,
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string().contains("search_driver.mode=steady_state_memetic"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn run_context_rejects_unimplemented_local_improver_mode() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            local_improver: Solver3LocalImproverParams {
+                mode: Solver3LocalImproverMode::SgpWeekPairTabu,
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("local_improver.mode=sgp_week_pair_tabu"),
             "unexpected error: {err}"
         );
     }
