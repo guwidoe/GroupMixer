@@ -92,6 +92,10 @@ impl EliteArchive {
         &self.elites
     }
 
+    pub(crate) fn near_duplicate_session_threshold(&self) -> usize {
+        self.config.near_duplicate_session_threshold
+    }
+
     pub(crate) fn consider_state(&mut self, state: RuntimeState) -> ArchiveUpdateOutcome {
         let candidate = ArchivedElite::from_state(state);
         self.consider_elite(candidate)
@@ -212,7 +216,7 @@ fn minimum_disagreement_to_others(
         .unwrap_or(usize::MAX)
 }
 
-fn build_session_fingerprints(state: &RuntimeState) -> Vec<u64> {
+pub(crate) fn build_session_fingerprints(state: &RuntimeState) -> Vec<u64> {
     (0..state.compiled.num_sessions)
         .map(|session_idx| build_session_fingerprint(state, session_idx))
         .collect()
@@ -230,7 +234,7 @@ fn build_session_fingerprint(state: &RuntimeState, session_idx: usize) -> u64 {
     hasher.finish()
 }
 
-fn build_session_conflict_burden(state: &RuntimeState) -> Vec<u32> {
+pub(crate) fn build_session_conflict_burden(state: &RuntimeState) -> Vec<u32> {
     let Some(repeat_encounter) = state.compiled.repeat_encounter.as_ref() else {
         return vec![0; state.compiled.num_sessions];
     };
