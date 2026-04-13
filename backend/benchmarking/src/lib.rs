@@ -25,6 +25,7 @@ pub use artifacts::{
     RunSuiteMetadata, RunTotals, ScoreDecomposition, ScoreDecompositionComparison,
     SearchTelemetryComparison, SolveTimingBreakdown, SolverBenchmarkMetadata,
     SolverCapabilitiesSnapshot, WeightedConstraintBreakdown, WeightedConstraintBreakdownComparison,
+    TrajectoryCheckpointComparison,
     BASELINE_SNAPSHOT_SCHEMA_VERSION, CASE_RUN_SCHEMA_VERSION, COMPARISON_REPORT_SCHEMA_VERSION,
     RUN_REPORT_SCHEMA_VERSION,
 };
@@ -65,6 +66,7 @@ pub use storage::{
 pub use summary::render_comparison_summary;
 pub use trajectory::{
     export_trajectory, export_trajectory_csv, render_trajectory_text, select_case,
+    summarize_case_trajectory,
     TrajectoryCheckpoint, TrajectoryExport, TrajectorySummary,
 };
 pub use validation::{

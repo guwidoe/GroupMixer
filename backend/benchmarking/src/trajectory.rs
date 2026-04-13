@@ -76,9 +76,15 @@ pub fn export_trajectory(run_report: &RunReport, case_id: Option<&str>) -> Resul
         solver_family: case.solver.solver_family.clone(),
         total_runtime_seconds: case.runtime_seconds,
         point_count: telemetry.best_score_timeline.len(),
-        summary: summarize_trajectory(case, &telemetry.best_score_timeline),
+        summary: summarize_case_trajectory(case)
+            .ok_or_else(|| anyhow!("case '{}' has no search telemetry", case.case_id))?,
         best_score_timeline: telemetry.best_score_timeline.clone(),
     })
+}
+
+pub fn summarize_case_trajectory(case: &CaseRunArtifact) -> Option<TrajectorySummary> {
+    let telemetry = case.search_telemetry.as_ref()?;
+    Some(summarize_trajectory(case, &telemetry.best_score_timeline))
 }
 
 pub fn export_trajectory_csv(run_report: &RunReport, case_id: Option<&str>) -> Result<String> {

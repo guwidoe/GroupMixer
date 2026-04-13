@@ -219,7 +219,16 @@
         "accepted_neutral_moves",
         "max_no_improvement_streak",
         "iterations_per_second",
-        "best_score_timeline_points"
+        "best_score_timeline_points",
+        "last_improvement_iteration",
+        "last_improvement_elapsed_seconds",
+        "last_improvement_fraction_of_run",
+        "seconds_after_last_improvement",
+        "fraction_of_run_after_last_improvement",
+        "improvements_after_25_percent_run",
+        "improvements_after_50_percent_run",
+        "improvements_after_75_percent_run",
+        "checkpoint_score_deltas"
       ],
       "properties": {
         "accepted_uphill_moves": { "$ref": "#/definitions/integerDelta" },
@@ -239,7 +248,39 @@
           ]
         },
         "iterations_per_second": { "$ref": "#/definitions/numericDelta" },
-        "best_score_timeline_points": { "$ref": "#/definitions/integerDelta" }
+        "best_score_timeline_points": { "$ref": "#/definitions/integerDelta" },
+        "last_improvement_iteration": { "$ref": "#/definitions/integerDelta" },
+        "last_improvement_elapsed_seconds": { "$ref": "#/definitions/numericDelta" },
+        "last_improvement_fraction_of_run": { "$ref": "#/definitions/numericDelta" },
+        "last_improvement_fraction_of_runtime_budget": {
+          "anyOf": [
+            { "$ref": "#/definitions/numericDelta" },
+            { "type": "null" }
+          ]
+        },
+        "last_improvement_fraction_of_iteration_budget": {
+          "anyOf": [
+            { "$ref": "#/definitions/numericDelta" },
+            { "type": "null" }
+          ]
+        },
+        "seconds_after_last_improvement": { "$ref": "#/definitions/numericDelta" },
+        "fraction_of_run_after_last_improvement": { "$ref": "#/definitions/numericDelta" },
+        "improvements_after_25_percent_run": { "$ref": "#/definitions/integerDelta" },
+        "improvements_after_50_percent_run": { "$ref": "#/definitions/integerDelta" },
+        "improvements_after_75_percent_run": { "$ref": "#/definitions/integerDelta" },
+        "checkpoint_score_deltas": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/trajectoryCheckpointComparison" }
+        }
+      }
+    },
+    "trajectoryCheckpointComparison": {
+      "type": "object",
+      "required": ["fraction_of_run", "best_score"],
+      "properties": {
+        "fraction_of_run": { "type": "number" },
+        "best_score": { "$ref": "#/definitions/numericDelta" }
       }
     },
     "suspect": {

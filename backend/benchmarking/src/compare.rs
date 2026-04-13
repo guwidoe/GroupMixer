@@ -3,12 +3,14 @@ use crate::artifacts::{
     ConstraintFamilyContribution, ConstraintFamilyContributionComparison, IntegerDelta,
     MoveFamilyComparison, NumericDelta, ObjectiveMetricsComparison, RegressionSuspect,
     RegressionSuspectKind, RegressionSuspectSummary, ScoreDecomposition,
-    ScoreDecompositionComparison, SearchTelemetryArtifact, SearchTelemetryComparison,
-    WeightedConstraintBreakdown, WeightedConstraintBreakdownComparison,
+    ScoreDecompositionComparison, SearchTelemetryComparison, TrajectoryCheckpointComparison,
+    WeightedConstraintBreakdown,
+    WeightedConstraintBreakdownComparison,
     COMPARISON_REPORT_SCHEMA_VERSION,
 };
 use crate::manifest::BenchmarkSuiteClass;
 use crate::storage::BenchmarkStorage;
+use crate::summarize_case_trajectory;
 use crate::{BaselineSnapshot, CaseRunArtifact, ClassRollup, RunReport};
 use anyhow::{Context, Result};
 use chrono::Utc;
@@ -347,10 +349,7 @@ fn compare_case(current: &CaseRunArtifact, baseline: &CaseRunArtifact) -> CaseCo
             baseline.score_decomposition.as_ref(),
             current.score_decomposition.as_ref(),
         ),
-        search_telemetry: zip_search_telemetry_delta(
-            baseline.search_telemetry.as_ref(),
-            current.search_telemetry.as_ref(),
-        ),
+        search_telemetry: zip_search_telemetry_delta(baseline, current),
         move_family_deltas,
     }
 }
@@ -509,11 +508,13 @@ fn zip_objective_metrics_delta(
 }
 
 fn zip_search_telemetry_delta(
-    baseline: Option<&SearchTelemetryArtifact>,
-    current: Option<&SearchTelemetryArtifact>,
+    baseline_case: &CaseRunArtifact,
+    current_case: &CaseRunArtifact,
 ) -> Option<SearchTelemetryComparison> {
-    let baseline = baseline?;
-    let current = current?;
+    let baseline = baseline_case.search_telemetry.as_ref()?;
+    let current = current_case.search_telemetry.as_ref()?;
+    let baseline_summary = summarize_case_trajectory(baseline_case)?;
+    let current_summary = summarize_case_trajectory(current_case)?;
 
     Some(SearchTelemetryComparison {
         accepted_uphill_moves: integer_delta(
@@ -545,7 +546,68 @@ fn zip_search_telemetry_delta(
             baseline.best_score_timeline.len() as u64,
             current.best_score_timeline.len() as u64,
         ),
+        last_improvement_iteration: integer_delta(
+            baseline_summary.last_improvement_iteration,
+            current_summary.last_improvement_iteration,
+        ),
+        last_improvement_elapsed_seconds: numeric_delta(
+            baseline_summary.last_improvement_elapsed_seconds,
+            current_summary.last_improvement_elapsed_seconds,
+        ),
+        last_improvement_fraction_of_run: numeric_delta(
+            baseline_summary.last_improvement_fraction_of_run,
+            current_summary.last_improvement_fraction_of_run,
+        ),
+        last_improvement_fraction_of_runtime_budget: zip_numeric_delta(
+            baseline_summary.last_improvement_fraction_of_runtime_budget,
+            current_summary.last_improvement_fraction_of_runtime_budget,
+        ),
+        last_improvement_fraction_of_iteration_budget: zip_numeric_delta(
+            baseline_summary.last_improvement_fraction_of_iteration_budget,
+            current_summary.last_improvement_fraction_of_iteration_budget,
+        ),
+        seconds_after_last_improvement: numeric_delta(
+            baseline_summary.seconds_after_last_improvement,
+            current_summary.seconds_after_last_improvement,
+        ),
+        fraction_of_run_after_last_improvement: numeric_delta(
+            baseline_summary.fraction_of_run_after_last_improvement,
+            current_summary.fraction_of_run_after_last_improvement,
+        ),
+        improvements_after_25_percent_run: integer_delta(
+            baseline_summary.improvements_after_25_percent_run,
+            current_summary.improvements_after_25_percent_run,
+        ),
+        improvements_after_50_percent_run: integer_delta(
+            baseline_summary.improvements_after_50_percent_run,
+            current_summary.improvements_after_50_percent_run,
+        ),
+        improvements_after_75_percent_run: integer_delta(
+            baseline_summary.improvements_after_75_percent_run,
+            current_summary.improvements_after_75_percent_run,
+        ),
+        checkpoint_score_deltas: zip_checkpoint_score_deltas(
+            &baseline_summary.checkpoint_scores,
+            &current_summary.checkpoint_scores,
+        ),
     })
+}
+
+fn zip_checkpoint_score_deltas(
+    baseline: &[crate::TrajectoryCheckpoint],
+    current: &[crate::TrajectoryCheckpoint],
+) -> Vec<TrajectoryCheckpointComparison> {
+    baseline
+        .iter()
+        .zip(current.iter())
+        .filter(|(baseline, current)| {
+            (baseline.fraction_of_run - current.fraction_of_run).abs() <= 1e-9
+        })
+        .map(|(baseline, current)| TrajectoryCheckpointComparison {
+            fraction_of_run: baseline.fraction_of_run,
+            best_score: numeric_delta(baseline.best_score, current.best_score),
+        })
+        .collect()
 }
 
 fn compare_weighted_constraint_breakdown(
@@ -1282,6 +1344,15 @@ mod tests {
             case.search_telemetry
                 .as_ref()
                 .is_some_and(|telemetry| telemetry.accepted_uphill_moves.absolute == 0)
+        }));
+        assert!(comparison.case_comparisons.iter().all(|case| {
+            case.search_telemetry.as_ref().is_some_and(|telemetry| {
+                telemetry.last_improvement_elapsed_seconds.absolute.abs() < 1e-9
+                    && telemetry.seconds_after_last_improvement.absolute.abs() < 1e-9
+                    && telemetry.checkpoint_score_deltas.iter().all(|checkpoint| {
+                        checkpoint.best_score.absolute.abs() < 1e-9
+                    })
+            })
         }));
     }
 

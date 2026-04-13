@@ -481,6 +481,26 @@ pub struct SearchTelemetryComparison {
     pub perturbation_count: Option<IntegerDelta>,
     pub iterations_per_second: NumericDelta,
     pub best_score_timeline_points: IntegerDelta,
+    pub last_improvement_iteration: IntegerDelta,
+    pub last_improvement_elapsed_seconds: NumericDelta,
+    pub last_improvement_fraction_of_run: NumericDelta,
+    #[serde(default)]
+    pub last_improvement_fraction_of_runtime_budget: Option<NumericDelta>,
+    #[serde(default)]
+    pub last_improvement_fraction_of_iteration_budget: Option<NumericDelta>,
+    pub seconds_after_last_improvement: NumericDelta,
+    pub fraction_of_run_after_last_improvement: NumericDelta,
+    pub improvements_after_25_percent_run: IntegerDelta,
+    pub improvements_after_50_percent_run: IntegerDelta,
+    pub improvements_after_75_percent_run: IntegerDelta,
+    #[serde(default)]
+    pub checkpoint_score_deltas: Vec<TrajectoryCheckpointComparison>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TrajectoryCheckpointComparison {
+    pub fraction_of_run: f64,
+    pub best_score: NumericDelta,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

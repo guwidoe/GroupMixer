@@ -278,6 +278,55 @@ fn append_per_case_telemetry_deltas(lines: &mut Vec<String>, report: &Comparison
                 "best_score_timeline_points",
                 telemetry.best_score_timeline_points.absolute,
             );
+            push_integer_metric(
+                &mut metrics,
+                "last_improvement_iteration",
+                telemetry.last_improvement_iteration.absolute,
+            );
+            push_numeric_metric(
+                &mut metrics,
+                "last_improvement_elapsed_seconds",
+                telemetry.last_improvement_elapsed_seconds.absolute,
+                Some("s"),
+            );
+            push_numeric_metric(
+                &mut metrics,
+                "seconds_after_last_improvement",
+                telemetry.seconds_after_last_improvement.absolute,
+                Some("s"),
+            );
+            push_numeric_metric(
+                &mut metrics,
+                "fraction_of_run_after_last_improvement",
+                telemetry.fraction_of_run_after_last_improvement.absolute,
+                None,
+            );
+            push_integer_metric(
+                &mut metrics,
+                "improvements_after_25_percent_run",
+                telemetry.improvements_after_25_percent_run.absolute,
+            );
+            push_integer_metric(
+                &mut metrics,
+                "improvements_after_50_percent_run",
+                telemetry.improvements_after_50_percent_run.absolute,
+            );
+            push_integer_metric(
+                &mut metrics,
+                "improvements_after_75_percent_run",
+                telemetry.improvements_after_75_percent_run.absolute,
+            );
+            for checkpoint in &telemetry.checkpoint_score_deltas {
+                push_numeric_metric(
+                    &mut metrics,
+                    &format!(
+                        "checkpoint_{}pct_best_score",
+                        (checkpoint.fraction_of_run * 100.0).round() as u64
+                    ),
+                    checkpoint.best_score.absolute,
+                    None,
+                );
+            }
         }
 
         if !metrics.is_empty() {
