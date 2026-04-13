@@ -146,12 +146,9 @@ pub fn solve_with_progress_snapshot_js(
     best_schedule_callback: Option<js_sys::Function>,
 ) -> Result<JsValue, JsValue> {
     let request = parse_wasm_scenario_input(input, "solve", &["solve-request"])?;
-    let result = solve_with_progress_snapshot_contract(
-        &request,
-        progress_callback,
-        best_schedule_callback,
-    )
-        .map_err(|error| public_error_to_js_value(&error))?;
+    let result =
+        solve_with_progress_snapshot_contract(&request, progress_callback, best_schedule_callback)
+            .map_err(|error| public_error_to_js_value(&error))?;
     serialize_output(&result, "solve")
 }
 
@@ -248,11 +245,8 @@ where
                         Ok(value) => value,
                         Err(error) => {
                             web_sys::console::error_1(
-                                &format!(
-                                    "Failed to serialize best schedule update: {}",
-                                    error
-                                )
-                                .into(),
+                                &format!("Failed to serialize best schedule update: {}", error)
+                                    .into(),
                             );
                             return true;
                         }
@@ -368,14 +362,14 @@ pub fn recommend_settings_contract(
         .solver
         .as_ref()
         .map(|solver| {
-            solver
-                .validate_solver_selection()
-                .map_err(|error| invalid_input_error(
+            solver.validate_solver_selection().map_err(|error| {
+                invalid_input_error(
                     "recommend-settings",
                     error,
                     Some("solver.solver_type".to_string()),
                     vec![],
-                ))
+                )
+            })
         })
         .transpose()?
         .unwrap_or_else(default_solver_kind);
@@ -584,6 +578,7 @@ mod tests {
                     max_iterations: Some(10),
                     time_limit_seconds: None,
                     no_improvement_iterations: Some(5),
+                    stop_on_optimal_score: true,
                 },
                 solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
                     initial_temperature: 5.0,
@@ -649,7 +644,8 @@ mod tests {
     #[test]
     fn recommend_settings_contract_routes_to_requested_solver_family() {
         let mut input = valid_input();
-        input.solver = gm_core::default_solver_configuration_for(gm_core::models::SolverKind::Solver3);
+        input.solver =
+            gm_core::default_solver_configuration_for(gm_core::models::SolverKind::Solver3);
         let request = RecommendSettingsRequest {
             scenario: input.problem.into(),
             solver: Some(input.solver),
@@ -745,7 +741,10 @@ mod tests {
 
         assert_eq!(value["iteration"], serde_json::Value::from(5));
         assert_eq!(value["effective_seed"], serde_json::Value::from(42));
-        assert_eq!(value["stop_reason"], serde_json::Value::from("max_iterations_reached"));
+        assert_eq!(
+            value["stop_reason"],
+            serde_json::Value::from("max_iterations_reached")
+        );
         assert!(value.get("best_schedule").is_none());
         assert!(value.get("move_policy").is_none());
     }

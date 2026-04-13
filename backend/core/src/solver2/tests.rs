@@ -35,6 +35,7 @@ fn solver2_config_for_sessions(num_sessions: u32) -> SolverConfiguration {
             max_iterations: Some(10),
             time_limit_seconds: None,
             no_improvement_iterations: None,
+            stop_on_optimal_score: true,
         },
         solver_params: SolverParams::Solver2(Solver2Params::default()),
         logging: Default::default(),

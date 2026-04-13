@@ -101,6 +101,7 @@ impl SearchEngine {
             .unwrap_or(DEFAULT_MAX_ITERATIONS);
         let no_improvement_limit = self.configuration.stop_conditions.no_improvement_iterations;
         let time_limit_seconds = self.configuration.stop_conditions.time_limit_seconds;
+        let stop_on_optimal_score = self.configuration.stop_conditions.stop_on_optimal_score;
         let allowed_sessions = self.allowed_sessions(state).into_iter().collect::<Vec<_>>();
 
         let mut current_state = RuntimeSolutionState::from_oracle_state(state);
@@ -138,78 +139,83 @@ impl SearchEngine {
         let mut stop_reason = StopReason::MaxIterationsReached;
         let mut final_progress_emitted = false;
 
-        for iteration in 0..max_iterations {
-            if reached_time_limit(run_started_at, time_limit_seconds) {
-                stop_reason = StopReason::TimeLimitReached;
-                break;
-            }
+        if stop_on_optimal_score && best_score <= crate::models::OPTIMAL_SCORE_TOLERANCE {
+            stop_reason = StopReason::OptimalScoreReached;
+        }
 
-            let temperature = temperature_for_iteration(iteration, max_iterations);
-
-            if let Some((family, candidate)) = self.select_candidate_move(
-                &current_state,
-                &move_policy,
-                &allowed_sessions,
-                &mut rng,
-            ) {
-                let family_metrics = family_metrics_mut(&mut move_metrics, family);
-                family_metrics.attempts += 1;
-
-                let preview_started_at = now_seconds();
-                let preview = preview_candidate(&current_state, &candidate);
-                let preview_seconds = now_seconds() - preview_started_at;
-                family_metrics.preview_seconds += preview_seconds;
-                if move_family_preview_uses_full_recompute(family) {
-                    family_metrics.full_recalculation_count += 1;
-                    family_metrics.full_recalculation_seconds += preview_seconds;
+        if stop_reason != StopReason::OptimalScoreReached {
+            for iteration in 0..max_iterations {
+                if reached_time_limit(run_started_at, time_limit_seconds) {
+                    stop_reason = StopReason::TimeLimitReached;
+                    break;
                 }
 
-                match preview {
-                    Ok(preview) => {
-                        let delta_cost = preview.delta_cost();
-                        let preview_candidate = preview.candidate();
-                        attempted_delta_sum += delta_cost;
-                        biggest_attempted_increase =
-                            biggest_attempted_increase.max(delta_cost.max(0.0));
+                let temperature = temperature_for_iteration(iteration, max_iterations);
 
-                        let accepted = delta_cost <= 0.0
-                            || (temperature > 0.0
-                                && rng.random::<f64>()
-                                    < (-delta_cost / temperature).exp().clamp(0.0, 1.0));
+                if let Some((family, candidate)) = self.select_candidate_move(
+                    &current_state,
+                    &move_policy,
+                    &allowed_sessions,
+                    &mut rng,
+                ) {
+                    let family_metrics = family_metrics_mut(&mut move_metrics, family);
+                    family_metrics.attempts += 1;
 
-                        if accepted {
-                            let apply_started_at = now_seconds();
-                            apply_previewed_candidate(&mut current_state, &preview)?;
-                            let apply_seconds = now_seconds() - apply_started_at;
-                            family_metrics.accepted += 1;
-                            if delta_cost < 0.0 {
-                                family_metrics.improving_accepts += 1;
-                                accepted_downhill_moves += 1;
-                            } else if delta_cost > 0.0 {
-                                accepted_uphill_moves += 1;
-                            } else {
-                                accepted_neutral_moves += 1;
-                            }
-                            family_metrics.apply_seconds += apply_seconds;
-                            accepted_delta_sum += delta_cost;
+                    let preview_started_at = now_seconds();
+                    let preview = preview_candidate(&current_state, &candidate);
+                    let preview_seconds = now_seconds() - preview_started_at;
+                    family_metrics.preview_seconds += preview_seconds;
+                    if move_family_preview_uses_full_recompute(family) {
+                        family_metrics.full_recalculation_count += 1;
+                        family_metrics.full_recalculation_seconds += preview_seconds;
+                    }
 
-                            if should_sample_runtime_oracle_check(family_metrics.accepted) {
-                                current_state.validate_against_oracle().map_err(|error| {
+                    match preview {
+                        Ok(preview) => {
+                            let delta_cost = preview.delta_cost();
+                            let preview_candidate = preview.candidate();
+                            attempted_delta_sum += delta_cost;
+                            biggest_attempted_increase =
+                                biggest_attempted_increase.max(delta_cost.max(0.0));
+
+                            let accepted = delta_cost <= 0.0
+                                || (temperature > 0.0
+                                    && rng.random::<f64>()
+                                        < (-delta_cost / temperature).exp().clamp(0.0, 1.0));
+
+                            if accepted {
+                                let apply_started_at = now_seconds();
+                                apply_previewed_candidate(&mut current_state, &preview)?;
+                                let apply_seconds = now_seconds() - apply_started_at;
+                                family_metrics.accepted += 1;
+                                if delta_cost < 0.0 {
+                                    family_metrics.improving_accepts += 1;
+                                    accepted_downhill_moves += 1;
+                                } else if delta_cost > 0.0 {
+                                    accepted_uphill_moves += 1;
+                                } else {
+                                    accepted_neutral_moves += 1;
+                                }
+                                family_metrics.apply_seconds += apply_seconds;
+                                accepted_delta_sum += delta_cost;
+
+                                if should_sample_runtime_oracle_check(family_metrics.accepted) {
+                                    current_state.validate_against_oracle().map_err(|error| {
                                     SolverError::ValidationError(format!(
                                         "solver2 runtime {:?} drift check failed after accepted move {:?}: {}",
                                         family, preview_candidate, error
                                     ))
                                 })?;
-                            }
+                                }
 
-                            if delta_cost > 0.0 {
-                                local_optima_escapes += 1;
-                                biggest_accepted_increase =
-                                    biggest_accepted_increase.max(delta_cost);
-                            }
+                                if delta_cost > 0.0 {
+                                    local_optima_escapes += 1;
+                                    biggest_accepted_increase =
+                                        biggest_accepted_increase.max(delta_cost);
+                                }
 
-                            if self.configuration.logging.debug_validate_invariants {
-                                validate_state_invariants(&current_state).map_err(|error| {
+                                if self.configuration.logging.debug_validate_invariants {
+                                    validate_state_invariants(&current_state).map_err(|error| {
                                     if self.configuration.logging.debug_dump_invariant_context {
                                         SolverError::ValidationError(format!(
                                             "solver2 invariant validation failed after accepted {:?}: {}",
@@ -219,25 +225,34 @@ impl SearchEngine {
                                         error
                                     }
                                 })?;
-                            }
+                                }
 
-                            if current_state.current_score.total_score < best_score {
-                                best_score = current_state.current_score.total_score;
-                                best_state = current_state.clone();
-                                no_improvement_count = 0;
-                                best_score_timeline.push(BestScoreTimelinePoint {
-                                    iteration: iteration + 1,
-                                    elapsed_seconds: now_seconds() - search_started_at,
-                                    best_score,
-                                });
+                                if current_state.current_score.total_score < best_score {
+                                    best_score = current_state.current_score.total_score;
+                                    best_state = current_state.clone();
+                                    no_improvement_count = 0;
+                                    best_score_timeline.push(BestScoreTimelinePoint {
+                                        iteration: iteration + 1,
+                                        elapsed_seconds: now_seconds() - search_started_at,
+                                        best_score,
+                                    });
+                                } else {
+                                    increment_no_improvement_streak(
+                                        &mut no_improvement_count,
+                                        &mut max_no_improvement_streak,
+                                    );
+                                }
+                                push_recent_acceptance(&mut recent_acceptance, true);
                             } else {
+                                family_metrics.rejected += 1;
                                 increment_no_improvement_streak(
                                     &mut no_improvement_count,
                                     &mut max_no_improvement_streak,
                                 );
+                                push_recent_acceptance(&mut recent_acceptance, false);
                             }
-                            push_recent_acceptance(&mut recent_acceptance, true);
-                        } else {
+                        }
+                        Err(_) => {
                             family_metrics.rejected += 1;
                             increment_no_improvement_streak(
                                 &mut no_improvement_count,
@@ -246,49 +261,17 @@ impl SearchEngine {
                             push_recent_acceptance(&mut recent_acceptance, false);
                         }
                     }
-                    Err(_) => {
-                        family_metrics.rejected += 1;
-                        increment_no_improvement_streak(
-                            &mut no_improvement_count,
-                            &mut max_no_improvement_streak,
-                        );
-                        push_recent_acceptance(&mut recent_acceptance, false);
-                    }
+                } else {
+                    increment_no_improvement_streak(
+                        &mut no_improvement_count,
+                        &mut max_no_improvement_streak,
+                    );
                 }
-            } else {
-                increment_no_improvement_streak(
-                    &mut no_improvement_count,
-                    &mut max_no_improvement_streak,
-                );
-            }
 
-            iterations_completed = iteration + 1;
+                iterations_completed = iteration + 1;
 
-            if let Some(callback) = progress_callback {
-                let progress = build_progress_update(
-                    iteration,
-                    max_iterations,
-                    temperature,
-                    search_started_at,
-                    &current_state,
-                    &best_state,
-                    no_improvement_count,
-                    &move_metrics,
-                    attempted_delta_sum,
-                    accepted_delta_sum,
-                    biggest_attempted_increase,
-                    biggest_accepted_increase,
-                    local_optima_escapes,
-                    &recent_acceptance,
-                    effective_seed,
-                    &move_policy,
-                    &self.configuration,
-                    None,
-                );
-
-                if !(callback)(&progress) {
-                    stop_reason = StopReason::ProgressCallbackRequestedStop;
-                    let final_progress = build_progress_update(
+                if let Some(callback) = progress_callback {
+                    let progress = build_progress_update(
                         iteration,
                         max_iterations,
                         temperature,
@@ -306,18 +289,50 @@ impl SearchEngine {
                         effective_seed,
                         &move_policy,
                         &self.configuration,
-                        Some(stop_reason),
+                        None,
                     );
-                    let _ = (callback)(&final_progress);
-                    final_progress_emitted = true;
+
+                    if !(callback)(&progress) {
+                        stop_reason = StopReason::ProgressCallbackRequestedStop;
+                        let final_progress = build_progress_update(
+                            iteration,
+                            max_iterations,
+                            temperature,
+                            search_started_at,
+                            &current_state,
+                            &best_state,
+                            no_improvement_count,
+                            &move_metrics,
+                            attempted_delta_sum,
+                            accepted_delta_sum,
+                            biggest_attempted_increase,
+                            biggest_accepted_increase,
+                            local_optima_escapes,
+                            &recent_acceptance,
+                            effective_seed,
+                            &move_policy,
+                            &self.configuration,
+                            Some(stop_reason),
+                        );
+                        let _ = (callback)(&final_progress);
+                        final_progress_emitted = true;
+                        break;
+                    }
+                }
+
+                if stop_on_optimal_score
+                    && best_state.current_score.total_score
+                        <= crate::models::OPTIMAL_SCORE_TOLERANCE
+                {
+                    stop_reason = StopReason::OptimalScoreReached;
                     break;
                 }
-            }
 
-            if let Some(limit) = no_improvement_limit {
-                if no_improvement_count >= limit {
-                    stop_reason = StopReason::NoImprovementLimitReached;
-                    break;
+                if let Some(limit) = no_improvement_limit {
+                    if no_improvement_count >= limit {
+                        stop_reason = StopReason::NoImprovementLimitReached;
+                        break;
+                    }
                 }
             }
         }

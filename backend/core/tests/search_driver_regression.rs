@@ -42,6 +42,7 @@ fn warm_start_schedule() -> HashMap<String, HashMap<String, Vec<String>>> {
 fn driver_input() -> ApiInput {
     let mut solver = default_solver_config(40);
     solver.seed = Some(53);
+    solver.stop_conditions.stop_on_optimal_score = false;
     solver.stop_conditions.no_improvement_iterations = None;
     solver.solver_params = SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
         initial_temperature: 3.0,
@@ -86,6 +87,7 @@ fn solver2_driver_input() -> ApiInput {
     solver.stop_conditions.max_iterations = Some(40);
     solver.stop_conditions.time_limit_seconds = None;
     solver.stop_conditions.no_improvement_iterations = None;
+    solver.stop_conditions.stop_on_optimal_score = false;
     input.solver = solver;
     input
 }
@@ -97,6 +99,7 @@ fn solver3_driver_input() -> ApiInput {
     solver.stop_conditions.max_iterations = Some(40);
     solver.stop_conditions.time_limit_seconds = None;
     solver.stop_conditions.no_improvement_iterations = None;
+    solver.stop_conditions.stop_on_optimal_score = false;
     solver.move_policy = Some(MovePolicy {
         forced_family: Some(MoveFamily::Swap),
         ..MovePolicy::default()
@@ -116,6 +119,7 @@ fn solver3_raw_sailing_trip_input() -> ApiInput {
     solver.stop_conditions.max_iterations = Some(2_000);
     solver.stop_conditions.time_limit_seconds = Some(2);
     solver.stop_conditions.no_improvement_iterations = Some(1_000);
+    solver.stop_conditions.stop_on_optimal_score = false;
     envelope.input.solver = solver;
     envelope.input
 }
@@ -124,6 +128,7 @@ fn solver3_transfer_driver_input() -> ApiInput {
     let mut solver = default_solver_configuration_for(gm_core::models::SolverKind::Solver3);
     solver.seed = Some(281);
     solver.stop_conditions.max_iterations = Some(25);
+    solver.stop_conditions.stop_on_optimal_score = false;
     solver.move_policy = Some(MovePolicy {
         forced_family: Some(MoveFamily::Transfer),
         ..MovePolicy::default()

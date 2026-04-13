@@ -136,7 +136,8 @@ export type StopReason =
   | "max_iterations_reached"
   | "time_limit_reached"
   | "no_improvement_limit_reached"
-  | "progress_callback_requested_stop";
+  | "progress_callback_requested_stop"
+  | "optimal_score_reached";
 
 export interface MoveFamilyBenchmarkTelemetry {
   attempts: number;
@@ -175,6 +176,7 @@ export interface StopConditions {
   max_iterations?: number;
   time_limit_seconds?: number;
   no_improvement_iterations?: number;
+  stop_on_optimal_score?: boolean;
 }
 
 export interface SolverParams {

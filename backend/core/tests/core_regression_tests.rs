@@ -71,6 +71,7 @@ fn basic_input() -> ApiInput {
                 max_iterations: Some(250),
                 time_limit_seconds: None,
                 no_improvement_iterations: Some(100),
+                stop_on_optimal_score: true,
             },
             solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
                 initial_temperature: 5.0,
@@ -229,6 +230,7 @@ fn solver_only_mutates_allowed_sessions_from_warm_start() {
 #[test]
 fn progress_callback_can_stop_solver_early() {
     let mut input = basic_input();
+    input.solver.stop_conditions.stop_on_optimal_score = false;
     input.solver.stop_conditions.max_iterations = Some(5_000);
 
     let iterations = Arc::new(Mutex::new(Vec::new()));
@@ -254,6 +256,7 @@ fn progress_callback_can_stop_solver_early() {
 #[test]
 fn final_progress_update_includes_stop_reason() {
     let mut input = basic_input();
+    input.solver.stop_conditions.stop_on_optimal_score = false;
     input.solver.stop_conditions.max_iterations = Some(5_000);
 
     let last_progress = Arc::new(Mutex::new(None));
@@ -279,6 +282,7 @@ fn final_progress_update_includes_stop_reason() {
 #[test]
 fn result_reports_max_iterations_stop_reason() {
     let mut input = basic_input();
+    input.solver.stop_conditions.stop_on_optimal_score = false;
     input.solver.stop_conditions.max_iterations = Some(1);
     input.solver.stop_conditions.no_improvement_iterations = None;
 
@@ -289,6 +293,7 @@ fn result_reports_max_iterations_stop_reason() {
 #[test]
 fn result_reports_no_improvement_stop_reason() {
     let mut input = basic_input();
+    input.solver.stop_conditions.stop_on_optimal_score = false;
     input.solver.stop_conditions.max_iterations = Some(500);
     input.solver.stop_conditions.no_improvement_iterations = Some(1);
 
@@ -302,6 +307,7 @@ fn result_reports_no_improvement_stop_reason() {
 #[test]
 fn result_reports_time_limit_stop_reason() {
     let mut input = basic_input();
+    input.solver.stop_conditions.stop_on_optimal_score = false;
     input.solver.stop_conditions.max_iterations = Some(5_000);
     input.solver.stop_conditions.no_improvement_iterations = None;
     input.solver.stop_conditions.time_limit_seconds = Some(0);
@@ -491,6 +497,7 @@ fn invalid_weighted_move_policy_is_rejected() {
 #[test]
 fn forced_swap_move_policy_only_attempts_swaps() {
     let mut input = basic_input();
+    input.solver.stop_conditions.stop_on_optimal_score = false;
     input.solver.seed = Some(11);
     input.solver.move_policy = Some(MovePolicy {
         forced_family: Some(MoveFamily::Swap),
@@ -747,6 +754,7 @@ fn simulated_annealing_auto_reheat_defaults_without_no_improvement_limit() {
             max_iterations: Some(200),
             time_limit_seconds: None,
             no_improvement_iterations: None,
+            stop_on_optimal_score: true,
         },
         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
             initial_temperature: 10.0,
@@ -774,6 +782,7 @@ fn simulated_annealing_auto_reheat_is_bounded_by_no_improvement_limit() {
             max_iterations: Some(10_000),
             time_limit_seconds: None,
             no_improvement_iterations: Some(120),
+            stop_on_optimal_score: true,
         },
         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
             initial_temperature: 10.0,
@@ -801,6 +810,7 @@ fn simulated_annealing_keeps_explicit_zero_reheat_disabled() {
             max_iterations: Some(500),
             time_limit_seconds: None,
             no_improvement_iterations: Some(250),
+            stop_on_optimal_score: true,
         },
         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
             initial_temperature: 10.0,

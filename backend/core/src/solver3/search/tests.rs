@@ -22,6 +22,7 @@ fn solver3_config() -> SolverConfiguration {
             max_iterations: Some(40),
             time_limit_seconds: None,
             no_improvement_iterations: Some(40),
+            stop_on_optimal_score: true,
         },
         solver_params: SolverParams::Solver3(Solver3Params::default()),
         logging: Default::default(),
@@ -145,6 +146,7 @@ fn progress_state_reports_allowed_move_policy_in_progress_updates() {
 #[test]
 fn search_engine_respects_forced_family_in_telemetry() {
     let mut input = search_input();
+    input.solver.stop_conditions.stop_on_optimal_score = false;
     input.solver.move_policy = Some(MovePolicy {
         forced_family: Some(MoveFamily::Swap),
         ..Default::default()

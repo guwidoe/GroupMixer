@@ -111,6 +111,7 @@ fn create_test_input(
                 max_iterations: Some(1),
                 time_limit_seconds: None,
                 no_improvement_iterations: None,
+                stop_on_optimal_score: true,
             },
             solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
                 initial_temperature: 1.0,
@@ -184,6 +185,7 @@ fn create_test_input_with_sessions(
                 max_iterations: Some(1),
                 time_limit_seconds: None,
                 no_improvement_iterations: None,
+                stop_on_optimal_score: true,
             },
             solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
                 initial_temperature: 1.0,

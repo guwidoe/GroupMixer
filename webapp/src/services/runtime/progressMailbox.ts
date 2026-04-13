@@ -140,6 +140,7 @@ const STOP_REASON_TO_CODE: Record<StopReason, number> = {
   time_limit_reached: 2,
   no_improvement_limit_reached: 3,
   progress_callback_requested_stop: 4,
+  optimal_score_reached: 5,
 };
 
 const CODE_TO_STOP_REASON: Record<number, StopReason | undefined> = {
@@ -148,6 +149,7 @@ const CODE_TO_STOP_REASON: Record<number, StopReason | undefined> = {
   2: 'time_limit_reached',
   3: 'no_improvement_limit_reached',
   4: 'progress_callback_requested_stop',
+  5: 'optimal_score_reached',
 };
 
 const FIELD_OFFSETS: Record<NumericField, number> = NUMERIC_FIELDS.reduce((offsets, field, index) => {

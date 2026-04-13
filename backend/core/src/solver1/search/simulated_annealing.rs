@@ -708,6 +708,8 @@ pub struct SimulatedAnnealing {
     pub time_limit_seconds: Option<u64>,
     /// Optional early stopping after this many iterations without improvement
     pub no_improvement_iterations: Option<u64>,
+    /// Whether the solver should stop immediately once the best-known score reaches zero.
+    pub stop_on_optimal_score: bool,
     /// When > 0, split the total iterations into this many cycles; each cycle cools from
     /// initial_temperature to final_temperature, then reheats at the boundary
     pub reheat_cycles: u64,
@@ -795,6 +797,7 @@ impl SimulatedAnnealing {
             final_temperature: sa_params.final_temperature,
             time_limit_seconds: params.stop_conditions.time_limit_seconds,
             no_improvement_iterations,
+            stop_on_optimal_score: params.stop_conditions.stop_on_optimal_score,
             reheat_cycles,
             reheat_after_no_improvement,
         }
@@ -986,6 +989,7 @@ impl Solver for SimulatedAnnealing {
         let mut last_callback_time = get_start_time();
         let mut progress_callback_count: u64 = 0;
         let mut final_iteration = 0;
+        let mut iterations_completed = 0u64;
         let mut stop_reason = StopReason::MaxIterationsReached;
         let mut accepted_uphill_moves = 0u64;
         let mut accepted_downhill_moves = 0u64;
@@ -1043,516 +1047,404 @@ impl Solver for SimulatedAnnealing {
 
         let search_started_at = get_current_time();
 
-        for i in 0..self.max_iterations {
-            final_iteration = i;
-            let elapsed_since_start = get_elapsed_seconds(start_time);
+        if self.stop_on_optimal_score && best_cost <= crate::models::OPTIMAL_SCORE_TOLERANCE {
+            stop_reason = StopReason::OptimalScoreReached;
+        }
 
-            // Two reheating modes:
-            // 1) Fixed cycle-based reheats if reheat_cycles > 0
-            // 2) Fallback: no-improvement-based reheats if enabled
-            if self.reheat_cycles > 0 && cycle_length > 0 {
-                let cycle_index = i / cycle_length;
-                if let Some(prev) = prev_cycle_index {
-                    if cycle_index > prev {
-                        // We crossed a cycle boundary: perform a reheat
-                        reheat_count += 1;
-                        last_reheat_iteration = cycle_index * cycle_length;
-                        last_reheat_elapsed_seconds = elapsed_since_start;
-                        no_improvement_counter = 0;
-                        if state.logging.log_stop_condition {
-                            println!(
-                                "Reheating (cycle) #{} at iteration {} (cycle {} of {})",
-                                reheat_count,
-                                i,
-                                cycle_index + 1,
-                                self.reheat_cycles
-                            );
-                        }
-                    }
-                }
-                prev_cycle_index = Some(cycle_index);
-            } else if self.reheat_after_no_improvement > 0
-                && no_improvement_counter >= self.reheat_after_no_improvement
-                && no_improvement_counter > 0
-                && i - last_reheat_iteration > self.reheat_after_no_improvement
-            {
-                // Only reheat if we haven't reheated recently
-                reheat_count += 1;
-                last_reheat_iteration = i;
-                last_reheat_elapsed_seconds = elapsed_since_start;
-                no_improvement_counter = 0; // Reset the no improvement counter
+        if stop_reason != StopReason::OptimalScoreReached {
+            for i in 0..self.max_iterations {
+                final_iteration = i;
+                iterations_completed = i + 1;
+                let elapsed_since_start = get_elapsed_seconds(start_time);
 
-                if state.logging.log_stop_condition {
-                    println!(
-                        "Reheating #{} at iteration {}: no improvement for {} iterations",
-                        reheat_count, i, self.reheat_after_no_improvement
-                    );
-                }
-            }
-
-            // Calculate temperature with potential reheat adjustment
-            let (iterations_since_last_reheat, remaining_for_cooling) =
+                // Two reheating modes:
+                // 1) Fixed cycle-based reheats if reheat_cycles > 0
+                // 2) Fallback: no-improvement-based reheats if enabled
                 if self.reheat_cycles > 0 && cycle_length > 0 {
                     let cycle_index = i / cycle_length;
-                    let cycle_start = cycle_index * cycle_length;
-                    (i - cycle_start, cycle_length)
+                    if let Some(prev) = prev_cycle_index {
+                        if cycle_index > prev {
+                            // We crossed a cycle boundary: perform a reheat
+                            reheat_count += 1;
+                            last_reheat_iteration = cycle_index * cycle_length;
+                            last_reheat_elapsed_seconds = elapsed_since_start;
+                            no_improvement_counter = 0;
+                            if state.logging.log_stop_condition {
+                                println!(
+                                    "Reheating (cycle) #{} at iteration {} (cycle {} of {})",
+                                    reheat_count,
+                                    i,
+                                    cycle_index + 1,
+                                    self.reheat_cycles
+                                );
+                            }
+                        }
+                    }
+                    prev_cycle_index = Some(cycle_index);
+                } else if self.reheat_after_no_improvement > 0
+                    && no_improvement_counter >= self.reheat_after_no_improvement
+                    && no_improvement_counter > 0
+                    && i - last_reheat_iteration > self.reheat_after_no_improvement
+                {
+                    // Only reheat if we haven't reheated recently
+                    reheat_count += 1;
+                    last_reheat_iteration = i;
+                    last_reheat_elapsed_seconds = elapsed_since_start;
+                    no_improvement_counter = 0; // Reset the no improvement counter
+
+                    if state.logging.log_stop_condition {
+                        println!(
+                            "Reheating #{} at iteration {}: no improvement for {} iterations",
+                            reheat_count, i, self.reheat_after_no_improvement
+                        );
+                    }
+                }
+
+                // Calculate temperature with potential reheat adjustment
+                let (iterations_since_last_reheat, remaining_for_cooling) =
+                    if self.reheat_cycles > 0 && cycle_length > 0 {
+                        let cycle_index = i / cycle_length;
+                        let cycle_start = cycle_index * cycle_length;
+                        (i - cycle_start, cycle_length)
+                    } else {
+                        let iterations_since_last_reheat = i - last_reheat_iteration;
+                        let remaining_iterations = self.max_iterations - last_reheat_iteration;
+                        (iterations_since_last_reheat, remaining_iterations)
+                    };
+
+                let elapsed_since_last_reheat =
+                    (elapsed_since_start - last_reheat_elapsed_seconds).max(0.0);
+                let remaining_time_for_cooling = self
+                    .time_limit_seconds
+                    .map(|limit| (limit as f64 - last_reheat_elapsed_seconds).max(0.0));
+                let cooling_progress = cooling_progress_since_reheat(
+                    iterations_since_last_reheat,
+                    remaining_for_cooling,
+                    elapsed_since_last_reheat,
+                    remaining_time_for_cooling,
+                );
+                let temperature = temperature_for_cooling_progress(
+                    self.initial_temperature,
+                    self.final_temperature,
+                    cooling_progress,
+                );
+
+                let mut improvement_found = false;
+
+                // Send progress update if callback is provided - every 0.1 seconds for responsiveness
+                if let Some(callback) = &progress_callback {
+                    let current_time = get_current_time();
+                    let elapsed_since_last_callback =
+                        get_elapsed_seconds_between(last_callback_time, current_time);
+
+                    // Call on first iteration or after sufficient time has passed
+                    // Add minimum 50ms gap to prevent excessive callbacks
+                    // NOTE: We don't call on last iteration here because we send a final callback after recalculation
+                    if i == 0 || elapsed_since_last_callback >= 0.1 {
+                        progress_callback_count += 1;
+                        let current_cost = current_state.current_cost;
+                        let elapsed = elapsed_since_start;
+                        let iterations_since_last_reheat =
+                            if self.reheat_cycles > 0 && cycle_length > 0 {
+                                i - ((i / cycle_length) * cycle_length)
+                            } else {
+                                i - last_reheat_iteration
+                            };
+
+                        // Calculate dynamic metrics
+                        let (
+                            overall_acceptance_rate,
+                            recent_acceptance_rate,
+                            avg_attempted_move_delta,
+                            avg_accepted_move_delta,
+                            clique_swap_success_rate,
+                            transfer_success_rate,
+                            swap_success_rate,
+                            score_variance,
+                            search_efficiency,
+                        ) = metrics.calculate_metrics(elapsed);
+
+                        let remaining_iterations_for_progress =
+                            if self.reheat_cycles > 0 && cycle_length > 0 {
+                                cycle_length
+                            } else {
+                                self.max_iterations - last_reheat_iteration
+                            };
+                        let elapsed_since_last_reheat =
+                            (elapsed - last_reheat_elapsed_seconds).max(0.0);
+                        let remaining_time_for_progress = self
+                            .time_limit_seconds
+                            .map(|limit| (limit as f64 - last_reheat_elapsed_seconds).max(0.0));
+                        let cooling_progress = cooling_progress_since_reheat(
+                            iterations_since_last_reheat,
+                            remaining_iterations_for_progress,
+                            elapsed_since_last_reheat,
+                            remaining_time_for_progress,
+                        );
+
+                        // Calculate average time per iteration
+                        let avg_time_per_iteration_ms = if i > 0 {
+                            (elapsed * 1000.0) / i as f64
+                        } else {
+                            0.0
+                        };
+
+                        let include_best_schedule = if state.telemetry.emit_best_schedule {
+                            let every = state.telemetry.best_schedule_every_n_callbacks.max(1);
+                            progress_callback_count.is_multiple_of(every)
+                        } else {
+                            false
+                        };
+
+                        let progress = ProgressUpdate {
+                            // Basic progress information
+                            iteration: i + 1, // Report 1-based iteration numbers
+                            max_iterations: displayed_total_iterations(
+                                i + 1,
+                                self.max_iterations,
+                                elapsed,
+                                self.time_limit_seconds,
+                                None,
+                            ),
+                            temperature,
+                            current_score: current_cost,
+                            best_score: best_cost,
+                            current_contacts: current_state.unique_contacts,
+                            best_contacts: best_state.unique_contacts,
+                            repetition_penalty: current_state.repetition_penalty,
+                            elapsed_seconds: elapsed,
+                            no_improvement_count: no_improvement_counter,
+
+                            // Move type statistics
+                            clique_swaps_tried: metrics.clique_swaps_tried,
+                            clique_swaps_accepted: metrics.clique_swaps_accepted,
+                            clique_swaps_rejected: metrics.clique_swaps_tried
+                                - metrics.clique_swaps_accepted,
+                            transfers_tried: metrics.transfers_tried,
+                            transfers_accepted: metrics.transfers_accepted,
+                            transfers_rejected: metrics.transfers_tried
+                                - metrics.transfers_accepted,
+                            swaps_tried: metrics.swaps_tried,
+                            swaps_accepted: metrics.swaps_accepted,
+                            swaps_rejected: metrics.swaps_tried - metrics.swaps_accepted,
+
+                            // Acceptance and quality metrics
+                            overall_acceptance_rate,
+                            recent_acceptance_rate,
+                            avg_attempted_move_delta,
+                            avg_accepted_move_delta,
+                            biggest_accepted_increase: metrics.biggest_accepted_increase,
+                            biggest_attempted_increase: metrics.biggest_attempted_increase,
+
+                            // Current state breakdown
+                            current_repetition_penalty: current_state.repetition_penalty as f64
+                                * current_state.w_repetition,
+                            current_balance_penalty: current_state.attribute_balance_penalty,
+                            current_constraint_penalty: current_state.weighted_constraint_penalty,
+                            best_repetition_penalty: metrics.best_repetition_penalty,
+                            best_balance_penalty: metrics.best_balance_penalty,
+                            best_constraint_penalty: metrics.best_constraint_penalty,
+
+                            // Algorithm state information
+                            reheats_performed: reheat_count,
+                            iterations_since_last_reheat,
+                            local_optima_escapes: metrics.local_optima_escapes,
+                            avg_time_per_iteration_ms,
+                            cooling_progress,
+
+                            // Move type success rates
+                            clique_swap_success_rate,
+                            transfer_success_rate,
+                            swap_success_rate,
+
+                            // Advanced analytics
+                            score_variance,
+                            search_efficiency,
+                            // Optional best schedule snapshot (expensive; gated by telemetry settings)
+                            best_schedule: if include_best_schedule {
+                                Some(
+                                    best_state
+                                        .to_solver_result(best_cost, no_improvement_counter)
+                                        .schedule,
+                                )
+                            } else {
+                                None
+                            },
+                            effective_seed: Some(state.effective_seed),
+                            move_policy: Some(state.move_policy.clone()),
+                            stop_reason: None,
+                        };
+
+                        // If callback returns false, stop early
+                        if !callback(&progress) {
+                            stop_reason = StopReason::ProgressCallbackRequestedStop;
+                            if state.logging.log_stop_condition {
+                                println!(
+                                    "Stopping early: progress callback requested termination."
+                                );
+                            }
+                            break;
+                        }
+
+                        // Only update callback time if we actually called the callback
+                        last_callback_time = current_time;
+                    }
+                }
+
+                // --- Choose a random move (respect allowed sessions if configured) ---
+                let day = if let Some(ref allowed) = state.allowed_sessions {
+                    if allowed.is_empty() {
+                        continue;
+                    }
+                    let idx = rng.random_range(0..allowed.len());
+                    allowed[idx] as usize
                 } else {
-                    let iterations_since_last_reheat = i - last_reheat_iteration;
-                    let remaining_iterations = self.max_iterations - last_reheat_iteration;
-                    (iterations_since_last_reheat, remaining_iterations)
+                    rng.random_range(0..current_state.num_sessions as usize)
                 };
 
-            let elapsed_since_last_reheat =
-                (elapsed_since_start - last_reheat_elapsed_seconds).max(0.0);
-            let remaining_time_for_cooling = self.time_limit_seconds.map(|limit| {
-                (limit as f64 - last_reheat_elapsed_seconds).max(0.0)
-            });
-            let cooling_progress = cooling_progress_since_reheat(
-                iterations_since_last_reheat,
-                remaining_for_cooling,
-                elapsed_since_last_reheat,
-                remaining_time_for_cooling,
-            );
-            let temperature = temperature_for_cooling_progress(
-                self.initial_temperature,
-                self.final_temperature,
-                cooling_progress,
-            );
+                // Use pre-calculated move probabilities for performance
+                let transfer_probability = transfer_probabilities[day];
+                let clique_swap_probability = clique_swap_probabilities[day];
+                let chosen_family = move_family_selector.sample(
+                    clique_swap_probability,
+                    transfer_probability,
+                    &mut rng,
+                );
 
-            let mut improvement_found = false;
+                if chosen_family == MoveFamily::CliqueSwap {
+                    // === CLIQUE SWAP ===
+                    // --- Attempt Clique Swap ---
+                    let clique_idx = rng.random_range(0..current_state.cliques.len());
+                    let clique = &current_state.cliques[clique_idx];
 
-            // Send progress update if callback is provided - every 0.1 seconds for responsiveness
-            if let Some(callback) = &progress_callback {
-                let current_time = get_current_time();
-                let elapsed_since_last_callback =
-                    get_elapsed_seconds_between(last_callback_time, current_time);
-
-                // Call on first iteration or after sufficient time has passed
-                // Add minimum 50ms gap to prevent excessive callbacks
-                // NOTE: We don't call on last iteration here because we send a final callback after recalculation
-                if i == 0 || elapsed_since_last_callback >= 0.1 {
-                    progress_callback_count += 1;
-                    let current_cost = current_state.current_cost;
-                    let elapsed = elapsed_since_start;
-                    let iterations_since_last_reheat = if self.reheat_cycles > 0 && cycle_length > 0
+                    // Determine a source group containing the majority of active (participating)
+                    // members of this clique for the selected day. Tie-breaking is deterministic.
+                    let current_group = if let Some(group_idx) =
+                        select_clique_source_group(&current_state, clique, day)
                     {
-                        i - ((i / cycle_length) * cycle_length)
+                        group_idx
                     } else {
-                        i - last_reheat_iteration
+                        continue; // No active members this day
                     };
 
-                    // Calculate dynamic metrics
-                    let (
-                        overall_acceptance_rate,
-                        recent_acceptance_rate,
-                        avg_attempted_move_delta,
-                        avg_accepted_move_delta,
-                        clique_swap_success_rate,
-                        transfer_success_rate,
-                        swap_success_rate,
-                        score_variance,
-                        search_efficiency,
-                    ) = metrics.calculate_metrics(elapsed);
-
-                    let remaining_iterations_for_progress = if self.reheat_cycles > 0 && cycle_length > 0 {
-                        cycle_length
-                    } else {
-                        self.max_iterations - last_reheat_iteration
-                    };
-                    let elapsed_since_last_reheat =
-                        (elapsed - last_reheat_elapsed_seconds).max(0.0);
-                    let remaining_time_for_progress = self.time_limit_seconds.map(|limit| {
-                        (limit as f64 - last_reheat_elapsed_seconds).max(0.0)
-                    });
-                    let cooling_progress = cooling_progress_since_reheat(
-                        iterations_since_last_reheat,
-                        remaining_iterations_for_progress,
-                        elapsed_since_last_reheat,
-                        remaining_time_for_progress,
-                    );
-
-                    // Calculate average time per iteration
-                    let avg_time_per_iteration_ms = if i > 0 {
-                        (elapsed * 1000.0) / i as f64
-                    } else {
-                        0.0
-                    };
-
-                    let include_best_schedule = if state.telemetry.emit_best_schedule {
-                        let every = state.telemetry.best_schedule_every_n_callbacks.max(1);
-                        progress_callback_count.is_multiple_of(every)
-                    } else {
-                        false
-                    };
-
-                    let progress = ProgressUpdate {
-                        // Basic progress information
-                        iteration: i + 1, // Report 1-based iteration numbers
-                        max_iterations: displayed_total_iterations(
-                            i + 1,
-                            self.max_iterations,
-                            elapsed,
-                            self.time_limit_seconds,
-                            None,
-                        ),
-                        temperature,
-                        current_score: current_cost,
-                        best_score: best_cost,
-                        current_contacts: current_state.unique_contacts,
-                        best_contacts: best_state.unique_contacts,
-                        repetition_penalty: current_state.repetition_penalty,
-                        elapsed_seconds: elapsed,
-                        no_improvement_count: no_improvement_counter,
-
-                        // Move type statistics
-                        clique_swaps_tried: metrics.clique_swaps_tried,
-                        clique_swaps_accepted: metrics.clique_swaps_accepted,
-                        clique_swaps_rejected: metrics.clique_swaps_tried
-                            - metrics.clique_swaps_accepted,
-                        transfers_tried: metrics.transfers_tried,
-                        transfers_accepted: metrics.transfers_accepted,
-                        transfers_rejected: metrics.transfers_tried - metrics.transfers_accepted,
-                        swaps_tried: metrics.swaps_tried,
-                        swaps_accepted: metrics.swaps_accepted,
-                        swaps_rejected: metrics.swaps_tried - metrics.swaps_accepted,
-
-                        // Acceptance and quality metrics
-                        overall_acceptance_rate,
-                        recent_acceptance_rate,
-                        avg_attempted_move_delta,
-                        avg_accepted_move_delta,
-                        biggest_accepted_increase: metrics.biggest_accepted_increase,
-                        biggest_attempted_increase: metrics.biggest_attempted_increase,
-
-                        // Current state breakdown
-                        current_repetition_penalty: current_state.repetition_penalty as f64
-                            * current_state.w_repetition,
-                        current_balance_penalty: current_state.attribute_balance_penalty,
-                        current_constraint_penalty: current_state.weighted_constraint_penalty,
-                        best_repetition_penalty: metrics.best_repetition_penalty,
-                        best_balance_penalty: metrics.best_balance_penalty,
-                        best_constraint_penalty: metrics.best_constraint_penalty,
-
-                        // Algorithm state information
-                        reheats_performed: reheat_count,
-                        iterations_since_last_reheat,
-                        local_optima_escapes: metrics.local_optima_escapes,
-                        avg_time_per_iteration_ms,
-                        cooling_progress,
-
-                        // Move type success rates
-                        clique_swap_success_rate,
-                        transfer_success_rate,
-                        swap_success_rate,
-
-                        // Advanced analytics
-                        score_variance,
-                        search_efficiency,
-                        // Optional best schedule snapshot (expensive; gated by telemetry settings)
-                        best_schedule: if include_best_schedule {
-                            Some(
-                                best_state
-                                    .to_solver_result(best_cost, no_improvement_counter)
-                                    .schedule,
-                            )
-                        } else {
-                            None
-                        },
-                        effective_seed: Some(state.effective_seed),
-                        move_policy: Some(state.move_policy.clone()),
-                        stop_reason: None,
-                    };
-
-                    // If callback returns false, stop early
-                    if !callback(&progress) {
-                        stop_reason = StopReason::ProgressCallbackRequestedStop;
-                        if state.logging.log_stop_condition {
-                            println!("Stopping early: progress callback requested termination.");
-                        }
-                        break;
+                    // Count active members actually in current_group
+                    let active_count = clique
+                        .iter()
+                        .filter(|&&m| current_state.person_participation[m][day])
+                        .filter(|&&m| current_state.locations[day][m].0 == current_group)
+                        .count();
+                    if active_count == 0 {
+                        continue;
                     }
 
-                    // Only update callback time if we actually called the callback
-                    last_callback_time = current_time;
-                }
-            }
+                    // Find a different group to swap with
+                    let num_groups = current_state.group_idx_to_id.len();
+                    let maybe_target_group =
+                        choose_target_group(num_groups, current_group, &mut rng, |group_idx| {
+                            current_state.is_clique_swap_feasible(
+                                day,
+                                clique_idx,
+                                current_group,
+                                group_idx,
+                            )
+                        });
 
-            // --- Choose a random move (respect allowed sessions if configured) ---
-            let day = if let Some(ref allowed) = state.allowed_sessions {
-                if allowed.is_empty() {
-                    continue;
-                }
-                let idx = rng.random_range(0..allowed.len());
-                allowed[idx] as usize
-            } else {
-                rng.random_range(0..current_state.num_sessions as usize)
-            };
-
-            // Use pre-calculated move probabilities for performance
-            let transfer_probability = transfer_probabilities[day];
-            let clique_swap_probability = clique_swap_probabilities[day];
-            let chosen_family = move_family_selector.sample(
-                clique_swap_probability,
-                transfer_probability,
-                &mut rng,
-            );
-
-            if chosen_family == MoveFamily::CliqueSwap {
-                // === CLIQUE SWAP ===
-                // --- Attempt Clique Swap ---
-                let clique_idx = rng.random_range(0..current_state.cliques.len());
-                let clique = &current_state.cliques[clique_idx];
-
-                // Determine a source group containing the majority of active (participating)
-                // members of this clique for the selected day. Tie-breaking is deterministic.
-                let current_group = if let Some(group_idx) =
-                    select_clique_source_group(&current_state, clique, day)
-                {
-                    group_idx
-                } else {
-                    continue; // No active members this day
-                };
-
-                // Count active members actually in current_group
-                let active_count = clique
-                    .iter()
-                    .filter(|&&m| current_state.person_participation[m][day])
-                    .filter(|&&m| current_state.locations[day][m].0 == current_group)
-                    .count();
-                if active_count == 0 {
-                    continue;
-                }
-
-                // Find a different group to swap with
-                let num_groups = current_state.group_idx_to_id.len();
-                let maybe_target_group =
-                    choose_target_group(num_groups, current_group, &mut rng, |group_idx| {
-                        current_state.is_clique_swap_feasible(
+                    if let Some(target_group) = maybe_target_group {
+                        if let Some(target_people) = sample_non_clique_swap_targets(
+                            &current_state,
                             day,
-                            clique_idx,
-                            current_group,
-                            group_idx,
-                        )
-                    });
-
-                if let Some(target_group) = maybe_target_group {
-                    if let Some(target_people) = sample_non_clique_swap_targets(
-                        &current_state,
-                        day,
-                        target_group,
-                        active_count,
-                        &mut rng,
-                    ) {
-                        // Calculate delta cost for clique swap
-                        let preview_started_at = get_current_time();
-                        let delta_cost = current_state.calculate_clique_swap_cost_delta(
-                            day,
-                            clique_idx,
-                            current_group,
                             target_group,
-                            &target_people,
-                        );
-                        let preview_seconds =
-                            get_elapsed_seconds_between(preview_started_at, get_current_time());
-                        // By default, record the estimated delta; if accepted, override with actual delta
-                        let mut recorded_delta = delta_cost;
-                        let telemetry = benchmark_moves.family_mut(MoveFamily::CliqueSwap);
-                        telemetry.attempts += 1;
-                        telemetry.preview_seconds += preview_seconds;
-
-                        //let current_cost = current_state.current_cost;
-                        //let next_cost = current_cost + delta_cost;
-
-                        // Accept or reject the clique swap
-                        let move_accepted = delta_cost < 0.0
-                            || rng.random::<f64>() < (-delta_cost / temperature).exp();
-
-                        if move_accepted {
-                            let prev_cost = current_state.current_cost;
-                            let apply_started_at = get_current_time();
-                            current_state.apply_clique_swap(
+                            active_count,
+                            &mut rng,
+                        ) {
+                            // Calculate delta cost for clique swap
+                            let preview_started_at = get_current_time();
+                            let delta_cost = current_state.calculate_clique_swap_cost_delta(
                                 day,
                                 clique_idx,
                                 current_group,
                                 target_group,
                                 &target_people,
                             );
-                            let apply_finished_at = get_current_time();
-                            let apply_seconds =
-                                get_elapsed_seconds_between(apply_started_at, apply_finished_at);
-                            telemetry.apply_seconds += apply_seconds;
+                            let preview_seconds =
+                                get_elapsed_seconds_between(preview_started_at, get_current_time());
+                            // By default, record the estimated delta; if accepted, override with actual delta
+                            let mut recorded_delta = delta_cost;
+                            let telemetry = benchmark_moves.family_mut(MoveFamily::CliqueSwap);
+                            telemetry.attempts += 1;
+                            telemetry.preview_seconds += preview_seconds;
 
-                            let actual_current_cost = current_state.current_cost;
-                            recorded_delta = actual_current_cost - prev_cost;
+                            //let current_cost = current_state.current_cost;
+                            //let next_cost = current_cost + delta_cost;
 
-                            #[cfg(feature = "debug-invariant-checks")]
-                            {
-                                // Optional invariant check after applying move
-                                if state.logging.debug_validate_invariants {
-                                    if let Err(e) =
-                                        current_state.validate_no_duplicate_assignments()
-                                    {
-                                        if state.logging.debug_dump_invariant_context {
-                                            println!("INVARIANT VIOLATION CONTEXT:");
-                                            println!("  Iteration: {}", i);
-                                            println!("  Move: CLIQUE_SWAP day={} clique_idx={} from_group={} to_group={} swapped_out={}",
+                            // Accept or reject the clique swap
+                            let move_accepted = delta_cost < 0.0
+                                || rng.random::<f64>() < (-delta_cost / temperature).exp();
+
+                            if move_accepted {
+                                let prev_cost = current_state.current_cost;
+                                let apply_started_at = get_current_time();
+                                current_state.apply_clique_swap(
+                                    day,
+                                    clique_idx,
+                                    current_group,
+                                    target_group,
+                                    &target_people,
+                                );
+                                let apply_finished_at = get_current_time();
+                                let apply_seconds = get_elapsed_seconds_between(
+                                    apply_started_at,
+                                    apply_finished_at,
+                                );
+                                telemetry.apply_seconds += apply_seconds;
+
+                                let actual_current_cost = current_state.current_cost;
+                                recorded_delta = actual_current_cost - prev_cost;
+
+                                #[cfg(feature = "debug-invariant-checks")]
+                                {
+                                    // Optional invariant check after applying move
+                                    if state.logging.debug_validate_invariants {
+                                        if let Err(e) =
+                                            current_state.validate_no_duplicate_assignments()
+                                        {
+                                            if state.logging.debug_dump_invariant_context {
+                                                println!("INVARIANT VIOLATION CONTEXT:");
+                                                println!("  Iteration: {}", i);
+                                                println!("  Move: CLIQUE_SWAP day={} clique_idx={} from_group={} to_group={} swapped_out={}",
                                                 day,
                                                 clique_idx,
                                                 state.group_idx_to_id[current_group].clone(),
                                                 state.group_idx_to_id[target_group].clone(),
                                                 target_people.len()
                                             );
-                                            for (g_idx, g) in current_state.schedule[day]
-                                                .iter()
-                                                .enumerate()
-                                                .take(4)
-                                            {
-                                                let names: Vec<String> = g
+                                                for (g_idx, g) in current_state.schedule[day]
                                                     .iter()
-                                                    .map(|&pid| {
-                                                        current_state.display_person_by_idx(pid)
-                                                    })
-                                                    .collect();
-                                                println!(
-                                                    "    group {} ({}): {:?}",
-                                                    g_idx,
-                                                    current_state.group_idx_to_id[g_idx].clone(),
-                                                    names
-                                                );
+                                                    .enumerate()
+                                                    .take(4)
+                                                {
+                                                    let names: Vec<String> = g
+                                                        .iter()
+                                                        .map(|&pid| {
+                                                            current_state.display_person_by_idx(pid)
+                                                        })
+                                                        .collect();
+                                                    println!(
+                                                        "    group {} ({}): {:?}",
+                                                        g_idx,
+                                                        current_state.group_idx_to_id[g_idx]
+                                                            .clone(),
+                                                        names
+                                                    );
+                                                }
                                             }
+                                            return Err(e);
                                         }
-                                        return Err(e);
                                     }
                                 }
-                            }
 
-                            if actual_current_cost < best_cost {
-                                best_cost = actual_current_cost;
-                                best_state = current_state.clone();
-                                no_improvement_counter = 0;
-                                improvement_found = true;
-                                best_score_timeline.push(BestScoreTimelinePoint {
-                                    iteration: i + 1,
-                                    elapsed_seconds: get_elapsed_seconds(start_time),
-                                    best_score: best_cost,
-                                });
-                            }
-                        }
-
-                        if move_accepted {
-                            telemetry.accepted += 1;
-                            if recorded_delta < 0.0 {
-                                telemetry.improving_accepts += 1;
-                                accepted_downhill_moves += 1;
-                            } else if recorded_delta > 0.0 {
-                                accepted_uphill_moves += 1;
-                            } else {
-                                accepted_neutral_moves += 1;
-                            }
-                        } else {
-                            telemetry.rejected += 1;
-                        }
-
-                        // Record using chosen delta (actual if accepted, estimated otherwise)
-                        metrics.record_clique_swap(recorded_delta, move_accepted);
-                    }
-                }
-            } else if chosen_family == MoveFamily::Transfer {
-                // === SINGLE PERSON TRANSFER ===
-                let transferable_people = &movable_people_by_day[day];
-
-                if !transferable_people.is_empty() {
-                    let person_idx =
-                        transferable_people[rng.random_range(0..transferable_people.len())];
-                    let (from_group, _) = current_state.locations[day][person_idx];
-
-                    // Find potential target groups
-                    let num_groups = current_state.group_idx_to_id.len();
-                    let maybe_to_group =
-                        choose_target_group(num_groups, from_group, &mut rng, |group_idx| {
-                            current_state
-                                .is_transfer_feasible(day, person_idx, from_group, group_idx)
-                        });
-
-                    if let Some(to_group) = maybe_to_group {
-                        // Calculate delta cost for transfer
-                        let preview_started_at = get_current_time();
-                        let delta_cost = current_state
-                            .calculate_transfer_cost_delta(day, person_idx, from_group, to_group);
-                        let preview_seconds =
-                            get_elapsed_seconds_between(preview_started_at, get_current_time());
-                        let current_cost = current_state.current_cost;
-                        let next_cost = current_cost + delta_cost;
-                        let telemetry = benchmark_moves.family_mut(MoveFamily::Transfer);
-                        telemetry.attempts += 1;
-                        telemetry.preview_seconds += preview_seconds;
-
-                        // Accept or reject the transfer
-                        let move_accepted = delta_cost < 0.0
-                            || rng.random::<f64>() < (-delta_cost / temperature).exp();
-
-                        if move_accepted {
-                            let apply_started_at = get_current_time();
-                            current_state.apply_transfer(day, person_idx, from_group, to_group);
-                            telemetry.apply_seconds +=
-                                get_elapsed_seconds_between(apply_started_at, get_current_time());
-
-                            current_state.current_cost = next_cost;
-
-                            #[cfg(feature = "debug-invariant-checks")]
-                            {
-                                // Optional invariant check after applying move
-                                if state.logging.debug_validate_invariants {
-                                    if let Err(e) =
-                                        current_state.validate_no_duplicate_assignments()
-                                    {
-                                        if state.logging.debug_dump_invariant_context {
-                                            println!("INVARIANT VIOLATION CONTEXT:");
-                                            println!("  Iteration: {}", i);
-                                            println!(
-                                                "  Move: TRANSFER day={} person={} from={} to={}",
-                                                day,
-                                                current_state.display_person_by_idx(person_idx),
-                                                state.group_idx_to_id[from_group].clone(),
-                                                state.group_idx_to_id[to_group].clone()
-                                            );
-                                            for (g_idx, g) in current_state.schedule[day]
-                                                .iter()
-                                                .enumerate()
-                                                .take(4)
-                                            {
-                                                let names: Vec<String> = g
-                                                    .iter()
-                                                    .map(|&pid| {
-                                                        current_state.display_person_by_idx(pid)
-                                                    })
-                                                    .collect();
-                                                println!(
-                                                    "    group {} ({}): {:?}",
-                                                    g_idx,
-                                                    current_state.group_idx_to_id[g_idx].clone(),
-                                                    names
-                                                );
-                                            }
-                                        }
-                                        return Err(e);
-                                    }
-                                }
-                            }
-
-                            if next_cost < best_cost {
-                                // Recalculate to eliminate any incremental drift before
-                                // recording a new best and to keep telemetry consistent.
-                                let recalc_started_at = get_current_time();
-                                current_state._recalculate_scores();
-                                let verified_cost = current_state.calculate_cost();
-                                telemetry.full_recalculation_count += 1;
-                                telemetry.full_recalculation_seconds += get_elapsed_seconds_between(
-                                    recalc_started_at,
-                                    get_current_time(),
-                                );
-                                if verified_cost < best_cost {
-                                    best_cost = verified_cost;
+                                if actual_current_cost < best_cost {
+                                    best_cost = actual_current_cost;
                                     best_state = current_state.clone();
                                     no_improvement_counter = 0;
                                     improvement_found = true;
@@ -1563,195 +1455,338 @@ impl Solver for SimulatedAnnealing {
                                     });
                                 }
                             }
-                        }
 
-                        if move_accepted {
-                            telemetry.accepted += 1;
-                            if delta_cost < 0.0 {
-                                telemetry.improving_accepts += 1;
-                                accepted_downhill_moves += 1;
-                            } else if delta_cost > 0.0 {
-                                accepted_uphill_moves += 1;
+                            if move_accepted {
+                                telemetry.accepted += 1;
+                                if recorded_delta < 0.0 {
+                                    telemetry.improving_accepts += 1;
+                                    accepted_downhill_moves += 1;
+                                } else if recorded_delta > 0.0 {
+                                    accepted_uphill_moves += 1;
+                                } else {
+                                    accepted_neutral_moves += 1;
+                                }
                             } else {
-                                accepted_neutral_moves += 1;
+                                telemetry.rejected += 1;
                             }
-                        } else {
-                            telemetry.rejected += 1;
+
+                            // Record using chosen delta (actual if accepted, estimated otherwise)
+                            metrics.record_clique_swap(recorded_delta, move_accepted);
                         }
-
-                        // Record the move attempt
-                        metrics.record_transfer(delta_cost, move_accepted);
                     }
-                }
-            } else {
-                // === REGULAR PERSON SWAP ===
-                let swappable_people = &movable_people_by_day[day];
+                } else if chosen_family == MoveFamily::Transfer {
+                    // === SINGLE PERSON TRANSFER ===
+                    let transferable_people = &movable_people_by_day[day];
 
-                if swappable_people.len() < 2 {
-                    continue;
-                }
+                    if !transferable_people.is_empty() {
+                        let person_idx =
+                            transferable_people[rng.random_range(0..transferable_people.len())];
+                        let (from_group, _) = current_state.locations[day][person_idx];
 
-                // Pick two non-clique, non-immovable people for a swap
-                let p1_idx = swappable_people[rng.random_range(0..swappable_people.len())];
-                let mut p2_idx = swappable_people[rng.random_range(0..swappable_people.len())];
-                while p1_idx == p2_idx {
-                    p2_idx = swappable_people[rng.random_range(0..swappable_people.len())];
-                }
+                        // Find potential target groups
+                        let num_groups = current_state.group_idx_to_id.len();
+                        let maybe_to_group =
+                            choose_target_group(num_groups, from_group, &mut rng, |group_idx| {
+                                current_state
+                                    .is_transfer_feasible(day, person_idx, from_group, group_idx)
+                            });
 
-                // --- Evaluate the swap ---
-                let preview_started_at = get_current_time();
-                let delta_cost = current_state.calculate_swap_cost_delta(day, p1_idx, p2_idx);
-                let preview_seconds =
-                    get_elapsed_seconds_between(preview_started_at, get_current_time());
-                let current_cost = current_state.current_cost;
-                let next_cost = current_cost + delta_cost;
-                let telemetry = benchmark_moves.family_mut(MoveFamily::Swap);
-                telemetry.attempts += 1;
-                telemetry.preview_seconds += preview_seconds;
+                        if let Some(to_group) = maybe_to_group {
+                            // Calculate delta cost for transfer
+                            let preview_started_at = get_current_time();
+                            let delta_cost = current_state.calculate_transfer_cost_delta(
+                                day, person_idx, from_group, to_group,
+                            );
+                            let preview_seconds =
+                                get_elapsed_seconds_between(preview_started_at, get_current_time());
+                            let current_cost = current_state.current_cost;
+                            let next_cost = current_cost + delta_cost;
+                            let telemetry = benchmark_moves.family_mut(MoveFamily::Transfer);
+                            telemetry.attempts += 1;
+                            telemetry.preview_seconds += preview_seconds;
 
-                let move_accepted =
-                    delta_cost < 0.0 || rng.random::<f64>() < (-delta_cost / temperature).exp();
+                            // Accept or reject the transfer
+                            let move_accepted = delta_cost < 0.0
+                                || rng.random::<f64>() < (-delta_cost / temperature).exp();
 
-                if move_accepted {
-                    // Debug: For zero temperature, we should only accept improving moves
-                    if temperature == 0.0 && delta_cost >= 0.0 {
-                        println!("WARNING: Hill climbing violation!");
-                        println!("  temperature: {}", temperature);
-                        println!("  delta_cost: {}", delta_cost);
-                        println!("  accepted non-improving move with zero temperature");
-                    }
+                            if move_accepted {
+                                let apply_started_at = get_current_time();
+                                current_state.apply_transfer(day, person_idx, from_group, to_group);
+                                telemetry.apply_seconds += get_elapsed_seconds_between(
+                                    apply_started_at,
+                                    get_current_time(),
+                                );
 
-                    let apply_started_at = get_current_time();
-                    current_state.apply_swap(day, p1_idx, p2_idx);
-                    telemetry.apply_seconds +=
-                        get_elapsed_seconds_between(apply_started_at, get_current_time());
-                    current_state.current_cost = next_cost;
+                                current_state.current_cost = next_cost;
 
-                    #[cfg(feature = "debug-invariant-checks")]
-                    {
-                        // Optional invariant check after applying move
-                        if state.logging.debug_validate_invariants {
-                            if let Err(e) = current_state.validate_no_duplicate_assignments() {
-                                if state.logging.debug_dump_invariant_context {
-                                    println!("INVARIANT VIOLATION CONTEXT:");
-                                    println!("  Iteration: {}", i);
-                                    println!(
-                                        "  Move: SWAP day={} p1={} p2={}",
-                                        day,
-                                        current_state.display_person_by_idx(p1_idx),
-                                        current_state.display_person_by_idx(p2_idx)
-                                    );
-                                    println!("  After move (first 3 groups of day):");
-                                    for (g_idx, g) in
-                                        current_state.schedule[day].iter().enumerate().take(3)
-                                    {
-                                        let names: Vec<String> = g
-                                            .iter()
-                                            .map(|&pid| current_state.display_person_by_idx(pid))
-                                            .collect();
-                                        println!(
-                                            "    group {} ({}): {:?}",
-                                            g_idx,
-                                            current_state.group_idx_to_id[g_idx].clone(),
-                                            names
-                                        );
+                                #[cfg(feature = "debug-invariant-checks")]
+                                {
+                                    // Optional invariant check after applying move
+                                    if state.logging.debug_validate_invariants {
+                                        if let Err(e) =
+                                            current_state.validate_no_duplicate_assignments()
+                                        {
+                                            if state.logging.debug_dump_invariant_context {
+                                                println!("INVARIANT VIOLATION CONTEXT:");
+                                                println!("  Iteration: {}", i);
+                                                println!(
+                                                "  Move: TRANSFER day={} person={} from={} to={}",
+                                                day,
+                                                current_state.display_person_by_idx(person_idx),
+                                                state.group_idx_to_id[from_group].clone(),
+                                                state.group_idx_to_id[to_group].clone()
+                                            );
+                                                for (g_idx, g) in current_state.schedule[day]
+                                                    .iter()
+                                                    .enumerate()
+                                                    .take(4)
+                                                {
+                                                    let names: Vec<String> = g
+                                                        .iter()
+                                                        .map(|&pid| {
+                                                            current_state.display_person_by_idx(pid)
+                                                        })
+                                                        .collect();
+                                                    println!(
+                                                        "    group {} ({}): {:?}",
+                                                        g_idx,
+                                                        current_state.group_idx_to_id[g_idx]
+                                                            .clone(),
+                                                        names
+                                                    );
+                                                }
+                                            }
+                                            return Err(e);
+                                        }
                                     }
                                 }
-                                return Err(e);
+
+                                if next_cost < best_cost {
+                                    // Recalculate to eliminate any incremental drift before
+                                    // recording a new best and to keep telemetry consistent.
+                                    let recalc_started_at = get_current_time();
+                                    current_state._recalculate_scores();
+                                    let verified_cost = current_state.calculate_cost();
+                                    telemetry.full_recalculation_count += 1;
+                                    telemetry.full_recalculation_seconds +=
+                                        get_elapsed_seconds_between(
+                                            recalc_started_at,
+                                            get_current_time(),
+                                        );
+                                    if verified_cost < best_cost {
+                                        best_cost = verified_cost;
+                                        best_state = current_state.clone();
+                                        no_improvement_counter = 0;
+                                        improvement_found = true;
+                                        best_score_timeline.push(BestScoreTimelinePoint {
+                                            iteration: i + 1,
+                                            elapsed_seconds: get_elapsed_seconds(start_time),
+                                            best_score: best_cost,
+                                        });
+                                    }
+                                }
+                            }
+
+                            if move_accepted {
+                                telemetry.accepted += 1;
+                                if delta_cost < 0.0 {
+                                    telemetry.improving_accepts += 1;
+                                    accepted_downhill_moves += 1;
+                                } else if delta_cost > 0.0 {
+                                    accepted_uphill_moves += 1;
+                                } else {
+                                    accepted_neutral_moves += 1;
+                                }
+                            } else {
+                                telemetry.rejected += 1;
+                            }
+
+                            // Record the move attempt
+                            metrics.record_transfer(delta_cost, move_accepted);
+                        }
+                    }
+                } else {
+                    // === REGULAR PERSON SWAP ===
+                    let swappable_people = &movable_people_by_day[day];
+
+                    if swappable_people.len() < 2 {
+                        continue;
+                    }
+
+                    // Pick two non-clique, non-immovable people for a swap
+                    let p1_idx = swappable_people[rng.random_range(0..swappable_people.len())];
+                    let mut p2_idx = swappable_people[rng.random_range(0..swappable_people.len())];
+                    while p1_idx == p2_idx {
+                        p2_idx = swappable_people[rng.random_range(0..swappable_people.len())];
+                    }
+
+                    // --- Evaluate the swap ---
+                    let preview_started_at = get_current_time();
+                    let delta_cost = current_state.calculate_swap_cost_delta(day, p1_idx, p2_idx);
+                    let preview_seconds =
+                        get_elapsed_seconds_between(preview_started_at, get_current_time());
+                    let current_cost = current_state.current_cost;
+                    let next_cost = current_cost + delta_cost;
+                    let telemetry = benchmark_moves.family_mut(MoveFamily::Swap);
+                    telemetry.attempts += 1;
+                    telemetry.preview_seconds += preview_seconds;
+
+                    let move_accepted =
+                        delta_cost < 0.0 || rng.random::<f64>() < (-delta_cost / temperature).exp();
+
+                    if move_accepted {
+                        // Debug: For zero temperature, we should only accept improving moves
+                        if temperature == 0.0 && delta_cost >= 0.0 {
+                            println!("WARNING: Hill climbing violation!");
+                            println!("  temperature: {}", temperature);
+                            println!("  delta_cost: {}", delta_cost);
+                            println!("  accepted non-improving move with zero temperature");
+                        }
+
+                        let apply_started_at = get_current_time();
+                        current_state.apply_swap(day, p1_idx, p2_idx);
+                        telemetry.apply_seconds +=
+                            get_elapsed_seconds_between(apply_started_at, get_current_time());
+                        current_state.current_cost = next_cost;
+
+                        #[cfg(feature = "debug-invariant-checks")]
+                        {
+                            // Optional invariant check after applying move
+                            if state.logging.debug_validate_invariants {
+                                if let Err(e) = current_state.validate_no_duplicate_assignments() {
+                                    if state.logging.debug_dump_invariant_context {
+                                        println!("INVARIANT VIOLATION CONTEXT:");
+                                        println!("  Iteration: {}", i);
+                                        println!(
+                                            "  Move: SWAP day={} p1={} p2={}",
+                                            day,
+                                            current_state.display_person_by_idx(p1_idx),
+                                            current_state.display_person_by_idx(p2_idx)
+                                        );
+                                        println!("  After move (first 3 groups of day):");
+                                        for (g_idx, g) in
+                                            current_state.schedule[day].iter().enumerate().take(3)
+                                        {
+                                            let names: Vec<String> = g
+                                                .iter()
+                                                .map(|&pid| {
+                                                    current_state.display_person_by_idx(pid)
+                                                })
+                                                .collect();
+                                            println!(
+                                                "    group {} ({}): {:?}",
+                                                g_idx,
+                                                current_state.group_idx_to_id[g_idx].clone(),
+                                                names
+                                            );
+                                        }
+                                    }
+                                    return Err(e);
+                                }
+                            }
+                        }
+
+                        if next_cost < best_cost {
+                            // Recalculate to eliminate any incremental drift before
+                            // recording a new best and to keep telemetry consistent.
+                            let recalc_started_at = get_current_time();
+                            current_state._recalculate_scores();
+                            let verified_cost = current_state.calculate_cost();
+                            telemetry.full_recalculation_count += 1;
+                            telemetry.full_recalculation_seconds +=
+                                get_elapsed_seconds_between(recalc_started_at, get_current_time());
+                            if verified_cost < best_cost {
+                                best_cost = verified_cost;
+                                best_state = current_state.clone();
+                                no_improvement_counter = 0;
+                                improvement_found = true;
+                                best_score_timeline.push(BestScoreTimelinePoint {
+                                    iteration: i + 1,
+                                    elapsed_seconds: get_elapsed_seconds(start_time),
+                                    best_score: best_cost,
+                                });
                             }
                         }
                     }
 
-                    if next_cost < best_cost {
-                        // Recalculate to eliminate any incremental drift before
-                        // recording a new best and to keep telemetry consistent.
-                        let recalc_started_at = get_current_time();
-                        current_state._recalculate_scores();
-                        let verified_cost = current_state.calculate_cost();
-                        telemetry.full_recalculation_count += 1;
-                        telemetry.full_recalculation_seconds +=
-                            get_elapsed_seconds_between(recalc_started_at, get_current_time());
-                        if verified_cost < best_cost {
-                            best_cost = verified_cost;
-                            best_state = current_state.clone();
-                            no_improvement_counter = 0;
-                            improvement_found = true;
-                            best_score_timeline.push(BestScoreTimelinePoint {
-                                iteration: i + 1,
-                                elapsed_seconds: get_elapsed_seconds(start_time),
-                                best_score: best_cost,
-                            });
+                    if move_accepted {
+                        telemetry.accepted += 1;
+                        if delta_cost < 0.0 {
+                            telemetry.improving_accepts += 1;
+                            accepted_downhill_moves += 1;
+                        } else if delta_cost > 0.0 {
+                            accepted_uphill_moves += 1;
+                        } else {
+                            accepted_neutral_moves += 1;
                         }
-                    }
-                }
-
-                if move_accepted {
-                    telemetry.accepted += 1;
-                    if delta_cost < 0.0 {
-                        telemetry.improving_accepts += 1;
-                        accepted_downhill_moves += 1;
-                    } else if delta_cost > 0.0 {
-                        accepted_uphill_moves += 1;
                     } else {
-                        accepted_neutral_moves += 1;
+                        telemetry.rejected += 1;
                     }
-                } else {
-                    telemetry.rejected += 1;
+
+                    // Record the move attempt
+                    metrics.record_swap(delta_cost, move_accepted);
                 }
 
-                // Record the move attempt
-                metrics.record_swap(delta_cost, move_accepted);
-            }
+                // --- Logging ---
+                // Commented out for performance - this was causing overhead during optimization
+                // if let Some(freq @ 1..) = state.logging.log_frequency {
+                //     if i > 0 && i % freq == 0 {
+                //         println!(
+                //             "Iter {}: Temp={:.4}, Contacts={}, Rep Penalty={}",
+                //             i,
+                //             temperature,
+                //             current_state.unique_contacts,
+                //             current_state.repetition_penalty
+                //         );
+                //     }
+                // }
 
-            // --- Logging ---
-            // Commented out for performance - this was causing overhead during optimization
-            // if let Some(freq @ 1..) = state.logging.log_frequency {
-            //     if i > 0 && i % freq == 0 {
-            //         println!(
-            //             "Iter {}: Temp={:.4}, Contacts={}, Rep Penalty={}",
-            //             i,
-            //             temperature,
-            //             current_state.unique_contacts,
-            //             current_state.repetition_penalty
-            //         );
-            //     }
-            // }
+                // --- Stop Conditions ---
+                if !improvement_found {
+                    no_improvement_counter += 1;
+                    max_no_improvement_streak =
+                        max_no_improvement_streak.max(no_improvement_counter);
+                }
 
-            // --- Stop Conditions ---
-            if !improvement_found {
-                no_improvement_counter += 1;
-                max_no_improvement_streak = max_no_improvement_streak.max(no_improvement_counter);
-            }
-
-            if let Some(no_improvement_limit) = self.no_improvement_iterations {
-                if no_improvement_counter >= no_improvement_limit {
-                    stop_reason = StopReason::NoImprovementLimitReached;
+                if self.stop_on_optimal_score && best_cost <= crate::models::OPTIMAL_SCORE_TOLERANCE
+                {
+                    stop_reason = StopReason::OptimalScoreReached;
                     if state.logging.log_stop_condition {
-                        println!(
+                        println!("Stopping early: optimal score of 0 reached.");
+                    }
+                    break;
+                }
+
+                if let Some(no_improvement_limit) = self.no_improvement_iterations {
+                    if no_improvement_counter >= no_improvement_limit {
+                        stop_reason = StopReason::NoImprovementLimitReached;
+                        if state.logging.log_stop_condition {
+                            println!(
                             "Stopping early: no improvement for {no_improvement_limit} iterations."
                         );
+                        }
+                        break;
                     }
-                    break;
                 }
-            }
 
-            if let Some(time_limit) = self.time_limit_seconds {
-                if elapsed_since_start >= time_limit as f64 {
-                    stop_reason = StopReason::TimeLimitReached;
-                    if state.logging.log_stop_condition {
-                        println!("Stopping early: time limit of {time_limit} seconds reached.");
+                if let Some(time_limit) = self.time_limit_seconds {
+                    if elapsed_since_start >= time_limit as f64 {
+                        stop_reason = StopReason::TimeLimitReached;
+                        if state.logging.log_stop_condition {
+                            println!("Stopping early: time limit of {time_limit} seconds reached.");
+                        }
+                        break;
                     }
-                    break;
                 }
-            }
 
-            // Update algorithm metrics (delta tracking handled in individual move blocks)
-            metrics.update_score(current_state.current_cost);
-            metrics.update_best_penalties(
-                current_state.repetition_penalty as f64 * current_state.w_repetition,
-                current_state.attribute_balance_penalty,
-                current_state.weighted_constraint_penalty,
-            );
+                // Update algorithm metrics (delta tracking handled in individual move blocks)
+                metrics.update_score(current_state.current_cost);
+                metrics.update_best_penalties(
+                    current_state.repetition_penalty as f64 * current_state.w_repetition,
+                    current_state.attribute_balance_penalty,
+                    current_state.weighted_constraint_penalty,
+                );
+            }
         }
 
         let search_finished_at = get_current_time();
@@ -1783,7 +1818,7 @@ impl Solver for SimulatedAnnealing {
             effective_seed: state.effective_seed,
             move_policy: state.move_policy.clone(),
             stop_reason,
-            iterations_completed: final_iteration + 1,
+            iterations_completed,
             no_improvement_count: no_improvement_counter,
             max_no_improvement_streak,
             reheats_performed: reheat_count,
@@ -1800,7 +1835,7 @@ impl Solver for SimulatedAnnealing {
             finalization_seconds,
             total_seconds,
             iterations_per_second: if search_seconds > 0.0 {
-                (final_iteration + 1) as f64 / search_seconds
+                iterations_completed as f64 / search_seconds
             } else {
                 0.0
             },
@@ -1828,9 +1863,9 @@ impl Solver for SimulatedAnnealing {
 
             let elapsed = get_elapsed_seconds(start_time);
             let elapsed_since_last_reheat = (elapsed - last_reheat_elapsed_seconds).max(0.0);
-            let remaining_time_for_cooling = self.time_limit_seconds.map(|limit| {
-                (limit as f64 - last_reheat_elapsed_seconds).max(0.0)
-            });
+            let remaining_time_for_cooling = self
+                .time_limit_seconds
+                .map(|limit| (limit as f64 - last_reheat_elapsed_seconds).max(0.0));
             let cooling_progress = cooling_progress_since_reheat(
                 iterations_since_last_reheat,
                 remaining_for_cooling,
@@ -1855,17 +1890,17 @@ impl Solver for SimulatedAnnealing {
                 search_efficiency,
             ) = metrics.calculate_metrics(elapsed);
 
-            let avg_time_per_iteration_ms = if final_iteration > 0 {
-                (elapsed * 1000.0) / final_iteration as f64
+            let avg_time_per_iteration_ms = if iterations_completed > 0 {
+                (elapsed * 1000.0) / iterations_completed as f64
             } else {
                 0.0
             };
 
             let final_progress = ProgressUpdate {
                 // Basic progress information
-                iteration: final_iteration + 1, // Report 1-based iteration numbers
+                iteration: iterations_completed,
                 max_iterations: displayed_total_iterations(
-                    final_iteration + 1,
+                    iterations_completed,
                     self.max_iterations,
                     elapsed,
                     self.time_limit_seconds,
@@ -1979,8 +2014,7 @@ impl Solver for SimulatedAnnealing {
 #[cfg(test)]
 mod tests {
     use super::{
-        cooling_progress_since_reheat, select_clique_source_group,
-        temperature_for_cooling_progress,
+        cooling_progress_since_reheat, select_clique_source_group, temperature_for_cooling_progress,
     };
     use crate::models::{
         ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
@@ -2004,6 +2038,7 @@ mod tests {
                 max_iterations: Some(1),
                 time_limit_seconds: None,
                 no_improvement_iterations: Some(0),
+                stop_on_optimal_score: true,
             },
             solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
                 initial_temperature: 10.0,
@@ -2023,10 +2058,16 @@ mod tests {
     #[test]
     fn runtime_budget_progress_can_be_driven_by_elapsed_time() {
         let progress = cooling_progress_since_reheat(50, 10_000, 2.7, Some(3.0));
-        assert!(progress > 0.85, "expected time progress to dominate, got {progress}");
+        assert!(
+            progress > 0.85,
+            "expected time progress to dominate, got {progress}"
+        );
 
         let temperature = temperature_for_cooling_progress(10.0, 0.1, progress);
-        assert!(temperature < 0.25, "expected near-final temperature, got {temperature}");
+        assert!(
+            temperature < 0.25,
+            "expected near-final temperature, got {temperature}"
+        );
     }
 
     #[test]

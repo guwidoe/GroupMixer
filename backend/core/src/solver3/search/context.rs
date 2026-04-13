@@ -20,6 +20,7 @@ pub(crate) struct SearchRunContext {
     pub(crate) max_iterations: u64,
     pub(crate) no_improvement_limit: Option<u64>,
     pub(crate) time_limit_seconds: Option<u64>,
+    pub(crate) stop_on_optimal_score: bool,
     pub(crate) allowed_sessions: Vec<usize>,
     pub(crate) correctness_lane_enabled: bool,
     pub(crate) correctness_sample_every_accepted_moves: u64,
@@ -72,6 +73,7 @@ impl SearchRunContext {
                 .unwrap_or(DEFAULT_MAX_ITERATIONS),
             no_improvement_limit: configuration.stop_conditions.no_improvement_iterations,
             time_limit_seconds: configuration.stop_conditions.time_limit_seconds,
+            stop_on_optimal_score: configuration.stop_conditions.stop_on_optimal_score,
             allowed_sessions: state
                 .compiled
                 .allowed_sessions
@@ -259,7 +261,13 @@ impl SearchProgressState {
         elapsed_seconds: f64,
         stop_reason: Option<StopReason>,
     ) -> ProgressUpdate {
-        let completed_iterations = self.iterations_completed.max(iteration.saturating_add(1));
+        let completed_iterations = if self.iterations_completed == 0
+            && matches!(stop_reason, Some(StopReason::OptimalScoreReached))
+        {
+            0
+        } else {
+            self.iterations_completed.max(iteration.saturating_add(1))
+        };
         let total_attempts = self.move_metrics.swap.attempts
             + self.move_metrics.transfer.attempts
             + self.move_metrics.clique_swap.attempts;
@@ -456,6 +464,7 @@ mod tests {
                 max_iterations: Some(123),
                 time_limit_seconds: Some(9),
                 no_improvement_iterations: Some(17),
+                stop_on_optimal_score: true,
             },
             solver_params: SolverParams::Solver3(Solver3Params::default()),
             logging: Default::default(),

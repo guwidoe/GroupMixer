@@ -54,6 +54,7 @@ fn solver3_config() -> SolverConfiguration {
             max_iterations: None,
             time_limit_seconds: None,
             no_improvement_iterations: None,
+            stop_on_optimal_score: true,
         },
         solver_params: SolverParams::Solver3(Solver3Params::default()),
         logging: Default::default(),

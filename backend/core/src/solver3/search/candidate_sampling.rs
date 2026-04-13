@@ -94,7 +94,8 @@ impl CandidateSampler {
         for family in ordered_families {
             let preview_started_at = get_current_time();
             let preview = self.sample_preview_for_family(state, family, allowed_sessions, rng);
-            let preview_seconds = get_elapsed_seconds_between(preview_started_at, get_current_time());
+            let preview_seconds =
+                get_elapsed_seconds_between(preview_started_at, get_current_time());
             if let Some(preview) = preview {
                 return Some((family, preview, preview_seconds));
             }
@@ -545,6 +546,7 @@ mod tests {
                 max_iterations: None,
                 time_limit_seconds: None,
                 no_improvement_iterations: None,
+                stop_on_optimal_score: true,
             },
             solver_params: SolverParams::Solver3(Solver3Params::default()),
             logging: Default::default(),

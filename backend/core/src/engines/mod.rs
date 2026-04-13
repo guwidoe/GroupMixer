@@ -1,8 +1,7 @@
 use crate::models::{
     ApiInput, BenchmarkObserver, Constraint, LoggingOptions, Objective, ProblemDefinition,
-    ProgressCallback, SimulatedAnnealingParams, Solver2Params, Solver3Params,
-    SolverConfiguration, SolverKind, SolverParams, SolverResult, StopConditions,
-    DEFAULT_SOLVER_KIND,
+    ProgressCallback, SimulatedAnnealingParams, Solver2Params, Solver3Params, SolverConfiguration,
+    SolverKind, SolverParams, SolverResult, StopConditions, DEFAULT_SOLVER_KIND,
 };
 use crate::runtime_target::runtime_target_iteration_cap;
 use crate::solver1::search::simulated_annealing::SimulatedAnnealing;
@@ -123,6 +122,7 @@ impl SolverEngine for Solver1Engine {
                 max_iterations: Some(10_000),
                 time_limit_seconds: Some(30),
                 no_improvement_iterations: None,
+                stop_on_optimal_score: true,
             },
             solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
                 initial_temperature: 1.0,
@@ -181,6 +181,7 @@ impl SolverEngine for Solver2Engine {
                 max_iterations: Some(10_000),
                 time_limit_seconds: Some(30),
                 no_improvement_iterations: Some(5_000),
+                stop_on_optimal_score: true,
             },
             solver_params: SolverParams::Solver2(Solver2Params::default()),
             logging: LoggingOptions::default(),
@@ -223,6 +224,7 @@ impl SolverEngine for Solver3Engine {
                 max_iterations: Some(10_000),
                 time_limit_seconds: Some(30),
                 no_improvement_iterations: Some(5_000),
+                stop_on_optimal_score: true,
             },
             solver_params: SolverParams::Solver3(Solver3Params::default()),
             logging: LoggingOptions::default(),
@@ -409,13 +411,15 @@ mod tests {
 
     #[test]
     fn solver2_run_executes_through_engine_registry() {
+        let mut solver = default_solver_configuration_for(SolverKind::Solver2);
+        solver.stop_conditions.stop_on_optimal_score = false;
         let input = ApiInput {
             initial_schedule: None,
             construction_seed_schedule: None,
             problem: simple_problem(),
             objectives: vec![],
             constraints: vec![],
-            solver: default_solver_configuration_for(SolverKind::Solver2),
+            solver,
         };
 
         let result = run_solver_with_engine(SolveRequest {
@@ -529,6 +533,67 @@ mod tests {
 
         assert!(result.stop_reason.is_some());
         assert_eq!(result.effective_seed.is_some(), true);
+    }
+
+    #[test]
+    fn all_solver_families_can_stop_on_optimal_zero_score() {
+        for kind in [
+            SolverKind::Solver1,
+            SolverKind::Solver2,
+            SolverKind::Solver3,
+        ] {
+            let input = ApiInput {
+                initial_schedule: None,
+                construction_seed_schedule: None,
+                problem: simple_problem(),
+                objectives: vec![],
+                constraints: vec![],
+                solver: default_solver_configuration_for(kind),
+            };
+
+            let result = run_solver_with_engine(SolveRequest {
+                input: &input,
+                progress_callback: None,
+                benchmark_observer: None,
+            })
+            .unwrap();
+
+            assert_eq!(
+                result.final_score, 0.0,
+                "{kind:?} should preserve the optimal score"
+            );
+            assert_eq!(
+                result.stop_reason,
+                Some(crate::models::StopReason::OptimalScoreReached),
+                "{kind:?} should stop once score zero is reached"
+            );
+        }
+    }
+
+    #[test]
+    fn zero_score_stop_can_be_disabled_per_run() {
+        let mut solver = default_solver_configuration_for(SolverKind::Solver3);
+        solver.stop_conditions.stop_on_optimal_score = false;
+        let input = ApiInput {
+            initial_schedule: None,
+            construction_seed_schedule: None,
+            problem: simple_problem(),
+            objectives: vec![],
+            constraints: vec![],
+            solver,
+        };
+
+        let result = run_solver_with_engine(SolveRequest {
+            input: &input,
+            progress_callback: None,
+            benchmark_observer: None,
+        })
+        .unwrap();
+
+        assert_ne!(
+            result.stop_reason,
+            Some(crate::models::StopReason::OptimalScoreReached)
+        );
     }
 
     #[test]

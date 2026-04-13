@@ -78,6 +78,7 @@ fn main() {
                 max_iterations: Some(1000),
                 time_limit_seconds: None,
                 no_improvement_iterations: None,
+                stop_on_optimal_score: true,
             },
             solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
                 initial_temperature: 1.0,

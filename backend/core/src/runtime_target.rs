@@ -61,7 +61,9 @@ pub(crate) fn displayed_total_iterations(
 
 #[cfg(test)]
 mod tests {
-    use super::{displayed_total_iterations, estimated_total_iterations, runtime_target_iteration_cap};
+    use super::{
+        displayed_total_iterations, estimated_total_iterations, runtime_target_iteration_cap,
+    };
     use crate::models::StopReason;
 
     #[test]
@@ -93,5 +95,4 @@ mod tests {
         );
         assert_eq!(displayed, 8_765);
     }
-
 }

@@ -88,12 +88,12 @@ use crate::solver_support::SolverError;
 pub mod algorithms;
 pub mod engines;
 pub mod models;
+mod runtime_target;
 pub mod solver;
 pub mod solver1;
 pub mod solver2;
 pub mod solver3;
 pub mod solver_support;
-mod runtime_target;
 
 /// Runs the optimization solver with the given input configuration.
 ///
@@ -676,6 +676,7 @@ mod callback_tests {
                     max_iterations: Some(1000),
                     time_limit_seconds: Some(5),
                     no_improvement_iterations: Some(500),
+                    stop_on_optimal_score: true,
                 },
                 solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
                     initial_temperature: 10.0,
@@ -780,6 +781,7 @@ mod callback_tests {
                     max_iterations: Some(2000),
                     time_limit_seconds: Some(10),
                     no_improvement_iterations: Some(1000),
+                    stop_on_optimal_score: true,
                 },
                 solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
                     initial_temperature: 50.0,

@@ -195,6 +195,7 @@ mod tests {
                     max_iterations: Some(50),
                     time_limit_seconds: None,
                     no_improvement_iterations: Some(10),
+                    stop_on_optimal_score: true,
                 },
                 solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
                     initial_temperature: 5.0,
@@ -356,7 +357,10 @@ mod tests {
         .unwrap();
 
         assert!(!schedules.borrow().is_empty());
-        assert!(schedules.borrow().iter().all(|schedule| schedule.get("session_0").is_some()));
+        assert!(schedules
+            .borrow()
+            .iter()
+            .all(|schedule| schedule.get("session_0").is_some()));
     }
 
     #[wasm_bindgen_test]

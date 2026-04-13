@@ -598,6 +598,8 @@ fn apply_effective_overrides(
         apply_search_policy_override(&mut input, search_policy)?;
     }
 
+    input.solver.stop_conditions.stop_on_optimal_score = false;
+
     Ok(input)
 }
 

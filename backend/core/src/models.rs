@@ -912,6 +912,7 @@ impl Default for TelemetryOptions {
 ///     max_iterations: Some(10_000),
 ///     time_limit_seconds: Some(30),
 ///     no_improvement_iterations: Some(1_000),
+///     stop_on_optimal_score: true,
 /// };
 /// ```
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
@@ -922,6 +923,25 @@ pub struct StopConditions {
     pub time_limit_seconds: Option<u64>,
     /// Stop if no improvement found for this many iterations
     pub no_improvement_iterations: Option<u64>,
+    /// Stop immediately when the best-known score reaches the theoretical optimum of zero.
+    ///
+    /// Defaults to `true` for user-facing solve runs. Benchmark lanes can disable this so
+    /// fixed-budget measurements continue consuming their configured search budget even when an
+    /// optimal state is discovered early.
+    #[serde(default = "default_stop_on_optimal_score")]
+    pub stop_on_optimal_score: bool,
+}
+
+pub const OPTIMAL_SCORE_TOLERANCE: f64 = 1e-9;
+
+pub const fn default_stop_on_optimal_score() -> bool {
+    true
+}
+
+impl StopConditions {
+    pub fn should_stop_for_optimal_score(&self, score: f64) -> bool {
+        self.stop_on_optimal_score && score <= OPTIMAL_SCORE_TOLERANCE
+    }
 }
 
 /// Algorithm-specific parameters for different solver types.
@@ -1277,6 +1297,7 @@ pub enum StopReason {
     TimeLimitReached,
     NoImprovementLimitReached,
     ProgressCallbackRequestedStop,
+    OptimalScoreReached,
 }
 
 /// Per-move-family benchmark telemetry summary.

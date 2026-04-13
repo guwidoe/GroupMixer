@@ -366,6 +366,7 @@ mod tests {
                 max_iterations: Some(100),
                 time_limit_seconds: Some(5),
                 no_improvement_iterations: Some(25),
+                stop_on_optimal_score: true,
             },
             solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
                 initial_temperature: 1.0,

@@ -545,6 +545,7 @@ pub fn seeded_solver_config(max_iterations: u64, seed: u64) -> SolverConfigurati
             max_iterations: Some(max_iterations),
             time_limit_seconds: None,
             no_improvement_iterations: None,
+            stop_on_optimal_score: false,
         },
         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
             initial_temperature: 10.0,

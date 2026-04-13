@@ -126,147 +126,162 @@ impl SearchEngine {
         const TIME_REFRESH_INTERVAL: u64 = 64;
         let mut cached_elapsed_seconds: f64 = 0.0;
 
-        for iteration in 0..run_context.max_iterations {
-            if iteration % TIME_REFRESH_INTERVAL == 0 {
-                cached_elapsed_seconds = get_elapsed_seconds(search_started_at);
-            }
+        if run_context.stop_on_optimal_score
+            && search.best_score <= crate::models::OPTIMAL_SCORE_TOLERANCE
+        {
+            stop_reason = StopReason::OptimalScoreReached;
+        }
 
-            if time_limit_exceeded(cached_elapsed_seconds, run_context.time_limit_seconds) {
-                stop_reason = StopReason::TimeLimitReached;
-                break;
-            }
+        if stop_reason != StopReason::OptimalScoreReached {
+            for iteration in 0..run_context.max_iterations {
+                if iteration % TIME_REFRESH_INTERVAL == 0 {
+                    cached_elapsed_seconds = get_elapsed_seconds(search_started_at);
+                }
 
-            let progress = cooling_progress(
-                iteration,
-                run_context.max_iterations,
-                cached_elapsed_seconds,
-                run_context.time_limit_seconds,
-            );
-            let temperature = record_to_record_threshold_for_progress(progress);
+                if time_limit_exceeded(cached_elapsed_seconds, run_context.time_limit_seconds) {
+                    stop_reason = StopReason::TimeLimitReached;
+                    break;
+                }
 
-            if allow_memetic_burst
-                && !memetic_burst_attempted
-                && should_attempt_memetic_burst(
-                    search.no_improvement_count,
-                    run_context.time_limit_seconds,
-                    cached_elapsed_seconds,
-                )
-            {
-                memetic_burst_attempted = true;
-                if let Some(offspring_state) = self.try_memetic_offspring_burst(
-                    configuration,
-                    &search.best_state,
-                    &run_context,
+                let progress = cooling_progress(
                     iteration,
-                    progress,
-                    false,
-                )? {
-                    let offspring_score = offspring_state.total_score;
-                    if offspring_score <= search.best_score + temperature {
-                        search.current_state = offspring_state;
-                        cached_elapsed_seconds = get_elapsed_seconds(search_started_at);
-                        search.refresh_best_from_current(iteration, cached_elapsed_seconds);
-                        search.record_acceptance_result(true);
-                        let ils_memory =
-                            search
-                                .policy_memory
-                                .ils
-                                .get_or_insert(IteratedLocalSearchMemory {
-                                    perturbation_round: 0,
-                                });
-                        ils_memory.perturbation_round += 1;
-                    }
-                }
-            }
+                    run_context.max_iterations,
+                    cached_elapsed_seconds,
+                    run_context.time_limit_seconds,
+                );
+                let temperature = record_to_record_threshold_for_progress(progress);
 
-            if let Some((family, preview, preview_seconds)) = candidate_sampler
-                .select_previewed_move(
-                    &search.current_state,
-                    &family_selector,
-                    &run_context.allowed_sessions,
-                    &mut rng,
-                )
-            {
-                let delta_cost = preview.delta_score();
-                search.record_preview_attempt(family, preview_seconds, delta_cost);
-                let current_score = search.current_state.total_score;
-                let candidate_score = current_score + delta_cost;
-
-                let acceptance = acceptance_policy.decide(RecordToRecordInputs {
-                    current_score,
-                    best_score: search.best_score,
-                    candidate_score,
-                    progress,
-                });
-
-                if acceptance.accepted {
-                    let apply_started_at = get_current_time();
-                    apply_previewed_move(&mut search.current_state, &preview)?;
-                    let apply_seconds =
-                        get_elapsed_seconds_between(apply_started_at, get_current_time());
-                    search.record_accepted_move(
-                        family,
-                        apply_seconds,
-                        delta_cost,
-                        acceptance.escaped_local_optimum,
-                    );
-
-                    maybe_run_sampled_correctness_check(
-                        &run_context,
-                        &search.current_state,
-                        search.total_accepted_moves(),
-                        family,
-                        &preview,
-                    )?;
-
-                    search.refresh_best_from_current(iteration, cached_elapsed_seconds);
-                    search.record_acceptance_result(true);
-                } else {
-                    search.record_rejected_move(family);
-                }
-            } else {
-                search.record_no_candidate();
-            }
-
-            search.finish_iteration(iteration);
-
-            if let Some(callback) = progress_callback {
-                let current_time = get_current_time();
-                let elapsed_since_last_callback =
-                    get_elapsed_seconds_between(last_progress_callback_at, current_time);
-
-                if should_emit_progress_callback(iteration, elapsed_since_last_callback) {
-                    let callback_elapsed_seconds = get_elapsed_seconds(search_started_at);
-                    let progress = search.to_progress_update(
+                if allow_memetic_burst
+                    && !memetic_burst_attempted
+                    && should_attempt_memetic_burst(
+                        search.no_improvement_count,
+                        run_context.time_limit_seconds,
+                        cached_elapsed_seconds,
+                    )
+                {
+                    memetic_burst_attempted = true;
+                    if let Some(offspring_state) = self.try_memetic_offspring_burst(
+                        configuration,
+                        &search.best_state,
                         &run_context,
                         iteration,
-                        temperature,
-                        callback_elapsed_seconds,
-                        None,
-                    );
+                        progress,
+                        false,
+                    )? {
+                        let offspring_score = offspring_state.total_score;
+                        if offspring_score <= search.best_score + temperature {
+                            search.current_state = offspring_state;
+                            cached_elapsed_seconds = get_elapsed_seconds(search_started_at);
+                            search.refresh_best_from_current(iteration, cached_elapsed_seconds);
+                            search.record_acceptance_result(true);
+                            let ils_memory =
+                                search
+                                    .policy_memory
+                                    .ils
+                                    .get_or_insert(IteratedLocalSearchMemory {
+                                        perturbation_round: 0,
+                                    });
+                            ils_memory.perturbation_round += 1;
+                        }
+                    }
+                }
 
-                    if !(callback)(&progress) {
-                        stop_reason = StopReason::ProgressCallbackRequestedStop;
-                        let final_progress = search.to_progress_update(
+                if let Some((family, preview, preview_seconds)) = candidate_sampler
+                    .select_previewed_move(
+                        &search.current_state,
+                        &family_selector,
+                        &run_context.allowed_sessions,
+                        &mut rng,
+                    )
+                {
+                    let delta_cost = preview.delta_score();
+                    search.record_preview_attempt(family, preview_seconds, delta_cost);
+                    let current_score = search.current_state.total_score;
+                    let candidate_score = current_score + delta_cost;
+
+                    let acceptance = acceptance_policy.decide(RecordToRecordInputs {
+                        current_score,
+                        best_score: search.best_score,
+                        candidate_score,
+                        progress,
+                    });
+
+                    if acceptance.accepted {
+                        let apply_started_at = get_current_time();
+                        apply_previewed_move(&mut search.current_state, &preview)?;
+                        let apply_seconds =
+                            get_elapsed_seconds_between(apply_started_at, get_current_time());
+                        search.record_accepted_move(
+                            family,
+                            apply_seconds,
+                            delta_cost,
+                            acceptance.escaped_local_optimum,
+                        );
+
+                        maybe_run_sampled_correctness_check(
+                            &run_context,
+                            &search.current_state,
+                            search.total_accepted_moves(),
+                            family,
+                            &preview,
+                        )?;
+
+                        search.refresh_best_from_current(iteration, cached_elapsed_seconds);
+                        search.record_acceptance_result(true);
+                    } else {
+                        search.record_rejected_move(family);
+                    }
+                } else {
+                    search.record_no_candidate();
+                }
+
+                search.finish_iteration(iteration);
+
+                if let Some(callback) = progress_callback {
+                    let current_time = get_current_time();
+                    let elapsed_since_last_callback =
+                        get_elapsed_seconds_between(last_progress_callback_at, current_time);
+
+                    if should_emit_progress_callback(iteration, elapsed_since_last_callback) {
+                        let callback_elapsed_seconds = get_elapsed_seconds(search_started_at);
+                        let progress = search.to_progress_update(
                             &run_context,
                             iteration,
                             temperature,
                             callback_elapsed_seconds,
-                            Some(stop_reason),
+                            None,
                         );
-                        let _ = (callback)(&final_progress);
-                        final_progress_emitted = true;
+
+                        if !(callback)(&progress) {
+                            stop_reason = StopReason::ProgressCallbackRequestedStop;
+                            let final_progress = search.to_progress_update(
+                                &run_context,
+                                iteration,
+                                temperature,
+                                callback_elapsed_seconds,
+                                Some(stop_reason),
+                            );
+                            let _ = (callback)(&final_progress);
+                            final_progress_emitted = true;
+                            break;
+                        }
+
+                        last_progress_callback_at = current_time;
+                    }
+                }
+
+                if run_context.stop_on_optimal_score
+                    && search.best_score <= crate::models::OPTIMAL_SCORE_TOLERANCE
+                {
+                    stop_reason = StopReason::OptimalScoreReached;
+                    break;
+                }
+
+                if let Some(limit) = run_context.no_improvement_limit {
+                    if search.no_improvement_count >= limit {
+                        stop_reason = StopReason::NoImprovementLimitReached;
                         break;
                     }
-
-                    last_progress_callback_at = current_time;
-                }
-            }
-
-            if let Some(limit) = run_context.no_improvement_limit {
-                if search.no_improvement_count >= limit {
-                    stop_reason = StopReason::NoImprovementLimitReached;
-                    break;
                 }
             }
         }
