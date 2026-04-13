@@ -17,6 +17,7 @@ use super::super::moves::{
 use super::super::runtime_state::RuntimeState;
 use super::family_selection::MoveFamilySelector;
 use super::repeat_guidance::RepeatGuidanceState;
+use super::tabu::SgpWeekPairTabuState;
 
 const MAX_RANDOM_CANDIDATE_ATTEMPTS: usize = 24;
 const MAX_RANDOM_TARGET_ATTEMPTS: usize = 24;
@@ -116,6 +117,9 @@ pub(crate) struct SwapSamplingOptions<'a> {
     pub(crate) repeat_guidance: Option<&'a RepeatGuidanceState>,
     pub(crate) repeat_guided_swap_probability: f64,
     pub(crate) repeat_guided_swap_candidate_preview_budget: usize,
+    pub(crate) tabu: Option<&'a SgpWeekPairTabuState>,
+    pub(crate) tabu_retry_cap: usize,
+    pub(crate) current_iteration: u64,
 }
 
 impl Default for SwapSamplingOptions<'_> {
@@ -124,6 +128,9 @@ impl Default for SwapSamplingOptions<'_> {
             repeat_guidance: None,
             repeat_guided_swap_probability: 0.0,
             repeat_guided_swap_candidate_preview_budget: 0,
+            tabu: None,
+            tabu_retry_cap: 0,
+            current_iteration: 0,
         }
     }
 }
@@ -216,6 +223,7 @@ impl CandidateSampler {
                     allowed_sessions,
                     guidance,
                     swap_sampling.repeat_guided_swap_candidate_preview_budget,
+                    swap_sampling,
                     rng,
                 )
             })
@@ -233,7 +241,7 @@ impl CandidateSampler {
         }
 
         Some((
-            self.sample_random_swap_preview(state, allowed_sessions, rng),
+            self.sample_random_swap_preview(state, allowed_sessions, swap_sampling, rng),
             telemetry,
         ))
     }
@@ -242,12 +250,14 @@ impl CandidateSampler {
         &self,
         state: &RuntimeState,
         allowed_sessions: &[usize],
+        swap_sampling: SwapSamplingOptions<'_>,
         rng: &mut ChaCha12Rng,
     ) -> Option<SwapRuntimePreview> {
         if allowed_sessions.is_empty() || state.compiled.num_groups < 2 {
             return None;
         }
 
+        let mut tabu_retry_count = 0usize;
         for _ in 0..MAX_RANDOM_CANDIDATE_ATTEMPTS {
             let session_idx = allowed_sessions[rng.random_range(0..allowed_sessions.len())];
             let left_group_idx = rng.random_range(0..state.compiled.num_groups);
@@ -266,6 +276,20 @@ impl CandidateSampler {
 
             let left_person_idx = left_members[rng.random_range(0..left_members.len())];
             let right_person_idx = right_members[rng.random_range(0..right_members.len())];
+            if should_skip_tabu_swap_proposal(
+                &swap_sampling,
+                state,
+                session_idx,
+                left_person_idx,
+                right_person_idx,
+                &mut tabu_retry_count,
+            ) {
+                if tabu_retry_count >= swap_sampling.tabu_retry_cap {
+                    return None;
+                }
+                continue;
+            }
+
             let swap = SwapMove::new(session_idx, left_person_idx, right_person_idx);
             if let Ok(preview) = preview_swap_runtime_lightweight(state, &swap) {
                 return Some(preview);
@@ -281,6 +305,7 @@ impl CandidateSampler {
         allowed_sessions: &[usize],
         guidance: &RepeatGuidanceState,
         candidate_preview_budget: usize,
+        swap_sampling: SwapSamplingOptions<'_>,
         rng: &mut ChaCha12Rng,
     ) -> Option<GuidedSwapSamplingPreviewResult> {
         if candidate_preview_budget == 0 || guidance.active_pair_count() == 0 {
@@ -315,6 +340,7 @@ impl CandidateSampler {
 
         let mut best_preview = None;
         let mut previewed_candidates = 0usize;
+        let mut tabu_retry_count = 0usize;
         for target_group_idx in target_groups {
             let target_slot = state.group_slot(session_idx, target_group_idx);
             let target_members = &state.group_members[target_slot];
@@ -326,6 +352,23 @@ impl CandidateSampler {
             for offset in 0..target_members.len() {
                 let target_person_idx = target_members[(start + offset) % target_members.len()];
                 if target_person_idx == anchor_person_idx {
+                    continue;
+                }
+
+                if should_skip_tabu_swap_proposal(
+                    &swap_sampling,
+                    state,
+                    session_idx,
+                    anchor_person_idx,
+                    target_person_idx,
+                    &mut tabu_retry_count,
+                ) {
+                    if tabu_retry_count >= swap_sampling.tabu_retry_cap {
+                        return Some(GuidedSwapSamplingPreviewResult {
+                            preview: best_preview,
+                            previewed_candidates: previewed_candidates as u64,
+                        });
+                    }
                     continue;
                 }
 
@@ -546,6 +589,33 @@ impl CandidateSampler {
 
         None
     }
+}
+
+#[inline]
+fn should_skip_tabu_swap_proposal(
+    swap_sampling: &SwapSamplingOptions<'_>,
+    state: &RuntimeState,
+    session_idx: usize,
+    left_person_idx: usize,
+    right_person_idx: usize,
+    tabu_retry_count: &mut usize,
+) -> bool {
+    let Some(tabu) = swap_sampling.tabu else {
+        return false;
+    };
+
+    if !tabu.is_tabu(
+        &state.compiled,
+        session_idx,
+        left_person_idx,
+        right_person_idx,
+        swap_sampling.current_iteration,
+    ) {
+        return false;
+    }
+
+    *tabu_retry_count = tabu_retry_count.saturating_add(1);
+    true
 }
 
 fn pick_repeat_meeting_session(
@@ -791,6 +861,7 @@ mod tests {
     use super::super::super::runtime_state::RuntimeState;
     use super::super::family_selection::MoveFamilySelector;
     use super::super::repeat_guidance::RepeatGuidanceState;
+    use super::super::tabu::{SgpWeekPairTabuConfig, SgpWeekPairTabuState};
     use super::{CandidateSampler, SearchMovePreview, SwapSamplingOptions};
 
     fn solver3_config() -> SolverConfiguration {
@@ -904,6 +975,15 @@ mod tests {
         RuntimeState::from_input(&input).unwrap()
     }
 
+    fn tabu_config() -> SgpWeekPairTabuConfig {
+        SgpWeekPairTabuConfig {
+            tenure_min: 10,
+            tenure_max: 10,
+            retry_cap: 4,
+            aspiration_enabled: true,
+        }
+    }
+
     #[test]
     fn sampler_returns_none_when_no_sessions_allowed() {
         let state = simple_runtime_state();
@@ -933,6 +1013,37 @@ mod tests {
     }
 
     #[test]
+    fn random_swap_sampler_returns_none_when_all_proposals_are_tabu() {
+        let state = repeated_pair_runtime_state();
+        let selector = MoveFamilySelector::new(&crate::models::MovePolicy {
+            forced_family: Some(crate::models::MoveFamily::Swap),
+            ..Default::default()
+        });
+        let mut tabu = SgpWeekPairTabuState::new(&state.compiled, tabu_config());
+        let mut tabu_rng = ChaCha12Rng::seed_from_u64(13);
+        for &(left, right) in &[(0, 2), (0, 3), (1, 2), (1, 3)] {
+            tabu.record_swap(&state.compiled, 0, left, right, 0, &mut tabu_rng);
+        }
+
+        let mut rng = ChaCha12Rng::seed_from_u64(7);
+        let sampler = CandidateSampler;
+        let sampled = sampler.select_previewed_move(
+            &state,
+            &selector,
+            &[0],
+            SwapSamplingOptions {
+                tabu: Some(&tabu),
+                tabu_retry_cap: 4,
+                current_iteration: 0,
+                ..Default::default()
+            },
+            &mut rng,
+        );
+
+        assert!(sampled.selection.is_none());
+    }
+
+    #[test]
     fn repeat_guided_sampler_honors_allowed_sessions() {
         let state = repeated_pair_runtime_state();
         let guidance = RepeatGuidanceState::build_from_state(&state).unwrap();
@@ -952,6 +1063,7 @@ mod tests {
                     repeat_guidance: Some(&guidance),
                     repeat_guided_swap_probability: 1.0,
                     repeat_guided_swap_candidate_preview_budget: 8,
+                    ..Default::default()
                 },
                 &mut rng,
             )
@@ -979,6 +1091,7 @@ mod tests {
                 repeat_guidance: None,
                 repeat_guided_swap_probability: 1.0,
                 repeat_guided_swap_candidate_preview_budget: 8,
+                ..Default::default()
             },
             &mut rng,
         );
@@ -1006,6 +1119,7 @@ mod tests {
                     repeat_guidance: Some(&guidance),
                     repeat_guided_swap_probability: 1.0,
                     repeat_guided_swap_candidate_preview_budget: 8,
+                    ..Default::default()
                 },
                 &mut rng,
             )
@@ -1026,5 +1140,41 @@ mod tests {
             }
             other => panic!("expected swap preview, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn guided_swap_sampler_returns_none_when_guided_and_random_proposals_are_tabu() {
+        let state = repeated_pair_runtime_state();
+        let guidance = RepeatGuidanceState::build_from_state(&state).unwrap();
+        let selector = MoveFamilySelector::new(&crate::models::MovePolicy {
+            forced_family: Some(crate::models::MoveFamily::Swap),
+            ..Default::default()
+        });
+        let mut tabu = SgpWeekPairTabuState::new(&state.compiled, tabu_config());
+        let mut tabu_rng = ChaCha12Rng::seed_from_u64(17);
+        for session_idx in [0usize, 1usize] {
+            for &(left, right) in &[(0, 2), (0, 3), (1, 2), (1, 3)] {
+                tabu.record_swap(&state.compiled, session_idx, left, right, 0, &mut tabu_rng);
+            }
+        }
+
+        let mut rng = ChaCha12Rng::seed_from_u64(3);
+        let sampler = CandidateSampler;
+        let sampled = sampler.select_previewed_move(
+            &state,
+            &selector,
+            &[0, 1],
+            SwapSamplingOptions {
+                repeat_guidance: Some(&guidance),
+                repeat_guided_swap_probability: 1.0,
+                repeat_guided_swap_candidate_preview_budget: 8,
+                tabu: Some(&tabu),
+                tabu_retry_cap: 4,
+                current_iteration: 0,
+            },
+            &mut rng,
+        );
+
+        assert!(sampled.selection.is_none());
     }
 }

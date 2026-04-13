@@ -129,6 +129,9 @@ pub(crate) fn run(
                     repeat_guided_swap_probability: run_context.repeat_guided_swap_probability,
                     repeat_guided_swap_candidate_preview_budget: run_context
                         .repeat_guided_swap_candidate_preview_budget,
+                    tabu: None,
+                    tabu_retry_cap: 0,
+                    current_iteration: iteration,
                 },
                 &mut rng,
             );
