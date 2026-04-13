@@ -13,7 +13,33 @@ pub struct TrajectoryExport {
     pub solver_family: String,
     pub total_runtime_seconds: f64,
     pub point_count: usize,
+    pub summary: TrajectorySummary,
     pub best_score_timeline: Vec<BestScoreTimelinePoint>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct TrajectorySummary {
+    pub improvement_count: u64,
+    pub last_improvement_iteration: u64,
+    pub last_improvement_elapsed_seconds: f64,
+    pub last_improvement_fraction_of_run: f64,
+    pub last_improvement_fraction_of_runtime_budget: Option<f64>,
+    pub last_improvement_fraction_of_iteration_budget: Option<f64>,
+    pub iterations_after_last_improvement: Option<u64>,
+    pub seconds_after_last_improvement: f64,
+    pub fraction_of_run_after_last_improvement: f64,
+    pub improvements_after_25_percent_run: u64,
+    pub improvements_after_50_percent_run: u64,
+    pub improvements_after_75_percent_run: u64,
+    pub checkpoint_scores: Vec<TrajectoryCheckpoint>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct TrajectoryCheckpoint {
+    pub fraction_of_run: f64,
+    pub iteration: u64,
+    pub elapsed_seconds: f64,
+    pub best_score: f64,
 }
 
 pub fn select_case<'a>(run_report: &'a RunReport, case_id: Option<&str>) -> Result<&'a CaseRunArtifact> {
@@ -50,6 +76,7 @@ pub fn export_trajectory(run_report: &RunReport, case_id: Option<&str>) -> Resul
         solver_family: case.solver.solver_family.clone(),
         total_runtime_seconds: case.runtime_seconds,
         point_count: telemetry.best_score_timeline.len(),
+        summary: summarize_trajectory(case, &telemetry.best_score_timeline),
         best_score_timeline: telemetry.best_score_timeline.clone(),
     })
 }
@@ -82,6 +109,7 @@ pub fn render_trajectory_text(
     let last_elapsed = timeline.last().map(|point| point.elapsed_seconds).unwrap_or(0.0);
     let width = width.max(8);
     let sparkline = render_sparkline(timeline, width);
+    let summary = &export.summary;
 
     let mut lines = vec![
         format!(
@@ -94,32 +122,133 @@ pub fn render_trajectory_text(
         format!("- initial_score: {:.4}", initial_score),
         format!("- best_score: {:.4}", best_score),
         format!("- last_timeline_elapsed_seconds: {:.6}", last_elapsed),
+        format!("- improvement_count: {}", summary.improvement_count),
+        format!(
+            "- last_improvement_iteration: {}",
+            summary.last_improvement_iteration
+        ),
+        format!(
+            "- last_improvement_elapsed_seconds: {:.6}",
+            summary.last_improvement_elapsed_seconds
+        ),
+        format!(
+            "- last_improvement_fraction_of_run: {:.4}",
+            summary.last_improvement_fraction_of_run
+        ),
+        format!(
+            "- fraction_of_run_after_last_improvement: {:.4}",
+            summary.fraction_of_run_after_last_improvement
+        ),
+        format!(
+            "- seconds_after_last_improvement: {:.6}",
+            summary.seconds_after_last_improvement
+        ),
         format!("- sparkline (higher blocks = lower/better score): {}", sparkline),
         "Checkpoint scores:".to_string(),
     ];
 
-    for (fraction, score, elapsed, iteration) in checkpoint_rows(timeline) {
+    if let Some(value) = summary.last_improvement_fraction_of_runtime_budget {
+        lines.push(format!(
+            "- last_improvement_fraction_of_runtime_budget: {:.4}",
+            value
+        ));
+    }
+    if let Some(value) = summary.last_improvement_fraction_of_iteration_budget {
+        lines.push(format!(
+            "- last_improvement_fraction_of_iteration_budget: {:.4}",
+            value
+        ));
+    }
+    if let Some(value) = summary.iterations_after_last_improvement {
+        lines.push(format!("- iterations_after_last_improvement: {}", value));
+    }
+    lines.push(format!(
+        "- improvements_after_25/50/75_percent_run: {}/{}/{}",
+        summary.improvements_after_25_percent_run,
+        summary.improvements_after_50_percent_run,
+        summary.improvements_after_75_percent_run,
+    ));
+
+    for checkpoint in &summary.checkpoint_scores {
         lines.push(format!(
             "- {:>3}%  score={:.4}  elapsed={:.6}s  iteration={}",
-            (fraction * 100.0).round() as u64,
-            score,
-            elapsed,
-            iteration
+            (checkpoint.fraction_of_run * 100.0).round() as u64,
+            checkpoint.best_score,
+            checkpoint.elapsed_seconds,
+            checkpoint.iteration
         ));
     }
 
     Ok(lines.join("\n"))
 }
 
-fn checkpoint_rows(timeline: &[BestScoreTimelinePoint]) -> Vec<(f64, f64, f64, u64)> {
+fn checkpoint_rows(timeline: &[BestScoreTimelinePoint]) -> Vec<TrajectoryCheckpoint> {
     let fractions = [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0];
     fractions
         .iter()
         .map(|fraction| {
             let point = point_at_fraction(timeline, *fraction);
-            (*fraction, point.best_score, point.elapsed_seconds, point.iteration)
+            TrajectoryCheckpoint {
+                fraction_of_run: *fraction,
+                iteration: point.iteration,
+                elapsed_seconds: point.elapsed_seconds,
+                best_score: point.best_score,
+            }
         })
         .collect()
+}
+
+fn summarize_trajectory(
+    case: &CaseRunArtifact,
+    timeline: &[BestScoreTimelinePoint],
+) -> TrajectorySummary {
+    let improvement_count = timeline.len().saturating_sub(1) as u64;
+    let last_point = timeline.last().unwrap_or(&timeline[0]);
+    let total_runtime_seconds = case.runtime_seconds.max(last_point.elapsed_seconds);
+    let last_improvement_fraction_of_run = if total_runtime_seconds <= 0.0 {
+        1.0
+    } else {
+        (last_point.elapsed_seconds / total_runtime_seconds).clamp(0.0, 1.0)
+    };
+    let seconds_after_last_improvement =
+        (total_runtime_seconds - last_point.elapsed_seconds).max(0.0);
+    let fraction_of_run_after_last_improvement = if total_runtime_seconds <= 0.0 {
+        0.0
+    } else {
+        (seconds_after_last_improvement / total_runtime_seconds).clamp(0.0, 1.0)
+    };
+    let runtime_budget = case.effective_budget.time_limit_seconds.filter(|limit| *limit > 0);
+    let iteration_budget = case.effective_budget.max_iterations.filter(|limit| *limit > 0);
+    let completed_iterations = case.iteration_count.unwrap_or(last_point.iteration);
+
+    let improvements_after_fraction = |threshold: f64| -> u64 {
+        timeline
+            .iter()
+            .skip(1)
+            .filter(|point| {
+                total_runtime_seconds > 0.0
+                    && point.elapsed_seconds >= total_runtime_seconds * threshold
+            })
+            .count() as u64
+    };
+
+    TrajectorySummary {
+        improvement_count,
+        last_improvement_iteration: last_point.iteration,
+        last_improvement_elapsed_seconds: last_point.elapsed_seconds,
+        last_improvement_fraction_of_run,
+        last_improvement_fraction_of_runtime_budget: runtime_budget
+            .map(|budget| (last_point.elapsed_seconds / budget as f64).clamp(0.0, 1.0)),
+        last_improvement_fraction_of_iteration_budget: iteration_budget
+            .map(|budget| (last_point.iteration as f64 / budget as f64).clamp(0.0, 1.0)),
+        iterations_after_last_improvement: Some(completed_iterations.saturating_sub(last_point.iteration)),
+        seconds_after_last_improvement,
+        fraction_of_run_after_last_improvement,
+        improvements_after_25_percent_run: improvements_after_fraction(0.25),
+        improvements_after_50_percent_run: improvements_after_fraction(0.50),
+        improvements_after_75_percent_run: improvements_after_fraction(0.75),
+        checkpoint_scores: checkpoint_rows(timeline),
+    }
 }
 
 fn render_sparkline(timeline: &[BestScoreTimelinePoint], width: usize) -> String {
@@ -332,6 +461,7 @@ mod tests {
         let text = render_trajectory_text(&sample_report(), None, 16).expect("trajectory text");
         assert!(text.contains("Trajectory for case 'stretch.social-golfer-32x8x10'"));
         assert!(text.contains("sparkline"));
+        assert!(text.contains("improvement_count"));
         assert!(text.contains("Checkpoint scores:"));
         assert!(text.contains("100%"));
     }
@@ -341,5 +471,15 @@ mod tests {
         let csv = export_trajectory_csv(&sample_report(), None).expect("trajectory csv");
         assert!(csv.contains("iteration,elapsed_seconds,best_score"));
         assert!(csv.contains("150,7.000000000,50"));
+    }
+
+    #[test]
+    fn trajectory_export_includes_plateau_summary_metrics() {
+        let export = export_trajectory(&sample_report(), None).expect("trajectory export");
+        assert_eq!(export.summary.improvement_count, 3);
+        assert_eq!(export.summary.last_improvement_iteration, 150);
+        assert!((export.summary.last_improvement_elapsed_seconds - 7.0).abs() < 1e-9);
+        assert_eq!(export.summary.improvements_after_75_percent_run, 0);
+        assert_eq!(export.summary.checkpoint_scores.len(), 7);
     }
 }
