@@ -2,6 +2,7 @@ use rand::RngExt;
 use rand_chacha::ChaCha12Rng;
 
 use super::super::compiled_problem::CompiledProblem;
+use super::super::moves::PairContactUpdate;
 use super::super::runtime_state::RuntimeState;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,6 +45,19 @@ impl RepeatGuidanceState {
     pub(crate) fn rebuild_from_state(&mut self, state: &RuntimeState) {
         if let Some(rebuilt) = Self::build_from_state(state) {
             *self = rebuilt;
+        }
+    }
+
+    pub(crate) fn apply_pair_contact_updates(
+        &mut self,
+        compiled: &CompiledProblem,
+        updates: &[PairContactUpdate],
+    ) {
+        for update in updates {
+            let new_excess = update
+                .new_count
+                .saturating_sub(self.repeat_max_allowed_encounters);
+            self.set_pair_excess(compiled, update.pair_idx, new_excess);
         }
     }
 
@@ -94,6 +108,47 @@ impl RepeatGuidanceState {
         self.person_incident_counts[left] = self.person_incident_counts[left].saturating_add(1);
         self.person_incident_counts[right] = self.person_incident_counts[right].saturating_add(1);
     }
+
+    fn remove_pair_from_bucket(&mut self, compiled: &CompiledProblem, pair_idx: usize) {
+        let excess = self.pair_excess_by_pair[pair_idx] as usize;
+        if excess == 0 {
+            return;
+        }
+
+        let Some(position) = self.pair_bucket_positions[pair_idx].take() else {
+            return;
+        };
+
+        let bucket = &mut self.buckets[excess];
+        let removed_pair = bucket.swap_remove(position);
+        debug_assert_eq!(removed_pair, pair_idx);
+        if position < bucket.len() {
+            let moved_pair = bucket[position];
+            self.pair_bucket_positions[moved_pair] = Some(position);
+        }
+
+        self.pair_excess_by_pair[pair_idx] = 0;
+        self.active_pair_count = self.active_pair_count.saturating_sub(1);
+
+        let (left, right) = compiled.pair_members(pair_idx);
+        self.person_incident_counts[left] = self.person_incident_counts[left].saturating_sub(1);
+        self.person_incident_counts[right] = self.person_incident_counts[right].saturating_sub(1);
+    }
+
+    fn set_pair_excess(&mut self, compiled: &CompiledProblem, pair_idx: usize, new_excess: u16) {
+        let old_excess = self.pair_excess_by_pair[pair_idx];
+        if old_excess == new_excess {
+            return;
+        }
+
+        if old_excess > 0 {
+            self.remove_pair_from_bucket(compiled, pair_idx);
+        }
+
+        if new_excess > 0 {
+            self.insert_pair_with_excess(compiled, pair_idx, new_excess);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -103,6 +158,10 @@ mod tests {
     use crate::models::{
         ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, RepeatEncounterParams,
         Solver3Params, SolverConfiguration, SolverParams, StopConditions,
+    };
+    use crate::solver3::moves::{
+        preview_clique_swap_runtime_lightweight, preview_swap_runtime_lightweight,
+        preview_transfer_runtime_lightweight, CliqueSwapMove, SwapMove, TransferMove,
     };
     use crate::solver3::runtime_state::RuntimeState;
 
@@ -257,6 +316,172 @@ mod tests {
         let state = repeated_pair_state();
         let mut guidance = RepeatGuidanceState::build_from_state(&state).unwrap();
         guidance.rebuild_from_state(&state);
+        let rebuilt = RepeatGuidanceState::build_from_state(&state).unwrap();
+        assert_eq!(guidance, rebuilt);
+    }
+
+    #[test]
+    fn incremental_swap_updates_match_full_rebuild() {
+        let mut state = repeated_pair_state();
+        let mut guidance = RepeatGuidanceState::build_from_state(&state).unwrap();
+        let preview = preview_swap_runtime_lightweight(&state, &SwapMove::new(1, 0, 2)).unwrap();
+
+        crate::solver3::moves::apply_swap_runtime_preview(&mut state, &preview).unwrap();
+        guidance.apply_pair_contact_updates(&state.compiled, &preview.patch.pair_contact_updates);
+
+        let rebuilt = RepeatGuidanceState::build_from_state(&state).unwrap();
+        assert_eq!(guidance, rebuilt);
+    }
+
+    #[test]
+    fn incremental_transfer_updates_match_full_rebuild() {
+        let input = ApiInput {
+            problem: ProblemDefinition {
+                people: (0..4)
+                    .map(|i| Person {
+                        id: format!("p{}", i),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    })
+                    .collect(),
+                groups: vec![
+                    Group {
+                        id: "g0".into(),
+                        size: 2,
+                        session_sizes: None,
+                    },
+                    Group {
+                        id: "g1".into(),
+                        size: 2,
+                        session_sizes: None,
+                    },
+                    Group {
+                        id: "g2".into(),
+                        size: 2,
+                        session_sizes: None,
+                    },
+                ],
+                num_sessions: 2,
+            },
+            initial_schedule: Some(HashMap::from([
+                (
+                    "session_0".to_string(),
+                    HashMap::from([
+                        ("g0".to_string(), vec!["p0".to_string(), "p1".to_string()]),
+                        ("g1".to_string(), vec!["p2".to_string()]),
+                        ("g2".to_string(), vec!["p3".to_string()]),
+                    ]),
+                ),
+                (
+                    "session_1".to_string(),
+                    HashMap::from([
+                        ("g0".to_string(), vec!["p0".to_string(), "p1".to_string()]),
+                        ("g1".to_string(), vec!["p2".to_string(), "p3".to_string()]),
+                        ("g2".to_string(), vec![]),
+                    ]),
+                ),
+            ])),
+            construction_seed_schedule: None,
+            objectives: vec![Objective {
+                r#type: "maximize_unique_contacts".into(),
+                weight: 1.0,
+            }],
+            constraints: vec![Constraint::RepeatEncounter(RepeatEncounterParams {
+                max_allowed_encounters: 1,
+                penalty_function: "linear".into(),
+                penalty_weight: 100.0,
+            })],
+            solver: solver3_config(),
+        };
+        let mut state = RuntimeState::from_input(&input).unwrap();
+        let mut guidance = RepeatGuidanceState::build_from_state(&state).unwrap();
+        let preview = preview_transfer_runtime_lightweight(&state, &TransferMove::new(1, 2, 1, 2))
+            .unwrap();
+
+        crate::solver3::moves::apply_transfer_runtime_preview(&mut state, &preview).unwrap();
+        guidance.apply_pair_contact_updates(&state.compiled, &preview.patch.pair_contact_updates);
+
+        let rebuilt = RepeatGuidanceState::build_from_state(&state).unwrap();
+        assert_eq!(guidance, rebuilt);
+    }
+
+    #[test]
+    fn incremental_clique_swap_updates_match_full_rebuild() {
+        let input = ApiInput {
+            problem: ProblemDefinition {
+                people: (0..6)
+                    .map(|i| Person {
+                        id: format!("p{}", i),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    })
+                    .collect(),
+                groups: vec![
+                    Group {
+                        id: "g0".into(),
+                        size: 2,
+                        session_sizes: None,
+                    },
+                    Group {
+                        id: "g1".into(),
+                        size: 2,
+                        session_sizes: None,
+                    },
+                    Group {
+                        id: "g2".into(),
+                        size: 2,
+                        session_sizes: None,
+                    },
+                ],
+                num_sessions: 2,
+            },
+            initial_schedule: Some(HashMap::from([
+                (
+                    "session_0".to_string(),
+                    HashMap::from([
+                        ("g0".to_string(), vec!["p0".to_string(), "p1".to_string()]),
+                        ("g1".to_string(), vec!["p2".to_string(), "p3".to_string()]),
+                        ("g2".to_string(), vec!["p4".to_string(), "p5".to_string()]),
+                    ]),
+                ),
+                (
+                    "session_1".to_string(),
+                    HashMap::from([
+                        ("g0".to_string(), vec!["p0".to_string(), "p1".to_string()]),
+                        ("g1".to_string(), vec!["p2".to_string(), "p4".to_string()]),
+                        ("g2".to_string(), vec!["p3".to_string(), "p5".to_string()]),
+                    ]),
+                ),
+            ])),
+            construction_seed_schedule: None,
+            objectives: vec![Objective {
+                r#type: "maximize_unique_contacts".into(),
+                weight: 1.0,
+            }],
+            constraints: vec![
+                Constraint::RepeatEncounter(RepeatEncounterParams {
+                    max_allowed_encounters: 1,
+                    penalty_function: "linear".into(),
+                    penalty_weight: 100.0,
+                }),
+                Constraint::MustStayTogether {
+                    people: vec!["p0".into(), "p1".into()],
+                    sessions: Some(vec![1]),
+                },
+            ],
+            solver: solver3_config(),
+        };
+        let mut state = RuntimeState::from_input(&input).unwrap();
+        let mut guidance = RepeatGuidanceState::build_from_state(&state).unwrap();
+        let preview = preview_clique_swap_runtime_lightweight(
+            &state,
+            &CliqueSwapMove::new(1, 0, 0, 1, vec![2, 4]),
+        )
+        .unwrap();
+
+        crate::solver3::moves::apply_clique_swap_runtime_preview(&mut state, &preview).unwrap();
+        guidance.apply_pair_contact_updates(&state.compiled, &preview.patch.pair_contact_updates);
+
         let rebuilt = RepeatGuidanceState::build_from_state(&state).unwrap();
         assert_eq!(guidance, rebuilt);
     }

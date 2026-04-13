@@ -29,6 +29,7 @@ use super::acceptance::{
 use super::candidate_sampling::{CandidateSampler, SearchMovePreview};
 use super::context::{IteratedLocalSearchMemory, SearchProgressState, SearchRunContext};
 use super::family_selection::MoveFamilySelector;
+use super::repeat_guidance::RepeatGuidanceState;
 
 const MEMETIC_BURST_STAGNATION_THRESHOLD: u64 = 25_000;
 const MEMETIC_TOTAL_DONOR_POLISH_SECONDS: u64 = 2;
@@ -108,6 +109,11 @@ impl SearchEngine {
         let candidate_sampler = CandidateSampler;
         let family_selector = MoveFamilySelector::new(&run_context.move_policy);
         let mut search = SearchProgressState::new(state.clone());
+        let mut repeat_guidance = if run_context.repeat_guided_swaps_enabled {
+            RepeatGuidanceState::build_from_state(&search.current_state)
+        } else {
+            None
+        };
 
         if let Some(observer) = benchmark_observer {
             observer(&BenchmarkEvent::RunStarted(BenchmarkRunStarted {
@@ -171,6 +177,9 @@ impl SearchEngine {
                         let offspring_score = offspring_state.total_score;
                         if offspring_score <= search.best_score + temperature {
                             search.current_state = offspring_state;
+                            if let Some(guidance) = repeat_guidance.as_mut() {
+                                guidance.rebuild_from_state(&search.current_state);
+                            }
                             cached_elapsed_seconds = get_elapsed_seconds(search_started_at);
                             search.refresh_best_from_current(iteration, cached_elapsed_seconds);
                             search.record_acceptance_result(true);
@@ -225,6 +234,13 @@ impl SearchEngine {
                             family,
                             &preview,
                         )?;
+
+                        if let Some(guidance) = repeat_guidance.as_mut() {
+                            guidance.apply_pair_contact_updates(
+                                &search.current_state.compiled,
+                                preview.pair_contact_updates(),
+                            );
+                        }
 
                         let improvement_elapsed_seconds = get_elapsed_seconds(search_started_at);
                         cached_elapsed_seconds = cached_elapsed_seconds.max(improvement_elapsed_seconds);

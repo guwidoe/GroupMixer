@@ -11,8 +11,8 @@ use crate::models::MoveFamily;
 
 use super::super::moves::{
     preview_clique_swap_runtime_lightweight, preview_swap_runtime_lightweight,
-    preview_transfer_runtime_lightweight, CliqueSwapMove, CliqueSwapRuntimePreview, SwapMove,
-    SwapRuntimePreview, TransferMove, TransferRuntimePreview,
+    preview_transfer_runtime_lightweight, CliqueSwapMove, CliqueSwapRuntimePreview,
+    PairContactUpdate, SwapMove, SwapRuntimePreview, TransferMove, TransferRuntimePreview,
 };
 use super::super::runtime_state::RuntimeState;
 use super::family_selection::MoveFamilySelector;
@@ -63,6 +63,15 @@ impl SearchMovePreview {
             Self::Swap(preview) => preview.analysis.swap.session_idx,
             Self::Transfer(preview) => preview.analysis.transfer.session_idx,
             Self::CliqueSwap(preview) => preview.analysis.clique_swap.session_idx,
+        }
+    }
+
+    #[inline]
+    pub(crate) fn pair_contact_updates(&self) -> &[PairContactUpdate] {
+        match self {
+            Self::Swap(preview) => &preview.patch.pair_contact_updates,
+            Self::Transfer(preview) => &preview.patch.pair_contact_updates,
+            Self::CliqueSwap(preview) => &preview.patch.pair_contact_updates,
         }
     }
 
