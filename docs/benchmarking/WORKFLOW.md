@@ -317,7 +317,7 @@ Interpretation checklist:
 - iterations / offspring per second
 - `search_telemetry.sgp_week_pair_tabu.*` for tabu prefilter / aspiration behavior
 - `search_telemetry.memetic.*` for offspring, mutation-length, child-polish, and replacement behavior
-- `search_telemetry.donor_session_transplant.*` for archive admissions, trigger-block reasons, recombination events, donor/session choices, immediate discards, and bounded post-transplant polish cost
+- `search_telemetry.donor_session_transplant.*` for archive admissions, trigger-block reasons, recombination events, donor/session choices (including candidate-pool + viability-tier selection), immediate discards, and bounded post-transplant polish cost
 
 For conflict-restricted tabu specifically, compare it against plain tabu before comparing it against memetic variants. If the restriction helps, it should beat the plain tabu lane honestly; if it starves exploration, that should show up immediately in final score or in much earlier stagnation.
 

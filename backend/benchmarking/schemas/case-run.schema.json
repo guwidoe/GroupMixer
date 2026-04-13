@@ -257,13 +257,17 @@
                   "donor_archive_idx",
                   "session_idx",
                   "session_disagreement_count",
-                  "conflict_burden_advantage"
+                  "candidate_pool",
+                  "session_viability_tier",
+                  "conflict_burden_delta"
                 ],
                 "properties": {
                   "donor_archive_idx": { "type": "integer" },
                   "session_idx": { "type": "integer" },
                   "session_disagreement_count": { "type": "integer" },
-                  "conflict_burden_advantage": { "type": "integer" }
+                  "candidate_pool": { "type": "string" },
+                  "session_viability_tier": { "type": "string" },
+                  "conflict_burden_delta": { "type": "integer" }
                 }
               }
             },

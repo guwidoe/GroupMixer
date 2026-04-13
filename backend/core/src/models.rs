@@ -1715,6 +1715,24 @@ pub struct MemeticBenchmarkTelemetry {
 }
 
 /// One donor/session choice made during donor-session recombination.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum DonorCandidatePoolTelemetry {
+    #[default]
+    CompetitiveHalf,
+    FullArchive,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum DonorSessionViabilityTierTelemetry {
+    #[default]
+    StrictImproving,
+    NonWorsening,
+    AnyDiffering,
+}
+
+/// One donor/session choice made during donor-session recombination.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq, Default)]
 pub struct DonorSessionChoiceTelemetry {
     #[serde(default)]
@@ -1724,7 +1742,11 @@ pub struct DonorSessionChoiceTelemetry {
     #[serde(default)]
     pub session_disagreement_count: u32,
     #[serde(default)]
-    pub conflict_burden_advantage: u32,
+    pub candidate_pool: DonorCandidatePoolTelemetry,
+    #[serde(default)]
+    pub session_viability_tier: DonorSessionViabilityTierTelemetry,
+    #[serde(default)]
+    pub conflict_burden_delta: i64,
 }
 
 /// Benchmark telemetry for the donor-session transplant outer driver.
