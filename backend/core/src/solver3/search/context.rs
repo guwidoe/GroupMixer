@@ -24,6 +24,9 @@ pub(crate) struct SearchRunContext {
     pub(crate) allowed_sessions: Vec<usize>,
     pub(crate) correctness_lane_enabled: bool,
     pub(crate) correctness_sample_every_accepted_moves: u64,
+    pub(crate) repeat_guided_swaps_enabled: bool,
+    pub(crate) repeat_guided_swap_probability: f64,
+    pub(crate) repeat_guided_swap_candidate_preview_budget: usize,
 }
 
 impl SearchRunContext {
@@ -49,10 +52,32 @@ impl SearchRunContext {
         let correctness_lane_enabled = solver3_params.correctness_lane.enabled;
         let correctness_sample_every_accepted_moves =
             solver3_params.correctness_lane.sample_every_accepted_moves;
+        let repeat_guided_swap_probability = solver3_params
+            .hotspot_guidance
+            .repeat_guided_swaps
+            .guided_proposal_probability;
+        let repeat_guided_swap_candidate_preview_budget = solver3_params
+            .hotspot_guidance
+            .repeat_guided_swaps
+            .candidate_preview_budget;
 
         if correctness_sample_every_accepted_moves == 0 {
             return Err(SolverError::ValidationError(
                 "solver3 correctness_lane.sample_every_accepted_moves must be >= 1".into(),
+            ));
+        }
+
+        if !(0.0..=1.0).contains(&repeat_guided_swap_probability) {
+            return Err(SolverError::ValidationError(
+                "solver3 hotspot_guidance.repeat_guided_swaps.guided_proposal_probability must be within [0.0, 1.0]".into(),
+            ));
+        }
+
+        if solver3_params.hotspot_guidance.repeat_guided_swaps.enabled
+            && repeat_guided_swap_candidate_preview_budget == 0
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 hotspot_guidance.repeat_guided_swaps.candidate_preview_budget must be >= 1 when enabled".into(),
             ));
         }
 
@@ -81,6 +106,11 @@ impl SearchRunContext {
                 .unwrap_or_else(|| (0..state.compiled.num_sessions).collect()),
             correctness_lane_enabled,
             correctness_sample_every_accepted_moves,
+            repeat_guided_swaps_enabled: solver3_params.hotspot_guidance.repeat_guided_swaps.enabled
+                && state.compiled.repeat_encounter.is_some(),
+            repeat_guided_swap_probability,
+            repeat_guided_swap_candidate_preview_budget:
+                repeat_guided_swap_candidate_preview_budget as usize,
         })
     }
 }
@@ -451,7 +481,8 @@ mod tests {
 
     use crate::models::{
         ApiInput, Group, Objective, Person, ProblemDefinition, Solver3CorrectnessLaneParams,
-        Solver3Params, SolverConfiguration, SolverParams, StopConditions,
+        Solver3HotspotGuidanceParams, Solver3Params, Solver3RepeatGuidedSwapParams,
+        SolverConfiguration, SolverParams, StopConditions,
     };
 
     use super::{SearchProgressState, SearchRunContext};
@@ -522,6 +553,9 @@ mod tests {
         assert_eq!(context.allowed_sessions, vec![0, 1]);
         assert!(!context.correctness_lane_enabled);
         assert_eq!(context.correctness_sample_every_accepted_moves, 16);
+        assert!(!context.repeat_guided_swaps_enabled);
+        assert_eq!(context.repeat_guided_swap_probability, 0.5);
+        assert_eq!(context.repeat_guided_swap_candidate_preview_budget, 8);
     }
 
     #[test]
@@ -533,6 +567,7 @@ mod tests {
                 enabled: false,
                 sample_every_accepted_moves: 0,
             },
+            ..Default::default()
         });
 
         let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
@@ -553,6 +588,7 @@ mod tests {
                 enabled: true,
                 sample_every_accepted_moves: 2,
             },
+            ..Default::default()
         });
 
         let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
@@ -572,11 +608,79 @@ mod tests {
                 enabled: true,
                 sample_every_accepted_moves: 3,
             },
+            ..Default::default()
         });
 
         let context = SearchRunContext::from_solver(&config, &state, 7).unwrap();
         assert!(context.correctness_lane_enabled);
         assert_eq!(context.correctness_sample_every_accepted_moves, 3);
+    }
+
+    #[test]
+    fn run_context_rejects_out_of_range_repeat_guidance_probability() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            hotspot_guidance: Solver3HotspotGuidanceParams {
+                repeat_guided_swaps: Solver3RepeatGuidedSwapParams {
+                    enabled: true,
+                    guided_proposal_probability: 1.5,
+                    candidate_preview_budget: 8,
+                },
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("hotspot_guidance.repeat_guided_swaps.guided_proposal_probability"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn run_context_rejects_zero_repeat_guidance_budget_when_enabled() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            hotspot_guidance: Solver3HotspotGuidanceParams {
+                repeat_guided_swaps: Solver3RepeatGuidedSwapParams {
+                    enabled: true,
+                    guided_proposal_probability: 0.5,
+                    candidate_preview_budget: 0,
+                },
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("hotspot_guidance.repeat_guided_swaps.candidate_preview_budget"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn run_context_auto_disables_repeat_guidance_without_repeat_constraint() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            hotspot_guidance: Solver3HotspotGuidanceParams {
+                repeat_guided_swaps: Solver3RepeatGuidedSwapParams {
+                    enabled: true,
+                    guided_proposal_probability: 0.75,
+                    candidate_preview_budget: 6,
+                },
+            },
+            ..Default::default()
+        });
+
+        let context = SearchRunContext::from_solver(&config, &state, 7).unwrap();
+        assert!(!context.repeat_guided_swaps_enabled);
+        assert_eq!(context.repeat_guided_swap_probability, 0.75);
+        assert_eq!(context.repeat_guided_swap_candidate_preview_budget, 6);
     }
 
     #[test]

@@ -667,6 +667,7 @@ fn solver3_correctness_lane_requires_solver3_oracle_checks_feature() {
             enabled: true,
             sample_every_accepted_moves: 2,
         },
+        ..Default::default()
     });
 
     let err = run_solver(&input).expect_err(
@@ -687,6 +688,7 @@ fn solver3_correctness_lane_runs_with_feature_enabled() {
             enabled: true,
             sample_every_accepted_moves: 1,
         },
+        ..Default::default()
     });
 
     let result = run_solver(&input).expect("solver3 correctness-lane run should succeed");

@@ -1006,6 +1006,43 @@ pub struct Solver3Params {
     /// Correctness-lane controls for sampled runtime validation during real search runs.
     #[serde(default)]
     pub correctness_lane: Solver3CorrectnessLaneParams,
+    /// Experimental hotspot-guidance controls for proposal-generation research.
+    #[serde(default)]
+    pub hotspot_guidance: Solver3HotspotGuidanceParams,
+}
+
+/// Experimental hotspot-guidance controls for `solver3`.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Default)]
+pub struct Solver3HotspotGuidanceParams {
+    /// Repeat-encounter-guided swap proposal controls.
+    #[serde(default)]
+    pub repeat_guided_swaps: Solver3RepeatGuidedSwapParams,
+}
+
+/// Experimental controls for repeat-encounter-guided swap proposal generation.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+pub struct Solver3RepeatGuidedSwapParams {
+    /// Enables repeat-encounter-guided swap proposals.
+    #[serde(default)]
+    pub enabled: bool,
+
+    /// Probability that a swap proposal attempt will use the guided path.
+    #[serde(default = "default_solver3_repeat_guided_swap_probability")]
+    pub guided_proposal_probability: f64,
+
+    /// Maximum number of exact swap previews evaluated for one guided attempt.
+    #[serde(default = "default_solver3_repeat_guided_swap_preview_budget")]
+    pub candidate_preview_budget: u32,
+}
+
+impl Default for Solver3RepeatGuidedSwapParams {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            guided_proposal_probability: default_solver3_repeat_guided_swap_probability(),
+            candidate_preview_budget: default_solver3_repeat_guided_swap_preview_budget(),
+        }
+    }
 }
 
 /// Opt-in controls for solver3 correctness-lane sampling.
@@ -1039,6 +1076,14 @@ impl Default for Solver3CorrectnessLaneParams {
 
 fn default_solver3_correctness_lane_sample_every_accepted_moves() -> u64 {
     16
+}
+
+fn default_solver3_repeat_guided_swap_probability() -> f64 {
+    0.5
+}
+
+fn default_solver3_repeat_guided_swap_preview_budget() -> u32 {
+    8
 }
 
 /// Parameters specific to the Simulated Annealing algorithm.
