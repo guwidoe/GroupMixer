@@ -4,8 +4,9 @@ use common::{default_solver_config, make_initial_schedule};
 use gm_core::models::{
     ApiInput, BenchmarkEvent, Constraint, Group, MoveFamily, MovePolicy, Objective,
     PairMeetingCountParams, PairMeetingMode, Person, ProblemDefinition, ProgressCallback,
-    SimulatedAnnealingParams, Solver3CorrectnessLaneParams, Solver3Params, SolverKind,
-    SolverParams, StopReason,
+    SimulatedAnnealingParams, Solver3CorrectnessLaneParams, Solver3LocalImproverMode,
+    Solver3LocalImproverParams, Solver3Params, Solver3SearchDriverMode,
+    Solver3SearchDriverParams, SolverKind, SolverParams, StopReason,
 };
 use gm_core::{
     default_solver_configuration_for, run_solver, run_solver_with_benchmark_observer,
@@ -656,6 +657,77 @@ fn solver3_same_seed_runs_remain_deterministic_after_search_changes() {
     assert_eq!(telemetry_b.moves.transfer.attempts, 0);
     assert_eq!(telemetry_a.moves.clique_swap.attempts, 0);
     assert_eq!(telemetry_b.moves.clique_swap.attempts, 0);
+}
+
+#[test]
+fn solver3_explicit_default_modes_match_implicit_default_run() {
+    let implicit = solver3_driver_input();
+    let mut explicit = solver3_driver_input();
+    explicit.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        search_driver: Solver3SearchDriverParams {
+            mode: Solver3SearchDriverMode::SingleState,
+        },
+        local_improver: Solver3LocalImproverParams {
+            mode: Solver3LocalImproverMode::RecordToRecord,
+        },
+        ..Default::default()
+    });
+
+    let implicit_result = run_solver(&implicit).expect("implicit solver3 solve should succeed");
+    let explicit_result = run_solver(&explicit).expect("explicit solver3 solve should succeed");
+
+    assert_eq!(implicit_result.schedule, explicit_result.schedule);
+    assert_eq!(implicit_result.final_score, explicit_result.final_score);
+    assert_eq!(implicit_result.stop_reason, explicit_result.stop_reason);
+
+    let implicit_telemetry = implicit_result
+        .benchmark_telemetry
+        .expect("implicit telemetry should be present");
+    let explicit_telemetry = explicit_result
+        .benchmark_telemetry
+        .expect("explicit telemetry should be present");
+    assert_eq!(
+        implicit_telemetry.moves.swap.attempts,
+        explicit_telemetry.moves.swap.attempts
+    );
+    assert_eq!(
+        implicit_telemetry.moves.swap.accepted,
+        explicit_telemetry.moves.swap.accepted
+    );
+    assert_eq!(
+        implicit_telemetry.moves.swap.rejected,
+        explicit_telemetry.moves.swap.rejected
+    );
+    assert_eq!(
+        implicit_telemetry.moves.transfer.attempts,
+        explicit_telemetry.moves.transfer.attempts
+    );
+    assert_eq!(
+        implicit_telemetry.moves.clique_swap.attempts,
+        explicit_telemetry.moves.clique_swap.attempts
+    );
+    assert_eq!(
+        implicit_telemetry.best_score_timeline,
+        explicit_telemetry.best_score_timeline
+    );
+}
+
+#[test]
+fn solver3_unimplemented_local_improver_mode_fails_explicitly() {
+    let mut input = solver3_driver_input();
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        local_improver: Solver3LocalImproverParams {
+            mode: Solver3LocalImproverMode::SgpWeekPairTabu,
+        },
+        ..Default::default()
+    });
+
+    let err = run_solver(&input).expect_err("unimplemented solver3 mode should fail");
+    assert!(
+        err.to_string()
+            .contains("local_improver.mode=sgp_week_pair_tabu"),
+        "unexpected error: {err}"
+    );
 }
 
 #[cfg(not(feature = "solver3-oracle-checks"))]
