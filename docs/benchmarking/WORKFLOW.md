@@ -174,6 +174,54 @@ gm-cli benchmark run \
   - similar early descent but better late-budget use
   - quality-per-second gains caused mostly by raw throughput vs by better search navigation
 
+### Phase 1 repeat-guided-swap validation workflow for solver3
+
+When validating Phase 1 hotspot-guided search, compare the baseline Social Golfer plateau suites against the dedicated repeat-guided variants.
+
+#### Baseline manifests
+
+- `backend/benchmarking/suites/social-golfer-plateau-time-solver3.yaml`
+- `backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3.yaml`
+
+#### Repeat-guided manifests
+
+- `backend/benchmarking/suites/social-golfer-plateau-time-solver3-repeat-guided.yaml`
+- `backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-repeat-guided.yaml`
+
+Recommended command sequence:
+
+```bash
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3.yaml
+
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-repeat-guided.yaml
+
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3.yaml
+
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-repeat-guided.yaml
+```
+
+During interpretation, check all of the following together:
+
+- final score
+- last-improvement timing
+- post-plateau duration
+- late-improvement counts from trajectory summaries
+- iterations per second
+- `search_telemetry.repeat_guided_swaps.*` to confirm guided sampling actually executed
+
+After the dedicated Social Golfer comparison, run the broader stretch guardrail suite as well:
+
+```bash
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/objective-canonical-stretch-solver3-phase1-repeat-guided.yaml
+```
+
+For this phase, do **not** accept quality claims based only on raw throughput or only on guided-attempt counts. The feature must show that longer budgets are converted into real late-run search progress at an acceptable throughput cost.
+
 ### Solver3 oracle/debug correctness feature
 
 `gm-core` exposes `solver3-oracle-checks` as an explicit correctness/debug feature flag.
