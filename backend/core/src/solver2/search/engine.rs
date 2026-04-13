@@ -395,6 +395,7 @@ impl SearchEngine {
                 0.0
             },
             best_score_timeline,
+            repeat_guided_swaps: crate::models::RepeatGuidedSwapBenchmarkTelemetry::default(),
             moves: move_metrics.clone(),
         };
 

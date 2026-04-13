@@ -2,8 +2,9 @@ use std::collections::VecDeque;
 
 use crate::models::{
     BestScoreTimelinePoint, MoveFamily, MoveFamilyBenchmarkTelemetry,
-    MoveFamilyBenchmarkTelemetrySummary, MovePolicy, ProgressUpdate, SolverBenchmarkTelemetry,
-    SolverConfiguration, StopReason,
+    MoveFamilyBenchmarkTelemetrySummary, MovePolicy, ProgressUpdate,
+    RepeatGuidedSwapBenchmarkTelemetry, SolverBenchmarkTelemetry, SolverConfiguration,
+    StopReason,
 };
 use crate::runtime_target::displayed_total_iterations;
 use crate::solver_support::SolverError;
@@ -163,6 +164,7 @@ pub(crate) struct SearchProgressState {
     pub(crate) biggest_accepted_increase: f64,
     pub(crate) recent_acceptance: VecDeque<bool>,
     pub(crate) best_score_timeline: Vec<BestScoreTimelinePoint>,
+    pub(crate) repeat_guided_swap_telemetry: RepeatGuidedSwapBenchmarkTelemetry,
     pub(crate) move_metrics: MoveFamilyBenchmarkTelemetrySummary,
     #[allow(dead_code)]
     pub(crate) policy_memory: SearchPolicyMemory,
@@ -193,9 +195,24 @@ impl SearchProgressState {
                 elapsed_seconds: 0.0,
                 best_score: initial_score,
             }],
+            repeat_guided_swap_telemetry: RepeatGuidedSwapBenchmarkTelemetry::default(),
             move_metrics: MoveFamilyBenchmarkTelemetrySummary::default(),
             policy_memory: SearchPolicyMemory::default(),
         }
+    }
+
+    pub(crate) fn record_repeat_guided_swap_sampling(
+        &mut self,
+        guided_attempts: u64,
+        guided_successes: u64,
+        guided_fallback_to_random: u64,
+        guided_previewed_candidates: u64,
+    ) {
+        self.repeat_guided_swap_telemetry.guided_attempts += guided_attempts;
+        self.repeat_guided_swap_telemetry.guided_successes += guided_successes;
+        self.repeat_guided_swap_telemetry.guided_fallback_to_random += guided_fallback_to_random;
+        self.repeat_guided_swap_telemetry.guided_previewed_candidates +=
+            guided_previewed_candidates;
     }
 
     pub(crate) fn record_preview_attempt(
@@ -429,6 +446,7 @@ impl SearchProgressState {
                 0.0
             },
             best_score_timeline: self.best_score_timeline.clone(),
+            repeat_guided_swaps: self.repeat_guided_swap_telemetry.clone(),
             moves: self.move_metrics.clone(),
         }
     }

@@ -97,7 +97,8 @@
         "restart_count",
         "perturbation_count",
         "iterations_per_second",
-        "best_score_timeline"
+        "best_score_timeline",
+        "repeat_guided_swaps"
       ],
       "properties": {
         "accepted_uphill_moves": { "type": "integer" },
@@ -117,6 +118,21 @@
               "elapsed_seconds": { "type": "number" },
               "best_score": { "type": "number" }
             }
+          }
+        },
+        "repeat_guided_swaps": {
+          "type": "object",
+          "required": [
+            "guided_attempts",
+            "guided_successes",
+            "guided_fallback_to_random",
+            "guided_previewed_candidates"
+          ],
+          "properties": {
+            "guided_attempts": { "type": "integer" },
+            "guided_successes": { "type": "integer" },
+            "guided_fallback_to_random": { "type": "integer" },
+            "guided_previewed_candidates": { "type": "integer" }
           }
         }
       }

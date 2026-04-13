@@ -91,6 +91,26 @@ impl SearchMovePreview {
 #[derive(Debug, Default, Clone, Copy)]
 pub(crate) struct CandidateSampler;
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct RepeatGuidedSwapSamplingDelta {
+    pub(crate) guided_attempts: u64,
+    pub(crate) guided_successes: u64,
+    pub(crate) guided_fallback_to_random: u64,
+    pub(crate) guided_previewed_candidates: u64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct CandidateSelectionResult {
+    pub(crate) selection: Option<(MoveFamily, SearchMovePreview, f64)>,
+    pub(crate) repeat_guided_swap_sampling: RepeatGuidedSwapSamplingDelta,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct GuidedSwapSamplingPreviewResult {
+    preview: Option<SwapRuntimePreview>,
+    previewed_candidates: u64,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SwapSamplingOptions<'a> {
     pub(crate) repeat_guidance: Option<&'a RepeatGuidanceState>,
@@ -117,20 +137,33 @@ impl CandidateSampler {
         allowed_sessions: &[usize],
         swap_sampling: SwapSamplingOptions<'_>,
         rng: &mut ChaCha12Rng,
-    ) -> Option<(MoveFamily, SearchMovePreview, f64)> {
+    ) -> CandidateSelectionResult {
         let ordered_families = family_selector.ordered_families(rng);
+        let mut repeat_guided_swap_sampling = RepeatGuidedSwapSamplingDelta::default();
         for family in ordered_families {
             let preview_started_at = get_current_time();
-            let preview =
+            let (preview, sampling_delta) =
                 self.sample_preview_for_family(state, family, allowed_sessions, swap_sampling, rng);
+            repeat_guided_swap_sampling.guided_attempts += sampling_delta.guided_attempts;
+            repeat_guided_swap_sampling.guided_successes += sampling_delta.guided_successes;
+            repeat_guided_swap_sampling.guided_fallback_to_random +=
+                sampling_delta.guided_fallback_to_random;
+            repeat_guided_swap_sampling.guided_previewed_candidates +=
+                sampling_delta.guided_previewed_candidates;
             let preview_seconds =
                 get_elapsed_seconds_between(preview_started_at, get_current_time());
             if let Some(preview) = preview {
-                return Some((family, preview, preview_seconds));
+                return CandidateSelectionResult {
+                    selection: Some((family, preview, preview_seconds)),
+                    repeat_guided_swap_sampling,
+                };
             }
         }
 
-        None
+        CandidateSelectionResult {
+            selection: None,
+            repeat_guided_swap_sampling,
+        }
     }
 
     #[inline]
@@ -141,17 +174,22 @@ impl CandidateSampler {
         allowed_sessions: &[usize],
         swap_sampling: SwapSamplingOptions<'_>,
         rng: &mut ChaCha12Rng,
-    ) -> Option<SearchMovePreview> {
+    ) -> (Option<SearchMovePreview>, RepeatGuidedSwapSamplingDelta) {
         match family {
             MoveFamily::Swap => self
                 .sample_swap_preview(state, allowed_sessions, swap_sampling, rng)
-                .map(SearchMovePreview::Swap),
+                .map(|(preview, telemetry)| (preview.map(SearchMovePreview::Swap), telemetry))
+                .unwrap_or_default(),
             MoveFamily::Transfer => self
                 .sample_transfer_preview(state, allowed_sessions, rng)
-                .map(SearchMovePreview::Transfer),
+                .map(SearchMovePreview::Transfer)
+                .map(|preview| (Some(preview), RepeatGuidedSwapSamplingDelta::default()))
+                .unwrap_or_default(),
             MoveFamily::CliqueSwap => self
                 .sample_clique_swap_preview(state, allowed_sessions, rng)
-                .map(SearchMovePreview::CliqueSwap),
+                .map(SearchMovePreview::CliqueSwap)
+                .map(|preview| (Some(preview), RepeatGuidedSwapSamplingDelta::default()))
+                .unwrap_or_default(),
         }
     }
 
@@ -161,14 +199,17 @@ impl CandidateSampler {
         allowed_sessions: &[usize],
         swap_sampling: SwapSamplingOptions<'_>,
         rng: &mut ChaCha12Rng,
-    ) -> Option<SwapRuntimePreview> {
+    ) -> Option<(Option<SwapRuntimePreview>, RepeatGuidedSwapSamplingDelta)> {
         if allowed_sessions.is_empty() || state.compiled.num_groups < 2 {
-            return None;
+            return Some((None, RepeatGuidedSwapSamplingDelta::default()));
         }
+
+        let mut telemetry = RepeatGuidedSwapSamplingDelta::default();
 
         let guided_preview = if swap_sampling.repeat_guided_swap_candidate_preview_budget > 0
             && rng.random::<f64>() < swap_sampling.repeat_guided_swap_probability
         {
+            telemetry.guided_attempts += 1;
             swap_sampling.repeat_guidance.and_then(|guidance| {
                 self.sample_repeat_guided_swap_preview(
                     state,
@@ -182,11 +223,19 @@ impl CandidateSampler {
             None
         };
 
-        if guided_preview.is_some() {
-            return guided_preview;
+        if let Some(guided_preview) = guided_preview {
+            telemetry.guided_previewed_candidates += guided_preview.previewed_candidates;
+            if let Some(preview) = guided_preview.preview {
+                telemetry.guided_successes += 1;
+                return Some((Some(preview), telemetry));
+            }
+            telemetry.guided_fallback_to_random += 1;
         }
 
-        self.sample_random_swap_preview(state, allowed_sessions, rng)
+        Some((
+            self.sample_random_swap_preview(state, allowed_sessions, rng),
+            telemetry,
+        ))
     }
 
     fn sample_random_swap_preview(
@@ -233,7 +282,7 @@ impl CandidateSampler {
         guidance: &RepeatGuidanceState,
         candidate_preview_budget: usize,
         rng: &mut ChaCha12Rng,
-    ) -> Option<SwapRuntimePreview> {
+    ) -> Option<GuidedSwapSamplingPreviewResult> {
         if candidate_preview_budget == 0 || guidance.active_pair_count() == 0 {
             return None;
         }
@@ -293,13 +342,19 @@ impl CandidateSampler {
                     }
 
                     if previewed_candidates >= candidate_preview_budget {
-                        return best_preview;
+                        return Some(GuidedSwapSamplingPreviewResult {
+                            preview: best_preview,
+                            previewed_candidates: previewed_candidates as u64,
+                        });
                     }
                 }
             }
         }
 
-        best_preview
+        Some(GuidedSwapSamplingPreviewResult {
+            preview: best_preview,
+            previewed_candidates: previewed_candidates as u64,
+        })
     }
 
     fn sample_transfer_preview(
@@ -857,6 +912,7 @@ mod tests {
         let sampler = CandidateSampler;
         assert!(sampler
             .select_previewed_move(&state, &selector, &[], SwapSamplingOptions::default(), &mut rng)
+            .selection
             .is_none());
     }
 
@@ -873,7 +929,7 @@ mod tests {
             SwapSamplingOptions::default(),
             &mut rng,
         );
-        assert!(sampled.is_some());
+        assert!(sampled.selection.is_some());
     }
 
     #[test]
@@ -899,6 +955,7 @@ mod tests {
                 },
                 &mut rng,
             )
+            .selection
             .expect("guided swap preview should be sampled");
 
         assert_eq!(preview.session_idx(), 1);
@@ -926,7 +983,7 @@ mod tests {
             &mut rng,
         );
 
-        assert!(sampled.is_some());
+        assert!(sampled.selection.is_some());
     }
 
     #[test]
@@ -952,6 +1009,7 @@ mod tests {
                 },
                 &mut rng,
             )
+            .selection
             .expect("guided swap preview should be sampled");
 
         match preview {

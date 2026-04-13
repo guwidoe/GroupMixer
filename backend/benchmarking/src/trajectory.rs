@@ -454,6 +454,7 @@ mod tests {
                             best_score: 50.0,
                         },
                     ],
+                    repeat_guided_swaps: Default::default(),
                 }),
                 moves: MoveFamilyBenchmarkTelemetrySummary::default(),
                 hotpath_metrics: None,

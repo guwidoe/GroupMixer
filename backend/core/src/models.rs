@@ -1385,6 +1385,19 @@ pub struct MoveFamilyBenchmarkTelemetrySummary {
     pub clique_swap: MoveFamilyBenchmarkTelemetry,
 }
 
+/// Benchmark telemetry for repeat-guided swap proposal behavior.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
+pub struct RepeatGuidedSwapBenchmarkTelemetry {
+    #[serde(default)]
+    pub guided_attempts: u64,
+    #[serde(default)]
+    pub guided_successes: u64,
+    #[serde(default)]
+    pub guided_fallback_to_random: u64,
+    #[serde(default)]
+    pub guided_previewed_candidates: u64,
+}
+
 /// End-of-run benchmark telemetry intended for regression / benchmark artifacts.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct SolverBenchmarkTelemetry {
@@ -1417,6 +1430,8 @@ pub struct SolverBenchmarkTelemetry {
     pub iterations_per_second: f64,
     #[serde(default)]
     pub best_score_timeline: Vec<BestScoreTimelinePoint>,
+    #[serde(default)]
+    pub repeat_guided_swaps: RepeatGuidedSwapBenchmarkTelemetry,
     pub moves: MoveFamilyBenchmarkTelemetrySummary,
 }
 

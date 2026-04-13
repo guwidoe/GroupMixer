@@ -4,8 +4,10 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha12Rng;
 
 use crate::models::{
-    ApiInput, Group, MoveFamily, MoveFamilyWeights, MovePolicy, MoveSelectionMode, Objective,
-    Person, ProblemDefinition, Solver3Params, SolverConfiguration, SolverParams, StopConditions,
+    ApiInput, Constraint, Group, MoveFamily, MoveFamilyWeights, MovePolicy,
+    MoveSelectionMode, Objective, Person, ProblemDefinition, RepeatEncounterParams,
+    Solver3HotspotGuidanceParams, Solver3Params, Solver3RepeatGuidedSwapParams,
+    SolverConfiguration, SolverParams, StopConditions,
 };
 use crate::solver3::runtime_state::RuntimeState;
 
@@ -87,6 +89,60 @@ fn search_input() -> ApiInput {
     }
 }
 
+fn repeat_guidance_input() -> ApiInput {
+    ApiInput {
+        problem: ProblemDefinition {
+            people: (0..4)
+                .map(|i| Person {
+                    id: format!("p{}", i),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                })
+                .collect(),
+            groups: vec![
+                Group {
+                    id: "g0".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 2,
+        },
+        initial_schedule: Some(HashMap::from([
+            (
+                "session_0".to_string(),
+                HashMap::from([
+                    ("g0".to_string(), vec!["p0".to_string(), "p1".to_string()]),
+                    ("g1".to_string(), vec!["p2".to_string(), "p3".to_string()]),
+                ]),
+            ),
+            (
+                "session_1".to_string(),
+                HashMap::from([
+                    ("g0".to_string(), vec!["p0".to_string(), "p1".to_string()]),
+                    ("g1".to_string(), vec!["p2".to_string(), "p3".to_string()]),
+                ]),
+            ),
+        ])),
+        construction_seed_schedule: None,
+        objectives: vec![Objective {
+            r#type: "maximize_unique_contacts".into(),
+            weight: 1.0,
+        }],
+        constraints: vec![Constraint::RepeatEncounter(RepeatEncounterParams {
+            max_allowed_encounters: 1,
+            penalty_function: "linear".into(),
+            penalty_weight: 100.0,
+        })],
+        solver: solver3_config(),
+    }
+}
+
 #[test]
 fn acceptance_policy_marks_uphill_acceptance_as_escape() {
     let policy = SimulatedAnnealingAcceptance;
@@ -129,6 +185,7 @@ fn candidate_sampler_respects_allowed_sessions() {
     let mut rng = ChaCha12Rng::seed_from_u64(7);
     let (_family, preview, _seconds) = sampler
         .select_previewed_move(&state, &selector, &[1], SwapSamplingOptions::default(), &mut rng)
+        .selection
         .expect("swap preview should be sampled");
     assert_eq!(preview.session_idx(), 1);
 }
@@ -225,4 +282,38 @@ fn benchmark_timeline_elapsed_seconds_are_monotonic_and_progressive() {
             .windows(2)
             .any(|window| window[1].elapsed_seconds > window[0].elapsed_seconds));
     }
+}
+
+#[test]
+fn search_engine_records_repeat_guided_swap_sampling_telemetry() {
+    let mut input = repeat_guidance_input();
+    input.solver.stop_conditions.max_iterations = Some(50);
+    input.solver.stop_conditions.stop_on_optimal_score = false;
+    input.solver.move_policy = Some(MovePolicy {
+        forced_family: Some(MoveFamily::Swap),
+        ..Default::default()
+    });
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        hotspot_guidance: Solver3HotspotGuidanceParams {
+            repeat_guided_swaps: Solver3RepeatGuidedSwapParams {
+                enabled: true,
+                guided_proposal_probability: 1.0,
+                candidate_preview_budget: 4,
+            },
+        },
+        ..Default::default()
+    });
+
+    let mut state = RuntimeState::from_input(&input).unwrap();
+    let result = SearchEngine::new(&input.solver)
+        .solve(&mut state, None, None)
+        .unwrap();
+    let telemetry = result.benchmark_telemetry.expect("telemetry should exist");
+
+    assert!(telemetry.repeat_guided_swaps.guided_attempts > 0);
+    assert!(telemetry.repeat_guided_swaps.guided_successes > 0);
+    assert!(
+        telemetry.repeat_guided_swaps.guided_previewed_candidates
+            >= telemetry.repeat_guided_swaps.guided_successes
+    );
 }

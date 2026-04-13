@@ -195,21 +195,35 @@ impl SearchEngine {
                     }
                 }
 
-                if let Some((family, preview, preview_seconds)) = candidate_sampler
-                    .select_previewed_move(
-                        &search.current_state,
-                        &family_selector,
-                        &run_context.allowed_sessions,
-                        SwapSamplingOptions {
-                            repeat_guidance: repeat_guidance.as_ref(),
-                            repeat_guided_swap_probability: run_context
-                                .repeat_guided_swap_probability,
-                            repeat_guided_swap_candidate_preview_budget: run_context
-                                .repeat_guided_swap_candidate_preview_budget,
-                        },
-                        &mut rng,
-                    )
-                {
+                let candidate_selection = candidate_sampler.select_previewed_move(
+                    &search.current_state,
+                    &family_selector,
+                    &run_context.allowed_sessions,
+                    SwapSamplingOptions {
+                        repeat_guidance: repeat_guidance.as_ref(),
+                        repeat_guided_swap_probability: run_context.repeat_guided_swap_probability,
+                        repeat_guided_swap_candidate_preview_budget: run_context
+                            .repeat_guided_swap_candidate_preview_budget,
+                    },
+                    &mut rng,
+                );
+                search.record_repeat_guided_swap_sampling(
+                    candidate_selection
+                        .repeat_guided_swap_sampling
+                        .guided_attempts,
+                    candidate_selection
+                        .repeat_guided_swap_sampling
+                        .guided_successes,
+                    candidate_selection
+                        .repeat_guided_swap_sampling
+                        .guided_fallback_to_random,
+                    candidate_selection
+                        .repeat_guided_swap_sampling
+                        .guided_previewed_candidates,
+                );
+
+                if let Some((family, preview, preview_seconds)) = candidate_selection.selection {
+
                     let delta_cost = preview.delta_score();
                     search.record_preview_attempt(family, preview_seconds, delta_cost);
                     let current_score = search.current_state.total_score;
