@@ -429,6 +429,22 @@ impl CompiledProblem {
         lo * (2 * self.num_people - lo - 1) / 2 + (hi - lo - 1)
     }
 
+    #[inline]
+    pub fn pair_members(&self, pair_idx: usize) -> (usize, usize) {
+        debug_assert!(pair_idx < self.num_pairs, "pair_members out of range");
+
+        let mut remaining = pair_idx;
+        for left in 0..self.num_people.saturating_sub(1) {
+            let row_len = self.num_people - left - 1;
+            if remaining < row_len {
+                return (left, left + 1 + remaining);
+            }
+            remaining -= row_len;
+        }
+
+        panic!("pair_members out of range for pair_idx {pair_idx}");
+    }
+
     // ------------------------------------------------------------------
     // Flat group-session slot helpers
     // ------------------------------------------------------------------
