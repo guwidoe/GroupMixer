@@ -714,7 +714,7 @@ fn solver3_explicit_default_modes_match_implicit_default_run() {
 }
 
 #[test]
-fn solver3_unimplemented_local_improver_mode_fails_explicitly() {
+fn solver3_sgp_week_pair_tabu_mode_runs_through_public_entry_point() {
     let mut input = solver3_driver_input();
     input.solver.solver_params = SolverParams::Solver3(Solver3Params {
         local_improver: Solver3LocalImproverParams {
@@ -724,12 +724,8 @@ fn solver3_unimplemented_local_improver_mode_fails_explicitly() {
         ..Default::default()
     });
 
-    let err = run_solver(&input).expect_err("unimplemented solver3 mode should fail");
-    assert!(
-        err.to_string()
-            .contains("local_improver.mode=sgp_week_pair_tabu"),
-        "unexpected error: {err}"
-    );
+    let result = run_solver(&input).expect("tabu local improver solve should succeed");
+    assert!(result.benchmark_telemetry.is_some());
 }
 
 #[cfg(not(feature = "solver3-oracle-checks"))]

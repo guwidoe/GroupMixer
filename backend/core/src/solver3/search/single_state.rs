@@ -9,7 +9,8 @@ use rand_chacha::ChaCha12Rng;
 
 use crate::models::{
     BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, MoveFamily, MovePolicy,
-    ProgressCallback, SolverBenchmarkTelemetry, SolverResult, StopReason,
+    ProgressCallback, Solver3LocalImproverMode, SolverBenchmarkTelemetry, SolverResult,
+    StopReason,
 };
 use crate::solver_support::SolverError;
 
@@ -30,6 +31,7 @@ use super::candidate_sampling::{CandidateSampler, SearchMovePreview, SwapSamplin
 use super::context::{SearchProgressState, SearchRunContext};
 use super::family_selection::MoveFamilySelector;
 use super::repeat_guidance::RepeatGuidanceState;
+use super::tabu::SgpWeekPairTabuState;
 
 const PROGRESS_CALLBACK_INTERVAL_SECONDS: f64 = 0.1;
 
@@ -76,6 +78,13 @@ pub(crate) fn run(
     let mut search = SearchProgressState::new(state.clone());
     let mut repeat_guidance = if run_context.repeat_guided_swaps_enabled {
         RepeatGuidanceState::build_from_state(&search.current_state)
+    } else {
+        None
+    };
+    let mut tabu_state = if run_context.local_improver_mode == Solver3LocalImproverMode::SgpWeekPairTabu {
+        run_context
+            .sgp_week_pair_tabu
+            .map(|config| SgpWeekPairTabuState::new(&search.current_state.compiled, config))
     } else {
         None
     };
@@ -129,8 +138,15 @@ pub(crate) fn run(
                     repeat_guided_swap_probability: run_context.repeat_guided_swap_probability,
                     repeat_guided_swap_candidate_preview_budget: run_context
                         .repeat_guided_swap_candidate_preview_budget,
-                    tabu: None,
-                    tabu_retry_cap: 0,
+                    tabu: tabu_state.as_ref(),
+                    tabu_retry_cap: run_context
+                        .sgp_week_pair_tabu
+                        .map_or(0, |config| config.retry_cap),
+                    tabu_allow_aspiration_preview: run_context.local_improver_mode
+                        == Solver3LocalImproverMode::SgpWeekPairTabu
+                        && run_context
+                            .sgp_week_pair_tabu
+                            .is_some_and(|config| config.aspiration_enabled),
                     current_iteration: iteration,
                 },
                 &mut rng,
@@ -155,20 +171,31 @@ pub(crate) fn run(
                 search.record_preview_attempt(family, preview_seconds, delta_cost);
                 let current_score = search.current_state.total_score;
                 let candidate_score = current_score + delta_cost;
+                let swap_is_tabu = is_tabu_swap_preview(
+                    tabu_state.as_ref(),
+                    &search.current_state,
+                    &preview,
+                    iteration,
+                );
 
-                let acceptance = acceptance_policy.decide(RecordToRecordInputs {
-                    current_score,
-                    best_score: search.best_score,
-                    candidate_score,
-                    progress,
-                });
+                let acceptance = if swap_is_tabu && candidate_score >= search.best_score {
+                    None
+                } else {
+                    Some(acceptance_policy.decide(RecordToRecordInputs {
+                        current_score,
+                        best_score: search.best_score,
+                        candidate_score,
+                        progress,
+                    }))
+                };
 
-                if acceptance.accepted {
-                    let apply_started_at = get_current_time();
-                    apply_previewed_move(&mut search.current_state, &preview)?;
-                    let apply_seconds =
-                        get_elapsed_seconds_between(apply_started_at, get_current_time());
-                    search.record_accepted_move(
+                if let Some(acceptance) = acceptance {
+                    if acceptance.accepted {
+                        let apply_started_at = get_current_time();
+                        apply_previewed_move(&mut search.current_state, &preview)?;
+                        let apply_seconds =
+                            get_elapsed_seconds_between(apply_started_at, get_current_time());
+                        search.record_accepted_move(
                         family,
                         apply_seconds,
                         delta_cost,
@@ -190,10 +217,27 @@ pub(crate) fn run(
                         );
                     }
 
+                    if let Some(tabu) = tabu_state.as_mut() {
+                        if let SearchMovePreview::Swap(preview) = &preview {
+                            let swap = preview.analysis.swap;
+                            tabu.record_swap(
+                                &search.current_state.compiled,
+                                swap.session_idx,
+                                swap.left_person_idx,
+                                swap.right_person_idx,
+                                iteration,
+                                &mut rng,
+                            );
+                        }
+                    }
+
                     let improvement_elapsed_seconds = get_elapsed_seconds(search_started_at);
                     cached_elapsed_seconds = cached_elapsed_seconds.max(improvement_elapsed_seconds);
                     search.refresh_best_from_current(iteration, improvement_elapsed_seconds);
                     search.record_acceptance_result(true);
+                    } else {
+                        search.record_rejected_move(family);
+                    }
                 } else {
                     search.record_rejected_move(family);
                 }
@@ -288,6 +332,28 @@ pub(crate) fn run(
         run_context.move_policy,
         stop_reason,
         telemetry,
+    )
+}
+
+fn is_tabu_swap_preview(
+    tabu_state: Option<&SgpWeekPairTabuState>,
+    state: &RuntimeState,
+    preview: &SearchMovePreview,
+    iteration: u64,
+) -> bool {
+    let Some(tabu) = tabu_state else {
+        return false;
+    };
+    let SearchMovePreview::Swap(preview) = preview else {
+        return false;
+    };
+    let swap = preview.analysis.swap;
+    tabu.is_tabu(
+        &state.compiled,
+        swap.session_idx,
+        swap.left_person_idx,
+        swap.right_person_idx,
+        iteration,
     )
 }
 

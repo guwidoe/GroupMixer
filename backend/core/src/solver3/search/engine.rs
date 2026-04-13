@@ -39,6 +39,10 @@ impl SearchEngine {
             (
                 Solver3SearchDriverMode::SingleState,
                 Solver3LocalImproverMode::RecordToRecord,
+            )
+            | (
+                Solver3SearchDriverMode::SingleState,
+                Solver3LocalImproverMode::SgpWeekPairTabu,
             ) => single_state::run(state, run_context, progress_callback, benchmark_observer),
             (search_driver_mode, local_improver_mode) => Err(SolverError::ValidationError(
                 format!(

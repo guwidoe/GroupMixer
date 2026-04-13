@@ -117,13 +117,8 @@ impl SearchRunContext {
         }
 
         match (search_driver_mode, local_improver_mode) {
-            (Solver3SearchDriverMode::SingleState, Solver3LocalImproverMode::RecordToRecord) => {}
-            (Solver3SearchDriverMode::SingleState, Solver3LocalImproverMode::SgpWeekPairTabu) => {
-                return Err(SolverError::ValidationError(
-                    "solver3 local_improver.mode=sgp_week_pair_tabu is not implemented yet"
-                        .into(),
-                ));
-            }
+            (Solver3SearchDriverMode::SingleState, Solver3LocalImproverMode::RecordToRecord)
+            | (Solver3SearchDriverMode::SingleState, Solver3LocalImproverMode::SgpWeekPairTabu) => {}
             (
                 Solver3SearchDriverMode::SteadyStateMemetic,
                 Solver3LocalImproverMode::RecordToRecord,
@@ -756,7 +751,7 @@ mod tests {
     }
 
     #[test]
-    fn run_context_rejects_unimplemented_local_improver_mode() {
+    fn run_context_accepts_sgp_week_pair_tabu_local_improver_mode() {
         let state = simple_state();
         let mut config = solver3_config();
         config.solver_params = SolverParams::Solver3(Solver3Params {
@@ -767,11 +762,10 @@ mod tests {
             ..Default::default()
         });
 
-        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
-        assert!(
-            err.to_string()
-                .contains("local_improver.mode=sgp_week_pair_tabu"),
-            "unexpected error: {err}"
+        let context = SearchRunContext::from_solver(&config, &state, 7).unwrap();
+        assert_eq!(
+            context.local_improver_mode,
+            Solver3LocalImproverMode::SgpWeekPairTabu
         );
     }
 
