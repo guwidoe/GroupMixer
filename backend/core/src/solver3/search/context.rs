@@ -3,13 +3,14 @@ use std::collections::VecDeque;
 use crate::models::{
     BestScoreTimelinePoint, MoveFamily, MoveFamilyBenchmarkTelemetry,
     MoveFamilyBenchmarkTelemetrySummary, MovePolicy, ProgressUpdate,
-    RepeatGuidedSwapBenchmarkTelemetry, Solver3LocalImproverMode,
-    Solver3SearchDriverMode, SolverBenchmarkTelemetry, SolverConfiguration, StopReason,
+    RepeatGuidedSwapBenchmarkTelemetry, Solver3LocalImproverMode, Solver3SearchDriverMode,
+    SolverBenchmarkTelemetry, SolverConfiguration, StopReason,
 };
 use crate::runtime_target::displayed_total_iterations;
 use crate::solver_support::SolverError;
 
 use super::super::runtime_state::RuntimeState;
+use super::tabu::SgpWeekPairTabuConfig;
 
 const DEFAULT_MAX_ITERATIONS: u64 = 10_000;
 const RECENT_WINDOW: usize = 100;
@@ -30,6 +31,7 @@ pub(crate) struct SearchRunContext {
     pub(crate) repeat_guided_swaps_enabled: bool,
     pub(crate) repeat_guided_swap_probability: f64,
     pub(crate) repeat_guided_swap_candidate_preview_budget: usize,
+    pub(crate) sgp_week_pair_tabu: Option<SgpWeekPairTabuConfig>,
 }
 
 impl SearchRunContext {
@@ -55,6 +57,7 @@ impl SearchRunContext {
         let correctness_lane_enabled = solver3_params.correctness_lane.enabled;
         let search_driver_mode = solver3_params.search_driver.mode;
         let local_improver_mode = solver3_params.local_improver.mode;
+        let sgp_week_pair_tabu = &solver3_params.local_improver.sgp_week_pair_tabu;
         let correctness_sample_every_accepted_moves =
             solver3_params.correctness_lane.sample_every_accepted_moves;
         let repeat_guided_swap_probability = solver3_params
@@ -83,6 +86,25 @@ impl SearchRunContext {
         {
             return Err(SolverError::ValidationError(
                 "solver3 hotspot_guidance.repeat_guided_swaps.candidate_preview_budget must be >= 1 when enabled".into(),
+            ));
+        }
+
+        if sgp_week_pair_tabu.tenure_min == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 local_improver.sgp_week_pair_tabu.tenure_min must be >= 1".into(),
+            ));
+        }
+
+        if sgp_week_pair_tabu.tenure_max < sgp_week_pair_tabu.tenure_min {
+            return Err(SolverError::ValidationError(
+                "solver3 local_improver.sgp_week_pair_tabu.tenure_max must be >= tenure_min"
+                    .into(),
+            ));
+        }
+
+        if sgp_week_pair_tabu.retry_cap == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 local_improver.sgp_week_pair_tabu.retry_cap must be >= 1".into(),
             ));
         }
 
@@ -146,6 +168,12 @@ impl SearchRunContext {
             repeat_guided_swap_probability,
             repeat_guided_swap_candidate_preview_budget:
                 repeat_guided_swap_candidate_preview_budget as usize,
+            sgp_week_pair_tabu: Some(SgpWeekPairTabuConfig {
+                tenure_min: sgp_week_pair_tabu.tenure_min as u64,
+                tenure_max: sgp_week_pair_tabu.tenure_max as u64,
+                retry_cap: sgp_week_pair_tabu.retry_cap as usize,
+                aspiration_enabled: sgp_week_pair_tabu.aspiration_enabled,
+            }),
         })
     }
 }
@@ -535,7 +563,8 @@ mod tests {
         ApiInput, Group, Objective, Person, ProblemDefinition, Solver3CorrectnessLaneParams,
         Solver3HotspotGuidanceParams, Solver3LocalImproverMode, Solver3LocalImproverParams,
         Solver3Params, Solver3RepeatGuidedSwapParams, Solver3SearchDriverMode,
-        Solver3SearchDriverParams, SolverConfiguration, SolverParams, StopConditions,
+        Solver3SearchDriverParams, Solver3SgpWeekPairTabuParams, SolverConfiguration,
+        SolverParams, StopConditions,
     };
 
     use super::{SearchProgressState, SearchRunContext};
@@ -611,6 +640,14 @@ mod tests {
         assert!(!context.repeat_guided_swaps_enabled);
         assert_eq!(context.repeat_guided_swap_probability, 0.5);
         assert_eq!(context.repeat_guided_swap_candidate_preview_budget, 8);
+        assert_eq!(context.sgp_week_pair_tabu.as_ref().unwrap().tenure_min, 8);
+        assert_eq!(context.sgp_week_pair_tabu.as_ref().unwrap().tenure_max, 32);
+        assert_eq!(context.sgp_week_pair_tabu.as_ref().unwrap().retry_cap, 16);
+        assert!(context
+            .sgp_week_pair_tabu
+            .as_ref()
+            .unwrap()
+            .aspiration_enabled);
     }
 
     #[test]
@@ -629,6 +666,73 @@ mod tests {
         assert!(
             err.to_string()
                 .contains("correctness_lane.sample_every_accepted_moves"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn run_context_rejects_zero_tabu_tenure_min() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            local_improver: Solver3LocalImproverParams {
+                sgp_week_pair_tabu: Solver3SgpWeekPairTabuParams {
+                    tenure_min: 0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string().contains("sgp_week_pair_tabu.tenure_min"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn run_context_rejects_tabu_tenure_max_below_min() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            local_improver: Solver3LocalImproverParams {
+                sgp_week_pair_tabu: Solver3SgpWeekPairTabuParams {
+                    tenure_min: 9,
+                    tenure_max: 8,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string().contains("sgp_week_pair_tabu.tenure_max"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn run_context_rejects_zero_tabu_retry_cap() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            local_improver: Solver3LocalImproverParams {
+                sgp_week_pair_tabu: Solver3SgpWeekPairTabuParams {
+                    retry_cap: 0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string().contains("sgp_week_pair_tabu.retry_cap"),
             "unexpected error: {err}"
         );
     }
@@ -658,6 +762,7 @@ mod tests {
         config.solver_params = SolverParams::Solver3(Solver3Params {
             local_improver: Solver3LocalImproverParams {
                 mode: Solver3LocalImproverMode::SgpWeekPairTabu,
+                ..Default::default()
             },
             ..Default::default()
         });

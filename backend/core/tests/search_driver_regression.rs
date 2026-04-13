@@ -669,6 +669,7 @@ fn solver3_explicit_default_modes_match_implicit_default_run() {
         },
         local_improver: Solver3LocalImproverParams {
             mode: Solver3LocalImproverMode::RecordToRecord,
+            ..Default::default()
         },
         ..Default::default()
     });
@@ -718,6 +719,7 @@ fn solver3_unimplemented_local_improver_mode_fails_explicitly() {
     input.solver.solver_params = SolverParams::Solver3(Solver3Params {
         local_improver: Solver3LocalImproverParams {
             mode: Solver3LocalImproverMode::SgpWeekPairTabu,
+            ..Default::default()
         },
         ..Default::default()
     });

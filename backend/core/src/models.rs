@@ -1053,6 +1053,37 @@ pub struct Solver3LocalImproverParams {
     /// Which local improver the selected driver should call.
     #[serde(default)]
     pub mode: Solver3LocalImproverMode,
+    /// Config for the SGP-shaped swapped-pair tabu improver.
+    #[serde(default)]
+    pub sgp_week_pair_tabu: Solver3SgpWeekPairTabuParams,
+}
+
+/// Config for the SGP-shaped swapped-pair tabu improver.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+pub struct Solver3SgpWeekPairTabuParams {
+    /// Dynamic tenure lower bound in accepted-move iterations.
+    #[serde(default = "default_solver3_sgp_week_pair_tabu_tenure_min")]
+    pub tenure_min: u32,
+    /// Dynamic tenure upper bound in accepted-move iterations.
+    #[serde(default = "default_solver3_sgp_week_pair_tabu_tenure_max")]
+    pub tenure_max: u32,
+    /// Bounded sampler retry cap for tabooed raw swap proposals.
+    #[serde(default = "default_solver3_sgp_week_pair_tabu_retry_cap")]
+    pub retry_cap: u32,
+    /// Whether tabu aspiration may override a tabooed move after preview.
+    #[serde(default = "default_solver3_sgp_week_pair_tabu_aspiration")]
+    pub aspiration_enabled: bool,
+}
+
+impl Default for Solver3SgpWeekPairTabuParams {
+    fn default() -> Self {
+        Self {
+            tenure_min: default_solver3_sgp_week_pair_tabu_tenure_min(),
+            tenure_max: default_solver3_sgp_week_pair_tabu_tenure_max(),
+            retry_cap: default_solver3_sgp_week_pair_tabu_retry_cap(),
+            aspiration_enabled: default_solver3_sgp_week_pair_tabu_aspiration(),
+        }
+    }
 }
 
 /// Experimental hotspot-guidance controls for `solver3`.
@@ -1128,6 +1159,22 @@ fn default_solver3_repeat_guided_swap_probability() -> f64 {
 
 fn default_solver3_repeat_guided_swap_preview_budget() -> u32 {
     8
+}
+
+fn default_solver3_sgp_week_pair_tabu_tenure_min() -> u32 {
+    8
+}
+
+fn default_solver3_sgp_week_pair_tabu_tenure_max() -> u32 {
+    32
+}
+
+fn default_solver3_sgp_week_pair_tabu_retry_cap() -> u32 {
+    16
+}
+
+fn default_solver3_sgp_week_pair_tabu_aspiration() -> bool {
+    true
 }
 
 /// Parameters specific to the Simulated Annealing algorithm.
