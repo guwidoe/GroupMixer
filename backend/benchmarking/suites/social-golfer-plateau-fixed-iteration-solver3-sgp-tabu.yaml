@@ -1,0 +1,40 @@
+schema_version: 1
+suite_id: social-golfer-plateau-fixed-iteration-solver3-sgp-tabu
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: stretch
+title: Social Golfer plateau diagnosis (fixed-iteration, solver3 SGP tabu)
+description: Dedicated single-case solver3 suite for studying quality-per-iteration and plateau timing on the canonical Social Golfer workload with the SGP week-pair tabu local improver enabled.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 1000000
+    time_limit_seconds: 60
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+    local_improver:
+      mode: sgp_week_pair_tabu
+      sgp_week_pair_tabu:
+        tenure_min: 8
+        tenure_max: 32
+        retry_cap: 16
+        aspiration_enabled: true
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.plateau.fixed_iteration.social_golfer_sgp_week_pair_tabu
+    provenance: dedicated_single_case_plateau_diagnosis_suite_for_solver3_sgp_week_pair_tabu
+    declared_budget:
+      max_iterations: 9000000
+      time_limit_seconds: 120
+    seed: 320810
+    max_iterations: 9000000
+    time_limit_seconds: 120
