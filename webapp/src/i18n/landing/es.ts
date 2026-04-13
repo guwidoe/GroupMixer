@@ -93,7 +93,7 @@ const FAQS = {
   privacy: {
     question: '¿Mis datos se mantienen privados?',
     answer:
-      'Sí. Todo el procesamiento ocurre localmente en tu navegador. Tus nombres y datos de grupos no se envían a un servidor. Puedes usar esta página sin conexión a internet una vez cargada.',
+      'Sí. Todo el procesamiento ocurre localmente en tu navegador. Tus nombres y datos de grupos no se envían a un servidor. Puedes usar esta página sin conexión a internet una vez cargada.'
   },
   constraints: {
     question: '¿Puedo añadir reglas como mantener juntos o separar personas?',

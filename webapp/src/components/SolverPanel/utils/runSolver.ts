@@ -1,6 +1,5 @@
 import type { MutableRefObject } from 'react';
 import type { Scenario, ScenarioResult, SavedScenario, SolverSettings, SolverState, Solution, Notification } from '../../../types';
-import { buildTelemetryPayload, getPersistedTelemetryAttribution, trackLandingEvent } from '../../../services/landingInstrumentation';
 import { isRuntimeCancelledError, type RuntimeProgressUpdate } from '../../../services/runtime';
 import { solveScenario } from '../../../services/solver/solveScenario';
 import { reconcileResultToInitialSchedule } from '../../../utils/warmStart';
@@ -87,7 +86,6 @@ function normalizeCompletedRunSettings(
 
 function beginRunLifecycle({
   currentScenario,
-  useRecommended,
   showLiveVizRef,
   startSolver,
   addNotification,
@@ -103,17 +101,6 @@ function beginRunLifecycle({
 }): RunSetup {
   cancelledRef.current = false;
   solverCompletedRef.current = false;
-
-  trackLandingEvent(
-    'solver_started',
-    buildTelemetryPayload(
-      {
-        entryPath: '/app/solver',
-        mode: useRecommended ? 'automatic' : 'custom',
-      },
-      getPersistedTelemetryAttribution(),
-    ),
-  );
 
   startSolver();
   addNotification({
@@ -296,7 +283,6 @@ export async function runSolver(args: RunSolverArgs) {
   try {
     const { progressCallback } = beginRunLifecycle({
       currentScenario,
-      useRecommended: args.useRecommended,
       showLiveVizRef: args.showLiveVizRef,
       startSolver: args.startSolver,
       addNotification: args.addNotification,
@@ -358,7 +344,6 @@ export async function runSolver(args: RunSolverArgs) {
 
     trackCompletedRun({
       cancelled: args.cancelledRef.current,
-      useRecommended: args.useRecommended,
       savedResult,
     });
 

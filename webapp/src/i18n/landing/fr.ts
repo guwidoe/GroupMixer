@@ -93,7 +93,7 @@ const FAQS = {
   privacy: {
     question: 'Mes données restent-elles privées ?',
     answer:
-      'Oui. Tout le traitement se fait localement dans votre navigateur. Vos noms et vos données de groupes ne sont jamais envoyés à un serveur. Une fois la page chargée, vous pouvez aussi l’utiliser hors ligne.',
+      'Oui. Tout le traitement se fait localement dans votre navigateur. Vos noms et vos données de groupes ne sont jamais envoyés à un serveur. Une fois la page chargée, vous pouvez aussi l’utiliser hors ligne.'
   },
   constraints: {
     question: 'Puis-je ajouter des règles comme garder ensemble ou séparer certaines personnes ?',

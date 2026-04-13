@@ -1,4 +1,3 @@
-import { trackLandingEvent } from '../../services/landingInstrumentation';
 import type { QuickSetupController } from './useQuickSetup';
 
 interface QuickSetupAdvancedOptionsProps {
@@ -14,10 +13,6 @@ export function QuickSetupAdvancedOptions({ controller }: QuickSetupAdvancedOpti
       <button
         type="button"
         onClick={() => {
-          trackLandingEvent('landing_advanced_toggled', {
-            nextOpen: !draft.advancedOpen,
-            inputMode: draft.inputMode,
-          });
           controller.toggleAdvanced();
         }}
         className="landing-action-button flex w-full items-center justify-between gap-4 rounded-2xl px-3 py-2 text-left"

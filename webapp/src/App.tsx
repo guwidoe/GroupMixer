@@ -8,6 +8,7 @@ import { ResultsView } from './components/ResultsView';
 import { SolverWorkspace } from './components/SolverWorkspace/SolverWorkspace';
 import MainApp from './MainApp';
 import ToolLandingPage from './pages/ToolLandingPage';
+import LegalPage from './pages/LegalPage';
 import { TOOL_PAGE_ROUTES } from './pages/toolPageConfigs';
 import { getScenarioSetupPath, resolveScenarioSetupSection } from './components/ScenarioEditor/navigation/scenarioSetupNav';
 import { useAppStore } from './store';
@@ -39,6 +40,7 @@ function App() {
         {TOOL_PAGE_ROUTES.map(({ key, locale, path }) => (
           <Route key={`${locale}:${key}`} path={path} element={<ToolLandingPage pageKey={key} locale={locale} />} />
         ))}
+        <Route path="/legal" element={<LegalPage />} />
         <Route path="/landingpage" element={<Navigate to="/" replace />} />
         <Route path="/app" element={<MainApp />}>
           <Route index element={<SetupRouteRedirect />} />

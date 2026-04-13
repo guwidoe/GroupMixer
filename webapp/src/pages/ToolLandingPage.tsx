@@ -15,11 +15,9 @@ import { interpolate } from '../i18n/interpolate';
 import { getLandingUiContent } from '../i18n/landingUi';
 import { Seo } from '../components/Seo';
 import {
-  buildTelemetryPayload,
   buildTrackedAppPath,
   persistTelemetryAttribution,
   readTelemetryAttributionFromSearch,
-  trackLandingEvent,
 } from '../services/landingInstrumentation';
 import { useAppStore } from '../store';
 import {
@@ -135,31 +133,6 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
     persistTelemetryAttribution(telemetryAttribution);
   }, [telemetryAttribution]);
 
-  useEffect(() => {
-    trackLandingEvent(
-      'landing_view',
-      buildTelemetryPayload(
-        {
-          pageKey,
-          canonicalPath: config.canonicalPath,
-          preset: config.defaultPreset,
-          locale: config.locale,
-          audience: config.inventory.audience,
-          pageExperimentLabel: config.experiment.label,
-        },
-        telemetryAttribution,
-      ),
-    );
-  }, [
-    config.canonicalPath,
-    config.defaultPreset,
-    config.experiment.label,
-    config.inventory.audience,
-    config.locale,
-    pageKey,
-    telemetryAttribution,
-  ]);
-
   const workspacePayload = controller.workspacePayload;
   const solvedSolution = workspacePayload.solution ?? null;
   const sharedSessionData = useMemo(
@@ -263,17 +236,6 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   };
 
   const openAdvancedWorkspace = (target: 'results' | 'people') => {
-    trackLandingEvent(
-      'landing_open_advanced_workspace',
-      buildTelemetryPayload(
-        {
-          hasResult: Boolean(controller.result),
-          source: 'landing_page',
-        },
-        telemetryAttribution,
-      ),
-    );
-
     if (hasForeignWorkspaceContent) {
       setPendingAdvancedWorkspaceTarget(target);
       setShowWorkspaceOverwriteModal(true);
@@ -738,11 +700,6 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                 <button
                   type="button"
                   onClick={() => {
-                    trackLandingEvent('landing_generate_clicked', {
-                      preset: draft.preset,
-                      participantCount,
-                      groupingMode: draft.groupingMode,
-                    });
                     controller.generateGroups();
                   }}
                   disabled={!controller.canGenerate || controller.isSolving}

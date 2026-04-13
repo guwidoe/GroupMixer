@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { SITE_LEGAL_CONFIG } from '../../legal/legalConfig';
+import { SiteLegalLinks } from '../SiteLegalLinks';
 
 interface LandingFooterProps {
   expertWorkspaceTo?: string;
@@ -47,10 +49,11 @@ export function LandingFooter({
             >
               {feedbackLabel}
             </a>
+            <SiteLegalLinks />
           </div>
         </div>
         <p className="mt-4 text-center text-xs sm:text-left" style={{ color: 'var(--text-secondary)' }}>
-          © {new Date().getFullYear()} Guido Witt-Dörring. {privacyNote}
+          © {new Date().getFullYear()} {SITE_LEGAL_CONFIG.ownerName}. {privacyNote}
         </p>
       </div>
     </footer>

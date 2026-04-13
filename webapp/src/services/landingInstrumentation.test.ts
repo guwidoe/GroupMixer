@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  buildTelemetryPayload,
   buildTrackedAppPath,
   canonicalPathToLandingSlug,
   captureTelemetryAttributionFromSearch,
@@ -60,24 +59,6 @@ describe('landingInstrumentation attribution helpers', () => {
       variant: 'B',
     });
     expect(getActiveTelemetryAttribution('')).toEqual({
-      landingSlug: 'random-team-generator',
-      experiment: 'seo-hero-test',
-      variant: 'B',
-    });
-  });
-
-  it('merges attribution fields into telemetry payloads only when present', () => {
-    expect(
-      buildTelemetryPayload(
-        { entryPath: '/app/solver' },
-        {
-          landingSlug: 'random-team-generator',
-          experiment: 'seo-hero-test',
-          variant: 'B',
-        },
-      ),
-    ).toEqual({
-      entryPath: '/app/solver',
       landingSlug: 'random-team-generator',
       experiment: 'seo-hero-test',
       variant: 'B',

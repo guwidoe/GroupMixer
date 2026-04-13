@@ -8,14 +8,14 @@ import { ScenarioManager } from './components/ScenarioManager';
 import { ResultComparison } from './components/ResultComparison';
 import { Seo } from './components/Seo';
 import { WorkflowGuideButton } from './components/workflow/WorkflowGuideButton';
-import { buildTelemetryPayload, getActiveTelemetryAttribution, trackLandingEvent } from './services/landingInstrumentation';
+import { SiteLegalLinks } from './components/SiteLegalLinks';
+import { SITE_LEGAL_CONFIG } from './legal/legalConfig';
 import { getAppSeo } from './seo/appRouteSeo';
 import { useAppStore } from './store';
 
 function MainApp() {
   const { ui, scenario, currentScenarioId, initializeApp, setShowScenarioManager } = useAppStore();
   const location = useLocation();
-  const hasTrackedAppEntryRef = useRef(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const [workspaceShellHeight, setWorkspaceShellHeight] = useState<string>('20rem');
   const seo = getAppSeo(location.pathname);
@@ -24,24 +24,6 @@ function MainApp() {
   useEffect(() => {
     initializeApp();
   }, [initializeApp]);
-
-  useEffect(() => {
-    if (hasTrackedAppEntryRef.current) {
-      return;
-    }
-
-    hasTrackedAppEntryRef.current = true;
-    const attribution = getActiveTelemetryAttribution(location.search);
-    trackLandingEvent(
-      'app_entry',
-      buildTelemetryPayload(
-        {
-          entryPath: location.pathname,
-        },
-        attribution,
-      ),
-    );
-  }, [location.pathname, location.search]);
 
   useLayoutEffect(() => {
     if (!isWorkspaceRoute) {
@@ -129,6 +111,16 @@ function MainApp() {
           <Outlet />
         </div>
       </main>
+
+      <footer
+        className="border-t px-4 py-4 sm:px-6"
+        style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+      >
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 text-xs sm:flex-row sm:items-center sm:justify-between" style={{ color: 'var(--text-secondary)' }}>
+          <div>© {new Date().getFullYear()} {SITE_LEGAL_CONFIG.ownerName}</div>
+          <SiteLegalLinks linkClassName="transition-colors hover:opacity-80" />
+        </div>
+      </footer>
 
       <WorkflowGuideButton />
 

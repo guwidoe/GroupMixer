@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import type { ToolPageConfig } from '../../pages/toolPageConfigs';
-import { trackLandingEvent } from '../../services/landingInstrumentation';
 import { useAppStore } from '../../store';
 import { QuickSetupAdvancedOptions } from './QuickSetupAdvancedOptions';
 import { QuickSetupBasicForm } from './QuickSetupBasicForm';
@@ -17,10 +16,6 @@ export function QuickSetupPanel({ pageConfig }: QuickSetupPanelProps) {
   const navigate = useNavigate();
 
   const openAdvancedWorkspace = () => {
-    trackLandingEvent('landing_open_advanced_workspace', {
-      hasResult: Boolean(controller.result),
-      source: 'quick_setup_panel',
-    });
     replaceWorkspace(controller.buildWorkspaceBridgePayload());
     navigate('/app/scenario/people');
   };

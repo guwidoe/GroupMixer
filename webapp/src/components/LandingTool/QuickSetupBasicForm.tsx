@@ -1,5 +1,4 @@
 import { RotateCcw, Sparkles } from 'lucide-react';
-import { trackLandingEvent } from '../../services/landingInstrumentation';
 import type { QuickSetupController } from './useQuickSetup';
 
 interface QuickSetupBasicFormProps {
@@ -148,11 +147,6 @@ export function QuickSetupBasicForm({ controller }: QuickSetupBasicFormProps) {
         <button
           type="button"
           onClick={() => {
-            trackLandingEvent('landing_generate_clicked', {
-              preset: draft.preset,
-              participantCount,
-              groupingMode: draft.groupingMode,
-            });
             controller.generateGroups();
           }}
           disabled={!controller.canGenerate || controller.isSolving}

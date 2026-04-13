@@ -1,10 +1,3 @@
-declare global {
-  interface Window {
-    va?: (...args: unknown[]) => void;
-    __groupmixerLandingEvents?: Array<{ name: string; payload?: Record<string, unknown> }>;
-  }
-}
-
 const ATTRIBUTION_STORAGE_KEY = 'groupmixer-telemetry-attribution';
 
 type TelemetryAttribution = {
@@ -115,41 +108,4 @@ export function getActiveTelemetryAttribution(search?: string): TelemetryAttribu
   }
 
   return getPersistedTelemetryAttribution();
-}
-
-export function buildTelemetryPayload(
-  payload?: Record<string, unknown>,
-  attribution?: TelemetryAttribution,
-): Record<string, unknown> | undefined {
-  const mergedPayload = {
-    ...payload,
-    ...(attribution?.landingSlug ? { landingSlug: attribution.landingSlug } : {}),
-    ...(attribution?.experiment ? { experiment: attribution.experiment } : {}),
-    ...(attribution?.variant ? { variant: attribution.variant } : {}),
-  };
-
-  return Object.keys(mergedPayload).length > 0 ? mergedPayload : undefined;
-}
-
-export function trackLandingEvent(name: string, payload?: Record<string, unknown>) {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  window.__groupmixerLandingEvents = window.__groupmixerLandingEvents || [];
-  window.__groupmixerLandingEvents.push({ name, payload });
-
-  window.dispatchEvent(
-    new CustomEvent('groupmixer:landing-event', {
-      detail: { name, payload },
-    }),
-  );
-
-  if (typeof window.va === 'function') {
-    try {
-      window.va('event', { name, ...payload });
-    } catch {
-      // Ignore analytics transport failures; event scaffolding should stay lightweight.
-    }
-  }
 }
