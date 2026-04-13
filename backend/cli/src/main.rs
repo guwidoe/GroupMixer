@@ -21,11 +21,12 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use gm_benchmarking::{
     compare_run_to_baseline, create_recording_for_run, create_recording_for_runs,
-    find_recording_suite_runs, list_recordings, list_refs, load_baseline_snapshot, load_recording,
-    load_ref, load_run_report, persist_comparison_report, persist_run_report,
-    render_comparison_summary, resolve_artifact_path, run_suite_from_manifest,
-    save_baseline_snapshot, BaselineDescriptor, BenchmarkStorage, RecordingOptions, RecordingQuery,
-    RecordingRunInput, RunnerOptions, FULL_SOLVE_BENCHMARK_MODE,
+    export_trajectory, export_trajectory_csv, find_recording_suite_runs, list_recordings,
+    list_refs, load_baseline_snapshot, load_recording, load_ref, load_run_report,
+    persist_comparison_report, persist_run_report, render_comparison_summary,
+    render_trajectory_text, resolve_artifact_path, run_suite_from_manifest,
+    save_baseline_snapshot, BaselineDescriptor, BenchmarkStorage, RecordingOptions,
+    RecordingQuery, RecordingRunInput, RunnerOptions, FULL_SOLVE_BENCHMARK_MODE,
 };
 use gm_contracts::{
     bootstrap::bootstrap_spec,
@@ -247,6 +248,25 @@ enum BenchmarkCommands {
         summary_output: Option<PathBuf>,
     },
 
+    /// Inspect the best-score improvement trajectory for one benchmark case
+    Trajectory {
+        /// Path to run-report.json
+        #[arg(long, value_name = "FILE")]
+        run: PathBuf,
+
+        /// Case id to inspect; optional when the run contains exactly one case
+        #[arg(long, value_name = "CASE_ID")]
+        case: Option<String>,
+
+        /// Output format
+        #[arg(long, value_enum, default_value = "text")]
+        format: TrajectoryFormat,
+
+        /// Width used for text sparkline rendering
+        #[arg(long, default_value_t = 64)]
+        width: usize,
+    },
+
     /// Run one suite and persist it as a recording
     Record {
         /// Built-in suite id to run
@@ -434,6 +454,13 @@ enum BenchmarkBaselineCommands {
     },
 }
 
+#[derive(Clone, Debug, ValueEnum)]
+enum TrajectoryFormat {
+    Text,
+    Json,
+    Csv,
+}
+
 #[derive(Subcommand)]
 enum BenchmarkRecordingsCommands {
     /// List known benchmark recordings
@@ -581,6 +608,12 @@ fn cmd_benchmark(command: BenchmarkCommands) -> Result<()> {
             artifacts_dir,
             summary_output,
         } => cmd_benchmark_compare(run, baseline, baseline_run, artifacts_dir, summary_output),
+        BenchmarkCommands::Trajectory {
+            run,
+            case,
+            format,
+            width,
+        } => cmd_benchmark_trajectory(run, case, format, width),
         BenchmarkCommands::Record {
             suite,
             manifest,
@@ -760,6 +793,32 @@ fn cmd_benchmark_compare(
     if let Some(summary_output) = summary_output {
         write_text_file(&summary_output, &summary)?;
         println!("Summary written: {}", summary_output.display());
+    }
+
+    Ok(())
+}
+
+fn cmd_benchmark_trajectory(
+    run_path: PathBuf,
+    case_id: Option<String>,
+    format: TrajectoryFormat,
+    width: usize,
+) -> Result<()> {
+    let run_report = load_run_report(&run_path)?;
+
+    match format {
+        TrajectoryFormat::Text => {
+            let rendered = render_trajectory_text(&run_report, case_id.as_deref(), width)?;
+            println!("{}", rendered);
+        }
+        TrajectoryFormat::Json => {
+            let export = export_trajectory(&run_report, case_id.as_deref())?;
+            print_json_pretty(&export)?;
+        }
+        TrajectoryFormat::Csv => {
+            let csv = export_trajectory_csv(&run_report, case_id.as_deref())?;
+            println!("{}", csv);
+        }
     }
 
     Ok(())

@@ -12,6 +12,7 @@ pub mod refs;
 pub mod runner;
 pub mod storage;
 pub mod summary;
+pub mod trajectory;
 pub mod validation;
 
 pub use artifacts::{
@@ -62,6 +63,7 @@ pub use storage::{
     MachineRecord,
 };
 pub use summary::render_comparison_summary;
+pub use trajectory::{export_trajectory, export_trajectory_csv, render_trajectory_text, select_case, TrajectoryExport};
 pub use validation::{
     validate_final_solution, validation_failure_summary, ExternalValidationAgreement,
     ExternalValidationReport, RecomputedScoreBreakdown, ReportedScoreBreakdown,
