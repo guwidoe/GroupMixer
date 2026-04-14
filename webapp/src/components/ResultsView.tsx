@@ -206,6 +206,7 @@ export function ResultsView() {
       <ResultsHeader
         resultName={resultName}
         solution={solution}
+        summary={resultsModel?.summary ?? null}
         configDiff={configDiff}
         configDetailsOpen={configDetailsOpen}
         onToggleConfigDetails={() => setConfigDetailsOpen(!configDetailsOpen)}

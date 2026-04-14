@@ -21,9 +21,10 @@ vi.mock('./ConstraintComplianceCards', () => ({
 }));
 
 vi.mock('./ResultsView/ResultsHeader', () => ({
-  ResultsHeader: ({ resultName, onRestoreConfig }: { resultName?: string; onRestoreConfig: () => void }) => (
+  ResultsHeader: ({ resultName, onRestoreConfig, summary }: { resultName?: string; onRestoreConfig: () => void; summary: { totalSessions: number } | null }) => (
     <div>
       <div>{`header:${resultName ?? 'none'}`}</div>
+      <div>{`summary:${summary?.totalSessions ?? 0}`}</div>
       <button onClick={onRestoreConfig}>restore</button>
     </div>
   ),
@@ -112,6 +113,7 @@ describe('ResultsView', () => {
     render(<ResultsView />);
 
     expect(screen.getByText('header:Snapshot Result')).toBeInTheDocument();
+    expect(screen.getByText('summary:2')).toBeInTheDocument();
     expect(screen.getByText('metrics:12.5')).toBeInTheDocument();
     expect(screen.getByText('compliance:4:8')).toBeInTheDocument();
     expect(screen.getByText('schedule:2:snap-group:scheduleMatrix')).toBeInTheDocument();

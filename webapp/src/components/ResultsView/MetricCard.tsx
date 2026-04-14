@@ -10,15 +10,20 @@ interface MetricCardProps {
 export function MetricCard({ title, value, icon, colorClass }: MetricCardProps) {
   return (
     <div
-      className="rounded-lg border p-6 transition-colors"
+      className="rounded-2xl border p-4 transition-colors sm:p-5"
       style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
     >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{title}</p>
-          <p className={`text-2xl font-bold ${colorClass}`}>{value}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>{title}</p>
+          <p className={`mt-2 text-2xl font-semibold tracking-tight ${colorClass}`}>{value}</p>
         </div>
-        {React.createElement(icon, { className: `w-8 h-8 ${colorClass.replace('-600', '-400')}` })}
+        <div
+          className="flex h-10 w-10 items-center justify-center rounded-xl"
+          style={{ backgroundColor: 'var(--bg-secondary)' }}
+        >
+          {React.createElement(icon, { className: `w-5 h-5 ${colorClass.replace('-600', '-400')}` })}
+        </div>
       </div>
     </div>
   );

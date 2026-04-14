@@ -364,7 +364,7 @@ describe("MainApp stateful integration routes", () => {
     renderAppRoute("/app/results");
 
     expect(await screen.findByRole("heading", { name: /optimization results/i })).toBeInTheDocument();
-    expect(screen.getByText(/group assignments/i)).toBeInTheDocument();
+    expect(screen.getByText(/assignment layout/i)).toBeInTheDocument();
   });
 
   it("renders the real /app/history surface and can navigate into result details from persisted state", async () => {

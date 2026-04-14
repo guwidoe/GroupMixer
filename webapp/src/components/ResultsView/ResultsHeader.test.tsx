@@ -12,12 +12,23 @@ const configDiff: ScenarioConfigDifference = {
   details: { people: "People configuration changed" },
 };
 
+const summary = {
+  totalPeople: 4,
+  totalGroups: 2,
+  totalSessions: 2,
+  totalAssignments: 8,
+  totalCapacity: 8,
+  openSeats: 0,
+  averageFillPercent: 100,
+};
+
 describe("ResultsHeader", () => {
   it("renders key result summary information", () => {
     render(
       <ResultsHeader
         resultName="Baseline"
         solution={createSampleSolution({ final_score: 12.5, iteration_count: 42, elapsed_time_ms: 1234 })}
+        summary={summary}
         configDiff={null}
         configDetailsOpen={false}
         onToggleConfigDetails={vi.fn()}
@@ -35,7 +46,8 @@ describe("ResultsHeader", () => {
     expect(screen.getByRole("heading", { name: /optimization results - baseline/i })).toBeInTheDocument();
     expect(screen.getByText(/12\.50/)).toBeInTheDocument();
     expect(screen.getByText(/42 iterations/i)).toBeInTheDocument();
-    expect(screen.getByText(/1\.23s/i)).toBeInTheDocument();
+    expect(screen.getByText(/1\.23s runtime/i)).toBeInTheDocument();
+    expect(screen.getByText(/seat fill/i)).toBeInTheDocument();
     expect(screen.queryByText(/different config/i)).not.toBeInTheDocument();
   });
 
@@ -51,6 +63,7 @@ describe("ResultsHeader", () => {
       <ResultsHeader
         resultName="Scenario A"
         solution={createSampleSolution()}
+        summary={summary}
         configDiff={configDiff}
         configDetailsOpen={true}
         onToggleConfigDetails={onToggleConfigDetails}

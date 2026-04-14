@@ -27,19 +27,27 @@ export function ResultsSchedule({
   onVizPluginChange,
   vizExportRef,
 }: ResultsScheduleProps) {
+  const [selectedSessionIndex, setSelectedSessionIndex] = React.useState<number | null>(null);
+
   if (!resultsModel) {
     return null;
   }
 
   return (
-    <div className="rounded-lg border transition-colors" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
-      <div className="border-b px-6 py-4" style={{ borderColor: 'var(--border-primary)' }}>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0">
-          <h3 className="text-lg font-medium" style={{ color: 'var(--text-primary)' }}>Group Assignments</h3>
-          <div className="flex items-center gap-2">
+    <section className="rounded-2xl border transition-colors" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
+      <div className="border-b px-4 py-4 sm:px-6" style={{ borderColor: 'var(--border-primary)' }}>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Assignment Layout</h3>
+            <p className="mt-1 max-w-2xl text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
+              Switch between session-first, participant-first, and visualization views depending on how you want to review the result.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 rounded-xl border p-1" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
             <button
               onClick={() => onViewModeChange('grid')}
-              className="px-3 py-1 rounded text-sm transition-colors"
+              className="px-3 py-2 rounded-lg text-sm transition-colors"
               style={{
                 backgroundColor: viewMode === 'grid' ? 'var(--bg-tertiary)' : 'transparent',
                 color: viewMode === 'grid' ? 'var(--color-accent)' : 'var(--text-secondary)',
@@ -61,7 +69,7 @@ export function ResultsSchedule({
             </button>
             <button
               onClick={() => onViewModeChange('list')}
-              className="px-3 py-1 rounded text-sm transition-colors"
+              className="px-3 py-2 rounded-lg text-sm transition-colors"
               style={{
                 backgroundColor: viewMode === 'list' ? 'var(--bg-tertiary)' : 'transparent',
                 color: viewMode === 'list' ? 'var(--color-accent)' : 'var(--text-secondary)',
@@ -83,7 +91,7 @@ export function ResultsSchedule({
             </button>
             <button
               onClick={() => onViewModeChange('visualize')}
-              className="px-3 py-1 rounded text-sm transition-colors"
+              className="px-3 py-2 rounded-lg text-sm transition-colors"
               style={{
                 backgroundColor: viewMode === 'visualize' ? 'var(--bg-tertiary)' : 'transparent',
                 color: viewMode === 'visualize' ? 'var(--color-accent)' : 'var(--text-secondary)',
@@ -105,11 +113,43 @@ export function ResultsSchedule({
             </button>
           </div>
         </div>
+
+        {viewMode === 'grid' && resultsModel.sessions.length > 1 ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedSessionIndex(null)}
+              className="rounded-full border px-3 py-1.5 text-sm font-medium transition-colors"
+              style={{
+                backgroundColor: selectedSessionIndex === null ? 'var(--bg-tertiary)' : 'transparent',
+                color: selectedSessionIndex === null ? 'var(--color-accent)' : 'var(--text-secondary)',
+                borderColor: selectedSessionIndex === null ? 'var(--color-accent)' : 'var(--border-primary)',
+              }}
+            >
+              All sessions
+            </button>
+            {resultsModel.sessions.map((session) => (
+              <button
+                key={session.sessionIndex}
+                type="button"
+                onClick={() => setSelectedSessionIndex(session.sessionIndex)}
+                className="rounded-full border px-3 py-1.5 text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: selectedSessionIndex === session.sessionIndex ? 'var(--bg-tertiary)' : 'transparent',
+                  color: selectedSessionIndex === session.sessionIndex ? 'var(--color-accent)' : 'var(--text-secondary)',
+                  borderColor: selectedSessionIndex === session.sessionIndex ? 'var(--color-accent)' : 'var(--border-primary)',
+                }}
+              >
+                {session.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {viewMode === 'grid' ? (
-          <ResultsScheduleGrid sessionData={resultsModel.sessions} />
+          <ResultsScheduleGrid sessionData={resultsModel.sessions} selectedSessionIndex={selectedSessionIndex} />
         ) : viewMode === 'list' ? (
           <ResultsScheduleList participants={resultsModel.participants} sessionCount={resultsModel.summary.totalSessions} />
         ) : (
@@ -122,6 +162,6 @@ export function ResultsSchedule({
           />
         )}
       </div>
-    </div>
+    </section>
   );
 }
