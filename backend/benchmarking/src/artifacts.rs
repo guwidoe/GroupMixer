@@ -2,7 +2,8 @@ use crate::manifest::{BenchmarkCaseRole, BenchmarkSuiteClass, DeclaredBenchmarkB
 use crate::validation::ExternalValidationReport;
 use gm_core::models::{
     BestScoreTimelinePoint, DonorSessionTransplantBenchmarkTelemetry,
-    MemeticBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
+    MemeticBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary,
+    MovePolicy, MultiRootBalancedSessionInheritanceBenchmarkTelemetry,
     RepeatGuidedSwapBenchmarkTelemetry, SessionAlignedPathRelinkingBenchmarkTelemetry,
     SgpWeekPairTabuBenchmarkTelemetry, StopReason,
 };
@@ -242,6 +243,9 @@ pub struct SearchTelemetryArtifact {
     pub donor_session_transplant: Option<DonorSessionTransplantBenchmarkTelemetry>,
     #[serde(default)]
     pub session_aligned_path_relinking: Option<SessionAlignedPathRelinkingBenchmarkTelemetry>,
+    #[serde(default)]
+    pub multi_root_balanced_session_inheritance:
+        Option<MultiRootBalancedSessionInheritanceBenchmarkTelemetry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

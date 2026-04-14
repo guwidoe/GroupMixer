@@ -102,7 +102,8 @@
         "sgp_week_pair_tabu",
         "memetic",
         "donor_session_transplant",
-        "session_aligned_path_relinking"
+        "session_aligned_path_relinking",
+        "multi_root_balanced_session_inheritance"
       ],
       "properties": {
         "accepted_uphill_moves": { "type": "integer" },
@@ -485,6 +486,114 @@
                       }
                     }
                   }
+                }
+              }
+            }
+          }
+        },
+        "multi_root_balanced_session_inheritance": {
+          "type": ["object", "null"],
+          "required": [
+            "root_count",
+            "archive_size_per_root",
+            "child_polish_local_improver_mode",
+            "raw_child_keep_ratio",
+            "raw_child_warmup_samples",
+            "raw_child_history_limit",
+            "max_parent_score_delta_from_best",
+            "min_cross_root_session_disagreement",
+            "parent_a_differing_session_share",
+            "child_polish_iterations_per_stagnation_window",
+            "child_polish_no_improvement_iterations_per_stagnation_window",
+            "child_polish_max_stagnation_windows",
+            "swap_local_optimum_certification_enabled",
+            "roots_incubated",
+            "parent_pair_selection_failures",
+            "inheritance_events_fired",
+            "inheritance_events_kept",
+            "alignment_cost_sum",
+            "agreed_session_count_sum",
+            "differing_session_count_sum",
+            "inherited_from_parent_a_sessions_sum",
+            "inherited_from_parent_b_sessions_sum",
+            "children_beating_parent_a",
+            "children_beating_parent_b",
+            "children_beating_both_parents",
+            "best_post_polish_score",
+            "child_polish_iterations",
+            "child_polish_seconds",
+            "event_summaries"
+          ],
+          "properties": {
+            "root_count": { "type": "integer" },
+            "archive_size_per_root": { "type": "integer" },
+            "child_polish_local_improver_mode": { "type": ["string", "null"] },
+            "raw_child_keep_ratio": { "type": "number" },
+            "raw_child_warmup_samples": { "type": "integer" },
+            "raw_child_history_limit": { "type": "integer" },
+            "max_parent_score_delta_from_best": { "type": "number" },
+            "min_cross_root_session_disagreement": { "type": "integer" },
+            "parent_a_differing_session_share": { "type": "number" },
+            "child_polish_iterations_per_stagnation_window": { "type": "integer" },
+            "child_polish_no_improvement_iterations_per_stagnation_window": { "type": "integer" },
+            "child_polish_max_stagnation_windows": { "type": "integer" },
+            "swap_local_optimum_certification_enabled": { "type": "boolean" },
+            "roots_incubated": { "type": "integer" },
+            "parent_pair_selection_failures": { "type": "integer" },
+            "inheritance_events_fired": { "type": "integer" },
+            "inheritance_events_kept": { "type": "integer" },
+            "alignment_cost_sum": { "type": "integer" },
+            "agreed_session_count_sum": { "type": "integer" },
+            "differing_session_count_sum": { "type": "integer" },
+            "inherited_from_parent_a_sessions_sum": { "type": "integer" },
+            "inherited_from_parent_b_sessions_sum": { "type": "integer" },
+            "children_beating_parent_a": { "type": "integer" },
+            "children_beating_parent_b": { "type": "integer" },
+            "children_beating_both_parents": { "type": "integer" },
+            "best_post_polish_score": { "type": ["number", "null"] },
+            "child_polish_iterations": { "type": "integer" },
+            "child_polish_seconds": { "type": "number" },
+            "event_summaries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "parent_a_root_id",
+                  "parent_b_root_id",
+                  "parent_a_score",
+                  "parent_b_score",
+                  "alignment_total_cost",
+                  "agreed_session_count",
+                  "differing_session_count",
+                  "inherited_from_parent_a_sessions",
+                  "inherited_from_parent_b_sessions",
+                  "raw_child_score",
+                  "post_polish_best_score",
+                  "child_beats_parent_a",
+                  "child_beats_parent_b",
+                  "child_beats_both_parents",
+                  "became_new_incumbent",
+                  "child_polish_iterations",
+                  "child_polish_seconds"
+                ],
+                "properties": {
+                  "parent_a_root_id": { "type": "integer" },
+                  "parent_b_root_id": { "type": "integer" },
+                  "parent_a_score": { "type": "number" },
+                  "parent_b_score": { "type": "number" },
+                  "alignment_total_cost": { "type": "integer" },
+                  "agreed_session_count": { "type": "integer" },
+                  "differing_session_count": { "type": "integer" },
+                  "inherited_from_parent_a_sessions": { "type": "integer" },
+                  "inherited_from_parent_b_sessions": { "type": "integer" },
+                  "raw_child_score": { "type": "number" },
+                  "post_polish_best_score": { "type": ["number", "null"] },
+                  "child_beats_parent_a": { "type": ["boolean", "null"] },
+                  "child_beats_parent_b": { "type": ["boolean", "null"] },
+                  "child_beats_both_parents": { "type": ["boolean", "null"] },
+                  "became_new_incumbent": { "type": "boolean" },
+                  "child_polish_iterations": { "type": "integer" },
+                  "child_polish_seconds": { "type": "number" }
                 }
               }
             }

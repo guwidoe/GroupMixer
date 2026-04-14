@@ -1866,4 +1866,17 @@ cases:
             BenchmarkCaseSelectionPolicy::AllowNonCanonical
         );
     }
+
+    #[test]
+    fn multi_root_balanced_inheritance_suites_load() {
+        for relative in [
+            "../benchmarking/suites/solver3-multi-root-balanced-inheritance-multiseed.yaml",
+            "../benchmarking/suites/social-golfer-plateau-time-solver3-multi-root-balanced-inheritance-high-event.yaml",
+            "../benchmarking/suites/stretch-kirkman-schoolgirls-time-solver3-multi-root-balanced-inheritance-high-event.yaml",
+        ] {
+            let suite = load_suite_manifest(relative).expect("suite should load");
+            assert_eq!(suite.manifest.default_solver_family.as_deref(), Some("solver3"));
+            assert!(!suite.cases.is_empty());
+        }
+    }
 }

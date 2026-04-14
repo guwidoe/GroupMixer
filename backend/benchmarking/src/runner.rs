@@ -291,6 +291,9 @@ fn run_case(
                 session_aligned_path_relinking: telemetry
                     .session_aligned_path_relinking
                     .clone(),
+                multi_root_balanced_session_inheritance: telemetry
+                    .multi_root_balanced_session_inheritance
+                    .clone(),
             });
             let validation = validate_final_solution(&input, &result);
             let score_decomposition =

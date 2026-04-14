@@ -4,6 +4,7 @@ use crate::models::{
     BestScoreTimelinePoint, DonorSessionTransplantBenchmarkTelemetry,
     MemeticBenchmarkTelemetry, MoveFamily, MoveFamilyBenchmarkTelemetry,
     MoveFamilyBenchmarkTelemetrySummary, MovePolicy, ProgressUpdate,
+    MultiRootBalancedSessionInheritanceBenchmarkTelemetry,
     RepeatGuidedSwapBenchmarkTelemetry, SessionAlignedPathRelinkingBenchmarkTelemetry,
     SgpWeekPairTabuBenchmarkTelemetry, Solver3LocalImproverMode,
     Solver3MultiRootBalancedSessionInheritanceParams,
@@ -1010,6 +1011,8 @@ pub(crate) struct SearchProgressState {
     pub(crate) donor_session_transplant_telemetry: Option<DonorSessionTransplantBenchmarkTelemetry>,
     pub(crate) session_aligned_path_relinking_telemetry:
         Option<SessionAlignedPathRelinkingBenchmarkTelemetry>,
+    pub(crate) multi_root_balanced_session_inheritance_telemetry:
+        Option<MultiRootBalancedSessionInheritanceBenchmarkTelemetry>,
     pub(crate) move_metrics: MoveFamilyBenchmarkTelemetrySummary,
     #[allow(dead_code)]
     pub(crate) policy_memory: SearchPolicyMemory,
@@ -1045,6 +1048,7 @@ impl SearchProgressState {
             memetic_telemetry: None,
             donor_session_transplant_telemetry: None,
             session_aligned_path_relinking_telemetry: None,
+            multi_root_balanced_session_inheritance_telemetry: None,
             move_metrics: MoveFamilyBenchmarkTelemetrySummary::default(),
             policy_memory: SearchPolicyMemory::default(),
         }
@@ -1352,6 +1356,9 @@ impl SearchProgressState {
             donor_session_transplant: self.donor_session_transplant_telemetry.clone(),
             session_aligned_path_relinking: self
                 .session_aligned_path_relinking_telemetry
+                .clone(),
+            multi_root_balanced_session_inheritance: self
+                .multi_root_balanced_session_inheritance_telemetry
                 .clone(),
             moves: self.move_metrics.clone(),
         }

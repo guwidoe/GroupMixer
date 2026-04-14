@@ -12,8 +12,10 @@ use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha12Rng;
 
 use crate::models::{
-    BenchmarkEvent, BenchmarkObserver, BestScoreTimelinePoint, MoveFamilyBenchmarkTelemetry,
-    MoveFamilyBenchmarkTelemetrySummary, ProgressCallback,
+    BenchmarkEvent, BenchmarkObserver, BestScoreTimelinePoint,
+    MoveFamilyBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary,
+    MultiRootBalancedSessionInheritanceBenchmarkTelemetry,
+    MultiRootBalancedSessionInheritanceEventTelemetry, ProgressCallback,
     RepeatGuidedSwapBenchmarkTelemetry, SessionAlignedPathRelinkingBenchmarkTelemetry,
     SessionAlignedPathRelinkingEventTelemetry, SessionAlignedPathRelinkingStepTelemetry,
     SgpWeekPairTabuBenchmarkTelemetry, Solver3PathRelinkingOperatorVariant, SolverResult,
@@ -1021,6 +1023,27 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
     let mut diversification_rng =
         ChaCha12Rng::seed_from_u64(run_context.effective_seed ^ MULTI_ROOT_SEED_STRIDE);
     let mut aggregate = SearchProgressState::new(state.clone());
+    aggregate.multi_root_balanced_session_inheritance_telemetry = Some(
+        MultiRootBalancedSessionInheritanceBenchmarkTelemetry {
+            root_count: config.root_count as u32,
+            archive_size_per_root: config.archive_size_per_root as u32,
+            child_polish_local_improver_mode: Some(run_context.local_improver_mode),
+            raw_child_keep_ratio: config.adaptive_raw_child_retention.keep_ratio,
+            raw_child_warmup_samples: config.adaptive_raw_child_retention.warmup_samples as u32,
+            raw_child_history_limit: config.adaptive_raw_child_retention.history_limit as u32,
+            max_parent_score_delta_from_best: config.max_parent_score_delta_from_best,
+            min_cross_root_session_disagreement: config.min_cross_root_session_disagreement as u32,
+            parent_a_differing_session_share: config.parent_a_differing_session_share,
+            child_polish_iterations_per_stagnation_window: config
+                .child_polish_iterations_per_stagnation_window,
+            child_polish_no_improvement_iterations_per_stagnation_window: config
+                .child_polish_no_improvement_iterations_per_stagnation_window,
+            child_polish_max_stagnation_windows: config.child_polish_max_stagnation_windows,
+            swap_local_optimum_certification_enabled: config
+                .swap_local_optimum_certification_enabled,
+            ..Default::default()
+        },
+    );
     let mut raw_child_retention =
         AdaptiveRawChildRetentionState::new(config.adaptive_raw_child_retention);
     let mut pool = MultiRootElitePool::new(MultiRootElitePoolConfig {
@@ -1115,6 +1138,12 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
         );
         total_iterations_completed += outcome.search.iterations_completed;
         total_search_seconds += outcome.search_seconds;
+        if let Some(telemetry) = aggregate
+            .multi_root_balanced_session_inheritance_telemetry
+            .as_mut()
+        {
+            telemetry.roots_incubated += 1;
+        }
         let _ = pool.consider_state(root_id, outcome.search.best_state.clone());
         if outcome.search.best_state.total_score < current_incumbent.total_score {
             current_incumbent = outcome.search.best_state.clone();
@@ -1135,10 +1164,32 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
             run_context.time_limit_seconds.map(|limit| limit as f64),
         )
     {
-        if let Ok(choice) = pool.select_cross_root_parent_pair(CrossRootParentSelectionPolicy {
-            max_score_delta_from_best: config.max_parent_score_delta_from_best,
-            min_session_disagreement: config.min_cross_root_session_disagreement,
-        }) {
+        let max_events = config.max_recombination_events_per_run.unwrap_or(u64::MAX);
+        let mut events_fired = 0u64;
+        while events_fired < max_events
+            && total_iterations_completed < run_context.max_iterations
+            && !time_limit_exceeded(
+                get_elapsed_seconds(total_started_at),
+                run_context.time_limit_seconds.map(|limit| limit as f64),
+            )
+        {
+            let choice = match pool.select_cross_root_parent_pair(CrossRootParentSelectionPolicy {
+                max_score_delta_from_best: config.max_parent_score_delta_from_best,
+                min_session_disagreement: config.min_cross_root_session_disagreement,
+            }) {
+                Ok(choice) => choice,
+                Err(_) => {
+                    if let Some(telemetry) = aggregate
+                        .multi_root_balanced_session_inheritance_telemetry
+                        .as_mut()
+                    {
+                        telemetry.parent_pair_selection_failures += 1;
+                    }
+                    break;
+                }
+            };
+            events_fired += 1;
+
             let parents = canonicalize_cross_root_parent_pair(&pool, choice)?;
             let alignment =
                 align_sessions_by_pairing_distance(&parents.parent_a.state, &parents.parent_b.state)?;
@@ -1153,6 +1204,34 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
                 &parents.parent_b.state,
                 &plan,
             )?;
+            let agreed_session_count = alignment
+                .matched_session_pairs
+                .len()
+                .saturating_sub(plan.differing_session_count) as u32;
+            let mut event_summary = MultiRootBalancedSessionInheritanceEventTelemetry {
+                parent_a_root_id: parents.parent_a_root_id,
+                parent_b_root_id: parents.parent_b_root_id,
+                parent_a_score: parents.parent_a.score,
+                parent_b_score: parents.parent_b.score,
+                alignment_total_cost: alignment.total_alignment_cost,
+                agreed_session_count,
+                differing_session_count: plan.differing_session_count as u32,
+                inherited_from_parent_a_sessions: plan.parent_a_session_count as u32,
+                inherited_from_parent_b_sessions: plan.parent_b_session_count as u32,
+                raw_child_score: raw_child.total_score,
+                ..Default::default()
+            };
+            if let Some(telemetry) = aggregate
+                .multi_root_balanced_session_inheritance_telemetry
+                .as_mut()
+            {
+                telemetry.inheritance_events_fired += 1;
+                telemetry.alignment_cost_sum += u64::from(alignment.total_alignment_cost);
+                telemetry.agreed_session_count_sum += u64::from(agreed_session_count);
+                telemetry.differing_session_count_sum += plan.differing_session_count as u64;
+                telemetry.inherited_from_parent_a_sessions_sum += plan.parent_a_session_count as u64;
+                telemetry.inherited_from_parent_b_sessions_sum += plan.parent_b_session_count as u64;
+            }
             let raw_child_delta = raw_child.total_score - current_incumbent.total_score;
             let retain_for_polish = raw_child.total_score < current_incumbent.total_score
                 || raw_child_retention
@@ -1168,7 +1247,8 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
                         .parent_a_root_id
                         .wrapping_mul(31)
                         .wrapping_add(parents.parent_b_root_id.wrapping_mul(17))
-                        .wrapping_add(run_context.effective_seed);
+                        .wrapping_add(run_context.effective_seed)
+                        .wrapping_add(events_fired);
                     let budget_iterations = remaining_iterations.min(child_polish_iterations).max(1);
                     let outcome = polish_state(
                         raw_child,
@@ -1194,11 +1274,77 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
                     total_iterations_completed += outcome.search.iterations_completed;
                     total_search_seconds += outcome.search_seconds;
                     let _ = pool.consider_state(child_root_id, outcome.search.best_state.clone());
-                    if outcome.search.best_state.total_score < current_incumbent.total_score {
+                    let child_score = outcome.search.best_state.total_score;
+                    event_summary.post_polish_best_score = Some(child_score);
+                    event_summary.child_polish_iterations = outcome.search.iterations_completed;
+                    event_summary.child_polish_seconds = outcome.search_seconds;
+                    event_summary.child_beats_parent_a = Some(child_score < parents.parent_a.score);
+                    event_summary.child_beats_parent_b = Some(child_score < parents.parent_b.score);
+                    event_summary.child_beats_both_parents = Some(
+                        child_score < parents.parent_a.score && child_score < parents.parent_b.score,
+                    );
+                    if let Some(telemetry) = aggregate
+                        .multi_root_balanced_session_inheritance_telemetry
+                        .as_mut()
+                    {
+                        telemetry.child_polish_iterations += outcome.search.iterations_completed;
+                        telemetry.child_polish_seconds += outcome.search_seconds;
+                        telemetry.best_post_polish_score = Some(
+                            telemetry
+                                .best_post_polish_score
+                                .map_or(child_score, |current| current.min(child_score)),
+                        );
+                        if child_score < parents.parent_a.score {
+                            telemetry.children_beating_parent_a += 1;
+                        }
+                        if child_score < parents.parent_b.score {
+                            telemetry.children_beating_parent_b += 1;
+                        }
+                        if child_score < parents.parent_a.score && child_score < parents.parent_b.score {
+                            telemetry.children_beating_both_parents += 1;
+                        }
+                    }
+                    if child_score < current_incumbent.total_score {
                         current_incumbent = outcome.search.best_state.clone();
                         best_root_id = child_root_id;
+                        event_summary.became_new_incumbent = true;
+                        if let Some(telemetry) = aggregate
+                            .multi_root_balanced_session_inheritance_telemetry
+                            .as_mut()
+                        {
+                            telemetry.inheritance_events_kept += 1;
+                        }
                     }
                 }
+            } else {
+                let raw_beats_parent_a = raw_child.total_score < parents.parent_a.score;
+                let raw_beats_parent_b = raw_child.total_score < parents.parent_b.score;
+                event_summary.child_beats_parent_a = Some(raw_beats_parent_a);
+                event_summary.child_beats_parent_b = Some(raw_beats_parent_b);
+                event_summary.child_beats_both_parents = Some(
+                    raw_beats_parent_a && raw_beats_parent_b,
+                );
+                if let Some(telemetry) = aggregate
+                    .multi_root_balanced_session_inheritance_telemetry
+                    .as_mut()
+                {
+                    if raw_beats_parent_a {
+                        telemetry.children_beating_parent_a += 1;
+                    }
+                    if raw_beats_parent_b {
+                        telemetry.children_beating_parent_b += 1;
+                    }
+                    if raw_beats_parent_a && raw_beats_parent_b {
+                        telemetry.children_beating_both_parents += 1;
+                    }
+                }
+            }
+
+            if let Some(telemetry) = aggregate
+                .multi_root_balanced_session_inheritance_telemetry
+                .as_mut()
+            {
+                telemetry.event_summaries.push(event_summary);
             }
         }
     }

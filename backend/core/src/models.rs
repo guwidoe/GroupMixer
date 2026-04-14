@@ -2294,6 +2294,108 @@ pub struct SessionAlignedPathRelinkingBenchmarkTelemetry {
     pub event_summaries: Vec<SessionAlignedPathRelinkingEventTelemetry>,
 }
 
+/// One multi-root balanced inheritance event between two unrelated parents.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
+pub struct MultiRootBalancedSessionInheritanceEventTelemetry {
+    #[serde(default)]
+    pub parent_a_root_id: u64,
+    #[serde(default)]
+    pub parent_b_root_id: u64,
+    #[serde(default)]
+    pub parent_a_score: f64,
+    #[serde(default)]
+    pub parent_b_score: f64,
+    #[serde(default)]
+    pub alignment_total_cost: u32,
+    #[serde(default)]
+    pub agreed_session_count: u32,
+    #[serde(default)]
+    pub differing_session_count: u32,
+    #[serde(default)]
+    pub inherited_from_parent_a_sessions: u32,
+    #[serde(default)]
+    pub inherited_from_parent_b_sessions: u32,
+    #[serde(default)]
+    pub raw_child_score: f64,
+    #[serde(default)]
+    pub post_polish_best_score: Option<f64>,
+    #[serde(default)]
+    pub child_beats_parent_a: Option<bool>,
+    #[serde(default)]
+    pub child_beats_parent_b: Option<bool>,
+    #[serde(default)]
+    pub child_beats_both_parents: Option<bool>,
+    #[serde(default)]
+    pub became_new_incumbent: bool,
+    #[serde(default)]
+    pub child_polish_iterations: u64,
+    #[serde(default)]
+    pub child_polish_seconds: f64,
+}
+
+/// Benchmark telemetry for the multi-root balanced session inheritance outer driver.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
+pub struct MultiRootBalancedSessionInheritanceBenchmarkTelemetry {
+    #[serde(default)]
+    pub root_count: u32,
+    #[serde(default)]
+    pub archive_size_per_root: u32,
+    #[serde(default)]
+    pub child_polish_local_improver_mode: Option<Solver3LocalImproverMode>,
+    #[serde(default)]
+    pub raw_child_keep_ratio: f64,
+    #[serde(default)]
+    pub raw_child_warmup_samples: u32,
+    #[serde(default)]
+    pub raw_child_history_limit: u32,
+    #[serde(default)]
+    pub max_parent_score_delta_from_best: f64,
+    #[serde(default)]
+    pub min_cross_root_session_disagreement: u32,
+    #[serde(default)]
+    pub parent_a_differing_session_share: f64,
+    #[serde(default)]
+    pub child_polish_iterations_per_stagnation_window: u64,
+    #[serde(default)]
+    pub child_polish_no_improvement_iterations_per_stagnation_window: u64,
+    #[serde(default)]
+    pub child_polish_max_stagnation_windows: u64,
+    #[serde(default)]
+    pub swap_local_optimum_certification_enabled: bool,
+    #[serde(default)]
+    pub roots_incubated: u64,
+    #[serde(default)]
+    pub parent_pair_selection_failures: u64,
+    #[serde(default)]
+    pub inheritance_events_fired: u64,
+    #[serde(default)]
+    pub inheritance_events_kept: u64,
+    #[serde(default)]
+    pub alignment_cost_sum: u64,
+    #[serde(default)]
+    pub agreed_session_count_sum: u64,
+    #[serde(default)]
+    pub differing_session_count_sum: u64,
+    #[serde(default)]
+    pub inherited_from_parent_a_sessions_sum: u64,
+    #[serde(default)]
+    pub inherited_from_parent_b_sessions_sum: u64,
+    #[serde(default)]
+    pub children_beating_parent_a: u64,
+    #[serde(default)]
+    pub children_beating_parent_b: u64,
+    #[serde(default)]
+    pub children_beating_both_parents: u64,
+    #[serde(default)]
+    pub best_post_polish_score: Option<f64>,
+    #[serde(default)]
+    pub child_polish_iterations: u64,
+    #[serde(default)]
+    pub child_polish_seconds: f64,
+    #[serde(default)]
+    pub event_summaries: Vec<MultiRootBalancedSessionInheritanceEventTelemetry>,
+}
+
 /// Benchmark telemetry for the SGP week-pair tabu local improver.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
 pub struct SgpWeekPairTabuBenchmarkTelemetry {
@@ -2361,6 +2463,9 @@ pub struct SolverBenchmarkTelemetry {
     pub donor_session_transplant: Option<DonorSessionTransplantBenchmarkTelemetry>,
     #[serde(default)]
     pub session_aligned_path_relinking: Option<SessionAlignedPathRelinkingBenchmarkTelemetry>,
+    #[serde(default)]
+    pub multi_root_balanced_session_inheritance:
+        Option<MultiRootBalancedSessionInheritanceBenchmarkTelemetry>,
     pub moves: MoveFamilyBenchmarkTelemetrySummary,
 }
 

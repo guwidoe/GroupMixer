@@ -459,6 +459,7 @@ mod tests {
                     memetic: None,
                     donor_session_transplant: None,
                     session_aligned_path_relinking: None,
+                    multi_root_balanced_session_inheritance: None,
                 }),
                 moves: MoveFamilyBenchmarkTelemetrySummary::default(),
                 hotpath_metrics: None,

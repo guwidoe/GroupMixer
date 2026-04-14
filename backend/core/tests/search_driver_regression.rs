@@ -1054,6 +1054,7 @@ fn solver3_multi_root_balanced_session_inheritance_runs_through_public_entry_poi
         .benchmark_telemetry
         .expect("multi-root balanced inheritance telemetry should exist");
     assert!(telemetry.iterations_completed > 0);
+    assert!(telemetry.multi_root_balanced_session_inheritance.is_some());
 }
 
 #[test]
