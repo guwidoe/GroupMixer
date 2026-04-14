@@ -9,17 +9,20 @@ interface MetricCardProps {
 
 export function MetricCard({ title, value, icon, colorClass }: MetricCardProps) {
   return (
-    <div className="p-4 sm:p-5" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      <div className="flex items-start justify-between gap-4">
+    <div
+      className="rounded-2xl border p-4 transition-colors sm:p-5"
+      style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+    >
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>{title}</p>
-          <p className={`mt-3 text-2xl font-semibold tracking-tight sm:text-[1.75rem] ${colorClass}`}>{value}</p>
+          <p className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>{title}</p>
+          <p className={`mt-2 text-2xl font-semibold tracking-tight ${colorClass}`}>{value}</p>
         </div>
         <div
-          className="flex h-9 w-9 items-center justify-center rounded-full"
-          style={{ backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 76%, transparent)' }}
+          className="flex h-10 w-10 items-center justify-center rounded-xl"
+          style={{ backgroundColor: 'var(--bg-secondary)' }}
         >
-          {React.createElement(icon, { className: `w-4 h-4 ${colorClass.replace('-600', '-400')}` })}
+          {React.createElement(icon, { className: `w-5 h-5 ${colorClass.replace('-600', '-400')}` })}
         </div>
       </div>
     </div>

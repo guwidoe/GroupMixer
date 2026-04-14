@@ -27,47 +27,42 @@ export function ResultsMetrics({
   const balanceBaseline = (solverState.currentBalancePenalty ?? balancePenalty) || 1;
 
   return (
-    <section
-      className="results-print-section overflow-hidden rounded-[1.5rem] border"
-      style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--border-primary)' }}
-    >
-      <div className="grid grid-cols-1 gap-px sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        <MetricCard title="Cost Score" value={solution.final_score.toFixed(1)} icon={Target} colorClass="text-green-600" />
-        {metrics && (
-          <MetricCard
-            title="Unique Contacts"
-            value={`${solution.unique_contacts} / ${metrics.effectiveMaxUniqueTotal}`}
-            icon={Users}
-            colorClass={metrics.uniqueColorClass}
-          />
-        )}
-        {metrics && (
-          <MetricCard
-            title="Avg Contacts / Person"
-            value={`${metrics.avgUniqueContacts.toFixed(1)} / ${metrics.effectiveMaxAvgContacts}`}
-            icon={PieChart}
-            colorClass={metrics.avgColorClass}
-          />
-        )}
+    <div className="results-print-section grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      <MetricCard title="Cost Score" value={solution.final_score.toFixed(1)} icon={Target} colorClass="text-green-600" />
+      {metrics && (
         <MetricCard
-          title="Repetition Penalty"
-          value={repetitionPenalty.toFixed(1)}
-          icon={RefreshCw}
-          colorClass={getColorClass(repetitionPenalty / repetitionBaseline, true)}
+          title="Unique Contacts"
+          value={`${solution.unique_contacts} / ${metrics.effectiveMaxUniqueTotal}`}
+          icon={Users}
+          colorClass={metrics.uniqueColorClass}
         />
+      )}
+      {metrics && (
         <MetricCard
-          title={getConstraintDisplayName('AttributeBalance')}
-          value={balancePenalty.toFixed(1)}
-          icon={Scale}
-          colorClass={getColorClass(balancePenalty / balanceBaseline, true)}
+          title="Avg Contacts / Person"
+          value={`${metrics.avgUniqueContacts.toFixed(1)} / ${metrics.effectiveMaxAvgContacts}`}
+          icon={PieChart}
+          colorClass={metrics.avgColorClass}
         />
-        <MetricCard
-          title="Constraint Penalty"
-          value={finalConstraintPenalty.toFixed(1)}
-          icon={AlertTriangle}
-          colorClass={constraintColorClass}
-        />
-      </div>
-    </section>
+      )}
+      <MetricCard
+        title="Repetition Penalty"
+        value={repetitionPenalty.toFixed(1)}
+        icon={RefreshCw}
+        colorClass={getColorClass(repetitionPenalty / repetitionBaseline, true)}
+      />
+      <MetricCard
+        title={getConstraintDisplayName('AttributeBalance')}
+        value={balancePenalty.toFixed(1)}
+        icon={Scale}
+        colorClass={getColorClass(balancePenalty / balanceBaseline, true)}
+      />
+      <MetricCard
+        title="Constraint Penalty"
+        value={finalConstraintPenalty.toFixed(1)}
+        icon={AlertTriangle}
+        colorClass={constraintColorClass}
+      />
+    </div>
   );
 }

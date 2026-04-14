@@ -45,104 +45,84 @@ export function ResultsHeader({
   exportDropdownRef,
   configDetailsRef,
 }: ResultsHeaderProps) {
-  const summaryItems = summary ? [
-    {
-      key: 'sessions',
-      label: 'Sessions',
-      value: summary.totalSessions,
-      icon: Activity,
-    },
-    {
-      key: 'groups',
-      label: 'Groups / session',
-      value: summary.totalGroups,
-      icon: Grid2x2,
-    },
-    {
-      key: 'people',
-      label: 'People',
-      value: summary.totalPeople,
-      icon: Users,
-    },
-    {
-      key: 'fill',
-      label: 'Seat fill',
-      value: `${summary.averageFillPercent.toFixed(0)}%`,
-      icon: null,
-    },
-  ] : [];
-
   return (
     <section
-      className="results-print-section overflow-hidden rounded-[1.75rem] border px-4 py-5 sm:px-6 lg:px-8 lg:py-7"
+      className="results-print-section rounded-2xl border p-4 sm:p-5 lg:p-6"
       style={{
-        backgroundColor: 'color-mix(in srgb, var(--bg-primary) 94%, var(--color-accent) 6%)',
-        borderColor: 'color-mix(in srgb, var(--border-primary) 82%, var(--color-accent) 18%)',
+        backgroundColor: 'color-mix(in srgb, var(--bg-primary) 92%, var(--color-accent) 8%)',
+        borderColor: 'color-mix(in srgb, var(--border-primary) 78%, var(--color-accent) 22%)',
       }}
     >
-      <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-tertiary)' }}>
+          <div className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
             Current Result
           </div>
 
-          <div className="mt-3 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-                <h2 className="min-w-0 text-2xl font-semibold tracking-tight sm:text-3xl lg:text-[2.15rem]" style={{ color: 'var(--text-primary)' }}>
-                  <span className="block truncate">Optimization Results{resultName ? ` - ${resultName}` : ''}</span>
-                </h2>
-                {configDiff && (
-                  <ConfigDiffBadge
-                    configDiff={configDiff}
-                    isOpen={configDetailsOpen}
-                    onToggle={onToggleConfigDetails}
-                    onRestoreConfig={onRestoreConfig}
-                    containerRef={configDetailsRef}
-                  />
-                )}
-              </div>
+          <div className="mt-2 flex flex-col gap-2 lg:flex-row lg:items-center">
+            <h2 className="min-w-0 text-2xl font-semibold tracking-tight sm:text-3xl" style={{ color: 'var(--text-primary)' }}>
+              <span className="block truncate">Optimization Results{resultName ? ` - ${resultName}` : ''}</span>
+            </h2>
+            {configDiff && (
+              <ConfigDiffBadge
+                configDiff={configDiff}
+                isOpen={configDetailsOpen}
+                onToggle={onToggleConfigDetails}
+                onRestoreConfig={onRestoreConfig}
+                containerRef={configDetailsRef}
+              />
+            )}
+          </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                <div>{solution.iteration_count.toLocaleString()} iterations</div>
-                <div>{(solution.elapsed_time_ms / 1000).toFixed(2)}s runtime</div>
-                {summary ? <div>{summary.totalAssignments.toLocaleString()} assignments</div> : null}
-              </div>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            <div className="inline-flex items-center gap-2">
+              <span className="font-medium">Cost Score</span>
+              <span style={{ color: 'var(--text-primary)' }}>{solution.final_score.toFixed(2)}</span>
+              <Tooltip content={<span>Cost Score = Unique contacts minus penalties. <b>Lower is better.</b></span>}>
+                <Info className="h-4 w-4" />
+              </Tooltip>
             </div>
-
-            <div className="min-w-0 lg:text-right">
-              <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
-                <span>Cost Score</span>
-                <Tooltip content={<span>Cost Score = Unique contacts minus penalties. <b>Lower is better.</b></span>}>
-                  <Info className="h-3.5 w-3.5" />
-                </Tooltip>
-              </div>
-              <div className="mt-2 text-4xl font-semibold tracking-[-0.04em] sm:text-5xl" style={{ color: 'var(--text-primary)' }}>
-                {solution.final_score.toFixed(2)}
-              </div>
-            </div>
+            <div>{solution.iteration_count.toLocaleString()} iterations</div>
+            <div>{(solution.elapsed_time_ms / 1000).toFixed(2)}s runtime</div>
+            {summary ? <div>{summary.totalAssignments.toLocaleString()} assignments</div> : null}
           </div>
 
           {summary ? (
-            <div className="mt-6 border-t pt-4 sm:pt-5" style={{ borderColor: 'color-mix(in srgb, var(--border-primary) 78%, transparent)' }}>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
-                {summaryItems.map((item) => (
-                  <div key={item.key} className="min-w-0">
-                    <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
-                      {item.icon ? <item.icon className="h-3.5 w-3.5" /> : null}
-                      <span>{item.label}</span>
-                    </div>
-                    <div className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl" style={{ color: 'var(--text-primary)' }}>
-                      {item.value}
-                    </div>
-                  </div>
-                ))}
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-xl border px-3 py-3" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
+                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>
+                  <Activity className="h-3.5 w-3.5" />
+                  Sessions
+                </div>
+                <div className="mt-2 text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{summary.totalSessions}</div>
+              </div>
+              <div className="rounded-xl border px-3 py-3" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
+                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>
+                  <Grid2x2 className="h-3.5 w-3.5" />
+                  Groups / session
+                </div>
+                <div className="mt-2 text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{summary.totalGroups}</div>
+              </div>
+              <div className="rounded-xl border px-3 py-3" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
+                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>
+                  <Users className="h-3.5 w-3.5" />
+                  People
+                </div>
+                <div className="mt-2 text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>{summary.totalPeople}</div>
+              </div>
+              <div className="rounded-xl border px-3 py-3" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
+                <div className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>
+                  Seat fill
+                </div>
+                <div className="mt-2 text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  {summary.averageFillPercent.toFixed(0)}%
+                </div>
               </div>
             </div>
           ) : null}
         </div>
 
-        <div className="results-print-hide flex shrink-0 flex-col gap-2 xl:min-w-[220px]">
+        <div className="results-print-hide flex shrink-0 flex-col gap-2 lg:min-w-[180px]">
           <ResultsExportDropdown
             isOpen={exportDropdownOpen}
             onToggle={onToggleExportDropdown}
@@ -154,7 +134,7 @@ export function ResultsHeader({
             dropdownRef={exportDropdownRef}
           />
           <p className="text-xs leading-5" style={{ color: 'var(--text-tertiary)' }}>
-            Share the active result as a printable handout, copied table, or structured export.
+            Choose the format that matches how you need to share or use this result next.
           </p>
         </div>
       </div>
