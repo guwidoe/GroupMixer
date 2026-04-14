@@ -25,6 +25,8 @@ import type { WarmStartSchedule } from "../services/wasm/scenarioContract";
 
 type WorkerConsole = Pick<Console, "warn" | "error">;
 
+const WORKER_BUILD_ID = "2026-04-14-worker-header-redeploy-1";
+
 type WorkerWasmModule = Partial<Pick<
   WasmContractModule,
   | "capabilities"
@@ -95,7 +97,7 @@ export function createSolverWorkerRuntime({
       isInitialized = true;
     } catch (error) {
       isInitializing = false;
-      throw new Error(`WASM initialization failed: ${errorToMessage(error)}`);
+      throw new Error(`WASM initialization failed [${WORKER_BUILD_ID}]: ${errorToMessage(error)}`);
     } finally {
       isInitializing = false;
     }
