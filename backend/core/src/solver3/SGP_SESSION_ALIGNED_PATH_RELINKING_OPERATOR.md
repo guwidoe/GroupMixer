@@ -730,3 +730,135 @@ The first implementation looks **promising but mixed**:
 - the next refinement question is likely not “does path relinking fire?” but rather:
   - how to improve corridor-step discrimination for Kirkman-like cases
   - whether the step-order / retention policy is too SG-biased
+
+---
+
+## Random-control comparison result (2026-04-14)
+
+After the first path result, the next question was stricter:
+
+> is session-aligned recombination actually better than matched random large mutations / random donor splices, or are we just seeing expensive perturb-and-polish effects?
+
+To answer that, two explicit controls were added under the same driver shell:
+
+- `random_donor_session_control`
+- `random_macro_mutation_control`
+
+The comparison was then run on both:
+
+- the original conservative SG/Kirkman multiseed lane
+- a new high-event diagnostic lane with far more aggressive trigger windows
+
+### Normal multiseed artifacts
+
+- fixed-tenure tabu reference:
+  - `backend/benchmarking/artifacts/runs/solver3-sgp-kirkman-tabu-fixed-multiseed-20260414T121148Z-5a8a8f0d/run-report.json`
+- donor-session transplant reference:
+  - `backend/benchmarking/artifacts/runs/solver3-sgp-kirkman-donor-session-multiseed-20260414T121221Z-15fd8caa/run-report.json`
+- aligned path relinking:
+  - `backend/benchmarking/artifacts/runs/solver3-session-path-relinking-multiseed-20260414T121255Z-895211b6/run-report.json`
+- random donor-session control:
+  - `backend/benchmarking/artifacts/runs/solver3-random-donor-session-control-multiseed-20260414T121330Z-d97e0833/run-report.json`
+- random macro-mutation control:
+  - `backend/benchmarking/artifacts/runs/solver3-random-macro-mutation-control-multiseed-20260414T121406Z-ba80dadc/run-report.json`
+
+### High-event artifacts
+
+- Social Golfer high-event A/B/C:
+  - `backend/benchmarking/artifacts/runs/social-golfer-plateau-time-solver3-path-control-high-event-20260414T121439Z-f88a6ff3/run-report.json`
+- Kirkman high-event A/B/C:
+  - `backend/benchmarking/artifacts/runs/stretch-kirkman-schoolgirls-time-solver3-path-control-high-event-20260414T121608Z-c0f6ac18/run-report.json`
+
+### Honest summary
+
+#### Conservative matched multiseed lane
+
+**Social Golfer average final score**
+
+- tabu: `5381.0`
+- donor-session transplant: `5373.7`
+- aligned path relinking: `5297.0`
+- random donor-session control: `5325.0`
+- random macro-mutation control: `5325.0`
+
+So on Social Golfer, the aligned operator beat **both** random controls.
+
+**Kirkman average final score**
+
+- tabu: `47.7`
+- donor-session transplant: `11.0`
+- aligned path relinking: `25.7`
+- random donor-session control: `0.0`
+- random macro-mutation control: `18.3`
+
+So on Kirkman, the aligned operator did **not** beat the controls; the random donor-session control was actually best.
+
+#### High-event diagnostic lane
+
+**Social Golfer high-event average final score**
+
+- aligned path relinking: `5304.0`
+- random donor-session control: `5331.7`
+- random macro-mutation control: `5332.0`
+
+With more aggressive trigger settings, aligned path relinking still beat both random controls on Social Golfer.
+
+**Kirkman high-event average final score**
+
+- random donor-session control: `0.0`
+- aligned path relinking: `36.7`
+- random macro-mutation control: `40.3`
+
+With more aggressive trigger settings, random donor-session control still beat aligned path relinking on Kirkman.
+
+### Event-volume reality check
+
+The new high-event lane did **not** produce universally huge aligned-event counts.
+
+- Social Golfer aligned path events:
+  - normal multiseed seeds: `11 / 7 / 4`
+  - high-event seeds: `8 / 7 / 5`
+- Kirkman aligned path events:
+  - normal multiseed seeds: `2 / 2 / 2`
+  - high-event seeds: `3 / 3 / 3`
+
+So lowering the trigger / cooldown windows alone did **not** cause aligned path relinking to explode into dramatically higher event counts.
+
+The most event-rich control was actually random macro mutation on Social Golfer:
+
+- high-event Social Golfer macro-control path events: `15 / 15 / 21`
+
+That strongly suggests event count is still being limited by:
+
+- event runtime cost
+- incumbent-improvement resets
+- and the control structure around post-event polish / acceptance,
+
+not just by the absolute trigger threshold.
+
+### Current interpretation after controls
+
+The answer is now more concrete.
+
+#### What looks real
+
+- On **Social Golfer**, aligned path relinking is better than both:
+  - matched random donor-session imports
+  - matched random macro-mutations
+- That is real evidence that the gain is **not just** “any large perturbation plus strong local polish.”
+
+#### What is not proven
+
+- The aligned operator is **not** a universal symmetry-breaking winner across the zero-repeat family.
+- On **Kirkman**, the simpler random donor-session control is stronger in both the conservative and the high-event comparisons.
+
+#### Current best honest claim
+
+The current evidence supports this narrower statement:
+
+> session-aligned path relinking is a real improvement over random-mutation-style controls on Social Golfer-like workloads, but the present alignment / corridor-walking policy is not yet the best donor-based recombination strategy for all zero-repeat workloads, because Kirkman still prefers the simpler random donor-session control.
+
+That means the next algorithmic question is now sharper:
+
+- keep the claim that aligned path relinking has genuine value on Social Golfer
+- but investigate why the current alignment / step-selection policy underperforms simpler donor controls on Kirkman

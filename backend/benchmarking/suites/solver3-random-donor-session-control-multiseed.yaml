@@ -1,0 +1,109 @@
+schema_version: 1
+suite_id: solver3-random-donor-session-control-multiseed
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: stretch
+title: Solver3 random donor-session control multiseed suite
+description: Multi-seed canonical Social Golfer + Kirkman solver3 suite using the matched random donor-session control on top of the fixed bounded SGP week-pair tabu reference improver.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 1000000
+    time_limit_seconds: 60
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+    search_driver:
+      mode: session_aligned_path_relinking
+      session_aligned_path_relinking:
+        operator_variant: random_donor_session_control
+        archive_size: 4
+        recombination_no_improvement_window: 100000
+        recombination_cooldown_window: 100000
+        max_session_imports_per_event: 3
+        path_step_no_improvement_limit: 2
+        min_aligned_session_distance_for_relinking: 1
+        adaptive_raw_child_retention:
+          keep_ratio: 0.5
+          warmup_samples: 4
+          history_limit: 32
+        swap_local_optimum_certification_enabled: true
+        child_polish_iterations_per_stagnation_window: 100000
+        child_polish_no_improvement_iterations_per_stagnation_window: 100000
+        child_polish_max_stagnation_windows: 4
+    local_improver:
+      mode: sgp_week_pair_tabu
+      sgp_week_pair_tabu:
+        tenure_mode: fixed_interval
+        tenure_min: 8
+        tenure_max: 32
+        retry_cap: 4
+        aspiration_enabled: true
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.session_path_relinking.social_golfer_32x8x10.seed_1
+    provenance: canonical_social_golfer_multiseed_session_path_relinking
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320810
+    max_iterations: 10000000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.session_path_relinking.social_golfer_32x8x10.seed_2
+    provenance: canonical_social_golfer_multiseed_session_path_relinking
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320811
+    max_iterations: 10000000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.session_path_relinking.social_golfer_32x8x10.seed_3
+    provenance: canonical_social_golfer_multiseed_session_path_relinking
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320812
+    max_iterations: 10000000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.session_path_relinking.kirkman_schoolgirls_15x5x7.seed_1
+    provenance: canonical_kirkman_multiseed_session_path_relinking
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150507
+    max_iterations: 1500000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.session_path_relinking.kirkman_schoolgirls_15x5x7.seed_2
+    provenance: canonical_kirkman_multiseed_session_path_relinking
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150508
+    max_iterations: 1500000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.session_path_relinking.kirkman_schoolgirls_15x5x7.seed_3
+    provenance: canonical_kirkman_multiseed_session_path_relinking
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150509
+    max_iterations: 1500000
+    time_limit_seconds: 10
