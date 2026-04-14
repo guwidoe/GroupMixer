@@ -1028,6 +1028,8 @@ pub enum Solver3SearchDriverMode {
     SteadyStateMemetic,
     /// Rare archive-based donor-session transplant outer loop.
     DonorSessionTransplant,
+    /// Rare archive-based session-aligned path relinking outer loop.
+    SessionAlignedPathRelinking,
 }
 
 /// Explicit local-improver selection for `solver3`.
@@ -1066,6 +1068,9 @@ pub struct Solver3SearchDriverParams {
     /// Config for the rare donor-session transplant outer driver.
     #[serde(default)]
     pub donor_session_transplant: Solver3DonorSessionTransplantParams,
+    /// Config for the rare session-aligned path relinking outer driver.
+    #[serde(default)]
+    pub session_aligned_path_relinking: Solver3SessionAlignedPathRelinkingParams,
 }
 
 /// Config for the rare donor-session transplant outer driver.
@@ -1096,7 +1101,9 @@ pub struct Solver3DonorSessionTransplantParams {
     #[serde(default = "default_solver3_donor_session_child_polish_iterations_per_window")]
     pub child_polish_iterations_per_stagnation_window: u32,
     /// Post-transplant child-polish no-improvement budget granted per full stagnation window.
-    #[serde(default = "default_solver3_donor_session_child_polish_no_improvement_iterations_per_window")]
+    #[serde(
+        default = "default_solver3_donor_session_child_polish_no_improvement_iterations_per_window"
+    )]
     pub child_polish_no_improvement_iterations_per_stagnation_window: u32,
     /// Maximum number of stagnation windows that contribute to a single child-polish budget.
     #[serde(default = "default_solver3_donor_session_child_polish_max_stagnation_windows")]
@@ -1119,6 +1126,75 @@ impl Default for Solver3DonorSessionTransplantParams {
                 default_solver3_donor_session_child_polish_no_improvement_iterations_per_window(),
             child_polish_max_stagnation_windows:
                 default_solver3_donor_session_child_polish_max_stagnation_windows(),
+        }
+    }
+}
+
+/// Config for the rare session-aligned path relinking outer driver.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+pub struct Solver3SessionAlignedPathRelinkingParams {
+    /// Maximum number of elites retained in the small archive.
+    #[serde(default = "default_solver3_path_relinking_archive_size")]
+    pub archive_size: u32,
+    /// Relinking only becomes eligible after this many non-improving iterations.
+    #[serde(default = "default_solver3_path_relinking_no_improvement_window")]
+    pub recombination_no_improvement_window: u32,
+    /// Minimum number of iterations between relinking events.
+    #[serde(default = "default_solver3_path_relinking_cooldown_window")]
+    pub recombination_cooldown_window: u32,
+    /// Optional non-binding safety cap on relinking events in a single run.
+    #[serde(default)]
+    pub max_path_events_per_run: Option<u32>,
+    /// Maximum number of aligned donor sessions imported during one relinking event.
+    #[serde(default = "default_solver3_path_relinking_max_session_imports_per_event")]
+    pub max_session_imports_per_event: u32,
+    /// Stop walking the corridor after this many non-improving path steps.
+    #[serde(default = "default_solver3_path_relinking_step_no_improvement_limit")]
+    pub path_step_no_improvement_limit: u32,
+    /// Minimum aligned session structural distance required to consider an import step.
+    #[serde(default = "default_solver3_path_relinking_min_session_distance")]
+    pub min_aligned_session_distance_for_relinking: u32,
+    /// Adaptive raw-child quality gate applied before step polish.
+    #[serde(default)]
+    pub adaptive_raw_child_retention: Solver3AdaptiveRawChildRetentionParams,
+    /// Optionally certify a swap-local optimum exactly before relinking fires.
+    #[serde(default)]
+    pub swap_local_optimum_certification_enabled: bool,
+    /// Post-step child-polish iteration budget granted per full stagnation window.
+    #[serde(default = "default_solver3_path_relinking_child_polish_iterations_per_window")]
+    pub child_polish_iterations_per_stagnation_window: u32,
+    /// Post-step child-polish no-improvement budget granted per full stagnation window.
+    #[serde(
+        default = "default_solver3_path_relinking_child_polish_no_improvement_iterations_per_window"
+    )]
+    pub child_polish_no_improvement_iterations_per_stagnation_window: u32,
+    /// Maximum number of stagnation windows that contribute to a single step-polish budget.
+    #[serde(default = "default_solver3_path_relinking_child_polish_max_stagnation_windows")]
+    pub child_polish_max_stagnation_windows: u32,
+}
+
+impl Default for Solver3SessionAlignedPathRelinkingParams {
+    fn default() -> Self {
+        Self {
+            archive_size: default_solver3_path_relinking_archive_size(),
+            recombination_no_improvement_window:
+                default_solver3_path_relinking_no_improvement_window(),
+            recombination_cooldown_window: default_solver3_path_relinking_cooldown_window(),
+            max_path_events_per_run: None,
+            max_session_imports_per_event:
+                default_solver3_path_relinking_max_session_imports_per_event(),
+            path_step_no_improvement_limit:
+                default_solver3_path_relinking_step_no_improvement_limit(),
+            min_aligned_session_distance_for_relinking:
+                default_solver3_path_relinking_min_session_distance(),
+            adaptive_raw_child_retention: Solver3AdaptiveRawChildRetentionParams::default(),
+            swap_local_optimum_certification_enabled: false,
+            child_polish_iterations_per_stagnation_window:
+                default_solver3_path_relinking_child_polish_iterations_per_window(),
+            child_polish_no_improvement_iterations_per_stagnation_window:
+                default_solver3_path_relinking_child_polish_no_improvement_iterations_per_window(),
+            child_polish_max_stagnation_windows:
+                default_solver3_path_relinking_child_polish_max_stagnation_windows(),
         }
     }
 }
@@ -1369,6 +1445,42 @@ fn default_solver3_donor_session_child_polish_no_improvement_iterations_per_wind
 
 fn default_solver3_donor_session_child_polish_max_stagnation_windows() -> u32 {
     4
+}
+
+fn default_solver3_path_relinking_archive_size() -> u32 {
+    default_solver3_donor_session_archive_size()
+}
+
+fn default_solver3_path_relinking_no_improvement_window() -> u32 {
+    default_solver3_donor_session_no_improvement_window()
+}
+
+fn default_solver3_path_relinking_cooldown_window() -> u32 {
+    default_solver3_donor_session_cooldown_window()
+}
+
+fn default_solver3_path_relinking_max_session_imports_per_event() -> u32 {
+    3
+}
+
+fn default_solver3_path_relinking_step_no_improvement_limit() -> u32 {
+    2
+}
+
+fn default_solver3_path_relinking_min_session_distance() -> u32 {
+    1
+}
+
+fn default_solver3_path_relinking_child_polish_iterations_per_window() -> u32 {
+    default_solver3_donor_session_child_polish_iterations_per_window()
+}
+
+fn default_solver3_path_relinking_child_polish_no_improvement_iterations_per_window() -> u32 {
+    default_solver3_donor_session_child_polish_no_improvement_iterations_per_window()
+}
+
+fn default_solver3_path_relinking_child_polish_max_stagnation_windows() -> u32 {
+    default_solver3_donor_session_child_polish_max_stagnation_windows()
 }
 
 fn default_solver3_repeat_guided_swap_probability() -> f64 {

@@ -12,6 +12,7 @@ use crate::runtime_target::displayed_total_iterations;
 use crate::solver_support::SolverError;
 
 use super::super::runtime_state::RuntimeState;
+use super::path_relinking::MAX_EXACT_ALIGNMENT_SESSIONS;
 use super::tabu::SgpWeekPairTabuConfig;
 
 const DEFAULT_MAX_ITERATIONS: u64 = 10_000;
@@ -36,6 +37,7 @@ pub(crate) struct SearchRunContext {
     pub(crate) sgp_week_pair_tabu: Option<SgpWeekPairTabuConfig>,
     pub(crate) steady_state_memetic: Option<SteadyStateMemeticConfig>,
     pub(crate) donor_session_transplant: Option<DonorSessionTransplantConfig>,
+    pub(crate) session_aligned_path_relinking: Option<SessionAlignedPathRelinkingConfig>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,6 +63,22 @@ pub(crate) struct DonorSessionTransplantConfig {
     pub(crate) recombination_no_improvement_window: u64,
     pub(crate) recombination_cooldown_window: u64,
     pub(crate) max_recombination_events_per_run: Option<u64>,
+    pub(crate) adaptive_raw_child_retention: AdaptiveRawChildRetentionConfig,
+    pub(crate) swap_local_optimum_certification_enabled: bool,
+    pub(crate) child_polish_iterations_per_stagnation_window: u64,
+    pub(crate) child_polish_no_improvement_iterations_per_stagnation_window: u64,
+    pub(crate) child_polish_max_stagnation_windows: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct SessionAlignedPathRelinkingConfig {
+    pub(crate) archive_size: usize,
+    pub(crate) recombination_no_improvement_window: u64,
+    pub(crate) recombination_cooldown_window: u64,
+    pub(crate) max_path_events_per_run: Option<u64>,
+    pub(crate) max_session_imports_per_event: usize,
+    pub(crate) path_step_no_improvement_limit: usize,
+    pub(crate) min_aligned_session_distance_for_relinking: u32,
     pub(crate) adaptive_raw_child_retention: AdaptiveRawChildRetentionConfig,
     pub(crate) swap_local_optimum_certification_enabled: bool,
     pub(crate) child_polish_iterations_per_stagnation_window: u64,
@@ -94,6 +112,8 @@ impl SearchRunContext {
         let sgp_week_pair_tabu = &solver3_params.local_improver.sgp_week_pair_tabu;
         let steady_state_memetic = &solver3_params.search_driver.steady_state_memetic;
         let donor_session_transplant = &solver3_params.search_driver.donor_session_transplant;
+        let session_aligned_path_relinking =
+            &solver3_params.search_driver.session_aligned_path_relinking;
         let correctness_sample_every_accepted_moves =
             solver3_params.correctness_lane.sample_every_accepted_moves;
         let repeat_guided_swap_probability = solver3_params
@@ -315,6 +335,138 @@ impl SearchRunContext {
             ));
         }
 
+        if session_aligned_path_relinking.archive_size == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.session_aligned_path_relinking.archive_size must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if session_aligned_path_relinking.recombination_no_improvement_window == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.session_aligned_path_relinking.recombination_no_improvement_window must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if session_aligned_path_relinking.recombination_cooldown_window == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.session_aligned_path_relinking.recombination_cooldown_window must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if session_aligned_path_relinking.max_path_events_per_run == Some(0) {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.session_aligned_path_relinking.max_path_events_per_run must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if session_aligned_path_relinking.max_session_imports_per_event == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.session_aligned_path_relinking.max_session_imports_per_event must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if session_aligned_path_relinking.path_step_no_improvement_limit == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.session_aligned_path_relinking.path_step_no_improvement_limit must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if session_aligned_path_relinking.min_aligned_session_distance_for_relinking == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.session_aligned_path_relinking.min_aligned_session_distance_for_relinking must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if !session_aligned_path_relinking
+            .adaptive_raw_child_retention
+            .keep_ratio
+            .is_finite()
+            || !(0.0..=1.0)
+                .contains(&session_aligned_path_relinking.adaptive_raw_child_retention.keep_ratio)
+            || session_aligned_path_relinking.adaptive_raw_child_retention.keep_ratio == 0.0
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.session_aligned_path_relinking.adaptive_raw_child_retention.keep_ratio must be finite and within (0.0, 1.0]"
+                    .into(),
+            ));
+        }
+
+        if session_aligned_path_relinking
+            .adaptive_raw_child_retention
+            .warmup_samples
+            == 0
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.session_aligned_path_relinking.adaptive_raw_child_retention.warmup_samples must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if session_aligned_path_relinking
+            .adaptive_raw_child_retention
+            .history_limit
+            == 0
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.session_aligned_path_relinking.adaptive_raw_child_retention.history_limit must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if session_aligned_path_relinking
+            .adaptive_raw_child_retention
+            .history_limit
+            < session_aligned_path_relinking
+                .adaptive_raw_child_retention
+                .warmup_samples
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.session_aligned_path_relinking.adaptive_raw_child_retention.history_limit must be >= warmup_samples"
+                    .into(),
+            ));
+        }
+
+        if session_aligned_path_relinking.child_polish_iterations_per_stagnation_window == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.session_aligned_path_relinking.child_polish_iterations_per_stagnation_window must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if session_aligned_path_relinking
+            .child_polish_no_improvement_iterations_per_stagnation_window
+            == 0
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.session_aligned_path_relinking.child_polish_no_improvement_iterations_per_stagnation_window must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if session_aligned_path_relinking
+            .child_polish_no_improvement_iterations_per_stagnation_window
+            > session_aligned_path_relinking.child_polish_iterations_per_stagnation_window
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.session_aligned_path_relinking.child_polish_no_improvement_iterations_per_stagnation_window must be <= child_polish_iterations_per_stagnation_window"
+                    .into(),
+            ));
+        }
+
+        if session_aligned_path_relinking.child_polish_max_stagnation_windows == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.session_aligned_path_relinking.child_polish_max_stagnation_windows must be >= 1"
+                    .into(),
+            ));
+        }
+
         #[cfg(not(feature = "solver3-oracle-checks"))]
         if correctness_lane_enabled {
             return Err(SolverError::ValidationError(
@@ -376,6 +528,32 @@ impl SearchRunContext {
             ));
         }
 
+        if search_driver_mode == Solver3SearchDriverMode::SessionAlignedPathRelinking
+            && !allows_swap_family
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.mode=session_aligned_path_relinking requires move_policy to allow swap moves"
+                    .into(),
+            ));
+        }
+
+        if search_driver_mode == Solver3SearchDriverMode::SessionAlignedPathRelinking
+            && !state.compiled.cliques.is_empty()
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.mode=session_aligned_path_relinking does not yet support active cliques / must_stay_together constraints"
+                    .into(),
+            ));
+        }
+
+        if search_driver_mode == Solver3SearchDriverMode::SessionAlignedPathRelinking
+            && state.compiled.num_sessions > MAX_EXACT_ALIGNMENT_SESSIONS
+        {
+            return Err(SolverError::ValidationError(format!(
+                "solver3 search_driver.mode=session_aligned_path_relinking currently supports at most {MAX_EXACT_ALIGNMENT_SESSIONS} sessions for exact alignment"
+            )));
+        }
+
         match (search_driver_mode, local_improver_mode) {
             (Solver3SearchDriverMode::SingleState, Solver3LocalImproverMode::RecordToRecord)
             | (Solver3SearchDriverMode::SingleState, Solver3LocalImproverMode::SgpWeekPairTabu) => {
@@ -394,6 +572,14 @@ impl SearchRunContext {
             )
             | (
                 Solver3SearchDriverMode::DonorSessionTransplant,
+                Solver3LocalImproverMode::SgpWeekPairTabu,
+            )
+            | (
+                Solver3SearchDriverMode::SessionAlignedPathRelinking,
+                Solver3LocalImproverMode::RecordToRecord,
+            )
+            | (
+                Solver3SearchDriverMode::SessionAlignedPathRelinking,
                 Solver3LocalImproverMode::SgpWeekPairTabu,
             ) => {}
         }
@@ -477,6 +663,43 @@ impl SearchRunContext {
                         .child_polish_no_improvement_iterations_per_stagnation_window
                         as u64,
                 child_polish_max_stagnation_windows: donor_session_transplant
+                    .child_polish_max_stagnation_windows as u64,
+            }),
+            session_aligned_path_relinking: Some(SessionAlignedPathRelinkingConfig {
+                archive_size: session_aligned_path_relinking.archive_size as usize,
+                recombination_no_improvement_window: session_aligned_path_relinking
+                    .recombination_no_improvement_window as u64,
+                recombination_cooldown_window: session_aligned_path_relinking
+                    .recombination_cooldown_window as u64,
+                max_path_events_per_run: session_aligned_path_relinking
+                    .max_path_events_per_run
+                    .map(u64::from),
+                max_session_imports_per_event: session_aligned_path_relinking
+                    .max_session_imports_per_event as usize,
+                path_step_no_improvement_limit: session_aligned_path_relinking
+                    .path_step_no_improvement_limit as usize,
+                min_aligned_session_distance_for_relinking: session_aligned_path_relinking
+                    .min_aligned_session_distance_for_relinking,
+                adaptive_raw_child_retention: AdaptiveRawChildRetentionConfig {
+                    keep_ratio: session_aligned_path_relinking
+                        .adaptive_raw_child_retention
+                        .keep_ratio,
+                    warmup_samples: session_aligned_path_relinking
+                        .adaptive_raw_child_retention
+                        .warmup_samples as usize,
+                    history_limit: session_aligned_path_relinking
+                        .adaptive_raw_child_retention
+                        .history_limit as usize,
+                },
+                swap_local_optimum_certification_enabled: session_aligned_path_relinking
+                    .swap_local_optimum_certification_enabled,
+                child_polish_iterations_per_stagnation_window: session_aligned_path_relinking
+                    .child_polish_iterations_per_stagnation_window as u64,
+                child_polish_no_improvement_iterations_per_stagnation_window:
+                    session_aligned_path_relinking
+                        .child_polish_no_improvement_iterations_per_stagnation_window
+                        as u64,
+                child_polish_max_stagnation_windows: session_aligned_path_relinking
                     .child_polish_max_stagnation_windows as u64,
             }),
         })
@@ -928,7 +1151,8 @@ mod tests {
         ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, RepeatEncounterParams,
         Solver3CorrectnessLaneParams, Solver3DonorSessionTransplantParams,
         Solver3HotspotGuidanceParams, Solver3LocalImproverMode, Solver3LocalImproverParams,
-        Solver3Params, Solver3RepeatGuidedSwapParams, Solver3SearchDriverMode,
+        Solver3Params, Solver3RepeatGuidedSwapParams,
+        Solver3SessionAlignedPathRelinkingParams, Solver3SearchDriverMode,
         Solver3SearchDriverParams,
         Solver3SgpWeekPairTabuParams, Solver3SgpWeekPairTabuTenureMode,
         SolverConfiguration, SolverParams, StopConditions,
@@ -1330,6 +1554,30 @@ mod tests {
     }
 
     #[test]
+    fn run_context_accepts_session_aligned_path_relinking_driver_with_record_to_record() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                mode: Solver3SearchDriverMode::SessionAlignedPathRelinking,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let context = SearchRunContext::from_solver(&config, &state, 7).unwrap();
+        assert_eq!(
+            context.search_driver_mode,
+            Solver3SearchDriverMode::SessionAlignedPathRelinking
+        );
+        let config = context.session_aligned_path_relinking.unwrap();
+        assert_eq!(config.archive_size, 4);
+        assert_eq!(config.max_session_imports_per_event, 3);
+        assert_eq!(config.path_step_no_improvement_limit, 2);
+        assert_eq!(config.min_aligned_session_distance_for_relinking, 1);
+    }
+
+    #[test]
     fn run_context_accepts_sgp_week_pair_tabu_local_improver_mode() {
         let state = repeat_state();
         let mut config = solver3_config();
@@ -1699,6 +1947,75 @@ mod tests {
         assert!(
             err.to_string()
                 .contains("donor_session_transplant requires move_policy to allow swap"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn run_context_rejects_invalid_session_aligned_path_relinking_config() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                session_aligned_path_relinking: Solver3SessionAlignedPathRelinkingParams {
+                    max_session_imports_per_event: 0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string().contains(
+                "session_aligned_path_relinking.max_session_imports_per_event"
+            ),
+            "unexpected error: {err}"
+        );
+
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                session_aligned_path_relinking: Solver3SessionAlignedPathRelinkingParams {
+                    adaptive_raw_child_retention:
+                        crate::models::Solver3AdaptiveRawChildRetentionParams {
+                            keep_ratio: 0.0,
+                            ..Default::default()
+                        },
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string().contains(
+                "session_aligned_path_relinking.adaptive_raw_child_retention.keep_ratio"
+            ),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn run_context_rejects_session_aligned_path_relinking_when_move_policy_disallows_swap() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.move_policy = Some(crate::models::MovePolicy {
+            allowed_families: Some(vec![crate::models::MoveFamily::Transfer]),
+            ..Default::default()
+        });
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                mode: Solver3SearchDriverMode::SessionAlignedPathRelinking,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("session_aligned_path_relinking requires move_policy to allow swap"),
             "unexpected error: {err}"
         );
     }

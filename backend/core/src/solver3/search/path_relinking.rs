@@ -1,8 +1,10 @@
+use crate::models::{BenchmarkObserver, ProgressCallback, SolverResult};
 use crate::solver_support::SolverError;
 
 use super::super::runtime_state::RuntimeState;
+use super::context::SearchRunContext;
 
-const MAX_EXACT_ALIGNMENT_SESSIONS: usize = 20;
+pub(crate) const MAX_EXACT_ALIGNMENT_SESSIONS: usize = 20;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct AlignedSessionPair {
@@ -97,6 +99,18 @@ pub(crate) fn align_sessions_by_pairing_distance(
         matched_session_pairs,
         total_alignment_cost,
     })
+}
+
+pub(crate) fn run(
+    _state: &mut RuntimeState,
+    _run_context: SearchRunContext,
+    _progress_callback: Option<&ProgressCallback>,
+    _benchmark_observer: Option<&BenchmarkObserver>,
+) -> Result<SolverResult, SolverError> {
+    Err(SolverError::ValidationError(
+        "solver3 search_driver.mode=session_aligned_path_relinking is not yet implemented"
+            .into(),
+    ))
 }
 
 fn validate_alignment_dimensions(

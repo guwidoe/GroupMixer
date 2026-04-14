@@ -8,7 +8,7 @@ use crate::solver_support::SolverError;
 
 use super::super::runtime_state::RuntimeState;
 use super::context::SearchRunContext;
-use super::{memetic, recombination, single_state};
+use super::{memetic, path_relinking, recombination, single_state};
 
 #[derive(Debug, Clone)]
 pub struct SearchEngine {
@@ -60,6 +60,14 @@ impl SearchEngine {
                 Solver3SearchDriverMode::DonorSessionTransplant,
                 Solver3LocalImproverMode::SgpWeekPairTabu,
             ) => recombination::run(state, run_context, progress_callback, benchmark_observer),
+            (
+                Solver3SearchDriverMode::SessionAlignedPathRelinking,
+                Solver3LocalImproverMode::RecordToRecord,
+            )
+            | (
+                Solver3SearchDriverMode::SessionAlignedPathRelinking,
+                Solver3LocalImproverMode::SgpWeekPairTabu,
+            ) => path_relinking::run(state, run_context, progress_callback, benchmark_observer),
         }
     }
 }

@@ -7,6 +7,7 @@ use gm_core::models::{
     RepeatEncounterParams, SimulatedAnnealingParams, Solver3CorrectnessLaneParams,
     Solver3DonorSessionTransplantParams, Solver3LocalImproverMode, Solver3LocalImproverParams,
     Solver3Params, Solver3SearchDriverMode, Solver3SearchDriverParams,
+    Solver3SessionAlignedPathRelinkingParams,
     Solver3SgpWeekPairTabuParams, SolverKind, SolverParams, StopReason,
 };
 use gm_core::{
@@ -896,6 +897,60 @@ fn solver3_donor_session_transplant_mode_runs_through_public_entry_point() {
         .donor_session_transplant
         .expect("donor-session donor telemetry should exist");
     assert!(donor.archive_size >= 1);
+}
+
+#[test]
+fn solver3_session_aligned_path_relinking_mode_is_explicitly_unimplemented() {
+    let mut input = solver3_repeat_driver_input();
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        search_driver: Solver3SearchDriverParams {
+            mode: Solver3SearchDriverMode::SessionAlignedPathRelinking,
+            session_aligned_path_relinking: Solver3SessionAlignedPathRelinkingParams {
+                recombination_no_improvement_window: 8,
+                recombination_cooldown_window: 8,
+                max_path_events_per_run: Some(1),
+                max_session_imports_per_event: 2,
+                path_step_no_improvement_limit: 1,
+                child_polish_iterations_per_stagnation_window: 16,
+                child_polish_no_improvement_iterations_per_stagnation_window: 8,
+                child_polish_max_stagnation_windows: 2,
+                archive_size: 5,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        local_improver: Solver3LocalImproverParams {
+            mode: Solver3LocalImproverMode::SgpWeekPairTabu,
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    let err = run_solver(&input).expect_err("path relinking should be explicit until implemented");
+    assert!(
+        err.to_string()
+            .contains("session_aligned_path_relinking is not yet implemented"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
+fn solver3_session_aligned_path_relinking_rejects_active_cliques() {
+    let mut input = solver3_clique_driver_input();
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        search_driver: Solver3SearchDriverParams {
+            mode: Solver3SearchDriverMode::SessionAlignedPathRelinking,
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    let err = run_solver(&input).expect_err("path relinking mode should reject active cliques");
+    assert!(
+        err.to_string()
+            .contains("does not yet support active cliques"),
+        "unexpected error: {err}"
+    );
 }
 
 #[cfg(not(feature = "solver3-oracle-checks"))]
