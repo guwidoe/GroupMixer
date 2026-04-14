@@ -33,6 +33,12 @@ use super::repeat_guidance::RepeatGuidanceState;
 use super::sgp_conflicts::SgpConflictState;
 use super::tabu::SgpWeekPairTabuState;
 
+const DIVERSIFICATION_BURST_STAGNATION_THRESHOLD: u64 = 25_000;
+const DIVERSIFICATION_TOTAL_DONOR_POLISH_SECONDS: f64 = 2.0;
+const DIVERSIFICATION_DONOR_COUNT: usize = 2;
+const DIVERSIFICATION_MIN_REMAINING_TIME_SECONDS: f64 = 4.0;
+const DIVERSIFICATION_PER_DONOR_ITERATION_DIVISOR: u64 = 10;
+const DIVERSIFICATION_MIN_REMAINING_ITERATIONS: u64 = 50_000;
 const PROGRESS_CALLBACK_INTERVAL_SECONDS: f64 = 0.1;
 const TIME_REFRESH_INTERVAL: u64 = 64;
 
@@ -108,6 +114,7 @@ pub(crate) fn run(
             progress_callback,
             benchmark_observer,
         },
+        true,
     )?;
 
     let telemetry = outcome.search.to_benchmark_telemetry(
@@ -144,6 +151,7 @@ pub(crate) fn polish_state(
             progress_callback: None,
             benchmark_observer: None,
         },
+        false,
     )
 }
 
@@ -152,6 +160,7 @@ fn run_local_improver(
     run_context: &SearchRunContext,
     budget: LocalImproverBudget,
     hooks: LocalImproverHooks<'_>,
+    allow_diversification_burst: bool,
 ) -> Result<LocalImproverRunResult, SolverError> {
     let mut rng = ChaCha12Rng::seed_from_u64(budget.effective_seed);
     let acceptance_policy = RecordToRecordAcceptance;
@@ -198,13 +207,15 @@ fn run_local_improver(
     let mut final_progress_emitted = false;
     let mut last_progress_callback_at = search_started_at;
     let mut cached_elapsed_seconds: f64 = 0.0;
+    let mut diversification_burst_attempted = false;
+    let mut iteration: u64 = 0;
 
     if budget.stop_on_optimal_score && search.best_score <= crate::models::OPTIMAL_SCORE_TOLERANCE {
         stop_reason = StopReason::OptimalScoreReached;
     }
 
     if stop_reason != StopReason::OptimalScoreReached {
-        for iteration in 0..budget.max_iterations {
+        while iteration < budget.max_iterations {
             if iteration % TIME_REFRESH_INTERVAL == 0 {
                 cached_elapsed_seconds = get_elapsed_seconds(search_started_at);
             }
@@ -223,6 +234,89 @@ fn run_local_improver(
                     .map(|limit| limit.max(0.0).floor() as u64),
             );
             let temperature = record_to_record_threshold_for_progress(progress);
+
+            if allow_diversification_burst
+                && !diversification_burst_attempted
+                && run_context.local_improver_mode == Solver3LocalImproverMode::RecordToRecord
+                && should_attempt_diversification_burst(
+                    search.no_improvement_count,
+                    budget.time_limit_seconds,
+                    cached_elapsed_seconds,
+                    budget.max_iterations.saturating_sub(iteration),
+                )
+            {
+                diversification_burst_attempted = true;
+                let burst_outcome = try_diversification_burst(
+                    &search.best_state,
+                    run_context,
+                    budget,
+                    iteration,
+                )?;
+                let burst_iterations = burst_outcome
+                    .iterations_consumed
+                    .min(budget.max_iterations.saturating_sub(iteration));
+                if burst_iterations > 0 {
+                    iteration = iteration.saturating_add(burst_iterations);
+                    search.iterations_completed = iteration;
+                    cached_elapsed_seconds = get_elapsed_seconds(search_started_at);
+
+                    if let Some(offspring_state) = burst_outcome.best_offspring {
+                        let offspring_score = offspring_state.total_score;
+                        if offspring_score <= search.best_score + temperature {
+                            search.current_state = offspring_state;
+                            if let Some(guidance) = repeat_guidance.as_mut() {
+                                guidance.rebuild_from_state(&search.current_state);
+                            }
+                            let improved = search.refresh_best_from_current(
+                                iteration.saturating_sub(1),
+                                cached_elapsed_seconds,
+                            );
+                            if !improved {
+                                extend_no_improvement_streak(
+                                    &mut search,
+                                    burst_iterations.saturating_sub(1),
+                                );
+                            }
+                            search.record_acceptance_result(true);
+                            search
+                                .policy_memory
+                                .ils
+                                .get_or_insert(super::context::IteratedLocalSearchMemory {
+                                    perturbation_round: 0,
+                                })
+                                .perturbation_round += 1;
+                        } else {
+                            extend_no_improvement_streak(&mut search, burst_iterations);
+                        }
+                    } else {
+                        extend_no_improvement_streak(&mut search, burst_iterations);
+                    }
+
+                    if time_limit_exceeded(cached_elapsed_seconds, budget.time_limit_seconds) {
+                        stop_reason = StopReason::TimeLimitReached;
+                        break;
+                    }
+
+                    if budget.stop_on_optimal_score
+                        && search.best_score <= crate::models::OPTIMAL_SCORE_TOLERANCE
+                    {
+                        stop_reason = StopReason::OptimalScoreReached;
+                        break;
+                    }
+
+                    if let Some(limit) = budget.no_improvement_limit {
+                        if search.no_improvement_count >= limit {
+                            stop_reason = StopReason::NoImprovementLimitReached;
+                            break;
+                        }
+                    }
+
+                    if iteration >= budget.max_iterations {
+                        stop_reason = StopReason::MaxIterationsReached;
+                        break;
+                    }
+                }
+            }
 
             let candidate_selection = candidate_sampler.select_previewed_move(
                 &search.current_state,
@@ -367,6 +461,7 @@ fn run_local_improver(
             }
 
             search.finish_iteration(iteration);
+            iteration = iteration.saturating_add(1);
 
             if let Some(callback) = hooks.progress_callback {
                 let current_time = get_current_time();
@@ -506,9 +601,120 @@ pub(crate) fn apply_previewed_move(
     }
 }
 
+struct DiversificationBurstOutcome {
+    best_offspring: Option<RuntimeState>,
+    iterations_consumed: u64,
+}
+
+fn try_diversification_burst(
+    recipient_state: &RuntimeState,
+    run_context: &SearchRunContext,
+    budget: LocalImproverBudget,
+    iteration: u64,
+) -> Result<DiversificationBurstOutcome, SolverError> {
+    let mut best_offspring = None;
+    let mut best_score = f64::INFINITY;
+    let mut donor_best_states = Vec::with_capacity(DIVERSIFICATION_DONOR_COUNT);
+    let mut iterations_consumed: u64 = 0;
+    let remaining_iterations = budget.max_iterations.saturating_sub(iteration);
+
+    for donor_ordinal in 0..DIVERSIFICATION_DONOR_COUNT {
+        let donor_seed = diversify_seed(
+            budget.effective_seed,
+            iteration
+                .saturating_add(1)
+                .saturating_add(donor_ordinal as u64),
+        );
+        let Ok(donor_state) = RuntimeState::from_compiled_with_seed(
+            recipient_state.compiled.clone(),
+            donor_seed,
+        ) else {
+            continue;
+        };
+        let Ok(donor_outcome) = run_local_improver(
+            donor_state,
+            run_context,
+            LocalImproverBudget {
+                effective_seed: donor_seed,
+                max_iterations: diversification_per_donor_iteration_budget(remaining_iterations),
+                no_improvement_limit: None,
+                time_limit_seconds: Some(diversification_per_donor_polish_seconds()),
+                stop_on_optimal_score: budget.stop_on_optimal_score,
+            },
+            LocalImproverHooks {
+                progress_callback: None,
+                benchmark_observer: None,
+            },
+            false,
+        ) else {
+            continue;
+        };
+        iterations_consumed = iterations_consumed
+            .saturating_add(donor_outcome.search.iterations_completed);
+        donor_best_states.push(donor_outcome.search.best_state.clone());
+
+        if let Some(offspring) = select_best_offspring_session(
+            recipient_state,
+            donor_best_states.last().expect("pushed donor state"),
+            &run_context.allowed_sessions,
+        )? {
+            if offspring.total_score < best_score {
+                best_score = offspring.total_score;
+                best_offspring = Some(offspring);
+            }
+        }
+    }
+
+    if let Some(offspring) = select_best_cross_donor_bundle(
+        recipient_state,
+        &donor_best_states,
+        &run_context.allowed_sessions,
+    )? {
+        if offspring.total_score < best_score {
+            best_offspring = Some(offspring);
+        }
+    }
+
+    Ok(DiversificationBurstOutcome {
+        best_offspring,
+        iterations_consumed,
+    })
+}
+
 #[inline]
 fn time_limit_exceeded(elapsed_seconds: f64, time_limit_seconds: Option<f64>) -> bool {
     time_limit_seconds.is_some_and(|limit| elapsed_seconds >= limit)
+}
+
+#[inline]
+fn should_attempt_diversification_burst(
+    no_improvement_count: u64,
+    time_limit_seconds: Option<f64>,
+    elapsed_seconds: f64,
+    remaining_iterations: u64,
+) -> bool {
+    if no_improvement_count < DIVERSIFICATION_BURST_STAGNATION_THRESHOLD {
+        return false;
+    }
+
+    if remaining_iterations < DIVERSIFICATION_MIN_REMAINING_ITERATIONS {
+        return false;
+    }
+
+    time_limit_seconds.is_some_and(|limit| {
+        elapsed_seconds + DIVERSIFICATION_TOTAL_DONOR_POLISH_SECONDS + 0.5
+            < limit - DIVERSIFICATION_MIN_REMAINING_TIME_SECONDS
+    })
+}
+
+#[inline]
+fn diversification_per_donor_polish_seconds() -> f64 {
+    (DIVERSIFICATION_TOTAL_DONOR_POLISH_SECONDS / DIVERSIFICATION_DONOR_COUNT as f64).max(0.1)
+}
+
+#[inline]
+fn diversification_per_donor_iteration_budget(remaining_iterations: u64) -> u64 {
+    (remaining_iterations / DIVERSIFICATION_PER_DONOR_ITERATION_DIVISOR).max(1)
 }
 
 #[inline]
@@ -517,6 +723,94 @@ pub(crate) fn should_emit_progress_callback(
     elapsed_since_last_callback: f64,
 ) -> bool {
     iteration == 0 || elapsed_since_last_callback >= PROGRESS_CALLBACK_INTERVAL_SECONDS
+}
+
+fn select_best_offspring_session(
+    recipient_state: &RuntimeState,
+    donor_state: &RuntimeState,
+    allowed_sessions: &[usize],
+) -> Result<Option<RuntimeState>, SolverError> {
+    let mut best_offspring = None;
+    let mut best_score = f64::INFINITY;
+
+    for &session_idx in allowed_sessions {
+        let mut offspring = recipient_state.clone();
+        offspring.overwrite_session_from(donor_state, session_idx)?;
+        offspring.rebuild_pair_contacts();
+        offspring.sync_score_from_oracle()?;
+        if offspring.total_score < best_score {
+            best_score = offspring.total_score;
+            best_offspring = Some(offspring);
+        }
+    }
+
+    Ok(best_offspring)
+}
+
+fn select_best_cross_donor_bundle(
+    recipient_state: &RuntimeState,
+    donors: &[RuntimeState],
+    allowed_sessions: &[usize],
+) -> Result<Option<RuntimeState>, SolverError> {
+    if donors.len() < 2 {
+        return Ok(None);
+    }
+
+    let mut best_offspring = None;
+    let mut best_score = f64::INFINITY;
+
+    for left_donor_idx in 0..donors.len() {
+        for right_donor_idx in (left_donor_idx + 1)..donors.len() {
+            for (left_session_pos, &left_session_idx) in allowed_sessions.iter().enumerate() {
+                for &right_session_idx in allowed_sessions.iter().skip(left_session_pos + 1) {
+                    let offspring = transplant_mixed_donor_sessions(
+                        recipient_state,
+                        &donors[left_donor_idx],
+                        left_session_idx,
+                        &donors[right_donor_idx],
+                        right_session_idx,
+                    )?;
+                    if offspring.total_score < best_score {
+                        best_score = offspring.total_score;
+                        best_offspring = Some(offspring);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(best_offspring)
+}
+
+fn transplant_mixed_donor_sessions(
+    recipient_state: &RuntimeState,
+    left_donor: &RuntimeState,
+    left_session_idx: usize,
+    right_donor: &RuntimeState,
+    right_session_idx: usize,
+) -> Result<RuntimeState, SolverError> {
+    let mut offspring = recipient_state.clone();
+    offspring.overwrite_session_from(left_donor, left_session_idx)?;
+    offspring.overwrite_session_from(right_donor, right_session_idx)?;
+    offspring.rebuild_pair_contacts();
+    offspring.sync_score_from_oracle()?;
+    Ok(offspring)
+}
+
+#[inline]
+fn diversify_seed(base_seed: u64, salt: u64) -> u64 {
+    base_seed ^ 0x9e37_79b9_7f4a_7c15u64.wrapping_mul(salt.saturating_add(1))
+}
+
+#[inline]
+fn extend_no_improvement_streak(search: &mut SearchProgressState, steps: u64) {
+    if steps == 0 {
+        return;
+    }
+    search.no_improvement_count = search.no_improvement_count.saturating_add(steps);
+    search.max_no_improvement_streak = search
+        .max_no_improvement_streak
+        .max(search.no_improvement_count);
 }
 
 pub(crate) fn maybe_run_sampled_correctness_check(
