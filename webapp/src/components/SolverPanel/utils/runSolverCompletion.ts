@@ -1,5 +1,6 @@
 import type { MutableRefObject } from 'react';
 import type { Scenario, ScenarioResult, SavedScenario, SolverSettings, SolverState, Solution, Notification } from '../../../types';
+import { buildTelemetryPayload, getPersistedTelemetryAttribution, trackLandingEvent } from '../../../services/landingInstrumentation';
 import { getRuntime, type RuntimeProgressUpdate } from '../../../services/runtime';
 import { scenarioStorage } from '../../../services/scenarioStorage';
 import { useAppStore } from '../../../store';
@@ -283,11 +284,26 @@ export async function finalizeCancelledRun({
 
 export function trackCompletedRun({
   cancelled,
+  useRecommended,
   savedResult,
 }: {
   cancelled: boolean;
+  useRecommended: boolean;
   savedResult: ScenarioResult | null;
 }): void {
-  void cancelled;
-  void savedResult;
+  if (cancelled) {
+    return;
+  }
+
+  trackLandingEvent(
+    'solver_completed',
+    buildTelemetryPayload(
+      {
+        entryPath: '/app/solver',
+        mode: useRecommended ? 'automatic' : 'custom',
+        resultSaved: Boolean(savedResult),
+      },
+      getPersistedTelemetryAttribution(),
+    ),
+  );
 }

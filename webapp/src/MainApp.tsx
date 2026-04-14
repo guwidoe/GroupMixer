@@ -10,12 +10,14 @@ import { Seo } from './components/Seo';
 import { WorkflowGuideButton } from './components/workflow/WorkflowGuideButton';
 import { SiteLegalLinks } from './components/SiteLegalLinks';
 import { SITE_LEGAL_CONFIG } from './legal/legalConfig';
+import { buildTelemetryPayload, getActiveTelemetryAttribution, trackLandingEvent } from './services/landingInstrumentation';
 import { getAppSeo } from './seo/appRouteSeo';
 import { useAppStore } from './store';
 
 function MainApp() {
   const { ui, scenario, currentScenarioId, initializeApp, setShowScenarioManager } = useAppStore();
   const location = useLocation();
+  const hasTrackedAppEntryRef = useRef(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const [workspaceShellHeight, setWorkspaceShellHeight] = useState<string>('20rem');
   const seo = getAppSeo(location.pathname);
@@ -24,6 +26,24 @@ function MainApp() {
   useEffect(() => {
     initializeApp();
   }, [initializeApp]);
+
+  useEffect(() => {
+    if (hasTrackedAppEntryRef.current) {
+      return;
+    }
+
+    hasTrackedAppEntryRef.current = true;
+    const attribution = getActiveTelemetryAttribution(location.search);
+    trackLandingEvent(
+      'app_entry',
+      buildTelemetryPayload(
+        {
+          entryPath: location.pathname,
+        },
+        attribution,
+      ),
+    );
+  }, [location.pathname, location.search]);
 
   useLayoutEffect(() => {
     if (!isWorkspaceRoute) {

@@ -504,12 +504,13 @@ fn run_local_improver_general(
                 let current_time = get_current_time();
                 let elapsed_since_last_callback =
                     get_elapsed_seconds_between(last_progress_callback_at, current_time);
+                let completed_iteration = iteration.saturating_sub(1);
 
-                if should_emit_progress_callback(iteration, elapsed_since_last_callback) {
+                if should_emit_progress_callback(completed_iteration, elapsed_since_last_callback) {
                     let callback_elapsed_seconds = get_elapsed_seconds(search_started_at);
                     let progress = search.to_progress_update(
                         run_context,
-                        iteration,
+                        completed_iteration,
                         temperature,
                         callback_elapsed_seconds,
                         None,
@@ -519,7 +520,7 @@ fn run_local_improver_general(
                         stop_reason = StopReason::ProgressCallbackRequestedStop;
                         let final_progress = search.to_progress_update(
                             run_context,
-                            iteration,
+                            completed_iteration,
                             temperature,
                             callback_elapsed_seconds,
                             Some(stop_reason),
@@ -775,12 +776,13 @@ fn run_local_improver_default(
                 let current_time = get_current_time();
                 let elapsed_since_last_callback =
                     get_elapsed_seconds_between(last_progress_callback_at, current_time);
+                let completed_iteration = iteration.saturating_sub(1);
 
-                if should_emit_progress_callback(iteration, elapsed_since_last_callback) {
+                if should_emit_progress_callback(completed_iteration, elapsed_since_last_callback) {
                     let callback_elapsed_seconds = get_elapsed_seconds(search_started_at);
                     let progress = search.to_progress_update(
                         run_context,
-                        iteration,
+                        completed_iteration,
                         temperature,
                         callback_elapsed_seconds,
                         None,
@@ -790,7 +792,7 @@ fn run_local_improver_default(
                         stop_reason = StopReason::ProgressCallbackRequestedStop;
                         let final_progress = search.to_progress_update(
                             run_context,
-                            iteration,
+                            completed_iteration,
                             temperature,
                             callback_elapsed_seconds,
                             Some(stop_reason),
