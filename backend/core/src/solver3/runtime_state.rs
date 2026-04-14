@@ -568,6 +568,15 @@ impl RuntimeState {
         source: &RuntimeState,
         session_idx: usize,
     ) -> Result<(), SolverError> {
+        self.overwrite_session_from_to(source, session_idx, session_idx)
+    }
+
+    pub(crate) fn overwrite_session_from_to(
+        &mut self,
+        source: &RuntimeState,
+        target_session_idx: usize,
+        source_session_idx: usize,
+    ) -> Result<(), SolverError> {
         if self.compiled.num_people != source.compiled.num_people
             || self.compiled.num_groups != source.compiled.num_groups
             || self.compiled.num_sessions != source.compiled.num_sessions
@@ -578,15 +587,15 @@ impl RuntimeState {
         }
 
         for group_idx in 0..self.compiled.num_groups {
-            let target_slot = self.group_slot(session_idx, group_idx);
-            let source_slot = source.group_slot(session_idx, group_idx);
+            let target_slot = self.group_slot(target_session_idx, group_idx);
+            let source_slot = source.group_slot(source_session_idx, group_idx);
             self.group_members[target_slot] = source.group_members[source_slot].clone();
             self.group_sizes[target_slot] = self.group_members[target_slot].len();
         }
 
         for person_idx in 0..self.compiled.num_people {
-            let target_slot = self.people_slot(session_idx, person_idx);
-            let source_slot = source.people_slot(session_idx, person_idx);
+            let target_slot = self.people_slot(target_session_idx, person_idx);
+            let source_slot = source.people_slot(source_session_idx, person_idx);
             self.person_location[target_slot] = source.person_location[source_slot];
         }
 

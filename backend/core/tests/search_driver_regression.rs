@@ -900,7 +900,7 @@ fn solver3_donor_session_transplant_mode_runs_through_public_entry_point() {
 }
 
 #[test]
-fn solver3_session_aligned_path_relinking_mode_is_explicitly_unimplemented() {
+fn solver3_session_aligned_path_relinking_mode_runs_through_public_entry_point() {
     let mut input = solver3_repeat_driver_input();
     input.solver.solver_params = SolverParams::Solver3(Solver3Params {
         search_driver: Solver3SearchDriverParams {
@@ -926,12 +926,11 @@ fn solver3_session_aligned_path_relinking_mode_is_explicitly_unimplemented() {
         ..Default::default()
     });
 
-    let err = run_solver(&input).expect_err("path relinking should be explicit until implemented");
-    assert!(
-        err.to_string()
-            .contains("session_aligned_path_relinking is not yet implemented"),
-        "unexpected error: {err}"
-    );
+    let result = run_solver(&input).expect("path relinking solve should succeed");
+    let telemetry = result
+        .benchmark_telemetry
+        .expect("path relinking telemetry should exist");
+    assert!(telemetry.iterations_completed > 0);
 }
 
 #[test]
