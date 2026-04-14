@@ -383,8 +383,8 @@ describe("MainApp stateful integration routes", () => {
 
     renderAppRoute("/app/history");
 
-    expect(await screen.findByRole("heading", { name: /results history/i })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /view in result details/i }));
+    expect(await screen.findByRole("heading", { name: /saved results/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /open current result/i }));
 
     expect(await screen.findByRole("heading", { name: /optimization results/i })).toBeInTheDocument();
   });

@@ -20,15 +20,15 @@ const WORKFLOW_TABS = [
   {
     id: 'manage',
     path: '/app/history',
-    label: 'Results',
-    description: 'View and manage all saved results',
+    label: 'Saved Results',
+    description: 'Browse, compare, and manage saved results',
   },
   {
     id: 'results',
     path: '/app/results',
-    label: 'Result Details',
-    shortLabel: 'Details',
-    description: 'Inspect a single result in depth',
+    label: 'Current Result',
+    shortLabel: 'Current',
+    description: 'Inspect the active result in detail',
   },
   {
     id: 'editor',

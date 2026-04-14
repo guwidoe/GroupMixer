@@ -58,7 +58,7 @@ describe('ResultsHistory', () => {
 
     renderWithRouter(<ResultsHistory />, { route: '/app/history' });
 
-    expect(screen.getByRole('heading', { name: /results history/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /saved results/i })).toBeInTheDocument();
     expect(screen.getAllByText(/baseline/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/best result/i)).toBeInTheDocument();
   });

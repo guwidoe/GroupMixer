@@ -25,7 +25,7 @@ export function ResultsHistoryHeader({
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0">
       <div>
-        <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Results History</h2>
+        <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Saved Results</h2>
         <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
           {resultsCount} result{resultsCount !== 1 ? 's' : ''} for "{currentScenarioName}"
         </p>

@@ -297,7 +297,7 @@ export function ResultCard({
             className="btn-secondary flex items-center gap-2 px-3 py-1 text-sm"
           >
             <Eye className="h-4 w-4" />
-            View in Result Details
+            Open Current Result
           </button>
           <button
             onClick={() => actions.onToggleExpanded(result.id)}

@@ -71,10 +71,10 @@ function getWorkflowGuideStepLabel(stepId: WorkflowGuideStepId): string {
     return 'Solver';
   }
   if (stepId === 'results') {
-    return 'Results';
+    return 'Saved Results';
   }
   if (stepId === 'result-details') {
-    return 'Detailed View';
+    return 'Current Result';
   }
   if (stepId === 'manual-editor') {
     return 'Manual Editor';
@@ -127,7 +127,7 @@ export function resolveWorkflowGuideAction(
       ? {
           kind: 'open-best-result',
           currentStepId,
-          label: 'Open Best Result',
+          label: 'Open Best Saved Result',
           nextStepId: 'result-details',
         }
       : null;

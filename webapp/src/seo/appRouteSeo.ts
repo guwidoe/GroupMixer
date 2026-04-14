@@ -13,15 +13,15 @@ export function getAppSeo(pathname: string): AppRouteSeoConfig {
 
   if (pathname.startsWith('/app/results')) {
     return {
-      title: 'Result Details | GroupMixer App',
-      description: 'Detailed GroupMixer result analysis workspace for saved runs. This utility route is not intended for search indexing.',
+      title: 'Current Result | GroupMixer App',
+      description: 'Detailed GroupMixer workspace for inspecting the active result. This utility route is not intended for search indexing.',
     };
   }
 
   if (pathname.startsWith('/app/history')) {
     return {
-      title: 'Results History | GroupMixer App',
-      description: 'Saved GroupMixer results workspace. This utility route is not intended for search indexing.',
+      title: 'Saved Results | GroupMixer App',
+      description: 'Saved GroupMixer results workspace for browsing, comparing, and reopening results. This utility route is not intended for search indexing.',
     };
   }
 

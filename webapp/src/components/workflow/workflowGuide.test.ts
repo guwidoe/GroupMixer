@@ -55,7 +55,7 @@ describe('workflowGuide', () => {
       kind: 'open-best-result',
       currentStepId: 'results',
       nextStepId: 'result-details',
-      label: 'Open Best Result',
+      label: 'Open Best Saved Result',
     });
 
     expect(resolveWorkflowGuideAction('/app/history', { hasBestResult: false })).toBeNull();
