@@ -62,8 +62,9 @@ pub(crate) struct DonorSessionTransplantConfig {
     pub(crate) recombination_cooldown_window: u64,
     pub(crate) max_recombination_events_per_run: Option<u64>,
     pub(crate) adaptive_raw_child_retention: AdaptiveRawChildRetentionConfig,
-    pub(crate) child_polish_max_iterations: u64,
-    pub(crate) child_polish_no_improvement_iterations: u64,
+    pub(crate) child_polish_iterations_per_stagnation_window: u64,
+    pub(crate) child_polish_no_improvement_iterations_per_stagnation_window: u64,
+    pub(crate) child_polish_max_stagnation_windows: u64,
 }
 
 impl SearchRunContext {
@@ -281,25 +282,34 @@ impl SearchRunContext {
             ));
         }
 
-        if donor_session_transplant.child_polish_max_iterations == 0 {
+        if donor_session_transplant.child_polish_iterations_per_stagnation_window == 0 {
             return Err(SolverError::ValidationError(
-                "solver3 search_driver.donor_session_transplant.child_polish_max_iterations must be >= 1"
+                "solver3 search_driver.donor_session_transplant.child_polish_iterations_per_stagnation_window must be >= 1"
                     .into(),
             ));
         }
 
-        if donor_session_transplant.child_polish_no_improvement_iterations == 0 {
-            return Err(SolverError::ValidationError(
-                "solver3 search_driver.donor_session_transplant.child_polish_no_improvement_iterations must be >= 1"
-                    .into(),
-            ));
-        }
-
-        if donor_session_transplant.child_polish_no_improvement_iterations
-            > donor_session_transplant.child_polish_max_iterations
+        if donor_session_transplant.child_polish_no_improvement_iterations_per_stagnation_window
+            == 0
         {
             return Err(SolverError::ValidationError(
-                "solver3 search_driver.donor_session_transplant.child_polish_no_improvement_iterations must be <= child_polish_max_iterations"
+                "solver3 search_driver.donor_session_transplant.child_polish_no_improvement_iterations_per_stagnation_window must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if donor_session_transplant.child_polish_no_improvement_iterations_per_stagnation_window
+            > donor_session_transplant.child_polish_iterations_per_stagnation_window
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.donor_session_transplant.child_polish_no_improvement_iterations_per_stagnation_window must be <= child_polish_iterations_per_stagnation_window"
+                    .into(),
+            ));
+        }
+
+        if donor_session_transplant.child_polish_max_stagnation_windows == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.donor_session_transplant.child_polish_max_stagnation_windows must be >= 1"
                     .into(),
             ));
         }
@@ -457,10 +467,14 @@ impl SearchRunContext {
                         .adaptive_raw_child_retention
                         .history_limit as usize,
                 },
-                child_polish_max_iterations: donor_session_transplant
-                    .child_polish_max_iterations as u64,
-                child_polish_no_improvement_iterations: donor_session_transplant
-                    .child_polish_no_improvement_iterations as u64,
+                child_polish_iterations_per_stagnation_window: donor_session_transplant
+                    .child_polish_iterations_per_stagnation_window as u64,
+                child_polish_no_improvement_iterations_per_stagnation_window:
+                    donor_session_transplant
+                        .child_polish_no_improvement_iterations_per_stagnation_window
+                        as u64,
+                child_polish_max_stagnation_windows: donor_session_transplant
+                    .child_polish_max_stagnation_windows as u64,
             }),
         })
     }
@@ -1611,7 +1625,7 @@ mod tests {
         config.solver_params = SolverParams::Solver3(Solver3Params {
             search_driver: Solver3SearchDriverParams {
                 donor_session_transplant: Solver3DonorSessionTransplantParams {
-                    child_polish_max_iterations: 0,
+                    child_polish_iterations_per_stagnation_window: 0,
                     ..Default::default()
                 },
                 ..Default::default()
@@ -1621,15 +1635,15 @@ mod tests {
         let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
         assert!(
             err.to_string()
-                .contains("donor_session_transplant.child_polish_max_iterations"),
+                .contains("donor_session_transplant.child_polish_iterations_per_stagnation_window"),
             "unexpected error: {err}"
         );
 
         config.solver_params = SolverParams::Solver3(Solver3Params {
             search_driver: Solver3SearchDriverParams {
                 donor_session_transplant: Solver3DonorSessionTransplantParams {
-                    child_polish_max_iterations: 4,
-                    child_polish_no_improvement_iterations: 5,
+                    child_polish_iterations_per_stagnation_window: 4,
+                    child_polish_no_improvement_iterations_per_stagnation_window: 5,
                     ..Default::default()
                 },
                 ..Default::default()
@@ -1639,8 +1653,25 @@ mod tests {
         let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
         assert!(
             err.to_string().contains(
-                "donor_session_transplant.child_polish_no_improvement_iterations"
+                "donor_session_transplant.child_polish_no_improvement_iterations_per_stagnation_window"
             ),
+            "unexpected error: {err}"
+        );
+
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                donor_session_transplant: Solver3DonorSessionTransplantParams {
+                    child_polish_max_stagnation_windows: 0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("donor_session_transplant.child_polish_max_stagnation_windows"),
             "unexpected error: {err}"
         );
     }

@@ -872,8 +872,9 @@ fn solver3_donor_session_transplant_mode_runs_through_public_entry_point() {
                 recombination_no_improvement_window: 8,
                 recombination_cooldown_window: 8,
                 max_recombination_events_per_run: Some(1),
-                child_polish_max_iterations: 16,
-                child_polish_no_improvement_iterations: 8,
+                child_polish_iterations_per_stagnation_window: 16,
+                child_polish_no_improvement_iterations_per_stagnation_window: 8,
+                child_polish_max_stagnation_windows: 2,
                 archive_size: 5,
                 ..Default::default()
             },

@@ -447,6 +447,32 @@ fn time_limit_exceeded(elapsed_seconds: f64, time_limit_seconds: Option<f64>) ->
     time_limit_seconds.is_some_and(|limit| elapsed_seconds >= limit)
 }
 
+fn child_polish_budget_for_stagnation(
+    config: DonorSessionTransplantConfig,
+    no_improvement_count: u64,
+    remaining_iterations: u64,
+) -> (u64, u64, u64) {
+    let window = config.recombination_no_improvement_window.max(1);
+    let stagnation_windows_at_trigger = (no_improvement_count / window)
+        .max(1)
+        .min(config.child_polish_max_stagnation_windows.max(1));
+    let configured_iteration_budget = config
+        .child_polish_iterations_per_stagnation_window
+        .saturating_mul(stagnation_windows_at_trigger);
+    let configured_no_improvement_budget = config
+        .child_polish_no_improvement_iterations_per_stagnation_window
+        .saturating_mul(stagnation_windows_at_trigger);
+    let polish_budget_iterations = remaining_iterations.min(configured_iteration_budget);
+    let polish_budget_no_improvement_iterations = configured_no_improvement_budget
+        .min(polish_budget_iterations)
+        .max(1);
+    (
+        stagnation_windows_at_trigger,
+        polish_budget_iterations,
+        polish_budget_no_improvement_iterations,
+    )
+}
+
 pub(crate) fn run(
     state: &mut RuntimeState,
     run_context: SearchRunContext,
@@ -472,9 +498,11 @@ pub(crate) fn run(
             as u32,
         raw_child_history_limit: transplant_config.adaptive_raw_child_retention.history_limit
             as u32,
-        child_polish_max_iterations: transplant_config.child_polish_max_iterations,
-        child_polish_no_improvement_iterations: transplant_config
-            .child_polish_no_improvement_iterations,
+        child_polish_iterations_per_stagnation_window: transplant_config
+            .child_polish_iterations_per_stagnation_window,
+        child_polish_no_improvement_iterations_per_stagnation_window: transplant_config
+            .child_polish_no_improvement_iterations_per_stagnation_window,
+        child_polish_max_stagnation_windows: transplant_config.child_polish_max_stagnation_windows,
         ..Default::default()
     });
     record_archive_update(
@@ -643,11 +671,23 @@ pub(crate) fn run(
 
             let raw_child_delta = transplanted_child.total_score - current_incumbent.total_score;
             let retention_decision = raw_child_retention.evaluate(raw_child_delta);
+            let remaining_iterations_after_trigger =
+                run_context.max_iterations - total_iterations_completed;
+            let (
+                stagnation_windows_at_trigger,
+                polish_budget_iterations,
+                polish_budget_no_improvement_iterations,
+            ) = child_polish_budget_for_stagnation(
+                transplant_config,
+                global_no_improvement_count,
+                remaining_iterations_after_trigger,
+            );
             record_raw_child_retention(
                 &mut aggregate,
                 choice,
                 raw_child_delta,
                 retention_decision,
+                stagnation_windows_at_trigger,
                 raw_child_retention.latest_threshold(),
             );
 
@@ -672,8 +712,12 @@ pub(crate) fn run(
             if remaining_iterations == 0 {
                 break;
             }
-            let polish_iterations =
-                remaining_iterations.min(transplant_config.child_polish_max_iterations);
+            let polish_iterations = polish_budget_iterations.min(remaining_iterations);
+            record_child_polish_budget(
+                &mut aggregate,
+                polish_iterations,
+                polish_budget_no_improvement_iterations.min(polish_iterations),
+            );
             let polish_outcome = polish_state(
                 transplanted_child,
                 &run_context,
@@ -681,9 +725,7 @@ pub(crate) fn run(
                     effective_seed: rng.random::<u64>(),
                     max_iterations: polish_iterations,
                     no_improvement_limit: Some(
-                        transplant_config
-                            .child_polish_no_improvement_iterations
-                            .min(polish_iterations),
+                        polish_budget_no_improvement_iterations.min(polish_iterations),
                     ),
                     time_limit_seconds: run_context
                         .time_limit_seconds
@@ -956,6 +998,7 @@ fn record_raw_child_retention(
     choice: DonorSessionChoice,
     raw_child_delta: f64,
     decision: AdaptiveRawChildRetentionDecision,
+    stagnation_windows_at_trigger: u64,
     latest_threshold: Option<f64>,
 ) {
     let telemetry = search
@@ -984,7 +1027,28 @@ fn record_raw_child_retention(
         raw_child_delta,
         adaptive_discard_threshold: decision.discard_threshold,
         retained_for_polish: decision.retained_for_polish,
+        stagnation_windows_at_trigger,
+        child_polish_budget_iterations: None,
+        child_polish_budget_no_improvement_iterations: None,
     });
+}
+
+fn record_child_polish_budget(
+    search: &mut SearchProgressState,
+    polish_budget_iterations: u64,
+    polish_budget_no_improvement_iterations: u64,
+) {
+    let telemetry = search
+        .donor_session_transplant_telemetry
+        .get_or_insert_with(Default::default);
+    telemetry.child_polish_budget_iterations_sum += polish_budget_iterations;
+    telemetry.child_polish_budget_no_improvement_iterations_sum +=
+        polish_budget_no_improvement_iterations;
+    if let Some(choice) = telemetry.donor_choices.last_mut() {
+        choice.child_polish_budget_iterations = Some(polish_budget_iterations);
+        choice.child_polish_budget_no_improvement_iterations =
+            Some(polish_budget_no_improvement_iterations);
+    }
 }
 
 fn record_child_polish(
@@ -1071,8 +1135,9 @@ mod tests {
                 warmup_samples: 4,
                 history_limit: 32,
             },
-            child_polish_max_iterations: 64,
-            child_polish_no_improvement_iterations: 32,
+            child_polish_iterations_per_stagnation_window: 100_000,
+            child_polish_no_improvement_iterations_per_stagnation_window: 100_000,
+            child_polish_max_stagnation_windows: 4,
         }
     }
 

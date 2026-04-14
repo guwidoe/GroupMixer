@@ -1089,12 +1089,15 @@ pub struct Solver3DonorSessionTransplantParams {
     /// Adaptive raw-child quality gate applied before post-transplant polish.
     #[serde(default)]
     pub adaptive_raw_child_retention: Solver3AdaptiveRawChildRetentionParams,
-    /// Bounded local-polish iteration cap applied after a surviving transplant.
-    #[serde(default = "default_solver3_donor_session_child_polish_max_iterations")]
-    pub child_polish_max_iterations: u32,
-    /// Early-stop cap after this many non-improving post-transplant polish iterations.
-    #[serde(default = "default_solver3_donor_session_child_polish_no_improvement_iterations")]
-    pub child_polish_no_improvement_iterations: u32,
+    /// Post-transplant child-polish iteration budget granted per full stagnation window.
+    #[serde(default = "default_solver3_donor_session_child_polish_iterations_per_window")]
+    pub child_polish_iterations_per_stagnation_window: u32,
+    /// Post-transplant child-polish no-improvement budget granted per full stagnation window.
+    #[serde(default = "default_solver3_donor_session_child_polish_no_improvement_iterations_per_window")]
+    pub child_polish_no_improvement_iterations_per_stagnation_window: u32,
+    /// Maximum number of stagnation windows that contribute to a single child-polish budget.
+    #[serde(default = "default_solver3_donor_session_child_polish_max_stagnation_windows")]
+    pub child_polish_max_stagnation_windows: u32,
 }
 
 impl Default for Solver3DonorSessionTransplantParams {
@@ -1106,10 +1109,12 @@ impl Default for Solver3DonorSessionTransplantParams {
             recombination_cooldown_window: default_solver3_donor_session_cooldown_window(),
             max_recombination_events_per_run: None,
             adaptive_raw_child_retention: Solver3AdaptiveRawChildRetentionParams::default(),
-            child_polish_max_iterations: default_solver3_donor_session_child_polish_max_iterations(
-            ),
-            child_polish_no_improvement_iterations:
-                default_solver3_donor_session_child_polish_no_improvement_iterations(),
+            child_polish_iterations_per_stagnation_window:
+                default_solver3_donor_session_child_polish_iterations_per_window(),
+            child_polish_no_improvement_iterations_per_stagnation_window:
+                default_solver3_donor_session_child_polish_no_improvement_iterations_per_window(),
+            child_polish_max_stagnation_windows:
+                default_solver3_donor_session_child_polish_max_stagnation_windows(),
         }
     }
 }
@@ -1350,12 +1355,16 @@ fn default_solver3_donor_session_raw_child_history_limit() -> u32 {
     32
 }
 
-fn default_solver3_donor_session_child_polish_max_iterations() -> u32 {
-    64
+fn default_solver3_donor_session_child_polish_iterations_per_window() -> u32 {
+    100_000
 }
 
-fn default_solver3_donor_session_child_polish_no_improvement_iterations() -> u32 {
-    32
+fn default_solver3_donor_session_child_polish_no_improvement_iterations_per_window() -> u32 {
+    100_000
+}
+
+fn default_solver3_donor_session_child_polish_max_stagnation_windows() -> u32 {
+    4
 }
 
 fn default_solver3_repeat_guided_swap_probability() -> f64 {
@@ -1784,6 +1793,12 @@ pub struct DonorSessionChoiceTelemetry {
     pub adaptive_discard_threshold: Option<f64>,
     #[serde(default)]
     pub retained_for_polish: bool,
+    #[serde(default)]
+    pub stagnation_windows_at_trigger: u64,
+    #[serde(default)]
+    pub child_polish_budget_iterations: Option<u64>,
+    #[serde(default)]
+    pub child_polish_budget_no_improvement_iterations: Option<u64>,
 }
 
 /// Benchmark telemetry for the donor-session transplant outer driver.
@@ -1800,9 +1815,11 @@ pub struct DonorSessionTransplantBenchmarkTelemetry {
     #[serde(default)]
     pub raw_child_history_limit: u32,
     #[serde(default)]
-    pub child_polish_max_iterations: u64,
+    pub child_polish_iterations_per_stagnation_window: u64,
     #[serde(default)]
-    pub child_polish_no_improvement_iterations: u64,
+    pub child_polish_no_improvement_iterations_per_stagnation_window: u64,
+    #[serde(default)]
+    pub child_polish_max_stagnation_windows: u64,
     #[serde(default)]
     pub archive_additions: u64,
     #[serde(default)]
@@ -1847,6 +1864,10 @@ pub struct DonorSessionTransplantBenchmarkTelemetry {
     pub polished_children_kept: u64,
     #[serde(default)]
     pub polished_children_discarded: u64,
+    #[serde(default)]
+    pub child_polish_budget_iterations_sum: u64,
+    #[serde(default)]
+    pub child_polish_budget_no_improvement_iterations_sum: u64,
     #[serde(default)]
     pub child_polish_iterations: u64,
     #[serde(default)]

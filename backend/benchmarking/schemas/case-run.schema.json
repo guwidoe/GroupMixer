@@ -214,8 +214,9 @@
             "raw_child_keep_ratio",
             "raw_child_warmup_samples",
             "raw_child_history_limit",
-            "child_polish_max_iterations",
-            "child_polish_no_improvement_iterations",
+            "child_polish_iterations_per_stagnation_window",
+            "child_polish_no_improvement_iterations_per_stagnation_window",
+            "child_polish_max_stagnation_windows",
             "archive_additions",
             "archive_exact_duplicate_replacements",
             "archive_near_duplicate_replacements",
@@ -238,6 +239,8 @@
             "polished_children",
             "polished_children_kept",
             "polished_children_discarded",
+            "child_polish_budget_iterations_sum",
+            "child_polish_budget_no_improvement_iterations_sum",
             "child_polish_iterations",
             "child_polish_improving_moves",
             "child_polish_seconds"
@@ -248,8 +251,9 @@
             "raw_child_keep_ratio": { "type": "number" },
             "raw_child_warmup_samples": { "type": "integer" },
             "raw_child_history_limit": { "type": "integer" },
-            "child_polish_max_iterations": { "type": "integer" },
-            "child_polish_no_improvement_iterations": { "type": "integer" },
+            "child_polish_iterations_per_stagnation_window": { "type": "integer" },
+            "child_polish_no_improvement_iterations_per_stagnation_window": { "type": "integer" },
+            "child_polish_max_stagnation_windows": { "type": "integer" },
             "archive_additions": { "type": "integer" },
             "archive_exact_duplicate_replacements": { "type": "integer" },
             "archive_near_duplicate_replacements": { "type": "integer" },
@@ -280,7 +284,10 @@
                   "conflict_burden_delta",
                   "raw_child_delta",
                   "adaptive_discard_threshold",
-                  "retained_for_polish"
+                  "retained_for_polish",
+                  "stagnation_windows_at_trigger",
+                  "child_polish_budget_iterations",
+                  "child_polish_budget_no_improvement_iterations"
                 ],
                 "properties": {
                   "donor_archive_idx": { "type": "integer" },
@@ -291,7 +298,10 @@
                   "conflict_burden_delta": { "type": "integer" },
                   "raw_child_delta": { "type": "number" },
                   "adaptive_discard_threshold": { "type": ["number", "null"] },
-                  "retained_for_polish": { "type": "boolean" }
+                  "retained_for_polish": { "type": "boolean" },
+                  "stagnation_windows_at_trigger": { "type": "integer" },
+                  "child_polish_budget_iterations": { "type": ["integer", "null"] },
+                  "child_polish_budget_no_improvement_iterations": { "type": ["integer", "null"] }
                 }
               }
             },
@@ -299,6 +309,8 @@
             "polished_children": { "type": "integer" },
             "polished_children_kept": { "type": "integer" },
             "polished_children_discarded": { "type": "integer" },
+            "child_polish_budget_iterations_sum": { "type": "integer" },
+            "child_polish_budget_no_improvement_iterations_sum": { "type": "integer" },
             "child_polish_iterations": { "type": "integer" },
             "child_polish_improving_moves": { "type": "integer" },
             "child_polish_seconds": { "type": "number" }
