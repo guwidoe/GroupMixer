@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { BarChart3, Target } from 'lucide-react';
 import { useAppStore } from '../store';
-import { generateAssignmentsCsv } from '../utils/csvExport';
+import { createResultExportFile, type ResultExportAction } from '../utils/csvExport';
 import { compareScenarioConfigurations } from '../services/scenarioStorage';
 import { calculateMetrics, getColorClass } from '../utils/metricCalculations';
 import { snapshotToScenario } from '../utils/scenarioSnapshot';
@@ -104,39 +104,16 @@ export function ResultsView() {
     URL.revokeObjectURL(url);
   };
 
-  const generateCSV = () => {
-    if (!effectiveScenario || !solution) return '';
-    return generateAssignmentsCsv(effectiveScenario, solution, {
+  const handleExportAction = (action: ResultExportAction) => {
+    if (!effectiveScenario || !solution) return;
+
+    const exportFile = createResultExportFile(effectiveScenario, solution, action, {
       resultName: resultName || 'Current Result',
       exportedAt: Date.now(),
     });
-  };
 
-  const handleExportResult = (format: 'json' | 'csv' | 'excel') => {
-    if (!effectiveScenario || !solution) return;
-
-    const fileName = (resultName || 'result').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-
-    if (format === 'json') {
-      const exportData = {
-        scenario: effectiveScenario,
-        solution,
-        exportedAt: Date.now(),
-      };
-
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-        type: 'application/json',
-      });
-      downloadFile(blob, `${fileName}.json`);
-    } else if (format === 'csv') {
-      const csvData = generateCSV();
-      const blob = new Blob([csvData], { type: 'text/csv' });
-      downloadFile(blob, `${fileName}.csv`);
-    } else if (format === 'excel') {
-      const csvData = generateCSV();
-      const blob = new Blob([csvData], { type: 'application/vnd.ms-excel' });
-      downloadFile(blob, `${fileName}.xls`);
-    }
+    const blob = new Blob([exportFile.content], { type: exportFile.mimeType });
+    downloadFile(blob, exportFile.filename);
 
     setExportDropdownOpen(false);
   };
@@ -218,7 +195,7 @@ export function ResultsView() {
         }}
         exportDropdownOpen={exportDropdownOpen}
         onToggleExportDropdown={() => setExportDropdownOpen(!exportDropdownOpen)}
-        onExportResult={handleExportResult}
+        onExportAction={handleExportAction}
         onExportVisualizationPng={handleExportVisualizationPng}
         viewMode={viewMode}
         exportDropdownRef={exportDropdownRef}

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { generateAssignmentsCsv } from "./csvExport";
+import {
+  buildResultExportBaseName,
+  createResultExportFile,
+  generateAssignmentsCsv,
+  generateParticipantItinerariesCsv,
+  generateSessionRostersCsv,
+} from "./csvExport";
 import { createSampleScenario, createSampleSolution } from "../test/fixtures";
 
 describe("generateAssignmentsCsv", () => {
@@ -39,5 +45,47 @@ describe("generateAssignmentsCsv", () => {
     expect(csv).toContain('"Alice, ""A"""');
     expect(csv).toContain("Person ID,Group ID,Session,Person Name,team");
     expect(csv).toContain("p2,g1,1,,B");
+  });
+
+  it("exports session rosters and participant itineraries for audience-specific downloads", () => {
+    const scenario = createSampleScenario();
+    const solution = createSampleSolution();
+
+    const rostersCsv = generateSessionRostersCsv(scenario, solution, {
+      resultName: "Ops Run",
+      exportedAt: Date.UTC(2024, 0, 2, 3, 4, 5),
+    });
+    const itinerariesCsv = generateParticipantItinerariesCsv(scenario, solution, {
+      resultName: "Ops Run",
+      exportedAt: Date.UTC(2024, 0, 2, 3, 4, 5),
+    });
+
+    expect(rostersCsv).toContain("Session,Group ID,Seat Capacity,Assigned Count,Open Seats,Person ID,Person Name");
+    expect(rostersCsv).toContain("Session 1,g1,2,2,0,p1,Alice");
+    expect(itinerariesCsv).toContain("Person ID,Person Name,team,Assigned Sessions,Session 1 Group,Session 2 Group");
+    expect(itinerariesCsv).toContain("p1,Alice,A,2/2,g1,g1");
+  });
+
+  it("builds descriptive filenames and export bundles", () => {
+    const scenario = createSampleScenario();
+    const solution = createSampleSolution();
+    const exportedAt = Date.UTC(2024, 0, 2, 3, 4, 5);
+
+    expect(buildResultExportBaseName("Result 1", exportedAt)).toBe("result-1-2024-01-02");
+
+    const file = createResultExportFile(scenario, solution, "csv-session-rosters", {
+      resultName: "Result 1",
+      exportedAt,
+    });
+    const jsonBundle = createResultExportFile(scenario, solution, "json-result-bundle", {
+      resultName: "Result 1",
+      exportedAt,
+    });
+
+    expect(file.filename).toBe("result-1-2024-01-02-session-rosters.csv");
+    expect(file.mimeType).toBe("text/csv");
+    expect(jsonBundle.filename).toBe("result-1-2024-01-02-result-bundle.json");
+    expect(jsonBundle.content).toContain('"Result Name": "Result 1"');
+    expect(jsonBundle.content).toContain('"summary"');
   });
 });

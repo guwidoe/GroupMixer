@@ -6,6 +6,7 @@ import type { ResultsSummaryData } from '../../services/results/buildResultsMode
 import { Tooltip } from '../Tooltip';
 import { ConfigDiffBadge } from './ConfigDiffBadge';
 import { ResultsExportDropdown } from './ResultsExportDropdown';
+import type { ResultExportAction } from '../../utils/csvExport';
 
 interface ResultsHeaderProps {
   resultName?: string;
@@ -17,7 +18,7 @@ interface ResultsHeaderProps {
   onRestoreConfig: () => void;
   exportDropdownOpen: boolean;
   onToggleExportDropdown: () => void;
-  onExportResult: (format: 'json' | 'csv' | 'excel') => void;
+  onExportAction: (action: ResultExportAction) => void;
   onExportVisualizationPng: () => void;
   viewMode: 'grid' | 'list' | 'visualize';
   exportDropdownRef: React.RefObject<HTMLDivElement>;
@@ -34,7 +35,7 @@ export function ResultsHeader({
   onRestoreConfig,
   exportDropdownOpen,
   onToggleExportDropdown,
-  onExportResult,
+  onExportAction,
   onExportVisualizationPng,
   viewMode,
   exportDropdownRef,
@@ -121,13 +122,13 @@ export function ResultsHeader({
           <ResultsExportDropdown
             isOpen={exportDropdownOpen}
             onToggle={onToggleExportDropdown}
-            onExportResult={onExportResult}
+            onExportAction={onExportAction}
             onExportVisualizationPng={onExportVisualizationPng}
             viewMode={viewMode}
             dropdownRef={exportDropdownRef}
           />
           <p className="text-xs leading-5" style={{ color: 'var(--text-tertiary)' }}>
-            Export the active result for reporting, spreadsheets, or follow-up review.
+            Choose the format that matches how you need to share or use this result next.
           </p>
         </div>
       </div>
