@@ -28,46 +28,49 @@ export function ResultsScheduleGrid({ sessionData, selectedSessionIndex = null, 
     : sessionData.filter((session) => session.sessionIndex === selectedSessionIndex);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-8">
       {visibleSessions.map(({ sessionIndex, label, groups, totalPeople, totalCapacity, openSeats }) => (
-        <div
+        <section
           key={sessionIndex}
-          className="results-print-avoid-break rounded-2xl border p-4 transition-colors sm:p-5"
-          style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
+          className="results-print-avoid-break border-t pt-6 first:border-t-0 first:pt-0"
+          style={{ borderColor: 'var(--border-primary)' }}
         >
-          <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-start sm:justify-between" style={{ borderColor: 'var(--border-primary)' }}>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h4 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
+                Session Overview
+              </div>
+              <h4 className="mt-2 text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
                 {label || interpolate(localized.sessionHeadingTemplate, { number: sessionIndex + 1 })}
               </h4>
-              <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                {interpolate(localized.peopleAssignedTemplate, { count: totalPeople })} • {totalCapacity} total seats
+              <p className="mt-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
+                {interpolate(localized.peopleAssignedTemplate, { count: totalPeople })} with {totalCapacity} total seats across this session.
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-2 text-xs font-medium">
-              <span className="rounded-full border px-2.5 py-1" style={{ borderColor: 'var(--border-primary)', color: 'var(--text-secondary)' }}>
-                {groups.length} groups
-              </span>
-              <span className="rounded-full border px-2.5 py-1" style={{ borderColor: 'var(--border-primary)', color: 'var(--text-secondary)' }}>
-                {openSeats} open seat{openSeats === 1 ? '' : 's'}
-              </span>
+            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              <span>{groups.length} groups</span>
+              <span>{openSeats} open seat{openSeats === 1 ? '' : 's'}</span>
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2 2xl:grid-cols-3">
+          <div className="mt-5 grid grid-cols-1 gap-x-8 gap-y-6 xl:grid-cols-2 2xl:grid-cols-3">
             {groups.map((group) => (
-              <div key={group.id} className="results-print-avoid-break rounded-xl border p-4" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
-                <div className="flex items-start justify-between gap-3">
+              <section
+                key={group.id}
+                className="results-print-avoid-break border-l pl-4"
+                style={{ borderColor: 'color-mix(in srgb, var(--color-accent) 35%, var(--border-primary))' }}
+              >
+                <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h5 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{group.id}</h5>
-                    <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    <h5 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{group.id}</h5>
+                    <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
                       {group.assignedCount === 0
                         ? localized.noAssignmentsLabel
                         : `${group.assignedCount} assigned`}
                     </p>
                   </div>
-                  <span className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                  <span className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>
                     {interpolate(localized.groupPeopleCountTemplate, {
                       count: group.people.length,
                       size: group.size,
@@ -75,7 +78,7 @@ export function ResultsScheduleGrid({ sessionData, selectedSessionIndex = null, 
                   </span>
                 </div>
 
-                <div className="mt-3 h-2 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-tertiary) 78%, transparent)' }}>
                   <div
                     className="h-full rounded-full"
                     style={{
@@ -85,14 +88,13 @@ export function ResultsScheduleGrid({ sessionData, selectedSessionIndex = null, 
                   />
                 </div>
 
-                <div className="mt-4 space-y-2">
+                <div className="mt-4">
                   {group.people.length > 0 ? (
-                    <ul className="space-y-2">
+                    <ul className="divide-y" style={{ borderColor: 'var(--border-primary)' }}>
                       {group.people.map((person) => (
                         <li
                           key={person.id}
-                          className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
-                          style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+                          className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
                         >
                           <div className="min-w-0">
                             <div className="truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
@@ -109,10 +111,10 @@ export function ResultsScheduleGrid({ sessionData, selectedSessionIndex = null, 
                     <p className="text-sm italic" style={{ color: 'var(--text-tertiary)' }}>{localized.noAssignmentsLabel}</p>
                   )}
                 </div>
-              </div>
+              </section>
             ))}
           </div>
-        </div>
+        </section>
       ))}
     </div>
   );

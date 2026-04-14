@@ -34,24 +34,27 @@ export function ResultsSchedule({
   }
 
   return (
-    <section className="results-print-section rounded-2xl border transition-colors" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
-      <div className="border-b px-4 py-4 sm:px-6" style={{ borderColor: 'var(--border-primary)' }}>
+    <section className="results-print-section overflow-hidden rounded-[1.75rem] border transition-colors" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
+      <div className="border-b px-4 py-5 sm:px-6 lg:px-7" style={{ borderColor: 'var(--border-primary)' }}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Assignment Layout</h3>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
+              Review Modes
+            </div>
+            <h3 className="mt-2 text-xl font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Assignment Layout</h3>
             <p className="mt-1 max-w-2xl text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
               Switch between session-first, participant-first, and visualization views depending on how you want to review the result.
             </p>
           </div>
 
-          <div className="results-print-hide flex items-center gap-2 rounded-xl border p-1" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
+          <div className="results-print-hide flex flex-wrap items-center gap-2">
             <button
               onClick={() => onViewModeChange('grid')}
-              className="px-3 py-2 rounded-lg text-sm transition-colors"
+              className="rounded-full px-3 py-2 text-sm font-medium transition-colors"
               style={{
                 backgroundColor: viewMode === 'grid' ? 'var(--bg-tertiary)' : 'transparent',
                 color: viewMode === 'grid' ? 'var(--color-accent)' : 'var(--text-secondary)',
-                border: viewMode === 'grid' ? '1px solid var(--color-accent)' : '1px solid transparent',
+                border: viewMode === 'grid' ? '1px solid var(--color-accent)' : '1px solid var(--border-primary)',
               }}
               onMouseEnter={(e) => {
                 if (viewMode !== 'grid') {
@@ -69,11 +72,11 @@ export function ResultsSchedule({
             </button>
             <button
               onClick={() => onViewModeChange('list')}
-              className="px-3 py-2 rounded-lg text-sm transition-colors"
+              className="rounded-full px-3 py-2 text-sm font-medium transition-colors"
               style={{
                 backgroundColor: viewMode === 'list' ? 'var(--bg-tertiary)' : 'transparent',
                 color: viewMode === 'list' ? 'var(--color-accent)' : 'var(--text-secondary)',
-                border: viewMode === 'list' ? '1px solid var(--color-accent)' : '1px solid transparent',
+                border: viewMode === 'list' ? '1px solid var(--color-accent)' : '1px solid var(--border-primary)',
               }}
               onMouseEnter={(e) => {
                 if (viewMode !== 'list') {
@@ -91,11 +94,11 @@ export function ResultsSchedule({
             </button>
             <button
               onClick={() => onViewModeChange('visualize')}
-              className="px-3 py-2 rounded-lg text-sm transition-colors"
+              className="rounded-full px-3 py-2 text-sm font-medium transition-colors"
               style={{
                 backgroundColor: viewMode === 'visualize' ? 'var(--bg-tertiary)' : 'transparent',
                 color: viewMode === 'visualize' ? 'var(--color-accent)' : 'var(--text-secondary)',
-                border: viewMode === 'visualize' ? '1px solid var(--color-accent)' : '1px solid transparent',
+                border: viewMode === 'visualize' ? '1px solid var(--color-accent)' : '1px solid var(--border-primary)',
               }}
               onMouseEnter={(e) => {
                 if (viewMode !== 'visualize') {
@@ -115,7 +118,7 @@ export function ResultsSchedule({
         </div>
 
         {viewMode === 'grid' && resultsModel.sessions.length > 1 ? (
-          <div className="results-print-hide mt-4 flex flex-wrap gap-2">
+          <div className="results-print-hide mt-5 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => setSelectedSessionIndex(null)}
@@ -147,7 +150,7 @@ export function ResultsSchedule({
         ) : null}
       </div>
 
-      <div className="p-4 sm:p-6">
+      <div className="px-4 py-5 sm:px-6 sm:py-6 lg:px-7">
         {viewMode === 'grid' ? (
           <ResultsScheduleGrid sessionData={resultsModel.sessions} selectedSessionIndex={selectedSessionIndex} />
         ) : viewMode === 'list' ? (

@@ -41,9 +41,9 @@ describe('ResultsScheduleList', () => {
     expect(screen.getByRole('columnheader', { name: /person/i })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: /session 2/i })).toBeInTheDocument();
 
-    const article = container.querySelector('article');
-    expect(article).not.toBeNull();
-    expect(within(article as HTMLElement).getByText('Session 1')).toBeInTheDocument();
-    expect(within(article as HTMLElement).getByText('g1')).toBeInTheDocument();
+    const section = container.querySelector('section');
+    expect(section).not.toBeNull();
+    expect(within(section as HTMLElement).getByText('Session 1')).toBeInTheDocument();
+    expect(within(section as HTMLElement).getByText('g1')).toBeInTheDocument();
   });
 });

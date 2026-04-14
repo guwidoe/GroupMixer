@@ -10,12 +10,11 @@ interface ResultsScheduleListProps {
 export function ResultsScheduleList({ participants, sessionCount }: ResultsScheduleListProps) {
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 md:hidden">
+      <div className="divide-y md:hidden" style={{ borderColor: 'var(--border-primary)' }}>
         {participants.map((participant) => (
-          <article
+          <section
             key={participant.personId}
-            className="results-print-avoid-break rounded-2xl border p-4"
-            style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}
+            className="results-print-avoid-break py-4 first:pt-0 last:pb-0"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -27,19 +26,18 @@ export function ResultsScheduleList({ participants, sessionCount }: ResultsSched
                 </p>
               </div>
               <span
-                className="rounded-full border px-2.5 py-1 text-xs font-medium"
-                style={{ borderColor: 'var(--border-primary)', color: 'var(--text-secondary)' }}
+                className="text-xs font-medium uppercase tracking-[0.08em]"
+                style={{ color: 'var(--text-tertiary)' }}
               >
                 {participant.assignedSessions}/{sessionCount} assigned
               </span>
             </div>
 
-            <div className="mt-4 space-y-2">
+            <div className="mt-4 divide-y" style={{ borderColor: 'var(--border-primary)' }}>
               {participant.sessions.map((assignment) => (
                 <div
                   key={assignment.sessionIndex}
-                  className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5"
-                  style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+                  className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
                 >
                   <div>
                     <div className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>
@@ -59,12 +57,12 @@ export function ResultsScheduleList({ participants, sessionCount }: ResultsSched
                 </div>
               ))}
             </div>
-          </article>
+          </section>
         ))}
       </div>
 
       <div
-        className="results-print-avoid-break hidden rounded-2xl border overflow-hidden transition-colors md:block"
+        className="results-print-avoid-break hidden overflow-hidden rounded-[1.25rem] border transition-colors md:block"
         style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
       >
         <div className="overflow-x-auto">
@@ -91,7 +89,7 @@ export function ResultsScheduleList({ participants, sessionCount }: ResultsSched
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-primary)'}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap align-top">
                       <div className="flex items-center">
                         <Users className="w-4 h-4 mr-2" style={{ color: 'var(--text-tertiary)' }} />
                         <div>
@@ -102,7 +100,7 @@ export function ResultsScheduleList({ participants, sessionCount }: ResultsSched
                     </td>
                     {participant.sessions.map((assignment) => {
                       return (
-                        <td key={assignment.sessionIndex} className="px-6 py-4 whitespace-nowrap">
+                        <td key={assignment.sessionIndex} className="px-6 py-4 whitespace-nowrap align-top">
                           {assignment.isAssigned && assignment.groupId ? (
                             <span
                               className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
