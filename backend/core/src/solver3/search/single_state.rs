@@ -157,12 +157,6 @@ pub(crate) fn polish_state(
     )
 }
 
-#[inline]
-fn should_use_plain_sampler_path(run_context: &SearchRunContext) -> bool {
-    run_context.local_improver_mode == Solver3LocalImproverMode::RecordToRecord
-        && !run_context.repeat_guided_swaps_enabled
-}
-
 fn run_local_improver(
     initial_state: RuntimeState,
     run_context: &SearchRunContext,
@@ -329,42 +323,33 @@ fn run_local_improver(
                 }
             }
 
-            let candidate_selection = if should_use_plain_sampler_path(run_context) {
-                candidate_sampler.select_previewed_move_plain(
-                    &search.current_state,
-                    &family_selector,
-                    &run_context.allowed_sessions,
-                    &mut rng,
-                )
-            } else {
-                candidate_sampler.select_previewed_move(
-                    &search.current_state,
-                    &family_selector,
-                    &run_context.allowed_sessions,
-                    SwapSamplingOptions {
-                        #[cfg(feature = "solver3-experimental-repeat-guidance")]
-                        repeat_guidance: repeat_guidance.as_ref(),
-                        #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
-                        sgp_conflicts: sgp_conflicts.as_ref(),
-                        #[cfg(feature = "solver3-experimental-repeat-guidance")]
-                        repeat_guided_swap_probability: run_context.repeat_guided_swap_probability,
-                        #[cfg(feature = "solver3-experimental-repeat-guidance")]
-                        repeat_guided_swap_candidate_preview_budget: run_context
-                            .repeat_guided_swap_candidate_preview_budget,
-                        tabu: tabu_state.as_ref(),
-                        tabu_retry_cap: run_context
+            let candidate_selection = candidate_sampler.select_previewed_move(
+                &search.current_state,
+                &family_selector,
+                &run_context.allowed_sessions,
+                SwapSamplingOptions {
+                    #[cfg(feature = "solver3-experimental-repeat-guidance")]
+                    repeat_guidance: repeat_guidance.as_ref(),
+                    #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
+                    sgp_conflicts: sgp_conflicts.as_ref(),
+                    #[cfg(feature = "solver3-experimental-repeat-guidance")]
+                    repeat_guided_swap_probability: run_context.repeat_guided_swap_probability,
+                    #[cfg(feature = "solver3-experimental-repeat-guidance")]
+                    repeat_guided_swap_candidate_preview_budget: run_context
+                        .repeat_guided_swap_candidate_preview_budget,
+                    tabu: tabu_state.as_ref(),
+                    tabu_retry_cap: run_context
+                        .sgp_week_pair_tabu
+                        .map_or(0, |config| config.retry_cap),
+                    tabu_allow_aspiration_preview: run_context.local_improver_mode
+                        == Solver3LocalImproverMode::SgpWeekPairTabu
+                        && run_context
                             .sgp_week_pair_tabu
-                            .map_or(0, |config| config.retry_cap),
-                        tabu_allow_aspiration_preview: run_context.local_improver_mode
-                            == Solver3LocalImproverMode::SgpWeekPairTabu
-                            && run_context
-                                .sgp_week_pair_tabu
-                                .is_some_and(|config| config.aspiration_enabled),
-                        current_iteration: iteration,
-                    },
-                    &mut rng,
-                )
-            };
+                            .is_some_and(|config| config.aspiration_enabled),
+                    current_iteration: iteration,
+                },
+                &mut rng,
+            );
             search.record_repeat_guided_swap_sampling(
                 candidate_selection
                     .repeat_guided_swap_sampling
