@@ -253,6 +253,12 @@ When validating SGP-specialized advanced search modes, keep the baseline Social 
 
 #### Donor-session transplant manifests
 
+The dedicated Social Golfer donor manifests now enable:
+
+- adaptive raw-child retention
+- stagnation-scaled child-polish budgets
+- optional exact swap-local-optimum certification before donor recombination
+
 - `backend/benchmarking/suites/social-golfer-plateau-time-solver3-donor-session.yaml`
 - `backend/benchmarking/suites/social-golfer-plateau-time-solver3-donor-session-forced-fire.yaml`
 - `backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-donor-session.yaml`
@@ -317,7 +323,7 @@ Interpretation checklist:
 - iterations / offspring per second
 - `search_telemetry.sgp_week_pair_tabu.*` for tabu prefilter / aspiration behavior
 - `search_telemetry.memetic.*` for offspring, mutation-length, child-polish, and replacement behavior
-- `search_telemetry.donor_session_transplant.*` for archive admissions, trigger-block reasons, recombination events, donor/session choices (including candidate-pool + viability-tier selection), immediate discards, and bounded post-transplant polish cost
+- `search_telemetry.donor_session_transplant.*` for archive admissions, trigger-block reasons, recombination events, donor/session choices (including candidate-pool + viability-tier selection), adaptive raw-child retention thresholds, stagnation-scaled child-polish budgets, optional swap-local-optimum certification counts, immediate discards, and bounded post-transplant polish cost
 
 For conflict-restricted tabu specifically, compare it against plain tabu before comparing it against memetic variants. If the restriction helps, it should beat the plain tabu lane honestly; if it starves exploration, that should show up immediately in final score or in much earlier stagnation.
 
