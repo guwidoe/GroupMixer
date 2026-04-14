@@ -429,33 +429,6 @@ mod callback_tests {
 
         // Compare final callback values with actual result
         println!("=== CALLBACK CONSISTENCY TEST ===");
-        println!(
-            "Final callback - current_score: {}",
-            final_update.current_score
-        );
-        println!("Final callback - best_score: {}", final_update.best_score);
-        println!(
-            "Final callback - current_contacts: {}",
-            final_update.current_contacts
-        );
-        println!(
-            "Final callback - best_contacts: {}",
-            final_update.best_contacts
-        );
-        println!(
-            "Final callback - repetition_penalty: {}",
-            final_update.repetition_penalty
-        );
-
-        println!("Actual result - final_score: {}", result.final_score);
-        println!(
-            "Actual result - unique_contacts: {}",
-            result.unique_contacts
-        );
-        println!(
-            "Actual result - repetition_penalty: {}",
-            result.repetition_penalty
-        );
 
         // These should match exactly
         assert_eq!(
@@ -495,14 +468,6 @@ mod callback_tests {
             run_solver_with_progress(&input, Some(&progress_callback)).unwrap();
 
         println!("=== CALLBACK vs NO-CALLBACK CONSISTENCY TEST ===");
-        println!(
-            "No callback - final_score: {}",
-            result_no_callback.final_score
-        );
-        println!(
-            "With callback - final_score: {}",
-            result_with_callback.final_score
-        );
 
         // Results should be identical (within floating point precision)
         assert!(
@@ -609,9 +574,6 @@ mod callback_tests {
         let final_update = updates.last().unwrap();
 
         println!("=== FINAL CALLBACK RECALCULATION TEST ===");
-        println!("Final callback iteration: {}", final_update.iteration);
-        println!("Final callback score: {}", final_update.current_score);
-        println!("Actual result score: {}", result.final_score);
 
         // The key test: final callback should match the actual result exactly
         // This would fail if the callback happened before recalculation

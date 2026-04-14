@@ -458,9 +458,7 @@ fn run_assertions(
     if let Some(max_penalty) = test_case.expected.max_constraint_penalty {
         assert!(
             result.constraint_penalty as u32 <= max_penalty,
-            "Constraint penalty {} exceeds maximum of {}",
-            result.constraint_penalty,
-            max_penalty
+            "Constraint penalty exceeded fixture maximum"
         );
     }
 
@@ -476,9 +474,7 @@ fn run_assertions(
     if let Some(max_attr_penalty) = test_case.expected.max_attribute_balance_penalty {
         assert!(
             result.attribute_balance_penalty as f64 <= max_attr_penalty,
-            "Attribute balance penalty {} exceeds maximum of {}",
-            result.attribute_balance_penalty,
-            max_attr_penalty
+            "Attribute balance penalty exceeded fixture maximum"
         );
     }
 

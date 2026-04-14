@@ -80,16 +80,15 @@ pub fn apply_runtime_patch(
                 let slot = state.group_slot(session_idx, group_idx);
                 let members = &mut state.group_members[slot];
                 if member_pos >= members.len() {
-                    return Err(SolverError::ValidationError(format!(
-                        "solver3 patch replace failed: position {} out of range for session {} group {}",
-                        member_pos, session_idx, group_idx
-                    )));
+                    return Err(SolverError::ValidationError(
+                        "solver3 patch replace failed: member position out of range".into(),
+                    ));
                 }
                 if members[member_pos] != expected_old_person_idx {
-                    return Err(SolverError::ValidationError(format!(
-                        "solver3 patch replace failed: expected person {} at position {} in session {} group {}, found {}",
-                        expected_old_person_idx, member_pos, session_idx, group_idx, members[member_pos]
-                    )));
+                    return Err(SolverError::ValidationError(
+                        "solver3 patch replace failed: unexpected member at target position"
+                            .into(),
+                    ));
                 }
                 members[member_pos] = new_person_idx;
             }
@@ -102,17 +101,16 @@ pub fn apply_runtime_patch(
                 let slot = state.group_slot(session_idx, group_idx);
                 let members = &mut state.group_members[slot];
                 if member_pos >= members.len() {
-                    return Err(SolverError::ValidationError(format!(
-                        "solver3 patch remove failed: position {} out of range for session {} group {}",
-                        member_pos, session_idx, group_idx
-                    )));
+                    return Err(SolverError::ValidationError(
+                        "solver3 patch remove failed: member position out of range".into(),
+                    ));
                 }
                 let removed = members.swap_remove(member_pos);
                 if removed != expected_person_idx {
-                    return Err(SolverError::ValidationError(format!(
-                        "solver3 patch remove failed: expected person {} at position {} in session {} group {}, removed {}",
-                        expected_person_idx, member_pos, session_idx, group_idx, removed
-                    )));
+                    return Err(SolverError::ValidationError(
+                        "solver3 patch remove failed: removed member did not match expectation"
+                            .into(),
+                    ));
                 }
                 state.group_sizes[slot] = state.group_sizes[slot].saturating_sub(1);
             }
@@ -146,11 +144,9 @@ pub fn apply_runtime_patch(
 
     for update in &patch.pair_contact_updates {
         if update.pair_idx >= state.pair_contacts.len() {
-            return Err(SolverError::ValidationError(format!(
-                "solver3 patch pair_idx {} out of range (len={})",
-                update.pair_idx,
-                state.pair_contacts.len()
-            )));
+            return Err(SolverError::ValidationError(
+                "solver3 patch pair contact update out of range".into(),
+            ));
         }
         state.pair_contacts[update.pair_idx] = update.new_count;
     }
