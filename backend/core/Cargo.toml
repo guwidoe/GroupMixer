@@ -19,7 +19,7 @@ solver3-oracle-checks = []
 [dependencies]
 serde = { version = "1.0.190", features = ["derive"] }
 schemars = "1.2"
-rand = { version = "0.10.0", features = ["std_rng"] }
+rand = { version = "0.10.1", features = ["std_rng"] }
 rand_chacha = "0.10.0"
 uuid = { version = "1.23.0", features = ["v4", "serde", "js"] }
 getrandom = { version = "0.4", features = ["wasm_js"] }
