@@ -163,8 +163,13 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const workspacePayload = controller.workspacePayload;
   const solvedSolution = workspacePayload.solution ?? null;
   const sharedSessionData = useMemo(
-    () => (solvedSolution ? buildResultsSessionData(workspacePayload.scenario, solvedSolution) : []),
-    [solvedSolution, workspacePayload.scenario],
+    () => (solvedSolution
+      ? buildResultsSessionData(workspacePayload.scenario, solvedSolution).map((session) => ({
+          ...session,
+          label: interpolate(ui.results.sessionHeadingTemplate, { number: session.sessionIndex + 1 }),
+        }))
+      : []),
+    [solvedSolution, ui.results.sessionHeadingTemplate, workspacePayload.scenario],
   );
   const displaySessions = useMemo(
     () => buildDisplaySessions(sharedSessionData, controller.result?.sessions ?? []),

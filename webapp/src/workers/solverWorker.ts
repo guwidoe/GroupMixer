@@ -76,6 +76,7 @@ export function createSolverWorkerRuntime({
   let isInitialized = false;
 
   async function initWasm(): Promise<void> {
+    void WORKER_BUILD_ID;
     if (isInitialized) return;
     if (isInitializing) {
       while (isInitializing) {
@@ -97,7 +98,7 @@ export function createSolverWorkerRuntime({
       isInitialized = true;
     } catch (error) {
       isInitializing = false;
-      throw new Error(`WASM initialization failed [${WORKER_BUILD_ID}]: ${errorToMessage(error)}`);
+      throw new Error(`WASM initialization failed: ${errorToMessage(error)}`);
     } finally {
       isInitializing = false;
     }

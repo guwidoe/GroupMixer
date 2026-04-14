@@ -154,7 +154,7 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(await screen.findByRole('heading', { name: 'Tus grupos' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Tarjetas' })).toBeInTheDocument();
     expect(screen.getByText('Sesión 1')).toBeInTheDocument();
-    expect(screen.getByText('8 personas asignadas')).toBeInTheDocument();
+    expect(screen.getByText(/8 personas asignadas/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'Texto' }));
     expect(screen.getByRole('textbox', { name: 'Resultados en texto' })).toBeInTheDocument();
