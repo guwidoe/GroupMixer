@@ -29,6 +29,7 @@ use super::acceptance::{
 use super::candidate_sampling::{CandidateSampler, SearchMovePreview, SwapSamplingOptions};
 use super::context::{SearchProgressState, SearchRunContext};
 use super::family_selection::MoveFamilySelector;
+#[cfg(feature = "solver3-experimental-repeat-guidance")]
 use super::repeat_guidance::RepeatGuidanceState;
 use super::sgp_conflicts::SgpConflictState;
 use super::tabu::SgpWeekPairTabuState;
@@ -170,6 +171,7 @@ fn run_local_improver(
     if run_context.local_improver_mode == Solver3LocalImproverMode::SgpWeekPairTabu {
         search.sgp_week_pair_tabu_telemetry = Some(Default::default());
     }
+    #[cfg(feature = "solver3-experimental-repeat-guidance")]
     let mut repeat_guidance = if run_context.repeat_guided_swaps_enabled {
         RepeatGuidanceState::build_from_state(&search.current_state)
     } else {
@@ -264,6 +266,7 @@ fn run_local_improver(
                         let offspring_score = offspring_state.total_score;
                         if offspring_score <= search.best_score + temperature {
                             search.current_state = offspring_state;
+                            #[cfg(feature = "solver3-experimental-repeat-guidance")]
                             if let Some(guidance) = repeat_guidance.as_mut() {
                                 guidance.rebuild_from_state(&search.current_state);
                             }
@@ -323,9 +326,12 @@ fn run_local_improver(
                 &family_selector,
                 &run_context.allowed_sessions,
                 SwapSamplingOptions {
+                    #[cfg(feature = "solver3-experimental-repeat-guidance")]
                     repeat_guidance: repeat_guidance.as_ref(),
                     sgp_conflicts: sgp_conflicts.as_ref(),
+                    #[cfg(feature = "solver3-experimental-repeat-guidance")]
                     repeat_guided_swap_probability: run_context.repeat_guided_swap_probability,
+                    #[cfg(feature = "solver3-experimental-repeat-guidance")]
                     repeat_guided_swap_candidate_preview_budget: run_context
                         .repeat_guided_swap_candidate_preview_budget,
                     tabu: tabu_state.as_ref(),
@@ -412,6 +418,7 @@ fn run_local_improver(
                             &preview,
                         )?;
 
+                        #[cfg(feature = "solver3-experimental-repeat-guidance")]
                         if let Some(guidance) = repeat_guidance.as_mut() {
                             guidance.apply_pair_contact_updates(
                                 &search.current_state.compiled,

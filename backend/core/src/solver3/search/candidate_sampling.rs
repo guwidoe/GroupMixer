@@ -16,6 +16,7 @@ use super::super::moves::{
 };
 use super::super::runtime_state::RuntimeState;
 use super::family_selection::MoveFamilySelector;
+#[cfg(feature = "solver3-experimental-repeat-guidance")]
 use super::repeat_guidance::RepeatGuidanceState;
 use super::sgp_conflicts::SgpConflictState;
 use super::tabu::SgpWeekPairTabuState;
@@ -125,9 +126,12 @@ struct GuidedSwapSamplingPreviewResult {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SwapSamplingOptions<'a> {
+    #[cfg(feature = "solver3-experimental-repeat-guidance")]
     pub(crate) repeat_guidance: Option<&'a RepeatGuidanceState>,
     pub(crate) sgp_conflicts: Option<&'a SgpConflictState>,
+    #[cfg(feature = "solver3-experimental-repeat-guidance")]
     pub(crate) repeat_guided_swap_probability: f64,
+    #[cfg(feature = "solver3-experimental-repeat-guidance")]
     pub(crate) repeat_guided_swap_candidate_preview_budget: usize,
     pub(crate) tabu: Option<&'a SgpWeekPairTabuState>,
     pub(crate) tabu_retry_cap: usize,
@@ -138,9 +142,12 @@ pub(crate) struct SwapSamplingOptions<'a> {
 impl Default for SwapSamplingOptions<'_> {
     fn default() -> Self {
         Self {
+            #[cfg(feature = "solver3-experimental-repeat-guidance")]
             repeat_guidance: None,
             sgp_conflicts: None,
+            #[cfg(feature = "solver3-experimental-repeat-guidance")]
             repeat_guided_swap_probability: 0.0,
+            #[cfg(feature = "solver3-experimental-repeat-guidance")]
             repeat_guided_swap_candidate_preview_budget: 0,
             tabu: None,
             tabu_retry_cap: 0,
@@ -264,6 +271,7 @@ impl CandidateSampler {
         let mut telemetry = RepeatGuidedSwapSamplingDelta::default();
         let mut tabu_telemetry = TabuSwapSamplingDelta::default();
 
+        #[cfg(feature = "solver3-experimental-repeat-guidance")]
         let guided_preview = if swap_sampling.repeat_guidance.is_some()
             && swap_sampling.repeat_guided_swap_candidate_preview_budget > 0
             && rng.random::<f64>() < swap_sampling.repeat_guided_swap_probability
@@ -282,6 +290,9 @@ impl CandidateSampler {
         } else {
             None
         };
+
+        #[cfg(not(feature = "solver3-experimental-repeat-guidance"))]
+        let guided_preview: Option<GuidedSwapSamplingPreviewResult> = None;
 
         if let Some(guided_preview) = guided_preview {
             telemetry.guided_previewed_candidates += guided_preview.previewed_candidates;
@@ -587,6 +598,7 @@ impl CandidateSampler {
         None
     }
 
+    #[cfg(feature = "solver3-experimental-repeat-guidance")]
     fn sample_repeat_guided_swap_preview(
         &self,
         state: &RuntimeState,
@@ -938,6 +950,7 @@ fn should_skip_tabu_swap_proposal(
     true
 }
 
+#[cfg(feature = "solver3-experimental-repeat-guidance")]
 fn pick_repeat_meeting_session(
     state: &RuntimeState,
     allowed_sessions: &[usize],
@@ -967,6 +980,7 @@ fn pick_repeat_meeting_session(
     }
 }
 
+#[cfg(feature = "solver3-experimental-repeat-guidance")]
 fn choose_repeat_guided_anchor_person(
     guidance: &RepeatGuidanceState,
     left_person_idx: usize,
@@ -1180,6 +1194,7 @@ mod tests {
 
     use super::super::super::runtime_state::RuntimeState;
     use super::super::family_selection::MoveFamilySelector;
+    #[cfg(feature = "solver3-experimental-repeat-guidance")]
     use super::super::repeat_guidance::RepeatGuidanceState;
     use super::super::sgp_conflicts::SgpConflictState;
     use super::super::tabu::{SgpWeekPairTabuConfig, SgpWeekPairTabuState};
