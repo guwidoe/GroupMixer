@@ -513,10 +513,10 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
               <div className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-secondary)' }}>
                 {config.hero.eyebrow}
               </div>
-              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl lg:leading-[1.15]">
+              <h1 className="mt-7 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl lg:leading-[1.15]">
                 {config.hero.title}
               </h1>
-              <p className="mt-4 text-base leading-7 sm:text-lg sm:leading-8" style={{ color: 'var(--text-secondary)' }}>
+              <p className="mt-5 text-base leading-7 sm:text-lg sm:leading-8" style={{ color: 'var(--text-secondary)' }}>
                 {config.hero.subhead}
               </p>
               {config.hero.audienceSummary && (
@@ -729,7 +729,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
               )}
 
               <div className="mt-4">
-                <QuickSetupAdvancedOptions controller={controller} />
+                <QuickSetupAdvancedOptions controller={controller} onOpenFullEditor={() => openAdvancedWorkspace('people')} />
               </div>
             </div>
 
@@ -830,9 +830,9 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
         }}
         demoCaseName={config.hero.title}
         title="Overwrite Current Workspace?"
-        description="Opening the advanced editor with this landing-page data will overwrite your current workspace settings, including all people, groups, and constraints."
+        description="Opening the scenario editor with this landing-page data will overwrite your current workspace settings, including all people, groups, and constraints."
         panelTitle={`Current workspace: ${currentWorkspaceName}`}
-        panelDescription="Choose Keep current workspace if you want to open the advanced editor without importing this landing-page draft."
+        panelDescription="Choose Keep current workspace if you want to open the scenario editor without importing this landing-page draft."
         overwriteLabel="Open with landing data"
         loadNewLabel="Keep current workspace"
       />

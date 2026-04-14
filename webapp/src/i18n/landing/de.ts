@@ -17,7 +17,7 @@ const OPTIMIZER_FEATURES = [
 ];
 
 const CHROME = {
-  expertWorkspaceLabel: 'Erweiterter Editor',
+  expertWorkspaceLabel: 'Szenario-Editor',
   faqHeading: 'Häufige Fragen',
   footerTagline: 'GroupMixer — Kostenloser Zufalls-Gruppengenerator',
   feedbackLabel: 'Feedback',
@@ -81,7 +81,7 @@ const ADVANCED_SECTION = {
   ],
   buttonLabel: 'Erweiterten Editor öffnen',
   supportingText:
-    'Im erweiterten Editor steuerst du Sessions, Regeln, Solver-Einstellungen und die Detailanalyse vollständig selbst.',
+    'Im Szenario-Editor steuerst du Sessions, Regeln, Solver-Einstellungen und die Detailanalyse vollständig selbst.',
 };
 
 const FAQS = {
@@ -98,7 +98,7 @@ const FAQS = {
   constraints: {
     question: 'Kann ich Regeln wie „zusammen halten“ oder „trennen“ hinzufügen?',
     answer:
-      'Ja. In den erweiterten Optionen kannst du Gruppen zusammenhalten, Paarungen vermeiden, mehrere Sessions planen und nach Attributen balancieren. Für noch mehr Kontrolle gibt es den erweiterten Editor.',
+      'Ja. In den erweiterten Optionen kannst du Gruppen zusammenhalten, Paarungen vermeiden, mehrere Sessions planen und nach Attributen balancieren. Für noch mehr Kontrolle gibt es den Szenario-Editor.',
   },
   multiSession: {
     question: 'Kann ich Gruppen für mehrere Runden erstellen?',
@@ -106,9 +106,9 @@ const FAQS = {
       'Ja. Stelle in den erweiterten Optionen mehrere Sessions ein und aktiviere „Wiederholungen vermeiden“, damit dieselben Personen seltener erneut zusammenkommen.',
   },
   workspace: {
-    question: 'Was ist der erweiterte Editor?',
+    question: 'Was ist der Szenario-Editor?',
     answer:
-      'Der erweiterte Editor bietet detaillierte Kontrolle über Sessions, Regeln, Solver-Einstellungen, das Weiterarbeiten mit früheren Ergebnissen und die vollständige Ergebnisanalyse.',
+      'Der Szenario-Editor bietet detaillierte Kontrolle über Sessions, Regeln, Solver-Einstellungen, das Weiterarbeiten mit früheren Ergebnissen und die vollständige Ergebnisanalyse.',
   },
 };
 

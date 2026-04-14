@@ -17,7 +17,7 @@ const OPTIMIZER_FEATURES = [
 ];
 
 const CHROME = {
-  expertWorkspaceLabel: 'Advanced editor',
+  expertWorkspaceLabel: 'Scenario editor',
   faqHeading: 'Frequently asked questions',
   footerTagline: 'GroupMixer — Free random group generator',
   feedbackLabel: 'Feedback',
@@ -79,9 +79,9 @@ const ADVANCED_SECTION = {
       body: 'Use CSV input to balance groups by role, skill level, gender, department, or any custom column.',
     },
   ],
-  buttonLabel: 'Open advanced editor',
+  buttonLabel: 'Open scenario editor',
   supportingText:
-    'The advanced editor gives you full control over sessions, constraints, solver settings, and detailed result analysis.',
+    'The scenario editor gives you full control over sessions, constraints, solver settings, and detailed result analysis.',
 };
 
 const FAQS = {
@@ -98,7 +98,7 @@ const FAQS = {
   constraints: {
     question: 'Can I add rules like keep-together or keep-apart?',
     answer:
-      'Yes. Open the advanced options to add keep-together groups, avoid-pairing rules, multiple sessions, and attribute balancing. Or use the advanced editor for full control.',
+      'Yes. Open the advanced options to add keep-together groups, avoid-pairing rules, multiple sessions, and attribute balancing. Or use the scenario editor for full control.',
   },
   multiSession: {
     question: 'Can I create groups for multiple rounds?',
@@ -106,9 +106,9 @@ const FAQS = {
       'Yes. Set the number of sessions in the advanced options and enable "Avoid repeat pairings" to minimize how often the same people end up together.',
   },
   workspace: {
-    question: 'What is the advanced editor?',
+    question: 'What is the scenario editor?',
     answer:
-      'The advanced editor gives you detailed control over sessions, constraints, solver settings, warm-start from previous results, and full result analysis. It uses the same powerful solver engine.',
+      'The scenario editor gives you detailed control over sessions, constraints, solver settings, warm-start from previous results, and full result analysis. It uses the same powerful solver engine.',
   },
 };
 
@@ -142,7 +142,7 @@ function createContent({
       eyebrow: 'Want to do better than random?',
       title: 'Use the full group optimizer.',
       featureBullets: OPTIMIZER_FEATURES,
-      buttonLabel: 'Open advanced editor',
+      buttonLabel: 'Open scenario editor',
       supportingText: 'Your inputs from this page come with you.',
     },
     faqEntries,
@@ -426,9 +426,9 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
           'You can keep certain people together, keep others apart, avoid repeat pairings across sessions, and balance groups by any CSV column (like role, skill, or department).',
       },
       {
-        question: 'Do I need the advanced editor for constraints?',
+        question: 'Do I need the scenario editor for constraints?',
         answer:
-          'No. Basic constraints are available right here in the advanced options. The advanced editor adds deeper control for complex planning.',
+          'No. Basic constraints are available right here in the advanced options. The scenario editor adds deeper control for complex planning.',
       },
       FAQS.free,
       FAQS.privacy,

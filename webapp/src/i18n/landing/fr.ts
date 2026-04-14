@@ -17,7 +17,7 @@ const OPTIMIZER_FEATURES = [
 ];
 
 const CHROME = {
-  expertWorkspaceLabel: 'Éditeur avancé',
+  expertWorkspaceLabel: 'Éditeur de scénarios',
   faqHeading: 'Questions fréquentes',
   footerTagline: 'GroupMixer — Générateur gratuit de groupes aléatoires',
   feedbackLabel: 'Commentaires',
@@ -79,9 +79,9 @@ const ADVANCED_SECTION = {
       body: 'Utilisez un CSV pour équilibrer selon le rôle, le niveau, le genre, le service ou toute autre colonne personnalisée.',
     },
   ],
-  buttonLabel: 'Ouvrir l’éditeur avancé',
+  buttonLabel: 'Ouvrir l’éditeur de scénarios',
   supportingText:
-    'L’éditeur avancé donne un contrôle complet sur les sessions, les contraintes, la configuration du solveur et l’analyse détaillée.',
+    'L’éditeur de scénarios donne un contrôle complet sur les sessions, les contraintes, la configuration du solveur et l’analyse détaillée.',
 };
 
 const FAQS = {
@@ -98,7 +98,7 @@ const FAQS = {
   constraints: {
     question: 'Puis-je ajouter des règles comme garder ensemble ou séparer certaines personnes ?',
     answer:
-      'Oui. Ouvrez les options avancées pour ajouter des groupes à garder ensemble, des règles d’évitement, plusieurs sessions et l’équilibrage par attribut. Ou utilisez l’éditeur avancé pour un contrôle complet.',
+      'Oui. Ouvrez les options avancées pour ajouter des groupes à garder ensemble, des règles d’évitement, plusieurs sessions et l’équilibrage par attribut. Ou utilisez l’éditeur de scénarios pour un contrôle complet.',
   },
   multiSession: {
     question: 'Puis-je créer des groupes pour plusieurs tours ?',
@@ -106,9 +106,9 @@ const FAQS = {
       'Oui. Définissez le nombre de sessions dans les options avancées et activez "Éviter les répétitions" pour limiter le nombre de rencontres identiques.',
   },
   workspace: {
-    question: 'Qu’est-ce que l’éditeur avancé ?',
+    question: 'Qu’est-ce que l’éditeur de scénarios ?',
     answer:
-      'L’éditeur avancé offre un contrôle détaillé sur les sessions, les contraintes, la configuration du solveur, la réutilisation de résultats précédents et l’analyse complète. Il utilise le même moteur puissant.',
+      'L’éditeur de scénarios offre un contrôle détaillé sur les sessions, les contraintes, la configuration du solveur, la réutilisation de résultats précédents et l’analyse complète. Il utilise le même moteur puissant.',
   },
 };
 
@@ -142,8 +142,8 @@ function createContent({
       eyebrow: 'Vous voulez mieux qu’un tirage aléatoire ?',
       title: 'Utilisez l’optimiseur complet de groupes.',
       featureBullets: OPTIMIZER_FEATURES,
-      buttonLabel: 'Ouvrir l’éditeur avancé',
-      supportingText: 'Les informations saisies sur cette page vous suivent dans l’éditeur avancé.',
+      buttonLabel: 'Ouvrir l’éditeur de scénarios',
+      supportingText: 'Les informations saisies sur cette page vous suivent dans l’éditeur de scénarios.',
     },
     faqEntries,
     chrome: CHROME,

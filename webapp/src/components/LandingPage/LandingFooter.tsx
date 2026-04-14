@@ -12,7 +12,7 @@ interface LandingFooterProps {
 
 export function LandingFooter({
   expertWorkspaceTo = '/app',
-  expertWorkspaceLabel = 'Advanced editor',
+  expertWorkspaceLabel = 'Scenario editor',
   tagline = 'GroupMixer — Free random group generator',
   feedbackLabel = 'Feedback',
   privacyNote = 'All processing happens locally in your browser.',

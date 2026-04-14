@@ -98,7 +98,7 @@ describe('ToolLandingPage SEO wiring', () => {
         }),
       ]),
     );
-    expect(screen.getByRole('link', { name: /advanced editor/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /scenario editor/i })).toHaveAttribute(
       'href',
       '/app?lp=random-team-generator&exp=seo-hero-test&var=B',
     );
@@ -233,8 +233,8 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(await screen.findByText(/results generated below/i)).toBeInTheDocument();
     expect(scrollIntoViewMock).toHaveBeenCalled();
 
-    // Can transition to advanced editor
-    await user.click(screen.getByRole('button', { name: /open in advanced editor/i }));
+    // Can transition to scenario editor
+    await user.click(screen.getByRole('button', { name: /open in scenario editor/i }));
 
     const state = useAppStore.getState();
     expect(state.currentScenarioId).toBeTruthy();
@@ -281,7 +281,7 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.clear(textarea);
     await user.type(textarea, 'Ada\nGrace\nLinus\nMargaret');
 
-    await user.click(screen.getAllByRole('button', { name: /advanced editor/i })[0]);
+    await user.click(screen.getAllByRole('button', { name: /scenario editor/i })[0]);
 
     const state = useAppStore.getState();
     expect(state.currentScenarioId).toBeTruthy();
@@ -316,7 +316,7 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.clear(textarea);
     await user.type(textarea, 'Ada\nGrace\nLinus\nMargaret');
 
-    await user.click(screen.getAllByRole('button', { name: /advanced editor/i })[0]);
+    await user.click(screen.getAllByRole('button', { name: /scenario editor/i })[0]);
 
     expect(screen.getByRole('heading', { name: /overwrite current workspace/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /keep current workspace/i })).toBeInTheDocument();
@@ -350,7 +350,7 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.clear(textarea);
     await user.type(textarea, 'Ada\nGrace\nLinus\nMargaret');
 
-    await user.click(screen.getAllByRole('button', { name: /advanced editor/i })[0]);
+    await user.click(screen.getAllByRole('button', { name: /scenario editor/i })[0]);
     await user.click(screen.getByRole('button', { name: /open with landing data/i }));
 
     expect(screen.getByTestId('location-probe')).toHaveTextContent('/app/scenario/people');
@@ -378,7 +378,7 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByText(/want to do better than random/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /use the full group optimizer/i })).toBeInTheDocument();
     expect(screen.getByText(/your inputs from this page come with you/i)).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /open advanced editor/i })[0]).toHaveClass('btn-primary');
+    expect(screen.getAllByRole('button', { name: /open scenario editor/i })[0]).toHaveClass('btn-primary');
   }, 10000);
 
   it('stacks the generator above the hero content on mobile while preserving desktop order classes', () => {

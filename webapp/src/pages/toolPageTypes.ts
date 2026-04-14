@@ -101,6 +101,8 @@ export interface ToolPageAdvancedOptionsUiContent {
   keepTogetherPlaceholder: string;
   avoidPairingLabel: string;
   avoidPairingPlaceholder: string;
+  fullEditorPrompt: string;
+  fullEditorButtonLabel: string;
   balanceGroupsByAttributeLabel: string;
   noBalancingLabel: string;
   ignoredNamesPrefix: string;

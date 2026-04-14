@@ -93,7 +93,7 @@ const GERMAN_LEGAL_CONTENT: LegalContent = {
   externalReferencesLabel: 'Externe Hinweise',
   updatedLabel: 'Stand',
   footerPrivacyNote: 'Ihre Szenariodaten bleiben in Ihrem Browser; Details finden Sie in Offenlegung und Datenschutz.',
-  advancedEditorLabel: 'Erweiterter Editor',
+  advancedEditorLabel: 'Szenario-Editor',
 };
 
 const ENGLISH_LEGAL_CONTENT: LegalContent = {
@@ -135,7 +135,7 @@ const ENGLISH_LEGAL_CONTENT: LegalContent = {
   localStorageBody1:
     'GroupMixer stores drafts, scenarios, results, UI state and similar functional data locally in the browser (for example via localStorage, sessionStorage and the service worker cache) so that the app works as intended. This data generally remains on the user’s device and is not used for server-side collection of tool content.',
   localStorageBody2:
-    'This browser-local storage is used to provide explicitly requested functionality, such as scenario editing, draft recovery, offline support and handoff between the landing tool and the advanced editor.',
+    'This browser-local storage is used to provide explicitly requested functionality, such as scenario editing, draft recovery, offline support and handoff between the landing tool and the scenario editor.',
   scenarioDataTitle: '3. No transmission of scenario data',
   scenarioDataBody:
     'This website currently does not provide user accounts, newsletter sign-up or a contact form. The website does not provide any function that transmits entered participant names or scenario data to our servers or to backend services under our control. This data remains exclusively on the users\' devices.',
@@ -148,7 +148,7 @@ const ENGLISH_LEGAL_CONTENT: LegalContent = {
   externalReferencesLabel: 'External references',
   updatedLabel: 'Last updated',
   footerPrivacyNote: 'Your scenario data stays in your browser; details are in the legal notice and privacy page.',
-  advancedEditorLabel: 'Advanced editor',
+  advancedEditorLabel: 'Scenario editor',
 };
 
 export function resolveLegalLocale(locale: SupportedLocale): 'de' | 'en' {

@@ -1,10 +1,12 @@
+import { ArrowRight } from 'lucide-react';
 import type { QuickSetupController } from './useQuickSetup';
 
 interface QuickSetupAdvancedOptionsProps {
   controller: QuickSetupController;
+  onOpenFullEditor?: () => void;
 }
 
-export function QuickSetupAdvancedOptions({ controller }: QuickSetupAdvancedOptionsProps) {
+export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: QuickSetupAdvancedOptionsProps) {
   const { draft, analysis } = controller;
   const labels = controller.ui.advancedOptions;
 
@@ -86,6 +88,26 @@ export function QuickSetupAdvancedOptions({ controller }: QuickSetupAdvancedOpti
               style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
             />
           </div>
+
+          {onOpenFullEditor && (
+            <div
+              className="rounded-2xl border px-4 py-4"
+              style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+            >
+              <p className="text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
+                {labels.fullEditorPrompt}
+              </p>
+              <button
+                type="button"
+                onClick={onOpenFullEditor}
+                className="landing-action-button mt-3 inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium"
+                style={{ borderColor: 'var(--border-primary)' }}
+              >
+                {labels.fullEditorButtonLabel}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
 
           {draft.inputMode === 'csv' && analysis.availableBalanceKeys.length > 0 && (
             <div>
