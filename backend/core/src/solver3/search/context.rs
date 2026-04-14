@@ -4,9 +4,9 @@ use crate::models::{
     BestScoreTimelinePoint, DonorSessionTransplantBenchmarkTelemetry,
     MemeticBenchmarkTelemetry, MoveFamily, MoveFamilyBenchmarkTelemetry,
     MoveFamilyBenchmarkTelemetrySummary, MovePolicy, ProgressUpdate,
-    RepeatGuidedSwapBenchmarkTelemetry, SgpWeekPairTabuBenchmarkTelemetry,
-    Solver3LocalImproverMode, Solver3SearchDriverMode, SolverBenchmarkTelemetry,
-    SolverConfiguration, StopReason,
+    RepeatGuidedSwapBenchmarkTelemetry, SessionAlignedPathRelinkingBenchmarkTelemetry,
+    SgpWeekPairTabuBenchmarkTelemetry, Solver3LocalImproverMode, Solver3SearchDriverMode,
+    SolverBenchmarkTelemetry, SolverConfiguration, StopReason,
 };
 use crate::runtime_target::displayed_total_iterations;
 use crate::solver_support::SolverError;
@@ -758,6 +758,8 @@ pub(crate) struct SearchProgressState {
     pub(crate) sgp_week_pair_tabu_telemetry: Option<SgpWeekPairTabuBenchmarkTelemetry>,
     pub(crate) memetic_telemetry: Option<MemeticBenchmarkTelemetry>,
     pub(crate) donor_session_transplant_telemetry: Option<DonorSessionTransplantBenchmarkTelemetry>,
+    pub(crate) session_aligned_path_relinking_telemetry:
+        Option<SessionAlignedPathRelinkingBenchmarkTelemetry>,
     pub(crate) move_metrics: MoveFamilyBenchmarkTelemetrySummary,
     #[allow(dead_code)]
     pub(crate) policy_memory: SearchPolicyMemory,
@@ -792,6 +794,7 @@ impl SearchProgressState {
             sgp_week_pair_tabu_telemetry: None,
             memetic_telemetry: None,
             donor_session_transplant_telemetry: None,
+            session_aligned_path_relinking_telemetry: None,
             move_metrics: MoveFamilyBenchmarkTelemetrySummary::default(),
             policy_memory: SearchPolicyMemory::default(),
         }
@@ -1097,6 +1100,9 @@ impl SearchProgressState {
             sgp_week_pair_tabu: self.sgp_week_pair_tabu_telemetry.clone(),
             memetic: self.memetic_telemetry.clone(),
             donor_session_transplant: self.donor_session_transplant_telemetry.clone(),
+            session_aligned_path_relinking: self
+                .session_aligned_path_relinking_telemetry
+                .clone(),
             moves: self.move_metrics.clone(),
         }
     }

@@ -1,0 +1,58 @@
+schema_version: 1
+suite_id: social-golfer-plateau-time-solver3-session-path-relinking
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: stretch
+title: Social Golfer plateau diagnosis (time-limited, solver3 session-aligned path relinking)
+description: Dedicated single-case solver3 suite for studying time-budget utilization and plateau behavior on the canonical Social Golfer workload with rare session-aligned path relinking enabled.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 1000000
+    time_limit_seconds: 60
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+    search_driver:
+      mode: session_aligned_path_relinking
+      session_aligned_path_relinking:
+        archive_size: 4
+        recombination_no_improvement_window: 100000
+        recombination_cooldown_window: 100000
+        max_session_imports_per_event: 3
+        path_step_no_improvement_limit: 2
+        min_aligned_session_distance_for_relinking: 1
+        adaptive_raw_child_retention:
+          keep_ratio: 0.5
+          warmup_samples: 4
+          history_limit: 32
+        swap_local_optimum_certification_enabled: true
+        child_polish_iterations_per_stagnation_window: 100000
+        child_polish_no_improvement_iterations_per_stagnation_window: 100000
+        child_polish_max_stagnation_windows: 4
+    local_improver:
+      mode: sgp_week_pair_tabu
+      sgp_week_pair_tabu:
+        tenure_mode: fixed_interval
+        tenure_min: 8
+        tenure_max: 32
+        retry_cap: 4
+        aspiration_enabled: true
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.plateau.time_limited.social_golfer_session_path_relinking
+    provenance: dedicated_single_case_plateau_diagnosis_suite_for_solver3_session_path_relinking
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320810
+    max_iterations: 10000000
+    time_limit_seconds: 25

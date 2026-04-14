@@ -1904,6 +1904,12 @@ pub struct DonorSessionChoiceTelemetry {
     #[serde(default)]
     pub conflict_burden_delta: i64,
     #[serde(default)]
+    pub pre_recombination_incumbent_score: f64,
+    #[serde(default)]
+    pub donor_score: f64,
+    #[serde(default)]
+    pub raw_child_score: f64,
+    #[serde(default)]
     pub raw_child_delta: f64,
     #[serde(default)]
     pub adaptive_discard_threshold: Option<f64>,
@@ -1915,6 +1921,20 @@ pub struct DonorSessionChoiceTelemetry {
     pub child_polish_budget_iterations: Option<u64>,
     #[serde(default)]
     pub child_polish_budget_no_improvement_iterations: Option<u64>,
+    #[serde(default)]
+    pub post_polish_best_score: Option<f64>,
+    #[serde(default)]
+    pub raw_to_polished_delta: Option<f64>,
+    #[serde(default)]
+    pub incumbent_to_polished_delta: Option<f64>,
+    #[serde(default)]
+    pub became_new_incumbent: Option<bool>,
+    #[serde(default)]
+    pub set_new_best_post_polish_score: Option<bool>,
+    #[serde(default)]
+    pub polish_stop_reason: Option<StopReason>,
+    #[serde(default)]
+    pub polish_iterations_completed: Option<u64>,
 }
 
 /// Benchmark telemetry for the donor-session transplant outer driver.
@@ -1983,6 +2003,26 @@ pub struct DonorSessionTransplantBenchmarkTelemetry {
     #[serde(default)]
     pub polished_children_discarded: u64,
     #[serde(default)]
+    pub best_post_polish_score: Option<f64>,
+    #[serde(default)]
+    pub post_polish_score_sum: f64,
+    #[serde(default)]
+    pub post_polish_score_min: Option<f64>,
+    #[serde(default)]
+    pub post_polish_score_max: Option<f64>,
+    #[serde(default)]
+    pub polished_child_vs_raw_delta_sum: f64,
+    #[serde(default)]
+    pub polished_child_vs_raw_delta_min: Option<f64>,
+    #[serde(default)]
+    pub polished_child_vs_raw_delta_max: Option<f64>,
+    #[serde(default)]
+    pub polished_child_vs_incumbent_delta_sum: f64,
+    #[serde(default)]
+    pub polished_child_vs_incumbent_delta_min: Option<f64>,
+    #[serde(default)]
+    pub polished_child_vs_incumbent_delta_max: Option<f64>,
+    #[serde(default)]
     pub child_polish_budget_iterations_sum: u64,
     #[serde(default)]
     pub child_polish_budget_no_improvement_iterations_sum: u64,
@@ -2004,6 +2044,111 @@ pub struct DonorSessionTransplantBenchmarkTelemetry {
     pub child_polish_improving_moves: u64,
     #[serde(default)]
     pub child_polish_seconds: f64,
+}
+
+/// One aligned session-import step evaluated during a path-relinking event.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
+pub struct SessionAlignedPathRelinkingStepTelemetry {
+    #[serde(default)]
+    pub base_session_idx: u32,
+    #[serde(default)]
+    pub donor_session_idx: u32,
+    #[serde(default)]
+    pub structural_distance: u32,
+    #[serde(default)]
+    pub raw_child_score: f64,
+    #[serde(default)]
+    pub raw_child_delta: f64,
+    #[serde(default)]
+    pub post_polish_best_score: Option<f64>,
+    #[serde(default)]
+    pub raw_to_polished_delta: Option<f64>,
+    #[serde(default)]
+    pub incumbent_to_post_polish_delta: Option<f64>,
+    #[serde(default)]
+    pub polish_stop_reason: Option<StopReason>,
+    #[serde(default)]
+    pub polish_iterations_completed: Option<u64>,
+    #[serde(default)]
+    pub became_event_best: Option<bool>,
+}
+
+/// One session-aligned path-relinking event between incumbent and donor elite.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
+pub struct SessionAlignedPathRelinkingEventTelemetry {
+    #[serde(default)]
+    pub donor_archive_idx: u32,
+    #[serde(default)]
+    pub donor_score: f64,
+    #[serde(default)]
+    pub base_incumbent_score: f64,
+    #[serde(default)]
+    pub alignment_total_cost: u32,
+    #[serde(default)]
+    pub differing_session_count: u32,
+    #[serde(default)]
+    pub steps_attempted: u32,
+    #[serde(default)]
+    pub raw_steps_discarded_before_polish: u32,
+    #[serde(default)]
+    pub polished_steps: u32,
+    #[serde(default)]
+    pub best_post_polish_event_score: Option<f64>,
+    #[serde(default)]
+    pub became_new_incumbent: bool,
+    #[serde(default)]
+    pub child_polish_iterations: u64,
+    #[serde(default)]
+    pub child_polish_seconds: f64,
+    #[serde(default)]
+    pub steps: Vec<SessionAlignedPathRelinkingStepTelemetry>,
+}
+
+/// Benchmark telemetry for the session-aligned path relinking outer driver.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
+pub struct SessionAlignedPathRelinkingBenchmarkTelemetry {
+    #[serde(default)]
+    pub archive_size: u32,
+    #[serde(default)]
+    pub child_polish_local_improver_mode: Option<Solver3LocalImproverMode>,
+    #[serde(default)]
+    pub raw_child_keep_ratio: f64,
+    #[serde(default)]
+    pub raw_child_warmup_samples: u32,
+    #[serde(default)]
+    pub raw_child_history_limit: u32,
+    #[serde(default)]
+    pub child_polish_iterations_per_stagnation_window: u64,
+    #[serde(default)]
+    pub child_polish_no_improvement_iterations_per_stagnation_window: u64,
+    #[serde(default)]
+    pub child_polish_max_stagnation_windows: u64,
+    #[serde(default)]
+    pub swap_local_optimum_certification_enabled: bool,
+    #[serde(default)]
+    pub guide_selection_failures: u64,
+    #[serde(default)]
+    pub path_events_fired: u64,
+    #[serde(default)]
+    pub path_events_kept: u64,
+    #[serde(default)]
+    pub alignment_cost_sum: u64,
+    #[serde(default)]
+    pub differing_session_count_sum: u64,
+    #[serde(default)]
+    pub steps_attempted: u64,
+    #[serde(default)]
+    pub raw_steps_discarded_before_polish: u64,
+    #[serde(default)]
+    pub polished_steps: u64,
+    #[serde(default)]
+    pub best_post_polish_score: Option<f64>,
+    #[serde(default)]
+    pub child_polish_iterations: u64,
+    #[serde(default)]
+    pub child_polish_seconds: f64,
+    #[serde(default)]
+    pub event_summaries: Vec<SessionAlignedPathRelinkingEventTelemetry>,
 }
 
 /// Benchmark telemetry for the SGP week-pair tabu local improver.
@@ -2071,6 +2216,8 @@ pub struct SolverBenchmarkTelemetry {
     pub memetic: Option<MemeticBenchmarkTelemetry>,
     #[serde(default)]
     pub donor_session_transplant: Option<DonorSessionTransplantBenchmarkTelemetry>,
+    #[serde(default)]
+    pub session_aligned_path_relinking: Option<SessionAlignedPathRelinkingBenchmarkTelemetry>,
     pub moves: MoveFamilyBenchmarkTelemetrySummary,
 }
 

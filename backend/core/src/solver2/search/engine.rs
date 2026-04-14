@@ -399,6 +399,7 @@ impl SearchEngine {
             sgp_week_pair_tabu: None,
             memetic: None,
             donor_session_transplant: None,
+            session_aligned_path_relinking: None,
             moves: move_metrics.clone(),
         };
 

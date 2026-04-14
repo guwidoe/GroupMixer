@@ -141,8 +141,8 @@ impl AdaptiveRawChildRetentionState {
 
         let mut sorted = self.recent_raw_deltas.iter().copied().collect::<Vec<_>>();
         sorted.sort_by(|left, right| left.total_cmp(right));
-        let keep_count = ((sorted.len() as f64 * self.keep_ratio).ceil() as usize)
-            .clamp(1, sorted.len());
+        let keep_count =
+            ((sorted.len() as f64 * self.keep_ratio).ceil() as usize).clamp(1, sorted.len());
         Some(sorted[keep_count - 1])
     }
 
@@ -566,8 +566,9 @@ pub(crate) fn run(
         archive_size: transplant_config.archive_size as u32,
         child_polish_local_improver_mode: Some(run_context.local_improver_mode),
         raw_child_keep_ratio: transplant_config.adaptive_raw_child_retention.keep_ratio,
-        raw_child_warmup_samples: transplant_config.adaptive_raw_child_retention.warmup_samples
-            as u32,
+        raw_child_warmup_samples: transplant_config
+            .adaptive_raw_child_retention
+            .warmup_samples as u32,
         raw_child_history_limit: transplant_config.adaptive_raw_child_retention.history_limit
             as u32,
         swap_local_optimum_certification_enabled: transplant_config
@@ -741,11 +742,13 @@ pub(crate) fn run(
                     aggregate.current_state = current_incumbent.clone();
                     aggregate.best_state = current_incumbent.clone();
                     aggregate.best_score = current_incumbent.total_score;
-                    aggregate.best_score_timeline.push(crate::models::BestScoreTimelinePoint {
-                        iteration: total_iterations_completed,
-                        elapsed_seconds: get_elapsed_seconds(total_started_at),
-                        best_score: current_incumbent.total_score,
-                    });
+                    aggregate
+                        .best_score_timeline
+                        .push(crate::models::BestScoreTimelinePoint {
+                            iteration: total_iterations_completed,
+                            elapsed_seconds: get_elapsed_seconds(total_started_at),
+                            best_score: current_incumbent.total_score,
+                        });
                     record_archive_update(
                         &mut aggregate,
                         archive.consider_state(current_incumbent.clone()).reason,
@@ -803,10 +806,12 @@ pub(crate) fn run(
                 .get_or_insert_with(Default::default)
                 .recombination_events_fired += 1;
             let donor = &archive.entries()[choice.donor_archive_idx];
+            let pre_recombination_incumbent_score = current_incumbent.total_score;
             let transplanted_child =
                 transplant_donor_session(&current_incumbent, donor, choice.session_idx)?;
 
             let raw_child_delta = transplanted_child.total_score - current_incumbent.total_score;
+            let raw_child_score = transplanted_child.total_score;
             let retention_decision = raw_child_retention.evaluate(raw_child_delta);
             let remaining_iterations_after_trigger =
                 run_context.max_iterations - total_iterations_completed;
@@ -822,6 +827,9 @@ pub(crate) fn run(
             record_raw_child_retention(
                 &mut aggregate,
                 choice,
+                pre_recombination_incumbent_score,
+                donor.score,
+                raw_child_score,
                 raw_child_delta,
                 retention_decision,
                 stagnation_windows_at_trigger,
@@ -874,6 +882,7 @@ pub(crate) fn run(
                 &mut aggregate,
                 &polish_outcome.search,
                 polish_outcome.search_seconds,
+                polish_outcome.stop_reason,
             );
 
             absorb_local_search_chunk(
@@ -885,7 +894,7 @@ pub(crate) fn run(
             total_iterations_completed += polish_outcome.search.iterations_completed;
             trigger_state.finish_iterations(polish_outcome.search.iterations_completed);
 
-            if polish_outcome.search.best_state.total_score < current_incumbent.total_score {
+            if polish_outcome.search.best_state.total_score < pre_recombination_incumbent_score {
                 current_incumbent = polish_outcome.search.best_state.clone();
                 aggregate
                     .donor_session_transplant_telemetry
@@ -1134,6 +1143,9 @@ fn record_archive_update(search: &mut SearchProgressState, reason: ArchiveUpdate
 fn record_raw_child_retention(
     search: &mut SearchProgressState,
     choice: DonorSessionChoice,
+    pre_recombination_incumbent_score: f64,
+    donor_score: f64,
+    raw_child_score: f64,
     raw_child_delta: f64,
     decision: AdaptiveRawChildRetentionDecision,
     stagnation_windows_at_trigger: u64,
@@ -1162,12 +1174,22 @@ fn record_raw_child_retention(
         candidate_pool: choice.candidate_pool.telemetry(),
         session_viability_tier: choice.session_viability_tier.telemetry(),
         conflict_burden_delta: choice.conflict_burden_delta,
+        pre_recombination_incumbent_score,
+        donor_score,
+        raw_child_score,
         raw_child_delta,
         adaptive_discard_threshold: decision.discard_threshold,
         retained_for_polish: decision.retained_for_polish,
         stagnation_windows_at_trigger,
         child_polish_budget_iterations: None,
         child_polish_budget_no_improvement_iterations: None,
+        post_polish_best_score: None,
+        raw_to_polished_delta: None,
+        incumbent_to_polished_delta: None,
+        became_new_incumbent: None,
+        set_new_best_post_polish_score: None,
+        polish_stop_reason: None,
+        polish_iterations_completed: None,
     });
 }
 
@@ -1193,6 +1215,7 @@ fn record_child_polish(
     search: &mut SearchProgressState,
     local: &SearchProgressState,
     search_seconds: f64,
+    polish_stop_reason: StopReason,
 ) {
     let telemetry = search
         .donor_session_transplant_telemetry
@@ -1203,6 +1226,89 @@ fn record_child_polish(
         + local.move_metrics.transfer.improving_accepts
         + local.move_metrics.clique_swap.improving_accepts;
     telemetry.child_polish_seconds += search_seconds;
+
+    let post_polish_best_score = local.best_state.total_score;
+    let previous_best_post_polish_score = telemetry.best_post_polish_score;
+    let set_new_best_post_polish_score = previous_best_post_polish_score
+        .map(|current| post_polish_best_score < current)
+        .unwrap_or(true);
+    telemetry.best_post_polish_score = Some(
+        previous_best_post_polish_score.map_or(post_polish_best_score, |current| {
+            current.min(post_polish_best_score)
+        }),
+    );
+    telemetry.post_polish_score_sum += post_polish_best_score;
+    telemetry.post_polish_score_min = Some(
+        telemetry
+            .post_polish_score_min
+            .map_or(post_polish_best_score, |current| {
+                current.min(post_polish_best_score)
+            }),
+    );
+    telemetry.post_polish_score_max = Some(
+        telemetry
+            .post_polish_score_max
+            .map_or(post_polish_best_score, |current| {
+                current.max(post_polish_best_score)
+            }),
+    );
+
+    if let Some((raw_child_score, pre_recombination_incumbent_score)) =
+        telemetry.donor_choices.last().map(|choice| {
+            (
+                choice.raw_child_score,
+                choice.pre_recombination_incumbent_score,
+            )
+        })
+    {
+        let raw_to_polished_delta = post_polish_best_score - raw_child_score;
+        let incumbent_to_polished_delta =
+            post_polish_best_score - pre_recombination_incumbent_score;
+        let became_new_incumbent = incumbent_to_polished_delta < 0.0;
+
+        telemetry.polished_child_vs_raw_delta_sum += raw_to_polished_delta;
+        telemetry.polished_child_vs_raw_delta_min = Some(
+            telemetry
+                .polished_child_vs_raw_delta_min
+                .map_or(raw_to_polished_delta, |current| {
+                    current.min(raw_to_polished_delta)
+                }),
+        );
+        telemetry.polished_child_vs_raw_delta_max = Some(
+            telemetry
+                .polished_child_vs_raw_delta_max
+                .map_or(raw_to_polished_delta, |current| {
+                    current.max(raw_to_polished_delta)
+                }),
+        );
+        telemetry.polished_child_vs_incumbent_delta_sum += incumbent_to_polished_delta;
+        telemetry.polished_child_vs_incumbent_delta_min = Some(
+            telemetry
+                .polished_child_vs_incumbent_delta_min
+                .map_or(incumbent_to_polished_delta, |current| {
+                    current.min(incumbent_to_polished_delta)
+                }),
+        );
+        telemetry.polished_child_vs_incumbent_delta_max = Some(
+            telemetry
+                .polished_child_vs_incumbent_delta_max
+                .map_or(incumbent_to_polished_delta, |current| {
+                    current.max(incumbent_to_polished_delta)
+                }),
+        );
+
+        let choice = telemetry
+            .donor_choices
+            .last_mut()
+            .expect("donor choice should exist when recording child polish");
+        choice.post_polish_best_score = Some(post_polish_best_score);
+        choice.raw_to_polished_delta = Some(raw_to_polished_delta);
+        choice.incumbent_to_polished_delta = Some(incumbent_to_polished_delta);
+        choice.became_new_incumbent = Some(became_new_incumbent);
+        choice.set_new_best_post_polish_score = Some(set_new_best_post_polish_score);
+        choice.polish_stop_reason = Some(polish_stop_reason);
+        choice.polish_iterations_completed = Some(local.iterations_completed);
+    }
 }
 
 fn absorb_tabu_metrics(aggregate: &mut SearchProgressState, local: &SearchProgressState) {
@@ -1245,21 +1351,22 @@ mod tests {
     use std::collections::HashMap;
 
     use super::{
-        archive_config_for_donor_session_mode, certify_swap_local_optimum, select_donor_session,
+        archive_config_for_donor_session_mode, certify_swap_local_optimum, record_child_polish,
+        record_child_polish_budget, record_raw_child_retention, select_donor_session,
         select_donor_session_from_summary, transplant_donor_session,
-        AdaptiveRawChildRetentionState, DonorCandidatePool, DonorSessionChoice,
-        DonorSessionSelectionOutcome, DonorSessionTriggerEligibility,
+        AdaptiveRawChildRetentionDecision, AdaptiveRawChildRetentionState, DonorCandidatePool,
+        DonorSessionChoice, DonorSessionSelectionOutcome, DonorSessionTriggerEligibility,
         DonorSessionTriggerState, DonorSessionViabilityTier,
     };
     use crate::default_solver_configuration_for;
     use crate::models::{
         ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, RepeatEncounterParams,
-        SolverKind,
+        SolverKind, StopReason,
     };
     use crate::solver3::runtime_state::RuntimeState;
     use crate::solver3::search::archive::{ArchivedElite, EliteArchive};
     use crate::solver3::search::context::{
-        AdaptiveRawChildRetentionConfig, DonorSessionTransplantConfig,
+        AdaptiveRawChildRetentionConfig, DonorSessionTransplantConfig, SearchProgressState,
     };
 
     fn config() -> DonorSessionTransplantConfig {
@@ -1390,13 +1497,11 @@ mod tests {
 
     #[test]
     fn adaptive_raw_child_retention_warms_up_then_filters_by_percentile() {
-        let mut retention = AdaptiveRawChildRetentionState::new(
-            AdaptiveRawChildRetentionConfig {
-                keep_ratio: 0.5,
-                warmup_samples: 2,
-                history_limit: 4,
-            },
-        );
+        let mut retention = AdaptiveRawChildRetentionState::new(AdaptiveRawChildRetentionConfig {
+            keep_ratio: 0.5,
+            warmup_samples: 2,
+            history_limit: 4,
+        });
 
         let first = retention.evaluate(30.0);
         assert!(first.retained_for_polish);
@@ -1725,5 +1830,180 @@ mod tests {
             .expect("expected child runtime state")
             .pair_contacts
         );
+    }
+
+    #[test]
+    fn child_quality_telemetry_records_post_polish_basin_depth() {
+        let base = state_from_schedule(
+            vec![
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+                vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+            ],
+            true,
+            10.0,
+        );
+        let mut aggregate = SearchProgressState::new(base.clone());
+
+        record_raw_child_retention(
+            &mut aggregate,
+            DonorSessionChoice {
+                donor_archive_idx: 1,
+                session_idx: 2,
+                session_disagreement_count: 3,
+                candidate_pool: DonorCandidatePool::CompetitiveHalf,
+                session_viability_tier: DonorSessionViabilityTier::StrictImproving,
+                conflict_burden_delta: 4,
+            },
+            10.0,
+            9.0,
+            12.0,
+            2.0,
+            AdaptiveRawChildRetentionDecision {
+                discard_threshold: Some(3.0),
+                retained_for_polish: true,
+            },
+            3,
+            Some(3.0),
+        );
+        record_child_polish_budget(&mut aggregate, 100, 80);
+
+        let mut polished = SearchProgressState::new(base);
+        polished.best_state.total_score = 8.5;
+        polished.iterations_completed = 42;
+        record_child_polish(
+            &mut aggregate,
+            &polished,
+            0.25,
+            StopReason::NoImprovementLimitReached,
+        );
+
+        let telemetry = aggregate
+            .donor_session_transplant_telemetry
+            .expect("telemetry should exist");
+        assert_eq!(telemetry.polished_children, 1);
+        assert_eq!(telemetry.best_post_polish_score, Some(8.5));
+        assert_eq!(telemetry.post_polish_score_sum, 8.5);
+        assert_eq!(telemetry.post_polish_score_min, Some(8.5));
+        assert_eq!(telemetry.post_polish_score_max, Some(8.5));
+        assert_eq!(telemetry.polished_child_vs_raw_delta_sum, -3.5);
+        assert_eq!(telemetry.polished_child_vs_raw_delta_min, Some(-3.5));
+        assert_eq!(telemetry.polished_child_vs_raw_delta_max, Some(-3.5));
+        assert_eq!(telemetry.polished_child_vs_incumbent_delta_sum, -1.5);
+        assert_eq!(telemetry.polished_child_vs_incumbent_delta_min, Some(-1.5));
+        assert_eq!(telemetry.polished_child_vs_incumbent_delta_max, Some(-1.5));
+
+        let recorded_choice = telemetry
+            .donor_choices
+            .last()
+            .expect("choice telemetry should exist");
+        assert_eq!(recorded_choice.pre_recombination_incumbent_score, 10.0);
+        assert_eq!(recorded_choice.donor_score, 9.0);
+        assert_eq!(recorded_choice.raw_child_score, 12.0);
+        assert_eq!(recorded_choice.post_polish_best_score, Some(8.5));
+        assert_eq!(recorded_choice.raw_to_polished_delta, Some(-3.5));
+        assert_eq!(recorded_choice.incumbent_to_polished_delta, Some(-1.5));
+        assert_eq!(recorded_choice.became_new_incumbent, Some(true));
+        assert_eq!(recorded_choice.set_new_best_post_polish_score, Some(true));
+        assert_eq!(
+            recorded_choice.polish_stop_reason,
+            Some(StopReason::NoImprovementLimitReached)
+        );
+        assert_eq!(recorded_choice.polish_iterations_completed, Some(42));
+    }
+
+    #[test]
+    fn child_quality_telemetry_marks_non_improving_basin_without_new_best_flag() {
+        let base = state_from_schedule(
+            vec![
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+                vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+                vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+            ],
+            true,
+            10.0,
+        );
+        let mut aggregate = SearchProgressState::new(base.clone());
+
+        record_raw_child_retention(
+            &mut aggregate,
+            DonorSessionChoice {
+                donor_archive_idx: 0,
+                session_idx: 0,
+                session_disagreement_count: 3,
+                candidate_pool: DonorCandidatePool::CompetitiveHalf,
+                session_viability_tier: DonorSessionViabilityTier::StrictImproving,
+                conflict_burden_delta: 2,
+            },
+            10.0,
+            9.5,
+            11.0,
+            1.0,
+            AdaptiveRawChildRetentionDecision {
+                discard_threshold: None,
+                retained_for_polish: true,
+            },
+            2,
+            None,
+        );
+        let mut first_polished = SearchProgressState::new(base.clone());
+        first_polished.best_state.total_score = 8.0;
+        record_child_polish(
+            &mut aggregate,
+            &first_polished,
+            0.2,
+            StopReason::NoImprovementLimitReached,
+        );
+
+        record_raw_child_retention(
+            &mut aggregate,
+            DonorSessionChoice {
+                donor_archive_idx: 1,
+                session_idx: 1,
+                session_disagreement_count: 2,
+                candidate_pool: DonorCandidatePool::FullArchive,
+                session_viability_tier: DonorSessionViabilityTier::AnyDiffering,
+                conflict_burden_delta: -1,
+            },
+            8.0,
+            9.0,
+            8.2,
+            0.2,
+            AdaptiveRawChildRetentionDecision {
+                discard_threshold: Some(0.5),
+                retained_for_polish: true,
+            },
+            4,
+            Some(0.5),
+        );
+        let mut second_polished = SearchProgressState::new(base);
+        second_polished.best_state.total_score = 8.1;
+        second_polished.iterations_completed = 7;
+        record_child_polish(
+            &mut aggregate,
+            &second_polished,
+            0.1,
+            StopReason::MaxIterationsReached,
+        );
+
+        let telemetry = aggregate
+            .donor_session_transplant_telemetry
+            .expect("telemetry should exist");
+        assert_eq!(telemetry.best_post_polish_score, Some(8.0));
+        assert_eq!(telemetry.post_polish_score_min, Some(8.0));
+        assert_eq!(telemetry.post_polish_score_max, Some(8.1));
+
+        let second_choice = telemetry
+            .donor_choices
+            .last()
+            .expect("second choice should exist");
+        assert_eq!(second_choice.post_polish_best_score, Some(8.1));
+        assert_eq!(second_choice.became_new_incumbent, Some(false));
+        assert_eq!(second_choice.set_new_best_post_polish_score, Some(false));
+        assert_eq!(
+            second_choice.polish_stop_reason,
+            Some(StopReason::MaxIterationsReached)
+        );
+        assert_eq!(second_choice.polish_iterations_completed, Some(7));
     }
 }

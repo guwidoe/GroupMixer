@@ -931,6 +931,7 @@ fn solver3_session_aligned_path_relinking_mode_runs_through_public_entry_point()
         .benchmark_telemetry
         .expect("path relinking telemetry should exist");
     assert!(telemetry.iterations_completed > 0);
+    assert!(telemetry.session_aligned_path_relinking.is_some());
 }
 
 #[test]

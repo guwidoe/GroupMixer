@@ -1844,6 +1844,7 @@ impl Solver for SimulatedAnnealing {
             sgp_week_pair_tabu: None,
             memetic: None,
             donor_session_transplant: None,
+            session_aligned_path_relinking: None,
             moves: benchmark_moves.into_summary(),
         };
 

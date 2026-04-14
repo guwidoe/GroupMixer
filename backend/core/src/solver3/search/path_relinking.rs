@@ -11,7 +11,9 @@ use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha12Rng;
 
 use crate::models::{
-    BenchmarkEvent, BenchmarkObserver, ProgressCallback, SolverResult, StopReason,
+    BenchmarkEvent, BenchmarkObserver, ProgressCallback, SessionAlignedPathRelinkingBenchmarkTelemetry,
+    SessionAlignedPathRelinkingEventTelemetry, SessionAlignedPathRelinkingStepTelemetry,
+    SolverResult, StopReason,
 };
 use crate::solver_support::SolverError;
 
@@ -320,6 +322,22 @@ pub(crate) fn run(
         AdaptiveRawChildRetentionState::new(config.adaptive_raw_child_retention);
     let mut current_incumbent = state.clone();
     let mut aggregate = SearchProgressState::new(current_incumbent.clone());
+    aggregate.session_aligned_path_relinking_telemetry =
+        Some(SessionAlignedPathRelinkingBenchmarkTelemetry {
+            archive_size: config.archive_size as u32,
+            child_polish_local_improver_mode: Some(run_context.local_improver_mode),
+            raw_child_keep_ratio: config.adaptive_raw_child_retention.keep_ratio,
+            raw_child_warmup_samples: config.adaptive_raw_child_retention.warmup_samples as u32,
+            raw_child_history_limit: config.adaptive_raw_child_retention.history_limit as u32,
+            child_polish_iterations_per_stagnation_window: config
+                .child_polish_iterations_per_stagnation_window,
+            child_polish_no_improvement_iterations_per_stagnation_window: config
+                .child_polish_no_improvement_iterations_per_stagnation_window,
+            child_polish_max_stagnation_windows: config.child_polish_max_stagnation_windows,
+            swap_local_optimum_certification_enabled: config
+                .swap_local_optimum_certification_enabled,
+            ..Default::default()
+        });
     let _ = archive.consider_state(current_incumbent.clone());
 
     if let Some(observer) = benchmark_observer {
@@ -477,12 +495,32 @@ pub(crate) fn run(
             }
 
             let Some(guide) = select_path_guide(&current_incumbent, &archive, config)? else {
+                aggregate
+                    .session_aligned_path_relinking_telemetry
+                    .get_or_insert_with(Default::default)
+                    .guide_selection_failures += 1;
                 continue;
             };
             let donor = &archive.entries()[guide.donor_archive_idx];
             trigger_state.record_path_event();
+            {
+                let telemetry = aggregate
+                    .session_aligned_path_relinking_telemetry
+                    .get_or_insert_with(Default::default);
+                telemetry.path_events_fired += 1;
+                telemetry.alignment_cost_sum += u64::from(guide.alignment.total_alignment_cost);
+                telemetry.differing_session_count_sum += guide.differing_pairs.len() as u64;
+            }
 
             let pre_event_incumbent_score = current_incumbent.total_score;
+            let mut event_telemetry = SessionAlignedPathRelinkingEventTelemetry {
+                donor_archive_idx: guide.donor_archive_idx as u32,
+                donor_score: donor.score,
+                base_incumbent_score: pre_event_incumbent_score,
+                alignment_total_cost: guide.alignment.total_alignment_cost,
+                differing_session_count: guide.differing_pairs.len() as u32,
+                ..Default::default()
+            };
             let mut current_path_state = current_incumbent.clone();
             let mut remaining_pairs = guide.differing_pairs;
             remaining_pairs.sort_by(|left, right| {
@@ -527,10 +565,21 @@ pub(crate) fn run(
                 let mut forced_stop_reason = None;
 
                 for aligned_pair in remaining_pairs.iter().cloned() {
-                    let raw_child = transplant_aligned_session(&current_path_state, donor, &aligned_pair)?;
+                    event_telemetry.steps_attempted += 1;
+                    aggregate
+                        .session_aligned_path_relinking_telemetry
+                        .get_or_insert_with(Default::default)
+                        .steps_attempted += 1;
+                    let raw_child =
+                        transplant_aligned_session(&current_path_state, donor, &aligned_pair)?;
                     let raw_child_score = raw_child.total_score;
                     let raw_child_delta = raw_child_score - current_path_state.total_score;
                     if !raw_child_retention.evaluate(raw_child_delta).retained_for_polish {
+                        event_telemetry.raw_steps_discarded_before_polish += 1;
+                        aggregate
+                            .session_aligned_path_relinking_telemetry
+                            .get_or_insert_with(Default::default)
+                            .raw_steps_discarded_before_polish += 1;
                         continue;
                     }
 
@@ -567,6 +616,53 @@ pub(crate) fn run(
                     total_iterations_completed += polish_outcome.search.iterations_completed;
                     event_iterations_consumed += polish_outcome.search.iterations_completed;
                     trigger_state.finish_iterations(polish_outcome.search.iterations_completed);
+
+                    event_telemetry.polished_steps += 1;
+                    event_telemetry.child_polish_iterations +=
+                        polish_outcome.search.iterations_completed;
+                    event_telemetry.child_polish_seconds += polish_outcome.search_seconds;
+                    let post_polish_best_score = polish_outcome.search.best_state.total_score;
+                    event_telemetry.best_post_polish_event_score = Some(
+                        event_telemetry
+                            .best_post_polish_event_score
+                            .map_or(post_polish_best_score, |current| {
+                                current.min(post_polish_best_score)
+                            }),
+                    );
+                    {
+                        let telemetry = aggregate
+                            .session_aligned_path_relinking_telemetry
+                            .get_or_insert_with(Default::default);
+                        telemetry.polished_steps += 1;
+                        telemetry.child_polish_iterations +=
+                            polish_outcome.search.iterations_completed;
+                        telemetry.child_polish_seconds += polish_outcome.search_seconds;
+                        telemetry.best_post_polish_score = Some(
+                            telemetry.best_post_polish_score.map_or(
+                                post_polish_best_score,
+                                |current| current.min(post_polish_best_score),
+                            ),
+                        );
+                    }
+
+                    let became_event_best = post_polish_best_score < best_event_score;
+                    event_telemetry.steps.push(SessionAlignedPathRelinkingStepTelemetry {
+                        base_session_idx: aligned_pair.base_session_idx as u32,
+                        donor_session_idx: aligned_pair.donor_session_idx as u32,
+                        structural_distance: aligned_pair.structural_distance,
+                        raw_child_score,
+                        raw_child_delta,
+                        post_polish_best_score: Some(post_polish_best_score),
+                        raw_to_polished_delta: Some(post_polish_best_score - raw_child_score),
+                        incumbent_to_post_polish_delta: Some(
+                            post_polish_best_score - pre_event_incumbent_score,
+                        ),
+                        polish_stop_reason: Some(polish_outcome.stop_reason),
+                        polish_iterations_completed: Some(
+                            polish_outcome.search.iterations_completed,
+                        ),
+                        became_event_best: Some(became_event_best),
+                    });
 
                     let candidate = PathStepEvaluation {
                         aligned_pair,
@@ -642,6 +738,11 @@ pub(crate) fn run(
                             });
                     }
                     trigger_state.record_incumbent_improvement();
+                    event_telemetry.became_new_incumbent = true;
+                    aggregate
+                        .session_aligned_path_relinking_telemetry
+                        .get_or_insert_with(Default::default)
+                        .path_events_kept += 1;
                 } else {
                     global_no_improvement_count = global_no_improvement_count
                         .saturating_add(event_iterations_consumed);
@@ -650,6 +751,12 @@ pub(crate) fn run(
                 global_no_improvement_count = global_no_improvement_count
                     .saturating_add(event_iterations_consumed.max(1));
             }
+
+            aggregate
+                .session_aligned_path_relinking_telemetry
+                .get_or_insert_with(Default::default)
+                .event_summaries
+                .push(event_telemetry);
 
             aggregate.current_state = current_incumbent.clone();
             aggregate.iterations_completed = total_iterations_completed;

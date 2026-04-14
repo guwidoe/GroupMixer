@@ -3,7 +3,8 @@ use crate::validation::ExternalValidationReport;
 use gm_core::models::{
     BestScoreTimelinePoint, DonorSessionTransplantBenchmarkTelemetry,
     MemeticBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
-    RepeatGuidedSwapBenchmarkTelemetry, SgpWeekPairTabuBenchmarkTelemetry, StopReason,
+    RepeatGuidedSwapBenchmarkTelemetry, SessionAlignedPathRelinkingBenchmarkTelemetry,
+    SgpWeekPairTabuBenchmarkTelemetry, StopReason,
 };
 use serde::{Deserialize, Serialize};
 
@@ -239,6 +240,8 @@ pub struct SearchTelemetryArtifact {
     pub memetic: Option<MemeticBenchmarkTelemetry>,
     #[serde(default)]
     pub donor_session_transplant: Option<DonorSessionTransplantBenchmarkTelemetry>,
+    #[serde(default)]
+    pub session_aligned_path_relinking: Option<SessionAlignedPathRelinkingBenchmarkTelemetry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

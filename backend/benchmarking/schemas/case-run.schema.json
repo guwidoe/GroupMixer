@@ -101,7 +101,8 @@
         "repeat_guided_swaps",
         "sgp_week_pair_tabu",
         "memetic",
-        "donor_session_transplant"
+        "donor_session_transplant",
+        "session_aligned_path_relinking"
       ],
       "properties": {
         "accepted_uphill_moves": { "type": "integer" },
@@ -240,6 +241,16 @@
             "polished_children",
             "polished_children_kept",
             "polished_children_discarded",
+            "best_post_polish_score",
+            "post_polish_score_sum",
+            "post_polish_score_min",
+            "post_polish_score_max",
+            "polished_child_vs_raw_delta_sum",
+            "polished_child_vs_raw_delta_min",
+            "polished_child_vs_raw_delta_max",
+            "polished_child_vs_incumbent_delta_sum",
+            "polished_child_vs_incumbent_delta_min",
+            "polished_child_vs_incumbent_delta_max",
             "child_polish_budget_iterations_sum",
             "child_polish_budget_no_improvement_iterations_sum",
             "certification_scans_attempted",
@@ -290,12 +301,22 @@
                   "candidate_pool",
                   "session_viability_tier",
                   "conflict_burden_delta",
+                  "pre_recombination_incumbent_score",
+                  "donor_score",
+                  "raw_child_score",
                   "raw_child_delta",
                   "adaptive_discard_threshold",
                   "retained_for_polish",
                   "stagnation_windows_at_trigger",
                   "child_polish_budget_iterations",
-                  "child_polish_budget_no_improvement_iterations"
+                  "child_polish_budget_no_improvement_iterations",
+                  "post_polish_best_score",
+                  "raw_to_polished_delta",
+                  "incumbent_to_polished_delta",
+                  "became_new_incumbent",
+                  "set_new_best_post_polish_score",
+                  "polish_stop_reason",
+                  "polish_iterations_completed"
                 ],
                 "properties": {
                   "donor_archive_idx": { "type": "integer" },
@@ -304,12 +325,22 @@
                   "candidate_pool": { "type": "string" },
                   "session_viability_tier": { "type": "string" },
                   "conflict_burden_delta": { "type": "integer" },
+                  "pre_recombination_incumbent_score": { "type": "number" },
+                  "donor_score": { "type": "number" },
+                  "raw_child_score": { "type": "number" },
                   "raw_child_delta": { "type": "number" },
                   "adaptive_discard_threshold": { "type": ["number", "null"] },
                   "retained_for_polish": { "type": "boolean" },
                   "stagnation_windows_at_trigger": { "type": "integer" },
                   "child_polish_budget_iterations": { "type": ["integer", "null"] },
-                  "child_polish_budget_no_improvement_iterations": { "type": ["integer", "null"] }
+                  "child_polish_budget_no_improvement_iterations": { "type": ["integer", "null"] },
+                  "post_polish_best_score": { "type": ["number", "null"] },
+                  "raw_to_polished_delta": { "type": ["number", "null"] },
+                  "incumbent_to_polished_delta": { "type": ["number", "null"] },
+                  "became_new_incumbent": { "type": ["boolean", "null"] },
+                  "set_new_best_post_polish_score": { "type": ["boolean", "null"] },
+                  "polish_stop_reason": { "type": ["string", "null"] },
+                  "polish_iterations_completed": { "type": ["integer", "null"] }
                 }
               }
             },
@@ -317,6 +348,16 @@
             "polished_children": { "type": "integer" },
             "polished_children_kept": { "type": "integer" },
             "polished_children_discarded": { "type": "integer" },
+            "best_post_polish_score": { "type": ["number", "null"] },
+            "post_polish_score_sum": { "type": "number" },
+            "post_polish_score_min": { "type": ["number", "null"] },
+            "post_polish_score_max": { "type": ["number", "null"] },
+            "polished_child_vs_raw_delta_sum": { "type": "number" },
+            "polished_child_vs_raw_delta_min": { "type": ["number", "null"] },
+            "polished_child_vs_raw_delta_max": { "type": ["number", "null"] },
+            "polished_child_vs_incumbent_delta_sum": { "type": "number" },
+            "polished_child_vs_incumbent_delta_min": { "type": ["number", "null"] },
+            "polished_child_vs_incumbent_delta_max": { "type": ["number", "null"] },
             "child_polish_budget_iterations_sum": { "type": "integer" },
             "child_polish_budget_no_improvement_iterations_sum": { "type": "integer" },
             "certification_scans_attempted": { "type": "integer" },
@@ -328,6 +369,121 @@
             "child_polish_iterations": { "type": "integer" },
             "child_polish_improving_moves": { "type": "integer" },
             "child_polish_seconds": { "type": "number" }
+          }
+        },
+        "session_aligned_path_relinking": {
+          "type": ["object", "null"],
+          "required": [
+            "archive_size",
+            "child_polish_local_improver_mode",
+            "raw_child_keep_ratio",
+            "raw_child_warmup_samples",
+            "raw_child_history_limit",
+            "child_polish_iterations_per_stagnation_window",
+            "child_polish_no_improvement_iterations_per_stagnation_window",
+            "child_polish_max_stagnation_windows",
+            "swap_local_optimum_certification_enabled",
+            "guide_selection_failures",
+            "path_events_fired",
+            "path_events_kept",
+            "alignment_cost_sum",
+            "differing_session_count_sum",
+            "steps_attempted",
+            "raw_steps_discarded_before_polish",
+            "polished_steps",
+            "best_post_polish_score",
+            "child_polish_iterations",
+            "child_polish_seconds",
+            "event_summaries"
+          ],
+          "properties": {
+            "archive_size": { "type": "integer" },
+            "child_polish_local_improver_mode": { "type": ["string", "null"] },
+            "raw_child_keep_ratio": { "type": "number" },
+            "raw_child_warmup_samples": { "type": "integer" },
+            "raw_child_history_limit": { "type": "integer" },
+            "child_polish_iterations_per_stagnation_window": { "type": "integer" },
+            "child_polish_no_improvement_iterations_per_stagnation_window": { "type": "integer" },
+            "child_polish_max_stagnation_windows": { "type": "integer" },
+            "swap_local_optimum_certification_enabled": { "type": "boolean" },
+            "guide_selection_failures": { "type": "integer" },
+            "path_events_fired": { "type": "integer" },
+            "path_events_kept": { "type": "integer" },
+            "alignment_cost_sum": { "type": "integer" },
+            "differing_session_count_sum": { "type": "integer" },
+            "steps_attempted": { "type": "integer" },
+            "raw_steps_discarded_before_polish": { "type": "integer" },
+            "polished_steps": { "type": "integer" },
+            "best_post_polish_score": { "type": ["number", "null"] },
+            "child_polish_iterations": { "type": "integer" },
+            "child_polish_seconds": { "type": "number" },
+            "event_summaries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "donor_archive_idx",
+                  "donor_score",
+                  "base_incumbent_score",
+                  "alignment_total_cost",
+                  "differing_session_count",
+                  "steps_attempted",
+                  "raw_steps_discarded_before_polish",
+                  "polished_steps",
+                  "best_post_polish_event_score",
+                  "became_new_incumbent",
+                  "child_polish_iterations",
+                  "child_polish_seconds",
+                  "steps"
+                ],
+                "properties": {
+                  "donor_archive_idx": { "type": "integer" },
+                  "donor_score": { "type": "number" },
+                  "base_incumbent_score": { "type": "number" },
+                  "alignment_total_cost": { "type": "integer" },
+                  "differing_session_count": { "type": "integer" },
+                  "steps_attempted": { "type": "integer" },
+                  "raw_steps_discarded_before_polish": { "type": "integer" },
+                  "polished_steps": { "type": "integer" },
+                  "best_post_polish_event_score": { "type": ["number", "null"] },
+                  "became_new_incumbent": { "type": "boolean" },
+                  "child_polish_iterations": { "type": "integer" },
+                  "child_polish_seconds": { "type": "number" },
+                  "steps": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "base_session_idx",
+                        "donor_session_idx",
+                        "structural_distance",
+                        "raw_child_score",
+                        "raw_child_delta",
+                        "post_polish_best_score",
+                        "raw_to_polished_delta",
+                        "incumbent_to_post_polish_delta",
+                        "polish_stop_reason",
+                        "polish_iterations_completed",
+                        "became_event_best"
+                      ],
+                      "properties": {
+                        "base_session_idx": { "type": "integer" },
+                        "donor_session_idx": { "type": "integer" },
+                        "structural_distance": { "type": "integer" },
+                        "raw_child_score": { "type": "number" },
+                        "raw_child_delta": { "type": "number" },
+                        "post_polish_best_score": { "type": ["number", "null"] },
+                        "raw_to_polished_delta": { "type": ["number", "null"] },
+                        "incumbent_to_post_polish_delta": { "type": ["number", "null"] },
+                        "polish_stop_reason": { "type": ["string", "null"] },
+                        "polish_iterations_completed": { "type": ["integer", "null"] },
+                        "became_event_best": { "type": ["boolean", "null"] }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
