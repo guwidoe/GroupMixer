@@ -62,6 +62,7 @@ pub(crate) struct DonorSessionTransplantConfig {
     pub(crate) recombination_cooldown_window: u64,
     pub(crate) max_recombination_events_per_run: Option<u64>,
     pub(crate) adaptive_raw_child_retention: AdaptiveRawChildRetentionConfig,
+    pub(crate) swap_local_optimum_certification_enabled: bool,
     pub(crate) child_polish_iterations_per_stagnation_window: u64,
     pub(crate) child_polish_no_improvement_iterations_per_stagnation_window: u64,
     pub(crate) child_polish_max_stagnation_windows: u64,
@@ -467,6 +468,8 @@ impl SearchRunContext {
                         .adaptive_raw_child_retention
                         .history_limit as usize,
                 },
+                swap_local_optimum_certification_enabled: donor_session_transplant
+                    .swap_local_optimum_certification_enabled,
                 child_polish_iterations_per_stagnation_window: donor_session_transplant
                     .child_polish_iterations_per_stagnation_window as u64,
                 child_polish_no_improvement_iterations_per_stagnation_window:

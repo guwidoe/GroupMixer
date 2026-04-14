@@ -1089,6 +1089,9 @@ pub struct Solver3DonorSessionTransplantParams {
     /// Adaptive raw-child quality gate applied before post-transplant polish.
     #[serde(default)]
     pub adaptive_raw_child_retention: Solver3AdaptiveRawChildRetentionParams,
+    /// Optionally certify a swap-local optimum exactly before donor recombination fires.
+    #[serde(default)]
+    pub swap_local_optimum_certification_enabled: bool,
     /// Post-transplant child-polish iteration budget granted per full stagnation window.
     #[serde(default = "default_solver3_donor_session_child_polish_iterations_per_window")]
     pub child_polish_iterations_per_stagnation_window: u32,
@@ -1109,6 +1112,7 @@ impl Default for Solver3DonorSessionTransplantParams {
             recombination_cooldown_window: default_solver3_donor_session_cooldown_window(),
             max_recombination_events_per_run: None,
             adaptive_raw_child_retention: Solver3AdaptiveRawChildRetentionParams::default(),
+            swap_local_optimum_certification_enabled: false,
             child_polish_iterations_per_stagnation_window:
                 default_solver3_donor_session_child_polish_iterations_per_window(),
             child_polish_no_improvement_iterations_per_stagnation_window:
@@ -1821,6 +1825,8 @@ pub struct DonorSessionTransplantBenchmarkTelemetry {
     #[serde(default)]
     pub child_polish_max_stagnation_windows: u64,
     #[serde(default)]
+    pub swap_local_optimum_certification_enabled: bool,
+    #[serde(default)]
     pub archive_additions: u64,
     #[serde(default)]
     pub archive_exact_duplicate_replacements: u64,
@@ -1868,6 +1874,18 @@ pub struct DonorSessionTransplantBenchmarkTelemetry {
     pub child_polish_budget_iterations_sum: u64,
     #[serde(default)]
     pub child_polish_budget_no_improvement_iterations_sum: u64,
+    #[serde(default)]
+    pub certification_scans_attempted: u64,
+    #[serde(default)]
+    pub certification_scans_completed: u64,
+    #[serde(default)]
+    pub certification_found_improving_swap: u64,
+    #[serde(default)]
+    pub certified_swap_local_optima: u64,
+    #[serde(default)]
+    pub certification_scan_swap_previews: u64,
+    #[serde(default)]
+    pub certification_scan_seconds: f64,
     #[serde(default)]
     pub child_polish_iterations: u64,
     #[serde(default)]

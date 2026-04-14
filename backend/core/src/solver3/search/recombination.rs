@@ -17,6 +17,10 @@ use crate::models::{
 };
 use crate::solver_support::SolverError;
 
+use super::super::moves::{
+    analyze_swap, apply_swap_runtime_preview, preview_swap_runtime_lightweight, SwapFeasibility,
+    SwapMove, SwapRuntimePreview,
+};
 use super::super::runtime_state::RuntimeState;
 use super::archive::{
     build_session_conflict_burden, build_session_fingerprints, ArchiveUpdateReason, EliteArchive,
@@ -158,6 +162,7 @@ impl AdaptiveRawChildRetentionState {
 pub(crate) struct DonorSessionTriggerState {
     pub(crate) recombination_events_fired: u64,
     pub(crate) iterations_since_last_recombination: u64,
+    pub(crate) swap_local_optimum_certified: bool,
 }
 
 impl Default for DonorSessionTriggerState {
@@ -165,6 +170,7 @@ impl Default for DonorSessionTriggerState {
         Self {
             recombination_events_fired: 0,
             iterations_since_last_recombination: u64::MAX,
+            swap_local_optimum_certified: false,
         }
     }
 }
@@ -209,6 +215,14 @@ impl DonorSessionTriggerState {
     pub(crate) fn record_recombination_event(&mut self) {
         self.recombination_events_fired += 1;
         self.iterations_since_last_recombination = 0;
+    }
+
+    pub(crate) fn mark_swap_local_optimum_certified(&mut self) {
+        self.swap_local_optimum_certified = true;
+    }
+
+    pub(crate) fn record_incumbent_improvement(&mut self) {
+        self.swap_local_optimum_certified = false;
     }
 }
 
@@ -473,6 +487,64 @@ fn child_polish_budget_for_stagnation(
     )
 }
 
+#[derive(Debug, Clone, PartialEq)]
+struct SwapLocalOptimumCertificationResult {
+    best_improving_swap: Option<SwapRuntimePreview>,
+    swap_previews_evaluated: u64,
+    scan_seconds: f64,
+}
+
+fn certify_swap_local_optimum(
+    state: &RuntimeState,
+    allowed_sessions: &[usize],
+) -> Result<SwapLocalOptimumCertificationResult, SolverError> {
+    let started_at = get_current_time();
+    let mut best_improving_swap = None;
+    let mut swap_previews_evaluated = 0u64;
+
+    for &session_idx in allowed_sessions {
+        for left_group_idx in 0..state.compiled.num_groups {
+            let left_members = &state.group_members[state.group_slot(session_idx, left_group_idx)];
+            if left_members.is_empty() {
+                continue;
+            }
+
+            for right_group_idx in (left_group_idx + 1)..state.compiled.num_groups {
+                let right_members =
+                    &state.group_members[state.group_slot(session_idx, right_group_idx)];
+                if right_members.is_empty() {
+                    continue;
+                }
+
+                for &left_person_idx in left_members {
+                    for &right_person_idx in right_members {
+                        let swap = SwapMove::new(session_idx, left_person_idx, right_person_idx);
+                        let analysis = analyze_swap(state, &swap)?;
+                        if !matches!(analysis.feasibility, SwapFeasibility::Feasible) {
+                            continue;
+                        }
+                        let preview = preview_swap_runtime_lightweight(state, &swap)?;
+                        swap_previews_evaluated += 1;
+                        let should_replace_best = best_improving_swap
+                            .as_ref()
+                            .map(|best: &SwapRuntimePreview| preview.delta_score < best.delta_score)
+                            .unwrap_or(true);
+                        if preview.delta_score < 0.0 && should_replace_best {
+                            best_improving_swap = Some(preview);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(SwapLocalOptimumCertificationResult {
+        best_improving_swap,
+        swap_previews_evaluated,
+        scan_seconds: get_elapsed_seconds_between(started_at, get_current_time()),
+    })
+}
+
 pub(crate) fn run(
     state: &mut RuntimeState,
     run_context: SearchRunContext,
@@ -498,6 +570,8 @@ pub(crate) fn run(
             as u32,
         raw_child_history_limit: transplant_config.adaptive_raw_child_retention.history_limit
             as u32,
+        swap_local_optimum_certification_enabled: transplant_config
+            .swap_local_optimum_certification_enabled,
         child_polish_iterations_per_stagnation_window: transplant_config
             .child_polish_iterations_per_stagnation_window,
         child_polish_no_improvement_iterations_per_stagnation_window: transplant_config
@@ -578,6 +652,7 @@ pub(crate) fn run(
                     archive.consider_state(current_incumbent.clone()).reason,
                 );
                 global_no_improvement_count = chunk_outcome.search.no_improvement_count;
+                trigger_state.record_incumbent_improvement();
             } else {
                 global_no_improvement_count = global_no_improvement_count
                     .saturating_add(chunk_outcome.search.iterations_completed);
@@ -636,6 +711,68 @@ pub(crate) fn run(
                         .trigger_blocked_event_cap += 1;
                     continue;
                 }
+            }
+
+            if transplant_config.swap_local_optimum_certification_enabled
+                && !trigger_state.swap_local_optimum_certified
+            {
+                aggregate
+                    .donor_session_transplant_telemetry
+                    .get_or_insert_with(Default::default)
+                    .certification_scans_attempted += 1;
+                let certification =
+                    certify_swap_local_optimum(&current_incumbent, &run_context.allowed_sessions)?;
+                {
+                    let telemetry = aggregate
+                        .donor_session_transplant_telemetry
+                        .get_or_insert_with(Default::default);
+                    telemetry.certification_scans_completed += 1;
+                    telemetry.certification_scan_swap_previews +=
+                        certification.swap_previews_evaluated;
+                    telemetry.certification_scan_seconds += certification.scan_seconds;
+                }
+
+                if let Some(best_improving_swap) = certification.best_improving_swap {
+                    aggregate
+                        .donor_session_transplant_telemetry
+                        .get_or_insert_with(Default::default)
+                        .certification_found_improving_swap += 1;
+                    apply_swap_runtime_preview(&mut current_incumbent, &best_improving_swap)?;
+                    aggregate.current_state = current_incumbent.clone();
+                    aggregate.best_state = current_incumbent.clone();
+                    aggregate.best_score = current_incumbent.total_score;
+                    aggregate.best_score_timeline.push(crate::models::BestScoreTimelinePoint {
+                        iteration: total_iterations_completed,
+                        elapsed_seconds: get_elapsed_seconds(total_started_at),
+                        best_score: current_incumbent.total_score,
+                    });
+                    record_archive_update(
+                        &mut aggregate,
+                        archive.consider_state(current_incumbent.clone()).reason,
+                    );
+                    global_no_improvement_count = 0;
+                    aggregate.no_improvement_count = 0;
+                    trigger_state.record_incumbent_improvement();
+
+                    if maybe_emit_progress(
+                        &aggregate,
+                        &run_context,
+                        progress_callback,
+                        total_started_at,
+                        &mut last_progress_callback_at,
+                    ) {
+                        stop_reason = StopReason::ProgressCallbackRequestedStop;
+                        final_progress_emitted = true;
+                        break;
+                    }
+                    continue;
+                }
+
+                aggregate
+                    .donor_session_transplant_telemetry
+                    .get_or_insert_with(Default::default)
+                    .certified_swap_local_optima += 1;
+                trigger_state.mark_swap_local_optimum_certified();
             }
 
             let choice = match select_donor_session_from_summary(
@@ -759,6 +896,7 @@ pub(crate) fn run(
                     archive.consider_state(current_incumbent.clone()).reason,
                 );
                 global_no_improvement_count = polish_outcome.search.no_improvement_count;
+                trigger_state.record_incumbent_improvement();
             } else {
                 aggregate
                     .donor_session_transplant_telemetry
@@ -1107,7 +1245,7 @@ mod tests {
     use std::collections::HashMap;
 
     use super::{
-        archive_config_for_donor_session_mode, select_donor_session,
+        archive_config_for_donor_session_mode, certify_swap_local_optimum, select_donor_session,
         select_donor_session_from_summary, transplant_donor_session,
         AdaptiveRawChildRetentionState, DonorCandidatePool, DonorSessionChoice,
         DonorSessionSelectionOutcome, DonorSessionTriggerEligibility,
@@ -1135,6 +1273,7 @@ mod tests {
                 warmup_samples: 4,
                 history_limit: 32,
             },
+            swap_local_optimum_certification_enabled: false,
             child_polish_iterations_per_stagnation_window: 100_000,
             child_polish_no_improvement_iterations_per_stagnation_window: 100_000,
             child_polish_max_stagnation_windows: 4,
@@ -1274,6 +1413,42 @@ mod tests {
         let fourth = retention.evaluate(15.0);
         assert_eq!(fourth.discard_threshold, Some(20.0));
         assert!(fourth.retained_for_polish);
+    }
+
+    #[test]
+    fn swap_local_optimum_certification_finds_improving_swap_when_one_exists() {
+        let state = state_from_schedule(
+            vec![
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+                vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+            ],
+            true,
+            10.0,
+        );
+
+        let certification =
+            certify_swap_local_optimum(&state, &[0, 1, 2]).expect("scan should succeed");
+        assert!(certification.best_improving_swap.is_some());
+        assert!(certification.swap_previews_evaluated > 0);
+    }
+
+    #[test]
+    fn swap_local_optimum_certification_can_certify_local_optimum() {
+        let state = state_from_schedule(
+            vec![
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+                vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+                vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+            ],
+            true,
+            0.0,
+        );
+
+        let certification =
+            certify_swap_local_optimum(&state, &[0, 1, 2]).expect("scan should succeed");
+        assert!(certification.best_improving_swap.is_none());
+        assert!(certification.swap_previews_evaluated > 0);
     }
 
     #[test]
