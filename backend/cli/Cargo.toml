@@ -8,6 +8,29 @@ description = "CLI interface for the GroupMixer solver - AI-testable optimizatio
 name = "gm-cli"
 path = "src/main.rs"
 
+[features]
+default = []
+solver3-experimental-repeat-guidance = [
+    "gm-core/solver3-experimental-repeat-guidance",
+    "gm-contracts/solver3-experimental-repeat-guidance",
+    "gm-benchmarking/solver3-experimental-repeat-guidance",
+]
+solver3-experimental-memetic = [
+    "gm-core/solver3-experimental-memetic",
+    "gm-contracts/solver3-experimental-memetic",
+    "gm-benchmarking/solver3-experimental-memetic",
+]
+solver3-experimental-recombination = [
+    "gm-core/solver3-experimental-recombination",
+    "gm-contracts/solver3-experimental-recombination",
+    "gm-benchmarking/solver3-experimental-recombination",
+]
+solver3-research-all = [
+    "gm-core/solver3-research-all",
+    "gm-contracts/solver3-research-all",
+    "gm-benchmarking/solver3-research-all",
+]
+
 [dependencies]
 gm-core = { path = "../core" }
 gm-contracts = { path = "../contracts" }

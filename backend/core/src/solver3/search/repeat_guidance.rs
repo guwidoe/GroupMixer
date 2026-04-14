@@ -1,10 +1,14 @@
+#[cfg(feature = "solver3-experimental-repeat-guidance")]
 use rand::RngExt;
+#[cfg(feature = "solver3-experimental-repeat-guidance")]
 use rand_chacha::ChaCha12Rng;
 
+#[cfg(feature = "solver3-experimental-repeat-guidance")]
 use super::super::compiled_problem::CompiledProblem;
 use super::super::moves::PairContactUpdate;
 use super::super::runtime_state::RuntimeState;
 
+#[cfg(feature = "solver3-experimental-repeat-guidance")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct RepeatGuidanceState {
     repeat_max_allowed_encounters: u16,
@@ -15,6 +19,11 @@ pub(crate) struct RepeatGuidanceState {
     active_pair_count: usize,
 }
 
+#[cfg(not(feature = "solver3-experimental-repeat-guidance"))]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub(crate) struct RepeatGuidanceState;
+
+#[cfg(feature = "solver3-experimental-repeat-guidance")]
 impl RepeatGuidanceState {
     pub(crate) fn build_from_state(state: &RuntimeState) -> Option<Self> {
         let repeat = state.compiled.repeat_encounter.as_ref()?;
@@ -151,7 +160,45 @@ impl RepeatGuidanceState {
     }
 }
 
-#[cfg(test)]
+#[cfg(not(feature = "solver3-experimental-repeat-guidance"))]
+impl RepeatGuidanceState {
+    pub(crate) fn build_from_state(_state: &RuntimeState) -> Option<Self> {
+        None
+    }
+
+    pub(crate) fn rebuild_from_state(&mut self, _state: &RuntimeState) {}
+
+    pub(crate) fn apply_pair_contact_updates(
+        &mut self,
+        _compiled: &crate::solver3::compiled_problem::CompiledProblem,
+        _updates: &[PairContactUpdate],
+    ) {
+    }
+
+    #[inline]
+    pub(crate) fn active_pair_count(&self) -> usize {
+        0
+    }
+
+    #[inline]
+    pub(crate) fn pair_excess(&self, _pair_idx: usize) -> u16 {
+        0
+    }
+
+    #[inline]
+    pub(crate) fn person_incident_count(&self, _person_idx: usize) -> u16 {
+        0
+    }
+
+    pub(crate) fn sample_pair_from_highest_bucket(
+        &self,
+        _rng: &mut rand_chacha::ChaCha12Rng,
+    ) -> Option<usize> {
+        None
+    }
+}
+
+#[cfg(all(test, feature = "solver3-experimental-repeat-guidance"))]
 mod tests {
     use std::collections::HashMap;
 
@@ -395,8 +442,8 @@ mod tests {
         };
         let mut state = RuntimeState::from_input(&input).unwrap();
         let mut guidance = RepeatGuidanceState::build_from_state(&state).unwrap();
-        let preview = preview_transfer_runtime_lightweight(&state, &TransferMove::new(1, 2, 1, 2))
-            .unwrap();
+        let preview =
+            preview_transfer_runtime_lightweight(&state, &TransferMove::new(1, 2, 1, 2)).unwrap();
 
         crate::solver3::moves::apply_transfer_runtime_preview(&mut state, &preview).unwrap();
         guidance.apply_pair_contact_updates(&state.compiled, &preview.patch.pair_contact_updates);

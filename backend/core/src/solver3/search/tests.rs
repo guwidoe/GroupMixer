@@ -4,10 +4,10 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha12Rng;
 
 use crate::models::{
-    ApiInput, Constraint, Group, MoveFamily, MoveFamilyWeights, MovePolicy,
-    MoveSelectionMode, Objective, Person, ProblemDefinition, RepeatEncounterParams,
-    Solver3HotspotGuidanceParams, Solver3Params, Solver3RepeatGuidedSwapParams,
-    SolverConfiguration, SolverParams, StopConditions,
+    ApiInput, Constraint, Group, MoveFamily, MoveFamilyWeights, MovePolicy, MoveSelectionMode,
+    Objective, Person, ProblemDefinition, RepeatEncounterParams, Solver3HotspotGuidanceParams,
+    Solver3Params, Solver3RepeatGuidedSwapParams, SolverConfiguration, SolverParams,
+    StopConditions,
 };
 use crate::solver3::runtime_state::RuntimeState;
 
@@ -185,7 +185,13 @@ fn candidate_sampler_respects_allowed_sessions() {
     let sampler = CandidateSampler;
     let mut rng = ChaCha12Rng::seed_from_u64(7);
     let (_family, preview, _seconds) = sampler
-        .select_previewed_move(&state, &selector, &[1], SwapSamplingOptions::default(), &mut rng)
+        .select_previewed_move(
+            &state,
+            &selector,
+            &[1],
+            SwapSamplingOptions::default(),
+            &mut rng,
+        )
         .selection
         .expect("swap preview should be sampled");
     assert_eq!(preview.session_idx(), 1);
@@ -285,6 +291,7 @@ fn benchmark_timeline_elapsed_seconds_are_monotonic_and_progressive() {
     }
 }
 
+#[cfg(feature = "solver3-experimental-repeat-guidance")]
 #[test]
 fn search_engine_records_repeat_guided_swap_sampling_telemetry() {
     let mut input = repeat_guidance_input();

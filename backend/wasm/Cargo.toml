@@ -21,6 +21,22 @@ getrandom = { version = "0.4", features = ["wasm_js"] }
 
 [features]
 default = ["console_error_panic_hook"]
+solver3-experimental-repeat-guidance = [
+    "gm-core/solver3-experimental-repeat-guidance",
+    "gm-contracts/solver3-experimental-repeat-guidance",
+]
+solver3-experimental-memetic = [
+    "gm-core/solver3-experimental-memetic",
+    "gm-contracts/solver3-experimental-memetic",
+]
+solver3-experimental-recombination = [
+    "gm-core/solver3-experimental-recombination",
+    "gm-contracts/solver3-experimental-recombination",
+]
+solver3-research-all = [
+    "gm-core/solver3-research-all",
+    "gm-contracts/solver3-research-all",
+]
 
 [dependencies.console_error_panic_hook]
 version = "0.1"

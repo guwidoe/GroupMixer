@@ -1436,6 +1436,7 @@ mod tests {
         assert_eq!(sampled.tabu_swap_sampling.aspiration_preview_surfaces, 0);
     }
 
+    #[cfg(feature = "solver3-experimental-repeat-guidance")]
     #[test]
     fn repeat_guided_sampler_honors_allowed_sessions() {
         let state = repeated_pair_runtime_state();
@@ -1466,6 +1467,7 @@ mod tests {
         assert_eq!(preview.session_idx(), 1);
     }
 
+    #[cfg(feature = "solver3-experimental-repeat-guidance")]
     #[test]
     fn repeat_guided_sampler_falls_back_to_random_without_guidance() {
         let state = simple_runtime_state();
@@ -1492,6 +1494,7 @@ mod tests {
         assert!(sampled.selection.is_some());
     }
 
+    #[cfg(feature = "solver3-experimental-repeat-guidance")]
     #[test]
     fn repeat_guided_sampler_centers_swap_on_active_offender_pair() {
         let state = repeated_pair_runtime_state();
@@ -1535,6 +1538,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "solver3-experimental-repeat-guidance")]
     #[test]
     fn guided_swap_sampler_returns_none_when_guided_and_random_proposals_are_tabu() {
         let state = repeated_pair_runtime_state();

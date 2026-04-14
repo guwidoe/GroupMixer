@@ -7,9 +7,9 @@ use gm_core::models::{
     RepeatEncounterParams, SimulatedAnnealingParams, Solver3CorrectnessLaneParams,
     Solver3DonorSessionTransplantParams, Solver3LocalImproverMode, Solver3LocalImproverParams,
     Solver3MultiRootBalancedSessionInheritanceParams, Solver3Params,
-    Solver3PathRelinkingOperatorVariant, Solver3SearchDriverMode,
-    Solver3SearchDriverParams, Solver3SessionAlignedPathRelinkingParams,
-    Solver3SgpWeekPairTabuParams, SolverKind, SolverParams, StopReason,
+    Solver3PathRelinkingOperatorVariant, Solver3SearchDriverMode, Solver3SearchDriverParams,
+    Solver3SessionAlignedPathRelinkingParams, Solver3SgpWeekPairTabuParams, SolverKind,
+    SolverParams, StopReason,
 };
 use gm_core::{
     default_solver_configuration_for, run_solver, run_solver_with_benchmark_observer,
@@ -766,6 +766,7 @@ fn solver3_conflict_restricted_tabu_mode_runs_through_public_entry_point() {
     assert!(telemetry.sgp_week_pair_tabu.is_some());
 }
 
+#[cfg(feature = "solver3-experimental-memetic")]
 #[test]
 fn solver3_steady_state_memetic_mode_runs_through_public_entry_point() {
     let mut input = solver3_driver_input();
@@ -791,6 +792,7 @@ fn solver3_steady_state_memetic_mode_runs_through_public_entry_point() {
     assert!(memetic.child_polish_iterations > 0);
 }
 
+#[cfg(feature = "solver3-experimental-memetic")]
 #[test]
 fn solver3_steady_state_memetic_mode_is_seed_stable() {
     let mut input_a = solver3_driver_input();
@@ -823,6 +825,7 @@ fn solver3_steady_state_memetic_mode_is_seed_stable() {
     assert_eq!(memetic_a, memetic_b);
 }
 
+#[cfg(feature = "solver3-experimental-memetic")]
 #[test]
 fn solver3_steady_state_memetic_supports_tabu_child_polish_when_repeat_constraint_exists() {
     let mut input = solver3_repeat_driver_input();
@@ -845,6 +848,7 @@ fn solver3_steady_state_memetic_supports_tabu_child_polish_when_repeat_constrain
     assert!(telemetry.memetic.is_some());
 }
 
+#[cfg(feature = "solver3-experimental-memetic")]
 #[test]
 fn solver3_steady_state_memetic_rejects_active_cliques() {
     let mut input = solver3_clique_driver_input();
@@ -864,6 +868,7 @@ fn solver3_steady_state_memetic_rejects_active_cliques() {
     );
 }
 
+#[cfg(feature = "solver3-experimental-recombination")]
 #[test]
 fn solver3_donor_session_transplant_mode_runs_through_public_entry_point() {
     let mut input = solver3_repeat_driver_input();
@@ -900,6 +905,7 @@ fn solver3_donor_session_transplant_mode_runs_through_public_entry_point() {
     assert!(donor.archive_size >= 1);
 }
 
+#[cfg(feature = "solver3-experimental-recombination")]
 #[test]
 fn solver3_session_aligned_path_relinking_mode_runs_through_public_entry_point() {
     let mut input = solver3_repeat_driver_input();
@@ -935,6 +941,7 @@ fn solver3_session_aligned_path_relinking_mode_runs_through_public_entry_point()
     assert!(telemetry.session_aligned_path_relinking.is_some());
 }
 
+#[cfg(feature = "solver3-experimental-recombination")]
 #[test]
 fn solver3_random_donor_session_control_runs_through_public_entry_point() {
     let mut input = solver3_repeat_driver_input();
@@ -942,8 +949,7 @@ fn solver3_random_donor_session_control_runs_through_public_entry_point() {
         search_driver: Solver3SearchDriverParams {
             mode: Solver3SearchDriverMode::SessionAlignedPathRelinking,
             session_aligned_path_relinking: Solver3SessionAlignedPathRelinkingParams {
-                operator_variant:
-                    Solver3PathRelinkingOperatorVariant::RandomDonorSessionControl,
+                operator_variant: Solver3PathRelinkingOperatorVariant::RandomDonorSessionControl,
                 recombination_no_improvement_window: 8,
                 recombination_cooldown_window: 8,
                 max_path_events_per_run: Some(1),
@@ -978,6 +984,7 @@ fn solver3_random_donor_session_control_runs_through_public_entry_point() {
     );
 }
 
+#[cfg(feature = "solver3-experimental-recombination")]
 #[test]
 fn solver3_random_macro_mutation_control_runs_through_public_entry_point() {
     let mut input = solver3_repeat_driver_input();
@@ -985,8 +992,7 @@ fn solver3_random_macro_mutation_control_runs_through_public_entry_point() {
         search_driver: Solver3SearchDriverParams {
             mode: Solver3SearchDriverMode::SessionAlignedPathRelinking,
             session_aligned_path_relinking: Solver3SessionAlignedPathRelinkingParams {
-                operator_variant:
-                    Solver3PathRelinkingOperatorVariant::RandomMacroMutationControl,
+                operator_variant: Solver3PathRelinkingOperatorVariant::RandomMacroMutationControl,
                 recombination_no_improvement_window: 8,
                 recombination_cooldown_window: 8,
                 max_path_events_per_run: Some(1),
@@ -1021,6 +1027,7 @@ fn solver3_random_macro_mutation_control_runs_through_public_entry_point() {
     );
 }
 
+#[cfg(feature = "solver3-experimental-recombination")]
 #[test]
 fn solver3_multi_root_balanced_session_inheritance_runs_through_public_entry_point() {
     let mut input = solver3_repeat_driver_input();
@@ -1048,8 +1055,7 @@ fn solver3_multi_root_balanced_session_inheritance_runs_through_public_entry_poi
         ..Default::default()
     });
 
-    let result = run_solver(&input)
-        .expect("multi-root balanced inheritance solve should succeed");
+    let result = run_solver(&input).expect("multi-root balanced inheritance solve should succeed");
     let telemetry = result
         .benchmark_telemetry
         .expect("multi-root balanced inheritance telemetry should exist");
@@ -1057,6 +1063,7 @@ fn solver3_multi_root_balanced_session_inheritance_runs_through_public_entry_poi
     assert!(telemetry.multi_root_balanced_session_inheritance.is_some());
 }
 
+#[cfg(feature = "solver3-experimental-recombination")]
 #[test]
 fn solver3_multi_root_balanced_session_inheritance_rejects_active_cliques() {
     let mut input = solver3_clique_driver_input();
@@ -1077,6 +1084,7 @@ fn solver3_multi_root_balanced_session_inheritance_rejects_active_cliques() {
     );
 }
 
+#[cfg(feature = "solver3-experimental-recombination")]
 #[test]
 fn solver3_session_aligned_path_relinking_rejects_active_cliques() {
     let mut input = solver3_clique_driver_input();

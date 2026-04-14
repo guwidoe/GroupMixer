@@ -7,6 +7,13 @@ edition = "2021"
 name = "gm_benchmarking"
 path = "src/lib.rs"
 
+[features]
+default = []
+solver3-experimental-repeat-guidance = ["gm-core/solver3-experimental-repeat-guidance"]
+solver3-experimental-memetic = ["gm-core/solver3-experimental-memetic"]
+solver3-experimental-recombination = ["gm-core/solver3-experimental-recombination"]
+solver3-research-all = ["gm-core/solver3-research-all"]
+
 [dependencies]
 anyhow = "1.0"
 chrono = { version = "0.4", features = ["clock", "serde"] }

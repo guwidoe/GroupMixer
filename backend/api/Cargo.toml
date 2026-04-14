@@ -7,6 +7,25 @@ edition = "2021"
 name = "gm-api"
 path = "src/main.rs"
 
+[features]
+default = []
+solver3-experimental-repeat-guidance = [
+    "gm-core/solver3-experimental-repeat-guidance",
+    "gm-contracts/solver3-experimental-repeat-guidance",
+]
+solver3-experimental-memetic = [
+    "gm-core/solver3-experimental-memetic",
+    "gm-contracts/solver3-experimental-memetic",
+]
+solver3-experimental-recombination = [
+    "gm-core/solver3-experimental-recombination",
+    "gm-contracts/solver3-experimental-recombination",
+]
+solver3-research-all = [
+    "gm-core/solver3-research-all",
+    "gm-contracts/solver3-research-all",
+]
+
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 axum = { version = "0.8.8", features = ["macros"] }

@@ -15,6 +15,18 @@ debug-invariant-checks = []
 # Enables solver3 correctness-lane hooks (sampled oracle + invariant checks during search).
 # Keep this disabled for performance benchmark lanes.
 solver3-oracle-checks = []
+# Enables solver3 repeat-guided hotspot proposal research.
+solver3-experimental-repeat-guidance = []
+# Enables solver3 steady-state memetic outer-driver research.
+solver3-experimental-memetic = []
+# Enables solver3 archive/recombination research drivers (donor/path/multi-root).
+solver3-experimental-recombination = []
+# Convenience umbrella for all solver3 research-only search features.
+solver3-research-all = [
+    "solver3-experimental-repeat-guidance",
+    "solver3-experimental-memetic",
+    "solver3-experimental-recombination",
+]
 
 [dependencies]
 serde = { version = "1.0.190", features = ["derive"] }

@@ -1,15 +1,13 @@
 use std::collections::VecDeque;
 
 use crate::models::{
-    BestScoreTimelinePoint, DonorSessionTransplantBenchmarkTelemetry,
-    MemeticBenchmarkTelemetry, MoveFamily, MoveFamilyBenchmarkTelemetry,
-    MoveFamilyBenchmarkTelemetrySummary, MovePolicy, ProgressUpdate,
-    MultiRootBalancedSessionInheritanceBenchmarkTelemetry,
+    BestScoreTimelinePoint, DonorSessionTransplantBenchmarkTelemetry, MemeticBenchmarkTelemetry,
+    MoveFamily, MoveFamilyBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
+    MultiRootBalancedSessionInheritanceBenchmarkTelemetry, ProgressUpdate,
     RepeatGuidedSwapBenchmarkTelemetry, SessionAlignedPathRelinkingBenchmarkTelemetry,
     SgpWeekPairTabuBenchmarkTelemetry, Solver3LocalImproverMode,
-    Solver3MultiRootBalancedSessionInheritanceParams,
-    Solver3PathRelinkingOperatorVariant, Solver3SearchDriverMode, SolverBenchmarkTelemetry,
-    SolverConfiguration, StopReason,
+    Solver3MultiRootBalancedSessionInheritanceParams, Solver3PathRelinkingOperatorVariant,
+    Solver3SearchDriverMode, SolverBenchmarkTelemetry, SolverConfiguration, StopReason,
 };
 use crate::runtime_target::displayed_total_iterations;
 use crate::solver_support::SolverError;
@@ -238,6 +236,64 @@ fn validate_multi_root_balanced_session_inheritance(
     Ok(())
 }
 
+fn ensure_search_driver_feature_available(
+    search_driver_mode: Solver3SearchDriverMode,
+) -> Result<(), SolverError> {
+    match search_driver_mode {
+        Solver3SearchDriverMode::SingleState => Ok(()),
+        Solver3SearchDriverMode::SteadyStateMemetic => {
+            #[cfg(not(feature = "solver3-experimental-memetic"))]
+            {
+                return Err(SolverError::ValidationError(
+                    "solver3 search_driver.mode=steady_state_memetic requires compiling gm-core with feature `solver3-experimental-memetic`"
+                        .into(),
+                ));
+            }
+            #[cfg(feature = "solver3-experimental-memetic")]
+            {
+                Ok(())
+            }
+        }
+        Solver3SearchDriverMode::DonorSessionTransplant
+        | Solver3SearchDriverMode::SessionAlignedPathRelinking
+        | Solver3SearchDriverMode::MultiRootBalancedSessionInheritance => {
+            #[cfg(not(feature = "solver3-experimental-recombination"))]
+            {
+                let mode_name = match search_driver_mode {
+                    Solver3SearchDriverMode::DonorSessionTransplant => "donor_session_transplant",
+                    Solver3SearchDriverMode::SessionAlignedPathRelinking => {
+                        "session_aligned_path_relinking"
+                    }
+                    Solver3SearchDriverMode::MultiRootBalancedSessionInheritance => {
+                        "multi_root_balanced_session_inheritance"
+                    }
+                    Solver3SearchDriverMode::SingleState
+                    | Solver3SearchDriverMode::SteadyStateMemetic => unreachable!(),
+                };
+                return Err(SolverError::ValidationError(format!(
+                    "solver3 search_driver.mode={mode_name} requires compiling gm-core with feature `solver3-experimental-recombination`"
+                )));
+            }
+            #[cfg(feature = "solver3-experimental-recombination")]
+            {
+                Ok(())
+            }
+        }
+    }
+}
+
+fn ensure_repeat_guidance_feature_available(_enabled: bool) -> Result<(), SolverError> {
+    #[cfg(not(feature = "solver3-experimental-repeat-guidance"))]
+    if _enabled {
+        return Err(SolverError::ValidationError(
+            "solver3 hotspot_guidance.repeat_guided_swaps requires compiling gm-core with feature `solver3-experimental-repeat-guidance`"
+                .into(),
+        ));
+    }
+
+    Ok(())
+}
+
 impl SearchRunContext {
     pub(crate) fn from_solver(
         configuration: &SolverConfiguration,
@@ -266,8 +322,9 @@ impl SearchRunContext {
         let donor_session_transplant = &solver3_params.search_driver.donor_session_transplant;
         let session_aligned_path_relinking =
             &solver3_params.search_driver.session_aligned_path_relinking;
-        let multi_root_balanced_session_inheritance =
-            &solver3_params.search_driver.multi_root_balanced_session_inheritance;
+        let multi_root_balanced_session_inheritance = &solver3_params
+            .search_driver
+            .multi_root_balanced_session_inheritance;
         let correctness_sample_every_accepted_moves =
             solver3_params.correctness_lane.sample_every_accepted_moves;
         let repeat_guided_swap_probability = solver3_params
@@ -278,6 +335,11 @@ impl SearchRunContext {
             .hotspot_guidance
             .repeat_guided_swaps
             .candidate_preview_budget;
+
+        ensure_search_driver_feature_available(search_driver_mode)?;
+        ensure_repeat_guidance_feature_available(
+            solver3_params.hotspot_guidance.repeat_guided_swaps.enabled,
+        )?;
 
         if correctness_sample_every_accepted_moves == 0 {
             return Err(SolverError::ValidationError(
@@ -425,8 +487,15 @@ impl SearchRunContext {
             .adaptive_raw_child_retention
             .keep_ratio
             .is_finite()
-            || !(0.0..=1.0).contains(&donor_session_transplant.adaptive_raw_child_retention.keep_ratio)
-            || donor_session_transplant.adaptive_raw_child_retention.keep_ratio == 0.0
+            || !(0.0..=1.0).contains(
+                &donor_session_transplant
+                    .adaptive_raw_child_retention
+                    .keep_ratio,
+            )
+            || donor_session_transplant
+                .adaptive_raw_child_retention
+                .keep_ratio
+                == 0.0
         {
             return Err(SolverError::ValidationError(
                 "solver3 search_driver.donor_session_transplant.adaptive_raw_child_retention.keep_ratio must be finite and within (0.0, 1.0]"
@@ -434,22 +503,34 @@ impl SearchRunContext {
             ));
         }
 
-        if donor_session_transplant.adaptive_raw_child_retention.warmup_samples == 0 {
+        if donor_session_transplant
+            .adaptive_raw_child_retention
+            .warmup_samples
+            == 0
+        {
             return Err(SolverError::ValidationError(
                 "solver3 search_driver.donor_session_transplant.adaptive_raw_child_retention.warmup_samples must be >= 1"
                     .into(),
             ));
         }
 
-        if donor_session_transplant.adaptive_raw_child_retention.history_limit == 0 {
+        if donor_session_transplant
+            .adaptive_raw_child_retention
+            .history_limit
+            == 0
+        {
             return Err(SolverError::ValidationError(
                 "solver3 search_driver.donor_session_transplant.adaptive_raw_child_retention.history_limit must be >= 1"
                     .into(),
             ));
         }
 
-        if donor_session_transplant.adaptive_raw_child_retention.history_limit
-            < donor_session_transplant.adaptive_raw_child_retention.warmup_samples
+        if donor_session_transplant
+            .adaptive_raw_child_retention
+            .history_limit
+            < donor_session_transplant
+                .adaptive_raw_child_retention
+                .warmup_samples
         {
             return Err(SolverError::ValidationError(
                 "solver3 search_driver.donor_session_transplant.adaptive_raw_child_retention.history_limit must be >= warmup_samples"
@@ -542,9 +623,15 @@ impl SearchRunContext {
             .adaptive_raw_child_retention
             .keep_ratio
             .is_finite()
-            || !(0.0..=1.0)
-                .contains(&session_aligned_path_relinking.adaptive_raw_child_retention.keep_ratio)
-            || session_aligned_path_relinking.adaptive_raw_child_retention.keep_ratio == 0.0
+            || !(0.0..=1.0).contains(
+                &session_aligned_path_relinking
+                    .adaptive_raw_child_retention
+                    .keep_ratio,
+            )
+            || session_aligned_path_relinking
+                .adaptive_raw_child_retention
+                .keep_ratio
+                == 0.0
         {
             return Err(SolverError::ValidationError(
                 "solver3 search_driver.session_aligned_path_relinking.adaptive_raw_child_retention.keep_ratio must be finite and within (0.0, 1.0]"
@@ -621,9 +708,7 @@ impl SearchRunContext {
             ));
         }
 
-        validate_multi_root_balanced_session_inheritance(
-            multi_root_balanced_session_inheritance,
-        )?;
+        validate_multi_root_balanced_session_inheritance(multi_root_balanced_session_inheritance)?;
 
         #[cfg(not(feature = "solver3-oracle-checks"))]
         if correctness_lane_enabled {
@@ -819,9 +904,10 @@ impl SearchRunContext {
                 retry_cap: sgp_week_pair_tabu.retry_cap as usize,
                 aspiration_enabled: sgp_week_pair_tabu.aspiration_enabled,
                 session_scale_reference_participants: sgp_week_pair_tabu
-                    .session_scale_reference_participants as u64,
-                reactive_no_improvement_window: sgp_week_pair_tabu
-                    .reactive_no_improvement_window as u64,
+                    .session_scale_reference_participants
+                    as u64,
+                reactive_no_improvement_window: sgp_week_pair_tabu.reactive_no_improvement_window
+                    as u64,
                 reactive_max_multiplier: sgp_week_pair_tabu.reactive_max_multiplier as u64,
                 conflict_restricted_swap_sampling_enabled: sgp_week_pair_tabu
                     .conflict_restricted_swap_sampling_enabled,
@@ -840,14 +926,18 @@ impl SearchRunContext {
             donor_session_transplant: Some(DonorSessionTransplantConfig {
                 archive_size: donor_session_transplant.archive_size as usize,
                 recombination_no_improvement_window: donor_session_transplant
-                    .recombination_no_improvement_window as u64,
+                    .recombination_no_improvement_window
+                    as u64,
                 recombination_cooldown_window: donor_session_transplant
-                    .recombination_cooldown_window as u64,
+                    .recombination_cooldown_window
+                    as u64,
                 max_recombination_events_per_run: donor_session_transplant
                     .max_recombination_events_per_run
                     .map(u64::from),
                 adaptive_raw_child_retention: AdaptiveRawChildRetentionConfig {
-                    keep_ratio: donor_session_transplant.adaptive_raw_child_retention.keep_ratio,
+                    keep_ratio: donor_session_transplant
+                        .adaptive_raw_child_retention
+                        .keep_ratio,
                     warmup_samples: donor_session_transplant
                         .adaptive_raw_child_retention
                         .warmup_samples as usize,
@@ -858,28 +948,34 @@ impl SearchRunContext {
                 swap_local_optimum_certification_enabled: donor_session_transplant
                     .swap_local_optimum_certification_enabled,
                 child_polish_iterations_per_stagnation_window: donor_session_transplant
-                    .child_polish_iterations_per_stagnation_window as u64,
+                    .child_polish_iterations_per_stagnation_window
+                    as u64,
                 child_polish_no_improvement_iterations_per_stagnation_window:
                     donor_session_transplant
                         .child_polish_no_improvement_iterations_per_stagnation_window
                         as u64,
                 child_polish_max_stagnation_windows: donor_session_transplant
-                    .child_polish_max_stagnation_windows as u64,
+                    .child_polish_max_stagnation_windows
+                    as u64,
             }),
             session_aligned_path_relinking: Some(SessionAlignedPathRelinkingConfig {
                 operator_variant: session_aligned_path_relinking.operator_variant,
                 archive_size: session_aligned_path_relinking.archive_size as usize,
                 recombination_no_improvement_window: session_aligned_path_relinking
-                    .recombination_no_improvement_window as u64,
+                    .recombination_no_improvement_window
+                    as u64,
                 recombination_cooldown_window: session_aligned_path_relinking
-                    .recombination_cooldown_window as u64,
+                    .recombination_cooldown_window
+                    as u64,
                 max_path_events_per_run: session_aligned_path_relinking
                     .max_path_events_per_run
                     .map(u64::from),
                 max_session_imports_per_event: session_aligned_path_relinking
-                    .max_session_imports_per_event as usize,
+                    .max_session_imports_per_event
+                    as usize,
                 path_step_no_improvement_limit: session_aligned_path_relinking
-                    .path_step_no_improvement_limit as usize,
+                    .path_step_no_improvement_limit
+                    as usize,
                 min_aligned_session_distance_for_relinking: session_aligned_path_relinking
                     .min_aligned_session_distance_for_relinking,
                 adaptive_raw_child_retention: AdaptiveRawChildRetentionConfig {
@@ -896,37 +992,37 @@ impl SearchRunContext {
                 swap_local_optimum_certification_enabled: session_aligned_path_relinking
                     .swap_local_optimum_certification_enabled,
                 child_polish_iterations_per_stagnation_window: session_aligned_path_relinking
-                    .child_polish_iterations_per_stagnation_window as u64,
+                    .child_polish_iterations_per_stagnation_window
+                    as u64,
                 child_polish_no_improvement_iterations_per_stagnation_window:
                     session_aligned_path_relinking
                         .child_polish_no_improvement_iterations_per_stagnation_window
                         as u64,
                 child_polish_max_stagnation_windows: session_aligned_path_relinking
-                    .child_polish_max_stagnation_windows as u64,
+                    .child_polish_max_stagnation_windows
+                    as u64,
             }),
             multi_root_balanced_session_inheritance: Some(
                 MultiRootBalancedSessionInheritanceConfig {
                     root_count: multi_root_balanced_session_inheritance.root_count as usize,
                     archive_size_per_root: multi_root_balanced_session_inheritance
                         .archive_size_per_root as usize,
-                    recombination_no_improvement_window:
-                        multi_root_balanced_session_inheritance
-                            .recombination_no_improvement_window as u64,
+                    recombination_no_improvement_window: multi_root_balanced_session_inheritance
+                        .recombination_no_improvement_window
+                        as u64,
                     recombination_cooldown_window: multi_root_balanced_session_inheritance
-                        .recombination_cooldown_window as u64,
-                    max_recombination_events_per_run:
-                        multi_root_balanced_session_inheritance
-                            .max_recombination_events_per_run
-                            .map(u64::from),
-                    max_parent_score_delta_from_best:
-                        multi_root_balanced_session_inheritance
-                            .max_parent_score_delta_from_best,
-                    min_cross_root_session_disagreement:
-                        multi_root_balanced_session_inheritance
-                            .min_cross_root_session_disagreement as usize,
-                    parent_a_differing_session_share:
-                        multi_root_balanced_session_inheritance
-                            .parent_a_differing_session_share,
+                        .recombination_cooldown_window
+                        as u64,
+                    max_recombination_events_per_run: multi_root_balanced_session_inheritance
+                        .max_recombination_events_per_run
+                        .map(u64::from),
+                    max_parent_score_delta_from_best: multi_root_balanced_session_inheritance
+                        .max_parent_score_delta_from_best,
+                    min_cross_root_session_disagreement: multi_root_balanced_session_inheritance
+                        .min_cross_root_session_disagreement
+                        as usize,
+                    parent_a_differing_session_share: multi_root_balanced_session_inheritance
+                        .parent_a_differing_session_share,
                     adaptive_raw_child_retention: AdaptiveRawChildRetentionConfig {
                         keep_ratio: multi_root_balanced_session_inheritance
                             .adaptive_raw_child_retention
@@ -943,14 +1039,15 @@ impl SearchRunContext {
                             .swap_local_optimum_certification_enabled,
                     child_polish_iterations_per_stagnation_window:
                         multi_root_balanced_session_inheritance
-                            .child_polish_iterations_per_stagnation_window as u64,
+                            .child_polish_iterations_per_stagnation_window
+                            as u64,
                     child_polish_no_improvement_iterations_per_stagnation_window:
                         multi_root_balanced_session_inheritance
                             .child_polish_no_improvement_iterations_per_stagnation_window
                             as u64,
-                    child_polish_max_stagnation_windows:
-                        multi_root_balanced_session_inheritance
-                            .child_polish_max_stagnation_windows as u64,
+                    child_polish_max_stagnation_windows: multi_root_balanced_session_inheritance
+                        .child_polish_max_stagnation_windows
+                        as u64,
                 },
             ),
         })
@@ -1354,9 +1451,7 @@ impl SearchProgressState {
             sgp_week_pair_tabu: self.sgp_week_pair_tabu_telemetry.clone(),
             memetic: self.memetic_telemetry.clone(),
             donor_session_transplant: self.donor_session_transplant_telemetry.clone(),
-            session_aligned_path_relinking: self
-                .session_aligned_path_relinking_telemetry
-                .clone(),
+            session_aligned_path_relinking: self.session_aligned_path_relinking_telemetry.clone(),
             multi_root_balanced_session_inheritance: self
                 .multi_root_balanced_session_inheritance_telemetry
                 .clone(),
@@ -1417,9 +1512,8 @@ mod tests {
         Solver3MultiRootBalancedSessionInheritanceParams, Solver3Params,
         Solver3PathRelinkingOperatorVariant, Solver3RepeatGuidedSwapParams,
         Solver3SearchDriverMode, Solver3SearchDriverParams,
-        Solver3SessionAlignedPathRelinkingParams,
-        Solver3SgpWeekPairTabuParams, Solver3SgpWeekPairTabuTenureMode,
-        SolverConfiguration, SolverParams, StopConditions,
+        Solver3SessionAlignedPathRelinkingParams, Solver3SgpWeekPairTabuParams,
+        Solver3SgpWeekPairTabuTenureMode, SolverConfiguration, SolverParams, StopConditions,
     };
 
     use super::{SearchProgressState, SearchRunContext};
@@ -1778,6 +1872,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "solver3-experimental-memetic")]
     #[test]
     fn run_context_accepts_memetic_driver_with_record_to_record() {
         let state = simple_state();
@@ -1797,6 +1892,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "solver3-experimental-recombination")]
     #[test]
     fn run_context_accepts_donor_session_transplant_driver_with_record_to_record() {
         let state = simple_state();
@@ -1817,6 +1913,7 @@ mod tests {
         assert_eq!(context.donor_session_transplant.unwrap().archive_size, 4);
     }
 
+    #[cfg(feature = "solver3-experimental-recombination")]
     #[test]
     fn run_context_accepts_session_aligned_path_relinking_driver_with_record_to_record() {
         let state = simple_state();
@@ -1845,6 +1942,7 @@ mod tests {
         assert_eq!(config.min_aligned_session_distance_for_relinking, 1);
     }
 
+    #[cfg(feature = "solver3-experimental-recombination")]
     #[test]
     fn run_context_accepts_multi_root_balanced_session_inheritance_driver() {
         let state = repeat_state();
@@ -1989,6 +2087,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "solver3-experimental-memetic")]
     #[test]
     fn run_context_rejects_memetic_driver_when_move_policy_disallows_swap() {
         let state = simple_state();
@@ -2013,6 +2112,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "solver3-experimental-recombination")]
     #[test]
     fn run_context_rejects_zero_donor_archive_size() {
         let state = simple_state();
@@ -2036,6 +2136,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "solver3-experimental-recombination")]
     #[test]
     fn run_context_rejects_nonpositive_donor_recombination_windows() {
         let state = simple_state();
@@ -2053,9 +2154,8 @@ mod tests {
 
         let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
         assert!(
-            err.to_string().contains(
-                "donor_session_transplant.recombination_no_improvement_window"
-            ),
+            err.to_string()
+                .contains("donor_session_transplant.recombination_no_improvement_window"),
             "unexpected error: {err}"
         );
 
@@ -2077,6 +2177,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "solver3-experimental-recombination")]
     #[test]
     fn run_context_rejects_invalid_donor_recombination_budgets() {
         let state = simple_state();
@@ -2093,9 +2194,8 @@ mod tests {
         });
         let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
         assert!(
-            err.to_string().contains(
-                "donor_session_transplant.max_recombination_events_per_run"
-            ),
+            err.to_string()
+                .contains("donor_session_transplant.max_recombination_events_per_run"),
             "unexpected error: {err}"
         );
 
@@ -2136,9 +2236,8 @@ mod tests {
         });
         let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
         assert!(
-            err.to_string().contains(
-                "donor_session_transplant.adaptive_raw_child_retention.warmup_samples"
-            ),
+            err.to_string()
+                .contains("donor_session_transplant.adaptive_raw_child_retention.warmup_samples"),
             "unexpected error: {err}"
         );
 
@@ -2159,9 +2258,8 @@ mod tests {
         });
         let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
         assert!(
-            err.to_string().contains(
-                "donor_session_transplant.adaptive_raw_child_retention.history_limit"
-            ),
+            err.to_string()
+                .contains("donor_session_transplant.adaptive_raw_child_retention.history_limit"),
             "unexpected error: {err}"
         );
 
@@ -2219,6 +2317,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "solver3-experimental-recombination")]
     #[test]
     fn run_context_rejects_donor_driver_when_move_policy_disallows_swap() {
         let state = simple_state();
@@ -2243,6 +2342,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "solver3-experimental-recombination")]
     #[test]
     fn run_context_rejects_invalid_session_aligned_path_relinking_config() {
         let state = simple_state();
@@ -2259,9 +2359,8 @@ mod tests {
         });
         let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
         assert!(
-            err.to_string().contains(
-                "session_aligned_path_relinking.max_session_imports_per_event"
-            ),
+            err.to_string()
+                .contains("session_aligned_path_relinking.max_session_imports_per_event"),
             "unexpected error: {err}"
         );
 
@@ -2281,13 +2380,13 @@ mod tests {
         });
         let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
         assert!(
-            err.to_string().contains(
-                "session_aligned_path_relinking.adaptive_raw_child_retention.keep_ratio"
-            ),
+            err.to_string()
+                .contains("session_aligned_path_relinking.adaptive_raw_child_retention.keep_ratio"),
             "unexpected error: {err}"
         );
     }
 
+    #[cfg(feature = "solver3-experimental-recombination")]
     #[test]
     fn run_context_rejects_session_aligned_path_relinking_when_move_policy_disallows_swap() {
         let state = simple_state();
@@ -2312,6 +2411,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "solver3-experimental-recombination")]
     #[test]
     fn run_context_rejects_invalid_multi_root_balanced_session_inheritance_config() {
         let state = repeat_state();
@@ -2354,6 +2454,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "solver3-experimental-recombination")]
     #[test]
     fn run_context_rejects_multi_root_balanced_session_inheritance_without_repeat_constraint() {
         let state = simple_state();
@@ -2413,6 +2514,72 @@ mod tests {
         assert_eq!(context.correctness_sample_every_accepted_moves, 3);
     }
 
+    #[cfg(not(feature = "solver3-experimental-memetic"))]
+    #[test]
+    fn run_context_rejects_memetic_driver_when_feature_is_disabled() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                mode: Solver3SearchDriverMode::SteadyStateMemetic,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string().contains("solver3-experimental-memetic"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[cfg(not(feature = "solver3-experimental-recombination"))]
+    #[test]
+    fn run_context_rejects_recombination_driver_when_feature_is_disabled() {
+        let state = repeat_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                mode: Solver3SearchDriverMode::DonorSessionTransplant,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("solver3-experimental-recombination"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[cfg(not(feature = "solver3-experimental-repeat-guidance"))]
+    #[test]
+    fn run_context_rejects_repeat_guidance_when_feature_is_disabled() {
+        let state = repeat_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            hotspot_guidance: Solver3HotspotGuidanceParams {
+                repeat_guided_swaps: Solver3RepeatGuidedSwapParams {
+                    enabled: true,
+                    guided_proposal_probability: 0.5,
+                    candidate_preview_budget: 8,
+                },
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("solver3-experimental-repeat-guidance"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[cfg(feature = "solver3-experimental-repeat-guidance")]
     #[test]
     fn run_context_rejects_out_of_range_repeat_guidance_probability() {
         let state = simple_state();
@@ -2436,6 +2603,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "solver3-experimental-repeat-guidance")]
     #[test]
     fn run_context_rejects_zero_repeat_guidance_budget_when_enabled() {
         let state = simple_state();
@@ -2459,6 +2627,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "solver3-experimental-repeat-guidance")]
     #[test]
     fn run_context_auto_disables_repeat_guidance_without_repeat_constraint() {
         let state = simple_state();
