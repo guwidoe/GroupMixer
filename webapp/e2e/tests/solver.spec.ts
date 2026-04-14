@@ -27,14 +27,14 @@ test.describe('Solver', () => {
     await expect(page.getByText(/Settings|Parameters|Configuration|Iteration|Auto/i).first()).toBeVisible();
   });
 
-  test('results tab is accessible', async ({ page }) => {
-    await clickAndWaitForUrl(page, page.getByRole('link', { name: /Results/i }), /\/app\/history/);
+  test('saved results tab is accessible', async ({ page }) => {
+    await clickAndWaitForUrl(page, page.getByRole('link', { name: /saved results/i }), /\/app\/history/);
 
     await expect(page.locator('main')).toBeVisible();
   });
 
-  test('result details tab is accessible', async ({ page }) => {
-    await clickAndWaitForUrl(page, page.getByRole('link', { name: /details|result details/i }), /\/app\/results/);
+  test('current result tab is accessible', async ({ page }) => {
+    await clickAndWaitForUrl(page, page.getByRole('link', { name: /current/i }), /\/app\/results/);
 
     await expect(page.locator('main')).toBeVisible();
   });

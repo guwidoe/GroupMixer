@@ -75,35 +75,30 @@ test.describe('Workflow coverage', () => {
     await dismissNotifications(page);
     await clickAndWaitForUrl(
       page,
-      page.getByRole('link', { name: /results/i }),
-      /\/app\/history/,
-      page.getByText(/result 1/i).first(),
-    );
-
-    await clickAndWaitForUrl(
-      page,
-      page.getByRole('link', { name: /details|result details/i }),
+      page.getByRole('button', { name: /open current result/i }).first(),
       /\/app\/results/,
       page.getByRole('heading', { name: /optimization results/i }),
     );
-    await expect(page.getByText(/group assignments/i)).toBeVisible();
+
+    await expect(page.getByText(/assignment layout/i)).toBeVisible();
     await expect(page.getByText(/4 people assigned/i).first()).toBeVisible();
     await expect(page.getByText('Alice').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /share & export/i })).toBeVisible();
 
     const downloadPromise = page.waitForEvent('download');
-    await page.getByRole('button', { name: /^export$/i }).click();
-    await page.getByRole('button', { name: /export as json/i }).click();
+    await page.getByRole('button', { name: /share & export/i }).click();
+    await page.getByRole('button', { name: /download result snapshot/i }).click();
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toMatch(/result.*\.json/i);
+    expect(download.suggestedFilename()).toMatch(/result-bundle\.json/i);
 
     await dismissNotifications(page);
     await clickAndWaitForUrl(
       page,
-      page.getByRole('link', { name: /results/i }),
+      page.getByRole('link', { name: /saved results/i }),
       /\/app\/history/,
       page.getByText(/result 1/i).first(),
     );
-    await page.getByRole('button', { name: /view in result details/i }).click();
+    await page.getByRole('button', { name: /open current result/i }).click();
     await expect(page.getByRole('heading', { name: /optimization results/i })).toBeVisible();
   });
 
@@ -162,7 +157,7 @@ test.describe('Workflow coverage', () => {
     await dismissNotifications(page);
     await clickAndWaitForUrl(
       page,
-      page.getByRole('link', { name: /results/i }),
+      page.getByRole('link', { name: /saved results/i }),
       /\/app\/history/,
       page.getByText(/result 1/i).first(),
     );

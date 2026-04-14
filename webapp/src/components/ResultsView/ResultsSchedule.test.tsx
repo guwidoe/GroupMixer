@@ -7,8 +7,8 @@ import { ResultsSchedule } from "./ResultsSchedule";
 import { createSampleScenario, createSampleSolution } from "../../test/fixtures";
 
 vi.mock("./ResultsScheduleGrid", () => ({
-  ResultsScheduleGrid: ({ sessionData }: { sessionData: Array<{ sessionIndex: number }> }) => (
-    <div>grid view ({sessionData.length})</div>
+  ResultsScheduleGrid: ({ sessionData, selectedSessionIndex }: { sessionData: Array<{ sessionIndex: number }>; selectedSessionIndex?: number | null }) => (
+    <div>grid view ({sessionData.length}) / selected:{selectedSessionIndex ?? 'all'}</div>
   ),
 }));
 
@@ -29,12 +29,35 @@ const solution = createSampleSolution();
 const sessionData = [
   {
     sessionIndex: 0,
+    label: 'Session 1',
     totalPeople: 4,
+    totalCapacity: 4,
+    openSeats: 0,
     groups: [
       {
         id: "g1",
         size: 2,
+        assignedCount: 2,
+        openSeats: 0,
+        fillRatio: 1,
         people: effectiveScenario.people.slice(0, 2),
+      },
+    ],
+  },
+  {
+    sessionIndex: 1,
+    label: 'Session 2',
+    totalPeople: 4,
+    totalCapacity: 4,
+    openSeats: 0,
+    groups: [
+      {
+        id: "g1",
+        size: 2,
+        assignedCount: 2,
+        openSeats: 0,
+        fillRatio: 1,
+        people: effectiveScenario.people.slice(2),
       },
     ],
   },
@@ -82,7 +105,7 @@ describe("ResultsSchedule", () => {
       />
     );
 
-    expect(screen.getByText("grid view (1)")).toBeInTheDocument();
+    expect(screen.getByText("grid view (2) / selected:all")).toBeInTheDocument();
 
     rerender(
       <ResultsSchedule
@@ -137,5 +160,31 @@ describe("ResultsSchedule", () => {
     expect(onViewModeChange).toHaveBeenNthCalledWith(1, "list");
     expect(onViewModeChange).toHaveBeenNthCalledWith(2, "visualize");
     expect(onViewModeChange).toHaveBeenNthCalledWith(3, "grid");
+  });
+
+  it("lets users focus the grid on a single session via filter chips", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ResultsSchedule
+        viewMode="grid"
+        onViewModeChange={vi.fn()}
+        resultsModel={resultsModel}
+        effectiveScenario={effectiveScenario}
+        solution={solution}
+        vizPluginId="contact-graph"
+        onVizPluginChange={vi.fn()}
+        vizExportRef={createRef<HTMLDivElement>()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /all sessions/i })).toBeInTheDocument();
+    expect(screen.getByText('grid view (2) / selected:all')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /session 2/i }));
+    expect(screen.getByText('grid view (2) / selected:1')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /all sessions/i }));
+    expect(screen.getByText('grid view (2) / selected:all')).toBeInTheDocument();
   });
 });

@@ -7,34 +7,35 @@ test.describe('Results', () => {
     await closeTransientUi(page);
   });
 
-  test('results tab is accessible', async ({ page }) => {
-    await clickAndWaitForUrl(page, page.getByRole('link', { name: /Results/i }), /\/app\/history/);
+  test('saved results tab is accessible', async ({ page }) => {
+    await clickAndWaitForUrl(page, page.getByRole('link', { name: /saved results/i }), /\/app\/history/);
 
     await expect(page.locator('main')).toBeVisible();
   });
 
-  test('result details tab is accessible', async ({ page }) => {
-    await clickAndWaitForUrl(page, page.getByRole('link', { name: /details|result details/i }), /\/app\/results/);
+  test('current result tab is accessible', async ({ page }) => {
+    await clickAndWaitForUrl(page, page.getByRole('link', { name: /current/i }), /\/app\/results/);
 
     await expect(page.locator('main')).toBeVisible();
   });
 
-  test('results page has expected structure', async ({ page }) => {
-    await clickAndWaitForUrl(page, page.getByRole('link', { name: /Results/i }), /\/app\/history/);
+  test('saved results page has expected structure', async ({ page }) => {
+    await clickAndWaitForUrl(page, page.getByRole('link', { name: /saved results/i }), /\/app\/history/);
 
     const pageContent = page.locator('main, [role="main"], .results-page, .content');
     await expect(pageContent.first()).toBeVisible();
+    await expect(page.locator('main')).toContainText(/saved results|no scenario selected/i);
   });
 
-  test('result details shows empty state when no results', async ({ page }) => {
-    await clickAndWaitForUrl(page, page.getByRole('link', { name: /details|result details/i }), /\/app\/results/);
+  test('current result shows empty state when no results', async ({ page }) => {
+    await clickAndWaitForUrl(page, page.getByRole('link', { name: /current/i }), /\/app\/results/);
 
     await expect(page.locator('main')).toContainText(/No.*result|Select.*result|Run.*solver/i);
   });
 
-  test('navigation between result tabs works', async ({ page }) => {
-    await clickAndWaitForUrl(page, page.getByRole('link', { name: /Results/i }), /\/app\/history/);
-    await clickAndWaitForUrl(page, page.getByRole('link', { name: /details|result details/i }), /\/app\/results/);
+  test('navigation between saved results and current result works', async ({ page }) => {
+    await clickAndWaitForUrl(page, page.getByRole('link', { name: /saved results/i }), /\/app\/history/);
+    await clickAndWaitForUrl(page, page.getByRole('link', { name: /current/i }), /\/app\/results/);
     await clickAndWaitForUrl(page, page.getByRole('link', { name: /editor|manual editor/i }), /\/app\/editor/);
 
     await expect(page.locator('main')).toBeVisible();
