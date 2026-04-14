@@ -1,4 +1,5 @@
 import type { Scenario, Solution } from "../types";
+import { buildResultsViewModel } from "../services/results/buildResultsModel";
 
 function getAttributeKeys(scenario: Scenario): string[] {
   const attributeKeySet = new Set<string>();
@@ -30,6 +31,7 @@ export function generateAssignmentsCsv(
   options?: GenerateAssignmentsCsvOptions
 ): string {
   const attributeKeys = getAttributeKeys(scenario);
+  const resultsModel = buildResultsViewModel(scenario, solution);
 
   const headers = [
     "Person ID",
@@ -39,21 +41,23 @@ export function generateAssignmentsCsv(
     ...attributeKeys,
   ];
 
-  const rows = solution.assignments.map((assignment) => {
-    const person = scenario.people.find((p) => p.id === assignment.person_id);
-    const personName = person ? person.attributes.name : assignment.person_id;
-    const attributeValues = attributeKeys.map(
-      (key) => person?.attributes?.[key] ?? ""
-    );
+  const rows = resultsModel.participants.flatMap((participant) =>
+    participant.sessions
+      .filter((assignment) => assignment.isAssigned && assignment.groupId)
+      .map((assignment) => {
+        const attributeValues = attributeKeys.map(
+          (key) => participant.person.attributes?.[key] ?? ""
+        );
 
-    return [
-      assignment.person_id,
-      assignment.group_id,
-      assignment.session_id + 1,
-      personName,
-      ...attributeValues,
-    ];
-  });
+        return [
+          participant.personId,
+          assignment.groupId ?? "",
+          assignment.sessionIndex + 1,
+          participant.person.attributes?.name ?? "",
+          ...attributeValues,
+        ];
+      })
+  );
 
   const exportedAt = options?.exportedAt ?? Date.now();
   const metadata: Array<[string, string]> = [

@@ -1,26 +1,15 @@
 import React from 'react';
 import { BarChart3, Hash, LayoutGrid } from 'lucide-react';
 import type { Scenario, Solution } from '../../types';
+import type { ResultsViewModel } from '../../services/results/buildResultsModel';
 import { ResultsScheduleGrid } from './ResultsScheduleGrid';
 import { ResultsScheduleList } from './ResultsScheduleList';
 import { ResultsScheduleVisualization } from './ResultsScheduleVisualization';
 
-interface SessionGroup {
-  id: string;
-  size: number;
-  people: Array<Scenario['people'][number]>;
-}
-
-interface SessionData {
-  sessionIndex: number;
-  groups: SessionGroup[];
-  totalPeople: number;
-}
-
 interface ResultsScheduleProps {
   viewMode: 'grid' | 'list' | 'visualize';
   onViewModeChange: (mode: 'grid' | 'list' | 'visualize') => void;
-  sessionData: SessionData[];
+  resultsModel: ResultsViewModel | null;
   effectiveScenario: Scenario;
   solution: Solution;
   vizPluginId: string;
@@ -31,13 +20,17 @@ interface ResultsScheduleProps {
 export function ResultsSchedule({
   viewMode,
   onViewModeChange,
-  sessionData,
+  resultsModel,
   effectiveScenario,
   solution,
   vizPluginId,
   onVizPluginChange,
   vizExportRef,
 }: ResultsScheduleProps) {
+  if (!resultsModel) {
+    return null;
+  }
+
   return (
     <div className="rounded-lg border transition-colors" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
       <div className="border-b px-6 py-4" style={{ borderColor: 'var(--border-primary)' }}>
@@ -116,9 +109,9 @@ export function ResultsSchedule({
 
       <div className="p-6">
         {viewMode === 'grid' ? (
-          <ResultsScheduleGrid sessionData={sessionData} />
+          <ResultsScheduleGrid sessionData={resultsModel.sessions} />
         ) : viewMode === 'list' ? (
-          <ResultsScheduleList effectiveScenario={effectiveScenario} solution={solution} />
+          <ResultsScheduleList participants={resultsModel.participants} sessionCount={resultsModel.summary.totalSessions} />
         ) : (
           <ResultsScheduleVisualization
             vizExportRef={vizExportRef}

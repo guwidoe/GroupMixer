@@ -13,8 +13,8 @@ vi.mock("./ResultsScheduleGrid", () => ({
 }));
 
 vi.mock("./ResultsScheduleList", () => ({
-  ResultsScheduleList: ({ effectiveScenario }: { effectiveScenario: { people: Array<unknown> } }) => (
-    <div>list view ({effectiveScenario.people.length})</div>
+  ResultsScheduleList: ({ participants }: { participants: Array<unknown> }) => (
+    <div>list view ({participants.length})</div>
   ),
 }));
 
@@ -40,13 +40,40 @@ const sessionData = [
   },
 ];
 
+const resultsModel = {
+  summary: {
+    totalPeople: effectiveScenario.people.length,
+    totalGroups: effectiveScenario.groups.length,
+    totalSessions: effectiveScenario.num_sessions,
+    totalAssignments: solution.assignments.length,
+    totalCapacity: 4,
+    openSeats: 0,
+    averageFillPercent: 100,
+  },
+  sessions: sessionData,
+  participants: effectiveScenario.people.map((person) => ({
+    personId: person.id,
+    displayName: person.attributes.name,
+    person,
+    assignedSessions: 2,
+    unassignedSessions: 0,
+    sessions: Array.from({ length: effectiveScenario.num_sessions }, (_, sessionIndex) => ({
+      sessionIndex,
+      sessionLabel: `Session ${sessionIndex + 1}`,
+      groupId: 'g1',
+      groupSize: 2,
+      isAssigned: true,
+    })),
+  })),
+};
+
 describe("ResultsSchedule", () => {
   it("renders the selected child view", () => {
     const { rerender } = render(
       <ResultsSchedule
         viewMode="grid"
         onViewModeChange={vi.fn()}
-        sessionData={sessionData}
+        resultsModel={resultsModel}
         effectiveScenario={effectiveScenario}
         solution={solution}
         vizPluginId="contact-graph"
@@ -61,7 +88,7 @@ describe("ResultsSchedule", () => {
       <ResultsSchedule
         viewMode="list"
         onViewModeChange={vi.fn()}
-        sessionData={sessionData}
+        resultsModel={resultsModel}
         effectiveScenario={effectiveScenario}
         solution={solution}
         vizPluginId="contact-graph"
@@ -75,7 +102,7 @@ describe("ResultsSchedule", () => {
       <ResultsSchedule
         viewMode="visualize"
         onViewModeChange={vi.fn()}
-        sessionData={sessionData}
+        resultsModel={resultsModel}
         effectiveScenario={effectiveScenario}
         solution={solution}
         vizPluginId="contact-graph"
@@ -94,7 +121,7 @@ describe("ResultsSchedule", () => {
       <ResultsSchedule
         viewMode="grid"
         onViewModeChange={onViewModeChange}
-        sessionData={sessionData}
+        resultsModel={resultsModel}
         effectiveScenario={effectiveScenario}
         solution={solution}
         vizPluginId="contact-graph"

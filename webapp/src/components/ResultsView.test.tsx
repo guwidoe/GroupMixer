@@ -35,14 +35,14 @@ vi.mock('./ResultsView/ResultsMetrics', () => ({
 
 vi.mock('./ResultsView/ResultsSchedule', () => ({
   ResultsSchedule: ({
-    sessionData,
+    resultsModel,
     effectiveScenario,
     vizPluginId,
   }: {
-    sessionData: Array<unknown>;
+    resultsModel: { sessions: Array<unknown> } | null;
     effectiveScenario: { groups: Array<{ id: string }> };
     vizPluginId: string;
-  }) => <div>{`schedule:${sessionData.length}:${effectiveScenario.groups[0]?.id ?? 'none'}:${vizPluginId}`}</div>,
+  }) => <div>{`schedule:${resultsModel?.sessions.length ?? 0}:${effectiveScenario.groups[0]?.id ?? 'none'}:${vizPluginId}`}</div>,
 }));
 
 describe('ResultsView', () => {

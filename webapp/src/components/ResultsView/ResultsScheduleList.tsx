@@ -1,14 +1,13 @@
 import React from 'react';
 import { Users } from 'lucide-react';
-import { getPersonDisplayName } from '../../services/scenarioAttributes';
-import type { Scenario, Solution } from '../../types';
+import type { ResultsParticipantData } from '../../services/results/buildResultsModel';
 
 interface ResultsScheduleListProps {
-  effectiveScenario: Scenario;
-  solution: Solution;
+  participants: ResultsParticipantData[];
+  sessionCount: number;
 }
 
-export function ResultsScheduleList({ effectiveScenario, solution }: ResultsScheduleListProps) {
+export function ResultsScheduleList({ participants, sessionCount }: ResultsScheduleListProps) {
   return (
     <div
       className="rounded-lg border overflow-hidden transition-colors"
@@ -21,7 +20,7 @@ export function ResultsScheduleList({ effectiveScenario, solution }: ResultsSche
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                 Person
               </th>
-              {Array.from({ length: effectiveScenario.num_sessions || 0 }, (_, i) => (
+              {Array.from({ length: sessionCount }, (_, i) => (
                 <th key={i} className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                   Session {i + 1}
                 </th>
@@ -29,13 +28,10 @@ export function ResultsScheduleList({ effectiveScenario, solution }: ResultsSche
             </tr>
           </thead>
           <tbody className="divide-y" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-secondary)' }}>
-            {effectiveScenario.people.map((person) => {
-              const personAssignments = solution.assignments.filter(a => a.person_id === person.id);
-              const displayName = getPersonDisplayName(person);
-
+            {participants.map((participant) => {
               return (
                 <tr
-                  key={person.id}
+                  key={participant.personId}
                   className="transition-colors"
                   style={{ backgroundColor: 'var(--bg-primary)' }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)'}
@@ -44,19 +40,18 @@ export function ResultsScheduleList({ effectiveScenario, solution }: ResultsSche
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <Users className="w-4 h-4 mr-2" style={{ color: 'var(--text-tertiary)' }} />
-                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{displayName}</span>
+                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{participant.displayName}</span>
                     </div>
                   </td>
-                  {Array.from({ length: effectiveScenario.num_sessions || 0 }, (_, sessionIndex) => {
-                    const assignment = personAssignments.find(a => a.session_id === sessionIndex);
+                  {participant.sessions.map((assignment) => {
                     return (
-                      <td key={sessionIndex} className="px-6 py-4 whitespace-nowrap">
-                        {assignment ? (
+                      <td key={assignment.sessionIndex} className="px-6 py-4 whitespace-nowrap">
+                        {assignment.isAssigned && assignment.groupId ? (
                           <span
                             className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border"
                             style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--color-accent)', borderColor: 'var(--color-accent)' }}
                           >
-                            {assignment.group_id}
+                            {assignment.groupId}
                           </span>
                         ) : (
                           <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Not assigned</span>

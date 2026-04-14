@@ -7,7 +7,7 @@ import { calculateMetrics, getColorClass } from '../utils/metricCalculations';
 import { snapshotToScenario } from '../utils/scenarioSnapshot';
 import { useLocalStorageState, useOutsideClick } from '../hooks';
 import ConstraintComplianceCards from './ConstraintComplianceCards';
-import { buildResultsSessionData } from './results/buildResultsViewModel';
+import { buildResultsViewModel } from '../services/results/buildResultsModel';
 import { ResultsHeader } from './ResultsView/ResultsHeader';
 import { ResultsMetrics } from './ResultsView/ResultsMetrics';
 import { ResultsSchedule } from './ResultsView/ResultsSchedule';
@@ -169,12 +169,12 @@ export function ResultsView() {
     }
   };
 
-  const sessionData = useMemo(() => {
+  const resultsModel = useMemo(() => {
     if (!solution || !effectiveScenario) {
-      return [];
+      return null;
     }
 
-    return buildResultsSessionData(effectiveScenario, solution);
+    return buildResultsViewModel(effectiveScenario, solution);
   }, [solution, effectiveScenario]);
 
   if (!solution) {
@@ -237,7 +237,7 @@ export function ResultsView() {
       <ResultsSchedule
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        sessionData={sessionData}
+        resultsModel={resultsModel}
         effectiveScenario={effectiveScenario}
         solution={solution}
         vizPluginId={vizPluginId}
