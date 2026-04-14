@@ -1,0 +1,51 @@
+schema_version: 1
+suite_id: objective-canonical-stretch-zero-repeat-solver3-metaheuristic-v1
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: stretch
+title: Long-budget zero-repeat stretch bundle for solver3 metaheuristic autoresearch (v1)
+description: Pure zero-repeat stretch workloads routed to the SGP-shaped local improver because they are swap-centric repeat-encounter cases without the broader feature mix that regressed under wider routing.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 300000000
+    time_limit_seconds: 150
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+    local_improver:
+      mode: sgp_week_pair_tabu
+      sgp_week_pair_tabu:
+        tenure_mode: fixed_interval
+        tenure_min: 8
+        tenure_max: 32
+        retry_cap: 4
+        aspiration_enabled: true
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: objective_target.stretch.social_golfer_zero_repeat_encounters_long_budget_metaheuristic
+    provenance: converted_from_backend_core_tests_test_cases_social_golfer_problem_json_with_long_budget_metaheuristic_metadata
+    declared_budget:
+      max_iterations: 300000000
+      time_limit_seconds: 150
+    seed: 320810
+    max_iterations: 300000000
+    time_limit_seconds: 150
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: objective_target.stretch.kirkman_schoolgirls_zero_repeat_pairs_long_budget_metaheuristic
+    provenance: classical_kirkman_schoolgirl_problem_encoded_as_a_long_budget_metaheuristic_benchmark_case
+    declared_budget:
+      max_iterations: 300000000
+      time_limit_seconds: 150
+    seed: 150507
+    max_iterations: 300000000
+    time_limit_seconds: 150

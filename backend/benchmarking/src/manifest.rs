@@ -1317,9 +1317,9 @@ mod tests {
         }));
 
         let fixed_time_stretch = load_suite_manifest(Path::new(
-            "suites/objective-canonical-stretch-solver3-metaheuristic-v1.yaml",
+            "suites/objective-canonical-stretch-zero-repeat-solver3-metaheuristic-v1.yaml",
         ))
-        .expect("solver3 metaheuristic fixed-time stretch suite should load");
+        .expect("solver3 metaheuristic fixed-time zero-repeat stretch suite should load");
         assert_eq!(
             fixed_time_stretch.manifest.default_solver_family.as_deref(),
             Some("solver3")
@@ -1330,20 +1330,35 @@ mod tests {
         assert!(fixed_time_stretch.cases.iter().any(|case| {
             case.manifest.id == "stretch.kirkman-schoolgirls-15x5x7"
         }));
-        assert!(fixed_time_stretch.cases.iter().any(|case| {
+        assert!(!fixed_time_stretch.cases.iter().any(|case| {
             case.manifest.id == "stretch.large-gender-immovable-110p"
         }));
-        assert!(fixed_time_stretch.cases.iter().any(|case| {
+
+        let fixed_time_stretch_feature_rich = load_suite_manifest(Path::new(
+            "suites/objective-canonical-stretch-feature-rich-solver3-metaheuristic-v1.yaml",
+        ))
+        .expect("solver3 metaheuristic fixed-time feature-rich stretch suite should load");
+        assert_eq!(
+            fixed_time_stretch_feature_rich
+                .manifest
+                .default_solver_family
+                .as_deref(),
+            Some("solver3")
+        );
+        assert!(fixed_time_stretch_feature_rich.cases.iter().any(|case| {
+            case.manifest.id == "stretch.large-gender-immovable-110p"
+        }));
+        assert!(fixed_time_stretch_feature_rich.cases.iter().any(|case| {
             case.manifest.id == "stretch.sailing-trip-demo-real"
         }));
-        assert!(fixed_time_stretch.cases.iter().any(|case| {
+        assert!(fixed_time_stretch_feature_rich.cases.iter().any(|case| {
             case.manifest.id == "stretch.synthetic-partial-attendance-capacity-pressure-152p"
         }));
 
         let fixed_iteration_stretch = load_suite_manifest(Path::new(
-            "suites/objective-diagnostic-fixed-iteration-stretch-solver3-metaheuristic-v1.yaml",
+            "suites/objective-diagnostic-fixed-iteration-stretch-zero-repeat-solver3-metaheuristic-v1.yaml",
         ))
-        .expect("solver3 metaheuristic fixed-iteration stretch suite should load");
+        .expect("solver3 metaheuristic fixed-iteration zero-repeat stretch suite should load");
         assert_eq!(
             fixed_iteration_stretch
                 .manifest
@@ -1354,7 +1369,28 @@ mod tests {
         assert!(fixed_iteration_stretch.cases.iter().any(|case| {
             case.manifest.id == "stretch.kirkman-schoolgirls-15x5x7"
         }));
-        assert!(fixed_iteration_stretch.cases.iter().any(|case| {
+        assert!(!fixed_iteration_stretch.cases.iter().any(|case| {
+            case.manifest.id == "stretch.large-gender-immovable-110p"
+        }));
+        assert!(!fixed_iteration_stretch.cases.iter().any(|case| {
+            case.manifest.id == "stretch.synthetic-partial-attendance-capacity-pressure-152p"
+        }));
+
+        let fixed_iteration_stretch_feature_rich = load_suite_manifest(Path::new(
+            "suites/objective-diagnostic-fixed-iteration-stretch-feature-rich-solver3-metaheuristic-v1.yaml",
+        ))
+        .expect("solver3 metaheuristic fixed-iteration feature-rich stretch suite should load");
+        assert_eq!(
+            fixed_iteration_stretch_feature_rich
+                .manifest
+                .default_solver_family
+                .as_deref(),
+            Some("solver3")
+        );
+        assert!(fixed_iteration_stretch_feature_rich.cases.iter().any(|case| {
+            case.manifest.id == "stretch.large-gender-immovable-110p"
+        }));
+        assert!(fixed_iteration_stretch_feature_rich.cases.iter().any(|case| {
             case.manifest.id == "stretch.synthetic-partial-attendance-capacity-pressure-152p"
         }));
     }

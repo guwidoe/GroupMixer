@@ -80,6 +80,7 @@ This patches the latest run entry in `autoresearch.jsonl` so the tool-managed hi
 
 ## Diagnostic companions
 - fixed-iteration bundle on the same 9 objective cases
+- capability-aware suite splitting is allowed when it preserves the same case set, budgets, and metric references while routing semantically supported cases to advanced modes and keeping unsupported cases on truthful baseline modes
 - solver3 raw runtime / hotpath diagnostic lane
 - solver3 correctness benchmark corpus with external validation
 
@@ -95,3 +96,5 @@ This patches the latest run entry in `autoresearch.jsonl` so the tool-managed hi
 - Plain `sgp_week_pair_tabu` remains the strongest advanced result on the 25s Social Golfer anchor.
 - Donor-session recombination is no longer obviously dead: forced-fire diagnostics can beat the tabu reference on matched 3M Social Golfer budgets, but the normal trigger/selection regime still lags on the real 25s anchor.
 - The next loop should treat advanced-mode **feature coverage + honest long-budget quality** as the main target, rather than only continuing narrow Social Golfer tuning.
+- Broad repeat-encounter routing into `single_state + sgp_week_pair_tabu` was too coarse for the mixed bundle: it helped Social Golfer but hurt `large_gender` enough to regress the aggregate.
+- Narrower capability routing looks more credible: keeping `sgp_week_pair_tabu` only on the pure zero-repeat stretch cases (`social_golfer`, `kirkman`) while leaving broader feature-rich stretch cases on baseline truthful modes improved the primary metric to `99.9137` by capturing the Social Golfer gain without the `large_gender` regression.

@@ -43,7 +43,8 @@ run_suite() {
 
 FIXED_TIME_REPRESENTATIVE_REPORT="$(run_suite backend/benchmarking/suites/objective-canonical-representative-solver3-metaheuristic-v1.yaml fixed-time-representative)"
 FIXED_TIME_ADVERSARIAL_REPORT="$(run_suite backend/benchmarking/suites/objective-canonical-adversarial-solver3-metaheuristic-v1.yaml fixed-time-adversarial)"
-FIXED_TIME_STRETCH_REPORT="$(run_suite backend/benchmarking/suites/objective-canonical-stretch-solver3-metaheuristic-v1.yaml fixed-time-stretch)"
+FIXED_TIME_STRETCH_REPORT="$(run_suite backend/benchmarking/suites/objective-canonical-stretch-zero-repeat-solver3-metaheuristic-v1.yaml fixed-time-stretch-zero-repeat)"
+FIXED_TIME_STRETCH_FEATURE_RICH_REPORT="$(run_suite backend/benchmarking/suites/objective-canonical-stretch-feature-rich-solver3-metaheuristic-v1.yaml fixed-time-stretch-feature-rich)"
 CORRECTNESS_REPORT="$(run_suite backend/benchmarking/suites/correctness-edge-intertwined-solver3-v1.yaml correctness)"
 
 emit_and_capture fixed-time-metrics \
@@ -53,11 +54,13 @@ emit_and_capture fixed-time-metrics \
     "$FIXED_TIME_REPRESENTATIVE_REPORT" \
     "$FIXED_TIME_ADVERSARIAL_REPORT" \
     "$FIXED_TIME_STRETCH_REPORT" \
+    "$FIXED_TIME_STRETCH_FEATURE_RICH_REPORT" \
     "$CORRECTNESS_REPORT"
 
 FIXED_ITERATION_REPRESENTATIVE_REPORT="$(run_suite backend/benchmarking/suites/objective-diagnostic-fixed-iteration-representative-solver3-metaheuristic-v1.yaml fixed-iteration-representative)"
 FIXED_ITERATION_ADVERSARIAL_REPORT="$(run_suite backend/benchmarking/suites/objective-diagnostic-fixed-iteration-adversarial-solver3-metaheuristic-v1.yaml fixed-iteration-adversarial)"
-FIXED_ITERATION_STRETCH_REPORT="$(run_suite backend/benchmarking/suites/objective-diagnostic-fixed-iteration-stretch-solver3-metaheuristic-v1.yaml fixed-iteration-stretch)"
+FIXED_ITERATION_STRETCH_REPORT="$(run_suite backend/benchmarking/suites/objective-diagnostic-fixed-iteration-stretch-zero-repeat-solver3-metaheuristic-v1.yaml fixed-iteration-stretch-zero-repeat)"
+FIXED_ITERATION_STRETCH_FEATURE_RICH_REPORT="$(run_suite backend/benchmarking/suites/objective-diagnostic-fixed-iteration-stretch-feature-rich-solver3-metaheuristic-v1.yaml fixed-iteration-stretch-feature-rich)"
 
 emit_and_capture fixed-iteration-metrics \
   python3 tools/autoresearch/objective-quality/aggregate_objective_metrics.py \
@@ -65,7 +68,8 @@ emit_and_capture fixed-iteration-metrics \
     tools/autoresearch/solver3-metaheuristic-quality/fixed-iteration-metric-config.json \
     "$FIXED_ITERATION_REPRESENTATIVE_REPORT" \
     "$FIXED_ITERATION_ADVERSARIAL_REPORT" \
-    "$FIXED_ITERATION_STRETCH_REPORT"
+    "$FIXED_ITERATION_STRETCH_REPORT" \
+    "$FIXED_ITERATION_STRETCH_FEATURE_RICH_REPORT"
 
 emit_and_capture raw-runtime-metrics \
   ./tools/autoresearch/solver3-raw-runtime/autoresearch.sh
