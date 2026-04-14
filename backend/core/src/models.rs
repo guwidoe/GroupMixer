@@ -1086,9 +1086,9 @@ pub struct Solver3DonorSessionTransplantParams {
     /// and child quality rather than by a fixed per-run event ceiling.
     #[serde(default)]
     pub max_recombination_events_per_run: Option<u32>,
-    /// Discard immediate post-transplant children when they are worse than the incumbent by more than this margin.
-    #[serde(default = "default_solver3_donor_session_early_discard_score_delta")]
-    pub early_discard_score_delta: f64,
+    /// Adaptive raw-child quality gate applied before post-transplant polish.
+    #[serde(default)]
+    pub adaptive_raw_child_retention: Solver3AdaptiveRawChildRetentionParams,
     /// Bounded local-polish iteration cap applied after a surviving transplant.
     #[serde(default = "default_solver3_donor_session_child_polish_max_iterations")]
     pub child_polish_max_iterations: u32,
@@ -1105,11 +1105,35 @@ impl Default for Solver3DonorSessionTransplantParams {
                 default_solver3_donor_session_no_improvement_window(),
             recombination_cooldown_window: default_solver3_donor_session_cooldown_window(),
             max_recombination_events_per_run: None,
-            early_discard_score_delta: default_solver3_donor_session_early_discard_score_delta(),
+            adaptive_raw_child_retention: Solver3AdaptiveRawChildRetentionParams::default(),
             child_polish_max_iterations: default_solver3_donor_session_child_polish_max_iterations(
             ),
             child_polish_no_improvement_iterations:
                 default_solver3_donor_session_child_polish_no_improvement_iterations(),
+        }
+    }
+}
+
+/// Adaptive retention policy for raw donor-session transplants before child polish.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+pub struct Solver3AdaptiveRawChildRetentionParams {
+    /// Fraction of raw transplanted children to retain for polish after warmup.
+    #[serde(default = "default_solver3_donor_session_raw_child_keep_ratio")]
+    pub keep_ratio: f64,
+    /// Number of raw child samples collected before the percentile gate becomes active.
+    #[serde(default = "default_solver3_donor_session_raw_child_warmup_samples")]
+    pub warmup_samples: u32,
+    /// Rolling history length used for percentile-based gating.
+    #[serde(default = "default_solver3_donor_session_raw_child_history_limit")]
+    pub history_limit: u32,
+}
+
+impl Default for Solver3AdaptiveRawChildRetentionParams {
+    fn default() -> Self {
+        Self {
+            keep_ratio: default_solver3_donor_session_raw_child_keep_ratio(),
+            warmup_samples: default_solver3_donor_session_raw_child_warmup_samples(),
+            history_limit: default_solver3_donor_session_raw_child_history_limit(),
         }
     }
 }
@@ -1314,8 +1338,16 @@ fn default_solver3_donor_session_cooldown_window() -> u32 {
     100_000
 }
 
-fn default_solver3_donor_session_early_discard_score_delta() -> f64 {
-    250.0
+fn default_solver3_donor_session_raw_child_keep_ratio() -> f64 {
+    0.5
+}
+
+fn default_solver3_donor_session_raw_child_warmup_samples() -> u32 {
+    4
+}
+
+fn default_solver3_donor_session_raw_child_history_limit() -> u32 {
+    32
 }
 
 fn default_solver3_donor_session_child_polish_max_iterations() -> u32 {
@@ -1732,7 +1764,7 @@ pub enum DonorSessionViabilityTierTelemetry {
 }
 
 /// One donor/session choice made during donor-session recombination.
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
 pub struct DonorSessionChoiceTelemetry {
     #[serde(default)]
     pub donor_archive_idx: u32,
@@ -1746,6 +1778,12 @@ pub struct DonorSessionChoiceTelemetry {
     pub session_viability_tier: DonorSessionViabilityTierTelemetry,
     #[serde(default)]
     pub conflict_burden_delta: i64,
+    #[serde(default)]
+    pub raw_child_delta: f64,
+    #[serde(default)]
+    pub adaptive_discard_threshold: Option<f64>,
+    #[serde(default)]
+    pub retained_for_polish: bool,
 }
 
 /// Benchmark telemetry for the donor-session transplant outer driver.
@@ -1755,6 +1793,12 @@ pub struct DonorSessionTransplantBenchmarkTelemetry {
     pub archive_size: u32,
     #[serde(default)]
     pub child_polish_local_improver_mode: Option<Solver3LocalImproverMode>,
+    #[serde(default)]
+    pub raw_child_keep_ratio: f64,
+    #[serde(default)]
+    pub raw_child_warmup_samples: u32,
+    #[serde(default)]
+    pub raw_child_history_limit: u32,
     #[serde(default)]
     pub child_polish_max_iterations: u64,
     #[serde(default)]
@@ -1783,6 +1827,16 @@ pub struct DonorSessionTransplantBenchmarkTelemetry {
     pub trigger_armed_no_viable_session: u64,
     #[serde(default)]
     pub recombination_events_fired: u64,
+    #[serde(default)]
+    pub raw_children_evaluated: u64,
+    #[serde(default)]
+    pub raw_child_delta_sum: f64,
+    #[serde(default)]
+    pub raw_child_delta_min: Option<f64>,
+    #[serde(default)]
+    pub raw_child_delta_max: Option<f64>,
+    #[serde(default)]
+    pub adaptive_discard_threshold: Option<f64>,
     #[serde(default)]
     pub donor_choices: Vec<DonorSessionChoiceTelemetry>,
     #[serde(default)]

@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::collections::VecDeque;
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
@@ -21,7 +22,10 @@ use super::archive::{
     build_session_conflict_burden, build_session_fingerprints, ArchiveUpdateReason, EliteArchive,
     EliteArchiveConfig,
 };
-use super::context::{DonorSessionTransplantConfig, SearchProgressState, SearchRunContext};
+use super::context::{
+    AdaptiveRawChildRetentionConfig, DonorSessionTransplantConfig, SearchProgressState,
+    SearchRunContext,
+};
 use super::single_state::{
     build_solver_result, polish_state, should_emit_progress_callback, LocalImproverBudget,
 };
@@ -88,6 +92,66 @@ pub(crate) enum DonorSessionTriggerEligibility {
     Armed,
     NotArmed,
     EventCapReached,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct AdaptiveRawChildRetentionDecision {
+    discard_threshold: Option<f64>,
+    retained_for_polish: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct AdaptiveRawChildRetentionState {
+    keep_ratio: f64,
+    warmup_samples: usize,
+    history_limit: usize,
+    recent_raw_deltas: VecDeque<f64>,
+}
+
+impl AdaptiveRawChildRetentionState {
+    fn new(config: AdaptiveRawChildRetentionConfig) -> Self {
+        Self {
+            keep_ratio: config.keep_ratio,
+            warmup_samples: config.warmup_samples,
+            history_limit: config.history_limit,
+            recent_raw_deltas: VecDeque::with_capacity(config.history_limit),
+        }
+    }
+
+    fn evaluate(&mut self, raw_child_delta: f64) -> AdaptiveRawChildRetentionDecision {
+        let discard_threshold = self.current_threshold();
+        let retained_for_polish = discard_threshold
+            .map(|threshold| raw_child_delta <= threshold)
+            .unwrap_or(true);
+        self.record(raw_child_delta);
+        AdaptiveRawChildRetentionDecision {
+            discard_threshold,
+            retained_for_polish,
+        }
+    }
+
+    fn current_threshold(&self) -> Option<f64> {
+        if self.recent_raw_deltas.len() < self.warmup_samples {
+            return None;
+        }
+
+        let mut sorted = self.recent_raw_deltas.iter().copied().collect::<Vec<_>>();
+        sorted.sort_by(|left, right| left.total_cmp(right));
+        let keep_count = ((sorted.len() as f64 * self.keep_ratio).ceil() as usize)
+            .clamp(1, sorted.len());
+        Some(sorted[keep_count - 1])
+    }
+
+    fn record(&mut self, raw_child_delta: f64) {
+        if self.recent_raw_deltas.len() == self.history_limit {
+            self.recent_raw_deltas.pop_front();
+        }
+        self.recent_raw_deltas.push_back(raw_child_delta);
+    }
+
+    fn latest_threshold(&self) -> Option<f64> {
+        self.current_threshold()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -396,11 +460,18 @@ pub(crate) fn run(
         .expect("donor-session transplant config should be normalized");
     let mut trigger_state = DonorSessionTriggerState::new();
     let mut archive = EliteArchive::new(archive_config_for_donor_session_mode(transplant_config));
+    let mut raw_child_retention =
+        AdaptiveRawChildRetentionState::new(transplant_config.adaptive_raw_child_retention);
     let mut current_incumbent = state.clone();
     let mut aggregate = SearchProgressState::new(current_incumbent.clone());
     aggregate.donor_session_transplant_telemetry = Some(DonorSessionTransplantBenchmarkTelemetry {
         archive_size: transplant_config.archive_size as u32,
         child_polish_local_improver_mode: Some(run_context.local_improver_mode),
+        raw_child_keep_ratio: transplant_config.adaptive_raw_child_retention.keep_ratio,
+        raw_child_warmup_samples: transplant_config.adaptive_raw_child_retention.warmup_samples
+            as u32,
+        raw_child_history_limit: transplant_config.adaptive_raw_child_retention.history_limit
+            as u32,
         child_polish_max_iterations: transplant_config.child_polish_max_iterations,
         child_polish_no_improvement_iterations: transplant_config
             .child_polish_no_improvement_iterations,
@@ -566,25 +637,21 @@ pub(crate) fn run(
                 .donor_session_transplant_telemetry
                 .get_or_insert_with(Default::default)
                 .recombination_events_fired += 1;
-            aggregate
-                .donor_session_transplant_telemetry
-                .get_or_insert_with(Default::default)
-                .donor_choices
-                .push(DonorSessionChoiceTelemetry {
-                    donor_archive_idx: choice.donor_archive_idx as u32,
-                    session_idx: choice.session_idx as u32,
-                    session_disagreement_count: choice.session_disagreement_count as u32,
-                    candidate_pool: choice.candidate_pool.telemetry(),
-                    session_viability_tier: choice.session_viability_tier.telemetry(),
-                    conflict_burden_delta: choice.conflict_burden_delta,
-                });
             let donor = &archive.entries()[choice.donor_archive_idx];
             let transplanted_child =
                 transplant_donor_session(&current_incumbent, donor, choice.session_idx)?;
 
-            if transplanted_child.total_score
-                > current_incumbent.total_score + transplant_config.early_discard_score_delta
-            {
+            let raw_child_delta = transplanted_child.total_score - current_incumbent.total_score;
+            let retention_decision = raw_child_retention.evaluate(raw_child_delta);
+            record_raw_child_retention(
+                &mut aggregate,
+                choice,
+                raw_child_delta,
+                retention_decision,
+                raw_child_retention.latest_threshold(),
+            );
+
+            if !retention_decision.retained_for_polish {
                 aggregate
                     .donor_session_transplant_telemetry
                     .get_or_insert_with(Default::default)
@@ -884,6 +951,42 @@ fn record_archive_update(search: &mut SearchProgressState, reason: ArchiveUpdate
     }
 }
 
+fn record_raw_child_retention(
+    search: &mut SearchProgressState,
+    choice: DonorSessionChoice,
+    raw_child_delta: f64,
+    decision: AdaptiveRawChildRetentionDecision,
+    latest_threshold: Option<f64>,
+) {
+    let telemetry = search
+        .donor_session_transplant_telemetry
+        .get_or_insert_with(Default::default);
+    telemetry.raw_children_evaluated += 1;
+    telemetry.raw_child_delta_sum += raw_child_delta;
+    telemetry.raw_child_delta_min = Some(
+        telemetry
+            .raw_child_delta_min
+            .map_or(raw_child_delta, |current| current.min(raw_child_delta)),
+    );
+    telemetry.raw_child_delta_max = Some(
+        telemetry
+            .raw_child_delta_max
+            .map_or(raw_child_delta, |current| current.max(raw_child_delta)),
+    );
+    telemetry.adaptive_discard_threshold = latest_threshold;
+    telemetry.donor_choices.push(DonorSessionChoiceTelemetry {
+        donor_archive_idx: choice.donor_archive_idx as u32,
+        session_idx: choice.session_idx as u32,
+        session_disagreement_count: choice.session_disagreement_count as u32,
+        candidate_pool: choice.candidate_pool.telemetry(),
+        session_viability_tier: choice.session_viability_tier.telemetry(),
+        conflict_burden_delta: choice.conflict_burden_delta,
+        raw_child_delta,
+        adaptive_discard_threshold: decision.discard_threshold,
+        retained_for_polish: decision.retained_for_polish,
+    });
+}
+
 fn record_child_polish(
     search: &mut SearchProgressState,
     local: &SearchProgressState,
@@ -941,8 +1044,9 @@ mod tests {
 
     use super::{
         archive_config_for_donor_session_mode, select_donor_session,
-        select_donor_session_from_summary, transplant_donor_session, DonorCandidatePool,
-        DonorSessionChoice, DonorSessionSelectionOutcome, DonorSessionTriggerEligibility,
+        select_donor_session_from_summary, transplant_donor_session,
+        AdaptiveRawChildRetentionState, DonorCandidatePool, DonorSessionChoice,
+        DonorSessionSelectionOutcome, DonorSessionTriggerEligibility,
         DonorSessionTriggerState, DonorSessionViabilityTier,
     };
     use crate::default_solver_configuration_for;
@@ -952,7 +1056,9 @@ mod tests {
     };
     use crate::solver3::runtime_state::RuntimeState;
     use crate::solver3::search::archive::{ArchivedElite, EliteArchive};
-    use crate::solver3::search::context::DonorSessionTransplantConfig;
+    use crate::solver3::search::context::{
+        AdaptiveRawChildRetentionConfig, DonorSessionTransplantConfig,
+    };
 
     fn config() -> DonorSessionTransplantConfig {
         DonorSessionTransplantConfig {
@@ -960,7 +1066,11 @@ mod tests {
             recombination_no_improvement_window: 20,
             recombination_cooldown_window: 10,
             max_recombination_events_per_run: Some(2),
-            early_discard_score_delta: 250.0,
+            adaptive_raw_child_retention: AdaptiveRawChildRetentionConfig {
+                keep_ratio: 0.5,
+                warmup_samples: 4,
+                history_limit: 32,
+            },
             child_polish_max_iterations: 64,
             child_polish_no_improvement_iterations: 32,
         }
@@ -1072,6 +1182,33 @@ mod tests {
             state.is_armed(config(), 100),
             DonorSessionTriggerEligibility::EventCapReached
         );
+    }
+
+    #[test]
+    fn adaptive_raw_child_retention_warms_up_then_filters_by_percentile() {
+        let mut retention = AdaptiveRawChildRetentionState::new(
+            AdaptiveRawChildRetentionConfig {
+                keep_ratio: 0.5,
+                warmup_samples: 2,
+                history_limit: 4,
+            },
+        );
+
+        let first = retention.evaluate(30.0);
+        assert!(first.retained_for_polish);
+        assert_eq!(first.discard_threshold, None);
+
+        let second = retention.evaluate(10.0);
+        assert!(second.retained_for_polish);
+        assert_eq!(second.discard_threshold, None);
+
+        let third = retention.evaluate(20.0);
+        assert_eq!(third.discard_threshold, Some(10.0));
+        assert!(!third.retained_for_polish);
+
+        let fourth = retention.evaluate(15.0);
+        assert_eq!(fourth.discard_threshold, Some(20.0));
+        assert!(fourth.retained_for_polish);
     }
 
     #[test]

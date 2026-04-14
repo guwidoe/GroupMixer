@@ -49,12 +49,19 @@ pub(crate) struct SteadyStateMemeticConfig {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct AdaptiveRawChildRetentionConfig {
+    pub(crate) keep_ratio: f64,
+    pub(crate) warmup_samples: usize,
+    pub(crate) history_limit: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct DonorSessionTransplantConfig {
     pub(crate) archive_size: usize,
     pub(crate) recombination_no_improvement_window: u64,
     pub(crate) recombination_cooldown_window: u64,
     pub(crate) max_recombination_events_per_run: Option<u64>,
-    pub(crate) early_discard_score_delta: f64,
+    pub(crate) adaptive_raw_child_retention: AdaptiveRawChildRetentionConfig,
     pub(crate) child_polish_max_iterations: u64,
     pub(crate) child_polish_no_improvement_iterations: u64,
 }
@@ -238,11 +245,38 @@ impl SearchRunContext {
             ));
         }
 
-        if !donor_session_transplant.early_discard_score_delta.is_finite()
-            || donor_session_transplant.early_discard_score_delta < 0.0
+        if !donor_session_transplant
+            .adaptive_raw_child_retention
+            .keep_ratio
+            .is_finite()
+            || !(0.0..=1.0).contains(&donor_session_transplant.adaptive_raw_child_retention.keep_ratio)
+            || donor_session_transplant.adaptive_raw_child_retention.keep_ratio == 0.0
         {
             return Err(SolverError::ValidationError(
-                "solver3 search_driver.donor_session_transplant.early_discard_score_delta must be finite and >= 0.0"
+                "solver3 search_driver.donor_session_transplant.adaptive_raw_child_retention.keep_ratio must be finite and within (0.0, 1.0]"
+                    .into(),
+            ));
+        }
+
+        if donor_session_transplant.adaptive_raw_child_retention.warmup_samples == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.donor_session_transplant.adaptive_raw_child_retention.warmup_samples must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if donor_session_transplant.adaptive_raw_child_retention.history_limit == 0 {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.donor_session_transplant.adaptive_raw_child_retention.history_limit must be >= 1"
+                    .into(),
+            ));
+        }
+
+        if donor_session_transplant.adaptive_raw_child_retention.history_limit
+            < donor_session_transplant.adaptive_raw_child_retention.warmup_samples
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.donor_session_transplant.adaptive_raw_child_retention.history_limit must be >= warmup_samples"
                     .into(),
             ));
         }
@@ -414,7 +448,15 @@ impl SearchRunContext {
                 max_recombination_events_per_run: donor_session_transplant
                     .max_recombination_events_per_run
                     .map(u64::from),
-                early_discard_score_delta: donor_session_transplant.early_discard_score_delta,
+                adaptive_raw_child_retention: AdaptiveRawChildRetentionConfig {
+                    keep_ratio: donor_session_transplant.adaptive_raw_child_retention.keep_ratio,
+                    warmup_samples: donor_session_transplant
+                        .adaptive_raw_child_retention
+                        .warmup_samples as usize,
+                    history_limit: donor_session_transplant
+                        .adaptive_raw_child_retention
+                        .history_limit as usize,
+                },
                 child_polish_max_iterations: donor_session_transplant
                     .child_polish_max_iterations as u64,
                 child_polish_no_improvement_iterations: donor_session_transplant
@@ -1503,7 +1545,11 @@ mod tests {
         config.solver_params = SolverParams::Solver3(Solver3Params {
             search_driver: Solver3SearchDriverParams {
                 donor_session_transplant: Solver3DonorSessionTransplantParams {
-                    early_discard_score_delta: -1.0,
+                    adaptive_raw_child_retention:
+                        crate::models::Solver3AdaptiveRawChildRetentionParams {
+                            keep_ratio: 0.0,
+                            ..Default::default()
+                        },
                     ..Default::default()
                 },
                 ..Default::default()
@@ -1513,7 +1559,52 @@ mod tests {
         let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
         assert!(
             err.to_string()
-                .contains("donor_session_transplant.early_discard_score_delta"),
+                .contains("donor_session_transplant.adaptive_raw_child_retention.keep_ratio"),
+            "unexpected error: {err}"
+        );
+
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                donor_session_transplant: Solver3DonorSessionTransplantParams {
+                    adaptive_raw_child_retention:
+                        crate::models::Solver3AdaptiveRawChildRetentionParams {
+                            warmup_samples: 0,
+                            ..Default::default()
+                        },
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string().contains(
+                "donor_session_transplant.adaptive_raw_child_retention.warmup_samples"
+            ),
+            "unexpected error: {err}"
+        );
+
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                donor_session_transplant: Solver3DonorSessionTransplantParams {
+                    adaptive_raw_child_retention:
+                        crate::models::Solver3AdaptiveRawChildRetentionParams {
+                            warmup_samples: 4,
+                            history_limit: 3,
+                            ..Default::default()
+                        },
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string().contains(
+                "donor_session_transplant.adaptive_raw_child_retention.history_limit"
+            ),
             "unexpected error: {err}"
         );
 

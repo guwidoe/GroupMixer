@@ -211,6 +211,9 @@
           "required": [
             "archive_size",
             "child_polish_local_improver_mode",
+            "raw_child_keep_ratio",
+            "raw_child_warmup_samples",
+            "raw_child_history_limit",
             "child_polish_max_iterations",
             "child_polish_no_improvement_iterations",
             "archive_additions",
@@ -225,6 +228,11 @@
             "trigger_armed_no_viable_donor",
             "trigger_armed_no_viable_session",
             "recombination_events_fired",
+            "raw_children_evaluated",
+            "raw_child_delta_sum",
+            "raw_child_delta_min",
+            "raw_child_delta_max",
+            "adaptive_discard_threshold",
             "donor_choices",
             "immediate_discards",
             "polished_children",
@@ -237,6 +245,9 @@
           "properties": {
             "archive_size": { "type": "integer" },
             "child_polish_local_improver_mode": { "type": ["string", "null"] },
+            "raw_child_keep_ratio": { "type": "number" },
+            "raw_child_warmup_samples": { "type": "integer" },
+            "raw_child_history_limit": { "type": "integer" },
             "child_polish_max_iterations": { "type": "integer" },
             "child_polish_no_improvement_iterations": { "type": "integer" },
             "archive_additions": { "type": "integer" },
@@ -251,6 +262,11 @@
             "trigger_armed_no_viable_donor": { "type": "integer" },
             "trigger_armed_no_viable_session": { "type": "integer" },
             "recombination_events_fired": { "type": "integer" },
+            "raw_children_evaluated": { "type": "integer" },
+            "raw_child_delta_sum": { "type": "number" },
+            "raw_child_delta_min": { "type": ["number", "null"] },
+            "raw_child_delta_max": { "type": ["number", "null"] },
+            "adaptive_discard_threshold": { "type": ["number", "null"] },
             "donor_choices": {
               "type": "array",
               "items": {
@@ -261,7 +277,10 @@
                   "session_disagreement_count",
                   "candidate_pool",
                   "session_viability_tier",
-                  "conflict_burden_delta"
+                  "conflict_burden_delta",
+                  "raw_child_delta",
+                  "adaptive_discard_threshold",
+                  "retained_for_polish"
                 ],
                 "properties": {
                   "donor_archive_idx": { "type": "integer" },
@@ -269,7 +288,10 @@
                   "session_disagreement_count": { "type": "integer" },
                   "candidate_pool": { "type": "string" },
                   "session_viability_tier": { "type": "string" },
-                  "conflict_burden_delta": { "type": "integer" }
+                  "conflict_burden_delta": { "type": "integer" },
+                  "raw_child_delta": { "type": "number" },
+                  "adaptive_discard_threshold": { "type": ["number", "null"] },
+                  "retained_for_polish": { "type": "boolean" }
                 }
               }
             },

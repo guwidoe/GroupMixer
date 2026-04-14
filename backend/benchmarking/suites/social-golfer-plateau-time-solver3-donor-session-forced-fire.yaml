@@ -21,7 +21,10 @@ default_solver:
         archive_size: 4
         recombination_no_improvement_window: 10000
         recombination_cooldown_window: 10000
-        early_discard_score_delta: 250.0
+        adaptive_raw_child_retention:
+          keep_ratio: 0.5
+          warmup_samples: 4
+          history_limit: 32
         child_polish_max_iterations: 64
         child_polish_no_improvement_iterations: 32
     local_improver:
