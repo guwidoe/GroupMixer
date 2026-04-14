@@ -798,6 +798,71 @@ mod tests {
     }
 
     #[test]
+    fn solver3_path_control_high_event_suites_load_and_cover_all_three_operators() {
+        let social = load_suite_manifest(Path::new(
+            "suites/social-golfer-plateau-time-solver3-path-control-high-event.yaml",
+        ))
+        .expect("social golfer high-event path-control suite should load");
+        assert_eq!(social.manifest.default_solver_family.as_deref(), Some("solver3"));
+        assert_eq!(social.cases.len(), 9);
+        assert!(social
+            .cases
+            .iter()
+            .any(|case| case
+                .overrides
+                .purpose
+                .as_deref()
+                .is_some_and(|purpose| purpose.contains("session_path"))));
+        assert!(social
+            .cases
+            .iter()
+            .any(|case| case
+                .overrides
+                .purpose
+                .as_deref()
+                .is_some_and(|purpose| purpose.contains("random_donor"))));
+        assert!(social
+            .cases
+            .iter()
+            .any(|case| case
+                .overrides
+                .purpose
+                .as_deref()
+                .is_some_and(|purpose| purpose.contains("random_macro"))));
+
+        let kirkman = load_suite_manifest(Path::new(
+            "suites/stretch-kirkman-schoolgirls-time-solver3-path-control-high-event.yaml",
+        ))
+        .expect("kirkman high-event path-control suite should load");
+        assert_eq!(kirkman.manifest.default_solver_family.as_deref(), Some("solver3"));
+        assert_eq!(kirkman.cases.len(), 9);
+        assert!(kirkman
+            .cases
+            .iter()
+            .any(|case| case
+                .overrides
+                .purpose
+                .as_deref()
+                .is_some_and(|purpose| purpose.contains("session_path"))));
+        assert!(kirkman
+            .cases
+            .iter()
+            .any(|case| case
+                .overrides
+                .purpose
+                .as_deref()
+                .is_some_and(|purpose| purpose.contains("random_donor"))));
+        assert!(kirkman
+            .cases
+            .iter()
+            .any(|case| case
+                .overrides
+                .purpose
+                .as_deref()
+                .is_some_and(|purpose| purpose.contains("random_macro"))));
+    }
+
+    #[test]
     fn loads_representative_case_manifest() {
         let case = load_case_manifest(Path::new(
             "cases/representative/small_workshop_balanced.json",

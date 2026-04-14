@@ -332,6 +332,42 @@ Do **not** describe tabu or memetic paths as default-path upgrades unless:
 - the dedicated Social Golfer comparisons beat baseline honestly,
 - and the default hotpath lane remains separately measurable and stable.
 
+### Solver3 session-path vs random-control high-event diagnostics
+
+When the question is whether session-aligned path relinking is actually better than matched random controls, use the dedicated high-event diagnostic suites rather than the conservative rare-event manifests.
+
+#### High-event A/B/C manifests
+
+- `backend/benchmarking/suites/social-golfer-plateau-time-solver3-path-control-high-event.yaml`
+- `backend/benchmarking/suites/stretch-kirkman-schoolgirls-time-solver3-path-control-high-event.yaml`
+
+These suites intentionally:
+
+- compare **three operator variants** under matched budgets and child-polish policy:
+  - `session_aligned_path_relinking`
+  - `random_donor_session_control`
+  - `random_macro_mutation_control`
+- use much more aggressive trigger / cooldown windows to generate many more events
+- disable swap-local-optimum certification so event statistics dominate the diagnostic rather than exact local-optimum confirmation cost
+- stay clearly diagnostic rather than pretending to be the canonical production setting
+
+Recommended command sequence:
+
+```bash
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-path-control-high-event.yaml
+
+gm-cli benchmark run \
+  --manifest backend/benchmarking/suites/stretch-kirkman-schoolgirls-time-solver3-path-control-high-event.yaml
+```
+
+Primary interpretation targets:
+
+- event counts per operator
+- kept-event rates per operator
+- best post-polish basin depth per operator
+- whether aligned path relinking still beats the matched controls once event volume is high enough that sparse-event noise is less plausible
+
 ### Solver3 oracle/debug correctness feature
 
 `gm-core` exposes `solver3-oracle-checks` as an explicit correctness/debug feature flag.
