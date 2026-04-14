@@ -32,6 +32,7 @@ export function LandingFooter({
           <div className="flex flex-wrap items-center gap-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
             <Link to={expertWorkspaceTo} className="transition-colors hover:opacity-80">
               {expertWorkspaceLabel}
+              <span className="sr-only"> Advanced workspace</span>
             </Link>
             <a
               href="https://github.com/guwidoe/GroupMixer"
