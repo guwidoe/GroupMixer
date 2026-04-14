@@ -71,6 +71,102 @@ pub(crate) struct EliteArchive {
     elites: Vec<ArchivedElite>,
 }
 
+pub(crate) type SearchRootId = u64;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct CrossRootParentSelectionPolicy {
+    pub(crate) max_score_delta_from_best: f64,
+    pub(crate) min_session_disagreement: usize,
+}
+
+impl Default for CrossRootParentSelectionPolicy {
+    fn default() -> Self {
+        Self {
+            max_score_delta_from_best: f64::INFINITY,
+            min_session_disagreement: 1,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CrossRootParentSelectionFailure {
+    NotEnoughRoots,
+    NoCompetitiveCrossRootPair,
+    NoPairMetDisagreementThreshold,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct CrossRootParentChoice {
+    pub(crate) left_root_id: SearchRootId,
+    pub(crate) left_archive_idx: usize,
+    pub(crate) left_score: f64,
+    pub(crate) right_root_id: SearchRootId,
+    pub(crate) right_archive_idx: usize,
+    pub(crate) right_score: f64,
+    pub(crate) session_disagreement_count: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct MultiRootElitePoolConfig {
+    pub(crate) max_roots: usize,
+    pub(crate) per_root_archive: EliteArchiveConfig,
+}
+
+impl Default for MultiRootElitePoolConfig {
+    fn default() -> Self {
+        Self {
+            max_roots: 4,
+            per_root_archive: EliteArchiveConfig::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum MultiRootElitePoolUpdateReason {
+    AddedNewRoot,
+    ReplacedWeakestRoot,
+    RejectedNewRootNotCompetitive,
+    UpdatedExistingRoot(ArchiveUpdateReason),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct MultiRootElitePoolUpdateOutcome {
+    pub(crate) reason: MultiRootElitePoolUpdateReason,
+    pub(crate) root_id: SearchRootId,
+    pub(crate) evicted_root_id: Option<SearchRootId>,
+    pub(crate) slot_index: Option<usize>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct RootEliteArchive {
+    root_id: SearchRootId,
+    archive: EliteArchive,
+}
+
+impl RootEliteArchive {
+    pub(crate) fn root_id(&self) -> SearchRootId {
+        self.root_id
+    }
+
+    pub(crate) fn entries(&self) -> &[ArchivedElite] {
+        self.archive.entries()
+    }
+
+    pub(crate) fn best_score(&self) -> Option<f64> {
+        self.archive
+            .entries()
+            .iter()
+            .map(|elite| elite.score)
+            .min_by(|left, right| left.total_cmp(right))
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub(crate) struct MultiRootElitePool {
+    config: MultiRootElitePoolConfig,
+    roots: Vec<RootEliteArchive>,
+}
+
 impl EliteArchive {
     pub(crate) fn new(config: EliteArchiveConfig) -> Self {
         debug_assert!(config.capacity > 0);
@@ -202,6 +298,203 @@ impl EliteArchive {
     }
 }
 
+impl MultiRootElitePool {
+    pub(crate) fn new(config: MultiRootElitePoolConfig) -> Self {
+        debug_assert!(config.max_roots > 0);
+        debug_assert!(config.per_root_archive.capacity > 0);
+        Self {
+            config,
+            roots: Vec::with_capacity(config.max_roots),
+        }
+    }
+
+    pub(crate) fn root_count(&self) -> usize {
+        self.roots.len()
+    }
+
+    pub(crate) fn roots(&self) -> &[RootEliteArchive] {
+        &self.roots
+    }
+
+    pub(crate) fn entries_for_root(&self, root_id: SearchRootId) -> Option<&[ArchivedElite]> {
+        self.root(root_id).map(|root| root.entries())
+    }
+
+    pub(crate) fn consider_state(
+        &mut self,
+        root_id: SearchRootId,
+        state: RuntimeState,
+    ) -> MultiRootElitePoolUpdateOutcome {
+        let candidate = ArchivedElite::from_state(state);
+        self.consider_elite(root_id, candidate)
+    }
+
+    pub(crate) fn consider_elite(
+        &mut self,
+        root_id: SearchRootId,
+        candidate: ArchivedElite,
+    ) -> MultiRootElitePoolUpdateOutcome {
+        assert!(self.config.max_roots > 0, "multi-root elite pool max_roots must be >= 1");
+        assert!(
+            self.config.per_root_archive.capacity > 0,
+            "multi-root elite pool per-root archive capacity must be >= 1"
+        );
+
+        if let Some(root) = self.root_mut(root_id) {
+            let outcome = root.archive.consider_elite(candidate);
+            return MultiRootElitePoolUpdateOutcome {
+                reason: MultiRootElitePoolUpdateReason::UpdatedExistingRoot(outcome.reason),
+                root_id,
+                evicted_root_id: None,
+                slot_index: outcome.slot_index,
+            };
+        }
+
+        if self.roots.len() < self.config.max_roots {
+            let mut archive = EliteArchive::new(self.config.per_root_archive);
+            let outcome = archive.consider_elite(candidate);
+            self.roots.push(RootEliteArchive { root_id, archive });
+            return MultiRootElitePoolUpdateOutcome {
+                reason: MultiRootElitePoolUpdateReason::AddedNewRoot,
+                root_id,
+                evicted_root_id: None,
+                slot_index: outcome.slot_index,
+            };
+        }
+
+        let (weakest_root_idx, weakest_root_best_score) = self
+            .roots
+            .iter()
+            .enumerate()
+            .map(|(idx, root)| {
+                (
+                    idx,
+                    root.best_score()
+                        .expect("multi-root pool should not keep empty root archives"),
+                )
+            })
+            .max_by(|left, right| {
+                left.1
+                    .total_cmp(&right.1)
+                    .then_with(|| right.0.cmp(&left.0))
+            })
+            .expect("full multi-root pool should have a weakest root");
+
+        if candidate.score >= weakest_root_best_score {
+            return MultiRootElitePoolUpdateOutcome {
+                reason: MultiRootElitePoolUpdateReason::RejectedNewRootNotCompetitive,
+                root_id,
+                evicted_root_id: None,
+                slot_index: None,
+            };
+        }
+
+        let evicted_root_id = self.roots[weakest_root_idx].root_id;
+        let mut archive = EliteArchive::new(self.config.per_root_archive);
+        let outcome = archive.consider_elite(candidate);
+        self.roots[weakest_root_idx] = RootEliteArchive { root_id, archive };
+        MultiRootElitePoolUpdateOutcome {
+            reason: MultiRootElitePoolUpdateReason::ReplacedWeakestRoot,
+            root_id,
+            evicted_root_id: Some(evicted_root_id),
+            slot_index: outcome.slot_index,
+        }
+    }
+
+    pub(crate) fn select_cross_root_parent_pair(
+        &self,
+        policy: CrossRootParentSelectionPolicy,
+    ) -> Result<CrossRootParentChoice, CrossRootParentSelectionFailure> {
+        if self.roots.len() < 2 {
+            return Err(CrossRootParentSelectionFailure::NotEnoughRoots);
+        }
+
+        let best_score = self
+            .roots
+            .iter()
+            .flat_map(|root| root.entries().iter())
+            .map(|elite| elite.score)
+            .min_by(|left, right| left.total_cmp(right))
+            .expect("multi-root pool with roots should have elite scores");
+
+        let score_limit = best_score + policy.max_score_delta_from_best;
+        let mut best_choice = None;
+        let mut saw_competitive_cross_root_pair = false;
+
+        for left_root_idx in 0..self.roots.len() {
+            let left_root = &self.roots[left_root_idx];
+            for right_root_idx in (left_root_idx + 1)..self.roots.len() {
+                let right_root = &self.roots[right_root_idx];
+                for (left_archive_idx, left_elite) in left_root.entries().iter().enumerate() {
+                    if left_elite.score > score_limit {
+                        continue;
+                    }
+                    for (right_archive_idx, right_elite) in right_root.entries().iter().enumerate() {
+                        if right_elite.score > score_limit {
+                            continue;
+                        }
+
+                        saw_competitive_cross_root_pair = true;
+                        let disagreement =
+                            left_elite.session_disagreement_count(right_elite);
+                        if disagreement < policy.min_session_disagreement {
+                            continue;
+                        }
+
+                        let candidate = CrossRootParentChoice {
+                            left_root_id: left_root.root_id,
+                            left_archive_idx,
+                            left_score: left_elite.score,
+                            right_root_id: right_root.root_id,
+                            right_archive_idx,
+                            right_score: right_elite.score,
+                            session_disagreement_count: disagreement,
+                        };
+                        match best_choice {
+                            Some(current_best)
+                                if !cross_root_choice_better(candidate, current_best) => {}
+                            _ => best_choice = Some(candidate),
+                        }
+                    }
+                }
+            }
+        }
+
+        best_choice.ok_or(if saw_competitive_cross_root_pair {
+            CrossRootParentSelectionFailure::NoPairMetDisagreementThreshold
+        } else {
+            CrossRootParentSelectionFailure::NoCompetitiveCrossRootPair
+        })
+    }
+
+    pub(crate) fn root(&self, root_id: SearchRootId) -> Option<&RootEliteArchive> {
+        self.roots.iter().find(|root| root.root_id == root_id)
+    }
+
+    fn root_mut(&mut self, root_id: SearchRootId) -> Option<&mut RootEliteArchive> {
+        self.roots.iter_mut().find(|root| root.root_id == root_id)
+    }
+}
+
+fn cross_root_choice_better(
+    candidate: CrossRootParentChoice,
+    current_best: CrossRootParentChoice,
+) -> bool {
+    candidate
+        .session_disagreement_count
+        .cmp(&current_best.session_disagreement_count)
+        .then_with(|| {
+            let candidate_sum = candidate.left_score + candidate.right_score;
+            let current_sum = current_best.left_score + current_best.right_score;
+            candidate_sum.total_cmp(&current_sum)
+        })
+        .then_with(|| current_best.left_root_id.cmp(&candidate.left_root_id))
+        .then_with(|| current_best.right_root_id.cmp(&candidate.right_root_id))
+        .then_with(|| current_best.left_archive_idx.cmp(&candidate.left_archive_idx))
+        .then_with(|| current_best.right_archive_idx.cmp(&candidate.right_archive_idx))
+        .is_lt()
+}
+
 fn minimum_disagreement_to_others(
     elite: &ArchivedElite,
     elite_idx: usize,
@@ -267,7 +560,9 @@ mod tests {
     };
 
     use super::{
-        ArchiveUpdateReason, ArchivedElite, EliteArchive, EliteArchiveConfig,
+        ArchiveUpdateReason, ArchivedElite, CrossRootParentSelectionFailure,
+        CrossRootParentSelectionPolicy, EliteArchive, EliteArchiveConfig, MultiRootElitePool,
+        MultiRootElitePoolConfig, MultiRootElitePoolUpdateReason,
     };
     use crate::solver3::runtime_state::RuntimeState;
 
@@ -470,5 +765,201 @@ mod tests {
         assert!(scores.contains(&13.0));
         assert!(scores.contains(&12.0));
         assert!(!scores.contains(&14.0));
+    }
+
+    #[test]
+    fn multi_root_pool_tracks_roots_and_replaces_weakest_root() {
+        let root_a = state_from_schedule(
+            vec![
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+                vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+                vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+            ],
+            true,
+            10.0,
+        );
+        let root_b = state_from_schedule(
+            vec![
+                vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+                vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+            ],
+            true,
+            14.0,
+        );
+        let root_c = state_from_schedule(
+            vec![
+                vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+                vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+            ],
+            true,
+            11.0,
+        );
+        let root_d = state_from_schedule(
+            vec![
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+                vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+                vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+            ],
+            true,
+            15.0,
+        );
+
+        let mut pool = MultiRootElitePool::new(MultiRootElitePoolConfig {
+            max_roots: 2,
+            per_root_archive: EliteArchiveConfig::default(),
+        });
+
+        let add_a = pool.consider_state(10, root_a);
+        let add_b = pool.consider_state(20, root_b);
+        let replace_b = pool.consider_state(30, root_c);
+        let reject_d = pool.consider_state(40, root_d);
+
+        assert_eq!(add_a.reason, MultiRootElitePoolUpdateReason::AddedNewRoot);
+        assert_eq!(add_b.reason, MultiRootElitePoolUpdateReason::AddedNewRoot);
+        assert_eq!(
+            replace_b.reason,
+            MultiRootElitePoolUpdateReason::ReplacedWeakestRoot
+        );
+        assert_eq!(replace_b.evicted_root_id, Some(20));
+        assert_eq!(
+            reject_d.reason,
+            MultiRootElitePoolUpdateReason::RejectedNewRootNotCompetitive
+        );
+        assert_eq!(pool.root_count(), 2);
+        assert!(pool.root(10).is_some());
+        assert!(pool.root(30).is_some());
+        assert!(pool.root(20).is_none());
+    }
+
+    #[test]
+    fn multi_root_parent_selection_rejects_same_root_only_pool() {
+        let state_a = state_from_schedule(
+            vec![
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+                vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+                vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+            ],
+            true,
+            10.0,
+        );
+        let state_b = state_from_schedule(
+            vec![
+                vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+                vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+            ],
+            true,
+            11.0,
+        );
+
+        let mut pool = MultiRootElitePool::new(MultiRootElitePoolConfig {
+            max_roots: 3,
+            per_root_archive: EliteArchiveConfig {
+                capacity: 2,
+                near_duplicate_session_threshold: 0,
+            },
+        });
+        pool.consider_state(10, state_a);
+        pool.consider_state(10, state_b);
+
+        let failure = pool
+            .select_cross_root_parent_pair(CrossRootParentSelectionPolicy::default())
+            .expect_err("same-root-only pool should not produce unrelated parent pair");
+
+        assert_eq!(failure, CrossRootParentSelectionFailure::NotEnoughRoots);
+    }
+
+    #[test]
+    fn multi_root_parent_selection_prefers_competitive_cross_root_pair() {
+        let state_a = state_from_schedule(
+            vec![
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+                vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+                vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+            ],
+            true,
+            10.0,
+        );
+        let state_b = state_from_schedule(
+            vec![
+                vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+                vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+            ],
+            true,
+            11.0,
+        );
+        let state_c = state_from_schedule(
+            vec![
+                vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+                vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+            ],
+            true,
+            17.5,
+        );
+
+        let mut pool = MultiRootElitePool::new(MultiRootElitePoolConfig {
+            max_roots: 3,
+            per_root_archive: EliteArchiveConfig::default(),
+        });
+        pool.consider_state(10, state_a);
+        pool.consider_state(20, state_b);
+        pool.consider_state(30, state_c);
+
+        let choice = pool
+            .select_cross_root_parent_pair(CrossRootParentSelectionPolicy {
+                max_score_delta_from_best: 2.0,
+                min_session_disagreement: 2,
+            })
+            .expect("competitive cross-root pair should exist");
+
+        assert_eq!((choice.left_root_id, choice.right_root_id), (10, 20));
+        assert!(choice.session_disagreement_count >= 2);
+        assert!(choice.left_score <= 12.0);
+        assert!(choice.right_score <= 12.0);
+    }
+
+    #[test]
+    fn multi_root_parent_selection_reports_disagreement_threshold_failure() {
+        let state_a = state_from_schedule(
+            vec![
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+                vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+                vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+            ],
+            true,
+            10.0,
+        );
+        let state_b = state_from_schedule(
+            vec![
+                vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+                vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+                vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+            ],
+            true,
+            10.5,
+        );
+
+        let mut pool = MultiRootElitePool::new(MultiRootElitePoolConfig {
+            max_roots: 2,
+            per_root_archive: EliteArchiveConfig::default(),
+        });
+        pool.consider_state(10, state_a);
+        pool.consider_state(20, state_b);
+
+        let failure = pool
+            .select_cross_root_parent_pair(CrossRootParentSelectionPolicy {
+                max_score_delta_from_best: 1.0,
+                min_session_disagreement: 1,
+            })
+            .expect_err("identical cross-root parents should fail disagreement threshold");
+
+        assert_eq!(
+            failure,
+            CrossRootParentSelectionFailure::NoPairMetDisagreementThreshold
+        );
     }
 }
