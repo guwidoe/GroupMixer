@@ -978,6 +978,49 @@ fn solver3_random_donor_session_control_runs_through_public_entry_point() {
 }
 
 #[test]
+fn solver3_random_macro_mutation_control_runs_through_public_entry_point() {
+    let mut input = solver3_repeat_driver_input();
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        search_driver: Solver3SearchDriverParams {
+            mode: Solver3SearchDriverMode::SessionAlignedPathRelinking,
+            session_aligned_path_relinking: Solver3SessionAlignedPathRelinkingParams {
+                operator_variant:
+                    Solver3PathRelinkingOperatorVariant::RandomMacroMutationControl,
+                recombination_no_improvement_window: 8,
+                recombination_cooldown_window: 8,
+                max_path_events_per_run: Some(1),
+                max_session_imports_per_event: 2,
+                path_step_no_improvement_limit: 1,
+                child_polish_iterations_per_stagnation_window: 16,
+                child_polish_no_improvement_iterations_per_stagnation_window: 8,
+                child_polish_max_stagnation_windows: 2,
+                archive_size: 5,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        local_improver: Solver3LocalImproverParams {
+            mode: Solver3LocalImproverMode::SgpWeekPairTabu,
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    let result = run_solver(&input).expect("random macro mutation control solve should succeed");
+    let telemetry = result
+        .benchmark_telemetry
+        .expect("random macro mutation control telemetry should exist");
+    assert!(telemetry.iterations_completed > 0);
+    let path = telemetry
+        .session_aligned_path_relinking
+        .expect("path relinking telemetry should exist");
+    assert_eq!(
+        path.operator_variant,
+        Solver3PathRelinkingOperatorVariant::RandomMacroMutationControl
+    );
+}
+
+#[test]
 fn solver3_session_aligned_path_relinking_rejects_active_cliques() {
     let mut input = solver3_clique_driver_input();
     input.solver.solver_params = SolverParams::Solver3(Solver3Params {

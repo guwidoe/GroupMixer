@@ -24,6 +24,7 @@ use super::super::moves::{
 };
 use super::super::runtime_state::RuntimeState;
 use super::archive::{EliteArchive, EliteArchiveConfig};
+use super::candidate_sampling::{CandidateSampler, SwapSamplingOptions, TabuSwapSamplingDelta};
 use super::context::{
     AdaptiveRawChildRetentionConfig, SearchProgressState, SearchRunContext,
     SessionAlignedPathRelinkingConfig,
@@ -179,10 +180,23 @@ struct PathGuideCandidate {
 }
 
 #[derive(Debug, Clone)]
+struct RandomMacroMutationCandidate {
+    raw_child: RuntimeState,
+    swaps_applied: u32,
+}
+
+#[derive(Debug, Clone)]
+enum PathStepCandidateInput {
+    DonorSessionImport(AlignedSessionPair),
+    RandomMacroMutation(RandomMacroMutationCandidate),
+}
+
+#[derive(Debug, Clone)]
 struct PathStepEvaluation {
-    aligned_pair: AlignedSessionPair,
+    aligned_pair: Option<AlignedSessionPair>,
     raw_child_score: f64,
     raw_child_delta: f64,
+    candidate_priority: i64,
     polish_outcome: LocalImproverRunResult,
 }
 
@@ -524,6 +538,7 @@ pub(crate) fn run(
                 ..Default::default()
             };
             let mut current_path_state = current_incumbent.clone();
+            let macro_mutation_candidate_count = guide.differing_pairs.len().max(1);
             let mut remaining_pairs = guide.differing_pairs;
             remaining_pairs.sort_by(|left, right| {
                 right
@@ -551,7 +566,11 @@ pub(crate) fn run(
                         if remaining_pairs.is_empty() {
                             break;
                         }
-                        remaining_pairs.clone()
+                        remaining_pairs
+                            .clone()
+                            .into_iter()
+                            .map(PathStepCandidateInput::DonorSessionImport)
+                            .collect::<Vec<_>>()
                     }
                     Solver3PathRelinkingOperatorVariant::RandomDonorSessionControl => {
                         let candidates = build_random_donor_session_candidates(
@@ -566,6 +585,25 @@ pub(crate) fn run(
                             break;
                         }
                         candidates
+                            .into_iter()
+                            .map(PathStepCandidateInput::DonorSessionImport)
+                            .collect::<Vec<_>>()
+                    }
+                    Solver3PathRelinkingOperatorVariant::RandomMacroMutationControl => {
+                        let candidates = build_random_macro_mutation_candidates(
+                            &current_path_state,
+                            &run_context,
+                            macro_mutation_candidate_count,
+                            config.max_session_imports_per_event,
+                            &mut rng,
+                        )?;
+                        if candidates.is_empty() {
+                            break;
+                        }
+                        candidates
+                            .into_iter()
+                            .map(PathStepCandidateInput::RandomMacroMutation)
+                            .collect::<Vec<_>>()
                     }
                 };
                 if step_candidates.is_empty() {
@@ -596,14 +634,30 @@ pub(crate) fn run(
                 let mut best_step = None;
                 let mut forced_stop_reason = None;
 
-                for aligned_pair in step_candidates {
+                for step_candidate in step_candidates {
                     event_telemetry.steps_attempted += 1;
                     aggregate
                         .session_aligned_path_relinking_telemetry
                         .get_or_insert_with(Default::default)
                         .steps_attempted += 1;
-                    let raw_child =
-                        transplant_aligned_session(&current_path_state, donor, &aligned_pair)?;
+                    let (aligned_pair, macro_mutation_swaps_applied, raw_child, candidate_priority) =
+                        match step_candidate {
+                            PathStepCandidateInput::DonorSessionImport(aligned_pair) => {
+                                let raw_child = transplant_aligned_session(
+                                    &current_path_state,
+                                    donor,
+                                    &aligned_pair,
+                                )?;
+                                let candidate_priority = i64::from(aligned_pair.structural_distance);
+                                (Some(aligned_pair), None, raw_child, candidate_priority)
+                            }
+                            PathStepCandidateInput::RandomMacroMutation(candidate) => (
+                                None,
+                                Some(candidate.swaps_applied),
+                                candidate.raw_child,
+                                i64::from(candidate.swaps_applied),
+                            ),
+                        };
                     let raw_child_score = raw_child.total_score;
                     let raw_child_delta = raw_child_score - current_path_state.total_score;
                     if !raw_child_retention.evaluate(raw_child_delta).retained_for_polish {
@@ -679,9 +733,16 @@ pub(crate) fn run(
 
                     let became_event_best = post_polish_best_score < best_event_score;
                     event_telemetry.steps.push(SessionAlignedPathRelinkingStepTelemetry {
-                        base_session_idx: aligned_pair.base_session_idx as u32,
-                        donor_session_idx: aligned_pair.donor_session_idx as u32,
-                        structural_distance: aligned_pair.structural_distance,
+                        base_session_idx: aligned_pair
+                            .as_ref()
+                            .map(|pair| pair.base_session_idx as u32),
+                        donor_session_idx: aligned_pair
+                            .as_ref()
+                            .map(|pair| pair.donor_session_idx as u32),
+                        structural_distance: aligned_pair
+                            .as_ref()
+                            .map(|pair| pair.structural_distance),
+                        macro_mutation_swaps_applied,
                         raw_child_score,
                         raw_child_delta,
                         post_polish_best_score: Some(post_polish_best_score),
@@ -700,6 +761,7 @@ pub(crate) fn run(
                         aligned_pair,
                         raw_child_score,
                         raw_child_delta,
+                        candidate_priority,
                         polish_outcome,
                     };
                     let replace = best_step.as_ref().is_none_or(|best: &PathStepEvaluation| {
@@ -733,18 +795,33 @@ pub(crate) fn run(
                 };
                 match config.operator_variant {
                     Solver3PathRelinkingOperatorVariant::SessionAlignedPathRelinking => {
-                        remove_aligned_pair(&mut remaining_pairs, &best_step.aligned_pair);
+                        remove_aligned_pair(
+                            &mut remaining_pairs,
+                            best_step
+                                .aligned_pair
+                                .as_ref()
+                                .expect("aligned operator should keep an aligned pair"),
+                        );
                     }
                     Solver3PathRelinkingOperatorVariant::RandomDonorSessionControl => {
                         remove_session_idx(
                             &mut remaining_base_sessions,
-                            best_step.aligned_pair.base_session_idx,
+                            best_step
+                                .aligned_pair
+                                .as_ref()
+                                .expect("random donor control should keep an aligned pair")
+                                .base_session_idx,
                         );
                         remove_session_idx(
                             &mut remaining_donor_sessions,
-                            best_step.aligned_pair.donor_session_idx,
+                            best_step
+                                .aligned_pair
+                                .as_ref()
+                                .expect("random donor control should keep an aligned pair")
+                                .donor_session_idx,
                         );
                     }
+                    Solver3PathRelinkingOperatorVariant::RandomMacroMutationControl => {}
                 }
                 current_path_state = best_step.polish_outcome.search.best_state.clone();
 
@@ -762,6 +839,13 @@ pub(crate) fn run(
                 }
 
                 if no_improvement_steps >= config.path_step_no_improvement_limit {
+                    break;
+                }
+
+                if matches!(
+                    config.operator_variant,
+                    Solver3PathRelinkingOperatorVariant::RandomMacroMutationControl
+                ) {
                     break;
                 }
             }
@@ -996,12 +1080,7 @@ fn compare_path_step_candidate(left: &PathStepEvaluation, right: &PathStepEvalua
         .total_cmp(&right.polish_outcome.search.best_state.total_score)
         .then_with(|| left.raw_child_score.total_cmp(&right.raw_child_score))
         .then_with(|| left.raw_child_delta.total_cmp(&right.raw_child_delta))
-        .then_with(|| {
-            right
-                .aligned_pair
-                .structural_distance
-                .cmp(&left.aligned_pair.structural_distance)
-        })
+        .then_with(|| right.candidate_priority.cmp(&left.candidate_priority))
 }
 
 fn transplant_aligned_session(
@@ -1053,6 +1132,56 @@ fn build_random_donor_session_candidates(
             structural_distance,
         });
     }
+    Ok(candidates)
+}
+
+fn build_random_macro_mutation_candidates(
+    current_path_state: &RuntimeState,
+    run_context: &SearchRunContext,
+    candidate_count: usize,
+    swaps_per_candidate: usize,
+    rng: &mut ChaCha12Rng,
+) -> Result<Vec<RandomMacroMutationCandidate>, SolverError> {
+    if candidate_count == 0 || swaps_per_candidate == 0 || run_context.allowed_sessions.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let candidate_sampler = CandidateSampler;
+    let mut candidates = Vec::new();
+    for _ in 0..candidate_count {
+        let mut child = current_path_state.clone();
+        let mut applied_swaps = 0u32;
+        let max_attempts = swaps_per_candidate.saturating_mul(4).max(1);
+
+        for _ in 0..max_attempts {
+            if applied_swaps as usize >= swaps_per_candidate {
+                break;
+            }
+            let session_idx = run_context.allowed_sessions
+                [rng.random_range(0..run_context.allowed_sessions.len())];
+            let mut noop_tabu = TabuSwapSamplingDelta::default();
+            let preview = candidate_sampler.sample_random_swap_preview_in_session(
+                &child,
+                session_idx,
+                SwapSamplingOptions::default(),
+                &mut noop_tabu,
+                rng,
+            );
+            let Some(preview) = preview else {
+                continue;
+            };
+            apply_swap_runtime_preview(&mut child, &preview)?;
+            applied_swaps += 1;
+        }
+
+        if applied_swaps > 0 {
+            candidates.push(RandomMacroMutationCandidate {
+                raw_child: child,
+                swaps_applied: applied_swaps,
+            });
+        }
+    }
+
     Ok(candidates)
 }
 
@@ -1407,12 +1536,12 @@ mod tests {
 
     use super::{
         align_sessions_by_pairing_distance, build_random_donor_session_candidates,
-        build_session_pairing_signature, compare_path_guides, remove_aligned_pair,
-        remove_session_idx, select_path_guide, session_pairing_distance,
-        sorted_symmetric_difference_count, transplant_aligned_session,
+        build_random_macro_mutation_candidates, build_session_pairing_signature,
+        compare_path_guides, remove_aligned_pair, remove_session_idx, select_path_guide,
+        session_pairing_distance, sorted_symmetric_difference_count, transplant_aligned_session,
         AdaptiveRawChildRetentionConfig, AdaptiveRawChildRetentionState, AlignedSessionPair,
-        EliteArchive, PathGuideCandidate, SessionAlignedPathRelinkingConfig,
-        MAX_EXACT_ALIGNMENT_SESSIONS,
+        EliteArchive, PathGuideCandidate, SearchRunContext,
+        SessionAlignedPathRelinkingConfig, MAX_EXACT_ALIGNMENT_SESSIONS,
     };
 
     fn person(id: &str) -> Person {
@@ -1734,6 +1863,52 @@ mod tests {
         let mut sessions = vec![0, 1, 2];
         remove_session_idx(&mut sessions, 1);
         assert_eq!(sessions, vec![0, 2]);
+    }
+
+    #[test]
+    fn random_macro_mutation_candidates_apply_random_swaps() {
+        let state = state_from_schedule(vec![
+            vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+            vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+            vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+        ]);
+        let run_context = SearchRunContext {
+            effective_seed: 7,
+            move_policy: crate::models::MovePolicy::default(),
+            search_driver_mode: crate::models::Solver3SearchDriverMode::SessionAlignedPathRelinking,
+            local_improver_mode: crate::models::Solver3LocalImproverMode::RecordToRecord,
+            max_iterations: 100,
+            no_improvement_limit: None,
+            time_limit_seconds: None,
+            stop_on_optimal_score: false,
+            allowed_sessions: vec![0, 1, 2],
+            correctness_lane_enabled: false,
+            correctness_sample_every_accepted_moves: 100,
+            repeat_guided_swaps_enabled: false,
+            repeat_guided_swap_probability: 0.0,
+            repeat_guided_swap_candidate_preview_budget: 0,
+            sgp_week_pair_tabu: None,
+            steady_state_memetic: None,
+            donor_session_transplant: None,
+            session_aligned_path_relinking: Some(config()),
+        };
+        let mut rng = ChaCha12Rng::seed_from_u64(11);
+
+        let candidates = build_random_macro_mutation_candidates(
+            &state,
+            &run_context,
+            3,
+            2,
+            &mut rng,
+        )
+        .expect("random macro mutation candidates should build");
+
+        assert_eq!(candidates.len(), 3);
+        assert!(
+            candidates
+                .iter()
+                .all(|candidate| candidate.swaps_applied >= 1 && candidate.swaps_applied <= 2)
+        );
     }
 
     #[test]

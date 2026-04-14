@@ -1052,6 +1052,8 @@ pub enum Solver3PathRelinkingOperatorVariant {
     SessionAlignedPathRelinking,
     /// Matched-budget donor-based control that replaces aligned imports with random donor-session imports.
     RandomDonorSessionControl,
+    /// Donor-free matched-budget control that uses random macro-mutations followed by the same polish/acceptance machinery.
+    RandomMacroMutationControl,
 }
 
 /// Tenure-sampling mode for the `solver3` SGP week-pair tabu improver.
@@ -2065,11 +2067,13 @@ pub struct DonorSessionTransplantBenchmarkTelemetry {
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
 pub struct SessionAlignedPathRelinkingStepTelemetry {
     #[serde(default)]
-    pub base_session_idx: u32,
+    pub base_session_idx: Option<u32>,
     #[serde(default)]
-    pub donor_session_idx: u32,
+    pub donor_session_idx: Option<u32>,
     #[serde(default)]
-    pub structural_distance: u32,
+    pub structural_distance: Option<u32>,
+    #[serde(default)]
+    pub macro_mutation_swaps_applied: Option<u32>,
     #[serde(default)]
     pub raw_child_score: f64,
     #[serde(default)]

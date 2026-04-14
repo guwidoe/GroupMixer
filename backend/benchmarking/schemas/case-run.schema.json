@@ -459,6 +459,7 @@
                         "base_session_idx",
                         "donor_session_idx",
                         "structural_distance",
+                        "macro_mutation_swaps_applied",
                         "raw_child_score",
                         "raw_child_delta",
                         "post_polish_best_score",
@@ -469,9 +470,10 @@
                         "became_event_best"
                       ],
                       "properties": {
-                        "base_session_idx": { "type": "integer" },
-                        "donor_session_idx": { "type": "integer" },
-                        "structural_distance": { "type": "integer" },
+                        "base_session_idx": { "type": ["integer", "null"] },
+                        "donor_session_idx": { "type": ["integer", "null"] },
+                        "structural_distance": { "type": ["integer", "null"] },
+                        "macro_mutation_swaps_applied": { "type": ["integer", "null"] },
                         "raw_child_score": { "type": "number" },
                         "raw_child_delta": { "type": "number" },
                         "post_polish_best_score": { "type": ["number", "null"] },
