@@ -28,7 +28,7 @@ const CHROME = {
 const USE_CASES_SECTION = {
   title: '授業・ワークショップ・イベントに便利！',
   description:
-    'まずはシンプルなランダム分けから。より細かい調整が必要になったら、そのまま GroupMixer で対応できます。',
+    'まずはシンプルなランダム分けから。より細かい調整が必要になったら、GroupMixer がそのまま対応します。',
   cards: [
     {
       title: '授業のグループ分け',
@@ -139,8 +139,8 @@ function createContent({
       trustBullets: TRUST_BULLETS,
     },
     optimizerCta: {
-      eyebrow: 'グループ分けをさらに調整したいなら',
-      title: 'シナリオエディターを使う',
+      eyebrow: 'グループ分けをカスタマイズしたいなら！',
+      title: 'シナリオエディターで解決',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: 'シナリオエディターを開く',
       supportingText: 'このページで入力した内容はそのまま引き継がれます。',
@@ -156,10 +156,10 @@ export const JA_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
   home: createContent({
     title: 'ランダムグループ作成ツール — 名前をすぐにグループ分け | GroupMixer',
     description:
-      '無料のランダムグループ作成ツール。名前を貼り付けてグループ数を選ぶだけで、数秒でバランスのよいグループを作成できます。登録不要。必要なら制約も追加できます。',
+      '無料のランダムグループ作成ツール。名前を貼り付けてグループ数を選ぶだけで、数秒でバランスのよいグループを作成できます。登録不要。必要なら設定も追加できます。',
     eyebrow: '授業・ワークショップ・イベント向け',
     heroTitle: 'ランダムグループ作成ツール',
-    subhead: '名前を貼り付け、グループ数を選ぶだけですぐに分けられます。',
+    subhead: '名前を貼り付け、グループ数を選ぶだけで班分け完了',
     audienceSummary: '',
     faqEntries: [
       {
@@ -183,15 +183,15 @@ export const JA_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
     subhead:
       '名前リストを貼り付けて、必要なグループ数を選ぶだけ。登録不要、サーバー送信なしでブラウザ内だけで動作します。',
     audienceSummary:
-      '授業活動・ワークショップ・イベント運営などで、手間をかけずにすばやくグループ分けしたいときに最適です。',
+      '授業・ワークショップ・イベント運営などで、手間をかけずにすばやくグループ分けしたいときに最適です。',
     faqEntries: [
       {
         question: 'ランダムグループ作成ツールはどのように動きますか？',
         answer:
-          '名前を1行ずつ貼り付け、グループ数または1グループあたりの人数を指定して「グループを作成」を押すと、すぐにバランスのよいランダム分けが作成されます。',
+          '名前を1行ずつ貼り付け、グループ数または1グループあたりの人数を指定して「グループを作成」を押すと、すぐにバランスのよいグループが作成されます。',
       },
       {
-        question: 'グループ数やグループサイズは指定できますか？',
+        question: 'グループ数やグループあたりの人数は指定できますか？',
         answer:
           'はい。グループ数を固定することも、1グループあたりの人数を指定することもできます。必要な人数計算は GroupMixer が自動で行います。',
       },
@@ -233,7 +233,7 @@ export const JA_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
     eyebrow: 'Zoom、研修、ワークショップ向け',
     heroTitle: 'ブレイクアウトルーム作成ツール',
     subhead:
-      '名前を貼り付けて部屋数を決めるだけで、すぐにブレイクアウトルームに振り分けできます。',
+      '名前を貼り付けて部屋数を決めるだけで、すぐにブレイクアウトルームへ振り分けできます。',
     audienceSummary:
       '部屋分けをすばやく行いたい場面でも、複数ラウンドでのローテーションや組み合わせの重複回避に対応できます。',
     faqEntries: [
@@ -259,7 +259,7 @@ export const JA_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
     eyebrow: '協働型セッションを運営する方向け',
     heroTitle: 'ワークショップ用グループ作成ツール',
     subhead:
-      'ワークショップのグループを数秒で作成。まずはシンプルに、必要ならラウンドやバランス、制約を追加できます。',
+      'ワークショップのグループを数秒で作成。まずはシンプルに、必要ならラウンド数やバランス、制約を追加できます。',
     audienceSummary:
       '参加者の組み合わせが会話の質やエネルギー、新しい出会いに影響するワークショップに適しています。',
     faqEntries: [
