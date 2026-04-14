@@ -1022,7 +1022,7 @@ fn solver3_random_macro_mutation_control_runs_through_public_entry_point() {
 }
 
 #[test]
-fn solver3_multi_root_balanced_session_inheritance_reports_not_yet_implemented() {
+fn solver3_multi_root_balanced_session_inheritance_runs_through_public_entry_point() {
     let mut input = solver3_repeat_driver_input();
     input.solver.solver_params = SolverParams::Solver3(Solver3Params {
         search_driver: Solver3SearchDriverParams {
@@ -1048,13 +1048,12 @@ fn solver3_multi_root_balanced_session_inheritance_reports_not_yet_implemented()
         ..Default::default()
     });
 
-    let err = run_solver(&input)
-        .expect_err("multi-root balanced inheritance should reject clearly until implemented");
-    assert!(
-        err.to_string()
-            .contains("multi_root_balanced_session_inheritance is configured but not yet implemented"),
-        "unexpected error: {err}"
-    );
+    let result = run_solver(&input)
+        .expect("multi-root balanced inheritance solve should succeed");
+    let telemetry = result
+        .benchmark_telemetry
+        .expect("multi-root balanced inheritance telemetry should exist");
+    assert!(telemetry.iterations_completed > 0);
 }
 
 #[test]

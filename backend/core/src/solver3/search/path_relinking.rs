@@ -12,9 +12,12 @@ use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha12Rng;
 
 use crate::models::{
-    BenchmarkEvent, BenchmarkObserver, ProgressCallback, SessionAlignedPathRelinkingBenchmarkTelemetry,
+    BenchmarkEvent, BenchmarkObserver, BestScoreTimelinePoint, MoveFamilyBenchmarkTelemetry,
+    MoveFamilyBenchmarkTelemetrySummary, ProgressCallback,
+    RepeatGuidedSwapBenchmarkTelemetry, SessionAlignedPathRelinkingBenchmarkTelemetry,
     SessionAlignedPathRelinkingEventTelemetry, SessionAlignedPathRelinkingStepTelemetry,
-    Solver3PathRelinkingOperatorVariant, SolverResult, StopReason,
+    SgpWeekPairTabuBenchmarkTelemetry, Solver3PathRelinkingOperatorVariant, SolverResult,
+    StopReason,
 };
 use crate::solver_support::SolverError;
 
@@ -23,7 +26,10 @@ use super::super::moves::{
     SwapMove, SwapRuntimePreview,
 };
 use super::super::runtime_state::RuntimeState;
-use super::archive::{EliteArchive, EliteArchiveConfig};
+use super::archive::{
+    CrossRootParentChoice, CrossRootParentSelectionPolicy, EliteArchive, EliteArchiveConfig,
+    MultiRootElitePool, MultiRootElitePoolConfig, SearchRootId,
+};
 use super::candidate_sampling::{CandidateSampler, SwapSamplingOptions, TabuSwapSamplingDelta};
 use super::context::{
     AdaptiveRawChildRetentionConfig, SearchProgressState, SearchRunContext,
@@ -169,6 +175,40 @@ impl PathRelinkingTriggerState {
     fn mark_swap_local_optimum_certified(&mut self) {
         self.swap_local_optimum_certified = true;
     }
+}
+
+const MULTI_ROOT_SEED_STRIDE: u64 = 0x9E37_79B9_7F4A_7C15;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BalancedInheritanceParentRole {
+    ParentA,
+    ParentB,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BalancedInheritanceSessionChoice {
+    target_session_idx: usize,
+    source_parent: BalancedInheritanceParentRole,
+    source_session_idx: usize,
+    aligned_partner_session_idx: usize,
+    structural_distance: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BalancedInheritancePlan {
+    session_choices: Vec<BalancedInheritanceSessionChoice>,
+    differing_session_count: usize,
+    parent_a_session_count: usize,
+    parent_b_session_count: usize,
+    parent_a_receives_extra_session: bool,
+}
+
+#[derive(Debug, Clone)]
+struct CanonicalCrossRootParentPair {
+    parent_a_root_id: SearchRootId,
+    parent_a: super::archive::ArchivedElite,
+    parent_b_root_id: SearchRootId,
+    parent_b: super::archive::ArchivedElite,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -969,18 +1009,528 @@ pub(crate) fn run(
 }
 
 pub(crate) fn run_multi_root_balanced_session_inheritance(
-    _state: &mut RuntimeState,
+    state: &mut RuntimeState,
     run_context: SearchRunContext,
     _progress_callback: Option<&ProgressCallback>,
-    _benchmark_observer: Option<&BenchmarkObserver>,
+    benchmark_observer: Option<&BenchmarkObserver>,
 ) -> Result<SolverResult, SolverError> {
-    let _ = run_context
+    let total_started_at = get_current_time();
+    let config = run_context
         .multi_root_balanced_session_inheritance
         .expect("multi-root balanced session inheritance config should be normalized");
-    Err(SolverError::ValidationError(
-        "solver3 search_driver.mode=multi_root_balanced_session_inheritance is configured but not yet implemented"
-            .into(),
-    ))
+    let mut diversification_rng =
+        ChaCha12Rng::seed_from_u64(run_context.effective_seed ^ MULTI_ROOT_SEED_STRIDE);
+    let mut aggregate = SearchProgressState::new(state.clone());
+    let mut raw_child_retention =
+        AdaptiveRawChildRetentionState::new(config.adaptive_raw_child_retention);
+    let mut pool = MultiRootElitePool::new(MultiRootElitePoolConfig {
+        max_roots: config.root_count,
+        per_root_archive: EliteArchiveConfig {
+            capacity: config.archive_size_per_root,
+            near_duplicate_session_threshold: 1,
+        },
+    });
+    let mut best_root_id = run_context.effective_seed;
+    let mut current_incumbent = state.clone();
+    let mut total_iterations_completed = 0u64;
+    let mut total_search_seconds = 0.0;
+    let mut stop_reason = StopReason::MaxIterationsReached;
+    let root_incubation_iterations = (run_context.max_iterations / (config.root_count as u64 + 2))
+        .max(1)
+        .min(config.recombination_no_improvement_window.max(1));
+    let child_polish_iterations = config
+        .child_polish_iterations_per_stagnation_window
+        .saturating_mul(config.child_polish_max_stagnation_windows)
+        .max(1);
+    let child_polish_no_improvement_iterations = config
+        .child_polish_no_improvement_iterations_per_stagnation_window
+        .saturating_mul(config.child_polish_max_stagnation_windows)
+        .max(1);
+
+    if let Some(observer) = benchmark_observer {
+        observer(&BenchmarkEvent::RunStarted(crate::models::BenchmarkRunStarted {
+            effective_seed: run_context.effective_seed,
+            move_policy: run_context.move_policy.clone(),
+            initial_score: aggregate.initial_score,
+        }));
+    }
+
+    for root_idx in 0..config.root_count {
+        if total_iterations_completed >= run_context.max_iterations {
+            break;
+        }
+        if time_limit_exceeded(
+            get_elapsed_seconds(total_started_at),
+            run_context.time_limit_seconds.map(|limit| limit as f64),
+        ) {
+            stop_reason = StopReason::TimeLimitReached;
+            break;
+        }
+
+        let root_id = run_context
+            .effective_seed
+            .wrapping_add(((root_idx + 1) as u64).wrapping_mul(MULTI_ROOT_SEED_STRIDE));
+        let mut root_state = state.clone();
+        let swaps_per_candidate = 1 + (root_idx % 3);
+        if let Some(mutated) = build_random_macro_mutation_candidates(
+            &root_state,
+            &run_context,
+            1,
+            swaps_per_candidate,
+            &mut diversification_rng,
+        )?
+        .into_iter()
+        .next()
+        {
+            root_state = mutated.raw_child;
+            root_state.rebuild_pair_contacts();
+            root_state.sync_score_from_oracle()?;
+        }
+
+        let remaining_iterations = run_context
+            .max_iterations
+            .saturating_sub(total_iterations_completed);
+        let budget_iterations = remaining_iterations.min(root_incubation_iterations).max(1);
+        let outcome = polish_state(
+            root_state,
+            &run_context,
+            LocalImproverBudget {
+                effective_seed: root_id,
+                max_iterations: budget_iterations,
+                no_improvement_limit: run_context
+                    .no_improvement_limit
+                    .map(|limit| limit.min(budget_iterations)),
+                time_limit_seconds: run_context.time_limit_seconds.map(|limit| {
+                    let remaining = (limit as f64 - get_elapsed_seconds(total_started_at)).max(0.0);
+                    remaining.min((limit as f64) / (config.root_count as f64 + 2.0))
+                }),
+                stop_on_optimal_score: run_context.stop_on_optimal_score,
+            },
+        )?;
+        merge_local_improver_run(
+            &mut aggregate,
+            &outcome,
+            total_iterations_completed,
+            total_search_seconds,
+        );
+        total_iterations_completed += outcome.search.iterations_completed;
+        total_search_seconds += outcome.search_seconds;
+        let _ = pool.consider_state(root_id, outcome.search.best_state.clone());
+        if outcome.search.best_state.total_score < current_incumbent.total_score {
+            current_incumbent = outcome.search.best_state.clone();
+            best_root_id = root_id;
+        }
+        if run_context.stop_on_optimal_score
+            && aggregate.best_score <= crate::models::OPTIMAL_SCORE_TOLERANCE
+        {
+            stop_reason = StopReason::OptimalScoreReached;
+            break;
+        }
+    }
+
+    if stop_reason != StopReason::OptimalScoreReached
+        && total_iterations_completed < run_context.max_iterations
+        && !time_limit_exceeded(
+            get_elapsed_seconds(total_started_at),
+            run_context.time_limit_seconds.map(|limit| limit as f64),
+        )
+    {
+        if let Ok(choice) = pool.select_cross_root_parent_pair(CrossRootParentSelectionPolicy {
+            max_score_delta_from_best: config.max_parent_score_delta_from_best,
+            min_session_disagreement: config.min_cross_root_session_disagreement,
+        }) {
+            let parents = canonicalize_cross_root_parent_pair(&pool, choice)?;
+            let alignment =
+                align_sessions_by_pairing_distance(&parents.parent_a.state, &parents.parent_b.state)?;
+            let plan = build_balanced_inheritance_plan(
+                &alignment,
+                parents.parent_a_root_id,
+                parents.parent_b_root_id,
+                config.parent_a_differing_session_share,
+            );
+            let raw_child = build_balanced_inheritance_child(
+                &parents.parent_a.state,
+                &parents.parent_b.state,
+                &plan,
+            )?;
+            let raw_child_delta = raw_child.total_score - current_incumbent.total_score;
+            let retain_for_polish = raw_child.total_score < current_incumbent.total_score
+                || raw_child_retention
+                    .evaluate(raw_child_delta)
+                    .retained_for_polish;
+
+            if retain_for_polish {
+                let remaining_iterations = run_context
+                    .max_iterations
+                    .saturating_sub(total_iterations_completed);
+                if remaining_iterations > 0 {
+                    let child_root_id = parents
+                        .parent_a_root_id
+                        .wrapping_mul(31)
+                        .wrapping_add(parents.parent_b_root_id.wrapping_mul(17))
+                        .wrapping_add(run_context.effective_seed);
+                    let budget_iterations = remaining_iterations.min(child_polish_iterations).max(1);
+                    let outcome = polish_state(
+                        raw_child,
+                        &run_context,
+                        LocalImproverBudget {
+                            effective_seed: child_root_id,
+                            max_iterations: budget_iterations,
+                            no_improvement_limit: Some(
+                                budget_iterations.min(child_polish_no_improvement_iterations),
+                            ),
+                            time_limit_seconds: run_context.time_limit_seconds.map(|limit| {
+                                (limit as f64 - get_elapsed_seconds(total_started_at)).max(0.0)
+                            }),
+                            stop_on_optimal_score: run_context.stop_on_optimal_score,
+                        },
+                    )?;
+                    merge_local_improver_run(
+                        &mut aggregate,
+                        &outcome,
+                        total_iterations_completed,
+                        total_search_seconds,
+                    );
+                    total_iterations_completed += outcome.search.iterations_completed;
+                    total_search_seconds += outcome.search_seconds;
+                    let _ = pool.consider_state(child_root_id, outcome.search.best_state.clone());
+                    if outcome.search.best_state.total_score < current_incumbent.total_score {
+                        current_incumbent = outcome.search.best_state.clone();
+                        best_root_id = child_root_id;
+                    }
+                }
+            }
+        }
+    }
+
+    if stop_reason != StopReason::OptimalScoreReached
+        && total_iterations_completed < run_context.max_iterations
+        && !time_limit_exceeded(
+            get_elapsed_seconds(total_started_at),
+            run_context.time_limit_seconds.map(|limit| limit as f64),
+        )
+    {
+        let remaining_iterations = run_context
+            .max_iterations
+            .saturating_sub(total_iterations_completed);
+        if remaining_iterations > 0 {
+            let outcome = polish_state(
+                current_incumbent.clone(),
+                &run_context,
+                LocalImproverBudget {
+                    effective_seed: best_root_id,
+                    max_iterations: remaining_iterations,
+                    no_improvement_limit: run_context.no_improvement_limit,
+                    time_limit_seconds: run_context.time_limit_seconds.map(|limit| {
+                        (limit as f64 - get_elapsed_seconds(total_started_at)).max(0.0)
+                    }),
+                    stop_on_optimal_score: run_context.stop_on_optimal_score,
+                },
+            )?;
+            merge_local_improver_run(
+                &mut aggregate,
+                &outcome,
+                total_iterations_completed,
+                total_search_seconds,
+            );
+            total_iterations_completed += outcome.search.iterations_completed;
+            current_incumbent = outcome.search.best_state.clone();
+        }
+    }
+
+    let total_seconds = get_elapsed_seconds(total_started_at);
+    if time_limit_exceeded(
+        total_seconds,
+        run_context.time_limit_seconds.map(|limit| limit as f64),
+    ) {
+        stop_reason = StopReason::TimeLimitReached;
+    } else if run_context.stop_on_optimal_score
+        && aggregate.best_score <= crate::models::OPTIMAL_SCORE_TOLERANCE
+    {
+        stop_reason = StopReason::OptimalScoreReached;
+    }
+
+    aggregate.current_state = current_incumbent.clone();
+    aggregate.best_state = current_incumbent.clone();
+    aggregate.best_score = current_incumbent.total_score;
+    aggregate.iterations_completed = total_iterations_completed;
+    let mut telemetry = aggregate.to_benchmark_telemetry(&run_context, stop_reason, total_seconds);
+    telemetry.total_seconds = total_seconds;
+    telemetry.search_seconds = total_seconds;
+    telemetry.iterations_per_second = if total_seconds > 0.0 {
+        total_iterations_completed as f64 / total_seconds
+    } else {
+        0.0
+    };
+
+    if let Some(observer) = benchmark_observer {
+        observer(&BenchmarkEvent::RunCompleted(telemetry.clone()));
+    }
+
+    *state = current_incumbent;
+    build_solver_result(
+        state,
+        aggregate.no_improvement_count,
+        run_context.effective_seed,
+        run_context.move_policy,
+        stop_reason,
+        telemetry,
+    )
+}
+
+fn merge_local_improver_run(
+    aggregate: &mut SearchProgressState,
+    outcome: &LocalImproverRunResult,
+    iteration_offset: u64,
+    elapsed_offset: f64,
+) {
+    aggregate.current_state = outcome.search.current_state.clone();
+    if outcome.search.best_score < aggregate.best_score {
+        aggregate.best_state = outcome.search.best_state.clone();
+        aggregate.best_score = outcome.search.best_score;
+    }
+    aggregate.no_improvement_count = outcome.search.no_improvement_count;
+    aggregate.max_no_improvement_streak = aggregate
+        .max_no_improvement_streak
+        .max(outcome.search.max_no_improvement_streak);
+    aggregate.iterations_completed += outcome.search.iterations_completed;
+    aggregate.local_optima_escapes += outcome.search.local_optima_escapes;
+    aggregate.accepted_uphill_moves += outcome.search.accepted_uphill_moves;
+    aggregate.accepted_downhill_moves += outcome.search.accepted_downhill_moves;
+    aggregate.accepted_neutral_moves += outcome.search.accepted_neutral_moves;
+    aggregate.attempted_delta_sum += outcome.search.attempted_delta_sum;
+    aggregate.accepted_delta_sum += outcome.search.accepted_delta_sum;
+    aggregate.biggest_attempted_increase = aggregate
+        .biggest_attempted_increase
+        .max(outcome.search.biggest_attempted_increase);
+    aggregate.biggest_accepted_increase = aggregate
+        .biggest_accepted_increase
+        .max(outcome.search.biggest_accepted_increase);
+    aggregate.recent_acceptance = outcome.search.recent_acceptance.clone();
+    aggregate
+        .best_score_timeline
+        .extend(outcome.search.best_score_timeline.iter().skip(1).map(|point| {
+            BestScoreTimelinePoint {
+                iteration: point.iteration + iteration_offset,
+                elapsed_seconds: point.elapsed_seconds + elapsed_offset,
+                best_score: point.best_score,
+            }
+        }));
+    merge_repeat_guided_swap_telemetry(
+        &mut aggregate.repeat_guided_swap_telemetry,
+        &outcome.search.repeat_guided_swap_telemetry,
+    );
+    merge_optional_tabu_telemetry(
+        &mut aggregate.sgp_week_pair_tabu_telemetry,
+        &outcome.search.sgp_week_pair_tabu_telemetry,
+    );
+    merge_move_family_summary(&mut aggregate.move_metrics, &outcome.search.move_metrics);
+}
+
+fn merge_repeat_guided_swap_telemetry(
+    dest: &mut RepeatGuidedSwapBenchmarkTelemetry,
+    src: &RepeatGuidedSwapBenchmarkTelemetry,
+) {
+    dest.guided_attempts += src.guided_attempts;
+    dest.guided_successes += src.guided_successes;
+    dest.guided_fallback_to_random += src.guided_fallback_to_random;
+    dest.guided_previewed_candidates += src.guided_previewed_candidates;
+}
+
+fn merge_optional_tabu_telemetry(
+    dest: &mut Option<SgpWeekPairTabuBenchmarkTelemetry>,
+    src: &Option<SgpWeekPairTabuBenchmarkTelemetry>,
+) {
+    let Some(src) = src else {
+        return;
+    };
+    let dest = dest.get_or_insert_with(SgpWeekPairTabuBenchmarkTelemetry::default);
+    dest.raw_tabu_hits += src.raw_tabu_hits;
+    dest.prefilter_skips += src.prefilter_skips;
+    dest.retry_exhaustions += src.retry_exhaustions;
+    dest.hard_blocks += src.hard_blocks;
+    dest.aspiration_preview_surfaces += src.aspiration_preview_surfaces;
+    dest.aspiration_overrides += src.aspiration_overrides;
+    dest.recorded_swaps += src.recorded_swaps;
+    dest.realized_tenure_sum += src.realized_tenure_sum;
+    dest.realized_tenure_min = match (dest.realized_tenure_min, src.realized_tenure_min) {
+        (Some(left), Some(right)) => Some(left.min(right)),
+        (None, value) | (value, None) => value,
+    };
+    dest.realized_tenure_max = match (dest.realized_tenure_max, src.realized_tenure_max) {
+        (Some(left), Some(right)) => Some(left.max(right)),
+        (None, value) | (value, None) => value,
+    };
+}
+
+fn merge_move_family_summary(
+    dest: &mut MoveFamilyBenchmarkTelemetrySummary,
+    src: &MoveFamilyBenchmarkTelemetrySummary,
+) {
+    merge_move_family_metrics(&mut dest.swap, &src.swap);
+    merge_move_family_metrics(&mut dest.transfer, &src.transfer);
+    merge_move_family_metrics(&mut dest.clique_swap, &src.clique_swap);
+}
+
+fn merge_move_family_metrics(
+    dest: &mut MoveFamilyBenchmarkTelemetry,
+    src: &MoveFamilyBenchmarkTelemetry,
+) {
+    dest.attempts += src.attempts;
+    dest.accepted += src.accepted;
+    dest.improving_accepts += src.improving_accepts;
+    dest.rejected += src.rejected;
+    dest.preview_seconds += src.preview_seconds;
+    dest.apply_seconds += src.apply_seconds;
+    dest.full_recalculation_count += src.full_recalculation_count;
+    dest.full_recalculation_seconds += src.full_recalculation_seconds;
+}
+
+fn canonicalize_cross_root_parent_pair(
+    pool: &MultiRootElitePool,
+    choice: CrossRootParentChoice,
+) -> Result<CanonicalCrossRootParentPair, SolverError> {
+    let left_root = pool.root(choice.left_root_id).ok_or_else(|| {
+        SolverError::ValidationError("multi-root parent selection returned missing left root".into())
+    })?;
+    let right_root = pool.root(choice.right_root_id).ok_or_else(|| {
+        SolverError::ValidationError(
+            "multi-root parent selection returned missing right root".into(),
+        )
+    })?;
+    let left_parent = left_root
+        .entries()
+        .get(choice.left_archive_idx)
+        .ok_or_else(|| {
+            SolverError::ValidationError(
+                "multi-root parent selection returned missing left archive entry".into(),
+            )
+        })?
+        .clone();
+    let right_parent = right_root
+        .entries()
+        .get(choice.right_archive_idx)
+        .ok_or_else(|| {
+            SolverError::ValidationError(
+                "multi-root parent selection returned missing right archive entry".into(),
+            )
+        })?
+        .clone();
+
+    if choice.left_root_id <= choice.right_root_id {
+        Ok(CanonicalCrossRootParentPair {
+            parent_a_root_id: choice.left_root_id,
+            parent_a: left_parent,
+            parent_b_root_id: choice.right_root_id,
+            parent_b: right_parent,
+        })
+    } else {
+        Ok(CanonicalCrossRootParentPair {
+            parent_a_root_id: choice.right_root_id,
+            parent_a: right_parent,
+            parent_b_root_id: choice.left_root_id,
+            parent_b: left_parent,
+        })
+    }
+}
+
+fn build_balanced_inheritance_plan(
+    alignment: &SessionAlignment,
+    parent_a_root_id: SearchRootId,
+    parent_b_root_id: SearchRootId,
+    parent_a_differing_session_share: f64,
+) -> BalancedInheritancePlan {
+    debug_assert!((parent_a_differing_session_share - 0.5).abs() <= f64::EPSILON);
+
+    let mut differing_pairs = alignment.differing_pairs();
+    differing_pairs.sort_by(|left, right| {
+        right
+            .structural_distance
+            .cmp(&left.structural_distance)
+            .then_with(|| left.base_session_idx.cmp(&right.base_session_idx))
+            .then_with(|| left.donor_session_idx.cmp(&right.donor_session_idx))
+    });
+
+    let differing_count = differing_pairs.len();
+    let parent_a_receives_extra_session = differing_count % 2 == 1
+        && ((alignment.total_alignment_cost as u64 + parent_a_root_id + parent_b_root_id) % 2 == 0);
+    let parent_a_target_count = if differing_count % 2 == 0 {
+        differing_count / 2
+    } else if parent_a_receives_extra_session {
+        differing_count / 2 + 1
+    } else {
+        differing_count / 2
+    };
+    let parent_a_target_sessions = differing_pairs
+        .iter()
+        .take(parent_a_target_count)
+        .map(|pair| pair.base_session_idx)
+        .collect::<Vec<_>>();
+
+    let mut matched_pairs = alignment.matched_session_pairs.clone();
+    matched_pairs.sort_by(|left, right| left.base_session_idx.cmp(&right.base_session_idx));
+
+    let mut session_choices = Vec::with_capacity(matched_pairs.len());
+    let mut parent_a_assigned = 0usize;
+    let mut parent_b_assigned = 0usize;
+    for pair in matched_pairs {
+        if pair.structural_distance == 0
+            || parent_a_target_sessions.contains(&pair.base_session_idx)
+        {
+            if pair.structural_distance > 0 {
+                parent_a_assigned += 1;
+            }
+            session_choices.push(BalancedInheritanceSessionChoice {
+                target_session_idx: pair.base_session_idx,
+                source_parent: BalancedInheritanceParentRole::ParentA,
+                source_session_idx: pair.base_session_idx,
+                aligned_partner_session_idx: pair.donor_session_idx,
+                structural_distance: pair.structural_distance,
+            });
+        } else {
+            parent_b_assigned += 1;
+            session_choices.push(BalancedInheritanceSessionChoice {
+                target_session_idx: pair.base_session_idx,
+                source_parent: BalancedInheritanceParentRole::ParentB,
+                source_session_idx: pair.donor_session_idx,
+                aligned_partner_session_idx: pair.base_session_idx,
+                structural_distance: pair.structural_distance,
+            });
+        }
+    }
+
+    BalancedInheritancePlan {
+        session_choices,
+        differing_session_count: differing_count,
+        parent_a_session_count: parent_a_assigned,
+        parent_b_session_count: parent_b_assigned,
+        parent_a_receives_extra_session,
+    }
+}
+
+fn build_balanced_inheritance_child(
+    parent_a_state: &RuntimeState,
+    parent_b_state: &RuntimeState,
+    plan: &BalancedInheritancePlan,
+) -> Result<RuntimeState, SolverError> {
+    let mut child = parent_a_state.clone();
+    for session_choice in &plan.session_choices {
+        match session_choice.source_parent {
+            BalancedInheritanceParentRole::ParentA => child.overwrite_session_from_to(
+                parent_a_state,
+                session_choice.target_session_idx,
+                session_choice.source_session_idx,
+            )?,
+            BalancedInheritanceParentRole::ParentB => child.overwrite_session_from_to(
+                parent_b_state,
+                session_choice.target_session_idx,
+                session_choice.source_session_idx,
+            )?,
+        }
+    }
+    child.rebuild_pair_contacts();
+    child.sync_score_from_oracle()?;
+    Ok(child)
 }
 
 fn archive_config_for_path_relinking_mode(
@@ -1550,12 +2100,13 @@ mod tests {
     use rand_chacha::ChaCha12Rng;
 
     use super::{
-        align_sessions_by_pairing_distance, build_random_donor_session_candidates,
+        align_sessions_by_pairing_distance, build_balanced_inheritance_child,
+        build_balanced_inheritance_plan, build_random_donor_session_candidates,
         build_random_macro_mutation_candidates, build_session_pairing_signature,
         compare_path_guides, remove_aligned_pair, remove_session_idx, select_path_guide,
         session_pairing_distance, sorted_symmetric_difference_count, transplant_aligned_session,
         AdaptiveRawChildRetentionConfig, AdaptiveRawChildRetentionState, AlignedSessionPair,
-        EliteArchive, PathGuideCandidate, SearchRunContext,
+        BalancedInheritanceParentRole, EliteArchive, PathGuideCandidate, SearchRunContext,
         SessionAlignedPathRelinkingConfig, MAX_EXACT_ALIGNMENT_SESSIONS,
     };
 
@@ -1741,6 +2292,139 @@ mod tests {
         for window in differing.windows(2) {
             assert!(window[0].structural_distance >= window[1].structural_distance);
         }
+    }
+
+    #[test]
+    fn balanced_inheritance_plan_preserves_agreement_core_and_even_split() {
+        let base = state_from_schedule(vec![
+            vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+            vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+            vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+            vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+        ]);
+        let donor = state_from_schedule(vec![
+            vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+            vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+            vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+            vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+        ]);
+
+        let alignment = align_sessions_by_pairing_distance(&base, &donor).unwrap();
+        let plan = build_balanced_inheritance_plan(&alignment, 10, 20, 0.5);
+
+        assert_eq!(plan.differing_session_count, 2);
+        assert_eq!(plan.parent_a_session_count, 1);
+        assert_eq!(plan.parent_b_session_count, 1);
+        for pair in &alignment.matched_session_pairs {
+            if pair.structural_distance == 0 {
+                let choice = plan
+                    .session_choices
+                    .iter()
+                    .find(|choice| choice.target_session_idx == pair.base_session_idx)
+                    .unwrap();
+                assert_eq!(choice.source_parent, BalancedInheritanceParentRole::ParentA);
+            }
+        }
+    }
+
+    #[test]
+    fn balanced_inheritance_plan_handles_odd_differing_session_counts_explicitly() {
+        let base = state_from_schedule(vec![
+            vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+            vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+            vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+            vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+        ]);
+        let donor = state_from_schedule(vec![
+            vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+            vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+            vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+            vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+        ]);
+
+        let alignment = align_sessions_by_pairing_distance(&base, &donor).unwrap();
+        let plan = build_balanced_inheritance_plan(&alignment, 10, 20, 0.5);
+
+        assert_eq!(plan.differing_session_count, 3);
+        assert_eq!(plan.parent_a_session_count + plan.parent_b_session_count, 3);
+        assert_eq!(
+            plan.parent_a_session_count.abs_diff(plan.parent_b_session_count),
+            1
+        );
+        if plan.parent_a_receives_extra_session {
+            assert_eq!(plan.parent_a_session_count, 2);
+        } else {
+            assert_eq!(plan.parent_b_session_count, 2);
+        }
+    }
+
+    #[test]
+    fn balanced_inheritance_child_uses_exact_parent_split_on_differing_sessions() {
+        let base = state_from_schedule(vec![
+            vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+            vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+            vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+            vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+        ]);
+        let donor = state_from_schedule(vec![
+            vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+            vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+            vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+            vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+        ]);
+
+        let alignment = align_sessions_by_pairing_distance(&base, &donor).unwrap();
+        let plan = build_balanced_inheritance_plan(&alignment, 10, 20, 0.5);
+        let child = build_balanced_inheritance_child(&base, &donor, &plan).unwrap();
+
+        for choice in plan
+            .session_choices
+            .iter()
+            .filter(|choice| choice.structural_distance > 0)
+        {
+            let child_slot = child.group_slot(choice.target_session_idx, 0);
+            match choice.source_parent {
+                BalancedInheritanceParentRole::ParentA => assert_eq!(
+                    child.group_members[child_slot],
+                    base.group_members[base.group_slot(choice.source_session_idx, 0)]
+                ),
+                BalancedInheritanceParentRole::ParentB => assert_eq!(
+                    child.group_members[child_slot],
+                    donor.group_members[donor.group_slot(choice.source_session_idx, 0)]
+                ),
+            }
+        }
+    }
+
+    #[test]
+    fn balanced_inheritance_child_does_not_collapse_into_caller_order_bias() {
+        let base = state_from_schedule(vec![
+            vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+            vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+            vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+            vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+        ]);
+        let donor = state_from_schedule(vec![
+            vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+            vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+            vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+            vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+        ]);
+
+        let alignment_ab = align_sessions_by_pairing_distance(&base, &donor).unwrap();
+        let plan_ab = build_balanced_inheritance_plan(&alignment_ab, 10, 20, 0.5);
+        let child_ab = build_balanced_inheritance_child(&base, &donor, &plan_ab).unwrap();
+
+        let alignment_ba = align_sessions_by_pairing_distance(&donor, &base).unwrap();
+        let plan_ba = build_balanced_inheritance_plan(&alignment_ba, 20, 10, 0.5);
+        let child_ba = build_balanced_inheritance_child(&donor, &base, &plan_ba).unwrap();
+
+        assert!(plan_ab.parent_a_session_count > 0);
+        assert!(plan_ab.parent_b_session_count > 0);
+        assert!(plan_ba.parent_a_session_count > 0);
+        assert!(plan_ba.parent_b_session_count > 0);
+        assert_ne!(child_ab.to_api_schedule(), base.to_api_schedule());
+        assert_ne!(child_ba.to_api_schedule(), donor.to_api_schedule());
     }
 
     #[test]
