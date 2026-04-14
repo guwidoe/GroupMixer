@@ -1,0 +1,43 @@
+schema_version: 1
+suite_id: objective-diagnostic-fixed-iteration-adversarial-solver3-metaheuristic-v1
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: adversarial
+title: Fixed-iteration adversarial diagnostic bundle for solver3 metaheuristic autoresearch (v1)
+description: Adversarial workloads retargeted explicitly to solver3 with 7M-iteration diagnostic budgets so advanced search modes must preserve transfer and clique semantics while chasing final quality.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 7000000
+    time_limit_seconds: 900
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/adversarial/clique_swap_functionality_35p.json
+    case_role: canonical
+    purpose: objective_diagnostic.fixed_iteration.adversarial.clique_integrity_and_department_balance_35p_metaheuristic
+    provenance: converted_from_backend_core_tests_test_cases_clique_swap_functionality_test_json_with_7m_iteration_metaheuristic_metadata
+    declared_budget:
+      max_iterations: 7000000
+      time_limit_seconds: 900
+    seed: 333
+    max_iterations: 7000000
+    time_limit_seconds: 900
+  - manifest: ../cases/adversarial/transfer_attribute_balance_111p.json
+    case_role: canonical
+    purpose: objective_diagnostic.fixed_iteration.adversarial.large_attribute_balance_111p_metaheuristic
+    provenance: converted_from_backend_core_tests_test_cases_transfer_test_json_with_7m_iteration_metaheuristic_metadata
+    declared_budget:
+      max_iterations: 7000000
+      time_limit_seconds: 900
+    seed: 424242
+    max_iterations: 7000000
+    time_limit_seconds: 900

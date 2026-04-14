@@ -1,0 +1,47 @@
+schema_version: 1
+suite_id: objective-canonical-representative-solver3-metaheuristic-v1
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: representative
+title: Long-budget representative objective bundle for solver3 metaheuristic autoresearch (v1)
+description: Representative day-to-day workloads retargeted explicitly to solver3 with long fixed-time budgets for metaheuristic autoresearch focused on final incumbent quality.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 300000000
+    time_limit_seconds: 150
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/representative/small_workshop_balanced.json
+    case_role: canonical
+    purpose: objective_target.representative.balanced_long_budget_metaheuristic
+    provenance: checked_in_case_manifest_retargeted_to_solver3_long_budget_metaheuristic_lane
+    declared_budget:
+      max_iterations: 300000000
+      time_limit_seconds: 150
+    seed: 101
+    max_iterations: 300000000
+    time_limit_seconds: 150
+    search_policy:
+      no_improvement_iterations: null
+  - manifest: ../cases/representative/small_workshop_constrained.json
+    case_role: canonical
+    purpose: objective_target.representative.constraint_mix_long_budget_metaheuristic
+    provenance: checked_in_case_manifest_retargeted_to_solver3_long_budget_metaheuristic_lane
+    declared_budget:
+      max_iterations: 300000000
+      time_limit_seconds: 150
+    seed: 102
+    max_iterations: 300000000
+    time_limit_seconds: 150
+    search_policy:
+      no_improvement_iterations: null

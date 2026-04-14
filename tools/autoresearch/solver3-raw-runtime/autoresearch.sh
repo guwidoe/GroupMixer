@@ -14,7 +14,7 @@ run_suite() {
   local manifest="$1"
   local log_file="$ARTIFACTS_DIR/$(basename "$manifest" .yaml).log"
 
-  if ! cargo run -q -p gm-cli -- benchmark run --manifest "$manifest" --artifacts-dir "$ARTIFACTS_DIR" >"$log_file" 2>&1; then
+  if ! cargo run --release -q -p gm-cli -- benchmark run --manifest "$manifest" --artifacts-dir "$ARTIFACTS_DIR" >"$log_file" 2>&1; then
     tail -80 "$log_file" >&2 || true
     return 1
   fi

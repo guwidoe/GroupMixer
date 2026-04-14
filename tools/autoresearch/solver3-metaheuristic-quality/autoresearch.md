@@ -65,7 +65,6 @@ This patches the latest run entry in `autoresearch.jsonl` so the tool-managed hi
 - Keep broad correctness guardrails; do not trade semantics away for SGP-only gains
 - Do not proxy or simplify the benchmark question
 - Prefer architecture that helps advanced search support more feature combinations cleanly
-- Benchmarks must run in `--release` mode for meaningful performance data
 
 ## Canonical fixed-time objective portfolio
 - `representative.small-workshop-balanced`

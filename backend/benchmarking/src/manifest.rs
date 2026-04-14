@@ -1279,6 +1279,87 @@ mod tests {
     }
 
     #[test]
+    fn solver3_metaheuristic_autoresearch_suites_pin_solver3_and_cover_feature_surface() {
+        let fixed_time_representative = load_suite_manifest(Path::new(
+            "suites/objective-canonical-representative-solver3-metaheuristic-v1.yaml",
+        ))
+        .expect("solver3 metaheuristic fixed-time representative suite should load");
+        assert_eq!(
+            fixed_time_representative
+                .manifest
+                .default_solver_family
+                .as_deref(),
+            Some("solver3")
+        );
+        assert!(fixed_time_representative.cases.iter().any(|case| {
+            case.manifest.id == "representative.small-workshop-balanced"
+        }));
+        assert!(fixed_time_representative.cases.iter().any(|case| {
+            case.manifest.id == "representative.small-workshop-constrained"
+        }));
+
+        let fixed_time_adversarial = load_suite_manifest(Path::new(
+            "suites/objective-canonical-adversarial-solver3-metaheuristic-v1.yaml",
+        ))
+        .expect("solver3 metaheuristic fixed-time adversarial suite should load");
+        assert_eq!(
+            fixed_time_adversarial
+                .manifest
+                .default_solver_family
+                .as_deref(),
+            Some("solver3")
+        );
+        assert!(fixed_time_adversarial.cases.iter().any(|case| {
+            case.manifest.id == "adversarial.clique-swap-functionality-35p"
+        }));
+        assert!(fixed_time_adversarial.cases.iter().any(|case| {
+            case.manifest.id == "adversarial.transfer-attribute-balance-111p"
+        }));
+
+        let fixed_time_stretch = load_suite_manifest(Path::new(
+            "suites/objective-canonical-stretch-solver3-metaheuristic-v1.yaml",
+        ))
+        .expect("solver3 metaheuristic fixed-time stretch suite should load");
+        assert_eq!(
+            fixed_time_stretch.manifest.default_solver_family.as_deref(),
+            Some("solver3")
+        );
+        assert!(fixed_time_stretch.cases.iter().any(|case| {
+            case.manifest.id == "stretch.social-golfer-32x8x10"
+        }));
+        assert!(fixed_time_stretch.cases.iter().any(|case| {
+            case.manifest.id == "stretch.kirkman-schoolgirls-15x5x7"
+        }));
+        assert!(fixed_time_stretch.cases.iter().any(|case| {
+            case.manifest.id == "stretch.large-gender-immovable-110p"
+        }));
+        assert!(fixed_time_stretch.cases.iter().any(|case| {
+            case.manifest.id == "stretch.sailing-trip-demo-real"
+        }));
+        assert!(fixed_time_stretch.cases.iter().any(|case| {
+            case.manifest.id == "stretch.synthetic-partial-attendance-capacity-pressure-152p"
+        }));
+
+        let fixed_iteration_stretch = load_suite_manifest(Path::new(
+            "suites/objective-diagnostic-fixed-iteration-stretch-solver3-metaheuristic-v1.yaml",
+        ))
+        .expect("solver3 metaheuristic fixed-iteration stretch suite should load");
+        assert_eq!(
+            fixed_iteration_stretch
+                .manifest
+                .default_solver_family
+                .as_deref(),
+            Some("solver3")
+        );
+        assert!(fixed_iteration_stretch.cases.iter().any(|case| {
+            case.manifest.id == "stretch.kirkman-schoolgirls-15x5x7"
+        }));
+        assert!(fixed_iteration_stretch.cases.iter().any(|case| {
+            case.manifest.id == "stretch.synthetic-partial-attendance-capacity-pressure-152p"
+        }));
+    }
+
+    #[test]
     fn synthetic_partial_attendance_capacity_solver3_suite_declares_solver3_contract() {
         let suite = load_suite_manifest(Path::new(
             "suites/stretch-partial-attendance-capacity-pressure-time-solver3.yaml",

@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$ROOT"
 
-ARTIFACTS_DIR="$(mktemp -d "${TMPDIR:-/tmp}/groupmixer-autoresearch-solver3-objective-XXXXXX")"
+ARTIFACTS_DIR="$(mktemp -d "${TMPDIR:-/tmp}/groupmixer-autoresearch-solver3-metaheuristic-XXXXXX")"
 METRICS_OUTPUT_LOG="$ARTIFACTS_DIR/metrics-output.log"
 cleanup() {
   rm -rf "$ARTIFACTS_DIR"
@@ -41,25 +41,29 @@ run_suite() {
   printf '%s\n' "$report_path"
 }
 
-FIXED_TIME_ADVERSARIAL_REPORT="$(run_suite backend/benchmarking/suites/objective-canonical-adversarial-solver3-v1.yaml fixed-time-adversarial)"
-FIXED_TIME_STRETCH_REPORT="$(run_suite backend/benchmarking/suites/objective-canonical-stretch-solver3-v1.yaml fixed-time-stretch)"
+FIXED_TIME_REPRESENTATIVE_REPORT="$(run_suite backend/benchmarking/suites/objective-canonical-representative-solver3-metaheuristic-v1.yaml fixed-time-representative)"
+FIXED_TIME_ADVERSARIAL_REPORT="$(run_suite backend/benchmarking/suites/objective-canonical-adversarial-solver3-metaheuristic-v1.yaml fixed-time-adversarial)"
+FIXED_TIME_STRETCH_REPORT="$(run_suite backend/benchmarking/suites/objective-canonical-stretch-solver3-metaheuristic-v1.yaml fixed-time-stretch)"
 CORRECTNESS_REPORT="$(run_suite backend/benchmarking/suites/correctness-edge-intertwined-solver3-v1.yaml correctness)"
 
 emit_and_capture fixed-time-metrics \
   python3 tools/autoresearch/objective-quality/aggregate_objective_metrics.py \
     fixed-time \
-    tools/autoresearch/solver3-objective-quality/fixed-time-metric-config.json \
+    tools/autoresearch/solver3-metaheuristic-quality/fixed-time-metric-config.json \
+    "$FIXED_TIME_REPRESENTATIVE_REPORT" \
     "$FIXED_TIME_ADVERSARIAL_REPORT" \
     "$FIXED_TIME_STRETCH_REPORT" \
     "$CORRECTNESS_REPORT"
 
-FIXED_ITERATION_ADVERSARIAL_REPORT="$(run_suite backend/benchmarking/suites/objective-diagnostic-fixed-iteration-adversarial-solver3-v1.yaml fixed-iteration-adversarial)"
-FIXED_ITERATION_STRETCH_REPORT="$(run_suite backend/benchmarking/suites/objective-diagnostic-fixed-iteration-stretch-solver3-v1.yaml fixed-iteration-stretch)"
+FIXED_ITERATION_REPRESENTATIVE_REPORT="$(run_suite backend/benchmarking/suites/objective-diagnostic-fixed-iteration-representative-solver3-metaheuristic-v1.yaml fixed-iteration-representative)"
+FIXED_ITERATION_ADVERSARIAL_REPORT="$(run_suite backend/benchmarking/suites/objective-diagnostic-fixed-iteration-adversarial-solver3-metaheuristic-v1.yaml fixed-iteration-adversarial)"
+FIXED_ITERATION_STRETCH_REPORT="$(run_suite backend/benchmarking/suites/objective-diagnostic-fixed-iteration-stretch-solver3-metaheuristic-v1.yaml fixed-iteration-stretch)"
 
 emit_and_capture fixed-iteration-metrics \
   python3 tools/autoresearch/objective-quality/aggregate_objective_metrics.py \
     fixed-iteration \
-    tools/autoresearch/solver3-objective-quality/fixed-iteration-metric-config.json \
+    tools/autoresearch/solver3-metaheuristic-quality/fixed-iteration-metric-config.json \
+    "$FIXED_ITERATION_REPRESENTATIVE_REPORT" \
     "$FIXED_ITERATION_ADVERSARIAL_REPORT" \
     "$FIXED_ITERATION_STRETCH_REPORT"
 

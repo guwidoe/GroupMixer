@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "lane_id": "solver3-metaheuristic-fixed-iteration-diagnostic-v1",
+  "description": "Diagnostic fixed-iteration solver3 metaheuristic autoresearch metric. Every canonical case in the long-budget mixed feature-surface bundle contributes through the same explicit normalized-score math and equal weight, then the final aggregate is scaled by 100 for readability.",
+  "direction": "lower",
+  "primary_metric_name": "metaheuristic_fixed_iteration_weighted_normalized_score",
+  "metric_scale": 100.0,
+  "case_formula": "normalized_case_score = final_score / reference_final_score",
+  "aggregate_formula": "primary_metric = 100 * sum(weight * normalized_case_score) / sum(weight)",
+  "weighting_note": "All long-budget solver3 metaheuristic autoresearch cases currently use equal weight 1.0, so the diagnostic metric is 100 times the arithmetic mean of the nine per-case normalized scores.",
+  "cases": [
+    {
+      "case_id": "representative.small-workshop-balanced",
+      "weight": 1.0,
+      "reference_final_score": 3.0,
+      "explanation": "Reference final score from the initial solver3 metaheuristic fixed-iteration baseline."
+    },
+    {
+      "case_id": "representative.small-workshop-constrained",
+      "weight": 1.0,
+      "reference_final_score": 4.0,
+      "explanation": "Reference final score from the initial solver3 metaheuristic fixed-iteration baseline."
+    },
+    {
+      "case_id": "adversarial.clique-swap-functionality-35p",
+      "weight": 1.0,
+      "reference_final_score": 4765.0,
+      "explanation": "Reference final score from the initial solver3 metaheuristic fixed-iteration baseline."
+    },
+    {
+      "case_id": "adversarial.transfer-attribute-balance-111p",
+      "weight": 1.0,
+      "reference_final_score": 194.0,
+      "explanation": "Reference final score from the initial solver3 metaheuristic fixed-iteration baseline."
+    },
+    {
+      "case_id": "stretch.social-golfer-32x8x10",
+      "weight": 1.0,
+      "reference_final_score": 5409.0,
+      "explanation": "Reference final score from the initial solver3 metaheuristic fixed-iteration baseline."
+    },
+    {
+      "case_id": "stretch.kirkman-schoolgirls-15x5x7",
+      "weight": 1.0,
+      "reference_final_score": 55.0,
+      "explanation": "Reference final score from the initial solver3 metaheuristic fixed-iteration baseline."
+    },
+    {
+      "case_id": "stretch.large-gender-immovable-110p",
+      "weight": 1.0,
+      "reference_final_score": 2102.0,
+      "explanation": "Reference final score from the initial solver3 metaheuristic fixed-iteration baseline."
+    },
+    {
+      "case_id": "stretch.sailing-trip-demo-real",
+      "weight": 1.0,
+      "reference_final_score": 4362.0,
+      "explanation": "Reference final score from the initial solver3 metaheuristic fixed-iteration baseline."
+    },
+    {
+      "case_id": "stretch.synthetic-partial-attendance-capacity-pressure-152p",
+      "weight": 1.0,
+      "reference_final_score": 6538.0,
+      "explanation": "Reference final score from the initial solver3 metaheuristic fixed-iteration baseline."
+    }
+  ]
+}
