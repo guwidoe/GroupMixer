@@ -133,6 +133,18 @@ export function resolveWorkflowGuideAction(
       : null;
   }
 
+  if (currentStepId === 'solver') {
+    return options?.hasDetailedResult
+      ? {
+          kind: 'route',
+          currentStepId,
+          nextStepId: 'result-details',
+          label: 'Open Current Result',
+          path: getWorkflowGuideRoute('result-details'),
+        }
+      : null;
+  }
+
   if (currentStepId === 'result-details') {
     if (!options?.hasDetailedResult) {
       return null;

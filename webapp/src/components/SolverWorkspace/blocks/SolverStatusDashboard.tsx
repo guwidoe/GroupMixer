@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Clock, Info, TrendingUp } from 'lucide-react';
+import { Activity, ArrowRight, Clock, Info, TrendingUp } from 'lucide-react';
 import type { SolverSettings, SolverState } from '../../../types';
 import { Tooltip } from '../../Tooltip';
 import ProgressBars from '../../SolverPanel/ProgressBars';
@@ -7,9 +7,16 @@ import ProgressBars from '../../SolverPanel/ProgressBars';
 interface SolverStatusDashboardProps {
   solverState: SolverState;
   displaySettings: SolverSettings;
+  canOpenCurrentResult?: boolean;
+  onOpenCurrentResult?: () => void;
 }
 
-export function SolverStatusDashboard({ solverState, displaySettings }: SolverStatusDashboardProps) {
+export function SolverStatusDashboard({
+  solverState,
+  displaySettings,
+  canOpenCurrentResult = false,
+  onOpenCurrentResult,
+}: SolverStatusDashboardProps) {
   return (
     <section
       className="rounded-2xl border p-4 md:p-5"
@@ -30,6 +37,33 @@ export function SolverStatusDashboard({ solverState, displaySettings }: SolverSt
       </div>
 
       <ProgressBars solverState={solverState} displaySettings={displaySettings} />
+
+      {canOpenCurrentResult && onOpenCurrentResult ? (
+        <div
+          className="mt-4 flex flex-col gap-3 rounded-2xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--color-accent) 8%, var(--bg-primary))',
+            borderColor: 'color-mix(in srgb, var(--color-accent) 24%, var(--border-primary))',
+          }}
+        >
+          <div>
+            <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+              Solve complete
+            </div>
+            <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Review the active result directly to inspect assignments, exports, and visualizations.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenCurrentResult}
+            className="btn-primary inline-flex items-center justify-center gap-2 self-start sm:self-auto"
+          >
+            <span>Open Current Result</span>
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      ) : null}
 
       <div className="mt-6 flex flex-row gap-2 overflow-x-auto sm:gap-4">
         <div className="min-w-0 flex-1 flex-shrink-0 rounded-lg bg-primary-50 p-3 text-center sm:p-4">

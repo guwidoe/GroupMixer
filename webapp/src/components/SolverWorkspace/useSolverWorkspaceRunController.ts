@@ -32,6 +32,7 @@ export interface SolverWorkspaceRunController {
   desiredRuntimeSettings: number;
   setDesiredRuntimeSettings: React.Dispatch<React.SetStateAction<number>>;
   currentScenarioId: string | null;
+  currentResultId: string | null;
   savedScenarios: ReturnType<typeof useAppStore.getState>['savedScenarios'];
   setWarmStartFromResult: (id: string | null) => void;
   warmStartSelection: string | null;
@@ -71,6 +72,7 @@ export function useSolverWorkspaceRunController(): SolverWorkspaceRunController 
   const runtimeSolverCatalogStatus = useAppStore((state) => state.runtimeSolverCatalogStatus);
   const runtimeSolverCatalogError = useAppStore((state) => state.runtimeSolverCatalogError);
   const currentScenarioId = useAppStore((state) => state.currentScenarioId);
+  const currentResultId = useAppStore((state) => state.currentResultId);
   const savedScenarios = useAppStore((state) => state.savedScenarios);
   const warmStartResultId = useAppStore((state) => state.ui.warmStartResultId);
   const setWarmStartFromResult = useAppStore((state) => state.setWarmStartFromResult);
@@ -189,6 +191,7 @@ export function useSolverWorkspaceRunController(): SolverWorkspaceRunController 
     desiredRuntimeSettings,
     setDesiredRuntimeSettings,
     currentScenarioId,
+    currentResultId,
     savedScenarios,
     setWarmStartFromResult,
     warmStartSelection,

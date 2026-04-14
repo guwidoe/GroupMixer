@@ -51,6 +51,16 @@ describe('workflowGuide', () => {
   });
 
   it('uses special actions for results history and detailed view', () => {
+    expect(resolveWorkflowGuideAction('/app/solver', { hasDetailedResult: true })).toEqual({
+      kind: 'route',
+      currentStepId: 'solver',
+      nextStepId: 'result-details',
+      label: 'Open Current Result',
+      path: '/app/results',
+    });
+
+    expect(resolveWorkflowGuideAction('/app/solver', { hasDetailedResult: false })).toBeNull();
+
     expect(resolveWorkflowGuideAction('/app/history', { hasBestResult: true })).toEqual({
       kind: 'open-best-result',
       currentStepId: 'results',

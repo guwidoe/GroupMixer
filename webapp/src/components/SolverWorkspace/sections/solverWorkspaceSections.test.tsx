@@ -2,6 +2,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PlayCircle } from 'lucide-react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const mockRunController = {
@@ -93,7 +94,11 @@ describe('solver workspace sections', () => {
 
   it('renders the recommended run page as a one-click flow with hidden options by default', async () => {
     const user = userEvent.setup();
-    render(<RunSolverSection />);
+    render(
+      <MemoryRouter>
+        <RunSolverSection />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByRole('heading', { name: 'Run Solver' })).toBeInTheDocument();
     expect(screen.getByText('SolverRunControls')).toBeInTheDocument();
@@ -114,34 +119,36 @@ describe('solver workspace sections', () => {
 
   it('renders the manual solver-family page without duplicating the family chooser', () => {
     render(
-      <SolverFamilySection
-        section={{
-          id: 'solver3',
-          routeSegment: 'solver3',
-          label: 'Solver 3',
-          description: 'Manual tuning surface for Solver 3.',
-          tooltipDescription: 'Manual tuning surface for Solver 3.',
-          group: 'manual-tuning',
-          order: 3,
-          icon: PlayCircle,
-          familyId: 'solver3',
-          catalogEntry: {
+      <MemoryRouter>
+        <SolverFamilySection
+          section={{
             id: 'solver3',
-            displayName: 'Solver 3',
-            acceptedConfigIds: ['solver3'],
-            notes: 'Experimental solver.',
-            capabilities: {
-              supportsInitialSchedule: true,
-              supportsProgressCallback: true,
-              supportsBenchmarkObserver: false,
-              supportsRecommendedSettings: false,
-              supportsDeterministicSeed: true,
+            routeSegment: 'solver3',
+            label: 'Solver 3',
+            description: 'Manual tuning surface for Solver 3.',
+            tooltipDescription: 'Manual tuning surface for Solver 3.',
+            group: 'manual-tuning',
+            order: 3,
+            icon: PlayCircle,
+            familyId: 'solver3',
+            catalogEntry: {
+              id: 'solver3',
+              displayName: 'Solver 3',
+              acceptedConfigIds: ['solver3'],
+              notes: 'Experimental solver.',
+              capabilities: {
+                supportsInitialSchedule: true,
+                supportsProgressCallback: true,
+                supportsBenchmarkObserver: false,
+                supportsRecommendedSettings: false,
+                supportsDeterministicSeed: true,
+              },
+              uiSpecAvailable: true,
+              experimental: true,
             },
-            uiSpecAvailable: true,
-            experimental: true,
-          },
-        }}
-      />,
+          }}
+        />,
+      </MemoryRouter>,
     );
 
     expect(screen.getByRole('heading', { name: 'Solver 3' })).toBeInTheDocument();

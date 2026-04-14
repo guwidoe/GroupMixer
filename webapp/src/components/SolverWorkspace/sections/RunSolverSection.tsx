@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { AllowedSessionsPanel } from '../blocks/AllowedSessionsPanel';
 import { SolverFamilyChooser } from '../blocks/SolverFamilyChooser';
 import { SolverRunControls } from '../blocks/SolverRunControls';
@@ -9,7 +10,13 @@ import { useSolverWorkspaceRunController } from '../useSolverWorkspaceRunControl
 
 export function RunSolverSection() {
   const controller = useSolverWorkspaceRunController();
+  const navigate = useNavigate();
   const [showOptions, setShowOptions] = React.useState(false);
+  const canOpenCurrentResult = Boolean(
+    controller.currentResultId
+    && controller.solverState.isComplete
+    && !controller.solverState.isRunning,
+  );
 
   return (
     <section className="space-y-6">
@@ -116,7 +123,12 @@ export function RunSolverSection() {
         ) : null}
       </div>
 
-      <SolverStatusDashboard solverState={controller.solverState} displaySettings={controller.displaySettings} />
+      <SolverStatusDashboard
+        solverState={controller.solverState}
+        displaySettings={controller.displaySettings}
+        canOpenCurrentResult={canOpenCurrentResult}
+        onOpenCurrentResult={canOpenCurrentResult ? () => navigate('/app/results') : undefined}
+      />
     </section>
   );
 }

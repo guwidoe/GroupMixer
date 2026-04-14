@@ -389,6 +389,40 @@ describe("MainApp stateful integration routes", () => {
     expect(await screen.findByRole("heading", { name: /optimization results/i })).toBeInTheDocument();
   });
 
+  it('opens the current result directly from the solver page after a completed run', async () => {
+    const user = userEvent.setup();
+    const savedScenario = createSavedScenario({
+      id: 'scenario-1',
+      scenario: createSampleScenario({ settings: createSampleSolverSettings() }),
+    });
+
+    useAppStore.setState({
+      scenario: savedScenario.scenario,
+      solution: savedScenario.results[0].solution,
+      solverState: {
+        isRunning: false,
+        isComplete: true,
+        currentIteration: savedScenario.results[0].solution.iteration_count,
+        bestScore: savedScenario.results[0].solution.final_score,
+        currentScore: savedScenario.results[0].solution.final_score,
+        elapsedTime: savedScenario.results[0].solution.elapsed_time_ms,
+        noImprovementCount: 0,
+      },
+      currentScenarioId: savedScenario.id,
+      currentResultId: savedScenario.results[0].id,
+      savedScenarios: { [savedScenario.id]: savedScenario },
+    });
+
+    renderAppRoute('/app/solver/run');
+
+    const openButtons = await screen.findAllByRole('button', { name: /open current result/i });
+    expect(openButtons.length).toBeGreaterThan(0);
+
+    await user.click(openButtons[0]);
+
+    expect(await screen.findByRole('heading', { name: /optimization results/i })).toBeInTheDocument();
+  });
+
   it("updates progress targets immediately when automatic settings choose a larger run budget", async () => {
     const user = userEvent.setup();
     const savedScenario = createSavedScenario({
