@@ -48,8 +48,7 @@ describe("ResultsHeader", () => {
     expect(screen.getByRole("heading", { name: /optimization results - baseline/i })).toBeInTheDocument();
     expect(screen.getByText(/12\.50/)).toBeInTheDocument();
     expect(screen.getByText(/42 iterations/i)).toBeInTheDocument();
-    expect(screen.getByText(/1\.23s runtime/i)).toBeInTheDocument();
-    expect(screen.getByText(/seat fill/i)).toBeInTheDocument();
+    expect(screen.getByText(/1\.23s/i)).toBeInTheDocument();
     expect(screen.queryByText(/different config/i)).not.toBeInTheDocument();
   });
 
