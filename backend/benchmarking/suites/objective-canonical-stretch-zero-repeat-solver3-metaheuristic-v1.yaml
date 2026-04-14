@@ -15,6 +15,20 @@ default_solver:
     no_improvement_iterations: null
   solver_params:
     solver_type: solver3
+    search_driver:
+      mode: donor_session_transplant
+      donor_session_transplant:
+        archive_size: 4
+        recombination_no_improvement_window: 100000
+        recombination_cooldown_window: 100000
+        adaptive_raw_child_retention:
+          keep_ratio: 0.5
+          warmup_samples: 4
+          history_limit: 32
+        swap_local_optimum_certification_enabled: true
+        child_polish_iterations_per_stagnation_window: 100000
+        child_polish_no_improvement_iterations_per_stagnation_window: 100000
+        child_polish_max_stagnation_windows: 4
     local_improver:
       mode: sgp_week_pair_tabu
       sgp_week_pair_tabu:
