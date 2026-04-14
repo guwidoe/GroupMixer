@@ -1,6 +1,7 @@
 {
-  "buildCommand": "npm run vercel-build",
-  "outputDirectory": "dist",
+  "installCommand": "cd webapp && npm ci",
+  "buildCommand": "cd webapp && npm run vercel-build",
+  "outputDirectory": "webapp/dist",
   "headers": [
     {
       "source": "/(.*)",
