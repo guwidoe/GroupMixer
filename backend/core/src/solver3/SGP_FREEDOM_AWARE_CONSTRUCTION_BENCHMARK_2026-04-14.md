@@ -11,34 +11,34 @@ Lower score is better.
 
 ### Social Golfer
 - baseline time lane:
-  - `social-golfer-plateau-time-solver3-20260414T181732Z-df5f4db8`
+  - `social-golfer-plateau-time-solver3-20260414T184733Z-58853320`
 - freedom-aware time lane:
-  - `social-golfer-plateau-time-solver3-freedom-construction-20260414T181745Z-0a30f997`
+  - `social-golfer-plateau-time-solver3-freedom-construction-20260414T184743Z-6389da1e`
 - baseline fixed-iteration lane:
-  - `social-golfer-plateau-fixed-iteration-solver3-20260414T181758Z-ad3816c5`
+  - `social-golfer-plateau-fixed-iteration-solver3-20260414T184752Z-351e1453`
 - freedom-aware fixed-iteration lane:
-  - `social-golfer-plateau-fixed-iteration-solver3-freedom-construction-20260414T181808Z-1d4d4df1`
+  - `social-golfer-plateau-fixed-iteration-solver3-freedom-construction-20260414T184800Z-427a4b44`
 
 ### Neighboring zero-repeat workload
 - baseline Kirkman lane:
-  - `stretch-kirkman-schoolgirls-time-solver3-20260414T181819Z-183bd70a`
+  - `stretch-kirkman-schoolgirls-time-solver3-20260414T184808Z-232867f1`
 - freedom-aware Kirkman lane:
-  - `stretch-kirkman-schoolgirls-time-solver3-freedom-construction-20260414T181821Z-767837a8`
+  - `stretch-kirkman-schoolgirls-time-solver3-freedom-construction-20260414T184809Z-e018760f`
 
 ### Mixed workload
 - baseline partial-attendance/capacity lane:
-  - `stretch-partial-attendance-capacity-pressure-time-solver3-20260414T181823Z-0683f40c`
+  - `stretch-partial-attendance-capacity-pressure-time-solver3-20260414T184811Z-596ef6e3`
 - freedom-aware partial-attendance/capacity lane:
-  - `stretch-partial-attendance-capacity-pressure-time-solver3-freedom-construction-20260414T181826Z-fec44ef4`
+  - `stretch-partial-attendance-capacity-pressure-time-solver3-freedom-construction-20260414T184813Z-1abd75a5`
 
 ## Results
 
 | Workload | Baseline final | Freedom-aware final | Delta | Baseline init | Freedom-aware init | Runtime note |
 |---|---:|---:|---:|---:|---:|---|
-| Social Golfer time lane | 5451 | 5430 | -21 better | 9422 | 23344 | 12.38s vs 12.05s |
-| Social Golfer fixed-iteration lane | 5451 | 5430 | -21 better | 9422 | 23344 | 10.01s vs 10.87s for 10M iters |
-| Kirkman fixed-time lane | 66 | 55 | -11 better | 678 | 2300 | 1.45s vs 1.88s |
-| Partial-attendance mixed lane | 6636 | 6695 | +59 worse | 18057 | 29849 | 2.40s vs 2.69s before stagnation stop |
+| Social Golfer time lane | 5451 | 5430 | -21 better | 9422 | 23344 | 9.56s vs 9.20s |
+| Social Golfer fixed-iteration lane | 5451 | 5430 | -21 better | 9422 | 23344 | 7.46s vs 7.71s for 10M iters |
+| Kirkman fixed-time lane | 66 | 55 | -11 better | 678 | 2300 | 0.97s vs 1.07s |
+| Partial-attendance mixed lane | 6636 | 6695 | +59 worse | 18057 | 29849 | 2.30s vs 2.76s before stagnation stop |
 
 ## Interpretation
 
