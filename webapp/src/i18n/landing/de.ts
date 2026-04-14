@@ -79,7 +79,7 @@ const ADVANCED_SECTION = {
       body: 'Nutze CSV-Eingaben, um Gruppen nach Rolle, Skill, Abteilung oder beliebigen Spalten auszugleichen.',
     },
   ],
-  buttonLabel: 'Erweiterten Editor öffnen',
+  buttonLabel: 'Szenario-Editor öffnen',
   supportingText:
     'Im Szenario-Editor steuerst du Sessions, Regeln, Solver-Einstellungen und die Detailanalyse vollständig selbst.',
 };
@@ -142,7 +142,7 @@ function createContent({
       eyebrow: 'Mehr als nur Zufall gesucht?',
       title: 'Nutze den vollständigen Gruppen-Optimierer.',
       featureBullets: OPTIMIZER_FEATURES,
-      buttonLabel: 'Erweiterten Editor öffnen',
+      buttonLabel: 'Szenario-Editor öffnen',
       supportingText: 'Deine Eingaben von dieser Seite werden direkt übernommen.',
     },
     faqEntries,
