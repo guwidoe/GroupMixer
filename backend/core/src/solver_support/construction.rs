@@ -47,6 +47,11 @@ impl BaselineConstructionContext<'_> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct FreedomAwareConstructionParams {
+    pub restricted_candidate_list_size: usize,
+}
+
 pub(crate) fn apply_construction_seed_schedule(
     context: &mut BaselineConstructionContext<'_>,
     input: &ApiInput,
@@ -193,4 +198,19 @@ pub(crate) fn apply_baseline_construction_heuristic(
     }
 
     Ok(())
+}
+
+pub(crate) fn apply_freedom_aware_construction_heuristic(
+    _context: &mut BaselineConstructionContext<'_>,
+    params: &FreedomAwareConstructionParams,
+) -> Result<(), SolverError> {
+    if params.restricted_candidate_list_size == 0 {
+        return Err(SolverError::ValidationError(
+            "freedom-aware construction requires restricted_candidate_list_size >= 1".into(),
+        ));
+    }
+
+    Err(SolverError::ValidationError(
+        "solver3 freedom-aware construction mode is configured but not implemented yet".into(),
+    ))
 }

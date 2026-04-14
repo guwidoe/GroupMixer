@@ -1003,6 +1003,9 @@ pub struct Solver2Params {}
 /// keep representative performance by default.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Default)]
 pub struct Solver3Params {
+    /// Constructor mode used when bootstrapping a solver3 state without a full incumbent.
+    #[serde(default)]
+    pub construction: Solver3ConstructionParams,
     /// Outer search-driver mode for solver3.
     #[serde(default)]
     pub search_driver: Solver3SearchDriverParams,
@@ -1015,6 +1018,46 @@ pub struct Solver3Params {
     /// Experimental hotspot-guidance controls for proposal-generation research.
     #[serde(default)]
     pub hotspot_guidance: Solver3HotspotGuidanceParams,
+}
+
+/// Construction controls for `solver3`.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Default)]
+pub struct Solver3ConstructionParams {
+    /// Which constructor implementation to use for schedule bootstrapping.
+    #[serde(default)]
+    pub mode: Solver3ConstructionMode,
+    /// Parameters for the freedom-aware randomized greedy constructor.
+    #[serde(default)]
+    pub freedom_aware: Solver3FreedomAwareConstructionParams,
+}
+
+/// Explicit constructor selection for `solver3`.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Solver3ConstructionMode {
+    /// Preserve the shared legacy construction heuristic exactly.
+    #[default]
+    BaselineLegacy,
+    /// Use the SGP-oriented freedom-aware randomized greedy constructor.
+    FreedomAwareRandomized,
+}
+
+/// Parameters for the freedom-aware randomized greedy constructor.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+pub struct Solver3FreedomAwareConstructionParams {
+    /// Number of top-scoring candidates retained in the restricted candidate list.
+    ///
+    /// Values must be >= 1.
+    #[serde(default = "default_solver3_freedom_aware_construction_rcl_size")]
+    pub restricted_candidate_list_size: u32,
+}
+
+impl Default for Solver3FreedomAwareConstructionParams {
+    fn default() -> Self {
+        Self {
+            restricted_candidate_list_size: default_solver3_freedom_aware_construction_rcl_size(),
+        }
+    }
 }
 
 /// Explicit outer-driver selection for `solver3`.
@@ -1485,6 +1528,10 @@ impl Default for Solver3CorrectnessLaneParams {
 
 fn default_solver3_correctness_lane_sample_every_accepted_moves() -> u64 {
     16
+}
+
+fn default_solver3_freedom_aware_construction_rcl_size() -> u32 {
+    4
 }
 
 fn default_solver3_memetic_population_size() -> u32 {

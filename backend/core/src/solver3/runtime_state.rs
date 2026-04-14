@@ -21,8 +21,10 @@ use std::sync::Arc;
 use std::collections::HashMap;
 
 use crate::models::ApiInput;
+use crate::models::Solver3ConstructionMode;
 use crate::solver_support::construction::{
-    apply_baseline_construction_heuristic, BaselineConstructionContext,
+    apply_baseline_construction_heuristic, apply_freedom_aware_construction_heuristic,
+    BaselineConstructionContext, FreedomAwareConstructionParams,
 };
 use crate::solver_support::validation::{
     validate_schedule_as_incumbent, validate_schedule_input_mode,
@@ -37,6 +39,12 @@ use super::oracle::maybe_cross_check_runtime_state;
 use super::scoring::recompute::recompute_oracle_score;
 
 const DEFAULT_BASELINE_CONSTRUCTION_SEED: u64 = 42;
+
+#[derive(Debug, Clone, Copy)]
+enum ConstructionHeuristicSelection {
+    BaselineLegacy,
+    FreedomAwareRandomized(FreedomAwareConstructionParams),
+}
 
 // ---------------------------------------------------------------------------
 // RuntimeState
@@ -86,7 +94,7 @@ impl RuntimeState {
     ///
     /// 1. Compiles the `CompiledProblem`.
     /// 2. Loads `initial_schedule` directly if present, otherwise starts from `construction_seed_schedule` if present.
-    /// 3. Applies the shared baseline construction heuristic (seeded) to fill remaining slots.
+    /// 3. Applies the selected shared construction heuristic (seeded) to fill remaining slots.
     /// 4. Builds flat derived arrays.
     /// 5. Runs the oracle to set initial score aggregates.
     ///
@@ -101,17 +109,34 @@ impl RuntimeState {
             let validated = validate_schedule_as_incumbent(input, initial_schedule)?;
             return Self::from_compiled_schedule(compiled, validated.schedule);
         }
-        Self::from_compiled_with_seed(compiled, effective_seed)
+        let construction = resolve_construction_selection(input)?;
+        Self::from_compiled_with_seed_and_construction(compiled, effective_seed, construction)
     }
 
     /// Builds a `RuntimeState` from a pre-compiled problem.
     pub fn from_compiled(compiled: Arc<CompiledProblem>) -> Result<Self, SolverError> {
-        Self::from_compiled_with_seed(compiled, DEFAULT_BASELINE_CONSTRUCTION_SEED)
+        Self::from_compiled_with_seed_and_construction(
+            compiled,
+            DEFAULT_BASELINE_CONSTRUCTION_SEED,
+            ConstructionHeuristicSelection::BaselineLegacy,
+        )
     }
 
     pub(crate) fn from_compiled_with_seed(
         compiled: Arc<CompiledProblem>,
         effective_seed: u64,
+    ) -> Result<Self, SolverError> {
+        Self::from_compiled_with_seed_and_construction(
+            compiled,
+            effective_seed,
+            ConstructionHeuristicSelection::BaselineLegacy,
+        )
+    }
+
+    fn from_compiled_with_seed_and_construction(
+        compiled: Arc<CompiledProblem>,
+        effective_seed: u64,
+        construction: ConstructionHeuristicSelection,
     ) -> Result<Self, SolverError> {
         let np = compiled.num_people;
         let ng = compiled.num_groups;
@@ -137,7 +162,7 @@ impl RuntimeState {
             total_score: 0.0,
         };
 
-        state.initialize_from_schedule(effective_seed)?;
+        state.initialize_from_schedule(effective_seed, construction)?;
         state.rebuild_pair_contacts();
         state.sync_score_from_oracle()?;
         Ok(state)
@@ -236,8 +261,12 @@ impl RuntimeState {
     // Deterministic initialization
     // ------------------------------------------------------------------
 
-    fn initialize_from_schedule(&mut self, effective_seed: u64) -> Result<(), SolverError> {
-        let schedule = self.build_baseline_schedule(effective_seed)?;
+    fn initialize_from_schedule(
+        &mut self,
+        effective_seed: u64,
+        construction: ConstructionHeuristicSelection,
+    ) -> Result<(), SolverError> {
+        let schedule = self.build_constructed_schedule(effective_seed, construction)?;
 
         self.load_exact_schedule(&schedule)?;
 
@@ -256,7 +285,11 @@ impl RuntimeState {
         Ok(())
     }
 
-    fn build_baseline_schedule(&self, effective_seed: u64) -> Result<PackedSchedule, SolverError> {
+    fn build_constructed_schedule(
+        &self,
+        effective_seed: u64,
+        construction: ConstructionHeuristicSelection,
+    ) -> Result<PackedSchedule, SolverError> {
         let mut schedule = self
             .compiled
             .compiled_construction_seed_schedule
@@ -289,7 +322,14 @@ impl RuntimeState {
             schedule: &mut schedule,
         };
 
-        apply_baseline_construction_heuristic(&mut construction_context)?;
+        match construction {
+            ConstructionHeuristicSelection::BaselineLegacy => {
+                apply_baseline_construction_heuristic(&mut construction_context)?;
+            }
+            ConstructionHeuristicSelection::FreedomAwareRandomized(params) => {
+                apply_freedom_aware_construction_heuristic(&mut construction_context, &params)?;
+            }
+        }
         self.normalize_invalid_clique_sessions(&mut schedule, effective_seed)?;
         Ok(schedule)
     }
@@ -639,5 +679,37 @@ impl RuntimeState {
         }
 
         schedule
+    }
+}
+
+fn resolve_construction_selection(input: &ApiInput) -> Result<ConstructionHeuristicSelection, SolverError> {
+    let solver3_params = input
+        .solver
+        .solver_params
+        .solver3_params()
+        .ok_or_else(|| {
+            SolverError::ValidationError(
+                "solver3 runtime state received non-solver3 parameters in configuration".into(),
+            )
+        })?;
+    match solver3_params.construction.mode {
+        Solver3ConstructionMode::BaselineLegacy => Ok(ConstructionHeuristicSelection::BaselineLegacy),
+        Solver3ConstructionMode::FreedomAwareRandomized => {
+            let restricted_candidate_list_size = solver3_params
+                .construction
+                .freedom_aware
+                .restricted_candidate_list_size;
+            if restricted_candidate_list_size == 0 {
+                return Err(SolverError::ValidationError(
+                    "solver3 construction.freedom_aware.restricted_candidate_list_size must be >= 1"
+                        .into(),
+                ));
+            }
+            Ok(ConstructionHeuristicSelection::FreedomAwareRandomized(
+                FreedomAwareConstructionParams {
+                    restricted_candidate_list_size: restricted_candidate_list_size as usize,
+                },
+            ))
+        }
     }
 }
