@@ -1,0 +1,37 @@
+schema_version: 1
+suite_id: stretch-kirkman-schoolgirls-time-solver3-freedom-construction
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: stretch
+title: Kirkman schoolgirls benchmark (fixed-time, solver3 freedom-aware construction)
+description: Classical 15-schoolgirl / 7-day zero-repeat walking arrangement benchmark under a fixed-time solve budget using solver3 with freedom-aware construction.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 1500000
+    time_limit_seconds: 10
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+    construction:
+      mode: freedom_aware_randomized
+      freedom_aware:
+        restricted_candidate_list_size: 4
+  logging: {}
+  telemetry: {}
+  seed: 150507
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: objective_target.stretch.kirkman_schoolgirls_zero_repeat_pairs
+    provenance: classical_kirkman_schoolgirl_problem_encoded_as_a_canonical_benchmark_case_with_solver3_freedom_aware_construction
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150507
+    max_iterations: 1500000
+    time_limit_seconds: 10

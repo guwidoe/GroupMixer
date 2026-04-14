@@ -1,0 +1,37 @@
+schema_version: 1
+suite_id: social-golfer-plateau-time-solver3-freedom-construction
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: stretch
+title: Social Golfer plateau diagnosis (time-limited, solver3 freedom-aware construction)
+description: Dedicated single-case solver3 suite for studying the freedom-aware randomized greedy constructor on the canonical Social Golfer workload under the usual fixed-time plateau lane.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 1000000
+    time_limit_seconds: 60
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+    construction:
+      mode: freedom_aware_randomized
+      freedom_aware:
+        restricted_candidate_list_size: 4
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.plateau.time_limited.social_golfer_zero_repeat_encounters
+    provenance: dedicated_single_case_plateau_diagnosis_suite_for_solver3_with_freedom_aware_construction
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320810
+    max_iterations: 10000000
+    time_limit_seconds: 25
