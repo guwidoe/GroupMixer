@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { BarChart3, Target } from 'lucide-react';
 import { useAppStore } from '../store';
-import { createResultExportFile, type ResultExportAction } from '../utils/csvExport';
+import { createResultClipboardText, createResultExportFile, type ResultClipboardAction, type ResultExportAction } from '../utils/csvExport';
 import { compareScenarioConfigurations } from '../services/scenarioStorage';
 import { calculateMetrics, getColorClass } from '../utils/metricCalculations';
 import { snapshotToScenario } from '../utils/scenarioSnapshot';
@@ -13,7 +13,7 @@ import { ResultsMetrics } from './ResultsView/ResultsMetrics';
 import { ResultsSchedule } from './ResultsView/ResultsSchedule';
 
 export function ResultsView() {
-  const { scenario, solution, solverState, currentScenarioId, currentResultId, savedScenarios, restoreResultAsNewScenario } = useAppStore();
+  const { scenario, solution, solverState, currentScenarioId, currentResultId, savedScenarios, restoreResultAsNewScenario, addNotification } = useAppStore();
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'visualize'>('grid');
   const [vizPluginId, setVizPluginId] = useLocalStorageState('resultsVisualizationPlugin', 'scheduleMatrix');
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
@@ -120,8 +120,22 @@ export function ResultsView() {
 
   const handleExportVisualizationPng = async () => {
     if (!effectiveScenario || !solution) return;
-    if (viewMode !== 'visualize') return;
-    if (!vizExportRef.current) return;
+    if (viewMode !== 'visualize') {
+      addNotification({
+        type: 'error',
+        title: 'Visualization unavailable',
+        message: 'Switch to the visualization view before exporting a PNG.',
+      });
+      return;
+    }
+    if (!vizExportRef.current) {
+      addNotification({
+        type: 'error',
+        title: 'Visualization unavailable',
+        message: 'The current visualization is not ready to export yet.',
+      });
+      return;
+    }
 
     const fileName = (resultName || 'result')
       .replace(/[^a-z0-9]/gi, '_')
@@ -141,9 +155,65 @@ export function ResultsView() {
       document.body.removeChild(a);
     } catch (e) {
       console.error('Failed to export visualization PNG:', e);
+      addNotification({
+        type: 'error',
+        title: 'PNG export failed',
+        message: 'The browser could not create an image from the current visualization.',
+      });
     } finally {
       setExportDropdownOpen(false);
     }
+  };
+
+  const handleCopyAction = async (action: ResultClipboardAction) => {
+    if (!effectiveScenario || !solution) return;
+
+    if (!navigator.clipboard?.writeText) {
+      addNotification({
+        type: 'error',
+        title: 'Clipboard unavailable',
+        message: 'This browser cannot copy result tables directly. Use a download instead.',
+      });
+      setExportDropdownOpen(false);
+      return;
+    }
+
+    const content = createResultClipboardText(effectiveScenario, solution, action);
+
+    try {
+      await navigator.clipboard.writeText(content);
+      addNotification({
+        type: 'success',
+        title: 'Copied to clipboard',
+        message: action === 'copy-full-schedule'
+          ? 'Schedule table copied. Paste it into a spreadsheet, doc, or chat.'
+          : 'Participant itineraries copied. Paste them into a spreadsheet, doc, or chat.',
+      });
+    } catch (error) {
+      console.error('Failed to copy result export:', error);
+      addNotification({
+        type: 'error',
+        title: 'Copy failed',
+        message: 'The browser blocked clipboard access for this result export.',
+      });
+    } finally {
+      setExportDropdownOpen(false);
+    }
+  };
+
+  const handlePrintResult = () => {
+    if (typeof window.print !== 'function') {
+      addNotification({
+        type: 'error',
+        title: 'Print unavailable',
+        message: 'This browser does not support printing from the current result view.',
+      });
+      setExportDropdownOpen(false);
+      return;
+    }
+
+    window.print();
+    setExportDropdownOpen(false);
   };
 
   const resultsModel = useMemo(() => {
@@ -179,7 +249,7 @@ export function ResultsView() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="results-print-surface space-y-6">
       <ResultsHeader
         resultName={resultName}
         solution={solution}
@@ -196,6 +266,8 @@ export function ResultsView() {
         exportDropdownOpen={exportDropdownOpen}
         onToggleExportDropdown={() => setExportDropdownOpen(!exportDropdownOpen)}
         onExportAction={handleExportAction}
+        onCopyAction={handleCopyAction}
+        onPrintResult={handlePrintResult}
         onExportVisualizationPng={handleExportVisualizationPng}
         viewMode={viewMode}
         exportDropdownRef={exportDropdownRef}

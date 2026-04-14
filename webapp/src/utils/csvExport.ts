@@ -23,6 +23,16 @@ function serializeCsv(rows: Array<Array<string | number>>): string {
   return rows.map((row) => row.map(escapeCsvCell).join(",")).join("\n");
 }
 
+function escapeTsvCell(value: unknown): string {
+  return String(value ?? "")
+    .replace(/\t/g, " ")
+    .replace(/\r?\n/g, " / ");
+}
+
+function serializeTsv(rows: Array<Array<string | number>>): string {
+  return rows.map((row) => row.map(escapeTsvCell).join("\t")).join("\n");
+}
+
 function sanitizeFileSegment(value: string): string {
   return value
     .trim()
@@ -43,6 +53,10 @@ export type ResultExportAction =
   | "excel-full-schedule"
   | "csv-session-rosters"
   | "csv-participant-itineraries";
+
+export type ResultClipboardAction =
+  | "copy-full-schedule"
+  | "copy-participant-itineraries";
 
 export interface ResultExportFile {
   filename: string;
@@ -271,5 +285,59 @@ export function createResultExportFile(
         mimeType: "text/csv",
         content: generateParticipantItinerariesCsv(scenario, solution, { ...options, exportedAt }),
       };
+  }
+}
+
+export function createResultClipboardText(
+  scenario: Scenario,
+  solution: Solution,
+  action: ResultClipboardAction,
+): string {
+  const attributeKeys = getAttributeKeys(scenario);
+  const resultsModel = buildResultsViewModel(scenario, solution);
+
+  switch (action) {
+    case "copy-full-schedule": {
+      const headers = [
+        "Person ID",
+        "Group ID",
+        "Session",
+        "Person Name",
+        ...attributeKeys,
+      ];
+
+      const rows = resultsModel.participants.flatMap((participant) =>
+        participant.sessions
+          .filter((assignment) => assignment.isAssigned && assignment.groupId)
+          .map((assignment) => [
+            participant.personId,
+            assignment.groupId ?? "",
+            assignment.sessionLabel,
+            participant.person.attributes?.name ?? "",
+            ...attributeKeys.map((key) => participant.person.attributes?.[key] ?? ""),
+          ])
+      );
+
+      return serializeTsv([headers, ...rows]);
+    }
+    case "copy-participant-itineraries": {
+      const headers = [
+        "Person ID",
+        "Person Name",
+        ...attributeKeys,
+        "Assigned Sessions",
+        ...resultsModel.sessions.map((session) => `${session.label} Group`),
+      ];
+
+      const rows = resultsModel.participants.map((participant) => [
+        participant.personId,
+        participant.person.attributes?.name ?? "",
+        ...attributeKeys.map((key) => participant.person.attributes?.[key] ?? ""),
+        `${participant.assignedSessions}/${resultsModel.summary.totalSessions}`,
+        ...participant.sessions.map((session) => session.groupId ?? "Not assigned"),
+      ]);
+
+      return serializeTsv([headers, ...rows]);
+    }
   }
 }

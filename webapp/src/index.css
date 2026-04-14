@@ -233,6 +233,47 @@
   }
 }
 
+@media print {
+  @page {
+    margin: 12mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
+
+  .results-print-hide {
+    display: none !important;
+  }
+
+  .results-print-main {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .results-print-surface,
+  .results-print-surface * {
+    box-shadow: none !important;
+  }
+
+  .results-print-surface {
+    color: #111827 !important;
+  }
+
+  .results-print-section,
+  .results-print-avoid-break {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+
+  .results-print-surface table {
+    width: 100% !important;
+  }
+}
+
 @layer components {
   /* Button Styles */
   .ui-button,

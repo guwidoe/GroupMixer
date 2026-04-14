@@ -36,6 +36,8 @@ describe("ResultsHeader", () => {
         exportDropdownOpen={false}
         onToggleExportDropdown={vi.fn()}
         onExportAction={vi.fn()}
+        onCopyAction={vi.fn()}
+        onPrintResult={vi.fn()}
         onExportVisualizationPng={vi.fn()}
         viewMode="grid"
         exportDropdownRef={createRef<HTMLDivElement>()}
@@ -57,6 +59,8 @@ describe("ResultsHeader", () => {
     const onRestoreConfig = vi.fn();
     const onToggleExportDropdown = vi.fn();
     const onExportAction = vi.fn();
+    const onCopyAction = vi.fn();
+    const onPrintResult = vi.fn();
     const onExportVisualizationPng = vi.fn();
 
     render(
@@ -71,6 +75,8 @@ describe("ResultsHeader", () => {
         exportDropdownOpen={true}
         onToggleExportDropdown={onToggleExportDropdown}
         onExportAction={onExportAction}
+        onCopyAction={onCopyAction}
+        onPrintResult={onPrintResult}
         onExportVisualizationPng={onExportVisualizationPng}
         viewMode="visualize"
         exportDropdownRef={createRef<HTMLDivElement>()}
@@ -81,6 +87,8 @@ describe("ResultsHeader", () => {
     await user.click(screen.getByRole("button", { name: /different config/i }));
     await user.click(screen.getByRole("button", { name: /restore this result's configuration as new scenario/i }));
     await user.click(screen.getByRole("button", { name: /share & export/i }));
+    await user.click(screen.getByRole("button", { name: /copy schedule table/i }));
+    await user.click(screen.getByRole("button", { name: /print current result/i }));
     await user.click(screen.getByRole("button", { name: /save current view as png/i }));
     await user.click(screen.getByRole("button", { name: /download participant itineraries/i }));
 
@@ -88,6 +96,8 @@ describe("ResultsHeader", () => {
     expect(onToggleConfigDetails).toHaveBeenCalledTimes(1);
     expect(onRestoreConfig).toHaveBeenCalledTimes(1);
     expect(onToggleExportDropdown).toHaveBeenCalledTimes(1);
+    expect(onCopyAction).toHaveBeenCalledWith("copy-full-schedule");
+    expect(onPrintResult).toHaveBeenCalledTimes(1);
     expect(onExportVisualizationPng).toHaveBeenCalledTimes(1);
     expect(onExportAction).toHaveBeenCalledWith("csv-participant-itineraries");
   });

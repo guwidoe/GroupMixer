@@ -14,7 +14,7 @@ export function ResultsScheduleList({ participants, sessionCount }: ResultsSched
         {participants.map((participant) => (
           <article
             key={participant.personId}
-            className="rounded-2xl border p-4"
+            className="results-print-avoid-break rounded-2xl border p-4"
             style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-primary)' }}
           >
             <div className="flex items-start justify-between gap-3">
@@ -64,7 +64,7 @@ export function ResultsScheduleList({ participants, sessionCount }: ResultsSched
       </div>
 
       <div
-        className="hidden rounded-2xl border overflow-hidden transition-colors md:block"
+        className="results-print-avoid-break hidden rounded-2xl border overflow-hidden transition-colors md:block"
         style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
       >
         <div className="overflow-x-auto">

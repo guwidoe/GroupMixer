@@ -34,7 +34,7 @@ export function ResultsSchedule({
   }
 
   return (
-    <section className="rounded-2xl border transition-colors" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
+    <section className="results-print-section rounded-2xl border transition-colors" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
       <div className="border-b px-4 py-4 sm:px-6" style={{ borderColor: 'var(--border-primary)' }}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -44,7 +44,7 @@ export function ResultsSchedule({
             </p>
           </div>
 
-          <div className="flex items-center gap-2 rounded-xl border p-1" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
+          <div className="results-print-hide flex items-center gap-2 rounded-xl border p-1" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
             <button
               onClick={() => onViewModeChange('grid')}
               className="px-3 py-2 rounded-lg text-sm transition-colors"
@@ -115,7 +115,7 @@ export function ResultsSchedule({
         </div>
 
         {viewMode === 'grid' && resultsModel.sessions.length > 1 ? (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="results-print-hide mt-4 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => setSelectedSessionIndex(null)}

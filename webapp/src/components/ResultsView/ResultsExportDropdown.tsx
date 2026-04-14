@@ -1,11 +1,13 @@
 import React from 'react';
-import { ChevronDown, Download, FileJson2, FileSpreadsheet, LayoutGrid, Users, UsersRound } from 'lucide-react';
-import type { ResultExportAction } from '../../utils/csvExport';
+import { ChevronDown, Clipboard, Download, FileJson2, FileSpreadsheet, LayoutGrid, Printer, Users, UsersRound } from 'lucide-react';
+import type { ResultClipboardAction, ResultExportAction } from '../../utils/csvExport';
 
 interface ResultsExportDropdownProps {
   isOpen: boolean;
   onToggle: () => void;
   onExportAction: (action: ResultExportAction) => void;
+  onCopyAction: (action: ResultClipboardAction) => void;
+  onPrintResult: () => void;
   onExportVisualizationPng: () => void;
   viewMode: 'grid' | 'list' | 'visualize';
   dropdownRef: React.RefObject<HTMLDivElement>;
@@ -15,6 +17,8 @@ export function ResultsExportDropdown({
   isOpen,
   onToggle,
   onExportAction,
+  onCopyAction,
+  onPrintResult,
   onExportVisualizationPng,
   viewMode,
   dropdownRef,
@@ -65,17 +69,40 @@ export function ResultsExportDropdown({
           style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
         >
           {viewMode === 'visualize' && (
-            <>
-              <div className={sectionTitleClassName} style={{ color: 'var(--text-tertiary)' }}>
-                Quick use
-              </div>
-              {renderAction(
-                <LayoutGrid className="h-4 w-4" />,
-                'Save current view as PNG',
-                'Capture the active visualization as an image for slides, docs, or chat.',
-                onExportVisualizationPng,
-              )}
-            </>
+            <div className={sectionTitleClassName} style={{ color: 'var(--text-tertiary)' }}>
+              Quick use
+            </div>
+          )}
+
+          {(!viewMode || viewMode !== 'visualize') && (
+            <div className={sectionTitleClassName} style={{ color: 'var(--text-tertiary)' }}>
+              Quick use
+            </div>
+          )}
+
+          {renderAction(
+            <Clipboard className="h-4 w-4" />,
+            'Copy schedule table',
+            'Tab-separated schedule rows that paste cleanly into spreadsheets, docs, and chat.',
+            () => onCopyAction('copy-full-schedule'),
+          )}
+          {renderAction(
+            <Users className="h-4 w-4" />,
+            'Copy participant itineraries',
+            'One pasted table with each person and their full assignment path.',
+            () => onCopyAction('copy-participant-itineraries'),
+          )}
+          {renderAction(
+            <Printer className="h-4 w-4" />,
+            'Print current result',
+            'Open a printer-friendly version of the current result layout.',
+            onPrintResult,
+          )}
+          {viewMode === 'visualize' && renderAction(
+            <LayoutGrid className="h-4 w-4" />,
+            'Save current view as PNG',
+            'Capture the active visualization as an image for slides, docs, or chat.',
+            onExportVisualizationPng,
           )}
 
           <div className={sectionTitleClassName} style={{ color: 'var(--text-tertiary)' }}>
@@ -116,11 +143,9 @@ export function ResultsExportDropdown({
             () => onExportAction('csv-participant-itineraries'),
           )}
 
-          {viewMode === 'visualize' && (
-            <div className="px-4 pb-4 pt-3 text-xs leading-5" style={{ color: 'var(--text-tertiary)' }}>
-              Current-view exports are only available while a visualization is visible.
-            </div>
-          )}
+          <div className="px-4 pb-4 pt-3 text-xs leading-5" style={{ color: 'var(--text-tertiary)' }}>
+            Quick actions use the currently open result and respect the active result view.
+          </div>
         </div>
       )}
     </div>

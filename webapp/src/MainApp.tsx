@@ -87,7 +87,7 @@ function MainApp() {
         includeStructuredData={false}
       />
 
-      <div ref={headerRef}>
+      <div ref={headerRef} className="results-print-hide">
         <Header
           renderDesktopCenterContent={() => <Navigation variant="embedded" />}
           renderMobileCenterContent={({ closeMobileMenu }) => (
@@ -98,8 +98,8 @@ function MainApp() {
 
       <main
         className={isWorkspaceRoute
-          ? 'w-full px-4 py-4 md:flex md:h-[var(--workspace-shell-height)] md:flex-col md:overflow-hidden md:px-0 md:py-0'
-          : 'container mx-auto w-full flex-1 px-4 py-6'}
+          ? 'results-print-main w-full px-4 py-4 md:flex md:h-[var(--workspace-shell-height)] md:flex-col md:overflow-hidden md:px-0 md:py-0'
+          : 'results-print-main container mx-auto w-full flex-1 px-4 py-6'}
         style={isWorkspaceRoute ? ({ '--workspace-shell-height': workspaceShellHeight } as CSSProperties) : undefined}
       >
         {scenario && !currentScenarioId && (
@@ -133,7 +133,7 @@ function MainApp() {
       </main>
 
       <footer
-        className="border-t px-4 py-4 sm:px-6"
+        className="results-print-hide border-t px-4 py-4 sm:px-6"
         style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
       >
         <div className="mx-auto flex max-w-6xl flex-col gap-2 text-xs sm:flex-row sm:items-center sm:justify-between" style={{ color: 'var(--text-secondary)' }}>
@@ -142,9 +142,13 @@ function MainApp() {
         </div>
       </footer>
 
-      <WorkflowGuideButton />
+      <div className="results-print-hide">
+        <WorkflowGuideButton />
+      </div>
 
-      <NotificationContainer />
+      <div className="results-print-hide">
+        <NotificationContainer />
+      </div>
 
       <ScenarioManager
         isOpen={ui.showScenarioManager}

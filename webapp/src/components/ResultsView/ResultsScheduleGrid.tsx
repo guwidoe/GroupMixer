@@ -32,7 +32,7 @@ export function ResultsScheduleGrid({ sessionData, selectedSessionIndex = null, 
       {visibleSessions.map(({ sessionIndex, label, groups, totalPeople, totalCapacity, openSeats }) => (
         <div
           key={sessionIndex}
-          className="rounded-2xl border p-4 transition-colors sm:p-5"
+          className="results-print-avoid-break rounded-2xl border p-4 transition-colors sm:p-5"
           style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
         >
           <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-start sm:justify-between" style={{ borderColor: 'var(--border-primary)' }}>
@@ -57,7 +57,7 @@ export function ResultsScheduleGrid({ sessionData, selectedSessionIndex = null, 
 
           <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2 2xl:grid-cols-3">
             {groups.map((group) => (
-              <div key={group.id} className="rounded-xl border p-4" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
+              <div key={group.id} className="results-print-avoid-break rounded-xl border p-4" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h5 className="font-semibold" style={{ color: 'var(--text-primary)' }}>{group.id}</h5>

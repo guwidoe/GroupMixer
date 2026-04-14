@@ -6,7 +6,7 @@ import type { ResultsSummaryData } from '../../services/results/buildResultsMode
 import { Tooltip } from '../Tooltip';
 import { ConfigDiffBadge } from './ConfigDiffBadge';
 import { ResultsExportDropdown } from './ResultsExportDropdown';
-import type { ResultExportAction } from '../../utils/csvExport';
+import type { ResultClipboardAction, ResultExportAction } from '../../utils/csvExport';
 
 interface ResultsHeaderProps {
   resultName?: string;
@@ -19,6 +19,8 @@ interface ResultsHeaderProps {
   exportDropdownOpen: boolean;
   onToggleExportDropdown: () => void;
   onExportAction: (action: ResultExportAction) => void;
+  onCopyAction: (action: ResultClipboardAction) => void;
+  onPrintResult: () => void;
   onExportVisualizationPng: () => void;
   viewMode: 'grid' | 'list' | 'visualize';
   exportDropdownRef: React.RefObject<HTMLDivElement>;
@@ -36,6 +38,8 @@ export function ResultsHeader({
   exportDropdownOpen,
   onToggleExportDropdown,
   onExportAction,
+  onCopyAction,
+  onPrintResult,
   onExportVisualizationPng,
   viewMode,
   exportDropdownRef,
@@ -43,7 +47,7 @@ export function ResultsHeader({
 }: ResultsHeaderProps) {
   return (
     <section
-      className="rounded-2xl border p-4 sm:p-5 lg:p-6"
+      className="results-print-section rounded-2xl border p-4 sm:p-5 lg:p-6"
       style={{
         backgroundColor: 'color-mix(in srgb, var(--bg-primary) 92%, var(--color-accent) 8%)',
         borderColor: 'color-mix(in srgb, var(--border-primary) 78%, var(--color-accent) 22%)',
@@ -118,11 +122,13 @@ export function ResultsHeader({
           ) : null}
         </div>
 
-        <div className="flex shrink-0 flex-col gap-2 lg:min-w-[180px]">
+        <div className="results-print-hide flex shrink-0 flex-col gap-2 lg:min-w-[180px]">
           <ResultsExportDropdown
             isOpen={exportDropdownOpen}
             onToggle={onToggleExportDropdown}
             onExportAction={onExportAction}
+            onCopyAction={onCopyAction}
+            onPrintResult={onPrintResult}
             onExportVisualizationPng={onExportVisualizationPng}
             viewMode={viewMode}
             dropdownRef={exportDropdownRef}
