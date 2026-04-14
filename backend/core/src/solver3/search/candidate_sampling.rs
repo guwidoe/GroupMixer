@@ -264,7 +264,8 @@ impl CandidateSampler {
         let mut telemetry = RepeatGuidedSwapSamplingDelta::default();
         let mut tabu_telemetry = TabuSwapSamplingDelta::default();
 
-        let guided_preview = if swap_sampling.repeat_guided_swap_candidate_preview_budget > 0
+        let guided_preview = if swap_sampling.repeat_guidance.is_some()
+            && swap_sampling.repeat_guided_swap_candidate_preview_budget > 0
             && rng.random::<f64>() < swap_sampling.repeat_guided_swap_probability
         {
             telemetry.guided_attempts += 1;
@@ -1492,6 +1493,14 @@ mod tests {
         );
 
         assert!(sampled.selection.is_some());
+        assert_eq!(sampled.repeat_guided_swap_sampling.guided_attempts, 0);
+        assert_eq!(sampled.repeat_guided_swap_sampling.guided_successes, 0);
+        assert_eq!(
+            sampled
+                .repeat_guided_swap_sampling
+                .guided_previewed_candidates,
+            0
+        );
     }
 
     #[cfg(feature = "solver3-experimental-repeat-guidance")]

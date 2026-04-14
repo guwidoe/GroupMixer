@@ -327,14 +327,26 @@ impl SearchRunContext {
             .multi_root_balanced_session_inheritance;
         let correctness_sample_every_accepted_moves =
             solver3_params.correctness_lane.sample_every_accepted_moves;
-        let repeat_guided_swap_probability = solver3_params
+        let configured_repeat_guided_swap_probability = solver3_params
             .hotspot_guidance
             .repeat_guided_swaps
             .guided_proposal_probability;
-        let repeat_guided_swap_candidate_preview_budget = solver3_params
+        let configured_repeat_guided_swap_candidate_preview_budget = solver3_params
             .hotspot_guidance
             .repeat_guided_swaps
             .candidate_preview_budget;
+        let repeat_guided_swaps_enabled = solver3_params.hotspot_guidance.repeat_guided_swaps.enabled
+            && state.compiled.repeat_encounter.is_some();
+        let repeat_guided_swap_probability = if repeat_guided_swaps_enabled {
+            configured_repeat_guided_swap_probability
+        } else {
+            0.0
+        };
+        let repeat_guided_swap_candidate_preview_budget = if repeat_guided_swaps_enabled {
+            configured_repeat_guided_swap_candidate_preview_budget
+        } else {
+            0
+        };
 
         ensure_search_driver_feature_available(search_driver_mode)?;
         ensure_repeat_guidance_feature_available(
@@ -347,14 +359,14 @@ impl SearchRunContext {
             ));
         }
 
-        if !(0.0..=1.0).contains(&repeat_guided_swap_probability) {
+        if !(0.0..=1.0).contains(&configured_repeat_guided_swap_probability) {
             return Err(SolverError::ValidationError(
                 "solver3 hotspot_guidance.repeat_guided_swaps.guided_proposal_probability must be within [0.0, 1.0]".into(),
             ));
         }
 
         if solver3_params.hotspot_guidance.repeat_guided_swaps.enabled
-            && repeat_guided_swap_candidate_preview_budget == 0
+            && configured_repeat_guided_swap_candidate_preview_budget == 0
         {
             return Err(SolverError::ValidationError(
                 "solver3 hotspot_guidance.repeat_guided_swaps.candidate_preview_budget must be >= 1 when enabled".into(),
@@ -889,11 +901,7 @@ impl SearchRunContext {
                 .unwrap_or_else(|| (0..state.compiled.num_sessions).collect()),
             correctness_lane_enabled,
             correctness_sample_every_accepted_moves,
-            repeat_guided_swaps_enabled: solver3_params
-                .hotspot_guidance
-                .repeat_guided_swaps
-                .enabled
-                && state.compiled.repeat_encounter.is_some(),
+            repeat_guided_swaps_enabled,
             repeat_guided_swap_probability,
             repeat_guided_swap_candidate_preview_budget: repeat_guided_swap_candidate_preview_budget
                 as usize,
@@ -1634,8 +1642,8 @@ mod tests {
         assert!(!context.correctness_lane_enabled);
         assert_eq!(context.correctness_sample_every_accepted_moves, 16);
         assert!(!context.repeat_guided_swaps_enabled);
-        assert_eq!(context.repeat_guided_swap_probability, 0.5);
-        assert_eq!(context.repeat_guided_swap_candidate_preview_budget, 8);
+        assert_eq!(context.repeat_guided_swap_probability, 0.0);
+        assert_eq!(context.repeat_guided_swap_candidate_preview_budget, 0);
         assert_eq!(context.sgp_week_pair_tabu.as_ref().unwrap().tenure_min, 8);
         assert_eq!(context.sgp_week_pair_tabu.as_ref().unwrap().tenure_max, 32);
         assert_eq!(context.sgp_week_pair_tabu.as_ref().unwrap().retry_cap, 16);
@@ -2645,8 +2653,8 @@ mod tests {
 
         let context = SearchRunContext::from_solver(&config, &state, 7).unwrap();
         assert!(!context.repeat_guided_swaps_enabled);
-        assert_eq!(context.repeat_guided_swap_probability, 0.75);
-        assert_eq!(context.repeat_guided_swap_candidate_preview_budget, 6);
+        assert_eq!(context.repeat_guided_swap_probability, 0.0);
+        assert_eq!(context.repeat_guided_swap_candidate_preview_budget, 0);
     }
 
     #[test]

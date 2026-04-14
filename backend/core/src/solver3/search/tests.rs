@@ -325,3 +325,18 @@ fn search_engine_records_repeat_guided_swap_sampling_telemetry() {
             >= telemetry.repeat_guided_swaps.guided_successes
     );
 }
+
+#[test]
+fn search_engine_keeps_repeat_guided_telemetry_zero_when_disabled() {
+    let input = search_input();
+    let mut state = RuntimeState::from_input(&input).unwrap();
+    let result = SearchEngine::new(&input.solver)
+        .solve(&mut state, None, None)
+        .unwrap();
+    let telemetry = result.benchmark_telemetry.expect("telemetry should exist");
+
+    assert_eq!(telemetry.repeat_guided_swaps.guided_attempts, 0);
+    assert_eq!(telemetry.repeat_guided_swaps.guided_successes, 0);
+    assert_eq!(telemetry.repeat_guided_swaps.guided_fallback_to_random, 0);
+    assert_eq!(telemetry.repeat_guided_swaps.guided_previewed_candidates, 0);
+}
