@@ -862,3 +862,131 @@ That means the next algorithmic question is now sharper:
 
 - keep the claim that aligned path relinking has genuine value on Social Golfer
 - but investigate why the current alignment / step-selection policy underperforms simpler donor controls on Kirkman
+
+---
+
+## Multi-root balanced inheritance follow-up (2026-04-14)
+
+The next hypothesis was stricter still:
+
+> maybe same-lineage archive donors are the real limiter, and we need unrelated roots plus a true 50/50 merge instead of repairing one privileged parent.
+
+That led to a new operator family:
+
+- `multi_root_balanced_session_inheritance`
+
+Its first implementation incubates multiple roots, selects parents from different roots, aligns sessions structurally, preserves agreement-core sessions, and splits differing aligned sessions across the two parents.
+
+### Conservative multiseed artifacts
+
+- fixed-tenure tabu reference:
+  - `backend/benchmarking/artifacts/runs/solver3-sgp-tabu-tenure-fixed-multiseed-20260414T131135Z-ddb00a03/run-report.json`
+- donor-session transplant reference:
+  - `backend/benchmarking/artifacts/runs/solver3-donor-session-transplant-multiseed-20260414T131320Z-7a269f34/run-report.json`
+- aligned path relinking:
+  - `backend/benchmarking/artifacts/runs/solver3-session-path-relinking-multiseed-20260414T131356Z-a1aeff3c/run-report.json`
+- random donor-session control:
+  - `backend/benchmarking/artifacts/runs/solver3-random-donor-session-control-multiseed-20260414T131436Z-b1fd3559/run-report.json`
+- random macro-mutation control:
+  - `backend/benchmarking/artifacts/runs/solver3-random-macro-mutation-control-multiseed-20260414T131515Z-7591bd8e/run-report.json`
+- multi-root balanced inheritance:
+  - `backend/benchmarking/artifacts/runs/solver3-multi-root-balanced-inheritance-multiseed-20260414T131553Z-b155666d/run-report.json`
+
+### High-event multi-root artifacts
+
+- Social Golfer high-event multi-root lane:
+  - `backend/benchmarking/artifacts/runs/social-golfer-plateau-time-solver3-multi-root-balanced-inheritance-high-event-20260414T131629Z-52dee7e3/run-report.json`
+- Kirkman high-event multi-root lane:
+  - `backend/benchmarking/artifacts/runs/stretch-kirkman-schoolgirls-time-solver3-multi-root-balanced-inheritance-high-event-20260414T131701Z-83cb90cb/run-report.json`
+
+### High-event control references
+
+The latest matched control high-event references remained:
+
+- Social Golfer aligned/random controls:
+  - `backend/benchmarking/artifacts/runs/social-golfer-plateau-time-solver3-path-control-high-event-20260414T121439Z-f88a6ff3/run-report.json`
+- Kirkman aligned/random controls:
+  - `backend/benchmarking/artifacts/runs/stretch-kirkman-schoolgirls-time-solver3-path-control-high-event-20260414T121608Z-c0f6ac18/run-report.json`
+
+These were not rerun in this follow-up because the new batch only added the multi-root operator and its telemetry/manifests; the previously benchmarked aligned/random control code paths were unchanged.
+
+### Honest summary
+
+#### Conservative matched multiseed lane
+
+**Social Golfer average final score**
+
+- fixed-tenure tabu: `5381.0`
+- donor-session transplant: `5373.7`
+- aligned path relinking: `5297.0`
+- random donor-session control: `5325.0`
+- random macro-mutation control: `5325.0`
+- multi-root balanced inheritance: `5353.0`
+
+So the first multi-root balanced operator was **worse than aligned path relinking and both random controls** on Social Golfer.
+
+**Kirkman average final score**
+
+- fixed-tenure tabu: `47.7`
+- donor-session transplant: `11.0`
+- aligned path relinking: `25.7`
+- random donor-session control: `0.0`
+- random macro-mutation control: `18.3`
+- multi-root balanced inheritance: `29.3`
+
+So on Kirkman it was also **worse than both random controls**, and worse than donor-session transplant.
+
+#### High-event diagnostics
+
+**Social Golfer high-event multi-root average final score**
+
+- multi-root balanced inheritance: `5444.0`
+- aligned path relinking control reference: `5304.0`
+- random donor-session control reference: `5331.7`
+- random macro-mutation control reference: `5332.0`
+
+That is a clear regression.
+
+**Kirkman high-event multi-root average final score**
+
+- multi-root balanced inheritance: `44.0`
+- aligned path relinking control reference: `36.7`
+- random donor-session control reference: `0.0`
+- random macro-mutation control reference: `40.3`
+
+That is also a regression.
+
+### What the new telemetry says
+
+The telemetry confirms the operator is doing the thing it was supposed to do structurally:
+
+- every conservative and high-event run incubated `4` roots
+- parent pairs were genuinely cross-root, not same-root repairs
+- Social Golfer conservative runs used exact `5 / 5` differing-session splits
+- Kirkman runs used explicit `3 / 4` or `4 / 3` odd-count splits
+
+So the implementation is not secretly collapsing back into one-parent repair.
+
+But the quality signal is weak or negative:
+
+- conservative Social Golfer seeds fired `2 / 2 / 2` events but kept only `0 / 1 / 0`
+- conservative Kirkman seeds fired `2 / 2 / 2` events and kept `0 / 0 / 0`
+- conservative `children_beating_both_parents` counts were:
+  - Social Golfer: `0 / 1 / 0`
+  - Kirkman: `0 / 0 / 0`
+- high-event Social Golfer did show `1 / 1 / 1` events that beat both selected parents, but the overall final scores still regressed badly
+- high-event Kirkman showed more events (`4 / 4 / 4`) and several children beating both parents (`1 / 2 / 3`), yet the run still plateaued at a bad final score `44`
+
+That last point matters: **beating both selected parents is not enough** if the selected parents themselves are not from good enough basin families, or if the child still lands in a poor basin after repair.
+
+### Current interpretation
+
+This falsifies the strongest version of the multi-root hypothesis for now.
+
+- same-lineage donor bias may be *part* of the story
+- but simply adding unrelated roots plus a literal 50/50 aligned-session merge is **not** automatically better
+- the current first multi-root operator is a real structural recombination mechanism, but it is **not competitive** with the best one-lineage aligned path-relinking result on Social Golfer, and it is not competitive with the simpler random-donor control on Kirkman
+
+### Best honest claim after the follow-up
+
+> the first multi-root 50/50 balanced inheritance operator successfully creates true cross-root mixed children, but on the current SG/Kirkman benchmarks it does not outperform the existing one-lineage path/donor control stack, so “unrelated roots + balanced merge” is not yet the missing ingredient by itself.
