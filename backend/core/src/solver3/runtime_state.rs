@@ -695,20 +695,15 @@ fn resolve_construction_selection(input: &ApiInput) -> Result<ConstructionHeuris
     match solver3_params.construction.mode {
         Solver3ConstructionMode::BaselineLegacy => Ok(ConstructionHeuristicSelection::BaselineLegacy),
         Solver3ConstructionMode::FreedomAwareRandomized => {
-            let restricted_candidate_list_size = solver3_params
-                .construction
-                .freedom_aware
-                .restricted_candidate_list_size;
-            if restricted_candidate_list_size == 0 {
+            let gamma = solver3_params.construction.freedom_aware.gamma;
+            if !(0.0..=1.0).contains(&gamma) {
                 return Err(SolverError::ValidationError(
-                    "solver3 construction.freedom_aware.restricted_candidate_list_size must be >= 1"
+                    "solver3 construction.freedom_aware.gamma must be within [0.0, 1.0]"
                         .into(),
                 ));
             }
             Ok(ConstructionHeuristicSelection::FreedomAwareRandomized(
-                FreedomAwareConstructionParams {
-                    restricted_candidate_list_size: restricted_candidate_list_size as usize,
-                },
+                FreedomAwareConstructionParams { gamma },
             ))
         }
     }

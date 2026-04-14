@@ -1045,17 +1045,17 @@ pub enum Solver3ConstructionMode {
 /// Parameters for the freedom-aware randomized greedy constructor.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct Solver3FreedomAwareConstructionParams {
-    /// Number of top-scoring candidates retained in the restricted candidate list.
+    /// Probability of randomizing among equal maximal-freedom candidates.
     ///
-    /// Values must be >= 1.
-    #[serde(default = "default_solver3_freedom_aware_construction_rcl_size")]
-    pub restricted_candidate_list_size: u32,
+    /// Values must be within `[0.0, 1.0]`.
+    #[serde(default = "default_solver3_freedom_aware_construction_gamma")]
+    pub gamma: f64,
 }
 
 impl Default for Solver3FreedomAwareConstructionParams {
     fn default() -> Self {
         Self {
-            restricted_candidate_list_size: default_solver3_freedom_aware_construction_rcl_size(),
+            gamma: default_solver3_freedom_aware_construction_gamma(),
         }
     }
 }
@@ -1530,8 +1530,8 @@ fn default_solver3_correctness_lane_sample_every_accepted_moves() -> u64 {
     16
 }
 
-fn default_solver3_freedom_aware_construction_rcl_size() -> u32 {
-    4
+fn default_solver3_freedom_aware_construction_gamma() -> f64 {
+    0.0
 }
 
 fn default_solver3_memetic_population_size() -> u32 {

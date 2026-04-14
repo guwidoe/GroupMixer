@@ -215,7 +215,7 @@ fn freedom_aware_input() -> ApiInput {
     config.seed = Some(17);
     if let SolverParams::Solver3(params) = &mut config.solver_params {
         params.construction.mode = Solver3ConstructionMode::FreedomAwareRandomized;
-        params.construction.freedom_aware.restricted_candidate_list_size = 2;
+        params.construction.freedom_aware.gamma = 0.0;
     }
 
     let construction_seed_schedule = HashMap::from([
@@ -455,18 +455,15 @@ fn runtime_state_initialization_is_deterministic() {
 }
 
 #[test]
-fn runtime_state_rejects_zero_freedom_aware_rcl_size() {
+fn runtime_state_rejects_out_of_range_freedom_aware_gamma() {
     let mut input = minimal_input();
     if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
         params.construction.mode = Solver3ConstructionMode::FreedomAwareRandomized;
-        params.construction.freedom_aware.restricted_candidate_list_size = 0;
+        params.construction.freedom_aware.gamma = 1.5;
     }
 
     let err = RuntimeState::from_input(&input).unwrap_err();
-    assert!(
-        err.to_string().contains("restricted_candidate_list_size"),
-        "unexpected error: {err}"
-    );
+    assert!(err.to_string().contains("gamma"), "unexpected error: {err}");
 }
 
 #[test]
