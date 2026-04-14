@@ -9,8 +9,8 @@ use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha12Rng;
 
 use crate::models::{
-    BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, MemeticBenchmarkTelemetry,
-    MoveFamily, ProgressCallback, SolverResult, StopReason,
+    BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, MemeticBenchmarkTelemetry, MoveFamily,
+    ProgressCallback, SolverResult, StopReason,
 };
 use crate::solver_support::SolverError;
 
@@ -94,7 +94,11 @@ pub(crate) fn run(
         .expect("steady-state memetic config should be normalized");
     let candidate_sampler = CandidateSampler;
 
-    let mut population = initialize_population(state, memetic_config.population_size, run_context.effective_seed)?;
+    let mut population = initialize_population(
+        state,
+        memetic_config.population_size,
+        run_context.effective_seed,
+    )?;
     let best_initial_idx = population_best_index(&population);
     let mut search = SearchProgressState::new(population[best_initial_idx].state.clone());
     search.current_state = population[best_initial_idx].state.clone();
@@ -103,7 +107,8 @@ pub(crate) fn run(
         parent_tournament_size: memetic_config.parent_tournament_size as u32,
         child_polish_local_improver_mode: Some(run_context.local_improver_mode),
         child_polish_max_iterations: memetic_config.child_polish_max_iterations,
-        child_polish_no_improvement_iterations: memetic_config.child_polish_no_improvement_iterations,
+        child_polish_no_improvement_iterations: memetic_config
+            .child_polish_no_improvement_iterations,
         ..Default::default()
     });
 
@@ -121,7 +126,9 @@ pub(crate) fn run(
     let mut final_progress_emitted = false;
     let mut last_progress_callback_at = total_started_at;
 
-    if run_context.stop_on_optimal_score && search.best_score <= crate::models::OPTIMAL_SCORE_TOLERANCE {
+    if run_context.stop_on_optimal_score
+        && search.best_score <= crate::models::OPTIMAL_SCORE_TOLERANCE
+    {
         stop_reason = StopReason::OptimalScoreReached;
     } else if time_limit_exceeded(
         get_elapsed_seconds(total_started_at),
@@ -130,7 +137,8 @@ pub(crate) fn run(
         stop_reason = StopReason::TimeLimitReached;
     }
 
-    if stop_reason != StopReason::OptimalScoreReached && stop_reason != StopReason::TimeLimitReached {
+    if stop_reason != StopReason::OptimalScoreReached && stop_reason != StopReason::TimeLimitReached
+    {
         for offspring_idx in 0..run_context.max_iterations {
             let elapsed_before_child = get_elapsed_seconds(total_started_at);
             if time_limit_exceeded(
@@ -141,7 +149,8 @@ pub(crate) fn run(
                 break;
             }
 
-            let parent_idx = select_parent_index(&population, memetic_config.parent_tournament_size, &mut rng);
+            let parent_idx =
+                select_parent_index(&population, memetic_config.parent_tournament_size, &mut rng);
             let mut child = population[parent_idx].state.clone();
             search
                 .memetic_telemetry
@@ -177,9 +186,9 @@ pub(crate) fn run(
                     }),
             );
 
-            let remaining_time_seconds = run_context.time_limit_seconds.map(|limit| {
-                (limit as f64 - get_elapsed_seconds(total_started_at)).max(0.0)
-            });
+            let remaining_time_seconds = run_context
+                .time_limit_seconds
+                .map(|limit| (limit as f64 - get_elapsed_seconds(total_started_at)).max(0.0));
             let polish_seed = rng.random::<u64>();
             let polish_outcome = single_state::polish_state(
                 child,
@@ -187,7 +196,9 @@ pub(crate) fn run(
                 LocalImproverBudget {
                     effective_seed: polish_seed,
                     max_iterations: memetic_config.child_polish_max_iterations,
-                    no_improvement_limit: Some(memetic_config.child_polish_no_improvement_iterations),
+                    no_improvement_limit: Some(
+                        memetic_config.child_polish_no_improvement_iterations,
+                    ),
                     time_limit_seconds: remaining_time_seconds,
                     stop_on_optimal_score: run_context.stop_on_optimal_score,
                 },
@@ -203,13 +214,16 @@ pub(crate) fn run(
                 .as_mut()
                 .expect("memetic telemetry should exist");
             memetic_telemetry.offspring_polished += 1;
-            memetic_telemetry.child_polish_iterations += local_improver_stats.child_polish_iterations;
+            memetic_telemetry.child_polish_iterations +=
+                local_improver_stats.child_polish_iterations;
             memetic_telemetry.child_polish_improving_moves +=
                 local_improver_stats.child_polish_improving_moves;
             memetic_telemetry.child_polish_seconds += local_improver_stats.child_polish_seconds;
             search.current_state = polished_child.clone();
 
-            if let Some(replacement_idx) = find_replacement_target(&population, polished_child.total_score) {
+            if let Some(replacement_idx) =
+                find_replacement_target(&population, polished_child.total_score)
+            {
                 population[replacement_idx] = PopulationMember::new(polished_child.clone());
                 search
                     .memetic_telemetry
@@ -348,7 +362,11 @@ fn select_parent_index(
     sample(rng, population.len(), tournament_size)
         .into_vec()
         .into_iter()
-        .min_by(|left, right| population[*left].score().total_cmp(&population[*right].score()))
+        .min_by(|left, right| {
+            population[*left]
+                .score()
+                .total_cmp(&population[*right].score())
+        })
         .expect("tournament should sample at least one parent")
 }
 
@@ -444,11 +462,19 @@ fn absorb_local_improver_metrics(
         local.repeat_guided_swap_telemetry.guided_attempts,
         local.repeat_guided_swap_telemetry.guided_successes,
         local.repeat_guided_swap_telemetry.guided_fallback_to_random,
-        local.repeat_guided_swap_telemetry.guided_previewed_candidates,
+        local
+            .repeat_guided_swap_telemetry
+            .guided_previewed_candidates,
     );
     absorb_family_metrics(&mut aggregate.move_metrics.swap, &local.move_metrics.swap);
-    absorb_family_metrics(&mut aggregate.move_metrics.transfer, &local.move_metrics.transfer);
-    absorb_family_metrics(&mut aggregate.move_metrics.clique_swap, &local.move_metrics.clique_swap);
+    absorb_family_metrics(
+        &mut aggregate.move_metrics.transfer,
+        &local.move_metrics.transfer,
+    );
+    absorb_family_metrics(
+        &mut aggregate.move_metrics.clique_swap,
+        &local.move_metrics.clique_swap,
+    );
 
     LocalImproverStats {
         child_polish_iterations: local.iterations_completed,

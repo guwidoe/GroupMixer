@@ -12,9 +12,8 @@ use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha12Rng;
 
 use crate::models::{
-    BenchmarkEvent, BenchmarkObserver, BestScoreTimelinePoint,
-    MoveFamilyBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary,
-    MultiRootBalancedSessionInheritanceBenchmarkTelemetry,
+    BenchmarkEvent, BenchmarkObserver, BestScoreTimelinePoint, MoveFamilyBenchmarkTelemetry,
+    MoveFamilyBenchmarkTelemetrySummary, MultiRootBalancedSessionInheritanceBenchmarkTelemetry,
     MultiRootBalancedSessionInheritanceEventTelemetry, ProgressCallback,
     RepeatGuidedSwapBenchmarkTelemetry, SessionAlignedPathRelinkingBenchmarkTelemetry,
     SessionAlignedPathRelinkingEventTelemetry, SessionAlignedPathRelinkingStepTelemetry,
@@ -299,7 +298,11 @@ pub(crate) fn build_session_pairing_signature(
         let members = &state.group_members[state.group_slot(session_idx, group_idx)];
         for left_idx in 0..members.len() {
             for right_idx in (left_idx + 1)..members.len() {
-                pair_indices.push(state.compiled.pair_idx(members[left_idx], members[right_idx]));
+                pair_indices.push(
+                    state
+                        .compiled
+                        .pair_idx(members[left_idx], members[right_idx]),
+                );
             }
         }
     }
@@ -432,8 +435,8 @@ pub(crate) fn run(
             }
 
             let remaining_iterations = run_context.max_iterations - total_iterations_completed;
-            let chunk_iterations = remaining_iterations
-                .min(config.recombination_no_improvement_window.max(1));
+            let chunk_iterations =
+                remaining_iterations.min(config.recombination_no_improvement_window.max(1));
             let chunk_outcome = polish_state(
                 current_incumbent.clone(),
                 &run_context,
@@ -690,7 +693,8 @@ pub(crate) fn run(
                                     donor,
                                     &aligned_pair,
                                 )?;
-                                let candidate_priority = i64::from(aligned_pair.structural_distance);
+                                let candidate_priority =
+                                    i64::from(aligned_pair.structural_distance);
                                 (Some(aligned_pair), None, raw_child, candidate_priority)
                             }
                             PathStepCandidateInput::RandomMacroMutation(candidate) => (
@@ -702,7 +706,10 @@ pub(crate) fn run(
                         };
                     let raw_child_score = raw_child.total_score;
                     let raw_child_delta = raw_child_score - current_path_state.total_score;
-                    if !raw_child_retention.evaluate(raw_child_delta).retained_for_polish {
+                    if !raw_child_retention
+                        .evaluate(raw_child_delta)
+                        .retained_for_polish
+                    {
                         event_telemetry.raw_steps_discarded_before_polish += 1;
                         aggregate
                             .session_aligned_path_relinking_telemetry
@@ -720,7 +727,8 @@ pub(crate) fn run(
                         break 'outer;
                     }
 
-                    let remaining_iterations = run_context.max_iterations - total_iterations_completed;
+                    let remaining_iterations =
+                        run_context.max_iterations - total_iterations_completed;
                     if remaining_iterations == 0 {
                         break 'outer;
                     }
@@ -766,38 +774,41 @@ pub(crate) fn run(
                             polish_outcome.search.iterations_completed;
                         telemetry.child_polish_seconds += polish_outcome.search_seconds;
                         telemetry.best_post_polish_score = Some(
-                            telemetry.best_post_polish_score.map_or(
-                                post_polish_best_score,
-                                |current| current.min(post_polish_best_score),
-                            ),
+                            telemetry
+                                .best_post_polish_score
+                                .map_or(post_polish_best_score, |current| {
+                                    current.min(post_polish_best_score)
+                                }),
                         );
                     }
 
                     let became_event_best = post_polish_best_score < best_event_score;
-                    event_telemetry.steps.push(SessionAlignedPathRelinkingStepTelemetry {
-                        base_session_idx: aligned_pair
-                            .as_ref()
-                            .map(|pair| pair.base_session_idx as u32),
-                        donor_session_idx: aligned_pair
-                            .as_ref()
-                            .map(|pair| pair.donor_session_idx as u32),
-                        structural_distance: aligned_pair
-                            .as_ref()
-                            .map(|pair| pair.structural_distance),
-                        macro_mutation_swaps_applied,
-                        raw_child_score,
-                        raw_child_delta,
-                        post_polish_best_score: Some(post_polish_best_score),
-                        raw_to_polished_delta: Some(post_polish_best_score - raw_child_score),
-                        incumbent_to_post_polish_delta: Some(
-                            post_polish_best_score - pre_event_incumbent_score,
-                        ),
-                        polish_stop_reason: Some(polish_outcome.stop_reason),
-                        polish_iterations_completed: Some(
-                            polish_outcome.search.iterations_completed,
-                        ),
-                        became_event_best: Some(became_event_best),
-                    });
+                    event_telemetry
+                        .steps
+                        .push(SessionAlignedPathRelinkingStepTelemetry {
+                            base_session_idx: aligned_pair
+                                .as_ref()
+                                .map(|pair| pair.base_session_idx as u32),
+                            donor_session_idx: aligned_pair
+                                .as_ref()
+                                .map(|pair| pair.donor_session_idx as u32),
+                            structural_distance: aligned_pair
+                                .as_ref()
+                                .map(|pair| pair.structural_distance),
+                            macro_mutation_swaps_applied,
+                            raw_child_score,
+                            raw_child_delta,
+                            post_polish_best_score: Some(post_polish_best_score),
+                            raw_to_polished_delta: Some(post_polish_best_score - raw_child_score),
+                            incumbent_to_post_polish_delta: Some(
+                                post_polish_best_score - pre_event_incumbent_score,
+                            ),
+                            polish_stop_reason: Some(polish_outcome.stop_reason),
+                            polish_iterations_completed: Some(
+                                polish_outcome.search.iterations_completed,
+                            ),
+                            became_event_best: Some(became_event_best),
+                        });
 
                     let candidate = PathStepEvaluation {
                         aligned_pair,
@@ -916,12 +927,12 @@ pub(crate) fn run(
                         .get_or_insert_with(Default::default)
                         .path_events_kept += 1;
                 } else {
-                    global_no_improvement_count = global_no_improvement_count
-                        .saturating_add(event_iterations_consumed);
+                    global_no_improvement_count =
+                        global_no_improvement_count.saturating_add(event_iterations_consumed);
                 }
             } else {
-                global_no_improvement_count = global_no_improvement_count
-                    .saturating_add(event_iterations_consumed.max(1));
+                global_no_improvement_count =
+                    global_no_improvement_count.saturating_add(event_iterations_consumed.max(1));
             }
 
             aggregate
@@ -1023,8 +1034,8 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
     let mut diversification_rng =
         ChaCha12Rng::seed_from_u64(run_context.effective_seed ^ MULTI_ROOT_SEED_STRIDE);
     let mut aggregate = SearchProgressState::new(state.clone());
-    aggregate.multi_root_balanced_session_inheritance_telemetry = Some(
-        MultiRootBalancedSessionInheritanceBenchmarkTelemetry {
+    aggregate.multi_root_balanced_session_inheritance_telemetry =
+        Some(MultiRootBalancedSessionInheritanceBenchmarkTelemetry {
             root_count: config.root_count as u32,
             archive_size_per_root: config.archive_size_per_root as u32,
             child_polish_local_improver_mode: Some(run_context.local_improver_mode),
@@ -1042,8 +1053,7 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
             swap_local_optimum_certification_enabled: config
                 .swap_local_optimum_certification_enabled,
             ..Default::default()
-        },
-    );
+        });
     let mut raw_child_retention =
         AdaptiveRawChildRetentionState::new(config.adaptive_raw_child_retention);
     let mut pool = MultiRootElitePool::new(MultiRootElitePoolConfig {
@@ -1071,11 +1081,13 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
         .max(1);
 
     if let Some(observer) = benchmark_observer {
-        observer(&BenchmarkEvent::RunStarted(crate::models::BenchmarkRunStarted {
-            effective_seed: run_context.effective_seed,
-            move_policy: run_context.move_policy.clone(),
-            initial_score: aggregate.initial_score,
-        }));
+        observer(&BenchmarkEvent::RunStarted(
+            crate::models::BenchmarkRunStarted {
+                effective_seed: run_context.effective_seed,
+                move_policy: run_context.move_policy.clone(),
+                initial_score: aggregate.initial_score,
+            },
+        ));
     }
 
     for root_idx in 0..config.root_count {
@@ -1191,8 +1203,10 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
             events_fired += 1;
 
             let parents = canonicalize_cross_root_parent_pair(&pool, choice)?;
-            let alignment =
-                align_sessions_by_pairing_distance(&parents.parent_a.state, &parents.parent_b.state)?;
+            let alignment = align_sessions_by_pairing_distance(
+                &parents.parent_a.state,
+                &parents.parent_b.state,
+            )?;
             let plan = build_balanced_inheritance_plan(
                 &alignment,
                 parents.parent_a_root_id,
@@ -1207,7 +1221,8 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
             let agreed_session_count = alignment
                 .matched_session_pairs
                 .len()
-                .saturating_sub(plan.differing_session_count) as u32;
+                .saturating_sub(plan.differing_session_count)
+                as u32;
             let mut event_summary = MultiRootBalancedSessionInheritanceEventTelemetry {
                 parent_a_root_id: parents.parent_a_root_id,
                 parent_b_root_id: parents.parent_b_root_id,
@@ -1229,8 +1244,10 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
                 telemetry.alignment_cost_sum += u64::from(alignment.total_alignment_cost);
                 telemetry.agreed_session_count_sum += u64::from(agreed_session_count);
                 telemetry.differing_session_count_sum += plan.differing_session_count as u64;
-                telemetry.inherited_from_parent_a_sessions_sum += plan.parent_a_session_count as u64;
-                telemetry.inherited_from_parent_b_sessions_sum += plan.parent_b_session_count as u64;
+                telemetry.inherited_from_parent_a_sessions_sum +=
+                    plan.parent_a_session_count as u64;
+                telemetry.inherited_from_parent_b_sessions_sum +=
+                    plan.parent_b_session_count as u64;
             }
             let raw_child_delta = raw_child.total_score - current_incumbent.total_score;
             let retain_for_polish = raw_child.total_score < current_incumbent.total_score
@@ -1249,7 +1266,8 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
                         .wrapping_add(parents.parent_b_root_id.wrapping_mul(17))
                         .wrapping_add(run_context.effective_seed)
                         .wrapping_add(events_fired);
-                    let budget_iterations = remaining_iterations.min(child_polish_iterations).max(1);
+                    let budget_iterations =
+                        remaining_iterations.min(child_polish_iterations).max(1);
                     let outcome = polish_state(
                         raw_child,
                         &run_context,
@@ -1281,7 +1299,8 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
                     event_summary.child_beats_parent_a = Some(child_score < parents.parent_a.score);
                     event_summary.child_beats_parent_b = Some(child_score < parents.parent_b.score);
                     event_summary.child_beats_both_parents = Some(
-                        child_score < parents.parent_a.score && child_score < parents.parent_b.score,
+                        child_score < parents.parent_a.score
+                            && child_score < parents.parent_b.score,
                     );
                     if let Some(telemetry) = aggregate
                         .multi_root_balanced_session_inheritance_telemetry
@@ -1300,7 +1319,9 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
                         if child_score < parents.parent_b.score {
                             telemetry.children_beating_parent_b += 1;
                         }
-                        if child_score < parents.parent_a.score && child_score < parents.parent_b.score {
+                        if child_score < parents.parent_a.score
+                            && child_score < parents.parent_b.score
+                        {
                             telemetry.children_beating_both_parents += 1;
                         }
                     }
@@ -1321,9 +1342,8 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
                 let raw_beats_parent_b = raw_child.total_score < parents.parent_b.score;
                 event_summary.child_beats_parent_a = Some(raw_beats_parent_a);
                 event_summary.child_beats_parent_b = Some(raw_beats_parent_b);
-                event_summary.child_beats_both_parents = Some(
-                    raw_beats_parent_a && raw_beats_parent_b,
-                );
+                event_summary.child_beats_both_parents =
+                    Some(raw_beats_parent_a && raw_beats_parent_b);
                 if let Some(telemetry) = aggregate
                     .multi_root_balanced_session_inheritance_telemetry
                     .as_mut()
@@ -1455,13 +1475,18 @@ fn merge_local_improver_run(
     aggregate.recent_acceptance = outcome.search.recent_acceptance.clone();
     aggregate
         .best_score_timeline
-        .extend(outcome.search.best_score_timeline.iter().skip(1).map(|point| {
-            BestScoreTimelinePoint {
-                iteration: point.iteration + iteration_offset,
-                elapsed_seconds: point.elapsed_seconds + elapsed_offset,
-                best_score: point.best_score,
-            }
-        }));
+        .extend(
+            outcome
+                .search
+                .best_score_timeline
+                .iter()
+                .skip(1)
+                .map(|point| BestScoreTimelinePoint {
+                    iteration: point.iteration + iteration_offset,
+                    elapsed_seconds: point.elapsed_seconds + elapsed_offset,
+                    best_score: point.best_score,
+                }),
+        );
     merge_repeat_guided_swap_telemetry(
         &mut aggregate.repeat_guided_swap_telemetry,
         &outcome.search.repeat_guided_swap_telemetry,
@@ -1537,7 +1562,9 @@ fn canonicalize_cross_root_parent_pair(
     choice: CrossRootParentChoice,
 ) -> Result<CanonicalCrossRootParentPair, SolverError> {
     let left_root = pool.root(choice.left_root_id).ok_or_else(|| {
-        SolverError::ValidationError("multi-root parent selection returned missing left root".into())
+        SolverError::ValidationError(
+            "multi-root parent selection returned missing left root".into(),
+        )
     })?;
     let right_root = pool.root(choice.right_root_id).ok_or_else(|| {
         SolverError::ValidationError(
@@ -2238,8 +2265,8 @@ mod tests {
 
     use crate::default_solver_configuration_for;
     use crate::models::{
-        ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
-        RepeatEncounterParams, Solver3PathRelinkingOperatorVariant, SolverKind,
+        ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, RepeatEncounterParams,
+        Solver3PathRelinkingOperatorVariant, SolverKind,
     };
     use crate::solver3::runtime_state::RuntimeState;
     use rand::SeedableRng;
@@ -2274,7 +2301,10 @@ mod tests {
             for (group_idx, members) in session_groups.into_iter().enumerate() {
                 session.insert(
                     groups[group_idx].to_string(),
-                    members.into_iter().map(|member| member.to_string()).collect(),
+                    members
+                        .into_iter()
+                        .map(|member| member.to_string())
+                        .collect(),
                 );
             }
             schedule.insert(format!("session_{session_idx}"), session);
@@ -2494,7 +2524,8 @@ mod tests {
         assert_eq!(plan.differing_session_count, 3);
         assert_eq!(plan.parent_a_session_count + plan.parent_b_session_count, 3);
         assert_eq!(
-            plan.parent_a_session_count.abs_diff(plan.parent_b_session_count),
+            plan.parent_a_session_count
+                .abs_diff(plan.parent_b_session_count),
             1
         );
         if plan.parent_a_receives_extra_session {
@@ -2740,21 +2771,14 @@ mod tests {
         };
         let mut rng = ChaCha12Rng::seed_from_u64(11);
 
-        let candidates = build_random_macro_mutation_candidates(
-            &state,
-            &run_context,
-            3,
-            2,
-            &mut rng,
-        )
-        .expect("random macro mutation candidates should build");
+        let candidates =
+            build_random_macro_mutation_candidates(&state, &run_context, 3, 2, &mut rng)
+                .expect("random macro mutation candidates should build");
 
         assert_eq!(candidates.len(), 3);
-        assert!(
-            candidates
-                .iter()
-                .all(|candidate| candidate.swaps_applied >= 1 && candidate.swaps_applied <= 2)
-        );
+        assert!(candidates
+            .iter()
+            .all(|candidate| candidate.swaps_applied >= 1 && candidate.swaps_applied <= 2));
     }
 
     #[test]
@@ -2799,7 +2823,10 @@ mod tests {
             }],
             donor_score: 8.0,
         };
-        assert_eq!(compare_path_guides(&left, &right), std::cmp::Ordering::Greater);
+        assert_eq!(
+            compare_path_guides(&left, &right),
+            std::cmp::Ordering::Greater
+        );
     }
 
     #[test]

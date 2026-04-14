@@ -28,7 +28,10 @@ impl SearchEngine {
         progress_callback: Option<&ProgressCallback>,
         benchmark_observer: Option<&BenchmarkObserver>,
     ) -> Result<SolverResult, SolverError> {
-        let effective_seed = self.configuration.seed.unwrap_or_else(|| rng().random::<u64>());
+        let effective_seed = self
+            .configuration
+            .seed
+            .unwrap_or_else(|| rng().random::<u64>());
         let run_context =
             SearchRunContext::from_solver(&self.configuration, state, effective_seed)?;
 
@@ -36,14 +39,10 @@ impl SearchEngine {
             run_context.search_driver_mode,
             run_context.local_improver_mode,
         ) {
-            (
-                Solver3SearchDriverMode::SingleState,
-                Solver3LocalImproverMode::RecordToRecord,
-            )
-            | (
-                Solver3SearchDriverMode::SingleState,
-                Solver3LocalImproverMode::SgpWeekPairTabu,
-            ) => single_state::run(state, run_context, progress_callback, benchmark_observer),
+            (Solver3SearchDriverMode::SingleState, Solver3LocalImproverMode::RecordToRecord)
+            | (Solver3SearchDriverMode::SingleState, Solver3LocalImproverMode::SgpWeekPairTabu) => {
+                single_state::run(state, run_context, progress_callback, benchmark_observer)
+            }
             (
                 Solver3SearchDriverMode::SteadyStateMemetic,
                 Solver3LocalImproverMode::RecordToRecord,

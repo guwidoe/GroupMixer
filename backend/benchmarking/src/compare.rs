@@ -4,8 +4,7 @@ use crate::artifacts::{
     MoveFamilyComparison, NumericDelta, ObjectiveMetricsComparison, RegressionSuspect,
     RegressionSuspectKind, RegressionSuspectSummary, ScoreDecomposition,
     ScoreDecompositionComparison, SearchTelemetryComparison, TrajectoryCheckpointComparison,
-    WeightedConstraintBreakdown,
-    WeightedConstraintBreakdownComparison,
+    WeightedConstraintBreakdown, WeightedConstraintBreakdownComparison,
     COMPARISON_REPORT_SCHEMA_VERSION,
 };
 use crate::manifest::BenchmarkSuiteClass;
@@ -1349,9 +1348,10 @@ mod tests {
             case.search_telemetry.as_ref().is_some_and(|telemetry| {
                 telemetry.last_improvement_elapsed_seconds.absolute.abs() < 1e-9
                     && telemetry.seconds_after_last_improvement.absolute.abs() < 1e-9
-                    && telemetry.checkpoint_score_deltas.iter().all(|checkpoint| {
-                        checkpoint.best_score.absolute.abs() < 1e-9
-                    })
+                    && telemetry
+                        .checkpoint_score_deltas
+                        .iter()
+                        .all(|checkpoint| checkpoint.best_score.absolute.abs() < 1e-9)
             })
         }));
     }

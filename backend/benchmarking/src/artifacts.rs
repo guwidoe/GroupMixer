@@ -1,11 +1,10 @@
 use crate::manifest::{BenchmarkCaseRole, BenchmarkSuiteClass, DeclaredBenchmarkBudget};
 use crate::validation::ExternalValidationReport;
 use gm_core::models::{
-    BestScoreTimelinePoint, DonorSessionTransplantBenchmarkTelemetry,
-    MemeticBenchmarkTelemetry, MoveFamilyBenchmarkTelemetrySummary,
-    MovePolicy, MultiRootBalancedSessionInheritanceBenchmarkTelemetry,
-    RepeatGuidedSwapBenchmarkTelemetry, SessionAlignedPathRelinkingBenchmarkTelemetry,
-    SgpWeekPairTabuBenchmarkTelemetry, StopReason,
+    BestScoreTimelinePoint, DonorSessionTransplantBenchmarkTelemetry, MemeticBenchmarkTelemetry,
+    MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
+    MultiRootBalancedSessionInheritanceBenchmarkTelemetry, RepeatGuidedSwapBenchmarkTelemetry,
+    SessionAlignedPathRelinkingBenchmarkTelemetry, SgpWeekPairTabuBenchmarkTelemetry, StopReason,
 };
 use serde::{Deserialize, Serialize};
 

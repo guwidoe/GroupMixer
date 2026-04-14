@@ -42,13 +42,22 @@ pub struct TrajectoryCheckpoint {
     pub best_score: f64,
 }
 
-pub fn select_case<'a>(run_report: &'a RunReport, case_id: Option<&str>) -> Result<&'a CaseRunArtifact> {
+pub fn select_case<'a>(
+    run_report: &'a RunReport,
+    case_id: Option<&str>,
+) -> Result<&'a CaseRunArtifact> {
     match case_id {
         Some(case_id) => run_report
             .cases
             .iter()
             .find(|case| case.case_id == case_id)
-            .ok_or_else(|| anyhow!("case '{}' not found in run {}", case_id, run_report.run.run_id)),
+            .ok_or_else(|| {
+                anyhow!(
+                    "case '{}' not found in run {}",
+                    case_id,
+                    run_report.run.run_id
+                )
+            }),
         None if run_report.cases.len() == 1 => Ok(&run_report.cases[0]),
         None => Err(anyhow!(
             "run {} contains multiple cases; pass --case to choose one ({})",
@@ -63,7 +72,10 @@ pub fn select_case<'a>(run_report: &'a RunReport, case_id: Option<&str>) -> Resu
     }
 }
 
-pub fn export_trajectory(run_report: &RunReport, case_id: Option<&str>) -> Result<TrajectoryExport> {
+pub fn export_trajectory(
+    run_report: &RunReport,
+    case_id: Option<&str>,
+) -> Result<TrajectoryExport> {
     let case = select_case(run_report, case_id)?;
     let telemetry = case
         .search_telemetry
@@ -107,12 +119,24 @@ pub fn render_trajectory_text(
     let export = export_trajectory(run_report, case_id)?;
     let timeline = &export.best_score_timeline;
     if timeline.is_empty() {
-        return Err(anyhow!("case '{}' has an empty best-score timeline", export.case_id));
+        return Err(anyhow!(
+            "case '{}' has an empty best-score timeline",
+            export.case_id
+        ));
     }
 
-    let initial_score = timeline.first().map(|point| point.best_score).unwrap_or(0.0);
-    let best_score = timeline.last().map(|point| point.best_score).unwrap_or(initial_score);
-    let last_elapsed = timeline.last().map(|point| point.elapsed_seconds).unwrap_or(0.0);
+    let initial_score = timeline
+        .first()
+        .map(|point| point.best_score)
+        .unwrap_or(0.0);
+    let best_score = timeline
+        .last()
+        .map(|point| point.best_score)
+        .unwrap_or(initial_score);
+    let last_elapsed = timeline
+        .last()
+        .map(|point| point.elapsed_seconds)
+        .unwrap_or(0.0);
     let width = width.max(8);
     let sparkline = render_sparkline(timeline, width);
     let summary = &export.summary;
@@ -123,7 +147,10 @@ pub fn render_trajectory_text(
             export.case_id, export.run_id
         ),
         format!("- solver_family: {}", export.solver_family),
-        format!("- total_runtime_seconds: {:.6}", export.total_runtime_seconds),
+        format!(
+            "- total_runtime_seconds: {:.6}",
+            export.total_runtime_seconds
+        ),
         format!("- timeline_points: {}", export.point_count),
         format!("- initial_score: {:.4}", initial_score),
         format!("- best_score: {:.4}", best_score),
@@ -149,7 +176,10 @@ pub fn render_trajectory_text(
             "- seconds_after_last_improvement: {:.6}",
             summary.seconds_after_last_improvement
         ),
-        format!("- sparkline (higher blocks = lower/better score): {}", sparkline),
+        format!(
+            "- sparkline (higher blocks = lower/better score): {}",
+            sparkline
+        ),
     ];
 
     if let Some(value) = summary.last_improvement_fraction_of_runtime_budget {
@@ -223,8 +253,14 @@ fn summarize_trajectory(
     } else {
         (seconds_after_last_improvement / total_runtime_seconds).clamp(0.0, 1.0)
     };
-    let runtime_budget = case.effective_budget.time_limit_seconds.filter(|limit| *limit > 0);
-    let iteration_budget = case.effective_budget.max_iterations.filter(|limit| *limit > 0);
+    let runtime_budget = case
+        .effective_budget
+        .time_limit_seconds
+        .filter(|limit| *limit > 0);
+    let iteration_budget = case
+        .effective_budget
+        .max_iterations
+        .filter(|limit| *limit > 0);
     let completed_iterations = case.iteration_count.unwrap_or(last_point.iteration);
 
     let improvements_after_fraction = |threshold: f64| -> u64 {
@@ -247,7 +283,9 @@ fn summarize_trajectory(
             .map(|budget| (last_point.elapsed_seconds / budget as f64).clamp(0.0, 1.0)),
         last_improvement_fraction_of_iteration_budget: iteration_budget
             .map(|budget| (last_point.iteration as f64 / budget as f64).clamp(0.0, 1.0)),
-        iterations_after_last_improvement: Some(completed_iterations.saturating_sub(last_point.iteration)),
+        iterations_after_last_improvement: Some(
+            completed_iterations.saturating_sub(last_point.iteration),
+        ),
         seconds_after_last_improvement,
         fraction_of_run_after_last_improvement,
         improvements_after_25_percent_run: improvements_after_fraction(0.25),
@@ -291,8 +329,14 @@ fn render_sparkline(timeline: &[BestScoreTimelinePoint], width: usize) -> String
     out
 }
 
-fn point_at_fraction(timeline: &[BestScoreTimelinePoint], fraction: f64) -> &BestScoreTimelinePoint {
-    let final_elapsed = timeline.last().map(|point| point.elapsed_seconds).unwrap_or(0.0);
+fn point_at_fraction(
+    timeline: &[BestScoreTimelinePoint],
+    fraction: f64,
+) -> &BestScoreTimelinePoint {
+    let final_elapsed = timeline
+        .last()
+        .map(|point| point.elapsed_seconds)
+        .unwrap_or(0.0);
     let target_elapsed = if final_elapsed <= 0.0 {
         0.0
     } else {
@@ -311,10 +355,9 @@ mod tests {
     use super::*;
     use crate::{
         artifacts::{
-            BenchmarkArtifactKind, CaseRunStatus, EffectiveBenchmarkBudget,
-            GitIdentity, MachineIdentity, RunMetadata, RunSuiteMetadata, RunTotals,
-            SearchTelemetryArtifact, SolveTimingBreakdown, SolverBenchmarkMetadata,
-            SolverCapabilitiesSnapshot,
+            BenchmarkArtifactKind, CaseRunStatus, EffectiveBenchmarkBudget, GitIdentity,
+            MachineIdentity, RunMetadata, RunSuiteMetadata, RunTotals, SearchTelemetryArtifact,
+            SolveTimingBreakdown, SolverBenchmarkMetadata, SolverCapabilitiesSnapshot,
         },
         manifest::BenchmarkSuiteClass,
     };

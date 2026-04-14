@@ -288,9 +288,7 @@ fn run_case(
                 sgp_week_pair_tabu: telemetry.sgp_week_pair_tabu.clone(),
                 memetic: telemetry.memetic.clone(),
                 donor_session_transplant: telemetry.donor_session_transplant.clone(),
-                session_aligned_path_relinking: telemetry
-                    .session_aligned_path_relinking
-                    .clone(),
+                session_aligned_path_relinking: telemetry.session_aligned_path_relinking.clone(),
                 multi_root_balanced_session_inheritance: telemetry
                     .multi_root_balanced_session_inheritance
                     .clone(),

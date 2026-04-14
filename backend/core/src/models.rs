@@ -1088,8 +1088,7 @@ pub struct Solver3SearchDriverParams {
     pub session_aligned_path_relinking: Solver3SessionAlignedPathRelinkingParams,
     /// Config for the rare multi-root balanced session inheritance outer driver.
     #[serde(default)]
-    pub multi_root_balanced_session_inheritance:
-        Solver3MultiRootBalancedSessionInheritanceParams,
+    pub multi_root_balanced_session_inheritance: Solver3MultiRootBalancedSessionInheritanceParams,
 }
 
 /// Config for the rare multi-root balanced session inheritance outer driver.
@@ -1136,7 +1135,9 @@ pub struct Solver3MultiRootBalancedSessionInheritanceParams {
     )]
     pub child_polish_no_improvement_iterations_per_stagnation_window: u32,
     /// Maximum number of stagnation windows that contribute to a single child-polish budget.
-    #[serde(default = "default_solver3_multi_root_inheritance_child_polish_max_stagnation_windows")]
+    #[serde(
+        default = "default_solver3_multi_root_inheritance_child_polish_max_stagnation_windows"
+    )]
     pub child_polish_max_stagnation_windows: u32,
 }
 
@@ -1614,7 +1615,8 @@ fn default_solver3_multi_root_inheritance_child_polish_iterations_per_window() -
     default_solver3_donor_session_child_polish_iterations_per_window()
 }
 
-fn default_solver3_multi_root_inheritance_child_polish_no_improvement_iterations_per_window() -> u32 {
+fn default_solver3_multi_root_inheritance_child_polish_no_improvement_iterations_per_window() -> u32
+{
     default_solver3_donor_session_child_polish_no_improvement_iterations_per_window()
 }
 

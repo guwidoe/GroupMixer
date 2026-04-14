@@ -198,7 +198,10 @@ impl EliteArchive {
     }
 
     pub(crate) fn consider_elite(&mut self, candidate: ArchivedElite) -> ArchiveUpdateOutcome {
-        assert!(self.config.capacity > 0, "elite archive capacity must be >= 1");
+        assert!(
+            self.config.capacity > 0,
+            "elite archive capacity must be >= 1"
+        );
 
         if let Some((idx, distance)) = self.closest_match_index(&candidate) {
             if distance == 0 {
@@ -265,7 +268,13 @@ impl EliteArchive {
         self.elites
             .iter()
             .enumerate()
-            .map(|(idx, elite)| (idx, elite.session_disagreement_count(candidate), elite.score))
+            .map(|(idx, elite)| {
+                (
+                    idx,
+                    elite.session_disagreement_count(candidate),
+                    elite.score,
+                )
+            })
             .min_by(|left, right| {
                 left.1
                     .cmp(&right.1)
@@ -286,7 +295,12 @@ impl EliteArchive {
         self.elites
             .iter()
             .enumerate()
-            .map(|(idx, elite)| (idx, minimum_disagreement_to_others(elite, idx, &self.elites)))
+            .map(|(idx, elite)| {
+                (
+                    idx,
+                    minimum_disagreement_to_others(elite, idx, &self.elites),
+                )
+            })
             .min_by(|(left_idx, left_distance), (right_idx, right_distance)| {
                 left_distance.cmp(right_distance).then_with(|| {
                     self.elites[*right_idx]
@@ -334,7 +348,10 @@ impl MultiRootElitePool {
         root_id: SearchRootId,
         candidate: ArchivedElite,
     ) -> MultiRootElitePoolUpdateOutcome {
-        assert!(self.config.max_roots > 0, "multi-root elite pool max_roots must be >= 1");
+        assert!(
+            self.config.max_roots > 0,
+            "multi-root elite pool max_roots must be >= 1"
+        );
         assert!(
             self.config.per_root_archive.capacity > 0,
             "multi-root elite pool per-root archive capacity must be >= 1"
@@ -429,14 +446,14 @@ impl MultiRootElitePool {
                     if left_elite.score > score_limit {
                         continue;
                     }
-                    for (right_archive_idx, right_elite) in right_root.entries().iter().enumerate() {
+                    for (right_archive_idx, right_elite) in right_root.entries().iter().enumerate()
+                    {
                         if right_elite.score > score_limit {
                             continue;
                         }
 
                         saw_competitive_cross_root_pair = true;
-                        let disagreement =
-                            left_elite.session_disagreement_count(right_elite);
+                        let disagreement = left_elite.session_disagreement_count(right_elite);
                         if disagreement < policy.min_session_disagreement {
                             continue;
                         }
@@ -490,8 +507,16 @@ fn cross_root_choice_better(
         })
         .then_with(|| current_best.left_root_id.cmp(&candidate.left_root_id))
         .then_with(|| current_best.right_root_id.cmp(&candidate.right_root_id))
-        .then_with(|| current_best.left_archive_idx.cmp(&candidate.left_archive_idx))
-        .then_with(|| current_best.right_archive_idx.cmp(&candidate.right_archive_idx))
+        .then_with(|| {
+            current_best
+                .left_archive_idx
+                .cmp(&candidate.left_archive_idx)
+        })
+        .then_with(|| {
+            current_best
+                .right_archive_idx
+                .cmp(&candidate.right_archive_idx)
+        })
         .is_lt()
 }
 
@@ -539,8 +564,11 @@ pub(crate) fn build_session_conflict_burden(state: &RuntimeState) -> Vec<u32> {
             let members = &state.group_members[state.group_slot(session_idx, group_idx)];
             for left_idx in 0..members.len() {
                 for right_idx in (left_idx + 1)..members.len() {
-                    let pair_idx = state.compiled.pair_idx(members[left_idx], members[right_idx]);
-                    let excess = state.pair_contacts[pair_idx].saturating_sub(max_allowed_encounters);
+                    let pair_idx = state
+                        .compiled
+                        .pair_idx(members[left_idx], members[right_idx]);
+                    let excess =
+                        state.pair_contacts[pair_idx].saturating_sub(max_allowed_encounters);
                     *session_burden += excess as u32;
                 }
             }
@@ -574,14 +602,20 @@ mod tests {
         }
     }
 
-    fn schedule(groups: &[&str], sessions: Vec<Vec<Vec<&str>>>) -> HashMap<String, HashMap<String, Vec<String>>> {
+    fn schedule(
+        groups: &[&str],
+        sessions: Vec<Vec<Vec<&str>>>,
+    ) -> HashMap<String, HashMap<String, Vec<String>>> {
         let mut schedule = HashMap::new();
         for (session_idx, session_groups) in sessions.into_iter().enumerate() {
             let mut session = HashMap::new();
             for (group_idx, members) in session_groups.into_iter().enumerate() {
                 session.insert(
                     groups[group_idx].to_string(),
-                    members.into_iter().map(|member| member.to_string()).collect(),
+                    members
+                        .into_iter()
+                        .map(|member| member.to_string())
+                        .collect(),
                 );
             }
             schedule.insert(format!("session_{}", session_idx), session);
@@ -628,7 +662,8 @@ mod tests {
             constraints,
             solver: default_solver_configuration_for(SolverKind::Solver3),
         };
-        let mut state = RuntimeState::from_input(&input).expect("schedule should build runtime state");
+        let mut state =
+            RuntimeState::from_input(&input).expect("schedule should build runtime state");
         state.total_score = score_override;
         state
     }

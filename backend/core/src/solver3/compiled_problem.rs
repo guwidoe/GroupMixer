@@ -494,7 +494,9 @@ impl CompiledProblem {
 }
 
 fn build_session_participant_counts(person_participation: &[Vec<bool>]) -> Vec<usize> {
-    let num_sessions = person_participation.first().map_or(0, |sessions| sessions.len());
+    let num_sessions = person_participation
+        .first()
+        .map_or(0, |sessions| sessions.len());
     let mut counts = vec![0usize; num_sessions];
     for participation_by_session in person_participation {
         for (session_idx, participates) in participation_by_session.iter().copied().enumerate() {

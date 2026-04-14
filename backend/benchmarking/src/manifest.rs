@@ -803,63 +803,51 @@ mod tests {
             "suites/social-golfer-plateau-time-solver3-path-control-high-event.yaml",
         ))
         .expect("social golfer high-event path-control suite should load");
-        assert_eq!(social.manifest.default_solver_family.as_deref(), Some("solver3"));
+        assert_eq!(
+            social.manifest.default_solver_family.as_deref(),
+            Some("solver3")
+        );
         assert_eq!(social.cases.len(), 9);
-        assert!(social
-            .cases
-            .iter()
-            .any(|case| case
-                .overrides
-                .purpose
-                .as_deref()
-                .is_some_and(|purpose| purpose.contains("session_path"))));
-        assert!(social
-            .cases
-            .iter()
-            .any(|case| case
-                .overrides
-                .purpose
-                .as_deref()
-                .is_some_and(|purpose| purpose.contains("random_donor"))));
-        assert!(social
-            .cases
-            .iter()
-            .any(|case| case
-                .overrides
-                .purpose
-                .as_deref()
-                .is_some_and(|purpose| purpose.contains("random_macro"))));
+        assert!(social.cases.iter().any(|case| case
+            .overrides
+            .purpose
+            .as_deref()
+            .is_some_and(|purpose| purpose.contains("session_path"))));
+        assert!(social.cases.iter().any(|case| case
+            .overrides
+            .purpose
+            .as_deref()
+            .is_some_and(|purpose| purpose.contains("random_donor"))));
+        assert!(social.cases.iter().any(|case| case
+            .overrides
+            .purpose
+            .as_deref()
+            .is_some_and(|purpose| purpose.contains("random_macro"))));
 
         let kirkman = load_suite_manifest(Path::new(
             "suites/stretch-kirkman-schoolgirls-time-solver3-path-control-high-event.yaml",
         ))
         .expect("kirkman high-event path-control suite should load");
-        assert_eq!(kirkman.manifest.default_solver_family.as_deref(), Some("solver3"));
+        assert_eq!(
+            kirkman.manifest.default_solver_family.as_deref(),
+            Some("solver3")
+        );
         assert_eq!(kirkman.cases.len(), 9);
-        assert!(kirkman
-            .cases
-            .iter()
-            .any(|case| case
-                .overrides
-                .purpose
-                .as_deref()
-                .is_some_and(|purpose| purpose.contains("session_path"))));
-        assert!(kirkman
-            .cases
-            .iter()
-            .any(|case| case
-                .overrides
-                .purpose
-                .as_deref()
-                .is_some_and(|purpose| purpose.contains("random_donor"))));
-        assert!(kirkman
-            .cases
-            .iter()
-            .any(|case| case
-                .overrides
-                .purpose
-                .as_deref()
-                .is_some_and(|purpose| purpose.contains("random_macro"))));
+        assert!(kirkman.cases.iter().any(|case| case
+            .overrides
+            .purpose
+            .as_deref()
+            .is_some_and(|purpose| purpose.contains("session_path"))));
+        assert!(kirkman.cases.iter().any(|case| case
+            .overrides
+            .purpose
+            .as_deref()
+            .is_some_and(|purpose| purpose.contains("random_donor"))));
+        assert!(kirkman.cases.iter().any(|case| case
+            .overrides
+            .purpose
+            .as_deref()
+            .is_some_and(|purpose| purpose.contains("random_macro"))));
     }
 
     #[test]
@@ -1356,12 +1344,14 @@ mod tests {
                 .as_deref(),
             Some("solver3")
         );
-        assert!(fixed_time_representative.cases.iter().any(|case| {
-            case.manifest.id == "representative.small-workshop-balanced"
-        }));
-        assert!(fixed_time_representative.cases.iter().any(|case| {
-            case.manifest.id == "representative.small-workshop-constrained"
-        }));
+        assert!(fixed_time_representative
+            .cases
+            .iter()
+            .any(|case| { case.manifest.id == "representative.small-workshop-balanced" }));
+        assert!(fixed_time_representative
+            .cases
+            .iter()
+            .any(|case| { case.manifest.id == "representative.small-workshop-constrained" }));
 
         let fixed_time_adversarial = load_suite_manifest(Path::new(
             "suites/objective-canonical-adversarial-solver3-metaheuristic-v1.yaml",
@@ -1374,12 +1364,14 @@ mod tests {
                 .as_deref(),
             Some("solver3")
         );
-        assert!(fixed_time_adversarial.cases.iter().any(|case| {
-            case.manifest.id == "adversarial.clique-swap-functionality-35p"
-        }));
-        assert!(fixed_time_adversarial.cases.iter().any(|case| {
-            case.manifest.id == "adversarial.transfer-attribute-balance-111p"
-        }));
+        assert!(fixed_time_adversarial
+            .cases
+            .iter()
+            .any(|case| { case.manifest.id == "adversarial.clique-swap-functionality-35p" }));
+        assert!(fixed_time_adversarial
+            .cases
+            .iter()
+            .any(|case| { case.manifest.id == "adversarial.transfer-attribute-balance-111p" }));
 
         let fixed_time_stretch = load_suite_manifest(Path::new(
             "suites/objective-canonical-stretch-zero-repeat-solver3-metaheuristic-v1.yaml",
@@ -1389,15 +1381,18 @@ mod tests {
             fixed_time_stretch.manifest.default_solver_family.as_deref(),
             Some("solver3")
         );
-        assert!(fixed_time_stretch.cases.iter().any(|case| {
-            case.manifest.id == "stretch.social-golfer-32x8x10"
-        }));
-        assert!(fixed_time_stretch.cases.iter().any(|case| {
-            case.manifest.id == "stretch.kirkman-schoolgirls-15x5x7"
-        }));
-        assert!(!fixed_time_stretch.cases.iter().any(|case| {
-            case.manifest.id == "stretch.large-gender-immovable-110p"
-        }));
+        assert!(fixed_time_stretch
+            .cases
+            .iter()
+            .any(|case| { case.manifest.id == "stretch.social-golfer-32x8x10" }));
+        assert!(fixed_time_stretch
+            .cases
+            .iter()
+            .any(|case| { case.manifest.id == "stretch.kirkman-schoolgirls-15x5x7" }));
+        assert!(!fixed_time_stretch
+            .cases
+            .iter()
+            .any(|case| { case.manifest.id == "stretch.large-gender-immovable-110p" }));
 
         let fixed_time_stretch_feature_rich = load_suite_manifest(Path::new(
             "suites/objective-canonical-stretch-feature-rich-solver3-metaheuristic-v1.yaml",
@@ -1410,12 +1405,14 @@ mod tests {
                 .as_deref(),
             Some("solver3")
         );
-        assert!(fixed_time_stretch_feature_rich.cases.iter().any(|case| {
-            case.manifest.id == "stretch.large-gender-immovable-110p"
-        }));
-        assert!(fixed_time_stretch_feature_rich.cases.iter().any(|case| {
-            case.manifest.id == "stretch.sailing-trip-demo-real"
-        }));
+        assert!(fixed_time_stretch_feature_rich
+            .cases
+            .iter()
+            .any(|case| { case.manifest.id == "stretch.large-gender-immovable-110p" }));
+        assert!(fixed_time_stretch_feature_rich
+            .cases
+            .iter()
+            .any(|case| { case.manifest.id == "stretch.sailing-trip-demo-real" }));
         assert!(fixed_time_stretch_feature_rich.cases.iter().any(|case| {
             case.manifest.id == "stretch.synthetic-partial-attendance-capacity-pressure-152p"
         }));
@@ -1431,12 +1428,14 @@ mod tests {
                 .as_deref(),
             Some("solver3")
         );
-        assert!(fixed_iteration_stretch.cases.iter().any(|case| {
-            case.manifest.id == "stretch.kirkman-schoolgirls-15x5x7"
-        }));
-        assert!(!fixed_iteration_stretch.cases.iter().any(|case| {
-            case.manifest.id == "stretch.large-gender-immovable-110p"
-        }));
+        assert!(fixed_iteration_stretch
+            .cases
+            .iter()
+            .any(|case| { case.manifest.id == "stretch.kirkman-schoolgirls-15x5x7" }));
+        assert!(!fixed_iteration_stretch
+            .cases
+            .iter()
+            .any(|case| { case.manifest.id == "stretch.large-gender-immovable-110p" }));
         assert!(!fixed_iteration_stretch.cases.iter().any(|case| {
             case.manifest.id == "stretch.synthetic-partial-attendance-capacity-pressure-152p"
         }));
@@ -1452,12 +1451,16 @@ mod tests {
                 .as_deref(),
             Some("solver3")
         );
-        assert!(fixed_iteration_stretch_feature_rich.cases.iter().any(|case| {
-            case.manifest.id == "stretch.large-gender-immovable-110p"
-        }));
-        assert!(fixed_iteration_stretch_feature_rich.cases.iter().any(|case| {
-            case.manifest.id == "stretch.synthetic-partial-attendance-capacity-pressure-152p"
-        }));
+        assert!(fixed_iteration_stretch_feature_rich
+            .cases
+            .iter()
+            .any(|case| { case.manifest.id == "stretch.large-gender-immovable-110p" }));
+        assert!(fixed_iteration_stretch_feature_rich
+            .cases
+            .iter()
+            .any(|case| {
+                case.manifest.id == "stretch.synthetic-partial-attendance-capacity-pressure-152p"
+            }));
     }
 
     #[test]
