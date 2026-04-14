@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useLocalStorageState } from '../../hooks/useLocalStorageState';
+import { getLandingSampleCsvText, getLandingSampleNamesText } from '../../i18n/landingSamples';
 import { getLandingUiContent } from '../../i18n/landingUi';
 import type { ToolPageConfig } from '../../pages/toolPageConfigs';
 import type { ToolPageSharedUiContent } from '../../pages/toolPageTypes';
@@ -14,17 +15,6 @@ import type {
   QuickSetupResult,
   QuickSetupSessionResult,
 } from './types';
-
-const SAMPLE_NAMES = ['Alex', 'Sam', 'Priya', 'Jordan', 'Mina', 'Luis', 'Taylor', 'Casey'].join('\n');
-const SAMPLE_CSV = [
-  'name,team,role',
-  'Alex,Blue,Engineer',
-  'Sam,Blue,Designer',
-  'Priya,Gold,Engineer',
-  'Jordan,Gold,Facilitator',
-  'Mina,Green,Research',
-  'Luis,Green,Engineer',
-].join('\n');
 
 export interface QuickSetupController {
   ui: ToolPageSharedUiContent;
@@ -63,7 +53,7 @@ export interface QuickSetupController {
 
 function defaultDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
   return {
-    participantInput: SAMPLE_NAMES,
+    participantInput: getLandingSampleNamesText(pageConfig.locale),
     groupingMode: 'groupCount',
     groupingValue: 4,
     sessions: pageConfig.defaultPreset === 'networking' ? 3 : 1,
@@ -404,6 +394,8 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
   const [lastSolvedScenario, setLastSolvedScenario] = useState<Scenario | null>(null);
   const [lastSolvedSolution, setLastSolvedSolution] = useState<Solution | null>(null);
   const [lastSolvedAttributeDefinitions, setLastSolvedAttributeDefinitions] = useState<AttributeDefinition[]>([]);
+  const sampleNames = useMemo(() => getLandingSampleNamesText(pageConfig.locale), [pageConfig.locale]);
+  const sampleCsv = useMemo(() => getLandingSampleCsvText(pageConfig.locale), [pageConfig.locale]);
 
   const analysis = useMemo(() => analyzeDraft(draft), [draft]);
   const participantCount = analysis.participants.length;
@@ -506,9 +498,9 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
   const loadSampleData = useCallback(() => {
     setDraft((current) => ({
       ...current,
-      participantInput: current.inputMode === 'csv' ? SAMPLE_CSV : SAMPLE_NAMES,
+      participantInput: current.inputMode === 'csv' ? sampleCsv : sampleNames,
     }));
-  }, [setDraft]);
+  }, [sampleCsv, sampleNames, setDraft]);
 
   const exportGroupsCsv = useCallback(() => {
     if (!result) {

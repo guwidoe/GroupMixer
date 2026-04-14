@@ -277,14 +277,14 @@ const JA_LANDING_UI: ToolPageSharedUiContent = {
     participantsLabel: '参加者',
     switchToCsvLabel: 'CSVに切り替え',
     switchToNamesLabel: '名前入力に切り替え',
-    sampleLabel: 'サンプル',
+    sampleLabel: '例を表示',
     resetLabel: 'リセット',
     namesPlaceholder: '1行に1名ずつ入力',
     csvPlaceholder: 'name,team,role\nAlex,Blue,Engineer',
     groupingValueGroupCountLabel: 'グループ数',
     groupingValueGroupSizeLabel: '1グループあたりの人数',
-    groupingToggleToGroupSizeLabel: '→ 1グループあたりの人数を使う',
-    groupingToggleToGroupCountLabel: '→ グループ数を使う',
+    groupingToggleToGroupSizeLabel: '→ 1グループあたりの人数を指定',
+    groupingToggleToGroupCountLabel: '→ グループ数を指定',
     peopleStatLabel: '人数',
     groupsStatLabel: 'グループ',
     approxSizeStatLabel: '目安人数',
@@ -301,7 +301,7 @@ const JA_LANDING_UI: ToolPageSharedUiContent = {
     sessionsLabel: 'セッション数',
     avoidRepeatPairingsLabel: '同じ組み合わせの繰り返しを避ける',
     avoidRepeatPairingsDescription:
-      '複数セッションにまたがって人を分散し、同じペアが繰り返されにくくします。',
+      '複数セッションにまたがって人を分散し、各ラウンドで重複を抑えた組み合わせを作成します。',
     keepTogetherLabel: '同じグループにする',
     keepTogetherPlaceholder: '1行に1グループ\nAlex, Sam\nPriya, Jordan, Mina',
     avoidPairingLabel: '同じ組み合わせを避ける',
@@ -336,7 +336,7 @@ const JA_LANDING_UI: ToolPageSharedUiContent = {
     csvHeaderGroup: 'group',
     csvHeaderMembers: 'members',
     solverFallbackMessage:
-      'この設定は今すぐ解けなかったため、代わりにローカルの下書きグループを表示しています。',
+      'この設定は適用できなかったため、代わりにローカルの下書きグループを表示しています。',
   },
 };
 
