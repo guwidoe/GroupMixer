@@ -88,7 +88,44 @@ mod recombination {
     }
 }
 mod repeat_guidance;
+#[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
 mod sgp_conflicts;
+#[cfg(not(feature = "solver3-experimental-conflict-restricted-sampling"))]
+mod sgp_conflicts {
+    use super::super::moves::PairContactUpdate;
+    use super::super::runtime_state::RuntimeState;
+
+    #[derive(Debug, Clone, PartialEq, Eq, Default)]
+    pub(crate) struct SgpConflictState;
+
+    impl SgpConflictState {
+        pub(crate) fn build_from_state(
+            _state: &RuntimeState,
+            _allowed_sessions: &[usize],
+        ) -> Option<Self> {
+            None
+        }
+
+        #[inline]
+        pub(crate) fn has_active_conflicts(&self) -> bool {
+            false
+        }
+
+        pub(crate) fn refresh_after_move(
+            &mut self,
+            _state: &RuntimeState,
+            _allowed_sessions: &[usize],
+            _touched_session_idx: usize,
+            _pair_contact_updates: &[PairContactUpdate],
+        ) {
+        }
+
+        #[cfg(test)]
+        pub(crate) fn conflicted_people_in_session(&self, _session_idx: usize) -> &[usize] {
+            &[]
+        }
+    }
+}
 mod single_state;
 mod tabu;
 

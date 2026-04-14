@@ -745,6 +745,7 @@ fn solver3_sgp_week_pair_tabu_mode_runs_through_public_entry_point() {
     assert!(telemetry.sgp_week_pair_tabu.is_some());
 }
 
+#[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
 #[test]
 fn solver3_conflict_restricted_tabu_mode_runs_through_public_entry_point() {
     let mut input = solver3_repeat_driver_input();
@@ -1193,6 +1194,31 @@ fn solver3_repeat_guidance_requires_feature_through_public_entry_point() {
     assert!(
         err.to_string()
             .contains("solver3-experimental-repeat-guidance"),
+        "unexpected error: {err}"
+    );
+}
+
+#[cfg(not(feature = "solver3-experimental-conflict-restricted-sampling"))]
+#[test]
+fn solver3_conflict_restricted_tabu_requires_feature_through_public_entry_point() {
+    let mut input = solver3_repeat_driver_input();
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        local_improver: Solver3LocalImproverParams {
+            mode: Solver3LocalImproverMode::SgpWeekPairTabu,
+            sgp_week_pair_tabu: Solver3SgpWeekPairTabuParams {
+                conflict_restricted_swap_sampling_enabled: true,
+                ..Default::default()
+            },
+        },
+        ..Default::default()
+    });
+
+    let err = run_solver(&input).expect_err(
+        "conflict-restricted tabu should fail when solver3-experimental-conflict-restricted-sampling is disabled",
+    );
+    assert!(
+        err.to_string()
+            .contains("solver3-experimental-conflict-restricted-sampling"),
         "unexpected error: {err}"
     );
 }

@@ -19,12 +19,15 @@ solver3-oracle-checks = []
 solver3-experimental-repeat-guidance = []
 # Enables solver3 steady-state memetic outer-driver research.
 solver3-experimental-memetic = []
+# Enables solver3 conflict-restricted swap sampling research.
+solver3-experimental-conflict-restricted-sampling = []
 # Enables solver3 archive/recombination research drivers (donor/path/multi-root).
 solver3-experimental-recombination = []
 # Convenience umbrella for all solver3 research-only search features.
 solver3-research-all = [
     "solver3-experimental-repeat-guidance",
     "solver3-experimental-memetic",
+    "solver3-experimental-conflict-restricted-sampling",
     "solver3-experimental-recombination",
 ]
 

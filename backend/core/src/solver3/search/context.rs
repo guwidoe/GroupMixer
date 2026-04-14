@@ -294,6 +294,18 @@ fn ensure_repeat_guidance_feature_available(_enabled: bool) -> Result<(), Solver
     Ok(())
 }
 
+fn ensure_conflict_restricted_sampler_feature_available(_enabled: bool) -> Result<(), SolverError> {
+    #[cfg(not(feature = "solver3-experimental-conflict-restricted-sampling"))]
+    if _enabled {
+        return Err(SolverError::ValidationError(
+            "solver3 local_improver.sgp_week_pair_tabu.conflict_restricted_swap_sampling_enabled requires compiling gm-core with feature `solver3-experimental-conflict-restricted-sampling`"
+                .into(),
+        ));
+    }
+
+    Ok(())
+}
+
 impl SearchRunContext {
     pub(crate) fn from_solver(
         configuration: &SolverConfiguration,
@@ -351,6 +363,12 @@ impl SearchRunContext {
         ensure_search_driver_feature_available(search_driver_mode)?;
         ensure_repeat_guidance_feature_available(
             solver3_params.hotspot_guidance.repeat_guided_swaps.enabled,
+        )?;
+        ensure_conflict_restricted_sampler_feature_available(
+            solver3_params
+                .local_improver
+                .sgp_week_pair_tabu
+                .conflict_restricted_swap_sampling_enabled,
         )?;
 
         if correctness_sample_every_accepted_moves == 0 {
@@ -2001,6 +2019,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
     #[test]
     fn run_context_captures_conflict_restricted_tabu_sampling_flag() {
         let state = repeat_state();
@@ -2023,6 +2042,28 @@ mod tests {
                 .unwrap()
                 .conflict_restricted_swap_sampling_enabled
         );
+    }
+
+    #[cfg(not(feature = "solver3-experimental-conflict-restricted-sampling"))]
+    #[test]
+    fn run_context_rejects_conflict_restricted_tabu_sampling_without_feature() {
+        let state = repeat_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            local_improver: Solver3LocalImproverParams {
+                mode: Solver3LocalImproverMode::SgpWeekPairTabu,
+                sgp_week_pair_tabu: Solver3SgpWeekPairTabuParams {
+                    conflict_restricted_swap_sampling_enabled: true,
+                    ..Default::default()
+                },
+            },
+            ..Default::default()
+        });
+
+        let error = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(error.to_string().contains(
+            "solver3-experimental-conflict-restricted-sampling"
+        ));
     }
 
     #[test]

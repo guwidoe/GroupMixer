@@ -17,6 +17,10 @@ solver3-experimental-memetic = [
     "gm-core/solver3-experimental-memetic",
     "gm-contracts/solver3-experimental-memetic",
 ]
+solver3-experimental-conflict-restricted-sampling = [
+    "gm-core/solver3-experimental-conflict-restricted-sampling",
+    "gm-contracts/solver3-experimental-conflict-restricted-sampling",
+]
 solver3-experimental-recombination = [
     "gm-core/solver3-experimental-recombination",
     "gm-contracts/solver3-experimental-recombination",

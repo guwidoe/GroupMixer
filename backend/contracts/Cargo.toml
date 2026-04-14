@@ -11,6 +11,7 @@ path = "src/lib.rs"
 default = []
 solver3-experimental-repeat-guidance = ["gm-core/solver3-experimental-repeat-guidance"]
 solver3-experimental-memetic = ["gm-core/solver3-experimental-memetic"]
+solver3-experimental-conflict-restricted-sampling = ["gm-core/solver3-experimental-conflict-restricted-sampling"]
 solver3-experimental-recombination = ["gm-core/solver3-experimental-recombination"]
 solver3-research-all = ["gm-core/solver3-research-all"]
 

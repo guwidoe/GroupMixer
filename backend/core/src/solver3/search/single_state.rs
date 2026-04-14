@@ -31,6 +31,7 @@ use super::context::{SearchProgressState, SearchRunContext};
 use super::family_selection::MoveFamilySelector;
 #[cfg(feature = "solver3-experimental-repeat-guidance")]
 use super::repeat_guidance::RepeatGuidanceState;
+#[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
 use super::sgp_conflicts::SgpConflictState;
 use super::tabu::SgpWeekPairTabuState;
 
@@ -185,6 +186,7 @@ fn run_local_improver(
         } else {
             None
         };
+    #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
     let mut sgp_conflicts = if run_context.local_improver_mode
         == Solver3LocalImproverMode::SgpWeekPairTabu
         && run_context
@@ -328,6 +330,7 @@ fn run_local_improver(
                 SwapSamplingOptions {
                     #[cfg(feature = "solver3-experimental-repeat-guidance")]
                     repeat_guidance: repeat_guidance.as_ref(),
+                    #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
                     sgp_conflicts: sgp_conflicts.as_ref(),
                     #[cfg(feature = "solver3-experimental-repeat-guidance")]
                     repeat_guided_swap_probability: run_context.repeat_guided_swap_probability,
@@ -426,6 +429,7 @@ fn run_local_improver(
                             );
                         }
 
+                        #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
                         if let Some(conflicts) = sgp_conflicts.as_mut() {
                             conflicts.refresh_after_move(
                                 &search.current_state,

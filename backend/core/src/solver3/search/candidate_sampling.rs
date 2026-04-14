@@ -4,7 +4,12 @@ use std::time::Instant;
 #[cfg(target_arch = "wasm32")]
 use js_sys;
 
-use rand::{seq::SliceRandom, RngExt};
+#[cfg(any(
+    feature = "solver3-experimental-repeat-guidance",
+    feature = "solver3-experimental-conflict-restricted-sampling"
+))]
+use rand::seq::SliceRandom;
+use rand::RngExt;
 use rand_chacha::ChaCha12Rng;
 
 use crate::models::MoveFamily;
@@ -18,6 +23,7 @@ use super::super::runtime_state::RuntimeState;
 use super::family_selection::MoveFamilySelector;
 #[cfg(feature = "solver3-experimental-repeat-guidance")]
 use super::repeat_guidance::RepeatGuidanceState;
+#[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
 use super::sgp_conflicts::SgpConflictState;
 use super::tabu::SgpWeekPairTabuState;
 
@@ -128,6 +134,7 @@ struct GuidedSwapSamplingPreviewResult {
 pub(crate) struct SwapSamplingOptions<'a> {
     #[cfg(feature = "solver3-experimental-repeat-guidance")]
     pub(crate) repeat_guidance: Option<&'a RepeatGuidanceState>,
+    #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
     pub(crate) sgp_conflicts: Option<&'a SgpConflictState>,
     #[cfg(feature = "solver3-experimental-repeat-guidance")]
     pub(crate) repeat_guided_swap_probability: f64,
@@ -144,6 +151,7 @@ impl Default for SwapSamplingOptions<'_> {
         Self {
             #[cfg(feature = "solver3-experimental-repeat-guidance")]
             repeat_guidance: None,
+            #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
             sgp_conflicts: None,
             #[cfg(feature = "solver3-experimental-repeat-guidance")]
             repeat_guided_swap_probability: 0.0,
@@ -309,6 +317,7 @@ impl CandidateSampler {
             telemetry.guided_fallback_to_random += 1;
         }
 
+        #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
         if swap_sampling
             .sgp_conflicts
             .is_some_and(SgpConflictState::has_active_conflicts)
@@ -340,6 +349,7 @@ impl CandidateSampler {
         Some((preview, telemetry, tabu_telemetry))
     }
 
+    #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
     fn sample_conflict_restricted_swap_preview(
         &self,
         state: &RuntimeState,
@@ -383,6 +393,7 @@ impl CandidateSampler {
         fallback
     }
 
+    #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
     fn sample_conflict_restricted_swap_preview_for_anchor(
         &self,
         state: &RuntimeState,
@@ -1196,9 +1207,15 @@ mod tests {
     use super::super::family_selection::MoveFamilySelector;
     #[cfg(feature = "solver3-experimental-repeat-guidance")]
     use super::super::repeat_guidance::RepeatGuidanceState;
+    #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
     use super::super::sgp_conflicts::SgpConflictState;
     use super::super::tabu::{SgpWeekPairTabuConfig, SgpWeekPairTabuState};
-    use super::{CandidateSampler, SearchMovePreview, SwapSamplingOptions};
+    #[cfg(any(
+        feature = "solver3-experimental-repeat-guidance",
+        feature = "solver3-experimental-conflict-restricted-sampling"
+    ))]
+    use super::SearchMovePreview;
+    use super::{CandidateSampler, SwapSamplingOptions};
 
     fn solver3_config() -> SolverConfiguration {
         SolverConfiguration {
@@ -1609,6 +1626,7 @@ mod tests {
         assert!(sampled.selection.is_none());
     }
 
+    #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
     #[test]
     fn conflict_restricted_sampler_keeps_swap_endpoint_inside_conflict_position() {
         let state = repeated_pair_runtime_state();
@@ -1649,6 +1667,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
     #[test]
     fn conflict_restricted_sampler_falls_back_to_random_when_no_conflicts_exist() {
         let state = repeat_constrained_non_conflicting_state();
