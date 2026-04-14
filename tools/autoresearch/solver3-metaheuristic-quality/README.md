@@ -2,6 +2,8 @@
 
 This lane is for the newer solver3 metaheuristic surfaces: advanced local improvers, donor/memetic wiring, capability gating, and any future feature-complete global-search additions.
 
+Because this lane exercises research-only solver3 modes, it must run with the solver3 research Cargo feature set enabled.
+
 ## Goal
 
 Improve **final incumbent quality** for solver3 under much longer search budgets while keeping the feature surface honest.
@@ -48,6 +50,18 @@ Iteration budget target:
 ## Runtime diagnostic companion
 
 - `tools/autoresearch/solver3-raw-runtime/autoresearch.sh`
+
+## Build mode
+
+Research/autoresearch commands in this lane must opt into the research feature set explicitly.
+
+Default command shape:
+
+```bash
+cargo run --release -p gm-cli --features solver3-research-all -- benchmark run --manifest <manifest>
+```
+
+`tools/autoresearch/solver3-metaheuristic-quality/autoresearch.sh` now does this automatically.
 
 ## Persistence note
 

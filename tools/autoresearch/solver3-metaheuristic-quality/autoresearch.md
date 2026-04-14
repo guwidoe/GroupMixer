@@ -28,6 +28,10 @@ This lane is not just about Social Golfer. It is explicitly about making the new
 
 Root wrappers delegate to `tools/autoresearch/solver3-metaheuristic-quality/`.
 
+This lane intentionally exercises research-only solver3 modes, so the underlying benchmark runs must compile `gm-cli` with the solver3 research feature set. The tool-local `autoresearch.sh` now does this automatically via:
+
+`cargo run --release -p gm-cli --features solver3-research-all -- benchmark run ...`
+
 ## Persistent Metrics Logging
 `./autoresearch.sh` writes the latest full metric set to `autoresearch.last_run_metrics.json`.
 

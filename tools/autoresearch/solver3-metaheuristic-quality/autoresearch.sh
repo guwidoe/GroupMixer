@@ -6,6 +6,7 @@ cd "$ROOT"
 
 ARTIFACTS_DIR="$(mktemp -d "${TMPDIR:-/tmp}/groupmixer-autoresearch-solver3-metaheuristic-XXXXXX")"
 METRICS_OUTPUT_LOG="$ARTIFACTS_DIR/metrics-output.log"
+RESEARCH_CARGO_FEATURES="${RESEARCH_CARGO_FEATURES:-solver3-research-all}"
 cleanup() {
   rm -rf "$ARTIFACTS_DIR"
 }
@@ -25,7 +26,7 @@ run_suite() {
   local slug="$2"
   local log_file="$ARTIFACTS_DIR/${slug}.log"
 
-  if ! cargo run --release -q -p gm-cli -- benchmark run --manifest "$manifest" --artifacts-dir "$ARTIFACTS_DIR" >"$log_file" 2>&1; then
+  if ! cargo run --release -q -p gm-cli --features "$RESEARCH_CARGO_FEATURES" -- benchmark run --manifest "$manifest" --artifacts-dir "$ARTIFACTS_DIR" >"$log_file" 2>&1; then
     tail -80 "$log_file" >&2 || true
     return 1
   fi

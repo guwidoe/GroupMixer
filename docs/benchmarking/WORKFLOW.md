@@ -267,52 +267,54 @@ The dedicated Social Golfer donor manifests now enable:
 Recommended command sequence:
 
 ```bash
-gm-cli benchmark run \
+# Production/default baseline manifests
+cargo run -p gm-cli --release -- benchmark run \
   --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3.yaml
 
-gm-cli benchmark run \
-  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-sgp-tabu.yaml
-
-gm-cli benchmark run \
-  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-sgp-tabu-conflict.yaml
-
-gm-cli benchmark run \
-  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-memetic.yaml
-
-gm-cli benchmark run \
-  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-memetic-tabu.yaml
-
-gm-cli benchmark run \
-  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-donor-session.yaml
-
-gm-cli benchmark run \
-  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-donor-session-forced-fire.yaml
-
-gm-cli benchmark run \
+cargo run -p gm-cli --release -- benchmark run \
   --manifest backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3.yaml
 
-gm-cli benchmark run \
+# Research-only solver3 manifests
+cargo run -p gm-cli --release --features solver3-research-all -- benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-sgp-tabu.yaml
+
+cargo run -p gm-cli --release --features solver3-research-all -- benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-sgp-tabu-conflict.yaml
+
+cargo run -p gm-cli --release --features solver3-research-all -- benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-memetic.yaml
+
+cargo run -p gm-cli --release --features solver3-research-all -- benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-memetic-tabu.yaml
+
+cargo run -p gm-cli --release --features solver3-research-all -- benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-donor-session.yaml
+
+cargo run -p gm-cli --release --features solver3-research-all -- benchmark run \
+  --manifest backend/benchmarking/suites/social-golfer-plateau-time-solver3-donor-session-forced-fire.yaml
+
+cargo run -p gm-cli --release --features solver3-research-all -- benchmark run \
   --manifest backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-sgp-tabu.yaml
 
-gm-cli benchmark run \
+cargo run -p gm-cli --release --features solver3-research-all -- benchmark run \
   --manifest backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-sgp-tabu-conflict.yaml
 
-gm-cli benchmark run \
+cargo run -p gm-cli --release --features solver3-research-all -- benchmark run \
   --manifest backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-memetic.yaml
 
-gm-cli benchmark run \
+cargo run -p gm-cli --release --features solver3-research-all -- benchmark run \
   --manifest backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-memetic-tabu.yaml
 
-gm-cli benchmark run \
+cargo run -p gm-cli --release --features solver3-research-all -- benchmark run \
   --manifest backend/benchmarking/suites/social-golfer-plateau-fixed-iteration-solver3-donor-session.yaml
 
-gm-cli benchmark run \
+cargo run -p gm-cli --release --features solver3-research-all -- benchmark run \
   --manifest backend/benchmarking/suites/solver3-sgp-tabu-tenure-fixed-multiseed.yaml
 
-gm-cli benchmark run \
+cargo run -p gm-cli --release --features solver3-research-all -- benchmark run \
   --manifest backend/benchmarking/suites/solver3-donor-session-transplant-multiseed.yaml
 
-gm-cli benchmark run \
+cargo run -p gm-cli --release --features solver3-research-all -- benchmark run \
   --manifest backend/benchmarking/suites/hotpath-search-iteration-sailing-trip-demo-solver3.yaml
 ```
 
