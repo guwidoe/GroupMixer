@@ -6,9 +6,9 @@ Implemented as an **explicit opt-in experimental constructor mode** for `solver3
 
 Current rollout policy:
 - preserve the shared baseline constructor as the default
-- enable freedom-aware construction only via explicit `solver3` config
-- do **not** broaden rollout without benchmark evidence
-- current benchmark evidence says the first cut is **not** good enough for default use
+- keep freedom-aware construction available only via explicit `solver3` config
+- treat the mode as promising for pure SGP-shaped workloads, but still experimental overall
+- do **not** broaden rollout without benchmark evidence across both pure and mixed workloads
 
 ## Why the baseline constructor stays preserved
 
@@ -29,103 +29,104 @@ The mode is selected through `solver3` params in `backend/core/src/models.rs`:
 
 - `construction.mode = baseline_legacy`
 - `construction.mode = freedom_aware_randomized`
-- `construction.freedom_aware.restricted_candidate_list_size`
+- `construction.freedom_aware.gamma`
 
 Default behavior remains:
 - `baseline_legacy`
 
 Invalid config policy:
-- `restricted_candidate_list_size` must be `>= 1`
+- `gamma` must be within `[0.0, 1.0]`
 - invalid values fail explicitly during `RuntimeState::from_input`
 
-## GroupMixer adaptation of “freedom”
+Interpretation of `gamma`:
+- `gamma = 0.0` => deterministic lexicographic tie resolution
+- `gamma = 1.0` => randomize among equal maximal-freedom candidates only
 
-For current session `s`, a person `q` is considered a **future potential partner** of `p` when:
+## Unified generalized heuristic model
 
-1. `q != p`
-2. `p` and `q` have **not** already met in any earlier constructed session
-3. there exists at least one future session `t > s` where both `p` and `q` participate
+There is **one generalized freedom-aware constructor**, not a separate paper-only algorithm plus a second unrelated GroupMixer algorithm.
 
-For a set of people `S`, the constructor uses:
+Required invariant:
 
-- `freedom(S) = number of people outside S that remain future potential partners of every member of S`
+> if the input is a pure paper-compatible Social Golfer case, the generalized constructor collapses to the paper heuristic exactly on its essential mechanics.
 
-So this first implementation uses the size of the intersection of future-partner sets as its main score.
+GroupMixer-specific semantics are implemented as **minimal extensions around that same pair-based engine**.
 
-## Construction procedure
+## Paper-faithful pure-case behavior
 
-The freedom-aware path still builds **session by session**.
+When the input is paper-compatible, the constructor follows the paper's randomized greedy initializer structure:
 
-For each session:
+1. visit sessions one after another
+2. within each session, traverse groups in natural order
+3. fill adjacent pair slots one pair at a time
+4. choose the pair with **maximal freedom**
+5. break ties using the paper policy:
+   - with probability `gamma`, random among equal maximal-freedom pairs
+   - otherwise lexicographically smallest pair
+6. after selecting a pair, apply a large explicit pair penalty to discourage reusing that same pair in later sessions
 
-1. start from any partial `construction_seed_schedule`
-2. honor immovable people first
-3. treat active cliques as indivisible blocks
-4. fill remaining space with freedom-aware randomized greedy selection
+Important pure-case consequence:
+- the constructor does **not** reinterpret the paper as "seed a pair, then singleton-fill the rest of the group"
+- for size-4 pure groups, it behaves as `pair + pair`
+- for larger pure even groups, it behaves as repeated pair-slot placement
 
-### Empty groups
+## Freedom definition used by the constructor
 
-For empty groups, the constructor seeds with the best-scoring pair among remaining unassigned participants.
+For partial configuration `C`, the generalized constructor uses the paper's idea of freedom:
 
-Primary score:
-- `freedom({a, b})`
+- a player contributes to the potential-partner set of `x` only if:
+  - `x` has not already partnered that player in an earlier constructed session, and
+  - the two can still co-participate in some future session under the compiled participation structure
 
-Tie-breakers:
-- lower immediate repeat damage
-- higher sum of singleton future freedom
-- seeded random selection from a restricted candidate list
+For a set `S`, the freedom score is the cardinality of the intersection of those potential-partner sets.
 
-### Partial groups
+This means:
+- on pure Social Golfer inputs with full participation, the behavior collapses to the paper's unmet-partner reasoning
+- on GroupMixer inputs with participation restrictions, the same law shrinks naturally to the still-feasible future partner set
 
-For non-empty groups, the constructor scores each admissible candidate `c` by:
-
-- `freedom(current_group ∪ {c})`
-
-Tie-breakers:
-- lower immediate repeat damage against the current group
-- higher singleton future freedom
-- seeded random selection from a restricted candidate list
-
-## Restricted candidate list policy
-
-The current implementation uses a simple **top-k restricted candidate list**.
-
-- all candidates are sorted by the score tuple
-- the top `k = restricted_candidate_list_size` become the RCL
-- one candidate is drawn from that list using the seeded RNG
-
-This keeps the constructor:
-- deterministic for a fixed seed
-- mildly randomized
-- easy to benchmark honestly
-
-## Clique / seed / participation handling
+## GroupMixer extensions around the pair engine
 
 ### Partial seeds
 
 Partial `construction_seed_schedule` entries are preserved and completed.
 They are not silently overwritten.
 
+### Immovable people
+
+Immovables are treated as forced occupancy before pair-slot filling starts.
+
 ### Cliques
 
-Active cliques are treated as **blocks**, not as loose individuals.
-The constructor chooses their target group using the same freedom score over:
-
-- existing seeded occupants in that group
+Active cliques are treated as forced blocks.
+The constructor chooses their target group using the same freedom objective over:
+- the current group occupants
 - plus the full clique block
 
-### Participation
+### Residual tails
 
-Future freedom only counts people that still co-participate in a future session.
-A person absent from all future sessions does not contribute to freedom.
+When GroupMixer constraints create states the paper does not natively express, the constructor uses minimal residual completion rules:
+- odd leftover seat in a group
+- non-zero anchor occupancy from seeds / immovables / cliques
+- non-pair-aligned residual group states
 
-### Session-specific capacities
+In those cases the constructor still uses the same freedom concept, but scores additions against the current partial group.
 
-All placement decisions respect the effective per-session group capacities already compiled by the solver.
+## Paper-compatibility detector
+
+The shared construction module exposes a paper-compatibility detector for tests and diagnostics.
+
+A case counts as paper-compatible only when the constructor sees:
+- no cliques
+- no immovables
+- no seeded occupancy
+- full participation
+- uniform even group capacities
+
+That detector exists to verify the collapse-to-paper invariant; it is not a second constructor mode.
 
 ## Failure policy
 
-This constructor does **not** silently repair impossible residual states.
+This constructor does **not** silently repair impossible residual states and does **not** silently fall back to the baseline constructor.
 
 If it cannot complete a valid schedule under the explicit seed/capacity/constraint structure, it fails explicitly.
 That matches the repo doctrine:
@@ -138,21 +139,14 @@ That matches the repo doctrine:
 See:
 - `backend/core/src/solver3/SGP_FREEDOM_AWARE_CONSTRUCTION_BENCHMARK_2026-04-14.md`
 
-Current result:
-- the first freedom-aware adaptation regressed Social Golfer
-- it also regressed Kirkman and a mixed partial-attendance workload
+Current result after the paper-faithfulness refactor:
+- canonical Social Golfer improved modestly on both main lanes
+- the neighboring Kirkman lane also improved
+- the mixed partial-attendance/capacity workload still regressed
+- initial scores remain dramatically worse than baseline even where final scores improved
 
 Therefore:
-- keep the mode available for research
-- do **not** make it default
-- do **not** claim it as a general constructor upgrade yet
-
-## Likely next refinement directions
-
-If constructor work is revisited later, the most plausible next upgrades are:
-
-1. stronger residual-feasibility awareness near the end of a session fill
-2. richer block scoring than the current simple intersection count
-3. hybrid greedy-construction plus bounded repair instead of pure one-pass greedy fill
-4. least-freedom residual repair for hard tail cases
-5. tighter coupling between constructor structure and the downstream search kernel
+- the refactor now provides a much fairer test of the paper heuristic on pure SGP-shaped inputs
+- keep the mode available for research and explicit opt-in use
+- do **not** make it the global default yet
+- require further evidence before claiming it as the best generalized constructor for mixed GroupMixer workloads

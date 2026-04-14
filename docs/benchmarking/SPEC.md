@@ -126,6 +126,7 @@ Current honest status:
 - `solver3` now uses the shared construction module for bootstrap scheduling:
   - default mode preserves the shared legacy baseline constructor
   - an explicit opt-in freedom-aware constructor mode also lives in the shared construction module
+  - that freedom-aware mode is now designed as one generalized heuristic that collapses to paper-faithful pair-slot behavior on pure SGP-shaped inputs
 - constructor-selection policy is still solver-family owned: `solver3` opts into the experimental mode explicitly, while `solver1` remains on the preserved baseline path
 
 Future work (not done yet):

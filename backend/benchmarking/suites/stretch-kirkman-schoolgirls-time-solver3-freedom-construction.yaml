@@ -18,7 +18,7 @@ default_solver:
     construction:
       mode: freedom_aware_randomized
       freedom_aware:
-        restricted_candidate_list_size: 4
+        gamma: 0.0
   logging: {}
   telemetry: {}
   seed: 150507
