@@ -124,12 +124,43 @@ The release diagnostic also improved on the raw Sailing case:
   - proposal/wrapper `3.386 -> 2.523 µs/sample`
   - preview kernel `5.670 -> 4.024 µs/sample`
 
+## Additional old-shape recovery slice
+
+A follow-up slice then split the default record-to-record loop from the advanced/general loop, so the shipped default path no longer pays the per-iteration controlled-path shape at all.
+
+Artifacts:
+
+- pre-slice benchmark
+  - `backend/benchmarking/artifacts/runs/objective-canonical-stretch-solver3-v1-20260414T171849Z-a509cd1a/run-report.json`
+- post-slice benchmark
+  - `backend/benchmarking/artifacts/runs/objective-canonical-stretch-solver3-v1-20260414T175742Z-9379d262/run-report.json`
+
+Observed outcome:
+
+- Sailing held score and improved again:
+  - `stretch.sailing-trip-demo-real`: `2359`, runtime `7.649s -> 7.402s`
+  - preview total `6.952s -> 6.746s`
+  - other search overhead `0.694s -> 0.653s`
+  - swap preview `4.108 -> 3.913 µs/attempt`
+  - transfer preview `1.645 -> 1.542 µs/attempt`
+  - clique swap preview `16.697 -> 16.331 µs/attempt`
+- Social Golfer runtime also improved with held score:
+  - `14.619s -> 10.737s -> 9.696s`
+- `large_gender` score held at `2146`, but runtime moved from `5.467s` in the prior slice to `6.102s` in this run, so the runtime picture outside Sailing is mixed even though no score regressions were introduced.
+
+The release diagnostic improved again:
+
+- default-preview diagnostic:
+  - total `6.547 -> 6.248 µs/sample`
+  - proposal/wrapper `2.523 -> 2.447 µs/sample`
+  - preview kernel `4.024 -> 3.802 µs/sample`
+
 ## Implication for the rest of this epic
 
-A genuinely lean compiled default sampler path does help the real steady-state Sailing lane without giving back the checked stretch scores.
+Returning the default production path closer to the old straight-line code shape keeps paying off on the target Sailing lane.
 
-The remaining gap versus historical `72b063a` is now much smaller but still real, so future work should continue focusing on:
+The remaining gap versus historical `72b063a` is now smaller again but still real, so future work should continue focusing on:
 
 - more default-path specialization where the shipped solver still pays for generality it does not need
 - preserving advanced paths behind explicit compile-time / mode-specific entrypoints
-- avoiding any optimization that only wins Sailing while regressing the broader production-default keep-lanes
+- watching for mixed runtime movement on non-target cases even when scores hold
