@@ -205,6 +205,52 @@ This plan does **not** claim:
 - that research telemetry/schema should be deleted
 - that SGP-like recombination work is finished or endorsed as production-ready
 
+## Post-gating validation snapshot (2026-04-14)
+
+Fresh production/default post-gating artifacts:
+
+- representative:
+  - `backend/benchmarking/artifacts/runs/objective-canonical-representative-v1-20260414T141506Z-3f7ba63b/run-report.json`
+- adversarial:
+  - `backend/benchmarking/artifacts/runs/objective-canonical-adversarial-solver3-v1-20260414T141508Z-ca399b0f/run-report.json`
+- stretch:
+  - `backend/benchmarking/artifacts/runs/objective-canonical-stretch-solver3-v1-20260414T141519Z-5c9bbad8/run-report.json`
+
+Fresh production/default case results from that run:
+
+- `representative.small-workshop-balanced = 3`
+- `representative.small-workshop-constrained = 4`
+- `adversarial.clique-swap-functionality-35p = 4765`
+- `adversarial.transfer-attribute-balance-111p = 198`
+- `stretch.social-golfer-32x8x10 = 5409`
+- `stretch.large-gender-immovable-110p = 2168`
+- `stretch.sailing-trip-demo-real = 4378`
+- `stretch.synthetic-partial-attendance-capacity-pressure-152p = 6553`
+
+Comparison against the preserved champion baseline:
+
+- the preserved **research** aggregate champion is still commit `09f897c`
+- that champion remains the best combined long-budget metaheuristic result recorded so far
+- the fresh production/default run above is intentionally **not** trying to match that research aggregate, because the whole point of this cleanup is to keep the default shipped webapp build on the production-only solver3 surface
+
+So the honest decision after validation is:
+
+- keep `09f897c` as the preserved research benchmark champion
+- keep the webapp daily driver on the production/default solver3 surface
+- do **not** silently promote the research-only donor/path/multi-root stack into the default shipped build
+
+Webapp default wiring confirmation:
+
+- `webapp/src/services/solverUi/defaults.ts` still creates solver3 settings with only `correctness_lane`
+- `webapp/src/types/index.ts` now documents that the normal webapp contract intentionally excludes research-only search-driver / recombination controls
+
+That means the current webapp default solver3 configuration still resolves to the production core defaults:
+
+- `search_driver = single_state`
+- `local_improver = record_to_record`
+
+`sgp_week_pair_tabu` remains compiled into the production backend surface, but it is not the current default webapp setting.
+
 ## Success criteria
 
 1. Default Cargo builds compile without the research search-driver implementations.
