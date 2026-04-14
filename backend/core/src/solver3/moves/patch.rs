@@ -105,13 +105,13 @@ pub fn apply_runtime_patch(
                         "solver3 patch remove failed: member position out of range".into(),
                     ));
                 }
-                let removed = members.swap_remove(member_pos);
-                if removed != expected_person_idx {
+                if members[member_pos] != expected_person_idx {
                     return Err(SolverError::ValidationError(
-                        "solver3 patch remove failed: removed member did not match expectation"
+                        "solver3 patch remove failed: target member did not match expectation"
                             .into(),
                     ));
                 }
+                members.swap_remove(member_pos);
                 state.group_sizes[slot] = state.group_sizes[slot].saturating_sub(1);
             }
             GroupMembersPatchOp::Insert {
