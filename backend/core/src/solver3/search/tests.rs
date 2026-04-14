@@ -170,6 +170,22 @@ fn sailing_trip_benchmark_start_solver3_input() -> ApiInput {
     envelope.input
 }
 
+fn sailing_trip_raw_solver3_input() -> ApiInput {
+    let mut envelope: BenchmarkCaseInputEnvelope = serde_json::from_str(include_str!(
+        "../../../../benchmarking/cases/stretch/sailing_trip_demo_real.json"
+    ))
+    .expect("Sailing Trip raw case should parse");
+
+    let mut solver = default_solver_configuration_for(SolverKind::Solver3);
+    solver.seed = Some(7);
+    solver.stop_conditions.max_iterations = Some(1_000_000);
+    solver.stop_conditions.time_limit_seconds = None;
+    solver.stop_conditions.no_improvement_iterations = None;
+    solver.stop_conditions.stop_on_optimal_score = false;
+    envelope.input.solver = solver;
+    envelope.input
+}
+
 fn average_micros(elapsed: std::time::Duration, iterations: usize) -> f64 {
     elapsed.as_secs_f64() * 1_000_000.0 / iterations as f64
 }
@@ -342,6 +358,103 @@ fn diagnose_sailing_trip_search_hotpath_breakdown() {
         "solver3 sailing hotpath breakdown (µs/op): clone={clone_us:.3}, context={context_us:.3}, progress={progress_us:.3}, sample={sample_us:.3}, schedule={schedule_us:.3}, oracle={oracle_us:.3}, telemetry={telemetry_us:.3}, finalize={finalize_us:.3}, polish_iter={polish_us:.3}, full_solve_1_iter={solve_us:.3}, setup_delta={:.3}, checksum={checksum}",
         solve_us - polish_us,
     );
+}
+
+#[test]
+#[ignore = "diagnostic microbenchmark; run explicitly with --release -- --ignored --nocapture"]
+fn diagnose_sailing_trip_preview_wrapper_breakdown() {
+    let input = sailing_trip_raw_solver3_input();
+    let state = RuntimeState::from_input(&input).expect("raw sailing state should build");
+    let run_context = SearchRunContext::from_solver(&input.solver, &state, 7)
+        .expect("run context should build");
+    let family_selector = MoveFamilySelector::new(&run_context.move_policy);
+    let sampler = CandidateSampler;
+
+    const ITERS: usize = 40_000;
+
+    for seed in 0..256u64 {
+        let mut rng = ChaCha12Rng::seed_from_u64(seed);
+        black_box(sampler.diagnose_select_previewed_move_default_timing(
+            &state,
+            &family_selector,
+            &run_context.allowed_sessions,
+            &mut rng,
+        ));
+    }
+
+    #[derive(Default)]
+    struct Bucket {
+        count: u64,
+        total_seconds: f64,
+        proposal_seconds: f64,
+        preview_kernel_seconds: f64,
+    }
+
+    let mut overall = Bucket::default();
+    let mut per_family: HashMap<MoveFamily, Bucket> = HashMap::new();
+
+    let started = Instant::now();
+    let mut rng = ChaCha12Rng::seed_from_u64(7);
+    for _ in 0..ITERS {
+        let breakdown = black_box(sampler.diagnose_select_previewed_move_default_timing(
+            &state,
+            &family_selector,
+            &run_context.allowed_sessions,
+            &mut rng,
+        ));
+        overall.proposal_seconds += breakdown.proposal_seconds;
+        overall.preview_kernel_seconds += breakdown.preview_kernel_seconds;
+        if let Some((family, preview, total_seconds)) = breakdown.selection {
+            let bucket = per_family.entry(family).or_default();
+            bucket.count += 1;
+            bucket.total_seconds += total_seconds;
+            bucket.proposal_seconds += breakdown.proposal_seconds;
+            bucket.preview_kernel_seconds += breakdown.preview_kernel_seconds;
+            overall.count += 1;
+            overall.total_seconds += total_seconds;
+            black_box(preview.delta_score().to_bits());
+        }
+    }
+    let wall_seconds = started.elapsed().as_secs_f64();
+
+    let overall_total_us = overall.total_seconds * 1_000_000.0 / overall.count as f64;
+    let overall_proposal_us = overall.proposal_seconds * 1_000_000.0 / overall.count as f64;
+    let overall_preview_kernel_us =
+        overall.preview_kernel_seconds * 1_000_000.0 / overall.count as f64;
+
+    println!("sailing raw default-preview diagnostic over {} accepted samples", overall.count);
+    println!(
+        "  wall={:.3}s total={:.3}µs/sample proposal={:.3}µs/sample preview_kernel={:.3}µs/sample wrapper_share={:.1}%",
+        wall_seconds,
+        overall_total_us,
+        overall_proposal_us,
+        overall_preview_kernel_us,
+        overall_proposal_us / overall_total_us * 100.0,
+    );
+
+    let mut families = per_family.into_iter().collect::<Vec<_>>();
+    families.sort_by_key(|(family, _)| match family {
+        MoveFamily::Swap => 0,
+        MoveFamily::Transfer => 1,
+        MoveFamily::CliqueSwap => 2,
+    });
+
+    for (family, bucket) in families {
+        let total_us = bucket.total_seconds * 1_000_000.0 / bucket.count as f64;
+        let proposal_us = bucket.proposal_seconds * 1_000_000.0 / bucket.count as f64;
+        let preview_kernel_us = bucket.preview_kernel_seconds * 1_000_000.0 / bucket.count as f64;
+        println!(
+            "  {:?}: count={} total={:.3}µs proposal={:.3}µs preview_kernel={:.3}µs wrapper_share={:.1}%",
+            family,
+            bucket.count,
+            total_us,
+            proposal_us,
+            preview_kernel_us,
+            proposal_us / total_us * 100.0,
+        );
+    }
+
+    assert!(overall.count > 0, "diagnostic should sample at least one move");
 }
 
 #[test]
