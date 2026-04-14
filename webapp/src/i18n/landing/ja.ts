@@ -3,11 +3,11 @@ import type { ToolPageKey, ToolPageLocalizedContent } from '../../pages/toolPage
 const TRUST_BULLETS = [
   'プライベート（処理はブラウザ内のみ）',
   '登録不要',
-  '数秒で結果',
+  '数秒で完了',
 ];
 
 const OPTIMIZER_FEATURES = [
-  '一緒に配置',
+  '一部メンバー固定',
   '同じ組を避ける',
   '複数ラウンド',
   '交流を最大化',
@@ -19,14 +19,14 @@ const OPTIMIZER_FEATURES = [
 const CHROME = {
   expertWorkspaceLabel: 'シナリオエディター',
   faqHeading: 'よくある質問',
-  footerTagline: 'GroupMixer — 無料のランダムグループ作成ツール',
+  footerTagline: 'GroupMixer — 無料のグループ作成ツール',
   feedbackLabel: 'フィードバック',
   privacyNote: 'すべての処理はブラウザ内でローカルに実行されます。',
   scrollHint: '下にスクロールして活用例とFAQを見る',
 };
 
 const USE_CASES_SECTION = {
-  title: '授業・ワークショップ・イベントで活用できます',
+  title: '授業・ワークショップ・イベントに便利！',
   description:
     'まずはシンプルなランダム分けから。より細かい調整が必要になったら、GroupMixer がそのまま対応します。',
   cards: [
@@ -44,23 +44,23 @@ const USE_CASES_SECTION = {
     },
     {
       title: 'チームプロジェクト',
-      body: 'クラスやチームをプロジェクト班に分け、必要に応じて役割やスキルで均衡化できます。',
+      body: 'クラスやチームを班に分け、必要に応じて役割やスキルで均衡化します。',
     },
     {
-      title: 'カンファレンスのセッション',
-      body: '制約を守りながら、参加者をテーブルや並行セッションに割り当てられます。',
+      title: '会議のセッション',
+      body: '制約を守りながら、参加者をテーブルや並行セッションに割り当てます。',
     },
     {
       title: '交流イベント',
-      body: '毎回新しい人と会えるアイスブレイク用の組み合わせを作れます。',
+      body: '毎回新しい人と会えるアイスブレイク用の組み合わせを作成します。',
     },
   ],
 };
 
 const ADVANCED_SECTION = {
-  title: 'もっと細かく制御したいですか？',
+  title: 'さらに細かく制御したいなら！',
   description:
-    'GroupMixer は単なるランダム分けツールではありません。単純なグループ分けでは足りないときに、高度なルールを同じツールで使えます。',
+    'GroupMixer は単なるランダム班分けツールではありません。単純なグループ分けでは足りない時に、高度なルールを追加できます。',
   cards: [
     {
       title: '特定の人を同じグループにする',
@@ -108,7 +108,7 @@ const FAQS = {
   workspace: {
     question: 'シナリオエディターとは何ですか？',
     answer:
-      'シナリオエディターでは、セッション、制約、ソルバー設定、過去結果の再利用、詳細分析まで同じ強力なエンジンで扱えます。',
+      'シナリオエディターでは、セッション、制約、ソルバー設定、過去の結果の再利用、詳細分析まで同じ強力なエンジンで扱えます。',
   },
 };
 
@@ -139,8 +139,8 @@ function createContent({
       trustBullets: TRUST_BULLETS,
     },
     optimizerCta: {
-      eyebrow: 'ランダムより良い分け方が必要ですか？',
-      title: '本格的なグループ最適化を使ってください。',
+      eyebrow: 'グループ分けをカスタマイズしたいなら！',
+      title: 'シナリオエディターで解決',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: 'シナリオエディターを開く',
       supportingText: 'このページで入力した内容はそのまま引き継がれます。',
