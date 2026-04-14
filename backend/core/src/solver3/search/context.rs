@@ -6,6 +6,7 @@ use crate::models::{
     MoveFamilyBenchmarkTelemetrySummary, MovePolicy, ProgressUpdate,
     RepeatGuidedSwapBenchmarkTelemetry, SessionAlignedPathRelinkingBenchmarkTelemetry,
     SgpWeekPairTabuBenchmarkTelemetry, Solver3LocalImproverMode,
+    Solver3MultiRootBalancedSessionInheritanceParams,
     Solver3PathRelinkingOperatorVariant, Solver3SearchDriverMode, SolverBenchmarkTelemetry,
     SolverConfiguration, StopReason,
 };
@@ -39,6 +40,8 @@ pub(crate) struct SearchRunContext {
     pub(crate) steady_state_memetic: Option<SteadyStateMemeticConfig>,
     pub(crate) donor_session_transplant: Option<DonorSessionTransplantConfig>,
     pub(crate) session_aligned_path_relinking: Option<SessionAlignedPathRelinkingConfig>,
+    pub(crate) multi_root_balanced_session_inheritance:
+        Option<MultiRootBalancedSessionInheritanceConfig>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -88,6 +91,152 @@ pub(crate) struct SessionAlignedPathRelinkingConfig {
     pub(crate) child_polish_max_stagnation_windows: u64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct MultiRootBalancedSessionInheritanceConfig {
+    pub(crate) root_count: usize,
+    pub(crate) archive_size_per_root: usize,
+    pub(crate) recombination_no_improvement_window: u64,
+    pub(crate) recombination_cooldown_window: u64,
+    pub(crate) max_recombination_events_per_run: Option<u64>,
+    pub(crate) max_parent_score_delta_from_best: f64,
+    pub(crate) min_cross_root_session_disagreement: usize,
+    pub(crate) parent_a_differing_session_share: f64,
+    pub(crate) adaptive_raw_child_retention: AdaptiveRawChildRetentionConfig,
+    pub(crate) swap_local_optimum_certification_enabled: bool,
+    pub(crate) child_polish_iterations_per_stagnation_window: u64,
+    pub(crate) child_polish_no_improvement_iterations_per_stagnation_window: u64,
+    pub(crate) child_polish_max_stagnation_windows: u64,
+}
+
+fn validate_multi_root_balanced_session_inheritance(
+    config: &Solver3MultiRootBalancedSessionInheritanceParams,
+) -> Result<(), SolverError> {
+    if config.root_count < 2 {
+        return Err(SolverError::ValidationError(
+            "solver3 search_driver.multi_root_balanced_session_inheritance.root_count must be >= 2"
+                .into(),
+        ));
+    }
+
+    if config.archive_size_per_root == 0 {
+        return Err(SolverError::ValidationError(
+            "solver3 search_driver.multi_root_balanced_session_inheritance.archive_size_per_root must be >= 1"
+                .into(),
+        ));
+    }
+
+    if config.recombination_no_improvement_window == 0 {
+        return Err(SolverError::ValidationError(
+            "solver3 search_driver.multi_root_balanced_session_inheritance.recombination_no_improvement_window must be >= 1"
+                .into(),
+        ));
+    }
+
+    if config.recombination_cooldown_window == 0 {
+        return Err(SolverError::ValidationError(
+            "solver3 search_driver.multi_root_balanced_session_inheritance.recombination_cooldown_window must be >= 1"
+                .into(),
+        ));
+    }
+
+    if config.max_recombination_events_per_run == Some(0) {
+        return Err(SolverError::ValidationError(
+            "solver3 search_driver.multi_root_balanced_session_inheritance.max_recombination_events_per_run must be >= 1"
+                .into(),
+        ));
+    }
+
+    if !config.max_parent_score_delta_from_best.is_finite()
+        || config.max_parent_score_delta_from_best < 0.0
+    {
+        return Err(SolverError::ValidationError(
+            "solver3 search_driver.multi_root_balanced_session_inheritance.max_parent_score_delta_from_best must be finite and >= 0.0"
+                .into(),
+        ));
+    }
+
+    if config.min_cross_root_session_disagreement == 0 {
+        return Err(SolverError::ValidationError(
+            "solver3 search_driver.multi_root_balanced_session_inheritance.min_cross_root_session_disagreement must be >= 1"
+                .into(),
+        ));
+    }
+
+    if !config.parent_a_differing_session_share.is_finite()
+        || (config.parent_a_differing_session_share - 0.5).abs() > f64::EPSILON
+    {
+        return Err(SolverError::ValidationError(
+            "solver3 search_driver.multi_root_balanced_session_inheritance.parent_a_differing_session_share must currently be exactly 0.5"
+                .into(),
+        ));
+    }
+
+    if !config.adaptive_raw_child_retention.keep_ratio.is_finite()
+        || !(0.0..=1.0).contains(&config.adaptive_raw_child_retention.keep_ratio)
+        || config.adaptive_raw_child_retention.keep_ratio == 0.0
+    {
+        return Err(SolverError::ValidationError(
+            "solver3 search_driver.multi_root_balanced_session_inheritance.adaptive_raw_child_retention.keep_ratio must be finite and within (0.0, 1.0]"
+                .into(),
+        ));
+    }
+
+    if config.adaptive_raw_child_retention.warmup_samples == 0 {
+        return Err(SolverError::ValidationError(
+            "solver3 search_driver.multi_root_balanced_session_inheritance.adaptive_raw_child_retention.warmup_samples must be >= 1"
+                .into(),
+        ));
+    }
+
+    if config.adaptive_raw_child_retention.history_limit == 0 {
+        return Err(SolverError::ValidationError(
+            "solver3 search_driver.multi_root_balanced_session_inheritance.adaptive_raw_child_retention.history_limit must be >= 1"
+                .into(),
+        ));
+    }
+
+    if config.adaptive_raw_child_retention.history_limit
+        < config.adaptive_raw_child_retention.warmup_samples
+    {
+        return Err(SolverError::ValidationError(
+            "solver3 search_driver.multi_root_balanced_session_inheritance.adaptive_raw_child_retention.history_limit must be >= warmup_samples"
+                .into(),
+        ));
+    }
+
+    if config.child_polish_iterations_per_stagnation_window == 0 {
+        return Err(SolverError::ValidationError(
+            "solver3 search_driver.multi_root_balanced_session_inheritance.child_polish_iterations_per_stagnation_window must be >= 1"
+                .into(),
+        ));
+    }
+
+    if config.child_polish_no_improvement_iterations_per_stagnation_window == 0 {
+        return Err(SolverError::ValidationError(
+            "solver3 search_driver.multi_root_balanced_session_inheritance.child_polish_no_improvement_iterations_per_stagnation_window must be >= 1"
+                .into(),
+        ));
+    }
+
+    if config.child_polish_no_improvement_iterations_per_stagnation_window
+        > config.child_polish_iterations_per_stagnation_window
+    {
+        return Err(SolverError::ValidationError(
+            "solver3 search_driver.multi_root_balanced_session_inheritance.child_polish_no_improvement_iterations_per_stagnation_window must be <= child_polish_iterations_per_stagnation_window"
+                .into(),
+        ));
+    }
+
+    if config.child_polish_max_stagnation_windows == 0 {
+        return Err(SolverError::ValidationError(
+            "solver3 search_driver.multi_root_balanced_session_inheritance.child_polish_max_stagnation_windows must be >= 1"
+                .into(),
+        ));
+    }
+
+    Ok(())
+}
+
 impl SearchRunContext {
     pub(crate) fn from_solver(
         configuration: &SolverConfiguration,
@@ -116,6 +265,8 @@ impl SearchRunContext {
         let donor_session_transplant = &solver3_params.search_driver.donor_session_transplant;
         let session_aligned_path_relinking =
             &solver3_params.search_driver.session_aligned_path_relinking;
+        let multi_root_balanced_session_inheritance =
+            &solver3_params.search_driver.multi_root_balanced_session_inheritance;
         let correctness_sample_every_accepted_moves =
             solver3_params.correctness_lane.sample_every_accepted_moves;
         let repeat_guided_swap_probability = solver3_params
@@ -469,6 +620,10 @@ impl SearchRunContext {
             ));
         }
 
+        validate_multi_root_balanced_session_inheritance(
+            multi_root_balanced_session_inheritance,
+        )?;
+
         #[cfg(not(feature = "solver3-oracle-checks"))]
         if correctness_lane_enabled {
             return Err(SolverError::ValidationError(
@@ -556,6 +711,41 @@ impl SearchRunContext {
             )));
         }
 
+        if search_driver_mode == Solver3SearchDriverMode::MultiRootBalancedSessionInheritance
+            && !allows_swap_family
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.mode=multi_root_balanced_session_inheritance requires move_policy to allow swap moves"
+                    .into(),
+            ));
+        }
+
+        if search_driver_mode == Solver3SearchDriverMode::MultiRootBalancedSessionInheritance
+            && !state.compiled.cliques.is_empty()
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.mode=multi_root_balanced_session_inheritance does not yet support active cliques / must_stay_together constraints"
+                    .into(),
+            ));
+        }
+
+        if search_driver_mode == Solver3SearchDriverMode::MultiRootBalancedSessionInheritance
+            && state.compiled.repeat_encounter.is_none()
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.mode=multi_root_balanced_session_inheritance requires a repeat_encounter constraint"
+                    .into(),
+            ));
+        }
+
+        if search_driver_mode == Solver3SearchDriverMode::MultiRootBalancedSessionInheritance
+            && state.compiled.num_sessions > MAX_EXACT_ALIGNMENT_SESSIONS
+        {
+            return Err(SolverError::ValidationError(format!(
+                "solver3 search_driver.mode=multi_root_balanced_session_inheritance currently supports at most {MAX_EXACT_ALIGNMENT_SESSIONS} sessions for exact alignment"
+            )));
+        }
+
         match (search_driver_mode, local_improver_mode) {
             (Solver3SearchDriverMode::SingleState, Solver3LocalImproverMode::RecordToRecord)
             | (Solver3SearchDriverMode::SingleState, Solver3LocalImproverMode::SgpWeekPairTabu) => {
@@ -582,6 +772,14 @@ impl SearchRunContext {
             )
             | (
                 Solver3SearchDriverMode::SessionAlignedPathRelinking,
+                Solver3LocalImproverMode::SgpWeekPairTabu,
+            )
+            | (
+                Solver3SearchDriverMode::MultiRootBalancedSessionInheritance,
+                Solver3LocalImproverMode::RecordToRecord,
+            )
+            | (
+                Solver3SearchDriverMode::MultiRootBalancedSessionInheritance,
                 Solver3LocalImproverMode::SgpWeekPairTabu,
             ) => {}
         }
@@ -705,6 +903,55 @@ impl SearchRunContext {
                 child_polish_max_stagnation_windows: session_aligned_path_relinking
                     .child_polish_max_stagnation_windows as u64,
             }),
+            multi_root_balanced_session_inheritance: Some(
+                MultiRootBalancedSessionInheritanceConfig {
+                    root_count: multi_root_balanced_session_inheritance.root_count as usize,
+                    archive_size_per_root: multi_root_balanced_session_inheritance
+                        .archive_size_per_root as usize,
+                    recombination_no_improvement_window:
+                        multi_root_balanced_session_inheritance
+                            .recombination_no_improvement_window as u64,
+                    recombination_cooldown_window: multi_root_balanced_session_inheritance
+                        .recombination_cooldown_window as u64,
+                    max_recombination_events_per_run:
+                        multi_root_balanced_session_inheritance
+                            .max_recombination_events_per_run
+                            .map(u64::from),
+                    max_parent_score_delta_from_best:
+                        multi_root_balanced_session_inheritance
+                            .max_parent_score_delta_from_best,
+                    min_cross_root_session_disagreement:
+                        multi_root_balanced_session_inheritance
+                            .min_cross_root_session_disagreement as usize,
+                    parent_a_differing_session_share:
+                        multi_root_balanced_session_inheritance
+                            .parent_a_differing_session_share,
+                    adaptive_raw_child_retention: AdaptiveRawChildRetentionConfig {
+                        keep_ratio: multi_root_balanced_session_inheritance
+                            .adaptive_raw_child_retention
+                            .keep_ratio,
+                        warmup_samples: multi_root_balanced_session_inheritance
+                            .adaptive_raw_child_retention
+                            .warmup_samples as usize,
+                        history_limit: multi_root_balanced_session_inheritance
+                            .adaptive_raw_child_retention
+                            .history_limit as usize,
+                    },
+                    swap_local_optimum_certification_enabled:
+                        multi_root_balanced_session_inheritance
+                            .swap_local_optimum_certification_enabled,
+                    child_polish_iterations_per_stagnation_window:
+                        multi_root_balanced_session_inheritance
+                            .child_polish_iterations_per_stagnation_window as u64,
+                    child_polish_no_improvement_iterations_per_stagnation_window:
+                        multi_root_balanced_session_inheritance
+                            .child_polish_no_improvement_iterations_per_stagnation_window
+                            as u64,
+                    child_polish_max_stagnation_windows:
+                        multi_root_balanced_session_inheritance
+                            .child_polish_max_stagnation_windows as u64,
+                },
+            ),
         })
     }
 }
@@ -1160,9 +1407,10 @@ mod tests {
         ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, RepeatEncounterParams,
         Solver3CorrectnessLaneParams, Solver3DonorSessionTransplantParams,
         Solver3HotspotGuidanceParams, Solver3LocalImproverMode, Solver3LocalImproverParams,
-        Solver3Params, Solver3PathRelinkingOperatorVariant, Solver3RepeatGuidedSwapParams,
-        Solver3SessionAlignedPathRelinkingParams, Solver3SearchDriverMode,
-        Solver3SearchDriverParams,
+        Solver3MultiRootBalancedSessionInheritanceParams, Solver3Params,
+        Solver3PathRelinkingOperatorVariant, Solver3RepeatGuidedSwapParams,
+        Solver3SearchDriverMode, Solver3SearchDriverParams,
+        Solver3SessionAlignedPathRelinkingParams,
         Solver3SgpWeekPairTabuParams, Solver3SgpWeekPairTabuTenureMode,
         SolverConfiguration, SolverParams, StopConditions,
     };
@@ -1588,6 +1836,30 @@ mod tests {
         assert_eq!(config.max_session_imports_per_event, 3);
         assert_eq!(config.path_step_no_improvement_limit, 2);
         assert_eq!(config.min_aligned_session_distance_for_relinking, 1);
+    }
+
+    #[test]
+    fn run_context_accepts_multi_root_balanced_session_inheritance_driver() {
+        let state = repeat_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                mode: Solver3SearchDriverMode::MultiRootBalancedSessionInheritance,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let context = SearchRunContext::from_solver(&config, &state, 7).unwrap();
+        assert_eq!(
+            context.search_driver_mode,
+            Solver3SearchDriverMode::MultiRootBalancedSessionInheritance
+        );
+        let config = context.multi_root_balanced_session_inheritance.unwrap();
+        assert_eq!(config.root_count, 4);
+        assert_eq!(config.archive_size_per_root, 2);
+        assert_eq!(config.min_cross_root_session_disagreement, 1);
+        assert_eq!(config.parent_a_differing_session_share, 0.5);
     }
 
     #[test]
@@ -2029,6 +2301,69 @@ mod tests {
         assert!(
             err.to_string()
                 .contains("session_aligned_path_relinking requires move_policy to allow swap"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn run_context_rejects_invalid_multi_root_balanced_session_inheritance_config() {
+        let state = repeat_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                multi_root_balanced_session_inheritance:
+                    Solver3MultiRootBalancedSessionInheritanceParams {
+                        root_count: 1,
+                        ..Default::default()
+                    },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("multi_root_balanced_session_inheritance.root_count"),
+            "unexpected error: {err}"
+        );
+
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                multi_root_balanced_session_inheritance:
+                    Solver3MultiRootBalancedSessionInheritanceParams {
+                        parent_a_differing_session_share: 0.4,
+                        ..Default::default()
+                    },
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string().contains(
+                "multi_root_balanced_session_inheritance.parent_a_differing_session_share"
+            ),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn run_context_rejects_multi_root_balanced_session_inheritance_without_repeat_constraint() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        config.solver_params = SolverParams::Solver3(Solver3Params {
+            search_driver: Solver3SearchDriverParams {
+                mode: Solver3SearchDriverMode::MultiRootBalancedSessionInheritance,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        let err = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(
+            err.to_string().contains(
+                "multi_root_balanced_session_inheritance requires a repeat_encounter constraint"
+            ),
             "unexpected error: {err}"
         );
     }

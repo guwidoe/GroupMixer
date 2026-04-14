@@ -6,7 +6,8 @@ use gm_core::models::{
     PairMeetingCountParams, PairMeetingMode, Person, ProblemDefinition, ProgressCallback,
     RepeatEncounterParams, SimulatedAnnealingParams, Solver3CorrectnessLaneParams,
     Solver3DonorSessionTransplantParams, Solver3LocalImproverMode, Solver3LocalImproverParams,
-    Solver3Params, Solver3PathRelinkingOperatorVariant, Solver3SearchDriverMode,
+    Solver3MultiRootBalancedSessionInheritanceParams, Solver3Params,
+    Solver3PathRelinkingOperatorVariant, Solver3SearchDriverMode,
     Solver3SearchDriverParams, Solver3SessionAlignedPathRelinkingParams,
     Solver3SgpWeekPairTabuParams, SolverKind, SolverParams, StopReason,
 };
@@ -1017,6 +1018,62 @@ fn solver3_random_macro_mutation_control_runs_through_public_entry_point() {
     assert_eq!(
         path.operator_variant,
         Solver3PathRelinkingOperatorVariant::RandomMacroMutationControl
+    );
+}
+
+#[test]
+fn solver3_multi_root_balanced_session_inheritance_reports_not_yet_implemented() {
+    let mut input = solver3_repeat_driver_input();
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        search_driver: Solver3SearchDriverParams {
+            mode: Solver3SearchDriverMode::MultiRootBalancedSessionInheritance,
+            multi_root_balanced_session_inheritance:
+                Solver3MultiRootBalancedSessionInheritanceParams {
+                    root_count: 2,
+                    archive_size_per_root: 2,
+                    recombination_no_improvement_window: 8,
+                    recombination_cooldown_window: 8,
+                    max_recombination_events_per_run: Some(1),
+                    child_polish_iterations_per_stagnation_window: 16,
+                    child_polish_no_improvement_iterations_per_stagnation_window: 8,
+                    child_polish_max_stagnation_windows: 2,
+                    ..Default::default()
+                },
+            ..Default::default()
+        },
+        local_improver: Solver3LocalImproverParams {
+            mode: Solver3LocalImproverMode::SgpWeekPairTabu,
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    let err = run_solver(&input)
+        .expect_err("multi-root balanced inheritance should reject clearly until implemented");
+    assert!(
+        err.to_string()
+            .contains("multi_root_balanced_session_inheritance is configured but not yet implemented"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
+fn solver3_multi_root_balanced_session_inheritance_rejects_active_cliques() {
+    let mut input = solver3_clique_driver_input();
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        search_driver: Solver3SearchDriverParams {
+            mode: Solver3SearchDriverMode::MultiRootBalancedSessionInheritance,
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    let err = run_solver(&input)
+        .expect_err("multi-root balanced inheritance should reject active cliques");
+    assert!(
+        err.to_string()
+            .contains("does not yet support active cliques"),
+        "unexpected error: {err}"
     );
 }
 

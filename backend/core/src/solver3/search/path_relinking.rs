@@ -968,6 +968,21 @@ pub(crate) fn run(
     )
 }
 
+pub(crate) fn run_multi_root_balanced_session_inheritance(
+    _state: &mut RuntimeState,
+    run_context: SearchRunContext,
+    _progress_callback: Option<&ProgressCallback>,
+    _benchmark_observer: Option<&BenchmarkObserver>,
+) -> Result<SolverResult, SolverError> {
+    let _ = run_context
+        .multi_root_balanced_session_inheritance
+        .expect("multi-root balanced session inheritance config should be normalized");
+    Err(SolverError::ValidationError(
+        "solver3 search_driver.mode=multi_root_balanced_session_inheritance is configured but not yet implemented"
+            .into(),
+    ))
+}
+
 fn archive_config_for_path_relinking_mode(
     config: SessionAlignedPathRelinkingConfig,
 ) -> EliteArchiveConfig {
@@ -1891,6 +1906,7 @@ mod tests {
             steady_state_memetic: None,
             donor_session_transplant: None,
             session_aligned_path_relinking: Some(config()),
+            multi_root_balanced_session_inheritance: None,
         };
         let mut rng = ChaCha12Rng::seed_from_u64(11);
 

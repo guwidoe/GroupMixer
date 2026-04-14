@@ -68,6 +68,19 @@ impl SearchEngine {
                 Solver3SearchDriverMode::SessionAlignedPathRelinking,
                 Solver3LocalImproverMode::SgpWeekPairTabu,
             ) => path_relinking::run(state, run_context, progress_callback, benchmark_observer),
+            (
+                Solver3SearchDriverMode::MultiRootBalancedSessionInheritance,
+                Solver3LocalImproverMode::RecordToRecord,
+            )
+            | (
+                Solver3SearchDriverMode::MultiRootBalancedSessionInheritance,
+                Solver3LocalImproverMode::SgpWeekPairTabu,
+            ) => path_relinking::run_multi_root_balanced_session_inheritance(
+                state,
+                run_context,
+                progress_callback,
+                benchmark_observer,
+            ),
         }
     }
 }

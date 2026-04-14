@@ -1030,6 +1030,8 @@ pub enum Solver3SearchDriverMode {
     DonorSessionTransplant,
     /// Rare archive-based session-aligned path relinking outer loop.
     SessionAlignedPathRelinking,
+    /// Rare multi-root balanced session inheritance outer loop.
+    MultiRootBalancedSessionInheritance,
 }
 
 /// Explicit local-improver selection for `solver3`.
@@ -1084,6 +1086,86 @@ pub struct Solver3SearchDriverParams {
     /// Config for the rare session-aligned path relinking outer driver.
     #[serde(default)]
     pub session_aligned_path_relinking: Solver3SessionAlignedPathRelinkingParams,
+    /// Config for the rare multi-root balanced session inheritance outer driver.
+    #[serde(default)]
+    pub multi_root_balanced_session_inheritance:
+        Solver3MultiRootBalancedSessionInheritanceParams,
+}
+
+/// Config for the rare multi-root balanced session inheritance outer driver.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+pub struct Solver3MultiRootBalancedSessionInheritanceParams {
+    /// Number of unrelated search roots incubated before cross-root recombination.
+    #[serde(default = "default_solver3_multi_root_inheritance_root_count")]
+    pub root_count: u32,
+    /// Maximum elites retained per unrelated root.
+    #[serde(default = "default_solver3_multi_root_inheritance_archive_size_per_root")]
+    pub archive_size_per_root: u32,
+    /// Recombination only becomes eligible after this many non-improving iterations.
+    #[serde(default = "default_solver3_multi_root_inheritance_no_improvement_window")]
+    pub recombination_no_improvement_window: u32,
+    /// Minimum number of iterations between recombination events.
+    #[serde(default = "default_solver3_multi_root_inheritance_cooldown_window")]
+    pub recombination_cooldown_window: u32,
+    /// Optional non-binding safety cap on inheritance events in a single run.
+    #[serde(default)]
+    pub max_recombination_events_per_run: Option<u32>,
+    /// Maximum score delta from the current best elite allowed for either parent.
+    #[serde(default = "default_solver3_multi_root_inheritance_parent_score_delta")]
+    pub max_parent_score_delta_from_best: f64,
+    /// Minimum cross-root session disagreement required before parent pairing is considered.
+    #[serde(default = "default_solver3_multi_root_inheritance_min_session_disagreement")]
+    pub min_cross_root_session_disagreement: u32,
+    /// Target share of differing aligned sessions inherited from parent A.
+    ///
+    /// The initial operator is explicitly balanced and currently requires this to remain `0.5`.
+    #[serde(default = "default_solver3_multi_root_inheritance_parent_a_share")]
+    pub parent_a_differing_session_share: f64,
+    /// Adaptive raw-child quality gate applied before child polish.
+    #[serde(default)]
+    pub adaptive_raw_child_retention: Solver3AdaptiveRawChildRetentionParams,
+    /// Optionally certify a swap-local optimum exactly before inheritance fires.
+    #[serde(default)]
+    pub swap_local_optimum_certification_enabled: bool,
+    /// Post-child local-polish iteration budget granted per full stagnation window.
+    #[serde(default = "default_solver3_multi_root_inheritance_child_polish_iterations_per_window")]
+    pub child_polish_iterations_per_stagnation_window: u32,
+    /// Post-child local-polish no-improvement budget granted per full stagnation window.
+    #[serde(
+        default = "default_solver3_multi_root_inheritance_child_polish_no_improvement_iterations_per_window"
+    )]
+    pub child_polish_no_improvement_iterations_per_stagnation_window: u32,
+    /// Maximum number of stagnation windows that contribute to a single child-polish budget.
+    #[serde(default = "default_solver3_multi_root_inheritance_child_polish_max_stagnation_windows")]
+    pub child_polish_max_stagnation_windows: u32,
+}
+
+impl Default for Solver3MultiRootBalancedSessionInheritanceParams {
+    fn default() -> Self {
+        Self {
+            root_count: default_solver3_multi_root_inheritance_root_count(),
+            archive_size_per_root: default_solver3_multi_root_inheritance_archive_size_per_root(),
+            recombination_no_improvement_window:
+                default_solver3_multi_root_inheritance_no_improvement_window(),
+            recombination_cooldown_window:
+                default_solver3_multi_root_inheritance_cooldown_window(),
+            max_recombination_events_per_run: None,
+            max_parent_score_delta_from_best:
+                default_solver3_multi_root_inheritance_parent_score_delta(),
+            min_cross_root_session_disagreement:
+                default_solver3_multi_root_inheritance_min_session_disagreement(),
+            parent_a_differing_session_share:
+                default_solver3_multi_root_inheritance_parent_a_share(),
+            adaptive_raw_child_retention: Solver3AdaptiveRawChildRetentionParams::default(),
+            swap_local_optimum_certification_enabled: false,
+            child_polish_iterations_per_stagnation_window:
+                default_solver3_multi_root_inheritance_child_polish_iterations_per_window(),
+            child_polish_no_improvement_iterations_per_stagnation_window:
+                default_solver3_multi_root_inheritance_child_polish_no_improvement_iterations_per_window(),
+            child_polish_max_stagnation_windows:
+                default_solver3_multi_root_inheritance_child_polish_max_stagnation_windows(),
+        }
+    }
 }
 
 /// Config for the rare donor-session transplant outer driver.
@@ -1497,6 +1579,46 @@ fn default_solver3_path_relinking_child_polish_no_improvement_iterations_per_win
 }
 
 fn default_solver3_path_relinking_child_polish_max_stagnation_windows() -> u32 {
+    default_solver3_donor_session_child_polish_max_stagnation_windows()
+}
+
+fn default_solver3_multi_root_inheritance_root_count() -> u32 {
+    4
+}
+
+fn default_solver3_multi_root_inheritance_archive_size_per_root() -> u32 {
+    2
+}
+
+fn default_solver3_multi_root_inheritance_no_improvement_window() -> u32 {
+    default_solver3_donor_session_no_improvement_window()
+}
+
+fn default_solver3_multi_root_inheritance_cooldown_window() -> u32 {
+    default_solver3_donor_session_cooldown_window()
+}
+
+fn default_solver3_multi_root_inheritance_parent_score_delta() -> f64 {
+    250.0
+}
+
+fn default_solver3_multi_root_inheritance_min_session_disagreement() -> u32 {
+    1
+}
+
+fn default_solver3_multi_root_inheritance_parent_a_share() -> f64 {
+    0.5
+}
+
+fn default_solver3_multi_root_inheritance_child_polish_iterations_per_window() -> u32 {
+    default_solver3_donor_session_child_polish_iterations_per_window()
+}
+
+fn default_solver3_multi_root_inheritance_child_polish_no_improvement_iterations_per_window() -> u32 {
+    default_solver3_donor_session_child_polish_no_improvement_iterations_per_window()
+}
+
+fn default_solver3_multi_root_inheritance_child_polish_max_stagnation_windows() -> u32 {
     default_solver3_donor_session_child_polish_max_stagnation_windows()
 }
 
