@@ -88,10 +88,48 @@ The current default production path is paying meaningful proposal/control overhe
 
 The reverted plain-path experiment remains the strongest proof that sampler/control generality is still a major contributor: it materially reduced both preview time and total runtime on the real Sailing case.
 
+## Landed throughput recovery slice
+
+The next slice of this epic split the default `single_state + record_to_record` sampler path away from tabu / advanced swap-control plumbing and removed heap allocation from move-family ordering.
+
+Artifacts:
+
+- pre-slice HEAD baseline
+  - `backend/benchmarking/artifacts/runs/objective-canonical-stretch-solver3-v1-20260414T170209Z-3e8fa3c3/run-report.json`
+- post-slice benchmark
+  - `backend/benchmarking/artifacts/runs/objective-canonical-stretch-solver3-v1-20260414T171849Z-a509cd1a/run-report.json`
+
+Observed stretch bundle outcome:
+
+- scores held exactly:
+  - `stretch.social-golfer-32x8x10 = 5451`
+  - `stretch.large-gender-immovable-110p = 2146`
+  - `stretch.sailing-trip-demo-real = 2359`
+  - `stretch.synthetic-partial-attendance-capacity-pressure-152p = 6501`
+- runtime moved materially in the right direction:
+  - `stretch.social-golfer-32x8x10`: `14.619s -> 10.737s`
+  - `stretch.large-gender-immovable-110p`: `5.920s -> 5.467s`
+  - `stretch.sailing-trip-demo-real`: `9.231s -> 7.649s`
+- Sailing preview-path breakdown improved:
+  - total preview `8.272s -> 6.952s`
+  - other search overhead `0.956s -> 0.694s`
+  - swap preview `5.050 -> 4.108 µs/attempt`
+  - transfer preview `2.003 -> 1.645 µs/attempt`
+  - clique_swap preview `19.658 -> 16.697 µs/attempt`
+
+The release diagnostic also improved on the raw Sailing case:
+
+- default-preview diagnostic:
+  - total `9.056 -> 6.547 µs/sample`
+  - proposal/wrapper `3.386 -> 2.523 µs/sample`
+  - preview kernel `5.670 -> 4.024 µs/sample`
+
 ## Implication for the rest of this epic
 
-The next slices should target:
+A genuinely lean compiled default sampler path does help the real steady-state Sailing lane without giving back the checked stretch scores.
 
-- a genuinely lean compiled default `single_state + record_to_record` preview path
-- removal of tabu-shaped and research-only sampler overhead from that path
+The remaining gap versus historical `72b063a` is now much smaller but still real, so future work should continue focusing on:
+
+- more default-path specialization where the shipped solver still pays for generality it does not need
 - preserving advanced paths behind explicit compile-time / mode-specific entrypoints
+- avoiding any optimization that only wins Sailing while regressing the broader production-default keep-lanes

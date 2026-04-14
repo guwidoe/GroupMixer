@@ -213,6 +213,13 @@ fn run_local_improver(
     let mut cached_elapsed_seconds: f64 = 0.0;
     let mut diversification_burst_attempted = false;
     let mut iteration: u64 = 0;
+    let use_default_sampler_path = should_use_default_sampler_path(run_context);
+    let tabu_retry_cap = run_context.sgp_week_pair_tabu.map_or(0, |config| config.retry_cap);
+    let tabu_allow_aspiration_preview = run_context.local_improver_mode
+        == Solver3LocalImproverMode::SgpWeekPairTabu
+        && run_context
+            .sgp_week_pair_tabu
+            .is_some_and(|config| config.aspiration_enabled);
 
     if budget.stop_on_optimal_score && search.best_score <= crate::models::OPTIMAL_SCORE_TOLERANCE {
         stop_reason = StopReason::OptimalScoreReached;
@@ -323,58 +330,62 @@ fn run_local_improver(
                 }
             }
 
-            let candidate_selection = candidate_sampler.select_previewed_move(
-                &search.current_state,
-                &family_selector,
-                &run_context.allowed_sessions,
-                SwapSamplingOptions {
-                    #[cfg(feature = "solver3-experimental-repeat-guidance")]
-                    repeat_guidance: repeat_guidance.as_ref(),
-                    #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
-                    sgp_conflicts: sgp_conflicts.as_ref(),
-                    #[cfg(feature = "solver3-experimental-repeat-guidance")]
-                    repeat_guided_swap_probability: run_context.repeat_guided_swap_probability,
-                    #[cfg(feature = "solver3-experimental-repeat-guidance")]
-                    repeat_guided_swap_candidate_preview_budget: run_context
-                        .repeat_guided_swap_candidate_preview_budget,
-                    tabu: tabu_state.as_ref(),
-                    tabu_retry_cap: run_context
-                        .sgp_week_pair_tabu
-                        .map_or(0, |config| config.retry_cap),
-                    tabu_allow_aspiration_preview: run_context.local_improver_mode
-                        == Solver3LocalImproverMode::SgpWeekPairTabu
-                        && run_context
-                            .sgp_week_pair_tabu
-                            .is_some_and(|config| config.aspiration_enabled),
-                    current_iteration: iteration,
-                },
-                &mut rng,
-            );
-            search.record_repeat_guided_swap_sampling(
-                candidate_selection
-                    .repeat_guided_swap_sampling
-                    .guided_attempts,
-                candidate_selection
-                    .repeat_guided_swap_sampling
-                    .guided_successes,
-                candidate_selection
-                    .repeat_guided_swap_sampling
-                    .guided_fallback_to_random,
-                candidate_selection
-                    .repeat_guided_swap_sampling
-                    .guided_previewed_candidates,
-            );
-            search.record_tabu_sampling(
-                candidate_selection.tabu_swap_sampling.raw_tabu_hits,
-                candidate_selection.tabu_swap_sampling.prefilter_skips,
-                candidate_selection.tabu_swap_sampling.retry_exhaustions,
-                candidate_selection.tabu_swap_sampling.hard_blocks,
-                candidate_selection
-                    .tabu_swap_sampling
-                    .aspiration_preview_surfaces,
-            );
+            let selected_move = if use_default_sampler_path {
+                candidate_sampler.select_previewed_move_default(
+                    &search.current_state,
+                    &family_selector,
+                    &run_context.allowed_sessions,
+                    &mut rng,
+                )
+            } else {
+                let candidate_selection = candidate_sampler.select_previewed_move(
+                    &search.current_state,
+                    &family_selector,
+                    &run_context.allowed_sessions,
+                    SwapSamplingOptions {
+                        #[cfg(feature = "solver3-experimental-repeat-guidance")]
+                        repeat_guidance: repeat_guidance.as_ref(),
+                        #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
+                        sgp_conflicts: sgp_conflicts.as_ref(),
+                        #[cfg(feature = "solver3-experimental-repeat-guidance")]
+                        repeat_guided_swap_probability: run_context.repeat_guided_swap_probability,
+                        #[cfg(feature = "solver3-experimental-repeat-guidance")]
+                        repeat_guided_swap_candidate_preview_budget: run_context
+                            .repeat_guided_swap_candidate_preview_budget,
+                        tabu: tabu_state.as_ref(),
+                        tabu_retry_cap,
+                        tabu_allow_aspiration_preview,
+                        current_iteration: iteration,
+                    },
+                    &mut rng,
+                );
+                search.record_repeat_guided_swap_sampling(
+                    candidate_selection
+                        .repeat_guided_swap_sampling
+                        .guided_attempts,
+                    candidate_selection
+                        .repeat_guided_swap_sampling
+                        .guided_successes,
+                    candidate_selection
+                        .repeat_guided_swap_sampling
+                        .guided_fallback_to_random,
+                    candidate_selection
+                        .repeat_guided_swap_sampling
+                        .guided_previewed_candidates,
+                );
+                search.record_tabu_sampling(
+                    candidate_selection.tabu_swap_sampling.raw_tabu_hits,
+                    candidate_selection.tabu_swap_sampling.prefilter_skips,
+                    candidate_selection.tabu_swap_sampling.retry_exhaustions,
+                    candidate_selection.tabu_swap_sampling.hard_blocks,
+                    candidate_selection
+                        .tabu_swap_sampling
+                        .aspiration_preview_surfaces,
+                );
+                candidate_selection.selection
+            };
 
-            if let Some((family, preview, preview_seconds)) = candidate_selection.selection {
+            if let Some((family, preview, preview_seconds)) = selected_move {
                 let delta_cost = preview.delta_score();
                 search.record_preview_attempt(family, preview_seconds, delta_cost);
                 let current_score = search.current_state.total_score;
@@ -695,6 +706,20 @@ fn try_diversification_burst(
 #[inline]
 fn time_limit_exceeded(elapsed_seconds: f64, time_limit_seconds: Option<f64>) -> bool {
     time_limit_seconds.is_some_and(|limit| elapsed_seconds >= limit)
+}
+
+#[inline]
+fn should_use_default_sampler_path(run_context: &SearchRunContext) -> bool {
+    if run_context.local_improver_mode != Solver3LocalImproverMode::RecordToRecord {
+        return false;
+    }
+
+    #[cfg(feature = "solver3-experimental-repeat-guidance")]
+    if run_context.repeat_guided_swaps_enabled {
+        return false;
+    }
+
+    true
 }
 
 #[inline]

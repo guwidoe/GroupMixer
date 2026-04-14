@@ -180,6 +180,29 @@ impl Default for SwapSamplingOptions<'_> {
 }
 
 impl CandidateSampler {
+    #[inline]
+    pub(crate) fn select_previewed_move_default(
+        &self,
+        state: &RuntimeState,
+        family_selector: &MoveFamilySelector,
+        allowed_sessions: &[usize],
+        rng: &mut ChaCha12Rng,
+    ) -> Option<(MoveFamily, SearchMovePreview, f64)> {
+        let ordered_families = family_selector.ordered_families_small(rng);
+        for family in ordered_families.as_slice().iter().copied() {
+            let preview_started_at = get_current_time();
+            let preview =
+                self.sample_preview_for_family_default(state, family, allowed_sessions, rng);
+            let preview_seconds =
+                get_elapsed_seconds_between(preview_started_at, get_current_time());
+            if let Some(preview) = preview {
+                return Some((family, preview, preview_seconds));
+            }
+        }
+
+        None
+    }
+
     #[cfg(test)]
     pub(crate) fn diagnose_select_previewed_move_default_timing(
         &self,
@@ -188,11 +211,11 @@ impl CandidateSampler {
         allowed_sessions: &[usize],
         rng: &mut ChaCha12Rng,
     ) -> CandidateSelectionTimingBreakdown {
-        let ordered_families = family_selector.ordered_families(rng);
+        let ordered_families = family_selector.ordered_families_small(rng);
         let mut proposal_seconds = 0.0;
         let mut preview_kernel_seconds = 0.0;
 
-        for family in ordered_families {
+        for family in ordered_families.as_slice().iter().copied() {
             let family_started_at = get_current_time();
             let (preview, timing) =
                 self.diagnose_sample_preview_for_family_default_timing(
@@ -230,10 +253,10 @@ impl CandidateSampler {
         swap_sampling: SwapSamplingOptions<'_>,
         rng: &mut ChaCha12Rng,
     ) -> CandidateSelectionResult {
-        let ordered_families = family_selector.ordered_families(rng);
+        let ordered_families = family_selector.ordered_families_small(rng);
         let mut repeat_guided_swap_sampling = RepeatGuidedSwapSamplingDelta::default();
         let mut tabu_swap_sampling = TabuSwapSamplingDelta::default();
-        for family in ordered_families {
+        for family in ordered_families.as_slice().iter().copied() {
             let preview_started_at = get_current_time();
             let (preview, sampling_delta, tabu_delta) =
                 self.sample_preview_for_family(state, family, allowed_sessions, swap_sampling, rng);
@@ -309,6 +332,27 @@ impl CandidateSampler {
                     )
                 })
                 .unwrap_or_default(),
+        }
+    }
+
+    #[inline]
+    fn sample_preview_for_family_default(
+        &self,
+        state: &RuntimeState,
+        family: MoveFamily,
+        allowed_sessions: &[usize],
+        rng: &mut ChaCha12Rng,
+    ) -> Option<SearchMovePreview> {
+        match family {
+            MoveFamily::Swap => self
+                .sample_swap_preview_default(state, allowed_sessions, rng)
+                .map(SearchMovePreview::Swap),
+            MoveFamily::Transfer => self
+                .sample_transfer_preview(state, allowed_sessions, rng)
+                .map(SearchMovePreview::Transfer),
+            MoveFamily::CliqueSwap => self
+                .sample_clique_swap_preview(state, allowed_sessions, rng)
+                .map(SearchMovePreview::CliqueSwap),
         }
     }
 
@@ -683,6 +727,36 @@ impl CandidateSampler {
         Some((preview, telemetry, tabu_telemetry))
     }
 
+    fn sample_swap_preview_default(
+        &self,
+        state: &RuntimeState,
+        allowed_sessions: &[usize],
+        rng: &mut ChaCha12Rng,
+    ) -> Option<SwapRuntimePreview> {
+        if allowed_sessions.is_empty() || state.compiled.num_groups < 2 {
+            return None;
+        }
+
+        if allowed_sessions.len() == 1 {
+            return self.sample_random_swap_preview_for_session_default(
+                state,
+                allowed_sessions[0],
+                rng,
+            );
+        }
+
+        for _ in 0..MAX_RANDOM_CANDIDATE_ATTEMPTS {
+            let session_idx = allowed_sessions[rng.random_range(0..allowed_sessions.len())];
+            if let Some(preview) =
+                self.sample_random_swap_preview_for_session_default(state, session_idx, rng)
+            {
+                return Some(preview);
+            }
+        }
+
+        None
+    }
+
     #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
     fn sample_conflict_restricted_swap_preview(
         &self,
@@ -935,6 +1009,38 @@ impl CandidateSampler {
                 }
                 continue;
             }
+            if let Ok(preview) = preview_swap_runtime_lightweight(state, &swap) {
+                return Some(preview);
+            }
+        }
+
+        None
+    }
+
+    fn sample_random_swap_preview_for_session_default(
+        &self,
+        state: &RuntimeState,
+        session_idx: usize,
+        rng: &mut ChaCha12Rng,
+    ) -> Option<SwapRuntimePreview> {
+        for _ in 0..MAX_RANDOM_TARGET_ATTEMPTS {
+            let left_group_idx = rng.random_range(0..state.compiled.num_groups);
+            let mut right_group_idx = rng.random_range(0..state.compiled.num_groups);
+            if right_group_idx == left_group_idx {
+                right_group_idx = (right_group_idx + 1) % state.compiled.num_groups;
+            }
+
+            let left_slot = state.group_slot(session_idx, left_group_idx);
+            let right_slot = state.group_slot(session_idx, right_group_idx);
+            let left_members = &state.group_members[left_slot];
+            let right_members = &state.group_members[right_slot];
+            if left_members.is_empty() || right_members.is_empty() {
+                continue;
+            }
+
+            let left_person_idx = left_members[rng.random_range(0..left_members.len())];
+            let right_person_idx = right_members[rng.random_range(0..right_members.len())];
+            let swap = SwapMove::new(session_idx, left_person_idx, right_person_idx);
             if let Ok(preview) = preview_swap_runtime_lightweight(state, &swap) {
                 return Some(preview);
             }
@@ -1765,6 +1871,16 @@ mod tests {
             &mut rng,
         );
         assert!(sampled.selection.is_some());
+    }
+
+    #[test]
+    fn default_sampler_can_find_a_swap_preview_on_simple_state() {
+        let state = simple_runtime_state();
+        let selector = MoveFamilySelector::new(&Default::default());
+        let mut rng = ChaCha12Rng::seed_from_u64(7);
+        let sampler = CandidateSampler;
+        let sampled = sampler.select_previewed_move_default(&state, &selector, &[0], &mut rng);
+        assert!(sampled.is_some());
     }
 
     #[test]
