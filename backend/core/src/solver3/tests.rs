@@ -25,8 +25,8 @@ use serde::Deserialize;
 use crate::models::{
     ApiInput, AttributeBalanceMode, AttributeBalanceParams, Constraint, Group,
     ImmovablePersonParams, Objective, PairMeetingCountParams, PairMeetingMode, Person,
-    ProblemDefinition, RepeatEncounterParams, Solver3Params, SolverConfiguration, SolverParams,
-    StopConditions,
+    ProblemDefinition, RepeatEncounterParams, Solver3ConstructionMode, Solver3Params,
+    SolverConfiguration, SolverParams, StopConditions,
 };
 
 use super::compiled_problem::CompiledProblem;
@@ -210,6 +210,99 @@ fn representative_input() -> ApiInput {
     }
 }
 
+fn freedom_aware_input() -> ApiInput {
+    let mut config = solver3_config();
+    config.seed = Some(17);
+    if let SolverParams::Solver3(params) = &mut config.solver_params {
+        params.construction.mode = Solver3ConstructionMode::FreedomAwareRandomized;
+        params.construction.freedom_aware.restricted_candidate_list_size = 2;
+    }
+
+    let construction_seed_schedule = HashMap::from([
+        (
+            "session_0".to_string(),
+            HashMap::from([("g0".to_string(), vec!["p0".to_string()])]),
+        ),
+        (
+            "session_1".to_string(),
+            HashMap::from([("g2".to_string(), vec!["p5".to_string()])]),
+        ),
+    ]);
+
+    ApiInput {
+        problem: ProblemDefinition {
+            people: vec![
+                Person {
+                    id: "p0".into(),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                },
+                Person {
+                    id: "p1".into(),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                },
+                Person {
+                    id: "p2".into(),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                },
+                Person {
+                    id: "p3".into(),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                },
+                Person {
+                    id: "p4".into(),
+                    attributes: HashMap::new(),
+                    sessions: Some(vec![0]),
+                },
+                Person {
+                    id: "p5".into(),
+                    attributes: HashMap::new(),
+                    sessions: Some(vec![1]),
+                },
+            ],
+            groups: vec![
+                Group {
+                    id: "g0".into(),
+                    size: 2,
+                    session_sizes: Some(vec![2, 2]),
+                },
+                Group {
+                    id: "g1".into(),
+                    size: 1,
+                    session_sizes: Some(vec![1, 1]),
+                },
+                Group {
+                    id: "g2".into(),
+                    size: 2,
+                    session_sizes: Some(vec![2, 2]),
+                },
+            ],
+            num_sessions: 2,
+        },
+        initial_schedule: None,
+        construction_seed_schedule: Some(construction_seed_schedule),
+        objectives: vec![Objective {
+            r#type: "maximize_unique_contacts".into(),
+            weight: 1.0,
+        }],
+        constraints: vec![
+            Constraint::MustStayTogether {
+                people: vec!["p1".into(), "p2".into()],
+                sessions: Some(vec![1]),
+            },
+            Constraint::ImmovablePerson(ImmovablePersonParams {
+                person_id: "p3".into(),
+                group_id: "g1".into(),
+                sessions: Some(vec![0]),
+            }),
+        ],
+        solver: config,
+    }
+}
+
 // ---------------------------------------------------------------------------
 // 1. Pair index math
 // ---------------------------------------------------------------------------
@@ -359,6 +452,57 @@ fn runtime_state_initialization_is_deterministic() {
     assert_eq!(s1.group_sizes, s2.group_sizes);
     assert_eq!(s1.pair_contacts, s2.pair_contacts);
     assert_eq!(s1.total_score, s2.total_score);
+}
+
+#[test]
+fn runtime_state_rejects_zero_freedom_aware_rcl_size() {
+    let mut input = minimal_input();
+    if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
+        params.construction.mode = Solver3ConstructionMode::FreedomAwareRandomized;
+        params.construction.freedom_aware.restricted_candidate_list_size = 0;
+    }
+
+    let err = RuntimeState::from_input(&input).unwrap_err();
+    assert!(
+        err.to_string().contains("restricted_candidate_list_size"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
+fn runtime_state_freedom_aware_mode_respects_seed_and_constraints() {
+    let input = freedom_aware_input();
+    let state = RuntimeState::from_input(&input).unwrap();
+    let repeat_state = RuntimeState::from_input(&input).unwrap();
+    let cp = &state.compiled;
+
+    assert_eq!(state.to_api_schedule(), repeat_state.to_api_schedule());
+
+    let session0 = state.to_api_schedule().get("session_0").unwrap().clone();
+    let session1 = state.to_api_schedule().get("session_1").unwrap().clone();
+    assert!(session0.get("g0").unwrap().contains(&"p0".to_string()));
+    assert!(session1.get("g2").unwrap().contains(&"p5".to_string()));
+
+    let p1 = cp.person_id_to_idx["p1"];
+    let p2 = cp.person_id_to_idx["p2"];
+    let p3 = cp.person_id_to_idx["p3"];
+    let p4 = cp.person_id_to_idx["p4"];
+    let p5 = cp.person_id_to_idx["p5"];
+    let g1 = cp.group_id_to_idx["g1"];
+
+    assert_eq!(state.person_location[state.people_slot(1, p1)], state.person_location[state.people_slot(1, p2)]);
+    assert_eq!(state.person_location[state.people_slot(0, p3)], Some(g1));
+    assert!(state.person_location[state.people_slot(0, p4)].is_some());
+    assert_eq!(state.person_location[state.people_slot(1, p4)], None);
+    assert_eq!(state.person_location[state.people_slot(0, p5)], None);
+    assert!(state.person_location[state.people_slot(1, p5)].is_some());
+
+    for session_idx in 0..cp.num_sessions {
+        for group_idx in 0..cp.num_groups {
+            let slot = state.group_slot(session_idx, group_idx);
+            assert!(state.group_sizes[slot] <= cp.group_capacity(session_idx, group_idx));
+        }
+    }
 }
 
 #[test]

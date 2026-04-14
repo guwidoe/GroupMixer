@@ -1,0 +1,87 @@
+{
+  "name": "Solver3 Freedom-Aware Construction Seed Semantics",
+  "metadata": {
+    "tags": [
+      "solver3",
+      "construction",
+      "freedom-aware"
+    ],
+    "kind": "correctness",
+    "tier": "default"
+  },
+  "input": {
+    "problem": {
+      "people": [
+        { "id": "p0", "attributes": {} },
+        { "id": "p1", "attributes": {} },
+        { "id": "p2", "attributes": {} },
+        { "id": "p3", "attributes": {} },
+        { "id": "p4", "attributes": {}, "sessions": [0] },
+        { "id": "p5", "attributes": {}, "sessions": [1] }
+      ],
+      "groups": [
+        { "id": "g0", "size": 2, "session_sizes": [2, 2] },
+        { "id": "g1", "size": 1, "session_sizes": [1, 1] },
+        { "id": "g2", "size": 2, "session_sizes": [2, 2] }
+      ],
+      "num_sessions": 2
+    },
+    "construction_seed_schedule": {
+      "session_0": {
+        "g0": ["p0"]
+      },
+      "session_1": {
+        "g2": ["p5"]
+      }
+    },
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "constraints": [
+      {
+        "type": "MustStayTogether",
+        "people": ["p1", "p2"],
+        "sessions": [1]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "p3",
+        "group_id": "g1",
+        "sessions": [0]
+      }
+    ],
+    "solver": {
+      "solver_type": "solver3",
+      "stop_conditions": {
+        "max_iterations": 0,
+        "time_limit_seconds": null,
+        "no_improvement_iterations": null,
+        "stop_on_optimal_score": true
+      },
+      "solver_params": {
+        "solver_type": "solver3",
+        "construction": {
+          "mode": "freedom_aware_randomized",
+          "freedom_aware": {
+            "restricted_candidate_list_size": 2
+          }
+        }
+      },
+      "logging": {},
+      "telemetry": {},
+      "seed": 17,
+      "move_policy": null,
+      "allowed_sessions": null
+    }
+  },
+  "expected": {
+    "must_stay_together_respected": true,
+    "immovable_person_respected": true,
+    "participation_patterns_respected": true,
+    "max_constraint_penalty": 0
+  },
+  "test_options": {}
+}
