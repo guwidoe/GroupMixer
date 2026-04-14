@@ -81,7 +81,7 @@ export const SOLVER3_SETTINGS_FIELDS: readonly (SolverBooleanSettingFieldSpec | 
 export const SOLVER3_SETTINGS_SECTION: SolverSettingsSectionSpec = {
   id: 'solver3-specific',
   title: 'Solver 3: Dense-State Search',
-  description: 'Solver3-specific controls. Recommendation is currently unsupported.',
+  description: 'Solver3-specific production controls. Research-only search modes are intentionally excluded from the normal webapp build surface.',
   kind: 'solver_specific',
   fields: SOLVER3_SETTINGS_FIELDS,
 };

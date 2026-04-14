@@ -5,11 +5,11 @@ use gm_core::models::{
     ApiInput, BenchmarkEvent, Constraint, Group, MoveFamily, MovePolicy, Objective,
     PairMeetingCountParams, PairMeetingMode, Person, ProblemDefinition, ProgressCallback,
     RepeatEncounterParams, SimulatedAnnealingParams, Solver3CorrectnessLaneParams,
-    Solver3DonorSessionTransplantParams, Solver3LocalImproverMode, Solver3LocalImproverParams,
-    Solver3MultiRootBalancedSessionInheritanceParams, Solver3Params,
-    Solver3PathRelinkingOperatorVariant, Solver3SearchDriverMode, Solver3SearchDriverParams,
-    Solver3SessionAlignedPathRelinkingParams, Solver3SgpWeekPairTabuParams, SolverKind,
-    SolverParams, StopReason,
+    Solver3DonorSessionTransplantParams, Solver3HotspotGuidanceParams, Solver3LocalImproverMode,
+    Solver3LocalImproverParams, Solver3MultiRootBalancedSessionInheritanceParams, Solver3Params,
+    Solver3PathRelinkingOperatorVariant, Solver3RepeatGuidedSwapParams, Solver3SearchDriverMode,
+    Solver3SearchDriverParams, Solver3SessionAlignedPathRelinkingParams,
+    Solver3SgpWeekPairTabuParams, SolverKind, SolverParams, StopReason,
 };
 use gm_core::{
     default_solver_configuration_for, run_solver, run_solver_with_benchmark_observer,
@@ -1121,6 +1121,78 @@ fn solver3_correctness_lane_requires_solver3_oracle_checks_feature() {
     );
     assert!(
         err.to_string().contains("solver3-oracle-checks"),
+        "unexpected error: {err}"
+    );
+}
+
+#[cfg(not(feature = "solver3-experimental-memetic"))]
+#[test]
+fn solver3_memetic_mode_requires_feature_through_public_entry_point() {
+    let mut input = solver3_driver_input();
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        search_driver: Solver3SearchDriverParams {
+            mode: Solver3SearchDriverMode::SteadyStateMemetic,
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    let err = run_solver(&input).expect_err(
+        "steady-state memetic should fail when solver3-experimental-memetic is disabled",
+    );
+    assert!(
+        err.to_string().contains("solver3-experimental-memetic"),
+        "unexpected error: {err}"
+    );
+}
+
+#[cfg(not(feature = "solver3-experimental-recombination"))]
+#[test]
+fn solver3_recombination_mode_requires_feature_through_public_entry_point() {
+    let mut input = solver3_repeat_driver_input();
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        search_driver: Solver3SearchDriverParams {
+            mode: Solver3SearchDriverMode::DonorSessionTransplant,
+            ..Default::default()
+        },
+        local_improver: Solver3LocalImproverParams {
+            mode: Solver3LocalImproverMode::SgpWeekPairTabu,
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    let err = run_solver(&input).expect_err(
+        "donor-session transplant should fail when solver3-experimental-recombination is disabled",
+    );
+    assert!(
+        err.to_string()
+            .contains("solver3-experimental-recombination"),
+        "unexpected error: {err}"
+    );
+}
+
+#[cfg(not(feature = "solver3-experimental-repeat-guidance"))]
+#[test]
+fn solver3_repeat_guidance_requires_feature_through_public_entry_point() {
+    let mut input = solver3_repeat_driver_input();
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        hotspot_guidance: Solver3HotspotGuidanceParams {
+            repeat_guided_swaps: Solver3RepeatGuidedSwapParams {
+                enabled: true,
+                guided_proposal_probability: 1.0,
+                candidate_preview_budget: 4,
+            },
+        },
+        ..Default::default()
+    });
+
+    let err = run_solver(&input).expect_err(
+        "repeat guidance should fail when solver3-experimental-repeat-guidance is disabled",
+    );
+    assert!(
+        err.to_string()
+            .contains("solver3-experimental-repeat-guidance"),
         "unexpected error: {err}"
     );
 }

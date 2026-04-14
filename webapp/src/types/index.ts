@@ -194,6 +194,9 @@ export interface SolverParams {
 
 export type Solver2Params = Record<string, never>;
 
+// Webapp-facing solver3 settings intentionally expose only the production/default surface.
+// Research-only search drivers and hotspot/recombination controls stay behind Rust compile-time
+// features and are not part of the normal webapp configuration contract.
 export interface Solver3Params {
   correctness_lane?: Solver3CorrectnessLaneParams;
 }
