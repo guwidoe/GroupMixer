@@ -5,8 +5,9 @@ use crate::models::{
     MemeticBenchmarkTelemetry, MoveFamily, MoveFamilyBenchmarkTelemetry,
     MoveFamilyBenchmarkTelemetrySummary, MovePolicy, ProgressUpdate,
     RepeatGuidedSwapBenchmarkTelemetry, SessionAlignedPathRelinkingBenchmarkTelemetry,
-    SgpWeekPairTabuBenchmarkTelemetry, Solver3LocalImproverMode, Solver3SearchDriverMode,
-    SolverBenchmarkTelemetry, SolverConfiguration, StopReason,
+    SgpWeekPairTabuBenchmarkTelemetry, Solver3LocalImproverMode,
+    Solver3PathRelinkingOperatorVariant, Solver3SearchDriverMode, SolverBenchmarkTelemetry,
+    SolverConfiguration, StopReason,
 };
 use crate::runtime_target::displayed_total_iterations;
 use crate::solver_support::SolverError;
@@ -72,6 +73,7 @@ pub(crate) struct DonorSessionTransplantConfig {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct SessionAlignedPathRelinkingConfig {
+    pub(crate) operator_variant: Solver3PathRelinkingOperatorVariant,
     pub(crate) archive_size: usize,
     pub(crate) recombination_no_improvement_window: u64,
     pub(crate) recombination_cooldown_window: u64,
@@ -666,6 +668,7 @@ impl SearchRunContext {
                     .child_polish_max_stagnation_windows as u64,
             }),
             session_aligned_path_relinking: Some(SessionAlignedPathRelinkingConfig {
+                operator_variant: session_aligned_path_relinking.operator_variant,
                 archive_size: session_aligned_path_relinking.archive_size as usize,
                 recombination_no_improvement_window: session_aligned_path_relinking
                     .recombination_no_improvement_window as u64,
@@ -1157,7 +1160,7 @@ mod tests {
         ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, RepeatEncounterParams,
         Solver3CorrectnessLaneParams, Solver3DonorSessionTransplantParams,
         Solver3HotspotGuidanceParams, Solver3LocalImproverMode, Solver3LocalImproverParams,
-        Solver3Params, Solver3RepeatGuidedSwapParams,
+        Solver3Params, Solver3PathRelinkingOperatorVariant, Solver3RepeatGuidedSwapParams,
         Solver3SessionAlignedPathRelinkingParams, Solver3SearchDriverMode,
         Solver3SearchDriverParams,
         Solver3SgpWeekPairTabuParams, Solver3SgpWeekPairTabuTenureMode,
@@ -1577,6 +1580,10 @@ mod tests {
             Solver3SearchDriverMode::SessionAlignedPathRelinking
         );
         let config = context.session_aligned_path_relinking.unwrap();
+        assert_eq!(
+            config.operator_variant,
+            Solver3PathRelinkingOperatorVariant::SessionAlignedPathRelinking
+        );
         assert_eq!(config.archive_size, 4);
         assert_eq!(config.max_session_imports_per_event, 3);
         assert_eq!(config.path_step_no_improvement_limit, 2);

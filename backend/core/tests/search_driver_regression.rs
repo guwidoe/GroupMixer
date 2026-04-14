@@ -6,8 +6,8 @@ use gm_core::models::{
     PairMeetingCountParams, PairMeetingMode, Person, ProblemDefinition, ProgressCallback,
     RepeatEncounterParams, SimulatedAnnealingParams, Solver3CorrectnessLaneParams,
     Solver3DonorSessionTransplantParams, Solver3LocalImproverMode, Solver3LocalImproverParams,
-    Solver3Params, Solver3SearchDriverMode, Solver3SearchDriverParams,
-    Solver3SessionAlignedPathRelinkingParams,
+    Solver3Params, Solver3PathRelinkingOperatorVariant, Solver3SearchDriverMode,
+    Solver3SearchDriverParams, Solver3SessionAlignedPathRelinkingParams,
     Solver3SgpWeekPairTabuParams, SolverKind, SolverParams, StopReason,
 };
 use gm_core::{
@@ -932,6 +932,49 @@ fn solver3_session_aligned_path_relinking_mode_runs_through_public_entry_point()
         .expect("path relinking telemetry should exist");
     assert!(telemetry.iterations_completed > 0);
     assert!(telemetry.session_aligned_path_relinking.is_some());
+}
+
+#[test]
+fn solver3_random_donor_session_control_runs_through_public_entry_point() {
+    let mut input = solver3_repeat_driver_input();
+    input.solver.solver_params = SolverParams::Solver3(Solver3Params {
+        search_driver: Solver3SearchDriverParams {
+            mode: Solver3SearchDriverMode::SessionAlignedPathRelinking,
+            session_aligned_path_relinking: Solver3SessionAlignedPathRelinkingParams {
+                operator_variant:
+                    Solver3PathRelinkingOperatorVariant::RandomDonorSessionControl,
+                recombination_no_improvement_window: 8,
+                recombination_cooldown_window: 8,
+                max_path_events_per_run: Some(1),
+                max_session_imports_per_event: 2,
+                path_step_no_improvement_limit: 1,
+                child_polish_iterations_per_stagnation_window: 16,
+                child_polish_no_improvement_iterations_per_stagnation_window: 8,
+                child_polish_max_stagnation_windows: 2,
+                archive_size: 5,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        local_improver: Solver3LocalImproverParams {
+            mode: Solver3LocalImproverMode::SgpWeekPairTabu,
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    let result = run_solver(&input).expect("random donor-session control solve should succeed");
+    let telemetry = result
+        .benchmark_telemetry
+        .expect("random donor-session control telemetry should exist");
+    assert!(telemetry.iterations_completed > 0);
+    let path = telemetry
+        .session_aligned_path_relinking
+        .expect("path relinking telemetry should exist");
+    assert_eq!(
+        path.operator_variant,
+        Solver3PathRelinkingOperatorVariant::RandomDonorSessionControl
+    );
 }
 
 #[test]

@@ -210,6 +210,7 @@
         "donor_session_transplant": {
           "type": ["object", "null"],
           "required": [
+            "operator_variant",
             "archive_size",
             "child_polish_local_improver_mode",
             "raw_child_keep_ratio",
@@ -264,6 +265,7 @@
             "child_polish_seconds"
           ],
           "properties": {
+            "operator_variant": { "type": "string" },
             "archive_size": { "type": "integer" },
             "child_polish_local_improver_mode": { "type": ["string", "null"] },
             "raw_child_keep_ratio": { "type": "number" },

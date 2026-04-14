@@ -7,13 +7,14 @@ use std::time::Instant;
 #[cfg(target_arch = "wasm32")]
 use js_sys;
 
+use rand::seq::SliceRandom;
 use rand::{RngExt, SeedableRng};
 use rand_chacha::ChaCha12Rng;
 
 use crate::models::{
     BenchmarkEvent, BenchmarkObserver, ProgressCallback, SessionAlignedPathRelinkingBenchmarkTelemetry,
     SessionAlignedPathRelinkingEventTelemetry, SessionAlignedPathRelinkingStepTelemetry,
-    SolverResult, StopReason,
+    Solver3PathRelinkingOperatorVariant, SolverResult, StopReason,
 };
 use crate::solver_support::SolverError;
 
@@ -324,6 +325,7 @@ pub(crate) fn run(
     let mut aggregate = SearchProgressState::new(current_incumbent.clone());
     aggregate.session_aligned_path_relinking_telemetry =
         Some(SessionAlignedPathRelinkingBenchmarkTelemetry {
+            operator_variant: config.operator_variant,
             archive_size: config.archive_size as u32,
             child_polish_local_improver_mode: Some(run_context.local_improver_mode),
             raw_child_keep_ratio: config.adaptive_raw_child_retention.keep_ratio,
@@ -530,13 +532,43 @@ pub(crate) fn run(
                     .then_with(|| left.base_session_idx.cmp(&right.base_session_idx))
                     .then_with(|| left.donor_session_idx.cmp(&right.donor_session_idx))
             });
+            let mut remaining_base_sessions = remaining_pairs
+                .iter()
+                .map(|pair| pair.base_session_idx)
+                .collect::<Vec<_>>();
+            let mut remaining_donor_sessions = remaining_pairs
+                .iter()
+                .map(|pair| pair.donor_session_idx)
+                .collect::<Vec<_>>();
             let mut best_event_state = None;
             let mut best_event_score = pre_event_incumbent_score;
             let mut event_iterations_consumed = 0u64;
             let mut no_improvement_steps = 0usize;
 
             for _ in 0..config.max_session_imports_per_event {
-                if remaining_pairs.is_empty() {
+                let step_candidates = match config.operator_variant {
+                    Solver3PathRelinkingOperatorVariant::SessionAlignedPathRelinking => {
+                        if remaining_pairs.is_empty() {
+                            break;
+                        }
+                        remaining_pairs.clone()
+                    }
+                    Solver3PathRelinkingOperatorVariant::RandomDonorSessionControl => {
+                        let candidates = build_random_donor_session_candidates(
+                            &current_path_state,
+                            donor,
+                            &remaining_base_sessions,
+                            &remaining_donor_sessions,
+                            config.min_aligned_session_distance_for_relinking,
+                            &mut rng,
+                        )?;
+                        if candidates.is_empty() {
+                            break;
+                        }
+                        candidates
+                    }
+                };
+                if step_candidates.is_empty() {
                     break;
                 }
                 let remaining_iterations = run_context.max_iterations - total_iterations_completed;
@@ -564,7 +596,7 @@ pub(crate) fn run(
                 let mut best_step = None;
                 let mut forced_stop_reason = None;
 
-                for aligned_pair in remaining_pairs.iter().cloned() {
+                for aligned_pair in step_candidates {
                     event_telemetry.steps_attempted += 1;
                     aggregate
                         .session_aligned_path_relinking_telemetry
@@ -699,7 +731,21 @@ pub(crate) fn run(
                 let Some(best_step) = best_step else {
                     break;
                 };
-                remove_aligned_pair(&mut remaining_pairs, &best_step.aligned_pair);
+                match config.operator_variant {
+                    Solver3PathRelinkingOperatorVariant::SessionAlignedPathRelinking => {
+                        remove_aligned_pair(&mut remaining_pairs, &best_step.aligned_pair);
+                    }
+                    Solver3PathRelinkingOperatorVariant::RandomDonorSessionControl => {
+                        remove_session_idx(
+                            &mut remaining_base_sessions,
+                            best_step.aligned_pair.base_session_idx,
+                        );
+                        remove_session_idx(
+                            &mut remaining_donor_sessions,
+                            best_step.aligned_pair.donor_session_idx,
+                        );
+                    }
+                }
                 current_path_state = best_step.polish_outcome.search.best_state.clone();
 
                 if current_path_state.total_score < best_event_score {
@@ -974,9 +1020,51 @@ fn transplant_aligned_session(
     Ok(child)
 }
 
+fn build_random_donor_session_candidates(
+    current_path_state: &RuntimeState,
+    donor: &super::archive::ArchivedElite,
+    remaining_base_sessions: &[usize],
+    remaining_donor_sessions: &[usize],
+    min_distance: u32,
+    rng: &mut ChaCha12Rng,
+) -> Result<Vec<AlignedSessionPair>, SolverError> {
+    let mut shuffled_base_sessions = remaining_base_sessions.to_vec();
+    let mut shuffled_donor_sessions = remaining_donor_sessions.to_vec();
+    shuffled_base_sessions.shuffle(rng);
+    shuffled_donor_sessions.shuffle(rng);
+
+    let mut candidates = Vec::new();
+    for (base_session_idx, donor_session_idx) in shuffled_base_sessions
+        .into_iter()
+        .zip(shuffled_donor_sessions.into_iter())
+    {
+        let structural_distance = session_pairing_distance(
+            current_path_state,
+            base_session_idx,
+            &donor.state,
+            donor_session_idx,
+        )?;
+        if structural_distance < min_distance {
+            continue;
+        }
+        candidates.push(AlignedSessionPair {
+            base_session_idx,
+            donor_session_idx,
+            structural_distance,
+        });
+    }
+    Ok(candidates)
+}
+
 fn remove_aligned_pair(remaining_pairs: &mut Vec<AlignedSessionPair>, chosen: &AlignedSessionPair) {
     if let Some(position) = remaining_pairs.iter().position(|pair| pair == chosen) {
         remaining_pairs.remove(position);
+    }
+}
+
+fn remove_session_idx(remaining_sessions: &mut Vec<usize>, chosen: usize) {
+    if let Some(position) = remaining_sessions.iter().position(|idx| *idx == chosen) {
+        remaining_sessions.remove(position);
     }
 }
 
@@ -1311,17 +1399,20 @@ mod tests {
     use crate::default_solver_configuration_for;
     use crate::models::{
         ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
-        RepeatEncounterParams, SolverKind,
+        RepeatEncounterParams, Solver3PathRelinkingOperatorVariant, SolverKind,
     };
     use crate::solver3::runtime_state::RuntimeState;
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha12Rng;
 
     use super::{
-        align_sessions_by_pairing_distance, build_session_pairing_signature,
-        compare_path_guides, remove_aligned_pair,
-        select_path_guide, session_pairing_distance, sorted_symmetric_difference_count,
-        transplant_aligned_session, AdaptiveRawChildRetentionConfig,
-        AdaptiveRawChildRetentionState, AlignedSessionPair, EliteArchive,
-        PathGuideCandidate, SessionAlignedPathRelinkingConfig, MAX_EXACT_ALIGNMENT_SESSIONS,
+        align_sessions_by_pairing_distance, build_random_donor_session_candidates,
+        build_session_pairing_signature, compare_path_guides, remove_aligned_pair,
+        remove_session_idx, select_path_guide, session_pairing_distance,
+        sorted_symmetric_difference_count, transplant_aligned_session,
+        AdaptiveRawChildRetentionConfig, AdaptiveRawChildRetentionState, AlignedSessionPair,
+        EliteArchive, PathGuideCandidate, SessionAlignedPathRelinkingConfig,
+        MAX_EXACT_ALIGNMENT_SESSIONS,
     };
 
     fn person(id: &str) -> Person {
@@ -1386,6 +1477,7 @@ mod tests {
 
     fn config() -> SessionAlignedPathRelinkingConfig {
         SessionAlignedPathRelinkingConfig {
+            operator_variant: Solver3PathRelinkingOperatorVariant::SessionAlignedPathRelinking,
             archive_size: 4,
             recombination_no_improvement_window: 20,
             recombination_cooldown_window: 10,
@@ -1592,6 +1684,56 @@ mod tests {
         remove_aligned_pair(&mut pairs, &chosen);
         assert_eq!(pairs.len(), 1);
         assert_eq!(pairs[0].base_session_idx, 1);
+    }
+
+    #[test]
+    fn random_donor_session_candidates_use_unique_base_and_donor_sessions() {
+        let base = state_from_schedule(vec![
+            vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+            vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+            vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+        ]);
+        let donor_state = state_from_schedule(vec![
+            vec![vec!["p0", "p2"], vec!["p1", "p3"]],
+            vec![vec!["p0", "p3"], vec!["p1", "p2"]],
+            vec![vec!["p0", "p1"], vec!["p2", "p3"]],
+        ]);
+        let donor = crate::solver3::search::archive::ArchivedElite::from_state(donor_state);
+        let mut rng = ChaCha12Rng::seed_from_u64(7);
+
+        let candidates = build_random_donor_session_candidates(
+            &base,
+            &donor,
+            &[0, 1, 2],
+            &[0, 1, 2],
+            0,
+            &mut rng,
+        )
+        .expect("random donor-session candidates should build");
+
+        assert_eq!(candidates.len(), 3);
+        let mut base_sessions = candidates
+            .iter()
+            .map(|candidate| candidate.base_session_idx)
+            .collect::<Vec<_>>();
+        base_sessions.sort_unstable();
+        base_sessions.dedup();
+        assert_eq!(base_sessions, vec![0, 1, 2]);
+
+        let mut donor_sessions = candidates
+            .iter()
+            .map(|candidate| candidate.donor_session_idx)
+            .collect::<Vec<_>>();
+        donor_sessions.sort_unstable();
+        donor_sessions.dedup();
+        assert_eq!(donor_sessions, vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn remove_session_idx_only_removes_the_selected_session() {
+        let mut sessions = vec![0, 1, 2];
+        remove_session_idx(&mut sessions, 1);
+        assert_eq!(sessions, vec![0, 2]);
     }
 
     #[test]

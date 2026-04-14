@@ -1043,6 +1043,17 @@ pub enum Solver3LocalImproverMode {
     SgpWeekPairTabu,
 }
 
+/// Operator variant for the session-aligned path-relinking research driver.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Solver3PathRelinkingOperatorVariant {
+    /// Structural session alignment plus short greedy corridor walking.
+    #[default]
+    SessionAlignedPathRelinking,
+    /// Matched-budget donor-based control that replaces aligned imports with random donor-session imports.
+    RandomDonorSessionControl,
+}
+
 /// Tenure-sampling mode for the `solver3` SGP week-pair tabu improver.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
@@ -1133,6 +1144,9 @@ impl Default for Solver3DonorSessionTransplantParams {
 /// Config for the rare session-aligned path relinking outer driver.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct Solver3SessionAlignedPathRelinkingParams {
+    /// Operator variant used inside the path-relinking research driver.
+    #[serde(default)]
+    pub operator_variant: Solver3PathRelinkingOperatorVariant,
     /// Maximum number of elites retained in the small archive.
     #[serde(default = "default_solver3_path_relinking_archive_size")]
     pub archive_size: u32,
@@ -1176,6 +1190,7 @@ pub struct Solver3SessionAlignedPathRelinkingParams {
 impl Default for Solver3SessionAlignedPathRelinkingParams {
     fn default() -> Self {
         Self {
+            operator_variant: Solver3PathRelinkingOperatorVariant::default(),
             archive_size: default_solver3_path_relinking_archive_size(),
             recombination_no_improvement_window:
                 default_solver3_path_relinking_no_improvement_window(),
@@ -2107,6 +2122,8 @@ pub struct SessionAlignedPathRelinkingEventTelemetry {
 /// Benchmark telemetry for the session-aligned path relinking outer driver.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
 pub struct SessionAlignedPathRelinkingBenchmarkTelemetry {
+    #[serde(default)]
+    pub operator_variant: Solver3PathRelinkingOperatorVariant,
     #[serde(default)]
     pub archive_size: u32,
     #[serde(default)]
