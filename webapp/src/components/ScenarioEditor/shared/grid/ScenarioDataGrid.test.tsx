@@ -1292,6 +1292,54 @@ describe('ScenarioDataGrid', () => {
     expect(bodyRegion).toHaveStyle({ height: '480px', maxHeight: 'none' });
   });
 
+  it('renders session editor popovers outside the grid viewport to avoid clipping', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ScenarioDataGrid
+        defaultEditMode
+        rows={[{ id: 'rule-1', sessions: undefined as number[] | undefined }]}
+        rowKey={(row) => row.id}
+        columns={[
+          createOptionalSessionScopeColumn({
+            totalSessions: 5,
+            getSessions: (row) => row.sessions,
+            setSessions: (row, sessions) => ({ ...row, sessions }),
+          }),
+        ]}
+      />,
+    );
+
+    const bodyRegion = screen.getByRole('region', { name: /data grid rows/i });
+
+    await user.click(screen.getByRole('button', { name: /edit sessions/i }));
+
+    const popover = screen.getByRole('button', { name: /close edit sessions/i }).closest('[data-grid-popover="true"]');
+    expect(popover).toBeInTheDocument();
+    expect(bodyRegion.contains(popover)).toBe(false);
+    expect(screen.getByRole('radio', { name: /only selected sessions/i })).toBeInTheDocument();
+  });
+
+  it('shows compact session numbers in edit mode without the selected prefix', () => {
+    render(
+      <ScenarioDataGrid
+        defaultEditMode
+        rows={[{ id: 'rule-1', sessions: [0] as number[] | undefined }]}
+        rowKey={(row) => row.id}
+        columns={[
+          createOptionalSessionScopeColumn({
+            totalSessions: 5,
+            getSessions: (row) => row.sessions,
+            setSessions: (row, sessions) => ({ ...row, sessions }),
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /edit sessions/i })).toHaveTextContent(/^1$/);
+    expect(screen.queryByText(/^Selected:/i)).not.toBeInTheDocument();
+  });
+
   it('resets a manual viewport resize when escape is pressed on the handle', () => {
     render(
       <ScenarioDataGrid
