@@ -11,6 +11,7 @@ pub(super) struct SwapCandidate {
     pub(super) right_person: usize,
     pub(super) conflict_positions_after: usize,
     pub(super) repeat_excess_after: i32,
+    pub(super) max_conflict_positions_in_any_week_after: u32,
 }
 
 impl SwapCandidate {
@@ -37,11 +38,15 @@ impl SwapCandidate {
             || (self.conflict_positions_after == other.conflict_positions_after
                 && (self.repeat_excess_after < other.repeat_excess_after
                     || (self.repeat_excess_after == other.repeat_excess_after
-                        && resulting_configuration_is_lexicographically_smaller(
-                            base_schedule,
-                            self,
-                            other,
-                        ))))
+                        && (self.max_conflict_positions_in_any_week_after
+                            < other.max_conflict_positions_in_any_week_after
+                            || (self.max_conflict_positions_in_any_week_after
+                                == other.max_conflict_positions_in_any_week_after
+                                && resulting_configuration_is_lexicographically_smaller(
+                                    base_schedule,
+                                    self,
+                                    other,
+                                ))))))
     }
 }
 
@@ -49,6 +54,7 @@ impl SwapCandidate {
 pub(super) struct SwapPreview {
     pub(super) conflict_positions_after: usize,
     pub(super) repeat_excess_after: i32,
+    pub(super) max_conflict_positions_in_any_week_after: u32,
 }
 
 pub(super) fn position_id_from_coordinates(
@@ -158,6 +164,8 @@ pub(super) fn select_best_swap(
                             right_person,
                             conflict_positions_after: preview.conflict_positions_after,
                             repeat_excess_after: preview.repeat_excess_after,
+                            max_conflict_positions_in_any_week_after: preview
+                                .max_conflict_positions_in_any_week_after,
                         };
 
                         let is_better = match best_candidate {
@@ -211,6 +219,7 @@ pub(super) fn evaluate_swap_preview(
 
     let mut position_deltas: HashMap<usize, i32> = HashMap::new();
     let mut repeat_excess_after = current.repeat_excess;
+    let mut conflict_positions_by_week_after = current.conflict_positions_by_week.clone();
 
     for slot in 0..problem.group_size {
         if slot != left_slot {
@@ -269,15 +278,27 @@ pub(super) fn evaluate_swap_preview(
     for (position, delta) in position_deltas {
         let before = current.incident_counts[position] > 0;
         let after = (i32::from(current.incident_counts[position]) + delta) > 0;
+        let week = position / (problem.num_groups * problem.group_size);
         match (before, after) {
-            (true, false) => new_conflict_positions -= 1,
-            (false, true) => new_conflict_positions += 1,
+            (true, false) => {
+                new_conflict_positions -= 1;
+                conflict_positions_by_week_after[week] -= 1;
+            }
+            (false, true) => {
+                new_conflict_positions += 1;
+                conflict_positions_by_week_after[week] += 1;
+            }
             _ => {}
         }
     }
     SwapPreview {
         conflict_positions_after: new_conflict_positions,
         repeat_excess_after,
+        max_conflict_positions_in_any_week_after: conflict_positions_by_week_after
+            .iter()
+            .copied()
+            .max()
+            .unwrap_or(0),
     }
 }
 
