@@ -11,6 +11,12 @@ use rand_chacha::ChaCha12Rng;
 use std::collections::{HashMap, VecDeque};
 use std::time::Instant;
 
+mod backtracking;
+mod problem;
+
+use backtracking::*;
+use problem::*;
+
 pub const SOLVER4_NOTES: &str =
     "Dedicated pure-SGP solver family implementing the complete Triska/Musliu paper: Section 5 complete backtracking with pattern-driven minimal-freedom set selection, plus Sections 6 and 7 randomized greedy initialization and conflict-position local search. Solver4 strictly accepts only pure zero-repeat Social-Golfer-style scenarios.";
 
@@ -73,7 +79,10 @@ impl SearchEngine {
         params: &crate::models::Solver4Params,
         effective_seed: u64,
     ) -> Result<SolverResult, SolverError> {
-        let pattern = BacktrackingPattern::resolve(problem.group_size, params.backtracking_pattern.as_deref())?;
+        let pattern = BacktrackingPattern::resolve(
+            problem.group_size,
+            params.backtracking_pattern.as_deref(),
+        )?;
         let started_at = Instant::now();
         let all_people: Vec<usize> = (0..problem.num_people).collect();
         let state = PaperConstructionState::empty(problem);
@@ -104,23 +113,26 @@ impl SearchEngine {
         };
 
         let total_seconds = started_at.elapsed().as_secs_f64();
-        let paper_trace = params.diagnostics.capture_paper_trace.then(|| Solver4PaperTrace {
-            mode: Some(Solver4Mode::CompleteBacktracking),
-            backtracking_pattern: Some(pattern.to_string()),
-            initial_schedule: None,
-            initial_conflict_positions: Some(0),
-            initial_conflict_positions_by_week: vec![0; problem.num_weeks],
-            grasp_candidates: vec![],
-            continuation_candidate_index: None,
-            continuation_gamma: None,
-            points: vec![Solver4PaperTracePoint {
-                iteration: stats.nodes_visited,
-                elapsed_seconds: total_seconds,
-                current_conflict_positions: 0,
-                best_conflict_positions: 0,
-                conflict_positions_by_week: vec![0; problem.num_weeks],
-            }],
-        });
+        let paper_trace = params
+            .diagnostics
+            .capture_paper_trace
+            .then(|| Solver4PaperTrace {
+                mode: Some(Solver4Mode::CompleteBacktracking),
+                backtracking_pattern: Some(pattern.to_string()),
+                initial_schedule: None,
+                initial_conflict_positions: Some(0),
+                initial_conflict_positions_by_week: vec![0; problem.num_weeks],
+                grasp_candidates: vec![],
+                continuation_candidate_index: None,
+                continuation_gamma: None,
+                points: vec![Solver4PaperTracePoint {
+                    iteration: stats.nodes_visited,
+                    elapsed_seconds: total_seconds,
+                    current_conflict_positions: 0,
+                    best_conflict_positions: 0,
+                    conflict_positions_by_week: vec![0; problem.num_weeks],
+                }],
+            });
         let telemetry = SolverBenchmarkTelemetry {
             effective_seed,
             move_policy: self
@@ -201,26 +213,29 @@ impl SearchEngine {
             elapsed_seconds: initialization_seconds,
             best_score: initial.paper_objective(),
         }];
-        let mut paper_trace = params.diagnostics.capture_paper_trace.then(|| Solver4PaperTrace {
-            mode: Some(Solver4Mode::GreedyLocalSearch),
-            backtracking_pattern: None,
-            initial_schedule: params
-                .diagnostics
-                .include_initial_schedule_in_trace
-                .then(|| to_api_schedule(problem, &schedule)),
-            initial_conflict_positions: Some(initial.conflict_positions as u64),
-            initial_conflict_positions_by_week: initial.conflict_positions_by_week.clone(),
-            grasp_candidates: vec![],
-            continuation_candidate_index: None,
-            continuation_gamma: None,
-            points: vec![Solver4PaperTracePoint {
-                iteration: 0,
-                elapsed_seconds: initialization_seconds,
-                current_conflict_positions: initial.conflict_positions as u64,
-                best_conflict_positions: initial.conflict_positions as u64,
-                conflict_positions_by_week: initial.conflict_positions_by_week.clone(),
-            }],
-        });
+        let mut paper_trace = params
+            .diagnostics
+            .capture_paper_trace
+            .then(|| Solver4PaperTrace {
+                mode: Some(Solver4Mode::GreedyLocalSearch),
+                backtracking_pattern: None,
+                initial_schedule: params
+                    .diagnostics
+                    .include_initial_schedule_in_trace
+                    .then(|| to_api_schedule(problem, &schedule)),
+                initial_conflict_positions: Some(initial.conflict_positions as u64),
+                initial_conflict_positions_by_week: initial.conflict_positions_by_week.clone(),
+                grasp_candidates: vec![],
+                continuation_candidate_index: None,
+                continuation_gamma: None,
+                points: vec![Solver4PaperTracePoint {
+                    iteration: 0,
+                    elapsed_seconds: initialization_seconds,
+                    current_conflict_positions: initial.conflict_positions as u64,
+                    best_conflict_positions: initial.conflict_positions as u64,
+                    conflict_positions_by_week: initial.conflict_positions_by_week.clone(),
+                }],
+            });
 
         if stop_conditions.should_stop_for_optimal_score(current.paper_objective()) {
             let search_seconds = total_started_at.elapsed().as_secs_f64() - initialization_seconds;
@@ -300,7 +315,10 @@ impl SearchEngine {
                     .map(|candidate| {
                         tabu.record_iteration(
                             iterations,
-                            &[(candidate.week, unordered_pair(candidate.left_person, candidate.right_person))],
+                            &[(
+                                candidate.week,
+                                unordered_pair(candidate.left_person, candidate.right_person),
+                            )],
                             &mut tabu_telemetry,
                         );
                         candidate.schedule
@@ -324,11 +342,8 @@ impl SearchEngine {
                     best_score: best.paper_objective(),
                 });
             }
-            no_improvement_count = next_no_improvement_count(
-                no_improvement_count,
-                improved_current,
-                breakout_applied,
-            );
+            no_improvement_count =
+                next_no_improvement_count(no_improvement_count, improved_current, breakout_applied);
             max_no_improvement_streak = max_no_improvement_streak.max(no_improvement_count);
 
             if let Some(trace) = paper_trace.as_mut() {
@@ -471,529 +486,12 @@ fn should_apply_random_breakout(no_improvement_count: u64) -> bool {
     no_improvement_count == RANDOM_BREAKOUT_AFTER_NO_IMPROVEMENT
 }
 
-fn next_no_improvement_count(
-    previous: u64,
-    improved_best: bool,
-    breakout_applied: bool,
-) -> u64 {
+fn next_no_improvement_count(previous: u64, improved_best: bool, breakout_applied: bool) -> u64 {
     if improved_best || breakout_applied {
         0
     } else {
         previous + 1
     }
-}
-
-#[derive(Debug, Clone)]
-struct PureSgpProblem {
-    people: Vec<String>,
-    groups: Vec<String>,
-    num_people: usize,
-    num_groups: usize,
-    group_size: usize,
-    num_weeks: usize,
-}
-
-impl PureSgpProblem {
-    fn from_input(input: &ApiInput) -> Result<Self, SolverError> {
-        let kind = input
-            .solver
-            .validate_solver_selection()
-            .map_err(SolverError::ValidationError)?;
-        if kind != crate::models::SolverKind::Solver4 {
-            return Err(SolverError::ValidationError(format!(
-                "solver4 expected solver family 'solver4', got '{}'",
-                kind.canonical_id()
-            )));
-        }
-        if input.initial_schedule.is_some() {
-            return Err(SolverError::ValidationError(
-                "solver4 does not accept initial_schedule; it follows the paper algorithms directly"
-                    .into(),
-            ));
-        }
-        if input.construction_seed_schedule.is_some() {
-            return Err(SolverError::ValidationError(
-                "solver4 does not accept construction_seed_schedule; it follows the paper algorithms directly"
-                    .into(),
-            ));
-        }
-
-        let num_weeks = usize::try_from(input.problem.num_sessions).map_err(|_| {
-            SolverError::ValidationError("solver4 num_sessions does not fit usize".into())
-        })?;
-        if num_weeks == 0 {
-            return Err(SolverError::ValidationError(
-                "solver4 requires at least one session".into(),
-            ));
-        }
-        if input.problem.groups.is_empty() {
-            return Err(SolverError::ValidationError(
-                "solver4 requires at least one group".into(),
-            ));
-        }
-        if input.problem.people.is_empty() {
-            return Err(SolverError::ValidationError(
-                "solver4 requires at least one person".into(),
-            ));
-        }
-
-        let first_group = &input.problem.groups[0];
-        if first_group.size == 0 {
-            return Err(SolverError::ValidationError(
-                "solver4 requires positive uniform group size".into(),
-            ));
-        }
-        if first_group.session_sizes.is_some() {
-            return Err(SolverError::ValidationError(
-                "solver4 rejects session-specific capacities; pure SGP requires one fixed group size".into(),
-            ));
-        }
-        let group_size = usize::try_from(first_group.size).map_err(|_| {
-            SolverError::ValidationError("solver4 group size does not fit usize".into())
-        })?;
-
-        for group in &input.problem.groups {
-            if group.session_sizes.is_some() {
-                return Err(SolverError::ValidationError(
-                    "solver4 rejects session-specific capacities; pure SGP requires one fixed group size".into(),
-                ));
-            }
-            if group.size != first_group.size {
-                return Err(SolverError::ValidationError(
-                    "solver4 requires uniform group sizes across all groups".into(),
-                ));
-            }
-        }
-
-        for person in &input.problem.people {
-            if let Some(sessions) = &person.sessions {
-                let expected: Vec<u32> = (0..input.problem.num_sessions).collect();
-                if sessions != &expected {
-                    return Err(SolverError::ValidationError(
-                        "solver4 rejects partial attendance; pure SGP requires every person in every session".into(),
-                    ));
-                }
-            }
-        }
-
-        let num_people = input.problem.people.len();
-        let num_groups = input.problem.groups.len();
-        if num_people != num_groups * group_size {
-            return Err(SolverError::ValidationError(format!(
-                "solver4 requires complete equal partitions each session: {} people != {} groups * size {}",
-                num_people, num_groups, group_size
-            )));
-        }
-
-        validate_pure_sgp_objectives(&input.objectives)?;
-        validate_pure_sgp_constraints(&input.constraints)?;
-
-        Ok(Self {
-            people: input.problem.people.iter().map(|person| person.id.clone()).collect(),
-            groups: input.problem.groups.iter().map(|group| group.id.clone()).collect(),
-            num_people,
-            num_groups,
-            group_size,
-            num_weeks,
-        })
-    }
-
-    fn position_id(&self, week: usize, group: usize, slot: usize) -> usize {
-        ((week * self.num_groups) + group) * self.group_size + slot
-    }
-
-    fn pair_key(&self, left: usize, right: usize) -> usize {
-        let (left, right) = unordered_pair(left, right);
-        left * self.num_people + right
-    }
-}
-
-fn validate_pure_sgp_objectives(objectives: &[Objective]) -> Result<(), SolverError> {
-    for objective in objectives {
-        if objective.r#type != "maximize_unique_contacts" {
-            return Err(SolverError::ValidationError(format!(
-                "solver4 rejects objective '{}'; pure SGP only allows maximize_unique_contacts",
-                objective.r#type
-            )));
-        }
-    }
-    Ok(())
-}
-
-fn validate_pure_sgp_constraints(constraints: &[Constraint]) -> Result<(), SolverError> {
-    let mut repeat_encounter: Option<&RepeatEncounterParams> = None;
-    for constraint in constraints {
-        match constraint {
-            Constraint::RepeatEncounter(params) => {
-                if repeat_encounter.replace(params).is_some() {
-                    return Err(SolverError::ValidationError(
-                        "solver4 allows exactly one RepeatEncounter constraint".into(),
-                    ));
-                }
-            }
-            other => {
-                return Err(SolverError::ValidationError(format!(
-                    "solver4 rejects non-SGP constraint '{:?}'; pure SGP only allows RepeatEncounter",
-                    other
-                )));
-            }
-        }
-    }
-
-    if let Some(params) = repeat_encounter {
-        if params.max_allowed_encounters > 1 {
-            return Err(SolverError::ValidationError(
-                "solver4 requires the zero-repeat canonical encoding: RepeatEncounter.max_allowed_encounters must be 0 or 1"
-                    .into(),
-            ));
-        }
-    }
-    Ok(())
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct BacktrackingPattern {
-    chunks: Vec<usize>,
-}
-
-impl BacktrackingPattern {
-    fn resolve(group_size: usize, raw: Option<&str>) -> Result<Self, SolverError> {
-        match raw {
-            Some(raw) => Self::parse(group_size, raw),
-            None => Ok(Self {
-                chunks: default_backtracking_pattern(group_size),
-            }),
-        }
-    }
-
-    fn parse(group_size: usize, raw: &str) -> Result<Self, SolverError> {
-        let trimmed = raw.trim();
-        if trimmed.is_empty() {
-            return Err(SolverError::ValidationError(
-                "solver4 backtracking_pattern must not be empty".into(),
-            ));
-        }
-        let mut chunks = Vec::new();
-        for token in trimmed.split('-') {
-            let value: usize = token.parse().map_err(|_| {
-                SolverError::ValidationError(format!(
-                    "solver4 backtracking_pattern token '{token}' is not a positive integer"
-                ))
-            })?;
-            if value == 0 {
-                return Err(SolverError::ValidationError(
-                    "solver4 backtracking_pattern tokens must be >= 1".into(),
-                ));
-            }
-            chunks.push(value);
-        }
-        if chunks.iter().sum::<usize>() != group_size {
-            return Err(SolverError::ValidationError(format!(
-                "solver4 backtracking_pattern '{trimmed}' must sum to the group size {group_size}"
-            )));
-        }
-        Ok(Self { chunks })
-    }
-}
-
-impl std::fmt::Display for BacktrackingPattern {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (idx, chunk) in self.chunks.iter().enumerate() {
-            if idx > 0 {
-                write!(f, "-")?;
-            }
-            write!(f, "{chunk}")?;
-        }
-        Ok(())
-    }
-}
-
-fn default_backtracking_pattern(group_size: usize) -> Vec<usize> {
-    let mut chunks = vec![2; group_size / 2];
-    if group_size % 2 == 1 {
-        chunks.push(1);
-    }
-    chunks
-}
-
-#[derive(Debug, Clone)]
-struct PaperConstructionState {
-    schedule: Vec<Vec<Vec<usize>>>,
-    partnered: Vec<Vec<bool>>,
-}
-
-impl PaperConstructionState {
-    fn empty(problem: &PureSgpProblem) -> Self {
-        Self {
-            schedule: vec![vec![Vec::with_capacity(problem.group_size); problem.num_groups]; problem.num_weeks],
-            partnered: vec![vec![false; problem.num_people]; problem.num_people],
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ChunkCandidate {
-    members: Vec<usize>,
-    freedom: usize,
-}
-
-impl ChunkCandidate {
-    fn new(members: Vec<usize>, freedom: usize) -> Self {
-        Self { members, freedom }
-    }
-}
-
-#[derive(Debug, Default)]
-struct CompleteBacktrackingStats {
-    nodes_visited: u64,
-    stop_reason: Option<StopReason>,
-}
-
-fn search_complete_backtracking(
-    problem: &PureSgpProblem,
-    pattern: &BacktrackingPattern,
-    week: usize,
-    group: usize,
-    token_index: usize,
-    remaining: &[usize],
-    state: PaperConstructionState,
-    stop_conditions: &crate::models::StopConditions,
-    started_at: Instant,
-    stats: &mut CompleteBacktrackingStats,
-) -> Option<PaperConstructionState> {
-    if let Some(limit) = stop_conditions.max_iterations {
-        if stats.nodes_visited >= limit {
-            stats.stop_reason = Some(StopReason::MaxIterationsReached);
-            return None;
-        }
-    }
-    if let Some(limit) = stop_conditions.time_limit_seconds {
-        if started_at.elapsed().as_secs() >= limit {
-            stats.stop_reason = Some(StopReason::TimeLimitReached);
-            return None;
-        }
-    }
-
-    if week == problem.num_weeks {
-        return Some(state);
-    }
-    if group == problem.num_groups {
-        debug_assert!(remaining.is_empty());
-        let next_remaining: Vec<usize> = (0..problem.num_people).collect();
-        return search_complete_backtracking(
-            problem,
-            pattern,
-            week + 1,
-            0,
-            0,
-            &next_remaining,
-            state,
-            stop_conditions,
-            started_at,
-            stats,
-        );
-    }
-    if token_index == pattern.chunks.len() {
-        return search_complete_backtracking(
-            problem,
-            pattern,
-            week,
-            group + 1,
-            0,
-            remaining,
-            state,
-            stop_conditions,
-            started_at,
-            stats,
-        );
-    }
-
-    let current_group = &state.schedule[week][group];
-    let chunk_size = pattern.chunks[token_index];
-    let candidates = ordered_chunk_candidates(
-        remaining,
-        current_group,
-        chunk_size,
-        &state.partnered,
-    );
-
-    for candidate in candidates {
-        stats.nodes_visited += 1;
-
-        let mut next_state = state.clone();
-        append_group_chunk(
-            &mut next_state.schedule[week][group],
-            &candidate.members,
-            &mut next_state.partnered,
-        );
-        let next_remaining = remove_chunk(remaining, &candidate.members);
-
-        if let Some(solution) = search_complete_backtracking(
-            problem,
-            pattern,
-            week,
-            group,
-            token_index + 1,
-            &next_remaining,
-            next_state,
-            stop_conditions,
-            started_at,
-            stats,
-        ) {
-            return Some(solution);
-        }
-
-        if stats.stop_reason.is_some() {
-            return None;
-        }
-    }
-
-    None
-}
-
-fn ordered_chunk_candidates(
-    remaining: &[usize],
-    current_group: &[usize],
-    chunk_size: usize,
-    partnered: &[Vec<bool>],
-) -> Vec<ChunkCandidate> {
-    if chunk_size == 1 {
-        let mut singles: Vec<_> = remaining
-            .iter()
-            .copied()
-            .filter(|candidate| compatible_with_group(*candidate, current_group, partnered))
-            .map(|candidate| ChunkCandidate::new(vec![candidate], 0))
-            .collect();
-        singles.sort_by(|left, right| left.members.cmp(&right.members));
-        return singles;
-    }
-
-    let mut collected = Vec::new();
-    let mut scratch = Vec::with_capacity(chunk_size);
-    enumerate_chunk_candidates(
-        remaining,
-        current_group,
-        chunk_size,
-        0,
-        partnered,
-        &mut scratch,
-        &mut collected,
-    );
-    collected.sort_by(|left, right| {
-        left.freedom
-            .cmp(&right.freedom)
-            .then(left.members.cmp(&right.members))
-    });
-    collected
-}
-
-fn enumerate_chunk_candidates(
-    remaining: &[usize],
-    current_group: &[usize],
-    chunk_size: usize,
-    start: usize,
-    partnered: &[Vec<bool>],
-    scratch: &mut Vec<usize>,
-    out: &mut Vec<ChunkCandidate>,
-) {
-    if scratch.len() == chunk_size {
-        if chunk_is_compatible(current_group, scratch, partnered) {
-            out.push(ChunkCandidate::new(
-                scratch.clone(),
-                freedom_of_set(scratch, partnered),
-            ));
-        }
-        return;
-    }
-
-    for idx in start..remaining.len() {
-        scratch.push(remaining[idx]);
-        enumerate_chunk_candidates(
-            remaining,
-            current_group,
-            chunk_size,
-            idx + 1,
-            partnered,
-            scratch,
-            out,
-        );
-        scratch.pop();
-    }
-}
-
-fn chunk_is_compatible(
-    current_group: &[usize],
-    chunk: &[usize],
-    partnered: &[Vec<bool>],
-) -> bool {
-    for &member in chunk {
-        if !compatible_with_group(member, current_group, partnered) {
-            return false;
-        }
-    }
-    for left_idx in 0..chunk.len() {
-        for right_idx in (left_idx + 1)..chunk.len() {
-            if partnered[chunk[left_idx]][chunk[right_idx]] {
-                return false;
-            }
-        }
-    }
-    true
-}
-
-fn compatible_with_group(person: usize, group: &[usize], partnered: &[Vec<bool>]) -> bool {
-    group.iter().all(|member| !partnered[person][*member])
-}
-
-fn append_group_chunk(group: &mut Vec<usize>, chunk: &[usize], partnered: &mut [Vec<bool>]) {
-    let existing_len = group.len();
-    group.extend_from_slice(chunk);
-    for left_idx in 0..group.len() {
-        let start = if left_idx < existing_len {
-            existing_len
-        } else {
-            left_idx + 1
-        };
-        for right_idx in start..group.len() {
-            let left = group[left_idx];
-            let right = group[right_idx];
-            partnered[left][right] = true;
-            partnered[right][left] = true;
-        }
-    }
-}
-
-fn remove_chunk(remaining: &[usize], chunk: &[usize]) -> Vec<usize> {
-    remaining
-        .iter()
-        .copied()
-        .filter(|candidate| !chunk.contains(candidate))
-        .collect()
-}
-
-fn potential_partner_set(person: usize, partnered: &[Vec<bool>]) -> Vec<bool> {
-    (0..partnered.len())
-        .map(|candidate| candidate != person && !partnered[person][candidate])
-        .collect()
-}
-
-fn freedom_of_set(set: &[usize], partnered: &[Vec<bool>]) -> usize {
-    if set.is_empty() {
-        return 0;
-    }
-
-    let num_people = partnered.len();
-    let mut intersection = vec![true; num_people];
-    for &person in set {
-        let potential = potential_partner_set(person, partnered);
-        for candidate in 0..num_people {
-            intersection[candidate] &= potential[candidate];
-        }
-    }
-    for &person in set {
-        intersection[person] = false;
-    }
-    intersection.into_iter().filter(|allowed| *allowed).count()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1086,7 +584,8 @@ fn build_greedy_initial_schedule_internal(
     rng: &mut ChaCha12Rng,
     mut trace: Option<&mut GreedyInitializerTrace>,
 ) -> Vec<Vec<Vec<usize>>> {
-    let mut schedule = vec![vec![Vec::with_capacity(problem.group_size); problem.num_groups]; problem.num_weeks];
+    let mut schedule =
+        vec![vec![Vec::with_capacity(problem.group_size); problem.num_groups]; problem.num_weeks];
     let mut partnered = vec![vec![false; problem.num_people]; problem.num_people];
     let mut selected_pair_penalties = vec![vec![0usize; problem.num_people]; problem.num_people];
 
@@ -1114,11 +613,8 @@ fn build_greedy_initial_schedule_internal(
                 let mut selected_pairs = Vec::with_capacity(pair_slots);
                 for pair_index in 0..pair_slots {
                     let remaining_before = remaining.clone();
-                    let scored_candidates = score_pair_candidates(
-                        &remaining,
-                        &partnered,
-                        &selected_pair_penalties,
-                    );
+                    let scored_candidates =
+                        score_pair_candidates(&remaining, &partnered, &selected_pair_penalties);
                     let chosen = choose_best_pair_from_scores(&scored_candidates, gamma, rng);
                     schedule[week][group_idx].push(chosen.left);
                     schedule[week][group_idx].push(chosen.right);
@@ -1256,7 +752,8 @@ fn enumerate_group_candidates(
         let mut repeat_penalty_count = 0usize;
         for left_idx in 0..scratch.len() {
             for right_idx in (left_idx + 1)..scratch.len() {
-                repeat_penalty_count += selected_pair_penalties[scratch[left_idx]][scratch[right_idx]];
+                repeat_penalty_count +=
+                    selected_pair_penalties[scratch[left_idx]][scratch[right_idx]];
             }
         }
         let adjusted_freedom =
@@ -1300,7 +797,10 @@ fn choose_best_group_candidate(
         .take_while(|candidate| candidate.adjusted_freedom == best_score)
         .count();
     if tied_len > 1 && rng.random::<f64>() < gamma {
-        scored[..tied_len].choose(rng).cloned().unwrap_or_else(|| scored[0].clone())
+        scored[..tied_len]
+            .choose(rng)
+            .cloned()
+            .unwrap_or_else(|| scored[0].clone())
     } else {
         scored[0].clone()
     }
@@ -1472,12 +972,8 @@ struct SwapCandidate {
 
 impl SwapCandidate {
     fn resulting_value_at(&self, position: usize, base_schedule: &[Vec<Vec<usize>>]) -> usize {
-        let left_position = position_id_from_coordinates(
-            base_schedule,
-            self.week,
-            self.left_group,
-            self.left_slot,
-        );
+        let left_position =
+            position_id_from_coordinates(base_schedule, self.week, self.left_group, self.left_slot);
         let right_position = position_id_from_coordinates(
             base_schedule,
             self.week,
@@ -1496,11 +992,7 @@ impl SwapCandidate {
     fn outranks(&self, other: &Self, base_schedule: &[Vec<Vec<usize>>]) -> bool {
         self.conflict_positions_after < other.conflict_positions_after
             || (self.conflict_positions_after == other.conflict_positions_after
-                && resulting_configuration_is_lexicographically_smaller(
-                    base_schedule,
-                    self,
-                    other,
-                ))
+                && resulting_configuration_is_lexicographically_smaller(base_schedule, self, other))
     }
 }
 
@@ -1534,7 +1026,12 @@ fn resulting_configuration_is_lexicographically_smaller(
         position_id_from_coordinates(base_schedule, left.week, left.left_group, left.left_slot),
         position_id_from_coordinates(base_schedule, left.week, left.right_group, left.right_slot),
         position_id_from_coordinates(base_schedule, right.week, right.left_group, right.left_slot),
-        position_id_from_coordinates(base_schedule, right.week, right.right_group, right.right_slot),
+        position_id_from_coordinates(
+            base_schedule,
+            right.week,
+            right.right_group,
+            right.right_slot,
+        ),
     ];
     changed_positions.sort_unstable();
     changed_positions.dedup();
@@ -1879,10 +1376,9 @@ impl WeekTabuLists {
 
     fn prune(&mut self, current_iteration: u64) {
         for week in &mut self.history {
-            while week
-                .front()
-                .is_some_and(|(iteration, _)| iteration + TABU_TENURE_ITERATIONS <= current_iteration)
-            {
+            while week.front().is_some_and(|(iteration, _)| {
+                iteration + TABU_TENURE_ITERATIONS <= current_iteration
+            }) {
                 week.pop_front();
             }
         }
@@ -1908,12 +1404,16 @@ impl WeekTabuLists {
             telemetry.realized_tenure_min = Some(
                 telemetry
                     .realized_tenure_min
-                    .map_or(TABU_TENURE_ITERATIONS, |current| current.min(TABU_TENURE_ITERATIONS)),
+                    .map_or(TABU_TENURE_ITERATIONS, |current| {
+                        current.min(TABU_TENURE_ITERATIONS)
+                    }),
             );
             telemetry.realized_tenure_max = Some(
                 telemetry
                     .realized_tenure_max
-                    .map_or(TABU_TENURE_ITERATIONS, |current| current.max(TABU_TENURE_ITERATIONS)),
+                    .map_or(TABU_TENURE_ITERATIONS, |current| {
+                        current.max(TABU_TENURE_ITERATIONS)
+                    }),
             );
         }
         for (week, pairs) in per_week {
@@ -2119,7 +1619,11 @@ mod tests {
                     let recorded = vec![(candidate.week, pair)];
                     tabu.record_iteration(iteration, &recorded, &mut telemetry);
                     (
-                        Some((candidate.week, candidate.left_person, candidate.right_person)),
+                        Some((
+                            candidate.week,
+                            candidate.left_person,
+                            candidate.right_person,
+                        )),
                         recorded,
                         candidate.schedule,
                     )
@@ -2136,11 +1640,8 @@ mod tests {
             if improved_best {
                 best = current.clone();
             }
-            no_improvement_count = next_no_improvement_count(
-                no_improvement_count,
-                improved_current,
-                breakout_applied,
-            );
+            no_improvement_count =
+                next_no_improvement_count(no_improvement_count, improved_current, breakout_applied);
 
             trace.push(LocalSearchIterationTrace {
                 iteration,
@@ -2375,7 +1876,10 @@ mod tests {
         partnered[0][2] = true;
         partnered[2][0] = true;
         let candidates = ordered_chunk_candidates(&[0, 1, 2, 3], &[], 2, &partnered);
-        let freedoms: Vec<_> = candidates.iter().map(|candidate| candidate.freedom).collect();
+        let freedoms: Vec<_> = candidates
+            .iter()
+            .map(|candidate| candidate.freedom)
+            .collect();
         assert_eq!(freedoms, vec![1, 1, 1, 1, 2]);
         assert_eq!(candidates[0].members, vec![0, 1]);
         assert_eq!(candidates[1].members, vec![0, 3]);
@@ -2427,7 +1931,10 @@ mod tests {
 
         let schedule = build_greedy_initial_schedule(&problem, 0.0, &mut rng);
 
-        assert_eq!(schedule, vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]]);
+        assert_eq!(
+            schedule,
+            vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]]
+        );
     }
 
     #[test]
@@ -2437,7 +1944,10 @@ mod tests {
 
         let (schedule, trace) = build_greedy_initial_schedule_with_trace(&problem, 0.0, &mut rng);
 
-        assert_eq!(schedule, vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]]);
+        assert_eq!(
+            schedule,
+            vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]]
+        );
         assert_eq!(
             trace
                 .pair_steps
@@ -2630,7 +2140,12 @@ mod tests {
             trace
                 .singleton_steps
                 .iter()
-                .map(|step| (step.week, step.group, step.remaining_before.clone(), step.chosen))
+                .map(|step| (
+                    step.week,
+                    step.group,
+                    step.remaining_before.clone(),
+                    step.chosen
+                ))
                 .collect::<Vec<_>>(),
             vec![(0, 0, vec![2], 2), (1, 0, vec![1], 1)]
         );
@@ -2711,12 +2226,30 @@ mod tests {
                     selected_pairs: vec![(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)],
                     singleton: None,
                     penalty_updates: vec![
-                        PairPenaltyUpdate { pair: (0, 1), new_penalty: 1 },
-                        PairPenaltyUpdate { pair: (0, 2), new_penalty: 1 },
-                        PairPenaltyUpdate { pair: (0, 3), new_penalty: 1 },
-                        PairPenaltyUpdate { pair: (1, 2), new_penalty: 1 },
-                        PairPenaltyUpdate { pair: (1, 3), new_penalty: 1 },
-                        PairPenaltyUpdate { pair: (2, 3), new_penalty: 1 },
+                        PairPenaltyUpdate {
+                            pair: (0, 1),
+                            new_penalty: 1
+                        },
+                        PairPenaltyUpdate {
+                            pair: (0, 2),
+                            new_penalty: 1
+                        },
+                        PairPenaltyUpdate {
+                            pair: (0, 3),
+                            new_penalty: 1
+                        },
+                        PairPenaltyUpdate {
+                            pair: (1, 2),
+                            new_penalty: 1
+                        },
+                        PairPenaltyUpdate {
+                            pair: (1, 3),
+                            new_penalty: 1
+                        },
+                        PairPenaltyUpdate {
+                            pair: (2, 3),
+                            new_penalty: 1
+                        },
                     ],
                     partnered_pairs_noted: vec![(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)],
                 },
@@ -2727,12 +2260,30 @@ mod tests {
                     selected_pairs: vec![(4, 5), (4, 6), (4, 7), (5, 6), (5, 7), (6, 7)],
                     singleton: None,
                     penalty_updates: vec![
-                        PairPenaltyUpdate { pair: (4, 5), new_penalty: 1 },
-                        PairPenaltyUpdate { pair: (4, 6), new_penalty: 1 },
-                        PairPenaltyUpdate { pair: (4, 7), new_penalty: 1 },
-                        PairPenaltyUpdate { pair: (5, 6), new_penalty: 1 },
-                        PairPenaltyUpdate { pair: (5, 7), new_penalty: 1 },
-                        PairPenaltyUpdate { pair: (6, 7), new_penalty: 1 },
+                        PairPenaltyUpdate {
+                            pair: (4, 5),
+                            new_penalty: 1
+                        },
+                        PairPenaltyUpdate {
+                            pair: (4, 6),
+                            new_penalty: 1
+                        },
+                        PairPenaltyUpdate {
+                            pair: (4, 7),
+                            new_penalty: 1
+                        },
+                        PairPenaltyUpdate {
+                            pair: (5, 6),
+                            new_penalty: 1
+                        },
+                        PairPenaltyUpdate {
+                            pair: (5, 7),
+                            new_penalty: 1
+                        },
+                        PairPenaltyUpdate {
+                            pair: (6, 7),
+                            new_penalty: 1
+                        },
                     ],
                     partnered_pairs_noted: vec![(4, 5), (4, 6), (4, 7), (5, 6), (5, 7), (6, 7)],
                 },
@@ -2916,10 +2467,10 @@ mod tests {
         assert_eq!(selected.week, 1);
         assert_eq!(selected.left_person, 1);
         assert_eq!(selected.right_person, 2);
-        assert_eq!(selected.schedule, vec![
-            vec![vec![0, 1], vec![2, 3]],
-            vec![vec![0, 2], vec![1, 3]],
-        ]);
+        assert_eq!(
+            selected.schedule,
+            vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]],]
+        );
     }
 
     #[test]
@@ -3132,11 +2683,17 @@ mod tests {
         let trace = simulate_local_search_iterations(&problem, &schedule, Some(0), 7, 5);
 
         assert_eq!(
-            trace.iter().map(|step| step.breakout_applied).collect::<Vec<_>>(),
+            trace
+                .iter()
+                .map(|step| step.breakout_applied)
+                .collect::<Vec<_>>(),
             vec![false, false, false, false, false, false, true]
         );
         assert_eq!(
-            trace.iter().map(|step| step.no_improvement_count).collect::<Vec<_>>(),
+            trace
+                .iter()
+                .map(|step| step.no_improvement_count)
+                .collect::<Vec<_>>(),
             vec![0, 0, 1, 2, 3, 4, 0]
         );
         assert_eq!(trace[0].selected_swap, Some((2, 1, 2)));
