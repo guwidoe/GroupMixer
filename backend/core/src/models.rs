@@ -597,8 +597,9 @@ pub enum SolverKind {
     /// Bootstrap scaffold for the `solver3` performance-oriented dense-state solver family.
     /// Solve paths are not yet implemented; registration is truthful metadata only.
     Solver3,
-    /// Dedicated pure-SGP solver family following the Triska/Musliu paper's Sections 6 and 7.
-    /// Section 5 complete backtracking/pattern search is not implemented yet.
+    /// Dedicated pure-SGP solver family implementing the Triska/Musliu paper: Section 5 complete
+    /// backtracking with patterns, plus Sections 6 and 7 randomized greedy initialization and
+    /// conflict-position local search.
     Solver4,
 }
 
@@ -1031,30 +1032,83 @@ pub struct Solver3Params {
     pub hotspot_guidance: Solver3HotspotGuidanceParams,
 }
 
+/// Explicit algorithm branch selection for `solver4`.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Solver4Mode {
+    /// Paper Sections 6 and 7: randomized greedy initialization plus conflict-position local
+    /// search.
+    #[default]
+    GreedyLocalSearch,
+    /// Paper Section 5: complete backtracking guided by minimal freedom with a configurable
+    /// pattern per group.
+    CompleteBacktracking,
+}
+
+/// Optional diagnostics controls for `solver4`.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+pub struct Solver4DiagnosticsParams {
+    /// When true, record solver4-specific paper-trace diagnostics in benchmark telemetry.
+    #[serde(default)]
+    pub capture_paper_trace: bool,
+    /// Record at most one trace point every N iterations in greedy-local-search mode.
+    #[serde(default = "default_solver4_trace_every_n_iterations")]
+    pub trace_every_n_iterations: u64,
+    /// When paper-trace capture is enabled, include the greedy initial schedule in telemetry.
+    #[serde(default)]
+    pub include_initial_schedule_in_trace: bool,
+}
+
+impl Default for Solver4DiagnosticsParams {
+    fn default() -> Self {
+        Self {
+            capture_paper_trace: false,
+            trace_every_n_iterations: default_solver4_trace_every_n_iterations(),
+            include_initial_schedule_in_trace: false,
+        }
+    }
+}
+
 /// Parameters for the internal `solver4` family.
 ///
-/// `solver4` is intentionally narrow: it targets pure Social-Golfer-style scenarios and currently
-/// implements the Triska/Musliu paper's Sections 6 and 7 (randomized greedy initialization plus
-/// conflict-position local search). The Section 5 complete backtracking/pattern-search branch is
-/// not implemented yet.
+/// `solver4` is intentionally narrow: it targets the pure zero-repeat Social-Golfer family from
+/// the Triska/Musliu paper and now exposes both paper branches:
+/// - Section 5 complete backtracking with pattern-driven minimal-freedom set selection
+/// - Sections 6 and 7 randomized greedy initialization plus conflict-position local search
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct Solver4Params {
+    /// Which paper branch to execute.
+    #[serde(default)]
+    pub mode: Solver4Mode,
     /// Probability of randomizing among equal maximal-freedom pair choices in the paper-style
     /// initializer.
     #[serde(default = "default_solver4_gamma")]
     pub gamma: f64,
+    /// Optional Section 5 backtracking pattern such as `3`, `2-2`, `4`, or `3-2-2-1`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backtracking_pattern: Option<String>,
+    /// Optional solver4-specific trace capture.
+    #[serde(default)]
+    pub diagnostics: Solver4DiagnosticsParams,
 }
 
 impl Default for Solver4Params {
     fn default() -> Self {
         Self {
+            mode: Solver4Mode::default(),
             gamma: default_solver4_gamma(),
+            backtracking_pattern: None,
+            diagnostics: Solver4DiagnosticsParams::default(),
         }
     }
 }
 
 fn default_solver4_gamma() -> f64 {
     0.0
+}
+
+fn default_solver4_trace_every_n_iterations() -> u64 {
+    1
 }
 
 /// Construction controls for `solver3`.
@@ -2507,6 +2561,38 @@ pub struct SgpWeekPairTabuBenchmarkTelemetry {
     pub realized_tenure_max: Option<u64>,
 }
 
+/// One recorded solver4 paper-trace sample.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
+pub struct Solver4PaperTracePoint {
+    #[serde(default)]
+    pub iteration: u64,
+    #[serde(default)]
+    pub elapsed_seconds: f64,
+    #[serde(default)]
+    pub current_conflict_positions: u64,
+    #[serde(default)]
+    pub best_conflict_positions: u64,
+    #[serde(default)]
+    pub conflict_positions_by_week: Vec<u32>,
+}
+
+/// Solver4-specific paper-conformance telemetry for trajectory inspection.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
+pub struct Solver4PaperTrace {
+    #[serde(default)]
+    pub mode: Option<Solver4Mode>,
+    #[serde(default)]
+    pub backtracking_pattern: Option<String>,
+    #[serde(default)]
+    pub initial_schedule: Option<ApiSchedule>,
+    #[serde(default)]
+    pub initial_conflict_positions: Option<u64>,
+    #[serde(default)]
+    pub initial_conflict_positions_by_week: Vec<u32>,
+    #[serde(default)]
+    pub points: Vec<Solver4PaperTracePoint>,
+}
+
 /// End-of-run benchmark telemetry intended for regression / benchmark artifacts.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct SolverBenchmarkTelemetry {
@@ -2552,6 +2638,8 @@ pub struct SolverBenchmarkTelemetry {
     #[serde(default)]
     pub multi_root_balanced_session_inheritance:
         Option<MultiRootBalancedSessionInheritanceBenchmarkTelemetry>,
+    #[serde(default)]
+    pub solver4_paper_trace: Option<Solver4PaperTrace>,
     pub moves: MoveFamilyBenchmarkTelemetrySummary,
 }
 

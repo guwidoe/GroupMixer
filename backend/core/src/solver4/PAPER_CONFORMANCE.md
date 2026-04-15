@@ -1,6 +1,6 @@
 # Solver4 paper conformance gate
 
-`solver4` is intended to be judged against the Triska/Musliu paper's anchor instances, not only by code-shape similarity.
+`solver4` is judged against the Triska/Musliu paper by **behavior** on anchor instances, not only by code shape.
 
 ## Anchor mapping used in this repo
 
@@ -10,23 +10,45 @@
   - `canonical_case_id: stretch.social-golfer-32x8x10`
 - **8-4-10** → `backend/benchmarking/cases/stretch/social_golfer_32x8x10.json`
 
-## Conformance suite
+## Required suites
+
+### Section 5 complete-search anchors
+
+- `backend/benchmarking/suites/solver4-section5-paper-anchors.yaml`
+
+This suite checks the complete-backtracking branch on the paper's cited pattern results:
+
+- `5-3-7` with pattern `3`
+- `8-4-9` with pattern `2-2`
+- `8-4-9` with pattern `4`
+
+### Sections 6/7 local-search anchors
 
 - `backend/benchmarking/suites/solver4-paper-anchor-conformance.yaml`
 
-This suite contains:
-- a **gamma = 0** multiseed sweep for all three anchors
-- a small **gamma sweep** (`0.05`, `0.1`, `0.2`) on a reference seed for all three anchors
+This suite checks the randomized greedy + local-search branch with:
 
-## Acceptance gate before claiming behavioral paper fidelity
+- a `gamma = 0` multiseed sweep
+- a small gamma sweep (`0.05`, `0.1`, `0.2`)
+- solver4 paper-trace diagnostics enabled for trajectory inspection
 
-1. **External validation must pass** on every case in the suite.
-2. Under the paper-style budgets in the suite:
-   - the **5-3-7** anchor should solve
-   - the **8-4-9** anchor should solve
-3. `8-4-10` remains a meaningful stretch diagnostic, but failure there does not by itself prove the Sections 6/7 implementation is wrong.
-4. If any solver4 search change claims improved faithfulness, rerun this suite first.
+## Acceptance gate before claiming paper completeness
+
+1. **External validation must pass** on every case in both suites.
+2. **Section 5 branch** must solve its anchor obligations:
+   - `5-3-7` with pattern `3`
+   - `8-4-9` with pattern `2-2` and/or `4`
+3. **Sections 6/7 branch** must solve:
+   - `5-3-7`
+   - `8-4-9`
+4. `8-4-10` remains a meaningful stretch diagnostic for the Sections 6/7 path.
+5. If any solver4 change claims improved paper fidelity, rerun the relevant suite(s) first.
 
 ## Why this gate exists
 
-The paper's strongest practical claim is not only that the heuristic is "paper-shaped", but that the randomized greedy initializer plus the Section 7 local search solve the small anchor instances reliably and quickly. This suite is the repo's explicit checkpoint for that claim.
+The paper makes two distinct algorithmic claims:
+
+- the **Section 5** freedom-guided complete search matches strong exact-search anchor results
+- the **Sections 6/7** greedy initializer + tabu local search changes the search trajectory enough to solve anchors that plain local search misses
+
+`solver4` should not be described as paper-complete unless both claims are supported by benchmark evidence.

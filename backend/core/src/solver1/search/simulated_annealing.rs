@@ -1846,6 +1846,7 @@ impl Solver for SimulatedAnnealing {
             donor_session_transplant: None,
             session_aligned_path_relinking: None,
             multi_root_balanced_session_inheritance: None,
+            solver4_paper_trace: None,
             moves: benchmark_moves.into_summary(),
         };
 

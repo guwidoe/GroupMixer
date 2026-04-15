@@ -376,7 +376,7 @@ const LIST_SOLVERS_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
         "supports_recommended_settings": true,
         "supports_deterministic_seed": true
       },
-      "notes": "Dedicated pure-SGP solver family following the Triska/Musliu paper's Sections 6 and 7: strict Social-Golfer-only capability gating, randomized greedy initialization, and conflict-position local search with week-local swapped-player tabu memory. Solver4 does not yet implement the paper's Section 5 complete backtracking/pattern-search branch."
+      "notes": "Dedicated pure-SGP solver family implementing the complete Triska/Musliu paper: Section 5 complete backtracking with pattern-driven minimal-freedom set selection, plus Sections 6 and 7 randomized greedy initialization and conflict-position local search. Solver4 strictly accepts only pure zero-repeat Social-Golfer-style scenarios."
     }
   ]
 }"#,

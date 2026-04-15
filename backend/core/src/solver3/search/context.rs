@@ -1481,6 +1481,7 @@ impl SearchProgressState {
             multi_root_balanced_session_inheritance: self
                 .multi_root_balanced_session_inheritance_telemetry
                 .clone(),
+            solver4_paper_trace: None,
             moves: self.move_metrics.clone(),
         }
     }

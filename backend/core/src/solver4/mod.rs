@@ -1,16 +1,18 @@
 use crate::models::{
-    ApiInput, ApiSchedule, Constraint, Objective, RepeatEncounterParams,
-    SolverBenchmarkTelemetry, SolverConfiguration, SolverKind, SolverResult, StopReason,
+    ApiInput, ApiSchedule, Constraint, MoveFamilyBenchmarkTelemetrySummary, MovePolicy, Objective,
+    RepeatEncounterParams, SgpWeekPairTabuBenchmarkTelemetry, Solver4Mode, Solver4PaperTrace,
+    Solver4PaperTracePoint, SolverBenchmarkTelemetry, SolverConfiguration, SolverKind,
+    SolverResult, StopReason,
 };
 use crate::solver2::{scoring::FullScoreSnapshot, SolutionState};
 use crate::solver_support::SolverError;
 use rand::{prelude::IndexedRandom, RngExt, SeedableRng};
 use rand_chacha::ChaCha12Rng;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::time::Instant;
 
 pub const SOLVER4_NOTES: &str =
-    "Dedicated pure-SGP solver family following the Triska/Musliu paper's Sections 6 and 7: strict Social-Golfer-only capability gating, randomized greedy initialization, and conflict-position local search with week-local swapped-player tabu memory. Solver4 does not yet implement the paper's Section 5 complete backtracking/pattern-search branch.";
+    "Dedicated pure-SGP solver family implementing the complete Triska/Musliu paper: Section 5 complete backtracking with pattern-driven minimal-freedom set selection, plus Sections 6 and 7 randomized greedy initialization and conflict-position local search. Solver4 strictly accepts only pure zero-repeat Social-Golfer-style scenarios.";
 
 const DEFAULT_SOLVER4_SEED: u64 = 42;
 const PAPER_PAIR_REPEAT_PENALTY: i64 = 1_000_000;
@@ -45,31 +47,207 @@ impl SearchEngine {
                 "solver4 gamma must be within [0.0, 1.0]".into(),
             ));
         }
+        if params.diagnostics.trace_every_n_iterations == 0 {
+            return Err(SolverError::ValidationError(
+                "solver4 trace_every_n_iterations must be >= 1".into(),
+            ));
+        }
 
         let effective_seed = self.configuration.seed.unwrap_or(DEFAULT_SOLVER4_SEED);
         let mut rng = ChaCha12Rng::seed_from_u64(effective_seed);
-        let started_at = Instant::now();
 
-        let mut schedule = build_greedy_initial_schedule(&problem, params.gamma, &mut rng);
-        let mut current = EvaluatedSchedule::from_schedule(&problem, schedule.clone());
+        match params.mode {
+            Solver4Mode::GreedyLocalSearch => {
+                self.solve_greedy_local_search(input, &problem, &params, effective_seed, &mut rng)
+            }
+            Solver4Mode::CompleteBacktracking => {
+                self.solve_complete_backtracking(input, &problem, &params, effective_seed)
+            }
+        }
+    }
+
+    fn solve_complete_backtracking(
+        &self,
+        input: &ApiInput,
+        problem: &PureSgpProblem,
+        params: &crate::models::Solver4Params,
+        effective_seed: u64,
+    ) -> Result<SolverResult, SolverError> {
+        let pattern = BacktrackingPattern::resolve(problem.group_size, params.backtracking_pattern.as_deref())?;
+        let started_at = Instant::now();
+        let all_people: Vec<usize> = (0..problem.num_people).collect();
+        let state = PaperConstructionState::empty(problem);
+        let mut stats = CompleteBacktrackingStats::default();
+        let stop_conditions = &self.configuration.stop_conditions;
+
+        let solved = search_complete_backtracking(
+            problem,
+            &pattern,
+            0,
+            0,
+            0,
+            &all_people,
+            state,
+            stop_conditions,
+            started_at,
+            &mut stats,
+        );
+
+        let Some(solution) = solved else {
+            let reason = stats
+                .stop_reason
+                .map(stop_reason_name)
+                .unwrap_or("backtracking_exhausted_without_solution");
+            return Err(SolverError::ValidationError(format!(
+                "solver4 Section 5 complete backtracking did not find a conflict-free schedule: {reason}"
+            )));
+        };
+
+        let total_seconds = started_at.elapsed().as_secs_f64();
+        let paper_trace = params.diagnostics.capture_paper_trace.then(|| Solver4PaperTrace {
+            mode: Some(Solver4Mode::CompleteBacktracking),
+            backtracking_pattern: Some(pattern.to_string()),
+            initial_schedule: None,
+            initial_conflict_positions: Some(0),
+            initial_conflict_positions_by_week: vec![0; problem.num_weeks],
+            points: vec![Solver4PaperTracePoint {
+                iteration: stats.nodes_visited,
+                elapsed_seconds: total_seconds,
+                current_conflict_positions: 0,
+                best_conflict_positions: 0,
+                conflict_positions_by_week: vec![0; problem.num_weeks],
+            }],
+        });
+        let telemetry = SolverBenchmarkTelemetry {
+            effective_seed,
+            move_policy: self
+                .configuration
+                .move_policy
+                .clone()
+                .unwrap_or_else(MovePolicy::default),
+            stop_reason: StopReason::OptimalScoreReached,
+            iterations_completed: stats.nodes_visited,
+            no_improvement_count: 0,
+            max_no_improvement_streak: 0,
+            reheats_performed: 0,
+            accepted_uphill_moves: 0,
+            accepted_downhill_moves: 0,
+            accepted_neutral_moves: 0,
+            restart_count: None,
+            perturbation_count: Some(0),
+            initial_score: 0.0,
+            best_score: 0.0,
+            final_score: 0.0,
+            initialization_seconds: total_seconds,
+            search_seconds: 0.0,
+            finalization_seconds: 0.0,
+            total_seconds,
+            iterations_per_second: if total_seconds > 0.0 {
+                stats.nodes_visited as f64 / total_seconds
+            } else {
+                0.0
+            },
+            best_score_timeline: vec![],
+            repeat_guided_swaps: Default::default(),
+            sgp_week_pair_tabu: None,
+            memetic: None,
+            donor_session_transplant: None,
+            session_aligned_path_relinking: None,
+            multi_root_balanced_session_inheritance: None,
+            solver4_paper_trace: paper_trace,
+            moves: MoveFamilyBenchmarkTelemetrySummary::default(),
+        };
+
+        build_solver_result(
+            input,
+            problem,
+            &solution.schedule,
+            0,
+            effective_seed,
+            StopReason::OptimalScoreReached,
+            Some(telemetry),
+        )
+    }
+
+    fn solve_greedy_local_search(
+        &self,
+        input: &ApiInput,
+        problem: &PureSgpProblem,
+        params: &crate::models::Solver4Params,
+        effective_seed: u64,
+        rng: &mut ChaCha12Rng,
+    ) -> Result<SolverResult, SolverError> {
+        let stop_conditions = &self.configuration.stop_conditions;
+        let total_started_at = Instant::now();
+        let initialization_started_at = Instant::now();
+
+        let mut schedule = build_greedy_initial_schedule(problem, params.gamma, rng);
+        let initialization_seconds = initialization_started_at.elapsed().as_secs_f64();
+        let mut current = EvaluatedSchedule::from_schedule(problem, schedule.clone());
+        let initial = current.clone();
         let mut best = current.clone();
         let mut best_schedule = schedule.clone();
         let mut no_improvement_count = 0u64;
         let mut iterations = 0u64;
+        let mut max_no_improvement_streak = 0u64;
+        let mut breakout_count = 0u64;
         let mut tabu = WeekTabuLists::new(problem.num_weeks);
-        let stop_conditions = &self.configuration.stop_conditions;
+        let mut tabu_telemetry = SgpWeekPairTabuBenchmarkTelemetry::default();
+        let mut best_score_timeline = vec![crate::models::BestScoreTimelinePoint {
+            iteration: 0,
+            elapsed_seconds: initialization_seconds,
+            best_score: initial.paper_objective(),
+        }];
+        let mut paper_trace = params.diagnostics.capture_paper_trace.then(|| Solver4PaperTrace {
+            mode: Some(Solver4Mode::GreedyLocalSearch),
+            backtracking_pattern: None,
+            initial_schedule: params
+                .diagnostics
+                .include_initial_schedule_in_trace
+                .then(|| to_api_schedule(problem, &schedule)),
+            initial_conflict_positions: Some(initial.conflict_positions as u64),
+            initial_conflict_positions_by_week: initial.conflict_positions_by_week.clone(),
+            points: vec![Solver4PaperTracePoint {
+                iteration: 0,
+                elapsed_seconds: initialization_seconds,
+                current_conflict_positions: initial.conflict_positions as u64,
+                best_conflict_positions: initial.conflict_positions as u64,
+                conflict_positions_by_week: initial.conflict_positions_by_week.clone(),
+            }],
+        });
 
         if stop_conditions.should_stop_for_optimal_score(current.paper_objective()) {
+            let search_seconds = total_started_at.elapsed().as_secs_f64() - initialization_seconds;
+            let telemetry = build_local_search_telemetry(
+                &self.configuration,
+                effective_seed,
+                StopReason::OptimalScoreReached,
+                iterations,
+                no_improvement_count,
+                max_no_improvement_streak,
+                breakout_count,
+                initial.paper_objective(),
+                best.paper_objective(),
+                current.paper_objective(),
+                initialization_seconds,
+                search_seconds,
+                0.0,
+                &best_score_timeline,
+                Some(tabu_telemetry),
+                paper_trace,
+            );
             return build_solver_result(
                 input,
-                &problem,
+                problem,
                 &best_schedule,
                 no_improvement_count,
                 effective_seed,
                 StopReason::OptimalScoreReached,
+                Some(telemetry),
             );
         }
 
+        let search_started_at = Instant::now();
         let stop_reason = loop {
             if let Some(limit) = stop_conditions.max_iterations {
                 if iterations >= limit {
@@ -77,7 +255,7 @@ impl SearchEngine {
                 }
             }
             if let Some(limit) = stop_conditions.time_limit_seconds {
-                if started_at.elapsed().as_secs() >= limit {
+                if total_started_at.elapsed().as_secs() >= limit {
                     break StopReason::TimeLimitReached;
                 }
             }
@@ -92,14 +270,24 @@ impl SearchEngine {
 
             let breakout_applied = should_apply_random_breakout(no_improvement_count);
             let next_schedule = if breakout_applied {
-                apply_random_breakout(&problem, &schedule, &mut rng, &mut tabu, iterations)
+                breakout_count += 1;
+                apply_random_breakout(problem, &schedule, rng, &mut tabu, iterations, &mut tabu_telemetry)
             } else {
-                select_best_swap(&problem, &schedule, &current, &best, &tabu, iterations)
+                let selection = select_best_swap(
+                    problem,
+                    &schedule,
+                    &current,
+                    &best,
+                    &mut tabu,
+                    iterations,
+                    &mut tabu_telemetry,
+                );
+                selection
                     .map(|candidate| {
-                        tabu.record(
-                            candidate.week,
-                            unordered_pair(candidate.left_person, candidate.right_person),
-                            iterations + TABU_TENURE_ITERATIONS,
+                        tabu.record_iteration(
+                            iterations,
+                            &[(candidate.week, unordered_pair(candidate.left_person, candidate.right_person))],
+                            &mut tabu_telemetry,
                         );
                         candidate.schedule
                     })
@@ -107,23 +295,36 @@ impl SearchEngine {
             };
 
             schedule = next_schedule;
-            current = EvaluatedSchedule::from_schedule(&problem, schedule.clone());
+            current = EvaluatedSchedule::from_schedule(problem, schedule.clone());
             iterations += 1;
 
-            if current.conflict_positions < best.conflict_positions {
+            let improved_best = current.conflict_positions < best.conflict_positions;
+            if improved_best {
                 best = current.clone();
                 best_schedule = schedule.clone();
-                no_improvement_count = next_no_improvement_count(
-                    no_improvement_count,
-                    true,
-                    breakout_applied,
-                );
-            } else {
-                no_improvement_count = next_no_improvement_count(
-                    no_improvement_count,
-                    false,
-                    breakout_applied,
-                );
+                best_score_timeline.push(crate::models::BestScoreTimelinePoint {
+                    iteration: iterations,
+                    elapsed_seconds: total_started_at.elapsed().as_secs_f64(),
+                    best_score: best.paper_objective(),
+                });
+            }
+            no_improvement_count = next_no_improvement_count(
+                no_improvement_count,
+                improved_best,
+                breakout_applied,
+            );
+            max_no_improvement_streak = max_no_improvement_streak.max(no_improvement_count);
+
+            if let Some(trace) = paper_trace.as_mut() {
+                if improved_best || iterations % params.diagnostics.trace_every_n_iterations == 0 {
+                    trace.points.push(Solver4PaperTracePoint {
+                        iteration: iterations,
+                        elapsed_seconds: total_started_at.elapsed().as_secs_f64(),
+                        current_conflict_positions: current.conflict_positions as u64,
+                        best_conflict_positions: best.conflict_positions as u64,
+                        conflict_positions_by_week: current.conflict_positions_by_week.clone(),
+                    });
+                }
             }
 
             if stop_conditions.should_stop_for_optimal_score(best.paper_objective()) {
@@ -131,21 +332,126 @@ impl SearchEngine {
             }
         };
 
+        if let Some(trace) = paper_trace.as_mut() {
+            let needs_final_point = trace
+                .points
+                .last()
+                .is_none_or(|point| point.iteration != iterations);
+            if needs_final_point {
+                trace.points.push(Solver4PaperTracePoint {
+                    iteration: iterations,
+                    elapsed_seconds: total_started_at.elapsed().as_secs_f64(),
+                    current_conflict_positions: current.conflict_positions as u64,
+                    best_conflict_positions: best.conflict_positions as u64,
+                    conflict_positions_by_week: current.conflict_positions_by_week.clone(),
+                });
+            }
+        }
+
+        let search_seconds = search_started_at.elapsed().as_secs_f64();
+        let finalization_started_at = Instant::now();
+        let finalization_seconds = finalization_started_at.elapsed().as_secs_f64();
+        let telemetry = build_local_search_telemetry(
+            &self.configuration,
+            effective_seed,
+            stop_reason,
+            iterations,
+            no_improvement_count,
+            max_no_improvement_streak,
+            breakout_count,
+            initial.paper_objective(),
+            best.paper_objective(),
+            current.paper_objective(),
+            initialization_seconds,
+            search_seconds,
+            finalization_seconds,
+            &best_score_timeline,
+            Some(tabu_telemetry),
+            paper_trace,
+        );
+
         build_solver_result(
             input,
-            &problem,
+            problem,
             &best_schedule,
             no_improvement_count,
             effective_seed,
             stop_reason,
+            Some(telemetry),
         )
     }
 }
 
+fn stop_reason_name(reason: StopReason) -> &'static str {
+    match reason {
+        StopReason::MaxIterationsReached => "max_iterations_reached",
+        StopReason::TimeLimitReached => "time_limit_reached",
+        StopReason::NoImprovementLimitReached => "no_improvement_limit_reached",
+        StopReason::ProgressCallbackRequestedStop => "progress_callback_requested_stop",
+        StopReason::OptimalScoreReached => "optimal_score_reached",
+    }
+}
+
+fn build_local_search_telemetry(
+    configuration: &SolverConfiguration,
+    effective_seed: u64,
+    stop_reason: StopReason,
+    iterations: u64,
+    no_improvement_count: u64,
+    max_no_improvement_streak: u64,
+    breakout_count: u64,
+    initial_score: f64,
+    best_score: f64,
+    final_score: f64,
+    initialization_seconds: f64,
+    search_seconds: f64,
+    finalization_seconds: f64,
+    best_score_timeline: &[crate::models::BestScoreTimelinePoint],
+    sgp_tabu: Option<SgpWeekPairTabuBenchmarkTelemetry>,
+    paper_trace: Option<Solver4PaperTrace>,
+) -> SolverBenchmarkTelemetry {
+    let total_seconds = initialization_seconds + search_seconds + finalization_seconds;
+    SolverBenchmarkTelemetry {
+        effective_seed,
+        move_policy: configuration
+            .move_policy
+            .clone()
+            .unwrap_or_else(MovePolicy::default),
+        stop_reason,
+        iterations_completed: iterations,
+        no_improvement_count,
+        max_no_improvement_streak,
+        reheats_performed: 0,
+        accepted_uphill_moves: 0,
+        accepted_downhill_moves: 0,
+        accepted_neutral_moves: iterations.saturating_sub(breakout_count),
+        restart_count: None,
+        perturbation_count: Some(breakout_count),
+        initial_score,
+        best_score,
+        final_score,
+        initialization_seconds,
+        search_seconds,
+        finalization_seconds,
+        total_seconds,
+        iterations_per_second: if search_seconds > 0.0 {
+            iterations as f64 / search_seconds
+        } else {
+            0.0
+        },
+        best_score_timeline: best_score_timeline.to_vec(),
+        repeat_guided_swaps: Default::default(),
+        sgp_week_pair_tabu: sgp_tabu,
+        memetic: None,
+        donor_session_transplant: None,
+        session_aligned_path_relinking: None,
+        multi_root_balanced_session_inheritance: None,
+        solver4_paper_trace: paper_trace,
+        moves: MoveFamilyBenchmarkTelemetrySummary::default(),
+    }
+}
+
 fn should_apply_random_breakout(no_improvement_count: u64) -> bool {
-    // Paper Section 7 says that after 4 non-improving iterations, two random swaps are made.
-    // We therefore trigger exactly when the streak reaches 4 and reset the streak after that
-    // breakout iteration, instead of perturbing on every subsequent iteration.
     no_improvement_count == RANDOM_BREAKOUT_AFTER_NO_IMPROVEMENT
 }
 
@@ -185,12 +491,14 @@ impl PureSgpProblem {
         }
         if input.initial_schedule.is_some() {
             return Err(SolverError::ValidationError(
-                "solver4 does not accept initial_schedule; it uses the paper's randomized greedy initializer explicitly".into(),
+                "solver4 does not accept initial_schedule; it follows the paper algorithms directly"
+                    .into(),
             ));
         }
         if input.construction_seed_schedule.is_some() {
             return Err(SolverError::ValidationError(
-                "solver4 does not accept construction_seed_schedule; it uses the paper's randomized greedy initializer explicitly".into(),
+                "solver4 does not accept construction_seed_schedule; it follows the paper algorithms directly"
+                    .into(),
             ));
         }
 
@@ -303,7 +611,7 @@ fn validate_pure_sgp_constraints(constraints: &[Constraint]) -> Result<(), Solve
             Constraint::RepeatEncounter(params) => {
                 if repeat_encounter.replace(params).is_some() {
                     return Err(SolverError::ValidationError(
-                        "solver4 allows at most one RepeatEncounter constraint".into(),
+                        "solver4 allows exactly one RepeatEncounter constraint".into(),
                     ));
                 }
             }
@@ -315,7 +623,361 @@ fn validate_pure_sgp_constraints(constraints: &[Constraint]) -> Result<(), Solve
             }
         }
     }
+
+    if let Some(params) = repeat_encounter {
+        if params.max_allowed_encounters > 1 {
+            return Err(SolverError::ValidationError(
+                "solver4 requires the zero-repeat canonical encoding: RepeatEncounter.max_allowed_encounters must be 0 or 1"
+                    .into(),
+            ));
+        }
+    }
     Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BacktrackingPattern {
+    chunks: Vec<usize>,
+}
+
+impl BacktrackingPattern {
+    fn resolve(group_size: usize, raw: Option<&str>) -> Result<Self, SolverError> {
+        match raw {
+            Some(raw) => Self::parse(group_size, raw),
+            None => Ok(Self {
+                chunks: default_backtracking_pattern(group_size),
+            }),
+        }
+    }
+
+    fn parse(group_size: usize, raw: &str) -> Result<Self, SolverError> {
+        let trimmed = raw.trim();
+        if trimmed.is_empty() {
+            return Err(SolverError::ValidationError(
+                "solver4 backtracking_pattern must not be empty".into(),
+            ));
+        }
+        let mut chunks = Vec::new();
+        for token in trimmed.split('-') {
+            let value: usize = token.parse().map_err(|_| {
+                SolverError::ValidationError(format!(
+                    "solver4 backtracking_pattern token '{token}' is not a positive integer"
+                ))
+            })?;
+            if value == 0 {
+                return Err(SolverError::ValidationError(
+                    "solver4 backtracking_pattern tokens must be >= 1".into(),
+                ));
+            }
+            chunks.push(value);
+        }
+        if chunks.iter().sum::<usize>() != group_size {
+            return Err(SolverError::ValidationError(format!(
+                "solver4 backtracking_pattern '{trimmed}' must sum to the group size {group_size}"
+            )));
+        }
+        Ok(Self { chunks })
+    }
+}
+
+impl std::fmt::Display for BacktrackingPattern {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (idx, chunk) in self.chunks.iter().enumerate() {
+            if idx > 0 {
+                write!(f, "-")?;
+            }
+            write!(f, "{chunk}")?;
+        }
+        Ok(())
+    }
+}
+
+fn default_backtracking_pattern(group_size: usize) -> Vec<usize> {
+    let mut chunks = vec![2; group_size / 2];
+    if group_size % 2 == 1 {
+        chunks.push(1);
+    }
+    chunks
+}
+
+#[derive(Debug, Clone)]
+struct PaperConstructionState {
+    schedule: Vec<Vec<Vec<usize>>>,
+    partnered: Vec<Vec<bool>>,
+}
+
+impl PaperConstructionState {
+    fn empty(problem: &PureSgpProblem) -> Self {
+        Self {
+            schedule: vec![vec![Vec::with_capacity(problem.group_size); problem.num_groups]; problem.num_weeks],
+            partnered: vec![vec![false; problem.num_people]; problem.num_people],
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ChunkCandidate {
+    members: Vec<usize>,
+    freedom: usize,
+}
+
+impl ChunkCandidate {
+    fn new(members: Vec<usize>, freedom: usize) -> Self {
+        Self { members, freedom }
+    }
+}
+
+#[derive(Debug, Default)]
+struct CompleteBacktrackingStats {
+    nodes_visited: u64,
+    stop_reason: Option<StopReason>,
+}
+
+fn search_complete_backtracking(
+    problem: &PureSgpProblem,
+    pattern: &BacktrackingPattern,
+    week: usize,
+    group: usize,
+    token_index: usize,
+    remaining: &[usize],
+    state: PaperConstructionState,
+    stop_conditions: &crate::models::StopConditions,
+    started_at: Instant,
+    stats: &mut CompleteBacktrackingStats,
+) -> Option<PaperConstructionState> {
+    if let Some(limit) = stop_conditions.max_iterations {
+        if stats.nodes_visited >= limit {
+            stats.stop_reason = Some(StopReason::MaxIterationsReached);
+            return None;
+        }
+    }
+    if let Some(limit) = stop_conditions.time_limit_seconds {
+        if started_at.elapsed().as_secs() >= limit {
+            stats.stop_reason = Some(StopReason::TimeLimitReached);
+            return None;
+        }
+    }
+
+    if week == problem.num_weeks {
+        return Some(state);
+    }
+    if group == problem.num_groups {
+        debug_assert!(remaining.is_empty());
+        let next_remaining: Vec<usize> = (0..problem.num_people).collect();
+        return search_complete_backtracking(
+            problem,
+            pattern,
+            week + 1,
+            0,
+            0,
+            &next_remaining,
+            state,
+            stop_conditions,
+            started_at,
+            stats,
+        );
+    }
+    if token_index == pattern.chunks.len() {
+        return search_complete_backtracking(
+            problem,
+            pattern,
+            week,
+            group + 1,
+            0,
+            remaining,
+            state,
+            stop_conditions,
+            started_at,
+            stats,
+        );
+    }
+
+    let current_group = &state.schedule[week][group];
+    let chunk_size = pattern.chunks[token_index];
+    let candidates = ordered_chunk_candidates(
+        remaining,
+        current_group,
+        chunk_size,
+        &state.partnered,
+    );
+
+    for candidate in candidates {
+        stats.nodes_visited += 1;
+
+        let mut next_state = state.clone();
+        append_group_chunk(
+            &mut next_state.schedule[week][group],
+            &candidate.members,
+            &mut next_state.partnered,
+        );
+        let next_remaining = remove_chunk(remaining, &candidate.members);
+
+        if let Some(solution) = search_complete_backtracking(
+            problem,
+            pattern,
+            week,
+            group,
+            token_index + 1,
+            &next_remaining,
+            next_state,
+            stop_conditions,
+            started_at,
+            stats,
+        ) {
+            return Some(solution);
+        }
+
+        if stats.stop_reason.is_some() {
+            return None;
+        }
+    }
+
+    None
+}
+
+fn ordered_chunk_candidates(
+    remaining: &[usize],
+    current_group: &[usize],
+    chunk_size: usize,
+    partnered: &[Vec<bool>],
+) -> Vec<ChunkCandidate> {
+    if chunk_size == 1 {
+        let mut singles: Vec<_> = remaining
+            .iter()
+            .copied()
+            .filter(|candidate| compatible_with_group(*candidate, current_group, partnered))
+            .map(|candidate| ChunkCandidate::new(vec![candidate], 0))
+            .collect();
+        singles.sort_by(|left, right| left.members.cmp(&right.members));
+        return singles;
+    }
+
+    let mut collected = Vec::new();
+    let mut scratch = Vec::with_capacity(chunk_size);
+    enumerate_chunk_candidates(
+        remaining,
+        current_group,
+        chunk_size,
+        0,
+        partnered,
+        &mut scratch,
+        &mut collected,
+    );
+    collected.sort_by(|left, right| {
+        left.freedom
+            .cmp(&right.freedom)
+            .then(left.members.cmp(&right.members))
+    });
+    collected
+}
+
+fn enumerate_chunk_candidates(
+    remaining: &[usize],
+    current_group: &[usize],
+    chunk_size: usize,
+    start: usize,
+    partnered: &[Vec<bool>],
+    scratch: &mut Vec<usize>,
+    out: &mut Vec<ChunkCandidate>,
+) {
+    if scratch.len() == chunk_size {
+        if chunk_is_compatible(current_group, scratch, partnered) {
+            out.push(ChunkCandidate::new(
+                scratch.clone(),
+                freedom_of_set(scratch, partnered),
+            ));
+        }
+        return;
+    }
+
+    for idx in start..remaining.len() {
+        scratch.push(remaining[idx]);
+        enumerate_chunk_candidates(
+            remaining,
+            current_group,
+            chunk_size,
+            idx + 1,
+            partnered,
+            scratch,
+            out,
+        );
+        scratch.pop();
+    }
+}
+
+fn chunk_is_compatible(
+    current_group: &[usize],
+    chunk: &[usize],
+    partnered: &[Vec<bool>],
+) -> bool {
+    for &member in chunk {
+        if !compatible_with_group(member, current_group, partnered) {
+            return false;
+        }
+    }
+    for left_idx in 0..chunk.len() {
+        for right_idx in (left_idx + 1)..chunk.len() {
+            if partnered[chunk[left_idx]][chunk[right_idx]] {
+                return false;
+            }
+        }
+    }
+    true
+}
+
+fn compatible_with_group(person: usize, group: &[usize], partnered: &[Vec<bool>]) -> bool {
+    group.iter().all(|member| !partnered[person][*member])
+}
+
+fn append_group_chunk(group: &mut Vec<usize>, chunk: &[usize], partnered: &mut [Vec<bool>]) {
+    let existing_len = group.len();
+    group.extend_from_slice(chunk);
+    for left_idx in 0..group.len() {
+        let start = if left_idx < existing_len {
+            existing_len
+        } else {
+            left_idx + 1
+        };
+        for right_idx in start..group.len() {
+            let left = group[left_idx];
+            let right = group[right_idx];
+            partnered[left][right] = true;
+            partnered[right][left] = true;
+        }
+    }
+}
+
+fn remove_chunk(remaining: &[usize], chunk: &[usize]) -> Vec<usize> {
+    remaining
+        .iter()
+        .copied()
+        .filter(|candidate| !chunk.contains(candidate))
+        .collect()
+}
+
+fn potential_partner_set(person: usize, partnered: &[Vec<bool>]) -> Vec<bool> {
+    (0..partnered.len())
+        .map(|candidate| candidate != person && !partnered[person][candidate])
+        .collect()
+}
+
+fn freedom_of_set(set: &[usize], partnered: &[Vec<bool>]) -> usize {
+    if set.is_empty() {
+        return 0;
+    }
+
+    let num_people = partnered.len();
+    let mut intersection = vec![true; num_people];
+    for &person in set {
+        let potential = potential_partner_set(person, partnered);
+        for candidate in 0..num_people {
+            intersection[candidate] &= potential[candidate];
+        }
+    }
+    for &person in set {
+        intersection[person] = false;
+    }
+    intersection.into_iter().filter(|allowed| *allowed).count()
 }
 
 fn build_greedy_initial_schedule(
@@ -324,11 +986,7 @@ fn build_greedy_initial_schedule(
     rng: &mut ChaCha12Rng,
 ) -> Vec<Vec<Vec<usize>>> {
     let mut schedule = vec![vec![Vec::with_capacity(problem.group_size); problem.num_groups]; problem.num_weeks];
-    let mut met_before = vec![vec![false; problem.num_people]; problem.num_people];
-    // Paper Section 6 subtracts a large penalty from a selected pair's freedom in further weeks.
-    // We therefore track only cross-week discouragement here; within a partially built group we do
-    // not add extra freedom penalties, because the paper explicitly says the heuristic otherwise
-    // pays no attention to potential conflicts inside a group.
+    let mut partnered = vec![vec![false; problem.num_people]; problem.num_people];
     let mut selected_pair_penalties = vec![vec![0usize; problem.num_people]; problem.num_people];
 
     for week in 0..problem.num_weeks {
@@ -337,7 +995,13 @@ fn build_greedy_initial_schedule(
             let pair_slots = problem.group_size / 2;
             let mut selected_pairs = Vec::with_capacity(pair_slots);
             for _ in 0..pair_slots {
-                let pair = choose_best_pair(&remaining, &met_before, &selected_pair_penalties, gamma, rng);
+                let pair = choose_best_pair(
+                    &remaining,
+                    &partnered,
+                    &selected_pair_penalties,
+                    gamma,
+                    rng,
+                );
                 schedule[week][group_idx].push(pair.0);
                 schedule[week][group_idx].push(pair.1);
                 remove_person(&mut remaining, pair.0);
@@ -354,10 +1018,7 @@ fn build_greedy_initial_schedule(
                 selected_pair_penalties[left][right] += 1;
                 selected_pair_penalties[right][left] += 1;
             }
-            // Only after the whole group is known do we record the newly created meetings. This
-            // preserves the paper's rule that, aside from the future-week pair penalty, the greedy
-            // choice does not try to avoid prospective conflicts inside the current group.
-            note_group_partnerships(&schedule[week][group_idx], &mut met_before);
+            note_group_partnerships(&schedule[week][group_idx], &mut partnered);
         }
     }
 
@@ -366,7 +1027,7 @@ fn build_greedy_initial_schedule(
 
 fn choose_best_pair(
     remaining: &[usize],
-    met_before: &[Vec<bool>],
+    partnered: &[Vec<bool>],
     selected_pair_penalties: &[Vec<usize>],
     gamma: f64,
     rng: &mut ChaCha12Rng,
@@ -376,7 +1037,7 @@ fn choose_best_pair(
         for right_idx in (left_idx + 1)..remaining.len() {
             let left = remaining[left_idx];
             let right = remaining[right_idx];
-            let raw_freedom = paper_pair_freedom(left, right, met_before);
+            let raw_freedom = freedom_of_set(&[left, right], partnered);
             let adjusted_freedom = raw_freedom as i64
                 - (selected_pair_penalties[left][right] as i64 * PAPER_PAIR_REPEAT_PENALTY);
             scored.push((left, right, adjusted_freedom));
@@ -401,17 +1062,6 @@ fn choose_best_pair(
     }
 }
 
-fn paper_pair_freedom(left: usize, right: usize, met_before: &[Vec<bool>]) -> usize {
-    // Section 6 freedom counts how many *other players* remain compatible with both members of the
-    // pair with respect to the current partial configuration. Because we delay same-group updates
-    // until the group is complete, this reflects cross-group / cross-week history rather than
-    // speculative penalties inside the currently assembled group.
-    (0..met_before.len())
-        .filter(|candidate| *candidate != left && *candidate != right)
-        .filter(|&candidate| !met_before[left][candidate] && !met_before[right][candidate])
-        .count()
-}
-
 fn choose_last_singleton(remaining: &[usize], gamma: f64, rng: &mut ChaCha12Rng) -> usize {
     if remaining.len() > 1 && rng.random::<f64>() < gamma {
         remaining.choose(rng).copied().unwrap_or(remaining[0])
@@ -426,13 +1076,13 @@ fn remove_person(remaining: &mut Vec<usize>, person: usize) {
     }
 }
 
-fn note_group_partnerships(group: &[usize], met_before: &mut [Vec<bool>]) {
+fn note_group_partnerships(group: &[usize], partnered: &mut [Vec<bool>]) {
     for left_idx in 0..group.len() {
         for right_idx in (left_idx + 1)..group.len() {
             let left = group[left_idx];
             let right = group[right_idx];
-            met_before[left][right] = true;
-            met_before[right][left] = true;
+            partnered[left][right] = true;
+            partnered[right][left] = true;
         }
     }
 }
@@ -446,6 +1096,7 @@ struct PairOccurrence {
 #[derive(Debug, Clone)]
 struct EvaluatedSchedule {
     conflict_positions: usize,
+    conflict_positions_by_week: Vec<u32>,
     unique_contacts: i32,
     repeat_excess: i32,
     pair_counts: Vec<u16>,
@@ -454,9 +1105,6 @@ struct EvaluatedSchedule {
 }
 
 impl EvaluatedSchedule {
-    /// Paper Section 7: a position is a conflict position iff its occupant shares a group with at
-    /// least one player that the occupant has already shared a group with in another week. `f(C)`
-    /// is therefore the number of schedule positions that participate in any repeated pair.
     fn from_schedule(problem: &PureSgpProblem, schedule: Vec<Vec<Vec<usize>>>) -> Self {
         let total_positions = problem.num_weeks * problem.num_groups * problem.group_size;
         let mut pair_counts = vec![0u16; problem.num_people * problem.num_people];
@@ -485,10 +1133,10 @@ impl EvaluatedSchedule {
         let mut repeat_excess = 0i32;
         for (key, &count) in pair_counts.iter().enumerate() {
             if count > 0 {
-                let _ = key;
                 unique_contacts += 1;
             }
             if count > 1 {
+                let _ = key;
                 repeat_excess += i32::from(count - 1);
                 for occurrence in &pair_occurrences[key] {
                     incident_counts[occurrence.left_position] += 1;
@@ -497,9 +1145,23 @@ impl EvaluatedSchedule {
             }
         }
 
-        let conflict_positions = incident_counts.iter().filter(|count| **count > 0).count();
+        let mut conflict_positions_by_week = vec![0u32; problem.num_weeks];
+        let mut conflict_positions = 0usize;
+        for week in 0..problem.num_weeks {
+            for group in 0..problem.num_groups {
+                for slot in 0..problem.group_size {
+                    let position = problem.position_id(week, group, slot);
+                    if incident_counts[position] > 0 {
+                        conflict_positions += 1;
+                        conflict_positions_by_week[week] += 1;
+                    }
+                }
+            }
+        }
+
         Self {
             conflict_positions,
+            conflict_positions_by_week,
             unique_contacts,
             repeat_excess,
             pair_counts,
@@ -527,9 +1189,6 @@ struct SwapCandidate {
 
 impl SwapCandidate {
     fn lexicographic_key(&self) -> (usize, usize, usize, usize, usize) {
-        // Paper Section 7 describes a swap as exchanging G_ijk with G_ij'k' for j != j'.
-        // We therefore make the tie-break explicit over the ordered variable tuple
-        // (week=i, left_group=j, left_slot=k, right_group=j', right_slot=k').
         (
             self.week,
             self.left_group,
@@ -551,10 +1210,12 @@ fn select_best_swap(
     schedule: &[Vec<Vec<usize>>],
     current: &EvaluatedSchedule,
     best: &EvaluatedSchedule,
-    tabu: &WeekTabuLists,
+    tabu: &mut WeekTabuLists,
     iteration: u64,
+    tabu_telemetry: &mut SgpWeekPairTabuBenchmarkTelemetry,
 ) -> Option<SelectedSwap> {
     let mut best_candidate: Option<SwapCandidate> = None;
+    tabu.prune(iteration);
 
     for week in 0..problem.num_weeks {
         for left_group in 0..problem.num_groups {
@@ -581,10 +1242,13 @@ fn select_best_swap(
                             right_slot,
                         );
                         let swapped_pair = unordered_pair(left_person, right_person);
-                        if tabu.contains(week, swapped_pair, iteration)
-                            && candidate_conflicts >= best.conflict_positions
-                        {
-                            continue;
+                        if tabu.contains(week, swapped_pair) {
+                            tabu_telemetry.raw_tabu_hits += 1;
+                            if candidate_conflicts < best.conflict_positions {
+                                tabu_telemetry.aspiration_overrides += 1;
+                            } else {
+                                continue;
+                            }
                         }
 
                         let candidate = SwapCandidate {
@@ -653,7 +1317,6 @@ fn evaluate_swap_conflict_positions(
         if slot != left_slot {
             let partner = schedule[week][left_group][slot];
             apply_removed_pair_delta(
-                problem,
                 current,
                 problem.pair_key(left_person, partner),
                 problem.position_id(week, left_group, left_slot),
@@ -661,7 +1324,6 @@ fn evaluate_swap_conflict_positions(
                 &mut position_deltas,
             );
             apply_added_pair_delta(
-                problem,
                 current,
                 problem.pair_key(right_person, partner),
                 problem.position_id(week, right_group, right_slot),
@@ -672,7 +1334,6 @@ fn evaluate_swap_conflict_positions(
         if slot != right_slot {
             let partner = schedule[week][right_group][slot];
             apply_removed_pair_delta(
-                problem,
                 current,
                 problem.pair_key(right_person, partner),
                 problem.position_id(week, right_group, right_slot),
@@ -680,7 +1341,6 @@ fn evaluate_swap_conflict_positions(
                 &mut position_deltas,
             );
             apply_added_pair_delta(
-                problem,
                 current,
                 problem.pair_key(left_person, partner),
                 problem.position_id(week, left_group, left_slot),
@@ -704,7 +1364,6 @@ fn evaluate_swap_conflict_positions(
 }
 
 fn apply_removed_pair_delta(
-    problem: &PureSgpProblem,
     current: &EvaluatedSchedule,
     pair_key: usize,
     removed_left_position: usize,
@@ -725,11 +1384,9 @@ fn apply_removed_pair_delta(
             *deltas.entry(removed_right_position).or_insert(0) -= 1;
         }
     }
-    let _ = problem;
 }
 
 fn apply_added_pair_delta(
-    _problem: &PureSgpProblem,
     current: &EvaluatedSchedule,
     pair_key: usize,
     added_left_position: usize,
@@ -776,9 +1433,12 @@ fn apply_random_breakout(
     rng: &mut ChaCha12Rng,
     tabu: &mut WeekTabuLists,
     iteration: u64,
+    tabu_telemetry: &mut SgpWeekPairTabuBenchmarkTelemetry,
 ) -> Vec<Vec<Vec<usize>>> {
     let mut next = schedule.to_vec();
-    for offset in 0..RANDOM_BREAKOUT_SWAP_COUNT {
+    let mut recorded = Vec::with_capacity(RANDOM_BREAKOUT_SWAP_COUNT);
+
+    for _ in 0..RANDOM_BREAKOUT_SWAP_COUNT {
         let week = rng.random_range(0..problem.num_weeks);
         let left_group = rng.random_range(0..problem.num_groups);
         let mut right_group = rng.random_range(0..problem.num_groups);
@@ -791,35 +1451,67 @@ fn apply_random_breakout(
         let right_person = next[week][right_group][right_slot];
         next[week][left_group][left_slot] = right_person;
         next[week][right_group][right_slot] = left_person;
-        tabu.record(
-            week,
-            unordered_pair(left_person, right_person),
-            iteration + TABU_TENURE_ITERATIONS + offset as u64,
-        );
+        recorded.push((week, unordered_pair(left_person, right_person)));
     }
+
+    tabu.record_iteration(iteration, &recorded, tabu_telemetry);
     next
 }
 
 #[derive(Debug, Clone)]
 struct WeekTabuLists {
-    expirations: Vec<HashMap<(usize, usize), u64>>,
+    history: Vec<VecDeque<(u64, Vec<(usize, usize)>)>>,
 }
 
 impl WeekTabuLists {
     fn new(num_weeks: usize) -> Self {
         Self {
-            expirations: vec![HashMap::new(); num_weeks],
+            history: vec![VecDeque::new(); num_weeks],
         }
     }
 
-    fn contains(&self, week: usize, pair: (usize, usize), iteration: u64) -> bool {
-        self.expirations[week]
-            .get(&pair)
-            .is_some_and(|expires_after| *expires_after > iteration)
+    fn prune(&mut self, current_iteration: u64) {
+        for week in &mut self.history {
+            while week
+                .front()
+                .is_some_and(|(iteration, _)| iteration + TABU_TENURE_ITERATIONS <= current_iteration)
+            {
+                week.pop_front();
+            }
+        }
     }
 
-    fn record(&mut self, week: usize, pair: (usize, usize), expires_after: u64) {
-        self.expirations[week].insert(pair, expires_after);
+    fn contains(&self, week: usize, pair: (usize, usize)) -> bool {
+        self.history[week]
+            .iter()
+            .any(|(_, pairs)| pairs.contains(&pair))
+    }
+
+    fn record_iteration(
+        &mut self,
+        iteration: u64,
+        recorded_pairs: &[(usize, (usize, usize))],
+        telemetry: &mut SgpWeekPairTabuBenchmarkTelemetry,
+    ) {
+        let mut per_week: HashMap<usize, Vec<(usize, usize)>> = HashMap::new();
+        for (week, pair) in recorded_pairs {
+            per_week.entry(*week).or_default().push(*pair);
+            telemetry.recorded_swaps += 1;
+            telemetry.realized_tenure_sum += TABU_TENURE_ITERATIONS;
+            telemetry.realized_tenure_min = Some(
+                telemetry
+                    .realized_tenure_min
+                    .map_or(TABU_TENURE_ITERATIONS, |current| current.min(TABU_TENURE_ITERATIONS)),
+            );
+            telemetry.realized_tenure_max = Some(
+                telemetry
+                    .realized_tenure_max
+                    .map_or(TABU_TENURE_ITERATIONS, |current| current.max(TABU_TENURE_ITERATIONS)),
+            );
+        }
+        for (week, pairs) in per_week {
+            self.history[week].push_back((iteration, pairs));
+        }
     }
 }
 
@@ -838,6 +1530,7 @@ fn build_solver_result(
     no_improvement_count: u64,
     effective_seed: u64,
     stop_reason: StopReason,
+    benchmark_telemetry: Option<SolverBenchmarkTelemetry>,
 ) -> Result<SolverResult, SolverError> {
     let api_schedule = to_api_schedule(problem, schedule);
     let canonical = canonical_score_for_schedule(input, &api_schedule)?;
@@ -855,7 +1548,7 @@ fn build_solver_result(
         effective_seed: Some(effective_seed),
         move_policy: Some(crate::models::MovePolicy::default()),
         stop_reason: Some(stop_reason),
-        benchmark_telemetry: None::<SolverBenchmarkTelemetry>,
+        benchmark_telemetry,
     })
 }
 
@@ -910,8 +1603,8 @@ fn to_api_schedule(
 mod tests {
     use super::*;
     use crate::models::{
-        Constraint, Group, LoggingOptions, Person, ProblemDefinition, Solver4Params,
-        SolverConfiguration, SolverKind, SolverParams, StopConditions,
+        Constraint, Group, LoggingOptions, Person, ProblemDefinition, Solver4DiagnosticsParams,
+        Solver4Params, SolverConfiguration, SolverKind, SolverParams, StopConditions,
     };
     use std::collections::HashMap;
 
@@ -995,6 +1688,14 @@ mod tests {
         }
     }
 
+    fn repeat_constraint() -> Constraint {
+        Constraint::RepeatEncounter(RepeatEncounterParams {
+            max_allowed_encounters: 0,
+            penalty_function: "squared".into(),
+            penalty_weight: 10.0,
+        })
+    }
+
     #[test]
     fn pure_problem_gate_rejects_partial_attendance() {
         let mut problem = pure_problem(2, 2, 2);
@@ -1004,11 +1705,29 @@ mod tests {
             initial_schedule: None,
             construction_seed_schedule: None,
             objectives: vec![],
-            constraints: vec![],
+            constraints: vec![repeat_constraint()],
             solver: solver4_config(),
         };
         let error = PureSgpProblem::from_input(&input).unwrap_err();
         assert!(error.to_string().contains("partial attendance"));
+    }
+
+    #[test]
+    fn pure_problem_gate_rejects_non_zero_repeat_constraint() {
+        let input = ApiInput {
+            problem: pure_problem(2, 2, 2),
+            initial_schedule: None,
+            construction_seed_schedule: None,
+            objectives: vec![],
+            constraints: vec![Constraint::RepeatEncounter(RepeatEncounterParams {
+                max_allowed_encounters: 1,
+                penalty_function: "squared".into(),
+                penalty_weight: 10.0,
+            })],
+            solver: solver4_config(),
+        };
+        let error = PureSgpProblem::from_input(&input).unwrap_err();
+        assert!(error.to_string().contains("must be 0 or 1"));
     }
 
     #[test]
@@ -1021,12 +1740,36 @@ mod tests {
                 r#type: "maximize_unique_contacts".into(),
                 weight: 1.0,
             }],
-            constraints: vec![],
+            constraints: vec![repeat_constraint()],
             solver: solver4_config(),
         };
         let engine = SearchEngine::new(&input.solver);
         let result = engine.solve(&input).unwrap();
-        assert_eq!(result.final_score, 0.0);
+        assert_eq!(result.stop_reason, Some(StopReason::OptimalScoreReached));
+    }
+
+    #[test]
+    fn solver4_complete_backtracking_solves_small_instance() {
+        let mut config = solver4_config();
+        config.solver_params = SolverParams::Solver4(Solver4Params {
+            mode: Solver4Mode::CompleteBacktracking,
+            gamma: 0.0,
+            backtracking_pattern: Some("2".into()),
+            diagnostics: Solver4DiagnosticsParams::default(),
+        });
+        let input = ApiInput {
+            problem: pure_problem(2, 2, 2),
+            initial_schedule: None,
+            construction_seed_schedule: None,
+            objectives: vec![Objective {
+                r#type: "maximize_unique_contacts".into(),
+                weight: 1.0,
+            }],
+            constraints: vec![repeat_constraint()],
+            solver: config,
+        };
+        let engine = SearchEngine::new(&input.solver);
+        let result = engine.solve(&input).unwrap();
         assert_eq!(result.stop_reason, Some(StopReason::OptimalScoreReached));
     }
 
@@ -1040,11 +1783,7 @@ mod tests {
                 r#type: "maximize_unique_contacts".into(),
                 weight: 1.0,
             }],
-            constraints: vec![Constraint::RepeatEncounter(RepeatEncounterParams {
-                max_allowed_encounters: 0,
-                penalty_function: "squared".into(),
-                penalty_weight: 10.0,
-            })],
+            constraints: vec![repeat_constraint()],
             solver: solver4_config(),
         };
 
@@ -1068,6 +1807,44 @@ mod tests {
     }
 
     #[test]
+    fn backtracking_pattern_rejects_invalid_sum() {
+        let error = BacktrackingPattern::parse(4, "3").unwrap_err();
+        assert!(error.to_string().contains("must sum to the group size 4"));
+    }
+
+    #[test]
+    fn default_backtracking_pattern_matches_pair_then_single_shape() {
+        assert_eq!(default_backtracking_pattern(4), vec![2, 2]);
+        assert_eq!(default_backtracking_pattern(5), vec![2, 2, 1]);
+        assert_eq!(default_backtracking_pattern(3), vec![2, 1]);
+    }
+
+    #[test]
+    fn freedom_of_set_matches_paper_intersection_semantics() {
+        let mut partnered = vec![vec![false; 5]; 5];
+        partnered[0][2] = true;
+        partnered[2][0] = true;
+        partnered[1][3] = true;
+        partnered[3][1] = true;
+
+        let freedom = freedom_of_set(&[0, 1], &partnered);
+
+        assert_eq!(freedom, 1);
+    }
+
+    #[test]
+    fn chunk_candidates_are_sorted_by_minimal_freedom_then_lexicographic() {
+        let mut partnered = vec![vec![false; 4]; 4];
+        partnered[0][2] = true;
+        partnered[2][0] = true;
+        let candidates = ordered_chunk_candidates(&[0, 1, 2, 3], &[], 2, &partnered);
+        let freedoms: Vec<_> = candidates.iter().map(|candidate| candidate.freedom).collect();
+        assert_eq!(freedoms, vec![1, 1, 1, 1, 2]);
+        assert_eq!(candidates[0].members, vec![0, 1]);
+        assert_eq!(candidates[1].members, vec![0, 3]);
+    }
+
+    #[test]
     fn greedy_constructor_is_deterministic_for_fixed_seed() {
         let problem = PureSgpProblem {
             people: vec!["p0".into(), "p1".into(), "p2".into(), "p3".into()],
@@ -1087,11 +1864,11 @@ mod tests {
     #[test]
     fn gamma_zero_pair_choice_uses_lexicographic_order_for_ties() {
         let remaining = vec![0, 1, 2, 3];
-        let met_before = vec![vec![false; 4]; 4];
+        let partnered = vec![vec![false; 4]; 4];
         let penalties = vec![vec![0usize; 4]; 4];
         let mut rng = ChaCha12Rng::seed_from_u64(1);
 
-        let chosen = choose_best_pair(&remaining, &met_before, &penalties, 0.0, &mut rng);
+        let chosen = choose_best_pair(&remaining, &partnered, &penalties, 0.0, &mut rng);
 
         assert_eq!(chosen, (0, 1));
     }
@@ -1118,17 +1895,17 @@ mod tests {
 
     #[test]
     fn note_group_partnerships_marks_full_group_pairwise_history() {
-        let mut met_before = vec![vec![false; 4]; 4];
+        let mut partnered = vec![vec![false; 4]; 4];
 
-        note_group_partnerships(&[0, 1, 2], &mut met_before);
+        note_group_partnerships(&[0, 1, 2], &mut partnered);
 
-        assert!(met_before[0][1]);
-        assert!(met_before[1][0]);
-        assert!(met_before[0][2]);
-        assert!(met_before[2][0]);
-        assert!(met_before[1][2]);
-        assert!(met_before[2][1]);
-        assert!(!met_before[0][3]);
+        assert!(partnered[0][1]);
+        assert!(partnered[1][0]);
+        assert!(partnered[0][2]);
+        assert!(partnered[2][0]);
+        assert!(partnered[1][2]);
+        assert!(partnered[2][1]);
+        assert!(!partnered[0][3]);
     }
 
     #[test]
@@ -1142,14 +1919,6 @@ mod tests {
     #[test]
     fn breakout_is_applied_exactly_when_streak_reaches_four() {
         assert!(should_apply_random_breakout(4));
-    }
-
-    #[test]
-    fn breakout_does_not_repeat_without_another_full_stagnation_window() {
-        assert!(!should_apply_random_breakout(5));
-        assert!(!should_apply_random_breakout(6));
-        assert!(!should_apply_random_breakout(7));
-        assert!(!should_apply_random_breakout(8));
     }
 
     #[test]
@@ -1282,14 +2051,52 @@ mod tests {
         let problem = sample_problem(2, 2, 2);
         let schedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]];
         let current = evaluated(&problem, &schedule);
-        let tabu = WeekTabuLists::new(problem.num_weeks);
+        let mut tabu = WeekTabuLists::new(problem.num_weeks);
+        let mut tabu_telemetry = SgpWeekPairTabuBenchmarkTelemetry::default();
 
-        let selected = select_best_swap(&problem, &schedule, &current, &current, &tabu, 0)
-            .expect("expected a best swap");
+        let selected = select_best_swap(
+            &problem,
+            &schedule,
+            &current,
+            &current,
+            &mut tabu,
+            0,
+            &mut tabu_telemetry,
+        )
+        .expect("expected a best swap");
 
         assert_eq!(selected.week, 0);
         assert_eq!(selected.left_person, 0);
         assert_eq!(selected.right_person, 2);
         assert_eq!(selected.schedule, vec![vec![vec![2, 1], vec![0, 3]], vec![vec![0, 1], vec![2, 3]]]);
+    }
+
+    #[test]
+    fn tabu_list_keeps_pairs_for_exactly_last_ten_iterations() {
+        let mut tabu = WeekTabuLists::new(1);
+        let mut telemetry = SgpWeekPairTabuBenchmarkTelemetry::default();
+        tabu.record_iteration(0, &[(0, (1, 2))], &mut telemetry);
+        for iteration in 1..10 {
+            tabu.prune(iteration);
+            assert!(tabu.contains(0, (1, 2)));
+        }
+        tabu.prune(10);
+        assert!(!tabu.contains(0, (1, 2)));
+    }
+
+    #[test]
+    fn breakout_records_both_random_swaps_in_same_iteration_window() {
+        let problem = sample_problem(2, 2, 2);
+        let schedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]];
+        let mut rng = ChaCha12Rng::seed_from_u64(5);
+        let mut tabu = WeekTabuLists::new(problem.num_weeks);
+        let mut telemetry = SgpWeekPairTabuBenchmarkTelemetry::default();
+        let _ = apply_random_breakout(&problem, &schedule, &mut rng, &mut tabu, 3, &mut telemetry);
+        assert_eq!(telemetry.recorded_swaps, 2);
+        for week in 0..problem.num_weeks {
+            assert!(tabu.history[week]
+                .iter()
+                .all(|(iteration, _)| *iteration == 3));
+        }
     }
 }
