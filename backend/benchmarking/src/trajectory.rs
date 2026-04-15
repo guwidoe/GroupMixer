@@ -395,6 +395,7 @@ mod tests {
                     rustc_version: None,
                     cargo_profile: Some("dev".to_string()),
                 },
+                case_parallelism: None,
             },
             totals: RunTotals {
                 total_cases: 1,

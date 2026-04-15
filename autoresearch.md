@@ -1,18 +1,19 @@
 # Autoresearch: solver4 32x8x10 quality
 
 ## Objective
-Improve `solver4`'s performance on the pure Social Golfer `32x8x10` workload under a roughly five-minute experiment budget.
+Improve `solver4`'s performance on a pure Social Golfer **p=4 stretch bundle** under a still-manageable fixed benchmark budget.
 
-The target scenario is the canonical pure zero-repeat Social Golfer case:
-- 32 participants
-- 8 groups of 4
-- 10 sessions
-- objective: maximize unique contacts
-- hard semantic target: meet at most once per pair (`RepeatEncounter.max_allowed_encounters = 1`)
+The benchmark bundle now includes:
+- canonical `32x8x10` with 4 deterministic `gamma=0` seeds at 60s each
+- `36x9x10` with 4 deterministic `gamma=0` seeds at 60s each
+- `36x9x11` with 4 deterministic `gamma=0` seeds at 90s each
+- `40x10x10` with 4 deterministic `gamma=0` seeds at 60s each
+- `40x10x11` with 4 deterministic `gamma=0` seeds at 120s each
+
+All cases are pure Social Golfer `p=4` workloads with the hard semantic target:
+- meet at most once per pair (`RepeatEncounter.max_allowed_encounters = 1`)
 
 `solver4` is intentionally narrow. This loop should improve the dedicated pure-SGP algorithm itself, not broaden it into a general-purpose GroupMixer solver.
-
-The benchmark lane for this loop is a `gamma=0` multiseed sweep on the canonical `32x8x10` case with 4 seeds at 60 seconds each (about 4 minutes of search plus compile / orchestration overhead, so about 5 minutes per experiment end-to-end).
 
 ## Metrics
 - **Primary**: `mean_final_score` (lower is better) — average canonical final score across 4 fixed `32x8x10` seeds at 60s each.
@@ -70,7 +71,7 @@ The script:
 ## Current Baseline
 The historical `32x8x10` / `32x8x9` benchmark cases were corrected from the misconfigured `RepeatEncounter.max_allowed_encounters = 0` encoding to the intended meet-at-most-once encoding `= 1`.
 
-The next run after that correction becomes the new honest baseline for this autoresearch lane.
+This autoresearch lane now also includes the first larger `p=4` stretch bundle (`36x9x10`, `36x9x11`, `40x10x10`, `40x10x11`). The next run after this bundle expansion becomes the new honest baseline for the lane.
 
 ## What's Been Tried
 - The stronger practical branch currently comes from restoring the pre-regression heuristic shape associated with commit `05ed8b7`, plus compatibility fixes for newer trace fields.
@@ -83,7 +84,7 @@ The next run after that correction becomes the new honest baseline for this auto
 
 ## Immediate Research Directions
 - stronger but still honest diversification in the greedy initializer
-- better plateau escape / breakout behavior that specifically helps `32x8x10`
-- conflict-aware move ordering or neighborhood expansion that preserves `32x8x9`
-- targeted handling of concentrated high-conflict weeks near the current plateau
-- multi-start or restart ideas only if they preserve the fixed benchmark semantics and genuinely improve the 4-seed mean
+- better plateau escape / breakout behavior that helps both `32x8x10` and the new larger `p=4` cases
+- conflict-aware move ordering or neighborhood expansion that preserves the strong `32x8x9` / `32x8x10` behavior while generalizing to `36x9x*` and `40x10x*`
+- targeted handling of concentrated high-conflict weeks near the remaining plateaus
+- multi-start or restart ideas only if they preserve the fixed benchmark semantics and genuinely improve the bundle mean

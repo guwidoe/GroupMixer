@@ -15,7 +15,8 @@ trap cleanup EXIT
 
 cargo build -q -p gm-cli --release
 
-cargo run --release -q -p gm-cli -- benchmark run --manifest "$MANIFEST" >"$LOG_FILE" 2>&1
+GROUPMIXER_BENCHMARK_JOBS=4 \
+  cargo run --release -q -p gm-cli -- benchmark run --manifest "$MANIFEST" >"$LOG_FILE" 2>&1
 
 REPORT_PATH="$(sed -n 's/^Run report: //p' "$LOG_FILE" | tail -1)"
 if [[ -z "$REPORT_PATH" || ! -f "$REPORT_PATH" ]]; then

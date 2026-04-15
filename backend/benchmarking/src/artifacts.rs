@@ -337,6 +337,8 @@ pub struct RunMetadata {
     pub generated_at: String,
     pub git: GitIdentity,
     pub machine: MachineIdentity,
+    #[serde(default)]
+    pub case_parallelism: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
