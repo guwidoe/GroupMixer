@@ -193,15 +193,19 @@ export function ScenarioDataGrid<T>({
     : null;
   const handleToggleCsv = React.useCallback(() => {
     if (workspace?.onModeChange && (hasDraftEditing || inlineCsvConfig)) {
-      requestWorkspaceMode(isInlineCsvMode ? 'browse' : 'csv');
+      if (normalizedWorkspaceMode === 'csv') {
+        return;
+      }
+
+      requestWorkspaceMode('csv');
       return;
     }
 
     setIsCsvPreviewOpen(true);
-  }, [hasDraftEditing, inlineCsvConfig, isInlineCsvMode, requestWorkspaceMode, workspace]);
+  }, [hasDraftEditing, inlineCsvConfig, normalizedWorkspaceMode, requestWorkspaceMode, workspace]);
   const handleToggleEdit = React.useCallback(() => {
     if (workspace?.onModeChange) {
-      if (!browseModeEnabled && normalizedWorkspaceMode === 'edit') {
+      if (normalizedWorkspaceMode === 'edit') {
         return;
       }
 
@@ -210,7 +214,7 @@ export function ScenarioDataGrid<T>({
     }
 
     setIsEditMode((current) => !current);
-  }, [browseModeEnabled, effectiveEditMode, normalizedWorkspaceMode, requestWorkspaceMode, workspace]);
+  }, [effectiveEditMode, normalizedWorkspaceMode, requestWorkspaceMode, workspace]);
 
   const clearPendingLeaveAction = React.useCallback(() => {
     setPendingLeaveAction(null);

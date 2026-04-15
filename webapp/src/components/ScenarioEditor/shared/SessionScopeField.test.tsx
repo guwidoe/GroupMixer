@@ -52,7 +52,7 @@ describe('SessionScopeField', () => {
 
     await user.click(screen.getByRole('radio', { name: /only selected sessions/i }));
     expect(onChange).toHaveBeenCalledWith({ mode: 'selected', sessions: [] });
-    expect(screen.getByText(/choose one or more sessions/i)).toBeInTheDocument();
+    expect(screen.queryByText(/choose one or more sessions/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /select all current/i }));
     expect(onChange).toHaveBeenCalledWith({ mode: 'selected', sessions: [0, 1, 2, 3] });
