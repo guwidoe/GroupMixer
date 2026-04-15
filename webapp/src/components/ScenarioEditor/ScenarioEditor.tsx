@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { DemoDataWarningModal } from '../modals/DemoDataWarningModal';
 import { ConstraintFormModal } from './ConstraintFormModal';
 import { ScenarioSetupLayout } from './layout/ScenarioSetupLayout';
@@ -44,6 +44,17 @@ function resolveRouteSection(section: string | undefined): {
 
 function ScenarioEditorShell({ activeSection, navigationSection }: { activeSection: ScenarioEditorSection; navigationSection: ScenarioSetupSectionId }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const handleNavigate = React.useCallback((sectionId: ScenarioSetupSectionId) => {
+    const nextPath = `/app/scenario/${sectionId}`;
+    const { setupGridUnsaved, setupGridLeaveHook } = useAppStore.getState();
+    if (setupGridUnsaved && setupGridLeaveHook && nextPath !== location.pathname) {
+      setupGridLeaveHook(() => navigate(nextPath));
+      return;
+    }
+
+    navigate(nextPath);
+  }, [location.pathname, navigate]);
 
   return (
     <div className="space-y-6 md:flex md:h-full md:min-h-0 md:flex-col md:space-y-0">
@@ -52,7 +63,7 @@ function ScenarioEditorShell({ activeSection, navigationSection }: { activeSecti
         attributeDefinitions={[]}
         objectiveCount={0}
         activeSection={navigationSection}
-        onNavigate={(sectionId) => navigate(`/app/scenario/${sectionId}`)}
+        onNavigate={handleNavigate}
       >
         <ScenarioEditorLoadingState
           label={activeSection}
@@ -65,6 +76,19 @@ function ScenarioEditorShell({ activeSection, navigationSection }: { activeSecti
 
 function ScenarioEditorLoaded() {
   const controller = useScenarioEditorController();
+  const handleNavigateToSection = React.useCallback((sectionId: ScenarioSetupSectionId) => {
+    if (sectionId === controller.navigationSection) {
+      return;
+    }
+
+    const { setupGridUnsaved, setupGridLeaveHook } = useAppStore.getState();
+    if (setupGridUnsaved && setupGridLeaveHook) {
+      setupGridLeaveHook(() => controller.navigateToSection(sectionId));
+      return;
+    }
+
+    controller.navigateToSection(sectionId);
+  }, [controller]);
   const deferredSection = useDeferredScenarioSectionContent(
     controller.activeSection,
     controller.scenario ?? null,
@@ -91,7 +115,7 @@ function ScenarioEditorLoaded() {
         attributeDefinitions={deferredSummary.summaryAttributeDefinitions}
         objectiveCount={deferredSummary.summaryObjectiveCount}
         activeSection={controller.navigationSection}
-        onNavigate={controller.navigateToSection}
+        onNavigate={handleNavigateToSection}
       >
         {showSectionLoadingState ? (
           <ScenarioEditorLoadingState label={sectionLoadingLabel} message={sectionLoadingMessage} />

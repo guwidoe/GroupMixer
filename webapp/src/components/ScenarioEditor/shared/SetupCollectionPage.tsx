@@ -43,8 +43,6 @@ export function SetupCollectionPage({
 }: SetupCollectionPageProps) {
   const { viewMode, setViewMode } = useSetupCollectionViewMode(sectionKey, defaultViewMode);
   const onViewModeChangeRef = React.useRef(onViewModeChange);
-  const setupGridUnsaved = useAppStore((state) => state.setupGridUnsaved);
-  const setupGridLeaveHook = useAppStore((state) => state.setupGridLeaveHook);
   const resolvedToolbarLeading = typeof toolbarLeading === 'function' ? toolbarLeading(viewMode) : toolbarLeading;
   const resolvedToolbarTrailing = typeof toolbarTrailing === 'function' ? toolbarTrailing(viewMode) : toolbarTrailing;
   const hasDedicatedToolbarContent = Boolean(resolvedToolbarLeading || resolvedToolbarTrailing);
@@ -53,6 +51,7 @@ export function SetupCollectionPage({
       return;
     }
 
+    const { setupGridUnsaved, setupGridLeaveHook } = useAppStore.getState();
     const continueAction = () => setViewMode(nextMode);
     if (viewMode === 'list' && setupGridUnsaved && setupGridLeaveHook) {
       setupGridLeaveHook(continueAction);
@@ -60,7 +59,7 @@ export function SetupCollectionPage({
     }
 
     continueAction();
-  }, [setViewMode, setupGridLeaveHook, setupGridUnsaved, viewMode]);
+  }, [setViewMode, viewMode]);
   const viewModeToggle = <SetupViewModeToggle viewMode={viewMode} onChange={requestViewModeChange} />;
   const headerActions = (
     <>

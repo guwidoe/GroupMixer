@@ -64,10 +64,25 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
     : path);
 
   const handleNavigate = (event: MouseEvent, path: string) => {
+    const { setupGridUnsaved, setupGridLeaveHook } = useAppStore.getState();
+
     if (unsaved && location.pathname.startsWith('/app/editor') && path !== '/app/editor') {
       event.preventDefault();
       if (leaveHook) {
         leaveHook(path);
+      } else {
+        navigate(path);
+      }
+      return;
+    }
+
+    if (setupGridUnsaved && location.pathname.startsWith('/app/scenario') && path !== location.pathname) {
+      event.preventDefault();
+      if (setupGridLeaveHook) {
+        setupGridLeaveHook(() => {
+          closeMobileMenu?.();
+          navigate(path);
+        });
       } else {
         navigate(path);
       }

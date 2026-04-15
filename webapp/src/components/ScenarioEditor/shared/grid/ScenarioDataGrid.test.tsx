@@ -6,6 +6,7 @@ import { ScenarioDataGrid } from './ScenarioDataGrid';
 import { createOptionalSessionScopeColumn } from './sessionScopeColumn';
 import type { ScenarioDataGridWorkspaceMode } from './types';
 import { createJsonRawCodec, validateStringNumberRecordValue } from './model/rawCodec';
+import { useAppStore } from '../../../../store';
 
 const rows = [
   { id: 'a', name: 'Beta', weight: 20 },
@@ -600,6 +601,131 @@ describe('ScenarioDataGrid', () => {
 
     await user.click(screen.getByRole('button', { name: /edit table/i }));
     expect(screen.getByRole('textbox', { name: /edit name for row row-a/i })).toHaveValue('Beta Prime');
+  });
+
+  it('blocks external leave attempts with unapplied grid edits and can apply before leaving', async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn();
+
+    function LeaveHarness() {
+      const [left, setLeft] = React.useState(false);
+
+      if (left) {
+        return <div>Left page</div>;
+      }
+
+      return (
+        <>
+          <button type="button" onClick={() => useAppStore.getState().setupGridLeaveHook?.(() => setLeft(true))}>Leave page</button>
+          <ScenarioDataGrid
+            rows={[{ id: 'row-a', name: 'Beta' }]}
+            rowKey={(row) => row.id}
+            columns={[
+              {
+                kind: 'primitive',
+                id: 'name',
+                header: 'Name',
+                primitive: 'string',
+                getValue: (row) => row.name,
+                setValue: (row, value) => ({ ...row, name: value ?? '' }),
+              },
+            ]}
+            workspace={{
+              mode: 'edit',
+              onModeChange: vi.fn(),
+              browseModeEnabled: false,
+              draft: {
+                onApply,
+              },
+            }}
+          />
+        </>
+      );
+    }
+
+    render(<LeaveHarness />);
+
+    const input = screen.getByRole('textbox', { name: /edit name for row row-a/i });
+    await user.clear(input);
+    await user.type(input, 'Beta Prime');
+    await user.tab();
+
+    await user.click(screen.getByRole('button', { name: /leave page/i }));
+
+    expect(screen.getByRole('dialog', { name: /unapplied grid changes/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /apply and leave/i }));
+
+    expect(onApply).toHaveBeenCalledWith([{ id: 'row-a', name: 'Beta Prime' }]);
+    expect(screen.getByText('Left page')).toBeInTheDocument();
+  });
+
+  it('keeps the user on the current page when apply-and-leave hits invalid csv', async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn();
+
+    function CsvLeaveHarness() {
+      const [mode, setMode] = React.useState<ScenarioDataGridWorkspaceMode>('edit');
+      const [left, setLeft] = React.useState(false);
+
+      if (left) {
+        return <div>Left page</div>;
+      }
+
+      return (
+        <>
+          <button type="button" onClick={() => useAppStore.getState().setupGridLeaveHook?.(() => setLeft(true))}>Leave page</button>
+          <ScenarioDataGrid
+            rows={[{ id: 'row-a', name: 'Beta', weight: 20 }]}
+            rowKey={(row) => row.id}
+            columns={[
+              {
+                kind: 'primitive',
+                id: 'name',
+                header: 'Name',
+                primitive: 'string',
+                getValue: (row) => row.name,
+                setValue: (row, value) => ({ ...row, name: value ?? '' }),
+              },
+              {
+                kind: 'primitive',
+                id: 'weight',
+                header: 'Weight',
+                primitive: 'number',
+                getValue: (row) => row.weight,
+                setValue: (row, value) => ({ ...row, weight: value ?? 0 }),
+              },
+            ]}
+            workspace={{
+              mode,
+              onModeChange: setMode,
+              browseModeEnabled: false,
+              draft: {
+                onApply,
+                csv: {
+                  ariaLabel: 'Grid CSV editor',
+                },
+              },
+            }}
+          />
+        </>
+      );
+    }
+
+    render(<CsvLeaveHarness />);
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    fireEvent.change(screen.getByRole('textbox', { name: /grid csv editor/i }), {
+      target: { value: 'Name,Weight\nBroken,nope' },
+    });
+
+    await user.click(screen.getByRole('button', { name: /leave page/i }));
+    await user.click(screen.getByRole('button', { name: /apply and leave/i }));
+
+    expect(screen.getByText(/csv validation errors/i)).toBeInTheDocument();
+    expect(screen.getByText(/expected a number for weight/i)).toBeInTheDocument();
+    expect(screen.queryByText('Left page')).not.toBeInTheDocument();
+    expect(onApply).not.toHaveBeenCalled();
   });
 
   it('round-trips typed primitive columns through shared draft edit mode', async () => {

@@ -178,4 +178,36 @@ describe('PeopleDirectory', () => {
       }),
     ]);
   });
+
+  it('warns before switching from list to cards when the grid has unapplied changes', async () => {
+    const user = userEvent.setup();
+    const onApplyGridPeople = vi.fn();
+
+    render(
+      <PeopleDirectory
+        {...createBaseProps({
+          scenario: createSampleScenario({
+            people: [{ id: 'p1', attributes: { name: 'Alex' } }],
+            settings: createSampleSolverSettings(),
+          }),
+          onApplyGridPeople,
+        })}
+      />,
+    );
+
+    const input = screen.getByRole('textbox', { name: /edit name for row p1/i });
+    await user.clear(input);
+    await user.type(input, 'Alex Prime');
+    await user.tab();
+
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+
+    expect(await screen.findByRole('dialog', { name: /unapplied grid changes/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /discard and leave/i }));
+
+    expect(screen.getByText('Alex')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /search people/i })).toBeInTheDocument();
+    expect(onApplyGridPeople).not.toHaveBeenCalled();
+  });
 });

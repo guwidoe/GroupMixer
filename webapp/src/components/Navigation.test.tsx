@@ -8,13 +8,20 @@ import { renderWithRouter } from "../test/utils";
 const mockStoreState = {
   manualEditorUnsaved: false,
   manualEditorLeaveHook: null as null | ((nextPath: string) => void),
+  setupGridUnsaved: false,
+  setupGridLeaveHook: null as null | ((continueAction: () => void) => void),
   ui: {
     lastScenarioSetupSection: 'people',
   },
 };
 
 vi.mock("../store", () => ({
-  useAppStore: vi.fn((selector: (state: typeof mockStoreState) => unknown) => selector(mockStoreState)),
+  useAppStore: Object.assign(
+    vi.fn((selector: (state: typeof mockStoreState) => unknown) => selector(mockStoreState)),
+    {
+      getState: () => mockStoreState,
+    },
+  ),
 }));
 
 function LocationProbe() {
@@ -26,6 +33,8 @@ describe("Navigation", () => {
   beforeEach(() => {
     mockStoreState.manualEditorUnsaved = false;
     mockStoreState.manualEditorLeaveHook = null;
+    mockStoreState.setupGridUnsaved = false;
+    mockStoreState.setupGridLeaveHook = null;
     mockStoreState.ui.lastScenarioSetupSection = 'people';
   });
 
@@ -84,5 +93,26 @@ describe("Navigation", () => {
     await user.click(screen.getByRole("link", { name: /setup/i }));
 
     expect(screen.getByTestId("location")).toHaveTextContent("/app/scenario/groups");
+  });
+
+  it('uses the setup-grid leave hook instead of navigating away from setup when there are unapplied grid changes', async () => {
+    const user = userEvent.setup();
+    const leaveHook = vi.fn();
+    mockStoreState.setupGridUnsaved = true;
+    mockStoreState.setupGridLeaveHook = leaveHook;
+
+    renderWithRouter(
+      <>
+        <Navigation />
+        <LocationProbe />
+      </>,
+      { route: '/app/scenario/people' },
+    );
+
+    await user.click(screen.getByRole('link', { name: /solver/i }));
+
+    expect(leaveHook).toHaveBeenCalledTimes(1);
+    expect(typeof leaveHook.mock.calls[0]?.[0]).toBe('function');
+    expect(screen.getByTestId('location')).toHaveTextContent('/app/scenario/people');
   });
 });
