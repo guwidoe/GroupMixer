@@ -10,6 +10,7 @@ pub(super) struct SwapCandidate {
     pub(super) left_person: usize,
     pub(super) right_person: usize,
     pub(super) conflict_positions_after: usize,
+    pub(super) repeat_excess_after: i32,
 }
 
 impl SwapCandidate {
@@ -34,8 +35,20 @@ impl SwapCandidate {
     pub(super) fn outranks(&self, other: &Self, base_schedule: &[Vec<Vec<usize>>]) -> bool {
         self.conflict_positions_after < other.conflict_positions_after
             || (self.conflict_positions_after == other.conflict_positions_after
-                && resulting_configuration_is_lexicographically_smaller(base_schedule, self, other))
+                && (self.repeat_excess_after < other.repeat_excess_after
+                    || (self.repeat_excess_after == other.repeat_excess_after
+                        && resulting_configuration_is_lexicographically_smaller(
+                            base_schedule,
+                            self,
+                            other,
+                        ))))
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct SwapPreview {
+    pub(super) conflict_positions_after: usize,
+    pub(super) repeat_excess_after: i32,
 }
 
 pub(super) fn position_id_from_coordinates(
@@ -115,7 +128,7 @@ pub(super) fn select_best_swap(
                             continue;
                         }
                         let right_person = schedule[week][right_group][right_slot];
-                        let candidate_conflicts = evaluate_swap_conflict_positions(
+                        let preview = evaluate_swap_preview(
                             problem,
                             schedule,
                             current,
@@ -128,7 +141,7 @@ pub(super) fn select_best_swap(
                         let swapped_pair = unordered_pair(left_person, right_person);
                         if tabu.contains(week, swapped_pair) {
                             tabu_telemetry.raw_tabu_hits += 1;
-                            if candidate_conflicts < best.conflict_positions {
+                            if preview.conflict_positions_after < best.conflict_positions {
                                 tabu_telemetry.aspiration_overrides += 1;
                             } else {
                                 continue;
@@ -143,7 +156,8 @@ pub(super) fn select_best_swap(
                             right_slot,
                             left_person,
                             right_person,
-                            conflict_positions_after: candidate_conflicts,
+                            conflict_positions_after: preview.conflict_positions_after,
+                            repeat_excess_after: preview.repeat_excess_after,
                         };
 
                         let is_better = match best_candidate {
@@ -182,7 +196,7 @@ pub(super) struct SelectedSwap {
     pub(super) schedule: Vec<Vec<Vec<usize>>>,
 }
 
-pub(super) fn evaluate_swap_conflict_positions(
+pub(super) fn evaluate_swap_preview(
     problem: &PureSgpProblem,
     schedule: &[Vec<Vec<usize>>],
     current: &EvaluatedSchedule,
@@ -191,25 +205,34 @@ pub(super) fn evaluate_swap_conflict_positions(
     left_slot: usize,
     right_group: usize,
     right_slot: usize,
-) -> usize {
+) -> SwapPreview {
     let left_person = schedule[week][left_group][left_slot];
     let right_person = schedule[week][right_group][right_slot];
 
     let mut position_deltas: HashMap<usize, i32> = HashMap::new();
+    let mut repeat_excess_after = current.repeat_excess;
 
     for slot in 0..problem.group_size {
         if slot != left_slot {
             let partner = schedule[week][left_group][slot];
+            let removed_pair_key = problem.pair_key(left_person, partner);
+            if current.pair_counts[removed_pair_key] >= 2 {
+                repeat_excess_after -= 1;
+            }
             apply_removed_pair_delta(
                 current,
-                problem.pair_key(left_person, partner),
+                removed_pair_key,
                 problem.position_id(week, left_group, left_slot),
                 problem.position_id(week, left_group, slot),
                 &mut position_deltas,
             );
+            let added_pair_key = problem.pair_key(right_person, partner);
+            if current.pair_counts[added_pair_key] >= 1 {
+                repeat_excess_after += 1;
+            }
             apply_added_pair_delta(
                 current,
-                problem.pair_key(right_person, partner),
+                added_pair_key,
                 problem.position_id(week, right_group, right_slot),
                 problem.position_id(week, left_group, slot),
                 &mut position_deltas,
@@ -217,16 +240,24 @@ pub(super) fn evaluate_swap_conflict_positions(
         }
         if slot != right_slot {
             let partner = schedule[week][right_group][slot];
+            let removed_pair_key = problem.pair_key(right_person, partner);
+            if current.pair_counts[removed_pair_key] >= 2 {
+                repeat_excess_after -= 1;
+            }
             apply_removed_pair_delta(
                 current,
-                problem.pair_key(right_person, partner),
+                removed_pair_key,
                 problem.position_id(week, right_group, right_slot),
                 problem.position_id(week, right_group, slot),
                 &mut position_deltas,
             );
+            let added_pair_key = problem.pair_key(left_person, partner);
+            if current.pair_counts[added_pair_key] >= 1 {
+                repeat_excess_after += 1;
+            }
             apply_added_pair_delta(
                 current,
-                problem.pair_key(left_person, partner),
+                added_pair_key,
                 problem.position_id(week, left_group, left_slot),
                 problem.position_id(week, right_group, slot),
                 &mut position_deltas,
@@ -244,7 +275,10 @@ pub(super) fn evaluate_swap_conflict_positions(
             _ => {}
         }
     }
-    new_conflict_positions
+    SwapPreview {
+        conflict_positions_after: new_conflict_positions,
+        repeat_excess_after,
+    }
 }
 
 fn apply_removed_pair_delta(
