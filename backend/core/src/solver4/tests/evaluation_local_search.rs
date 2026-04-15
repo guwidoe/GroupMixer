@@ -80,7 +80,7 @@ fn swap_preview_matches_full_recompute_on_small_random_schedules() {
                 for right_group in (left_group + 1)..problem.num_groups {
                     for left_slot in 0..problem.group_size {
                         for right_slot in 0..problem.group_size {
-                            let preview = evaluate_swap_conflict_positions(
+                            let preview = evaluate_swap_preview(
                                 &problem,
                                 &schedule,
                                 &current,
@@ -100,9 +100,15 @@ fn swap_preview_matches_full_recompute_on_small_random_schedules() {
                             );
                             let recomputed = evaluated(&problem, &swapped);
                             assert_eq!(
-                                    preview, recomputed.conflict_positions,
-                                    "preview mismatch for week={week} groups=({left_group},{right_group}) slots=({left_slot},{right_slot})",
-                                );
+                                preview.conflict_positions_after,
+                                recomputed.conflict_positions,
+                                "conflict-position preview mismatch for week={week} groups=({left_group},{right_group}) slots=({left_slot},{right_slot})",
+                            );
+                            assert_eq!(
+                                preview.repeat_excess_after,
+                                recomputed.repeat_excess,
+                                "repeat-excess preview mismatch for week={week} groups=({left_group},{right_group}) slots=({left_slot},{right_slot})",
+                            );
                         }
                     }
                 }
@@ -123,6 +129,7 @@ fn swap_candidate_outranks_by_resulting_configuration_lexicographic_order() {
         left_person: 0,
         right_person: 2,
         conflict_positions_after: 0,
+        repeat_excess_after: 0,
     };
     let right = SwapCandidate {
         week: 0,
@@ -133,6 +140,7 @@ fn swap_candidate_outranks_by_resulting_configuration_lexicographic_order() {
         left_person: 1,
         right_person: 2,
         conflict_positions_after: 0,
+        repeat_excess_after: 0,
     };
 
     assert!(!left.outranks(&right, &base_schedule));
@@ -165,6 +173,41 @@ fn select_best_swap_uses_explicit_lexicographic_tie_breaking() {
         selected.schedule,
         vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]],]
     );
+}
+
+#[test]
+fn select_best_swap_prefers_lower_repeat_excess_before_lexicographic_tie_breaking() {
+    let problem = sample_problem(3, 3, 4);
+    let schedule = vec![
+        vec![vec![2, 5, 7], vec![4, 8, 3], vec![6, 1, 0]],
+        vec![vec![7, 5, 4], vec![2, 1, 6], vec![3, 8, 0]],
+        vec![vec![5, 1, 6], vec![4, 0, 8], vec![2, 7, 3]],
+        vec![vec![6, 3, 7], vec![4, 1, 8], vec![0, 5, 2]],
+    ];
+    let current = evaluated(&problem, &schedule);
+    let mut tabu = WeekTabuLists::new(problem.num_weeks);
+    let mut tabu_telemetry = SgpWeekPairTabuBenchmarkTelemetry::default();
+
+    let lower_repeat_excess = evaluate_swap_preview(&problem, &schedule, &current, 0, 0, 0, 1, 1);
+    let higher_repeat_excess = evaluate_swap_preview(&problem, &schedule, &current, 0, 0, 0, 1, 2);
+    assert_eq!(lower_repeat_excess.conflict_positions_after, 24);
+    assert_eq!(higher_repeat_excess.conflict_positions_after, 24);
+    assert_eq!(lower_repeat_excess.repeat_excess_after, 7);
+    assert_eq!(higher_repeat_excess.repeat_excess_after, 8);
+
+    let selected = select_best_swap(
+        &problem,
+        &schedule,
+        &current,
+        &current,
+        &mut tabu,
+        0,
+        &mut tabu_telemetry,
+    )
+    .expect("expected a best swap");
+    let selected_evaluated = evaluated(&problem, &selected.schedule);
+    assert_eq!(selected_evaluated.conflict_positions, 24);
+    assert_eq!(selected_evaluated.repeat_excess, 7);
 }
 
 #[test]
