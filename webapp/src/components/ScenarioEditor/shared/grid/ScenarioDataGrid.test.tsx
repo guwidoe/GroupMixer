@@ -645,9 +645,11 @@ describe('ScenarioDataGrid', () => {
       />,
     );
 
+    await user.click(screen.getByRole('button', { name: /edit tags for row row-a/i }));
+
     const multiSelectSearch = screen.getByRole('textbox', { name: /search edit tags for row row-a options/i });
     const checkboxLabels = screen.getAllByRole('checkbox').map((checkbox) => checkbox.parentElement?.textContent?.trim());
-    expect(checkboxLabels).toEqual(['Alpha', 'Mike', 'Zulu']);
+    expect(checkboxLabels).toEqual(['Zulu', 'Alpha', 'Mike']);
 
     await user.type(multiSelectSearch, 'mi');
     expect(screen.getByRole('checkbox', { name: 'Mike' })).toBeInTheDocument();
@@ -655,6 +657,9 @@ describe('ScenarioDataGrid', () => {
 
     await user.clear(multiSelectSearch);
     await user.click(screen.getByRole('checkbox', { name: 'Alpha' }));
+
+    const checkboxLabelsAfterSelection = screen.getAllByRole('checkbox').map((checkbox) => checkbox.parentElement?.textContent?.trim());
+    expect(checkboxLabelsAfterSelection).toEqual(['Alpha', 'Zulu', 'Mike']);
 
     const teamSelect = screen.getByRole('combobox', { name: /edit team for row row-a/i });
     await user.selectOptions(teamSelect, 'support');
