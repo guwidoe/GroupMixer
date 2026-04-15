@@ -53,15 +53,6 @@ export function createDefaultSolverSettings(familyId: SolverFamilyId = DEFAULT_S
         },
         logging: { ...DEFAULT_LOGGING },
       };
-    case 'solver2':
-      return {
-        solver_type: 'solver2',
-        stop_conditions: { ...DEFAULT_STOP_CONDITIONS },
-        solver_params: {
-          solver_type: 'solver2',
-        },
-        logging: { ...DEFAULT_LOGGING },
-      };
     case 'solver3':
       return {
         solver_type: 'solver3',

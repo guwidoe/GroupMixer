@@ -91,7 +91,6 @@ pub mod models;
 mod runtime_target;
 pub mod solver;
 pub mod solver1;
-pub mod solver2;
 pub mod solver3;
 pub mod solver4;
 pub mod solver_support;

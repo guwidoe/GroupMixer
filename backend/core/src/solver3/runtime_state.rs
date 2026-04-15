@@ -682,24 +682,23 @@ impl RuntimeState {
     }
 }
 
-fn resolve_construction_selection(input: &ApiInput) -> Result<ConstructionHeuristicSelection, SolverError> {
-    let solver3_params = input
-        .solver
-        .solver_params
-        .solver3_params()
-        .ok_or_else(|| {
-            SolverError::ValidationError(
-                "solver3 runtime state received non-solver3 parameters in configuration".into(),
-            )
-        })?;
+fn resolve_construction_selection(
+    input: &ApiInput,
+) -> Result<ConstructionHeuristicSelection, SolverError> {
+    let solver3_params = input.solver.solver_params.solver3_params().ok_or_else(|| {
+        SolverError::ValidationError(
+            "solver3 runtime state received non-solver3 parameters in configuration".into(),
+        )
+    })?;
     match solver3_params.construction.mode {
-        Solver3ConstructionMode::BaselineLegacy => Ok(ConstructionHeuristicSelection::BaselineLegacy),
+        Solver3ConstructionMode::BaselineLegacy => {
+            Ok(ConstructionHeuristicSelection::BaselineLegacy)
+        }
         Solver3ConstructionMode::FreedomAwareRandomized => {
             let gamma = solver3_params.construction.freedom_aware.gamma;
             if !(0.0..=1.0).contains(&gamma) {
                 return Err(SolverError::ValidationError(
-                    "solver3 construction.freedom_aware.gamma must be within [0.0, 1.0]"
-                        .into(),
+                    "solver3 construction.freedom_aware.gamma must be within [0.0, 1.0]".into(),
                 ));
             }
             Ok(ConstructionHeuristicSelection::FreedomAwareRandomized(

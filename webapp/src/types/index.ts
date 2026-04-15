@@ -181,9 +181,8 @@ export interface StopConditions {
 
 export interface SolverParams {
   SimulatedAnnealing?: SimulatedAnnealingParams;
-  solver2?: Solver2Params;
   solver3?: Solver3Params;
-  solver_type?: 'SimulatedAnnealing' | 'solver2' | 'solver3' | string;
+  solver_type?: 'SimulatedAnnealing' | 'solver3' | string;
   initial_temperature?: number;
   final_temperature?: number;
   cooling_schedule?: 'geometric' | 'linear' | string;
@@ -191,8 +190,6 @@ export interface SolverParams {
   reheat_after_no_improvement?: number;
   correctness_lane?: Solver3CorrectnessLaneParams;
 }
-
-export type Solver2Params = Record<string, never>;
 
 // Webapp-facing solver3 settings intentionally expose only the production/default surface.
 // Research-only search drivers and hotspot/recombination controls stay behind Rust compile-time

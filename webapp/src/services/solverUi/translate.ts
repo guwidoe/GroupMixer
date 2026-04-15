@@ -17,7 +17,6 @@ import type {
 
 const SOLVER_FAMILY_ALIASES: Record<SolverFamilyId, readonly string[]> = {
   solver1: ['solver1', 'legacy_simulated_annealing', 'simulated_annealing', LEGACY_SOLVER1_CONFIG_ID],
-  solver2: ['solver2'],
   solver3: ['solver3'],
 };
 
@@ -142,12 +141,6 @@ export function fromContractSolverSettings(settings: SolverSettings): SolverDraf
         },
       };
     }
-    case 'solver2':
-      return {
-        familyId,
-        common,
-        specific: {},
-      };
     case 'solver3': {
       const params = getSolver3Params(settings);
       return {
@@ -206,14 +199,6 @@ export function toContractSolverSettings(draft: SolverDraft): SolverSettings {
             reheat_cycles: draft.specific.reheatCycles,
             reheat_after_no_improvement: draft.specific.reheatAfterNoImprovement,
           },
-        },
-      };
-    case 'solver2':
-      return {
-        ...common,
-        solver_type: 'solver2',
-        solver_params: {
-          solver_type: 'solver2',
         },
       };
     case 'solver3':

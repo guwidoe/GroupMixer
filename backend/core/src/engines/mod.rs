@@ -1,14 +1,12 @@
 use crate::models::{
     ApiInput, BenchmarkObserver, Constraint, LoggingOptions, Objective, ProblemDefinition,
-    ProgressCallback, SimulatedAnnealingParams, Solver2Params, Solver3Params, Solver4Params,
-    SolverConfiguration, SolverKind, SolverParams, SolverResult, StopConditions,
-    DEFAULT_SOLVER_KIND,
+    ProgressCallback, SimulatedAnnealingParams, Solver3Params, Solver4Params, SolverConfiguration,
+    SolverKind, SolverParams, SolverResult, StopConditions, DEFAULT_SOLVER_KIND,
 };
 use crate::runtime_target::runtime_target_iteration_cap;
 use crate::solver1::search::simulated_annealing::SimulatedAnnealing;
 use crate::solver1::search::Solver as _;
 use crate::solver1::State;
-use crate::solver2::{SearchEngine as Solver2SearchEngine, SOLVER2_BOOTSTRAP_NOTES};
 use crate::solver3::{SearchEngine as Solver3SearchEngine, SOLVER3_BOOTSTRAP_NOTES};
 use crate::solver4::{SearchEngine as Solver4SearchEngine, SOLVER4_NOTES};
 use crate::solver_support::SolverError;
@@ -68,19 +66,6 @@ const SOLVER1_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
     notes: "Current production Rust solver family backed by the `solver1` State + simulated annealing search implementation.",
 };
 
-const SOLVER2_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
-    kind: SolverKind::Solver2,
-    display_name: "Solver 2",
-    capabilities: SolverEngineCapabilities {
-        supports_initial_schedule: true,
-        supports_progress_callback: true,
-        supports_benchmark_observer: true,
-        supports_recommended_settings: false,
-        supports_deterministic_seed: true,
-    },
-    notes: SOLVER2_BOOTSTRAP_NOTES,
-};
-
 const SOLVER3_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
     kind: SolverKind::Solver3,
     display_name: "Solver 3",
@@ -107,15 +92,10 @@ const SOLVER4_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
     notes: SOLVER4_NOTES,
 };
 
-const SOLVER_DESCRIPTORS: [SolverDescriptor; 4] = [
-    SOLVER1_DESCRIPTOR,
-    SOLVER2_DESCRIPTOR,
-    SOLVER3_DESCRIPTOR,
-    SOLVER4_DESCRIPTOR,
-];
+const SOLVER_DESCRIPTORS: [SolverDescriptor; 3] =
+    [SOLVER1_DESCRIPTOR, SOLVER3_DESCRIPTOR, SOLVER4_DESCRIPTOR];
 
 struct Solver1Engine;
-struct Solver2Engine;
 struct Solver3Engine;
 struct Solver4Engine;
 
@@ -175,49 +155,6 @@ impl SolverEngine for Solver1Engine {
         Ok(runtime_target_configuration(
             self.default_configuration(),
             request.desired_runtime_seconds,
-        ))
-    }
-}
-
-impl SolverEngine for Solver2Engine {
-    fn descriptor(&self) -> &'static SolverDescriptor {
-        &SOLVER2_DESCRIPTOR
-    }
-
-    fn solve(&self, request: SolveRequest<'_>) -> Result<SolverResult, SolverError> {
-        let mut state = crate::solver2::SolutionState::from_input(request.input)?;
-        let solver = Solver2SearchEngine::new(&request.input.solver);
-        solver.solve(
-            &mut state,
-            request.progress_callback,
-            request.benchmark_observer,
-        )
-    }
-
-    fn default_configuration(&self) -> SolverConfiguration {
-        SolverConfiguration {
-            solver_type: SolverKind::Solver2.canonical_id().into(),
-            stop_conditions: StopConditions {
-                max_iterations: Some(10_000),
-                time_limit_seconds: Some(30),
-                no_improvement_iterations: Some(5_000),
-                stop_on_optimal_score: true,
-            },
-            solver_params: SolverParams::Solver2(Solver2Params::default()),
-            logging: LoggingOptions::default(),
-            telemetry: Default::default(),
-            seed: None,
-            move_policy: None,
-            allowed_sessions: None,
-        }
-    }
-
-    fn recommend_configuration(
-        &self,
-        _request: RecommendationRequest<'_>,
-    ) -> Result<SolverConfiguration, SolverError> {
-        Err(crate::solver2::not_yet_implemented(
-            "runtime-aware recommendation for solver2",
         ))
     }
 }
@@ -316,7 +253,6 @@ pub fn available_solver_descriptors() -> &'static [SolverDescriptor] {
 pub fn solver_descriptor(kind: SolverKind) -> &'static SolverDescriptor {
     match kind {
         SolverKind::Solver1 => &SOLVER1_DESCRIPTOR,
-        SolverKind::Solver2 => &SOLVER2_DESCRIPTOR,
         SolverKind::Solver3 => &SOLVER3_DESCRIPTOR,
         SolverKind::Solver4 => &SOLVER4_DESCRIPTOR,
     }
@@ -345,7 +281,6 @@ pub fn calculate_recommended_settings_for(
 fn create_solver_engine(kind: SolverKind) -> Box<dyn SolverEngine> {
     match kind {
         SolverKind::Solver1 => Box::new(Solver1Engine),
-        SolverKind::Solver2 => Box::new(Solver2Engine),
         SolverKind::Solver3 => Box::new(Solver3Engine),
         SolverKind::Solver4 => Box::new(Solver4Engine),
     }
@@ -400,31 +335,12 @@ mod tests {
     }
 
     #[test]
-    fn registry_exposes_solver2_descriptor_with_runnable_capabilities() {
-        let descriptor = solver_descriptor(SolverKind::Solver2);
-        assert_eq!(descriptor.kind, SolverKind::Solver2);
-        assert!(descriptor.capabilities.supports_initial_schedule);
-        assert!(descriptor.capabilities.supports_progress_callback);
-        assert!(descriptor.capabilities.supports_benchmark_observer);
-        assert!(!descriptor.capabilities.supports_recommended_settings);
-        assert!(descriptor.capabilities.supports_deterministic_seed);
-        assert!(descriptor.notes.contains("solver2"));
-    }
-
-    #[test]
     fn default_configuration_round_trips_through_typed_solver_selection() {
         let config = default_solver_configuration_for(SolverKind::Solver1);
         assert_eq!(
             config.validate_solver_selection().unwrap(),
             SolverKind::Solver1
         );
-
-        let solver2 = default_solver_configuration_for(SolverKind::Solver2);
-        assert_eq!(
-            solver2.validate_solver_selection().unwrap(),
-            SolverKind::Solver2
-        );
-        assert!(matches!(solver2.solver_params, SolverParams::Solver2(_)));
     }
 
     #[test]
@@ -451,54 +367,6 @@ mod tests {
         assert_eq!(config.stop_conditions.time_limit_seconds, Some(1));
         assert_eq!(config.stop_conditions.no_improvement_iterations, None);
         assert!(config.stop_conditions.max_iterations.unwrap_or_default() >= 1_000_000);
-    }
-
-    #[test]
-    fn solver2_recommendation_fails_explicitly_until_implemented() {
-        let error = calculate_recommended_settings_for(
-            SolverKind::Solver2,
-            RecommendationRequest {
-                problem: &simple_problem(),
-                objectives: &[],
-                constraints: &[],
-                desired_runtime_seconds: 1,
-            },
-        )
-        .unwrap_err();
-
-        assert!(error.to_string().contains("solver2"));
-        assert!(error.to_string().contains("not implemented"));
-    }
-
-    #[test]
-    fn solver2_run_executes_through_engine_registry() {
-        let mut solver = default_solver_configuration_for(SolverKind::Solver2);
-        solver.stop_conditions.stop_on_optimal_score = false;
-        let input = ApiInput {
-            initial_schedule: None,
-            construction_seed_schedule: None,
-            problem: simple_problem(),
-            objectives: vec![],
-            constraints: vec![],
-            solver,
-        };
-
-        let result = run_solver_with_engine(SolveRequest {
-            input: &input,
-            progress_callback: None,
-            benchmark_observer: None,
-        })
-        .unwrap();
-
-        assert_eq!(
-            result.stop_reason,
-            Some(crate::models::StopReason::NoImprovementLimitReached)
-        );
-        assert_eq!(
-            result.move_policy,
-            Some(crate::models::MovePolicy::default())
-        );
-        assert!(result.effective_seed.is_some());
     }
 
     #[test]
@@ -687,14 +555,16 @@ mod tests {
         .expect("solver4 should execute through the engine registry");
 
         assert_eq!(result.final_score, 0.0);
-        assert_eq!(result.stop_reason, Some(crate::models::StopReason::OptimalScoreReached));
+        assert_eq!(
+            result.stop_reason,
+            Some(crate::models::StopReason::OptimalScoreReached)
+        );
     }
 
     #[test]
     fn all_solver_families_can_stop_on_optimal_zero_score() {
         for kind in [
             SolverKind::Solver1,
-            SolverKind::Solver2,
             SolverKind::Solver3,
             SolverKind::Solver4,
         ] {
@@ -763,6 +633,6 @@ mod tests {
             descriptors.iter().any(|d| d.kind == SolverKind::Solver4),
             "solver4 should appear in available_solver_descriptors"
         );
-        assert_eq!(descriptors.len(), 4);
+        assert_eq!(descriptors.len(), 3);
     }
 }

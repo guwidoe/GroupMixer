@@ -217,13 +217,12 @@ impl CandidateSampler {
 
         for family in ordered_families.as_slice().iter().copied() {
             let family_started_at = get_current_time();
-            let (preview, timing) =
-                self.diagnose_sample_preview_for_family_default_timing(
-                    state,
-                    family,
-                    allowed_sessions,
-                    rng,
-                );
+            let (preview, timing) = self.diagnose_sample_preview_for_family_default_timing(
+                state,
+                family,
+                allowed_sessions,
+                rng,
+            );
             let family_seconds = get_elapsed_seconds_between(family_started_at, get_current_time());
             preview_kernel_seconds += timing.preview_kernel_seconds;
             proposal_seconds += (family_seconds - timing.preview_kernel_seconds).max(0.0);
@@ -527,7 +526,10 @@ impl CandidateSampler {
         state: &RuntimeState,
         allowed_sessions: &[usize],
         rng: &mut ChaCha12Rng,
-    ) -> Option<(Option<CliqueSwapRuntimePreview>, FamilyPreviewTimingBreakdown)> {
+    ) -> Option<(
+        Option<CliqueSwapRuntimePreview>,
+        FamilyPreviewTimingBreakdown,
+    )> {
         if allowed_sessions.is_empty() || state.compiled.cliques.is_empty() {
             return Some((None, FamilyPreviewTimingBreakdown::default()));
         }

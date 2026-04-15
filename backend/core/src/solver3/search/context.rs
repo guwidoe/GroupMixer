@@ -347,8 +347,9 @@ impl SearchRunContext {
             .hotspot_guidance
             .repeat_guided_swaps
             .candidate_preview_budget;
-        let repeat_guided_swaps_enabled = solver3_params.hotspot_guidance.repeat_guided_swaps.enabled
-            && state.compiled.repeat_encounter.is_some();
+        let repeat_guided_swaps_enabled =
+            solver3_params.hotspot_guidance.repeat_guided_swaps.enabled
+                && state.compiled.repeat_encounter.is_some();
         let repeat_guided_swap_probability = if repeat_guided_swaps_enabled {
             configured_repeat_guided_swap_probability
         } else {
@@ -2062,9 +2063,9 @@ mod tests {
         });
 
         let error = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
-        assert!(error.to_string().contains(
-            "solver3-experimental-conflict-restricted-sampling"
-        ));
+        assert!(error
+            .to_string()
+            .contains("solver3-experimental-conflict-restricted-sampling"));
     }
 
     #[test]

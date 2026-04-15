@@ -113,7 +113,7 @@ pub(crate) struct CompiledRepeatEncounterConstraint {
 
 /// Immutable, dense compiled representation of the problem for the `solver3` family.
 ///
-/// All hot-path data is index-addressable. The critical addition over `solver2`'s
+/// All hot-path data is index-addressable. The critical addition over the earlier runtime design's
 /// compiled problem is the packed upper-triangular pair index: `pair_idx(a, b)`
 /// maps any pair to a unique position in a flat `Vec`, enabling O(1) contact-count
 /// lookups without a `Vec<Vec<_>>` matrix.

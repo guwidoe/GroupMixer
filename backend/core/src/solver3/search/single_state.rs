@@ -239,7 +239,9 @@ fn run_local_improver_general(
     let mut cached_elapsed_seconds: f64 = 0.0;
     let mut diversification_burst_attempted = false;
     let mut iteration: u64 = 0;
-    let tabu_retry_cap = run_context.sgp_week_pair_tabu.map_or(0, |config| config.retry_cap);
+    let tabu_retry_cap = run_context
+        .sgp_week_pair_tabu
+        .map_or(0, |config| config.retry_cap);
     let tabu_allow_aspiration_preview = run_context.local_improver_mode
         == Solver3LocalImproverMode::SgpWeekPairTabu
         && run_context
@@ -282,12 +284,8 @@ fn run_local_improver_general(
                 )
             {
                 diversification_burst_attempted = true;
-                let burst_outcome = try_diversification_burst(
-                    &search.best_state,
-                    run_context,
-                    budget,
-                    iteration,
-                )?;
+                let burst_outcome =
+                    try_diversification_burst(&search.best_state, run_context, budget, iteration)?;
                 let burst_iterations = burst_outcome
                     .iterations_consumed
                     .min(budget.max_iterations.saturating_sub(iteration));
@@ -649,12 +647,8 @@ fn run_local_improver_default(
                 )
             {
                 diversification_burst_attempted = true;
-                let burst_outcome = try_diversification_burst(
-                    &search.best_state,
-                    run_context,
-                    budget,
-                    iteration,
-                )?;
+                let burst_outcome =
+                    try_diversification_burst(&search.best_state, run_context, budget, iteration)?;
                 let burst_iterations = burst_outcome
                     .iterations_consumed
                     .min(budget.max_iterations.saturating_sub(iteration));
@@ -759,7 +753,8 @@ fn run_local_improver_default(
                     )?;
 
                     let improvement_elapsed_seconds = get_elapsed_seconds(search_started_at);
-                    cached_elapsed_seconds = cached_elapsed_seconds.max(improvement_elapsed_seconds);
+                    cached_elapsed_seconds =
+                        cached_elapsed_seconds.max(improvement_elapsed_seconds);
                     search.refresh_best_from_current(iteration, improvement_elapsed_seconds);
                     search.record_acceptance_result(true);
                 } else {
@@ -935,10 +930,9 @@ fn try_diversification_burst(
                 .saturating_add(1)
                 .saturating_add(donor_ordinal as u64),
         );
-        let Ok(donor_state) = RuntimeState::from_compiled_with_seed(
-            recipient_state.compiled.clone(),
-            donor_seed,
-        ) else {
+        let Ok(donor_state) =
+            RuntimeState::from_compiled_with_seed(recipient_state.compiled.clone(), donor_seed)
+        else {
             continue;
         };
         let Ok(donor_outcome) = run_local_improver(
@@ -959,8 +953,8 @@ fn try_diversification_burst(
         ) else {
             continue;
         };
-        iterations_consumed = iterations_consumed
-            .saturating_add(donor_outcome.search.iterations_completed);
+        iterations_consumed =
+            iterations_consumed.saturating_add(donor_outcome.search.iterations_completed);
         donor_best_states.push(donor_outcome.search.best_state.clone());
 
         if let Some(offspring) = select_best_offspring_session(

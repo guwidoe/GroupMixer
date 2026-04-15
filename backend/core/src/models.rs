@@ -592,8 +592,6 @@ pub struct SolverConfiguration {
 pub enum SolverKind {
     /// The current production solver family backed by the `solver1` simulated annealing engine.
     Solver1,
-    /// Bootstrapped placeholder for the upcoming `solver2` family.
-    Solver2,
     /// Bootstrap scaffold for the `solver3` performance-oriented dense-state solver family.
     /// Solve paths are not yet implemented; registration is truthful metadata only.
     Solver3,
@@ -610,7 +608,6 @@ impl SolverKind {
     pub const fn canonical_id(self) -> &'static str {
         match self {
             Self::Solver1 => "solver1",
-            Self::Solver2 => "solver2",
             Self::Solver3 => "solver3",
             Self::Solver4 => "solver4",
         }
@@ -619,7 +616,6 @@ impl SolverKind {
     pub const fn display_name(self) -> &'static str {
         match self {
             Self::Solver1 => "Solver 1",
-            Self::Solver2 => "Solver 2",
             Self::Solver3 => "Solver 3",
             Self::Solver4 => "Solver 4",
         }
@@ -633,7 +629,6 @@ impl SolverKind {
                 "simulated_annealing",
                 "SimulatedAnnealing",
             ],
-            Self::Solver2 => &["solver2"],
             Self::Solver3 => &["solver3"],
             Self::Solver4 => &["solver4"],
         }
@@ -645,12 +640,11 @@ impl SolverKind {
             | "legacy_simulated_annealing"
             | "simulated_annealing"
             | "SimulatedAnnealing" => Ok(Self::Solver1),
-            "solver2" => Ok(Self::Solver2),
             "solver3" => Ok(Self::Solver3),
             "solver4" => Ok(Self::Solver4),
             other => Err(format!(
                 "Unknown solver type '{other}'. Supported solver IDs: {}",
-                [Self::Solver1, Self::Solver2, Self::Solver3, Self::Solver4]
+                [Self::Solver1, Self::Solver3, Self::Solver4]
                     .iter()
                     .map(|kind| kind.canonical_id())
                     .collect::<Vec<_>>()
@@ -961,9 +955,6 @@ impl StopConditions {
 pub enum SolverParams {
     /// Parameters for the Simulated Annealing algorithm
     SimulatedAnnealing(SimulatedAnnealingParams),
-    /// Parameters for the internal `solver2` family.
-    #[serde(rename = "solver2")]
-    Solver2(Solver2Params),
     /// Parameters for the internal `solver3` family.
     ///
     /// `solver3` is currently a bootstrap scaffold. This parameter type is intentionally
@@ -979,7 +970,6 @@ impl SolverParams {
     pub fn solver_kind(&self) -> SolverKind {
         match self {
             Self::SimulatedAnnealing(_) => SolverKind::Solver1,
-            Self::Solver2(_) => SolverKind::Solver2,
             Self::Solver3(_) => SolverKind::Solver3,
             Self::Solver4(_) => SolverKind::Solver4,
         }
@@ -988,25 +978,17 @@ impl SolverParams {
     pub fn simulated_annealing_params(&self) -> Option<&SimulatedAnnealingParams> {
         match self {
             Self::SimulatedAnnealing(params) => Some(params),
-            Self::Solver2(_) | Self::Solver3(_) | Self::Solver4(_) => None,
+            Self::Solver3(_) | Self::Solver4(_) => None,
         }
     }
 
     pub fn solver3_params(&self) -> Option<&Solver3Params> {
         match self {
             Self::Solver3(params) => Some(params),
-            Self::SimulatedAnnealing(_) | Self::Solver2(_) | Self::Solver4(_) => None,
+            Self::SimulatedAnnealing(_) | Self::Solver4(_) => None,
         }
     }
 }
-
-/// Parameters for the internal `solver2` family.
-///
-/// The dedicated directory and typed registry slot allow the new solver architecture to evolve in
-/// parallel. During the current bring-up phase, `solver2` uses a built-in minimal search baseline
-/// and this parameter type remains intentionally small until explicit tuning knobs are ready.
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Default)]
-pub struct Solver2Params {}
 
 /// Parameters for the internal `solver3` family.
 ///

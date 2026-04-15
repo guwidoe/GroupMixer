@@ -395,15 +395,11 @@ mod tests {
     #[test]
     fn solver_catalog_projection_exposes_current_solver_family() {
         let catalog = build_solver_catalog();
-        assert_eq!(catalog.solvers.len(), 4);
+        assert_eq!(catalog.solvers.len(), 3);
         assert!(catalog
             .solvers
             .iter()
             .any(|solver| solver.canonical_id == "solver1"));
-        assert!(catalog
-            .solvers
-            .iter()
-            .any(|solver| solver.canonical_id == "solver2"));
         assert!(catalog
             .solvers
             .iter()
@@ -419,14 +415,6 @@ mod tests {
         let descriptor = build_solver_descriptor_response("SimulatedAnnealing")
             .expect("legacy alias should resolve");
         assert_eq!(descriptor.canonical_id, "solver1");
-    }
-
-    #[test]
-    fn solver_descriptor_projection_exposes_bootstrapped_solver2_family() {
-        let descriptor =
-            build_solver_descriptor_response("solver2").expect("solver2 should resolve");
-        assert_eq!(descriptor.canonical_id, "solver2");
-        assert!(!descriptor.capabilities.supports_recommended_settings);
     }
 
     #[test]

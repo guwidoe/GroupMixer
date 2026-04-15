@@ -79,16 +79,6 @@ function convertDemoSolverSettings(rawSolver: any): SolverSettings {
         },
         logging: rawSolver?.logging ?? createDefaultSolverSettings('solver3').logging,
       };
-    case 'solver2':
-      return {
-        ...createDefaultSolverSettings('solver2'),
-        solver_type: 'solver2',
-        stop_conditions: rawSolver?.stop_conditions ?? createDefaultSolverSettings('solver2').stop_conditions,
-        solver_params: {
-          solver_type: 'solver2',
-        },
-        logging: rawSolver?.logging ?? createDefaultSolverSettings('solver2').logging,
-      };
     case 'solver1':
     default: {
       const solverParams = rawSolver?.solver_params ?? {};
