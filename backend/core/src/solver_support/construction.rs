@@ -291,7 +291,11 @@ pub(crate) fn is_paper_compatible_social_golfer_case(
     if !context.immovable_people.is_empty() || !context.cliques.is_empty() {
         return false;
     }
-    if context.clique_sessions.iter().any(|sessions| sessions.is_some()) {
+    if context
+        .clique_sessions
+        .iter()
+        .any(|sessions| sessions.is_some())
+    {
         return false;
     }
     if context
@@ -318,10 +322,7 @@ pub(crate) fn is_paper_compatible_social_golfer_case(
         && rest.iter().all(|&capacity| capacity == first_capacity)
 }
 
-fn initialize_group_cursors(
-    context: &BaselineConstructionContext<'_>,
-    day: usize,
-) -> Vec<usize> {
+fn initialize_group_cursors(context: &BaselineConstructionContext<'_>, day: usize) -> Vec<usize> {
     let mut group_cursors = vec![0; context.group_count()];
     for (group_idx, members) in context.schedule[day].iter().enumerate() {
         group_cursors[group_idx] = members.len();
@@ -393,7 +394,10 @@ fn place_active_cliques_for_day(
         if clique.iter().any(|&member| assigned_in_day[member]) {
             continue;
         }
-        if !clique.iter().all(|&member| context.person_participation[member][day]) {
+        if !clique
+            .iter()
+            .all(|&member| context.person_participation[member][day])
+        {
             continue;
         }
         if let Some(sessions) = &context.clique_sessions[clique_idx] {
@@ -457,7 +461,8 @@ fn fill_remaining_people_for_day(
         let fill_mode = pair_fill_mode_for_anchor(anchor_occupancy[group_idx]);
 
         while group_cursors[group_idx] + 2 <= capacity {
-            let unassigned_people = remaining_unassigned_people(participating_people, assigned_in_day);
+            let unassigned_people =
+                remaining_unassigned_people(participating_people, assigned_in_day);
             if unassigned_people.len() < 2 {
                 break;
             }
@@ -475,8 +480,7 @@ fn fill_remaining_people_for_day(
             ) else {
                 return Err(SolverError::ValidationError(format!(
                     "Could not place a pair into group {} for day {}",
-                    context.group_idx_to_id[group_idx],
-                    day
+                    context.group_idx_to_id[group_idx], day
                 )));
             };
 
@@ -488,7 +492,8 @@ fn fill_remaining_people_for_day(
         }
 
         if group_cursors[group_idx] < capacity {
-            let unassigned_people = remaining_unassigned_people(participating_people, assigned_in_day);
+            let unassigned_people =
+                remaining_unassigned_people(participating_people, assigned_in_day);
             if unassigned_people.is_empty() {
                 continue;
             }
@@ -504,8 +509,7 @@ fn fill_remaining_people_for_day(
             ) else {
                 return Err(SolverError::ValidationError(format!(
                     "Could not place remaining participants into group {} for day {}",
-                    context.group_idx_to_id[group_idx],
-                    day
+                    context.group_idx_to_id[group_idx], day
                 )));
             };
 
@@ -569,7 +573,13 @@ fn choose_best_group_for_block(
         .iter()
         .map(|&group_idx| ScoredGroup {
             group_idx,
-            freedom: freedom_of_union(&day_schedule[group_idx], block, day, future_overlap, met_before),
+            freedom: freedom_of_union(
+                &day_schedule[group_idx],
+                block,
+                day,
+                future_overlap,
+                met_before,
+            ),
         })
         .collect::<Vec<_>>();
 
@@ -584,13 +594,8 @@ fn choose_best_group_for_block(
             .then(left.group_idx.cmp(&right.group_idx))
     });
 
-    choose_from_max_freedom_prefix(
-        &scored,
-        |candidate| candidate.freedom,
-        params.gamma,
-        rng,
-    )
-    .map(|candidate| candidate.group_idx)
+    choose_from_max_freedom_prefix(&scored, |candidate| candidate.freedom, params.gamma, rng)
+        .map(|candidate| candidate.group_idx)
 }
 
 fn choose_best_pair_for_group(
@@ -626,12 +631,8 @@ fn choose_best_pair_for_group(
                 met_before,
                 fill_mode,
             );
-            let adjusted_freedom = adjusted_pair_freedom(
-                left,
-                right,
-                raw_freedom,
-                selected_pair_penalties,
-            );
+            let adjusted_freedom =
+                adjusted_pair_freedom(left, right, raw_freedom, selected_pair_penalties);
             scored.push(ScoredPair {
                 left,
                 right,
@@ -683,7 +684,13 @@ fn choose_best_candidate_for_group(
         .iter()
         .map(|&person_idx| ScoredCandidate {
             person_idx,
-            freedom: freedom_of_union(group_members, &[person_idx], day, future_overlap, met_before),
+            freedom: freedom_of_union(
+                group_members,
+                &[person_idx],
+                day,
+                future_overlap,
+                met_before,
+            ),
         })
         .collect::<Vec<_>>();
 
@@ -698,13 +705,8 @@ fn choose_best_candidate_for_group(
             .then(left.person_idx.cmp(&right.person_idx))
     });
 
-    choose_from_max_freedom_prefix(
-        &scored,
-        |candidate| candidate.freedom,
-        params.gamma,
-        rng,
-    )
-    .map(|candidate| candidate.person_idx)
+    choose_from_max_freedom_prefix(&scored, |candidate| candidate.freedom, params.gamma, rng)
+        .map(|candidate| candidate.person_idx)
 }
 
 fn choose_from_max_adjusted_prefix<T: Copy>(
@@ -759,10 +761,16 @@ fn pair_slot_freedom(
     fill_mode: PairFillMode,
 ) -> usize {
     match fill_mode {
-        PairFillMode::PaperPairSlots => paper_freedom_of_set(&[left, right], day, future_overlap, met_before),
-        PairFillMode::ResidualExtended => {
-            freedom_of_union(group_members, &[left, right], day, future_overlap, met_before)
+        PairFillMode::PaperPairSlots => {
+            paper_freedom_of_set(&[left, right], day, future_overlap, met_before)
         }
+        PairFillMode::ResidualExtended => freedom_of_union(
+            group_members,
+            &[left, right],
+            day,
+            future_overlap,
+            met_before,
+        ),
     }
 }
 
@@ -806,8 +814,7 @@ fn adjusted_pair_freedom(
     raw_freedom: usize,
     selected_pair_penalties: &[Vec<usize>],
 ) -> i64 {
-    raw_freedom as i64
-        - (selected_pair_penalties[left][right] as i64 * PAPER_PAIR_REPEAT_PENALTY)
+    raw_freedom as i64 - (selected_pair_penalties[left][right] as i64 * PAPER_PAIR_REPEAT_PENALTY)
 }
 
 fn note_selected_pair_penalties_for_day(
@@ -919,28 +926,53 @@ mod tests {
 
     #[test]
     fn future_overlap_only_counts_future_sessions() {
-        let person_participation = vec![vec![true, false, false], vec![true, true, false], vec![false, true, true]];
+        let person_participation = vec![
+            vec![true, false, false],
+            vec![true, true, false],
+            vec![false, true, true],
+        ];
         let matrix = build_future_overlap_matrix(&person_participation, 3);
 
-        assert!(matrix[0][1][2], "day 0 should see session 1 future overlap for p1/p2");
-        assert!(!matrix[1][0][1], "day 1 should not count day 0 as future overlap");
+        assert!(
+            matrix[0][1][2],
+            "day 0 should see session 1 future overlap for p1/p2"
+        );
+        assert!(
+            !matrix[1][0][1],
+            "day 1 should not count day 0 as future overlap"
+        );
         assert!(!matrix[2][1][2], "last day should have no future overlap");
     }
 
     #[test]
     fn paper_freedom_excludes_already_met_people() {
-        let future_overlap = build_future_overlap_matrix(&vec![vec![true, true], vec![true, true], vec![true, true]], 2);
+        let future_overlap = build_future_overlap_matrix(
+            &vec![vec![true, true], vec![true, true], vec![true, true]],
+            2,
+        );
         let mut met_before = vec![vec![false; 3]; 3];
         met_before[0][2] = true;
         met_before[2][0] = true;
 
         let freedom = paper_freedom_of_set(&[0, 1], 0, &future_overlap, &met_before);
-        assert_eq!(freedom, 0, "candidate p2 should be excluded because p0 already met p2");
+        assert_eq!(
+            freedom, 0,
+            "candidate p2 should be excluded because p0 already met p2"
+        );
     }
 
     #[test]
     fn paper_pair_slot_scoring_ignores_existing_group_members() {
-        let future_overlap = build_future_overlap_matrix(&vec![vec![true, true], vec![true, true], vec![true, true], vec![true, true], vec![true, true]], 2);
+        let future_overlap = build_future_overlap_matrix(
+            &vec![
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+            ],
+            2,
+        );
         let mut met_before = vec![vec![false; 5]; 5];
         met_before[0][4] = true;
         met_before[4][0] = true;
@@ -971,7 +1003,12 @@ mod tests {
     #[test]
     fn pair_penalty_dominates_raw_pair_freedom() {
         let future_overlap = build_future_overlap_matrix(
-            &vec![vec![true, true], vec![true, true], vec![true, true], vec![true, true]],
+            &vec![
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+            ],
             2,
         );
         let met_before = vec![vec![false; 4]; 4];
@@ -998,7 +1035,12 @@ mod tests {
     #[test]
     fn gamma_zero_picks_lexicographically_smallest_max_pair() {
         let future_overlap = build_future_overlap_matrix(
-            &vec![vec![true, true], vec![true, true], vec![true, true], vec![true, true]],
+            &vec![
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+            ],
             2,
         );
         let met_before = vec![vec![false; 4]; 4];
@@ -1025,7 +1067,12 @@ mod tests {
     #[test]
     fn gamma_one_randomizes_only_within_equal_max_pairs() {
         let future_overlap = build_future_overlap_matrix(
-            &vec![vec![true, true], vec![true, true], vec![true, true], vec![true, true]],
+            &vec![
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+            ],
             2,
         );
         let met_before = vec![vec![false; 4]; 4];
@@ -1047,7 +1094,10 @@ mod tests {
                 &mut rng,
             )
             .unwrap();
-            assert!(matches!(pair, (0, 1) | (0, 2) | (0, 3) | (1, 2) | (1, 3) | (2, 3)));
+            assert!(matches!(
+                pair,
+                (0, 1) | (0, 2) | (0, 3) | (1, 2) | (1, 3) | (2, 3)
+            ));
             if pair != (0, 1) {
                 saw_non_lexicographic = true;
             }
@@ -1060,14 +1110,24 @@ mod tests {
     fn paper_compatibility_detector_requires_uniform_even_unseeded_case() {
         let context = context_with_schedule(
             vec![vec![vec![], vec![]], vec![vec![], vec![]]],
-            vec![vec![true, true], vec![true, true], vec![true, true], vec![true, true]],
+            vec![
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+            ],
             vec![2, 2, 2, 2],
         );
         assert!(is_paper_compatible_social_golfer_case(&context));
 
         let seeded_context = context_with_schedule(
             vec![vec![vec![0], vec![]], vec![vec![], vec![]]],
-            vec![vec![true, true], vec![true, true], vec![true, true], vec![true, true]],
+            vec![
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+            ],
             vec![2, 2, 2, 2],
         );
         assert!(!is_paper_compatible_social_golfer_case(&seeded_context));
@@ -1076,9 +1136,18 @@ mod tests {
     #[test]
     fn freedom_aware_constructor_is_deterministic_for_fixed_seed() {
         let schedule = vec![vec![vec![], vec![]], vec![vec![], vec![]]];
-        let person_participation = vec![vec![true, true], vec![true, true], vec![true, true], vec![true, true]];
+        let person_participation = vec![
+            vec![true, true],
+            vec![true, true],
+            vec![true, true],
+            vec![true, true],
+        ];
         let capacities = vec![2, 2, 2, 2];
-        let mut left_context = context_with_schedule(schedule.clone(), person_participation.clone(), capacities.clone());
+        let mut left_context = context_with_schedule(
+            schedule.clone(),
+            person_participation.clone(),
+            capacities.clone(),
+        );
         let mut right_context = context_with_schedule(schedule, person_participation, capacities);
         let params = FreedomAwareConstructionParams { gamma: 0.0 };
 

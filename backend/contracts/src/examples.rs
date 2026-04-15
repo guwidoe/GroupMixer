@@ -331,22 +331,6 @@ const LIST_SOLVERS_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
       "notes": "Current production Rust solver family backed by the `solver1` State + simulated annealing search implementation."
     },
     {
-      "kind": "solver2",
-      "canonical_id": "solver2",
-      "display_name": "Solver 2",
-      "accepted_config_ids": [
-        "solver2"
-      ],
-      "capabilities": {
-        "supports_initial_schedule": true,
-        "supports_progress_callback": true,
-        "supports_benchmark_observer": true,
-        "supports_recommended_settings": false,
-        "supports_deterministic_seed": true
-      },
-      "notes": "Internal `solver2` family with explicit compiled-problem/state seams, a retained recompute oracle, and an emerging runtime path for performance-oriented search work. Solve paths run through `gm-core`; runtime-aware recommendation remains intentionally unsupported during bring-up."
-    },
-    {
       "kind": "solver3",
       "canonical_id": "solver3",
       "display_name": "Solver 3",

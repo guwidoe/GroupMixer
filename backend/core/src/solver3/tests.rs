@@ -417,8 +417,8 @@ fn compiled_problem_constraint_adjacency_is_populated() {
 #[test]
 fn compiled_problem_rejects_wrong_solver_kind() {
     let mut input = minimal_input();
-    input.solver.solver_type = "solver2".into();
-    input.solver.solver_params = SolverParams::Solver2(crate::models::Solver2Params::default());
+    input.solver.solver_type = "solver4".into();
+    input.solver.solver_params = SolverParams::Solver4(crate::models::Solver4Params::default());
     let err = CompiledProblem::compile(&input).unwrap_err();
     assert!(
         err.to_string().contains("solver3"),
@@ -487,7 +487,10 @@ fn runtime_state_freedom_aware_mode_respects_seed_and_constraints() {
     let p5 = cp.person_id_to_idx["p5"];
     let g1 = cp.group_id_to_idx["g1"];
 
-    assert_eq!(state.person_location[state.people_slot(1, p1)], state.person_location[state.people_slot(1, p2)]);
+    assert_eq!(
+        state.person_location[state.people_slot(1, p1)],
+        state.person_location[state.people_slot(1, p2)]
+    );
     assert_eq!(state.person_location[state.people_slot(0, p3)], Some(g1));
     assert!(state.person_location[state.people_slot(0, p4)].is_some());
     assert_eq!(state.person_location[state.people_slot(1, p4)], None);

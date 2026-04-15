@@ -7,7 +7,7 @@
 //! 1. Set the initial score aggregates in `RuntimeState`.
 //! 2. Cross-check incremental aggregates during drift validation.
 //!
-//! The scoring formula matches `solver2`'s semantics exactly so cross-solver
+//! The scoring formula matches the canonical local-search semantics exactly so cross-solver
 //! comparisons are well-defined:
 //!
 //! ```text
@@ -291,7 +291,7 @@ fn compute_cliques(cp: &CompiledProblem, state: &RuntimeState, snap: &mut Oracle
             let separated = participating.len() as i32 - max_in_one;
             snap.clique_violations[cidx] += separated.max(0);
             // Note: clique violations count toward constraint_penalty_raw (integer) but are
-            // not directly added to constraint_penalty_weighted. This matches solver2 semantics:
+            // not directly added to constraint_penalty_weighted. This matches the canonical local-search semantics:
             // cliques are enforced structurally by the search; the integer count serves as a
             // diagnostic and invariant signal rather than a scored penalty surface.
         }

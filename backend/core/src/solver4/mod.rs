@@ -4,7 +4,7 @@ use crate::models::{
     Solver4PaperTracePoint, SolverBenchmarkTelemetry, SolverConfiguration, SolverKind,
     SolverResult, StopReason,
 };
-use crate::solver2::{scoring::FullScoreSnapshot, SolutionState};
+use crate::solver3::{OracleSnapshot, RuntimeState};
 use crate::solver_support::SolverError;
 use rand::{prelude::IndexedRandom, RngExt, SeedableRng};
 use rand_chacha::ChaCha12Rng;

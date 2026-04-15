@@ -84,13 +84,13 @@ pub(super) fn build_solver_result(
     Ok(SolverResult {
         final_score: canonical.total_score,
         schedule: api_schedule,
-        unique_contacts: canonical.unique_contacts,
-        repetition_penalty: canonical.repetition_penalty,
+        unique_contacts: canonical.unique_contacts as i32,
+        repetition_penalty: canonical.repetition_penalty_raw,
         attribute_balance_penalty: canonical.attribute_balance_penalty.round() as i32,
-        constraint_penalty: canonical.constraint_penalty,
+        constraint_penalty: canonical.constraint_penalty_raw,
         no_improvement_count,
         weighted_repetition_penalty: canonical.weighted_repetition_penalty,
-        weighted_constraint_penalty: canonical.weighted_constraint_penalty,
+        weighted_constraint_penalty: canonical.constraint_penalty_weighted,
         effective_seed: Some(effective_seed),
         move_policy: Some(crate::models::MovePolicy::default()),
         stop_reason: Some(stop_reason),
@@ -101,12 +101,12 @@ pub(super) fn build_solver_result(
 pub(super) fn canonical_score_for_schedule(
     input: &ApiInput,
     schedule: &ApiSchedule,
-) -> Result<FullScoreSnapshot, SolverError> {
+) -> Result<OracleSnapshot, SolverError> {
     let mut canonical_input = input.clone();
     canonical_input.initial_schedule = Some(schedule.clone());
     canonical_input.construction_seed_schedule = None;
 
-    let mut solver_override = crate::default_solver_configuration_for(SolverKind::Solver2);
+    let mut solver_override = crate::default_solver_configuration_for(SolverKind::Solver3);
     solver_override.stop_conditions = canonical_input.solver.stop_conditions.clone();
     solver_override.logging = canonical_input.solver.logging.clone();
     solver_override.telemetry = canonical_input.solver.telemetry.clone();
@@ -115,13 +115,13 @@ pub(super) fn canonical_score_for_schedule(
     solver_override.allowed_sessions = canonical_input.solver.allowed_sessions.clone();
     canonical_input.solver = solver_override;
 
-    let state = SolutionState::from_input(&canonical_input).map_err(|error| {
+    let state = RuntimeState::from_input(&canonical_input).map_err(|error| {
         SolverError::ValidationError(format!(
-            "solver4 could not canonicalize its final schedule through solver2 scoring: {error}"
+            "solver4 could not canonicalize its final schedule through solver3 scoring: {error}"
         ))
     })?;
 
-    Ok(state.current_score.clone())
+    crate::solver3::recompute_oracle_score(&state)
 }
 
 pub(super) fn to_api_schedule(

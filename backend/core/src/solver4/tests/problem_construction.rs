@@ -120,9 +120,9 @@ fn solver4_final_result_uses_canonical_repo_scoring() {
 
     let canonical = canonical_score_for_schedule(&input, &schedule).unwrap();
     assert_eq!(canonical.unique_contacts, 1);
-    assert_eq!(canonical.repetition_penalty, 1);
+    assert_eq!(canonical.repetition_penalty_raw, 1);
     assert_eq!(canonical.weighted_repetition_penalty, 10.0);
-    assert_eq!(canonical.weighted_constraint_penalty, 0.0);
+    assert_eq!(canonical.constraint_penalty_weighted, 0.0);
     assert_eq!(canonical.total_score, 10.0);
 }
 
@@ -147,7 +147,7 @@ fn canonical_scoring_gives_zero_for_perfect_meet_at_most_once_schedule() {
 
     let canonical = canonical_score_for_schedule(&input, &schedule).unwrap();
     assert_eq!(canonical.unique_contacts, 1);
-    assert_eq!(canonical.repetition_penalty, 0);
+    assert_eq!(canonical.repetition_penalty_raw, 0);
     assert_eq!(canonical.weighted_repetition_penalty, 0.0);
     assert_eq!(canonical.total_score, 0.0);
 }
