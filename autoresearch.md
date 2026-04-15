@@ -1,107 +1,92 @@
-# Autoresearch: solver3 feature-complete metaheuristic quality
+# Autoresearch: solver4 32x8x10 quality
 
 ## Objective
-Improve `solver3`'s newer advanced search functionality under long budgets, with the primary goal of achieving the **best final incumbent score** at the end of the run across a deliberately mixed feature-surface bundle.
+Improve `solver4`'s performance on the pure Social Golfer `32x8x10` workload under a roughly five-minute experiment budget.
 
-This lane is not just about Social Golfer. It is explicitly about making the newer solver3 metaheuristic surfaces work **cleanly and honestly** across:
+The target scenario is the canonical pure zero-repeat Social Golfer case:
+- 32 participants
+- 8 groups of 4
+- 10 sessions
+- objective: maximize unique contacts
+- hard semantic target: zero repeated pairs
 
-- representative workshop scenarios
-- together/apart + pair-meeting constraints
-- transfer-heavy balance problems
-- clique / must-stay-together workloads
-- immovable assignments
-- partial attendance and session-specific capacities
-- zero-repeat encounter benchmarks like Social Golfer and Kirkman
+`solver4` is intentionally narrow. This loop should improve the dedicated pure-SGP algorithm itself, not broaden it into a general-purpose GroupMixer solver.
+
+The benchmark lane for this loop is a `gamma=0` multiseed sweep on the canonical `32x8x10` case with 4 seeds at 60 seconds each (about 4 minutes of search plus compile / orchestration overhead, so about 5 minutes per experiment end-to-end).
 
 ## Metrics
-- **Primary**: `metaheuristic_suite_weighted_normalized_score` (lower is better, unitless scaled by 100)
+- **Primary**: `mean_final_score` (lower is better) — average canonical final score across 4 fixed `32x8x10` seeds at 60s each.
 - **Secondary**:
-  - `metaheuristic_fixed_iteration_weighted_normalized_score`
-  - `solver3_raw_score_us`
+  - `best_final_score`
+  - `worst_final_score`
+  - `mean_unique_contacts`
+  - `best_unique_contacts`
+  - `worst_unique_contacts`
+  - `solved_runs`
+  - `mean_best_conflict_positions`
+  - `best_best_conflict_positions`
   - `runtime_total_seconds`
-  - `objective_suite_total_runtime_seconds`
-  - validation mismatch counters
-  - per-case normalized scores for all 9 objective cases
+  - per-seed final score / contacts / best-conflict-position metrics
 
 ## How to Run
 `./autoresearch.sh`
 
-Root wrappers delegate to `tools/autoresearch/solver3-metaheuristic-quality/`.
-
-## Persistent Metrics Logging
-`./autoresearch.sh` writes the latest full metric set to `autoresearch.last_run_metrics.json`.
-
-After every completed `run_experiment` + `log_experiment` cycle, run:
-
-`python3 tools/autoresearch/patch_autoresearch_jsonl.py autoresearch.jsonl autoresearch.last_run_metrics.json`
-
-This patches the latest run entry in `autoresearch.jsonl` so the tool-managed history also retains the secondary diagnostics and per-case scores.
+The script:
+1. builds `gm-cli` in release mode
+2. runs the dedicated solver4 `32x8x10` multiseed suite
+3. parses the run report
+4. emits structured `METRIC name=value` lines
+5. writes `autoresearch.last_run_metrics.json`
 
 ## Files in Scope
-- `backend/core/src/solver3/**`
-- `backend/core/src/models.rs`
-- `backend/core/tests/search_driver_regression.rs`
-- `backend/benchmarking/suites/*solver3-metaheuristic-v1.yaml`
-- `tools/autoresearch/solver3-metaheuristic-quality/**`
+- `backend/core/src/solver4/**` — solver4 implementation, docs, and solver4-local tests
+- `backend/core/src/models.rs` — only when required for solver4 params / telemetry / surface changes
+- `tools/autoresearch/solver4-8x4x10/**` — experiment harness for this lane
 - `autoresearch.md`
 - `autoresearch.sh`
 - `autoresearch.checks.sh`
-- `autoresearch.config.json`
-- `autoresearch.ideas-to-try.md`
+- `autoresearch.config.json` (if needed)
 - `autoresearch.ideas.md`
 
 ## Off Limits
-- `backend/core/src/solver1/**`
-- `backend/core/src/solver2/**`
-- solver3 constructor changes
-- hidden fallback / silent downgrade behavior for unsupported advanced modes
-- benchmark case identity, seeds, budgets, and metric reference math during the loop
-- weakening checks
+- benchmark case definitions in `backend/benchmarking/cases/**`
+- benchmark seeds, identities, or budgets for this lane
+- other solver families (`solver1`, `solver2`, `solver3`) unless strictly required for compile fixes
+- webapp files
+- changing the benchmark question to an easier proxy
+- weakening or removing correctness checks
+- broad repo rewrites unrelated to solver4 heuristic quality
 
 ## Constraints
-- Primary signal is long-budget fixed-time objective quality on the explicit mixed solver3 bundle
-- Target per-case budgets are `150s` fixed-time and `7,000,000` fixed-iteration
-- Advanced search work must either support scenario semantics honestly or fail explicitly
-- Keep broad correctness guardrails; do not trade semantics away for SGP-only gains
-- Do not proxy or simplify the benchmark question
-- Prefer architecture that helps advanced search support more feature combinations cleanly
-- Benchmarks must run in `--release` mode for meaningful performance data
+- Keep `solver4` a pure-SGP solver; do not add silent fallback or broaden its accepted scenario family.
+- Public `SolverResult` scoring must remain canonical repo scoring.
+- The benchmark question is fixed: canonical `32x8x10`, 4 seeds, `gamma=0`, 60s each.
+- Primary metric wins decide keep/discard.
+- Do not cheat by changing benchmark manifests, seeds, time budgets, scoring weights, or case semantics.
+- Maintain correctness guardrails via `autoresearch.checks.sh`.
+- Prefer structural search improvements over benchmark-specific hacks.
+- If a promising direction is too large for the current iteration, record it in `autoresearch.ideas.md`.
 
-## Canonical fixed-time objective portfolio
-- `representative.small-workshop-balanced`
-- `representative.small-workshop-constrained`
-- `adversarial.clique-swap-functionality-35p`
-- `adversarial.transfer-attribute-balance-111p`
-- `stretch.social-golfer-32x8x10`
-- `stretch.kirkman-schoolgirls-15x5x7`
-- `stretch.large-gender-immovable-110p`
-- `stretch.sailing-trip-demo-real`
-- `stretch.synthetic-partial-attendance-capacity-pressure-152p`
-
-## Diagnostic companions
-- fixed-iteration bundle on the same 9 objective cases
-- capability-aware suite splitting is allowed when it preserves the same case set, budgets, and metric references while routing semantically supported cases to advanced modes and keeping unsupported cases on truthful baseline modes
-- solver3 raw runtime / hotpath diagnostic lane
-- solver3 correctness benchmark corpus with external validation
-
-## Research policy
-- Prefer substantial search ideas over micro-tuning.
-- Favor cleaner feature-complete advanced search wiring over narrow SGP-only wins.
-- Capability gating is allowed and often preferred to dishonest degradation.
-- If a feature family is currently unsupported by one advanced mode, either extend support cleanly or keep the rejection explicit and truthful.
-- The big question is not only whether a mechanism helps Social Golfer, but whether it can become a real solver3 capability rather than a brittle niche lane.
+## Current Baseline
+Current restored strong heuristic branch:
+- `32x8x9`, `gamma=0`, seeds 1–4: all solved (`432 / 432` contacts)
+- `32x8x10`, `gamma=0`, 25s seeds 1–4:
+  - final scores `5136, 5136, 5094, 5388`
+  - contacts `464, 464, 466, 452`
+- extending the strongest current `32x8x10` seed (`320812`) to 300s did **not** improve beyond `5094 / 466`, so the current branch appears to plateau rather than slowly converge.
 
 ## What's Been Tried
-- Solver3 now has explicit advanced driver separation, SGP-local tabu, memetic scaffolding, donor-session transplant recombination, truthful benchmark telemetry, and explicit capability gating for unsupported advanced combinations.
-- Plain `sgp_week_pair_tabu` remains the strongest advanced result on the 25s Social Golfer anchor.
-- Donor-session recombination is no longer obviously dead: forced-fire diagnostics can beat the tabu reference on matched 3M Social Golfer budgets, but the normal trigger/selection regime still lags on the real 25s anchor.
-- The next loop should treat advanced-mode **feature coverage + honest long-budget quality** as the main target, rather than only continuing narrow Social Golfer tuning.
-- Broad repeat-encounter routing into `single_state + sgp_week_pair_tabu` was too coarse for the mixed bundle: it helped Social Golfer but hurt `large_gender` enough to regress the aggregate.
-- Narrower capability routing looks more credible: keeping `sgp_week_pair_tabu` only on the pure zero-repeat stretch cases (`social_golfer`, `kirkman`) while leaving broader feature-rich stretch cases on baseline truthful modes improved the primary metric to `99.9137` by capturing the Social Golfer gain without the `large_gender` regression.
-- A stronger follow-up that upgraded those same pure zero-repeat cases from `single_state + sgp_week_pair_tabu` to `donor_session_transplant + sgp_week_pair_tabu` produced a much larger jump (`88.8026`), driven by retaining the Social Golfer gain and solving Kirkman to score `0` under the long-budget lane while leaving the broader feature-rich cases on truthful baseline modes.
-- A targeted incubation follow-up on that pure zero-repeat donor route then made donor triggering and child-polish escalation more aggressive for long budgets (`recombination_no_improvement_window` / `cooldown_window`: `100000 -> 25000`, `child_polish_max_stagnation_windows`: `4 -> 8`). That improved the primary metric further to `88.7544`, mainly by improving Social Golfer from `5367 -> 5346`; fixed-iteration Social worsened (`5367 -> 5388`), so this looked like better time-budget utilization rather than a uniform quality-per-iteration improvement.
-- A second trigger-aggression follow-up pushed the zero-repeat donor trigger/cooldown further down to `10000 / 10000` while keeping `child_polish_max_stagnation_windows = 8`. That improved the primary metric again to `88.5818`, with Social Golfer improving sharply to `5262` fixed-time and `5325` fixed-iteration. Kirkman remained perfect in fixed-time (`0`) but regressed from perfect to `33` in fixed-iteration, so the current best setting is even more explicitly a fixed-time quality win rather than a universally better quality-per-iteration setting.
-- A same-code confirmation rerun of that `10000 / 10000` champion reproduced the exact same primary and fixed-iteration metrics (`88.5818`, `95.3830`) and the same per-case objective scores, while raw runtime diagnostics moved around significantly. That is useful anti-overfitting evidence: the incumbent-quality gain looks stable on the objective lane even though micro-runtime diagnostics are noisy on the shared machine.
-- A follow-up that made adaptive raw-child retention much stricter on the zero-repeat donor route (`keep_ratio: 0.5 -> 0.25`) failed badly (`97.4707`). Social Golfer stayed at the improved donor score, but Kirkman regressed sharply (`0 -> 44` fixed-time, `33 -> 44` fixed-iteration). So the current win is not coming from polishing fewer donor children; aggressive pruning starves the mechanism on Kirkman.
-- An asymmetric trigger/cooldown follow-up (`recombination_no_improvement_window = 10000`, `recombination_cooldown_window = 5000`) was effectively inert: it reproduced the same primary and fixed-iteration metrics as the `10000 / 10000` champion. So once the first donor trigger is delayed to the current threshold, shortening the post-event cooldown alone does not appear to change behavior on the honest lane.
-- The opposite asymmetry (`recombination_no_improvement_window = 5000`, `recombination_cooldown_window = 10000`) also regressed (`88.6681`). It preserved Kirkman at `0` but gave back the Social Golfer gain (`5262 -> 5304` fixed-time; `5325 -> 5304` fixed-iteration), which suggests the earlier first trigger itself is too aggressive even when repeat firing is locked out longer.
+- The stronger practical branch currently comes from restoring the pre-regression heuristic shape associated with commit `05ed8b7`, plus compatibility fixes for newer trace fields.
+- A more paper-literal branch regressed practical `8x4x9` / `8x4x10` performance after introducing pairwise-even-`p` construction, thesis-style GRASP orchestration, and best-so-far breakout resets.
+- The regressed branch changed the meaning of repo gamma lanes and performed worse under rebuilt release validation; it is not the current baseline.
+- Longer runtime alone does not currently rescue `32x8x10`; the best known seed plateaued at the same result after 300 seconds.
+- `32x8x9` is now strong, so the next value is likely in the `32x8x10` search basin itself: initialization diversity, neighborhood power, plateau escape behavior, or conflict-concentration handling.
+- The main research question is not scoring/reporting anymore; it is solver4 heuristic quality on `32x8x10`.
+- Avoid reintroducing the thesis-GRASP portfolio adaptation unless there is fresh evidence it helps under this fixed repo-facing lane.
+
+## Immediate Research Directions
+- stronger but still honest diversification in the greedy initializer
+- better plateau escape / breakout behavior that specifically helps `32x8x10`
+- conflict-aware move ordering or neighborhood expansion that preserves `32x8x9`
+- targeted handling of concentrated high-conflict weeks near the current plateau
+- multi-start or restart ideas only if they preserve the fixed benchmark semantics and genuinely improve the 4-seed mean
