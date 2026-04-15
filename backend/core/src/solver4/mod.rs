@@ -294,10 +294,12 @@ impl SearchEngine {
                     .unwrap_or_else(|| schedule.clone())
             };
 
+            let previous_conflict_positions = current.conflict_positions;
             schedule = next_schedule;
             current = EvaluatedSchedule::from_schedule(problem, schedule.clone());
             iterations += 1;
 
+            let improved_current = current.conflict_positions < previous_conflict_positions;
             let improved_best = current.conflict_positions < best.conflict_positions;
             if improved_best {
                 best = current.clone();
@@ -310,7 +312,7 @@ impl SearchEngine {
             }
             no_improvement_count = next_no_improvement_count(
                 no_improvement_count,
-                improved_best,
+                improved_current,
                 breakout_applied,
             );
             max_no_improvement_streak = max_no_improvement_streak.max(no_improvement_count);
@@ -1338,21 +1340,83 @@ struct SwapCandidate {
 }
 
 impl SwapCandidate {
-    fn lexicographic_key(&self) -> (usize, usize, usize, usize, usize) {
-        (
+    fn resulting_value_at(&self, position: usize, base_schedule: &[Vec<Vec<usize>>]) -> usize {
+        let left_position = position_id_from_coordinates(
+            base_schedule,
             self.week,
             self.left_group,
             self.left_slot,
+        );
+        let right_position = position_id_from_coordinates(
+            base_schedule,
+            self.week,
             self.right_group,
             self.right_slot,
-        )
+        );
+        if position == left_position {
+            self.right_person
+        } else if position == right_position {
+            self.left_person
+        } else {
+            person_at_position(base_schedule, position)
+        }
     }
 
-    fn outranks(&self, other: &Self) -> bool {
+    fn outranks(&self, other: &Self, base_schedule: &[Vec<Vec<usize>>]) -> bool {
         self.conflict_positions_after < other.conflict_positions_after
             || (self.conflict_positions_after == other.conflict_positions_after
-                && self.lexicographic_key() < other.lexicographic_key())
+                && resulting_configuration_is_lexicographically_smaller(
+                    base_schedule,
+                    self,
+                    other,
+                ))
     }
+}
+
+fn position_id_from_coordinates(
+    schedule: &[Vec<Vec<usize>>],
+    week: usize,
+    group: usize,
+    slot: usize,
+) -> usize {
+    let num_groups = schedule[0].len();
+    let group_size = schedule[0][0].len();
+    (week * num_groups + group) * group_size + slot
+}
+
+fn person_at_position(schedule: &[Vec<Vec<usize>>], position: usize) -> usize {
+    let num_groups = schedule[0].len();
+    let group_size = schedule[0][0].len();
+    let week = position / (num_groups * group_size);
+    let within_week = position % (num_groups * group_size);
+    let group = within_week / group_size;
+    let slot = within_week % group_size;
+    schedule[week][group][slot]
+}
+
+fn resulting_configuration_is_lexicographically_smaller(
+    base_schedule: &[Vec<Vec<usize>>],
+    left: &SwapCandidate,
+    right: &SwapCandidate,
+) -> bool {
+    let mut changed_positions = vec![
+        position_id_from_coordinates(base_schedule, left.week, left.left_group, left.left_slot),
+        position_id_from_coordinates(base_schedule, left.week, left.right_group, left.right_slot),
+        position_id_from_coordinates(base_schedule, right.week, right.left_group, right.left_slot),
+        position_id_from_coordinates(base_schedule, right.week, right.right_group, right.right_slot),
+    ];
+    changed_positions.sort_unstable();
+    changed_positions.dedup();
+
+    for position in changed_positions {
+        let left_value = left.resulting_value_at(position, base_schedule);
+        let right_value = right.resulting_value_at(position, base_schedule);
+        if left_value != right_value {
+            return left_value < right_value;
+        }
+    }
+
+    false
 }
 
 fn select_best_swap(
@@ -1414,7 +1478,7 @@ fn select_best_swap(
 
                         let is_better = match best_candidate {
                             None => true,
-                            Some(current_best) => candidate.outranks(&current_best),
+                            Some(current_best) => candidate.outranks(&current_best, schedule),
                         };
                         if is_better {
                             best_candidate = Some(candidate);
@@ -1870,15 +1934,17 @@ mod tests {
                 }
             };
 
+            let previous_conflict_positions = current.conflict_positions;
             schedule = next_schedule;
             current = evaluated(problem, &schedule);
+            let improved_current = current.conflict_positions < previous_conflict_positions;
             let improved_best = current.conflict_positions < best.conflict_positions;
             if improved_best {
                 best = current.clone();
             }
             no_improvement_count = next_no_improvement_count(
                 no_improvement_count,
-                improved_best,
+                improved_current,
                 breakout_applied,
             );
 
@@ -2558,7 +2624,8 @@ mod tests {
     }
 
     #[test]
-    fn swap_candidate_outranks_by_lexicographic_key_when_scores_tie() {
+    fn swap_candidate_outranks_by_resulting_configuration_lexicographic_order() {
+        let base_schedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]];
         let left = SwapCandidate {
             week: 0,
             left_group: 0,
@@ -2580,8 +2647,8 @@ mod tests {
             conflict_positions_after: 0,
         };
 
-        assert!(left.outranks(&right));
-        assert!(!right.outranks(&left));
+        assert!(!left.outranks(&right, &base_schedule));
+        assert!(right.outranks(&left, &base_schedule));
     }
 
     #[test]
@@ -2603,10 +2670,13 @@ mod tests {
         )
         .expect("expected a best swap");
 
-        assert_eq!(selected.week, 0);
-        assert_eq!(selected.left_person, 0);
+        assert_eq!(selected.week, 1);
+        assert_eq!(selected.left_person, 1);
         assert_eq!(selected.right_person, 2);
-        assert_eq!(selected.schedule, vec![vec![vec![2, 1], vec![0, 3]], vec![vec![0, 1], vec![2, 3]]]);
+        assert_eq!(selected.schedule, vec![
+            vec![vec![0, 1], vec![2, 3]],
+            vec![vec![0, 2], vec![1, 3]],
+        ]);
     }
 
     #[test]
@@ -2655,22 +2725,22 @@ mod tests {
                 LocalSearchIterationTrace {
                     iteration: 0,
                     breakout_applied: false,
-                    selected_swap: Some((0, 0, 2)),
+                    selected_swap: Some((2, 1, 2)),
                     current_conflict_positions: 8,
                     best_conflict_positions: 8,
                     no_improvement_count: 0,
-                    tabu_recorded_pairs: vec![(0, (0, 2))],
+                    tabu_recorded_pairs: vec![(2, (1, 2))],
                     raw_tabu_hits_delta: 0,
                     aspiration_overrides_delta: 0,
                 },
                 LocalSearchIterationTrace {
                     iteration: 1,
                     breakout_applied: false,
-                    selected_swap: Some((1, 0, 3)),
+                    selected_swap: Some((1, 1, 3)),
                     current_conflict_positions: 0,
                     best_conflict_positions: 0,
                     no_improvement_count: 0,
-                    tabu_recorded_pairs: vec![(1, (0, 3))],
+                    tabu_recorded_pairs: vec![(1, (1, 3))],
                     raw_tabu_hits_delta: 0,
                     aspiration_overrides_delta: 0,
                 },
@@ -2708,7 +2778,7 @@ mod tests {
         best.conflict_positions = 8;
         let mut tabu = WeekTabuLists::new(problem.num_weeks);
         let mut tabu_telemetry = SgpWeekPairTabuBenchmarkTelemetry::default();
-        tabu.record_iteration(0, &[(0, (0, 2))], &mut tabu_telemetry);
+        tabu.record_iteration(0, &[(2, (1, 2))], &mut tabu_telemetry);
 
         let selected = select_best_swap(
             &problem,
@@ -2721,8 +2791,8 @@ mod tests {
         )
         .expect("expected a non-tabu fallback move");
 
-        assert_eq!(selected.week, 0);
-        assert_eq!(selected.left_person, 0);
+        assert_eq!(selected.week, 2);
+        assert_eq!(selected.left_person, 1);
         assert_eq!(selected.right_person, 3);
         assert_eq!(tabu_telemetry.raw_tabu_hits, 1);
         assert_eq!(tabu_telemetry.aspiration_overrides, 0);
@@ -2740,7 +2810,7 @@ mod tests {
         let best = current.clone();
         let mut tabu = WeekTabuLists::new(problem.num_weeks);
         let mut tabu_telemetry = SgpWeekPairTabuBenchmarkTelemetry::default();
-        tabu.record_iteration(0, &[(0, (0, 2))], &mut tabu_telemetry);
+        tabu.record_iteration(0, &[(2, (1, 2))], &mut tabu_telemetry);
 
         let selected = select_best_swap(
             &problem,
@@ -2753,8 +2823,8 @@ mod tests {
         )
         .expect("expected aspiration to allow the tabu move");
 
-        assert_eq!(selected.week, 0);
-        assert_eq!(selected.left_person, 0);
+        assert_eq!(selected.week, 2);
+        assert_eq!(selected.left_person, 1);
         assert_eq!(selected.right_person, 2);
         assert_eq!(tabu_telemetry.raw_tabu_hits, 1);
         assert_eq!(tabu_telemetry.aspiration_overrides, 1);
@@ -2769,20 +2839,22 @@ mod tests {
             vec![vec![0, 1], vec![2, 3]],
         ];
 
-        let trace = simulate_local_search_iterations(&problem, &schedule, Some(0), 5, 5);
+        let trace = simulate_local_search_iterations(&problem, &schedule, Some(0), 7, 5);
 
         assert_eq!(
             trace.iter().map(|step| step.breakout_applied).collect::<Vec<_>>(),
-            vec![false, false, false, false, true]
+            vec![false, false, false, false, false, false, true]
         );
         assert_eq!(
             trace.iter().map(|step| step.no_improvement_count).collect::<Vec<_>>(),
-            vec![1, 2, 3, 4, 0]
+            vec![0, 0, 1, 2, 3, 4, 0]
         );
-        assert_eq!(trace[0].selected_swap, Some((0, 0, 2)));
-        assert_eq!(trace[1].selected_swap, Some((1, 0, 3)));
+        assert_eq!(trace[0].selected_swap, Some((2, 1, 2)));
+        assert_eq!(trace[1].selected_swap, Some((1, 1, 3)));
         assert_eq!(trace[2].selected_swap, None);
         assert_eq!(trace[3].selected_swap, None);
         assert!(trace[4].selected_swap.is_none());
+        assert!(trace[5].selected_swap.is_none());
+        assert!(trace[6].selected_swap.is_none());
     }
 }
