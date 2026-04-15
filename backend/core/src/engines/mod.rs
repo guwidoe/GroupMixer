@@ -301,7 +301,10 @@ fn runtime_target_configuration(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{Group, Person, ProblemDefinition, SolverKind, SolverParams};
+    use crate::models::{
+        Constraint, Group, Person, ProblemDefinition, RepeatEncounterParams, SolverKind,
+        SolverParams,
+    };
     use std::collections::HashMap;
 
     fn simple_problem() -> ProblemDefinition {
@@ -325,6 +328,54 @@ mod tests {
             }],
             num_sessions: 1,
         }
+    }
+
+    fn pure_solver4_problem() -> ProblemDefinition {
+        ProblemDefinition {
+            people: vec![
+                Person {
+                    id: "p0".to_string(),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                },
+                Person {
+                    id: "p1".to_string(),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                },
+                Person {
+                    id: "p2".to_string(),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                },
+                Person {
+                    id: "p3".to_string(),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                },
+            ],
+            groups: vec![
+                Group {
+                    id: "g0".to_string(),
+                    size: 2,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".to_string(),
+                    size: 2,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 2,
+        }
+    }
+
+    fn solver4_repeat_constraint() -> Constraint {
+        Constraint::RepeatEncounter(RepeatEncounterParams {
+            max_allowed_encounters: 1,
+            penalty_function: "squared".into(),
+            penalty_weight: 10.0,
+        })
     }
 
     #[test]
@@ -502,48 +553,12 @@ mod tests {
         let input = ApiInput {
             initial_schedule: None,
             construction_seed_schedule: None,
-            problem: ProblemDefinition {
-                people: vec![
-                    Person {
-                        id: "p0".to_string(),
-                        attributes: HashMap::new(),
-                        sessions: None,
-                    },
-                    Person {
-                        id: "p1".to_string(),
-                        attributes: HashMap::new(),
-                        sessions: None,
-                    },
-                    Person {
-                        id: "p2".to_string(),
-                        attributes: HashMap::new(),
-                        sessions: None,
-                    },
-                    Person {
-                        id: "p3".to_string(),
-                        attributes: HashMap::new(),
-                        sessions: None,
-                    },
-                ],
-                groups: vec![
-                    Group {
-                        id: "g0".to_string(),
-                        size: 2,
-                        session_sizes: None,
-                    },
-                    Group {
-                        id: "g1".to_string(),
-                        size: 2,
-                        session_sizes: None,
-                    },
-                ],
-                num_sessions: 2,
-            },
+            problem: pure_solver4_problem(),
             objectives: vec![Objective {
                 r#type: "maximize_unique_contacts".to_string(),
                 weight: 1.0,
             }],
-            constraints: vec![],
+            constraints: vec![solver4_repeat_constraint()],
             solver: default_solver_configuration_for(SolverKind::Solver4),
         };
 
@@ -568,12 +583,17 @@ mod tests {
             SolverKind::Solver3,
             SolverKind::Solver4,
         ] {
+            let (problem, constraints) = if kind == SolverKind::Solver4 {
+                (pure_solver4_problem(), vec![solver4_repeat_constraint()])
+            } else {
+                (simple_problem(), vec![])
+            };
             let input = ApiInput {
                 initial_schedule: None,
                 construction_seed_schedule: None,
-                problem: simple_problem(),
+                problem,
                 objectives: vec![],
-                constraints: vec![],
+                constraints,
                 solver: default_solver_configuration_for(kind),
             };
 
