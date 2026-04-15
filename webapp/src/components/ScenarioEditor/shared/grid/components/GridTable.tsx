@@ -9,6 +9,7 @@ interface GridTableProps<T> {
   bodyScrollRef: React.RefObject<HTMLDivElement | null>;
   emptyState?: React.ReactNode;
   maxHeight: string;
+  viewportHeight?: number | null;
   onBodyScroll: () => void;
   onCloseFilter: (columnId: string) => void;
   onRowOpen?: (row: T) => void;
@@ -25,6 +26,7 @@ export function GridTable<T>({
   bodyScrollRef,
   emptyState,
   maxHeight,
+  viewportHeight,
   onBodyScroll,
   onCloseFilter,
   onRowOpen,
@@ -36,7 +38,17 @@ export function GridTable<T>({
   tableRef,
 }: GridTableProps<T>) {
   return (
-    <div ref={bodyScrollRef} className="overflow-auto" style={{ maxHeight }} onScroll={onBodyScroll}>
+    <div
+      ref={bodyScrollRef}
+      role="region"
+      aria-label="Data grid rows"
+      className="overflow-auto"
+      style={{
+        height: viewportHeight == null ? undefined : `${viewportHeight}px`,
+        maxHeight: viewportHeight == null ? maxHeight : 'none',
+      }}
+      onScroll={onBodyScroll}
+    >
       <table ref={tableRef} className="w-full border-separate border-spacing-0 text-sm" style={{ width: `${table.getTotalSize()}px`, minWidth: '100%' }}>
         <colgroup>
           {table.getVisibleLeafColumns().map((column) => (

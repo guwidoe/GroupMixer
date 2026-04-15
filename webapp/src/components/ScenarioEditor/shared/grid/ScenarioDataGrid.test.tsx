@@ -1209,4 +1209,135 @@ describe('ScenarioDataGrid', () => {
     await user.click(screen.getByRole('button', { name: /next/i }));
     expect(screen.getByText('Person 75')).toBeInTheDocument();
   });
+
+  it('keeps the rows-per-page control visible when all rows fit on one page but smaller page sizes remain possible', async () => {
+    const user = userEvent.setup();
+    const largeRows = Array.from({ length: 120 }, (_, index) => ({
+      id: `row-${index + 1}`,
+      name: `Person ${index + 1}`,
+      weight: index + 1,
+    }));
+
+    render(
+      <ScenarioDataGrid
+        rows={largeRows}
+        rowKey={(row) => row.id}
+        pageSize={50}
+        pageSizeOptions={[50, 100, 250, 500]}
+        columns={[
+          {
+            id: 'name',
+            header: 'Name',
+            cell: (row) => row.name,
+            sortValue: (row) => row.name,
+            searchValue: (row) => row.name,
+          },
+        ]}
+      />,
+    );
+
+    await user.selectOptions(screen.getByRole('combobox', { name: /rows per page/i }), '250');
+
+    expect(screen.getByRole('combobox', { name: /rows per page/i })).toHaveValue('250');
+    expect(screen.queryByText(/page 1 of 1/i)).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByRole('combobox', { name: /rows per page/i }), '50');
+
+    expect(screen.getByRole('combobox', { name: /rows per page/i })).toHaveValue('50');
+    expect(screen.getByText(/page 1 of 3/i)).toBeInTheDocument();
+  });
+
+  it('allows resizing the data-grid viewport by dragging the resize handle', () => {
+    render(
+      <ScenarioDataGrid
+        rows={Array.from({ length: 120 }, (_, index) => ({
+          id: `row-${index + 1}`,
+          name: `Person ${index + 1}`,
+          weight: index + 1,
+        }))}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            id: 'name',
+            header: 'Name',
+            cell: (row) => row.name,
+            sortValue: (row) => row.name,
+            searchValue: (row) => row.name,
+          },
+        ]}
+      />,
+    );
+
+    const bodyRegion = screen.getByRole('region', { name: /data grid rows/i });
+    Object.defineProperty(bodyRegion, 'clientHeight', {
+      configurable: true,
+      value: 360,
+    });
+    bodyRegion.getBoundingClientRect = () => ({
+      x: 0,
+      y: 120,
+      width: 800,
+      height: 360,
+      top: 120,
+      right: 800,
+      bottom: 480,
+      left: 0,
+      toJSON: () => '',
+    });
+
+    fireEvent.pointerDown(screen.getByRole('separator', { name: /resize grid height/i }), { button: 0, clientY: 300 });
+    fireEvent.pointerMove(window, { clientY: 420 });
+    fireEvent.pointerUp(window);
+
+    expect(bodyRegion).toHaveStyle({ height: '480px', maxHeight: 'none' });
+  });
+
+  it('resets a manual viewport resize when escape is pressed on the handle', () => {
+    render(
+      <ScenarioDataGrid
+        rows={Array.from({ length: 120 }, (_, index) => ({
+          id: `row-${index + 1}`,
+          name: `Person ${index + 1}`,
+          weight: index + 1,
+        }))}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            id: 'name',
+            header: 'Name',
+            cell: (row) => row.name,
+            sortValue: (row) => row.name,
+            searchValue: (row) => row.name,
+          },
+        ]}
+      />,
+    );
+
+    const bodyRegion = screen.getByRole('region', { name: /data grid rows/i });
+    Object.defineProperty(bodyRegion, 'clientHeight', {
+      configurable: true,
+      value: 360,
+    });
+    bodyRegion.getBoundingClientRect = () => ({
+      x: 0,
+      y: 120,
+      width: 800,
+      height: 360,
+      top: 120,
+      right: 800,
+      bottom: 480,
+      left: 0,
+      toJSON: () => '',
+    });
+
+    const handle = screen.getByRole('separator', { name: /resize grid height/i });
+    fireEvent.pointerDown(handle, { button: 0, clientY: 300 });
+    fireEvent.pointerMove(window, { clientY: 420 });
+    fireEvent.pointerUp(window);
+    expect(bodyRegion).toHaveStyle({ height: '480px' });
+
+    fireEvent.keyDown(handle, { key: 'Escape' });
+    expect(bodyRegion).not.toHaveStyle({ height: '480px' });
+    expect(bodyRegion.style.height).toBe('');
+  });
 });

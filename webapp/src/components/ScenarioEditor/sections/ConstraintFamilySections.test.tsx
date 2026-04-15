@@ -112,8 +112,12 @@ describe('ConstraintFamilySections', () => {
 
     await user.click(screen.getByRole('button', { name: /edit table/i }));
 
+    expect(screen.queryByText('Only selected sessions')).not.toBeInTheDocument();
+    await user.click(screen.getAllByRole('button', { name: /edit sessions/i })[0]);
+
     expect(screen.getAllByText('All sessions').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Only selected sessions').length).toBeGreaterThan(0);
+    await user.click(screen.getByRole('radio', { name: /only selected sessions/i }));
     expect(screen.getByRole('checkbox', { name: '1' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: '2' })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: '3' })).toBeInTheDocument();
@@ -140,6 +144,53 @@ describe('ConstraintFamilySections', () => {
     await user.click(screen.getByRole('button', { name: /select prefer together item/i }));
     await user.click(screen.getByRole('button', { name: /^actions$/i }));
     expect(screen.getByRole('button', { name: /convert selected to pair encounters/i })).toBeInTheDocument();
+  });
+
+  it('uses the shared session scope editor for pair encounters in list edit mode', async () => {
+    const user = userEvent.setup();
+
+    useAppStore.setState((state) => ({
+      ...state,
+      resolveScenario: () => ({
+        ...createScenario(),
+        constraints: [
+          {
+            type: 'PairMeetingCount',
+            people: ['p1', 'p2'],
+            target_meetings: 1,
+            mode: 'exact',
+            penalty_weight: 10,
+          },
+          {
+            type: 'PairMeetingCount',
+            people: ['p2', 'p3'],
+            sessions: [0, 1, 2],
+            target_meetings: 2,
+            mode: 'at_least',
+            penalty_weight: 20,
+          },
+        ],
+      }),
+    }));
+
+    render(
+      <SoftConstraintFamilySection family="PairMeetingCount" onAdd={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+    );
+
+    expect(screen.getByText('All sessions')).toBeInTheDocument();
+    expect(screen.getByText('1, 2, 3')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /edit table/i }));
+
+    expect(screen.queryByText('Only selected sessions')).not.toBeInTheDocument();
+    await user.click(screen.getAllByRole('button', { name: /edit sessions/i })[0]);
+
+    expect(screen.getAllByText('All sessions').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Only selected sessions').length).toBeGreaterThan(0);
+    await user.click(screen.getByRole('radio', { name: /only selected sessions/i }));
+    expect(screen.getByRole('checkbox', { name: '1' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: '2' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: '3' })).toBeInTheDocument();
   });
 
   it('uses attribute names plus a single targets column for attribute balance list editing and csv', async () => {

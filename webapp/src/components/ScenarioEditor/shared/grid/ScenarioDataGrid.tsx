@@ -6,12 +6,14 @@ import { GridPaginationFooter } from './components/GridPaginationFooter';
 import { GridTable } from './components/GridTable';
 import { GridToolbar } from './components/GridToolbar';
 import { GridTopScrollbar } from './components/GridTopScrollbar';
+import { GridVerticalResizeHandle } from './components/GridVerticalResizeHandle';
 import { InlineCsvEditor } from './components/InlineCsvEditor';
 import { isCustomColumn, isPrimitiveColumn, materializeColumns } from './model/columnMaterialization';
 import { escapeCsvValue } from './model/csvCodec';
 import { resolveExportValue } from './model/exportUtils';
 import { useGridColumnResize } from './hooks/useGridColumnResize';
 import { useGridColumnState } from './hooks/useGridColumnState';
+import { useGridViewportResize } from './hooks/useGridViewportResize';
 import { useGridScrollSync } from './hooks/useGridScrollSync';
 import { useScenarioDataTable } from './hooks/useScenarioDataTable';
 import { useGridWorkspaceDraft } from './hooks/useGridWorkspaceDraft';
@@ -51,7 +53,7 @@ export function ScenarioDataGrid<T>({
   workspace,
   searchSummary,
   toolbarActions,
-  maxHeight = 'min(70vh, calc(100vh - 18rem))',
+  maxHeight = 'min(64vh, calc(100vh - 20rem))',
   pageSize = 100,
   pageSizeOptions = [50, 100, 250, 500],
 }: ScenarioDataGridProps<T>) {
@@ -108,6 +110,13 @@ export function ScenarioDataGrid<T>({
   const { bodyScrollRef, scrollMetrics, syncScroll, tableRef, topScrollRef } = useGridScrollSync({
     deps: [activeRows, columnSizing, columnVisibility, sorting, mergedQuery],
   });
+  const {
+    handleResizeKeyDown,
+    isResizing,
+    resetViewportHeight,
+    startViewportResize,
+    viewportHeight,
+  } = useGridViewportResize({ bodyScrollRef });
 
   const { startColumnResize } = useGridColumnResize({ columns: materializedColumns, setColumnSizing });
 
@@ -247,6 +256,7 @@ export function ScenarioDataGrid<T>({
           bodyScrollRef={bodyScrollRef}
           emptyState={emptyState}
           maxHeight={maxHeight}
+          viewportHeight={viewportHeight}
           onBodyScroll={() => syncScroll('body')}
           onCloseFilter={(columnId) => setOpenFilterId((current) => current === columnId ? null : current)}
           onRowOpen={!effectiveEditMode && !isInlineCsvMode ? onRowOpen : undefined}
@@ -258,6 +268,15 @@ export function ScenarioDataGrid<T>({
           tableRef={tableRef}
         />
       )}
+
+      {!isInlineCsvMode ? (
+        <GridVerticalResizeHandle
+          isResizing={isResizing}
+          onPointerStart={startViewportResize}
+          onReset={resetViewportHeight}
+          onKeyDown={handleResizeKeyDown}
+        />
+      ) : null}
 
       {!isInlineCsvMode ? <GridPaginationFooter filteredCount={filteredCount} pageSizeOptions={pageSizeOptions} table={table} /> : null}
     </div>

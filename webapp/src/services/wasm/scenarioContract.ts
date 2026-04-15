@@ -215,7 +215,7 @@ function normalizeConstraintForWasm(constraint: Constraint, allSessions: number[
       return {
         ...constraint,
         people: [...constraint.people] as [string, string],
-        sessions: [...constraint.sessions],
+        ...(constraint.sessions ? { sessions: [...constraint.sessions] } : {}),
       };
     default:
       return constraint;
