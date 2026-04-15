@@ -292,6 +292,7 @@ fn run_case(
                 multi_root_balanced_session_inheritance: telemetry
                     .multi_root_balanced_session_inheritance
                     .clone(),
+                solver4_paper_trace: telemetry.solver4_paper_trace.clone(),
             });
             let validation = validate_final_solution(&input, &result);
             let score_decomposition =

@@ -2,30 +2,55 @@
 
 ## Decision
 
-`solver4` currently represents the **Sections 6 and 7** branch of the Triska/Musliu paper:
+`solver4` now represents the **complete Triska/Musliu paper algorithm family** for pure zero-repeat Social Golfer workloads.
 
-- randomized greedy initial configurations
-- conflict-position local search
-- week-local swapped-player tabu memory
-- random-swap breakout after stagnation
+Implemented branches:
 
-It **does not yet implement Section 5** complete backtracking / pattern search.
+1. **Section 5** — complete backtracking guided by minimal freedom, with explicit pattern-driven set selection
+2. **Sections 6 and 7** — randomized greedy initial configurations plus conflict-position local search with week-local tabu and 2-swap breakout after 4 non-improving iterations
 
-## Why this is explicit
+## Boundary
 
-The paper contains two distinct algorithmic tracks:
+`solver4` is still intentionally narrow.
 
-1. **Section 5**: complete backtracking guided by minimal freedom, with pattern-based set selection such as `3`, `2-2`, `4`, and `3-2-2-1`
-2. **Sections 6 and 7**: randomized greedy initialization plus local search using conflict positions
+It accepts only pure paper-compatible Social Golfer style scenarios:
 
-The current Rust `solver4` codebase only implements the second track. Therefore:
+- same participants in every session
+- full attendance
+- uniform fixed group sizes
+- exact full partitioning every session
+- zero-repeat semantics via `RepeatEncounter.max_allowed_encounters = 0`
+- no extra GroupMixer constraint families or attribute structure
 
-- it is valid to describe solver4 as **paper-shaped Sections 6/7 local search**
-- it is **not** valid to describe solver4 as a full implementation of the entire paper
-- claims about the paper's Section 5 results (for example the complete-search `5-3-7` and `8-4-9` timings) require either:
-  - a future Section 5 implementation in solver4, or
-  - explicit wording that those numbers are paper reference anchors rather than current solver4 guarantees
+This keeps the accepted input family aligned with the algorithm the paper actually defines.
 
-## Future extension point
+## Mode split
 
-If we later choose to make solver4 paper-complete, the next addition should be an explicit Section 5 mode instead of silently broadening the existing Sections 6/7 search path.
+`solver4` exposes both paper branches explicitly via `Solver4Mode`:
+
+- `greedy_local_search`
+- `complete_backtracking`
+
+Section 5 also accepts an optional explicit `backtracking_pattern` such as:
+
+- `3`
+- `2-2`
+- `4`
+- `3-2-2-1`
+
+If no pattern is supplied in complete-backtracking mode, solver4 uses the paper's simple pair-first decomposition (`2-2-...` plus a trailing `1` when the group size is odd).
+
+## Non-goals
+
+`solver4` is **not** a general repeat-heavy GroupMixer solver.
+
+It should reject:
+
+- partial attendance
+- immovables
+- together/apart constraints
+- clique constraints
+- attribute-balance constraints
+- variable capacities
+- non-zero-repeat `RepeatEncounter` parameterizations
+- any hidden fallback to broader non-paper logic
