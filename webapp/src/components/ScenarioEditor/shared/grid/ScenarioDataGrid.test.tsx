@@ -542,6 +542,66 @@ describe('ScenarioDataGrid', () => {
     expect(onCommit).toHaveBeenCalledWith(rows[0], 'Beta Prime');
   });
 
+  it('can hide browse mode while keeping edit and csv workspace flows active', async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn();
+
+    function WorkspaceHarness() {
+      const [mode, setMode] = React.useState<ScenarioDataGridWorkspaceMode>('edit');
+      const [committedRows, setCommittedRows] = React.useState([{ id: 'row-a', name: 'Beta' }]);
+
+      return (
+        <ScenarioDataGrid
+          rows={committedRows}
+          rowKey={(row) => row.id}
+          columns={[
+            {
+              kind: 'primitive',
+              id: 'name',
+              header: 'Name',
+              primitive: 'string',
+              getValue: (row) => row.name,
+              setValue: (row, value) => ({ ...row, name: value ?? '' }),
+            },
+          ]}
+          workspace={{
+            mode,
+            onModeChange: setMode,
+            browseModeEnabled: false,
+            draft: {
+              onApply: (nextRows) => {
+                setCommittedRows(nextRows);
+                onApply(nextRows);
+              },
+            },
+          }}
+        />
+      );
+    }
+
+    render(<WorkspaceHarness />);
+
+    expect(screen.queryByRole('button', { name: /^view$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit table/i })).toHaveAttribute('aria-pressed', 'true');
+
+    const nameInput = screen.getByRole('textbox', { name: /edit name for row row-a/i });
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Beta Prime');
+    await user.tab();
+
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(onApply).toHaveBeenCalledWith([{ id: 'row-a', name: 'Beta Prime' }]);
+    expect(screen.getByRole('button', { name: /edit table/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('textbox', { name: /edit name for row row-a/i })).toHaveValue('Beta Prime');
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    expect(screen.getByRole('textbox', { name: /inline csv editor/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /edit table/i }));
+    expect(screen.getByRole('textbox', { name: /edit name for row row-a/i })).toHaveValue('Beta Prime');
+  });
+
   it('round-trips typed primitive columns through shared draft edit mode', async () => {
     const user = userEvent.setup();
     const onApply = vi.fn();

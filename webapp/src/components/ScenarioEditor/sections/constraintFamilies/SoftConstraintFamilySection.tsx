@@ -55,7 +55,7 @@ export function SoftConstraintFamilySection({
   const { scenario, setScenario, attributeDefinitions, addNotification, isLoading } = useConstraintScenario();
   const [search, setSearch] = React.useState('');
   const [viewMode, setViewMode] = React.useState<SetupCollectionViewMode>('list');
-  const [gridWorkspaceMode, setGridWorkspaceMode] = React.useState<'browse' | 'edit' | 'csv'>('browse');
+  const [gridWorkspaceMode, setGridWorkspaceMode] = React.useState<'browse' | 'edit' | 'csv'>('edit');
   const [selectedShouldIndices, setSelectedShouldIndices] = React.useState<number[]>([]);
   const [isSelectingShould, setIsSelectingShould] = React.useState(false);
   const [showPairConvert, setShowPairConvert] = React.useState(false);
@@ -66,7 +66,7 @@ export function SoftConstraintFamilySection({
       setSelectedShouldIndices((current) => (current.length === 0 ? current : []));
     }
     if (nextMode !== 'list') {
-      setGridWorkspaceMode('browse');
+      setGridWorkspaceMode('edit');
     }
   }, []);
 
@@ -339,6 +339,7 @@ export function SoftConstraintFamilySection({
                 ? {
                     mode: gridWorkspaceMode,
                     onModeChange: setGridWorkspaceMode,
+                    browseModeEnabled: false,
                     draft: {
                       onApply: applyLocalGridRows,
                       createRow: createLocalGridRow,

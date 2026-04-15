@@ -82,11 +82,9 @@ describe('ConstraintFamilySections', () => {
     expect(screen.getByRole('columnheader', { name: /group/i })).toBeInTheDocument();
     expect(screen.getByText('Alex')).toBeInTheDocument();
     expect(screen.queryByText('p1')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit table/i })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: /^csv$/i })).toBeInTheDocument();
-
-    await user.click(screen.getByText('Alex'));
-    expect(onEdit).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: /^view$/i })).not.toBeInTheDocument();
   }, 10000);
 
   it('uses the shared session scope editor for fixed placements in list edit mode', async () => {
@@ -220,14 +218,10 @@ describe('ConstraintFamilySections', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit table/i })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('columnheader', { name: /targets/i })).toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: /female/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: /^male /i })).not.toBeInTheDocument();
-    expect(screen.getByText('gender')).toBeInTheDocument();
-    expect(screen.getByText(/female: 2 · male: 1/i)).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: /edit table/i }));
     expect(screen.getByRole('spinbutton', { name: /target for female/i })).toHaveValue(2);
     expect(screen.getByRole('spinbutton', { name: /target for male/i })).toHaveValue(1);
 

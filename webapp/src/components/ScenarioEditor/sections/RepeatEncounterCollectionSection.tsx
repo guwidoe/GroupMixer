@@ -85,6 +85,7 @@ function renderRepeatEncounterContent(
         workspace={{
           mode: gridWorkspaceMode,
           onModeChange: setGridWorkspaceMode,
+          browseModeEnabled: false,
           draft: {
             onApply: onApplyGridRows,
             createRow: createGridRow,
@@ -185,7 +186,7 @@ export function RepeatEncounterCollectionSection({
 }: RepeatEncounterCollectionSectionProps) {
   const [search, setSearch] = React.useState('');
   const [viewMode, setViewMode] = React.useState<SetupCollectionViewMode>('cards');
-  const [gridWorkspaceMode, setGridWorkspaceMode] = React.useState<'browse' | 'edit' | 'csv'>('browse');
+  const [gridWorkspaceMode, setGridWorkspaceMode] = React.useState<'browse' | 'edit' | 'csv'>('edit');
 
   const items = React.useMemo(
     () =>
@@ -235,7 +236,7 @@ export function RepeatEncounterCollectionSection({
       onViewModeChange={(nextMode) => {
         setViewMode(nextMode);
         if (nextMode !== 'list') {
-          setGridWorkspaceMode('browse');
+          setGridWorkspaceMode('edit');
         }
       }}
       toolbarLeading={(activeViewMode) =>
