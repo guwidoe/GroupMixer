@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::time::Instant;
 
 pub const SOLVER4_NOTES: &str =
-    "Dedicated pure-SGP solver family that follows the Triska/Musliu paper shape directly: strict Social-Golfer-only capability gating, exact randomized greedy initialization, and paper-shaped conflict-position local search with week-local swapped-player tabu memory.";
+    "Dedicated pure-SGP solver family following the Triska/Musliu paper's Sections 6 and 7: strict Social-Golfer-only capability gating, randomized greedy initialization, and conflict-position local search with week-local swapped-player tabu memory. Solver4 does not yet implement the paper's Section 5 complete backtracking/pattern-search branch.";
 
 const DEFAULT_SOLVER4_SEED: u64 = 42;
 const PAPER_PAIR_REPEAT_PENALTY: i64 = 1_000_000;
