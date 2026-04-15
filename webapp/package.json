@@ -24,6 +24,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ci": "playwright test --project=chromium --ignore-snapshots --grep-invert \"Visual Regression|Workflow coverage\"",
     "test:e2e:workflows": "playwright test --ignore-snapshots --grep-invert \"Visual Regression\"",
+    "test:e2e:perf": "RUN_GRID_PERF=1 playwright test e2e/tests/grid-performance.spec.ts --project=chromium --workers=1",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:visual": "playwright test visual-regression.spec.ts",
