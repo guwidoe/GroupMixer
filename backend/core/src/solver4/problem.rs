@@ -167,13 +167,17 @@ fn validate_pure_sgp_constraints(constraints: &[Constraint]) -> Result<(), Solve
         }
     }
 
-    if let Some(params) = repeat_encounter {
-        if params.max_allowed_encounters > 1 {
-            return Err(SolverError::ValidationError(
-                "solver4 requires the zero-repeat canonical encoding: RepeatEncounter.max_allowed_encounters must be 0 or 1"
-                    .into(),
-            ));
-        }
+    let Some(params) = repeat_encounter else {
+        return Err(SolverError::ValidationError(
+            "solver4 requires exactly one RepeatEncounter constraint encoding meet-at-most-once semantics"
+                .into(),
+        ));
+    };
+    if params.max_allowed_encounters != 1 {
+        return Err(SolverError::ValidationError(
+            "solver4 requires zero-repeat meet-at-most-once semantics: RepeatEncounter.max_allowed_encounters must be 1"
+                .into(),
+        ));
     }
     Ok(())
 }

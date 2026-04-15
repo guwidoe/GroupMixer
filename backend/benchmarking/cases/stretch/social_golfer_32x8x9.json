@@ -260,7 +260,7 @@
     "constraints": [
       {
         "type": "RepeatEncounter",
-        "max_allowed_encounters": 0,
+        "max_allowed_encounters": 1,
         "penalty_function": "squared",
         "penalty_weight": 10.0
       }

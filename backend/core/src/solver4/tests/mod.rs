@@ -218,7 +218,7 @@ fn solver4_config() -> SolverConfiguration {
 
 fn repeat_constraint() -> Constraint {
     Constraint::RepeatEncounter(RepeatEncounterParams {
-        max_allowed_encounters: 0,
+        max_allowed_encounters: 1,
         penalty_function: "squared".into(),
         penalty_weight: 10.0,
     })

@@ -19,7 +19,7 @@ It accepts only pure paper-compatible Social Golfer style scenarios:
 - full attendance
 - uniform fixed group sizes
 - exact full partitioning every session
-- zero-repeat semantics via `RepeatEncounter.max_allowed_encounters = 0`
+- zero-repeat semantics via `RepeatEncounter.max_allowed_encounters = 1` (meet at most once)
 - no extra GroupMixer constraint families or attribute structure
 
 This keeps the accepted input family aligned with the algorithm the paper actually defines.
