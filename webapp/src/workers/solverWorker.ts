@@ -19,6 +19,7 @@ import {
 import type { RustResult } from "../services/wasm/types";
 import type {
   WasmContractSolveInput,
+  WasmPublicErrorEnvelope,
   WasmRecommendSettingsRequest,
 } from "../services/wasm/module";
 import type { WarmStartSchedule } from "../services/wasm/scenarioContract";
@@ -63,6 +64,34 @@ export interface SolverWorkerRuntime {
 
 function errorToMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function isPublicErrorEnvelope(error: unknown): error is WasmPublicErrorEnvelope {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const record = error as Record<string, unknown>;
+  const publicError = record.error;
+  if (!publicError || typeof publicError !== "object") {
+    return false;
+  }
+
+  const publicErrorRecord = publicError as Record<string, unknown>;
+  return typeof publicErrorRecord.code === "string" && typeof publicErrorRecord.message === "string";
+}
+
+function toWorkerErrorData(error: unknown): WorkerErrorData {
+  if (isPublicErrorEnvelope(error)) {
+    return {
+      error: error.error.message,
+      publicError: error.error,
+    };
+  }
+
+  return {
+    error: errorToMessage(error),
+  };
 }
 
 export function createSolverWorkerRuntime({
@@ -299,9 +328,7 @@ export function createSolverWorkerRuntime({
       }
     } catch (error) {
       workerConsole.error("Worker error:", error);
-      postRequestError(id, {
-        error: errorToMessage(error),
-      });
+      postRequestError(id, toWorkerErrorData(error));
     }
   }
 
