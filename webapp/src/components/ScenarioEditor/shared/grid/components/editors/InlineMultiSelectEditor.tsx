@@ -1,7 +1,9 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, X } from 'lucide-react';
 import type { ScenarioDataGridOption } from '../../types';
 import { useOutsideClick } from '../../../../../../hooks';
+import { useAnchoredPopoverPosition } from '../../hooks/useAnchoredPopoverPosition';
 
 interface InlineMultiSelectEditorProps {
   ariaLabel?: string;
@@ -66,6 +68,13 @@ export function InlineMultiSelectEditor({ ariaLabel, disabled, options, value, o
     }),
     [normalizedQuery, sortedOptions],
   );
+  const popoverStyle = useAnchoredPopoverPosition({
+    isOpen,
+    triggerRef: buttonRef,
+    panelRef,
+    minWidth: 256,
+    maxWidth: 352,
+  });
 
   const toggleValue = React.useCallback((optionValue: string) => {
     const nextSet = new Set(draftValue);
@@ -115,11 +124,12 @@ export function InlineMultiSelectEditor({ ariaLabel, disabled, options, value, o
         />
       </button>
 
-      {isOpen ? (
+      {isOpen && popoverStyle && typeof document !== 'undefined' ? createPortal(
         <div
           ref={panelRef}
-          className="absolute left-0 top-[calc(100%+0.35rem)] z-20 w-[min(22rem,max(16rem,100%))] space-y-2 rounded-xl border p-2 shadow-xl"
-          style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+          data-grid-popover="true"
+          className="space-y-2 overflow-hidden rounded-xl border p-2 shadow-xl"
+          style={{ ...popoverStyle, borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
         >
           <div className="flex items-center gap-2">
             <input
@@ -182,7 +192,8 @@ export function InlineMultiSelectEditor({ ariaLabel, disabled, options, value, o
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   );

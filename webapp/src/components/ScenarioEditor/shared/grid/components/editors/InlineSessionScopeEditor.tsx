@@ -1,7 +1,9 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, X } from 'lucide-react';
 import { useOutsideClick } from '../../../../../../hooks';
 import { SessionScopeField } from '../../../SessionScopeField';
+import { useAnchoredPopoverPosition } from '../../hooks/useAnchoredPopoverPosition';
 import {
   createAllSessionScopeDraft,
   formatSessionScopeDraftCompact,
@@ -40,12 +42,15 @@ export function InlineSessionScopeEditor({
   const normalizedValue = value ?? createAllSessionScopeDraft();
   const displayedValue = isOpen ? draftValue : normalizedValue;
   const summary = React.useMemo(() => {
-    if (displayedValue.mode === 'all') {
-      return 'All sessions';
-    }
-
-    return `Selected: ${formatSessionScopeDraftCompact(displayedValue, totalSessions)}`;
+    return formatSessionScopeDraftCompact(displayedValue, totalSessions);
   }, [displayedValue, totalSessions]);
+  const popoverStyle = useAnchoredPopoverPosition({
+    isOpen,
+    triggerRef: buttonRef,
+    panelRef,
+    minWidth: 288,
+    maxWidth: 384,
+  });
 
   const handleDraftChange = React.useCallback((nextValue: SessionScopeDraft) => {
     setDraftValue(nextValue);
@@ -74,11 +79,12 @@ export function InlineSessionScopeEditor({
         />
       </button>
 
-      {isOpen ? (
+      {isOpen && popoverStyle && typeof document !== 'undefined' ? createPortal(
         <div
           ref={panelRef}
-          className="absolute left-0 top-[calc(100%+0.35rem)] z-20 w-[min(24rem,max(18rem,100%))] space-y-2 rounded-xl border p-2 shadow-xl"
-          style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+          data-grid-popover="true"
+          className="space-y-2 overflow-auto rounded-xl border p-2 shadow-xl"
+          style={{ ...popoverStyle, borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
         >
           <div className="flex items-center justify-between gap-3 px-1">
             <div className="min-w-0 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
@@ -103,7 +109,8 @@ export function InlineSessionScopeEditor({
             onChange={handleDraftChange}
             disabled={disabled}
           />
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   );
