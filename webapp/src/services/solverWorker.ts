@@ -40,6 +40,28 @@ import type {
 } from "./wasm/module";
 import type { RustResult } from "./wasm/types";
 
+class SolverWorkerMessageError extends Error {
+  readonly code?: string;
+  readonly publicError?: WorkerErrorData["publicError"];
+
+  constructor(message: string, options?: { code?: string; publicError?: WorkerErrorData["publicError"] }) {
+    super(message);
+    this.name = "SolverWorkerMessageError";
+    this.code = options?.code;
+    this.publicError = options?.publicError;
+  }
+}
+
+function formatWorkerPublicError(publicError: NonNullable<WorkerErrorData["publicError"]>): string {
+  const parts = [publicError.message];
+
+  if (publicError.recovery) {
+    parts.push(`Hint: ${publicError.recovery}`);
+  }
+
+  return parts.join(" ");
+}
+
 type PendingMessage =
   | {
       kind: "init";
@@ -199,6 +221,13 @@ export class SolverWorkerService {
   }
 
   private buildWorkerError(messageData?: WorkerErrorData): Error {
+    if (messageData?.publicError) {
+      return new SolverWorkerMessageError(formatWorkerPublicError(messageData.publicError), {
+        code: messageData.publicError.code,
+        publicError: messageData.publicError,
+      });
+    }
+
     return new Error(messageData?.error || "Unknown worker error");
   }
 
