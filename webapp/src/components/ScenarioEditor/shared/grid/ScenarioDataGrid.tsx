@@ -1,8 +1,10 @@
 import React from 'react';
 import { type SortingState } from '@tanstack/react-table';
+import { useBlocker, useInRouterContext } from 'react-router-dom';
 import { CsvPreviewDialog } from './components/CsvPreviewDialog';
 import { GridActiveFiltersBar } from './components/GridActiveFiltersBar';
 import { GridPaginationFooter } from './components/GridPaginationFooter';
+import { SetupGridLeaveConfirmModal } from './components/SetupGridLeaveConfirmModal';
 import { GridTable } from './components/GridTable';
 import { GridToolbar } from './components/GridToolbar';
 import { GridTopScrollbar } from './components/GridTopScrollbar';
@@ -18,6 +20,34 @@ import { useGridScrollSync } from './hooks/useGridScrollSync';
 import { useScenarioDataTable } from './hooks/useScenarioDataTable';
 import { useGridWorkspaceDraft } from './hooks/useGridWorkspaceDraft';
 import type { ScenarioDataGridColumn, ScenarioDataGridWorkspaceConfig } from './types';
+import { useAppStore } from '../../../../store';
+
+type PendingLeaveAction =
+  | { kind: 'external'; continueAction: () => void }
+  | { kind: 'navigation'; proceed: () => void; reset: () => void };
+
+function GridNavigationBlocker({
+  when,
+  onBlocked,
+}: {
+  when: boolean;
+  onBlocked: (action: { proceed: () => void; reset: () => void }) => void;
+}) {
+  const blocker = useBlocker(when);
+
+  React.useEffect(() => {
+    if (blocker.state !== 'blocked') {
+      return;
+    }
+
+    onBlocked({
+      proceed: blocker.proceed,
+      reset: blocker.reset,
+    });
+  }, [blocker, onBlocked]);
+
+  return null;
+}
 
 interface ScenarioDataGridProps<T> {
   rows: T[];
@@ -67,6 +97,10 @@ export function ScenarioDataGrid<T>({
   const [isColumnsMenuOpen, setIsColumnsMenuOpen] = React.useState(false);
   const [isEditMode, setIsEditMode] = React.useState(defaultEditMode);
   const [isCsvPreviewOpen, setIsCsvPreviewOpen] = React.useState(false);
+  const [pendingLeaveAction, setPendingLeaveAction] = React.useState<PendingLeaveAction | null>(null);
+  const inRouterContext = useInRouterContext();
+  const setSetupGridUnsaved = useAppStore((state) => state.setSetupGridUnsaved);
+  const setSetupGridLeaveHook = useAppStore((state) => state.setSetupGridLeaveHook);
 
   const draftEditableColumns = React.useMemo(
     () => materializedColumns.filter((column) => (
@@ -79,8 +113,10 @@ export function ScenarioDataGrid<T>({
     activeRows,
     csvDraftText,
     csvErrors,
+    discardDraftChanges,
     draftConfig,
     hasDraftEditing,
+    hasUnappliedChanges,
     inlineCsvConfig,
     isInlineCsvMode,
     requestWorkspaceMode,
@@ -200,11 +236,104 @@ export function ScenarioDataGrid<T>({
     setIsEditMode((current) => !current);
   }, [browseModeEnabled, effectiveEditMode, normalizedWorkspaceMode, requestWorkspaceMode, workspace]);
 
+  const clearPendingLeaveAction = React.useCallback(() => {
+    setPendingLeaveAction((current) => {
+      if (current?.kind === 'navigation') {
+        current.reset();
+      }
+      return null;
+    });
+  }, []);
+
+  const continuePendingLeaveAction = React.useCallback((action: PendingLeaveAction) => {
+    if (action.kind === 'navigation') {
+      action.proceed();
+      return;
+    }
+
+    action.continueAction();
+  }, []);
+
+  const openLeaveConfirmation = React.useCallback((action: PendingLeaveAction) => {
+    setPendingLeaveAction((current) => {
+      if (current?.kind === 'navigation') {
+        current.reset();
+      }
+      return action;
+    });
+  }, []);
+
+  const handleDiscardAndLeave = React.useCallback(() => {
+    const action = pendingLeaveAction;
+    discardDraftChanges();
+    setPendingLeaveAction(null);
+    if (action) {
+      continuePendingLeaveAction(action);
+    }
+  }, [continuePendingLeaveAction, discardDraftChanges, pendingLeaveAction]);
+
+  const handleApplyAndLeave = React.useCallback(() => {
+    const action = pendingLeaveAction;
+    const didApply = handleApplyDraftChanges();
+    setPendingLeaveAction(null);
+    if (didApply && action) {
+      continuePendingLeaveAction(action);
+    }
+  }, [continuePendingLeaveAction, handleApplyDraftChanges, pendingLeaveAction]);
+
+  React.useEffect(() => {
+    if (!hasDraftEditing) {
+      setSetupGridUnsaved(false);
+      setSetupGridLeaveHook(null);
+      return;
+    }
+
+    setSetupGridUnsaved(hasUnappliedChanges);
+    setSetupGridLeaveHook(() => (continueAction) => {
+      openLeaveConfirmation({ kind: 'external', continueAction });
+    });
+
+    return () => {
+      setSetupGridUnsaved(false);
+      setSetupGridLeaveHook(null);
+    };
+  }, [hasDraftEditing, hasUnappliedChanges, openLeaveConfirmation, setSetupGridLeaveHook, setSetupGridUnsaved]);
+
+  React.useEffect(() => {
+    if (!hasDraftEditing || !hasUnappliedChanges || typeof window === 'undefined') {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [hasDraftEditing, hasUnappliedChanges]);
+
   return (
     <div
       className="overflow-hidden rounded-[1.25rem] border shadow-sm"
       style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
     >
+      {inRouterContext ? (
+        <GridNavigationBlocker
+          when={hasDraftEditing && hasUnappliedChanges}
+          onBlocked={({ proceed, reset }) => openLeaveConfirmation({ kind: 'navigation', proceed, reset })}
+        />
+      ) : null}
+
+      <SetupGridLeaveConfirmModal
+        open={pendingLeaveAction !== null}
+        onStay={clearPendingLeaveAction}
+        onDiscardAndLeave={handleDiscardAndLeave}
+        onApplyAndLeave={handleApplyAndLeave}
+      />
+
       <GridToolbar
         browseModeEnabled={browseModeEnabled}
         canCreateRows={canCreateRows}
@@ -221,7 +350,7 @@ export function ScenarioDataGrid<T>({
         onToggleCsv={handleToggleCsv}
         onToggleEdit={handleToggleEdit}
         onSelectBrowse={() => requestWorkspaceMode('browse')}
-        onDiscardChanges={() => requestWorkspaceMode('browse')}
+        onDiscardChanges={() => discardDraftChanges()}
         onApplyChanges={handleApplyDraftChanges}
         onAddRow={handleAddDraftRow}
         resolvedWorkspaceActions={resolvedWorkspaceActions}

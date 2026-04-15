@@ -1786,13 +1786,8 @@ fn apply_random_breakout(
 
     for _ in 0..RANDOM_BREAKOUT_SWAP_COUNT {
         let week = choose_breakout_week(current, problem.num_weeks, rng);
-        let left_group = rng.random_range(0..problem.num_groups);
-        let mut right_group = rng.random_range(0..problem.num_groups);
-        while right_group == left_group {
-            right_group = rng.random_range(0..problem.num_groups);
-        }
-        let left_slot = rng.random_range(0..problem.group_size);
-        let right_slot = rng.random_range(0..problem.group_size);
+        let (left_group, left_slot, right_group, right_slot) =
+            choose_breakout_positions(problem, current, week, rng);
         let left_person = next[week][left_group][left_slot];
         let right_person = next[week][right_group][right_slot];
         next[week][left_group][left_slot] = right_person;
@@ -1828,6 +1823,46 @@ fn choose_breakout_week(
     *candidate_weeks
         .choose(rng)
         .expect("max-conflict week list should be non-empty")
+}
+
+fn choose_breakout_positions(
+    problem: &PureSgpProblem,
+    current: &EvaluatedSchedule,
+    week: usize,
+    rng: &mut ChaCha12Rng,
+) -> (usize, usize, usize, usize) {
+    let mut conflicted_positions = Vec::new();
+    for group in 0..problem.num_groups {
+        for slot in 0..problem.group_size {
+            let position = problem.position_id(week, group, slot);
+            if current.incident_counts[position] > 0 {
+                conflicted_positions.push((group, slot));
+            }
+        }
+    }
+
+    if conflicted_positions.len() >= 2 {
+        let &(left_group, left_slot) = conflicted_positions
+            .choose(rng)
+            .expect("conflicted positions should be non-empty");
+        let right_candidates: Vec<(usize, usize)> = conflicted_positions
+            .iter()
+            .copied()
+            .filter(|(group, _)| *group != left_group)
+            .collect();
+        if let Some(&(right_group, right_slot)) = right_candidates.choose(rng) {
+            return (left_group, left_slot, right_group, right_slot);
+        }
+    }
+
+    let left_group = rng.random_range(0..problem.num_groups);
+    let mut right_group = rng.random_range(0..problem.num_groups);
+    while right_group == left_group {
+        right_group = rng.random_range(0..problem.num_groups);
+    }
+    let left_slot = rng.random_range(0..problem.group_size);
+    let right_slot = rng.random_range(0..problem.group_size);
+    (left_group, left_slot, right_group, right_slot)
 }
 
 #[derive(Debug, Clone)]
@@ -2940,6 +2975,26 @@ mod tests {
         for _ in 0..20 {
             let week = choose_breakout_week(&current, problem.num_weeks, &mut rng);
             assert!(week == 0 || week == 1);
+        }
+    }
+
+    #[test]
+    fn choose_breakout_positions_prefers_conflicted_slots_from_different_groups() {
+        let problem = sample_problem(2, 2, 3);
+        let schedule = vec![
+            vec![vec![0, 1], vec![2, 3]],
+            vec![vec![0, 1], vec![2, 3]],
+            vec![vec![0, 2], vec![1, 3]],
+        ];
+        let current = EvaluatedSchedule::from_schedule(&problem, schedule);
+        let mut rng = ChaCha12Rng::seed_from_u64(11);
+
+        for _ in 0..20 {
+            let (left_group, left_slot, right_group, right_slot) =
+                choose_breakout_positions(&problem, &current, 0, &mut rng);
+            assert_ne!(left_group, right_group);
+            assert!(current.incident_counts[problem.position_id(0, left_group, left_slot)] > 0);
+            assert!(current.incident_counts[problem.position_id(0, right_group, right_slot)] > 0);
         }
     }
 
