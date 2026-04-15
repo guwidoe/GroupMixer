@@ -118,15 +118,14 @@ function renderRepeatEncounterContent(
             primitive: 'enum' as const,
             options: [
               { value: 'linear', label: 'linear' },
-              { value: 'quadratic', label: 'quadratic' },
-              { value: 'exponential', label: 'exponential' },
+              { value: 'squared', label: 'squared' },
             ],
             getValue: (item: RepeatEncounterRow) => item.constraint.penalty_function,
             setValue: (item: RepeatEncounterRow, value) => ({
               ...item,
               constraint: {
                 ...item.constraint,
-                penalty_function: value ?? 'linear',
+                penalty_function: value ?? 'squared',
               },
             }),
             width: 220,
