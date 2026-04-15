@@ -325,6 +325,10 @@ fn build_greedy_initial_schedule(
 ) -> Vec<Vec<Vec<usize>>> {
     let mut schedule = vec![vec![Vec::with_capacity(problem.group_size); problem.num_groups]; problem.num_weeks];
     let mut met_before = vec![vec![false; problem.num_people]; problem.num_people];
+    // Paper Section 6 subtracts a large penalty from a selected pair's freedom in further weeks.
+    // We therefore track only cross-week discouragement here; within a partially built group we do
+    // not add extra freedom penalties, because the paper explicitly says the heuristic otherwise
+    // pays no attention to potential conflicts inside a group.
     let mut selected_pair_penalties = vec![vec![0usize; problem.num_people]; problem.num_people];
 
     for week in 0..problem.num_weeks {
@@ -350,6 +354,9 @@ fn build_greedy_initial_schedule(
                 selected_pair_penalties[left][right] += 1;
                 selected_pair_penalties[right][left] += 1;
             }
+            // Only after the whole group is known do we record the newly created meetings. This
+            // preserves the paper's rule that, aside from the future-week pair penalty, the greedy
+            // choice does not try to avoid prospective conflicts inside the current group.
             note_group_partnerships(&schedule[week][group_idx], &mut met_before);
         }
     }
@@ -395,6 +402,10 @@ fn choose_best_pair(
 }
 
 fn paper_pair_freedom(left: usize, right: usize, met_before: &[Vec<bool>]) -> usize {
+    // Section 6 freedom counts how many *other players* remain compatible with both members of the
+    // pair with respect to the current partial configuration. Because we delay same-group updates
+    // until the group is complete, this reflects cross-group / cross-week history rather than
+    // speculative penalties inside the currently assembled group.
     (0..met_before.len())
         .filter(|candidate| *candidate != left && *candidate != right)
         .filter(|&candidate| !met_before[left][candidate] && !met_before[right][candidate])
@@ -1071,6 +1082,53 @@ mod tests {
         let left = build_greedy_initial_schedule(&problem, 0.0, &mut left_rng);
         let right = build_greedy_initial_schedule(&problem, 0.0, &mut right_rng);
         assert_eq!(left, right);
+    }
+
+    #[test]
+    fn gamma_zero_pair_choice_uses_lexicographic_order_for_ties() {
+        let remaining = vec![0, 1, 2, 3];
+        let met_before = vec![vec![false; 4]; 4];
+        let penalties = vec![vec![0usize; 4]; 4];
+        let mut rng = ChaCha12Rng::seed_from_u64(1);
+
+        let chosen = choose_best_pair(&remaining, &met_before, &penalties, 0.0, &mut rng);
+
+        assert_eq!(chosen, (0, 1));
+    }
+
+    #[test]
+    fn gamma_zero_odd_group_singleton_uses_smallest_remaining_player() {
+        let remaining = vec![2, 4, 7];
+        let mut rng = ChaCha12Rng::seed_from_u64(3);
+
+        let chosen = choose_last_singleton(&remaining, 0.0, &mut rng);
+
+        assert_eq!(chosen, 2);
+    }
+
+    #[test]
+    fn greedy_constructor_applies_future_week_pair_penalty() {
+        let problem = sample_problem(2, 2, 2);
+        let mut rng = ChaCha12Rng::seed_from_u64(0);
+
+        let schedule = build_greedy_initial_schedule(&problem, 0.0, &mut rng);
+
+        assert_eq!(schedule, vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]]);
+    }
+
+    #[test]
+    fn note_group_partnerships_marks_full_group_pairwise_history() {
+        let mut met_before = vec![vec![false; 4]; 4];
+
+        note_group_partnerships(&[0, 1, 2], &mut met_before);
+
+        assert!(met_before[0][1]);
+        assert!(met_before[1][0]);
+        assert!(met_before[0][2]);
+        assert!(met_before[2][0]);
+        assert!(met_before[1][2]);
+        assert!(met_before[2][1]);
+        assert!(!met_before[0][3]);
     }
 
     #[test]
