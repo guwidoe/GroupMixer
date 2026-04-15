@@ -1,0 +1,58 @@
+schema_version: 1
+suite_id: solver4-32x8x10-autoresearch
+benchmark_mode: full_solve
+comparison_category: score_quality
+class: stretch
+title: Solver4 32x8x10 autoresearch lane
+description: >-
+  Fixed autoresearch lane for solver4 on the canonical 32x8x10 pure Social Golfer case.
+  Four deterministic gamma=0 seeds, 60s each, to keep each experiment around five minutes.
+default_solver_family: solver4
+default_solver:
+  solver_type: solver4
+  stop_conditions:
+    max_iterations: 50000000
+    time_limit_seconds: 60
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver4
+    mode: greedy_local_search
+    gamma: 0.0
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: autoresearch.solver4.social_golfer_32x8x10.gamma_0.seed_1.60s
+    provenance: solver4_32x8x10_autoresearch
+    declared_budget: { max_iterations: 50000000, time_limit_seconds: 60 }
+    seed: 320810
+    max_iterations: 50000000
+    time_limit_seconds: 60
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: autoresearch.solver4.social_golfer_32x8x10.gamma_0.seed_2.60s
+    provenance: solver4_32x8x10_autoresearch
+    declared_budget: { max_iterations: 50000000, time_limit_seconds: 60 }
+    seed: 320811
+    max_iterations: 50000000
+    time_limit_seconds: 60
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: autoresearch.solver4.social_golfer_32x8x10.gamma_0.seed_3.60s
+    provenance: solver4_32x8x10_autoresearch
+    declared_budget: { max_iterations: 50000000, time_limit_seconds: 60 }
+    seed: 320812
+    max_iterations: 50000000
+    time_limit_seconds: 60
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: autoresearch.solver4.social_golfer_32x8x10.gamma_0.seed_4.60s
+    provenance: solver4_32x8x10_autoresearch
+    declared_budget: { max_iterations: 50000000, time_limit_seconds: 60 }
+    seed: 320813
+    max_iterations: 50000000
+    time_limit_seconds: 60
