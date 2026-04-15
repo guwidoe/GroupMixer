@@ -1799,6 +1799,133 @@ mod tests {
         schedule
     }
 
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct LocalSearchIterationTrace {
+        iteration: u64,
+        breakout_applied: bool,
+        selected_swap: Option<(usize, usize, usize)>,
+        current_conflict_positions: usize,
+        best_conflict_positions: usize,
+        no_improvement_count: u64,
+        tabu_recorded_pairs: Vec<(usize, (usize, usize))>,
+        raw_tabu_hits_delta: u64,
+        aspiration_overrides_delta: u64,
+    }
+
+    fn simulate_local_search_iterations(
+        problem: &PureSgpProblem,
+        initial_schedule: &[Vec<Vec<usize>>],
+        initial_best_conflict_positions: Option<usize>,
+        step_count: usize,
+        rng_seed: u64,
+    ) -> Vec<LocalSearchIterationTrace> {
+        let mut schedule = initial_schedule.to_vec();
+        let mut current = evaluated(problem, &schedule);
+        let mut best = current.clone();
+        if let Some(best_conflict_positions) = initial_best_conflict_positions {
+            best.conflict_positions = best_conflict_positions;
+        }
+        let mut no_improvement_count = 0u64;
+        let mut tabu = WeekTabuLists::new(problem.num_weeks);
+        let mut telemetry = SgpWeekPairTabuBenchmarkTelemetry::default();
+        let mut rng = ChaCha12Rng::seed_from_u64(rng_seed);
+        let mut trace = Vec::with_capacity(step_count);
+
+        for iteration in 0..step_count as u64 {
+            let breakout_applied = should_apply_random_breakout(no_improvement_count);
+            let raw_tabu_hits_before = telemetry.raw_tabu_hits;
+            let aspiration_overrides_before = telemetry.aspiration_overrides;
+
+            let (selected_swap, tabu_recorded_pairs, next_schedule) = if breakout_applied {
+                let next = apply_random_breakout(
+                    problem,
+                    &schedule,
+                    &mut rng,
+                    &mut tabu,
+                    iteration,
+                    &mut telemetry,
+                );
+                (None, Vec::new(), next)
+            } else {
+                let selection = select_best_swap(
+                    problem,
+                    &schedule,
+                    &current,
+                    &best,
+                    &mut tabu,
+                    iteration,
+                    &mut telemetry,
+                );
+                if let Some(candidate) = selection {
+                    let pair = unordered_pair(candidate.left_person, candidate.right_person);
+                    let recorded = vec![(candidate.week, pair)];
+                    tabu.record_iteration(iteration, &recorded, &mut telemetry);
+                    (
+                        Some((candidate.week, candidate.left_person, candidate.right_person)),
+                        recorded,
+                        candidate.schedule,
+                    )
+                } else {
+                    (None, Vec::new(), schedule.clone())
+                }
+            };
+
+            schedule = next_schedule;
+            current = evaluated(problem, &schedule);
+            let improved_best = current.conflict_positions < best.conflict_positions;
+            if improved_best {
+                best = current.clone();
+            }
+            no_improvement_count = next_no_improvement_count(
+                no_improvement_count,
+                improved_best,
+                breakout_applied,
+            );
+
+            trace.push(LocalSearchIterationTrace {
+                iteration,
+                breakout_applied,
+                selected_swap,
+                current_conflict_positions: current.conflict_positions,
+                best_conflict_positions: best.conflict_positions,
+                no_improvement_count,
+                tabu_recorded_pairs,
+                raw_tabu_hits_delta: telemetry.raw_tabu_hits - raw_tabu_hits_before,
+                aspiration_overrides_delta: telemetry.aspiration_overrides
+                    - aspiration_overrides_before,
+            });
+        }
+
+        trace
+    }
+
+    fn enumerated_conflict_affecting_swaps(
+        problem: &PureSgpProblem,
+        _schedule: &[Vec<Vec<usize>>],
+        current: &EvaluatedSchedule,
+    ) -> Vec<(usize, usize, usize, usize, usize)> {
+        let mut swaps = Vec::new();
+        for week in 0..problem.num_weeks {
+            for left_group in 0..problem.num_groups {
+                for right_group in (left_group + 1)..problem.num_groups {
+                    for left_slot in 0..problem.group_size {
+                        let left_position = problem.position_id(week, left_group, left_slot);
+                        for right_slot in 0..problem.group_size {
+                            let right_position = problem.position_id(week, right_group, right_slot);
+                            if current.incident_counts[left_position] == 0
+                                && current.incident_counts[right_position] == 0
+                            {
+                                continue;
+                            }
+                            swaps.push((week, left_group, left_slot, right_group, right_slot));
+                        }
+                    }
+                }
+            }
+        }
+        swaps
+    }
+
     fn pure_problem(num_groups: u32, group_size: u32, weeks: u32) -> ProblemDefinition {
         let num_people = num_groups * group_size;
         ProblemDefinition {
@@ -2509,5 +2636,153 @@ mod tests {
                 .iter()
                 .all(|(iteration, _)| *iteration == 3));
         }
+    }
+
+    #[test]
+    fn local_search_trace_locks_first_two_iterations_on_repeated_pair_fixture() {
+        let problem = sample_problem(2, 2, 3);
+        let schedule = vec![
+            vec![vec![0, 1], vec![2, 3]],
+            vec![vec![0, 1], vec![2, 3]],
+            vec![vec![0, 1], vec![2, 3]],
+        ];
+
+        let trace = simulate_local_search_iterations(&problem, &schedule, None, 2, 0);
+
+        assert_eq!(
+            trace,
+            vec![
+                LocalSearchIterationTrace {
+                    iteration: 0,
+                    breakout_applied: false,
+                    selected_swap: Some((0, 0, 2)),
+                    current_conflict_positions: 8,
+                    best_conflict_positions: 8,
+                    no_improvement_count: 0,
+                    tabu_recorded_pairs: vec![(0, (0, 2))],
+                    raw_tabu_hits_delta: 0,
+                    aspiration_overrides_delta: 0,
+                },
+                LocalSearchIterationTrace {
+                    iteration: 1,
+                    breakout_applied: false,
+                    selected_swap: Some((1, 0, 3)),
+                    current_conflict_positions: 0,
+                    best_conflict_positions: 0,
+                    no_improvement_count: 0,
+                    tabu_recorded_pairs: vec![(1, (0, 3))],
+                    raw_tabu_hits_delta: 0,
+                    aspiration_overrides_delta: 0,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn neighborhood_is_all_swaps_with_at_least_one_conflict_position() {
+        let problem = sample_problem(3, 2, 2);
+        let schedule = vec![
+            vec![vec![0, 1], vec![2, 3], vec![4, 5]],
+            vec![vec![0, 1], vec![2, 4], vec![3, 5]],
+        ];
+        let current = evaluated(&problem, &schedule);
+
+        let swaps = enumerated_conflict_affecting_swaps(&problem, &schedule, &current);
+
+        assert!(swaps.contains(&(0, 0, 0, 1, 0)));
+        assert!(swaps.contains(&(1, 0, 1, 2, 1)));
+        assert!(!swaps.contains(&(0, 1, 0, 2, 0)));
+        assert!(!swaps.contains(&(1, 1, 1, 2, 1)));
+    }
+
+    #[test]
+    fn tabu_move_is_skipped_when_it_does_not_beat_global_best() {
+        let problem = sample_problem(2, 2, 3);
+        let schedule = vec![
+            vec![vec![0, 1], vec![2, 3]],
+            vec![vec![0, 1], vec![2, 3]],
+            vec![vec![0, 1], vec![2, 3]],
+        ];
+        let current = evaluated(&problem, &schedule);
+        let mut best = current.clone();
+        best.conflict_positions = 8;
+        let mut tabu = WeekTabuLists::new(problem.num_weeks);
+        let mut tabu_telemetry = SgpWeekPairTabuBenchmarkTelemetry::default();
+        tabu.record_iteration(0, &[(0, (0, 2))], &mut tabu_telemetry);
+
+        let selected = select_best_swap(
+            &problem,
+            &schedule,
+            &current,
+            &best,
+            &mut tabu,
+            1,
+            &mut tabu_telemetry,
+        )
+        .expect("expected a non-tabu fallback move");
+
+        assert_eq!(selected.week, 0);
+        assert_eq!(selected.left_person, 0);
+        assert_eq!(selected.right_person, 3);
+        assert_eq!(tabu_telemetry.raw_tabu_hits, 1);
+        assert_eq!(tabu_telemetry.aspiration_overrides, 0);
+    }
+
+    #[test]
+    fn aspiration_allows_tabu_move_when_it_beats_global_best() {
+        let problem = sample_problem(2, 2, 3);
+        let schedule = vec![
+            vec![vec![0, 1], vec![2, 3]],
+            vec![vec![0, 1], vec![2, 3]],
+            vec![vec![0, 1], vec![2, 3]],
+        ];
+        let current = evaluated(&problem, &schedule);
+        let best = current.clone();
+        let mut tabu = WeekTabuLists::new(problem.num_weeks);
+        let mut tabu_telemetry = SgpWeekPairTabuBenchmarkTelemetry::default();
+        tabu.record_iteration(0, &[(0, (0, 2))], &mut tabu_telemetry);
+
+        let selected = select_best_swap(
+            &problem,
+            &schedule,
+            &current,
+            &best,
+            &mut tabu,
+            1,
+            &mut tabu_telemetry,
+        )
+        .expect("expected aspiration to allow the tabu move");
+
+        assert_eq!(selected.week, 0);
+        assert_eq!(selected.left_person, 0);
+        assert_eq!(selected.right_person, 2);
+        assert_eq!(tabu_telemetry.raw_tabu_hits, 1);
+        assert_eq!(tabu_telemetry.aspiration_overrides, 1);
+    }
+
+    #[test]
+    fn local_search_trace_breakout_triggers_on_fifth_non_improving_iteration() {
+        let problem = sample_problem(2, 2, 3);
+        let schedule = vec![
+            vec![vec![0, 1], vec![2, 3]],
+            vec![vec![0, 1], vec![2, 3]],
+            vec![vec![0, 1], vec![2, 3]],
+        ];
+
+        let trace = simulate_local_search_iterations(&problem, &schedule, Some(0), 5, 5);
+
+        assert_eq!(
+            trace.iter().map(|step| step.breakout_applied).collect::<Vec<_>>(),
+            vec![false, false, false, false, true]
+        );
+        assert_eq!(
+            trace.iter().map(|step| step.no_improvement_count).collect::<Vec<_>>(),
+            vec![1, 2, 3, 4, 0]
+        );
+        assert_eq!(trace[0].selected_swap, Some((0, 0, 2)));
+        assert_eq!(trace[1].selected_swap, Some((1, 0, 3)));
+        assert_eq!(trace[2].selected_swap, None);
+        assert_eq!(trace[3].selected_swap, None);
+        assert!(trace[4].selected_swap.is_none());
     }
 }
