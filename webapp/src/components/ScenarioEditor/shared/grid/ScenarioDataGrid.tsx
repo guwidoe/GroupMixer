@@ -1,6 +1,5 @@
 import React from 'react';
 import { type SortingState } from '@tanstack/react-table';
-import { useBlocker, useInRouterContext } from 'react-router-dom';
 import { CsvPreviewDialog } from './components/CsvPreviewDialog';
 import { GridActiveFiltersBar } from './components/GridActiveFiltersBar';
 import { GridPaginationFooter } from './components/GridPaginationFooter';
@@ -22,32 +21,7 @@ import { useGridWorkspaceDraft } from './hooks/useGridWorkspaceDraft';
 import type { ScenarioDataGridColumn, ScenarioDataGridWorkspaceConfig } from './types';
 import { useAppStore } from '../../../../store';
 
-type PendingLeaveAction =
-  | { kind: 'external'; continueAction: () => void }
-  | { kind: 'navigation'; proceed: () => void; reset: () => void };
-
-function GridNavigationBlocker({
-  when,
-  onBlocked,
-}: {
-  when: boolean;
-  onBlocked: (action: { proceed: () => void; reset: () => void }) => void;
-}) {
-  const blocker = useBlocker(when);
-
-  React.useEffect(() => {
-    if (blocker.state !== 'blocked') {
-      return;
-    }
-
-    onBlocked({
-      proceed: blocker.proceed,
-      reset: blocker.reset,
-    });
-  }, [blocker, onBlocked]);
-
-  return null;
-}
+type PendingLeaveAction = { continueAction: () => void };
 
 interface ScenarioDataGridProps<T> {
   rows: T[];
@@ -98,7 +72,6 @@ export function ScenarioDataGrid<T>({
   const [isEditMode, setIsEditMode] = React.useState(defaultEditMode);
   const [isCsvPreviewOpen, setIsCsvPreviewOpen] = React.useState(false);
   const [pendingLeaveAction, setPendingLeaveAction] = React.useState<PendingLeaveAction | null>(null);
-  const inRouterContext = useInRouterContext();
   const setSetupGridUnsaved = useAppStore((state) => state.setSetupGridUnsaved);
   const setSetupGridLeaveHook = useAppStore((state) => state.setSetupGridLeaveHook);
 
@@ -237,30 +210,15 @@ export function ScenarioDataGrid<T>({
   }, [browseModeEnabled, effectiveEditMode, normalizedWorkspaceMode, requestWorkspaceMode, workspace]);
 
   const clearPendingLeaveAction = React.useCallback(() => {
-    setPendingLeaveAction((current) => {
-      if (current?.kind === 'navigation') {
-        current.reset();
-      }
-      return null;
-    });
+    setPendingLeaveAction(null);
   }, []);
 
   const continuePendingLeaveAction = React.useCallback((action: PendingLeaveAction) => {
-    if (action.kind === 'navigation') {
-      action.proceed();
-      return;
-    }
-
     action.continueAction();
   }, []);
 
   const openLeaveConfirmation = React.useCallback((action: PendingLeaveAction) => {
-    setPendingLeaveAction((current) => {
-      if (current?.kind === 'navigation') {
-        current.reset();
-      }
-      return action;
-    });
+    setPendingLeaveAction(action);
   }, []);
 
   const handleDiscardAndLeave = React.useCallback(() => {
@@ -281,7 +239,7 @@ export function ScenarioDataGrid<T>({
     }
   }, [continuePendingLeaveAction, handleApplyDraftChanges, pendingLeaveAction]);
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     if (!hasDraftEditing) {
       setSetupGridUnsaved(false);
       setSetupGridLeaveHook(null);
@@ -289,8 +247,8 @@ export function ScenarioDataGrid<T>({
     }
 
     setSetupGridUnsaved(hasUnappliedChanges);
-    setSetupGridLeaveHook(() => (continueAction) => {
-      openLeaveConfirmation({ kind: 'external', continueAction });
+    setSetupGridLeaveHook((continueAction) => {
+      openLeaveConfirmation({ continueAction });
     });
 
     return () => {
@@ -320,13 +278,6 @@ export function ScenarioDataGrid<T>({
       className="overflow-hidden rounded-[1.25rem] border shadow-sm"
       style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
     >
-      {inRouterContext ? (
-        <GridNavigationBlocker
-          when={hasDraftEditing && hasUnappliedChanges}
-          onBlocked={({ proceed, reset }) => openLeaveConfirmation({ kind: 'navigation', proceed, reset })}
-        />
-      ) : null}
-
       <SetupGridLeaveConfirmModal
         open={pendingLeaveAction !== null}
         onStay={clearPendingLeaveAction}
