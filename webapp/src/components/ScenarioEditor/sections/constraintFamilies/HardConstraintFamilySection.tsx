@@ -75,7 +75,10 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
 
         if (constraint.type === 'ImmovablePeople') {
           textPool.push(constraint.group_id.toLowerCase());
-          textPool.push(...constraint.sessions.map((session) => String(session + 1)));
+          textPool.push(...(constraint.sessions ?? []).map((session) => String(session + 1)));
+          if (!constraint.sessions || constraint.sessions.length === 0) {
+            textPool.push('all sessions');
+          }
         } else if (Array.isArray(constraint.sessions)) {
           textPool.push(...constraint.sessions.map((session) => String(session + 1)));
         }
@@ -91,7 +94,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
           type: 'ImmovablePeople',
           people: [],
           group_id: scenario.groups[0]?.id ?? '',
-          sessions: Array.from({ length: scenario.num_sessions }, (_, index) => index),
+          sessions: undefined,
         },
         index: -1,
       } as IndexedConstraint<Extract<Constraint, { type: HardConstraintFamily }>>;
@@ -121,15 +124,11 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
           return [];
         }
 
-        const sessions = normalizedSessions.length > 0
-          ? normalizedSessions
-          : Array.from({ length: scenario.num_sessions }, (_, index) => index);
-
         return [{
           type: 'ImmovablePeople',
           people,
           group_id: constraint.group_id,
-          sessions,
+          sessions: normalizedSessions.length === 0 ? undefined : normalizedSessions,
         } satisfies Constraint];
       }
 
@@ -327,40 +326,17 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                     }]
                   : []),
                 ...(family === 'ImmovablePeople'
-                  ? [{
-                      kind: 'primitive' as const,
-                      id: 'sessions',
-                      header: 'Sessions',
-                      primitive: 'array' as const,
-                      itemType: 'number' as const,
-                      options: Array.from({ length: scenario.num_sessions }, (_, index) => ({
-                        value: String(index + 1),
-                        label: String(index + 1),
-                      })),
-                      getValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>) => item.constraint.sessions?.length
-                        ? item.constraint.sessions.map((session) => session + 1)
-                        : Array.from({ length: scenario.num_sessions }, (_, index) => index + 1),
-                      setValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>, value) => {
-                        const normalized = Array.isArray(value)
-                          ? Array.from(new Set(value.map((entry) => Math.max(1, Math.round(Number(entry) || 1))))).sort((left, right) => left - right)
-                          : [];
-
-                        return {
-                          ...item,
-                          constraint: {
-                            ...item.constraint,
-                            sessions: normalized.length > 0
-                              ? normalized.map((session) => session - 1)
-                              : Array.from({ length: scenario.num_sessions }, (_, index) => index),
-                          },
-                        };
-                      },
-                      renderValue: (value: unknown) => Array.isArray(value) && value.length > 0 && value.length < scenario.num_sessions
-                        ? value.join(', ')
-                        : 'All sessions',
-                      searchText: (_value: unknown, item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>) => item.constraint.sessions?.join(' ') || 'all sessions',
-                      width: 220,
-                    }]
+                  ? [createOptionalSessionScopeColumn<IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>>({
+                      totalSessions: scenario.num_sessions,
+                      getSessions: (item) => item.constraint.sessions,
+                      setSessions: (item, sessions) => ({
+                        ...item,
+                        constraint: {
+                          ...item.constraint,
+                          sessions,
+                        },
+                      }),
+                    })]
                   : [createOptionalSessionScopeColumn<IndexedConstraint<Extract<Constraint, { type: 'MustStayTogether' }>>>({
                       totalSessions: scenario.num_sessions,
                       getSessions: (item) => item.constraint.sessions,

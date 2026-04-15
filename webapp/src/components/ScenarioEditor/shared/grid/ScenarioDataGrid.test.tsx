@@ -597,6 +597,77 @@ describe('ScenarioDataGrid', () => {
     ]);
   });
 
+  it('uses searchable checkbox multiselect editors and visible select dropdown affordances in shared draft edit mode', async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn();
+
+    render(
+      <ScenarioDataGrid
+        rows={[
+          { id: 'row-a', tags: ['zulu'], team: 'failboat' },
+        ]}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            kind: 'primitive',
+            id: 'tags',
+            header: 'Tags',
+            primitive: 'array',
+            itemType: 'string',
+            options: [
+              { value: 'zulu', label: 'Zulu' },
+              { value: 'alpha', label: 'Alpha' },
+              { value: 'mike', label: 'Mike' },
+            ],
+            getValue: (row) => row.tags,
+            setValue: (row, value) => ({ ...row, tags: Array.isArray(value) ? value.map(String) : [] }),
+          },
+          {
+            kind: 'primitive',
+            id: 'team',
+            header: 'Team',
+            primitive: 'enum',
+            options: [
+              { value: 'support', label: 'Support' },
+              { value: 'failboat', label: 'Failboat' },
+            ],
+            getValue: (row) => row.team,
+            setValue: (row, value) => ({ ...row, team: value ?? 'failboat' }),
+          },
+        ]}
+        workspace={{
+          mode: 'edit',
+          onModeChange: vi.fn(),
+          draft: {
+            onApply,
+          },
+        }}
+      />,
+    );
+
+    const multiSelectSearch = screen.getByRole('textbox', { name: /search edit tags for row row-a options/i });
+    const checkboxLabels = screen.getAllByRole('checkbox').map((checkbox) => checkbox.parentElement?.textContent?.trim());
+    expect(checkboxLabels).toEqual(['Alpha', 'Mike', 'Zulu']);
+
+    await user.type(multiSelectSearch, 'mi');
+    expect(screen.getByRole('checkbox', { name: 'Mike' })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: 'Alpha' })).not.toBeInTheDocument();
+
+    await user.clear(multiSelectSearch);
+    await user.click(screen.getByRole('checkbox', { name: 'Alpha' }));
+
+    const teamSelect = screen.getByRole('combobox', { name: /edit team for row row-a/i });
+    await user.selectOptions(teamSelect, 'support');
+
+    expect(teamSelect.parentElement?.querySelector('.lucide-chevron-down')).not.toBeNull();
+
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(onApply).toHaveBeenCalledWith([
+      { id: 'row-a', tags: ['alpha', 'zulu'], team: 'support' },
+    ]);
+  });
+
   it('only shows add row when the workspace can actually create rows, and adds a visible draft row', async () => {
     const user = userEvent.setup();
 

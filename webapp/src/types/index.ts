@@ -46,7 +46,7 @@ export interface ImmovablePersonParams {
 export interface ImmovablePeopleParams {
   people: string[];
   group_id: string;
-  sessions: number[];
+  sessions?: number[]; // Optional: if undefined, applies to all sessions
 }
 
 // Constraint union type matching gm-core's tagged enum structure
