@@ -597,7 +597,8 @@ pub enum SolverKind {
     /// Bootstrap scaffold for the `solver3` performance-oriented dense-state solver family.
     /// Solve paths are not yet implemented; registration is truthful metadata only.
     Solver3,
-    /// Dedicated pure-SGP solver family following the Triska/Musliu paper shape directly.
+    /// Dedicated pure-SGP solver family following the Triska/Musliu paper's Sections 6 and 7.
+    /// Section 5 complete backtracking/pattern search is not implemented yet.
     Solver4,
 }
 
@@ -1032,8 +1033,10 @@ pub struct Solver3Params {
 
 /// Parameters for the internal `solver4` family.
 ///
-/// `solver4` is intentionally narrow: it targets pure Social-Golfer-style scenarios and follows
-/// the Triska/Musliu paper shape directly.
+/// `solver4` is intentionally narrow: it targets pure Social-Golfer-style scenarios and currently
+/// implements the Triska/Musliu paper's Sections 6 and 7 (randomized greedy initialization plus
+/// conflict-position local search). The Section 5 complete backtracking/pattern-search branch is
+/// not implemented yet.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct Solver4Params {
     /// Probability of randomizing among equal maximal-freedom pair choices in the paper-style
