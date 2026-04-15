@@ -451,18 +451,22 @@ proptest! {
                     );
                 }
                 Err(error) => {
+                    let is_solver4_capability_gate = descriptor.kind == SolverKind::Solver4
+                        && error.to_string().contains("solver4 requires complete equal partitions each session");
                     prop_assert!(
-                        is_bootstrap_only,
+                        is_bootstrap_only || is_solver4_capability_gate,
                         "runnable solver {} failed with default config: {:?}",
                         descriptor.kind.canonical_id(),
                         error
                     );
-                    prop_assert!(
-                        error.to_string().contains("not implemented"),
-                        "bootstrap solver {} should fail with an explicit 'not implemented' error, got: {}",
-                        descriptor.kind.canonical_id(),
-                        error
-                    );
+                    if is_bootstrap_only {
+                        prop_assert!(
+                            error.to_string().contains("not implemented"),
+                            "bootstrap solver {} should fail with an explicit 'not implemented' error, got: {}",
+                            descriptor.kind.canonical_id(),
+                            error
+                        );
+                    }
                 }
             }
         }

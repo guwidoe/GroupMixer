@@ -344,7 +344,39 @@ const LIST_SOLVERS_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
         "supports_recommended_settings": false,
         "supports_deterministic_seed": true
       },
-      "notes": "Internal `solver2` family with explicit compiled-problem/state seams, correctness-first move kernels, and a minimal runnable search baseline. Solve paths now run through `gm-core`; runtime-aware recommendation remains intentionally unsupported during bring-up."
+      "notes": "Internal `solver2` family with explicit compiled-problem/state seams, a retained recompute oracle, and an emerging runtime path for performance-oriented search work. Solve paths run through `gm-core`; runtime-aware recommendation remains intentionally unsupported during bring-up."
+    },
+    {
+      "kind": "solver3",
+      "canonical_id": "solver3",
+      "display_name": "Solver 3",
+      "accepted_config_ids": [
+        "solver3"
+      ],
+      "capabilities": {
+        "supports_initial_schedule": true,
+        "supports_progress_callback": true,
+        "supports_benchmark_observer": true,
+        "supports_recommended_settings": true,
+        "supports_deterministic_seed": true
+      },
+      "notes": "Solver 3 is an advanced dense-state solver family focused on fast search. Supports recommended runtime mode, manual tuning, and optional correctness checks for debugging and validation. For normal runs, leave correctness checks off."
+    },
+    {
+      "kind": "solver4",
+      "canonical_id": "solver4",
+      "display_name": "Solver 4",
+      "accepted_config_ids": [
+        "solver4"
+      ],
+      "capabilities": {
+        "supports_initial_schedule": false,
+        "supports_progress_callback": false,
+        "supports_benchmark_observer": false,
+        "supports_recommended_settings": true,
+        "supports_deterministic_seed": true
+      },
+      "notes": "Dedicated pure-SGP solver family that follows the Triska/Musliu paper shape directly: strict Social-Golfer-only capability gating, exact randomized greedy initialization, and paper-shaped conflict-position local search with week-local swapped-player tabu memory."
     }
   ]
 }"#,
