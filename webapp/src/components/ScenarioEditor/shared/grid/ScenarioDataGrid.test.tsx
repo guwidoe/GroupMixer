@@ -1340,6 +1340,49 @@ describe('ScenarioDataGrid', () => {
     expect(screen.queryByText(/^Selected:/i)).not.toBeInTheDocument();
   });
 
+  it('virtualizes edit-mode rows and mounts scrolled editors on demand', async () => {
+    render(
+      <ScenarioDataGrid
+        rows={Array.from({ length: 120 }, (_, index) => ({
+          id: `row-${index + 1}`,
+          name: `Person ${index + 1}`,
+        }))}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            kind: 'primitive',
+            id: 'name',
+            header: 'Name',
+            primitive: 'string',
+            getValue: (row) => row.name,
+            setValue: (row, value) => ({ ...row, name: value ?? '' }),
+          },
+        ]}
+        workspace={{
+          mode: 'edit',
+          onModeChange: vi.fn(),
+          draft: {
+            onApply: vi.fn(),
+          },
+        }}
+      />,
+    );
+
+    const bodyRegion = screen.getByRole('region', { name: /data grid rows/i });
+    expect(screen.getByRole('textbox', { name: /^edit name for row row-1$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /^edit name for row row-80$/i })).not.toBeInTheDocument();
+
+    Object.defineProperty(bodyRegion, 'clientHeight', {
+      configurable: true,
+      value: 240,
+    });
+    bodyRegion.scrollTop = 52 * 70;
+    fireEvent.scroll(bodyRegion);
+
+    expect(await screen.findByRole('textbox', { name: /^edit name for row row-80$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /^edit name for row row-1$/i })).not.toBeInTheDocument();
+  });
+
   it('resets a manual viewport resize when escape is pressed on the handle', () => {
     render(
       <ScenarioDataGrid
