@@ -3,6 +3,7 @@ import { type SortingState } from '@tanstack/react-table';
 import { CsvPreviewDialog } from './components/CsvPreviewDialog';
 import { GridActiveFiltersBar } from './components/GridActiveFiltersBar';
 import { GridPaginationFooter } from './components/GridPaginationFooter';
+import { GridPreparingLoader } from './components/GridPreparingLoader';
 import { SetupGridLeaveConfirmModal } from './components/SetupGridLeaveConfirmModal';
 import { GridTable } from './components/GridTable';
 import { GridToolbar } from './components/GridToolbar';
@@ -107,6 +108,8 @@ export function ScenarioDataGrid<T>({
   });
   const normalizedWorkspaceMode = browseModeEnabled ? workspaceMode : (workspaceMode === 'csv' ? 'csv' : 'edit');
   const effectiveEditMode = workspace ? normalizedWorkspaceMode === 'edit' : isEditMode;
+  const shouldDeferColdGridMount = hasDraftEditing && effectiveEditMode && activeRows.length >= 50;
+  const [hasMountedGridSurface, setHasMountedGridSurface] = React.useState(() => !shouldDeferColdGridMount);
 
   const {
     columnFilters,
@@ -239,6 +242,29 @@ export function ScenarioDataGrid<T>({
     }
   }, [continuePendingLeaveAction, handleApplyDraftChanges, pendingLeaveAction]);
 
+  React.useEffect(() => {
+    if (hasMountedGridSurface) {
+      return;
+    }
+
+    if (!shouldDeferColdGridMount) {
+      setHasMountedGridSurface(true);
+      return;
+    }
+
+    if (isInlineCsvMode || typeof window === 'undefined') {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setHasMountedGridSurface(true);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [hasMountedGridSurface, isInlineCsvMode, shouldDeferColdGridMount]);
+
   React.useLayoutEffect(() => {
     if (!hasDraftEditing) {
       setSetupGridUnsaved(false);
@@ -312,38 +338,42 @@ export function ScenarioDataGrid<T>({
         workspaceMode={workspace ? normalizedWorkspaceMode : (effectiveEditMode ? 'edit' : 'browse')}
       />
 
-      <div data-testid="scenario-grid-table-surface" hidden={isInlineCsvMode} aria-hidden={isInlineCsvMode}>
-        <GridActiveFiltersBar activeColumnFilters={activeColumnFilters} summary={filteredSummary} onClearFilters={() => table.resetColumnFilters()} />
+      {!hasMountedGridSurface && !isInlineCsvMode ? <GridPreparingLoader /> : null}
 
-        <GridTopScrollbar scrollWidth={scrollMetrics.scrollWidth} clientWidth={scrollMetrics.clientWidth} topScrollRef={topScrollRef} onScroll={() => syncScroll('top')} />
+      {hasMountedGridSurface ? (
+        <div data-testid="scenario-grid-table-surface" hidden={isInlineCsvMode} aria-hidden={isInlineCsvMode}>
+          <GridActiveFiltersBar activeColumnFilters={activeColumnFilters} summary={filteredSummary} onClearFilters={() => table.resetColumnFilters()} />
 
-        <GridTable
-          activeRows={activeRows}
-          bodyScrollRef={bodyScrollRef}
-          emptyState={emptyState}
-          maxHeight={maxHeight}
-          viewportHeight={viewportHeight}
-          onBodyScroll={() => syncScroll('body')}
-          onCloseFilter={(columnId) => setOpenFilterId((current) => current === columnId ? null : current)}
-          onRowOpen={!effectiveEditMode && !isInlineCsvMode ? onRowOpen : undefined}
-          onStartResize={startColumnResize}
-          onToggleFilter={(columnId) => setOpenFilterId((current) => current === columnId ? null : columnId)}
-          openFilterId={openFilterId}
-          rowOpenLabel={rowOpenLabel}
-          table={table}
-          tableRef={tableRef}
-          virtualizeRows={effectiveEditMode}
-        />
+          <GridTopScrollbar scrollWidth={scrollMetrics.scrollWidth} clientWidth={scrollMetrics.clientWidth} topScrollRef={topScrollRef} onScroll={() => syncScroll('top')} />
 
-        <GridVerticalResizeHandle
-          isResizing={isResizing}
-          onPointerStart={startViewportResize}
-          onReset={resetViewportHeight}
-          onKeyDown={handleResizeKeyDown}
-        />
+          <GridTable
+            activeRows={activeRows}
+            bodyScrollRef={bodyScrollRef}
+            emptyState={emptyState}
+            maxHeight={maxHeight}
+            viewportHeight={viewportHeight}
+            onBodyScroll={() => syncScroll('body')}
+            onCloseFilter={(columnId) => setOpenFilterId((current) => current === columnId ? null : current)}
+            onRowOpen={!effectiveEditMode && !isInlineCsvMode ? onRowOpen : undefined}
+            onStartResize={startColumnResize}
+            onToggleFilter={(columnId) => setOpenFilterId((current) => current === columnId ? null : columnId)}
+            openFilterId={openFilterId}
+            rowOpenLabel={rowOpenLabel}
+            table={table}
+            tableRef={tableRef}
+            virtualizeRows={effectiveEditMode}
+          />
 
-        <GridPaginationFooter filteredCount={filteredCount} pageSizeOptions={pageSizeOptions} table={table} />
-      </div>
+          <GridVerticalResizeHandle
+            isResizing={isResizing}
+            onPointerStart={startViewportResize}
+            onReset={resetViewportHeight}
+            onKeyDown={handleResizeKeyDown}
+          />
+
+          <GridPaginationFooter filteredCount={filteredCount} pageSizeOptions={pageSizeOptions} table={table} />
+        </div>
+      ) : null}
 
       {isCsvPreviewOpen ? (
         <CsvPreviewDialog csvText={csvText} rowCount={exportRows.length} onClose={() => setIsCsvPreviewOpen(false)} />
