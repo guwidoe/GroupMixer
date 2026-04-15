@@ -597,6 +597,8 @@ pub enum SolverKind {
     /// Bootstrap scaffold for the `solver3` performance-oriented dense-state solver family.
     /// Solve paths are not yet implemented; registration is truthful metadata only.
     Solver3,
+    /// Dedicated pure-SGP solver family following the Triska/Musliu paper shape directly.
+    Solver4,
 }
 
 /// Default solver family used by current public callers.
@@ -608,6 +610,7 @@ impl SolverKind {
             Self::Solver1 => "solver1",
             Self::Solver2 => "solver2",
             Self::Solver3 => "solver3",
+            Self::Solver4 => "solver4",
         }
     }
 
@@ -616,6 +619,7 @@ impl SolverKind {
             Self::Solver1 => "Solver 1",
             Self::Solver2 => "Solver 2",
             Self::Solver3 => "Solver 3",
+            Self::Solver4 => "Solver 4",
         }
     }
 
@@ -629,6 +633,7 @@ impl SolverKind {
             ],
             Self::Solver2 => &["solver2"],
             Self::Solver3 => &["solver3"],
+            Self::Solver4 => &["solver4"],
         }
     }
 
@@ -640,9 +645,10 @@ impl SolverKind {
             | "SimulatedAnnealing" => Ok(Self::Solver1),
             "solver2" => Ok(Self::Solver2),
             "solver3" => Ok(Self::Solver3),
+            "solver4" => Ok(Self::Solver4),
             other => Err(format!(
                 "Unknown solver type '{other}'. Supported solver IDs: {}",
-                [Self::Solver1, Self::Solver2, Self::Solver3]
+                [Self::Solver1, Self::Solver2, Self::Solver3, Self::Solver4]
                     .iter()
                     .map(|kind| kind.canonical_id())
                     .collect::<Vec<_>>()
@@ -962,6 +968,9 @@ pub enum SolverParams {
     /// small until explicit tuning knobs are defined during the implementation epics.
     #[serde(rename = "solver3")]
     Solver3(Solver3Params),
+    /// Parameters for the internal `solver4` family.
+    #[serde(rename = "solver4")]
+    Solver4(Solver4Params),
 }
 
 impl SolverParams {
@@ -970,20 +979,21 @@ impl SolverParams {
             Self::SimulatedAnnealing(_) => SolverKind::Solver1,
             Self::Solver2(_) => SolverKind::Solver2,
             Self::Solver3(_) => SolverKind::Solver3,
+            Self::Solver4(_) => SolverKind::Solver4,
         }
     }
 
     pub fn simulated_annealing_params(&self) -> Option<&SimulatedAnnealingParams> {
         match self {
             Self::SimulatedAnnealing(params) => Some(params),
-            Self::Solver2(_) | Self::Solver3(_) => None,
+            Self::Solver2(_) | Self::Solver3(_) | Self::Solver4(_) => None,
         }
     }
 
     pub fn solver3_params(&self) -> Option<&Solver3Params> {
         match self {
             Self::Solver3(params) => Some(params),
-            Self::SimulatedAnnealing(_) | Self::Solver2(_) => None,
+            Self::SimulatedAnnealing(_) | Self::Solver2(_) | Self::Solver4(_) => None,
         }
     }
 }
@@ -1018,6 +1028,30 @@ pub struct Solver3Params {
     /// Experimental hotspot-guidance controls for proposal-generation research.
     #[serde(default)]
     pub hotspot_guidance: Solver3HotspotGuidanceParams,
+}
+
+/// Parameters for the internal `solver4` family.
+///
+/// `solver4` is intentionally narrow: it targets pure Social-Golfer-style scenarios and follows
+/// the Triska/Musliu paper shape directly.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+pub struct Solver4Params {
+    /// Probability of randomizing among equal maximal-freedom pair choices in the paper-style
+    /// initializer.
+    #[serde(default = "default_solver4_gamma")]
+    pub gamma: f64,
+}
+
+impl Default for Solver4Params {
+    fn default() -> Self {
+        Self {
+            gamma: default_solver4_gamma(),
+        }
+    }
+}
+
+fn default_solver4_gamma() -> f64 {
+    0.0
 }
 
 /// Construction controls for `solver3`.

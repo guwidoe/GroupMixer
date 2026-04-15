@@ -1,7 +1,8 @@
 use crate::models::{
     ApiInput, BenchmarkObserver, Constraint, LoggingOptions, Objective, ProblemDefinition,
-    ProgressCallback, SimulatedAnnealingParams, Solver2Params, Solver3Params, SolverConfiguration,
-    SolverKind, SolverParams, SolverResult, StopConditions, DEFAULT_SOLVER_KIND,
+    ProgressCallback, SimulatedAnnealingParams, Solver2Params, Solver3Params, Solver4Params,
+    SolverConfiguration, SolverKind, SolverParams, SolverResult, StopConditions,
+    DEFAULT_SOLVER_KIND,
 };
 use crate::runtime_target::runtime_target_iteration_cap;
 use crate::solver1::search::simulated_annealing::SimulatedAnnealing;
@@ -9,6 +10,7 @@ use crate::solver1::search::Solver as _;
 use crate::solver1::State;
 use crate::solver2::{SearchEngine as Solver2SearchEngine, SOLVER2_BOOTSTRAP_NOTES};
 use crate::solver3::{SearchEngine as Solver3SearchEngine, SOLVER3_BOOTSTRAP_NOTES};
+use crate::solver4::{SearchEngine as Solver4SearchEngine, SOLVER4_NOTES};
 use crate::solver_support::SolverError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -92,12 +94,30 @@ const SOLVER3_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
     notes: SOLVER3_BOOTSTRAP_NOTES,
 };
 
-const SOLVER_DESCRIPTORS: [SolverDescriptor; 3] =
-    [SOLVER1_DESCRIPTOR, SOLVER2_DESCRIPTOR, SOLVER3_DESCRIPTOR];
+const SOLVER4_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
+    kind: SolverKind::Solver4,
+    display_name: "Solver 4",
+    capabilities: SolverEngineCapabilities {
+        supports_initial_schedule: false,
+        supports_progress_callback: false,
+        supports_benchmark_observer: false,
+        supports_recommended_settings: true,
+        supports_deterministic_seed: true,
+    },
+    notes: SOLVER4_NOTES,
+};
+
+const SOLVER_DESCRIPTORS: [SolverDescriptor; 4] = [
+    SOLVER1_DESCRIPTOR,
+    SOLVER2_DESCRIPTOR,
+    SOLVER3_DESCRIPTOR,
+    SOLVER4_DESCRIPTOR,
+];
 
 struct Solver1Engine;
 struct Solver2Engine;
 struct Solver3Engine;
+struct Solver4Engine;
 
 impl SolverEngine for Solver1Engine {
     fn descriptor(&self) -> &'static SolverDescriptor {
@@ -246,6 +266,45 @@ impl SolverEngine for Solver3Engine {
     }
 }
 
+impl SolverEngine for Solver4Engine {
+    fn descriptor(&self) -> &'static SolverDescriptor {
+        &SOLVER4_DESCRIPTOR
+    }
+
+    fn solve(&self, request: SolveRequest<'_>) -> Result<SolverResult, SolverError> {
+        let solver = Solver4SearchEngine::new(&request.input.solver);
+        solver.solve(request.input)
+    }
+
+    fn default_configuration(&self) -> SolverConfiguration {
+        SolverConfiguration {
+            solver_type: SolverKind::Solver4.canonical_id().into(),
+            stop_conditions: StopConditions {
+                max_iterations: Some(1_000_000),
+                time_limit_seconds: Some(30),
+                no_improvement_iterations: None,
+                stop_on_optimal_score: true,
+            },
+            solver_params: SolverParams::Solver4(Solver4Params::default()),
+            logging: LoggingOptions::default(),
+            telemetry: Default::default(),
+            seed: None,
+            move_policy: None,
+            allowed_sessions: None,
+        }
+    }
+
+    fn recommend_configuration(
+        &self,
+        request: RecommendationRequest<'_>,
+    ) -> Result<SolverConfiguration, SolverError> {
+        Ok(runtime_target_configuration(
+            self.default_configuration(),
+            request.desired_runtime_seconds,
+        ))
+    }
+}
+
 pub fn default_solver_kind() -> SolverKind {
     DEFAULT_SOLVER_KIND
 }
@@ -259,6 +318,7 @@ pub fn solver_descriptor(kind: SolverKind) -> &'static SolverDescriptor {
         SolverKind::Solver1 => &SOLVER1_DESCRIPTOR,
         SolverKind::Solver2 => &SOLVER2_DESCRIPTOR,
         SolverKind::Solver3 => &SOLVER3_DESCRIPTOR,
+        SolverKind::Solver4 => &SOLVER4_DESCRIPTOR,
     }
 }
 
@@ -287,6 +347,7 @@ fn create_solver_engine(kind: SolverKind) -> Box<dyn SolverEngine> {
         SolverKind::Solver1 => Box::new(Solver1Engine),
         SolverKind::Solver2 => Box::new(Solver2Engine),
         SolverKind::Solver3 => Box::new(Solver3Engine),
+        SolverKind::Solver4 => Box::new(Solver4Engine),
     }
 }
 
@@ -536,11 +597,106 @@ mod tests {
     }
 
     #[test]
+    fn solver4_default_configuration_round_trips_through_typed_solver_selection() {
+        let config = default_solver_configuration_for(SolverKind::Solver4);
+        assert_eq!(
+            config.validate_solver_selection().unwrap(),
+            SolverKind::Solver4
+        );
+        assert!(matches!(config.solver_params, SolverParams::Solver4(_)));
+    }
+
+    #[test]
+    fn solver4_recommendation_returns_runtime_targeted_configuration() {
+        let config = calculate_recommended_settings_for(
+            SolverKind::Solver4,
+            RecommendationRequest {
+                problem: &simple_problem(),
+                objectives: &[],
+                constraints: &[],
+                desired_runtime_seconds: 4,
+            },
+        )
+        .unwrap();
+
+        assert_eq!(
+            config.validate_solver_selection().unwrap(),
+            SolverKind::Solver4
+        );
+        assert_eq!(config.stop_conditions.time_limit_seconds, Some(4));
+        assert_eq!(config.stop_conditions.no_improvement_iterations, None);
+        assert!(config.stop_conditions.max_iterations.unwrap_or_default() >= 4_000_000);
+        assert!(matches!(config.solver_params, SolverParams::Solver4(_)));
+    }
+
+    #[test]
+    fn solver4_run_executes_through_engine_registry() {
+        let input = ApiInput {
+            initial_schedule: None,
+            construction_seed_schedule: None,
+            problem: ProblemDefinition {
+                people: vec![
+                    Person {
+                        id: "p0".to_string(),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    },
+                    Person {
+                        id: "p1".to_string(),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    },
+                    Person {
+                        id: "p2".to_string(),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    },
+                    Person {
+                        id: "p3".to_string(),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    },
+                ],
+                groups: vec![
+                    Group {
+                        id: "g0".to_string(),
+                        size: 2,
+                        session_sizes: None,
+                    },
+                    Group {
+                        id: "g1".to_string(),
+                        size: 2,
+                        session_sizes: None,
+                    },
+                ],
+                num_sessions: 2,
+            },
+            objectives: vec![Objective {
+                r#type: "maximize_unique_contacts".to_string(),
+                weight: 1.0,
+            }],
+            constraints: vec![],
+            solver: default_solver_configuration_for(SolverKind::Solver4),
+        };
+
+        let result = run_solver_with_engine(SolveRequest {
+            input: &input,
+            progress_callback: None,
+            benchmark_observer: None,
+        })
+        .expect("solver4 should execute through the engine registry");
+
+        assert_eq!(result.final_score, 0.0);
+        assert_eq!(result.stop_reason, Some(crate::models::StopReason::OptimalScoreReached));
+    }
+
+    #[test]
     fn all_solver_families_can_stop_on_optimal_zero_score() {
         for kind in [
             SolverKind::Solver1,
             SolverKind::Solver2,
             SolverKind::Solver3,
+            SolverKind::Solver4,
         ] {
             let input = ApiInput {
                 initial_schedule: None,
@@ -597,12 +753,16 @@ mod tests {
     }
 
     #[test]
-    fn available_solver_descriptors_includes_solver3() {
+    fn available_solver_descriptors_include_solver4() {
         let descriptors = available_solver_descriptors();
         assert!(
             descriptors.iter().any(|d| d.kind == SolverKind::Solver3),
             "solver3 should appear in available_solver_descriptors"
         );
-        assert_eq!(descriptors.len(), 3);
+        assert!(
+            descriptors.iter().any(|d| d.kind == SolverKind::Solver4),
+            "solver4 should appear in available_solver_descriptors"
+        );
+        assert_eq!(descriptors.len(), 4);
     }
 }
