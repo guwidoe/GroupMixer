@@ -471,3 +471,19 @@ pub(super) fn unordered_pair(left: usize, right: usize) -> (usize, usize) {
         (right, left)
     }
 }
+
+pub(super) fn should_apply_random_breakout(no_improvement_count: u64) -> bool {
+    no_improvement_count == RANDOM_BREAKOUT_AFTER_NO_IMPROVEMENT
+}
+
+pub(super) fn next_no_improvement_count(
+    previous: u64,
+    improved_best: bool,
+    breakout_applied: bool,
+) -> u64 {
+    if improved_best || breakout_applied {
+        0
+    } else {
+        previous + 1
+    }
+}
