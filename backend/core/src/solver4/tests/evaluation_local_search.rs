@@ -109,6 +109,15 @@ fn swap_preview_matches_full_recompute_on_small_random_schedules() {
                                 recomputed.repeat_excess,
                                 "repeat-excess preview mismatch for week={week} groups=({left_group},{right_group}) slots=({left_slot},{right_slot})",
                             );
+                            assert_eq!(
+                                preview.max_conflict_positions_in_any_week_after,
+                                *recomputed
+                                    .conflict_positions_by_week
+                                    .iter()
+                                    .max()
+                                    .unwrap(),
+                                "max-week-conflict preview mismatch for week={week} groups=({left_group},{right_group}) slots=({left_slot},{right_slot})",
+                            );
                         }
                     }
                 }
@@ -130,6 +139,7 @@ fn swap_candidate_outranks_by_resulting_configuration_lexicographic_order() {
         right_person: 2,
         conflict_positions_after: 0,
         repeat_excess_after: 0,
+        max_conflict_positions_in_any_week_after: 0,
     };
     let right = SwapCandidate {
         week: 0,
@@ -141,6 +151,7 @@ fn swap_candidate_outranks_by_resulting_configuration_lexicographic_order() {
         right_person: 2,
         conflict_positions_after: 0,
         repeat_excess_after: 0,
+        max_conflict_positions_in_any_week_after: 0,
     };
 
     assert!(!left.outranks(&right, &base_schedule));
@@ -208,6 +219,51 @@ fn select_best_swap_prefers_lower_repeat_excess_before_lexicographic_tie_breakin
     let selected_evaluated = evaluated(&problem, &selected.schedule);
     assert_eq!(selected_evaluated.conflict_positions, 24);
     assert_eq!(selected_evaluated.repeat_excess, 7);
+}
+
+#[test]
+fn select_best_swap_prefers_lower_max_week_conflict_after_repeat_excess_ties() {
+    let problem = sample_problem(3, 3, 4);
+    let schedule = vec![
+        vec![vec![4, 3, 8], vec![0, 5, 7], vec![6, 2, 1]],
+        vec![vec![4, 6, 7], vec![5, 2, 8], vec![0, 1, 3]],
+        vec![vec![8, 4, 6], vec![0, 7, 1], vec![2, 3, 5]],
+        vec![vec![2, 6, 7], vec![3, 5, 4], vec![8, 0, 1]],
+    ];
+    let current = evaluated(&problem, &schedule);
+    let mut tabu = WeekTabuLists::new(problem.num_weeks);
+    let mut tabu_telemetry = SgpWeekPairTabuBenchmarkTelemetry::default();
+
+    let lower_max_week = evaluate_swap_preview(&problem, &schedule, &current, 2, 0, 1, 1, 1);
+    let higher_max_week = evaluate_swap_preview(&problem, &schedule, &current, 3, 0, 1, 1, 0);
+    assert_eq!(lower_max_week.conflict_positions_after, 25);
+    assert_eq!(higher_max_week.conflict_positions_after, 25);
+    assert_eq!(lower_max_week.repeat_excess_after, 8);
+    assert_eq!(higher_max_week.repeat_excess_after, 8);
+    assert_eq!(lower_max_week.max_conflict_positions_in_any_week_after, 8);
+    assert_eq!(higher_max_week.max_conflict_positions_in_any_week_after, 9);
+
+    let selected = select_best_swap(
+        &problem,
+        &schedule,
+        &current,
+        &current,
+        &mut tabu,
+        0,
+        &mut tabu_telemetry,
+    )
+    .expect("expected a best swap");
+    let selected_evaluated = evaluated(&problem, &selected.schedule);
+    assert_eq!(selected_evaluated.conflict_positions, 25);
+    assert_eq!(selected_evaluated.repeat_excess, 8);
+    assert_eq!(
+        *selected_evaluated
+            .conflict_positions_by_week
+            .iter()
+            .max()
+            .unwrap(),
+        8
+    );
 }
 
 #[test]
