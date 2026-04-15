@@ -75,8 +75,8 @@ export type Constraint =
   | {
       type: "PairMeetingCount";
       people: [string, string];
-      sessions: number[]; // fixed subset to consider
-      target_meetings: number; // 0..sessions.length
+      sessions?: number[]; // Optional: if undefined, applies to all sessions
+      target_meetings: number; // 0..effective sessions.length
       mode?: "at_least" | "exact" | "at_most"; // default at_least
       penalty_weight: number; // linear per unit deviation based on mode
     };

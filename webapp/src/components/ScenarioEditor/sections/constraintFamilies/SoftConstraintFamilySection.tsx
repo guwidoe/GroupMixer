@@ -101,7 +101,9 @@ export function SoftConstraintFamilySection({
         }
 
         if (constraint.type === 'PairMeetingCount') {
-          const sessionText = (constraint.sessions ?? []).map((session) => String(session + 1)).join(' ');
+          const sessionText = constraint.sessions?.length
+            ? constraint.sessions.map((session) => String(session + 1)).join(' ')
+            : 'all sessions';
           return [
             formatPersonSearchList(scenario.people, constraint.people),
             String(constraint.target_meetings),
@@ -137,7 +139,7 @@ export function SoftConstraintFamilySection({
         constraint: {
           type: 'PairMeetingCount',
           people: ['', ''],
-          sessions: Array.from({ length: scenario.num_sessions }, (_, index) => index),
+          sessions: undefined,
           target_meetings: 1,
           mode: 'at_least',
           penalty_weight: 10,
@@ -186,9 +188,10 @@ export function SoftConstraintFamilySection({
         }
 
         const normalizedSessions = constraint.sessions?.length
-          ? Array.from(new Set(constraint.sessions.map((session) => Math.max(0, Math.round(Number(session) || 0))))).sort((left, right) => left - right)
-          : Array.from({ length: scenario.num_sessions }, (_, index) => index);
-        const maxMeetings = normalizedSessions.length;
+          ? normalizeSessionSelection(constraint.sessions, scenario.num_sessions)
+          : undefined;
+        const effectiveSessions = normalizedSessions ?? Array.from({ length: scenario.num_sessions }, (_, index) => index);
+        const maxMeetings = effectiveSessions.length;
 
         return [{
           ...constraint,
@@ -604,40 +607,17 @@ export function SoftConstraintFamilySection({
                       }),
                     })]
                   : family === 'PairMeetingCount'
-                    ? [{
-                        kind: 'primitive' as const,
-                        id: 'sessions',
-                        header: 'Sessions',
-                        primitive: 'array' as const,
-                        itemType: 'number' as const,
-                        options: Array.from({ length: scenario.num_sessions }, (_, index) => ({
-                          value: String(index + 1),
-                          label: String(index + 1),
-                        })),
-                        getValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => item.constraint.sessions?.length
-                          ? item.constraint.sessions.map((session) => session + 1)
-                          : Array.from({ length: scenario.num_sessions }, (_, index) => index + 1),
-                        setValue: (item: IndexedConstraint<PairMeetingCountConstraint>, value) => {
-                          const normalized = Array.isArray(value)
-                            ? Array.from(new Set(value.map((entry) => Math.max(1, Math.round(Number(entry) || 1))))).sort((left, right) => left - right)
-                            : [];
-
-                          return {
-                            ...item,
-                            constraint: {
-                              ...item.constraint,
-                              sessions: (normalized.length > 0
-                                ? normalized
-                                : Array.from({ length: scenario.num_sessions }, (_, index) => index + 1)).map((session) => session - 1),
-                            },
-                          };
-                        },
-                        renderValue: (value: unknown) => Array.isArray(value) && value.length > 0 && value.length < scenario.num_sessions
-                          ? value.join(', ')
-                          : 'All sessions',
-                        searchText: (_value: unknown, item: IndexedConstraint<PairMeetingCountConstraint>) => item.constraint.sessions.join(' '),
-                        width: 220,
-                      }]
+                    ? [createOptionalSessionScopeColumn<IndexedConstraint<PairMeetingCountConstraint>>({
+                        totalSessions: scenario.num_sessions,
+                        getSessions: (item) => item.constraint.sessions,
+                        setSessions: (item, sessions) => ({
+                          ...item,
+                          constraint: {
+                            ...item.constraint,
+                            sessions,
+                          },
+                        }),
+                      })]
                     : [createOptionalSessionScopeColumn<IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>>({
                         totalSessions: scenario.num_sessions,
                         getSessions: (item) => item.constraint.sessions,
