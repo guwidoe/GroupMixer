@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { DemoDataWarningModal } from '../modals/DemoDataWarningModal';
+import { GeneratedDemoDataModal } from '../modals/GeneratedDemoDataModal';
 import { ConstraintFormModal } from './ConstraintFormModal';
 import { ScenarioSetupLayout } from './layout/ScenarioSetupLayout';
 import { ScenarioEditorConstraintModals } from './ScenarioEditorConstraintModals';
@@ -207,6 +208,12 @@ function ScenarioEditorLoaded() {
         onOverwrite={controller.handleDemoOverwrite}
         onLoadNew={controller.handleDemoLoadNew}
         demoCaseName={controller.pendingDemoCaseName || 'Demo Case'}
+      />
+
+      <GeneratedDemoDataModal
+        isOpen={controller.showGeneratedDemoModal}
+        onClose={controller.handleDemoCancel}
+        onGenerate={controller.handleGeneratedDemoSubmit}
       />
     </div>
   );

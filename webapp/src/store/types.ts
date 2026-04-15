@@ -146,6 +146,9 @@ export interface DemoDataActions {
   loadDemoCase: (demoCaseId: string) => Promise<void>;
   loadDemoCaseOverwrite: (demoCaseId: string) => Promise<void>;
   loadDemoCaseNewScenario: (demoCaseId: string) => Promise<void>;
+  loadGeneratedDemoScenario: (scenario: Scenario, scenarioName?: string) => Promise<void>;
+  loadGeneratedDemoScenarioOverwrite: (scenario: Scenario, scenarioName?: string) => Promise<void>;
+  loadGeneratedDemoScenarioNewScenario: (scenario: Scenario, scenarioName?: string) => Promise<void>;
   setDemoDropdownOpen: (open: boolean) => void;
 }
 

@@ -50,6 +50,10 @@ vi.mock('../modals/DemoDataWarningModal', () => ({
   DemoDataWarningModal: () => <div>Demo warning modal</div>,
 }));
 
+vi.mock('../modals/GeneratedDemoDataModal', () => ({
+  GeneratedDemoDataModal: () => <div>Generated demo modal</div>,
+}));
+
 function createController(overrides: Partial<ScenarioEditorController> = {}): ScenarioEditorController {
   return {
     activeSection: 'people',
@@ -70,9 +74,11 @@ function createController(overrides: Partial<ScenarioEditorController> = {}): Sc
     handleDemoCancel: vi.fn(),
     handleDemoOverwrite: vi.fn(),
     handleDemoLoadNew: vi.fn(),
+    handleGeneratedDemoSubmit: vi.fn(),
     handleSessionsCountChange: vi.fn(),
     navigateToSection: vi.fn(),
     showDemoWarningModal: false,
+    showGeneratedDemoModal: false,
     pendingDemoCaseName: null,
     ui: {
       activeTab: 'scenario',

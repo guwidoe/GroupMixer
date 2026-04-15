@@ -20,7 +20,10 @@ vi.mock('./AppHeader', () => ({
 
 vi.mock('./ScenarioEditor/DemoDataDropdown', () => ({
   DemoDataDropdown: ({ onDemoCaseClick }: { onDemoCaseClick: (id: string, name: string) => void }) => (
-    <button onClick={() => onDemoCaseClick('demo-1', 'Demo One')}>Demo Data</button>
+    <div>
+      <button onClick={() => onDemoCaseClick('demo-1', 'Demo One')}>Demo Data</button>
+      <button onClick={() => onDemoCaseClick('generated-random-workshop', 'Generate random workshop scenario')}>Random Demo</button>
+    </div>
   ),
 }));
 
@@ -95,5 +98,56 @@ describe('Header', () => {
     expect(screen.getAllByRole('button', { name: /^load$/i })[0]).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /^save$/i })[0]).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /demo data/i })[0]).toBeInTheDocument();
+  });
+
+  it('can generate a random demo scenario from the demo data menu', async () => {
+    const user = userEvent.setup();
+    const loadGeneratedDemoScenarioOverwrite = vi.fn();
+
+    useAppStore.setState({
+      scenario: createSampleScenario(),
+      currentScenarioId: null,
+      savedScenarios: {},
+      setShowScenarioManager: vi.fn(),
+      saveScenario: vi.fn(),
+      loadDemoCase: vi.fn(),
+      loadDemoCaseOverwrite: vi.fn(),
+      loadDemoCaseNewScenario: vi.fn(),
+      loadGeneratedDemoScenario: vi.fn(),
+      loadGeneratedDemoScenarioOverwrite,
+      loadGeneratedDemoScenarioNewScenario: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/app/solver']}>
+        <Header />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /random demo/i }));
+    await user.clear(screen.getByRole('spinbutton', { name: /groups \(g\)/i }));
+    await user.type(screen.getByRole('spinbutton', { name: /groups \(g\)/i }), '5');
+    await user.clear(screen.getByRole('spinbutton', { name: /people per group \(p\)/i }));
+    await user.type(screen.getByRole('spinbutton', { name: /people per group \(p\)/i }), '3');
+    await user.clear(screen.getByRole('spinbutton', { name: /sessions \(w\)/i }));
+    await user.type(screen.getByRole('spinbutton', { name: /sessions \(w\)/i }), '4');
+    await user.click(screen.getByRole('button', { name: /generate scenario/i }));
+    await user.click(screen.getByRole('button', { name: /overwrite/i }));
+
+    expect(loadGeneratedDemoScenarioOverwrite).toHaveBeenCalledTimes(1);
+    expect(loadGeneratedDemoScenarioOverwrite).toHaveBeenCalledWith(
+      expect.objectContaining({
+        num_sessions: 4,
+        constraints: [
+          expect.objectContaining({
+            type: 'RepeatEncounter',
+            penalty_function: 'squared',
+            penalty_weight: 10,
+          }),
+        ],
+        groups: expect.arrayContaining([expect.objectContaining({ size: 3 })]),
+      }),
+      'Random Demo (5 groups × 3 people, 4 sessions)',
+    );
   });
 });

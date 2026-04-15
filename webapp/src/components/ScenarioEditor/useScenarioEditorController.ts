@@ -9,6 +9,12 @@ import { useScenarioEditorEntities } from './hooks/useScenarioEditorEntities';
 import { resolveScenarioSetupSection } from './navigation/scenarioSetupNav';
 import type { ScenarioSetupSectionId } from './navigation/scenarioSetupNavTypes';
 import { createScenarioEditorActions } from './scenarioEditorActions';
+import {
+  createGeneratedDemoScenario,
+  formatGeneratedDemoScenarioName,
+  GENERATED_DEMO_CASE_ID,
+  type GeneratedDemoScenarioOptions,
+} from '../../services/demoScenarioGenerator';
 
 export type ScenarioEditorSection = ScenarioSetupSectionId;
 
@@ -21,6 +27,9 @@ export function useScenarioEditorController() {
     loadDemoCase,
     loadDemoCaseOverwrite,
     loadDemoCaseNewScenario,
+    loadGeneratedDemoScenario,
+    loadGeneratedDemoScenarioOverwrite,
+    loadGeneratedDemoScenarioNewScenario,
     attributeDefinitions,
     addAttributeDefinition,
     removeAttributeDefinition,
@@ -40,8 +49,10 @@ export function useScenarioEditorController() {
 
   const [sessionsCount, setSessionsCount] = useState(scenario?.num_sessions || 3);
   const [showDemoWarningModal, setShowDemoWarningModal] = useState(false);
+  const [showGeneratedDemoModal, setShowGeneratedDemoModal] = useState(false);
   const [pendingDemoCaseId, setPendingDemoCaseId] = useState<string | null>(null);
   const [pendingDemoCaseName, setPendingDemoCaseName] = useState<string | null>(null);
+  const [pendingGeneratedScenario, setPendingGeneratedScenario] = useState<Scenario | null>(null);
 
   const entities = useScenarioEditorEntities({
     scenario,
@@ -129,6 +140,11 @@ export function useScenarioEditorController() {
   };
 
   const handleDemoCaseClick = (demoCaseId: string, demoCaseName: string) => {
+    if (demoCaseId === GENERATED_DEMO_CASE_ID) {
+      setShowGeneratedDemoModal(true);
+      return;
+    }
+
     const currentScenario = scenario;
     const hasContent =
       currentScenario &&
@@ -146,6 +162,15 @@ export function useScenarioEditorController() {
   };
 
   const handleDemoOverwrite = () => {
+    if (pendingGeneratedScenario) {
+      loadGeneratedDemoScenarioOverwrite(pendingGeneratedScenario, pendingDemoCaseName ?? 'Random Demo');
+      setShowDemoWarningModal(false);
+      setPendingGeneratedScenario(null);
+      setPendingDemoCaseId(null);
+      setPendingDemoCaseName(null);
+      return;
+    }
+
     if (pendingDemoCaseId) {
       loadDemoCaseOverwrite(pendingDemoCaseId);
       setShowDemoWarningModal(false);
@@ -155,6 +180,15 @@ export function useScenarioEditorController() {
   };
 
   const handleDemoLoadNew = () => {
+    if (pendingGeneratedScenario) {
+      loadGeneratedDemoScenarioNewScenario(pendingGeneratedScenario, pendingDemoCaseName ?? 'Random Demo');
+      setShowDemoWarningModal(false);
+      setPendingGeneratedScenario(null);
+      setPendingDemoCaseId(null);
+      setPendingDemoCaseName(null);
+      return;
+    }
+
     if (pendingDemoCaseId) {
       loadDemoCaseNewScenario(pendingDemoCaseId);
       setShowDemoWarningModal(false);
@@ -165,8 +199,31 @@ export function useScenarioEditorController() {
 
   const handleDemoCancel = () => {
     setShowDemoWarningModal(false);
+    setShowGeneratedDemoModal(false);
+    setPendingGeneratedScenario(null);
     setPendingDemoCaseId(null);
     setPendingDemoCaseName(null);
+  };
+
+  const handleGeneratedDemoSubmit = (options: GeneratedDemoScenarioOptions) => {
+    const generatedScenario = createGeneratedDemoScenario(options);
+    const generatedScenarioName = formatGeneratedDemoScenarioName(options);
+    const currentScenario = scenario;
+    const hasContent =
+      currentScenario &&
+      (currentScenario.people.length > 0 || currentScenario.groups.length > 0 || currentScenario.constraints.length > 0);
+
+    setShowGeneratedDemoModal(false);
+
+    if (hasContent) {
+      setPendingGeneratedScenario(generatedScenario);
+      setPendingDemoCaseId(null);
+      setPendingDemoCaseName(generatedScenarioName);
+      setShowDemoWarningModal(true);
+      return;
+    }
+
+    loadGeneratedDemoScenario(generatedScenario, generatedScenarioName);
   };
 
   const handleSessionsCountChange = (count: number | null) => {
@@ -208,6 +265,7 @@ export function useScenarioEditorController() {
     bulk,
     editorActions,
     showDemoWarningModal,
+    showGeneratedDemoModal,
     pendingDemoCaseName,
     handleLoadScenario,
     handleSaveScenario,
@@ -215,6 +273,7 @@ export function useScenarioEditorController() {
     handleDemoOverwrite,
     handleDemoLoadNew,
     handleDemoCancel,
+    handleGeneratedDemoSubmit,
     handleSessionsCountChange,
     navigateToSection,
   };
