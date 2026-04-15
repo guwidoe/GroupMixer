@@ -120,7 +120,7 @@ export function ScenarioDataGrid<T>({
   const mergedQuery = React.useMemo(() => filterQuery.trim(), [filterQuery]);
 
   const { bodyScrollRef, scrollMetrics, syncScroll, tableRef, topScrollRef } = useGridScrollSync({
-    deps: [activeRows, columnSizing, columnVisibility, sorting, mergedQuery],
+    deps: [activeRows, columnSizing, columnVisibility, sorting, mergedQuery, isInlineCsvMode],
   });
   const {
     handleResizeKeyDown,
@@ -312,33 +312,11 @@ export function ScenarioDataGrid<T>({
         workspaceMode={workspace ? normalizedWorkspaceMode : (effectiveEditMode ? 'edit' : 'browse')}
       />
 
-      {!isInlineCsvMode ? <GridActiveFiltersBar activeColumnFilters={activeColumnFilters} summary={filteredSummary} onClearFilters={() => table.resetColumnFilters()} /> : null}
+      <div data-testid="scenario-grid-table-surface" hidden={isInlineCsvMode} aria-hidden={isInlineCsvMode}>
+        <GridActiveFiltersBar activeColumnFilters={activeColumnFilters} summary={filteredSummary} onClearFilters={() => table.resetColumnFilters()} />
 
-      {!isInlineCsvMode ? <GridTopScrollbar scrollWidth={scrollMetrics.scrollWidth} clientWidth={scrollMetrics.clientWidth} topScrollRef={topScrollRef} onScroll={() => syncScroll('top')} /> : null}
+        <GridTopScrollbar scrollWidth={scrollMetrics.scrollWidth} clientWidth={scrollMetrics.clientWidth} topScrollRef={topScrollRef} onScroll={() => syncScroll('top')} />
 
-      {isCsvPreviewOpen ? (
-        <CsvPreviewDialog csvText={csvText} rowCount={exportRows.length} onClose={() => setIsCsvPreviewOpen(false)} />
-      ) : null}
-
-      {isInlineCsvMode ? (
-        <InlineCsvEditor
-          ariaLabel={hasDraftEditing ? (draftConfig?.csv?.ariaLabel ?? 'Inline CSV editor') : (inlineCsvConfig?.ariaLabel ?? 'Inline CSV editor')}
-          csvErrors={hasDraftEditing ? csvErrors : []}
-          helperText={hasDraftEditing ? draftConfig?.csv?.helperText : inlineCsvConfig?.helperText}
-          onChange={(value) => {
-            if (hasDraftEditing) {
-              setCsvDraftText(value);
-              if (csvErrors.length > 0) {
-                setCsvErrors([]);
-              }
-              return;
-            }
-            inlineCsvConfig?.onChange(value);
-          }}
-          placeholder={hasDraftEditing ? draftConfig?.csv?.placeholder : inlineCsvConfig?.placeholder}
-          value={hasDraftEditing ? csvDraftText : (inlineCsvConfig?.value ?? '')}
-        />
-      ) : (
         <GridTable
           activeRows={activeRows}
           bodyScrollRef={bodyScrollRef}
@@ -356,18 +334,41 @@ export function ScenarioDataGrid<T>({
           tableRef={tableRef}
           virtualizeRows={effectiveEditMode}
         />
-      )}
 
-      {!isInlineCsvMode ? (
         <GridVerticalResizeHandle
           isResizing={isResizing}
           onPointerStart={startViewportResize}
           onReset={resetViewportHeight}
           onKeyDown={handleResizeKeyDown}
         />
+
+        <GridPaginationFooter filteredCount={filteredCount} pageSizeOptions={pageSizeOptions} table={table} />
+      </div>
+
+      {isCsvPreviewOpen ? (
+        <CsvPreviewDialog csvText={csvText} rowCount={exportRows.length} onClose={() => setIsCsvPreviewOpen(false)} />
       ) : null}
 
-      {!isInlineCsvMode ? <GridPaginationFooter filteredCount={filteredCount} pageSizeOptions={pageSizeOptions} table={table} /> : null}
+      {isInlineCsvMode ? (
+        <InlineCsvEditor
+          dataTestId="scenario-grid-csv-surface"
+          ariaLabel={hasDraftEditing ? (draftConfig?.csv?.ariaLabel ?? 'Inline CSV editor') : (inlineCsvConfig?.ariaLabel ?? 'Inline CSV editor')}
+          csvErrors={hasDraftEditing ? csvErrors : []}
+          helperText={hasDraftEditing ? draftConfig?.csv?.helperText : inlineCsvConfig?.helperText}
+          onChange={(value) => {
+            if (hasDraftEditing) {
+              setCsvDraftText(value);
+              if (csvErrors.length > 0) {
+                setCsvErrors([]);
+              }
+              return;
+            }
+            inlineCsvConfig?.onChange(value);
+          }}
+          placeholder={hasDraftEditing ? draftConfig?.csv?.placeholder : inlineCsvConfig?.placeholder}
+          value={hasDraftEditing ? csvDraftText : (inlineCsvConfig?.value ?? '')}
+        />
+      ) : null}
     </div>
   );
 }
