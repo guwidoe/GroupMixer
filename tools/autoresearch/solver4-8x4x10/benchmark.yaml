@@ -1,12 +1,13 @@
 schema_version: 1
-suite_id: solver4-32x8x10-autoresearch
+suite_id: solver4-p4-stretch-autoresearch
 benchmark_mode: full_solve
 comparison_category: score_quality
 class: stretch
-title: Solver4 32x8x10 autoresearch lane
+title: Solver4 p=4 Social Golfer autoresearch lane
 description: >-
-  Fixed autoresearch lane for solver4 on the canonical 32x8x10 pure Social Golfer case.
-  Four deterministic gamma=0 seeds, 60s each, to keep each experiment around five minutes.
+  Fixed autoresearch lane for solver4 across the canonical 32x8x10 pure Social Golfer case plus a
+  first wave of larger p=4 stretch cases. Uses gamma=0 with 4 deterministic seeds per case; the
+  benchmark runner executes cases with bounded parallelism so the full bundle stays practical.
 default_solver_family: solver4
 default_solver:
   solver_type: solver4
@@ -27,7 +28,7 @@ cases:
   - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_32x8x10.json
     case_role: canonical
     purpose: autoresearch.solver4.social_golfer_32x8x10.gamma_0.seed_1.60s
-    provenance: solver4_32x8x10_autoresearch
+    provenance: solver4_p4_stretch_autoresearch
     declared_budget: { max_iterations: 50000000, time_limit_seconds: 60 }
     seed: 320810
     max_iterations: 50000000
@@ -35,7 +36,7 @@ cases:
   - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_32x8x10.json
     case_role: canonical
     purpose: autoresearch.solver4.social_golfer_32x8x10.gamma_0.seed_2.60s
-    provenance: solver4_32x8x10_autoresearch
+    provenance: solver4_p4_stretch_autoresearch
     declared_budget: { max_iterations: 50000000, time_limit_seconds: 60 }
     seed: 320811
     max_iterations: 50000000
@@ -43,7 +44,7 @@ cases:
   - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_32x8x10.json
     case_role: canonical
     purpose: autoresearch.solver4.social_golfer_32x8x10.gamma_0.seed_3.60s
-    provenance: solver4_32x8x10_autoresearch
+    provenance: solver4_p4_stretch_autoresearch
     declared_budget: { max_iterations: 50000000, time_limit_seconds: 60 }
     seed: 320812
     max_iterations: 50000000
@@ -51,8 +52,156 @@ cases:
   - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_32x8x10.json
     case_role: canonical
     purpose: autoresearch.solver4.social_golfer_32x8x10.gamma_0.seed_4.60s
-    provenance: solver4_32x8x10_autoresearch
+    provenance: solver4_p4_stretch_autoresearch
     declared_budget: { max_iterations: 50000000, time_limit_seconds: 60 }
     seed: 320813
     max_iterations: 50000000
     time_limit_seconds: 60
+
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_36x9x10.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: autoresearch.solver4.social_golfer_36x9x10.gamma_0.seed_1.60s
+    provenance: solver4_p4_stretch_autoresearch
+    declared_budget: { max_iterations: 12000000, time_limit_seconds: 60 }
+    seed: 360910
+    max_iterations: 12000000
+    time_limit_seconds: 60
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_36x9x10.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: autoresearch.solver4.social_golfer_36x9x10.gamma_0.seed_2.60s
+    provenance: solver4_p4_stretch_autoresearch
+    declared_budget: { max_iterations: 12000000, time_limit_seconds: 60 }
+    seed: 360911
+    max_iterations: 12000000
+    time_limit_seconds: 60
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_36x9x10.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: autoresearch.solver4.social_golfer_36x9x10.gamma_0.seed_3.60s
+    provenance: solver4_p4_stretch_autoresearch
+    declared_budget: { max_iterations: 12000000, time_limit_seconds: 60 }
+    seed: 360912
+    max_iterations: 12000000
+    time_limit_seconds: 60
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_36x9x10.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: autoresearch.solver4.social_golfer_36x9x10.gamma_0.seed_4.60s
+    provenance: solver4_p4_stretch_autoresearch
+    declared_budget: { max_iterations: 12000000, time_limit_seconds: 60 }
+    seed: 360913
+    max_iterations: 12000000
+    time_limit_seconds: 60
+
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_36x9x11.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: autoresearch.solver4.social_golfer_36x9x11.gamma_0.seed_1.90s
+    provenance: solver4_p4_stretch_autoresearch
+    declared_budget: { max_iterations: 18000000, time_limit_seconds: 90 }
+    seed: 361110
+    max_iterations: 18000000
+    time_limit_seconds: 90
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_36x9x11.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: autoresearch.solver4.social_golfer_36x9x11.gamma_0.seed_2.90s
+    provenance: solver4_p4_stretch_autoresearch
+    declared_budget: { max_iterations: 18000000, time_limit_seconds: 90 }
+    seed: 361111
+    max_iterations: 18000000
+    time_limit_seconds: 90
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_36x9x11.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: autoresearch.solver4.social_golfer_36x9x11.gamma_0.seed_3.90s
+    provenance: solver4_p4_stretch_autoresearch
+    declared_budget: { max_iterations: 18000000, time_limit_seconds: 90 }
+    seed: 361112
+    max_iterations: 18000000
+    time_limit_seconds: 90
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_36x9x11.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: autoresearch.solver4.social_golfer_36x9x11.gamma_0.seed_4.90s
+    provenance: solver4_p4_stretch_autoresearch
+    declared_budget: { max_iterations: 18000000, time_limit_seconds: 90 }
+    seed: 361113
+    max_iterations: 18000000
+    time_limit_seconds: 90
+
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_40x10x10.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: autoresearch.solver4.social_golfer_40x10x10.gamma_0.seed_1.60s
+    provenance: solver4_p4_stretch_autoresearch
+    declared_budget: { max_iterations: 15000000, time_limit_seconds: 60 }
+    seed: 401010
+    max_iterations: 15000000
+    time_limit_seconds: 60
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_40x10x10.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: autoresearch.solver4.social_golfer_40x10x10.gamma_0.seed_2.60s
+    provenance: solver4_p4_stretch_autoresearch
+    declared_budget: { max_iterations: 15000000, time_limit_seconds: 60 }
+    seed: 401011
+    max_iterations: 15000000
+    time_limit_seconds: 60
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_40x10x10.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: autoresearch.solver4.social_golfer_40x10x10.gamma_0.seed_3.60s
+    provenance: solver4_p4_stretch_autoresearch
+    declared_budget: { max_iterations: 15000000, time_limit_seconds: 60 }
+    seed: 401012
+    max_iterations: 15000000
+    time_limit_seconds: 60
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_40x10x10.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: autoresearch.solver4.social_golfer_40x10x10.gamma_0.seed_4.60s
+    provenance: solver4_p4_stretch_autoresearch
+    declared_budget: { max_iterations: 15000000, time_limit_seconds: 60 }
+    seed: 401013
+    max_iterations: 15000000
+    time_limit_seconds: 60
+
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_40x10x11.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: autoresearch.solver4.social_golfer_40x10x11.gamma_0.seed_1.120s
+    provenance: solver4_p4_stretch_autoresearch
+    declared_budget: { max_iterations: 22000000, time_limit_seconds: 120 }
+    seed: 401110
+    max_iterations: 22000000
+    time_limit_seconds: 120
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_40x10x11.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: autoresearch.solver4.social_golfer_40x10x11.gamma_0.seed_2.120s
+    provenance: solver4_p4_stretch_autoresearch
+    declared_budget: { max_iterations: 22000000, time_limit_seconds: 120 }
+    seed: 401111
+    max_iterations: 22000000
+    time_limit_seconds: 120
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_40x10x11.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: autoresearch.solver4.social_golfer_40x10x11.gamma_0.seed_3.120s
+    provenance: solver4_p4_stretch_autoresearch
+    declared_budget: { max_iterations: 22000000, time_limit_seconds: 120 }
+    seed: 401112
+    max_iterations: 22000000
+    time_limit_seconds: 120
+  - manifest: /home/ralph/ralph-repos/GroupMixer/backend/benchmarking/cases/stretch/social_golfer_40x10x11.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: autoresearch.solver4.social_golfer_40x10x11.gamma_0.seed_4.120s
+    provenance: solver4_p4_stretch_autoresearch
+    declared_budget: { max_iterations: 22000000, time_limit_seconds: 120 }
+    seed: 401113
+    max_iterations: 22000000
+    time_limit_seconds: 120

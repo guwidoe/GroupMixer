@@ -24,6 +24,10 @@ def parse_seed_label(purpose_summary: str, index: int) -> str:
     return f"case_{index + 1}"
 
 
+def case_slug(case_id: str) -> str:
+    return case_id.split(".")[-1].replace("-", "_")
+
+
 def main(argv):
     if len(argv) != 1:
         raise SystemExit("usage: aggregate_metrics.py <run-report.json>")
@@ -50,7 +54,8 @@ def main(argv):
     metric("runtime_total_seconds", float(report["totals"]["total_runtime_seconds"]))
 
     for index, case in enumerate(cases):
-        label = parse_seed_label(case["case_identity"].get("purpose_provenance_summary", ""), index)
+        seed_label = parse_seed_label(case["case_identity"].get("purpose_provenance_summary", ""), index)
+        label = f"{case_slug(case['case_id'])}_{seed_label}"
         metric(f"{label}_final_score", float(case["final_score"]))
         metric(f"{label}_unique_contacts", int(case["unique_contacts"]))
         metric(f"{label}_best_conflict_positions", float(case.get("best_score", 0.0)))

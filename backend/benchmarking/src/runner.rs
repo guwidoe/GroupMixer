@@ -24,6 +24,9 @@ use gm_core::{default_solver_configuration_for, run_solver, solver_descriptor};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{mpsc, Arc};
+use std::thread;
 use std::time::Instant;
 use uuid::Uuid;
 
@@ -42,6 +45,21 @@ impl Default for RunnerOptions {
     }
 }
 
+fn default_case_parallelism() -> usize {
+    std::thread::available_parallelism()
+        .map(|count| count.get().min(4))
+        .unwrap_or(1)
+        .max(1)
+}
+
+fn resolved_case_parallelism() -> usize {
+    std::env::var("GROUPMIXER_BENCHMARK_JOBS")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|&value| value > 0)
+        .unwrap_or_else(default_case_parallelism)
+}
+
 pub fn run_suite_from_manifest(
     manifest_path: impl AsRef<Path>,
     options: &RunnerOptions,
@@ -54,6 +72,7 @@ pub fn run_loaded_suite(
     suite: &LoadedBenchmarkSuite,
     options: &RunnerOptions,
 ) -> Result<RunReport> {
+    let suite_started_at = Instant::now();
     let run_id = format!(
         "{}-{}-{}",
         suite.manifest.suite_id,
@@ -63,33 +82,96 @@ pub fn run_loaded_suite(
     let generated_at = Utc::now().to_rfc3339();
     let git = capture_git_identity();
     let machine = capture_machine_identity(Some(&options.cargo_profile));
+    let case_parallelism = resolved_case_parallelism().min(suite.cases.len().max(1));
 
-    let mut cases = Vec::with_capacity(suite.cases.len());
-    for case in &suite.cases {
-        cases.push(
-            if suite.manifest.benchmark_mode == FULL_SOLVE_BENCHMARK_MODE {
-                run_case(
-                    &run_id,
-                    &generated_at,
-                    suite,
-                    case,
-                    git.clone(),
-                    machine.clone(),
-                )
-            } else {
-                run_hotpath_case_artifact(
-                    &run_id,
-                    &generated_at,
-                    suite,
-                    case,
-                    git.clone(),
-                    machine.clone(),
-                )
-            },
-        );
-    }
+    let cases = if case_parallelism <= 1 || suite.cases.len() <= 1 {
+        let mut cases = Vec::with_capacity(suite.cases.len());
+        for case in &suite.cases {
+            cases.push(
+                if suite.manifest.benchmark_mode == FULL_SOLVE_BENCHMARK_MODE {
+                    run_case(
+                        &run_id,
+                        &generated_at,
+                        suite,
+                        case,
+                        git.clone(),
+                        machine.clone(),
+                    )
+                } else {
+                    run_hotpath_case_artifact(
+                        &run_id,
+                        &generated_at,
+                        suite,
+                        case,
+                        git.clone(),
+                        machine.clone(),
+                    )
+                },
+            );
+        }
+        cases
+    } else {
+        let suite = Arc::new(suite.clone());
+        let git = Arc::new(git.clone());
+        let machine = Arc::new(machine.clone());
+        let run_id = Arc::new(run_id.clone());
+        let generated_at = Arc::new(generated_at.clone());
+        let next_index = Arc::new(AtomicUsize::new(0));
+        let (tx, rx) = mpsc::channel();
 
-    let totals = build_totals(&cases);
+        thread::scope(|scope| {
+            for _ in 0..case_parallelism {
+                let suite = Arc::clone(&suite);
+                let git = Arc::clone(&git);
+                let machine = Arc::clone(&machine);
+                let run_id = Arc::clone(&run_id);
+                let generated_at = Arc::clone(&generated_at);
+                let next_index = Arc::clone(&next_index);
+                let tx = tx.clone();
+                scope.spawn(move || {
+                    loop {
+                        let index = next_index.fetch_add(1, Ordering::Relaxed);
+                        if index >= suite.cases.len() {
+                            break;
+                        }
+                        let case = &suite.cases[index];
+                        let artifact = if suite.manifest.benchmark_mode == FULL_SOLVE_BENCHMARK_MODE {
+                            run_case(
+                                run_id.as_str(),
+                                generated_at.as_str(),
+                                suite.as_ref(),
+                                case,
+                                (*git).clone(),
+                                (*machine).clone(),
+                            )
+                        } else {
+                            run_hotpath_case_artifact(
+                                run_id.as_str(),
+                                generated_at.as_str(),
+                                suite.as_ref(),
+                                case,
+                                (*git).clone(),
+                                (*machine).clone(),
+                            )
+                        };
+                        let _ = tx.send((index, artifact));
+                    }
+                });
+            }
+            drop(tx);
+
+            let mut cases = vec![None; suite.cases.len()];
+            for (index, artifact) in rx {
+                cases[index] = Some(artifact);
+            }
+            cases
+                .into_iter()
+                .map(|artifact| artifact.expect("parallel benchmark worker should produce one artifact per case"))
+                .collect::<Vec<_>>()
+        })
+    };
+
+    let totals = build_totals(&cases, suite_started_at.elapsed().as_secs_f64());
     let class_rollups = build_class_rollups(&cases);
 
     Ok(RunReport {
@@ -109,6 +191,7 @@ pub fn run_loaded_suite(
             generated_at,
             git,
             machine,
+            case_parallelism: Some(case_parallelism),
         },
         totals,
         class_rollups,
@@ -705,7 +788,7 @@ fn retarget_input_for_solver_kind(
     retargeted
 }
 
-fn build_totals(cases: &[CaseRunArtifact]) -> RunTotals {
+fn build_totals(cases: &[CaseRunArtifact], wall_runtime_seconds: f64) -> RunTotals {
     RunTotals {
         total_cases: cases.len(),
         successful_cases: cases
@@ -716,7 +799,7 @@ fn build_totals(cases: &[CaseRunArtifact]) -> RunTotals {
             .iter()
             .filter(|case| case.status != CaseRunStatus::Success)
             .count(),
-        total_runtime_seconds: cases.iter().map(|case| case.runtime_seconds).sum(),
+        total_runtime_seconds: wall_runtime_seconds,
     }
 }
 
