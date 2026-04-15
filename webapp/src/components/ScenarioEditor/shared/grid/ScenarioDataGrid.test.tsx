@@ -584,6 +584,8 @@ describe('ScenarioDataGrid', () => {
 
     expect(screen.queryByRole('button', { name: /^view$/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /edit table/i })).toHaveAttribute('aria-pressed', 'true');
+    const tableSurface = screen.getByTestId('scenario-grid-table-surface');
+    expect(tableSurface).toBeVisible();
 
     const nameInput = screen.getByRole('textbox', { name: /edit name for row row-a/i });
     await user.clear(nameInput);
@@ -597,9 +599,15 @@ describe('ScenarioDataGrid', () => {
     expect(screen.getByRole('textbox', { name: /edit name for row row-a/i })).toHaveValue('Beta Prime');
 
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    expect(screen.getByTestId('scenario-grid-table-surface')).toBe(tableSurface);
+    expect(tableSurface).not.toBeVisible();
     expect(screen.getByRole('textbox', { name: /inline csv editor/i })).toBeInTheDocument();
+    expect(screen.getByTestId('scenario-grid-csv-surface')).toBeVisible();
+    expect(within(tableSurface).getByText('Beta Prime')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /edit table/i }));
+    expect(screen.getByTestId('scenario-grid-table-surface')).toBe(tableSurface);
+    expect(tableSurface).toBeVisible();
     expect(screen.getByRole('textbox', { name: /edit name for row row-a/i })).toHaveValue('Beta Prime');
   });
 
