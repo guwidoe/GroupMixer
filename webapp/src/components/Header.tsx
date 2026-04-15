@@ -5,9 +5,16 @@ import { useOutsideClick } from '../hooks';
 import { AppHeader } from './AppHeader';
 import { HEADER_ACTION_GROUP_CLASS, HEADER_ACTION_TOOLBAR_CLASS } from './headerActionStyles';
 import { DemoDataWarningModal } from './modals/DemoDataWarningModal';
+import { GeneratedDemoDataModal } from './modals/GeneratedDemoDataModal';
 import { DemoDataDropdown } from './ScenarioEditor/DemoDataDropdown';
 import { ThemeToggle } from './ThemeToggle';
 import { Button, getButtonClassName } from './ui';
+import {
+  createGeneratedDemoScenario,
+  formatGeneratedDemoScenarioName,
+  GENERATED_DEMO_CASE_ID,
+} from '../services/demoScenarioGenerator';
+import type { Scenario } from '../types';
 
 const ISSUE_HREF = 'https://github.com/guwidoe/GroupMixer/issues';
 const ISSUE_LABEL = 'Report an issue or suggest a feature';
@@ -234,10 +241,15 @@ export function Header({ renderDesktopCenterContent, renderMobileCenterContent }
     loadDemoCase,
     loadDemoCaseOverwrite,
     loadDemoCaseNewScenario,
+    loadGeneratedDemoScenario,
+    loadGeneratedDemoScenarioOverwrite,
+    loadGeneratedDemoScenarioNewScenario,
   } = useAppStore();
   const [showDemoWarningModal, setShowDemoWarningModal] = useState(false);
+  const [showGeneratedDemoModal, setShowGeneratedDemoModal] = useState(false);
   const [pendingDemoCaseId, setPendingDemoCaseId] = useState<string | null>(null);
   const [pendingDemoCaseName, setPendingDemoCaseName] = useState<string | null>(null);
+  const [pendingGeneratedScenario, setPendingGeneratedScenario] = useState<Scenario | null>(null);
 
   const currentScenarioName = currentScenarioId
     ? savedScenarios[currentScenarioId]?.name ?? 'Untitled Scenario'
@@ -251,6 +263,11 @@ export function Header({ renderDesktopCenterContent, renderMobileCenterContent }
       saveScenario(currentScenarioName);
     },
     onDemoCaseClick: (demoCaseId, demoCaseName) => {
+      if (demoCaseId === GENERATED_DEMO_CASE_ID) {
+        setShowGeneratedDemoModal(true);
+        return;
+      }
+
       const hasContent =
         scenario && (scenario.people.length > 0 || scenario.groups.length > 0 || scenario.constraints.length > 0);
 
@@ -283,24 +300,54 @@ export function Header({ renderDesktopCenterContent, renderMobileCenterContent }
           setShowDemoWarningModal(false);
           setPendingDemoCaseId(null);
           setPendingDemoCaseName(null);
+          setPendingGeneratedScenario(null);
         }}
         onOverwrite={() => {
-          if (pendingDemoCaseId) {
+          if (pendingGeneratedScenario) {
+            loadGeneratedDemoScenarioOverwrite(pendingGeneratedScenario, pendingDemoCaseName ?? 'Random Demo');
+          } else if (pendingDemoCaseId) {
             loadDemoCaseOverwrite(pendingDemoCaseId);
           }
           setShowDemoWarningModal(false);
           setPendingDemoCaseId(null);
           setPendingDemoCaseName(null);
+          setPendingGeneratedScenario(null);
         }}
         onLoadNew={() => {
-          if (pendingDemoCaseId) {
+          if (pendingGeneratedScenario) {
+            loadGeneratedDemoScenarioNewScenario(pendingGeneratedScenario, pendingDemoCaseName ?? 'Random Demo');
+          } else if (pendingDemoCaseId) {
             loadDemoCaseNewScenario(pendingDemoCaseId);
           }
           setShowDemoWarningModal(false);
           setPendingDemoCaseId(null);
           setPendingDemoCaseName(null);
+          setPendingGeneratedScenario(null);
         }}
         demoCaseName={pendingDemoCaseName || 'Demo Case'}
+      />
+
+      <GeneratedDemoDataModal
+        isOpen={showGeneratedDemoModal}
+        onClose={() => setShowGeneratedDemoModal(false)}
+        onGenerate={(options) => {
+          const generatedScenario = createGeneratedDemoScenario(options);
+          const generatedScenarioName = formatGeneratedDemoScenarioName(options);
+          const hasContent =
+            scenario && (scenario.people.length > 0 || scenario.groups.length > 0 || scenario.constraints.length > 0);
+
+          setShowGeneratedDemoModal(false);
+
+          if (hasContent) {
+            setPendingGeneratedScenario(generatedScenario);
+            setPendingDemoCaseId(null);
+            setPendingDemoCaseName(generatedScenarioName);
+            setShowDemoWarningModal(true);
+            return;
+          }
+
+          loadGeneratedDemoScenario(generatedScenario, generatedScenarioName);
+        }}
       />
     </>
   );

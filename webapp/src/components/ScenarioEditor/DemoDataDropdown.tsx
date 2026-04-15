@@ -6,6 +6,7 @@ import { Tooltip } from '../Tooltip';
 import type { DemoCaseWithMetrics } from './types';
 import { useOutsideClick } from '../../hooks';
 import { getButtonClassName } from '../ui';
+import { GENERATED_DEMO_CASE_ID, GENERATED_DEMO_CASE_NAME } from '../../services/demoScenarioGenerator';
 
 interface DemoDataDropdownProps {
   onDemoCaseClick: (demoCaseId: string, demoCaseName: string) => void;
@@ -261,6 +262,35 @@ export function DemoDataDropdown({
             </div>
           ) : (
             <>
+              <div className="border-b" style={{ borderColor: 'var(--border-primary)' }}>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    onDemoCaseClick(GENERATED_DEMO_CASE_ID, GENERATED_DEMO_CASE_NAME);
+                  }}
+                  className="flex w-full flex-col gap-1 px-3 py-3 text-left transition-colors"
+                  style={{
+                    color: 'var(--text-primary)',
+                    backgroundColor: 'transparent',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-secondary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                  role="menuitem"
+                >
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Zap className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+                    <span>{GENERATED_DEMO_CASE_NAME}</span>
+                  </div>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    Pick groups, people per group, and sessions. We will generate random people and group names with one repeat-pairing constraint.
+                  </p>
+                </button>
+              </div>
+
               {(['Simple', 'Intermediate', 'Advanced', 'Benchmark'] as const).map((category) => {
                 const casesInCategory = demoCasesWithMetrics.filter((c) => c.category === category);
                 if (casesInCategory.length === 0) return null;
