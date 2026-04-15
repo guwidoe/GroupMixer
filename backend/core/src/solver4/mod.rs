@@ -1,8 +1,8 @@
 use crate::models::{
     ApiInput, ApiSchedule, Constraint, MoveFamilyBenchmarkTelemetrySummary, MovePolicy, Objective,
-    RepeatEncounterParams, SgpWeekPairTabuBenchmarkTelemetry, Solver4GraspCandidateTrace,
-    Solver4Mode, Solver4PaperTrace, Solver4PaperTracePoint, SolverBenchmarkTelemetry,
-    SolverConfiguration, SolverKind, SolverResult, StopConditions, StopReason,
+    RepeatEncounterParams, SgpWeekPairTabuBenchmarkTelemetry, Solver4Mode, Solver4PaperTrace,
+    Solver4PaperTracePoint, SolverBenchmarkTelemetry, SolverConfiguration, SolverKind,
+    SolverResult, StopReason,
 };
 use crate::solver2::{scoring::FullScoreSnapshot, SolutionState};
 use crate::solver_support::SolverError;
@@ -15,15 +15,10 @@ pub const SOLVER4_NOTES: &str =
     "Dedicated pure-SGP solver family implementing the complete Triska/Musliu paper: Section 5 complete backtracking with pattern-driven minimal-freedom set selection, plus Sections 6 and 7 randomized greedy initialization and conflict-position local search. Solver4 strictly accepts only pure zero-repeat Social-Golfer-style scenarios.";
 
 const DEFAULT_SOLVER4_SEED: u64 = 42;
-// Historical sources only say to subtract a "large number" after choosing a pair.
-// We use a constant that dominates all practical raw-freedom values on accepted pure-SGP cases.
 const PAPER_PAIR_REPEAT_PENALTY: i64 = 1_000_000;
 const TABU_TENURE_ITERATIONS: u64 = 10;
 const RANDOM_BREAKOUT_AFTER_NO_IMPROVEMENT: u64 = 4;
 const RANDOM_BREAKOUT_SWAP_COUNT: usize = 2;
-const THESIS_GRASP_PRELUDE_RUNS: usize = 5;
-const THESIS_GRASP_PER_RUN_SECONDS: f64 = 60.0;
-const THESIS_GRASP_PRELUDE_SHARE: f64 = 0.25;
 
 #[derive(Clone)]
 pub struct SearchEngine {
@@ -186,164 +181,198 @@ impl SearchEngine {
         rng: &mut ChaCha12Rng,
     ) -> Result<SolverResult, SolverError> {
         let stop_conditions = &self.configuration.stop_conditions;
-        let candidate_budget = thesis_grasp_candidate_budget(stop_conditions);
-        let continuation_budget = thesis_grasp_continuation_budget(stop_conditions, candidate_budget);
-        let gamma_plan = thesis_grasp_gamma_plan(params.gamma, rng);
-        let mut candidates = Vec::with_capacity(gamma_plan.len());
+        let total_started_at = Instant::now();
+        let initialization_started_at = Instant::now();
 
-        for (candidate_index, gamma) in gamma_plan.iter().copied().enumerate() {
-            let run_seed = derived_seed(effective_seed, candidate_index as u64 + 1);
-            let mut candidate_rng = ChaCha12Rng::seed_from_u64(run_seed);
-            let initialization_started_at = Instant::now();
-            let initial_schedule = build_greedy_initial_schedule(problem, gamma, &mut candidate_rng);
-            let initialization_seconds = initialization_started_at.elapsed().as_secs_f64();
-            let run = run_local_search_from_schedule(
-                problem,
-                initial_schedule,
-                initialization_seconds,
-                candidate_budget,
-                params.diagnostics.trace_every_n_iterations,
-                params.diagnostics.capture_paper_trace,
-                &mut candidate_rng,
-            );
-            let solved = run.best.conflict_positions == 0;
-            candidates.push(GraspCandidateOutcome {
-                candidate_index,
-                gamma,
-                run,
-            });
-            if solved {
-                break;
-            }
-        }
-
-        let solved_in_prelude = candidates
-            .last()
-            .is_some_and(|candidate| candidate.run.best.conflict_positions == 0);
-        let continuation_candidate_index = if solved_in_prelude {
-            None
-        } else {
-            Some(select_grasp_continuation_candidate(&candidates))
-        };
-
-        let continuation_run = continuation_candidate_index.map(|selected_index| {
-            let mut continuation_rng =
-                ChaCha12Rng::seed_from_u64(derived_seed(effective_seed, 10_000 + selected_index as u64));
-            run_local_search_from_schedule(
-                problem,
-                candidates[selected_index].run.initial_schedule.clone(),
-                0.0,
-                continuation_budget,
-                params.diagnostics.trace_every_n_iterations,
-                params.diagnostics.capture_paper_trace,
-                &mut continuation_rng,
-            )
-        });
-
-        let final_run = continuation_run
-            .as_ref()
-            .unwrap_or_else(|| &candidates.last().expect("at least one GRASP candidate run").run);
-
-        let mut best_schedule = final_run.best_schedule.clone();
-        let mut best_score = final_run.best.paper_objective();
-        for candidate in &candidates {
-            if candidate.run.best.paper_objective() < best_score {
-                best_score = candidate.run.best.paper_objective();
-                best_schedule = candidate.run.best_schedule.clone();
-            }
-        }
-
+        let mut schedule = build_greedy_initial_schedule(problem, params.gamma, rng);
+        let initialization_seconds = initialization_started_at.elapsed().as_secs_f64();
+        let mut current = EvaluatedSchedule::from_schedule(problem, schedule.clone());
+        let initial = current.clone();
+        let mut best = current.clone();
+        let mut best_schedule = schedule.clone();
+        let mut no_improvement_count = 0u64;
         let mut iterations = 0u64;
-        let mut initialization_seconds = 0.0;
-        let mut search_seconds = 0.0;
         let mut max_no_improvement_streak = 0u64;
         let mut breakout_count = 0u64;
+        let mut tabu = WeekTabuLists::new(problem.num_weeks);
         let mut tabu_telemetry = SgpWeekPairTabuBenchmarkTelemetry::default();
-        let mut best_score_timeline = Vec::new();
-        let mut global_best_score = None;
-        let mut phase_elapsed_offset = 0.0;
-        let mut phase_iteration_offset = 0u64;
-
-        for candidate in &candidates {
-            iterations += candidate.run.iterations;
-            initialization_seconds += candidate.run.initialization_seconds;
-            search_seconds += candidate.run.search_seconds;
-            max_no_improvement_streak =
-                max_no_improvement_streak.max(candidate.run.max_no_improvement_streak);
-            breakout_count += candidate.run.breakout_count;
-            merge_tabu_telemetry(&mut tabu_telemetry, &candidate.run.tabu_telemetry);
-            merge_best_score_timeline(
-                &mut best_score_timeline,
-                &candidate.run.best_score_timeline,
-                phase_elapsed_offset,
-                phase_iteration_offset,
-                &mut global_best_score,
-            );
-            phase_elapsed_offset += candidate.run.initialization_seconds + candidate.run.search_seconds;
-            phase_iteration_offset += candidate.run.iterations;
-        }
-
-        if let Some(run) = continuation_run.as_ref() {
-            iterations += run.iterations;
-            initialization_seconds += run.initialization_seconds;
-            search_seconds += run.search_seconds;
-            max_no_improvement_streak = max_no_improvement_streak.max(run.max_no_improvement_streak);
-            breakout_count += run.breakout_count;
-            merge_tabu_telemetry(&mut tabu_telemetry, &run.tabu_telemetry);
-            merge_best_score_timeline(
-                &mut best_score_timeline,
-                &run.best_score_timeline,
-                phase_elapsed_offset,
-                phase_iteration_offset,
-                &mut global_best_score,
-            );
-        }
-
-        let grasp_candidates = candidates
-            .iter()
-            .map(|candidate| Solver4GraspCandidateTrace {
-                candidate_index: candidate.candidate_index as u32,
-                gamma: candidate.gamma,
-                initialization_seconds: candidate.run.initialization_seconds,
-                search_seconds: candidate.run.search_seconds,
-                initial_conflict_positions: candidate.run.initial.conflict_positions as u64,
-                best_conflict_positions: candidate.run.best.conflict_positions as u64,
-                solved: candidate.run.best.conflict_positions == 0,
-                iterations_completed: candidate.run.iterations,
-                stop_reason: Some(candidate.run.stop_reason),
-                selected_for_continuation: continuation_candidate_index == Some(candidate.candidate_index),
-            })
-            .collect::<Vec<_>>();
-
-        let paper_trace = params.diagnostics.capture_paper_trace.then(|| Solver4PaperTrace {
+        let mut best_score_timeline = vec![crate::models::BestScoreTimelinePoint {
+            iteration: 0,
+            elapsed_seconds: initialization_seconds,
+            best_score: initial.paper_objective(),
+        }];
+        let mut paper_trace = params.diagnostics.capture_paper_trace.then(|| Solver4PaperTrace {
             mode: Some(Solver4Mode::GreedyLocalSearch),
             backtracking_pattern: None,
             initial_schedule: params
                 .diagnostics
                 .include_initial_schedule_in_trace
-                .then(|| to_api_schedule(problem, &final_run.initial_schedule)),
-            initial_conflict_positions: Some(final_run.initial.conflict_positions as u64),
-            initial_conflict_positions_by_week: final_run.initial.conflict_positions_by_week.clone(),
-            grasp_candidates,
-            continuation_candidate_index: continuation_candidate_index.map(|index| index as u32),
-            continuation_gamma: continuation_candidate_index.map(|index| candidates[index].gamma),
-            points: final_run.paper_trace_points.clone(),
+                .then(|| to_api_schedule(problem, &schedule)),
+            initial_conflict_positions: Some(initial.conflict_positions as u64),
+            initial_conflict_positions_by_week: initial.conflict_positions_by_week.clone(),
+            grasp_candidates: vec![],
+            continuation_candidate_index: None,
+            continuation_gamma: None,
+            points: vec![Solver4PaperTracePoint {
+                iteration: 0,
+                elapsed_seconds: initialization_seconds,
+                current_conflict_positions: initial.conflict_positions as u64,
+                best_conflict_positions: initial.conflict_positions as u64,
+                conflict_positions_by_week: initial.conflict_positions_by_week.clone(),
+            }],
         });
 
+        if stop_conditions.should_stop_for_optimal_score(current.paper_objective()) {
+            let search_seconds = total_started_at.elapsed().as_secs_f64() - initialization_seconds;
+            let telemetry = build_local_search_telemetry(
+                &self.configuration,
+                effective_seed,
+                StopReason::OptimalScoreReached,
+                iterations,
+                no_improvement_count,
+                max_no_improvement_streak,
+                breakout_count,
+                initial.paper_objective(),
+                best.paper_objective(),
+                current.paper_objective(),
+                initialization_seconds,
+                search_seconds,
+                0.0,
+                &best_score_timeline,
+                Some(tabu_telemetry),
+                paper_trace,
+            );
+            return build_solver_result(
+                input,
+                problem,
+                &best_schedule,
+                no_improvement_count,
+                effective_seed,
+                StopReason::OptimalScoreReached,
+                Some(telemetry),
+            );
+        }
+
+        let search_started_at = Instant::now();
+        let stop_reason = loop {
+            if let Some(limit) = stop_conditions.max_iterations {
+                if iterations >= limit {
+                    break StopReason::MaxIterationsReached;
+                }
+            }
+            if let Some(limit) = stop_conditions.time_limit_seconds {
+                if total_started_at.elapsed().as_secs() >= limit {
+                    break StopReason::TimeLimitReached;
+                }
+            }
+            if let Some(limit) = stop_conditions.no_improvement_iterations {
+                if no_improvement_count >= limit {
+                    break StopReason::NoImprovementLimitReached;
+                }
+            }
+            if current.conflict_positions == 0 {
+                break StopReason::OptimalScoreReached;
+            }
+
+            let breakout_applied = should_apply_random_breakout(no_improvement_count);
+            let next_schedule = if breakout_applied {
+                breakout_count += 1;
+                apply_random_breakout(problem, &schedule, rng, &mut tabu, iterations, &mut tabu_telemetry)
+            } else {
+                let selection = select_best_swap(
+                    problem,
+                    &schedule,
+                    &current,
+                    &best,
+                    &mut tabu,
+                    iterations,
+                    &mut tabu_telemetry,
+                );
+                selection
+                    .map(|candidate| {
+                        tabu.record_iteration(
+                            iterations,
+                            &[(candidate.week, unordered_pair(candidate.left_person, candidate.right_person))],
+                            &mut tabu_telemetry,
+                        );
+                        candidate.schedule
+                    })
+                    .unwrap_or_else(|| schedule.clone())
+            };
+
+            let previous_conflict_positions = current.conflict_positions;
+            schedule = next_schedule;
+            current = EvaluatedSchedule::from_schedule(problem, schedule.clone());
+            iterations += 1;
+
+            let improved_current = current.conflict_positions < previous_conflict_positions;
+            let improved_best = current.conflict_positions < best.conflict_positions;
+            if improved_best {
+                best = current.clone();
+                best_schedule = schedule.clone();
+                best_score_timeline.push(crate::models::BestScoreTimelinePoint {
+                    iteration: iterations,
+                    elapsed_seconds: total_started_at.elapsed().as_secs_f64(),
+                    best_score: best.paper_objective(),
+                });
+            }
+            no_improvement_count = next_no_improvement_count(
+                no_improvement_count,
+                improved_current,
+                breakout_applied,
+            );
+            max_no_improvement_streak = max_no_improvement_streak.max(no_improvement_count);
+
+            if let Some(trace) = paper_trace.as_mut() {
+                if improved_best || iterations % params.diagnostics.trace_every_n_iterations == 0 {
+                    trace.points.push(Solver4PaperTracePoint {
+                        iteration: iterations,
+                        elapsed_seconds: total_started_at.elapsed().as_secs_f64(),
+                        current_conflict_positions: current.conflict_positions as u64,
+                        best_conflict_positions: best.conflict_positions as u64,
+                        conflict_positions_by_week: current.conflict_positions_by_week.clone(),
+                    });
+                }
+            }
+
+            if stop_conditions.should_stop_for_optimal_score(best.paper_objective()) {
+                break StopReason::OptimalScoreReached;
+            }
+        };
+
+        if let Some(trace) = paper_trace.as_mut() {
+            let needs_final_point = trace
+                .points
+                .last()
+                .is_none_or(|point| point.iteration != iterations);
+            if needs_final_point {
+                trace.points.push(Solver4PaperTracePoint {
+                    iteration: iterations,
+                    elapsed_seconds: total_started_at.elapsed().as_secs_f64(),
+                    current_conflict_positions: current.conflict_positions as u64,
+                    best_conflict_positions: best.conflict_positions as u64,
+                    conflict_positions_by_week: current.conflict_positions_by_week.clone(),
+                });
+            }
+        }
+
+        let search_seconds = search_started_at.elapsed().as_secs_f64();
+        let finalization_started_at = Instant::now();
+        let finalization_seconds = finalization_started_at.elapsed().as_secs_f64();
         let telemetry = build_local_search_telemetry(
             &self.configuration,
             effective_seed,
-            final_run.stop_reason,
+            stop_reason,
             iterations,
-            final_run.no_improvement_count,
+            no_improvement_count,
             max_no_improvement_streak,
             breakout_count,
-            final_run.initial.paper_objective(),
-            best_score,
-            final_run.current.paper_objective(),
+            initial.paper_objective(),
+            best.paper_objective(),
+            current.paper_objective(),
             initialization_seconds,
             search_seconds,
-            0.0,
+            finalization_seconds,
             &best_score_timeline,
             Some(tabu_telemetry),
             paper_trace,
@@ -353,9 +382,9 @@ impl SearchEngine {
             input,
             problem,
             &best_schedule,
-            final_run.no_improvement_count,
+            no_improvement_count,
             effective_seed,
-            final_run.stop_reason,
+            stop_reason,
             Some(telemetry),
         )
     }
@@ -368,334 +397,6 @@ fn stop_reason_name(reason: StopReason) -> &'static str {
         StopReason::NoImprovementLimitReached => "no_improvement_limit_reached",
         StopReason::ProgressCallbackRequestedStop => "progress_callback_requested_stop",
         StopReason::OptimalScoreReached => "optimal_score_reached",
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-struct LocalSearchBudget {
-    max_iterations: Option<u64>,
-    time_limit_seconds: Option<f64>,
-    no_improvement_iterations: Option<u64>,
-}
-
-#[derive(Debug, Clone)]
-struct LocalSearchRunOutcome {
-    initial_schedule: Vec<Vec<Vec<usize>>>,
-    initial: EvaluatedSchedule,
-    best: EvaluatedSchedule,
-    best_schedule: Vec<Vec<Vec<usize>>>,
-    current: EvaluatedSchedule,
-    stop_reason: StopReason,
-    iterations: u64,
-    no_improvement_count: u64,
-    max_no_improvement_streak: u64,
-    breakout_count: u64,
-    initialization_seconds: f64,
-    search_seconds: f64,
-    best_score_timeline: Vec<crate::models::BestScoreTimelinePoint>,
-    tabu_telemetry: SgpWeekPairTabuBenchmarkTelemetry,
-    paper_trace_points: Vec<Solver4PaperTracePoint>,
-}
-
-#[derive(Debug, Clone)]
-struct GraspCandidateOutcome {
-    candidate_index: usize,
-    gamma: f64,
-    run: LocalSearchRunOutcome,
-}
-
-fn thesis_grasp_gamma_plan(gamma_override: f64, rng: &mut ChaCha12Rng) -> Vec<f64> {
-    vec![
-        gamma_override,
-        0.1,
-        0.2,
-        rng.random_range(0.3..=1.0),
-        rng.random_range(0.3..=1.0),
-    ]
-}
-
-fn derived_seed(root: u64, salt: u64) -> u64 {
-    let mut z = root.wrapping_add(0x9E37_79B9_7F4A_7C15).wrapping_add(salt << 1);
-    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-    z ^ (z >> 31)
-}
-
-fn thesis_grasp_candidate_budget(stop_conditions: &StopConditions) -> LocalSearchBudget {
-    LocalSearchBudget {
-        max_iterations: stop_conditions
-            .max_iterations
-            .map(|limit| ((limit as f64) * (THESIS_GRASP_PRELUDE_SHARE / THESIS_GRASP_PRELUDE_RUNS as f64)).floor() as u64),
-        time_limit_seconds: stop_conditions.time_limit_seconds.map(|limit| {
-            ((limit as f64) * (THESIS_GRASP_PRELUDE_SHARE / THESIS_GRASP_PRELUDE_RUNS as f64))
-                .min(THESIS_GRASP_PER_RUN_SECONDS)
-        }),
-        no_improvement_iterations: stop_conditions.no_improvement_iterations,
-    }
-}
-
-fn thesis_grasp_continuation_budget(
-    stop_conditions: &StopConditions,
-    candidate_budget: LocalSearchBudget,
-) -> LocalSearchBudget {
-    let used_iterations = candidate_budget
-        .max_iterations
-        .unwrap_or(0)
-        .saturating_mul(THESIS_GRASP_PRELUDE_RUNS as u64);
-    let used_seconds = candidate_budget.time_limit_seconds.unwrap_or(0.0)
-        * THESIS_GRASP_PRELUDE_RUNS as f64;
-    LocalSearchBudget {
-        max_iterations: stop_conditions
-            .max_iterations
-            .map(|limit| limit.saturating_sub(used_iterations)),
-        time_limit_seconds: stop_conditions
-            .time_limit_seconds
-            .map(|limit| ((limit as f64) - used_seconds).max(0.0)),
-        no_improvement_iterations: stop_conditions.no_improvement_iterations,
-    }
-}
-
-fn select_grasp_continuation_candidate(candidates: &[GraspCandidateOutcome]) -> usize {
-    candidates
-        .iter()
-        .min_by(|left, right| {
-            left.run
-                .best
-                .conflict_positions
-                .cmp(&right.run.best.conflict_positions)
-                .then_with(|| left.gamma.total_cmp(&right.gamma))
-                .then_with(|| left.candidate_index.cmp(&right.candidate_index))
-        })
-        .map(|candidate| candidate.candidate_index)
-        .unwrap_or(0)
-}
-
-fn merge_tabu_telemetry(
-    aggregate: &mut SgpWeekPairTabuBenchmarkTelemetry,
-    next: &SgpWeekPairTabuBenchmarkTelemetry,
-) {
-    aggregate.raw_tabu_hits += next.raw_tabu_hits;
-    aggregate.prefilter_skips += next.prefilter_skips;
-    aggregate.retry_exhaustions += next.retry_exhaustions;
-    aggregate.hard_blocks += next.hard_blocks;
-    aggregate.aspiration_preview_surfaces += next.aspiration_preview_surfaces;
-    aggregate.aspiration_overrides += next.aspiration_overrides;
-    aggregate.recorded_swaps += next.recorded_swaps;
-    aggregate.realized_tenure_sum += next.realized_tenure_sum;
-    aggregate.realized_tenure_min = match (aggregate.realized_tenure_min, next.realized_tenure_min)
-    {
-        (Some(left), Some(right)) => Some(left.min(right)),
-        (None, value) | (value, None) => value,
-    };
-    aggregate.realized_tenure_max = match (aggregate.realized_tenure_max, next.realized_tenure_max)
-    {
-        (Some(left), Some(right)) => Some(left.max(right)),
-        (None, value) | (value, None) => value,
-    };
-}
-
-fn merge_best_score_timeline(
-    aggregate: &mut Vec<crate::models::BestScoreTimelinePoint>,
-    phase_timeline: &[crate::models::BestScoreTimelinePoint],
-    phase_offset_seconds: f64,
-    phase_iteration_offset: u64,
-    global_best_score: &mut Option<f64>,
-) {
-    for point in phase_timeline {
-        let is_improvement = match global_best_score {
-            Some(best) => point.best_score < *best,
-            None => true,
-        };
-        if is_improvement {
-            *global_best_score = Some(point.best_score);
-            aggregate.push(crate::models::BestScoreTimelinePoint {
-                iteration: phase_iteration_offset + point.iteration,
-                elapsed_seconds: phase_offset_seconds + point.elapsed_seconds,
-                best_score: point.best_score,
-            });
-        }
-    }
-}
-
-fn run_local_search_from_schedule(
-    problem: &PureSgpProblem,
-    initial_schedule: Vec<Vec<Vec<usize>>>,
-    initialization_seconds: f64,
-    budget: LocalSearchBudget,
-    trace_every_n_iterations: u64,
-    capture_trace: bool,
-    rng: &mut ChaCha12Rng,
-) -> LocalSearchRunOutcome {
-    let total_started_at = Instant::now();
-    let mut schedule = initial_schedule.clone();
-    let mut current = EvaluatedSchedule::from_schedule(problem, schedule.clone());
-    let initial = current.clone();
-    let mut best = current.clone();
-    let mut best_schedule = schedule.clone();
-    let mut no_improvement_count = 0u64;
-    let mut iterations = 0u64;
-    let mut max_no_improvement_streak = 0u64;
-    let mut breakout_count = 0u64;
-    let mut tabu = WeekTabuLists::new(problem.num_weeks);
-    let mut tabu_telemetry = SgpWeekPairTabuBenchmarkTelemetry::default();
-    let mut best_score_timeline = vec![crate::models::BestScoreTimelinePoint {
-        iteration: 0,
-        elapsed_seconds: initialization_seconds,
-        best_score: initial.paper_objective(),
-    }];
-    let mut paper_trace_points = if capture_trace {
-        vec![Solver4PaperTracePoint {
-            iteration: 0,
-            elapsed_seconds: initialization_seconds,
-            current_conflict_positions: initial.conflict_positions as u64,
-            best_conflict_positions: initial.conflict_positions as u64,
-            conflict_positions_by_week: initial.conflict_positions_by_week.clone(),
-        }]
-    } else {
-        Vec::new()
-    };
-
-    if current.conflict_positions == 0 {
-        return LocalSearchRunOutcome {
-            initial_schedule,
-            initial,
-            best,
-            best_schedule,
-            current,
-            stop_reason: StopReason::OptimalScoreReached,
-            iterations,
-            no_improvement_count,
-            max_no_improvement_streak,
-            breakout_count,
-            initialization_seconds,
-            search_seconds: 0.0,
-            best_score_timeline,
-            tabu_telemetry,
-            paper_trace_points,
-        };
-    }
-
-    let search_started_at = Instant::now();
-    let stop_reason = loop {
-        if let Some(limit) = budget.max_iterations {
-            if iterations >= limit {
-                break StopReason::MaxIterationsReached;
-            }
-        }
-        if let Some(limit) = budget.time_limit_seconds {
-            if total_started_at.elapsed().as_secs_f64() >= limit {
-                break StopReason::TimeLimitReached;
-            }
-        }
-        if let Some(limit) = budget.no_improvement_iterations {
-            if no_improvement_count >= limit {
-                break StopReason::NoImprovementLimitReached;
-            }
-        }
-        if current.conflict_positions == 0 {
-            break StopReason::OptimalScoreReached;
-        }
-
-        let breakout_applied = should_apply_random_breakout(no_improvement_count);
-        let next_schedule = if breakout_applied {
-            breakout_count += 1;
-            apply_random_breakout(
-                problem,
-                &schedule,
-                rng,
-                &mut tabu,
-                iterations,
-                &mut tabu_telemetry,
-            )
-        } else {
-            let selection = select_best_swap(
-                problem,
-                &schedule,
-                &current,
-                &best,
-                &mut tabu,
-                iterations,
-                &mut tabu_telemetry,
-            );
-            selection
-                .map(|candidate| {
-                    tabu.record_iteration(
-                        iterations,
-                        &[(candidate.week, unordered_pair(candidate.left_person, candidate.right_person))],
-                        &mut tabu_telemetry,
-                    );
-                    candidate.schedule
-                })
-                .unwrap_or_else(|| schedule.clone())
-        };
-
-        schedule = next_schedule;
-        current = EvaluatedSchedule::from_schedule(problem, schedule.clone());
-        iterations += 1;
-
-        let improved_best = current.conflict_positions < best.conflict_positions;
-        if improved_best {
-            best = current.clone();
-            best_schedule = schedule.clone();
-            best_score_timeline.push(crate::models::BestScoreTimelinePoint {
-                iteration: iterations,
-                elapsed_seconds: total_started_at.elapsed().as_secs_f64(),
-                best_score: best.paper_objective(),
-            });
-        }
-        no_improvement_count = next_no_improvement_count(
-            no_improvement_count,
-            improved_best,
-            breakout_applied,
-        );
-        max_no_improvement_streak = max_no_improvement_streak.max(no_improvement_count);
-
-        if capture_trace && (improved_best || iterations % trace_every_n_iterations == 0) {
-            paper_trace_points.push(Solver4PaperTracePoint {
-                iteration: iterations,
-                elapsed_seconds: total_started_at.elapsed().as_secs_f64(),
-                current_conflict_positions: current.conflict_positions as u64,
-                best_conflict_positions: best.conflict_positions as u64,
-                conflict_positions_by_week: current.conflict_positions_by_week.clone(),
-            });
-        }
-
-        if best.conflict_positions == 0 {
-            break StopReason::OptimalScoreReached;
-        }
-    };
-
-    if capture_trace {
-        let needs_final_point = paper_trace_points
-            .last()
-            .is_none_or(|point| point.iteration != iterations);
-        if needs_final_point {
-            paper_trace_points.push(Solver4PaperTracePoint {
-                iteration: iterations,
-                elapsed_seconds: total_started_at.elapsed().as_secs_f64(),
-                current_conflict_positions: current.conflict_positions as u64,
-                best_conflict_positions: best.conflict_positions as u64,
-                conflict_positions_by_week: current.conflict_positions_by_week.clone(),
-            });
-        }
-    }
-
-    LocalSearchRunOutcome {
-        initial_schedule,
-        initial,
-        best,
-        best_schedule,
-        current,
-        stop_reason,
-        iterations,
-        no_improvement_count,
-        max_no_improvement_streak,
-        breakout_count,
-        initialization_seconds,
-        search_seconds: search_started_at.elapsed().as_secs_f64(),
-        best_score_timeline,
-        tabu_telemetry,
-        paper_trace_points,
     }
 }
 
@@ -762,8 +463,6 @@ fn should_apply_random_breakout(no_improvement_count: u64) -> bool {
     no_improvement_count == RANDOM_BREAKOUT_AFTER_NO_IMPROVEMENT
 }
 
-// The thesis says the local search is based on Dotú/Hentenryck's Algorithm 6.2 and then
-// simplified. We therefore treat "no improvement" as "no new best-so-far configuration".
 fn next_no_improvement_count(
     previous: u64,
     improved_best: bool,
@@ -1298,6 +997,14 @@ struct PairCandidateScore {
     adjusted_freedom: i64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct GroupCandidateScore {
+    members: Vec<usize>,
+    raw_freedom: usize,
+    repeat_penalty_count: usize,
+    adjusted_freedom: i64,
+}
+
 impl PairCandidateScore {
     fn pair(&self) -> (usize, usize) {
         (self.left, self.right)
@@ -1378,48 +1085,67 @@ fn build_greedy_initial_schedule_internal(
     for week in 0..problem.num_weeks {
         let mut remaining: Vec<usize> = (0..problem.num_people).collect();
         for group_idx in 0..problem.num_groups {
-            let pair_slots = problem.group_size / 2;
-            let mut selected_pairs = Vec::with_capacity(pair_slots);
-            for pair_index in 0..pair_slots {
-                let remaining_before = remaining.clone();
-                let scored_candidates = score_pair_candidates(
+            let (selected_pairs, singleton) = if problem.group_size == 4 {
+                let chosen = choose_best_group_candidate(
                     &remaining,
                     &partnered,
                     &selected_pair_penalties,
+                    problem.group_size,
+                    gamma,
+                    rng,
                 );
-                let chosen = choose_best_pair_from_scores(&scored_candidates, gamma, rng);
-                schedule[week][group_idx].push(chosen.left);
-                schedule[week][group_idx].push(chosen.right);
-                remove_person(&mut remaining, chosen.left);
-                remove_person(&mut remaining, chosen.right);
-                selected_pairs.push(chosen.pair());
-                if let Some(trace) = trace.as_mut() {
-                    trace.pair_steps.push(GreedyPairStep {
-                        week,
-                        group: group_idx,
-                        pair_index,
-                        remaining_before,
-                        scored_candidates,
-                        chosen,
-                    });
+                for member in &chosen.members {
+                    schedule[week][group_idx].push(*member);
                 }
-            }
-            let singleton = if problem.group_size % 2 == 1 {
-                let remaining_before = remaining.clone();
-                let selected = choose_last_singleton(&remaining, gamma, rng);
-                schedule[week][group_idx].push(selected);
-                remove_person(&mut remaining, selected);
-                if let Some(trace) = trace.as_mut() {
-                    trace.singleton_steps.push(GreedySingletonStep {
-                        week,
-                        group: group_idx,
-                        remaining_before,
-                        chosen: selected,
-                    });
+                for member in &chosen.members {
+                    remove_person(&mut remaining, *member);
                 }
-                Some(selected)
+                (all_group_pairs(&chosen.members), None)
             } else {
-                None
+                let pair_slots = problem.group_size / 2;
+                let mut selected_pairs = Vec::with_capacity(pair_slots);
+                for pair_index in 0..pair_slots {
+                    let remaining_before = remaining.clone();
+                    let scored_candidates = score_pair_candidates(
+                        &remaining,
+                        &partnered,
+                        &selected_pair_penalties,
+                    );
+                    let chosen = choose_best_pair_from_scores(&scored_candidates, gamma, rng);
+                    schedule[week][group_idx].push(chosen.left);
+                    schedule[week][group_idx].push(chosen.right);
+                    remove_person(&mut remaining, chosen.left);
+                    remove_person(&mut remaining, chosen.right);
+                    selected_pairs.push(chosen.pair());
+                    if let Some(trace) = trace.as_mut() {
+                        trace.pair_steps.push(GreedyPairStep {
+                            week,
+                            group: group_idx,
+                            pair_index,
+                            remaining_before,
+                            scored_candidates,
+                            chosen,
+                        });
+                    }
+                }
+                let singleton = if problem.group_size % 2 == 1 {
+                    let remaining_before = remaining.clone();
+                    let selected = choose_last_singleton(&remaining, gamma, rng);
+                    schedule[week][group_idx].push(selected);
+                    remove_person(&mut remaining, selected);
+                    if let Some(trace) = trace.as_mut() {
+                        trace.singleton_steps.push(GreedySingletonStep {
+                            week,
+                            group: group_idx,
+                            remaining_before,
+                            chosen: selected,
+                        });
+                    }
+                    Some(selected)
+                } else {
+                    None
+                };
+                (selected_pairs, singleton)
             };
 
             let mut penalty_updates = Vec::with_capacity(selected_pairs.len());
@@ -1480,6 +1206,96 @@ fn score_pair_candidates(
             .then((left.left, left.right).cmp(&(right.left, right.right)))
     });
     scored
+}
+
+fn score_group_candidates(
+    remaining: &[usize],
+    partnered: &[Vec<bool>],
+    selected_pair_penalties: &[Vec<usize>],
+    group_size: usize,
+) -> Vec<GroupCandidateScore> {
+    let mut scored = Vec::new();
+    let mut scratch = Vec::with_capacity(group_size);
+    enumerate_group_candidates(
+        remaining,
+        group_size,
+        0,
+        &mut scratch,
+        &mut scored,
+        partnered,
+        selected_pair_penalties,
+    );
+    scored.sort_by(|left, right| {
+        right
+            .adjusted_freedom
+            .cmp(&left.adjusted_freedom)
+            .then(left.members.cmp(&right.members))
+    });
+    scored
+}
+
+fn enumerate_group_candidates(
+    remaining: &[usize],
+    group_size: usize,
+    start: usize,
+    scratch: &mut Vec<usize>,
+    out: &mut Vec<GroupCandidateScore>,
+    partnered: &[Vec<bool>],
+    selected_pair_penalties: &[Vec<usize>],
+) {
+    if scratch.len() == group_size {
+        let raw_freedom = freedom_of_set(scratch, partnered);
+        let mut repeat_penalty_count = 0usize;
+        for left_idx in 0..scratch.len() {
+            for right_idx in (left_idx + 1)..scratch.len() {
+                repeat_penalty_count += selected_pair_penalties[scratch[left_idx]][scratch[right_idx]];
+            }
+        }
+        let adjusted_freedom =
+            raw_freedom as i64 - (repeat_penalty_count as i64 * PAPER_PAIR_REPEAT_PENALTY);
+        out.push(GroupCandidateScore {
+            members: scratch.clone(),
+            raw_freedom,
+            repeat_penalty_count,
+            adjusted_freedom,
+        });
+        return;
+    }
+
+    for idx in start..remaining.len() {
+        scratch.push(remaining[idx]);
+        enumerate_group_candidates(
+            remaining,
+            group_size,
+            idx + 1,
+            scratch,
+            out,
+            partnered,
+            selected_pair_penalties,
+        );
+        scratch.pop();
+    }
+}
+
+fn choose_best_group_candidate(
+    remaining: &[usize],
+    partnered: &[Vec<bool>],
+    selected_pair_penalties: &[Vec<usize>],
+    group_size: usize,
+    gamma: f64,
+    rng: &mut ChaCha12Rng,
+) -> GroupCandidateScore {
+    let scored = score_group_candidates(remaining, partnered, selected_pair_penalties, group_size);
+    let best_score = scored[0].adjusted_freedom;
+    let tied_len = scored
+        .iter()
+        .take_while(|candidate| candidate.adjusted_freedom == best_score)
+        .count();
+    if tied_len > 1 && rng.random::<f64>() < gamma {
+        scored[..tied_len].choose(rng).cloned().unwrap_or_else(|| scored[0].clone())
+    } else {
+        scored[0].clone()
+    }
 }
 
 fn choose_best_pair_from_scores(
@@ -1706,8 +1522,6 @@ fn resulting_configuration_is_lexicographically_smaller(
     left: &SwapCandidate,
     right: &SwapCandidate,
 ) -> bool {
-    // The paper only says to break ties lexicographically between resulting configurations `C'`.
-    // We therefore compare the flattened resulting schedule values at the changed positions.
     let mut changed_positions = vec![
         position_id_from_coordinates(base_schedule, left.week, left.left_group, left.left_slot),
         position_id_from_coordinates(base_schedule, left.week, left.right_group, left.right_slot),
@@ -1977,8 +1791,6 @@ fn apply_random_breakout(
         recorded.push((week, unordered_pair(left_person, right_person)));
     }
 
-    // The paper does not say whether breakout swaps enter tabu memory. We record them so the
-    // breakout perturbation is treated like any other realized swap and is not immediately undone.
     tabu.record_iteration(iteration, &recorded, tabu_telemetry);
     next
 }
@@ -2245,15 +2057,17 @@ mod tests {
                 }
             };
 
+            let previous_conflict_positions = current.conflict_positions;
             schedule = next_schedule;
             current = evaluated(problem, &schedule);
+            let improved_current = current.conflict_positions < previous_conflict_positions;
             let improved_best = current.conflict_positions < best.conflict_positions;
             if improved_best {
                 best = current.clone();
             }
             no_improvement_count = next_no_improvement_count(
                 no_improvement_count,
-                improved_best,
+                improved_current,
                 breakout_applied,
             );
 
@@ -2536,87 +2350,6 @@ mod tests {
     }
 
     #[test]
-    fn thesis_grasp_gamma_plan_matches_paper_defaults_when_gamma_is_zero() {
-        let mut rng = ChaCha12Rng::seed_from_u64(11);
-
-        let gammas = thesis_grasp_gamma_plan(0.0, &mut rng);
-
-        assert_eq!(gammas.len(), 5);
-        assert_eq!(gammas[0], 0.0);
-        assert_eq!(gammas[1], 0.1);
-        assert_eq!(gammas[2], 0.2);
-        assert!((0.3..=1.0).contains(&gammas[3]));
-        assert!((0.3..=1.0).contains(&gammas[4]));
-    }
-
-    #[test]
-    fn thesis_grasp_gamma_plan_uses_explicit_override_in_first_slot() {
-        let mut rng = ChaCha12Rng::seed_from_u64(11);
-
-        let gammas = thesis_grasp_gamma_plan(0.05, &mut rng);
-
-        assert_eq!(gammas[0], 0.05);
-        assert_eq!(gammas[1], 0.1);
-        assert_eq!(gammas[2], 0.2);
-    }
-
-    #[test]
-    fn grasp_continuation_candidate_prefers_lower_best_conflict_then_smaller_gamma() {
-        fn candidate(candidate_index: usize, gamma: f64, initial_conflicts: usize, best_conflicts: usize) -> GraspCandidateOutcome {
-            let evaluation = EvaluatedSchedule {
-                conflict_positions: best_conflicts,
-                conflict_positions_by_week: vec![],
-                unique_contacts: 0,
-                repeat_excess: 0,
-                pair_counts: vec![],
-                pair_occurrences: vec![],
-                incident_counts: vec![],
-            };
-            GraspCandidateOutcome {
-                candidate_index,
-                gamma,
-                run: LocalSearchRunOutcome {
-                    initial_schedule: vec![],
-                    initial: EvaluatedSchedule {
-                        conflict_positions: initial_conflicts,
-                        conflict_positions_by_week: vec![],
-                        unique_contacts: 0,
-                        repeat_excess: 0,
-                        pair_counts: vec![],
-                        pair_occurrences: vec![],
-                        incident_counts: vec![],
-                    },
-                    best: evaluation.clone(),
-                    best_schedule: vec![],
-                    current: evaluation,
-                    stop_reason: StopReason::TimeLimitReached,
-                    iterations: 0,
-                    no_improvement_count: 0,
-                    max_no_improvement_streak: 0,
-                    breakout_count: 0,
-                    initialization_seconds: 0.0,
-                    search_seconds: 0.0,
-                    best_score_timeline: vec![],
-                    tabu_telemetry: SgpWeekPairTabuBenchmarkTelemetry::default(),
-                    paper_trace_points: vec![],
-                },
-            }
-        }
-
-        let candidates = vec![
-            candidate(0, 0.2, 100, 12),
-            candidate(1, 0.1, 100, 12),
-            candidate(2, 0.3, 100, 10),
-        ];
-
-        assert_eq!(select_grasp_continuation_candidate(&candidates), 2);
-
-        let tied = vec![candidate(0, 0.2, 100, 12), candidate(1, 0.1, 100, 12)];
-
-        assert_eq!(select_grasp_continuation_candidate(&tied), 1);
-    }
-
-    #[test]
     fn greedy_constructor_applies_future_week_pair_penalty() {
         let problem = sample_problem(2, 2, 2);
         let mut rng = ChaCha12Rng::seed_from_u64(0);
@@ -2624,23 +2357,6 @@ mod tests {
         let schedule = build_greedy_initial_schedule(&problem, 0.0, &mut rng);
 
         assert_eq!(schedule, vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]]);
-    }
-
-    #[test]
-    fn repeated_pair_penalty_outweighs_raw_freedom() {
-        let remaining = vec![0, 1, 2, 3];
-        let partnered = vec![vec![false; 4]; 4];
-        let mut penalties = vec![vec![0usize; 4]; 4];
-        penalties[0][1] = 1;
-        penalties[1][0] = 1;
-
-        let scored = score_pair_candidates(&remaining, &partnered, &penalties);
-
-        assert_ne!(scored[0].pair(), (0, 1));
-        assert_eq!(
-            scored.iter().find(|candidate| candidate.pair() == (0, 1)).unwrap().adjusted_freedom,
-            2 - PAPER_PAIR_REPEAT_PENALTY,
-        );
     }
 
     #[test]
@@ -2905,27 +2621,15 @@ mod tests {
     }
 
     #[test]
-    fn greedy_initializer_uses_pairwise_selection_for_size_four() {
+    fn greedy_initializer_uses_full_group_selection_for_size_four() {
         let problem = sample_problem(2, 4, 1);
         let mut rng = ChaCha12Rng::seed_from_u64(0);
 
         let (schedule, trace) = build_greedy_initial_schedule_with_trace(&problem, 0.0, &mut rng);
 
         assert_eq!(schedule, vec![vec![vec![0, 1, 2, 3], vec![4, 5, 6, 7]]]);
+        assert!(trace.pair_steps.is_empty());
         assert!(trace.singleton_steps.is_empty());
-        assert_eq!(
-            trace
-                .pair_steps
-                .iter()
-                .map(|step| (step.week, step.group, step.pair_index, step.chosen.pair()))
-                .collect::<Vec<_>>(),
-            vec![
-                (0, 0, 0, (0, 1)),
-                (0, 0, 1, (2, 3)),
-                (0, 1, 0, (4, 5)),
-                (0, 1, 1, (6, 7)),
-            ]
-        );
         assert_eq!(
             trace.group_steps,
             vec![
@@ -2933,10 +2637,14 @@ mod tests {
                     week: 0,
                     group: 0,
                     members: vec![0, 1, 2, 3],
-                    selected_pairs: vec![(0, 1), (2, 3)],
+                    selected_pairs: vec![(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)],
                     singleton: None,
                     penalty_updates: vec![
                         PairPenaltyUpdate { pair: (0, 1), new_penalty: 1 },
+                        PairPenaltyUpdate { pair: (0, 2), new_penalty: 1 },
+                        PairPenaltyUpdate { pair: (0, 3), new_penalty: 1 },
+                        PairPenaltyUpdate { pair: (1, 2), new_penalty: 1 },
+                        PairPenaltyUpdate { pair: (1, 3), new_penalty: 1 },
                         PairPenaltyUpdate { pair: (2, 3), new_penalty: 1 },
                     ],
                     partnered_pairs_noted: vec![(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)],
@@ -2945,10 +2653,14 @@ mod tests {
                     week: 0,
                     group: 1,
                     members: vec![4, 5, 6, 7],
-                    selected_pairs: vec![(4, 5), (6, 7)],
+                    selected_pairs: vec![(4, 5), (4, 6), (4, 7), (5, 6), (5, 7), (6, 7)],
                     singleton: None,
                     penalty_updates: vec![
                         PairPenaltyUpdate { pair: (4, 5), new_penalty: 1 },
+                        PairPenaltyUpdate { pair: (4, 6), new_penalty: 1 },
+                        PairPenaltyUpdate { pair: (4, 7), new_penalty: 1 },
+                        PairPenaltyUpdate { pair: (5, 6), new_penalty: 1 },
+                        PairPenaltyUpdate { pair: (5, 7), new_penalty: 1 },
                         PairPenaltyUpdate { pair: (6, 7), new_penalty: 1 },
                     ],
                     partnered_pairs_noted: vec![(4, 5), (4, 6), (4, 7), (5, 6), (5, 7), (6, 7)],
@@ -2990,13 +2702,6 @@ mod tests {
         assert_eq!(next_no_improvement_count(4, false, true), 0);
         assert_eq!(next_no_improvement_count(3, false, false), 4);
         assert_eq!(next_no_improvement_count(3, true, false), 0);
-    }
-
-    #[test]
-    fn stagnation_counter_tracks_best_so_far_improvement() {
-        assert_eq!(next_no_improvement_count(0, false, false), 1);
-        assert_eq!(next_no_improvement_count(1, false, false), 2);
-        assert_eq!(next_no_improvement_count(2, true, false), 0);
     }
 
     #[test]
@@ -3298,7 +3003,7 @@ mod tests {
     }
 
     #[test]
-    fn local_search_trace_breakout_uses_best_so_far_stagnation() {
+    fn local_search_trace_breakout_triggers_on_fifth_non_improving_iteration() {
         let problem = sample_problem(2, 2, 3);
         let schedule = vec![
             vec![vec![0, 1], vec![2, 3]],
@@ -3309,23 +3014,19 @@ mod tests {
         let trace = simulate_local_search_iterations(&problem, &schedule, Some(0), 7, 5);
 
         assert_eq!(
-            trace[..5]
-                .iter()
-                .map(|step| step.breakout_applied)
-                .collect::<Vec<_>>(),
-            vec![false, false, false, false, true]
+            trace.iter().map(|step| step.breakout_applied).collect::<Vec<_>>(),
+            vec![false, false, false, false, false, false, true]
         );
         assert_eq!(
-            trace[..5]
-                .iter()
-                .map(|step| step.no_improvement_count)
-                .collect::<Vec<_>>(),
-            vec![1, 2, 3, 4, 0]
+            trace.iter().map(|step| step.no_improvement_count).collect::<Vec<_>>(),
+            vec![0, 0, 1, 2, 3, 4, 0]
         );
         assert_eq!(trace[0].selected_swap, Some((2, 1, 2)));
         assert_eq!(trace[1].selected_swap, Some((1, 1, 3)));
         assert_eq!(trace[2].selected_swap, None);
         assert_eq!(trace[3].selected_swap, None);
         assert!(trace[4].selected_swap.is_none());
+        assert!(trace[5].selected_swap.is_none());
+        assert!(trace[6].selected_swap.is_none());
     }
 }
