@@ -266,6 +266,7 @@ export function ScenarioDataGrid<T>({
           rowOpenLabel={rowOpenLabel}
           table={table}
           tableRef={tableRef}
+          virtualizeRows={effectiveEditMode}
         />
       )}
 

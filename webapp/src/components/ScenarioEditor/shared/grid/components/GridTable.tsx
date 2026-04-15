@@ -3,6 +3,7 @@ import type { Table } from '@tanstack/react-table';
 import type { ScenarioDataGridColumn } from '../types';
 import { GridBody } from './GridBody';
 import { GridHeaderCell } from './GridHeaderCell';
+import { useGridRowVirtualization } from '../hooks/useGridRowVirtualization';
 
 interface GridTableProps<T> {
   activeRows: T[];
@@ -19,6 +20,7 @@ interface GridTableProps<T> {
   rowOpenLabel?: (row: T, rowIndex: number) => string;
   table: Table<T>;
   tableRef: React.RefObject<HTMLTableElement | null>;
+  virtualizeRows?: boolean;
 }
 
 export function GridTable<T>({
@@ -36,7 +38,25 @@ export function GridTable<T>({
   rowOpenLabel,
   table,
   tableRef,
+  virtualizeRows = false,
 }: GridTableProps<T>) {
+  const paginatedRows = table.getRowModel().rows;
+  const {
+    bottomSpacerHeight,
+    measureRow,
+    topSpacerHeight,
+    visibleRowEndIndex,
+    visibleRowStartIndex,
+  } = useGridRowVirtualization({
+    bodyScrollRef,
+    enabled: virtualizeRows,
+    rowCount: paginatedRows.length,
+    viewportHeight,
+  });
+  const visibleRows = visibleRowEndIndex < visibleRowStartIndex
+    ? []
+    : paginatedRows.slice(visibleRowStartIndex, visibleRowEndIndex + 1);
+
   return (
     <div
       ref={bodyScrollRef}
@@ -76,7 +96,17 @@ export function GridTable<T>({
             </tr>
           ))}
         </thead>
-        <GridBody table={table} emptyState={emptyState} onRowOpen={onRowOpen} rowOpenLabel={rowOpenLabel} />
+        <GridBody
+          table={table}
+          emptyState={emptyState}
+          measureRow={measureRow}
+          onRowOpen={onRowOpen}
+          rowOpenLabel={rowOpenLabel}
+          rows={visibleRows}
+          rowOffset={visibleRowStartIndex}
+          topSpacerHeight={topSpacerHeight}
+          bottomSpacerHeight={bottomSpacerHeight}
+        />
       </table>
     </div>
   );
