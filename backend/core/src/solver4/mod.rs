@@ -627,12 +627,10 @@ fn run_local_search_from_schedule(
                 .unwrap_or_else(|| schedule.clone())
         };
 
-        let previous_conflict_positions = current.conflict_positions;
         schedule = next_schedule;
         current = EvaluatedSchedule::from_schedule(problem, schedule.clone());
         iterations += 1;
 
-        let improved_current = current.conflict_positions < previous_conflict_positions;
         let improved_best = current.conflict_positions < best.conflict_positions;
         if improved_best {
             best = current.clone();
@@ -645,7 +643,7 @@ fn run_local_search_from_schedule(
         }
         no_improvement_count = next_no_improvement_count(
             no_improvement_count,
-            improved_current,
+            improved_best,
             breakout_applied,
         );
         max_no_improvement_streak = max_no_improvement_streak.max(no_improvement_count);
@@ -762,6 +760,8 @@ fn should_apply_random_breakout(no_improvement_count: u64) -> bool {
     no_improvement_count == RANDOM_BREAKOUT_AFTER_NO_IMPROVEMENT
 }
 
+// The thesis says the local search is based on Dotú/Hentenryck's Algorithm 6.2 and then
+// simplified. We therefore treat "no improvement" as "no new best-so-far configuration".
 fn next_no_improvement_count(
     previous: u64,
     improved_best: bool,
@@ -2239,17 +2239,15 @@ mod tests {
                 }
             };
 
-            let previous_conflict_positions = current.conflict_positions;
             schedule = next_schedule;
             current = evaluated(problem, &schedule);
-            let improved_current = current.conflict_positions < previous_conflict_positions;
             let improved_best = current.conflict_positions < best.conflict_positions;
             if improved_best {
                 best = current.clone();
             }
             no_improvement_count = next_no_improvement_count(
                 no_improvement_count,
-                improved_current,
+                improved_best,
                 breakout_applied,
             );
 
@@ -2972,6 +2970,13 @@ mod tests {
     }
 
     #[test]
+    fn stagnation_counter_tracks_best_so_far_improvement() {
+        assert_eq!(next_no_improvement_count(0, false, false), 1);
+        assert_eq!(next_no_improvement_count(1, false, false), 2);
+        assert_eq!(next_no_improvement_count(2, true, false), 0);
+    }
+
+    #[test]
     fn conflict_positions_are_zero_without_repeated_pairs() {
         let problem = sample_problem(2, 2, 2);
         let schedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]];
@@ -3270,7 +3275,7 @@ mod tests {
     }
 
     #[test]
-    fn local_search_trace_breakout_triggers_on_fifth_non_improving_iteration() {
+    fn local_search_trace_breakout_uses_best_so_far_stagnation() {
         let problem = sample_problem(2, 2, 3);
         let schedule = vec![
             vec![vec![0, 1], vec![2, 3]],
@@ -3281,19 +3286,23 @@ mod tests {
         let trace = simulate_local_search_iterations(&problem, &schedule, Some(0), 7, 5);
 
         assert_eq!(
-            trace.iter().map(|step| step.breakout_applied).collect::<Vec<_>>(),
-            vec![false, false, false, false, false, false, true]
+            trace[..5]
+                .iter()
+                .map(|step| step.breakout_applied)
+                .collect::<Vec<_>>(),
+            vec![false, false, false, false, true]
         );
         assert_eq!(
-            trace.iter().map(|step| step.no_improvement_count).collect::<Vec<_>>(),
-            vec![0, 0, 1, 2, 3, 4, 0]
+            trace[..5]
+                .iter()
+                .map(|step| step.no_improvement_count)
+                .collect::<Vec<_>>(),
+            vec![1, 2, 3, 4, 0]
         );
         assert_eq!(trace[0].selected_swap, Some((2, 1, 2)));
         assert_eq!(trace[1].selected_swap, Some((1, 1, 3)));
         assert_eq!(trace[2].selected_swap, None);
         assert_eq!(trace[3].selected_swap, None);
         assert!(trace[4].selected_swap.is_none());
-        assert!(trace[5].selected_swap.is_none());
-        assert!(trace[6].selected_swap.is_none());
     }
 }
