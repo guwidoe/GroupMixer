@@ -122,6 +122,12 @@ export function GridToolbar<T>({
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-2">
+        {!isInlineCsvMode ? (
+          <div className="relative">
+            <Button variant="secondary" size="sm" leadingIcon={<Columns3 className="h-4 w-4" />} onClick={onToggleColumnsMenu}>Columns</Button>
+            {isColumnsMenuOpen ? <ColumnVisibilityMenu table={table} onClose={onCloseColumnsMenu} /> : null}
+          </div>
+        ) : null}
         {toolbarActions}
         {resolvedWorkspaceActions}
         {canCreateRows && workspaceMode === 'edit' ? (
@@ -142,12 +148,6 @@ export function GridToolbar<T>({
           <Button variant={workspaceMode === 'edit' ? 'primary' : 'secondary'} size="sm" leadingIcon={<PencilLine className="h-4 w-4" />} onClick={onToggleEdit}>
             Edit table
           </Button>
-        ) : null}
-        {!isInlineCsvMode ? (
-          <div className="relative">
-            <Button variant="secondary" size="sm" leadingIcon={<Columns3 className="h-4 w-4" />} onClick={onToggleColumnsMenu}>Columns</Button>
-            {isColumnsMenuOpen ? <ColumnVisibilityMenu table={table} onClose={onCloseColumnsMenu} /> : null}
-          </div>
         ) : null}
       </div>
     </div>
