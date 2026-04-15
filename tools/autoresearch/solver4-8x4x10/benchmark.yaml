@@ -2,6 +2,7 @@ schema_version: 1
 suite_id: solver4-p4-stretch-autoresearch
 benchmark_mode: full_solve
 comparison_category: score_quality
+case_selection_policy: allow_non_canonical
 class: stretch
 title: Solver4 p=4 Social Golfer autoresearch lane
 description: >-
