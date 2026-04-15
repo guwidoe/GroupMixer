@@ -37,7 +37,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
   const [search, setSearch] = React.useState('');
   const [minMembers, setMinMembers] = React.useState<number | ''>('');
   const [viewMode, setViewMode] = React.useState<SetupCollectionViewMode>('list');
-  const [gridWorkspaceMode, setGridWorkspaceMode] = React.useState<'browse' | 'edit' | 'csv'>('browse');
+  const [gridWorkspaceMode, setGridWorkspaceMode] = React.useState<'browse' | 'edit' | 'csv'>('edit');
   const [selectedMustIndices, setSelectedMustIndices] = React.useState<number[]>([]);
   const [isSelectingMust, setIsSelectingMust] = React.useState(false);
   const [showBulkConvert, setShowBulkConvert] = React.useState(false);
@@ -49,7 +49,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
       setSelectedMustIndices((current) => (current.length === 0 ? current : []));
     }
     if (nextMode !== 'list') {
-      setGridWorkspaceMode('browse');
+      setGridWorkspaceMode('edit');
     }
   }, []);
 
@@ -275,6 +275,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
               workspace={{
                 mode: gridWorkspaceMode,
                 onModeChange: setGridWorkspaceMode,
+                browseModeEnabled: false,
                 draft: {
                   onApply: applyGridRows,
                   createRow: createGridRow,

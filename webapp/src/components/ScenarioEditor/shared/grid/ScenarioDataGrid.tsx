@@ -57,6 +57,7 @@ export function ScenarioDataGrid<T>({
   pageSize = 100,
   pageSizeOptions = [50, 100, 250, 500],
 }: ScenarioDataGridProps<T>) {
+  const browseModeEnabled = workspace?.browseModeEnabled ?? true;
   const materializedColumns = React.useMemo(
     () => materializeColumns(columns, rows),
     [columns, rows],
@@ -90,11 +91,13 @@ export function ScenarioDataGrid<T>({
     handleAddDraftRow,
     handleApplyDraftChanges,
   } = useGridWorkspaceDraft({
+    browseModeEnabled,
     rows,
     workspace,
     draftEditableColumns,
   });
-  const effectiveEditMode = workspace ? workspaceMode === 'edit' : isEditMode;
+  const normalizedWorkspaceMode = browseModeEnabled ? workspaceMode : (workspaceMode === 'csv' ? 'csv' : 'edit');
+  const effectiveEditMode = workspace ? normalizedWorkspaceMode === 'edit' : isEditMode;
 
   const {
     columnFilters,
@@ -186,12 +189,16 @@ export function ScenarioDataGrid<T>({
   }, [hasDraftEditing, inlineCsvConfig, isInlineCsvMode, requestWorkspaceMode, workspace]);
   const handleToggleEdit = React.useCallback(() => {
     if (workspace?.onModeChange) {
+      if (!browseModeEnabled && normalizedWorkspaceMode === 'edit') {
+        return;
+      }
+
       requestWorkspaceMode(effectiveEditMode ? 'browse' : 'edit');
       return;
     }
 
     setIsEditMode((current) => !current);
-  }, [effectiveEditMode, requestWorkspaceMode, workspace]);
+  }, [browseModeEnabled, effectiveEditMode, normalizedWorkspaceMode, requestWorkspaceMode, workspace]);
 
   return (
     <div
@@ -199,6 +206,7 @@ export function ScenarioDataGrid<T>({
       style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
     >
       <GridToolbar
+        browseModeEnabled={browseModeEnabled}
         canCreateRows={canCreateRows}
         csvLabel={workspace?.csvLabel ?? 'CSV'}
         hasDraftCsvColumns={hasDraftCsvColumns}
@@ -221,7 +229,7 @@ export function ScenarioDataGrid<T>({
         showEditToggle={showEditToggle}
         table={table}
         toolbarActions={toolbarActions}
-        workspaceMode={effectiveEditMode ? 'edit' : workspaceMode}
+        workspaceMode={workspace ? normalizedWorkspaceMode : (effectiveEditMode ? 'edit' : 'browse')}
       />
 
       {!isInlineCsvMode ? <GridActiveFiltersBar activeColumnFilters={activeColumnFilters} summary={filteredSummary} onClearFilters={() => table.resetColumnFilters()} /> : null}

@@ -59,7 +59,7 @@ export function PeopleDirectory({
 }: PeopleDirectoryProps) {
   const [peopleSearch, setPeopleSearch] = useState('');
   const [viewMode, setViewMode] = useState<SetupCollectionViewMode>('cards');
-  const [gridWorkspaceMode, setGridWorkspaceMode] = useState<'browse' | 'edit' | 'csv'>('browse');
+  const [gridWorkspaceMode, setGridWorkspaceMode] = useState<'browse' | 'edit' | 'csv'>('edit');
 
   const searchValue = peopleSearch.trim().toLowerCase();
   const basePeople = useMemo(() => scenario?.people ?? [], [scenario?.people]);
@@ -181,8 +181,8 @@ export function PeopleDirectory({
       }
       onViewModeChange={(nextMode) => {
         setViewMode(nextMode);
-        if (nextMode !== 'list' && gridWorkspaceMode !== 'browse') {
-          setGridWorkspaceMode('browse');
+        if (nextMode !== 'list' && gridWorkspaceMode !== 'edit') {
+          setGridWorkspaceMode('edit');
         }
       }}
       defaultViewMode="list"
@@ -230,6 +230,7 @@ export function PeopleDirectory({
             workspace={{
               mode: gridWorkspaceMode,
               onModeChange: setGridWorkspaceMode,
+              browseModeEnabled: false,
               draft: {
                 onApply: onApplyGridPeople,
                 createRow: createGridPersonRow,
