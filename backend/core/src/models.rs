@@ -1080,8 +1080,13 @@ pub struct Solver4Params {
     /// Which paper branch to execute.
     #[serde(default)]
     pub mode: Solver4Mode,
-    /// Probability of randomizing among equal maximal-freedom pair choices in the paper-style
-    /// initializer.
+    /// Gamma control for the Section 6/7 GRASP initializer.
+    ///
+    /// With the default value `0.0`, solver4 uses the thesis-documented gamma portfolio
+    /// `[0.0, 0.1, 0.2, rand(0.3..=1.0), rand(0.3..=1.0)]`.
+    ///
+    /// When set explicitly to a non-default value, the override is used for the first GRASP
+    /// candidate while the remaining documented fixed values are retained.
     #[serde(default = "default_solver4_gamma")]
     pub gamma: f64,
     /// Optional Section 5 backtracking pattern such as `3`, `2-2`, `4`, or `3-2-2-1`.
@@ -2576,6 +2581,30 @@ pub struct Solver4PaperTracePoint {
     pub conflict_positions_by_week: Vec<u32>,
 }
 
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
+pub struct Solver4GraspCandidateTrace {
+    #[serde(default)]
+    pub candidate_index: u32,
+    #[serde(default)]
+    pub gamma: f64,
+    #[serde(default)]
+    pub initialization_seconds: f64,
+    #[serde(default)]
+    pub search_seconds: f64,
+    #[serde(default)]
+    pub initial_conflict_positions: u64,
+    #[serde(default)]
+    pub best_conflict_positions: u64,
+    #[serde(default)]
+    pub solved: bool,
+    #[serde(default)]
+    pub iterations_completed: u64,
+    #[serde(default)]
+    pub stop_reason: Option<StopReason>,
+    #[serde(default)]
+    pub selected_for_continuation: bool,
+}
+
 /// Solver4-specific paper-conformance telemetry for trajectory inspection.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
 pub struct Solver4PaperTrace {
@@ -2589,6 +2618,12 @@ pub struct Solver4PaperTrace {
     pub initial_conflict_positions: Option<u64>,
     #[serde(default)]
     pub initial_conflict_positions_by_week: Vec<u32>,
+    #[serde(default)]
+    pub grasp_candidates: Vec<Solver4GraspCandidateTrace>,
+    #[serde(default)]
+    pub continuation_candidate_index: Option<u32>,
+    #[serde(default)]
+    pub continuation_gamma: Option<f64>,
     #[serde(default)]
     pub points: Vec<Solver4PaperTracePoint>,
 }
