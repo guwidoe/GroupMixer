@@ -89,6 +89,36 @@ describe('ConstraintFamilySections', () => {
     expect(onEdit).toHaveBeenCalledTimes(1);
   }, 10000);
 
+  it('uses the shared session scope editor for fixed placements in list edit mode', async () => {
+    const user = userEvent.setup();
+
+    useAppStore.setState((state) => ({
+      ...state,
+      resolveScenario: () => ({
+        ...createScenario(),
+        constraints: [
+          { type: 'ImmovablePeople', people: ['p1'], group_id: 'g1' },
+          { type: 'ImmovablePeople', people: ['p2'], group_id: 'g1', sessions: [0, 1, 2] },
+        ],
+      }),
+    }));
+
+    render(
+      <HardConstraintFamilySection family="ImmovablePeople" onAdd={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+    );
+
+    expect(screen.getByText('All sessions')).toBeInTheDocument();
+    expect(screen.getByText('1, 2, 3')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /edit table/i }));
+
+    expect(screen.getAllByText('All sessions').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Only selected sessions').length).toBeGreaterThan(0);
+    expect(screen.getByRole('checkbox', { name: '1' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: '2' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: '3' })).toBeInTheDocument();
+  });
+
   it('renders soft constraint family conversion affordances without the old family tabs', async () => {
     const user = userEvent.setup();
 
