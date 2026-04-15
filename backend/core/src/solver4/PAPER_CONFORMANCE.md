@@ -44,6 +44,14 @@ This suite checks the randomized greedy + local-search branch with:
 4. `8-4-10` remains a meaningful stretch diagnostic for the Sections 6/7 path.
 5. If any solver4 change claims improved paper fidelity, rerun the relevant suite(s) first.
 
+## Evidence ledger
+
+Remaining Sections 6/7 paper ambiguities are tracked explicitly in:
+
+- `backend/core/src/solver4/SECTION67_EVIDENCE_LEDGER.md`
+
+This keeps solver4's paper claims honest when the historical text stops short of specifying an exact implementation detail.
+
 ## Why this gate exists
 
 The paper makes two distinct algorithmic claims:

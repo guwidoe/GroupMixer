@@ -15,6 +15,8 @@ pub const SOLVER4_NOTES: &str =
     "Dedicated pure-SGP solver family implementing the complete Triska/Musliu paper: Section 5 complete backtracking with pattern-driven minimal-freedom set selection, plus Sections 6 and 7 randomized greedy initialization and conflict-position local search. Solver4 strictly accepts only pure zero-repeat Social-Golfer-style scenarios.";
 
 const DEFAULT_SOLVER4_SEED: u64 = 42;
+// Historical sources only say to subtract a "large number" after choosing a pair.
+// We use a constant that dominates all practical raw-freedom values on accepted pure-SGP cases.
 const PAPER_PAIR_REPEAT_PENALTY: i64 = 1_000_000;
 const TABU_TENURE_ITERATIONS: u64 = 10;
 const RANDOM_BREAKOUT_AFTER_NO_IMPROVEMENT: u64 = 4;
@@ -1704,6 +1706,8 @@ fn resulting_configuration_is_lexicographically_smaller(
     left: &SwapCandidate,
     right: &SwapCandidate,
 ) -> bool {
+    // The paper only says to break ties lexicographically between resulting configurations `C'`.
+    // We therefore compare the flattened resulting schedule values at the changed positions.
     let mut changed_positions = vec![
         position_id_from_coordinates(base_schedule, left.week, left.left_group, left.left_slot),
         position_id_from_coordinates(base_schedule, left.week, left.right_group, left.right_slot),
@@ -1973,6 +1977,8 @@ fn apply_random_breakout(
         recorded.push((week, unordered_pair(left_person, right_person)));
     }
 
+    // The paper does not say whether breakout swaps enter tabu memory. We record them so the
+    // breakout perturbation is treated like any other realized swap and is not immediately undone.
     tabu.record_iteration(iteration, &recorded, tabu_telemetry);
     next
 }
@@ -2618,6 +2624,23 @@ mod tests {
         let schedule = build_greedy_initial_schedule(&problem, 0.0, &mut rng);
 
         assert_eq!(schedule, vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]]);
+    }
+
+    #[test]
+    fn repeated_pair_penalty_outweighs_raw_freedom() {
+        let remaining = vec![0, 1, 2, 3];
+        let partnered = vec![vec![false; 4]; 4];
+        let mut penalties = vec![vec![0usize; 4]; 4];
+        penalties[0][1] = 1;
+        penalties[1][0] = 1;
+
+        let scored = score_pair_candidates(&remaining, &partnered, &penalties);
+
+        assert_ne!(scored[0].pair(), (0, 1));
+        assert_eq!(
+            scored.iter().find(|candidate| candidate.pair() == (0, 1)).unwrap().adjusted_freedom,
+            2 - PAPER_PAIR_REPEAT_PENALTY,
+        );
     }
 
     #[test]
