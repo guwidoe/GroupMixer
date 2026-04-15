@@ -17,21 +17,37 @@ fn pure_problem_gate_rejects_partial_attendance() {
 }
 
 #[test]
-fn pure_problem_gate_rejects_repeat_constraint_above_canonical_zero_repeat_encoding() {
+fn pure_problem_gate_requires_meet_at_most_once_repeat_encoding() {
     let input = ApiInput {
         problem: pure_problem(2, 2, 2),
         initial_schedule: None,
         construction_seed_schedule: None,
         objectives: vec![],
         constraints: vec![Constraint::RepeatEncounter(RepeatEncounterParams {
-            max_allowed_encounters: 2,
+            max_allowed_encounters: 0,
             penalty_function: "squared".into(),
             penalty_weight: 10.0,
         })],
         solver: solver4_config(),
     };
     let error = PureSgpProblem::from_input(&input).unwrap_err();
-    assert!(error.to_string().contains("must be 0 or 1"));
+    assert!(error.to_string().contains("must be 1"));
+}
+
+#[test]
+fn pure_problem_gate_requires_repeat_constraint() {
+    let input = ApiInput {
+        problem: pure_problem(2, 2, 2),
+        initial_schedule: None,
+        construction_seed_schedule: None,
+        objectives: vec![],
+        constraints: vec![],
+        solver: solver4_config(),
+    };
+    let error = PureSgpProblem::from_input(&input).unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("requires exactly one RepeatEncounter"));
 }
 
 #[test]
@@ -104,10 +120,36 @@ fn solver4_final_result_uses_canonical_repo_scoring() {
 
     let canonical = canonical_score_for_schedule(&input, &schedule).unwrap();
     assert_eq!(canonical.unique_contacts, 1);
-    assert_eq!(canonical.repetition_penalty, 4);
-    assert_eq!(canonical.weighted_repetition_penalty, 40.0);
+    assert_eq!(canonical.repetition_penalty, 1);
+    assert_eq!(canonical.weighted_repetition_penalty, 10.0);
     assert_eq!(canonical.weighted_constraint_penalty, 0.0);
-    assert_eq!(canonical.total_score, 40.0);
+    assert_eq!(canonical.total_score, 10.0);
+}
+
+#[test]
+fn canonical_scoring_gives_zero_for_perfect_meet_at_most_once_schedule() {
+    let input = ApiInput {
+        problem: pure_problem(1, 2, 1),
+        initial_schedule: None,
+        construction_seed_schedule: None,
+        objectives: vec![Objective {
+            r#type: "maximize_unique_contacts".into(),
+            weight: 1.0,
+        }],
+        constraints: vec![repeat_constraint()],
+        solver: solver4_config(),
+    };
+
+    let schedule = HashMap::from([(
+        "session_0".to_string(),
+        HashMap::from([("g0".to_string(), vec!["p0".to_string(), "p1".to_string()])]),
+    )]);
+
+    let canonical = canonical_score_for_schedule(&input, &schedule).unwrap();
+    assert_eq!(canonical.unique_contacts, 1);
+    assert_eq!(canonical.repetition_penalty, 0);
+    assert_eq!(canonical.weighted_repetition_penalty, 0.0);
+    assert_eq!(canonical.total_score, 0.0);
 }
 
 #[test]

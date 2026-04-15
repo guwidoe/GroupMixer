@@ -8,7 +8,7 @@ The target scenario is the canonical pure zero-repeat Social Golfer case:
 - 8 groups of 4
 - 10 sessions
 - objective: maximize unique contacts
-- hard semantic target: zero repeated pairs
+- hard semantic target: meet at most once per pair (`RepeatEncounter.max_allowed_encounters = 1`)
 
 `solver4` is intentionally narrow. This loop should improve the dedicated pure-SGP algorithm itself, not broaden it into a general-purpose GroupMixer solver.
 
@@ -68,12 +68,9 @@ The script:
 - If a promising direction is too large for the current iteration, record it in `autoresearch.ideas.md`.
 
 ## Current Baseline
-Current restored strong heuristic branch:
-- `32x8x9`, `gamma=0`, seeds 1–4: all solved (`432 / 432` contacts)
-- `32x8x10`, `gamma=0`, 25s seeds 1–4:
-  - final scores `5136, 5136, 5094, 5388`
-  - contacts `464, 464, 466, 452`
-- extending the strongest current `32x8x10` seed (`320812`) to 300s did **not** improve beyond `5094 / 466`, so the current branch appears to plateau rather than slowly converge.
+The historical `32x8x10` / `32x8x9` benchmark cases were corrected from the misconfigured `RepeatEncounter.max_allowed_encounters = 0` encoding to the intended meet-at-most-once encoding `= 1`.
+
+The next run after that correction becomes the new honest baseline for this autoresearch lane.
 
 ## What's Been Tried
 - The stronger practical branch currently comes from restoring the pre-regression heuristic shape associated with commit `05ed8b7`, plus compatibility fixes for newer trace fields.
