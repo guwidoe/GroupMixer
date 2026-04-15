@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ScenarioDataGrid } from './ScenarioDataGrid';
@@ -609,6 +609,49 @@ describe('ScenarioDataGrid', () => {
     expect(screen.getByTestId('scenario-grid-table-surface')).toBe(tableSurface);
     expect(tableSurface).toBeVisible();
     expect(screen.getByRole('textbox', { name: /edit name for row row-a/i })).toHaveValue('Beta Prime');
+  });
+
+  it('shows a preparing loader before mounting large edit grids on cold entry', async () => {
+    const largeRows = Array.from({ length: 60 }, (_, index) => ({
+      id: `row-${index + 1}`,
+      name: `Person ${index + 1}`,
+    }));
+
+    render(
+      <ScenarioDataGrid
+        rows={largeRows}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            kind: 'primitive',
+            id: 'name',
+            header: 'Name',
+            primitive: 'string',
+            getValue: (row) => row.name,
+            setValue: (row, value) => ({ ...row, name: value ?? '' }),
+          },
+        ]}
+        workspace={{
+          mode: 'edit',
+          onModeChange: vi.fn(),
+          browseModeEnabled: false,
+          draft: {
+            onApply: vi.fn(),
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId('scenario-grid-preparing-loader')).toBeInTheDocument();
+    expect(screen.getByText(/preparing editable table/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('scenario-grid-table-surface')).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('scenario-grid-table-surface')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('scenario-grid-preparing-loader')).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /^edit name for row row-1$/i })).toBeInTheDocument();
   });
 
   it('blocks external leave attempts with unapplied grid edits and can apply before leaving', async () => {
@@ -1504,7 +1547,7 @@ describe('ScenarioDataGrid', () => {
       />,
     );
 
-    const bodyRegion = screen.getByRole('region', { name: /data grid rows/i });
+    const bodyRegion = await screen.findByRole('region', { name: /data grid rows/i });
 
     await user.click(screen.getByRole('button', { name: /edit sessions/i }));
 
@@ -1562,7 +1605,7 @@ describe('ScenarioDataGrid', () => {
       />,
     );
 
-    const bodyRegion = screen.getByRole('region', { name: /data grid rows/i });
+    const bodyRegion = await screen.findByRole('region', { name: /data grid rows/i });
     expect(screen.getByRole('textbox', { name: /^edit name for row row-1$/i })).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: /^edit name for row row-80$/i })).not.toBeInTheDocument();
 
