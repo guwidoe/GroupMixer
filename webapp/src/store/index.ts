@@ -62,6 +62,8 @@ const getInitialState = () => ({
   demoDropdownOpen: false,
   manualEditorUnsaved: false,
   manualEditorLeaveHook: null,
+  setupGridUnsaved: false,
+  setupGridLeaveHook: null,
 });
 
 function solverStateFromWorkspaceSolution(solution: Solution | null) {
@@ -127,6 +129,8 @@ export const useAppStore = create<AppStore>()(
             },
             manualEditorUnsaved: false,
             manualEditorLeaveHook: null,
+            setupGridUnsaved: false,
+            setupGridLeaveHook: null,
           };
         }),
 
@@ -191,6 +195,8 @@ export const useAppStore = create<AppStore>()(
           },
           manualEditorUnsaved: false,
           manualEditorLeaveHook: null,
+          setupGridUnsaved: false,
+          setupGridLeaveHook: null,
         }));
 
         return savedScenario.id;

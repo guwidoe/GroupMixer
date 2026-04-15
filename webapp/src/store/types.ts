@@ -65,6 +65,8 @@ export interface DemoDataState {
 export interface EditorState {
   manualEditorUnsaved: boolean;
   manualEditorLeaveHook: ((nextPath: string) => void) | null;
+  setupGridUnsaved: boolean;
+  setupGridLeaveHook: ((continueAction: () => void) => void) | null;
 }
 
 // === Slice Action Types ===
@@ -150,6 +152,8 @@ export interface DemoDataActions {
 export interface EditorActions {
   setManualEditorUnsaved: (unsaved: boolean) => void;
   setManualEditorLeaveHook: (hook: ((nextPath: string) => void) | null) => void;
+  setSetupGridUnsaved: (unsaved: boolean) => void;
+  setSetupGridLeaveHook: (hook: ((continueAction: () => void) => void) | null) => void;
 }
 
 export interface WorkspaceBridgeInput {
