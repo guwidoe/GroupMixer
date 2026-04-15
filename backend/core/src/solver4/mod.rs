@@ -980,10 +980,87 @@ fn freedom_of_set(set: &[usize], partnered: &[Vec<bool>]) -> usize {
     intersection.into_iter().filter(|allowed| *allowed).count()
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PairCandidateScore {
+    left: usize,
+    right: usize,
+    raw_freedom: usize,
+    repeat_penalty_count: usize,
+    adjusted_freedom: i64,
+}
+
+impl PairCandidateScore {
+    fn pair(&self) -> (usize, usize) {
+        (self.left, self.right)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+struct GreedyInitializerTrace {
+    pair_steps: Vec<GreedyPairStep>,
+    singleton_steps: Vec<GreedySingletonStep>,
+    group_steps: Vec<GreedyGroupStep>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct GreedyPairStep {
+    week: usize,
+    group: usize,
+    pair_index: usize,
+    remaining_before: Vec<usize>,
+    scored_candidates: Vec<PairCandidateScore>,
+    chosen: PairCandidateScore,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct GreedySingletonStep {
+    week: usize,
+    group: usize,
+    remaining_before: Vec<usize>,
+    chosen: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PairPenaltyUpdate {
+    pair: (usize, usize),
+    new_penalty: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct GreedyGroupStep {
+    week: usize,
+    group: usize,
+    members: Vec<usize>,
+    selected_pairs: Vec<(usize, usize)>,
+    singleton: Option<usize>,
+    penalty_updates: Vec<PairPenaltyUpdate>,
+    partnered_pairs_noted: Vec<(usize, usize)>,
+}
+
 fn build_greedy_initial_schedule(
     problem: &PureSgpProblem,
     gamma: f64,
     rng: &mut ChaCha12Rng,
+) -> Vec<Vec<Vec<usize>>> {
+    build_greedy_initial_schedule_internal(problem, gamma, rng, None)
+}
+
+#[cfg(test)]
+fn build_greedy_initial_schedule_with_trace(
+    problem: &PureSgpProblem,
+    gamma: f64,
+    rng: &mut ChaCha12Rng,
+) -> (Vec<Vec<Vec<usize>>>, GreedyInitializerTrace) {
+    let mut trace = GreedyInitializerTrace::default();
+    let schedule = build_greedy_initial_schedule_internal(problem, gamma, rng, Some(&mut trace));
+    (schedule, trace)
+}
+
+fn build_greedy_initial_schedule_internal(
+    problem: &PureSgpProblem,
+    gamma: f64,
+    rng: &mut ChaCha12Rng,
+    mut trace: Option<&mut GreedyInitializerTrace>,
 ) -> Vec<Vec<Vec<usize>>> {
     let mut schedule = vec![vec![Vec::with_capacity(problem.group_size); problem.num_groups]; problem.num_weeks];
     let mut partnered = vec![vec![false; problem.num_people]; problem.num_people];
@@ -994,37 +1071,126 @@ fn build_greedy_initial_schedule(
         for group_idx in 0..problem.num_groups {
             let pair_slots = problem.group_size / 2;
             let mut selected_pairs = Vec::with_capacity(pair_slots);
-            for _ in 0..pair_slots {
-                let pair = choose_best_pair(
+            for pair_index in 0..pair_slots {
+                let remaining_before = remaining.clone();
+                let scored_candidates = score_pair_candidates(
                     &remaining,
                     &partnered,
                     &selected_pair_penalties,
-                    gamma,
-                    rng,
                 );
-                schedule[week][group_idx].push(pair.0);
-                schedule[week][group_idx].push(pair.1);
-                remove_person(&mut remaining, pair.0);
-                remove_person(&mut remaining, pair.1);
-                selected_pairs.push(pair);
+                let chosen = choose_best_pair_from_scores(&scored_candidates, gamma, rng);
+                schedule[week][group_idx].push(chosen.left);
+                schedule[week][group_idx].push(chosen.right);
+                remove_person(&mut remaining, chosen.left);
+                remove_person(&mut remaining, chosen.right);
+                selected_pairs.push(chosen.pair());
+                if let Some(trace) = trace.as_mut() {
+                    trace.pair_steps.push(GreedyPairStep {
+                        week,
+                        group: group_idx,
+                        pair_index,
+                        remaining_before,
+                        scored_candidates,
+                        chosen,
+                    });
+                }
             }
-            if problem.group_size % 2 == 1 {
+            let singleton = if problem.group_size % 2 == 1 {
+                let remaining_before = remaining.clone();
                 let selected = choose_last_singleton(&remaining, gamma, rng);
                 schedule[week][group_idx].push(selected);
                 remove_person(&mut remaining, selected);
-            }
+                if let Some(trace) = trace.as_mut() {
+                    trace.singleton_steps.push(GreedySingletonStep {
+                        week,
+                        group: group_idx,
+                        remaining_before,
+                        chosen: selected,
+                    });
+                }
+                Some(selected)
+            } else {
+                None
+            };
 
+            let mut penalty_updates = Vec::with_capacity(selected_pairs.len());
             for &(left, right) in &selected_pairs {
                 selected_pair_penalties[left][right] += 1;
                 selected_pair_penalties[right][left] += 1;
+                penalty_updates.push(PairPenaltyUpdate {
+                    pair: (left, right),
+                    new_penalty: selected_pair_penalties[left][right],
+                });
             }
+            let partnered_pairs_noted = all_group_pairs(&schedule[week][group_idx]);
             note_group_partnerships(&schedule[week][group_idx], &mut partnered);
+            if let Some(trace) = trace.as_mut() {
+                trace.group_steps.push(GreedyGroupStep {
+                    week,
+                    group: group_idx,
+                    members: schedule[week][group_idx].clone(),
+                    selected_pairs: selected_pairs.clone(),
+                    singleton,
+                    penalty_updates,
+                    partnered_pairs_noted,
+                });
+            }
         }
     }
 
     schedule
 }
 
+fn score_pair_candidates(
+    remaining: &[usize],
+    partnered: &[Vec<bool>],
+    selected_pair_penalties: &[Vec<usize>],
+) -> Vec<PairCandidateScore> {
+    let mut scored = Vec::new();
+    for left_idx in 0..remaining.len() {
+        for right_idx in (left_idx + 1)..remaining.len() {
+            let left = remaining[left_idx];
+            let right = remaining[right_idx];
+            let raw_freedom = freedom_of_set(&[left, right], partnered);
+            let repeat_penalty_count = selected_pair_penalties[left][right];
+            let adjusted_freedom =
+                raw_freedom as i64 - (repeat_penalty_count as i64 * PAPER_PAIR_REPEAT_PENALTY);
+            scored.push(PairCandidateScore {
+                left,
+                right,
+                raw_freedom,
+                repeat_penalty_count,
+                adjusted_freedom,
+            });
+        }
+    }
+    scored.sort_by(|left, right| {
+        right
+            .adjusted_freedom
+            .cmp(&left.adjusted_freedom)
+            .then((left.left, left.right).cmp(&(right.left, right.right)))
+    });
+    scored
+}
+
+fn choose_best_pair_from_scores(
+    scored: &[PairCandidateScore],
+    gamma: f64,
+    rng: &mut ChaCha12Rng,
+) -> PairCandidateScore {
+    let best_score = scored[0].adjusted_freedom;
+    let tied_len = scored
+        .iter()
+        .take_while(|candidate| candidate.adjusted_freedom == best_score)
+        .count();
+    if tied_len > 1 && rng.random::<f64>() < gamma {
+        scored[..tied_len].choose(rng).copied().unwrap_or(scored[0])
+    } else {
+        scored[0]
+    }
+}
+
+#[cfg(test)]
 fn choose_best_pair(
     remaining: &[usize],
     partnered: &[Vec<bool>],
@@ -1032,34 +1198,8 @@ fn choose_best_pair(
     gamma: f64,
     rng: &mut ChaCha12Rng,
 ) -> (usize, usize) {
-    let mut scored = Vec::new();
-    for left_idx in 0..remaining.len() {
-        for right_idx in (left_idx + 1)..remaining.len() {
-            let left = remaining[left_idx];
-            let right = remaining[right_idx];
-            let raw_freedom = freedom_of_set(&[left, right], partnered);
-            let adjusted_freedom = raw_freedom as i64
-                - (selected_pair_penalties[left][right] as i64 * PAPER_PAIR_REPEAT_PENALTY);
-            scored.push((left, right, adjusted_freedom));
-        }
-    }
-    scored.sort_by(|left, right| {
-        right
-            .2
-            .cmp(&left.2)
-            .then((left.0, left.1).cmp(&(right.0, right.1)))
-    });
-    let best_score = scored[0].2;
-    let tied_len = scored.iter().take_while(|candidate| candidate.2 == best_score).count();
-    if tied_len > 1 && rng.random::<f64>() < gamma {
-        let chosen = scored[..tied_len]
-            .choose(rng)
-            .copied()
-            .unwrap_or(scored[0]);
-        (chosen.0, chosen.1)
-    } else {
-        (scored[0].0, scored[0].1)
-    }
+    let scored = score_pair_candidates(remaining, partnered, selected_pair_penalties);
+    choose_best_pair_from_scores(&scored, gamma, rng).pair()
 }
 
 fn choose_last_singleton(remaining: &[usize], gamma: f64, rng: &mut ChaCha12Rng) -> usize {
@@ -1085,6 +1225,16 @@ fn note_group_partnerships(group: &[usize], partnered: &mut [Vec<bool>]) {
             partnered[right][left] = true;
         }
     }
+}
+
+fn all_group_pairs(group: &[usize]) -> Vec<(usize, usize)> {
+    let mut pairs = Vec::new();
+    for left_idx in 0..group.len() {
+        for right_idx in (left_idx + 1)..group.len() {
+            pairs.push((group[left_idx], group[right_idx]));
+        }
+    }
+    pairs
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1713,14 +1863,14 @@ mod tests {
     }
 
     #[test]
-    fn pure_problem_gate_rejects_non_zero_repeat_constraint() {
+    fn pure_problem_gate_rejects_repeat_constraint_above_canonical_zero_repeat_encoding() {
         let input = ApiInput {
             problem: pure_problem(2, 2, 2),
             initial_schedule: None,
             construction_seed_schedule: None,
             objectives: vec![],
             constraints: vec![Constraint::RepeatEncounter(RepeatEncounterParams {
-                max_allowed_encounters: 1,
+                max_allowed_encounters: 2,
                 penalty_function: "squared".into(),
                 penalty_weight: 10.0,
             })],
@@ -1891,6 +2041,267 @@ mod tests {
         let schedule = build_greedy_initial_schedule(&problem, 0.0, &mut rng);
 
         assert_eq!(schedule, vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]]);
+    }
+
+    #[test]
+    fn greedy_initializer_trace_locks_even_group_pair_sequence_and_scores() {
+        let problem = sample_problem(2, 2, 2);
+        let mut rng = ChaCha12Rng::seed_from_u64(0);
+
+        let (schedule, trace) = build_greedy_initial_schedule_with_trace(&problem, 0.0, &mut rng);
+
+        assert_eq!(schedule, vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]]);
+        assert_eq!(
+            trace
+                .pair_steps
+                .iter()
+                .map(|step| (step.week, step.group, step.pair_index, step.chosen.pair()))
+                .collect::<Vec<_>>(),
+            vec![
+                (0, 0, 0, (0, 1)),
+                (0, 1, 0, (2, 3)),
+                (1, 0, 0, (0, 2)),
+                (1, 1, 0, (1, 3)),
+            ]
+        );
+
+        assert_eq!(
+            trace.pair_steps[0].scored_candidates,
+            vec![
+                PairCandidateScore {
+                    left: 0,
+                    right: 1,
+                    raw_freedom: 2,
+                    repeat_penalty_count: 0,
+                    adjusted_freedom: 2,
+                },
+                PairCandidateScore {
+                    left: 0,
+                    right: 2,
+                    raw_freedom: 2,
+                    repeat_penalty_count: 0,
+                    adjusted_freedom: 2,
+                },
+                PairCandidateScore {
+                    left: 0,
+                    right: 3,
+                    raw_freedom: 2,
+                    repeat_penalty_count: 0,
+                    adjusted_freedom: 2,
+                },
+                PairCandidateScore {
+                    left: 1,
+                    right: 2,
+                    raw_freedom: 2,
+                    repeat_penalty_count: 0,
+                    adjusted_freedom: 2,
+                },
+                PairCandidateScore {
+                    left: 1,
+                    right: 3,
+                    raw_freedom: 2,
+                    repeat_penalty_count: 0,
+                    adjusted_freedom: 2,
+                },
+                PairCandidateScore {
+                    left: 2,
+                    right: 3,
+                    raw_freedom: 2,
+                    repeat_penalty_count: 0,
+                    adjusted_freedom: 2,
+                },
+            ]
+        );
+        assert_eq!(
+            trace.pair_steps[2].scored_candidates,
+            vec![
+                PairCandidateScore {
+                    left: 0,
+                    right: 2,
+                    raw_freedom: 0,
+                    repeat_penalty_count: 0,
+                    adjusted_freedom: 0,
+                },
+                PairCandidateScore {
+                    left: 0,
+                    right: 3,
+                    raw_freedom: 0,
+                    repeat_penalty_count: 0,
+                    adjusted_freedom: 0,
+                },
+                PairCandidateScore {
+                    left: 1,
+                    right: 2,
+                    raw_freedom: 0,
+                    repeat_penalty_count: 0,
+                    adjusted_freedom: 0,
+                },
+                PairCandidateScore {
+                    left: 1,
+                    right: 3,
+                    raw_freedom: 0,
+                    repeat_penalty_count: 0,
+                    adjusted_freedom: 0,
+                },
+                PairCandidateScore {
+                    left: 0,
+                    right: 1,
+                    raw_freedom: 2,
+                    repeat_penalty_count: 1,
+                    adjusted_freedom: -999_998,
+                },
+                PairCandidateScore {
+                    left: 2,
+                    right: 3,
+                    raw_freedom: 2,
+                    repeat_penalty_count: 1,
+                    adjusted_freedom: -999_998,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn greedy_initializer_trace_records_group_completion_after_pair_selection() {
+        let problem = sample_problem(2, 2, 2);
+        let mut rng = ChaCha12Rng::seed_from_u64(0);
+
+        let (_, trace) = build_greedy_initial_schedule_with_trace(&problem, 0.0, &mut rng);
+
+        assert_eq!(
+            trace.group_steps,
+            vec![
+                GreedyGroupStep {
+                    week: 0,
+                    group: 0,
+                    members: vec![0, 1],
+                    selected_pairs: vec![(0, 1)],
+                    singleton: None,
+                    penalty_updates: vec![PairPenaltyUpdate {
+                        pair: (0, 1),
+                        new_penalty: 1,
+                    }],
+                    partnered_pairs_noted: vec![(0, 1)],
+                },
+                GreedyGroupStep {
+                    week: 0,
+                    group: 1,
+                    members: vec![2, 3],
+                    selected_pairs: vec![(2, 3)],
+                    singleton: None,
+                    penalty_updates: vec![PairPenaltyUpdate {
+                        pair: (2, 3),
+                        new_penalty: 1,
+                    }],
+                    partnered_pairs_noted: vec![(2, 3)],
+                },
+                GreedyGroupStep {
+                    week: 1,
+                    group: 0,
+                    members: vec![0, 2],
+                    selected_pairs: vec![(0, 2)],
+                    singleton: None,
+                    penalty_updates: vec![PairPenaltyUpdate {
+                        pair: (0, 2),
+                        new_penalty: 1,
+                    }],
+                    partnered_pairs_noted: vec![(0, 2)],
+                },
+                GreedyGroupStep {
+                    week: 1,
+                    group: 1,
+                    members: vec![1, 3],
+                    selected_pairs: vec![(1, 3)],
+                    singleton: None,
+                    penalty_updates: vec![PairPenaltyUpdate {
+                        pair: (1, 3),
+                        new_penalty: 1,
+                    }],
+                    partnered_pairs_noted: vec![(1, 3)],
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn greedy_initializer_trace_locks_odd_group_pair_and_singleton_sequence() {
+        let problem = sample_problem(1, 3, 2);
+        let mut rng = ChaCha12Rng::seed_from_u64(0);
+
+        let (schedule, trace) = build_greedy_initial_schedule_with_trace(&problem, 0.0, &mut rng);
+
+        assert_eq!(schedule, vec![vec![vec![0, 1, 2]], vec![vec![0, 2, 1]]]);
+        assert_eq!(
+            trace
+                .pair_steps
+                .iter()
+                .map(|step| (step.week, step.group, step.pair_index, step.chosen.pair()))
+                .collect::<Vec<_>>(),
+            vec![(0, 0, 0, (0, 1)), (1, 0, 0, (0, 2))]
+        );
+        assert_eq!(
+            trace
+                .singleton_steps
+                .iter()
+                .map(|step| (step.week, step.group, step.remaining_before.clone(), step.chosen))
+                .collect::<Vec<_>>(),
+            vec![(0, 0, vec![2], 2), (1, 0, vec![1], 1)]
+        );
+        assert_eq!(
+            trace.group_steps,
+            vec![
+                GreedyGroupStep {
+                    week: 0,
+                    group: 0,
+                    members: vec![0, 1, 2],
+                    selected_pairs: vec![(0, 1)],
+                    singleton: Some(2),
+                    penalty_updates: vec![PairPenaltyUpdate {
+                        pair: (0, 1),
+                        new_penalty: 1,
+                    }],
+                    partnered_pairs_noted: vec![(0, 1), (0, 2), (1, 2)],
+                },
+                GreedyGroupStep {
+                    week: 1,
+                    group: 0,
+                    members: vec![0, 2, 1],
+                    selected_pairs: vec![(0, 2)],
+                    singleton: Some(1),
+                    penalty_updates: vec![PairPenaltyUpdate {
+                        pair: (0, 2),
+                        new_penalty: 1,
+                    }],
+                    partnered_pairs_noted: vec![(0, 2), (0, 1), (2, 1)],
+                },
+            ]
+        );
+        assert_eq!(
+            trace.pair_steps[1].scored_candidates,
+            vec![
+                PairCandidateScore {
+                    left: 0,
+                    right: 2,
+                    raw_freedom: 0,
+                    repeat_penalty_count: 0,
+                    adjusted_freedom: 0,
+                },
+                PairCandidateScore {
+                    left: 1,
+                    right: 2,
+                    raw_freedom: 0,
+                    repeat_penalty_count: 0,
+                    adjusted_freedom: 0,
+                },
+                PairCandidateScore {
+                    left: 0,
+                    right: 1,
+                    raw_freedom: 0,
+                    repeat_penalty_count: 1,
+                    adjusted_freedom: -1_000_000,
+                },
+            ]
+        );
     }
 
     #[test]
