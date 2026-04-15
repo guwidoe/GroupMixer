@@ -605,6 +605,10 @@ describe('ScenarioDataGrid', () => {
     expect(screen.getByTestId('scenario-grid-csv-surface')).toBeVisible();
     expect(within(tableSurface).getByText('Beta Prime')).toBeInTheDocument();
 
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    expect(screen.getByRole('textbox', { name: /inline csv editor/i })).toBeInTheDocument();
+    expect(tableSurface).not.toBeVisible();
+
     await user.click(screen.getByRole('button', { name: /edit table/i }));
     expect(screen.getByTestId('scenario-grid-table-surface')).toBe(tableSurface);
     expect(tableSurface).toBeVisible();

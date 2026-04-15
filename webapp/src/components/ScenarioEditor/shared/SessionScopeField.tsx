@@ -185,11 +185,6 @@ export function SessionScopeField({
                 >
                   Clear
                 </button>
-                {selectedSessions.length === 0 ? (
-                  <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                    Choose one or more sessions.
-                  </span>
-                ) : null}
               </div>
 
               <div className={sessionGridClass}>
