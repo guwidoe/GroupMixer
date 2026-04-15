@@ -415,6 +415,9 @@ struct EvaluatedSchedule {
 }
 
 impl EvaluatedSchedule {
+    /// Paper Section 7: a position is a conflict position iff its occupant shares a group with at
+    /// least one player that the occupant has already shared a group with in another week. `f(C)`
+    /// is therefore the number of schedule positions that participate in any repeated pair.
     fn from_schedule(problem: &PureSgpProblem, schedule: Vec<Vec<Vec<usize>>>) -> Self {
         let total_positions = problem.num_weeks * problem.num_groups * problem.group_size;
         let mut pair_counts = vec![0u16; problem.num_people * problem.num_people];
@@ -854,6 +857,47 @@ mod tests {
     };
     use std::collections::HashMap;
 
+    fn evaluated(problem: &PureSgpProblem, schedule: &[Vec<Vec<usize>>]) -> EvaluatedSchedule {
+        EvaluatedSchedule::from_schedule(problem, schedule.to_vec())
+    }
+
+    fn sample_problem(num_groups: usize, group_size: usize, num_weeks: usize) -> PureSgpProblem {
+        PureSgpProblem {
+            people: (0..(num_groups * group_size))
+                .map(|idx| format!("p{idx}"))
+                .collect(),
+            groups: (0..num_groups).map(|idx| format!("g{idx}")).collect(),
+            num_people: num_groups * group_size,
+            num_groups,
+            group_size,
+            num_weeks,
+        }
+    }
+
+    fn shuffled_week(num_people: usize, rng: &mut ChaCha12Rng) -> Vec<usize> {
+        let mut people: Vec<usize> = (0..num_people).collect();
+        for idx in (1..people.len()).rev() {
+            let swap_idx = rng.random_range(0..=idx);
+            people.swap(idx, swap_idx);
+        }
+        people
+    }
+
+    fn random_schedule(problem: &PureSgpProblem, rng: &mut ChaCha12Rng) -> Vec<Vec<Vec<usize>>> {
+        let mut schedule = Vec::with_capacity(problem.num_weeks);
+        for _ in 0..problem.num_weeks {
+            let shuffled = shuffled_week(problem.num_people, rng);
+            let mut week = Vec::with_capacity(problem.num_groups);
+            for group in 0..problem.num_groups {
+                let start = group * problem.group_size;
+                let end = start + problem.group_size;
+                week.push(shuffled[start..end].to_vec());
+            }
+            schedule.push(week);
+        }
+        schedule
+    }
+
     fn pure_problem(num_groups: u32, group_size: u32, weeks: u32) -> ProblemDefinition {
         let num_people = num_groups * group_size;
         ProblemDefinition {
@@ -980,5 +1024,96 @@ mod tests {
         let left = build_greedy_initial_schedule(&problem, 0.0, &mut left_rng);
         let right = build_greedy_initial_schedule(&problem, 0.0, &mut right_rng);
         assert_eq!(left, right);
+    }
+
+    #[test]
+    fn conflict_positions_are_zero_without_repeated_pairs() {
+        let problem = sample_problem(2, 2, 2);
+        let schedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]];
+
+        let evaluated = evaluated(&problem, &schedule);
+
+        assert_eq!(evaluated.conflict_positions, 0);
+        assert_eq!(evaluated.repeat_excess, 0);
+    }
+
+    #[test]
+    fn conflict_positions_count_both_occurrences_of_one_repeated_pair() {
+        let problem = sample_problem(1, 2, 2);
+        let schedule = vec![vec![vec![0, 1]], vec![vec![0, 1]]];
+
+        let evaluated = evaluated(&problem, &schedule);
+
+        assert_eq!(evaluated.conflict_positions, 4);
+        assert_eq!(evaluated.repeat_excess, 1);
+    }
+
+    #[test]
+    fn conflict_positions_cover_all_slots_of_repeated_triple_groups() {
+        let problem = sample_problem(1, 3, 2);
+        let schedule = vec![vec![vec![0, 1, 2]], vec![vec![0, 1, 2]]];
+
+        let evaluated = evaluated(&problem, &schedule);
+
+        assert_eq!(evaluated.conflict_positions, 6);
+        assert_eq!(evaluated.repeat_excess, 3);
+        assert!(evaluated.incident_counts.iter().all(|count| *count > 0));
+    }
+
+    #[test]
+    fn conflict_positions_handle_odd_group_size_partial_repeats() {
+        let problem = sample_problem(1, 3, 2);
+        let schedule = vec![vec![vec![0, 1, 2]], vec![vec![0, 1, 3]]];
+
+        let evaluated = evaluated(&problem, &schedule);
+
+        assert_eq!(evaluated.conflict_positions, 4);
+        assert_eq!(evaluated.repeat_excess, 1);
+        assert_eq!(evaluated.incident_counts, vec![1, 1, 0, 1, 1, 0]);
+    }
+
+    #[test]
+    fn swap_preview_matches_full_recompute_on_small_random_schedules() {
+        let problem = sample_problem(3, 3, 4);
+        let mut rng = ChaCha12Rng::seed_from_u64(11);
+
+        for _ in 0..32 {
+            let schedule = random_schedule(&problem, &mut rng);
+            let current = evaluated(&problem, &schedule);
+
+            for week in 0..problem.num_weeks {
+                for left_group in 0..problem.num_groups {
+                    for right_group in (left_group + 1)..problem.num_groups {
+                        for left_slot in 0..problem.group_size {
+                            for right_slot in 0..problem.group_size {
+                                let preview = evaluate_swap_conflict_positions(
+                                    &problem,
+                                    &schedule,
+                                    &current,
+                                    week,
+                                    left_group,
+                                    left_slot,
+                                    right_group,
+                                    right_slot,
+                                );
+                                let swapped = apply_swap(
+                                    &schedule,
+                                    week,
+                                    left_group,
+                                    left_slot,
+                                    right_group,
+                                    right_slot,
+                                );
+                                let recomputed = evaluated(&problem, &swapped);
+                                assert_eq!(
+                                    preview, recomputed.conflict_positions,
+                                    "preview mismatch for week={week} groups=({left_group},{right_group}) slots=({left_slot},{right_slot})",
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
