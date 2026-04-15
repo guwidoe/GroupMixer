@@ -277,7 +277,15 @@ impl SearchEngine {
             let breakout_applied = should_apply_random_breakout(no_improvement_count);
             let next_schedule = if breakout_applied {
                 breakout_count += 1;
-                apply_random_breakout(problem, &schedule, rng, &mut tabu, iterations, &mut tabu_telemetry)
+                apply_random_breakout(
+                    problem,
+                    &schedule,
+                    &current,
+                    rng,
+                    &mut tabu,
+                    iterations,
+                    &mut tabu_telemetry,
+                )
             } else {
                 let selection = select_best_swap(
                     problem,
@@ -1767,6 +1775,7 @@ fn apply_swap(
 fn apply_random_breakout(
     problem: &PureSgpProblem,
     schedule: &[Vec<Vec<usize>>],
+    current: &EvaluatedSchedule,
     rng: &mut ChaCha12Rng,
     tabu: &mut WeekTabuLists,
     iteration: u64,
@@ -1776,7 +1785,7 @@ fn apply_random_breakout(
     let mut recorded = Vec::with_capacity(RANDOM_BREAKOUT_SWAP_COUNT);
 
     for _ in 0..RANDOM_BREAKOUT_SWAP_COUNT {
-        let week = rng.random_range(0..problem.num_weeks);
+        let week = choose_breakout_week(current, problem.num_weeks, rng);
         let left_group = rng.random_range(0..problem.num_groups);
         let mut right_group = rng.random_range(0..problem.num_groups);
         while right_group == left_group {
@@ -1793,6 +1802,32 @@ fn apply_random_breakout(
 
     tabu.record_iteration(iteration, &recorded, tabu_telemetry);
     next
+}
+
+fn choose_breakout_week(
+    current: &EvaluatedSchedule,
+    num_weeks: usize,
+    rng: &mut ChaCha12Rng,
+) -> usize {
+    let max_conflicts = current
+        .conflict_positions_by_week
+        .iter()
+        .copied()
+        .max()
+        .unwrap_or(0);
+    if max_conflicts == 0 {
+        return rng.random_range(0..num_weeks);
+    }
+
+    let mut candidate_weeks = Vec::new();
+    for (week, &conflicts) in current.conflict_positions_by_week.iter().enumerate() {
+        if conflicts == max_conflicts {
+            candidate_weeks.push(week);
+        }
+    }
+    *candidate_weeks
+        .choose(rng)
+        .expect("max-conflict week list should be non-empty")
 }
 
 #[derive(Debug, Clone)]
@@ -2027,6 +2062,7 @@ mod tests {
                 let next = apply_random_breakout(
                     problem,
                     &schedule,
+                    &current,
                     &mut rng,
                     &mut tabu,
                     iteration,
@@ -2868,15 +2904,42 @@ mod tests {
     fn breakout_records_both_random_swaps_in_same_iteration_window() {
         let problem = sample_problem(2, 2, 2);
         let schedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]];
+        let current = EvaluatedSchedule::from_schedule(&problem, schedule.clone());
         let mut rng = ChaCha12Rng::seed_from_u64(5);
         let mut tabu = WeekTabuLists::new(problem.num_weeks);
         let mut telemetry = SgpWeekPairTabuBenchmarkTelemetry::default();
-        let _ = apply_random_breakout(&problem, &schedule, &mut rng, &mut tabu, 3, &mut telemetry);
+        let _ = apply_random_breakout(
+            &problem,
+            &schedule,
+            &current,
+            &mut rng,
+            &mut tabu,
+            3,
+            &mut telemetry,
+        );
         assert_eq!(telemetry.recorded_swaps, 2);
         for week in 0..problem.num_weeks {
             assert!(tabu.history[week]
                 .iter()
                 .all(|(iteration, _)| *iteration == 3));
+        }
+    }
+
+    #[test]
+    fn choose_breakout_week_prefers_max_conflict_weeks() {
+        let problem = sample_problem(2, 2, 3);
+        let schedule = vec![
+            vec![vec![0, 1], vec![2, 3]],
+            vec![vec![0, 1], vec![2, 3]],
+            vec![vec![0, 2], vec![1, 3]],
+        ];
+        let current = EvaluatedSchedule::from_schedule(&problem, schedule);
+        assert_eq!(current.conflict_positions_by_week, vec![4, 4, 0]);
+
+        let mut rng = ChaCha12Rng::seed_from_u64(7);
+        for _ in 0..20 {
+            let week = choose_breakout_week(&current, problem.num_weeks, &mut rng);
+            assert!(week == 0 || week == 1);
         }
     }
 
