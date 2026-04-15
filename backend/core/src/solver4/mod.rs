@@ -514,6 +514,27 @@ struct SwapCandidate {
     conflict_positions_after: usize,
 }
 
+impl SwapCandidate {
+    fn lexicographic_key(&self) -> (usize, usize, usize, usize, usize) {
+        // Paper Section 7 describes a swap as exchanging G_ijk with G_ij'k' for j != j'.
+        // We therefore make the tie-break explicit over the ordered variable tuple
+        // (week=i, left_group=j, left_slot=k, right_group=j', right_slot=k').
+        (
+            self.week,
+            self.left_group,
+            self.left_slot,
+            self.right_group,
+            self.right_slot,
+        )
+    }
+
+    fn outranks(&self, other: &Self) -> bool {
+        self.conflict_positions_after < other.conflict_positions_after
+            || (self.conflict_positions_after == other.conflict_positions_after
+                && self.lexicographic_key() < other.lexicographic_key())
+    }
+}
+
 fn select_best_swap(
     problem: &PureSgpProblem,
     schedule: &[Vec<Vec<usize>>],
@@ -568,9 +589,7 @@ fn select_best_swap(
 
                         let is_better = match best_candidate {
                             None => true,
-                            Some(current_best) => {
-                                candidate.conflict_positions_after < current_best.conflict_positions_after
-                            }
+                            Some(current_best) => candidate.outranks(&current_best),
                         };
                         if is_better {
                             best_candidate = Some(candidate);
@@ -1171,5 +1190,48 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn swap_candidate_outranks_by_lexicographic_key_when_scores_tie() {
+        let left = SwapCandidate {
+            week: 0,
+            left_group: 0,
+            left_slot: 0,
+            right_group: 1,
+            right_slot: 0,
+            left_person: 0,
+            right_person: 2,
+            conflict_positions_after: 0,
+        };
+        let right = SwapCandidate {
+            week: 0,
+            left_group: 0,
+            left_slot: 1,
+            right_group: 1,
+            right_slot: 0,
+            left_person: 1,
+            right_person: 2,
+            conflict_positions_after: 0,
+        };
+
+        assert!(left.outranks(&right));
+        assert!(!right.outranks(&left));
+    }
+
+    #[test]
+    fn select_best_swap_uses_explicit_lexicographic_tie_breaking() {
+        let problem = sample_problem(2, 2, 2);
+        let schedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]];
+        let current = evaluated(&problem, &schedule);
+        let tabu = WeekTabuLists::new(problem.num_weeks);
+
+        let selected = select_best_swap(&problem, &schedule, &current, &current, &tabu, 0)
+            .expect("expected a best swap");
+
+        assert_eq!(selected.week, 0);
+        assert_eq!(selected.left_person, 0);
+        assert_eq!(selected.right_person, 2);
+        assert_eq!(selected.schedule, vec![vec![vec![2, 1], vec![0, 3]], vec![vec![0, 1], vec![2, 3]]]);
     }
 }
