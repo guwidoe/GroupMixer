@@ -90,7 +90,8 @@ impl SearchEngine {
                 break StopReason::OptimalScoreReached;
             }
 
-            let next_schedule = if no_improvement_count >= RANDOM_BREAKOUT_AFTER_NO_IMPROVEMENT {
+            let breakout_applied = should_apply_random_breakout(no_improvement_count);
+            let next_schedule = if breakout_applied {
                 apply_random_breakout(&problem, &schedule, &mut rng, &mut tabu, iterations)
             } else {
                 select_best_swap(&problem, &schedule, &current, &best, &tabu, iterations)
@@ -112,9 +113,17 @@ impl SearchEngine {
             if current.conflict_positions < best.conflict_positions {
                 best = current.clone();
                 best_schedule = schedule.clone();
-                no_improvement_count = 0;
+                no_improvement_count = next_no_improvement_count(
+                    no_improvement_count,
+                    true,
+                    breakout_applied,
+                );
             } else {
-                no_improvement_count += 1;
+                no_improvement_count = next_no_improvement_count(
+                    no_improvement_count,
+                    false,
+                    breakout_applied,
+                );
             }
 
             if stop_conditions.should_stop_for_optimal_score(best.paper_objective()) {
@@ -130,6 +139,25 @@ impl SearchEngine {
             effective_seed,
             stop_reason,
         )
+    }
+}
+
+fn should_apply_random_breakout(no_improvement_count: u64) -> bool {
+    // Paper Section 7 says that after 4 non-improving iterations, two random swaps are made.
+    // We therefore trigger exactly when the streak reaches 4 and reset the streak after that
+    // breakout iteration, instead of perturbing on every subsequent iteration.
+    no_improvement_count == RANDOM_BREAKOUT_AFTER_NO_IMPROVEMENT
+}
+
+fn next_no_improvement_count(
+    previous: u64,
+    improved_best: bool,
+    breakout_applied: bool,
+) -> u64 {
+    if improved_best || breakout_applied {
+        0
+    } else {
+        previous + 1
     }
 }
 
@@ -1024,6 +1052,34 @@ mod tests {
         let left = build_greedy_initial_schedule(&problem, 0.0, &mut left_rng);
         let right = build_greedy_initial_schedule(&problem, 0.0, &mut right_rng);
         assert_eq!(left, right);
+    }
+
+    #[test]
+    fn breakout_is_not_applied_before_four_non_improving_iterations() {
+        assert!(!should_apply_random_breakout(0));
+        assert!(!should_apply_random_breakout(1));
+        assert!(!should_apply_random_breakout(2));
+        assert!(!should_apply_random_breakout(3));
+    }
+
+    #[test]
+    fn breakout_is_applied_exactly_when_streak_reaches_four() {
+        assert!(should_apply_random_breakout(4));
+    }
+
+    #[test]
+    fn breakout_does_not_repeat_without_another_full_stagnation_window() {
+        assert!(!should_apply_random_breakout(5));
+        assert!(!should_apply_random_breakout(6));
+        assert!(!should_apply_random_breakout(7));
+        assert!(!should_apply_random_breakout(8));
+    }
+
+    #[test]
+    fn breakout_resets_the_stagnation_counter() {
+        assert_eq!(next_no_improvement_count(4, false, true), 0);
+        assert_eq!(next_no_improvement_count(3, false, false), 4);
+        assert_eq!(next_no_improvement_count(3, true, false), 0);
     }
 
     #[test]
