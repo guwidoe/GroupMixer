@@ -322,15 +322,15 @@ fn select_best_swap_prefers_lower_max_week_conflict_after_repeat_excess_ties() {
 }
 
 #[test]
-fn tabu_list_keeps_pairs_for_exactly_last_ten_iterations() {
+fn tabu_list_keeps_pairs_for_exactly_last_twelve_iterations() {
     let mut tabu = WeekTabuLists::new(1);
     let mut telemetry = SgpWeekPairTabuBenchmarkTelemetry::default();
     tabu.record_iteration(0, &[(0, (1, 2))], &mut telemetry);
-    for iteration in 1..10 {
+    for iteration in 1..12 {
         tabu.prune(iteration);
         assert!(tabu.contains(0, (1, 2)));
     }
-    tabu.prune(10);
+    tabu.prune(12);
     assert!(!tabu.contains(0, (1, 2)));
 }
 
