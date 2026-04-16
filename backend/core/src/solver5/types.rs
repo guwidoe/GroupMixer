@@ -81,6 +81,7 @@ impl Schedule {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum ConstructionFamilyId {
     RoundRobin,
+    KirkmanTripleSystem,
     NearlyKirkmanTripleSystem,
     TransversalDesignPrimePower,
     AffinePlanePrimePower,
@@ -91,6 +92,7 @@ impl ConstructionFamilyId {
     pub(super) fn label(self) -> &'static str {
         match self {
             Self::RoundRobin => "round_robin",
+            Self::KirkmanTripleSystem => "kts",
             Self::NearlyKirkmanTripleSystem => "nkts",
             Self::TransversalDesignPrimePower => "transversal_design_prime_power",
             Self::AffinePlanePrimePower => "affine_plane_prime_power",

@@ -54,6 +54,17 @@ fn kirkman_family_constructs_6t_plus_1_case() {
 }
 
 #[test]
+fn catalog_kts_family_constructs_15_player_case() {
+    let entry = crate::solver5::catalog::kts::exact_case(5)
+        .expect("kts catalog should expose the 15-player case");
+    let result = families::construct_kirkman_triple_system(entry);
+
+    assert_eq!(result.family.label(), "kts");
+    assert_eq!(result.schedule.len(), 7);
+    assert_eq!(result.metadata.quality, ConstructionQuality::ExactFrontier);
+}
+
+#[test]
 fn nkts_family_constructs_catalog_backed_18_case() {
     let entry = crate::solver5::catalog::nkts::exact_case(6)
         .expect("nkts catalog should expose the 18-player case");
@@ -67,6 +78,20 @@ fn nkts_family_constructs_catalog_backed_18_case() {
         .evidence
         .iter()
         .any(|evidence| matches!(evidence.source_kind, EvidenceSourceKind::CatalogFact)));
+}
+
+#[test]
+fn nkts_pseudo_doubling_constructs_30_player_case() {
+    let entry = crate::solver5::catalog::kts::exact_case(5)
+        .expect("kts catalog should expose the 15-player case");
+    let result = families::construct_nearly_kirkman_triple_system_via_pseudo_doubling(entry);
+
+    assert_eq!(result.family.label(), "nkts");
+    assert_eq!(result.schedule.len(), 13);
+    assert_eq!(
+        result.metadata.quality,
+        ConstructionQuality::NearFrontier { missing_weeks: 1 }
+    );
 }
 
 #[test]
@@ -94,6 +119,7 @@ fn family_registry_exposes_current_portfolio_order() {
         vec![
             "round_robin",
             "kirkman_6t_plus_1",
+            "kts",
             "nkts",
             "affine_plane_prime_power",
             "transversal_design_prime_power",
