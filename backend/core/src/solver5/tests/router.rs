@@ -184,6 +184,23 @@ fn router_selects_p4_resolvable_bibd_for_10_4_9() {
 }
 
 #[test]
+fn router_selects_published_schedule_bank_for_9_4_11() {
+    let input = pure_input(9, 4, 11);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 9-4-11");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::PublishedScheduleBank);
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::PublishedScheduleBank
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 11,
+                    quality: ConstructionQuality::ExactFrontier,
+                }
+    }));
+}
+
+#[test]
 fn router_selects_p4_resolvable_bibd_for_7_4_9() {
     let input = pure_input(7, 4, 9);
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");

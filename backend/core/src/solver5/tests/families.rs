@@ -186,6 +186,17 @@ fn published_schedule_bank_constructs_40_player_p4_case() {
 }
 
 #[test]
+fn published_schedule_bank_constructs_36_player_p4_case() {
+    let entry = crate::solver5::catalog::published::exact_case(9, 4)
+        .expect("published schedule catalog should expose the 9-4-11 case");
+    let result = families::construct_published_schedule_bank(entry);
+
+    assert_eq!(result.family.label(), "published_schedule_bank");
+    assert_eq!(result.schedule.len(), 11);
+    assert_eq!(result.metadata.quality, ConstructionQuality::ExactFrontier);
+}
+
+#[test]
 fn end_to_end_round_robin_schedule_still_scores_zero() {
     let input = pure_input(4, 2, 7);
     let solver = SearchEngine::new(&input.solver);

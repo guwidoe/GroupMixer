@@ -3,7 +3,7 @@
 - The constructor-portfolio scaffold is now in place. Use it rather than reintroducing ad hoc family routing or inline exception logic.
 - Keep `total_constructed_weeks` as the primary objective gate; use per-cell and per-`p` metrics to understand where coverage moved.
 - The broad NKTS / composite-`p=3` push has now paid off: exact `NKTS(18)`, exact `KTS(15)`, and pseudo-doubling from `KTS(15)` are in. Treat that milestone as partially complete rather than an open generic idea.
-- The only clear remaining triples benchmark gap is **`8-3-11`** (24 players). Explore this only through an honest source-backed 24-player construction or a structurally justified composition.
+- The triples benchmark frontier is now closed in the fixed matrix; do not re-spend cycles on `8-3-11` unless a broader reusable family beyond that benchmark cell appears.
 - The Warwick Harvey archive has now been mined for all benchmark-relevant improvements currently visible in the fixed matrix. Do not keep rescanning it as if it still contains untouched easy wins.
 - The published-schedule bank is now a real portfolio component, not just a one-off patch lane. Preserve explicit provenance per schedule and keep any transcription repairs extremely narrow, documented, and validity-checked.
 - Do **not** retry the naive cyclic `p=3` transversal-design fallback for non-prime-power group counts; it benchmarked flat and did not produce score-zero constructions on the even composite rows.
@@ -11,10 +11,10 @@
 - In practice, the next highest-ROI constructive gap is now **`p=4`**. Prioritize reusable theorem-family work over more patch-bank hunting.
 - The finite-field resolvable `(v,4,1)`-BIBD route for `v = 3q + 1` is now landed; do not re-spend cycles on `7-4-9` / `10-4-13` unless a regression appears.
 - The universal single-round partition lower bound is now landed; do not spend more loop time rediscovering generic `W=1` coverage.
-- The live scored target gaps are now the exact frontier cells **`9-4-11`** and **`8-3-11`**.
+- The live scored target gap is now the exact frontier cell **`9-4-11`**.
 - The main remaining `p=4` exact gap is **`9-4-11`**. The most honest live lane is a genuine `RGDD(36,4,3)`-style construction or an explicit source-backed 36-player schedule.
 - Promising structural derivation to revisit: build `RGDD(36,4,3)` by inflating a resolved `2-(12,4,3)` seed on the 12 size-3 groups with `RTD(4,3)` local classes, provided the three occurrences of each seed pair can be colored across the three local RTD classes.
-- The main remaining triples exact gap is **`8-3-11`**. The best honest lane appears to be `NKTS(24)` rather than more generic cyclic shortcuts.
+- The exact `NKTS(24)` lane has now been landed as a catalog-backed schedule synthesized in solver5; treat more 24-player triples work as stale unless it yields reusable theory beyond the benchmark cell.
 - The explicit `KP(30,14)` lane has now been tried as a catalog-backed direct construction; do not spend more loop time rediscovering generic 30-player triples unless a reusable family beyond that case appears.
 - Keep broader **RBIBD / RGDD / URD / RITD / ownSG** work behind the current `9-4-11` / `8-3-11` frontier push.
 - Extend recursive `+G(t)` lifting only as a reusable composition operator, not as cell-specific glue.
