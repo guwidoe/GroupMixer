@@ -357,7 +357,7 @@ pub(super) fn evaluate_swap_preview(
 }
 
 pub(super) fn should_prefer_active_repeated_pairs(no_improvement_count: u64) -> bool {
-    no_improvement_count >= 2
+    no_improvement_count >= 3
 }
 
 fn apply_removed_pair_delta(
