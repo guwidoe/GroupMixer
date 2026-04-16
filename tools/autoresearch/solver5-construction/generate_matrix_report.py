@@ -21,19 +21,21 @@ def semantic_badge_style(cell, max_gap):
     return f"background:{background};color:#1f2937;"
 
 
-def build_matrix(cells):
-    return {(cell["g"], cell["p"]): cell for cell in cells}
-
-
-def quality_badge_class(cell):
+def quality_badge_style(cell, max_gap):
     quality = cell.get("quality_label") or ""
     if quality == "exact_frontier":
-        return "quality-exact"
-    if quality == "near_frontier":
-        return "quality-near"
-    if quality == "lower_bound":
-        return "quality-lower"
-    return "quality-neutral"
+        background = gap_color(0, max_gap)
+    elif quality == "near_frontier":
+        background = gap_color(1, max_gap)
+    elif quality == "lower_bound":
+        background = gap_color(max_gap if max_gap > 0 else 2, max_gap if max_gap > 0 else 2)
+    else:
+        background = "#e5e7eb"
+    return f"background:{background};color:#1f2937;"
+
+
+def build_matrix(cells):
+    return {(cell["g"], cell["p"]): cell for cell in cells}
 
 
 def quality_label_text(cell):
@@ -111,7 +113,10 @@ def render_combined_table(title, rows, cols, cell_map, max_gap):
                 )
             if cell.get("quality_label"):
                 badges.append(
-                    render_badge(quality_label_text(cell), quality_badge_class(cell))
+                    render_badge(
+                        quality_label_text(cell),
+                        inline_style=quality_badge_style(cell, max_gap),
+                    )
                 )
             if badges:
                 html_parts.append(f"<div class='badge-row'>{''.join(badges)}</div>")
@@ -155,10 +160,6 @@ def main():
         ".cell-sub{font-size:12px;line-height:1.15;color:#32414f;margin-bottom:5px;}"
         ".badge-row{display:flex;gap:4px;justify-content:center;align-items:center;flex-wrap:wrap;}"
         ".badge{display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;line-height:1.05;font-weight:600;border:1px solid rgba(0,0,0,0.08);box-shadow:inset 0 1px 0 rgba(255,255,255,0.45);}"
-        ".quality-exact{background:#ccfbf1;color:#115e59;}"
-        ".quality-near{background:#fef3c7;color:#92400e;}"
-        ".quality-lower{background:#fecaca;color:#991b1b;}"
-        ".quality-neutral{background:#e5e7eb;color:#374151;}"
         "</style></head><body>",
         f"<h1>{html.escape(artifact['matrix_name'])}</h1>",
         f"<p class='meta'>version {artifact['matrix_version']} · visual region g={artifact['visual_bounds']['g_min']}..{artifact['visual_bounds']['g_max']}, p={artifact['visual_bounds']['p_min']}..{artifact['visual_bounds']['p_max']} · scored region g={artifact['scored_bounds']['g_min']}..{artifact['scored_bounds']['g_max']}, p={artifact['scored_bounds']['p_min']}..{artifact['scored_bounds']['p_max']}</p>",
@@ -167,9 +168,9 @@ def main():
         f"<span class='swatch' style='background:{gap_color(1, max_gap)}'>gap = 1</span>",
         f"<span class='swatch' style='background:{gap_color(max_gap, max_gap)}'>gap = max ({max_gap})</span>",
         "<span class='swatch' style='border-style:dashed;background:#f7f7f7'>visual-only cell</span>",
-        render_badge("exact_frontier", "quality-exact"),
-        render_badge("near_frontier", "quality-near"),
-        render_badge("lower_bound", "quality-lower"),
+        render_badge("exact_frontier", inline_style=quality_badge_style({"quality_label": "exact_frontier"}, max_gap)),
+        render_badge("near_frontier", inline_style=quality_badge_style({"quality_label": "near_frontier"}, max_gap)),
+        render_badge("lower_bound", inline_style=quality_badge_style({"quality_label": "lower_bound"}, max_gap)),
         render_badge("method badge follows gap gradient", inline_style="background:hsl(90 78% 78%);color:#1f2937;"),
         "</div>",
     ]
