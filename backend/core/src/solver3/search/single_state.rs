@@ -28,7 +28,7 @@ use super::acceptance::{
 };
 use super::candidate_sampling::{CandidateSampler, SearchMovePreview, SwapSamplingOptions};
 use super::context::{SearchProgressState, SearchRunContext};
-use super::family_selection::MoveFamilySelector;
+use super::family_selection::{MoveFamilySelector, MoveFamilyUtilityMode};
 #[cfg(feature = "solver3-experimental-repeat-guidance")]
 use super::repeat_guidance::RepeatGuidanceState;
 #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
@@ -353,52 +353,55 @@ fn run_local_improver_general(
                 }
             }
 
-            let candidate_selection = candidate_sampler.select_previewed_move(
-                &search.current_state,
-                &family_selector,
-                &run_context.allowed_sessions,
-                SwapSamplingOptions {
-                    #[cfg(feature = "solver3-experimental-repeat-guidance")]
-                    repeat_guidance: repeat_guidance.as_ref(),
-                    #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
-                    sgp_conflicts: sgp_conflicts.as_ref(),
-                    #[cfg(feature = "solver3-experimental-repeat-guidance")]
-                    repeat_guided_swap_probability: run_context.repeat_guided_swap_probability,
-                    #[cfg(feature = "solver3-experimental-repeat-guidance")]
-                    repeat_guided_swap_candidate_preview_budget: run_context
-                        .repeat_guided_swap_candidate_preview_budget,
-                    tabu: tabu_state.as_ref(),
-                    tabu_retry_cap,
-                    tabu_allow_aspiration_preview,
-                    current_iteration: iteration,
+            let family = family_selector.choose_family(
+                &search.policy_memory.move_family_chooser,
+                if budget.time_limit_seconds.is_some() {
+                    MoveFamilyUtilityMode::PerSecond
+                } else {
+                    MoveFamilyUtilityMode::PerAttempt
                 },
                 &mut rng,
             );
+            let preview_started_at = get_current_time();
+            let (preview, repeat_guided_swap_sampling, tabu_swap_sampling) = candidate_sampler
+                .sample_preview_for_family(
+                    &search.current_state,
+                    family,
+                    &run_context.allowed_sessions,
+                    SwapSamplingOptions {
+                        #[cfg(feature = "solver3-experimental-repeat-guidance")]
+                        repeat_guidance: repeat_guidance.as_ref(),
+                        #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
+                        sgp_conflicts: sgp_conflicts.as_ref(),
+                        #[cfg(feature = "solver3-experimental-repeat-guidance")]
+                        repeat_guided_swap_probability: run_context.repeat_guided_swap_probability,
+                        #[cfg(feature = "solver3-experimental-repeat-guidance")]
+                        repeat_guided_swap_candidate_preview_budget: run_context
+                            .repeat_guided_swap_candidate_preview_budget,
+                        tabu: tabu_state.as_ref(),
+                        tabu_retry_cap,
+                        tabu_allow_aspiration_preview,
+                        current_iteration: iteration,
+                    },
+                    &mut rng,
+                );
+            let preview_seconds =
+                get_elapsed_seconds_between(preview_started_at, get_current_time());
             search.record_repeat_guided_swap_sampling(
-                candidate_selection
-                    .repeat_guided_swap_sampling
-                    .guided_attempts,
-                candidate_selection
-                    .repeat_guided_swap_sampling
-                    .guided_successes,
-                candidate_selection
-                    .repeat_guided_swap_sampling
-                    .guided_fallback_to_random,
-                candidate_selection
-                    .repeat_guided_swap_sampling
-                    .guided_previewed_candidates,
+                repeat_guided_swap_sampling.guided_attempts,
+                repeat_guided_swap_sampling.guided_successes,
+                repeat_guided_swap_sampling.guided_fallback_to_random,
+                repeat_guided_swap_sampling.guided_previewed_candidates,
             );
             search.record_tabu_sampling(
-                candidate_selection.tabu_swap_sampling.raw_tabu_hits,
-                candidate_selection.tabu_swap_sampling.prefilter_skips,
-                candidate_selection.tabu_swap_sampling.retry_exhaustions,
-                candidate_selection.tabu_swap_sampling.hard_blocks,
-                candidate_selection
-                    .tabu_swap_sampling
-                    .aspiration_preview_surfaces,
+                tabu_swap_sampling.raw_tabu_hits,
+                tabu_swap_sampling.prefilter_skips,
+                tabu_swap_sampling.retry_exhaustions,
+                tabu_swap_sampling.hard_blocks,
+                tabu_swap_sampling.aspiration_preview_surfaces,
             );
 
-            if let Some((family, preview, preview_seconds)) = candidate_selection.selection {
+            if let Some(preview) = preview {
                 let delta_cost = preview.delta_score();
                 search.record_preview_attempt(family, preview_seconds, delta_cost);
                 let current_score = search.current_state.total_score;
@@ -485,14 +488,38 @@ fn run_local_improver_general(
                             cached_elapsed_seconds.max(improvement_elapsed_seconds);
                         search.refresh_best_from_current(iteration, improvement_elapsed_seconds);
                         search.record_acceptance_result(true);
+                        search.policy_memory.move_family_chooser.record_attempt(
+                            family,
+                            preview_seconds + apply_seconds,
+                            Some(delta_cost),
+                            true,
+                        );
                     } else {
                         search.record_rejected_move(family);
+                        search.policy_memory.move_family_chooser.record_attempt(
+                            family,
+                            preview_seconds,
+                            None,
+                            true,
+                        );
                     }
                 } else {
                     search.record_rejected_move(family);
+                    search.policy_memory.move_family_chooser.record_attempt(
+                        family,
+                        preview_seconds,
+                        None,
+                        true,
+                    );
                 }
             } else {
                 search.record_no_candidate();
+                search.policy_memory.move_family_chooser.record_attempt(
+                    family,
+                    preview_seconds,
+                    None,
+                    false,
+                );
             }
 
             search.finish_iteration(iteration);
@@ -712,14 +739,24 @@ fn run_local_improver_default(
                 }
             }
 
-            if let Some((family, preview, preview_seconds)) = candidate_sampler
-                .select_previewed_move_default(
-                    &search.current_state,
-                    &family_selector,
-                    &run_context.allowed_sessions,
-                    &mut rng,
-                )
-            {
+            let family = family_selector.choose_family(
+                &search.policy_memory.move_family_chooser,
+                if budget.time_limit_seconds.is_some() {
+                    MoveFamilyUtilityMode::PerSecond
+                } else {
+                    MoveFamilyUtilityMode::PerAttempt
+                },
+                &mut rng,
+            );
+            let preview_started_at = get_current_time();
+            if let Some(preview) = candidate_sampler.sample_preview_for_family_default(
+                &search.current_state,
+                family,
+                &run_context.allowed_sessions,
+                &mut rng,
+            ) {
+                let preview_seconds =
+                    get_elapsed_seconds_between(preview_started_at, get_current_time());
                 let delta_cost = preview.delta_score();
                 search.record_preview_attempt(family, preview_seconds, delta_cost);
                 let current_score = search.current_state.total_score;
@@ -757,11 +794,31 @@ fn run_local_improver_default(
                         cached_elapsed_seconds.max(improvement_elapsed_seconds);
                     search.refresh_best_from_current(iteration, improvement_elapsed_seconds);
                     search.record_acceptance_result(true);
+                    search.policy_memory.move_family_chooser.record_attempt(
+                        family,
+                        preview_seconds + apply_seconds,
+                        Some(delta_cost),
+                        true,
+                    );
                 } else {
                     search.record_rejected_move(family);
+                    search.policy_memory.move_family_chooser.record_attempt(
+                        family,
+                        preview_seconds,
+                        None,
+                        true,
+                    );
                 }
             } else {
+                let preview_seconds =
+                    get_elapsed_seconds_between(preview_started_at, get_current_time());
                 search.record_no_candidate();
+                search.policy_memory.move_family_chooser.record_attempt(
+                    family,
+                    preview_seconds,
+                    None,
+                    false,
+                );
             }
 
             search.finish_iteration(iteration);

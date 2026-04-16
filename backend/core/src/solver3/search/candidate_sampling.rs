@@ -290,7 +290,7 @@ impl CandidateSampler {
     }
 
     #[inline]
-    fn sample_preview_for_family(
+    pub(crate) fn sample_preview_for_family(
         &self,
         state: &RuntimeState,
         family: MoveFamily,
@@ -335,7 +335,7 @@ impl CandidateSampler {
     }
 
     #[inline]
-    fn sample_preview_for_family_default(
+    pub(crate) fn sample_preview_for_family_default(
         &self,
         state: &RuntimeState,
         family: MoveFamily,
@@ -394,22 +394,25 @@ impl CandidateSampler {
 
         for _ in 0..MAX_RANDOM_CANDIDATE_ATTEMPTS {
             let session_idx = allowed_sessions[rng.random_range(0..allowed_sessions.len())];
+            if !runtime_session_can_swap(state, session_idx) {
+                continue;
+            }
             let left_group_idx = rng.random_range(0..state.compiled.num_groups);
             let mut right_group_idx = rng.random_range(0..state.compiled.num_groups);
             if right_group_idx == left_group_idx {
                 right_group_idx = (right_group_idx + 1) % state.compiled.num_groups;
             }
 
-            let left_slot = state.group_slot(session_idx, left_group_idx);
-            let right_slot = state.group_slot(session_idx, right_group_idx);
-            let left_members = &state.group_members[left_slot];
-            let right_members = &state.group_members[right_slot];
-            if left_members.is_empty() || right_members.is_empty() {
+            let Some(left_person_idx) =
+                runtime_pick_swappable_person_from_group(state, session_idx, left_group_idx, rng)
+            else {
                 continue;
-            }
-
-            let left_person_idx = left_members[rng.random_range(0..left_members.len())];
-            let right_person_idx = right_members[rng.random_range(0..right_members.len())];
+            };
+            let Some(right_person_idx) =
+                runtime_pick_swappable_person_from_group(state, session_idx, right_group_idx, rng)
+            else {
+                continue;
+            };
             let swap = SwapMove::new(session_idx, left_person_idx, right_person_idx);
 
             let preview_started_at = get_current_time();
@@ -815,6 +818,10 @@ impl CandidateSampler {
         tabu_retry_count: &mut usize,
         fallback_tabu_swap: &mut Option<SwapMove>,
     ) -> Option<SwapRuntimePreview> {
+        if !is_runtime_swappable_person(state, session_idx, anchor_person_idx) {
+            return None;
+        }
+
         let Some(source_group_idx) =
             state.person_location[state.people_slot(session_idx, anchor_person_idx)]
         else {
@@ -840,6 +847,9 @@ impl CandidateSampler {
             for offset in 0..target_members.len() {
                 let target_person_idx = target_members[(start + offset) % target_members.len()];
                 if target_person_idx == anchor_person_idx {
+                    continue;
+                }
+                if !is_runtime_swappable_person(state, session_idx, target_person_idx) {
                     continue;
                 }
 
@@ -977,22 +987,25 @@ impl CandidateSampler {
         fallback_tabu_swap: &mut Option<SwapMove>,
     ) -> Option<SwapRuntimePreview> {
         for _ in 0..MAX_RANDOM_TARGET_ATTEMPTS {
+            if !runtime_session_can_swap(state, session_idx) {
+                return None;
+            }
             let left_group_idx = rng.random_range(0..state.compiled.num_groups);
             let mut right_group_idx = rng.random_range(0..state.compiled.num_groups);
             if right_group_idx == left_group_idx {
                 right_group_idx = (right_group_idx + 1) % state.compiled.num_groups;
             }
 
-            let left_slot = state.group_slot(session_idx, left_group_idx);
-            let right_slot = state.group_slot(session_idx, right_group_idx);
-            let left_members = &state.group_members[left_slot];
-            let right_members = &state.group_members[right_slot];
-            if left_members.is_empty() || right_members.is_empty() {
+            let Some(left_person_idx) =
+                runtime_pick_swappable_person_from_group(state, session_idx, left_group_idx, rng)
+            else {
                 continue;
-            }
-
-            let left_person_idx = left_members[rng.random_range(0..left_members.len())];
-            let right_person_idx = right_members[rng.random_range(0..right_members.len())];
+            };
+            let Some(right_person_idx) =
+                runtime_pick_swappable_person_from_group(state, session_idx, right_group_idx, rng)
+            else {
+                continue;
+            };
             let swap = SwapMove::new(session_idx, left_person_idx, right_person_idx);
             if should_skip_tabu_swap_proposal(
                 &swap_sampling,
@@ -1025,6 +1038,10 @@ impl CandidateSampler {
         session_idx: usize,
         rng: &mut ChaCha12Rng,
     ) -> Option<SwapRuntimePreview> {
+        if !runtime_session_can_swap(state, session_idx) {
+            return None;
+        }
+
         for _ in 0..MAX_RANDOM_TARGET_ATTEMPTS {
             let left_group_idx = rng.random_range(0..state.compiled.num_groups);
             let mut right_group_idx = rng.random_range(0..state.compiled.num_groups);
@@ -1032,16 +1049,16 @@ impl CandidateSampler {
                 right_group_idx = (right_group_idx + 1) % state.compiled.num_groups;
             }
 
-            let left_slot = state.group_slot(session_idx, left_group_idx);
-            let right_slot = state.group_slot(session_idx, right_group_idx);
-            let left_members = &state.group_members[left_slot];
-            let right_members = &state.group_members[right_slot];
-            if left_members.is_empty() || right_members.is_empty() {
+            let Some(left_person_idx) =
+                runtime_pick_swappable_person_from_group(state, session_idx, left_group_idx, rng)
+            else {
                 continue;
-            }
-
-            let left_person_idx = left_members[rng.random_range(0..left_members.len())];
-            let right_person_idx = right_members[rng.random_range(0..right_members.len())];
+            };
+            let Some(right_person_idx) =
+                runtime_pick_swappable_person_from_group(state, session_idx, right_group_idx, rng)
+            else {
+                continue;
+            };
             let swap = SwapMove::new(session_idx, left_person_idx, right_person_idx);
             if let Ok(preview) = preview_swap_runtime_lightweight(state, &swap) {
                 return Some(preview);
@@ -1074,8 +1091,14 @@ impl CandidateSampler {
             right_person_idx,
             rng,
         )?;
-        let anchor_person_idx =
-            choose_repeat_guided_anchor_person(guidance, left_person_idx, right_person_idx, rng);
+        let anchor_person_idx = choose_repeat_guided_swappable_anchor_person(
+            state,
+            session_idx,
+            guidance,
+            left_person_idx,
+            right_person_idx,
+            rng,
+        )?;
         let source_group_idx =
             state.person_location[state.people_slot(session_idx, anchor_person_idx)]?;
 
@@ -1103,6 +1126,9 @@ impl CandidateSampler {
             for offset in 0..target_members.len() {
                 let target_person_idx = target_members[(start + offset) % target_members.len()];
                 if target_person_idx == anchor_person_idx {
+                    continue;
+                }
+                if !is_runtime_swappable_person(state, session_idx, target_person_idx) {
                     continue;
                 }
 
@@ -1463,6 +1489,32 @@ fn choose_repeat_guided_anchor_person(
     }
 }
 
+#[cfg(feature = "solver3-experimental-repeat-guidance")]
+fn choose_repeat_guided_swappable_anchor_person(
+    state: &RuntimeState,
+    session_idx: usize,
+    guidance: &RepeatGuidanceState,
+    left_person_idx: usize,
+    right_person_idx: usize,
+    rng: &mut ChaCha12Rng,
+) -> Option<usize> {
+    let preferred =
+        choose_repeat_guided_anchor_person(guidance, left_person_idx, right_person_idx, rng);
+    let alternate = if preferred == left_person_idx {
+        right_person_idx
+    } else {
+        left_person_idx
+    };
+
+    if is_runtime_swappable_person(state, session_idx, preferred) {
+        Some(preferred)
+    } else if is_runtime_swappable_person(state, session_idx, alternate) {
+        Some(alternate)
+    } else {
+        None
+    }
+}
+
 fn participating_clique_members(
     state: &RuntimeState,
     session_idx: usize,
@@ -1494,6 +1546,55 @@ fn runtime_session_can_clique_swap(state: &RuntimeState, session_idx: usize) -> 
                 )
         })
     })
+}
+
+fn runtime_session_can_swap(state: &RuntimeState, session_idx: usize) -> bool {
+    let mut swappable_group_count = 0usize;
+    for group_idx in 0..state.compiled.num_groups {
+        if runtime_group_has_swappable_person(state, session_idx, group_idx) {
+            swappable_group_count += 1;
+            if swappable_group_count >= 2 {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+fn runtime_group_has_swappable_person(
+    state: &RuntimeState,
+    session_idx: usize,
+    group_idx: usize,
+) -> bool {
+    let slot = state.group_slot(session_idx, group_idx);
+    state.group_members[slot]
+        .iter()
+        .copied()
+        .any(|person_idx| is_runtime_swappable_person(state, session_idx, person_idx))
+}
+
+fn runtime_pick_swappable_person_from_group(
+    state: &RuntimeState,
+    session_idx: usize,
+    group_idx: usize,
+    rng: &mut ChaCha12Rng,
+) -> Option<usize> {
+    let slot = state.group_slot(session_idx, group_idx);
+    let members = &state.group_members[slot];
+    if members.is_empty() {
+        return None;
+    }
+
+    let start = rng.random_range(0..members.len());
+    for offset in 0..members.len() {
+        let person_idx = members[(start + offset) % members.len()];
+        if is_runtime_swappable_person(state, session_idx, person_idx) {
+            return Some(person_idx);
+        }
+    }
+
+    None
 }
 
 fn runtime_active_clique_in_single_group(
@@ -1624,6 +1725,14 @@ fn is_runtime_transferable_person(
     session_idx: usize,
     person_idx: usize,
 ) -> bool {
+    is_runtime_swappable_person(state, session_idx, person_idx)
+}
+
+fn is_runtime_swappable_person(
+    state: &RuntimeState,
+    session_idx: usize,
+    person_idx: usize,
+) -> bool {
     state.compiled.person_participation[person_idx][session_idx]
         && state.person_location[state.people_slot(session_idx, person_idx)].is_some()
         && state
@@ -1641,8 +1750,8 @@ mod tests {
     use rand_chacha::ChaCha12Rng;
 
     use crate::models::{
-        ApiInput, Group, Objective, Person, ProblemDefinition, Solver3Params, SolverConfiguration,
-        SolverParams, StopConditions,
+        ApiInput, Constraint, Group, ImmovablePersonParams, Objective, Person, ProblemDefinition,
+        Solver3Params, SolverConfiguration, SolverParams, StopConditions,
     };
 
     use super::super::super::runtime_state::RuntimeState;
@@ -1770,6 +1879,62 @@ mod tests {
         RuntimeState::from_input(&input).unwrap()
     }
 
+    fn restricted_swap_runtime_state() -> RuntimeState {
+        let input = ApiInput {
+            problem: ProblemDefinition {
+                people: (0..5)
+                    .map(|i| Person {
+                        id: format!("p{}", i),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    })
+                    .collect(),
+                groups: vec![
+                    Group {
+                        id: "g0".into(),
+                        size: 3,
+                        session_sizes: None,
+                    },
+                    Group {
+                        id: "g1".into(),
+                        size: 2,
+                        session_sizes: None,
+                    },
+                ],
+                num_sessions: 1,
+            },
+            initial_schedule: Some(HashMap::from([(
+                "session_0".to_string(),
+                HashMap::from([
+                    (
+                        "g0".to_string(),
+                        vec!["p0".to_string(), "p1".to_string(), "p2".to_string()],
+                    ),
+                    ("g1".to_string(), vec!["p3".to_string(), "p4".to_string()]),
+                ]),
+            )])),
+            construction_seed_schedule: None,
+            objectives: vec![Objective {
+                r#type: "maximize_unique_contacts".into(),
+                weight: 1.0,
+            }],
+            constraints: vec![
+                Constraint::MustStayTogether {
+                    people: vec!["p0".into(), "p1".into()],
+                    sessions: Some(vec![0]),
+                },
+                Constraint::ImmovablePerson(ImmovablePersonParams {
+                    person_id: "p4".into(),
+                    group_id: "g1".into(),
+                    sessions: Some(vec![0]),
+                }),
+            ],
+            solver: solver3_config(),
+        };
+
+        RuntimeState::from_input(&input).unwrap()
+    }
+
     fn repeat_constrained_non_conflicting_state() -> RuntimeState {
         let input = ApiInput {
             problem: ProblemDefinition {
@@ -1883,6 +2048,65 @@ mod tests {
         let sampler = CandidateSampler;
         let sampled = sampler.select_previewed_move_default(&state, &selector, &[0], &mut rng);
         assert!(sampled.is_some());
+    }
+
+    #[test]
+    fn swap_eligibility_filters_immovable_and_clique_locked_people() {
+        let state = restricted_swap_runtime_state();
+        let cp = &state.compiled;
+
+        assert!(!super::is_runtime_swappable_person(
+            &state,
+            0,
+            cp.person_id_to_idx["p0"]
+        ));
+        assert!(!super::is_runtime_swappable_person(
+            &state,
+            0,
+            cp.person_id_to_idx["p1"]
+        ));
+        assert!(super::is_runtime_swappable_person(
+            &state,
+            0,
+            cp.person_id_to_idx["p2"]
+        ));
+        assert!(super::is_runtime_swappable_person(
+            &state,
+            0,
+            cp.person_id_to_idx["p3"]
+        ));
+        assert!(!super::is_runtime_swappable_person(
+            &state,
+            0,
+            cp.person_id_to_idx["p4"]
+        ));
+        assert!(super::runtime_session_can_swap(&state, 0));
+    }
+
+    #[test]
+    fn random_swap_sampler_only_selects_swappable_endpoints() {
+        let state = restricted_swap_runtime_state();
+        let cp = &state.compiled;
+        let mut rng = ChaCha12Rng::seed_from_u64(7);
+        let sampler = CandidateSampler;
+        let preview = sampler
+            .sample_random_swap_preview_in_session(
+                &state,
+                0,
+                SwapSamplingOptions::default(),
+                &mut Default::default(),
+                &mut rng,
+            )
+            .expect("swap preview should exist for the two remaining swappable people");
+
+        let mut sampled = [
+            preview.analysis.swap.left_person_idx,
+            preview.analysis.swap.right_person_idx,
+        ];
+        sampled.sort_unstable();
+        let mut expected = [cp.person_id_to_idx["p2"], cp.person_id_to_idx["p3"]];
+        expected.sort_unstable();
+        assert_eq!(sampled, expected);
     }
 
     #[test]

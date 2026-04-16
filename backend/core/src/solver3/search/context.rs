@@ -13,6 +13,7 @@ use crate::runtime_target::displayed_total_iterations;
 use crate::solver_support::SolverError;
 
 use super::super::runtime_state::RuntimeState;
+use super::family_selection::MoveFamilyChooserState;
 use super::path_relinking::MAX_EXACT_ALIGNMENT_SESSIONS;
 use super::tabu::SgpWeekPairTabuConfig;
 
@@ -1088,6 +1089,7 @@ pub(crate) struct SearchPolicyMemory {
     pub(crate) threshold: Option<ThresholdAcceptanceMemory>,
     pub(crate) late_acceptance: Option<LateAcceptanceMemory>,
     pub(crate) ils: Option<IteratedLocalSearchMemory>,
+    pub(crate) move_family_chooser: MoveFamilyChooserState,
 }
 
 #[derive(Debug, Clone, PartialEq)]
