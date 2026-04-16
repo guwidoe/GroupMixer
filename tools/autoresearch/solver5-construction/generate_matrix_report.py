@@ -54,6 +54,10 @@ def render_badge(text, badge_class="", inline_style=""):
     return f"<span class='badge{class_attr}'{style_attr}>{html.escape(str(text))}</span>"
 
 
+def neutral_badge_style():
+    return "background:#f8fafc;color:#334155;"
+
+
 def render_legend_item(badge_html, description):
     return f"<span class='legend-item'>{badge_html}<span>{html.escape(description)}</span></span>"
 
@@ -186,18 +190,24 @@ def main():
         "<p class='legend-copy'><strong>Quality badge</strong> shows the current constructive strength class: exact frontier, near frontier, or lower bound.</p>",
         "<div class='legend-title'>Method badges</div>",
         "<div class='legend-grid'>",
-        render_legend_item(render_badge("RR", inline_style="background:hsl(120 78% 78%);color:#1f2937;"), "round robin / 1-factorization"),
-        render_legend_item(render_badge("K6", inline_style="background:hsl(120 78% 78%);color:#1f2937;"), "Kirkman 6t+1 family"),
-        render_legend_item(render_badge("TD", inline_style="background:hsl(60 78% 78%);color:#1f2937;"), "transversal design family"),
-        render_legend_item(render_badge("AP", inline_style="background:hsl(120 78% 78%);color:#1f2937;"), "affine plane family"),
-        render_legend_item(render_badge("TD+G", inline_style="background:hsl(90 78% 78%);color:#1f2937;"), "transversal design plus the recursive +G(t)-style lift/composition operator"),
-        render_legend_item(render_badge("visual_only", inline_style="background:hsl(120 78% 78%);color:#1f2937;"), "shown for matrix completeness; excluded from the scored objective"),
+        render_legend_item(render_badge("RR", inline_style=neutral_badge_style()), "round robin / 1-factorization"),
+        render_legend_item(render_badge("K6", inline_style=neutral_badge_style()), "Kirkman 6t+1 family"),
+        render_legend_item(render_badge("TD", inline_style=neutral_badge_style()), "transversal design family"),
+        render_legend_item(render_badge("AP", inline_style=neutral_badge_style()), "affine plane family"),
+        render_legend_item(render_badge("TD+G", inline_style=neutral_badge_style()), "transversal design plus the recursive +G(t)-style lift/composition operator"),
+        render_legend_item(render_badge("visual_only", inline_style=neutral_badge_style()), "shown for matrix completeness; excluded from the scored objective"),
         "</div>",
         "<div class='legend-title'>Quality badges</div>",
         "<div class='legend-grid'>",
-        render_legend_item(render_badge("exact_frontier", inline_style=quality_badge_style({"quality_label": "exact_frontier"}, max_gap)), "target already reached / strongest current quality class"),
-        render_legend_item(render_badge("near_frontier", inline_style=quality_badge_style({"quality_label": "near_frontier"}, max_gap)), "close to frontier"),
-        render_legend_item(render_badge("lower_bound", inline_style=quality_badge_style({"quality_label": "lower_bound"}, max_gap)), "still below target / weaker constructive status"),
+        render_legend_item(render_badge("exact_frontier", inline_style=neutral_badge_style()), "target already reached / strongest current quality class"),
+        render_legend_item(render_badge("near_frontier", inline_style=neutral_badge_style()), "close to frontier"),
+        render_legend_item(render_badge("lower_bound", inline_style=neutral_badge_style()), "still below target / weaker constructive status"),
+        "</div>",
+        "<div class='legend-title'>Badge colors</div>",
+        "<div class='legend-grid'>",
+        render_legend_item(render_badge("green", inline_style=f"background:{gap_color(0, max_gap)};color:#1f2937;"), "good / target reached / strongest status"),
+        render_legend_item(render_badge("yellow", inline_style=f"background:{gap_color(1, max_gap)};color:#1f2937;"), "small remaining gap / near status"),
+        render_legend_item(render_badge("red", inline_style=f"background:{gap_color(max_gap if max_gap > 0 else 2, max_gap if max_gap > 0 else 2)};color:#1f2937;"), "larger remaining gap / weaker status"),
         "</div></div>",
     ]
 
