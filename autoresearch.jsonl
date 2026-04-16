@@ -1,0 +1,1 @@
+{"run":2,"commit":"0a18a6f","metric":0,"metrics":{},"status":"crash","description":"Switched autoresearch to the current solver5 worktree, but the rerun crashed immediately because tools/autoresearch/solver5-construction/autoresearch.sh was not executable under the worktree wrapper.","timestamp":1776358373775,"segment":0,"confidence":null,"iterationTokens":4403}
