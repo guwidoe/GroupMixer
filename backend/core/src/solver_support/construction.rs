@@ -35,6 +35,7 @@ pub(crate) struct BaselineConstructionContext<'a> {
     pub immovable_people: &'a HashMap<(usize, usize), usize>,
     pub cliques: &'a [Vec<usize>],
     pub clique_sessions: &'a [Option<Vec<usize>>],
+    pub hard_apart_partners_by_person_session: &'a [Vec<usize>],
     pub schedule: &'a mut Vec<Vec<Vec<usize>>>,
 }
 
@@ -48,6 +49,95 @@ impl BaselineConstructionContext<'_> {
     fn people_count(&self) -> usize {
         self.person_idx_to_id.len()
     }
+
+    #[inline]
+    fn person_session_slot(&self, day: usize, person_idx: usize) -> usize {
+        day * self.people_count() + person_idx
+    }
+
+    #[inline]
+    fn hard_apart_partners(&self, day: usize, person_idx: usize) -> &[usize] {
+        &self.hard_apart_partners_by_person_session[self.person_session_slot(day, person_idx)]
+    }
+
+    fn group_has_hard_apart_conflict(
+        &self,
+        day: usize,
+        person_idx: usize,
+        group_members: &[usize],
+    ) -> bool {
+        let partners = self.hard_apart_partners(day, person_idx);
+        !partners.is_empty() && group_members.iter().any(|member| partners.contains(member))
+    }
+
+    fn block_has_hard_apart_conflict(
+        &self,
+        day: usize,
+        block: &[usize],
+        group_members: &[usize],
+    ) -> bool {
+        block.iter().any(|&person_idx| {
+            self.group_has_hard_apart_conflict(day, person_idx, group_members)
+                || block.iter().any(|&other_idx| {
+                    other_idx != person_idx
+                        && self
+                            .hard_apart_partners(day, person_idx)
+                            .contains(&other_idx)
+                })
+        })
+    }
+}
+
+fn hard_apart_partners<'a>(
+    hard_apart_partners_by_person_session: &'a [Vec<usize>],
+    people_count: usize,
+    day: usize,
+    person_idx: usize,
+) -> &'a [usize] {
+    &hard_apart_partners_by_person_session[day * people_count + person_idx]
+}
+
+fn group_has_hard_apart_conflict(
+    hard_apart_partners_by_person_session: &[Vec<usize>],
+    people_count: usize,
+    day: usize,
+    person_idx: usize,
+    group_members: &[usize],
+) -> bool {
+    let partners = hard_apart_partners(
+        hard_apart_partners_by_person_session,
+        people_count,
+        day,
+        person_idx,
+    );
+    !partners.is_empty() && group_members.iter().any(|member| partners.contains(member))
+}
+
+fn block_has_hard_apart_conflict(
+    hard_apart_partners_by_person_session: &[Vec<usize>],
+    people_count: usize,
+    day: usize,
+    block: &[usize],
+    group_members: &[usize],
+) -> bool {
+    block.iter().any(|&person_idx| {
+        group_has_hard_apart_conflict(
+            hard_apart_partners_by_person_session,
+            people_count,
+            day,
+            person_idx,
+            group_members,
+        ) || block.iter().any(|&other_idx| {
+            other_idx != person_idx
+                && hard_apart_partners(
+                    hard_apart_partners_by_person_session,
+                    people_count,
+                    day,
+                    person_idx,
+                )
+                .contains(&other_idx)
+        })
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -79,6 +169,7 @@ pub(crate) fn apply_baseline_construction_heuristic(
 ) -> Result<(), SolverError> {
     let people_count = context.people_count();
     let group_count = context.group_count();
+    let hard_apart_partners_by_person_session = context.hard_apart_partners_by_person_session;
 
     // Preserve the legacy solver1 construction heuristic exactly.
     let mut rng = ChaCha12Rng::seed_from_u64(derive_phase_seed(
@@ -155,7 +246,15 @@ pub(crate) fn apply_baseline_construction_heuristic(
                 let group_size = context.effective_group_capacities[day * group_count + group_idx];
                 let available_space = group_size - group_cursors[group_idx];
 
-                if available_space >= clique.len() {
+                if available_space >= clique.len()
+                    && !block_has_hard_apart_conflict(
+                        hard_apart_partners_by_person_session,
+                        people_count,
+                        day,
+                        clique,
+                        &day_schedule[group_idx],
+                    )
+                {
                     for &member in clique {
                         day_schedule[group_idx].push(member);
                         assigned_in_day[member] = true;
@@ -189,7 +288,15 @@ pub(crate) fn apply_baseline_construction_heuristic(
             potential_groups.shuffle(&mut rng);
             for group_idx in potential_groups {
                 let group_size = context.effective_group_capacities[day * group_count + group_idx];
-                if group_cursors[group_idx] < group_size {
+                if group_cursors[group_idx] < group_size
+                    && !group_has_hard_apart_conflict(
+                        hard_apart_partners_by_person_session,
+                        people_count,
+                        day,
+                        person_idx,
+                        &day_schedule[group_idx],
+                    )
+                {
                     day_schedule[group_idx].push(person_idx);
                     group_cursors[group_idx] += 1;
                     assigned_in_day[person_idx] = true;
@@ -410,6 +517,11 @@ fn place_active_cliques_for_day(
             .filter(|&group_idx| {
                 let group_size = context.effective_group_capacities[day * group_count + group_idx];
                 group_cursors[group_idx] + clique.len() <= group_size
+                    && !context.block_has_hard_apart_conflict(
+                        day,
+                        clique,
+                        &context.schedule[day][group_idx],
+                    )
             })
             .collect();
 
@@ -468,6 +580,7 @@ fn fill_remaining_people_for_day(
             }
 
             let Some((left, right)) = choose_best_pair_for_group(
+                context,
                 &context.schedule[day][group_idx],
                 &unassigned_people,
                 day,
@@ -499,6 +612,7 @@ fn fill_remaining_people_for_day(
             }
 
             let Some(person_idx) = choose_best_candidate_for_group(
+                context,
                 &context.schedule[day][group_idx],
                 &unassigned_people,
                 day,
@@ -599,6 +713,7 @@ fn choose_best_group_for_block(
 }
 
 fn choose_best_pair_for_group(
+    context: &BaselineConstructionContext<'_>,
     group_members: &[usize],
     unassigned_people: &[usize],
     day: usize,
@@ -622,6 +737,12 @@ fn choose_best_pair_for_group(
         for right_idx in (left_idx + 1)..unassigned_people.len() {
             let left = unassigned_people[left_idx];
             let right = unassigned_people[right_idx];
+            if context.group_has_hard_apart_conflict(day, left, group_members)
+                || context.group_has_hard_apart_conflict(day, right, group_members)
+                || context.hard_apart_partners(day, left).contains(&right)
+            {
+                continue;
+            }
             let raw_freedom = pair_slot_freedom(
                 group_members,
                 left,
@@ -666,6 +787,7 @@ fn choose_best_pair_for_group(
 }
 
 fn choose_best_candidate_for_group(
+    context: &BaselineConstructionContext<'_>,
     group_members: &[usize],
     unassigned_people: &[usize],
     day: usize,
@@ -682,6 +804,9 @@ fn choose_best_candidate_for_group(
 
     let mut scored = unassigned_people
         .iter()
+        .filter(|&&person_idx| {
+            !context.group_has_hard_apart_conflict(day, person_idx, group_members)
+        })
         .map(|&person_idx| ScoredCandidate {
             person_idx,
             freedom: freedom_of_union(
@@ -910,6 +1035,10 @@ mod tests {
         let immovable_people = Box::leak(Box::new(HashMap::new()));
         let cliques = Box::leak(Box::new(Vec::new()));
         let clique_sessions = Box::leak(Box::new(Vec::new()));
+        let hard_apart_partners_by_person_session = Box::leak(Box::new(vec![
+            Vec::new();
+            num_sessions * person_participation.len()
+        ]));
         let schedule = Box::leak(Box::new(schedule));
         BaselineConstructionContext {
             effective_seed: 7,
@@ -920,6 +1049,7 @@ mod tests {
             immovable_people,
             cliques,
             clique_sessions,
+            hard_apart_partners_by_person_session,
             schedule,
         }
     }
@@ -1047,8 +1177,19 @@ mod tests {
         let selected_pair_penalties = vec![vec![0usize; 4]; 4];
         let params = FreedomAwareConstructionParams { gamma: 0.0 };
         let mut rng = ChaCha12Rng::seed_from_u64(3);
+        let context = context_with_schedule(
+            vec![vec![vec![], vec![]], vec![vec![], vec![]]],
+            vec![
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+            ],
+            vec![2, 2, 2, 2],
+        );
 
         let pair = choose_best_pair_for_group(
+            &context,
             &[],
             &[0, 1, 2, 3],
             0,
@@ -1079,10 +1220,21 @@ mod tests {
         let selected_pair_penalties = vec![vec![0usize; 4]; 4];
         let params = FreedomAwareConstructionParams { gamma: 1.0 };
         let mut saw_non_lexicographic = false;
+        let context = context_with_schedule(
+            vec![vec![vec![], vec![]], vec![vec![], vec![]]],
+            vec![
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+            ],
+            vec![2, 2, 2, 2],
+        );
 
         for seed in 0..32 {
             let mut rng = ChaCha12Rng::seed_from_u64(seed);
             let pair = choose_best_pair_for_group(
+                &context,
                 &[],
                 &[0, 1, 2, 3],
                 0,

@@ -414,6 +414,8 @@ impl State {
         if let Some(initial_schedule) = &input.initial_schedule {
             state.schedule = validate_schedule_as_incumbent(input, initial_schedule)?.schedule;
         } else {
+            let hard_apart_partners_by_person_session =
+                vec![Vec::new(); state.num_sessions as usize * state.person_idx_to_id.len()];
             let mut construction_context = BaselineConstructionContext {
                 effective_seed: state.effective_seed,
                 group_idx_to_id: &state.group_idx_to_id,
@@ -423,6 +425,7 @@ impl State {
                 immovable_people: &state.immovable_people,
                 cliques: &state.cliques,
                 clique_sessions: &state.clique_sessions,
+                hard_apart_partners_by_person_session: &hard_apart_partners_by_person_session,
                 schedule: &mut state.schedule,
             };
             apply_construction_seed_schedule(&mut construction_context, input)?;

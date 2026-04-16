@@ -673,6 +673,56 @@ fn runtime_state_clique_placed_together() {
     }
 }
 
+#[test]
+fn runtime_state_construction_respects_must_stay_apart() {
+    let mut input = minimal_input();
+    input.constraints = vec![Constraint::MustStayApart {
+        people: vec!["p0".into(), "p1".into()],
+        sessions: None,
+    }];
+
+    let state = RuntimeState::from_input(&input).unwrap();
+    let cp = &state.compiled;
+    let p0 = cp.person_id_to_idx["p0"];
+    let p1 = cp.person_id_to_idx["p1"];
+
+    for sidx in 0..cp.num_sessions {
+        assert_ne!(
+            state.person_location[state.people_slot(sidx, p0)],
+            state.person_location[state.people_slot(sidx, p1)],
+            "p0 and p1 must stay apart in session {}",
+            sidx
+        );
+    }
+}
+
+#[test]
+fn runtime_state_normalizes_invalid_construction_seed_must_stay_apart_violation() {
+    let mut input = minimal_input();
+    input.constraints = vec![Constraint::MustStayApart {
+        people: vec!["p0".into(), "p1".into()],
+        sessions: Some(vec![0]),
+    }];
+    input.construction_seed_schedule = Some(HashMap::from([(
+        "session_0".into(),
+        HashMap::from([
+            ("g0".into(), vec!["p0".into(), "p1".into()]),
+            ("g1".into(), Vec::new()),
+        ]),
+    )]));
+
+    let state = RuntimeState::from_input(&input).unwrap();
+    let cp = &state.compiled;
+    let p0 = cp.person_id_to_idx["p0"];
+    let p1 = cp.person_id_to_idx["p1"];
+
+    assert_ne!(
+        state.person_location[state.people_slot(0, p0)],
+        state.person_location[state.people_slot(0, p1)],
+        "construction normalization must repair must-stay-apart seed violations"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // 4. Pair contacts
 // ---------------------------------------------------------------------------
