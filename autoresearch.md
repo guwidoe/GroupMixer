@@ -209,3 +209,15 @@ Lane definition and references live in:
   - remaining weak spots: large-gender-immovable still around `1.0412x`; partial-attendance slightly regressed to `1.0021x`
   - runtime got slower than the previous best (`50.61s -> 54.96s`), but the primary broad quality metric improved honestly
   - takeaway: tiny fairness nudges based on **share deficit in near ties** are meaningfully safer than productivity-based bonuses and may be a viable refinement direction
+- Experiment 11: reduced the diversification-burst stagnation threshold from `25_000` to `20_000`.
+  - outcome: **discarded**
+  - primary metric stayed close but slightly worse than the current best (`98.0577` vs `98.0095`)
+  - large-gender-immovable improved modestly (`1.0412x -> 1.0253x`), but Sailing worsened to a regression (`0.9815x -> 1.0111x`) and runtime ballooned badly (`54.94s -> 68.55s`)
+  - takeaway: earlier diversification is not free; it can help some stuck cases, but this threshold was too aggressive for the broad lane and spent too much time polishing donors
+- Experiment 12: increased the record-to-record initial threshold from `2.0` to `2.25`.
+  - outcome: **keep**
+  - primary metric improved from `98.0095` to `97.2726`
+  - quality wins were broad rather than concentrated in one case: Sailing improved to `0.9754x`, kirkman improved further to `0.8000x`, transfer-heavy improved to `0.9750x`, and large-gender-immovable improved from `1.0412x` to `1.0253x`
+  - social-golfer softened a bit versus Experiment 10 (`0.9431x -> 0.9512x`), and partial-attendance stayed a mild regression (`1.0037x`), but the broad aggregate still improved clearly
+  - runtime also improved materially versus Experiment 10 (`54.96s -> 52.63s`)
+  - takeaway: a slightly wider early record-to-record acceptance band appears to improve diversification/escape behavior across multiple canonical cases without reopening the old Sailing failure mode; this looks like a promising broader-than-chooser search-policy direction
