@@ -21,11 +21,12 @@ fn breakout_resets_the_stagnation_counter() {
 }
 
 #[test]
-fn active_repeated_pair_guidance_only_kicks_in_after_stagnation() {
+fn active_repeated_pair_guidance_only_kicks_in_after_deeper_stagnation() {
     assert!(!should_prefer_active_repeated_pairs(0));
     assert!(!should_prefer_active_repeated_pairs(1));
     assert!(!should_prefer_active_repeated_pairs(2));
-    assert!(should_prefer_active_repeated_pairs(3));
+    assert!(!should_prefer_active_repeated_pairs(3));
+    assert!(should_prefer_active_repeated_pairs(4));
 }
 
 #[test]
