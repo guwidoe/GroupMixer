@@ -159,6 +159,7 @@ def main():
         ".legend{display:flex;gap:10px;align-items:center;margin:12px 0 18px 0;flex-wrap:wrap;}"
         ".legend-block{margin:10px 0 16px 0;padding:12px 14px;background:#f8fafc;border:1px solid #d7dee7;border-radius:12px;}"
         ".legend-title{font-size:12px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:#334155;margin-bottom:8px;}"
+        ".legend-copy{font-size:12px;line-height:1.45;color:#475569;margin:0 0 10px 0;}"
         ".legend-grid{display:flex;gap:8px 14px;flex-wrap:wrap;}"
         ".legend-item{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:#334155;}"
         ".swatch{padding:6px 10px;border:1px solid #bbb;border-radius:999px;font-size:12px;}"
@@ -180,16 +181,23 @@ def main():
         "</div>",
         "<div class='legend-block'>",
         "<div class='legend-title'>How to read the dashboard</div>",
+        "<p class='legend-copy'><strong>Cell background</strong> shows target gap severity: green means the target is reached, yellow means a small remaining gap, and orange/red means the cell is further from target.</p>",
+        "<p class='legend-copy'><strong>Method badge text</strong> tells you which construction route currently achieves the cell. <strong>Method badge color</strong> follows the same green/yellow/red gap scheme as the cell background, so the badge color means progress, not family identity.</p>",
+        "<p class='legend-copy'><strong>Quality badge</strong> shows the current constructive strength class: exact frontier, near frontier, or lower bound.</p>",
+        "<div class='legend-title'>Method badges</div>",
         "<div class='legend-grid'>",
         render_legend_item(render_badge("RR", inline_style="background:hsl(120 78% 78%);color:#1f2937;"), "round robin / 1-factorization"),
         render_legend_item(render_badge("K6", inline_style="background:hsl(120 78% 78%);color:#1f2937;"), "Kirkman 6t+1 family"),
         render_legend_item(render_badge("TD", inline_style="background:hsl(60 78% 78%);color:#1f2937;"), "transversal design family"),
         render_legend_item(render_badge("AP", inline_style="background:hsl(120 78% 78%);color:#1f2937;"), "affine plane family"),
-        render_legend_item(render_badge("TD+G", inline_style="background:hsl(90 78% 78%);color:#1f2937;"), "family badge shows current method; color follows the same gap scheme as the cell"),
+        render_legend_item(render_badge("TD+G", inline_style="background:hsl(90 78% 78%);color:#1f2937;"), "transversal design plus the recursive +G(t)-style lift/composition operator"),
+        render_legend_item(render_badge("visual_only", inline_style="background:hsl(120 78% 78%);color:#1f2937;"), "shown for matrix completeness; excluded from the scored objective"),
+        "</div>",
+        "<div class='legend-title'>Quality badges</div>",
+        "<div class='legend-grid'>",
         render_legend_item(render_badge("exact_frontier", inline_style=quality_badge_style({"quality_label": "exact_frontier"}, max_gap)), "target already reached / strongest current quality class"),
         render_legend_item(render_badge("near_frontier", inline_style=quality_badge_style({"quality_label": "near_frontier"}, max_gap)), "close to frontier"),
         render_legend_item(render_badge("lower_bound", inline_style=quality_badge_style({"quality_label": "lower_bound"}, max_gap)), "still below target / weaker constructive status"),
-        render_legend_item(render_badge("visual_only", inline_style="background:hsl(120 78% 78%);color:#1f2937;"), "shown for matrix completeness; excluded from the scored objective"),
         "</div></div>",
     ]
 
