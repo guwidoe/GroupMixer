@@ -63,6 +63,13 @@ fn published_schedule_catalog_exposes_8_3_10_case() {
         10
     );
     assert_eq!(
+        published::exact_case(9, 4)
+            .expect("published schedule catalog should expose the 9-4-11 case")
+            .encoded_weeks
+            .len(),
+        11
+    );
+    assert_eq!(
         published::exact_case(10, 4)
             .expect("published schedule catalog should expose the 10-4-9 case")
             .encoded_weeks

@@ -211,6 +211,18 @@ fn solver5_solves_published_10_4_9_case() {
 }
 
 #[test]
+fn solver5_solves_published_9_4_11_case() {
+    let input = pure_input(9, 4, 11);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver
+        .solve(&input)
+        .expect("published schedule bank should solve 9-4-11");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 11);
+}
+
+#[test]
 fn solver5_solves_published_6_4_7_case() {
     let input = pure_input(6, 4, 7);
     let solver = SearchEngine::new(&input.solver);
