@@ -1,5 +1,5 @@
-use super::families::Schedule;
 use super::problem::PureSgpProblem;
+use super::types::Schedule;
 use crate::models::{ApiInput, ApiSchedule, MovePolicy, SolverKind, SolverResult, StopReason};
 use crate::solver3::{OracleSnapshot, RuntimeState};
 use crate::solver_support::SolverError;
@@ -62,14 +62,15 @@ fn to_api_schedule(
     schedule: &Schedule,
 ) -> HashMap<String, HashMap<String, Vec<String>>> {
     let mut api = HashMap::new();
-    for (week_idx, groups) in schedule.iter().enumerate() {
+    for (week_idx, groups) in schedule.weeks().iter().enumerate() {
         let mut week_map = HashMap::new();
-        for (group_idx, members) in groups.iter().enumerate() {
+        for (group_idx, members) in groups.blocks().iter().enumerate() {
             week_map.insert(
                 problem.groups[group_idx].clone(),
                 members
+                    .members()
                     .iter()
-                    .map(|person_idx| problem.people[*person_idx].clone())
+                    .map(|person_idx| problem.people[person_idx.raw()].clone())
                     .collect(),
             );
         }

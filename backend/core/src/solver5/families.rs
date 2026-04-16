@@ -1,48 +1,57 @@
 use super::field::FiniteField;
+use super::types::{
+    CompositionOperatorId, ConstructionFamilyId, ConstructionResult, Schedule,
+};
 
-pub(super) type Schedule = Vec<Vec<Vec<usize>>>;
-
-pub(super) fn construct_schedule(num_groups: usize, group_size: usize, num_weeks: usize) -> Option<(Schedule, &'static str)> {
-    let (mut schedule, family) = construct_max_schedule(num_groups, group_size)?;
-    if num_weeks > schedule.len() {
-        return None;
-    }
-    schedule.truncate(num_weeks);
-    Some((schedule, family))
+pub(super) fn construct_schedule(
+    num_groups: usize,
+    group_size: usize,
+    num_weeks: usize,
+) -> Option<ConstructionResult> {
+    construct_max_schedule(num_groups, group_size)?.truncate_to_requested(num_weeks)
 }
 
 pub(super) fn construct_max_schedule(
     num_groups: usize,
     group_size: usize,
-) -> Option<(Schedule, &'static str)> {
+) -> Option<ConstructionResult> {
     if group_size == 2 {
-        return Some((construct_round_robin(num_groups), "round_robin"));
+        return Some(ConstructionResult::new(
+            construct_round_robin(num_groups),
+            ConstructionFamilyId::RoundRobin,
+        ));
     }
 
     let field = FiniteField::for_order(num_groups)?;
     if group_size == 3 && num_groups % 6 == 1 {
-        return Some((construct_kirkman_6t_plus_1(&field), "kirkman_6t_plus_1"));
+        return Some(ConstructionResult::new(
+            construct_kirkman_6t_plus_1(&field),
+            ConstructionFamilyId::Kirkman6TPlus1,
+        ));
     }
     if group_size == num_groups {
-        return Some((construct_affine_plane(&field), "affine_plane_prime_power"));
+        return Some(ConstructionResult::new(
+            construct_affine_plane(&field),
+            ConstructionFamilyId::AffinePlanePrimePower,
+        ));
     }
     if group_size >= 3 && group_size <= num_groups {
-        let mut schedule = construct_transversal_design(&field, group_size);
-        let mut family = "transversal_design_prime_power";
+        let mut result = ConstructionResult::new(
+            construct_transversal_design(&field, group_size),
+            ConstructionFamilyId::TransversalDesignPrimePower,
+        );
         if let Some(extra_weeks) = lift_transversal_latent_groups(num_groups, group_size) {
-            schedule.extend(extra_weeks);
-            family = "transversal_design_prime_power_plus_recursive";
+            result.schedule.extend(extra_weeks);
+            result.max_supported_weeks = result.schedule.len();
+            result = result.add_operator(CompositionOperatorId::RecursiveTransversalLift);
         }
-        return Some((schedule, family));
+        return Some(result);
     }
 
     None
 }
 
-fn lift_transversal_latent_groups(
-    num_groups: usize,
-    group_size: usize,
-) -> Option<Schedule> {
+fn lift_transversal_latent_groups(num_groups: usize, group_size: usize) -> Option<Schedule> {
     if num_groups % group_size != 0 {
         return None;
     }
@@ -53,25 +62,31 @@ fn lift_transversal_latent_groups(
     }
 
     let upper_bound = counting_bound(smaller_num_groups, group_size);
-    let (smaller_schedule, _) = construct_max_schedule(smaller_num_groups, group_size)?;
+    let smaller_schedule = construct_max_schedule(smaller_num_groups, group_size)?.schedule;
     let usable_weeks = smaller_schedule.len().min(upper_bound);
     if usable_weeks == 0 {
         return None;
     }
 
     let mut lifted = Vec::with_capacity(usable_weeks);
-    for week in smaller_schedule.into_iter().take(usable_weeks) {
+    for week in smaller_schedule.weeks().iter().take(usable_weeks) {
         let mut lifted_week = Vec::with_capacity(num_groups);
         for latent_group in 0..group_size {
             let offset = latent_group * num_groups;
-            for block in &week {
-                lifted_week.push(block.iter().map(|person| offset + person).collect());
+            for block in week.blocks() {
+                lifted_week.push(
+                    block
+                        .members()
+                        .iter()
+                        .map(|person| person.raw() + offset)
+                        .collect(),
+                );
             }
         }
         lifted.push(lifted_week);
     }
 
-    Some(lifted)
+    Some(Schedule::from_raw(lifted))
 }
 
 fn counting_bound(num_groups: usize, group_size: usize) -> usize {
@@ -96,7 +111,7 @@ fn construct_round_robin(num_groups: usize) -> Schedule {
         }
     }
 
-    weeks
+    Schedule::from_raw(weeks)
 }
 
 fn construct_kirkman_6t_plus_1(field: &FiniteField) -> Schedule {
@@ -158,7 +173,7 @@ fn construct_kirkman_6t_plus_1(field: &FiniteField) -> Schedule {
         }
     }
 
-    classes
+    Schedule::from_raw(classes)
 }
 
 fn construct_transversal_design(field: &FiniteField, group_size: usize) -> Schedule {
@@ -179,7 +194,7 @@ fn construct_transversal_design(field: &FiniteField, group_size: usize) -> Sched
         }
         weeks.push(week);
     }
-    weeks
+    Schedule::from_raw(weeks)
 }
 
 fn construct_affine_plane(field: &FiniteField) -> Schedule {
@@ -209,7 +224,7 @@ fn construct_affine_plane(field: &FiniteField) -> Schedule {
         weeks.push(week);
     }
 
-    weeks
+    Schedule::from_raw(weeks)
 }
 
 fn td_person(latent_group: usize, symbol: usize, order: usize) -> usize {

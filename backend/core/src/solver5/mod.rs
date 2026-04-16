@@ -5,6 +5,7 @@ mod families;
 mod field;
 mod problem;
 mod result;
+mod types;
 
 #[cfg(test)]
 mod tests;
@@ -41,11 +42,7 @@ impl SearchEngine {
             }
         }
 
-        let (schedule, _family) = construct_schedule(
-            problem.num_groups,
-            problem.group_size,
-            problem.num_weeks,
-        )
+        let construction = construct_schedule(problem.num_groups, problem.group_size, problem.num_weeks)
         .ok_or_else(|| {
             SolverError::ValidationError(format!(
                 "solver5 does not yet have a construction family for {}-{}-{}",
@@ -56,7 +53,7 @@ impl SearchEngine {
         build_solver_result(
             input,
             &problem,
-            &schedule,
+            &construction.schedule,
             self.configuration.seed.unwrap_or(DEFAULT_SOLVER5_SEED),
         )
     }
