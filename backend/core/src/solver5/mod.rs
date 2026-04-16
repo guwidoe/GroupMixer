@@ -5,6 +5,7 @@ mod composition;
 mod families;
 mod field;
 mod heuristics;
+mod portfolio;
 mod problem;
 mod result;
 mod router;

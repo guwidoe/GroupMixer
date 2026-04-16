@@ -1,5 +1,11 @@
 use super::helpers::pure_input;
-use crate::solver5::{families, field::FiniteField, SearchEngine};
+use crate::solver5::{
+    families,
+    field::FiniteField,
+    portfolio::FamilyEvaluation,
+    problem::PureSgpProblem,
+    SearchEngine,
+};
 
 #[test]
 fn round_robin_family_constructs_full_one_factorization() {
@@ -44,4 +50,46 @@ fn end_to_end_round_robin_schedule_still_scores_zero() {
     let result = solver.solve(&input).expect("round robin should solve 4-2-7");
 
     assert_eq!(result.final_score, 0.0);
+}
+
+#[test]
+fn family_registry_exposes_current_portfolio_order() {
+    let families = families::registered_families();
+
+    let labels = families
+        .into_iter()
+        .map(|family| family.id().label())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        labels,
+        vec![
+            "round_robin",
+            "kirkman_6t_plus_1",
+            "affine_plane_prime_power",
+            "transversal_design_prime_power",
+        ]
+    );
+}
+
+#[test]
+fn family_evaluation_is_separate_from_construction() {
+    let input = pure_input(4, 3, 4);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let family = families::registered_families()
+        .into_iter()
+        .find(|family| family.id().label() == "transversal_design_prime_power")
+        .expect("transversal family should be registered");
+
+    assert_eq!(
+        family.evaluate(&problem),
+        FamilyEvaluation::Applicable {
+            max_supported_weeks: 4,
+        }
+    );
+
+    let result = family
+        .construct(&problem)
+        .expect("evaluation-compatible family should construct");
+    assert_eq!(result.max_supported_weeks, 4);
 }
