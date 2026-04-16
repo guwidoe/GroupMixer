@@ -223,6 +223,18 @@ fn solver5_solves_published_9_4_11_case() {
 }
 
 #[test]
+fn solver5_solves_molr_group_fill_10_10_4_case() {
+    let input = pure_input(10, 10, 4);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver
+        .solve(&input)
+        .expect("molr group-fill construction should solve 10-10-4");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 4);
+}
+
+#[test]
 fn solver5_solves_ownsg_10_9_5_case() {
     let input = pure_input(10, 9, 5);
     let solver = SearchEngine::new(&input.solver);

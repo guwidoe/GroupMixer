@@ -1,4 +1,4 @@
-use crate::solver5::catalog::{kts, nkts, ownsg, p4, prime_powers, published, ritd};
+use crate::solver5::catalog::{kts, molr, nkts, ownsg, p4, prime_powers, published, ritd};
 
 #[test]
 fn prime_power_catalog_exposes_supported_field_orders() {
@@ -126,4 +126,13 @@ fn ritd_catalog_exposes_10_5_case() {
     assert_eq!(case.complete_parallel_classes, 8);
     assert!(case.add_group_fill_week);
     assert_eq!(ritd::source().name, "ritd_catalog");
+}
+
+#[test]
+fn molr_catalog_exposes_10_10_case() {
+    let case = molr::exact_case(10, 10).expect("molr catalog should expose the 10-10 case");
+
+    assert_eq!(case.base_weeks, 3);
+    assert_eq!(case.group_fill_week.len(), 10);
+    assert_eq!(molr::source().name, "molr_catalog");
 }

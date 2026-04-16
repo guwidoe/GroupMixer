@@ -56,6 +56,7 @@ Examples:
 - `KTS(6t+3)` — Kirkman / resolvable triple-system route on `6t+3` players
 - `ownSG` — starter-block own-social-golfer construction
 - `RITD` — resolvable incomplete transversal design
+- `MOLR+G` — MOLR / MOLS lower-bound route with one added group-fill week
 - `RTD` — resolvable transversal design / MOLS route
 - `AP` — affine plane
 - `RTD+G` — resolvable transversal design with recursive lift
@@ -112,6 +113,8 @@ Method abbreviations are defined in the target file.
 Current conventions include:
 - `RR`
 - `KTS(6t+3)`
+- `RITD`
+- `MOLR+G`
 - `RTD`
 - `AP`
 - `+G`
