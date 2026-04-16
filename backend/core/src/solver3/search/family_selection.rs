@@ -10,6 +10,8 @@ const ADAPTIVE_FAMILY_MIN_WEIGHT: f64 = 0.10;
 const ADAPTIVE_FAMILY_MIN_CANDIDATE_RATE: f64 = 0.05;
 const ADAPTIVE_FAMILY_MIN_SHARE_RATIO: f64 = 0.5;
 const ADAPTIVE_FAMILY_MAX_SHARE_RATIO: f64 = 1.5;
+const ADAPTIVE_FAMILY_REJECTED_CANDIDATE_PENALTY: f64 = 0.10;
+const ADAPTIVE_FAMILY_NO_CANDIDATE_PENALTY: f64 = 0.03;
 const MIN_UTILITY_SECONDS: f64 = 1.0e-9;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -178,9 +180,14 @@ impl MoveFamilyChooserState {
             total_seconds.max(0.0),
             ADAPTIVE_FAMILY_RECENCY_ALPHA,
         );
+        let reward_signal = match accepted_delta {
+            Some(delta) => signed_sqrt_reward(delta),
+            None if had_candidate => -ADAPTIVE_FAMILY_REJECTED_CANDIDATE_PENALTY,
+            None => -ADAPTIVE_FAMILY_NO_CANDIDATE_PENALTY,
+        };
         update_ema(
             &mut arm.recent_reward,
-            accepted_delta.map(signed_sqrt_reward).unwrap_or(0.0),
+            reward_signal,
             ADAPTIVE_FAMILY_RECENCY_ALPHA,
         );
         update_ema(

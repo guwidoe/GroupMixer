@@ -146,3 +146,17 @@ Lane definition and references live in:
   1. policy improvements that survive multiseed averaging
   2. hotpath wins that do not distort family mix in harmful ways
   3. multi-step refinement of promising ideas before giving up
+- Experiment 1: softened adaptive chooser utility ranking with `normalized.sqrt()` before weighting.
+  - outcome: **discarded**
+  - primary metric regressed from `102.5382` to `103.7673`
+  - runtime also got worse (`objective_suite_total_runtime_seconds` `47.98 -> 54.27`)
+  - main damage stayed concentrated in Sailing (`1.3977x -> 1.4080x`) while several broad-lane runtimes inflated
+  - takeaway: broad utility compression increased exploration/diversity in a way that hurt both quality and throughput; the next refinement should be more selective than globally softening utility differences
+- Experiment 2: added mild negative reward for rejected/no-candidate family attempts so chooser utility is not driven only by successful accepts.
+  - outcome: **keep**
+  - primary metric improved from `102.5382` to `101.0107`
+  - biggest win: Sailing collapsed from `3425.75` mean (`1.3977x`) to `2409.75` mean (`0.9832x`)
+  - other wins: transfer-attribute-balance improved to `0.9825x`
+  - regressions to watch: kirkman worsened to `1.1000x`, large-gender-immovable worsened to `1.0316x`, partial-attendance worsened to `1.0116x`
+  - hotpath/raw-runtime diagnostics got slower, but the primary broad fixed-time quality metric improved decisively
+  - next refinement should preserve the failure-penalty idea while clawing back the regressions outside Sailing and some of the hotpath slowdown
