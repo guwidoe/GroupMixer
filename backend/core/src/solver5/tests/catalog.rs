@@ -7,13 +7,14 @@ fn prime_power_catalog_exposes_supported_field_orders() {
         .map(|spec| spec.order)
         .collect::<Vec<_>>();
 
-    assert_eq!(orders, vec![2, 3, 4, 5, 7, 8, 9]);
+    assert_eq!(orders, vec![2, 3, 4, 5, 7, 8, 9, 13]);
 }
 
 #[test]
 fn p4_catalog_exposes_exception_totals() {
     assert!(p4::rgdd_group_size_2_exception_totals().contains(&20));
     assert_eq!(p4::source().name, "p4_exception_catalog");
+    assert_eq!(p4::rbibd_source().name, "p4_resolvable_bibd_family");
 }
 
 #[test]

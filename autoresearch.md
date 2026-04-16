@@ -121,16 +121,24 @@ Interpretation note:
   - catalog-backed exact KTS cases for 9 and 15 players (`5-3-7` is now exact via `kts`)
   - catalog-backed exact NKTS cases for 18 players (`6-3-8`)
   - pseudo-doubled NKTS constructions seeded from exact half-size KTS schedules (`10-3-13` now constructs honestly from `KTS(15)`)
+  - published-schedule bank coverage for source-backed triples / higher-`p` exceptions, including:
+    - `8-3-10`
+    - `6-4-7` (with one documented transcription correction on the archived source)
+    - `8-4-10`
+    - `10-4-9`
+    - `6-5-6`, `6-6-3`
+    - `10-5-7`, `10-6-6`, `10-7-5`, `10-8-4`, `10-9-3`, `10-10-3`
   - prime-power RTD / MOLS-style transversal-design constructors for `3 <= p <= g`
   - prime-power affine-plane constructors for `p = g`
   - recursive `+G(t)`-style lifting across RTD latent groups when `p | g` and the smaller `(g/p)-p-*` instance is already constructible
 - Active kept benchmark baseline is now:
-  - commit: `6352752`
-  - `total_constructed_weeks = 307`
-  - `frontier_gap_sum = 279`
-  - `solved_cells = 35`
-  - `exact_frontier_cells = 19`
-  - `p3_constructed_weeks = 67`
+  - commit: `a5b5899`
+  - `total_constructed_weeks = 364`
+  - `frontier_gap_sum = 222`
+  - `solved_cells = 45`
+  - `exact_frontier_cells = 21`
+  - `p3_constructed_weeks = 69`
+  - `p4_constructed_weeks = 52`
 
 ## What's Been Tried
 - Initial setup established the solver5 scaffold, validator, engine registration, benchmark harness, and the round-robin baseline.
@@ -143,16 +151,22 @@ Interpretation note:
   - exact `NKTS(18)` raised `6-3` coverage to `8`
   - exact `KTS(15)` now solves `5-3-7`
   - a pseudo-doubling construction from `KTS(15)` now solves `10-3-13`
+- Published explicit schedules are now a major honest coverage source:
+  - Warwick Harvey archive cases now cover `8-3-10`, `10-4-9`, `6-5-6`, `6-6-3`, and the `10-p-*` rows for `p=5..10`
+  - the archived `6-4-7` page entry had one obvious duplicated-player typo; a single-entry correction (`[1, 5, 16, 19] -> [1, 7, 16, 19]`) restores a valid pure-SGP schedule and is now documented inline in the catalog
+  - Alejandro Aguado's explicit `8-4-10` construction replaced the weaker `8-4-9` source-backed patch
+- The Warwick archive appears exhausted for benchmark-relevant improvements inside the fixed `2..10 x 2..10` matrix after landing the `6-4`, `6-5`, `6-6`, `8-3`, `8-4`, `10-4`, and `10-p` (`p>=5`) cases above.
 - The main remaining triples frontier is now `8-3-11` (24 players). Any next `p=3` work should target an honest 24-player construction or a structurally justified composition, not another generic cyclic shortcut.
 - Remaining live directions should stay structural constructor families, not search-based cheating:
   - honest 24-player triple coverage for `8-3-11`
-  - router enrichment for under-modeled `p` families, with `p=4` as the next obvious high-ROI gap rather than a special architecture class
+  - stronger `p=4` coverage, especially `9-4-11` and `10-4-10..13`, through explicit published schedules or actual RBIBD / RGDD family work rather than benchmark-shaped glue
+  - the most promising current theorem-family route is a finite-field resolvable `(v,4,1)`-BIBD construction for `v = 3q + 1`; inside the fixed matrix this should honestly target `7-4-9` and `10-4-13`
   - broader RBIBD / RGDD / URD / RITD / ownSG-style patches only after the highest-ROI family-policy gaps are exhausted
 
 ## Immediate Next Loop Behavior
-- Active kept benchmark baseline is now commit `6352752` at `total_constructed_weeks = 307`.
+- Active kept benchmark baseline is now commit `a5b5899` at `total_constructed_weeks = 364`.
 - The next feature buildout order is now:
   1. either close the remaining triples gap at `8-3-11` with an honest 24-player construction, or conclude quickly that the literature / catalog path is too thin for now
-  2. strengthen the general router so more `p` values have explicit theory-backed family-selection policy, with `p=4` next in practice
+  2. strengthen `p=4` beyond the current published patches, first with the finite-field `v = 3q + 1` resolvable-BIBD family for `7-4-9` and `10-4-13`, then with a separate lane for `9-4-11` if needed
   3. broader catalog-backed patch and design families later
 - Keep preferring reusable family logic or justified composition over per-cell glue.

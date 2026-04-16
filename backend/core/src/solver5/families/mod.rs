@@ -11,6 +11,7 @@ use super::types::{
 mod affine_plane;
 mod kirkman;
 mod nkts;
+mod p4_rbibd;
 mod published;
 mod round_robin;
 mod transversal_design;
@@ -21,8 +22,9 @@ pub(super) fn registered_families() -> Vec<&'static dyn ConstructionFamily> {
         &KIRKMAN_6T_PLUS_1_FAMILY,
         &KIRKMAN_TRIPLE_SYSTEM_FAMILY,
         &NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY,
-        &PUBLISHED_SCHEDULE_BANK_FAMILY,
         &AFFINE_PLANE_PRIME_POWER_FAMILY,
+        &P4_RESOLVABLE_BIBD_FAMILY,
+        &PUBLISHED_SCHEDULE_BANK_FAMILY,
         &TRANSVERSAL_DESIGN_PRIME_POWER_FAMILY,
     ]
 }
@@ -31,8 +33,9 @@ struct RoundRobinFamily;
 struct Kirkman6TPlus1Family;
 struct KirkmanTripleSystemFamily;
 struct NearlyKirkmanTripleSystemFamily;
-struct PublishedScheduleBankFamily;
 struct AffinePlanePrimePowerFamily;
+struct P4ResolvableBIBDFamily;
+struct PublishedScheduleBankFamily;
 struct TransversalDesignPrimePowerFamily;
 
 static ROUND_ROBIN_FAMILY: RoundRobinFamily = RoundRobinFamily;
@@ -40,8 +43,9 @@ static KIRKMAN_6T_PLUS_1_FAMILY: Kirkman6TPlus1Family = Kirkman6TPlus1Family;
 static KIRKMAN_TRIPLE_SYSTEM_FAMILY: KirkmanTripleSystemFamily = KirkmanTripleSystemFamily;
 static NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY: NearlyKirkmanTripleSystemFamily =
     NearlyKirkmanTripleSystemFamily;
-static PUBLISHED_SCHEDULE_BANK_FAMILY: PublishedScheduleBankFamily = PublishedScheduleBankFamily;
 static AFFINE_PLANE_PRIME_POWER_FAMILY: AffinePlanePrimePowerFamily = AffinePlanePrimePowerFamily;
+static P4_RESOLVABLE_BIBD_FAMILY: P4ResolvableBIBDFamily = P4ResolvableBIBDFamily;
+static PUBLISHED_SCHEDULE_BANK_FAMILY: PublishedScheduleBankFamily = PublishedScheduleBankFamily;
 static TRANSVERSAL_DESIGN_PRIME_POWER_FAMILY: TransversalDesignPrimePowerFamily =
     TransversalDesignPrimePowerFamily;
 
@@ -237,6 +241,35 @@ impl ConstructionFamily for AffinePlanePrimePowerFamily {
     }
 }
 
+impl ConstructionFamily for P4ResolvableBIBDFamily {
+    fn id(&self) -> ConstructionFamilyId {
+        ConstructionFamilyId::P4ResolvableBIBD
+    }
+
+    fn evaluate(&self, problem: &PureSgpProblem) -> FamilyEvaluation {
+        if problem.group_size != 4 {
+            return FamilyEvaluation::NotApplicable {
+                reason: "requires group_size == 4",
+            };
+        }
+
+        let Some(field) = p4_rbibd::supported_field(problem.num_groups) else {
+            return FamilyEvaluation::NotApplicable {
+                reason: "requires v = 3q + 1 with q a supported prime-power order",
+            };
+        };
+
+        FamilyEvaluation::Applicable {
+            max_supported_weeks: field.order,
+        }
+    }
+
+    fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
+        let field = p4_rbibd::supported_field(problem.num_groups)?;
+        (problem.group_size == 4).then(|| construct_p4_resolvable_bibd(&field))
+    }
+}
+
 impl ConstructionFamily for TransversalDesignPrimePowerFamily {
     fn id(&self) -> ConstructionFamilyId {
         ConstructionFamilyId::TransversalDesignPrimePower
@@ -411,6 +444,32 @@ pub(super) fn construct_affine_plane(field: &FiniteField) -> ConstructionResult 
     )
 }
 
+pub(super) fn construct_p4_resolvable_bibd(field: &FiniteField) -> ConstructionResult {
+    let num_groups = (3 * field.order + 1) / 4;
+
+    ConstructionResult::new(
+        p4_rbibd::construct(field),
+        ConstructionFamilyId::P4ResolvableBIBD,
+    )
+    .with_quality(ConstructionQuality::ExactFrontier)
+    .with_applicability(ConstructionApplicability::Conditional {
+        notes: vec![
+            "requires group_size == 4",
+            "requires v = 3q + 1 with q a supported prime-power order",
+            "uses the Beth-Jungnickel-Lenz finite-field construction for resolvable (v,4,1)-BIBDs",
+        ],
+    })
+    .with_evidence(
+        EvidenceSourceKind::CatalogFact,
+        catalog::p4::rbibd_source().citation,
+    )
+    .with_evidence(
+        EvidenceSourceKind::FiniteFieldConstruction,
+        "p4_resolvable_bibd_3q_plus_1",
+    )
+    .with_quality(classify_quality(num_groups, 4, field.order))
+}
+
 pub(super) fn construct_transversal_design_portfolio(
     num_groups: usize,
     group_size: usize,
@@ -473,6 +532,12 @@ fn construct_max_schedule_recursive(
             if let Some(entry) = catalog::kts::exact_case(num_groups / 2) {
                 return Some(construct_nearly_kirkman_triple_system_via_pseudo_doubling(entry));
             }
+        }
+    }
+
+    if group_size == 4 {
+        if let Some(field) = p4_rbibd::supported_field(num_groups) {
+            return Some(construct_p4_resolvable_bibd(&field));
         }
     }
 

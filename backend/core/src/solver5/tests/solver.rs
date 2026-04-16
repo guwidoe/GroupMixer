@@ -65,6 +65,25 @@ fn solver5_solves_prime_power_affine_plane_cases() {
 }
 
 #[test]
+fn solver5_solves_p4_resolvable_bibd_cases() {
+    let input = pure_input(7, 4, 9);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver
+        .solve(&input)
+        .expect("p4 resolvable bibd construction should solve 7-4-9");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 9);
+
+    let input = pure_input(10, 4, 13);
+    let result = solver
+        .solve(&input)
+        .expect("p4 resolvable bibd construction should solve 10-4-13");
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 13);
+}
+
+#[test]
 fn solver5_recursively_lifts_transversal_design_latent_groups() {
     let input = pure_input(9, 3, 13);
     let solver = SearchEngine::new(&input.solver);
