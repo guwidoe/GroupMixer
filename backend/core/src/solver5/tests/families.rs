@@ -23,6 +23,25 @@ fn round_robin_family_constructs_full_one_factorization() {
 }
 
 #[test]
+fn single_round_partition_family_constructs_one_week_case() {
+    let result = families::construct_single_round_partition(3, 4);
+
+    assert_eq!(result.family.label(), "single_round_partition");
+    assert_eq!(result.schedule.len(), 1);
+    assert_eq!(
+        result.metadata.quality,
+        ConstructionQuality::LowerBound {
+            gap_to_counting_bound: 2,
+        }
+    );
+    assert!(result
+        .metadata
+        .evidence
+        .iter()
+        .any(|evidence| matches!(evidence.source_kind, EvidenceSourceKind::TheoremFamily)));
+}
+
+#[test]
 fn transversal_design_family_constructs_prime_power_case() {
     let field = FiniteField::for_order(4).expect("order 4 field should exist");
     let result = families::construct_transversal_design_portfolio(4, 3, &field);
@@ -175,6 +194,7 @@ fn family_registry_exposes_current_portfolio_order() {
             "p4_router",
             "published_schedule_bank",
             "transversal_design_prime_power",
+            "single_round_partition",
         ]
     );
 }

@@ -9,8 +9,9 @@
 - Do **not** retry the naive cyclic `p=3` transversal-design fallback for non-prime-power group counts; it benchmarked flat and did not produce score-zero constructions on the even composite rows.
 - Build out the **general solver5 router** so every relevant `p` in the benchmark matrix trends toward a recognizable family-selection policy.
 - In practice, the next highest-ROI constructive gap is now **`p=4`**. Prioritize reusable theorem-family work over more patch-bank hunting.
-- The current best live theorem-family lane is the finite-field resolvable `(v,4,1)`-BIBD route for `v = 3q + 1` with `q` a supported prime power. In the benchmark this directly targets `7-4-9` and `10-4-13` honestly through one reusable construction story.
-- After the `v = 3q + 1` RBIBD lane, the main remaining `p=4` gap is **`9-4-11`**. That likely needs a different RGDD / RBIBD / URD-style family or a source-backed explicit schedule; do not pretend the current finite-field lane covers it.
-- Keep broader **RBIBD / RGDD / URD / RITD / ownSG** work behind the current finite-field `p=4` family push.
+- The finite-field resolvable `(v,4,1)`-BIBD route for `v = 3q + 1` is now landed; do not re-spend cycles on `7-4-9` / `10-4-13` unless a regression appears.
+- The main remaining `p=4` exact gap is now **`9-4-11`**. The most honest live lane is a genuine `RGDD(36,4,3)`-style construction or an explicit source-backed 36-player schedule.
+- The main remaining triples exact gap is now **`8-3-11`**. The best honest lane appears to be `NKTS(24)` rather than more generic cyclic shortcuts.
+- Keep broader **RBIBD / RGDD / URD / RITD / ownSG** work behind the current `9-4-11` / `8-3-11` frontier push.
 - Extend recursive `+G(t)` lifting only as a reusable composition operator, not as cell-specific glue.
 - Keep benchmark honesty: only count score-zero constructions, keep the fixed `2..10 x 2..10` matrix unchanged, and do not hardcode matrix answers into families or patch banks.

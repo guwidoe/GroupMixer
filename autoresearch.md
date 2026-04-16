@@ -132,13 +132,13 @@ Interpretation note:
   - prime-power affine-plane constructors for `p = g`
   - recursive `+G(t)`-style lifting across RTD latent groups when `p | g` and the smaller `(g/p)-p-*` instance is already constructible
 - Active kept benchmark baseline is now:
-  - commit: `a5b5899`
-  - `total_constructed_weeks = 364`
-  - `frontier_gap_sum = 222`
+  - commit: `03ec2fb`
+  - `total_constructed_weeks = 370`
+  - `frontier_gap_sum = 216`
   - `solved_cells = 45`
-  - `exact_frontier_cells = 21`
+  - `exact_frontier_cells = 23`
   - `p3_constructed_weeks = 69`
-  - `p4_constructed_weeks = 52`
+  - `p4_constructed_weeks = 58`
 
 ## What's Been Tried
 - Initial setup established the solver5 scaffold, validator, engine registration, benchmark harness, and the round-robin baseline.
@@ -164,9 +164,14 @@ Interpretation note:
   - broader RBIBD / RGDD / URD / RITD / ownSG-style patches only after the highest-ROI family-policy gaps are exhausted
 
 ## Immediate Next Loop Behavior
-- Active kept benchmark baseline is now commit `a5b5899` at `total_constructed_weeks = 364`.
+- Active kept benchmark baseline is now commit `03ec2fb` at `total_constructed_weeks = 370`.
+- The finite-field `v = 3q + 1` resolvable-BIBD family has now landed and paid off exactly as hoped:
+  - `W_7_4: 7 -> 9`
+  - `W_10_4: 9 -> 13`
+  - `p4_constructed_weeks: 52 -> 58`
+  - `exact_frontier_cells: 21 -> 23`
 - The next feature buildout order is now:
-  1. either close the remaining triples gap at `8-3-11` with an honest 24-player construction, or conclude quickly that the literature / catalog path is too thin for now
-  2. strengthen `p=4` beyond the current published patches, first with the finite-field `v = 3q + 1` resolvable-BIBD family for `7-4-9` and `10-4-13`, then with a separate lane for `9-4-11` if needed
+  1. target the remaining exact `p=4` gap at `9-4-11`, likely through an honest `RGDD(36,4,3)`-style family or an explicit source-backed schedule
+  2. target the remaining exact triples gap at `8-3-11`, likely through an honest `NKTS(24)` construction or explicit source-backed schedule
   3. broader catalog-backed patch and design families later
 - Keep preferring reusable family logic or justified composition over per-cell glue.

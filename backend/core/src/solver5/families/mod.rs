@@ -14,6 +14,7 @@ mod nkts;
 mod p4_rbibd;
 mod published;
 mod round_robin;
+mod single_round_partition;
 mod transversal_design;
 
 pub(super) fn registered_families() -> Vec<&'static dyn ConstructionFamily> {
@@ -26,10 +27,12 @@ pub(super) fn registered_families() -> Vec<&'static dyn ConstructionFamily> {
         &P4_RESOLVABLE_BIBD_FAMILY,
         &PUBLISHED_SCHEDULE_BANK_FAMILY,
         &TRANSVERSAL_DESIGN_PRIME_POWER_FAMILY,
+        &SINGLE_ROUND_PARTITION_FAMILY,
     ]
 }
 
 struct RoundRobinFamily;
+struct SingleRoundPartitionFamily;
 struct Kirkman6TPlus1Family;
 struct KirkmanTripleSystemFamily;
 struct NearlyKirkmanTripleSystemFamily;
@@ -39,6 +42,7 @@ struct PublishedScheduleBankFamily;
 struct TransversalDesignPrimePowerFamily;
 
 static ROUND_ROBIN_FAMILY: RoundRobinFamily = RoundRobinFamily;
+static SINGLE_ROUND_PARTITION_FAMILY: SingleRoundPartitionFamily = SingleRoundPartitionFamily;
 static KIRKMAN_6T_PLUS_1_FAMILY: Kirkman6TPlus1Family = Kirkman6TPlus1Family;
 static KIRKMAN_TRIPLE_SYSTEM_FAMILY: KirkmanTripleSystemFamily = KirkmanTripleSystemFamily;
 static NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY: NearlyKirkmanTripleSystemFamily =
@@ -68,6 +72,29 @@ impl ConstructionFamily for RoundRobinFamily {
 
     fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
         (problem.group_size == 2).then(|| construct_round_robin(problem.num_groups))
+    }
+}
+
+impl ConstructionFamily for SingleRoundPartitionFamily {
+    fn id(&self) -> ConstructionFamilyId {
+        ConstructionFamilyId::SingleRoundPartition
+    }
+
+    fn evaluate(&self, problem: &PureSgpProblem) -> FamilyEvaluation {
+        if problem.group_size < 2 {
+            return FamilyEvaluation::NotApplicable {
+                reason: "requires group_size >= 2",
+            };
+        }
+
+        FamilyEvaluation::Applicable {
+            max_supported_weeks: 1,
+        }
+    }
+
+    fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
+        (problem.group_size >= 2)
+            .then(|| construct_single_round_partition(problem.num_groups, problem.group_size))
     }
 }
 
@@ -316,6 +343,19 @@ pub(super) fn construct_round_robin(num_groups: usize) -> ConstructionResult {
         EvidenceSourceKind::TheoremFamily,
         "round_robin_1_factorization",
     )
+}
+
+pub(super) fn construct_single_round_partition(
+    num_groups: usize,
+    group_size: usize,
+) -> ConstructionResult {
+    ConstructionResult::new(
+        single_round_partition::construct(num_groups, group_size),
+        ConstructionFamilyId::SingleRoundPartition,
+    )
+    .with_quality(classify_quality(num_groups, group_size, 1))
+    .with_applicability(ConstructionApplicability::General)
+    .with_evidence(EvidenceSourceKind::TheoremFamily, "single_round_partition")
 }
 
 pub(super) fn construct_kirkman_6t_plus_1(field: &FiniteField) -> ConstructionResult {
