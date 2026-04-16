@@ -124,6 +124,28 @@ fn router_selects_published_schedule_bank_for_8_3_10() {
 }
 
 #[test]
+fn router_selects_published_schedule_bank_for_10_4_9() {
+    let input = pure_input(10, 4, 9);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 10-4-9");
+
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::PublishedScheduleBank
+    );
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::PublishedScheduleBank
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 9,
+                    quality: ConstructionQuality::LowerBound {
+                        gap_to_counting_bound: 4,
+                    },
+                }
+    }));
+}
+
+#[test]
 fn router_rejects_weaker_candidate_when_multiple_families_apply() {
     let input = pure_input(5, 5, 5);
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
