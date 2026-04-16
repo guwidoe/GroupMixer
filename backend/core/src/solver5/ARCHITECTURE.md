@@ -8,6 +8,9 @@ pure equal-partition, meet-at-most-once workloads.
 
 This document is normative for solver5 extension work.
 
+For the constructor-portfolio layer that sits on top of this baseline split, see
+`PORTFOLIO_ARCHITECTURE.md`.
+
 ## Scope and honesty policy
 
 Solver5 accepts only pure SGP-style cases:
