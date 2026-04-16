@@ -24,6 +24,8 @@ BUNDLE_MANIFESTS=(
   "backend/benchmarking/suites/stretch-sailing-trip-demo-iterations-1m-solver3-canonical.yaml"
   "backend/benchmarking/suites/stretch-partial-attendance-capacity-pressure-time-10s-solver3.yaml"
   "backend/benchmarking/suites/stretch-partial-attendance-capacity-pressure-iterations-1m-solver3.yaml"
+  "backend/benchmarking/suites/stretch-partial-attendance-keep-apart-capacity-pressure-time-10s-solver3.yaml"
+  "backend/benchmarking/suites/stretch-partial-attendance-keep-apart-capacity-pressure-iterations-1m-solver3.yaml"
 )
 
 TARGETED_MULTI_SEED_MANIFESTS=(
@@ -31,6 +33,8 @@ TARGETED_MULTI_SEED_MANIFESTS=(
   "backend/benchmarking/suites/stretch-sailing-trip-demo-iterations-1m-solver3-canonical-multiseed.yaml"
   "backend/benchmarking/suites/stretch-partial-attendance-capacity-pressure-time-10s-solver3-multiseed.yaml"
   "backend/benchmarking/suites/stretch-partial-attendance-capacity-pressure-iterations-1m-solver3-multiseed.yaml"
+  "backend/benchmarking/suites/stretch-partial-attendance-keep-apart-capacity-pressure-time-10s-solver3-multiseed.yaml"
+  "backend/benchmarking/suites/stretch-partial-attendance-keep-apart-capacity-pressure-iterations-1m-solver3-multiseed.yaml"
 )
 
 usage() {
@@ -56,11 +60,11 @@ What it covers:
     * canonical objective adversarial + stretch bundles
     * fixed-iteration diagnostic adversarial + stretch bundles
     * large Sailing Trip hotpath lanes
-    * targeted Sailing Trip real + synthetic partial-attendance stability lanes
+    * targeted Sailing Trip real + synthetic partial-attendance stability lanes, including the keep-apart variant
 
 Notes:
   - `record` persists one durable benchmark recording via `./tools/benchmark_workflow.sh record-bundle`
-  - `record-targeted-multiseed` runs the four targeted Sailing/partial-attendance lanes with 4 explicit seeds each
+  - `record-targeted-multiseed` runs the six targeted Sailing/partial-attendance lanes with 4 explicit seeds each
     and sets `GROUPMIXER_BENCHMARK_JOBS=4` by default so the four seed cases run in parallel
   - `compare-last-two` compares the latest two recordings created by this wrapper lane-by-lane
   - serious timing interpretation should still use the designated remote same-machine lane

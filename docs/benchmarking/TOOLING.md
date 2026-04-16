@@ -47,11 +47,11 @@ The wrapper intentionally composes the existing framework layers into one reusab
   - canonical objective adversarial + stretch solver3 bundles
   - fixed-iteration diagnostic adversarial + stretch solver3 bundles
   - large Sailing Trip hotpath lanes
-  - targeted Sailing Trip real + synthetic partial-attendance stability lanes (`10s` and `1M`)
+  - targeted Sailing Trip real + synthetic partial-attendance stability lanes (`10s` and `1M`), including the keep-apart variant
 
 Use this wrapper as the default local solver3 development bundle; use the remote same-machine benchmark lane when timing interpretation needs to be authoritative.
 
-For stochasticity checks on the four targeted Sailing Trip / partial-attendance lanes, use the checked-in multiseed manifests via:
+For stochasticity checks on the six targeted Sailing Trip / partial-attendance lanes, use the checked-in multiseed manifests via:
 
 ```bash
 ./tools/solver3_development_bundle.sh record-targeted-multiseed

@@ -1,0 +1,6689 @@
+{
+  "name": "Constraint - Partial Attendance Keep Apart Stress (solver3)",
+  "metadata": {
+    "tags": [
+      "constraints",
+      "must_stay_apart",
+      "partial_attendance",
+      "session_capacities",
+      "solver3"
+    ],
+    "kind": "correctness",
+    "tier": "default",
+    "solver_families": [
+      "solver3"
+    ]
+  },
+  "input": {
+    "initial_schedule": null,
+    "problem": {
+      "people": [
+        {
+          "id": "person_000",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "lead"
+          }
+        },
+        {
+          "id": "person_001",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "lead"
+          }
+        },
+        {
+          "id": "person_002",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "lead"
+          }
+        },
+        {
+          "id": "person_003",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "lead"
+          }
+        },
+        {
+          "id": "person_004",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "lead"
+          }
+        },
+        {
+          "id": "person_005",
+          "attributes": {
+            "Gender": "male",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "lead"
+          }
+        },
+        {
+          "id": "person_006",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "lead"
+          }
+        },
+        {
+          "id": "person_007",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "lead"
+          }
+        },
+        {
+          "id": "person_008",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "lead"
+          }
+        },
+        {
+          "id": "person_009",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "lead"
+          }
+        },
+        {
+          "id": "person_010",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "lead"
+          }
+        },
+        {
+          "id": "person_011",
+          "attributes": {
+            "Gender": "male",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "lead"
+          }
+        },
+        {
+          "id": "person_012",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "member"
+          }
+        },
+        {
+          "id": "person_013",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "member"
+          }
+        },
+        {
+          "id": "person_014",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "specialist"
+          }
+        },
+        {
+          "id": "person_015",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "member"
+          }
+        },
+        {
+          "id": "person_016",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "member"
+          }
+        },
+        {
+          "id": "person_017",
+          "attributes": {
+            "Gender": "male",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "member"
+          }
+        },
+        {
+          "id": "person_018",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "member"
+          }
+        },
+        {
+          "id": "person_019",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "member"
+          }
+        },
+        {
+          "id": "person_020",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "member"
+          }
+        },
+        {
+          "id": "person_021",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "specialist"
+          }
+        },
+        {
+          "id": "person_022",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "member"
+          }
+        },
+        {
+          "id": "person_023",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "full_core",
+            "Role": "member"
+          }
+        },
+        {
+          "id": "person_024",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_a",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_025",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_a",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_026",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_a",
+            "Role": "specialist"
+          },
+          "sessions": [
+            0,
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_027",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_a",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_028",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_a",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_029",
+          "attributes": {
+            "Gender": "male",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_a",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_030",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_a",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_031",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_a",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_032",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_a",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_033",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_a",
+            "Role": "specialist"
+          },
+          "sessions": [
+            0,
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_034",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_a",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_035",
+          "attributes": {
+            "Gender": "male",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_a",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_036",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_a",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_037",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_a",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_038",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_a",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_039",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_a",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_040",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_a",
+            "Role": "specialist"
+          },
+          "sessions": [
+            0,
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_041",
+          "attributes": {
+            "Gender": "male",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_a",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_042",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_024",
+            "Role": "specialist"
+          },
+          "sessions": [
+            0,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_043",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_024",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_044",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_024",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_045",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_024",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_046",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_024",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_047",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_024",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_048",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_024",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_049",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_024",
+            "Role": "specialist"
+          },
+          "sessions": [
+            0,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_050",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_024",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_051",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_024",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_052",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_024",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_053",
+          "attributes": {
+            "Gender": "male",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_024",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_054",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_024",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_055",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_024",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_056",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_024",
+            "Role": "specialist"
+          },
+          "sessions": [
+            0,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_057",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_024",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_058",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_125",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_059",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_125",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_060",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_125",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_061",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_125",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_062",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_125",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_063",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_125",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_064",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_125",
+            "Role": "specialist"
+          },
+          "sessions": [
+            1,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_065",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_125",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_066",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_125",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_067",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_125",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_068",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_125",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_069",
+          "attributes": {
+            "Gender": "male",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_125",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_070",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_125",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_071",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_125",
+            "Role": "specialist"
+          },
+          "sessions": [
+            1,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_072",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_125",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_073",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_125",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_074",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_035",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_075",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_035",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_076",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_035",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_077",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_035",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_078",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_035",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_079",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_035",
+            "Role": "specialist"
+          },
+          "sessions": [
+            0,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_080",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_035",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_081",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_035",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_082",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_035",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_083",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_035",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_084",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_035",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_085",
+          "attributes": {
+            "Gender": "male",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_035",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_086",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_134",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_087",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_134",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_088",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_134",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_089",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_134",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_090",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_134",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_091",
+          "attributes": {
+            "Gender": "male",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_134",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_092",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_134",
+            "Role": "specialist"
+          },
+          "sessions": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_093",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_134",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_094",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_134",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_095",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_134",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_096",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_134",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_097",
+          "attributes": {
+            "Gender": "male",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_134",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_098",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_235",
+            "Role": "specialist"
+          },
+          "sessions": [
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_099",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_235",
+            "Role": "member"
+          },
+          "sessions": [
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_100",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_235",
+            "Role": "member"
+          },
+          "sessions": [
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_101",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_235",
+            "Role": "member"
+          },
+          "sessions": [
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_102",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_235",
+            "Role": "member"
+          },
+          "sessions": [
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_103",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_235",
+            "Role": "member"
+          },
+          "sessions": [
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_104",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_235",
+            "Role": "member"
+          },
+          "sessions": [
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_105",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_235",
+            "Role": "specialist"
+          },
+          "sessions": [
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_106",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_235",
+            "Role": "member"
+          },
+          "sessions": [
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_107",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_235",
+            "Role": "member"
+          },
+          "sessions": [
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_108",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_235",
+            "Role": "member"
+          },
+          "sessions": [
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_109",
+          "attributes": {
+            "Gender": "male",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_235",
+            "Role": "member"
+          },
+          "sessions": [
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_110",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_0235",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_111",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_0235",
+            "Role": "specialist"
+          },
+          "sessions": [
+            0,
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_112",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_0235",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_113",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_0235",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_114",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_0235",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_115",
+          "attributes": {
+            "Gender": "male",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_0235",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_116",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_0235",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_117",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_0235",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_118",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_0235",
+            "Role": "specialist"
+          },
+          "sessions": [
+            0,
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_119",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_0235",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_120",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_0235",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_121",
+          "attributes": {
+            "Gender": "male",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_0235",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            3,
+            5
+          ]
+        },
+        {
+          "id": "person_122",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_124",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_123",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_124",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_124",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_124",
+            "Role": "specialist"
+          },
+          "sessions": [
+            1,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_125",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_124",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_126",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_124",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_127",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_124",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_128",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_124",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_129",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_124",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_130",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_124",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_131",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_124",
+            "Role": "specialist"
+          },
+          "sessions": [
+            1,
+            2,
+            4
+          ]
+        },
+        {
+          "id": "person_132",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "bridge_0134",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_133",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "bridge_0134",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_134",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "bridge_0134",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_135",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "bridge_0134",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_136",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "bridge_0134",
+            "Role": "specialist"
+          },
+          "sessions": [
+            0,
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_137",
+          "attributes": {
+            "Gender": "male",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "bridge_0134",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_138",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "bridge_0134",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_139",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "bridge_0134",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            1,
+            3,
+            4
+          ]
+        },
+        {
+          "id": "person_140",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_b",
+            "Role": "specialist"
+          },
+          "sessions": [
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_141",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_b",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_142",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_b",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_143",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_b",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_144",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_b",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_145",
+          "attributes": {
+            "Gender": "male",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "veteran",
+            "Attendance Pattern": "arrival_wave_b",
+            "Role": "member"
+          },
+          "sessions": [
+            1,
+            4,
+            5
+          ]
+        },
+        {
+          "id": "person_146",
+          "attributes": {
+            "Gender": "female",
+            "Track": "ops",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_025",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_147",
+          "attributes": {
+            "Gender": "male",
+            "Track": "data",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_025",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_148",
+          "attributes": {
+            "Gender": "female",
+            "Track": "engineering",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_025",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_149",
+          "attributes": {
+            "Gender": "male",
+            "Track": "ops",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_025",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_150",
+          "attributes": {
+            "Gender": "female",
+            "Track": "data",
+            "Region": "apac",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_025",
+            "Role": "specialist"
+          },
+          "sessions": [
+            0,
+            2,
+            5
+          ]
+        },
+        {
+          "id": "person_151",
+          "attributes": {
+            "Gender": "nonbinary",
+            "Track": "engineering",
+            "Region": "europe",
+            "Experience": "intermediate",
+            "Attendance Pattern": "bridge_025",
+            "Role": "member"
+          },
+          "sessions": [
+            0,
+            2,
+            5
+          ]
+        }
+      ],
+      "groups": [
+        {
+          "id": "crew_00",
+          "size": 9,
+          "session_sizes": [
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ]
+        },
+        {
+          "id": "crew_01",
+          "size": 9,
+          "session_sizes": [
+            9,
+            8,
+            8,
+            9,
+            9,
+            9
+          ]
+        },
+        {
+          "id": "crew_02",
+          "size": 9,
+          "session_sizes": [
+            8,
+            9,
+            9,
+            0,
+            8,
+            9
+          ]
+        },
+        {
+          "id": "crew_03",
+          "size": 9,
+          "session_sizes": [
+            9,
+            9,
+            8,
+            9,
+            9,
+            9
+          ]
+        },
+        {
+          "id": "crew_04",
+          "size": 9,
+          "session_sizes": [
+            9,
+            8,
+            9,
+            9,
+            8,
+            8
+          ]
+        },
+        {
+          "id": "crew_05",
+          "size": 9,
+          "session_sizes": [
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ]
+        },
+        {
+          "id": "crew_06",
+          "size": 9,
+          "session_sizes": [
+            9,
+            8,
+            9,
+            9,
+            8,
+            9
+          ]
+        },
+        {
+          "id": "crew_07",
+          "size": 9,
+          "session_sizes": [
+            8,
+            9,
+            9,
+            9,
+            0,
+            9
+          ]
+        },
+        {
+          "id": "crew_08",
+          "size": 9,
+          "session_sizes": [
+            9,
+            8,
+            8,
+            0,
+            9,
+            9
+          ]
+        },
+        {
+          "id": "crew_09",
+          "size": 9,
+          "session_sizes": [
+            8,
+            9,
+            0,
+            9,
+            8,
+            9
+          ]
+        },
+        {
+          "id": "crew_10",
+          "size": 9,
+          "session_sizes": [
+            9,
+            0,
+            9,
+            8,
+            9,
+            9
+          ]
+        },
+        {
+          "id": "crew_11",
+          "size": 9,
+          "session_sizes": [
+            0,
+            8,
+            9,
+            0,
+            8,
+            8
+          ]
+        }
+      ],
+      "num_sessions": 6
+    },
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "constraints": [
+      {
+        "type": "RepeatEncounter",
+        "max_allowed_encounters": 1,
+        "penalty_function": "squared",
+        "penalty_weight": 12.0
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_000",
+        "group_id": "crew_00",
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_001",
+        "group_id": "crew_01",
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_002",
+        "group_id": "crew_02",
+        "sessions": [
+          0,
+          1,
+          2,
+          4,
+          5
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_003",
+        "group_id": "crew_03",
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_004",
+        "group_id": "crew_04",
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_005",
+        "group_id": "crew_05",
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_006",
+        "group_id": "crew_06",
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_007",
+        "group_id": "crew_07",
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          5
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_008",
+        "group_id": "crew_08",
+        "sessions": [
+          0,
+          1,
+          2,
+          4,
+          5
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_009",
+        "group_id": "crew_09",
+        "sessions": [
+          0,
+          1,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_010",
+        "group_id": "crew_10",
+        "sessions": [
+          0,
+          2,
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_011",
+        "group_id": "crew_11",
+        "sessions": [
+          1,
+          2,
+          4,
+          5
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_024",
+        "group_id": "crew_00",
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_042",
+        "group_id": "crew_05",
+        "sessions": [
+          0,
+          2,
+          4
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_058",
+        "group_id": "crew_02",
+        "sessions": [
+          1,
+          2,
+          5
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_074",
+        "group_id": "crew_01",
+        "sessions": [
+          0,
+          3,
+          5
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_086",
+        "group_id": "crew_03",
+        "sessions": [
+          1,
+          3,
+          4
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_098",
+        "group_id": "crew_06",
+        "sessions": [
+          2,
+          3,
+          5
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_110",
+        "group_id": "crew_04",
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "person_122",
+        "group_id": "crew_00",
+        "sessions": [
+          1,
+          2,
+          4
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_043",
+          "person_044",
+          "person_045"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_059",
+          "person_060",
+          "person_061"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_075",
+          "person_076",
+          "person_077"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_087",
+          "person_088",
+          "person_089"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_099",
+          "person_100",
+          "person_101"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_111",
+          "person_112",
+          "person_113"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_123",
+          "person_124",
+          "person_125"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "person_025",
+          "person_026",
+          "person_027",
+          "person_028"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_029",
+          "person_030"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "penalty_weight": 35.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_046",
+          "person_047"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "penalty_weight": 35.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_062",
+          "person_063"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "penalty_weight": 35.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_078",
+          "person_079"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "penalty_weight": 35.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_090",
+          "person_091"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 35.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_102",
+          "person_103"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 35.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_114",
+          "person_115"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 35.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_126",
+          "person_127"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "penalty_weight": 35.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_000",
+          "person_133"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_000",
+          "person_025"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_000",
+          "person_110"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_024",
+          "person_132"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_000",
+          "person_042"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_001",
+          "person_146"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_001",
+          "person_075"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_001",
+          "person_122"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_001",
+          "person_058"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_002",
+          "person_086"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_002",
+          "person_140"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_002",
+          "person_098"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_042",
+          "person_110"
+        ],
+        "sessions": [
+          0,
+          2
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_074",
+          "person_132"
+        ],
+        "sessions": [
+          0,
+          3
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_024",
+          "person_042"
+        ],
+        "sessions": [
+          0,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_024",
+          "person_074"
+        ],
+        "sessions": [
+          0,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_058",
+          "person_122"
+        ],
+        "sessions": [
+          1,
+          2
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_024",
+          "person_086"
+        ],
+        "sessions": [
+          1,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_025",
+          "person_058"
+        ],
+        "sessions": [
+          1,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_042",
+          "person_122"
+        ],
+        "sessions": [
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_058",
+          "person_098"
+        ],
+        "sessions": [
+          2,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_074",
+          "person_098"
+        ],
+        "sessions": [
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_074",
+          "person_134"
+        ],
+        "sessions": [
+          0,
+          3
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_075",
+          "person_098"
+        ],
+        "sessions": [
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_059",
+          "person_122"
+        ],
+        "sessions": [
+          1,
+          2
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_025",
+          "person_086"
+        ],
+        "sessions": [
+          1,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_043",
+          "person_123"
+        ],
+        "sessions": [
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_043",
+          "person_110"
+        ],
+        "sessions": [
+          0,
+          2
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_025",
+          "person_043"
+        ],
+        "sessions": [
+          0,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_026",
+          "person_059"
+        ],
+        "sessions": [
+          1,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_059",
+          "person_099"
+        ],
+        "sessions": [
+          2,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_026",
+          "person_075"
+        ],
+        "sessions": [
+          0,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_002",
+          "person_087"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_003",
+          "person_099"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_003",
+          "person_078"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_003",
+          "person_123"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_026",
+          "person_132"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_003",
+          "person_043"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_004",
+          "person_059"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_004",
+          "person_141"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_004",
+          "person_148"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_004",
+          "person_132"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_005",
+          "person_110"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_005",
+          "person_026"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_075",
+          "person_133"
+        ],
+        "sessions": [
+          0,
+          3
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_076",
+          "person_099"
+        ],
+        "sessions": [
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_060",
+          "person_123"
+        ],
+        "sessions": [
+          1,
+          2
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_027",
+          "person_086"
+        ],
+        "sessions": [
+          1,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_044",
+          "person_123"
+        ],
+        "sessions": [
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_044",
+          "person_111"
+        ],
+        "sessions": [
+          0,
+          2
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_027",
+          "person_044"
+        ],
+        "sessions": [
+          0,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_027",
+          "person_060"
+        ],
+        "sessions": [
+          1,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_060",
+          "person_099"
+        ],
+        "sessions": [
+          2,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_027",
+          "person_076"
+        ],
+        "sessions": [
+          0,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_005",
+          "person_090"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_005",
+          "person_100"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_006",
+          "person_076"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_006",
+          "person_124"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_028",
+          "person_135"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_006",
+          "person_044"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_006",
+          "person_060"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_007",
+          "person_140"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_007",
+          "person_146"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_007",
+          "person_134"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_007",
+          "person_111"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_008",
+          "person_029"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_076",
+          "person_133"
+        ],
+        "sessions": [
+          0,
+          3
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_077",
+          "person_100"
+        ],
+        "sessions": [
+          3,
+          5
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_061",
+          "person_124"
+        ],
+        "sessions": [
+          1,
+          2
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_028",
+          "person_087"
+        ],
+        "sessions": [
+          1,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_045",
+          "person_124"
+        ],
+        "sessions": [
+          2,
+          4
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "person_045",
+          "person_111"
+        ],
+        "sessions": [
+          0,
+          2
+        ],
+        "penalty_weight": 45.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_012",
+          "person_015"
+        ],
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_033",
+          "person_050"
+        ],
+        "sessions": [
+          0,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_040",
+          "person_147"
+        ],
+        "sessions": [
+          0,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_024",
+          "person_122"
+        ],
+        "sessions": [
+          1,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_109",
+          "person_146"
+        ],
+        "sessions": [
+          2,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_081",
+          "person_109"
+        ],
+        "sessions": [
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_000",
+          "person_024"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_004",
+          "person_110"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_002",
+          "person_046"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_001",
+          "person_074"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_000",
+          "person_122"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_002",
+          "person_058"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_003",
+          "person_086"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_000",
+          "person_099"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_034",
+          "person_051"
+        ],
+        "sessions": [
+          0,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_041",
+          "person_121"
+        ],
+        "sessions": [
+          0,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_034",
+          "person_095"
+        ],
+        "sessions": [
+          1,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_008",
+          "person_025"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_004",
+          "person_114"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_002",
+          "person_047"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_001",
+          "person_078"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_001",
+          "person_123"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_007",
+          "person_059"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_004",
+          "person_090"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_005",
+          "person_102"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_035",
+          "person_052"
+        ],
+        "sessions": [
+          0,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_035",
+          "person_096"
+        ],
+        "sessions": [
+          1,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_008",
+          "person_026"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_006",
+          "person_111"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_005",
+          "person_042"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_003",
+          "person_075"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_003",
+          "person_126"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_007",
+          "person_060"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_005",
+          "person_087"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_006",
+          "person_098"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "person_051",
+          "person_135"
+        ],
+        "sessions": [
+          0,
+          4
+        ],
+        "penalty_weight": 32.0
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_01",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 4,
+          "male": 3,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_02",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 4,
+          "male": 2,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_03",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 4,
+          "male": 3,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_01",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 4,
+          "engineering": 3,
+          "ops": 2
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_02",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 3,
+          "engineering": 3,
+          "ops": 2
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_03",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 2,
+          "engineering": 2,
+          "ops": 5
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_05",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 3,
+          "male": 3,
+          "nonbinary": 3
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          1
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_02",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 5,
+          "male": 2,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          1
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_03",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 5,
+          "male": 2,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          1
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_02",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 3,
+          "engineering": 3,
+          "ops": 3
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          1
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_01",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 3,
+          "engineering": 2,
+          "ops": 3
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          1
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_03",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 2,
+          "engineering": 4,
+          "ops": 3
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          1
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_07",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 3,
+          "male": 4,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          2
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_08",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 3,
+          "male": 3,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          2
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_10",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 5,
+          "male": 2,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          2
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_02",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 3,
+          "engineering": 3,
+          "ops": 3
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          2
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_00",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 2,
+          "engineering": 3,
+          "ops": 4
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          2
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_01",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 3,
+          "engineering": 2,
+          "ops": 3
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          2
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_05",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 3,
+          "male": 3,
+          "nonbinary": 3
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          3
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_07",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 4,
+          "male": 2,
+          "nonbinary": 3
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          3
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_00",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 6,
+          "male": 2,
+          "nonbinary": 1
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          3
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_00",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 2,
+          "engineering": 2,
+          "ops": 5
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          3
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_03",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 2,
+          "engineering": 4,
+          "ops": 3
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          3
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_04",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 4,
+          "engineering": 2,
+          "ops": 3
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          3
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_01",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 3,
+          "male": 4,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          4
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_03",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 4,
+          "male": 3,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          4
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_06",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 3,
+          "male": 2,
+          "nonbinary": 3
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          4
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_01",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 3,
+          "engineering": 3,
+          "ops": 3
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          4
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_05",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 2,
+          "engineering": 4,
+          "ops": 3
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          4
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_06",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 2,
+          "engineering": 2,
+          "ops": 4
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          4
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_00",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 5,
+          "male": 2,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          5
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_06",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 5,
+          "male": 2,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          5
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_07",
+        "attribute_key": "Gender",
+        "desired_values": {
+          "female": 3,
+          "male": 4,
+          "nonbinary": 2
+        },
+        "penalty_weight": 18.0,
+        "mode": "exact",
+        "sessions": [
+          5
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_10",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 3,
+          "engineering": 3,
+          "ops": 3
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          5
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_00",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 2,
+          "engineering": 3,
+          "ops": 4
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          5
+        ]
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "crew_01",
+        "attribute_key": "Track",
+        "desired_values": {
+          "data": 3,
+          "engineering": 2,
+          "ops": 4
+        },
+        "penalty_weight": 14.0,
+        "mode": "exact",
+        "sessions": [
+          5
+        ]
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_002",
+          "person_012"
+        ],
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_013",
+          "person_139"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_014",
+          "person_038"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_013",
+          "person_120"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_031",
+          "person_133"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_016",
+          "person_050"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_010",
+          "person_151"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_011",
+          "person_085"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_012",
+          "person_129"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_010",
+          "person_067"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_017",
+          "person_095"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_031",
+          "person_145"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_018",
+          "person_109"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_002",
+          "person_015"
+        ],
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_017",
+          "person_135"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_018",
+          "person_035"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_016",
+          "person_121"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_034",
+          "person_135"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_017",
+          "person_051"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_018",
+          "person_146"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_014",
+          "person_085"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_015",
+          "person_129"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_023",
+          "person_065"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_093",
+          "person_133"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_040",
+          "person_142"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_019",
+          "person_107"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_002",
+          "person_020"
+        ],
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_018",
+          "person_136"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_020",
+          "person_037"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_017",
+          "person_120"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_036",
+          "person_139"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_000",
+          "person_049"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_117",
+          "person_148"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_022",
+          "person_085"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_019",
+          "person_128"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_000",
+          "person_066"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_095",
+          "person_136"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_041",
+          "person_144"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_000",
+          "person_106"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_007",
+          "person_014"
+        ],
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_019",
+          "person_139"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_022",
+          "person_039"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_020",
+          "person_119"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_024",
+          "person_138"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_000",
+          "person_054"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_118",
+          "person_149"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_084",
+          "person_120"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_001",
+          "person_130"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_001",
+          "person_065"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_097",
+          "person_138"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_001",
+          "person_141"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_001",
+          "person_104"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_008",
+          "person_009"
+        ],
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_020",
+          "person_138"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_023",
+          "person_040"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_021",
+          "person_120"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_024",
+          "person_139"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_002",
+          "person_049"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_003",
+          "person_146"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_085",
+          "person_121"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_003",
+          "person_128"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_003",
+          "person_064"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_003",
+          "person_094"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_004",
+          "person_140"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_004",
+          "person_104"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_011",
+          "person_014"
+        ],
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_004",
+          "person_135"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_031",
+          "person_041"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_004",
+          "person_116"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_025",
+          "person_133"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_005",
+          "person_052"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_005",
+          "person_146"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_005",
+          "person_080"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_005",
+          "person_131"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_006",
+          "person_067"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_006",
+          "person_095"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_007",
+          "person_144"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_007",
+          "person_104"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_011",
+          "person_016"
+        ],
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_006",
+          "person_132"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_006",
+          "person_032"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_007",
+          "person_117"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_025",
+          "person_134"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_008",
+          "person_049"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_008",
+          "person_149"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_008",
+          "person_082"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_009",
+          "person_129"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_009",
+          "person_064"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_009",
+          "person_093"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_010",
+          "person_145"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_010",
+          "person_106"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_011",
+          "person_022"
+        ],
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "target_meetings": 2,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_012",
+          "person_137"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_012",
+          "person_024"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_013",
+          "person_121"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "person_025",
+          "person_138"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 28.0
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_000",
+          "person_134"
+        ],
+        "sessions": [
+          0,
+          1,
+          3,
+          4
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_000",
+          "person_026"
+        ],
+        "sessions": [
+          0,
+          1,
+          4,
+          5
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_001",
+          "person_110"
+        ],
+        "sessions": [
+          0,
+          2,
+          3,
+          5
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_024",
+          "person_133"
+        ],
+        "sessions": [
+          0,
+          1,
+          4
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_001",
+          "person_042"
+        ],
+        "sessions": [
+          0,
+          2,
+          4
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_002",
+          "person_146"
+        ],
+        "sessions": [
+          0,
+          2,
+          5
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_002",
+          "person_074"
+        ],
+        "sessions": [
+          0,
+          3,
+          5
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_003",
+          "person_122"
+        ],
+        "sessions": [
+          1,
+          2,
+          4
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_003",
+          "person_058"
+        ],
+        "sessions": [
+          1,
+          2,
+          5
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_004",
+          "person_086"
+        ],
+        "sessions": [
+          1,
+          3,
+          4
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_004",
+          "person_142"
+        ],
+        "sessions": [
+          1,
+          4,
+          5
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_005",
+          "person_098"
+        ],
+        "sessions": [
+          2,
+          3,
+          5
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_042",
+          "person_111"
+        ],
+        "sessions": [
+          0,
+          2
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_074",
+          "person_135"
+        ],
+        "sessions": [
+          0,
+          3
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_024",
+          "person_043"
+        ],
+        "sessions": [
+          0,
+          4
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_025",
+          "person_075"
+        ],
+        "sessions": [
+          0,
+          5
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_058",
+          "person_123"
+        ],
+        "sessions": [
+          1,
+          2
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_025",
+          "person_087"
+        ],
+        "sessions": [
+          1,
+          4
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_026",
+          "person_060"
+        ],
+        "sessions": [
+          1,
+          5
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_043",
+          "person_122"
+        ],
+        "sessions": [
+          2,
+          4
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_059",
+          "person_098"
+        ],
+        "sessions": [
+          2,
+          5
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_075",
+          "person_099"
+        ],
+        "sessions": [
+          3,
+          5
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_076",
+          "person_132"
+        ],
+        "sessions": [
+          0,
+          3
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_076",
+          "person_100"
+        ],
+        "sessions": [
+          3,
+          5
+        ]
+      }
+    ],
+    "solver": {
+      "solver_type": "solver3",
+      "stop_conditions": {
+        "max_iterations": 25000,
+        "time_limit_seconds": 3,
+        "no_improvement_iterations": null
+      },
+      "solver_params": {
+        "solver_type": "solver3"
+      },
+      "logging": {
+        "log_frequency": 0,
+        "log_initial_state": false,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      }
+    }
+  },
+  "expected": {
+    "cannot_be_together_respected": true,
+    "must_stay_together_respected": true,
+    "immovable_person_respected": true,
+    "session_specific_constraints_respected": true,
+    "participation_patterns_respected": true
+  },
+  "test_options": {}
+}

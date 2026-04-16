@@ -1247,6 +1247,95 @@ mod tests {
     }
 
     #[test]
+    fn synthetic_partial_attendance_keep_apart_case_adds_hard_apart_pressure() {
+        let case = load_case_manifest(Path::new(
+            "cases/stretch/synthetic_partial_attendance_keep_apart_capacity_pressure_152p.json",
+        ))
+        .expect("synthetic partial-attendance keep-apart stretch case should load");
+
+        assert_eq!(
+            case.id,
+            "stretch.synthetic-partial-attendance-keep-apart-capacity-pressure-152p"
+        );
+        assert_eq!(case.class, BenchmarkSuiteClass::Stretch);
+        assert_eq!(case.case_role, BenchmarkCaseRole::Canonical);
+
+        let input = case
+            .input
+            .as_ref()
+            .expect("synthetic keep-apart stretch case should embed full solve input");
+        assert_eq!(input.problem.people.len(), 152);
+        assert_eq!(input.problem.num_sessions, 6);
+        assert_eq!(input.problem.groups.len(), 12);
+
+        let hard_apart_count = input
+            .constraints
+            .iter()
+            .filter(|constraint| {
+                matches!(
+                    constraint,
+                    gm_core::models::Constraint::MustStayApart { .. }
+                )
+            })
+            .count();
+        let hard_apart_session_windows = input
+            .constraints
+            .iter()
+            .filter_map(|constraint| match constraint {
+                gm_core::models::Constraint::MustStayApart { sessions, .. } => {
+                    Some(sessions.as_ref().map_or(6, |sessions| sessions.len()))
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(hard_apart_count, 24);
+        assert!(
+            hard_apart_session_windows
+                .iter()
+                .all(|window_len| *window_len >= 2),
+            "all MustStayApart windows should cover at least two sessions"
+        );
+    }
+
+    #[test]
+    fn synthetic_partial_attendance_keep_apart_solver3_suites_declare_explicit_seed_and_budget() {
+        let fixed_time = load_suite_manifest(Path::new(
+            "suites/stretch-partial-attendance-keep-apart-capacity-pressure-time-10s-solver3.yaml",
+        ))
+        .expect("synthetic partial-attendance keep-apart 10s suite should load");
+        assert_eq!(fixed_time.cases.len(), 1);
+        assert_eq!(
+            fixed_time.cases[0].manifest.id,
+            "stretch.synthetic-partial-attendance-keep-apart-capacity-pressure-152p"
+        );
+        assert_eq!(fixed_time.cases[0].overrides.seed, Some(152705));
+        assert_eq!(
+            fixed_time.cases[0].overrides.max_iterations,
+            Some(10_000_000)
+        );
+        assert_eq!(fixed_time.cases[0].overrides.time_limit_seconds, Some(10));
+
+        let fixed_iteration = load_suite_manifest(Path::new(
+            "suites/stretch-partial-attendance-keep-apart-capacity-pressure-iterations-1m-solver3.yaml",
+        ))
+        .expect("synthetic partial-attendance keep-apart 1M suite should load");
+        assert_eq!(fixed_iteration.cases.len(), 1);
+        assert_eq!(
+            fixed_iteration.cases[0].manifest.id,
+            "stretch.synthetic-partial-attendance-keep-apart-capacity-pressure-152p"
+        );
+        assert_eq!(fixed_iteration.cases[0].overrides.seed, Some(152705));
+        assert_eq!(
+            fixed_iteration.cases[0].overrides.max_iterations,
+            Some(1_000_000)
+        );
+        assert_eq!(
+            fixed_iteration.cases[0].overrides.time_limit_seconds,
+            Some(120)
+        );
+    }
+
+    #[test]
     fn kirkman_schoolgirls_case_and_suite_load_with_explicit_budget() {
         let case = load_case_manifest(Path::new("cases/stretch/kirkman_schoolgirls_15x5x7.json"))
             .expect("kirkman schoolgirls case should load");
@@ -1329,6 +1418,9 @@ mod tests {
             correctness.manifest.comparison_category,
             BenchmarkComparisonCategory::InvariantOnly
         );
+        assert!(correctness.cases.iter().any(|case| {
+            case.manifest.id == "adversarial.correctness-partial-attendance-keep-apart-stress"
+        }));
     }
 
     #[test]
