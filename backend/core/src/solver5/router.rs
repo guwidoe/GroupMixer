@@ -1,7 +1,7 @@
 use super::families;
-use super::field::FiniteField;
+use super::portfolio::FamilyEvaluation;
 use super::problem::PureSgpProblem;
-use super::types::{ConstructionFamilyId, ConstructionResult};
+use super::types::{ConstructionFamilyId, ConstructionQuality, ConstructionResult};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct FamilyAttempt {
@@ -11,13 +11,25 @@ pub(super) struct FamilyAttempt {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) enum FamilyAttemptStatus {
-    NotApplicable { reason: &'static str },
+    NotApplicable {
+        reason: &'static str,
+    },
+    ConstructionFailed {
+        reason: &'static str,
+    },
+    RejectedAsWeaker {
+        max_supported_weeks: usize,
+        quality: ConstructionQuality,
+        selected_family: ConstructionFamilyId,
+    },
     InsufficientWeeks {
         requested_weeks: usize,
         max_supported_weeks: usize,
+        quality: ConstructionQuality,
     },
     Selected {
         max_supported_weeks: usize,
+        quality: ConstructionQuality,
     },
 }
 
@@ -45,19 +57,39 @@ impl RoutingFailure {
                 FamilyAttemptStatus::NotApplicable { reason } => {
                     format!("{}: {}", attempt.family.label(), reason)
                 }
+                FamilyAttemptStatus::ConstructionFailed { reason } => {
+                    format!("{}: construction failed ({})", attempt.family.label(), reason)
+                }
+                FamilyAttemptStatus::RejectedAsWeaker {
+                    max_supported_weeks,
+                    quality,
+                    selected_family,
+                } => format!(
+                    "{}: candidate with max_supported_weeks={} and quality={} rejected in favor of {}",
+                    attempt.family.label(),
+                    max_supported_weeks,
+                    quality_label(quality),
+                    selected_family.label()
+                ),
                 FamilyAttemptStatus::InsufficientWeeks {
                     requested_weeks,
                     max_supported_weeks,
+                    quality,
                 } => format!(
-                    "{}: requested {} weeks but family currently supports at most {}",
+                    "{}: requested {} weeks but family currently supports at most {} ({})",
                     attempt.family.label(),
                     requested_weeks,
-                    max_supported_weeks
+                    max_supported_weeks,
+                    quality_label(quality)
                 ),
-                FamilyAttemptStatus::Selected { max_supported_weeks } => format!(
-                    "{}: selected with max_supported_weeks={}",
+                FamilyAttemptStatus::Selected {
+                    max_supported_weeks,
+                    quality,
+                } => format!(
+                    "{}: selected with max_supported_weeks={} ({})",
                     attempt.family.label(),
-                    max_supported_weeks
+                    max_supported_weeks,
+                    quality_label(quality)
                 ),
             })
             .collect::<Vec<_>>()
@@ -70,135 +102,143 @@ impl RoutingFailure {
     }
 }
 
-pub(super) fn attempt_construction(problem: &PureSgpProblem) -> Result<RouterDecision, RoutingFailure> {
-    let field = FiniteField::for_order(problem.num_groups);
-    let mut attempts = Vec::new();
+pub(super) fn attempt_construction(
+    problem: &PureSgpProblem,
+) -> Result<RouterDecision, RoutingFailure> {
+    let registrations = families::registered_families();
+    let mut non_candidate_attempts = Vec::new();
+    let mut candidates = Vec::new();
 
-    if problem.group_size == 2 {
-        return select(
-            families::construct_round_robin(problem.num_groups),
-            problem,
-            &mut attempts,
-        );
-    }
-    attempts.push(FamilyAttempt {
-        family: ConstructionFamilyId::RoundRobin,
-        status: FamilyAttemptStatus::NotApplicable {
-            reason: "requires group_size == 2",
-        },
-    });
-
-    match field {
-        Some(field) if problem.group_size == 3 && problem.num_groups % 6 == 1 => {
-            if let Ok(decision) = select(
-                families::construct_kirkman_6t_plus_1(&field),
-                problem,
-                &mut attempts,
-            ) {
-                return Ok(decision);
+    for (precedence, family) in registrations.iter().enumerate() {
+        match family.evaluate(problem) {
+            FamilyEvaluation::NotApplicable { reason } => non_candidate_attempts.push(FamilyAttempt {
+                family: family.id(),
+                status: FamilyAttemptStatus::NotApplicable { reason },
+            }),
+            FamilyEvaluation::Applicable { .. } => {
+                let Some(result) = family.construct(problem) else {
+                    non_candidate_attempts.push(FamilyAttempt {
+                        family: family.id(),
+                        status: FamilyAttemptStatus::ConstructionFailed {
+                            reason: "evaluation said applicable but construction returned None",
+                        },
+                    });
+                    continue;
+                };
+                candidates.push(CandidateRecord {
+                    family: family.id(),
+                    precedence,
+                    result,
+                });
             }
         }
-        Some(_) if problem.group_size != 3 => attempts.push(FamilyAttempt {
-            family: ConstructionFamilyId::Kirkman6TPlus1,
-            status: FamilyAttemptStatus::NotApplicable {
-                reason: "requires group_size == 3",
-            },
-        }),
-        Some(_) => attempts.push(FamilyAttempt {
-            family: ConstructionFamilyId::Kirkman6TPlus1,
-            status: FamilyAttemptStatus::NotApplicable {
-                reason: "requires num_groups ≡ 1 (mod 6)",
-            },
-        }),
-        None => attempts.push(FamilyAttempt {
-            family: ConstructionFamilyId::Kirkman6TPlus1,
-            status: FamilyAttemptStatus::NotApplicable {
-                reason: "requires supported prime-power group count",
-            },
-        }),
     }
 
-    match field {
-        Some(field) if problem.group_size == problem.num_groups => {
-            if let Ok(decision) = select(
-                families::construct_affine_plane(&field),
-                problem,
-                &mut attempts,
-            ) {
-                return Ok(decision);
-            }
+    let Some(best_idx) = best_candidate_index(&candidates) else {
+        return Err(RoutingFailure {
+            attempts: non_candidate_attempts,
+        });
+    };
+
+    let selected_family = candidates[best_idx].family;
+    let mut attempts = non_candidate_attempts;
+    let mut selected_result = None;
+    for (idx, candidate) in candidates.into_iter().enumerate() {
+        let quality = candidate.result.metadata.quality.clone();
+        if candidate.result.max_supported_weeks < problem.num_weeks {
+            attempts.push(FamilyAttempt {
+                family: candidate.family,
+                status: FamilyAttemptStatus::InsufficientWeeks {
+                    requested_weeks: problem.num_weeks,
+                    max_supported_weeks: candidate.result.max_supported_weeks,
+                    quality,
+                },
+            });
+            continue;
         }
-        Some(_) => attempts.push(FamilyAttempt {
-            family: ConstructionFamilyId::AffinePlanePrimePower,
-            status: FamilyAttemptStatus::NotApplicable {
-                reason: "requires group_size == num_groups",
+
+        if idx == best_idx {
+            let max_supported_weeks = candidate.result.max_supported_weeks;
+            selected_result = candidate.result.truncate_to_requested(problem.num_weeks);
+            attempts.push(FamilyAttempt {
+                family: candidate.family,
+                status: FamilyAttemptStatus::Selected {
+                    max_supported_weeks,
+                    quality,
+                },
+            });
+            continue;
+        }
+
+        attempts.push(FamilyAttempt {
+            family: candidate.family,
+            status: FamilyAttemptStatus::RejectedAsWeaker {
+                max_supported_weeks: candidate.result.max_supported_weeks,
+                quality,
+                selected_family,
             },
-        }),
-        None => attempts.push(FamilyAttempt {
-            family: ConstructionFamilyId::AffinePlanePrimePower,
-            status: FamilyAttemptStatus::NotApplicable {
-                reason: "requires supported prime-power group count",
-            },
-        }),
+        });
     }
 
-    match field {
-        Some(field) if (3..=problem.num_groups).contains(&problem.group_size) => {
-            if let Ok(decision) = select(
-                families::construct_transversal_design_portfolio(
-                    problem.num_groups,
-                    problem.group_size,
-                    &field,
-                ),
-                problem,
-                &mut attempts,
-            ) {
-                return Ok(decision);
-            }
-        }
-        Some(_) => attempts.push(FamilyAttempt {
-            family: ConstructionFamilyId::TransversalDesignPrimePower,
-            status: FamilyAttemptStatus::NotApplicable {
-                reason: "requires 3 <= group_size <= num_groups",
-            },
-        }),
-        None => attempts.push(FamilyAttempt {
-            family: ConstructionFamilyId::TransversalDesignPrimePower,
-            status: FamilyAttemptStatus::NotApplicable {
-                reason: "requires supported prime-power group count",
-            },
-        }),
+    if let Some(result) = selected_result {
+        return Ok(RouterDecision { result, attempts });
     }
 
     Err(RoutingFailure { attempts })
 }
 
-fn select(
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct CandidateRecord {
+    family: ConstructionFamilyId,
+    precedence: usize,
     result: ConstructionResult,
-    problem: &PureSgpProblem,
-    attempts: &mut Vec<FamilyAttempt>,
-) -> Result<RouterDecision, RoutingFailure> {
-    let family = result.family;
-    let max_supported_weeks = result.max_supported_weeks;
-    if let Some(result) = result.truncate_to_requested(problem.num_weeks) {
-        attempts.push(FamilyAttempt {
-            family,
-            status: FamilyAttemptStatus::Selected { max_supported_weeks },
-        });
-        return Ok(RouterDecision {
-            result,
-            attempts: attempts.clone(),
-        });
-    }
+}
 
-    attempts.push(FamilyAttempt {
-        family,
-        status: FamilyAttemptStatus::InsufficientWeeks {
-            requested_weeks: problem.num_weeks,
-            max_supported_weeks,
-        },
-    });
-    Err(RoutingFailure {
-        attempts: attempts.clone(),
-    })
+fn best_candidate_index(candidates: &[CandidateRecord]) -> Option<usize> {
+    let mut best_idx = None;
+    for (idx, candidate) in candidates.iter().enumerate() {
+        match best_idx {
+            None => best_idx = Some(idx),
+            Some(current_best_idx)
+                if candidate_outranks(candidate, &candidates[current_best_idx]) =>
+            {
+                best_idx = Some(idx)
+            }
+            Some(_) => {}
+        }
+    }
+    best_idx
+}
+
+fn candidate_outranks(left: &CandidateRecord, right: &CandidateRecord) -> bool {
+    left.result.max_supported_weeks > right.result.max_supported_weeks
+        || (left.result.max_supported_weeks == right.result.max_supported_weeks
+            && quality_rank(&left.result.metadata.quality)
+                > quality_rank(&right.result.metadata.quality))
+        || (left.result.max_supported_weeks == right.result.max_supported_weeks
+            && quality_rank(&left.result.metadata.quality)
+                == quality_rank(&right.result.metadata.quality)
+            && left.precedence < right.precedence)
+}
+
+fn quality_rank(quality: &ConstructionQuality) -> usize {
+    match quality {
+        ConstructionQuality::ExactFrontier => 3_000_000,
+        ConstructionQuality::NearFrontier { missing_weeks } => 2_000_000 - missing_weeks,
+        ConstructionQuality::LowerBound { gap_to_counting_bound } => {
+            1_000_000 - gap_to_counting_bound
+        }
+    }
+}
+
+fn quality_label(quality: &ConstructionQuality) -> String {
+    match quality {
+        ConstructionQuality::ExactFrontier => "exact_frontier".to_string(),
+        ConstructionQuality::NearFrontier { missing_weeks } => {
+            format!("near_frontier(missing={missing_weeks})")
+        }
+        ConstructionQuality::LowerBound {
+            gap_to_counting_bound,
+        } => format!("lower_bound(gap={gap_to_counting_bound})"),
+    }
 }

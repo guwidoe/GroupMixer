@@ -2,7 +2,9 @@ use super::helpers::pure_input;
 use crate::solver5::{
     problem::PureSgpProblem,
     router::{attempt_construction, FamilyAttemptStatus},
-    types::{CompositionOperatorId, ConstructionFamilyId, ConstructionSpan},
+    types::{
+        CompositionOperatorId, ConstructionFamilyId, ConstructionQuality, ConstructionSpan,
+    },
 };
 
 #[test]
@@ -12,13 +14,15 @@ fn router_selects_round_robin_for_p2_cases() {
     let decision = attempt_construction(&problem).expect("router should find round robin");
 
     assert_eq!(decision.result.family, ConstructionFamilyId::RoundRobin);
-    assert_eq!(decision.attempts.len(), 1);
-    assert_eq!(
-        decision.attempts[0].status,
-        FamilyAttemptStatus::Selected {
-            max_supported_weeks: 7,
-        }
-    );
+    assert_eq!(decision.attempts.len(), 4);
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::RoundRobin
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 7,
+                    quality: ConstructionQuality::ExactFrontier,
+                }
+    }));
 }
 
 #[test]
@@ -45,6 +49,28 @@ fn router_reports_prefix_and_recursive_provenance() {
 }
 
 #[test]
+fn router_rejects_weaker_candidate_when_multiple_families_apply() {
+    let input = pure_input(5, 5, 5);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should compare affine and TD");
+
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::AffinePlanePrimePower
+    );
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::TransversalDesignPrimePower
+            && matches!(
+                attempt.status,
+                FamilyAttemptStatus::RejectedAsWeaker {
+                    selected_family: ConstructionFamilyId::AffinePlanePrimePower,
+                    ..
+                }
+            )
+    }));
+}
+
+#[test]
 fn router_failure_explains_attempted_families() {
     let input = pure_input(10, 10, 10);
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
@@ -52,9 +78,7 @@ fn router_failure_explains_attempted_families() {
     let message = failure.to_solver_error_message(&problem);
 
     assert!(message.contains("round_robin: requires group_size == 2"));
-    assert!(message.contains(
-        "kirkman_6t_plus_1: requires supported prime-power group count"
-    ));
+    assert!(message.contains("kirkman_6t_plus_1: requires group_size == 3"));
     assert!(message.contains("affine_plane_prime_power: requires supported prime-power group count"));
     assert!(message.contains("transversal_design_prime_power: requires supported prime-power group count"));
 }
