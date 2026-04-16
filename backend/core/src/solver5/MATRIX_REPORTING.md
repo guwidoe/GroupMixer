@@ -3,11 +3,13 @@
 This document defines the matrix-based coverage reporting workflow for `solver5`.
 
 It complements the main architecture docs by describing how constructive
-coverage, targets, method attribution, and visual gap reporting are represented.
+coverage, implemented-family roadmap targets, literature-backed reference
+values, method attribution, and visual gap reporting are represented.
 
 ## Core matrices
 
-Solver5 matrix reporting is built around three named matrices.
+Solver5 matrix reporting is built around three primary named matrices, plus
+auxiliary literature-backed reference matrices.
 
 ### `W_g,p`
 The **current achieved matrix**.
@@ -19,14 +21,29 @@ For scored cells, this value comes from actual solver5 execution and canonical
 score verification.
 
 ### `TW_g,p`
-The **target matrix**.
+The **implemented-family roadmap target matrix**.
 
-For each `(g, p)`, `TW_g,p` is the current target week count the project wants
-solver5 to reach.
+For each `(g, p)`, `TW_g,p` is the current roadmap target week count the project
+wants solver5 to reach from the families and routing policy it has chosen to
+prioritize.
 
-This is a roadmap target, not necessarily the final theoretical optimum for all
-future time. It lives in a versioned target definition file so targets can be
-updated intentionally and reviewed in git.
+This is intentionally **not** the same thing as the best literature-backed
+constructive lower bound or the exact optimum. It is a versioned project target
+that can be updated intentionally and reviewed in git.
+
+### Auxiliary reference matrices
+
+The canonical target definition also carries literature-backed companion data:
+
+- `heuristic_target_rows` — best-known constructive reference values currently
+  encoded for reporting/debugging
+- `proven_optimal_rows` — exact optima where the project has encoded them
+- `solver5_optimality_lower_bounds.v1.json` — literature-backed constructive
+  lower bounds used for the optimality badge
+
+These reference matrices exist to keep the dashboard honest about what the
+literature already supports even when the implemented-family roadmap target is
+still conservative.
 
 ### `M_g,p`
 The **method matrix**.
@@ -36,10 +53,10 @@ that achieved the current `W_g,p`.
 
 Examples:
 - `RR` — round robin / 1-factorization
-- `K6` — Kirkman `6t+1`
-- `TD` — transversal design
+- `KTS(6t+3)` — Kirkman / resolvable triple-system route on `6t+3` players
+- `RTD` — resolvable transversal design / MOLS route
 - `AP` — affine plane
-- `TD+G` — transversal design with recursive lift
+- `RTD+G` — resolvable transversal design with recursive lift
 - `VIS` — visualization-only special/trivial cell, excluded from scoring
 
 ## Canonical target definition
@@ -92,8 +109,8 @@ Method abbreviations are defined in the target file.
 
 Current conventions include:
 - `RR`
-- `K6`
-- `TD`
+- `KTS(6t+3)`
+- `RTD`
 - `AP`
 - `+G`
 - `VIS`
@@ -101,7 +118,7 @@ Current conventions include:
 
 Composition operators append to the base family abbreviation.
 For example:
-- `TD` + `+G` => `TD+G`
+- `RTD` + `+G` => `RTD+G`
 
 When adding a new family or operator:
 1. add the implementation
@@ -115,7 +132,7 @@ Gap is defined as:
 - `gap_g,p = max(0, TW_g,p - W_g,p)`
 
 Interpretation:
-- `gap = 0` means the current target is reached
+- `gap = 0` means the current implemented-family roadmap target is reached
 - `gap = 1` means the cell is close and should appear yellow-ish
 - larger gaps move toward orange/red
 
@@ -148,6 +165,8 @@ Why:
 The matrices are a **complement**, not a replacement:
 - `total_constructed_weeks` is the keep/discard gate
 - `W`, `TW`, and `M` explain where progress happened and what still needs work
+- the auxiliary literature-backed rows keep conservative roadmap targets from
+  being mistaken for the current best-known constructive frontier
 
 ## Output artifacts
 
@@ -164,11 +183,13 @@ The HTML report renders the human-readable heatmap and method view.
 
 When changing targets or abbreviations:
 1. update `solver5_target_matrix.v1.json`
-2. rerun the solver5 coverage benchmark
-3. inspect the generated HTML report
-4. verify that scored-vs-visual-only boundaries still match the intended
+2. update `solver5_optimality_lower_bounds.v1.json` when the literature-backed
+   lower-bound/reference story changes
+3. rerun the solver5 coverage benchmark
+4. inspect the generated HTML report
+5. verify that scored-vs-visual-only boundaries still match the intended
    optimization question
-5. document any important target-policy change in autoresearch notes/docs
+6. document any important target-policy change in autoresearch notes/docs
 
 ## Non-goals
 

@@ -129,6 +129,31 @@ def render_simple_table(title, rows, cols, cell_map, value_fn, aside_fn=None):
     return "".join(html_parts)
 
 
+def reference_display(cell):
+    proven = cell.get("proven_optimal_weeks")
+    if proven is not None:
+        return str(proven)
+    lower_bound = cell.get("optimality_lower_bound_weeks")
+    if lower_bound is not None:
+        return f"≥ {lower_bound}"
+    heuristic = cell.get("heuristic_target_weeks")
+    if heuristic is not None:
+        return str(heuristic)
+    return "—"
+
+
+def reference_aside(cell):
+    if not cell["scored"]:
+        return "visual-only"
+    if cell.get("proven_optimal_weeks") is not None:
+        return "exact optimum"
+    if cell.get("optimality_lower_bound_weeks") is not None:
+        return "literature lower bound"
+    if cell.get("heuristic_target_weeks") is not None:
+        return "encoded constructive reference"
+    return "no reference encoded"
+
+
 def render_combined_table(title, rows, cols, cell_map, max_gap, max_method_gap, max_opt_gap):
     html_parts = [f"<section><h2>{html.escape(title)}</h2><table><thead><tr><th>g\\p</th>"]
     for p in cols:
@@ -147,8 +172,17 @@ def render_combined_table(title, rows, cols, cell_map, max_gap, max_method_gap, 
                 f"<div class='cell-main'>{html.escape(str(cell['current_display']))}</div>"
             )
             if cell["scored"]:
+                sub_parts = [
+                    f"roadmap {html.escape(str(cell['target_display']))}",
+                    f"gap {cell['gap_to_target']}",
+                ]
+                literature_floor = cell.get("optimality_lower_bound_weeks")
+                if literature_floor is not None and cell.get("target_weeks") is not None and literature_floor > cell["target_weeks"]:
+                    sub_parts.append(f"lit ≥ {literature_floor}")
+                elif cell.get("heuristic_target_weeks") is not None and cell.get("target_weeks") is not None and cell["heuristic_target_weeks"] > cell["target_weeks"]:
+                    sub_parts.append(f"lit {cell['heuristic_target_weeks']}")
                 html_parts.append(
-                    f"<div class='cell-sub'>target {html.escape(str(cell['target_display']))} · gap {cell['gap_to_target']}</div>"
+                    f"<div class='cell-sub'>{' · '.join(sub_parts)}</div>"
                 )
             else:
                 html_parts.append("<div class='cell-sub cell-sub-compact'></div>")
@@ -240,29 +274,30 @@ def main():
         "<div class='legend-block'>",
         "<div class='legend-title'>How to read the dashboard</div>",
         "<p class='legend-copy'><strong>Cell background</strong> is scaled per cell, not globally: <code>gap = 0</code> is green, <code>gap = target</code> is fully red, and intermediate gaps interpolate between them relative to that cell's own target.</p>",
-        "<p class='legend-copy'><strong>Method badge text</strong> shows the current achieving method. If the best-known heuristic method differs and the cell is still unresolved, it appears in brackets: <code>CURRENT (HEURISTIC)</code>. Proven-optimal settled cells collapse to a single method label with no bracketed aspiration.</p>",
-        "<p class='legend-copy'><strong>Method badge color</strong> is only green when the current achieving method already matches the best-known heuristic method and that heuristic target is matched. If the badge text contains brackets or the target still trails the best-known heuristic benchmark, the badge shifts orange/red.</p>",
-        "<p class='legend-copy'><strong>Optimality badge</strong> shows proof status for the target: <code>proven optimal</code> when the reached target is known optimal, <code>opt = X</code> when an exact optimum is known but the current cell has not yet reached it, <code>opt gap N</code> when the target still sits below a known proven optimum, and <code>opt ≥ L</code> when only a literature-backed constructive lower bound is currently encoded.</p>",
+        "<p class='legend-copy'><strong>Cell subtext</strong> distinguishes the conservative implemented-family <code>roadmap</code> target from literature-backed reference values. When the literature already supports a higher constructive floor than the roadmap target, the cell shows <code>lit ≥ L</code>.</p>",
+        "<p class='legend-copy'><strong>Method badge text</strong> shows the current achieving method. If the best-known encoded comparator method differs and the cell is still unresolved, it appears in brackets: <code>CURRENT (REFERENCE)</code>. Proven-optimal settled cells collapse to a single method label with no bracketed aspiration.</p>",
+        "<p class='legend-copy'><strong>Method badge color</strong> is only green when the current achieving method already matches the encoded reference method and that benchmark is matched. If the badge text contains brackets or the roadmap target still trails the encoded reference benchmark, the badge shifts orange/red.</p>",
+        "<p class='legend-copy'><strong>Optimality badge</strong> shows proof/lower-bound status relative to the roadmap target: <code>proven optimal</code> when the reached roadmap target is known optimal, <code>opt = X</code> when an exact optimum is known but the current cell has not yet reached it, <code>opt gap N</code> when the roadmap target still sits below a known proven optimum, and <code>opt ≥ L</code> when only a literature-backed constructive lower bound is currently encoded.</p>",
         "<div class='legend-title'>Method badge strings</div>",
         "<div class='legend-grid'>",
         render_legend_item(render_badge("RR", inline_style=neutral_badge_style()), "round robin / 1-factorization"),
-        render_legend_item(render_badge("K6", inline_style=neutral_badge_style()), "Kirkman 6t+1 family"),
+        render_legend_item(render_badge("KTS(6t+3)", inline_style=neutral_badge_style()), "Kirkman / resolvable triple-system route on 6t+3 players"),
         render_legend_item(render_badge("KTS", inline_style=neutral_badge_style()), "Kirkman triple system target family"),
         render_legend_item(render_badge("NKTS", inline_style=neutral_badge_style()), "nearly Kirkman triple system target family"),
-        render_legend_item(render_badge("TD", inline_style=neutral_badge_style()), "transversal design family"),
-        render_legend_item(render_badge("AP", inline_style=neutral_badge_style()), "affine plane family"),
-        render_legend_item(render_badge("P4", inline_style=neutral_badge_style()), "dedicated p=4 router target family"),
-        render_legend_item(render_badge("TD+G", inline_style=neutral_badge_style()), "transversal design plus the recursive +G(t)-style lift/composition operator"),
+        render_legend_item(render_badge("RTD", inline_style=neutral_badge_style()), "resolvable transversal design / MOLS route"),
+        render_legend_item(render_badge("AP", inline_style=neutral_badge_style()), "affine-plane diagonal route"),
+        render_legend_item(render_badge("P4", inline_style=neutral_badge_style()), "dedicated p=4 route / RGDD-style branch"),
+        render_legend_item(render_badge("RTD+G", inline_style=neutral_badge_style()), "RTD plus the recursive +G(t)-style lift/composition operator"),
         render_legend_item(render_badge("visual_only", inline_style=neutral_badge_style()), "shown for matrix completeness; excluded from the scored objective"),
         "</div>",
         "<div class='legend-title'>Badge colors</div>",
         "<div class='legend-grid'>",
-        render_legend_item(render_badge("green", inline_style=f"background:{target_alignment_color(0, max_method_gap)};color:#1f2937;"), "current method already matches the target method and the target benchmark is matched"),
-        render_legend_item(render_badge("orange", inline_style=f"background:{target_alignment_color(1 if max_method_gap > 0 else 1, max_method_gap if max_method_gap > 0 else 1)};color:#1f2937;"), "current method differs from target or there is a small remaining gap to the benchmark"),
-        render_legend_item(render_badge("red", inline_style=f"background:{target_alignment_color(max_method_gap if max_method_gap > 0 else 2, max_method_gap if max_method_gap > 0 else 2)};color:#1f2937;"), "larger remaining gap to the benchmark"),
+        render_legend_item(render_badge("green", inline_style=f"background:{target_alignment_color(0, max_method_gap)};color:#1f2937;"), "current method already matches the encoded reference method and the encoded benchmark is matched"),
+        render_legend_item(render_badge("orange", inline_style=f"background:{target_alignment_color(1 if max_method_gap > 0 else 1, max_method_gap if max_method_gap > 0 else 1)};color:#1f2937;"), "current method differs from the encoded reference or there is a small remaining gap to that benchmark"),
+        render_legend_item(render_badge("red", inline_style=f"background:{target_alignment_color(max_method_gap if max_method_gap > 0 else 2, max_method_gap if max_method_gap > 0 else 2)};color:#1f2937;"), "larger remaining gap to the encoded reference benchmark"),
         render_legend_item(render_badge("proven optimal", inline_style=f"background:{target_alignment_color(0, max_opt_gap)};color:#1f2937;"), "target already matches a known proven optimum"),
-        render_legend_item(render_badge("opt = 10", inline_style=f"background:{target_alignment_color(0, max_opt_gap)};color:#1f2937;"), "an exact optimum is known for the cell, but the current result has not yet reached that exact target"),
-        render_legend_item(render_badge("opt gap 2", inline_style=f"background:{target_alignment_color(2 if max_opt_gap > 1 else 1, max_opt_gap if max_opt_gap > 0 else 2)};color:#1f2937;"), "target remains below a known proven optimum by the shown amount"),
+        render_legend_item(render_badge("opt = 10", inline_style=f"background:{target_alignment_color(0, max_opt_gap)};color:#1f2937;"), "an exact optimum is known for the cell, but the roadmap/current result has not yet reached that exact frontier"),
+        render_legend_item(render_badge("opt gap 2", inline_style=f"background:{target_alignment_color(2 if max_opt_gap > 1 else 1, max_opt_gap if max_opt_gap > 0 else 2)};color:#1f2937;"), "roadmap target remains below a known proven optimum by the shown amount"),
         render_legend_item(render_badge("opt ≥ 10", inline_style="background:#e2e8f0;color:#1f2937;"), "no proof of optimality is encoded, but literature gives a constructive lower bound of at least the shown value"),
         "</div></div>",
     ]
@@ -270,24 +305,12 @@ def main():
     page.append(render_combined_table("Coverage dashboard", rows, cols, cell_map, max_gap, max_method_gap, max_opt_gap))
     page.append(
         render_simple_table(
-            "Target TW_g,p",
+            "Literature-backed reference matrix",
             rows,
             cols,
             cell_map,
-            lambda cell: cell["target_display"],
-            lambda cell: "visual-only" if not cell["scored"] else None,
-        )
-    )
-    page.append(
-        render_simple_table(
-            "Method M_g,p",
-            rows,
-            cols,
-            cell_map,
-            lambda cell: cell["method_abbreviation"] or "—",
-            lambda cell: cell["visual_note"]
-            if not cell["scored"]
-            else ((method_badge_text(cell)) if cell.get("method_abbreviation") else "unsolved"),
+            reference_display,
+            reference_aside,
         )
     )
     page.append("</body></html>")

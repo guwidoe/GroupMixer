@@ -21,8 +21,11 @@ fn default_target_matrix_exposes_expected_cells_and_abbreviations() {
 
     assert_eq!(matrix.target_for(1, 1), Some(&MatrixCellTarget::Infinite));
     assert_eq!(matrix.target_for(7, 3), Some(&MatrixCellTarget::Finite(10)));
+    assert_eq!(matrix.target_for(7, 8), Some(&MatrixCellTarget::Finite(1)));
     assert_eq!(matrix.target_for(10, 10), Some(&MatrixCellTarget::Finite(1)));
     assert_eq!(matrix.abbreviation_for("round_robin"), Some("RR"));
+    assert_eq!(matrix.abbreviation_for("kirkman_6t_plus_1"), Some("KTS(6t+3)"));
+    assert_eq!(matrix.abbreviation_for("transversal_design_prime_power"), Some("RTD"));
     assert_eq!(matrix.abbreviation_for("recursive_transversal_lift"), Some("+G"));
     assert_eq!(matrix.abbreviation_for("visual_only"), Some("VIS"));
     assert_eq!(matrix.target_method_for(2, 2), Some("round_robin"));
