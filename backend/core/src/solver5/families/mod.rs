@@ -18,6 +18,7 @@ pub(super) fn registered_families() -> Vec<&'static dyn ConstructionFamily> {
     vec![
         &ROUND_ROBIN_FAMILY,
         &KIRKMAN_6T_PLUS_1_FAMILY,
+        &KIRKMAN_TRIPLE_SYSTEM_FAMILY,
         &NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY,
         &AFFINE_PLANE_PRIME_POWER_FAMILY,
         &TRANSVERSAL_DESIGN_PRIME_POWER_FAMILY,
@@ -26,12 +27,14 @@ pub(super) fn registered_families() -> Vec<&'static dyn ConstructionFamily> {
 
 struct RoundRobinFamily;
 struct Kirkman6TPlus1Family;
+struct KirkmanTripleSystemFamily;
 struct NearlyKirkmanTripleSystemFamily;
 struct AffinePlanePrimePowerFamily;
 struct TransversalDesignPrimePowerFamily;
 
 static ROUND_ROBIN_FAMILY: RoundRobinFamily = RoundRobinFamily;
 static KIRKMAN_6T_PLUS_1_FAMILY: Kirkman6TPlus1Family = Kirkman6TPlus1Family;
+static KIRKMAN_TRIPLE_SYSTEM_FAMILY: KirkmanTripleSystemFamily = KirkmanTripleSystemFamily;
 static NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY: NearlyKirkmanTripleSystemFamily =
     NearlyKirkmanTripleSystemFamily;
 static AFFINE_PLANE_PRIME_POWER_FAMILY: AffinePlanePrimePowerFamily = AffinePlanePrimePowerFamily;
@@ -94,6 +97,37 @@ impl ConstructionFamily for Kirkman6TPlus1Family {
     }
 }
 
+impl ConstructionFamily for KirkmanTripleSystemFamily {
+    fn id(&self) -> ConstructionFamilyId {
+        ConstructionFamilyId::KirkmanTripleSystem
+    }
+
+    fn evaluate(&self, problem: &PureSgpProblem) -> FamilyEvaluation {
+        if problem.group_size != 3 {
+            return FamilyEvaluation::NotApplicable {
+                reason: "requires group_size == 3",
+            };
+        }
+
+        let Some(entry) = catalog::kts::exact_case(problem.num_groups) else {
+            return FamilyEvaluation::NotApplicable {
+                reason: "requires a catalog-backed Kirkman triple system case",
+            };
+        };
+
+        FamilyEvaluation::Applicable {
+            max_supported_weeks: entry.encoded_weeks.len(),
+        }
+    }
+
+    fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
+        (problem.group_size == 3)
+            .then(|| catalog::kts::exact_case(problem.num_groups))
+            .flatten()
+            .map(construct_kirkman_triple_system)
+    }
+}
+
 impl ConstructionFamily for NearlyKirkmanTripleSystemFamily {
     fn id(&self) -> ConstructionFamilyId {
         ConstructionFamilyId::NearlyKirkmanTripleSystem
@@ -106,22 +140,44 @@ impl ConstructionFamily for NearlyKirkmanTripleSystemFamily {
             };
         }
 
-        let Some(entry) = catalog::nkts::exact_case(problem.num_groups) else {
+        if let Some(entry) = catalog::nkts::exact_case(problem.num_groups) {
+            return FamilyEvaluation::Applicable {
+                max_supported_weeks: entry.encoded_weeks.len(),
+            };
+        }
+
+        let Some(base_entry) = (problem.num_groups % 2 == 0)
+            .then(|| catalog::kts::exact_case(problem.num_groups / 2))
+            .flatten()
+        else {
             return FamilyEvaluation::NotApplicable {
-                reason: "requires a catalog-backed nearly Kirkman triple system case",
+                reason: "requires a catalog-backed nearly Kirkman triple system case or a pseudo-doubling seed",
             };
         };
 
+        let base_weeks = base_entry.encoded_weeks.len();
         FamilyEvaluation::Applicable {
-            max_supported_weeks: entry.encoded_weeks.len(),
+            max_supported_weeks: if base_weeks % 2 == 0 {
+                base_weeks * 2
+            } else {
+                (base_weeks * 2).saturating_sub(1)
+            },
         }
     }
 
     fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
-        (problem.group_size == 3)
-            .then(|| catalog::nkts::exact_case(problem.num_groups))
-            .flatten()
-            .map(construct_nearly_kirkman_triple_system)
+        if problem.group_size != 3 {
+            return None;
+        }
+
+        let Some(entry) = catalog::nkts::exact_case(problem.num_groups) else {
+            return (problem.num_groups % 2 == 0)
+                .then(|| catalog::kts::exact_case(problem.num_groups / 2))
+                .flatten()
+                .map(construct_nearly_kirkman_triple_system_via_pseudo_doubling);
+        };
+
+        Some(construct_nearly_kirkman_triple_system(entry))
     }
 }
 
@@ -220,6 +276,24 @@ pub(super) fn construct_kirkman_6t_plus_1(field: &FiniteField) -> ConstructionRe
     )
 }
 
+pub(super) fn construct_kirkman_triple_system(
+    entry: &'static catalog::kts::KtsCatalogEntry,
+) -> ConstructionResult {
+    ConstructionResult::new(
+        kirkman::construct_catalog(entry),
+        ConstructionFamilyId::KirkmanTripleSystem,
+    )
+    .with_quality(ConstructionQuality::ExactFrontier)
+    .with_applicability(ConstructionApplicability::Conditional {
+        notes: vec![
+            "requires group_size == 3",
+            "requires a catalog-backed Kirkman triple system case",
+        ],
+    })
+    .with_evidence(EvidenceSourceKind::CatalogFact, catalog::kts::source().citation)
+    .with_evidence(EvidenceSourceKind::PatchBank, entry.citation)
+}
+
 pub(super) fn construct_nearly_kirkman_triple_system(
     entry: &'static catalog::nkts::NktsCatalogEntry,
 ) -> ConstructionResult {
@@ -236,6 +310,34 @@ pub(super) fn construct_nearly_kirkman_triple_system(
     })
     .with_evidence(EvidenceSourceKind::CatalogFact, catalog::nkts::source().citation)
     .with_evidence(EvidenceSourceKind::PatchBank, entry.citation)
+}
+
+pub(super) fn construct_nearly_kirkman_triple_system_via_pseudo_doubling(
+    entry: &'static catalog::kts::KtsCatalogEntry,
+) -> ConstructionResult {
+    let base = kirkman::construct_catalog(entry);
+    let base_player_count = entry.num_groups * 3;
+    let doubled_num_groups = entry.num_groups * 2;
+    let supported_weeks = if base.len() % 2 == 0 {
+        base.len() * 2
+    } else {
+        (base.len() * 2).saturating_sub(1)
+    };
+
+    ConstructionResult::new(
+        nkts::construct_pseudo_doubling(&base, base_player_count),
+        ConstructionFamilyId::NearlyKirkmanTripleSystem,
+    )
+    .with_quality(classify_quality(doubled_num_groups, 3, supported_weeks))
+    .with_applicability(ConstructionApplicability::Conditional {
+        notes: vec![
+            "requires group_size == 3",
+            "requires an exact Kirkman triple-system seed on half as many groups",
+            "uses pseudo-doubling when the seed has an odd number of rounds",
+        ],
+    })
+    .with_evidence(EvidenceSourceKind::CatalogFact, catalog::kts::source().citation)
+    .with_evidence(EvidenceSourceKind::StructuralComposition, "pseudo_doubling_from_kts")
 }
 
 pub(super) fn construct_affine_plane(field: &FiniteField) -> ConstructionResult {
@@ -305,6 +407,20 @@ fn construct_max_schedule_recursive(
 ) -> Option<ConstructionResult> {
     if group_size == 2 {
         return Some(construct_round_robin(num_groups));
+    }
+
+    if group_size == 3 {
+        if let Some(entry) = catalog::kts::exact_case(num_groups) {
+            return Some(construct_kirkman_triple_system(entry));
+        }
+        if let Some(entry) = catalog::nkts::exact_case(num_groups) {
+            return Some(construct_nearly_kirkman_triple_system(entry));
+        }
+        if num_groups % 2 == 0 {
+            if let Some(entry) = catalog::kts::exact_case(num_groups / 2) {
+                return Some(construct_nearly_kirkman_triple_system_via_pseudo_doubling(entry));
+            }
+        }
     }
 
     let field = FiniteField::for_order(num_groups)?;

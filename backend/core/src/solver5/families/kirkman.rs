@@ -1,6 +1,31 @@
 use super::schedule_from_raw;
+use crate::solver5::catalog::kts::KtsCatalogEntry;
 use crate::solver5::field::FiniteField;
 use crate::solver5::types::Schedule;
+
+pub(super) fn construct_catalog(entry: &KtsCatalogEntry) -> Schedule {
+    let alphabet = entry.alphabet.chars().collect::<Vec<_>>();
+    let weeks = entry
+        .encoded_weeks
+        .iter()
+        .map(|week| {
+            week.iter()
+                .map(|block| {
+                    block
+                        .chars()
+                        .map(|symbol| {
+                            alphabet
+                                .iter()
+                                .position(|candidate| *candidate == symbol)
+                                .expect("kts catalog symbol should appear in the declared alphabet")
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+    Schedule::from_raw(weeks)
+}
 
 pub(super) fn construct_6t_plus_1(field: &FiniteField) -> Schedule {
     let q = field.order;

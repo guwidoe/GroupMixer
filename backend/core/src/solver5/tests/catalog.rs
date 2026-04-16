@@ -1,4 +1,4 @@
-use crate::solver5::catalog::{nkts, ownsg, p4, prime_powers};
+use crate::solver5::catalog::{kts, nkts, ownsg, p4, prime_powers};
 
 #[test]
 fn prime_power_catalog_exposes_supported_field_orders() {
@@ -14,6 +14,25 @@ fn prime_power_catalog_exposes_supported_field_orders() {
 fn p4_catalog_exposes_exception_totals() {
     assert!(p4::rgdd_group_size_2_exception_totals().contains(&20));
     assert_eq!(p4::source().name, "p4_exception_catalog");
+}
+
+#[test]
+fn kts_catalog_exposes_exact_small_cases() {
+    assert_eq!(
+        kts::exact_case(3)
+            .expect("kts catalog should expose the 9-player case")
+            .encoded_weeks
+            .len(),
+        4
+    );
+    assert_eq!(
+        kts::exact_case(5)
+            .expect("kts catalog should expose the 15-player case")
+            .encoded_weeks
+            .len(),
+        7
+    );
+    assert_eq!(kts::source().name, "kts_catalog");
 }
 
 #[test]

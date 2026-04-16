@@ -99,3 +99,27 @@ fn solver5_solves_catalog_backed_nkts_case() {
     assert_eq!(result.final_score, 0.0);
     assert_eq!(result.schedule.len(), 8);
 }
+
+#[test]
+fn solver5_solves_catalog_backed_kts_case() {
+    let input = pure_input(5, 3, 7);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver
+        .solve(&input)
+        .expect("catalog-backed kts construction should solve 5-3-7");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 7);
+}
+
+#[test]
+fn solver5_solves_pseudo_doubled_nkts_case() {
+    let input = pure_input(10, 3, 13);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver
+        .solve(&input)
+        .expect("pseudo-doubled nkts construction should solve 10-3-13");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 13);
+}

@@ -12,7 +12,7 @@ fn router_selects_round_robin_for_p2_cases() {
     let decision = attempt_construction(&problem).expect("router should find round robin");
 
     assert_eq!(decision.result.family, ConstructionFamilyId::RoundRobin);
-    assert_eq!(decision.attempts.len(), 5);
+    assert_eq!(decision.attempts.len(), 6);
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::RoundRobin
             && attempt.status
@@ -62,6 +62,43 @@ fn router_selects_nkts_catalog_case_for_6_3_8() {
                 == FamilyAttemptStatus::Selected {
                     max_supported_weeks: 8,
                     quality: ConstructionQuality::ExactFrontier,
+                }
+    }));
+}
+
+#[test]
+fn router_selects_catalog_kts_case_for_5_3_7() {
+    let input = pure_input(5, 3, 7);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 5-3-7");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::KirkmanTripleSystem);
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::KirkmanTripleSystem
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 7,
+                    quality: ConstructionQuality::ExactFrontier,
+                }
+    }));
+}
+
+#[test]
+fn router_selects_pseudo_doubled_nkts_case_for_10_3_13() {
+    let input = pure_input(10, 3, 13);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 10-3-13");
+
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::NearlyKirkmanTripleSystem
+    );
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::NearlyKirkmanTripleSystem
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 13,
+                    quality: ConstructionQuality::NearFrontier { missing_weeks: 1 },
                 }
     }));
 }
