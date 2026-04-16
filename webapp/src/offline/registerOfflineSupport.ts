@@ -19,7 +19,7 @@ interface OfflineSupportDeps {
 const RELOAD_MARKER = 'groupmixer.offline.reload-on-controllerchange';
 
 export function shouldEnableOfflineSupport(): boolean {
-  return import.meta.env.PROD && typeof window !== 'undefined' && 'serviceWorker' in navigator;
+  return (import.meta.env?.PROD ?? false) && typeof window !== 'undefined' && 'serviceWorker' in navigator;
 }
 
 export function registerOfflineSupportWithDeps({
@@ -71,7 +71,7 @@ export function registerOfflineSupportWithDeps({
 
 export function registerOfflineSupport(): void {
   registerOfflineSupportWithDeps({
-    isProd: import.meta.env.PROD,
+    isProd: import.meta.env?.PROD ?? false,
     serviceWorker: typeof navigator !== 'undefined' ? (navigator.serviceWorker as ServiceWorkerContainerLike) : undefined,
     windowLike: window,
     sessionStorageLike: window.sessionStorage,

@@ -32,7 +32,7 @@ function SolverRouteRedirect() {
 
 function App() {
   const { theme } = useThemeStore();
-  const showPerformanceRoutes = import.meta.env.DEV;
+  const showPerformanceRoutes = import.meta.env?.DEV ?? false;
 
   useEffect(() => initializeThemeStore(), []);
 
