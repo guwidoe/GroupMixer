@@ -11,6 +11,7 @@ pub(super) struct SwapCandidate {
     pub(super) right_person: usize,
     pub(super) conflict_positions_after: usize,
     pub(super) repeat_excess_after: i32,
+    pub(super) active_repeated_pairs_after: usize,
     pub(super) max_conflict_positions_in_any_week_after: u32,
 }
 
@@ -48,12 +49,36 @@ impl SwapCandidate {
                                     other,
                                 ))))))
     }
+
+    pub(super) fn outranks_with_repeat_guidance(
+        &self,
+        other: &Self,
+        base_schedule: &[Vec<Vec<usize>>],
+    ) -> bool {
+        self.conflict_positions_after < other.conflict_positions_after
+            || (self.conflict_positions_after == other.conflict_positions_after
+                && (self.repeat_excess_after < other.repeat_excess_after
+                    || (self.repeat_excess_after == other.repeat_excess_after
+                        && (self.active_repeated_pairs_after < other.active_repeated_pairs_after
+                            || (self.active_repeated_pairs_after
+                                == other.active_repeated_pairs_after
+                                && (self.max_conflict_positions_in_any_week_after
+                                    < other.max_conflict_positions_in_any_week_after
+                                    || (self.max_conflict_positions_in_any_week_after
+                                        == other.max_conflict_positions_in_any_week_after
+                                        && resulting_configuration_is_lexicographically_smaller(
+                                            base_schedule,
+                                            self,
+                                            other,
+                                        ))))))))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct SwapPreview {
     pub(super) conflict_positions_after: usize,
     pub(super) repeat_excess_after: i32,
+    pub(super) active_repeated_pairs_after: usize,
     pub(super) max_conflict_positions_in_any_week_after: u32,
 }
 
@@ -116,9 +141,11 @@ pub(super) fn select_best_swap(
     tabu: &mut WeekTabuLists,
     iteration: u64,
     tabu_telemetry: &mut SgpWeekPairTabuBenchmarkTelemetry,
+    no_improvement_count: u64,
 ) -> Option<SelectedSwap> {
     let mut best_candidate: Option<SwapCandidate> = None;
     tabu.prune(iteration);
+    let prefer_active_repeated_pairs = should_prefer_active_repeated_pairs(no_improvement_count);
 
     for week in 0..problem.num_weeks {
         for left_group in 0..problem.num_groups {
@@ -164,13 +191,21 @@ pub(super) fn select_best_swap(
                             right_person,
                             conflict_positions_after: preview.conflict_positions_after,
                             repeat_excess_after: preview.repeat_excess_after,
+                            active_repeated_pairs_after: preview.active_repeated_pairs_after,
                             max_conflict_positions_in_any_week_after: preview
                                 .max_conflict_positions_in_any_week_after,
                         };
 
                         let is_better = match best_candidate {
                             None => true,
-                            Some(current_best) => candidate.outranks(&current_best, schedule),
+                            Some(current_best) => {
+                                if prefer_active_repeated_pairs {
+                                    candidate
+                                        .outranks_with_repeat_guidance(&current_best, schedule)
+                                } else {
+                                    candidate.outranks(&current_best, schedule)
+                                }
+                            }
                         };
                         if is_better {
                             best_candidate = Some(candidate);
@@ -218,6 +253,7 @@ pub(super) fn evaluate_swap_preview(
     let right_person = schedule[week][right_group][right_slot];
 
     let mut position_deltas: HashMap<usize, i32> = HashMap::new();
+    let mut pair_count_deltas: HashMap<usize, i16> = HashMap::new();
     let mut repeat_excess_after = current.repeat_excess;
     let mut conflict_positions_by_week_after = current.conflict_positions_by_week.clone();
 
@@ -225,6 +261,7 @@ pub(super) fn evaluate_swap_preview(
         if slot != left_slot {
             let partner = schedule[week][left_group][slot];
             let removed_pair_key = problem.pair_key(left_person, partner);
+            *pair_count_deltas.entry(removed_pair_key).or_insert(0) -= 1;
             if current.pair_counts[removed_pair_key] >= 2 {
                 repeat_excess_after -= 1;
             }
@@ -236,6 +273,7 @@ pub(super) fn evaluate_swap_preview(
                 &mut position_deltas,
             );
             let added_pair_key = problem.pair_key(right_person, partner);
+            *pair_count_deltas.entry(added_pair_key).or_insert(0) += 1;
             if current.pair_counts[added_pair_key] >= 1 {
                 repeat_excess_after += 1;
             }
@@ -250,6 +288,7 @@ pub(super) fn evaluate_swap_preview(
         if slot != right_slot {
             let partner = schedule[week][right_group][slot];
             let removed_pair_key = problem.pair_key(right_person, partner);
+            *pair_count_deltas.entry(removed_pair_key).or_insert(0) -= 1;
             if current.pair_counts[removed_pair_key] >= 2 {
                 repeat_excess_after -= 1;
             }
@@ -261,6 +300,7 @@ pub(super) fn evaluate_swap_preview(
                 &mut position_deltas,
             );
             let added_pair_key = problem.pair_key(left_person, partner);
+            *pair_count_deltas.entry(added_pair_key).or_insert(0) += 1;
             if current.pair_counts[added_pair_key] >= 1 {
                 repeat_excess_after += 1;
             }
@@ -291,15 +331,33 @@ pub(super) fn evaluate_swap_preview(
             _ => {}
         }
     }
+
+    let mut active_repeated_pairs_after = current.active_repeated_pairs;
+    for (pair_key, delta) in pair_count_deltas {
+        let before_active = current.pair_counts[pair_key] > 1;
+        let after_count = i32::from(current.pair_counts[pair_key]) + i32::from(delta);
+        let after_active = after_count > 1;
+        match (before_active, after_active) {
+            (false, true) => active_repeated_pairs_after += 1,
+            (true, false) => active_repeated_pairs_after -= 1,
+            _ => {}
+        }
+    }
+
     SwapPreview {
         conflict_positions_after: new_conflict_positions,
         repeat_excess_after,
+        active_repeated_pairs_after,
         max_conflict_positions_in_any_week_after: conflict_positions_by_week_after
             .iter()
             .copied()
             .max()
             .unwrap_or(0),
     }
+}
+
+pub(super) fn should_prefer_active_repeated_pairs(no_improvement_count: u64) -> bool {
+    no_improvement_count >= 2
 }
 
 fn apply_removed_pair_delta(

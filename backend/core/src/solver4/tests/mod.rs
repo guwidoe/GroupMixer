@@ -103,6 +103,7 @@ fn simulate_local_search_iterations(
                 &mut tabu,
                 iteration,
                 &mut telemetry,
+                no_improvement_count,
             );
             if let Some(candidate) = selection {
                 let pair = unordered_pair(candidate.left_person, candidate.right_person);

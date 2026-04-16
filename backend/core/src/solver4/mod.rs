@@ -321,6 +321,7 @@ impl SearchEngine {
                     &mut tabu,
                     iterations,
                     &mut tabu_telemetry,
+                    no_improvement_count,
                 );
                 selection
                     .map(|candidate| {
