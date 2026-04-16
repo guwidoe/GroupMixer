@@ -23,6 +23,32 @@ Primary entrypoint:
 
 The wrapper builds and launches `gm-cli benchmark ...` through `tools/benchmark_runner.py`.
 
+### Solver3 development wrapper
+
+For ongoing `solver3` work, use the checked-in bundle wrapper instead of re-assembling ad hoc test and manifest lists:
+
+```bash
+./tools/solver3_development_bundle.sh checks
+./tools/solver3_development_bundle.sh record
+./tools/solver3_development_bundle.sh full
+./tools/solver3_development_bundle.sh compare-last-two
+```
+
+The wrapper intentionally composes the existing framework layers into one reusable solver3 lane:
+
+- shared semantic guardrails (`data_driven_tests`, `property_tests`, move/search regression suites)
+- solver3 correctness/debug checks (`solver3-oracle-checks` lane)
+- benchmark metadata/validation checks in `gm-benchmarking`
+- a durable benchmark recording bundle covering:
+  - representative solve smoke
+  - correctness-edge intertwined coverage
+  - canonical objective adversarial + stretch solver3 bundles
+  - fixed-iteration diagnostic adversarial + stretch solver3 bundles
+  - large Sailing Trip hotpath lanes
+  - targeted Sailing Trip real + synthetic partial-attendance stability lanes (`10s` and `1M`)
+
+Use this wrapper as the default local solver3 development bundle; use the remote same-machine benchmark lane when timing interpretation needs to be authoritative.
+
 Safety knobs:
 
 - `GROUPMIXER_BENCH_BUILD_JOBS=1` keeps release builds memory-bounded by default
