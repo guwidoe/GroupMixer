@@ -119,8 +119,8 @@ Interpretation note:
   - round robin / 1-factorization for `p=2`
   - Kirkman `6t+1` coverage for supported `p=3` cases
   - catalog-backed exact KTS cases for 9 and 15 players (`5-3-7` is now exact via `kts`)
-  - catalog-backed exact NKTS cases for 18 players (`6-3-8`)
-  - pseudo-doubled NKTS constructions seeded from exact half-size KTS schedules (`10-3-13` now constructs honestly from `KTS(15)`)
+  - catalog-backed exact NKTS / KP cases for 18 and 30 players (`6-3-8` and `10-3-14`)
+  - pseudo-doubled NKTS constructions seeded from exact half-size KTS schedules (`10-3-13` still constructs honestly from `KTS(15)` as a weaker reusable route)
   - published-schedule bank coverage for source-backed triples / higher-`p` exceptions, including:
     - `8-3-10`
     - `6-4-7` (with one documented transcription correction on the archived source)
@@ -133,13 +133,13 @@ Interpretation note:
   - recursive `+G(t)`-style lifting across RTD latent groups when `p | g` and the smaller `(g/p)-p-*` instance is already constructible
   - a universal single-round partition family for any divisible pure-SGP instance, used as an honest reusable `W=1` lower bound when no stronger family applies
 - Active kept benchmark baseline is now:
-  - commit: `079e496`
-  - `total_constructed_weeks = 406`
-  - `frontier_gap_sum = 180`
+  - commit: `739197b`
+  - `total_constructed_weeks = 407`
+  - `frontier_gap_sum = 179`
   - `solved_cells = 81`
-  - `exact_frontier_cells = 23`
+  - `exact_frontier_cells = 24`
   - `unsolved_cells = 0`
-  - `p3_constructed_weeks = 70`
+  - `p3_constructed_weeks = 71`
   - `p4_constructed_weeks = 60`
 
 ## What's Been Tried
@@ -152,7 +152,8 @@ Interpretation note:
 - Catalog-backed small triple families now move the benchmark honestly:
   - exact `NKTS(18)` raised `6-3` coverage to `8`
   - exact `KTS(15)` now solves `5-3-7`
-  - a pseudo-doubling construction from `KTS(15)` now solves `10-3-13`
+  - a pseudo-doubling construction from `KTS(15)` solves `10-3-13`
+  - an explicit thesis-reproduced `KP(30,14)` direct construction now closes `10-3` exactly at `14`
 - Published explicit schedules are now a major honest coverage source:
   - Warwick Harvey archive cases now cover `8-3-10`, `10-4-9`, `6-5-6`, `6-6-3`, and the `10-p-*` rows for `p=5..10`
   - the archived `6-4-7` page entry had one obvious duplicated-player typo; a single-entry correction (`[1, 5, 16, 19] -> [1, 7, 16, 19]`) restores a valid pure-SGP schedule and is now documented inline in the catalog
@@ -162,20 +163,17 @@ Interpretation note:
 - Remaining live directions should stay structural constructor families, not search-based cheating:
   - honest 24-player triple coverage for `8-3-11`
   - stronger `p=4` coverage, especially exact `9-4-11`, through explicit published schedules or actual RBIBD / RGDD family work rather than benchmark-shaped glue
-  - honest improvement from `10-3-13` to `10-3-14` if a real 30-player triple construction appears
   - broader RBIBD / RGDD / URD / RITD / ownSG-style patches only after the highest-ROI family-policy gaps are exhausted
 
 ## Immediate Next Loop Behavior
-- Active kept benchmark baseline is now commit `079e496` at `total_constructed_weeks = 406`.
+- Active kept benchmark baseline is now commit `739197b` at `total_constructed_weeks = 407`.
 - The universal single-round lower bound has landed and removed all zero-coverage holes without changing the benchmark question:
   - `unsolved_cells: 36 -> 0`
   - many previously empty cells now honestly score `W=1`
-- Only three scored target gaps remain in the fixed matrix:
+- Only two scored target gaps remain in the fixed matrix:
   1. `9-4`: current `9`, target `11`
   2. `8-3`: current `10`, target `11`
-  3. `10-3`: current `13`, target `14`
 - The next feature buildout order is now:
   1. target the remaining exact `p=4` gap at `9-4-11`, likely through an honest `RGDD(36,4,3)`-style family or an explicit source-backed schedule
   2. target the remaining exact triples gap at `8-3-11`, likely through an honest `NKTS(24)` construction or explicit source-backed schedule
-  3. then consider `10-3-14` only if a real 30-player triples route emerges
 - Keep preferring reusable family logic or justified composition over per-cell glue.

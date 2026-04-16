@@ -151,6 +151,18 @@ fn solver5_solves_catalog_backed_kts_case() {
 }
 
 #[test]
+fn solver5_solves_catalog_backed_8_3_11_case() {
+    let input = pure_input(8, 3, 11);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver
+        .solve(&input)
+        .expect("catalog-backed nkts construction should solve 8-3-11");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 11);
+}
+
+#[test]
 fn solver5_solves_catalog_backed_10_3_14_case() {
     let input = pure_input(10, 3, 14);
     let solver = SearchEngine::new(&input.solver);
