@@ -395,6 +395,42 @@ fn choose_breakout_positions_prefers_conflicted_slots_from_different_groups() {
 }
 
 #[test]
+fn choose_breakout_positions_avoids_reusing_positions_when_possible() {
+    let problem = sample_problem(2, 2, 3);
+    let schedule = vec![
+        vec![vec![0, 1], vec![2, 3]],
+        vec![vec![0, 1], vec![2, 3]],
+        vec![vec![0, 2], vec![1, 3]],
+    ];
+    let current = EvaluatedSchedule::from_schedule(&problem, schedule);
+    let mut rng = ChaCha12Rng::seed_from_u64(17);
+    let mut used_positions = std::collections::BTreeSet::new();
+
+    let first = choose_breakout_positions_avoiding_used_positions(
+        &problem,
+        &current,
+        0,
+        &mut rng,
+        &used_positions,
+    );
+    used_positions.insert(problem.position_id(0, first.0, first.1));
+    used_positions.insert(problem.position_id(0, first.2, first.3));
+
+    let second = choose_breakout_positions_avoiding_used_positions(
+        &problem,
+        &current,
+        0,
+        &mut rng,
+        &used_positions,
+    );
+
+    let second_left = problem.position_id(0, second.0, second.1);
+    let second_right = problem.position_id(0, second.2, second.3);
+    assert!(!used_positions.contains(&second_left));
+    assert!(!used_positions.contains(&second_right));
+}
+
+#[test]
 fn local_search_trace_locks_first_two_iterations_on_repeated_pair_fixture() {
     let problem = sample_problem(2, 2, 3);
     let schedule = vec![

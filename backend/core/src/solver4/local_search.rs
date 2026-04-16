@@ -435,20 +435,48 @@ pub(super) fn apply_random_breakout(
 ) -> Vec<Vec<Vec<usize>>> {
     let mut next = schedule.to_vec();
     let mut recorded = Vec::with_capacity(RANDOM_BREAKOUT_SWAP_COUNT);
+    let mut used_positions = std::collections::BTreeSet::new();
 
     for _ in 0..RANDOM_BREAKOUT_SWAP_COUNT {
         let week = choose_breakout_week(current, problem.num_weeks, rng);
         let (left_group, left_slot, right_group, right_slot) =
-            choose_breakout_positions(problem, current, week, rng);
+            choose_breakout_positions_avoiding_used_positions(
+                problem,
+                current,
+                week,
+                rng,
+                &used_positions,
+            );
         let left_person = next[week][left_group][left_slot];
         let right_person = next[week][right_group][right_slot];
         next[week][left_group][left_slot] = right_person;
         next[week][right_group][right_slot] = left_person;
+        used_positions.insert(problem.position_id(week, left_group, left_slot));
+        used_positions.insert(problem.position_id(week, right_group, right_slot));
         recorded.push((week, unordered_pair(left_person, right_person)));
     }
 
     let _ = (recorded, iteration, tabu, tabu_telemetry);
     next
+}
+
+pub(super) fn choose_breakout_positions_avoiding_used_positions(
+    problem: &PureSgpProblem,
+    current: &EvaluatedSchedule,
+    week: usize,
+    rng: &mut ChaCha12Rng,
+    used_positions: &std::collections::BTreeSet<usize>,
+) -> (usize, usize, usize, usize) {
+    for _ in 0..16 {
+        let candidate = choose_breakout_positions(problem, current, week, rng);
+        let left_position = problem.position_id(week, candidate.0, candidate.1);
+        let right_position = problem.position_id(week, candidate.2, candidate.3);
+        if !used_positions.contains(&left_position) && !used_positions.contains(&right_position) {
+            return candidate;
+        }
+    }
+
+    choose_breakout_positions(problem, current, week, rng)
 }
 
 pub(super) fn choose_breakout_week(
