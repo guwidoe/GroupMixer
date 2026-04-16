@@ -247,6 +247,10 @@ fn construct_max_schedule(
     }
 
     let field = FiniteField::for_order(num_groups)?;
+    if group_size == 3 && num_groups % 6 == 1 {
+        return Some((construct_kirkman_6t_plus_1(&field), "kirkman_6t_plus_1"));
+    }
+
     if group_size == num_groups {
         return Some((construct_affine_plane(&field), "affine_plane_prime_power"));
     }
@@ -301,6 +305,68 @@ fn lift_transversal_latent_groups(
 
 fn counting_bound(num_groups: usize, group_size: usize) -> usize {
     ((num_groups * group_size) - 1) / (group_size - 1)
+}
+
+fn construct_kirkman_6t_plus_1(field: &FiniteField) -> Vec<Vec<Vec<usize>>> {
+    let q = field.order;
+    let t = q / 6;
+    let generator = field
+        .primitive_element()
+        .expect("q ≡ 1 mod 6 prime-power field should have a primitive element");
+
+    let zero_block = vec![kts_person(0, 0, q), kts_person(0, 1, q), kts_person(0, 2, q)];
+    let mut base_class = Vec::with_capacity(q);
+    base_class.push(zero_block);
+
+    for i in 0..t {
+        let exponents = [i, i + 2 * t, i + 4 * t];
+        for layer in 0..=2 {
+            base_class.push(
+                exponents
+                    .iter()
+                    .map(|exponent| kts_person(field.pow(generator, *exponent), layer, q))
+                    .collect(),
+            );
+        }
+    }
+
+    for i in 0..(6 * t) {
+        if (i / t) % 2 == 1 {
+            let exponents = [i, i + 2 * t, i + 4 * t];
+            base_class.push(vec![
+                kts_person(field.pow(generator, exponents[0]), 0, q),
+                kts_person(field.pow(generator, exponents[1]), 1, q),
+                kts_person(field.pow(generator, exponents[2]), 2, q),
+            ]);
+        }
+    }
+
+    let mut classes = Vec::with_capacity((3 * q - 1) / 2);
+    for shift in 0..q {
+        classes.push(
+            base_class
+                .iter()
+                .map(|block| shift_kts_block(block, shift, field))
+                .collect(),
+        );
+    }
+
+    for i in 0..(6 * t) {
+        if (i / t) % 2 == 0 {
+            let exponents = [i, i + 2 * t, i + 4 * t];
+            let base_block = vec![
+                kts_person(field.pow(generator, exponents[0]), 0, q),
+                kts_person(field.pow(generator, exponents[1]), 1, q),
+                kts_person(field.pow(generator, exponents[2]), 2, q),
+            ];
+            let class = (0..q)
+                .map(|shift| shift_kts_block(&base_block, shift, field))
+                .collect();
+            classes.push(class);
+        }
+    }
+
+    classes
 }
 
 #[derive(Clone, Copy)]
@@ -420,6 +486,40 @@ impl FiniteField {
         self.from_digits(&product[..self.degree])
     }
 
+    fn pow(self, base: usize, exponent: usize) -> usize {
+        let mut result = 1usize;
+        let mut factor = base;
+        let mut power = exponent;
+        while power > 0 {
+            if power & 1 == 1 {
+                result = self.mul(result, factor);
+            }
+            factor = self.mul(factor, factor);
+            power >>= 1;
+        }
+        result
+    }
+
+    fn primitive_element(self) -> Option<usize> {
+        if self.order <= 2 {
+            return None;
+        }
+        let target_order = self.order - 1;
+        let prime_factors = prime_factors(target_order);
+        'candidate: for candidate in 2..self.order {
+            if candidate == 0 {
+                continue;
+            }
+            for factor in &prime_factors {
+                if self.pow(candidate, target_order / factor) == 1 {
+                    continue 'candidate;
+                }
+            }
+            return Some(candidate);
+        }
+        None
+    }
+
     fn nonzero_nonone_elements(self) -> Vec<usize> {
         (0..self.order)
             .filter(|value| *value != 0 && *value != 1)
@@ -520,6 +620,39 @@ fn construct_affine_plane(field: &FiniteField) -> Vec<Vec<Vec<usize>>> {
 
 fn td_person(latent_group: usize, symbol: usize, order: usize) -> usize {
     latent_group * order + symbol
+}
+
+fn kts_person(symbol: usize, layer: usize, order: usize) -> usize {
+    layer * order + symbol
+}
+
+fn shift_kts_block(block: &[usize], shift: usize, field: &FiniteField) -> Vec<usize> {
+    block
+        .iter()
+        .map(|person| {
+            let layer = person / field.order;
+            let symbol = person % field.order;
+            kts_person(field.add(symbol, shift), layer, field.order)
+        })
+        .collect()
+}
+
+fn prime_factors(mut value: usize) -> Vec<usize> {
+    let mut factors = Vec::new();
+    let mut divisor = 2usize;
+    while divisor * divisor <= value {
+        if value % divisor == 0 {
+            factors.push(divisor);
+            while value % divisor == 0 {
+                value /= divisor;
+            }
+        }
+        divisor += if divisor == 2 { 1 } else { 2 };
+    }
+    if value > 1 {
+        factors.push(value);
+    }
+    factors
 }
 
 fn plane_point(x: usize, y: usize, order: usize) -> usize {

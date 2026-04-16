@@ -160,3 +160,15 @@ fn solver5_recursively_lifts_transversal_design_latent_groups() {
     assert_eq!(result.final_score, 0.0);
     assert_eq!(result.schedule.len(), 13);
 }
+
+#[test]
+fn solver5_solves_kirkman_6t_plus_1_cases() {
+    let input = pure_input(7, 3, 10);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver
+        .solve(&input)
+        .expect("kirkman 6t+1 construction should solve 7-3-10");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 10);
+}
