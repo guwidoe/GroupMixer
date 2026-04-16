@@ -5,108 +5,186 @@ import json
 from pathlib import Path
 
 
-def cell_gap_color(gap: int, target_weeks: int | None) -> str:
-    if gap <= 0:
-        hue = 120.0
-    else:
-        effective_target = max(target_weeks or 1, 1)
-        normalized = min(1.0, max(0.0, gap / effective_target))
-        hue = 120.0 * (1.0 - normalized)
-    return f"hsl({hue:.1f} 78% 78%)"
-
-
-def target_alignment_color(gap: int, max_gap: int) -> str:
-    if gap <= 0:
-        hue = 120.0
-    elif max_gap <= 1:
-        hue = 28.0
-    else:
-        normalized = min(1.0, max(0.0, gap / max_gap))
-        hue = 28.0 * (1.0 - normalized)
-    return f"hsl({hue:.1f} 78% 78%)"
-
-
 def build_matrix(cells):
     return {(cell["g"], cell["p"]): cell for cell in cells}
 
 
-def render_badge(text, inline_style=""):
-    style_attr = f" style='{inline_style}'" if inline_style else ""
-    return f"<span class='badge'{style_attr}>{html.escape(str(text))}</span>"
+def progress_fill_color(current: int, target: int | None, scored: bool) -> str:
+    if not scored:
+        return "repeating-linear-gradient(135deg,#f8fafc 0,#f8fafc 8px,#e5e7eb 8px,#e5e7eb 16px)"
+    if not target or target <= 0:
+        return "#f8fafc"
+    progress = min(1.0, max(0.0, current / target))
+    hue = 120.0 * progress
+    lightness = 96.0 - (progress * 10.0)
+    return f"hsl({hue:.1f} 65% {lightness:.1f}%)"
 
 
-def render_legend_item(badge_html, description):
-    return f"<span class='legend-item'>{badge_html}<span>{html.escape(description)}</span></span>"
-
-
-def neutral_badge_style():
-    return "background:#f8fafc;color:#334155;"
-
-
-def method_badge_style(cell, max_method_gap):
+def border_style(cell) -> str:
     if not cell.get("scored"):
-        return cell_gap_color(0, 1)
+        return "border:2px dashed #94a3b8;"
+    proven_optimal = cell.get("proven_optimal_weeks")
+    current = cell.get("constructed_weeks") or 0
+    if proven_optimal is None:
+        return "border:2px dashed #94a3b8;"
+    if current >= proven_optimal:
+        return "border:2px solid #16a34a;"
+    return "border:2px solid #d97706;"
+
+
+def literature_constructive_value(cell):
+    candidates = [
+        value
+        for value in [
+            cell.get("optimality_lower_bound_weeks"),
+            cell.get("heuristic_target_weeks"),
+        ]
+        if value is not None
+    ]
+    return max(candidates) if candidates else None
+
+
+def exact_redundant_cell(cell) -> bool:
+    if not cell.get("scored"):
+        return False
+    current = cell.get("constructed_weeks") or 0
+    target = cell.get("target_weeks")
+    literature = literature_constructive_value(cell)
+    optimum = cell.get("proven_optimal_weeks")
+    return (
+        current > 0
+        and target is not None
+        and literature is not None
+        and optimum is not None
+        and current == target == literature == optimum
+    )
+
+
+def trivial_unsolved_cell(cell) -> bool:
+    if not cell.get("scored"):
+        return False
+    current = cell.get("constructed_weeks") or 0
+    target = cell.get("target_weeks")
+    literature = literature_constructive_value(cell)
+    optimum = cell.get("proven_optimal_weeks")
+    return current == 0 and target == 1 and literature == 1 and optimum == 1
+
+
+def top_left_label(cell):
+    if not cell.get("scored"):
+        return "v"
+    if trivial_unsolved_cell(cell):
+        return None
+    if exact_redundant_cell(cell):
+        return "✓"
+    optimum = cell.get("proven_optimal_weeks")
+    current = cell.get("constructed_weeks") or 0
+    if optimum is not None and current < optimum:
+        return f"O{optimum}"
+    return None
+
+
+def top_right_label(cell):
+    if not cell.get("scored") or trivial_unsolved_cell(cell):
+        return None
+    current = cell.get("constructed_weeks") or 0
+    target = cell.get("target_weeks")
+    optimum = cell.get("proven_optimal_weeks")
+    if target is not None and current < target and not (optimum is not None and optimum == target):
+        return f"T{target}"
+    return None
+
+
+def bottom_left_label(cell):
+    if not cell.get("scored") or trivial_unsolved_cell(cell):
+        return None
+    current = cell.get("constructed_weeks") or 0
+    target = cell.get("target_weeks")
+    literature = literature_constructive_value(cell)
+    if literature is not None and literature > current and literature != target:
+        return f"L{literature}"
+    return None
+
+
+def method_chip_text(cell):
+    if not cell.get("scored") or trivial_unsolved_cell(cell):
+        return None
     current_method = cell.get("method_abbreviation")
-    target_method = cell.get("target_method_abbreviation")
-    if cell.get("proven_optimal_gap") == 0 and cell.get("gap_to_target", 0) == 0:
-        return target_alignment_color(0, max_method_gap)
-    method_mismatch = bool(current_method and target_method and current_method != target_method)
-    gap = cell.get("heuristic_gap_to_target")
-    if gap is None:
-        gap = 0
-    if method_mismatch:
-        gap = max(gap, cell.get("gap_to_target", 0), 1)
-    if gap <= 0:
-        return target_alignment_color(0, max_method_gap)
-    return target_alignment_color(gap, max(max_method_gap, gap))
-
-
-def optimality_badge_style(cell, max_opt_gap):
-    gap = cell.get("proven_optimal_gap")
-    if gap is None:
-        return "#e5e7eb"
-    if gap == 0 and cell.get("gap_to_target", 0) > 0:
-        return ""
-    return target_alignment_color(gap, max_opt_gap)
-
-
-def method_badge_text(cell):
-    current_method = cell.get("method_abbreviation") or "—"
-    target_method = cell.get("target_method_abbreviation")
-    if cell.get("proven_optimal_gap") == 0 and cell.get("gap_to_target", 0) == 0:
-        return current_method
-    if target_method and target_method != current_method:
-        return f"{current_method} ({target_method})"
+    if not current_method:
+        return None
+    reference_method = cell.get("target_method_abbreviation")
+    if reference_method and reference_method != current_method:
+        return f"{current_method}→{reference_method}"
     return current_method
 
 
-def optimality_badge_text(cell):
-    gap = cell.get("proven_optimal_gap")
-    lower_bound = cell.get("optimality_lower_bound_weeks")
-    if gap is None:
-        if lower_bound is not None:
-            return f"opt ≥ {lower_bound}"
-        return None
-    if gap == 0:
-        if cell.get("gap_to_target", 0) > 0:
-            exact_optimum = cell.get("proven_optimal_weeks") or cell.get("target_weeks")
-            if exact_optimum is not None:
-                return f"opt = {exact_optimum}"
-            return "opt exact"
-        return "proven optimal"
-    return f"opt gap {gap}"
+def center_text(cell):
+    if not cell.get("scored"):
+        return cell["current_display"]
+    current = cell.get("constructed_weeks") or 0
+    return "·" if current == 0 else str(current)
 
 
-def optimality_badge_inline_style(cell, max_opt_gap):
-    gap = cell.get("proven_optimal_gap")
-    if gap is None:
-        return "background:#e2e8f0;color:#1f2937;"
-    if gap == 0 and cell.get("gap_to_target", 0) > 0:
-        return "background:#e2e8f0;color:#1f2937;"
-    return f"background:{optimality_badge_style(cell, max_opt_gap)};color:#1f2937;"
+def center_classes(cell):
+    classes = ["center-value"]
+    if not cell.get("scored") or (cell.get("constructed_weeks") or 0) == 0:
+        classes.append("faded")
+    return " ".join(classes)
 
 
-def render_simple_table(title, rows, cols, cell_map, value_fn, aside_fn=None):
+def render_corner(position, text, extra_class=""):
+    if not text:
+        return ""
+    class_attr = f"cell-corner {position} {extra_class}".strip()
+    return f"<div class='{class_attr}'>{html.escape(str(text))}</div>"
+
+
+def render_static_cell(
+    *,
+    center,
+    background,
+    border,
+    top_left=None,
+    top_right=None,
+    bottom_left=None,
+    method=None,
+    faded=False,
+    visual_only=False,
+):
+    cell_classes = ["matrix-cell"]
+    if visual_only:
+        cell_classes.append("visual-only-cell")
+    center_class = "center-value faded" if faded else "center-value"
+    html_parts = [
+        f"<div class='{' '.join(cell_classes)}' style='background:{background};{border}'>",
+        render_corner("top-left", top_left, "success-marker" if top_left == "✓" else "muted-marker" if top_left == "v" else ""),
+        render_corner("top-right", top_right),
+        render_corner("bottom-left", bottom_left),
+        f"<div class='{center_class}'>{html.escape(str(center))}</div>",
+    ]
+    if method:
+        html_parts.append(f"<div class='method-chip'>{html.escape(str(method))}</div>")
+    html_parts.append("</div>")
+    return "".join(html_parts)
+
+
+def render_cell_glyph(cell):
+    current = cell.get("constructed_weeks") or 0
+    target = cell.get("target_weeks")
+    return render_static_cell(
+        center=center_text(cell),
+        background=progress_fill_color(current, target, cell.get("scored", False)),
+        border=border_style(cell),
+        top_left=top_left_label(cell),
+        top_right=top_right_label(cell),
+        bottom_left=bottom_left_label(cell),
+        method=method_chip_text(cell),
+        faded=(not cell.get("scored")) or current == 0,
+        visual_only=not cell.get("scored"),
+    )
+
+
+def render_combined_table(title, rows, cols, cell_map):
     html_parts = [f"<section><h2>{html.escape(title)}</h2><table><thead><tr><th>g\\p</th>"]
     for p in cols:
         html_parts.append(f"<th>{p}</th>")
@@ -115,104 +193,31 @@ def render_simple_table(title, rows, cols, cell_map, value_fn, aside_fn=None):
         html_parts.append(f"<tr><th>{g}</th>")
         for p in cols:
             cell = cell_map[(g, p)]
-            classes = []
+            classes = ["dashboard-grid-cell"]
             if not cell["scored"]:
                 classes.append("visual-only")
-            class_attr = f" class='{' '.join(classes)}'" if classes else ""
-            cell_html = html.escape(str(value_fn(cell)))
-            aside = aside_fn(cell) if aside_fn else None
-            if aside:
-                cell_html += f"<div class='aside'>{html.escape(str(aside))}</div>"
-            html_parts.append(f"<td{class_attr}>{cell_html}</td>")
+            html_parts.append(f"<td class='{' '.join(classes)}'>{render_cell_glyph(cell)}</td>")
         html_parts.append("</tr>")
     html_parts.append("</tbody></table></section>")
     return "".join(html_parts)
 
 
-def reference_display(cell):
-    proven = cell.get("proven_optimal_weeks")
-    if proven is not None:
-        return str(proven)
-    lower_bound = cell.get("optimality_lower_bound_weeks")
-    if lower_bound is not None:
-        return f"≥ {lower_bound}"
-    heuristic = cell.get("heuristic_target_weeks")
-    if heuristic is not None:
-        return str(heuristic)
-    return "—"
+def render_scale_swatch(label, color):
+    return f"<span class='legend-chip'><span class='legend-swatch' style='background:{color}'></span>{html.escape(label)}</span>"
 
 
-def reference_aside(cell):
-    if not cell["scored"]:
-        return "visual-only"
-    if cell.get("proven_optimal_weeks") is not None:
-        return "exact optimum"
-    if cell.get("optimality_lower_bound_weeks") is not None:
-        return "literature lower bound"
-    if cell.get("heuristic_target_weeks") is not None:
-        return "encoded constructive reference"
-    return "no reference encoded"
+def render_border_swatch(label, border):
+    return f"<span class='legend-chip'><span class='legend-border-box' style='{border}'></span>{html.escape(label)}</span>"
 
 
-def render_combined_table(title, rows, cols, cell_map, max_gap, max_method_gap, max_opt_gap):
-    html_parts = [f"<section><h2>{html.escape(title)}</h2><table><thead><tr><th>g\\p</th>"]
-    for p in cols:
-        html_parts.append(f"<th>{p}</th>")
-    html_parts.append("</tr></thead><tbody>")
-    for g in rows:
-        html_parts.append(f"<tr><th>{g}</th>")
-        for p in cols:
-            cell = cell_map[(g, p)]
-            classes = ["dashboard-cell"]
-            if not cell["scored"]:
-                classes.append("visual-only")
-            style = f' style="background:{cell_gap_color(cell["gap_to_target"], cell.get("target_weeks"))}"'
-            html_parts.append(f"<td class='{' '.join(classes)}'{style}>")
-            html_parts.append(
-                f"<div class='cell-main'>{html.escape(str(cell['current_display']))}</div>"
-            )
-            if cell["scored"]:
-                sub_parts = [
-                    f"roadmap {html.escape(str(cell['target_display']))}",
-                    f"gap {cell['gap_to_target']}",
-                ]
-                literature_floor = cell.get("optimality_lower_bound_weeks")
-                if literature_floor is not None and cell.get("target_weeks") is not None and literature_floor > cell["target_weeks"]:
-                    sub_parts.append(f"lit ≥ {literature_floor}")
-                elif cell.get("heuristic_target_weeks") is not None and cell.get("target_weeks") is not None and cell["heuristic_target_weeks"] > cell["target_weeks"]:
-                    sub_parts.append(f"lit {cell['heuristic_target_weeks']}")
-                html_parts.append(
-                    f"<div class='cell-sub'>{' · '.join(sub_parts)}</div>"
-                )
-            else:
-                html_parts.append("<div class='cell-sub cell-sub-compact'></div>")
-
-            badges = []
-            if cell["scored"]:
-                if cell.get("method_abbreviation"):
-                    badges.append(
-                        render_badge(
-                            method_badge_text(cell),
-                            inline_style=f"background:{method_badge_style(cell, max_method_gap)};color:#1f2937;",
-                        )
-                    )
-                opt_text = optimality_badge_text(cell)
-                if opt_text:
-                    badges.append(
-                        render_badge(
-                            opt_text,
-                            inline_style=optimality_badge_inline_style(cell, max_opt_gap),
-                        )
-                    )
-            if not cell["scored"]:
-                badges.append(render_badge("visual_only", inline_style=f"background:{cell_gap_color(0, 1)};color:#1f2937;"))
-            if badges:
-                html_parts.append(f"<div class='badge-row'>{''.join(badges)}</div>")
-
-            html_parts.append("</td>")
-        html_parts.append("</tr>")
-    html_parts.append("</tbody></table></section>")
-    return "".join(html_parts)
+def render_sample(title, glyph_html, caption):
+    return (
+        "<div class='sample-card'>"
+        f"<div class='sample-title'>{html.escape(title)}</div>"
+        f"{glyph_html}"
+        f"<div class='sample-caption'>{html.escape(caption)}</div>"
+        "</div>"
+    )
 
 
 def main():
@@ -225,94 +230,107 @@ def main():
     cells = artifact["cells"]
     rows = range(artifact["visual_bounds"]["g_min"], artifact["visual_bounds"]["g_max"] + 1)
     cols = range(artifact["visual_bounds"]["p_min"], artifact["visual_bounds"]["p_max"] + 1)
-    scored_cells = [cell for cell in cells if cell["scored"]]
-    max_gap = max((cell["gap_to_target"] for cell in scored_cells), default=0)
-    max_method_gap = max(
-        (cell["heuristic_gap_to_target"] for cell in scored_cells if cell.get("heuristic_gap_to_target") is not None),
-        default=0,
-    )
-    max_opt_gap = max(
-        (cell["proven_optimal_gap"] for cell in scored_cells if cell.get("proven_optimal_gap") is not None),
-        default=0,
-    )
     cell_map = build_matrix(cells)
 
     page = [
         "<!doctype html><html><head><meta charset='utf-8'>",
         "<title>Solver5 Matrix Report</title>",
         "<style>",
-        "body{font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:24px;color:#111;}"
+        "body{font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:24px;color:#0f172a;}"
         "table{border-collapse:collapse;margin:12px 0 24px 0;}"
-        "th,td{border:1px solid #c9ced6;padding:6px 7px;min-width:72px;text-align:center;vertical-align:middle;}"
-        "th{background:#f3f5f7;font-weight:600;}"
+        "th,td{border:1px solid #d7dee7;padding:4px;text-align:center;vertical-align:middle;}"
+        "th{background:#f8fafc;font-weight:700;color:#334155;min-width:32px;}"
         "h1,h2{margin:0 0 10px 0;}"
-        ".meta{margin:0 0 18px 0;color:#444;}"
-        ".aside{font-size:10px;color:#444;margin-top:4px;}"
-        ".legend{display:flex;gap:10px;align-items:center;margin:12px 0 18px 0;flex-wrap:wrap;}"
-        ".legend-block{margin:10px 0 16px 0;padding:12px 14px;background:#f8fafc;border:1px solid #d7dee7;border-radius:12px;}"
-        ".legend-title{font-size:12px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:#334155;margin-bottom:8px;}"
-        ".legend-copy{font-size:12px;line-height:1.45;color:#475569;margin:0 0 10px 0;}"
-        ".legend-grid{display:flex;gap:8px 14px;flex-wrap:wrap;}"
-        ".legend-item{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:#334155;}"
-        ".swatch{padding:6px 10px;border:1px solid #bbb;border-radius:999px;font-size:12px;}"
-        ".dashboard-cell{min-width:88px;padding:8px 6px;}"
-        ".visual-only{border-style:dashed;opacity:0.95;}"
-        ".cell-main{font-size:24px;line-height:1;font-weight:600;margin-bottom:5px;}"
-        ".cell-sub{font-size:12px;line-height:1.15;color:#32414f;margin-bottom:5px;}"
-        ".cell-sub-compact{min-height:4px;margin-bottom:4px;}"
-        ".badge-row{display:flex;gap:4px;justify-content:center;align-items:center;flex-wrap:wrap;}"
-        ".badge{display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;line-height:1.05;font-weight:600;border:1px solid rgba(0,0,0,0.08);box-shadow:inset 0 1px 0 rgba(255,255,255,0.45);}"
+        ".meta{margin:0 0 18px 0;color:#475569;}"
+        ".legend-block{margin:10px 0 18px 0;padding:12px 14px;background:#f8fafc;border:1px solid #d7dee7;border-radius:12px;}"
+        ".legend-row{display:flex;gap:10px 18px;align-items:center;flex-wrap:wrap;margin:8px 0;font-size:12px;color:#334155;}"
+        ".legend-key{font-weight:700;color:#0f172a;}"
+        ".legend-chip{display:inline-flex;align-items:center;gap:8px;}"
+        ".legend-swatch{display:inline-block;width:20px;height:14px;border-radius:999px;border:1px solid rgba(15,23,42,0.12);}"
+        ".legend-border-box{display:inline-block;width:18px;height:14px;border-radius:6px;background:#fff;}"
+        ".legend-corners code{background:#e2e8f0;border-radius:6px;padding:1px 5px;font-size:11px;}"
+        ".sample-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;}"
+        ".sample-card{display:flex;flex-direction:column;align-items:center;gap:6px;width:140px;}"
+        ".sample-title{font-size:12px;font-weight:700;color:#0f172a;text-align:center;}"
+        ".sample-caption{font-size:11px;line-height:1.35;color:#475569;text-align:center;}"
+        ".dashboard-grid-cell{min-width:120px;background:#fff;}"
+        ".matrix-cell{position:relative;width:112px;height:88px;border-radius:10px;box-sizing:border-box;overflow:hidden;}"
+        ".visual-only-cell{color:#64748b;}"
+        ".cell-corner{position:absolute;font-size:11px;line-height:1;font-weight:700;color:#334155;letter-spacing:0.01em;}"
+        ".top-left{top:7px;left:8px;}"
+        ".top-right{top:7px;right:8px;text-align:right;}"
+        ".bottom-left{bottom:7px;left:8px;}"
+        ".center-value{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:30px;line-height:1;font-weight:700;color:#0f172a;}"
+        ".center-value.faded{color:#94a3b8;font-weight:600;}"
+        ".method-chip{position:absolute;right:7px;bottom:6px;padding:2px 6px;border-radius:999px;font-size:9.5px;line-height:1.1;font-weight:700;color:#0f172a;background:rgba(255,255,255,0.78);border:1px solid rgba(15,23,42,0.12);max-width:88px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}"
+        ".success-marker{color:#15803d;}"
+        ".muted-marker{color:#64748b;}"
         "</style></head><body>",
         f"<h1>{html.escape(artifact['matrix_name'])}</h1>",
         f"<p class='meta'>version {artifact['matrix_version']} · visual region g={artifact['visual_bounds']['g_min']}..{artifact['visual_bounds']['g_max']}, p={artifact['visual_bounds']['p_min']}..{artifact['visual_bounds']['p_max']} · scored region g={artifact['scored_bounds']['g_min']}..{artifact['scored_bounds']['g_max']}, p={artifact['scored_bounds']['p_min']}..{artifact['scored_bounds']['p_max']}</p>",
-        "<div class='legend'>",
-        f"<span class='swatch' style='background:{cell_gap_color(0, 10)}'>gap = 0</span>",
-        f"<span class='swatch' style='background:{cell_gap_color(5, 10)}'>gap = target/2</span>",
-        f"<span class='swatch' style='background:{cell_gap_color(10, 10)}'>gap = target</span>",
-        "<span class='swatch' style='border-style:dashed;background:#f7f7f7'>visual-only cell</span>",
-        "</div>",
         "<div class='legend-block'>",
-        "<div class='legend-title'>How to read the dashboard</div>",
-        "<p class='legend-copy'><strong>Cell background</strong> is scaled per cell, not globally: <code>gap = 0</code> is green, <code>gap = target</code> is fully red, and intermediate gaps interpolate between them relative to that cell's own target.</p>",
-        "<p class='legend-copy'><strong>Cell subtext</strong> distinguishes the conservative implemented-family <code>roadmap</code> target from literature-backed reference values. When the literature already supports a higher constructive floor than the roadmap target, the cell shows <code>lit ≥ L</code>.</p>",
-        "<p class='legend-copy'><strong>Method badge text</strong> shows the current achieving method. If the best-known encoded comparator method differs and the cell is still unresolved, it appears in brackets: <code>CURRENT (REFERENCE)</code>. Proven-optimal settled cells collapse to a single method label with no bracketed aspiration.</p>",
-        "<p class='legend-copy'><strong>Method badge color</strong> is only green when the current achieving method already matches the encoded reference method and that benchmark is matched. If the badge text contains brackets or the roadmap target still trails the encoded reference benchmark, the badge shifts orange/red.</p>",
-        "<p class='legend-copy'><strong>Optimality badge</strong> shows proof/lower-bound status relative to the roadmap target: <code>proven optimal</code> when the reached roadmap target is known optimal, <code>opt = X</code> when an exact optimum is known but the current cell has not yet reached it, <code>opt gap N</code> when the roadmap target still sits below a known proven optimum, and <code>opt ≥ L</code> when only a literature-backed constructive lower bound is currently encoded.</p>",
-        "<div class='legend-title'>Method badge strings</div>",
-        "<div class='legend-grid'>",
-        render_legend_item(render_badge("RR", inline_style=neutral_badge_style()), "round robin / 1-factorization"),
-        render_legend_item(render_badge("KTS(6t+3)", inline_style=neutral_badge_style()), "Kirkman / resolvable triple-system route on 6t+3 players"),
-        render_legend_item(render_badge("KTS", inline_style=neutral_badge_style()), "Kirkman triple system target family"),
-        render_legend_item(render_badge("NKTS", inline_style=neutral_badge_style()), "nearly Kirkman triple system target family"),
-        render_legend_item(render_badge("RTD", inline_style=neutral_badge_style()), "resolvable transversal design / MOLS route"),
-        render_legend_item(render_badge("AP", inline_style=neutral_badge_style()), "affine-plane diagonal route"),
-        render_legend_item(render_badge("P4", inline_style=neutral_badge_style()), "dedicated p=4 route / RGDD-style branch"),
-        render_legend_item(render_badge("RTD+G", inline_style=neutral_badge_style()), "RTD plus the recursive +G(t)-style lift/composition operator"),
-        render_legend_item(render_badge("visual_only", inline_style=neutral_badge_style()), "shown for matrix completeness; excluded from the scored objective"),
+        "<div class='legend-row'><span class='legend-key'>Fill</span>",
+        render_scale_swatch("far from target", progress_fill_color(0, 10, True)),
+        render_scale_swatch("close to target", progress_fill_color(8, 10, True)),
+        render_scale_swatch("target reached", progress_fill_color(10, 10, True)),
+        render_scale_swatch("visual-only", progress_fill_color(0, None, False)),
         "</div>",
-        "<div class='legend-title'>Badge colors</div>",
-        "<div class='legend-grid'>",
-        render_legend_item(render_badge("green", inline_style=f"background:{target_alignment_color(0, max_method_gap)};color:#1f2937;"), "current method already matches the encoded reference method and the encoded benchmark is matched"),
-        render_legend_item(render_badge("orange", inline_style=f"background:{target_alignment_color(1 if max_method_gap > 0 else 1, max_method_gap if max_method_gap > 0 else 1)};color:#1f2937;"), "current method differs from the encoded reference or there is a small remaining gap to that benchmark"),
-        render_legend_item(render_badge("red", inline_style=f"background:{target_alignment_color(max_method_gap if max_method_gap > 0 else 2, max_method_gap if max_method_gap > 0 else 2)};color:#1f2937;"), "larger remaining gap to the encoded reference benchmark"),
-        render_legend_item(render_badge("proven optimal", inline_style=f"background:{target_alignment_color(0, max_opt_gap)};color:#1f2937;"), "target already matches a known proven optimum"),
-        render_legend_item(render_badge("opt = 10", inline_style=f"background:{target_alignment_color(0, max_opt_gap)};color:#1f2937;"), "an exact optimum is known for the cell, but the roadmap/current result has not yet reached that exact frontier"),
-        render_legend_item(render_badge("opt gap 2", inline_style=f"background:{target_alignment_color(2 if max_opt_gap > 1 else 1, max_opt_gap if max_opt_gap > 0 else 2)};color:#1f2937;"), "roadmap target remains below a known proven optimum by the shown amount"),
-        render_legend_item(render_badge("opt ≥ 10", inline_style="background:#e2e8f0;color:#1f2937;"), "no proof of optimality is encoded, but literature gives a constructive lower bound of at least the shown value"),
+        "<div class='legend-row'><span class='legend-key'>Border</span>",
+        render_border_swatch("optimum reached", "border:2px solid #16a34a;"),
+        render_border_swatch("optimum known, not reached", "border:2px solid #d97706;"),
+        render_border_swatch("optimum unknown", "border:2px dashed #94a3b8;"),
+        "</div>",
+        "<div class='legend-row legend-corners'><span class='legend-key'>Corners</span> <span><code>O</code> top-left optimum</span> <span><code>T</code> top-right roadmap target</span> <span><code>L</code> bottom-left literature lower bound</span> <span>bottom-right method <code>current→reference</code> when useful</span></div>",
+        "<div class='sample-grid'>",
+        render_sample(
+            "Solved and optimal",
+            render_static_cell(
+                center="19",
+                background=progress_fill_color(19, 19, True),
+                border="border:2px solid #16a34a;",
+                top_left="✓",
+                method="RR",
+            ),
+            "only the big current value plus method chip remain",
+        ),
+        render_sample(
+            "Below target",
+            render_static_cell(
+                center="8",
+                background=progress_fill_color(8, 10, True),
+                border="border:2px dashed #94a3b8;",
+                top_right="T10",
+                method="RTD",
+            ),
+            "target shown only when current is still below it",
+        ),
+        render_sample(
+            "Literature and optimum ahead",
+            render_static_cell(
+                center="8",
+                background=progress_fill_color(8, 10, True),
+                border="border:2px solid #d97706;",
+                top_left="O11",
+                top_right="T10",
+                bottom_left="L11",
+                method="RTD→P4",
+            ),
+            "corner numerals appear only when they add non-redundant information",
+        ),
+        render_sample(
+            "No implementation yet",
+            render_static_cell(
+                center="·",
+                background=progress_fill_color(0, 1, True),
+                border="border:2px solid #d97706;",
+                faded=True,
+            ),
+            "empty-looking cells stay quiet; the fill already tells the story",
+        ),
         "</div></div>",
     ]
 
-    page.append(render_combined_table("Coverage dashboard", rows, cols, cell_map, max_gap, max_method_gap, max_opt_gap))
-    page.append(
-        render_simple_table(
-            "Literature-backed reference matrix",
-            rows,
-            cols,
-            cell_map,
-            reference_display,
-            reference_aside,
-        )
-    )
+    page.append(render_combined_table("Coverage dashboard", rows, cols, cell_map))
     page.append("</body></html>")
 
     Path(args.output).write_text("".join(page))

@@ -177,7 +177,22 @@ The solver5 coverage benchmark now emits:
   - `autoresearch.last_run_report.html`
 
 The JSON artifact contains the structured matrix data.
-The HTML report renders the human-readable heatmap and method view.
+The HTML report renders a single combined dashboard glyph per cell.
+
+Current HTML cell semantics:
+- center = current implemented guarantee `W_g,p`
+- top-right = roadmap target `TW_g,p` when still unmet
+- bottom-left = literature-backed constructive lower bound when it adds
+  information beyond the roadmap target
+- top-left = known optimum when useful, or a checkmark when the cell is already
+  solved at a known exact optimum
+- bottom-right = current method code, optionally `current→reference` when the
+  encoded reference method differs
+
+Visual channels are intentionally separated:
+- cell fill = progress against the roadmap target only
+- border = optimality status only
+- gray hatched styling = visual-only cells outside the scored objective
 
 ## Editing workflow
 
