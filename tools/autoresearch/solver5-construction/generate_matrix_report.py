@@ -47,16 +47,25 @@ def neutral_badge_style():
 def method_badge_style(cell, max_method_gap):
     if not cell.get("scored"):
         return gap_color(0, max_method_gap)
+    current_method = cell.get("method_abbreviation")
+    target_method = cell.get("target_method_abbreviation")
+    method_mismatch = bool(current_method and target_method and current_method != target_method)
     gap = cell.get("heuristic_gap_to_target")
     if gap is None:
-        return "#e5e7eb"
-    return target_alignment_color(gap, max_method_gap)
+        gap = 0
+    if method_mismatch:
+        gap = max(gap, cell.get("gap_to_target", 0), 1)
+    if gap <= 0:
+        return target_alignment_color(0, max_method_gap)
+    return target_alignment_color(gap, max(max_method_gap, gap))
 
 
 def optimality_badge_style(cell, max_opt_gap):
     gap = cell.get("proven_optimal_gap")
     if gap is None:
         return "#e5e7eb"
+    if gap == 0 and cell.get("gap_to_target", 0) > 0:
+        return ""
     return target_alignment_color(gap, max_opt_gap)
 
 
@@ -71,8 +80,10 @@ def method_badge_text(cell):
 def optimality_badge_text(cell):
     gap = cell.get("proven_optimal_gap")
     if gap is None:
-        return None
+        return "opt unknown"
     if gap == 0:
+        if cell.get("gap_to_target", 0) > 0:
+            return None
         return "proven optimal"
     return f"opt gap {gap}"
 
@@ -211,8 +222,8 @@ def main():
         "<div class='legend-title'>How to read the dashboard</div>",
         "<p class='legend-copy'><strong>Cell background</strong> shows current progress against the project target: green means the target is reached, yellow means a small remaining gap, and orange/red means the cell is further from target.</p>",
         "<p class='legend-copy'><strong>Method badge text</strong> shows the current achieving method. If a target method is defined and differs, it appears in brackets: <code>CURRENT (TARGET)</code>.</p>",
-        "<p class='legend-copy'><strong>Method badge color</strong> shows whether the project target already matches the best-known heuristic target for that cell: green means yes, orange/red means the target still sits below that best-known heuristic benchmark.</p>",
-        "<p class='legend-copy'><strong>Optimality badge</strong> shows whether the project target is already proven optimal. It reads <code>proven optimal</code> when the target matches the proven optimum, or <code>opt gap N</code> when the target is still below a known proven-optimal value.</p>",
+        "<p class='legend-copy'><strong>Method badge color</strong> is only green when the current achieving method already matches the target method and that target is aligned with the best-known heuristic target. If the badge text contains brackets or the target still trails the best-known heuristic benchmark, the badge shifts orange/red.</p>",
+        "<p class='legend-copy'><strong>Optimality badge</strong> shows proof status for the target: <code>proven optimal</code> when the reached target is known optimal, <code>opt gap N</code> when the target still sits below a known proven optimum, and <code>opt unknown</code> when no proof-status value is encoded for that cell.</p>",
         "<div class='legend-title'>Method badge strings</div>",
         "<div class='legend-grid'>",
         render_legend_item(render_badge("RR", inline_style=neutral_badge_style()), "round robin / 1-factorization"),
@@ -227,11 +238,12 @@ def main():
         "</div>",
         "<div class='legend-title'>Badge colors</div>",
         "<div class='legend-grid'>",
-        render_legend_item(render_badge("green", inline_style=f"background:{target_alignment_color(0, max_method_gap)};color:#1f2937;"), "method/optimality benchmark already matched"),
-        render_legend_item(render_badge("orange", inline_style=f"background:{target_alignment_color(1 if max_method_gap > 0 else 1, max_method_gap if max_method_gap > 0 else 1)};color:#1f2937;"), "small remaining gap to the benchmark"),
+        render_legend_item(render_badge("green", inline_style=f"background:{target_alignment_color(0, max_method_gap)};color:#1f2937;"), "current method already matches the target method and the target benchmark is matched"),
+        render_legend_item(render_badge("orange", inline_style=f"background:{target_alignment_color(1 if max_method_gap > 0 else 1, max_method_gap if max_method_gap > 0 else 1)};color:#1f2937;"), "current method differs from target or there is a small remaining gap to the benchmark"),
         render_legend_item(render_badge("red", inline_style=f"background:{target_alignment_color(max_method_gap if max_method_gap > 0 else 2, max_method_gap if max_method_gap > 0 else 2)};color:#1f2937;"), "larger remaining gap to the benchmark"),
         render_legend_item(render_badge("proven optimal", inline_style=f"background:{target_alignment_color(0, max_opt_gap)};color:#1f2937;"), "target already matches a known proven optimum"),
         render_legend_item(render_badge("opt gap 2", inline_style=f"background:{target_alignment_color(2 if max_opt_gap > 1 else 1, max_opt_gap if max_opt_gap > 0 else 2)};color:#1f2937;"), "target remains below a known proven optimum by the shown amount"),
+        render_legend_item(render_badge("opt unknown", inline_style="background:#e5e7eb;color:#1f2937;"), "no proven-optimal benchmark is encoded yet for that cell"),
         "</div></div>",
     ]
 
