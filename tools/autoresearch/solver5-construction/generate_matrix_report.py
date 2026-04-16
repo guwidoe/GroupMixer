@@ -16,24 +16,13 @@ def gap_color(gap: int, max_gap: int) -> str:
     return f"hsl({hue:.1f} 78% 78%)"
 
 
+def semantic_badge_style(cell, max_gap):
+    background = gap_color(cell["gap_to_target"], max_gap)
+    return f"background:{background};color:#1f2937;"
+
+
 def build_matrix(cells):
     return {(cell["g"], cell["p"]): cell for cell in cells}
-
-
-def method_badge_class(cell):
-    family = cell.get("family_label") or ""
-    method = cell.get("method_abbreviation") or ""
-    if method == "VIS" or family == "visual_only":
-        return "method-visual"
-    if family == "round_robin":
-        return "method-rr"
-    if family == "kirkman_6t_plus_1":
-        return "method-kirkman"
-    if family == "transversal_design_prime_power":
-        return "method-td"
-    if family == "affine_plane_prime_power":
-        return "method-ap"
-    return "method-unknown"
 
 
 def quality_badge_class(cell):
@@ -57,8 +46,10 @@ def quality_label_text(cell):
     }.get(quality, quality or "unsolved")
 
 
-def render_badge(text, badge_class):
-    return f"<span class='badge {badge_class}'>{html.escape(str(text))}</span>"
+def render_badge(text, badge_class="", inline_style=""):
+    class_attr = f" {badge_class}" if badge_class else ""
+    style_attr = f" style='{inline_style}'" if inline_style else ""
+    return f"<span class='badge{class_attr}'{style_attr}>{html.escape(str(text))}</span>"
 
 
 def render_simple_table(title, rows, cols, cell_map, value_fn, aside_fn=None):
@@ -113,7 +104,10 @@ def render_combined_table(title, rows, cols, cell_map, max_gap):
             badges = []
             if cell.get("method_abbreviation"):
                 badges.append(
-                    render_badge(cell["method_abbreviation"], method_badge_class(cell))
+                    render_badge(
+                        cell["method_abbreviation"],
+                        inline_style=semantic_badge_style(cell, max_gap),
+                    )
                 )
             if cell.get("quality_label"):
                 badges.append(
@@ -157,16 +151,10 @@ def main():
         ".swatch{padding:6px 10px;border:1px solid #bbb;border-radius:999px;font-size:12px;}"
         ".dashboard-cell{min-width:120px;padding:10px 8px;}"
         ".visual-only{border-style:dashed;opacity:0.95;}"
-        ".cell-main{font-size:32px;line-height:1;font-weight:500;margin-bottom:8px;}"
-        ".cell-sub{font-size:13px;line-height:1.25;color:#32414f;min-height:32px;margin-bottom:10px;}"
+        ".cell-main{font-size:32px;line-height:1;font-weight:500;margin-bottom:6px;}"
+        ".cell-sub{font-size:13px;line-height:1.2;color:#32414f;margin-bottom:6px;}"
         ".badge-row{display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;}"
-        ".badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:11px;line-height:1.1;font-weight:600;border:1px solid rgba(0,0,0,0.08);box-shadow:inset 0 1px 0 rgba(255,255,255,0.45);}"
-        ".method-rr{background:#dbeafe;color:#1e3a8a;}"
-        ".method-kirkman{background:#ede9fe;color:#5b21b6;}"
-        ".method-td{background:#e0e7ff;color:#3730a3;}"
-        ".method-ap{background:#cffafe;color:#155e75;}"
-        ".method-visual{background:#e5e7eb;color:#374151;}"
-        ".method-unknown{background:#f3f4f6;color:#4b5563;}"
+        ".badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:11px;line-height:1.1;font-weight:600;border:1px solid rgba(0,0,0,0.08);box-shadow:inset 0 1px 0 rgba(255,255,255,0.45);}"
         ".quality-exact{background:#ccfbf1;color:#115e59;}"
         ".quality-near{background:#fef3c7;color:#92400e;}"
         ".quality-lower{background:#fecaca;color:#991b1b;}"
@@ -182,10 +170,7 @@ def main():
         render_badge("exact_frontier", "quality-exact"),
         render_badge("near_frontier", "quality-near"),
         render_badge("lower_bound", "quality-lower"),
-        render_badge("RR", "method-rr"),
-        render_badge("K6", "method-kirkman"),
-        render_badge("TD", "method-td"),
-        render_badge("AP", "method-ap"),
+        render_badge("method badge follows gap gradient", inline_style="background:hsl(90 78% 78%);color:#1f2937;"),
         "</div>",
     ]
 
