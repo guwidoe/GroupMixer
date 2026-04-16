@@ -415,6 +415,51 @@ fn compiled_problem_constraint_adjacency_is_populated() {
 }
 
 #[test]
+fn compiled_problem_hard_apart_pairs_expand_and_index_by_person() {
+    let mut input = minimal_input();
+    input.constraints = vec![Constraint::MustStayApart {
+        people: vec!["p0".into(), "p1".into(), "p2".into()],
+        sessions: Some(vec![1]),
+    }];
+
+    let cp = CompiledProblem::compile(&input).unwrap();
+    let p0 = cp.person_id_to_idx["p0"];
+    let p1 = cp.person_id_to_idx["p1"];
+    let p2 = cp.person_id_to_idx["p2"];
+
+    assert_eq!(cp.hard_apart_pairs.len(), 3);
+    assert_eq!(cp.hard_apart_pairs_by_person[p0].len(), 2);
+    assert_eq!(cp.hard_apart_pairs_by_person[p1].len(), 2);
+    assert_eq!(cp.hard_apart_pairs_by_person[p2].len(), 2);
+    assert!(cp.hard_apart_active(1, p0, p1));
+    assert!(cp.hard_apart_active(1, p0, p2));
+    assert!(cp.hard_apart_active(1, p1, p2));
+    assert!(!cp.hard_apart_active(0, p0, p1));
+}
+
+#[test]
+fn compiled_problem_rejects_hard_apart_conflict_with_clique() {
+    let mut input = minimal_input();
+    input.constraints = vec![
+        Constraint::MustStayTogether {
+            people: vec!["p0".into(), "p1".into()],
+            sessions: Some(vec![0]),
+        },
+        Constraint::MustStayApart {
+            people: vec!["p0".into(), "p1".into()],
+            sessions: Some(vec![0]),
+        },
+    ];
+
+    let err = CompiledProblem::compile(&input).unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("MustStayApart conflicts with MustStayTogether"),
+        "unexpected error: {err}"
+    );
+}
+
+#[test]
 fn compiled_problem_rejects_wrong_solver_kind() {
     let mut input = minimal_input();
     input.solver.solver_type = "solver4".into();
