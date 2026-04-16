@@ -14,6 +14,25 @@ fn solver5_supports_round_robin_prefixes() {
 }
 
 #[test]
+fn solver5_solves_single_round_partition_cases() {
+    let input = pure_input(3, 4, 1);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver
+        .solve(&input)
+        .expect("single-round partition should solve 3-4-1");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 1);
+
+    let input = pure_input(10, 10, 1);
+    let result = solver
+        .solve(&input)
+        .expect("single-round partition should solve 10-10-1");
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 1);
+}
+
+#[test]
 fn solver5_reports_missing_family_cleanly() {
     let input = pure_input(10, 10, 10);
     let solver = SearchEngine::new(&input.solver);

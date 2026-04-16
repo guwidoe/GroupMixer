@@ -12,13 +12,32 @@ fn router_selects_round_robin_for_p2_cases() {
     let decision = attempt_construction(&problem).expect("router should find round robin");
 
     assert_eq!(decision.result.family, ConstructionFamilyId::RoundRobin);
-    assert_eq!(decision.attempts.len(), 8);
+    assert_eq!(decision.attempts.len(), 9);
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::RoundRobin
             && attempt.status
                 == FamilyAttemptStatus::Selected {
                     max_supported_weeks: 7,
                     quality: ConstructionQuality::ExactFrontier,
+                }
+    }));
+}
+
+#[test]
+fn router_uses_single_round_partition_for_one_week_fallback_case() {
+    let input = pure_input(3, 4, 1);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 3-4-1");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::SingleRoundPartition);
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::SingleRoundPartition
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 1,
+                    quality: ConstructionQuality::LowerBound {
+                        gap_to_counting_bound: 2,
+                    },
                 }
     }));
 }

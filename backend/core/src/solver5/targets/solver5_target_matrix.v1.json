@@ -512,6 +512,7 @@
     "affine_plane_prime_power": "AP",
     "recursive_transversal_lift": "+G",
     "visual_only": "VIS",
-    "unknown": "?"
+    "unknown": "?",
+    "single_round_partition": "1W"
   }
 }
