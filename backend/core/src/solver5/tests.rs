@@ -112,7 +112,7 @@ fn solver5_reports_missing_family_cleanly() {
 }
 
 #[test]
-fn solver5_solves_prime_transversal_design_cases() {
+fn solver5_solves_prime_power_transversal_design_cases() {
     let input = pure_input(5, 4, 5);
     let solver = SearchEngine::new(&input.solver);
     let result = solver
@@ -121,10 +121,17 @@ fn solver5_solves_prime_transversal_design_cases() {
 
     assert_eq!(result.final_score, 0.0);
     assert_eq!(result.schedule.len(), 5);
+
+    let input = pure_input(4, 3, 4);
+    let result = solver
+        .solve(&input)
+        .expect("prime-power transversal design should solve 4-3-4");
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 4);
 }
 
 #[test]
-fn solver5_solves_prime_affine_plane_cases() {
+fn solver5_solves_prime_power_affine_plane_cases() {
     let input = pure_input(5, 5, 6);
     let solver = SearchEngine::new(&input.solver);
     let result = solver
@@ -133,4 +140,11 @@ fn solver5_solves_prime_affine_plane_cases() {
 
     assert_eq!(result.final_score, 0.0);
     assert_eq!(result.schedule.len(), 6);
+
+    let input = pure_input(4, 4, 5);
+    let result = solver
+        .solve(&input)
+        .expect("prime-power affine plane should solve 4-4-5");
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 5);
 }

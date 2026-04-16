@@ -236,46 +236,167 @@ fn construct_schedule(problem: &PureSgpProblem) -> Option<(Vec<Vec<Vec<usize>>>,
         return Some((schedule, "round_robin"));
     }
 
-    if problem.group_size == problem.num_groups
-        && is_prime(problem.num_groups)
-        && problem.num_weeks <= problem.num_groups + 1
-    {
-        let mut schedule = construct_affine_plane(problem.num_groups);
-        schedule.truncate(problem.num_weeks);
-        return Some((schedule, "affine_plane_prime"));
-    }
+    if let Some(field) = FiniteField::for_order(problem.num_groups) {
+        if problem.group_size == problem.num_groups && problem.num_weeks <= problem.num_groups + 1 {
+            let mut schedule = construct_affine_plane(&field);
+            schedule.truncate(problem.num_weeks);
+            return Some((schedule, "affine_plane_prime_power"));
+        }
 
-    if problem.group_size >= 3
-        && problem.group_size <= problem.num_groups
-        && is_prime(problem.num_groups)
-        && problem.num_weeks <= problem.num_groups
-    {
-        let mut schedule = construct_transversal_design(problem.num_groups, problem.group_size);
-        schedule.truncate(problem.num_weeks);
-        return Some((schedule, "transversal_design_prime"));
+        if problem.group_size >= 3
+            && problem.group_size <= problem.num_groups
+            && problem.num_weeks <= problem.num_groups
+        {
+            let mut schedule = construct_transversal_design(&field, problem.group_size);
+            schedule.truncate(problem.num_weeks);
+            return Some((schedule, "transversal_design_prime_power"));
+        }
     }
 
     None
 }
 
-fn is_prime(value: usize) -> bool {
-    if value < 2 {
-        return false;
-    }
-    if value == 2 {
-        return true;
-    }
-    if value % 2 == 0 {
-        return false;
-    }
-    let mut divisor = 3usize;
-    while divisor * divisor <= value {
-        if value % divisor == 0 {
-            return false;
+#[derive(Clone, Copy)]
+struct FiniteField {
+    order: usize,
+    prime: usize,
+    degree: usize,
+    modulus: &'static [usize],
+}
+
+impl FiniteField {
+    fn for_order(order: usize) -> Option<Self> {
+        match order {
+            2 => Some(Self {
+                order,
+                prime: 2,
+                degree: 1,
+                modulus: &[1, 0],
+            }),
+            3 => Some(Self {
+                order,
+                prime: 3,
+                degree: 1,
+                modulus: &[1, 0],
+            }),
+            4 => Some(Self {
+                order,
+                prime: 2,
+                degree: 2,
+                modulus: &[1, 1, 1],
+            }),
+            5 => Some(Self {
+                order,
+                prime: 5,
+                degree: 1,
+                modulus: &[1, 0],
+            }),
+            7 => Some(Self {
+                order,
+                prime: 7,
+                degree: 1,
+                modulus: &[1, 0],
+            }),
+            8 => Some(Self {
+                order,
+                prime: 2,
+                degree: 3,
+                modulus: &[1, 1, 0, 1],
+            }),
+            9 => Some(Self {
+                order,
+                prime: 3,
+                degree: 2,
+                modulus: &[1, 0, 1],
+            }),
+            _ => None,
         }
-        divisor += 2;
     }
-    true
+
+    fn add(self, left: usize, right: usize) -> usize {
+        if self.degree == 1 {
+            return (left + right) % self.prime;
+        }
+
+        let left_digits = self.to_digits(left);
+        let right_digits = self.to_digits(right);
+        let digits = left_digits
+            .iter()
+            .zip(right_digits.iter())
+            .map(|(l, r)| (l + r) % self.prime)
+            .collect::<Vec<_>>();
+        self.from_digits(&digits)
+    }
+
+    fn sub(self, left: usize, right: usize) -> usize {
+        if self.degree == 1 {
+            return (left + self.prime - (right % self.prime)) % self.prime;
+        }
+
+        let left_digits = self.to_digits(left);
+        let right_digits = self.to_digits(right);
+        let digits = left_digits
+            .iter()
+            .zip(right_digits.iter())
+            .map(|(l, r)| (self.prime + l - r) % self.prime)
+            .collect::<Vec<_>>();
+        self.from_digits(&digits)
+    }
+
+    fn mul(self, left: usize, right: usize) -> usize {
+        if self.degree == 1 {
+            return (left * right) % self.prime;
+        }
+
+        let left_digits = self.to_digits(left);
+        let right_digits = self.to_digits(right);
+        let mut product = vec![0usize; self.degree * 2 - 1];
+        for (left_idx, left_digit) in left_digits.iter().enumerate() {
+            for (right_idx, right_digit) in right_digits.iter().enumerate() {
+                product[left_idx + right_idx] =
+                    (product[left_idx + right_idx] + (left_digit * right_digit)) % self.prime;
+            }
+        }
+
+        for degree in (self.degree..product.len()).rev() {
+            let coefficient = product[degree] % self.prime;
+            if coefficient == 0 {
+                continue;
+            }
+            for offset in 0..self.degree {
+                let target = degree - self.degree + offset;
+                let reduction = (coefficient * self.modulus[offset]) % self.prime;
+                product[target] = (self.prime + product[target] - reduction) % self.prime;
+            }
+        }
+
+        self.from_digits(&product[..self.degree])
+    }
+
+    fn nonzero_nonone_elements(self) -> Vec<usize> {
+        (0..self.order)
+            .filter(|value| *value != 0 && *value != 1)
+            .collect()
+    }
+
+    fn to_digits(self, mut value: usize) -> Vec<usize> {
+        let mut digits = vec![0usize; self.degree];
+        for digit in &mut digits {
+            *digit = value % self.prime;
+            value /= self.prime;
+        }
+        digits
+    }
+
+    fn from_digits(self, digits: &[usize]) -> usize {
+        let mut value = 0usize;
+        let mut factor = 1usize;
+        for digit in digits.iter().take(self.degree) {
+            value += digit * factor;
+            factor *= self.prime;
+        }
+        value
+    }
 }
 
 fn construct_round_robin(num_groups: usize) -> Vec<Vec<Vec<usize>>> {
@@ -299,17 +420,19 @@ fn construct_round_robin(num_groups: usize) -> Vec<Vec<Vec<usize>>> {
     weeks
 }
 
-fn construct_transversal_design(num_groups: usize, group_size: usize) -> Vec<Vec<Vec<usize>>> {
-    let mut weeks = Vec::with_capacity(num_groups);
-    for offset in 0..num_groups {
-        let mut week = Vec::with_capacity(num_groups);
-        for symbol in 0..num_groups {
+fn construct_transversal_design(field: &FiniteField, group_size: usize) -> Vec<Vec<Vec<usize>>> {
+    let order = field.order;
+    let coefficients = field.nonzero_nonone_elements();
+    let mut weeks = Vec::with_capacity(order);
+    for offset in 0..order {
+        let mut week = Vec::with_capacity(order);
+        for symbol in 0..order {
             let mut block = Vec::with_capacity(group_size);
-            block.push(td_person(0, (offset + symbol) % num_groups, num_groups));
-            block.push(td_person(1, symbol, num_groups));
-            for slope in 1..=(group_size - 2) {
-                let adjusted = (offset + ((slope + 1) * symbol)) % num_groups;
-                block.push(td_person(slope + 1, adjusted, num_groups));
+            block.push(td_person(0, field.add(offset, symbol), order));
+            block.push(td_person(1, symbol, order));
+            for extra_group in 0..(group_size - 2) {
+                let adjusted = field.add(offset, field.mul(coefficients[extra_group], symbol));
+                block.push(td_person(extra_group + 2, adjusted, order));
             }
             week.push(block);
         }
@@ -318,7 +441,8 @@ fn construct_transversal_design(num_groups: usize, group_size: usize) -> Vec<Vec
     weeks
 }
 
-fn construct_affine_plane(order: usize) -> Vec<Vec<Vec<usize>>> {
+fn construct_affine_plane(field: &FiniteField) -> Vec<Vec<Vec<usize>>> {
+    let order = field.order;
     let mut weeks = Vec::with_capacity(order + 1);
 
     let mut vertical_week = Vec::with_capacity(order);
@@ -336,7 +460,7 @@ fn construct_affine_plane(order: usize) -> Vec<Vec<Vec<usize>>> {
         for intercept in 0..order {
             let mut block = Vec::with_capacity(order);
             for x in 0..order {
-                let y = (slope * x + intercept) % order;
+                let y = field.add(field.mul(slope, x), intercept);
                 block.push(plane_point(x, y, order));
             }
             week.push(block);
