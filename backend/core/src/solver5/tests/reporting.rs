@@ -29,6 +29,7 @@ fn default_target_matrix_exposes_expected_cells_and_abbreviations() {
     assert_eq!(matrix.abbreviation_for("round_robin"), Some("RR"));
     assert_eq!(matrix.abbreviation_for("single_round_partition"), Some("1W"));
     assert_eq!(matrix.abbreviation_for("kirkman_6t_plus_1"), Some("KTS(6t+3)"));
+    assert_eq!(matrix.abbreviation_for("ownsg"), Some("ownSG"));
     assert_eq!(matrix.abbreviation_for("p4_router"), Some("P4"));
     assert_eq!(matrix.abbreviation_for("published_schedule_bank"), Some("PSB"));
     assert_eq!(matrix.abbreviation_for("transversal_design_prime_power"), Some("RTD"));

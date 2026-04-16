@@ -12,7 +12,7 @@ fn router_selects_round_robin_for_p2_cases() {
     let decision = attempt_construction(&problem).expect("router should find round robin");
 
     assert_eq!(decision.result.family, ConstructionFamilyId::RoundRobin);
-    assert_eq!(decision.attempts.len(), 9);
+    assert_eq!(decision.attempts.len(), 10);
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::RoundRobin
             && attempt.status
@@ -196,6 +196,25 @@ fn router_selects_published_schedule_bank_for_9_4_11() {
                 == FamilyAttemptStatus::Selected {
                     max_supported_weeks: 11,
                     quality: ConstructionQuality::ExactFrontier,
+                }
+    }));
+}
+
+#[test]
+fn router_selects_ownsg_for_10_7_7() {
+    let input = pure_input(10, 7, 7);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 10-7-7");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::OwnSocialGolfer);
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::OwnSocialGolfer
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 7,
+                    quality: ConstructionQuality::LowerBound {
+                        gap_to_counting_bound: 4,
+                    },
                 }
     }));
 }

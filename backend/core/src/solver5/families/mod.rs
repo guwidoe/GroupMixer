@@ -11,6 +11,7 @@ use super::types::{
 mod affine_plane;
 mod kirkman;
 mod nkts;
+mod ownsg;
 mod p4_rbibd;
 mod published;
 mod round_robin;
@@ -23,6 +24,7 @@ pub(super) fn registered_families() -> Vec<&'static dyn ConstructionFamily> {
         &KIRKMAN_6T_PLUS_1_FAMILY,
         &KIRKMAN_TRIPLE_SYSTEM_FAMILY,
         &NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY,
+        &OWN_SOCIAL_GOLFER_FAMILY,
         &AFFINE_PLANE_PRIME_POWER_FAMILY,
         &P4_RESOLVABLE_BIBD_FAMILY,
         &PUBLISHED_SCHEDULE_BANK_FAMILY,
@@ -36,6 +38,7 @@ struct SingleRoundPartitionFamily;
 struct Kirkman6TPlus1Family;
 struct KirkmanTripleSystemFamily;
 struct NearlyKirkmanTripleSystemFamily;
+struct OwnSocialGolferFamily;
 struct AffinePlanePrimePowerFamily;
 struct P4ResolvableBIBDFamily;
 struct PublishedScheduleBankFamily;
@@ -47,6 +50,7 @@ static KIRKMAN_6T_PLUS_1_FAMILY: Kirkman6TPlus1Family = Kirkman6TPlus1Family;
 static KIRKMAN_TRIPLE_SYSTEM_FAMILY: KirkmanTripleSystemFamily = KirkmanTripleSystemFamily;
 static NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY: NearlyKirkmanTripleSystemFamily =
     NearlyKirkmanTripleSystemFamily;
+static OWN_SOCIAL_GOLFER_FAMILY: OwnSocialGolferFamily = OwnSocialGolferFamily;
 static AFFINE_PLANE_PRIME_POWER_FAMILY: AffinePlanePrimePowerFamily = AffinePlanePrimePowerFamily;
 static P4_RESOLVABLE_BIBD_FAMILY: P4ResolvableBIBDFamily = P4ResolvableBIBDFamily;
 static PUBLISHED_SCHEDULE_BANK_FAMILY: PublishedScheduleBankFamily = PublishedScheduleBankFamily;
@@ -213,6 +217,29 @@ impl ConstructionFamily for NearlyKirkmanTripleSystemFamily {
         };
 
         Some(construct_nearly_kirkman_triple_system(entry))
+    }
+}
+
+impl ConstructionFamily for OwnSocialGolferFamily {
+    fn id(&self) -> ConstructionFamilyId {
+        ConstructionFamilyId::OwnSocialGolfer
+    }
+
+    fn evaluate(&self, problem: &PureSgpProblem) -> FamilyEvaluation {
+        let Some(entry) = catalog::ownsg::exact_case(problem.num_groups, problem.group_size) else {
+            return FamilyEvaluation::NotApplicable {
+                reason: "requires a catalog-backed ownSG starter-block case",
+            };
+        };
+
+        FamilyEvaluation::Applicable {
+            max_supported_weeks: entry.starter_blocks.len(),
+        }
+    }
+
+    fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
+        catalog::ownsg::exact_case(problem.num_groups, problem.group_size)
+            .map(construct_own_social_golfer)
     }
 }
 
@@ -466,6 +493,25 @@ pub(super) fn construct_published_schedule_bank(
     .with_evidence(EvidenceSourceKind::PatchBank, entry.citation)
 }
 
+pub(super) fn construct_own_social_golfer(
+    entry: &'static catalog::ownsg::OwnSgCatalogEntry,
+) -> ConstructionResult {
+    ConstructionResult::new(ownsg::construct(entry), ConstructionFamilyId::OwnSocialGolfer)
+        .with_quality(classify_quality(
+            entry.num_groups,
+            entry.group_size,
+            entry.starter_blocks.len(),
+        ))
+        .with_applicability(ConstructionApplicability::Conditional {
+            notes: vec![
+                "requires a catalog-backed ownSG starter-block case",
+                "develops published starter blocks by +group_size translations across 10 groups",
+            ],
+        })
+        .with_evidence(EvidenceSourceKind::CatalogFact, catalog::ownsg::source().citation)
+        .with_evidence(EvidenceSourceKind::PatchBank, entry.citation)
+}
+
 pub(super) fn construct_affine_plane(field: &FiniteField) -> ConstructionResult {
     ConstructionResult::new(
         affine_plane::construct(field),
@@ -579,6 +625,10 @@ fn construct_max_schedule_recursive(
         if let Some(field) = p4_rbibd::supported_field(num_groups) {
             return Some(construct_p4_resolvable_bibd(&field));
         }
+    }
+
+    if let Some(entry) = catalog::ownsg::exact_case(num_groups, group_size) {
+        return Some(construct_own_social_golfer(entry));
     }
 
     if let Some(entry) = catalog::published::exact_case(num_groups, group_size) {
