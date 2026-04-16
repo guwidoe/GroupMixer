@@ -89,9 +89,10 @@ def optimality_badge_text(cell):
         return None
     if gap == 0:
         if cell.get("gap_to_target", 0) > 0:
-            if lower_bound is not None:
-                return f"opt ≥ {lower_bound}"
-            return None
+            exact_optimum = cell.get("proven_optimal_weeks") or cell.get("target_weeks")
+            if exact_optimum is not None:
+                return f"opt = {exact_optimum}"
+            return "opt exact"
         return "proven optimal"
     return f"opt gap {gap}"
 
@@ -241,7 +242,7 @@ def main():
         "<p class='legend-copy'><strong>Cell background</strong> is scaled per cell, not globally: <code>gap = 0</code> is green, <code>gap = target</code> is fully red, and intermediate gaps interpolate between them relative to that cell's own target.</p>",
         "<p class='legend-copy'><strong>Method badge text</strong> shows the current achieving method. If the best-known heuristic method differs and the cell is still unresolved, it appears in brackets: <code>CURRENT (HEURISTIC)</code>. Proven-optimal settled cells collapse to a single method label with no bracketed aspiration.</p>",
         "<p class='legend-copy'><strong>Method badge color</strong> is only green when the current achieving method already matches the best-known heuristic method and that heuristic target is matched. If the badge text contains brackets or the target still trails the best-known heuristic benchmark, the badge shifts orange/red.</p>",
-        "<p class='legend-copy'><strong>Optimality badge</strong> shows proof status for the target: <code>proven optimal</code> when the reached target is known optimal, <code>opt gap N</code> when the target still sits below a known proven optimum, and <code>opt ≥ L</code> when only a literature-backed constructive lower bound is currently encoded.</p>",
+        "<p class='legend-copy'><strong>Optimality badge</strong> shows proof status for the target: <code>proven optimal</code> when the reached target is known optimal, <code>opt = X</code> when an exact optimum is known but the current cell has not yet reached it, <code>opt gap N</code> when the target still sits below a known proven optimum, and <code>opt ≥ L</code> when only a literature-backed constructive lower bound is currently encoded.</p>",
         "<div class='legend-title'>Method badge strings</div>",
         "<div class='legend-grid'>",
         render_legend_item(render_badge("RR", inline_style=neutral_badge_style()), "round robin / 1-factorization"),
@@ -260,6 +261,7 @@ def main():
         render_legend_item(render_badge("orange", inline_style=f"background:{target_alignment_color(1 if max_method_gap > 0 else 1, max_method_gap if max_method_gap > 0 else 1)};color:#1f2937;"), "current method differs from target or there is a small remaining gap to the benchmark"),
         render_legend_item(render_badge("red", inline_style=f"background:{target_alignment_color(max_method_gap if max_method_gap > 0 else 2, max_method_gap if max_method_gap > 0 else 2)};color:#1f2937;"), "larger remaining gap to the benchmark"),
         render_legend_item(render_badge("proven optimal", inline_style=f"background:{target_alignment_color(0, max_opt_gap)};color:#1f2937;"), "target already matches a known proven optimum"),
+        render_legend_item(render_badge("opt = 10", inline_style=f"background:{target_alignment_color(0, max_opt_gap)};color:#1f2937;"), "an exact optimum is known for the cell, but the current result has not yet reached that exact target"),
         render_legend_item(render_badge("opt gap 2", inline_style=f"background:{target_alignment_color(2 if max_opt_gap > 1 else 1, max_opt_gap if max_opt_gap > 0 else 2)};color:#1f2937;"), "target remains below a known proven optimum by the shown amount"),
         render_legend_item(render_badge("opt ≥ 10", inline_style="background:#e2e8f0;color:#1f2937;"), "no proof of optimality is encoded, but literature gives a constructive lower bound of at least the shown value"),
         "</div></div>",
