@@ -2,6 +2,7 @@ pub(super) mod kts;
 pub(super) mod nkts;
 pub(super) mod ownsg;
 pub(super) mod p4;
+pub(super) mod published;
 pub(super) mod prime_powers;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

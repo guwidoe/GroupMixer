@@ -1,4 +1,4 @@
-use crate::solver5::catalog::{kts, nkts, ownsg, p4, prime_powers};
+use crate::solver5::catalog::{kts, nkts, ownsg, p4, prime_powers, published};
 
 #[test]
 fn prime_power_catalog_exposes_supported_field_orders() {
@@ -41,6 +41,15 @@ fn nkts_catalog_exposes_exact_18_case() {
 
     assert_eq!(case.encoded_weeks.len(), 8);
     assert_eq!(nkts::source().name, "nkts_catalog");
+}
+
+#[test]
+fn published_schedule_catalog_exposes_8_3_10_case() {
+    let case = published::exact_case(8, 3)
+        .expect("published schedule catalog should expose the 8-3-10 case");
+
+    assert_eq!(case.encoded_weeks.len(), 10);
+    assert_eq!(published::source().name, "published_schedule_bank");
 }
 
 #[test]

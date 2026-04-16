@@ -11,6 +11,7 @@ use super::types::{
 mod affine_plane;
 mod kirkman;
 mod nkts;
+mod published;
 mod round_robin;
 mod transversal_design;
 
@@ -20,6 +21,7 @@ pub(super) fn registered_families() -> Vec<&'static dyn ConstructionFamily> {
         &KIRKMAN_6T_PLUS_1_FAMILY,
         &KIRKMAN_TRIPLE_SYSTEM_FAMILY,
         &NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY,
+        &PUBLISHED_SCHEDULE_BANK_FAMILY,
         &AFFINE_PLANE_PRIME_POWER_FAMILY,
         &TRANSVERSAL_DESIGN_PRIME_POWER_FAMILY,
     ]
@@ -29,6 +31,7 @@ struct RoundRobinFamily;
 struct Kirkman6TPlus1Family;
 struct KirkmanTripleSystemFamily;
 struct NearlyKirkmanTripleSystemFamily;
+struct PublishedScheduleBankFamily;
 struct AffinePlanePrimePowerFamily;
 struct TransversalDesignPrimePowerFamily;
 
@@ -37,6 +40,7 @@ static KIRKMAN_6T_PLUS_1_FAMILY: Kirkman6TPlus1Family = Kirkman6TPlus1Family;
 static KIRKMAN_TRIPLE_SYSTEM_FAMILY: KirkmanTripleSystemFamily = KirkmanTripleSystemFamily;
 static NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY: NearlyKirkmanTripleSystemFamily =
     NearlyKirkmanTripleSystemFamily;
+static PUBLISHED_SCHEDULE_BANK_FAMILY: PublishedScheduleBankFamily = PublishedScheduleBankFamily;
 static AFFINE_PLANE_PRIME_POWER_FAMILY: AffinePlanePrimePowerFamily = AffinePlanePrimePowerFamily;
 static TRANSVERSAL_DESIGN_PRIME_POWER_FAMILY: TransversalDesignPrimePowerFamily =
     TransversalDesignPrimePowerFamily;
@@ -178,6 +182,30 @@ impl ConstructionFamily for NearlyKirkmanTripleSystemFamily {
         };
 
         Some(construct_nearly_kirkman_triple_system(entry))
+    }
+}
+
+impl ConstructionFamily for PublishedScheduleBankFamily {
+    fn id(&self) -> ConstructionFamilyId {
+        ConstructionFamilyId::PublishedScheduleBank
+    }
+
+    fn evaluate(&self, problem: &PureSgpProblem) -> FamilyEvaluation {
+        let Some(entry) = catalog::published::exact_case(problem.num_groups, problem.group_size)
+        else {
+            return FamilyEvaluation::NotApplicable {
+                reason: "requires a catalog-backed published schedule case",
+            };
+        };
+
+        FamilyEvaluation::Applicable {
+            max_supported_weeks: entry.encoded_weeks.len(),
+        }
+    }
+
+    fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
+        catalog::published::exact_case(problem.num_groups, problem.group_size)
+            .map(construct_published_schedule_bank)
     }
 }
 
@@ -340,6 +368,31 @@ pub(super) fn construct_nearly_kirkman_triple_system_via_pseudo_doubling(
     .with_evidence(EvidenceSourceKind::StructuralComposition, "pseudo_doubling_from_kts")
 }
 
+pub(super) fn construct_published_schedule_bank(
+    entry: &'static catalog::published::PublishedScheduleEntry,
+) -> ConstructionResult {
+    ConstructionResult::new(
+        published::construct(entry),
+        ConstructionFamilyId::PublishedScheduleBank,
+    )
+    .with_quality(classify_quality(
+        entry.num_groups,
+        entry.group_size,
+        entry.encoded_weeks.len(),
+    ))
+    .with_applicability(ConstructionApplicability::Exceptional {
+        notes: vec![
+            "requires an exact catalog-backed published schedule case",
+            "uses an explicit source-backed patch-bank schedule rather than a general theorem family",
+        ],
+    })
+    .with_evidence(
+        EvidenceSourceKind::CatalogFact,
+        catalog::published::source().citation,
+    )
+    .with_evidence(EvidenceSourceKind::PatchBank, entry.citation)
+}
+
 pub(super) fn construct_affine_plane(field: &FiniteField) -> ConstructionResult {
     ConstructionResult::new(
         affine_plane::construct(field),
@@ -421,6 +474,10 @@ fn construct_max_schedule_recursive(
                 return Some(construct_nearly_kirkman_triple_system_via_pseudo_doubling(entry));
             }
         }
+    }
+
+    if let Some(entry) = catalog::published::exact_case(num_groups, group_size) {
+        return Some(construct_published_schedule_bank(entry));
     }
 
     let field = FiniteField::for_order(num_groups)?;

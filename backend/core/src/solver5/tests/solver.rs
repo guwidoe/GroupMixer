@@ -123,3 +123,15 @@ fn solver5_solves_pseudo_doubled_nkts_case() {
     assert_eq!(result.final_score, 0.0);
     assert_eq!(result.schedule.len(), 13);
 }
+
+#[test]
+fn solver5_solves_published_8_3_10_case() {
+    let input = pure_input(8, 3, 10);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver
+        .solve(&input)
+        .expect("published schedule bank should solve 8-3-10");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 10);
+}
