@@ -12,7 +12,7 @@ fn router_selects_round_robin_for_p2_cases() {
     let decision = attempt_construction(&problem).expect("router should find round robin");
 
     assert_eq!(decision.result.family, ConstructionFamilyId::RoundRobin);
-    assert_eq!(decision.attempts.len(), 7);
+    assert_eq!(decision.attempts.len(), 8);
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::RoundRobin
             && attempt.status
@@ -124,24 +124,58 @@ fn router_selects_published_schedule_bank_for_8_3_10() {
 }
 
 #[test]
-fn router_selects_published_schedule_bank_for_10_4_9() {
+fn router_selects_p4_resolvable_bibd_for_10_4_9() {
     let input = pure_input(10, 4, 9);
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
     let decision = attempt_construction(&problem).expect("router should construct 10-4-9");
 
-    assert_eq!(
-        decision.result.family,
-        ConstructionFamilyId::PublishedScheduleBank
-    );
+    assert_eq!(decision.result.family, ConstructionFamilyId::P4ResolvableBIBD);
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::PublishedScheduleBank
+            && matches!(
+                attempt.status,
+                FamilyAttemptStatus::RejectedAsWeaker {
+                    selected_family: ConstructionFamilyId::P4ResolvableBIBD,
+                    ..
+                }
+            )
+    }));
+}
+
+#[test]
+fn router_selects_p4_resolvable_bibd_for_7_4_9() {
+    let input = pure_input(7, 4, 9);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 7-4-9");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::P4ResolvableBIBD);
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::P4ResolvableBIBD
             && attempt.status
                 == FamilyAttemptStatus::Selected {
                     max_supported_weeks: 9,
-                    quality: ConstructionQuality::LowerBound {
-                        gap_to_counting_bound: 4,
-                    },
+                    quality: ConstructionQuality::ExactFrontier,
                 }
+    }));
+}
+
+#[test]
+fn router_selects_p4_resolvable_bibd_over_published_patch_for_10_4_13() {
+    let input = pure_input(10, 4, 13);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 10-4-13");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::P4ResolvableBIBD);
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::PublishedScheduleBank
+            && matches!(
+                attempt.status,
+                FamilyAttemptStatus::InsufficientWeeks {
+                    requested_weeks: 13,
+                    max_supported_weeks: 9,
+                    ..
+                }
+            )
     }));
 }
 
@@ -176,6 +210,7 @@ fn router_failure_explains_attempted_families() {
 
     assert!(message.contains("round_robin: requires group_size == 2"));
     assert!(message.contains("kirkman_6t_plus_1: requires group_size == 3"));
+    assert!(message.contains("p4_router: requires group_size == 4"));
     assert!(
         message.contains("affine_plane_prime_power: requires supported prime-power group count")
     );

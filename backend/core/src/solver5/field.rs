@@ -34,6 +34,23 @@ impl FiniteField {
         self.from_digits(&digits)
     }
 
+    pub(super) fn neg(self, value: usize) -> usize {
+        if self.degree == 1 {
+            return if value == 0 { 0 } else { self.prime - value };
+        }
+
+        let digits = self
+            .to_digits(value)
+            .into_iter()
+            .map(|digit| (self.prime - digit) % self.prime)
+            .collect::<Vec<_>>();
+        self.from_digits(&digits)
+    }
+
+    pub(super) fn sub(self, left: usize, right: usize) -> usize {
+        self.add(left, self.neg(right))
+    }
+
     pub(super) fn mul(self, left: usize, right: usize) -> usize {
         if self.degree == 1 {
             return (left * right) % self.prime;

@@ -45,6 +45,21 @@ fn affine_plane_family_constructs_prime_power_case() {
 }
 
 #[test]
+fn p4_resolvable_bibd_family_constructs_28_player_case() {
+    let field = FiniteField::for_order(9).expect("order 9 field should exist");
+    let result = families::construct_p4_resolvable_bibd(&field);
+
+    assert_eq!(result.family.label(), "p4_router");
+    assert_eq!(result.schedule.len(), 9);
+    assert_eq!(result.metadata.quality, ConstructionQuality::ExactFrontier);
+    assert!(result
+        .metadata
+        .evidence
+        .iter()
+        .any(|evidence| matches!(evidence.source_kind, EvidenceSourceKind::FiniteFieldConstruction)));
+}
+
+#[test]
 fn kirkman_family_constructs_6t_plus_1_case() {
     let field = FiniteField::for_order(7).expect("order 7 field should exist");
     let result = families::construct_kirkman_6t_plus_1(&field);
@@ -156,8 +171,9 @@ fn family_registry_exposes_current_portfolio_order() {
             "kirkman_6t_plus_1",
             "kts",
             "nkts",
-            "published_schedule_bank",
             "affine_plane_prime_power",
+            "p4_router",
+            "published_schedule_bank",
             "transversal_design_prime_power",
         ]
     );
