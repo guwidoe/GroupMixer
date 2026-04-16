@@ -323,7 +323,10 @@ fn comparison_report_filename(report: &ComparisonReport) -> String {
     }
 
     let suite = sanitize_filename(&report.suite_id);
-    let digest = Sha256::digest(format!("{}\n{}\n{}", report.suite_id, report.baseline_name, report.current_run_id));
+    let digest = Sha256::digest(format!(
+        "{}\n{}\n{}",
+        report.suite_id, report.baseline_name, report.current_run_id
+    ));
     let suffix = digest[..8]
         .iter()
         .map(|byte| format!("{byte:02x}"))
