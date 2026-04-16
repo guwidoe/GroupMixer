@@ -1,3 +1,5 @@
+use super::catalog::prime_powers;
+
 #[derive(Clone, Copy)]
 pub(super) struct FiniteField {
     pub(super) order: usize,
@@ -8,51 +10,13 @@ pub(super) struct FiniteField {
 
 impl FiniteField {
     pub(super) fn for_order(order: usize) -> Option<Self> {
-        match order {
-            2 => Some(Self {
-                order,
-                prime: 2,
-                degree: 1,
-                modulus: &[1, 0],
-            }),
-            3 => Some(Self {
-                order,
-                prime: 3,
-                degree: 1,
-                modulus: &[1, 0],
-            }),
-            4 => Some(Self {
-                order,
-                prime: 2,
-                degree: 2,
-                modulus: &[1, 1, 1],
-            }),
-            5 => Some(Self {
-                order,
-                prime: 5,
-                degree: 1,
-                modulus: &[1, 0],
-            }),
-            7 => Some(Self {
-                order,
-                prime: 7,
-                degree: 1,
-                modulus: &[1, 0],
-            }),
-            8 => Some(Self {
-                order,
-                prime: 2,
-                degree: 3,
-                modulus: &[1, 1, 0, 1],
-            }),
-            9 => Some(Self {
-                order,
-                prime: 3,
-                degree: 2,
-                modulus: &[1, 0, 1],
-            }),
-            _ => None,
-        }
+        let spec = prime_powers::supported_field(order)?;
+        Some(Self {
+            order: spec.order,
+            prime: spec.prime,
+            degree: spec.degree,
+            modulus: spec.modulus,
+        })
     }
 
     pub(super) fn add(self, left: usize, right: usize) -> usize {

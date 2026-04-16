@@ -1,6 +1,7 @@
 use crate::models::{ApiInput, SolverConfiguration, SolverResult};
 use crate::solver_support::SolverError;
 
+mod catalog;
 mod composition;
 mod families;
 mod field;
