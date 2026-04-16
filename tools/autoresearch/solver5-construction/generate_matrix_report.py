@@ -5,6 +5,60 @@ import json
 from pathlib import Path
 
 
+METHOD_REFERENCE = [
+    {
+        "code": "RR",
+        "stands_for": "round robin / 1-factorization",
+        "solves": "implemented `p=2` route across the scored matrix",
+    },
+    {
+        "code": "KTS(6t+3)",
+        "stands_for": "Kirkman triple system on `6t+3` players",
+        "solves": "implemented `p=3` family on `v = 6t+3` players via the shipped Kirkman constructor",
+    },
+    {
+        "code": "KTS",
+        "stands_for": "Kirkman triple system",
+        "solves": "literature/reference `p=3` targets where a Kirkman triple-system route is the intended benchmark",
+    },
+    {
+        "code": "NKTS",
+        "stands_for": "nearly Kirkman triple system",
+        "solves": "literature/reference `p=3` composite-row targets that need nearly-Kirkman constructions",
+    },
+    {
+        "code": "RTD",
+        "stands_for": "resolvable transversal design",
+        "solves": "implemented prime-power `g-p-w` cells with `3 <= p <= g`, excluding the diagonal affine-plane preference",
+    },
+    {
+        "code": "AP",
+        "stands_for": "affine-plane diagonal route",
+        "solves": "implemented diagonal prime-power cells `g-g-(g+1)` where affine planes are the preferred exact family",
+    },
+    {
+        "code": "P4",
+        "stands_for": "dedicated `p = 4` route",
+        "solves": "literature/reference `p=4` targets, including RGDD-style branches and dedicated exceptions",
+    },
+    {
+        "code": "RTD+G",
+        "stands_for": "resolvable transversal design with recursive group-fill lift",
+        "solves": "implemented lifted cells where an RTD scaffold is filled from a smaller already-constructible instance",
+    },
+    {
+        "code": "VIS",
+        "stands_for": "visual-only marker",
+        "solves": "not a solver family; used only for cells outside the scored objective",
+    },
+    {
+        "code": "?",
+        "stands_for": "unknown / uncatalogued",
+        "solves": "fallback when a construction result is present but no explicit abbreviation is mapped",
+    },
+]
+
+
 def build_matrix(cells):
     return {(cell["g"], cell["p"]): cell for cell in cells}
 
@@ -108,14 +162,14 @@ def bottom_left_label(cell):
 
 def method_chip_text(cell):
     if not cell.get("scored") or trivial_unsolved_cell(cell):
-        return None
+        return None, None
     current_method = cell.get("method_abbreviation")
     if not current_method:
-        return None
+        return None, None
     reference_method = cell.get("target_method_abbreviation")
     if reference_method and reference_method != current_method:
-        return f"{current_method}→{reference_method}"
-    return current_method
+        return current_method, reference_method
+    return current_method, None
 
 
 def center_text(cell):
@@ -148,6 +202,7 @@ def render_static_cell(
     top_right=None,
     bottom_left=None,
     method=None,
+    reference_method=None,
     faded=False,
     visual_only=False,
 ):
@@ -163,7 +218,12 @@ def render_static_cell(
         f"<div class='{center_class}'>{html.escape(str(center))}</div>",
     ]
     if method:
-        html_parts.append(f"<div class='method-chip'>{html.escape(str(method))}</div>")
+        chip_html = ["<div class='method-cluster'>", f"<span class='method-chip'>{html.escape(str(method))}</span>"]
+        if reference_method:
+            chip_html.append("<span class='method-arrow'>→</span>")
+            chip_html.append(f"<span class='method-chip reference-chip'>{html.escape(str(reference_method))}</span>")
+        chip_html.append("</div>")
+        html_parts.append("".join(chip_html))
     html_parts.append("</div>")
     return "".join(html_parts)
 
@@ -171,6 +231,7 @@ def render_static_cell(
 def render_cell_glyph(cell):
     current = cell.get("constructed_weeks") or 0
     target = cell.get("target_weeks")
+    method, reference_method = method_chip_text(cell)
     return render_static_cell(
         center=center_text(cell),
         background=progress_fill_color(current, target, cell.get("scored", False)),
@@ -178,7 +239,8 @@ def render_cell_glyph(cell):
         top_left=top_left_label(cell),
         top_right=top_right_label(cell),
         bottom_left=bottom_left_label(cell),
-        method=method_chip_text(cell),
+        method=method,
+        reference_method=reference_method,
         faded=(not cell.get("scored")) or current == 0,
         visual_only=not cell.get("scored"),
     )
@@ -220,6 +282,22 @@ def render_sample(title, glyph_html, caption):
     )
 
 
+def render_method_reference_table():
+    rows = [
+        "<section><h2>Method abbreviations</h2><table><thead><tr><th>Code</th><th>Stands for</th><th>Families / cells it can solve</th></tr></thead><tbody>"
+    ]
+    for entry in METHOD_REFERENCE:
+        rows.append(
+            "<tr>"
+            f"<td><code>{html.escape(entry['code'])}</code></td>"
+            f"<td>{html.escape(entry['stands_for'])}</td>"
+            f"<td>{html.escape(entry['solves'])}</td>"
+            "</tr>"
+        )
+    rows.append("</tbody></table></section>")
+    return "".join(rows)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("artifact")
@@ -250,21 +328,25 @@ def main():
         ".legend-border-box{display:inline-block;width:18px;height:14px;border-radius:6px;background:#fff;}"
         ".legend-corners code{background:#e2e8f0;border-radius:6px;padding:1px 5px;font-size:11px;}"
         ".sample-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;}"
-        ".sample-card{display:flex;flex-direction:column;align-items:center;gap:6px;width:140px;}"
-        ".sample-title{font-size:12px;font-weight:700;color:#0f172a;text-align:center;}"
+        ".sample-card{display:flex;flex-direction:column;align-items:center;gap:6px;width:188px;}"
+        ".sample-title{font-size:11.5px;font-weight:700;color:#0f172a;text-align:center;white-space:nowrap;}"
         ".sample-caption{font-size:11px;line-height:1.35;color:#475569;text-align:center;}"
-        ".dashboard-grid-cell{min-width:120px;background:#fff;}"
-        ".matrix-cell{position:relative;width:112px;height:88px;border-radius:10px;box-sizing:border-box;overflow:hidden;}"
+        ".dashboard-grid-cell{width:92px;min-width:92px;padding:1px;background:#fff;}"
+        ".matrix-cell{position:relative;width:92px;height:84px;border-radius:10px;box-sizing:border-box;overflow:hidden;}"
         ".visual-only-cell{color:#64748b;}"
         ".cell-corner{position:absolute;font-size:11px;line-height:1;font-weight:700;color:#334155;letter-spacing:0.01em;}"
         ".top-left{top:7px;left:8px;}"
         ".top-right{top:7px;right:8px;text-align:right;}"
         ".bottom-left{bottom:7px;left:8px;}"
-        ".center-value{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:30px;line-height:1;font-weight:700;color:#0f172a;}"
+        ".center-value{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;line-height:1;font-weight:700;color:#0f172a;}"
         ".center-value.faded{color:#94a3b8;font-weight:600;}"
-        ".method-chip{position:absolute;right:7px;bottom:6px;padding:2px 6px;border-radius:999px;font-size:9.5px;line-height:1.1;font-weight:700;color:#0f172a;background:rgba(255,255,255,0.78);border:1px solid rgba(15,23,42,0.12);max-width:88px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}"
+        ".method-cluster{position:absolute;right:6px;bottom:6px;display:flex;align-items:center;justify-content:flex-end;gap:2px;}"
+        ".method-chip{padding:1px 4px;border-radius:999px;font-size:8px;line-height:1.0;font-weight:700;color:#0f172a;background:rgba(255,255,255,0.82);border:1px solid rgba(15,23,42,0.12);white-space:nowrap;}"
+        ".reference-chip{background:rgba(248,250,252,0.92);}"
+        ".method-arrow{font-size:10px;font-weight:700;color:#475569;flex:0 0 auto;}"
         ".success-marker{color:#15803d;}"
         ".muted-marker{color:#64748b;}"
+        "code{background:#f1f5f9;border-radius:6px;padding:1px 5px;font-size:11px;}"
         "</style></head><body>",
         f"<h1>{html.escape(artifact['matrix_name'])}</h1>",
         f"<p class='meta'>version {artifact['matrix_version']} · visual region g={artifact['visual_bounds']['g_min']}..{artifact['visual_bounds']['g_max']}, p={artifact['visual_bounds']['p_min']}..{artifact['visual_bounds']['p_max']} · scored region g={artifact['scored_bounds']['g_min']}..{artifact['scored_bounds']['g_max']}, p={artifact['scored_bounds']['p_min']}..{artifact['scored_bounds']['p_max']}</p>",
@@ -280,7 +362,7 @@ def main():
         render_border_swatch("optimum known, not reached", "border:2px solid #d97706;"),
         render_border_swatch("optimum unknown", "border:2px dashed #94a3b8;"),
         "</div>",
-        "<div class='legend-row legend-corners'><span class='legend-key'>Corners</span> <span><code>O</code> top-left optimum</span> <span><code>T</code> top-right roadmap target</span> <span><code>L</code> bottom-left literature lower bound</span> <span>bottom-right method <code>current→reference</code> when useful</span></div>",
+        "<div class='legend-row legend-corners'><span class='legend-key'>Corners</span> <span><code>O</code> top-left optimum</span> <span><code>T</code> top-right roadmap target</span> <span><code>L</code> bottom-left literature lower bound</span> <span>bottom-right method badges show current and reference separately when both matter</span></div>",
         "<div class='sample-grid'>",
         render_sample(
             "Solved and optimal",
@@ -313,7 +395,8 @@ def main():
                 top_left="O11",
                 top_right="T10",
                 bottom_left="L11",
-                method="RTD→P4",
+                method="RTD",
+                reference_method="P4",
             ),
             "corner numerals appear only when they add non-redundant information",
         ),
@@ -331,6 +414,7 @@ def main():
     ]
 
     page.append(render_combined_table("Coverage dashboard", rows, cols, cell_map))
+    page.append(render_method_reference_table())
     page.append("</body></html>")
 
     Path(args.output).write_text("".join(page))

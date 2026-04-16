@@ -186,13 +186,16 @@ Current HTML cell semantics:
   information beyond the roadmap target
 - top-left = known optimum when useful, or a checkmark when the cell is already
   solved at a known exact optimum
-- bottom-right = current method code, optionally `current→reference` when the
-  encoded reference method differs
+- bottom-right = current method badge; when the encoded reference method differs,
+  the HTML shows separate current/reference badges with an arrow between them
 
 Visual channels are intentionally separated:
 - cell fill = progress against the roadmap target only
 - border = optimality status only
 - gray hatched styling = visual-only cells outside the scored objective
+
+The HTML also includes a method-reference table mapping each abbreviation to its
+expanded name and the family/cell patterns it covers.
 
 ## Editing workflow
 
