@@ -10,6 +10,7 @@ use super::types::{
 
 mod affine_plane;
 mod kirkman;
+mod molr;
 mod nkts;
 mod ownsg;
 mod p4_rbibd;
@@ -27,6 +28,7 @@ pub(super) fn registered_families() -> Vec<&'static dyn ConstructionFamily> {
         &NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY,
         &OWN_SOCIAL_GOLFER_FAMILY,
         &RESOLVABLE_INCOMPLETE_TRANSVERSAL_DESIGN_FAMILY,
+        &MOLR_GROUP_FILL_FAMILY,
         &AFFINE_PLANE_PRIME_POWER_FAMILY,
         &P4_RESOLVABLE_BIBD_FAMILY,
         &PUBLISHED_SCHEDULE_BANK_FAMILY,
@@ -42,6 +44,7 @@ struct KirkmanTripleSystemFamily;
 struct NearlyKirkmanTripleSystemFamily;
 struct OwnSocialGolferFamily;
 struct ResolvableIncompleteTransversalDesignFamily;
+struct MolrGroupFillFamily;
 struct AffinePlanePrimePowerFamily;
 struct P4ResolvableBIBDFamily;
 struct PublishedScheduleBankFamily;
@@ -56,6 +59,7 @@ static NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY: NearlyKirkmanTripleSystemFamily =
 static OWN_SOCIAL_GOLFER_FAMILY: OwnSocialGolferFamily = OwnSocialGolferFamily;
 static RESOLVABLE_INCOMPLETE_TRANSVERSAL_DESIGN_FAMILY:
     ResolvableIncompleteTransversalDesignFamily = ResolvableIncompleteTransversalDesignFamily;
+static MOLR_GROUP_FILL_FAMILY: MolrGroupFillFamily = MolrGroupFillFamily;
 static AFFINE_PLANE_PRIME_POWER_FAMILY: AffinePlanePrimePowerFamily = AffinePlanePrimePowerFamily;
 static P4_RESOLVABLE_BIBD_FAMILY: P4ResolvableBIBDFamily = P4ResolvableBIBDFamily;
 static PUBLISHED_SCHEDULE_BANK_FAMILY: PublishedScheduleBankFamily = PublishedScheduleBankFamily;
@@ -268,6 +272,29 @@ impl ConstructionFamily for ResolvableIncompleteTransversalDesignFamily {
     fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
         catalog::ritd::exact_case(problem.num_groups, problem.group_size)
             .map(construct_resolvable_incomplete_transversal_design)
+    }
+}
+
+impl ConstructionFamily for MolrGroupFillFamily {
+    fn id(&self) -> ConstructionFamilyId {
+        ConstructionFamilyId::MolrGroupFill
+    }
+
+    fn evaluate(&self, problem: &PureSgpProblem) -> FamilyEvaluation {
+        let Some(entry) = catalog::molr::exact_case(problem.num_groups, problem.group_size) else {
+            return FamilyEvaluation::NotApplicable {
+                reason: "requires a catalog-backed MOLR/MOLS group-fill case",
+            };
+        };
+
+        FamilyEvaluation::Applicable {
+            max_supported_weeks: entry.base_weeks + 1,
+        }
+    }
+
+    fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
+        catalog::molr::exact_case(problem.num_groups, problem.group_size)
+            .map(construct_molr_group_fill)
     }
 }
 
@@ -566,6 +593,28 @@ pub(super) fn construct_resolvable_incomplete_transversal_design(
     .with_evidence(EvidenceSourceKind::StructuralComposition, "ritd_group_fill")
 }
 
+pub(super) fn construct_molr_group_fill(
+    entry: &'static catalog::molr::MolrCatalogEntry,
+) -> ConstructionResult {
+    let supported_weeks = entry.base_weeks + 1;
+
+    ConstructionResult::new(molr::construct(entry), ConstructionFamilyId::MolrGroupFill)
+        .with_quality(classify_quality(
+            entry.num_groups,
+            entry.group_size,
+            supported_weeks,
+        ))
+        .with_applicability(ConstructionApplicability::Conditional {
+            notes: vec![
+                "requires a catalog-backed MOLR/MOLS group-fill case",
+                "extends a validated base schedule by recovering a compatible latent-group partition and adding one intra-group week",
+            ],
+        })
+        .with_evidence(EvidenceSourceKind::CatalogFact, catalog::molr::source().citation)
+        .with_evidence(EvidenceSourceKind::PatchBank, entry.citation)
+        .with_evidence(EvidenceSourceKind::StructuralComposition, "molr_group_fill")
+}
+
 pub(super) fn construct_affine_plane(field: &FiniteField) -> ConstructionResult {
     ConstructionResult::new(
         affine_plane::construct(field),
@@ -687,6 +736,10 @@ fn construct_max_schedule_recursive(
 
     if let Some(entry) = catalog::ritd::exact_case(num_groups, group_size) {
         return Some(construct_resolvable_incomplete_transversal_design(entry));
+    }
+
+    if let Some(entry) = catalog::molr::exact_case(num_groups, group_size) {
+        return Some(construct_molr_group_fill(entry));
     }
 
     if let Some(entry) = catalog::published::exact_case(num_groups, group_size) {

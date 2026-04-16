@@ -229,6 +229,22 @@ fn ritd_family_constructs_50_player_case() {
 }
 
 #[test]
+fn molr_group_fill_family_constructs_100_player_case() {
+    let entry = crate::solver5::catalog::molr::exact_case(10, 10)
+        .expect("molr catalog should expose the 10-10 case");
+    let result = families::construct_molr_group_fill(entry);
+
+    assert_eq!(result.family.label(), "molr_group_fill");
+    assert_eq!(result.schedule.len(), 4);
+    assert_eq!(
+        result.metadata.quality,
+        ConstructionQuality::LowerBound {
+            gap_to_counting_bound: 7,
+        }
+    );
+}
+
+#[test]
 fn end_to_end_round_robin_schedule_still_scores_zero() {
     let input = pure_input(4, 2, 7);
     let solver = SearchEngine::new(&input.solver);
@@ -257,6 +273,7 @@ fn family_registry_exposes_current_portfolio_order() {
             "nkts",
             "ownsg",
             "ritd",
+            "molr_group_fill",
             "affine_plane_prime_power",
             "p4_router",
             "published_schedule_bank",

@@ -19,7 +19,8 @@
 - Keep broader **RBIBD / RGDD / URD / RITD / ownSG** work behind reusable-theory gains rather than already-closed fixed-matrix frontier cells.
 - The Appendix A ownSG starter-block lane is now landed for the benchmark-relevant `10-p` rows with `p=6,7,8,9`; do not re-spend loop time there unless broadening the ownSG catalog beyond the fixed matrix.
 - The small catalog-backed **RITD / +G** lane is now landed for the paper’s `RITD(10,2;5)+G(1)` route; treat `10-5` as covered by the reusable `ritd` family rather than as an open published-schedule-style gap.
-- Current promising reusable lane: a small **MOLR / MOLS lower-bound** family for non-prime-power square orders could honestly raise `10-10` from 3 to 4 via the paper’s `MOLRs(10,10)+G(1)` route and may generalize beyond that one cell.
+- The small **MOLR / MOLS lower-bound** benchmark lane is now landed for `10-10`: the shipped `molr_group_fill` family raises `10-10` from 3 to 4 via a provenance-aware `MOLRs(10,10)+G(1)` route. Treat the fixed-matrix `10-10` gap as closed rather than as an open idea.
+- If continuing this lane, only pursue broader non-prime-power square-order MOLR / MOLS theory that remains genuinely reusable beyond the fixed matrix; do not turn latent-group-fill recovery into a benchmark-shaped patch bank.
 - Secondary post-benchmark lane: broaden the new `ritd` family only if additional literature-backed deletion/incomplete-transversal cases can be encoded cleanly without turning it into another benchmark-shaped patch bank.
 - Extend recursive `+G(t)` lifting only as a reusable composition operator, not as cell-specific glue.
 - Keep benchmark honesty: only count score-zero constructions, keep the fixed `2..10 x 2..10` matrix unchanged, and do not hardcode matrix answers into families or patch banks.

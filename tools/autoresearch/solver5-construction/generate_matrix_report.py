@@ -37,6 +37,11 @@ METHOD_REFERENCE = [
         "solves": "catalog-backed incomplete-transversal route where deleting one source group yields complete parallel classes, optionally followed by an intra-group filler week such as the shipped `10-5-9` construction",
     },
     {
+        "code": "MOLR+G",
+        "stands_for": "MOLR / MOLS lower-bound route with group fill",
+        "solves": "catalog-backed non-prime-power square-order route that extends a compatible 3-round `10-10` base with one latent-group filler week, matching the shipped `10-10-4` lower bound",
+    },
+    {
         "code": "PSB",
         "stands_for": "published schedule bank",
         "solves": "explicit source-backed lower-bound schedules that are honest patch-bank constructions rather than general theorem families",

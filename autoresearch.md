@@ -126,6 +126,8 @@ Interpretation note:
     - `10-6-7`, `10-7-7`, `10-8-5`, `10-9-5`
   - a catalog-backed RITD family derived from the Miller–Valkov–Abel Figure 8 `ITD(10,2;6)` block set, currently covering:
     - `10-5-9` via the paper's `RITD(10,2;5)+G(1)` route
+  - a catalog-backed MOLR / MOLS lower-bound group-fill family, currently covering:
+    - `10-10-4` by extending a validated `10-10-3` base schedule with one compatible latent-group filler week under the paper's `MOLRs(10,10)+G(1)` lower-bound route
   - published-schedule bank coverage for source-backed triples / higher-`p` exceptions, including:
     - `8-3-10`
     - `6-4-7` (with one documented transcription correction on the archived source)
@@ -139,9 +141,9 @@ Interpretation note:
   - recursive `+G(t)`-style lifting across RTD latent groups when `p | g` and the smaller `(g/p)-p-*` instance is already constructible
   - a universal single-round partition family for any divisible pure-SGP instance, used as an honest reusable `W=1` lower bound when no stronger family applies
 - Active kept benchmark baseline is now:
-  - commit: `(pending keep commit for the 418 baseline)`
-  - `total_constructed_weeks = 418`
-  - `frontier_gap_sum = 168`
+  - commit: `(pending keep commit for the 419 baseline)`
+  - `total_constructed_weeks = 419`
+  - `frontier_gap_sum = 167`
   - `solved_cells = 81`
   - `exact_frontier_cells = 26`
   - `unsolved_cells = 0`
@@ -153,7 +155,7 @@ Interpretation note:
   - `p7_constructed_weeks = 37`
   - `p8_constructed_weeks = 29`
   - `p9_constructed_weeks = 22`
-  - `p10_constructed_weeks = 11`
+  - `p10_constructed_weeks = 12`
 
 ## What's Been Tried
 - Initial setup established the solver5 scaffold, validator, engine registration, benchmark harness, and the round-robin baseline.
@@ -184,19 +186,23 @@ Interpretation note:
 - A catalog-backed RITD route from the paper's `ITD(10,2;6)` block set is now landed for the benchmark-relevant `10-5` case:
   - `10-5: 7 -> 9` via `RITD(10,2;5)+G(1)`
   - this should be treated as a reusable literature-structured family, not as another opaque published-schedule patch
+- A catalog-backed MOLR / MOLS lower-bound route is now landed for the benchmark-relevant `10-10` case:
+  - `10-10: 3 -> 4` via a compatible latent-group filler week on top of the validated published `10-10-3` base, matching the paper's `MOLRs(10,10)+G(1)` lower-bound line
+  - the cyclic order-10 Latin-square route was explicitly ruled out earlier; the shipped constructor instead stores the recovered filler partition as a provenance-aware catalog case and constructs the 4-week schedule deterministically
 - Remaining live directions should stay structural constructor families, not search-based cheating:
   - reusable RBIBD / RGDD family work that explains or subsumes current exact catalog cases beyond the fixed matrix
-  - p=10 structural work such as MOLR / MOLS-based families that can honestly improve `10-10`
+  - broader non-prime-power square-order MOLR / MOLS lower-bound work only when it remains provenance-aware and genuinely reusable beyond the fixed matrix
   - broader RBIBD / RGDD / URD / RITD / ownSG-style patches only after the highest-ROI family-policy gaps are exhausted
 
 ## Immediate Next Loop Behavior
-- Active kept benchmark baseline is now the pending kept 418 baseline (`total_constructed_weeks = 418`).
+- Active kept benchmark baseline is now the pending kept `419` baseline.
 - The universal single-round lower bound has landed and removed all zero-coverage holes without changing the benchmark question:
   - `unsolved_cells: 36 -> 0`
   - many previously empty cells now honestly score `W=1`
-- The live scored target gaps in the fixed matrix are now closed.
+- The live scored target gaps in the fixed matrix remain closed, and the strongest fixed-matrix `p=10` row now stands at:
+  - `W_10_10 = 4`
 - The next feature buildout order is now:
   1. preserve benchmark honesty and avoid re-spending loop time on already-closed fixed-matrix cells
   2. prefer reusable structural upgrades that explain or subsume current exact catalog cases over more one-off patch hunting
-  3. near-term, the best visible honest opportunity is now the structural `p=10` upgrade (`10-10` via an MOLR/MOLS-based route) rather than more schedule-bank mining
+  3. if continuing, look for broader non-prime-power square-order MOLR / MOLS, RITD, or RGDD-style theory that generalizes beyond the single shipped `10-10-4` case rather than mining more benchmark patches
 - Keep preferring reusable family logic or justified composition over per-cell glue.
