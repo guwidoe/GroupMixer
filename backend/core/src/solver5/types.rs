@@ -134,12 +134,71 @@ pub(super) enum ConstructionSpan {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) enum ConstructionQuality {
+    ExactFrontier,
+    NearFrontier { missing_weeks: usize },
+    LowerBound { gap_to_counting_bound: usize },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum EvidenceSourceKind {
+    TheoremFamily,
+    FiniteFieldConstruction,
+    StructuralComposition,
+    CatalogFact,
+    PatchBank,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct ConstructionEvidence {
+    pub(super) source_kind: EvidenceSourceKind,
+    pub(super) citation: &'static str,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) enum ConstructionApplicability {
+    General,
+    Conditional { notes: Vec<&'static str> },
+    Exceptional { notes: Vec<&'static str> },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) enum ResidualStructure {
+    TransversalLatentGroups {
+        subgroup_count: usize,
+        subgroup_size: usize,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct ConstructionMetadata {
+    pub(super) quality: ConstructionQuality,
+    pub(super) applicability: ConstructionApplicability,
+    pub(super) evidence: Vec<ConstructionEvidence>,
+    pub(super) residual: Option<ResidualStructure>,
+}
+
+impl Default for ConstructionMetadata {
+    fn default() -> Self {
+        Self {
+            quality: ConstructionQuality::LowerBound {
+                gap_to_counting_bound: usize::MAX,
+            },
+            applicability: ConstructionApplicability::General,
+            evidence: Vec::new(),
+            residual: None,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct ConstructionResult {
     pub(super) schedule: Schedule,
     pub(super) family: ConstructionFamilyId,
     pub(super) max_supported_weeks: usize,
     pub(super) span: ConstructionSpan,
     pub(super) provenance: ConstructionProvenance,
+    pub(super) metadata: ConstructionMetadata,
 }
 
 impl ConstructionResult {
@@ -151,11 +210,48 @@ impl ConstructionResult {
             max_supported_weeks,
             span: ConstructionSpan::Full,
             provenance: ConstructionProvenance::for_family(family),
+            metadata: ConstructionMetadata::default(),
         }
     }
 
     pub(super) fn add_operator(mut self, operator: CompositionOperatorId) -> Self {
         self.provenance.operators.push(operator);
+        self.metadata.evidence.push(ConstructionEvidence {
+            source_kind: EvidenceSourceKind::StructuralComposition,
+            citation: operator.label(),
+        });
+        self
+    }
+
+    pub(super) fn with_quality(mut self, quality: ConstructionQuality) -> Self {
+        self.metadata.quality = quality;
+        self
+    }
+
+    pub(super) fn with_applicability(mut self, applicability: ConstructionApplicability) -> Self {
+        self.metadata.applicability = applicability;
+        self
+    }
+
+    pub(super) fn with_evidence(
+        mut self,
+        source_kind: EvidenceSourceKind,
+        citation: &'static str,
+    ) -> Self {
+        self.metadata.evidence.push(ConstructionEvidence {
+            source_kind,
+            citation,
+        });
+        self
+    }
+
+    pub(super) fn with_residual(mut self, residual: ResidualStructure) -> Self {
+        self.metadata.residual = Some(residual);
+        self
+    }
+
+    pub(super) fn clear_residual(mut self) -> Self {
+        self.metadata.residual = None;
         self
     }
 

@@ -4,6 +4,7 @@ use crate::solver5::{
     field::FiniteField,
     portfolio::FamilyEvaluation,
     problem::PureSgpProblem,
+    types::{ConstructionQuality, EvidenceSourceKind, ResidualStructure},
     SearchEngine,
 };
 
@@ -14,6 +15,11 @@ fn round_robin_family_constructs_full_one_factorization() {
     assert_eq!(result.family.label(), "round_robin");
     assert_eq!(result.max_supported_weeks, 7);
     assert_eq!(result.schedule.len(), 7);
+    assert_eq!(result.metadata.quality, ConstructionQuality::ExactFrontier);
+    assert_eq!(
+        result.metadata.evidence[0].source_kind,
+        EvidenceSourceKind::TheoremFamily
+    );
 }
 
 #[test]
@@ -23,6 +29,10 @@ fn transversal_design_family_constructs_prime_power_case() {
 
     assert_eq!(result.family.label(), "transversal_design_prime_power");
     assert_eq!(result.schedule.len(), 4);
+    assert_eq!(
+        result.metadata.quality,
+        ConstructionQuality::NearFrontier { missing_weeks: 1 }
+    );
 }
 
 #[test]
@@ -74,7 +84,7 @@ fn family_registry_exposes_current_portfolio_order() {
 
 #[test]
 fn family_evaluation_is_separate_from_construction() {
-    let input = pure_input(4, 3, 4);
+    let input = pure_input(8, 4, 8);
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
     let family = families::registered_families()
         .into_iter()
@@ -84,12 +94,19 @@ fn family_evaluation_is_separate_from_construction() {
     assert_eq!(
         family.evaluate(&problem),
         FamilyEvaluation::Applicable {
-            max_supported_weeks: 4,
+            max_supported_weeks: 8,
         }
     );
 
     let result = family
         .construct(&problem)
         .expect("evaluation-compatible family should construct");
-    assert_eq!(result.max_supported_weeks, 4);
+    assert_eq!(result.max_supported_weeks, 8);
+    assert_eq!(
+        result.metadata.residual,
+        Some(ResidualStructure::TransversalLatentGroups {
+            subgroup_count: 4,
+            subgroup_size: 2,
+        })
+    );
 }
