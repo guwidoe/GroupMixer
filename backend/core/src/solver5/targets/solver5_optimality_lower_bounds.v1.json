@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "name": "solver5-optimality-lower-bounds",
+  "visual_bounds": {
+    "g_min": 1,
+    "g_max": 10,
+    "p_min": 1,
+    "p_max": 10
+  },
+  "lower_bound_rows": [
+    [null, null, null, null, null, null, null, null, null, null],
+    [null, 3, 2, 2, 1, 1, 1, 1, 1, 1],
+    [null, 5, 4, 3, 1, 1, 1, 1, 1, 1],
+    [null, 7, 4, 5, 4, 1, 1, 1, 1, 1],
+    [null, 9, 7, 5, 6, 5, 1, 1, 1, 1],
+    [null, 11, 8, 7, 6, 3, 1, 1, 1, 1],
+    [null, 13, 10, 7, 5, 4, 7, 1, 1, 1],
+    [null, 15, 11, 10, 6, 5, 4, 9, 1, 1],
+    [null, 17, 13, 11, 7, 6, 5, 4, 10, 1],
+    [null, 19, 14, 13, 8, 7, 5, 5, 4, 3]
+  ]
+}

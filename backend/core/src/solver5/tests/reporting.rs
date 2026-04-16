@@ -28,6 +28,8 @@ fn default_target_matrix_exposes_expected_cells_and_abbreviations() {
     assert_eq!(matrix.target_method_for(2, 2), Some("round_robin"));
     assert_eq!(matrix.heuristic_target_weeks_for(2, 2), Some(3));
     assert_eq!(matrix.proven_optimal_weeks_for(2, 2), Some(3));
+    assert_eq!(matrix.proven_optimal_weeks_for(8, 4), Some(10));
+    assert_eq!(matrix.optimality_lower_bound_weeks_for(8, 4), Some(10));
 }
 
 #[test]

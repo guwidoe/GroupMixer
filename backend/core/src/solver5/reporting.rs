@@ -13,6 +13,8 @@ use std::fmt::{Display, Formatter};
 
 const DEFAULT_TARGET_MATRIX_JSON: &str =
     include_str!("targets/solver5_target_matrix.v1.json");
+const DEFAULT_OPTIMALITY_LOWER_BOUNDS_JSON: &str =
+    include_str!("targets/solver5_optimality_lower_bounds.v1.json");
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MatrixDefinitionError(String);
@@ -73,6 +75,7 @@ pub struct Solver5TargetMatrix {
     pub heuristic_target_weeks: Vec<Vec<Option<usize>>>,
     pub heuristic_target_methods: Vec<Vec<Option<String>>>,
     pub proven_optimal_weeks: Vec<Vec<Option<usize>>>,
+    pub optimality_lower_bound_weeks: Vec<Vec<Option<usize>>>,
     pub family_abbreviations: BTreeMap<String, String>,
 }
 
@@ -111,6 +114,11 @@ impl Solver5TargetMatrix {
     pub fn proven_optimal_weeks_for(&self, g: usize, p: usize) -> Option<usize> {
         let (row_idx, col_idx) = self.cell_indices(g, p)?;
         *self.proven_optimal_weeks.get(row_idx)?.get(col_idx)?
+    }
+
+    pub fn optimality_lower_bound_weeks_for(&self, g: usize, p: usize) -> Option<usize> {
+        let (row_idx, col_idx) = self.cell_indices(g, p)?;
+        *self.optimality_lower_bound_weeks.get(row_idx)?.get(col_idx)?
     }
 
     pub fn abbreviation_for(&self, label: &str) -> Option<&str> {
@@ -204,7 +212,15 @@ pub fn inspect_construction(
 }
 
 pub fn load_default_target_matrix() -> Result<Solver5TargetMatrix, MatrixDefinitionError> {
-    load_target_matrix_from_str(DEFAULT_TARGET_MATRIX_JSON)
+    let mut matrix = load_target_matrix_from_str(DEFAULT_TARGET_MATRIX_JSON)?;
+    let lower_bounds = load_optimality_lower_bounds_from_str(DEFAULT_OPTIMALITY_LOWER_BOUNDS_JSON)?;
+    if lower_bounds.visual_bounds != matrix.visual_bounds {
+        return Err(MatrixDefinitionError(
+            "solver5 optimality lower-bound bounds must match target matrix visual_bounds".into(),
+        ));
+    }
+    matrix.optimality_lower_bound_weeks = lower_bounds.lower_bound_weeks;
+    Ok(matrix)
 }
 
 pub fn load_target_matrix_from_str(
@@ -234,6 +250,14 @@ struct RawTargetMatrixFile {
     #[serde(default)]
     proven_optimal_rows: Option<Vec<Vec<Option<RawTargetCell>>>>,
     family_abbreviations: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawOptimalityLowerBoundsFile {
+    version: u32,
+    name: String,
+    visual_bounds: MatrixBounds,
+    lower_bound_rows: Vec<Vec<Option<RawTargetCell>>>,
 }
 
 impl RawTargetMatrixFile {
@@ -333,9 +357,52 @@ impl RawTargetMatrixFile {
             heuristic_target_weeks,
             heuristic_target_methods,
             proven_optimal_weeks,
+            optimality_lower_bound_weeks: blank_target_rows(self.visual_bounds),
             family_abbreviations: self.family_abbreviations,
         })
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct OptimalityLowerBoundsMatrix {
+    version: u32,
+    name: String,
+    visual_bounds: MatrixBounds,
+    lower_bound_weeks: Vec<Vec<Option<usize>>>,
+}
+
+impl RawOptimalityLowerBoundsFile {
+    fn validate_and_build(self) -> Result<OptimalityLowerBoundsMatrix, MatrixDefinitionError> {
+        if self.version == 0 {
+            return Err(MatrixDefinitionError(
+                "solver5 optimality lower-bound matrix version must be positive".into(),
+            ));
+        }
+        validate_bounds("visual_bounds", self.visual_bounds)?;
+        let lower_bound_weeks = validate_optional_target_rows(
+            Some(self.lower_bound_rows),
+            self.visual_bounds,
+            "lower_bound_rows",
+        )?
+        .unwrap_or_else(|| blank_target_rows(self.visual_bounds));
+        Ok(OptimalityLowerBoundsMatrix {
+            version: self.version,
+            name: self.name,
+            visual_bounds: self.visual_bounds,
+            lower_bound_weeks,
+        })
+    }
+}
+
+fn load_optimality_lower_bounds_from_str(
+    raw: &str,
+) -> Result<OptimalityLowerBoundsMatrix, MatrixDefinitionError> {
+    let file: RawOptimalityLowerBoundsFile = serde_json::from_str(raw).map_err(|error| {
+        MatrixDefinitionError(format!(
+            "failed to parse solver5 optimality lower-bound definition: {error}"
+        ))
+    })?;
+    file.validate_and_build()
 }
 
 #[derive(Debug, Clone, Deserialize)]

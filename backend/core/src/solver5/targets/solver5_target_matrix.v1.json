@@ -39,15 +39,15 @@
   ],
   "proven_optimal_rows": [
     [null, null, null, null, null, null, null, null, null, null],
-    [null, 3, 2, null, null, null, null, null, null, null],
-    [null, 5, 4, null, null, null, null, null, null, null],
-    [null, 7, null, null, null, null, null, null, null, null],
+    [null, 3, 2, 2, null, null, null, null, null, null],
+    [null, 5, 4, 3, null, null, null, null, null, null],
+    [null, 7, null, 5, 4, null, null, null, null, null],
     [null, 9, 7, null, 6, null, null, null, null, null],
-    [null, 11, 8, null, null, null, null, null, null, null],
-    [null, 13, 10, null, null, null, null, null, null, null],
-    [null, 15, 11, null, null, null, null, 9, null, null],
-    [null, 17, 13, null, null, null, null, null, 10, null],
-    [null, 19, 14, null, null, null, null, null, null, null]
+    [null, 11, 8, 7, null, null, null, null, null, null],
+    [null, 13, 10, 9, null, null, null, null, null, null],
+    [null, 15, 11, 10, null, null, null, 9, null, null],
+    [null, 17, 13, 11, null, null, null, null, 10, null],
+    [null, 19, 14, 13, null, null, null, null, null, null]
   ],
   "family_abbreviations": {
     "round_robin": "RR",

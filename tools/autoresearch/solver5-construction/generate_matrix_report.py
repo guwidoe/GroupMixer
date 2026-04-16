@@ -82,7 +82,7 @@ def method_badge_text(cell):
 
 def optimality_badge_text(cell):
     gap = cell.get("proven_optimal_gap")
-    lower_bound = cell.get("heuristic_target_weeks")
+    lower_bound = cell.get("optimality_lower_bound_weeks")
     if gap is None:
         if lower_bound is not None:
             return f"opt ≥ {lower_bound}"
@@ -153,13 +153,14 @@ def render_combined_table(title, rows, cols, cell_map, max_gap, max_method_gap, 
                 html_parts.append("<div class='cell-sub cell-sub-compact'></div>")
 
             badges = []
-            if cell["scored"] and cell.get("method_abbreviation"):
-                badges.append(
+            if cell["scored"]:
+                if cell.get("method_abbreviation"):
+                    badges.append(
                         render_badge(
                             method_badge_text(cell),
                             inline_style=f"background:{method_badge_style(cell, max_method_gap)};color:#1f2937;",
+                        )
                     )
-                )
                 opt_text = optimality_badge_text(cell)
                 if opt_text:
                     badges.append(

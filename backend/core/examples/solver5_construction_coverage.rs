@@ -28,6 +28,7 @@ struct CellSummary {
     heuristic_gap_to_target: Option<usize>,
     proven_optimal_weeks: Option<usize>,
     proven_optimal_gap: Option<usize>,
+    optimality_lower_bound_weeks: Option<usize>,
     family_label: Option<String>,
     operator_labels: Vec<String>,
     quality_label: Option<String>,
@@ -217,6 +218,8 @@ fn summarize_scored_cell(
     let proven_optimal_weeks = target_matrix.proven_optimal_weeks_for(groups, group_size);
     let proven_optimal_gap = proven_optimal_weeks
         .map(|proven_optimal| proven_optimal.saturating_sub(target_weeks));
+    let optimality_lower_bound_weeks = target_matrix
+        .optimality_lower_bound_weeks_for(groups, group_size);
     let (family_label, operator_labels, quality_label) = inspection
         .map(|inspection| {
             (
@@ -243,6 +246,7 @@ fn summarize_scored_cell(
         heuristic_gap_to_target,
         proven_optimal_weeks,
         proven_optimal_gap,
+        optimality_lower_bound_weeks,
         family_label,
         operator_labels,
         quality_label,
@@ -278,6 +282,7 @@ fn visual_only_cell(
         heuristic_gap_to_target: None,
         proven_optimal_weeks: None,
         proven_optimal_gap: None,
+        optimality_lower_bound_weeks: None,
         family_label: Some("visual_only".into()),
         operator_labels: Vec::new(),
         quality_label: Some("visual_only".into()),
