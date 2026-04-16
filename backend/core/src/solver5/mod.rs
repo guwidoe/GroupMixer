@@ -5,6 +5,7 @@ mod catalog;
 mod composition;
 mod families;
 mod field;
+mod handoff;
 mod heuristics;
 mod portfolio;
 mod problem;
@@ -16,6 +17,7 @@ mod types;
 mod tests;
 
 use heuristics::NoopHeuristicPipeline;
+use handoff::{NoSearchHandoffPolicy, SearchHandoffDecision, SearchHandoffPolicy};
 use problem::PureSgpProblem;
 use result::build_solver_result;
 use router::attempt_construction;
@@ -52,6 +54,15 @@ impl SearchEngine {
             SolverError::ValidationError(failure.to_solver_error_message(&problem))
         })?;
         let construction = NoopHeuristicPipeline.apply(&problem, routing.result);
+        let construction = match NoSearchHandoffPolicy.decide(&problem, construction) {
+            SearchHandoffDecision::ConstructionOnly { result, .. } => result,
+            SearchHandoffDecision::SearchPreferred { .. } => {
+                return Err(SolverError::ValidationError(
+                    "solver5 search handoff is not enabled; construction-only mode remains authoritative"
+                        .into(),
+                ));
+            }
+        };
 
         build_solver_result(
             input,
