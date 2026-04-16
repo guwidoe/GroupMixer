@@ -12,6 +12,7 @@ pub(super) struct EvaluatedSchedule {
     pub(super) conflict_positions_by_week: Vec<u32>,
     pub(super) unique_contacts: i32,
     pub(super) repeat_excess: i32,
+    pub(super) active_repeated_pairs: usize,
     pub(super) pair_counts: Vec<u16>,
     pub(super) pair_occurrences: Vec<Vec<PairOccurrence>>,
     pub(super) incident_counts: Vec<u16>,
@@ -44,11 +45,13 @@ impl EvaluatedSchedule {
         let mut incident_counts = vec![0u16; total_positions];
         let mut unique_contacts = 0i32;
         let mut repeat_excess = 0i32;
+        let mut active_repeated_pairs = 0usize;
         for (key, &count) in pair_counts.iter().enumerate() {
             if count > 0 {
                 unique_contacts += 1;
             }
             if count > 1 {
+                active_repeated_pairs += 1;
                 let _ = key;
                 repeat_excess += i32::from(count - 1);
                 for occurrence in &pair_occurrences[key] {
@@ -77,6 +80,7 @@ impl EvaluatedSchedule {
             conflict_positions_by_week,
             unique_contacts,
             repeat_excess,
+            active_repeated_pairs,
             pair_counts,
             pair_occurrences,
             incident_counts,

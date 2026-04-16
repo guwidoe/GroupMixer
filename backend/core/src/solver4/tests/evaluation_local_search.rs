@@ -21,6 +21,13 @@ fn breakout_resets_the_stagnation_counter() {
 }
 
 #[test]
+fn active_repeated_pair_guidance_only_kicks_in_after_stagnation() {
+    assert!(!should_prefer_active_repeated_pairs(0));
+    assert!(!should_prefer_active_repeated_pairs(1));
+    assert!(should_prefer_active_repeated_pairs(2));
+}
+
+#[test]
 fn conflict_positions_are_zero_without_repeated_pairs() {
     let problem = sample_problem(2, 2, 2);
     let schedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]];
@@ -110,6 +117,11 @@ fn swap_preview_matches_full_recompute_on_small_random_schedules() {
                                 "repeat-excess preview mismatch for week={week} groups=({left_group},{right_group}) slots=({left_slot},{right_slot})",
                             );
                             assert_eq!(
+                                preview.active_repeated_pairs_after,
+                                recomputed.active_repeated_pairs,
+                                "active-repeated-pairs preview mismatch for week={week} groups=({left_group},{right_group}) slots=({left_slot},{right_slot})",
+                            );
+                            assert_eq!(
                                 preview.max_conflict_positions_in_any_week_after,
                                 *recomputed
                                     .conflict_positions_by_week
@@ -139,6 +151,7 @@ fn swap_candidate_outranks_by_resulting_configuration_lexicographic_order() {
         right_person: 2,
         conflict_positions_after: 0,
         repeat_excess_after: 0,
+        active_repeated_pairs_after: 0,
         max_conflict_positions_in_any_week_after: 0,
     };
     let right = SwapCandidate {
@@ -151,11 +164,48 @@ fn swap_candidate_outranks_by_resulting_configuration_lexicographic_order() {
         right_person: 2,
         conflict_positions_after: 0,
         repeat_excess_after: 0,
+        active_repeated_pairs_after: 0,
         max_conflict_positions_in_any_week_after: 0,
     };
 
     assert!(!left.outranks(&right, &base_schedule));
     assert!(right.outranks(&left, &base_schedule));
+}
+
+#[test]
+fn repeat_guidance_tie_break_prefers_fewer_active_repeated_pairs() {
+    let base_schedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]];
+    let lower_active_repeat_pairs = SwapCandidate {
+        week: 0,
+        left_group: 0,
+        left_slot: 0,
+        right_group: 1,
+        right_slot: 0,
+        left_person: 0,
+        right_person: 2,
+        conflict_positions_after: 0,
+        repeat_excess_after: 0,
+        active_repeated_pairs_after: 1,
+        max_conflict_positions_in_any_week_after: 1,
+    };
+    let higher_active_repeat_pairs = SwapCandidate {
+        week: 0,
+        left_group: 0,
+        left_slot: 1,
+        right_group: 1,
+        right_slot: 0,
+        left_person: 1,
+        right_person: 2,
+        conflict_positions_after: 0,
+        repeat_excess_after: 0,
+        active_repeated_pairs_after: 2,
+        max_conflict_positions_in_any_week_after: 0,
+    };
+
+    assert!(lower_active_repeat_pairs
+        .outranks_with_repeat_guidance(&higher_active_repeat_pairs, &base_schedule));
+    assert!(!higher_active_repeat_pairs
+        .outranks_with_repeat_guidance(&lower_active_repeat_pairs, &base_schedule));
 }
 
 #[test]
@@ -174,6 +224,7 @@ fn select_best_swap_uses_explicit_lexicographic_tie_breaking() {
         &mut tabu,
         0,
         &mut tabu_telemetry,
+        0,
     )
     .expect("expected a best swap");
 
@@ -214,6 +265,7 @@ fn select_best_swap_prefers_lower_repeat_excess_before_lexicographic_tie_breakin
         &mut tabu,
         0,
         &mut tabu_telemetry,
+        0,
     )
     .expect("expected a best swap");
     let selected_evaluated = evaluated(&problem, &selected.schedule);
@@ -251,6 +303,7 @@ fn select_best_swap_prefers_lower_max_week_conflict_after_repeat_excess_ties() {
         &mut tabu,
         0,
         &mut tabu_telemetry,
+        0,
     )
     .expect("expected a best swap");
     let selected_evaluated = evaluated(&problem, &selected.schedule);
@@ -422,6 +475,7 @@ fn tabu_move_is_skipped_when_it_does_not_beat_global_best() {
         &mut tabu,
         1,
         &mut tabu_telemetry,
+        0,
     )
     .expect("expected a non-tabu fallback move");
 
@@ -454,6 +508,7 @@ fn aspiration_allows_tabu_move_when_it_beats_global_best() {
         &mut tabu,
         1,
         &mut tabu_telemetry,
+        0,
     )
     .expect("expected aspiration to allow the tabu move");
 
