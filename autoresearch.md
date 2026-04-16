@@ -136,6 +136,11 @@ Lane definition and references live in:
   - stretch.synthetic-partial-attendance-capacity-pressure-152p = `6552.25`
   - stretch.synthetic-partial-attendance-keep-apart-capacity-pressure-152p = `6632.0`
 - A first rerun on current `master` scored about `102.09`, meaning current head was slightly worse than the reference baseline on this broad lane.
+- Session baseline on branch `autoresearch/solver3-broad-quality-2026-04-16` / setup commit `98504a9` scored `102.53818534304553`.
+  - biggest regression signal: `stretch.sailing-trip-demo-real` mean `3425.75 / 2451.0` (`1.3977x` normalized)
+  - mild regressions: transfer-attribute-balance (`1.0063x`), partial-attendance (`1.0017x`)
+  - notable wins: kirkman (`0.9000x`), social-golfer (`0.9593x`), large-gender-immovable (`0.9924x`), keep-apart partial-attendance (`0.9964x`)
+  - raw runtime diagnostic baseline: `solver3_raw_score_us=3.7197`, `hotpath_total_us=2.1176`
 - Recent solver3 search history already suggests that raw micro-speed wins can still hurt portfolio quality if move-family balance shifts badly.
 - The loop should therefore prefer:
   1. policy improvements that survive multiseed averaging
