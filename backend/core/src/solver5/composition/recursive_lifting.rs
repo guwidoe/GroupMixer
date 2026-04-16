@@ -1,7 +1,5 @@
 use crate::solver5::families::counting_bound;
-use crate::solver5::types::{
-    CompositionOperatorId, ConstructionResult, Schedule,
-};
+use crate::solver5::types::{CompositionOperatorId, ConstructionResult, Schedule};
 
 pub(super) fn apply_transversal_latent_group_lift(
     num_groups: usize,
@@ -9,11 +7,9 @@ pub(super) fn apply_transversal_latent_group_lift(
     mut base_result: ConstructionResult,
     construct_max_schedule: fn(usize, usize) -> Option<ConstructionResult>,
 ) -> ConstructionResult {
-    if let Some(extra_weeks) = lift_transversal_latent_groups(
-        num_groups,
-        group_size,
-        construct_max_schedule,
-    ) {
+    if let Some(extra_weeks) =
+        lift_transversal_latent_groups(num_groups, group_size, construct_max_schedule)
+    {
         base_result.schedule.extend(extra_weeks);
         base_result.max_supported_weeks = base_result.schedule.len();
         base_result = base_result.add_operator(CompositionOperatorId::RecursiveTransversalLift);

@@ -10,7 +10,11 @@ pub(super) fn construct_6t_plus_1(field: &FiniteField) -> Schedule {
         .expect("q ≡ 1 mod 6 prime-power field should have a primitive element");
 
     let mut base_class = Vec::with_capacity(q);
-    base_class.push(vec![kts_person(0, 0, q), kts_person(0, 1, q), kts_person(0, 2, q)]);
+    base_class.push(vec![
+        kts_person(0, 0, q),
+        kts_person(0, 1, q),
+        kts_person(0, 2, q),
+    ]);
 
     for i in 0..t {
         let exponents = [i, i + 2 * t, i + 4 * t];

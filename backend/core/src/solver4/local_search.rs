@@ -200,8 +200,7 @@ pub(super) fn select_best_swap(
                             None => true,
                             Some(current_best) => {
                                 if prefer_active_repeated_pairs {
-                                    candidate
-                                        .outranks_with_repeat_guidance(&current_best, schedule)
+                                    candidate.outranks_with_repeat_guidance(&current_best, schedule)
                                 } else {
                                     candidate.outranks(&current_best, schedule)
                                 }

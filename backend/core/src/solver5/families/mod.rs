@@ -28,8 +28,7 @@ struct TransversalDesignPrimePowerFamily;
 
 static ROUND_ROBIN_FAMILY: RoundRobinFamily = RoundRobinFamily;
 static KIRKMAN_6T_PLUS_1_FAMILY: Kirkman6TPlus1Family = Kirkman6TPlus1Family;
-static AFFINE_PLANE_PRIME_POWER_FAMILY: AffinePlanePrimePowerFamily =
-    AffinePlanePrimePowerFamily;
+static AFFINE_PLANE_PRIME_POWER_FAMILY: AffinePlanePrimePowerFamily = AffinePlanePrimePowerFamily;
 static TRANSVERSAL_DESIGN_PRIME_POWER_FAMILY: TransversalDesignPrimePowerFamily =
     TransversalDesignPrimePowerFamily;
 
@@ -159,7 +158,10 @@ pub(super) fn construct_round_robin(num_groups: usize) -> ConstructionResult {
         ConstructionFamilyId::RoundRobin,
     )
     .with_quality(ConstructionQuality::ExactFrontier)
-    .with_evidence(EvidenceSourceKind::TheoremFamily, "round_robin_1_factorization")
+    .with_evidence(
+        EvidenceSourceKind::TheoremFamily,
+        "round_robin_1_factorization",
+    )
 }
 
 pub(super) fn construct_kirkman_6t_plus_1(field: &FiniteField) -> ConstructionResult {
@@ -175,7 +177,10 @@ pub(super) fn construct_kirkman_6t_plus_1(field: &FiniteField) -> ConstructionRe
             "requires supported prime-power group count",
         ],
     })
-    .with_evidence(EvidenceSourceKind::FiniteFieldConstruction, "kirkman_6t_plus_1")
+    .with_evidence(
+        EvidenceSourceKind::FiniteFieldConstruction,
+        "kirkman_6t_plus_1",
+    )
 }
 
 pub(super) fn construct_affine_plane(field: &FiniteField) -> ConstructionResult {
@@ -190,7 +195,10 @@ pub(super) fn construct_affine_plane(field: &FiniteField) -> ConstructionResult 
             "requires supported prime-power group count",
         ],
     })
-    .with_evidence(EvidenceSourceKind::FiniteFieldConstruction, "affine_plane_prime_power")
+    .with_evidence(
+        EvidenceSourceKind::FiniteFieldConstruction,
+        "affine_plane_prime_power",
+    )
 }
 
 pub(super) fn construct_transversal_design_portfolio(

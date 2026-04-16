@@ -53,9 +53,7 @@ impl Schedule {
                 .map(|week| {
                     WeekSchedule::new(
                         week.into_iter()
-                            .map(|block| {
-                                Block::new(block.into_iter().map(PersonIdx).collect())
-                            })
+                            .map(|block| Block::new(block.into_iter().map(PersonIdx).collect()))
                             .collect(),
                     )
                 })

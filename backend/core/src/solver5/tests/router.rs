@@ -2,9 +2,7 @@ use super::helpers::pure_input;
 use crate::solver5::{
     problem::PureSgpProblem,
     router::{attempt_construction, FamilyAttemptStatus},
-    types::{
-        CompositionOperatorId, ConstructionFamilyId, ConstructionQuality, ConstructionSpan,
-    },
+    types::{CompositionOperatorId, ConstructionFamilyId, ConstructionQuality, ConstructionSpan},
 };
 
 #[test]
@@ -79,6 +77,9 @@ fn router_failure_explains_attempted_families() {
 
     assert!(message.contains("round_robin: requires group_size == 2"));
     assert!(message.contains("kirkman_6t_plus_1: requires group_size == 3"));
-    assert!(message.contains("affine_plane_prime_power: requires supported prime-power group count"));
-    assert!(message.contains("transversal_design_prime_power: requires supported prime-power group count"));
+    assert!(
+        message.contains("affine_plane_prime_power: requires supported prime-power group count")
+    );
+    assert!(message
+        .contains("transversal_design_prime_power: requires supported prime-power group count"));
 }

@@ -3,7 +3,8 @@ use gm_core::models::{
     SolverConfiguration, SolverKind, SolverParams, StopConditions,
 };
 use gm_core::solver5::reporting::{
-    inspect_construction, load_default_target_matrix, MatrixCellTarget, Solver5ConstructionInspection,
+    inspect_construction, load_default_target_matrix, MatrixCellTarget,
+    Solver5ConstructionInspection,
 };
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -213,13 +214,13 @@ fn summarize_scored_cell(
         .and_then(|label| target_matrix.abbreviation_for(label))
         .map(str::to_string);
     let heuristic_target_weeks = target_matrix.heuristic_target_weeks_for(groups, group_size);
-    let heuristic_gap_to_target = heuristic_target_weeks
-        .map(|best_known| best_known.saturating_sub(target_weeks));
+    let heuristic_gap_to_target =
+        heuristic_target_weeks.map(|best_known| best_known.saturating_sub(target_weeks));
     let proven_optimal_weeks = target_matrix.proven_optimal_weeks_for(groups, group_size);
-    let proven_optimal_gap = proven_optimal_weeks
-        .map(|proven_optimal| proven_optimal.saturating_sub(target_weeks));
-    let optimality_lower_bound_weeks = target_matrix
-        .optimality_lower_bound_weeks_for(groups, group_size);
+    let proven_optimal_gap =
+        proven_optimal_weeks.map(|proven_optimal| proven_optimal.saturating_sub(target_weeks));
+    let optimality_lower_bound_weeks =
+        target_matrix.optimality_lower_bound_weeks_for(groups, group_size);
     let (family_label, operator_labels, quality_label) = inspection
         .map(|inspection| {
             (

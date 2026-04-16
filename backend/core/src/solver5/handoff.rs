@@ -22,11 +22,8 @@ pub(super) enum SearchHandoffDecision {
 }
 
 pub(super) trait SearchHandoffPolicy {
-    fn decide(
-        &self,
-        problem: &PureSgpProblem,
-        result: ConstructionResult,
-    ) -> SearchHandoffDecision;
+    fn decide(&self, problem: &PureSgpProblem, result: ConstructionResult)
+        -> SearchHandoffDecision;
 }
 
 pub(super) struct NoSearchHandoffPolicy;
