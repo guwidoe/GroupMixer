@@ -16,14 +16,11 @@ def gap_color(gap: int, max_gap: int) -> str:
     return f"hsl({hue:.1f} 78% 78%)"
 
 
-def build_matrix(cells, key):
-    matrix = {}
-    for cell in cells:
-        matrix[(cell["g"], cell["p"])] = cell.get(key)
-    return matrix
+def build_matrix(cells):
+    return {(cell["g"], cell["p"]): cell for cell in cells}
 
 
-def render_table(title, rows, cols, value_fn, color_fn=None, aside_fn=None):
+def render_table(title, rows, cols, cell_map, value_fn, color_fn=None, aside_fn=None):
     html_parts = [f"<section><h2>{html.escape(title)}</h2><table><thead><tr><th>g\\p</th>"]
     for p in cols:
         html_parts.append(f"<th>{p}</th>")
@@ -31,15 +28,20 @@ def render_table(title, rows, cols, value_fn, color_fn=None, aside_fn=None):
     for g in rows:
         html_parts.append(f"<tr><th>{g}</th>")
         for p in cols:
-            value = value_fn(g, p)
-            aside = aside_fn(g, p) if aside_fn else None
+            cell = cell_map[(g, p)]
+            classes = []
+            if not cell["scored"]:
+                classes.append("visual-only")
             style = ""
             if color_fn:
-                style = f' style="background:{color_fn(g, p)}"'
+                style = f' style="background:{color_fn(cell)}"'
+            class_attr = f" class='{' '.join(classes)}'" if classes else ""
+            value = value_fn(cell)
+            aside = aside_fn(cell) if aside_fn else None
             cell_html = html.escape(str(value)) if value is not None else "—"
             if aside:
                 cell_html += f"<div class='aside'>{html.escape(str(aside))}</div>"
-            html_parts.append(f"<td{style}>{cell_html}</td>")
+            html_parts.append(f"<td{class_attr}{style}>{cell_html}</td>")
         html_parts.append("</tr>")
     html_parts.append("</tbody></table></section>")
     return "".join(html_parts)
@@ -53,15 +55,11 @@ def main():
 
     artifact = json.loads(Path(args.artifact).read_text())
     cells = artifact["cells"]
-    rows = range(artifact["scored_bounds"]["g_min"], artifact["scored_bounds"]["g_max"] + 1)
-    cols = range(artifact["scored_bounds"]["p_min"], artifact["scored_bounds"]["p_max"] + 1)
-    max_gap = max(cell["gap_to_target"] for cell in cells) if cells else 0
-
-    current = build_matrix(cells, "constructed_weeks")
-    target = build_matrix(cells, "target_weeks")
-    method = build_matrix(cells, "method_abbreviation")
-    gap = build_matrix(cells, "gap_to_target")
-    quality = build_matrix(cells, "quality_label")
+    rows = range(artifact["visual_bounds"]["g_min"], artifact["visual_bounds"]["g_max"] + 1)
+    cols = range(artifact["visual_bounds"]["p_min"], artifact["visual_bounds"]["p_max"] + 1)
+    scored_cells = [cell for cell in cells if cell["scored"]]
+    max_gap = max((cell["gap_to_target"] for cell in scored_cells), default=0)
+    cell_map = build_matrix(cells)
 
     page = [
         "<!doctype html><html><head><meta charset='utf-8'>",
@@ -76,13 +74,15 @@ def main():
         ".aside{font-size:11px;color:#444;margin-top:4px;}"
         ".legend{display:flex;gap:10px;align-items:center;margin:12px 0 18px 0;flex-wrap:wrap;}"
         ".swatch{padding:6px 10px;border:1px solid #bbb;border-radius:6px;font-size:12px;}"
+        ".visual-only{border-style:dashed;opacity:0.92;}"
         "</style></head><body>",
         f"<h1>{html.escape(artifact['matrix_name'])}</h1>",
-        f"<p class='meta'>version {artifact['matrix_version']} · scored region g={artifact['scored_bounds']['g_min']}..{artifact['scored_bounds']['g_max']}, p={artifact['scored_bounds']['p_min']}..{artifact['scored_bounds']['p_max']}</p>",
+        f"<p class='meta'>version {artifact['matrix_version']} · visual region g={artifact['visual_bounds']['g_min']}..{artifact['visual_bounds']['g_max']}, p={artifact['visual_bounds']['p_min']}..{artifact['visual_bounds']['p_max']} · scored region g={artifact['scored_bounds']['g_min']}..{artifact['scored_bounds']['g_max']}, p={artifact['scored_bounds']['p_min']}..{artifact['scored_bounds']['p_max']}</p>",
         "<div class='legend'>",
         f"<span class='swatch' style='background:{gap_color(0, max_gap)}'>gap = 0</span>",
         f"<span class='swatch' style='background:{gap_color(1, max_gap)}'>gap = 1</span>",
         f"<span class='swatch' style='background:{gap_color(max_gap, max_gap)}'>gap = max ({max_gap})</span>",
+        "<span class='swatch' style='border-style:dashed;background:#f7f7f7'>visual-only cell</span>",
         "</div>",
     ]
 
@@ -91,20 +91,36 @@ def main():
             "Current W_g,p",
             rows,
             cols,
-            lambda g, p: current[(g, p)],
-            lambda g, p: gap_color(gap[(g, p)], max_gap),
-            lambda g, p: f"target {target[(g, p)]} · gap {gap[(g, p)]}",
+            cell_map,
+            lambda cell: cell["current_display"],
+            lambda cell: gap_color(cell["gap_to_target"], max_gap),
+            lambda cell: cell["visual_note"]
+            if not cell["scored"]
+            else f"target {cell['target_display']} · gap {cell['gap_to_target']}",
         )
     )
-    page.append(render_table("Target TW_g,p", rows, cols, lambda g, p: target[(g, p)]))
+    page.append(
+        render_table(
+            "Target TW_g,p",
+            rows,
+            cols,
+            cell_map,
+            lambda cell: cell["target_display"],
+            None,
+            lambda cell: "visual-only" if not cell["scored"] else None,
+        )
+    )
     page.append(
         render_table(
             "Method M_g,p",
             rows,
             cols,
-            lambda g, p: method[(g, p)] or "—",
+            cell_map,
+            lambda cell: cell["method_abbreviation"] or "—",
             None,
-            lambda g, p: quality[(g, p)] or "unsolved",
+            lambda cell: cell["visual_note"]
+            if not cell["scored"]
+            else (cell["quality_label"] or "unsolved"),
         )
     )
     page.append("</body></html>")

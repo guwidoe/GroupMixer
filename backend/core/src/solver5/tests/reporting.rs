@@ -24,6 +24,7 @@ fn default_target_matrix_exposes_expected_cells_and_abbreviations() {
     assert_eq!(matrix.target_for(10, 10), Some(&MatrixCellTarget::Finite(1)));
     assert_eq!(matrix.abbreviation_for("round_robin"), Some("RR"));
     assert_eq!(matrix.abbreviation_for("recursive_transversal_lift"), Some("+G"));
+    assert_eq!(matrix.abbreviation_for("visual_only"), Some("VIS"));
 }
 
 #[test]

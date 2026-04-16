@@ -31,6 +31,7 @@
     "transversal_design_prime_power": "TD",
     "affine_plane_prime_power": "AP",
     "recursive_transversal_lift": "+G",
+    "visual_only": "VIS",
     "unknown": "?"
   }
 }

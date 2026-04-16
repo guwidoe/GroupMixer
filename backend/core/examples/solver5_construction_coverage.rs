@@ -15,20 +15,25 @@ use std::fs;
 struct CellSummary {
     g: usize,
     p: usize,
-    upper_bound: usize,
-    constructed_weeks: usize,
-    target_weeks: usize,
+    scored: bool,
+    upper_bound: Option<usize>,
+    constructed_weeks: Option<usize>,
+    target_weeks: Option<usize>,
     gap_to_target: usize,
+    current_display: String,
+    target_display: String,
     method_abbreviation: Option<String>,
     family_label: Option<String>,
     operator_labels: Vec<String>,
     quality_label: Option<String>,
+    visual_note: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
 struct MatrixArtifact<'a> {
     matrix_name: &'a str,
     matrix_version: u32,
+    visual_bounds: BoundsArtifact,
     scored_bounds: BoundsArtifact,
     cells: Vec<CellSummary>,
 }
@@ -61,25 +66,38 @@ fn main() {
     let mut exact_frontier_cells = 0usize;
     let mut per_p_totals: BTreeMap<usize, usize> = BTreeMap::new();
 
-    for groups in target_matrix.scored_bounds.g_min..=target_matrix.scored_bounds.g_max {
-        for group_size in target_matrix.scored_bounds.p_min..=target_matrix.scored_bounds.p_max {
-            let upper_bound = counting_bound(groups, group_size);
-            let target_weeks = match target_matrix.target_for(groups, group_size) {
-                Some(MatrixCellTarget::Finite(value)) => *value,
-                Some(MatrixCellTarget::Infinite) => upper_bound,
-                None => upper_bound,
+    for groups in target_matrix.visual_bounds.g_min..=target_matrix.visual_bounds.g_max {
+        for group_size in target_matrix.visual_bounds.p_min..=target_matrix.visual_bounds.p_max {
+            let target = target_matrix
+                .target_for(groups, group_size)
+                .expect("visual bounds should have target cell");
+            let cell = if target_matrix.is_scored_cell(groups, group_size) {
+                let upper_bound = counting_bound(groups, group_size);
+                let target_weeks = match target {
+                    MatrixCellTarget::Finite(value) => *value,
+                    MatrixCellTarget::Infinite => upper_bound,
+                };
+                let scored_cell = best_constructed_scored_cell(
+                    groups,
+                    group_size,
+                    upper_bound,
+                    target_weeks,
+                    &target_matrix,
+                );
+                let constructed_weeks = scored_cell.constructed_weeks.unwrap_or(0);
+                total_constructed_weeks += constructed_weeks;
+                frontier_gap_sum += upper_bound.saturating_sub(constructed_weeks);
+                if constructed_weeks > 0 {
+                    solved_cells += 1;
+                }
+                if constructed_weeks == upper_bound {
+                    exact_frontier_cells += 1;
+                }
+                *per_p_totals.entry(group_size).or_default() += constructed_weeks;
+                scored_cell
+            } else {
+                visual_only_cell(groups, group_size, target, &target_matrix)
             };
-            let cell = best_constructed_cell(groups, group_size, upper_bound, target_weeks, &target_matrix);
-
-            total_constructed_weeks += cell.constructed_weeks;
-            frontier_gap_sum += upper_bound.saturating_sub(cell.constructed_weeks);
-            if cell.constructed_weeks > 0 {
-                solved_cells += 1;
-            }
-            if cell.constructed_weeks == upper_bound {
-                exact_frontier_cells += 1;
-            }
-            *per_p_totals.entry(group_size).or_default() += cell.constructed_weeks;
             cells.push(cell);
         }
     }
@@ -88,18 +106,31 @@ fn main() {
     println!("METRIC frontier_gap_sum={frontier_gap_sum}");
     println!("METRIC solved_cells={solved_cells}");
     println!("METRIC exact_frontier_cells={exact_frontier_cells}");
-    println!("METRIC unsolved_cells={}", cells.len() - solved_cells);
+    println!(
+        "METRIC unsolved_cells={}",
+        ((target_matrix.scored_bounds.g_max - target_matrix.scored_bounds.g_min + 1)
+            * (target_matrix.scored_bounds.p_max - target_matrix.scored_bounds.p_min + 1))
+            - solved_cells
+    );
     for (group_size, total) in per_p_totals {
         println!("METRIC p{}_constructed_weeks={}", group_size, total);
     }
     for cell in &cells {
-        println!("METRIC W_{}_{}={}", cell.g, cell.p, cell.constructed_weeks);
+        if let Some(constructed_weeks) = cell.constructed_weeks {
+            println!("METRIC W_{}_{}={}", cell.g, cell.p, constructed_weeks);
+        }
     }
 
     if let Some(path) = json_out {
         let artifact = MatrixArtifact {
             matrix_name: &target_matrix.name,
             matrix_version: target_matrix.version,
+            visual_bounds: BoundsArtifact {
+                g_min: target_matrix.visual_bounds.g_min,
+                g_max: target_matrix.visual_bounds.g_max,
+                p_min: target_matrix.visual_bounds.p_min,
+                p_max: target_matrix.visual_bounds.p_max,
+            },
             scored_bounds: BoundsArtifact {
                 g_min: target_matrix.scored_bounds.g_min,
                 g_max: target_matrix.scored_bounds.g_max,
@@ -118,7 +149,7 @@ fn counting_bound(groups: usize, group_size: usize) -> usize {
     ((groups * group_size) - 1) / (group_size - 1)
 }
 
-fn best_constructed_cell(
+fn best_constructed_scored_cell(
     groups: usize,
     group_size: usize,
     upper_bound: usize,
@@ -133,7 +164,7 @@ fn best_constructed_cell(
                     &inspection.family_label,
                     &inspection.operator_labels,
                 ));
-                return summarize_cell(
+                return summarize_scored_cell(
                     groups,
                     group_size,
                     upper_bound,
@@ -147,10 +178,10 @@ fn best_constructed_cell(
         }
     }
 
-    summarize_cell(groups, group_size, upper_bound, target_weeks, 0, None, None)
+    summarize_scored_cell(groups, group_size, upper_bound, target_weeks, 0, None, None)
 }
 
-fn summarize_cell(
+fn summarize_scored_cell(
     groups: usize,
     group_size: usize,
     upper_bound: usize,
@@ -173,14 +204,48 @@ fn summarize_cell(
     CellSummary {
         g: groups,
         p: group_size,
-        upper_bound,
-        constructed_weeks,
-        target_weeks,
+        scored: true,
+        upper_bound: Some(upper_bound),
+        constructed_weeks: Some(constructed_weeks),
+        target_weeks: Some(target_weeks),
         gap_to_target,
+        current_display: constructed_weeks.to_string(),
+        target_display: target_weeks.to_string(),
         method_abbreviation,
         family_label,
         operator_labels,
         quality_label,
+        visual_note: None,
+    }
+}
+
+fn visual_only_cell(
+    groups: usize,
+    group_size: usize,
+    target: &MatrixCellTarget,
+    target_matrix: &gm_core::solver5::reporting::Solver5TargetMatrix,
+) -> CellSummary {
+    let display = target.display_text();
+    CellSummary {
+        g: groups,
+        p: group_size,
+        scored: false,
+        upper_bound: None,
+        constructed_weeks: None,
+        target_weeks: None,
+        gap_to_target: 0,
+        current_display: display.clone(),
+        target_display: display,
+        method_abbreviation: Some(
+            target_matrix
+                .abbreviation_for("visual_only")
+                .unwrap_or("VIS")
+                .to_string(),
+        ),
+        family_label: Some("visual_only".into()),
+        operator_labels: Vec::new(),
+        quality_label: Some("visual_only".into()),
+        visual_note: Some("visual-only cell; excluded from objective".into()),
     }
 }
 
