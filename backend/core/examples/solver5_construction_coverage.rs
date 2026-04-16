@@ -23,6 +23,11 @@ struct CellSummary {
     current_display: String,
     target_display: String,
     method_abbreviation: Option<String>,
+    target_method_abbreviation: Option<String>,
+    heuristic_target_weeks: Option<usize>,
+    heuristic_gap_to_target: Option<usize>,
+    proven_optimal_weeks: Option<usize>,
+    proven_optimal_gap: Option<usize>,
     family_label: Option<String>,
     operator_labels: Vec<String>,
     quality_label: Option<String>,
@@ -171,6 +176,7 @@ fn best_constructed_scored_cell(
                     target_weeks,
                     weeks,
                     method_abbreviation,
+                    target_matrix,
                     Some(inspection),
                 );
             }
@@ -178,7 +184,16 @@ fn best_constructed_scored_cell(
         }
     }
 
-    summarize_scored_cell(groups, group_size, upper_bound, target_weeks, 0, None, None)
+    summarize_scored_cell(
+        groups,
+        group_size,
+        upper_bound,
+        target_weeks,
+        0,
+        None,
+        target_matrix,
+        None,
+    )
 }
 
 fn summarize_scored_cell(
@@ -188,9 +203,20 @@ fn summarize_scored_cell(
     target_weeks: usize,
     constructed_weeks: usize,
     method_abbreviation: Option<String>,
+    target_matrix: &gm_core::solver5::reporting::Solver5TargetMatrix,
     inspection: Option<Solver5ConstructionInspection>,
 ) -> CellSummary {
     let gap_to_target = target_weeks.saturating_sub(constructed_weeks);
+    let target_method_abbreviation = target_matrix
+        .target_method_for(groups, group_size)
+        .and_then(|label| target_matrix.abbreviation_for(label))
+        .map(str::to_string);
+    let heuristic_target_weeks = target_matrix.heuristic_target_weeks_for(groups, group_size);
+    let heuristic_gap_to_target = heuristic_target_weeks
+        .map(|best_known| best_known.saturating_sub(target_weeks));
+    let proven_optimal_weeks = target_matrix.proven_optimal_weeks_for(groups, group_size);
+    let proven_optimal_gap = proven_optimal_weeks
+        .map(|proven_optimal| proven_optimal.saturating_sub(target_weeks));
     let (family_label, operator_labels, quality_label) = inspection
         .map(|inspection| {
             (
@@ -212,6 +238,11 @@ fn summarize_scored_cell(
         current_display: constructed_weeks.to_string(),
         target_display: target_weeks.to_string(),
         method_abbreviation,
+        target_method_abbreviation,
+        heuristic_target_weeks,
+        heuristic_gap_to_target,
+        proven_optimal_weeks,
+        proven_optimal_gap,
         family_label,
         operator_labels,
         quality_label,
@@ -242,6 +273,11 @@ fn visual_only_cell(
                 .unwrap_or("VIS")
                 .to_string(),
         ),
+        target_method_abbreviation: None,
+        heuristic_target_weeks: None,
+        heuristic_gap_to_target: None,
+        proven_optimal_weeks: None,
+        proven_optimal_gap: None,
         family_label: Some("visual_only".into()),
         operator_labels: Vec::new(),
         quality_label: Some("visual_only".into()),

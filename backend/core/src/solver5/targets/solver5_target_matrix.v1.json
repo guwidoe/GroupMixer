@@ -25,9 +25,36 @@
     ["inf", 17, 13, 11, 9, 9, 9, 9, 10, 9],
     ["inf", 19, 14, 13, 1, 1, 1, 1, 1, 1]
   ],
+  "target_method_rows": [
+    [null, null, null, null, null, null, null, null, null, null],
+    [null, "round_robin", null, null, null, null, null, null, null, null],
+    [null, "round_robin", "kts", null, null, null, null, null, null, null],
+    [null, "round_robin", "transversal_design_prime_power", "p4_router", null, null, null, null, null, null],
+    [null, "round_robin", "kts", "p4_router", "affine_plane_prime_power", null, null, null, null, null],
+    [null, "round_robin", "nkts", null, null, null, null, null, null, null],
+    [null, "round_robin", "kirkman_6t_plus_1", "p4_router", null, null, null, null, null, null],
+    [null, "round_robin", "nkts", "p4_router", null, null, null, null, null, null],
+    [null, "round_robin", "kts", "p4_router", null, null, null, null, "affine_plane_prime_power", null],
+    [null, "round_robin", "nkts", null, null, null, null, null, null, null]
+  ],
+  "proven_optimal_rows": [
+    [null, null, null, null, null, null, null, null, null, null],
+    [null, 3, 2, null, null, null, null, null, null, null],
+    [null, 5, 4, null, null, null, null, null, null, null],
+    [null, 7, null, null, null, null, null, null, null, null],
+    [null, 9, 7, null, 6, null, null, null, null, null],
+    [null, 11, 8, null, null, null, null, null, null, null],
+    [null, 13, 10, null, null, null, null, null, null, null],
+    [null, 15, 11, null, null, null, null, 9, null, null],
+    [null, 17, 13, null, null, null, null, null, 10, null],
+    [null, 19, 14, null, null, null, null, null, null, null]
+  ],
   "family_abbreviations": {
     "round_robin": "RR",
     "kirkman_6t_plus_1": "K6",
+    "kts": "KTS",
+    "nkts": "NKTS",
+    "p4_router": "P4",
     "transversal_design_prime_power": "TD",
     "affine_plane_prime_power": "AP",
     "recursive_transversal_lift": "+G",

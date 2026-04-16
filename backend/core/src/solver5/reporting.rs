@@ -69,6 +69,10 @@ pub struct Solver5TargetMatrix {
     pub visual_bounds: MatrixBounds,
     pub scored_bounds: MatrixBounds,
     pub targets: Vec<Vec<MatrixCellTarget>>,
+    pub target_methods: Vec<Vec<Option<String>>>,
+    pub heuristic_target_weeks: Vec<Vec<Option<usize>>>,
+    pub heuristic_target_methods: Vec<Vec<Option<String>>>,
+    pub proven_optimal_weeks: Vec<Vec<Option<usize>>>,
     pub family_abbreviations: BTreeMap<String, String>,
 }
 
@@ -84,6 +88,29 @@ impl Solver5TargetMatrix {
 
     pub fn is_scored_cell(&self, g: usize, p: usize) -> bool {
         self.scored_bounds.contains(g, p)
+    }
+
+    pub fn target_method_for(&self, g: usize, p: usize) -> Option<&str> {
+        let (row_idx, col_idx) = self.cell_indices(g, p)?;
+        self.target_methods.get(row_idx)?.get(col_idx)?.as_deref()
+    }
+
+    pub fn heuristic_target_weeks_for(&self, g: usize, p: usize) -> Option<usize> {
+        let (row_idx, col_idx) = self.cell_indices(g, p)?;
+        *self.heuristic_target_weeks.get(row_idx)?.get(col_idx)?
+    }
+
+    pub fn heuristic_target_method_for(&self, g: usize, p: usize) -> Option<&str> {
+        let (row_idx, col_idx) = self.cell_indices(g, p)?;
+        self.heuristic_target_methods
+            .get(row_idx)?
+            .get(col_idx)?
+            .as_deref()
+    }
+
+    pub fn proven_optimal_weeks_for(&self, g: usize, p: usize) -> Option<usize> {
+        let (row_idx, col_idx) = self.cell_indices(g, p)?;
+        *self.proven_optimal_weeks.get(row_idx)?.get(col_idx)?
     }
 
     pub fn abbreviation_for(&self, label: &str) -> Option<&str> {
@@ -102,6 +129,13 @@ impl Solver5TargetMatrix {
             );
         }
         abbreviation
+    }
+
+    fn cell_indices(&self, g: usize, p: usize) -> Option<(usize, usize)> {
+        if !self.visual_bounds.contains(g, p) {
+            return None;
+        }
+        Some((g - self.visual_bounds.g_min, p - self.visual_bounds.p_min))
     }
 }
 
@@ -191,6 +225,14 @@ struct RawTargetMatrixFile {
     visual_bounds: MatrixBounds,
     scored_bounds: MatrixBounds,
     target_rows: Vec<Vec<RawTargetCell>>,
+    #[serde(default)]
+    target_method_rows: Option<Vec<Vec<Option<String>>>>,
+    #[serde(default)]
+    heuristic_target_rows: Option<Vec<Vec<Option<RawTargetCell>>>>,
+    #[serde(default)]
+    heuristic_method_rows: Option<Vec<Vec<Option<String>>>>,
+    #[serde(default)]
+    proven_optimal_rows: Option<Vec<Vec<Option<RawTargetCell>>>>,
     family_abbreviations: BTreeMap<String, String>,
 }
 
@@ -237,6 +279,31 @@ impl RawTargetMatrixFile {
             );
         }
 
+        let target_methods = validate_optional_string_rows(
+            self.target_method_rows,
+            self.visual_bounds,
+            "target_method_rows",
+        )?
+        .unwrap_or_else(|| blank_string_rows(self.visual_bounds));
+        let heuristic_target_weeks = validate_optional_target_rows(
+            self.heuristic_target_rows,
+            self.visual_bounds,
+            "heuristic_target_rows",
+        )?
+        .unwrap_or_else(|| derive_target_weeks_rows(&targets));
+        let heuristic_target_methods = validate_optional_string_rows(
+            self.heuristic_method_rows,
+            self.visual_bounds,
+            "heuristic_method_rows",
+        )?
+        .unwrap_or_else(|| target_methods.clone());
+        let proven_optimal_weeks = validate_optional_target_rows(
+            self.proven_optimal_rows,
+            self.visual_bounds,
+            "proven_optimal_rows",
+        )?
+        .unwrap_or_else(|| blank_target_rows(self.visual_bounds));
+
         let mut abbreviations_seen = BTreeSet::new();
         for (label, abbreviation) in &self.family_abbreviations {
             if label.trim().is_empty() {
@@ -262,6 +329,10 @@ impl RawTargetMatrixFile {
             visual_bounds: self.visual_bounds,
             scored_bounds: self.scored_bounds,
             targets,
+            target_methods,
+            heuristic_target_weeks,
+            heuristic_target_methods,
+            proven_optimal_weeks,
             family_abbreviations: self.family_abbreviations,
         })
     }
@@ -300,6 +371,99 @@ fn validate_bounds(name: &str, bounds: MatrixBounds) -> Result<(), MatrixDefinit
         )));
     }
     Ok(())
+}
+
+fn validate_optional_string_rows(
+    rows: Option<Vec<Vec<Option<String>>>>,
+    bounds: MatrixBounds,
+    name: &str,
+) -> Result<Option<Vec<Vec<Option<String>>>>, MatrixDefinitionError> {
+    let Some(rows) = rows else {
+        return Ok(None);
+    };
+    if rows.len() != bounds.height() {
+        return Err(MatrixDefinitionError(format!(
+            "{name} height {} does not match visual_bounds height {}",
+            rows.len(),
+            bounds.height()
+        )));
+    }
+    for (row_idx, row) in rows.iter().enumerate() {
+        if row.len() != bounds.width() {
+            return Err(MatrixDefinitionError(format!(
+                "{name} row {} width {} does not match visual_bounds width {}",
+                row_idx + bounds.g_min,
+                row.len(),
+                bounds.width()
+            )));
+        }
+    }
+    Ok(Some(rows))
+}
+
+fn validate_optional_target_rows(
+    rows: Option<Vec<Vec<Option<RawTargetCell>>>>,
+    bounds: MatrixBounds,
+    name: &str,
+) -> Result<Option<Vec<Vec<Option<usize>>>>, MatrixDefinitionError> {
+    let Some(rows) = rows else {
+        return Ok(None);
+    };
+    if rows.len() != bounds.height() {
+        return Err(MatrixDefinitionError(format!(
+            "{name} height {} does not match visual_bounds height {}",
+            rows.len(),
+            bounds.height()
+        )));
+    }
+    let mut parsed = Vec::with_capacity(rows.len());
+    for (row_idx, row) in rows.into_iter().enumerate() {
+        if row.len() != bounds.width() {
+            return Err(MatrixDefinitionError(format!(
+                "{name} row {} width {} does not match visual_bounds width {}",
+                row_idx + bounds.g_min,
+                row.len(),
+                bounds.width()
+            )));
+        }
+        parsed.push(
+            row.into_iter()
+                .map(|cell| match cell {
+                    None => Ok(None),
+                    Some(RawTargetCell::Finite(value)) => Ok(Some(value)),
+                    Some(RawTargetCell::Symbol(symbol)) if symbol.eq_ignore_ascii_case("inf") => {
+                        Ok(None)
+                    }
+                    Some(RawTargetCell::Symbol(symbol)) => Err(MatrixDefinitionError(format!(
+                        "unsupported {name} cell symbol '{symbol}'; expected integer, null, or 'inf'"
+                    ))),
+                })
+                .collect::<Result<Vec<_>, _>>()?,
+        );
+    }
+    Ok(Some(parsed))
+}
+
+fn blank_string_rows(bounds: MatrixBounds) -> Vec<Vec<Option<String>>> {
+    vec![vec![None; bounds.width()]; bounds.height()]
+}
+
+fn blank_target_rows(bounds: MatrixBounds) -> Vec<Vec<Option<usize>>> {
+    vec![vec![None; bounds.width()]; bounds.height()]
+}
+
+fn derive_target_weeks_rows(targets: &[Vec<MatrixCellTarget>]) -> Vec<Vec<Option<usize>>> {
+    targets
+        .iter()
+        .map(|row| {
+            row.iter()
+                .map(|cell| match cell {
+                    MatrixCellTarget::Finite(value) => Some(*value),
+                    MatrixCellTarget::Infinite => None,
+                })
+                .collect()
+        })
+        .collect()
 }
 
 fn quality_label(quality: &ConstructionQuality) -> &'static str {
