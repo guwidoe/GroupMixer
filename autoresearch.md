@@ -80,10 +80,16 @@ The script:
 High-ROI constructor order from the research note:
 1. round robin / 1-factorization (`p=2`)
 2. triples via KTS / NKTS (`p=3`)
-3. dedicated `p=4` router (RBIBD / RGDD / URD-derived branches)
+3. general router enrichment so each `p` has a recognizable family-selection policy
 4. RTD / MOLS engine
 5. recursive clique/group fill (`+G(t)` style lifting)
 6. broader RBIBD / RGDD / RITD / URD / ownSG patches
+
+Interpretation note:
+- this is a **family roadmap**, not a cell-by-cell roadmap
+- solver5 should receive a pure-SGP `(g, p, w)` instance and automatically choose among applicable families
+- for every `p`, the router should converge toward a recognizable theory-backed family-selection policy
+- near-term work still happens where the ROI is best, but that does **not** mean building one-off per-cell logic
 
 ## Current Architecture State
 - `solver5` is now a constructor portfolio platform, not just a constructor pack.
@@ -124,8 +130,8 @@ High-ROI constructor order from the research note:
 - The constructor-portfolio architecture pass is complete: registry, metadata, catalog layer, registry-driven router, handoff seam, and portfolio docs are now in place.
 - Remaining live directions should stay structural constructor families, not search-based cheating:
   - KTS / NKTS for stronger `p=3` coverage on composite and non-prime-power rows
-  - dedicated `p=4` routing
-  - broader RBIBD / RGDD / URD / RITD / ownSG-style patches only after the highest-ROI families are exhausted
+  - router enrichment for under-modeled `p` families, with `p=4` as the next obvious high-ROI gap rather than a special architecture class
+  - broader RBIBD / RGDD / URD / RITD / ownSG-style patches only after the highest-ROI family-policy gaps are exhausted
 
 ## Immediate Next Loop Behavior
 - Because `autoresearch.jsonl` was reset, the next session should:
@@ -134,5 +140,5 @@ High-ROI constructor order from the research note:
   3. compare future changes against that new logged baseline
 - The next feature buildout order remains:
   1. NKTS / composite `p=3`
-  2. dedicated `p=4` router
+  2. strengthen the general router so more `p` values have explicit theory-backed family-selection policy, with `p=4` next in practice
   3. broader catalog-backed patch and design families later

@@ -169,7 +169,7 @@ is `g-p-w` with `w <= W`.
 Expected next work belongs here, not in ad hoc files:
 
 - composite-row `p=3` coverage via NKTS-style families
-- dedicated `p=4` routing/construction
+- general router enrichment so each important `p` develops explicit family-selection policy, with `p=4` as the next high-ROI gap in practice
 - later broader explicit families only after those land
 
 ## Non-goal

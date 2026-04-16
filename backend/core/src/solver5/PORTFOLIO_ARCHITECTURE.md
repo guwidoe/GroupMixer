@@ -200,7 +200,7 @@ When adding a new family (e.g. NKTS or dedicated `p=4` routing):
 With the portfolio platform in place, the next additions should be:
 
 1. **NKTS / composite `p=3` coverage**
-2. **dedicated `p=4` router**
+2. **general router enrichment so each important `p` has explicit family-selection policy**, with `p=4` as the next high-ROI gap in practice
 3. broader RBIBD / RGDD / URD / RITD / ownSG patch integration
 
 ## Non-goals
