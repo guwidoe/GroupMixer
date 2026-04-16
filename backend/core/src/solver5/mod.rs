@@ -5,14 +5,15 @@ mod families;
 mod field;
 mod problem;
 mod result;
+mod router;
 mod types;
 
 #[cfg(test)]
 mod tests;
 
-use families::construct_schedule;
 use problem::PureSgpProblem;
 use result::build_solver_result;
+use router::attempt_construction;
 
 pub const SOLVER5_NOTES: &str =
     "Construction-first pure-SGP solver family. Solver5 accepts only pure zero-repeat Social-Golfer-style scenarios and routes them through explicit construction families. Initial baseline ships the round-robin / 1-factorization family for p=2; broader construction portfolio work belongs here.";
@@ -42,18 +43,14 @@ impl SearchEngine {
             }
         }
 
-        let construction = construct_schedule(problem.num_groups, problem.group_size, problem.num_weeks)
-        .ok_or_else(|| {
-            SolverError::ValidationError(format!(
-                "solver5 does not yet have a construction family for {}-{}-{}",
-                problem.num_groups, problem.group_size, problem.num_weeks
-            ))
+        let routing = attempt_construction(&problem).map_err(|failure| {
+            SolverError::ValidationError(failure.to_solver_error_message(&problem))
         })?;
 
         build_solver_result(
             input,
             &problem,
-            &construction.schedule,
+            &routing.result.schedule,
             self.configuration.seed.unwrap_or(DEFAULT_SOLVER5_SEED),
         )
     }
