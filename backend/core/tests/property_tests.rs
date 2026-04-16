@@ -452,9 +452,15 @@ proptest! {
                 }
                 Err(error) => {
                     let is_solver4_capability_gate = descriptor.kind == SolverKind::Solver4
-                        && error.to_string().contains("solver4 requires complete equal partitions each session");
+                        && (error.to_string().contains("solver4 requires complete equal partitions each session")
+                            || error.to_string().contains("solver4 requires exactly one RepeatEncounter constraint encoding meet-at-most-once semantics")
+                            || error.to_string().contains("solver4 requires zero-repeat meet-at-most-once semantics"));
+                    let is_solver5_capability_gate = descriptor.kind == SolverKind::Solver5
+                        && (error.to_string().contains("solver5 requires complete equal partitions each session")
+                            || error.to_string().contains("solver5 requires exactly one RepeatEncounter constraint encoding meet-at-most-once semantics")
+                            || error.to_string().contains("solver5 requires zero-repeat meet-at-most-once semantics"));
                     prop_assert!(
-                        is_bootstrap_only || is_solver4_capability_gate,
+                        is_bootstrap_only || is_solver4_capability_gate || is_solver5_capability_gate,
                         "runnable solver {} failed with default config: {:?}",
                         descriptor.kind.canonical_id(),
                         error
