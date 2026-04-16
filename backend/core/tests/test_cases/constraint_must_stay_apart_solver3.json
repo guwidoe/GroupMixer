@@ -1,0 +1,70 @@
+{
+  "name": "Constraint - Must Stay Apart (solver3)",
+  "metadata": {
+    "tags": [
+      "constraints",
+      "must_stay_apart",
+      "solver3"
+    ],
+    "kind": "correctness",
+    "tier": "default",
+    "solver_families": [
+      "solver3"
+    ]
+  },
+  "input": {
+    "problem": {
+      "people": [
+        { "id": "p0", "attributes": {} },
+        { "id": "p1", "attributes": {} },
+        { "id": "p2", "attributes": {} },
+        { "id": "p3", "attributes": {} },
+        { "id": "p4", "attributes": {} },
+        { "id": "p5", "attributes": {} }
+      ],
+      "groups": [
+        { "id": "g0", "size": 3 },
+        { "id": "g1", "size": 3 }
+      ],
+      "num_sessions": 3
+    },
+    "objectives": [],
+    "constraints": [
+      {
+        "type": "MustStayApart",
+        "people": ["p0", "p1"],
+        "sessions": [0, 2]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": ["p2", "p3"],
+        "sessions": [1]
+      }
+    ],
+    "solver": {
+      "solver_type": "solver3",
+      "stop_conditions": {
+        "max_iterations": 1000,
+        "stop_on_optimal_score": true
+      },
+      "solver_params": {
+        "solver_type": "solver3"
+      },
+      "logging": {
+        "log_frequency": 0,
+        "log_initial_state": false,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      }
+    }
+  },
+  "expected": {
+    "cannot_be_together_respected": true,
+    "must_stay_together_respected": true,
+    "session_specific_constraints_respected": true
+  },
+  "test_options": {}
+}

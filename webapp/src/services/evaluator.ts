@@ -397,6 +397,7 @@ export function evaluateCompliance(
         });
         break;
       }
+      case "MustStayApart":
       case "ShouldNotBeTogether": {
         const sessions =
           (c as unknown as { sessions?: number[] }).sessions ??
@@ -424,13 +425,19 @@ export function evaluateCompliance(
           id: index,
           constraint: c,
           type: c.type,
-          title: getConstraintDisplayName('ShouldNotBeTogether'),
-          subtitle: `${formatSessions(
-            (c as unknown as { sessions?: number[] }).sessions,
-            scenario.num_sessions
-          )} • Weight: ${
-            (c as unknown as { penalty_weight?: number }).penalty_weight
-          }`,
+          title: getConstraintDisplayName(c.type),
+          subtitle:
+            c.type === 'ShouldNotBeTogether'
+              ? `${formatSessions(
+                  (c as unknown as { sessions?: number[] }).sessions,
+                  scenario.num_sessions
+                )} • Weight: ${
+                  (c as unknown as { penalty_weight?: number }).penalty_weight
+                }`
+              : formatSessions(
+                  (c as unknown as { sessions?: number[] }).sessions,
+                  scenario.num_sessions
+                ),
           adheres: violations === 0,
           violationsCount: violations,
           details,
