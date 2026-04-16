@@ -52,6 +52,11 @@ pub enum SwapFeasibility {
         person_idx: usize,
         clique_idx: usize,
     },
+    HardApartConflict {
+        person_idx: usize,
+        other_person_idx: usize,
+        target_group_idx: usize,
+    },
 }
 
 impl fmt::Display for SwapFeasibility {
@@ -90,6 +95,14 @@ impl fmt::Display for SwapFeasibility {
                     "person {person_idx} is part of active clique {clique_idx} in this session"
                 )
             }
+            Self::HardApartConflict {
+                person_idx,
+                other_person_idx,
+                target_group_idx,
+            } => write!(
+                f,
+                "person {person_idx} would violate MustStayApart with person {other_person_idx} in target group {target_group_idx}"
+            ),
         }
     }
 }
@@ -178,6 +191,23 @@ pub fn analyze_swap(state: &RuntimeState, swap: &SwapMove) -> Result<SwapAnalysi
             person_idx: swap.right_person_idx,
             clique_idx,
         }
+    } else if !cp.hard_apart_pairs.is_empty() {
+        if let Some((other_person_idx, target_group_idx)) =
+            find_swap_hard_apart_conflict(state, swap)
+        {
+            let person_idx = if target_group_idx == right_group_idx.expect("checked above") {
+                swap.left_person_idx
+            } else {
+                swap.right_person_idx
+            };
+            SwapFeasibility::HardApartConflict {
+                person_idx,
+                other_person_idx,
+                target_group_idx,
+            }
+        } else {
+            SwapFeasibility::Feasible
+        }
     } else {
         SwapFeasibility::Feasible
     };
@@ -187,6 +217,56 @@ pub fn analyze_swap(state: &RuntimeState, swap: &SwapMove) -> Result<SwapAnalysi
         feasibility,
         left_group_idx,
         right_group_idx,
+    })
+}
+
+fn find_swap_hard_apart_conflict(state: &RuntimeState, swap: &SwapMove) -> Option<(usize, usize)> {
+    let cp = &state.compiled;
+    if cp.hard_apart_pairs_by_person[swap.left_person_idx].is_empty()
+        && cp.hard_apart_pairs_by_person[swap.right_person_idx].is_empty()
+    {
+        return None;
+    }
+
+    let left_group_idx =
+        state.person_location[state.people_slot(swap.session_idx, swap.left_person_idx)]?;
+    let right_group_idx =
+        state.person_location[state.people_slot(swap.session_idx, swap.right_person_idx)]?;
+
+    find_hard_apart_conflict_in_group(
+        state,
+        swap.session_idx,
+        swap.left_person_idx,
+        right_group_idx,
+        &[swap.right_person_idx],
+    )
+    .map(|other_person_idx| (other_person_idx, right_group_idx))
+    .or_else(|| {
+        find_hard_apart_conflict_in_group(
+            state,
+            swap.session_idx,
+            swap.right_person_idx,
+            left_group_idx,
+            &[swap.left_person_idx],
+        )
+        .map(|other_person_idx| (other_person_idx, left_group_idx))
+    })
+}
+
+fn find_hard_apart_conflict_in_group(
+    state: &RuntimeState,
+    session_idx: usize,
+    person_idx: usize,
+    group_idx: usize,
+    excluded_people: &[usize],
+) -> Option<usize> {
+    let cp = &state.compiled;
+    if cp.hard_apart_pairs_by_person[person_idx].is_empty() {
+        return None;
+    }
+    let slot = state.group_slot(session_idx, group_idx);
+    state.group_members[slot].iter().copied().find(|member| {
+        !excluded_people.contains(member) && cp.hard_apart_active(session_idx, person_idx, *member)
     })
 }
 

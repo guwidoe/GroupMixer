@@ -69,6 +69,11 @@ pub enum TransferFeasibility {
         person_idx: usize,
         clique_idx: usize,
     },
+    HardApartConflict {
+        person_idx: usize,
+        other_person_idx: usize,
+        target_group_idx: usize,
+    },
 }
 
 impl fmt::Display for TransferFeasibility {
@@ -112,6 +117,14 @@ impl fmt::Display for TransferFeasibility {
             } => write!(
                 f,
                 "person {person_idx} is part of active clique {clique_idx} in this session"
+            ),
+            Self::HardApartConflict {
+                person_idx,
+                other_person_idx,
+                target_group_idx,
+            } => write!(
+                f,
+                "person {person_idx} would violate MustStayApart with person {other_person_idx} in target group {target_group_idx}"
             ),
         }
     }
@@ -206,6 +219,21 @@ pub fn analyze_transfer(
             person_idx: transfer.person_idx,
             clique_idx,
         }
+    } else if !cp.hard_apart_pairs_by_person[transfer.person_idx].is_empty() {
+        if let Some(other_person_idx) = find_hard_apart_conflict_in_group(
+            state,
+            transfer.session_idx,
+            transfer.person_idx,
+            transfer.target_group_idx,
+        ) {
+            TransferFeasibility::HardApartConflict {
+                person_idx: transfer.person_idx,
+                other_person_idx,
+                target_group_idx: transfer.target_group_idx,
+            }
+        } else {
+            TransferFeasibility::Feasible
+        }
     } else {
         TransferFeasibility::Feasible
     };
@@ -215,6 +243,23 @@ pub fn analyze_transfer(
         feasibility,
         actual_group_idx,
     })
+}
+
+fn find_hard_apart_conflict_in_group(
+    state: &RuntimeState,
+    session_idx: usize,
+    person_idx: usize,
+    target_group_idx: usize,
+) -> Option<usize> {
+    let cp = &state.compiled;
+    if cp.hard_apart_pairs_by_person[person_idx].is_empty() {
+        return None;
+    }
+    let slot = state.group_slot(session_idx, target_group_idx);
+    state.group_members[slot]
+        .iter()
+        .copied()
+        .find(|member| cp.hard_apart_active(session_idx, person_idx, *member))
 }
 
 pub fn preview_transfer_runtime_lightweight(

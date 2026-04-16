@@ -31,12 +31,12 @@ use crate::models::{
 
 use super::compiled_problem::CompiledProblem;
 use super::moves::{
-    analyze_clique_swap, analyze_transfer, apply_clique_swap_runtime_preview,
+    analyze_clique_swap, analyze_swap, analyze_transfer, apply_clique_swap_runtime_preview,
     apply_swap_runtime_preview, apply_transfer_runtime_preview,
     preview_clique_swap_oracle_recompute, preview_clique_swap_runtime_lightweight,
     preview_swap_oracle_recompute, preview_swap_runtime_lightweight,
     preview_transfer_oracle_recompute, preview_transfer_runtime_lightweight, CliqueSwapFeasibility,
-    CliqueSwapMove, SwapMove, TransferFeasibility, TransferMove,
+    CliqueSwapMove, SwapFeasibility, SwapMove, TransferFeasibility, TransferMove,
 };
 use super::oracle::check_drift;
 use super::runtime_state::RuntimeState;
@@ -1020,6 +1020,49 @@ fn invariants_detect_immovable_violation() {
     );
 }
 
+#[test]
+fn invariants_detect_must_stay_apart_violation() {
+    let mut input = minimal_input();
+    input.constraints = vec![Constraint::MustStayApart {
+        people: vec!["p0".into(), "p1".into()],
+        sessions: Some(vec![0]),
+    }];
+
+    let mut state = RuntimeState::from_input(&input).unwrap();
+    let cp = state.compiled.clone();
+    let p0 = cp.person_id_to_idx["p0"];
+    let p1 = cp.person_id_to_idx["p1"];
+    let p2 = cp.person_id_to_idx["p2"];
+    let g0 = cp.group_id_to_idx["g0"];
+    let g1 = cp.group_id_to_idx["g1"];
+    let gs0 = state.group_slot(0, g0);
+    let gs1 = state.group_slot(0, g1);
+    let ps1 = state.people_slot(0, p1);
+    let ps2 = state.people_slot(0, p2);
+
+    state.group_members[gs1].retain(|&m| m != p1);
+    state.group_sizes[gs1] = state.group_members[gs1].len();
+    state.group_members[gs0].retain(|&m| m != p2);
+    state.group_sizes[gs0] = state.group_members[gs0].len();
+    state.group_members[gs0].push(p1);
+    state.group_sizes[gs0] += 1;
+    state.group_members[gs1].push(p2);
+    state.group_sizes[gs1] += 1;
+    state.person_location[ps1] = Some(g0);
+    state.person_location[ps2] = Some(g1);
+
+    let err = validate_invariants(&state).unwrap_err();
+    assert!(
+        err.to_string().contains("MustStayApart") || err.to_string().contains("p0"),
+        "expected must-stay-apart violation error, got: {}",
+        err
+    );
+
+    // keep g1 unused references from being optimized away in future edits
+    assert!(g1 != g0);
+    assert!(state.person_location[state.people_slot(0, p0)].is_some());
+}
+
 // ---------------------------------------------------------------------------
 // 8. Arc<CompiledProblem> sharing
 // ---------------------------------------------------------------------------
@@ -1158,6 +1201,43 @@ fn soft_apart_pair_penalty_is_scored() {
     let snap = recompute_oracle_score(&state).unwrap();
     assert_eq!(snap.soft_apart_violations[0], 1);
     assert!((snap.constraint_penalty_weighted - 42.0).abs() < 1e-9);
+}
+
+#[test]
+fn hard_apart_violation_is_tracked_as_raw_only() {
+    let mut input = minimal_input();
+    input.constraints = vec![Constraint::MustStayApart {
+        people: vec!["p0".into(), "p1".into()],
+        sessions: Some(vec![0]),
+    }];
+
+    let mut state = RuntimeState::from_input(&input).unwrap();
+    let cp = state.compiled.clone();
+    let p1 = cp.person_id_to_idx["p1"];
+    let p2 = cp.person_id_to_idx["p2"];
+    let g0 = cp.group_id_to_idx["g0"];
+    let g1 = cp.group_id_to_idx["g1"];
+    let gs0 = state.group_slot(0, g0);
+    let gs1 = state.group_slot(0, g1);
+    let ps1 = state.people_slot(0, p1);
+    let ps2 = state.people_slot(0, p2);
+
+    state.group_members[gs1].retain(|&m| m != p1);
+    state.group_sizes[gs1] = state.group_members[gs1].len();
+    state.group_members[gs0].retain(|&m| m != p2);
+    state.group_sizes[gs0] = state.group_members[gs0].len();
+    state.group_members[gs0].push(p1);
+    state.group_sizes[gs0] += 1;
+    state.group_members[gs1].push(p2);
+    state.group_sizes[gs1] += 1;
+    state.person_location[ps1] = Some(g0);
+    state.person_location[ps2] = Some(g1);
+
+    let snap = recompute_oracle_score(&state).unwrap();
+    assert_eq!(snap.hard_apart_violations[0], 1);
+    assert_eq!(snap.constraint_penalty_weighted, 0.0);
+    assert_eq!(snap.constraint_penalty_raw, 1);
+    assert!(g1 != g0);
 }
 
 // ---------------------------------------------------------------------------
@@ -1347,6 +1427,63 @@ fn sequential_swap_runtime_apply_does_not_drift_from_oracle() {
             &format!("step {} runtime delta/oracle mismatch", step),
         );
     }
+}
+
+#[test]
+fn swap_feasibility_rejects_must_stay_apart_conflict() {
+    let input = ApiInput {
+        problem: ProblemDefinition {
+            people: (0..4)
+                .map(|idx| Person {
+                    id: format!("p{idx}"),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                })
+                .collect(),
+            groups: vec![
+                Group {
+                    id: "g0".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 1,
+        },
+        initial_schedule: Some(HashMap::from([(
+            "session_0".into(),
+            HashMap::from([
+                ("g0".into(), vec!["p0".into(), "p2".into()]),
+                ("g1".into(), vec!["p1".into(), "p3".into()]),
+            ]),
+        )])),
+        construction_seed_schedule: None,
+        objectives: vec![],
+        constraints: vec![Constraint::MustStayApart {
+            people: vec!["p0".into(), "p1".into()],
+            sessions: None,
+        }],
+        solver: solver3_config(),
+    };
+
+    let state = RuntimeState::from_input(&input).unwrap();
+    let cp = state.compiled.clone();
+    let swap = SwapMove::new(0, cp.person_id_to_idx["p0"], cp.person_id_to_idx["p3"]);
+
+    assert!(matches!(
+        analyze_swap(&state, &swap).unwrap().feasibility,
+        SwapFeasibility::HardApartConflict {
+            person_idx,
+            other_person_idx,
+            target_group_idx
+        } if person_idx == cp.person_id_to_idx["p0"]
+            && other_person_idx == cp.person_id_to_idx["p1"]
+            && target_group_idx == cp.group_id_to_idx["g1"]
+    ));
 }
 
 // ---------------------------------------------------------------------------
@@ -1740,6 +1877,75 @@ fn transfer_feasibility_regressions_report_specific_reasons() {
             required_group_idx
         } if person_idx == rcp.person_id_to_idx["p4"] && required_group_idx == rcp.group_id_to_idx["g1"]
     ));
+
+    let hard_apart_input = ApiInput {
+        problem: ProblemDefinition {
+            people: vec![
+                Person {
+                    id: "p0".into(),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                },
+                Person {
+                    id: "p1".into(),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                },
+                Person {
+                    id: "p2".into(),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                },
+            ],
+            groups: vec![
+                Group {
+                    id: "g0".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 1,
+        },
+        initial_schedule: Some(HashMap::from([(
+            "session_0".into(),
+            HashMap::from([
+                ("g0".into(), vec!["p0".into(), "p2".into()]),
+                ("g1".into(), vec!["p1".into()]),
+            ]),
+        )])),
+        construction_seed_schedule: None,
+        objectives: vec![],
+        constraints: vec![Constraint::MustStayApart {
+            people: vec!["p0".into(), "p1".into()],
+            sessions: None,
+        }],
+        solver: solver3_config(),
+    };
+    let hard_apart_state = RuntimeState::from_input(&hard_apart_input).unwrap();
+    let hcp = hard_apart_state.compiled.clone();
+    let hard_apart_transfer = TransferMove::new(
+        0,
+        hcp.person_id_to_idx["p0"],
+        hcp.group_id_to_idx["g0"],
+        hcp.group_id_to_idx["g1"],
+    );
+    assert!(matches!(
+        analyze_transfer(&hard_apart_state, &hard_apart_transfer)
+            .unwrap()
+            .feasibility,
+        TransferFeasibility::HardApartConflict {
+            person_idx,
+            other_person_idx,
+            target_group_idx
+        } if person_idx == hcp.person_id_to_idx["p0"]
+            && other_person_idx == hcp.person_id_to_idx["p1"]
+            && target_group_idx == hcp.group_id_to_idx["g1"]
+    ));
 }
 
 // ---------------------------------------------------------------------------
@@ -2110,6 +2316,81 @@ fn clique_heavy_feasibility_regressions_report_specific_reasons() {
             .feasibility,
         CliqueSwapFeasibility::TargetPersonNotParticipating { person_idx }
             if person_idx == cp.person_id_to_idx["p6"]
+    ));
+
+    let hard_apart_input = ApiInput {
+        problem: ProblemDefinition {
+            people: vec![
+                person_with_attr("p0", "team", "red"),
+                person_with_attr("p1", "team", "red"),
+                person_with_attr("p2", "team", "blue"),
+                person_with_attr("p3", "team", "blue"),
+                person_with_attr("p4", "team", "red"),
+                person_with_attr("p5", "team", "blue"),
+            ],
+            groups: vec![
+                Group {
+                    id: "g0".into(),
+                    size: 3,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".into(),
+                    size: 3,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g2".into(),
+                    size: 1,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 1,
+        },
+        initial_schedule: Some(HashMap::from([(
+            "session_0".into(),
+            HashMap::from([
+                ("g0".into(), vec!["p0".into(), "p1".into(), "p4".into()]),
+                ("g1".into(), vec!["p2".into(), "p3".into(), "p5".into()]),
+                ("g2".into(), Vec::new()),
+            ]),
+        )])),
+        construction_seed_schedule: None,
+        objectives: vec![],
+        constraints: vec![
+            Constraint::MustStayTogether {
+                people: vec!["p0".into(), "p1".into()],
+                sessions: None,
+            },
+            Constraint::MustStayApart {
+                people: vec!["p0".into(), "p5".into()],
+                sessions: None,
+            },
+        ],
+        solver: solver3_config(),
+    };
+    let hard_apart_state = RuntimeState::from_input(&hard_apart_input).unwrap();
+    let hcp = hard_apart_state.compiled.clone();
+    let hard_apart_clique_idx = hcp.person_to_clique_id[0][hcp.person_id_to_idx["p0"]]
+        .expect("p0 should belong to clique in session 0");
+    let hard_apart_swap = CliqueSwapMove::new(
+        0,
+        hard_apart_clique_idx,
+        hcp.group_id_to_idx["g0"],
+        hcp.group_id_to_idx["g1"],
+        vec![hcp.person_id_to_idx["p2"], hcp.person_id_to_idx["p3"]],
+    );
+    assert!(matches!(
+        analyze_clique_swap(&hard_apart_state, &hard_apart_swap)
+            .unwrap()
+            .feasibility,
+        CliqueSwapFeasibility::HardApartConflict {
+            person_idx,
+            other_person_idx,
+            target_group_idx
+        } if person_idx == hcp.person_id_to_idx["p0"]
+            && other_person_idx == hcp.person_id_to_idx["p5"]
+            && target_group_idx == hcp.group_id_to_idx["g1"]
     ));
 }
 

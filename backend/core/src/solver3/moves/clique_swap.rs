@@ -86,6 +86,11 @@ pub enum CliqueSwapFeasibility {
         person_idx: usize,
         required_group_idx: usize,
     },
+    HardApartConflict {
+        person_idx: usize,
+        other_person_idx: usize,
+        target_group_idx: usize,
+    },
 }
 
 impl fmt::Display for CliqueSwapFeasibility {
@@ -147,6 +152,14 @@ impl fmt::Display for CliqueSwapFeasibility {
             } => write!(
                 f,
                 "target person {person_idx} is immovable and must stay in group {required_group_idx}"
+            ),
+            Self::HardApartConflict {
+                person_idx,
+                other_person_idx,
+                target_group_idx,
+            } => write!(
+                f,
+                "person {person_idx} would violate MustStayApart with person {other_person_idx} in target group {target_group_idx}"
             ),
         }
     }
@@ -240,7 +253,13 @@ pub fn analyze_clique_swap(
             actual: clique_swap.target_person_indices.len(),
         }
     } else {
-        validate_target_people(state, clique_swap)
+        match validate_target_people(state, clique_swap) {
+            CliqueSwapFeasibility::Feasible => {
+                find_clique_swap_hard_apart_conflict(state, clique_swap, &active_members)
+                    .unwrap_or(CliqueSwapFeasibility::Feasible)
+            }
+            other => other,
+        }
     };
 
     Ok(CliqueSwapAnalysis {
@@ -892,6 +911,70 @@ fn validate_target_people(
     }
 
     CliqueSwapFeasibility::Feasible
+}
+
+fn find_clique_swap_hard_apart_conflict(
+    state: &RuntimeState,
+    clique_swap: &CliqueSwapMove,
+    active_members: &[usize],
+) -> Option<CliqueSwapFeasibility> {
+    if state.compiled.hard_apart_pairs.is_empty() {
+        return None;
+    }
+    if active_members
+        .iter()
+        .all(|&person_idx| state.compiled.hard_apart_pairs_by_person[person_idx].is_empty())
+        && clique_swap
+            .target_person_indices
+            .iter()
+            .all(|&person_idx| state.compiled.hard_apart_pairs_by_person[person_idx].is_empty())
+    {
+        return None;
+    }
+
+    let source_slot = state.group_slot(clique_swap.session_idx, clique_swap.source_group_idx);
+    let target_slot = state.group_slot(clique_swap.session_idx, clique_swap.target_group_idx);
+
+    let source_remaining = state.group_members[source_slot]
+        .iter()
+        .copied()
+        .filter(|person_idx| !active_members.contains(person_idx))
+        .collect::<Vec<_>>();
+    let target_remaining = state.group_members[target_slot]
+        .iter()
+        .copied()
+        .filter(|person_idx| !clique_swap.target_person_indices.contains(person_idx))
+        .collect::<Vec<_>>();
+
+    for &member in active_members {
+        if let Some(other_person_idx) = target_remaining.iter().copied().find(|&other_idx| {
+            state
+                .compiled
+                .hard_apart_active(clique_swap.session_idx, member, other_idx)
+        }) {
+            return Some(CliqueSwapFeasibility::HardApartConflict {
+                person_idx: member,
+                other_person_idx,
+                target_group_idx: clique_swap.target_group_idx,
+            });
+        }
+    }
+
+    for &person_idx in &clique_swap.target_person_indices {
+        if let Some(other_person_idx) = source_remaining.iter().copied().find(|&other_idx| {
+            state
+                .compiled
+                .hard_apart_active(clique_swap.session_idx, person_idx, other_idx)
+        }) {
+            return Some(CliqueSwapFeasibility::HardApartConflict {
+                person_idx,
+                other_person_idx,
+                target_group_idx: clique_swap.source_group_idx,
+            });
+        }
+    }
+
+    None
 }
 
 fn apply_clique_swap_direct_membership(
