@@ -63,6 +63,20 @@ fn published_schedule_catalog_exposes_8_3_10_case() {
             .len(),
         9
     );
+    assert_eq!(
+        published::exact_case(6, 5)
+            .expect("published schedule catalog should expose the 6-5-6 case")
+            .encoded_weeks
+            .len(),
+        6
+    );
+    assert_eq!(
+        published::exact_case(10, 10)
+            .expect("published schedule catalog should expose the 10-10-3 case")
+            .encoded_weeks
+            .len(),
+        3
+    );
     assert_eq!(published::source().name, "published_schedule_bank");
 }
 

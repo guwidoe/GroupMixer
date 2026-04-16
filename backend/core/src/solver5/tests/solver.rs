@@ -147,3 +147,27 @@ fn solver5_solves_published_10_4_9_case() {
     assert_eq!(result.final_score, 0.0);
     assert_eq!(result.schedule.len(), 9);
 }
+
+#[test]
+fn solver5_solves_published_6_5_6_case() {
+    let input = pure_input(6, 5, 6);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver
+        .solve(&input)
+        .expect("published schedule bank should solve 6-5-6");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 6);
+}
+
+#[test]
+fn solver5_solves_published_10_10_3_case() {
+    let input = pure_input(10, 10, 3);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver
+        .solve(&input)
+        .expect("published schedule bank should solve 10-10-3");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 3);
+}
