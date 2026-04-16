@@ -118,9 +118,19 @@ Interpretation note:
 - Shipped constructive families currently include:
   - round robin / 1-factorization for `p=2`
   - Kirkman `6t+1` coverage for supported `p=3` cases
+  - catalog-backed exact KTS cases for 9 and 15 players (`5-3-7` is now exact via `kts`)
+  - catalog-backed exact NKTS cases for 18 players (`6-3-8`)
+  - pseudo-doubled NKTS constructions seeded from exact half-size KTS schedules (`10-3-13` now constructs honestly from `KTS(15)`)
   - prime-power RTD / MOLS-style transversal-design constructors for `3 <= p <= g`
   - prime-power affine-plane constructors for `p = g`
   - recursive `+G(t)`-style lifting across RTD latent groups when `p | g` and the smaller `(g/p)-p-*` instance is already constructible
+- Active kept benchmark baseline is now:
+  - commit: `6352752`
+  - `total_constructed_weeks = 307`
+  - `frontier_gap_sum = 279`
+  - `solved_cells = 35`
+  - `exact_frontier_cells = 19`
+  - `p3_constructed_weeks = 67`
 
 ## What's Been Tried
 - Initial setup established the solver5 scaffold, validator, engine registration, benchmark harness, and the round-robin baseline.
@@ -128,18 +138,21 @@ Interpretation note:
 - Recursive lifting across RTD latent groups is now a live mechanism and should be judged structurally, not as a one-off `9-3-13` trick.
 - Kirkman `6t+1` is now part of the constructive baseline for supported `p=3` cases.
 - The constructor-portfolio architecture pass is complete: registry, metadata, catalog layer, registry-driven router, handoff seam, and portfolio docs are now in place.
+- A naive cyclic `p=3` transversal-design fallback for non-prime-power group counts was tried and discarded: it left `total_constructed_weeks` flat at `284`, so the cheap cyclic schedule does **not** unlock the even composite triple rows (`6-3-*`, `10-3-*`). Do not retry that shortcut.
+- Catalog-backed small triple families now move the benchmark honestly:
+  - exact `NKTS(18)` raised `6-3` coverage to `8`
+  - exact `KTS(15)` now solves `5-3-7`
+  - a pseudo-doubling construction from `KTS(15)` now solves `10-3-13`
+- The main remaining triples frontier is now `8-3-11` (24 players). Any next `p=3` work should target an honest 24-player construction or a structurally justified composition, not another generic cyclic shortcut.
 - Remaining live directions should stay structural constructor families, not search-based cheating:
-  - KTS / NKTS for stronger `p=3` coverage on composite and non-prime-power rows
+  - honest 24-player triple coverage for `8-3-11`
   - router enrichment for under-modeled `p` families, with `p=4` as the next obvious high-ROI gap rather than a special architecture class
   - broader RBIBD / RGDD / URD / RITD / ownSG-style patches only after the highest-ROI family-policy gaps are exhausted
-- A naive cyclic `p=3` transversal-design fallback for non-prime-power group counts was tried and discarded: it left `total_constructed_weeks` flat at `284`, so the cheap cyclic schedule does **not** unlock the even composite triple rows (`6-3-*`, `10-3-*`). Do not retry that shortcut.
 
 ## Immediate Next Loop Behavior
-- Because `autoresearch.jsonl` was reset, the next session should:
-  1. initialize a fresh experiment header
-  2. rerun the current `master` baseline honestly
-  3. compare future changes against that new logged baseline
-- The next feature buildout order remains:
-  1. NKTS / composite `p=3`
+- Active kept benchmark baseline is now commit `6352752` at `total_constructed_weeks = 307`.
+- The next feature buildout order is now:
+  1. either close the remaining triples gap at `8-3-11` with an honest 24-player construction, or conclude quickly that the literature / catalog path is too thin for now
   2. strengthen the general router so more `p` values have explicit theory-backed family-selection policy, with `p=4` next in practice
   3. broader catalog-backed patch and design families later
+- Keep preferring reusable family logic or justified composition over per-cell glue.

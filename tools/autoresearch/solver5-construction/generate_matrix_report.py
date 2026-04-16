@@ -27,6 +27,11 @@ METHOD_REFERENCE = [
         "solves": "literature/reference `p=3` composite-row targets that need nearly-Kirkman constructions",
     },
     {
+        "code": "PSB",
+        "stands_for": "published schedule bank",
+        "solves": "explicit source-backed lower-bound schedules that are honest patch-bank constructions rather than general theorem families",
+    },
+    {
         "code": "RTD",
         "stands_for": "resolvable transversal design",
         "solves": "implemented prime-power `g-p-w` cells with `3 <= p <= g`, excluding the diagonal affine-plane preference",

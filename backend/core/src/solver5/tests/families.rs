@@ -95,6 +95,25 @@ fn nkts_pseudo_doubling_constructs_30_player_case() {
 }
 
 #[test]
+fn published_schedule_bank_constructs_24_player_case() {
+    let entry = crate::solver5::catalog::published::exact_case(8, 3)
+        .expect("published schedule catalog should expose the 8-3-10 case");
+    let result = families::construct_published_schedule_bank(entry);
+
+    assert_eq!(result.family.label(), "published_schedule_bank");
+    assert_eq!(result.schedule.len(), 10);
+    assert_eq!(
+        result.metadata.quality,
+        ConstructionQuality::NearFrontier { missing_weeks: 1 }
+    );
+    assert!(result
+        .metadata
+        .evidence
+        .iter()
+        .any(|evidence| matches!(evidence.source_kind, EvidenceSourceKind::PatchBank)));
+}
+
+#[test]
 fn end_to_end_round_robin_schedule_still_scores_zero() {
     let input = pure_input(4, 2, 7);
     let solver = SearchEngine::new(&input.solver);
@@ -121,6 +140,7 @@ fn family_registry_exposes_current_portfolio_order() {
             "kirkman_6t_plus_1",
             "kts",
             "nkts",
+            "published_schedule_bank",
             "affine_plane_prime_power",
             "transversal_design_prime_power",
         ]
