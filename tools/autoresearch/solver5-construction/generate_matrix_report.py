@@ -54,6 +54,10 @@ def render_badge(text, badge_class="", inline_style=""):
     return f"<span class='badge{class_attr}'{style_attr}>{html.escape(str(text))}</span>"
 
 
+def render_legend_item(badge_html, description):
+    return f"<span class='legend-item'>{badge_html}<span>{html.escape(description)}</span></span>"
+
+
 def render_simple_table(title, rows, cols, cell_map, value_fn, aside_fn=None):
     html_parts = [f"<section><h2>{html.escape(title)}</h2><table><thead><tr><th>g\\p</th>"]
     for p in cols:
@@ -99,25 +103,25 @@ def render_combined_table(title, rows, cols, cell_map, max_gap):
                     f"<div class='cell-sub'>target {html.escape(str(cell['target_display']))} · gap {cell['gap_to_target']}</div>"
                 )
             else:
-                html_parts.append(
-                    f"<div class='cell-sub'>{html.escape(cell['visual_note'] or 'visual-only')}</div>"
-                )
+                html_parts.append("<div class='cell-sub cell-sub-compact'></div>")
 
             badges = []
-            if cell.get("method_abbreviation"):
+            if cell["scored"] and cell.get("method_abbreviation"):
                 badges.append(
                     render_badge(
                         cell["method_abbreviation"],
                         inline_style=semantic_badge_style(cell, max_gap),
                     )
                 )
-            if cell.get("quality_label"):
+            if cell["scored"] and cell.get("quality_label"):
                 badges.append(
                     render_badge(
                         quality_label_text(cell),
                         inline_style=quality_badge_style(cell, max_gap),
                     )
                 )
+            if not cell["scored"]:
+                badges.append(render_badge("visual_only", inline_style="background:#eef2f7;color:#475569;"))
             if badges:
                 html_parts.append(f"<div class='badge-row'>{''.join(badges)}</div>")
 
@@ -153,11 +157,16 @@ def main():
         ".meta{margin:0 0 18px 0;color:#444;}"
         ".aside{font-size:10px;color:#444;margin-top:4px;}"
         ".legend{display:flex;gap:10px;align-items:center;margin:12px 0 18px 0;flex-wrap:wrap;}"
+        ".legend-block{margin:10px 0 16px 0;padding:12px 14px;background:#f8fafc;border:1px solid #d7dee7;border-radius:12px;}"
+        ".legend-title{font-size:12px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:#334155;margin-bottom:8px;}"
+        ".legend-grid{display:flex;gap:8px 14px;flex-wrap:wrap;}"
+        ".legend-item{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:#334155;}"
         ".swatch{padding:6px 10px;border:1px solid #bbb;border-radius:999px;font-size:12px;}"
         ".dashboard-cell{min-width:88px;padding:8px 6px;}"
         ".visual-only{border-style:dashed;opacity:0.95;}"
         ".cell-main{font-size:24px;line-height:1;font-weight:600;margin-bottom:5px;}"
         ".cell-sub{font-size:12px;line-height:1.15;color:#32414f;margin-bottom:5px;}"
+        ".cell-sub-compact{min-height:4px;margin-bottom:4px;}"
         ".badge-row{display:flex;gap:4px;justify-content:center;align-items:center;flex-wrap:wrap;}"
         ".badge{display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;line-height:1.05;font-weight:600;border:1px solid rgba(0,0,0,0.08);box-shadow:inset 0 1px 0 rgba(255,255,255,0.45);}"
         "</style></head><body>",
@@ -168,11 +177,20 @@ def main():
         f"<span class='swatch' style='background:{gap_color(1, max_gap)}'>gap = 1</span>",
         f"<span class='swatch' style='background:{gap_color(max_gap, max_gap)}'>gap = max ({max_gap})</span>",
         "<span class='swatch' style='border-style:dashed;background:#f7f7f7'>visual-only cell</span>",
-        render_badge("exact_frontier", inline_style=quality_badge_style({"quality_label": "exact_frontier"}, max_gap)),
-        render_badge("near_frontier", inline_style=quality_badge_style({"quality_label": "near_frontier"}, max_gap)),
-        render_badge("lower_bound", inline_style=quality_badge_style({"quality_label": "lower_bound"}, max_gap)),
-        render_badge("method badge follows gap gradient", inline_style="background:hsl(90 78% 78%);color:#1f2937;"),
         "</div>",
+        "<div class='legend-block'>",
+        "<div class='legend-title'>How to read the dashboard</div>",
+        "<div class='legend-grid'>",
+        render_legend_item(render_badge("RR", inline_style="background:hsl(120 78% 78%);color:#1f2937;"), "round robin / 1-factorization"),
+        render_legend_item(render_badge("K6", inline_style="background:hsl(120 78% 78%);color:#1f2937;"), "Kirkman 6t+1 family"),
+        render_legend_item(render_badge("TD", inline_style="background:hsl(60 78% 78%);color:#1f2937;"), "transversal design family"),
+        render_legend_item(render_badge("AP", inline_style="background:hsl(120 78% 78%);color:#1f2937;"), "affine plane family"),
+        render_legend_item(render_badge("TD+G", inline_style="background:hsl(90 78% 78%);color:#1f2937;"), "family badge shows current method; color follows the same gap scheme as the cell"),
+        render_legend_item(render_badge("exact_frontier", inline_style=quality_badge_style({"quality_label": "exact_frontier"}, max_gap)), "target already reached / strongest current quality class"),
+        render_legend_item(render_badge("near_frontier", inline_style=quality_badge_style({"quality_label": "near_frontier"}, max_gap)), "close to frontier"),
+        render_legend_item(render_badge("lower_bound", inline_style=quality_badge_style({"quality_label": "lower_bound"}, max_gap)), "still below target / weaker constructive status"),
+        render_legend_item(render_badge("visual_only", inline_style="background:#eef2f7;color:#475569;"), "shown for matrix completeness; excluded from the scored objective"),
+        "</div></div>",
     ]
 
     page.append(render_combined_table("Coverage dashboard", rows, cols, cell_map, max_gap))
