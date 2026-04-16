@@ -126,6 +126,7 @@ Interpretation note:
     - `8-3-10`
     - `6-4-7` (with one documented transcription correction on the archived source)
     - `8-4-10`
+    - `9-4-11`
     - `10-4-9`
     - `6-5-6`, `6-6-3`
     - `10-5-7`, `10-6-6`, `10-7-5`, `10-8-4`, `10-9-3`, `10-10-3`
@@ -134,14 +135,14 @@ Interpretation note:
   - recursive `+G(t)`-style lifting across RTD latent groups when `p | g` and the smaller `(g/p)-p-*` instance is already constructible
   - a universal single-round partition family for any divisible pure-SGP instance, used as an honest reusable `W=1` lower bound when no stronger family applies
 - Active kept benchmark baseline is now:
-  - commit: `31c0e18`
-  - `total_constructed_weeks = 408`
-  - `frontier_gap_sum = 178`
+  - commit: `967fdc8`
+  - `total_constructed_weeks = 410`
+  - `frontier_gap_sum = 176`
   - `solved_cells = 81`
-  - `exact_frontier_cells = 25`
+  - `exact_frontier_cells = 26`
   - `unsolved_cells = 0`
   - `p3_constructed_weeks = 72`
-  - `p4_constructed_weeks = 60`
+  - `p4_constructed_weeks = 62`
 
 ## What's Been Tried
 - Initial setup established the solver5 scaffold, validator, engine registration, benchmark harness, and the round-robin baseline.
@@ -160,19 +161,21 @@ Interpretation note:
   - Warwick Harvey archive cases now cover `8-3-10`, `10-4-9`, `6-5-6`, `6-6-3`, and the `10-p-*` rows for `p=5..10`
   - the archived `6-4-7` page entry had one obvious duplicated-player typo; a single-entry correction (`[1, 5, 16, 19] -> [1, 7, 16, 19]`) restores a valid pure-SGP schedule and is now documented inline in the catalog
   - Alejandro Aguado's explicit `8-4-10` construction replaced the weaker `8-4-9` source-backed patch
+  - Ian Wakeling's explicit `9-4-11` schedule from the 2010 DeVenezia forum closes the remaining `9-4` scored target gap exactly
 - The Warwick archive appears exhausted for benchmark-relevant improvements inside the fixed `2..10 x 2..10` matrix after landing the `6-4`, `6-5`, `6-6`, `8-3`, `8-4`, `10-4`, and `10-p` (`p>=5`) cases above.
 - The triples frontier in the fixed matrix is now closed: `8-3-11` is covered by an exact catalog-backed `NKTS(24)` schedule synthesized in solver5 from a cyclic orbit cover plus week assignment. Do not re-spend cycles rediscovering generic 24-player triples unless a broader reusable family beyond the benchmark cell appears.
+- The `p=4` scored frontier in the fixed matrix is now also closed: `9-4-11` is covered by an explicit source-backed 36-player 11-round schedule. Do not treat `9-4-11` as a live gap anymore.
 - Remaining live directions should stay structural constructor families, not search-based cheating:
-  - stronger `p=4` coverage, especially exact `9-4-11`, through explicit published schedules or actual RBIBD / RGDD family work rather than benchmark-shaped glue
+  - reusable RBIBD / RGDD family work that explains or subsumes current exact catalog cases beyond the fixed matrix
   - broader RBIBD / RGDD / URD / RITD / ownSG-style patches only after the highest-ROI family-policy gaps are exhausted
 
 ## Immediate Next Loop Behavior
-- Active kept benchmark baseline is now commit `31c0e18` at `total_constructed_weeks = 408`.
+- Active kept benchmark baseline is now commit `967fdc8` at `total_constructed_weeks = 410`.
 - The universal single-round lower bound has landed and removed all zero-coverage holes without changing the benchmark question:
   - `unsolved_cells: 36 -> 0`
   - many previously empty cells now honestly score `W=1`
-- Only one scored target gap remains in the fixed matrix:
-  1. `9-4`: current `9`, target `11`
+- The live scored target gaps in the fixed matrix are now closed.
 - The next feature buildout order is now:
-  1. target the remaining exact `p=4` gap at `9-4-11`, likely through an honest `RGDD(36,4,3)`-style family or an explicit source-backed schedule
+  1. preserve benchmark honesty and avoid re-spending loop time on already-closed fixed-matrix cells
+  2. if continuing beyond the scored frontier, prefer reusable structural upgrades that explain or subsume current exact catalog cases over more one-off patch hunting
 - Keep preferring reusable family logic or justified composition over per-cell glue.

@@ -101,7 +101,20 @@ fn published_schedule_catalog_exposes_8_3_10_case() {
 }
 
 #[test]
-fn ownsg_catalog_starts_as_explicit_empty_patch_bank() {
-    assert!(ownsg::patch_bank().is_empty());
-    assert_eq!(ownsg::source().name, "ownsg_patch_bank");
+fn ownsg_catalog_exposes_benchmark_relevant_cases() {
+    assert_eq!(
+        ownsg::exact_case(10, 6)
+            .expect("ownsg catalog should expose the 10-6-7 case")
+            .starter_blocks
+            .len(),
+        7
+    );
+    assert_eq!(
+        ownsg::exact_case(10, 9)
+            .expect("ownsg catalog should expose the 10-9-5 case")
+            .starter_blocks
+            .len(),
+        5
+    );
+    assert_eq!(ownsg::source().name, "ownsg_catalog");
 }

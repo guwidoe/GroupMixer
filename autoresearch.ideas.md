@@ -8,14 +8,15 @@
 - The published-schedule bank is now a real portfolio component, not just a one-off patch lane. Preserve explicit provenance per schedule and keep any transcription repairs extremely narrow, documented, and validity-checked.
 - Do **not** retry the naive cyclic `p=3` transversal-design fallback for non-prime-power group counts; it benchmarked flat and did not produce score-zero constructions on the even composite rows.
 - Build out the **general solver5 router** so every relevant `p` in the benchmark matrix trends toward a recognizable family-selection policy.
-- In practice, the next highest-ROI constructive gap is now **`p=4`**. Prioritize reusable theorem-family work over more patch-bank hunting.
+- The fixed scored matrix frontier is now closed. If continuing, prioritize reusable theorem-family work over more patch-bank hunting.
 - The finite-field resolvable `(v,4,1)`-BIBD route for `v = 3q + 1` is now landed; do not re-spend cycles on `7-4-9` / `10-4-13` unless a regression appears.
 - The universal single-round partition lower bound is now landed; do not spend more loop time rediscovering generic `W=1` coverage.
-- The live scored target gap is now the exact frontier cell **`9-4-11`**.
-- The main remaining `p=4` exact gap is **`9-4-11`**. The most honest live lane is a genuine `RGDD(36,4,3)`-style construction or an explicit source-backed 36-player schedule.
+- The live scored target gaps in the fixed matrix are now closed; do not keep spending loop time on already-landed frontier cells.
+- The exact `9-4-11` lane has now been landed as a source-backed published schedule; treat more 36-player foursomes work as stale unless it yields reusable theory beyond that benchmark cell.
 - Promising structural derivation to revisit: build `RGDD(36,4,3)` by inflating a resolved `2-(12,4,3)` seed on the 12 size-3 groups with `RTD(4,3)` local classes, provided the three occurrences of each seed pair can be colored across the three local RTD classes.
 - The exact `NKTS(24)` lane has now been landed as a catalog-backed schedule synthesized in solver5; treat more 24-player triples work as stale unless it yields reusable theory beyond the benchmark cell.
 - The explicit `KP(30,14)` lane has now been tried as a catalog-backed direct construction; do not spend more loop time rediscovering generic 30-player triples unless a reusable family beyond that case appears.
-- Keep broader **RBIBD / RGDD / URD / RITD / ownSG** work behind the current `9-4-11` / `8-3-11` frontier push.
+- Keep broader **RBIBD / RGDD / URD / RITD / ownSG** work behind reusable-theory gains rather than already-closed fixed-matrix frontier cells.
+- Current promising reusable lane: Miller–Valkov–Abel Appendix A ownSG starter blocks appear to support a catalog-backed development family for the large `10-p` rows (`p=6,7,8,9`) by translating each starter block in `+p` steps across the 10 groups. Treat this as a literature-structured family experiment, not as ad hoc per-cell schedule hunting.
 - Extend recursive `+G(t)` lifting only as a reusable composition operator, not as cell-specific glue.
 - Keep benchmark honesty: only count score-zero constructions, keep the fixed `2..10 x 2..10` matrix unchanged, and do not hardcode matrix answers into families or patch banks.

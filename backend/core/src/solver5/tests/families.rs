@@ -197,6 +197,22 @@ fn published_schedule_bank_constructs_36_player_p4_case() {
 }
 
 #[test]
+fn ownsg_family_constructs_90_player_case() {
+    let entry = crate::solver5::catalog::ownsg::exact_case(10, 9)
+        .expect("ownsg catalog should expose the 10-9-5 case");
+    let result = families::construct_own_social_golfer(entry);
+
+    assert_eq!(result.family.label(), "ownsg");
+    assert_eq!(result.schedule.len(), 5);
+    assert_eq!(
+        result.metadata.quality,
+        ConstructionQuality::LowerBound {
+            gap_to_counting_bound: 6,
+        }
+    );
+}
+
+#[test]
 fn end_to_end_round_robin_schedule_still_scores_zero() {
     let input = pure_input(4, 2, 7);
     let solver = SearchEngine::new(&input.solver);
@@ -223,6 +239,7 @@ fn family_registry_exposes_current_portfolio_order() {
             "kirkman_6t_plus_1",
             "kts",
             "nkts",
+            "ownsg",
             "affine_plane_prime_power",
             "p4_router",
             "published_schedule_bank",
