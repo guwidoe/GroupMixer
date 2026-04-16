@@ -1,3 +1,4 @@
+use super::catalog;
 use super::composition;
 use super::field::FiniteField;
 use super::portfolio::{ConstructionFamily, FamilyEvaluation};
@@ -9,6 +10,7 @@ use super::types::{
 
 mod affine_plane;
 mod kirkman;
+mod nkts;
 mod round_robin;
 mod transversal_design;
 
@@ -16,6 +18,7 @@ pub(super) fn registered_families() -> Vec<&'static dyn ConstructionFamily> {
     vec![
         &ROUND_ROBIN_FAMILY,
         &KIRKMAN_6T_PLUS_1_FAMILY,
+        &NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY,
         &AFFINE_PLANE_PRIME_POWER_FAMILY,
         &TRANSVERSAL_DESIGN_PRIME_POWER_FAMILY,
     ]
@@ -23,11 +26,14 @@ pub(super) fn registered_families() -> Vec<&'static dyn ConstructionFamily> {
 
 struct RoundRobinFamily;
 struct Kirkman6TPlus1Family;
+struct NearlyKirkmanTripleSystemFamily;
 struct AffinePlanePrimePowerFamily;
 struct TransversalDesignPrimePowerFamily;
 
 static ROUND_ROBIN_FAMILY: RoundRobinFamily = RoundRobinFamily;
 static KIRKMAN_6T_PLUS_1_FAMILY: Kirkman6TPlus1Family = Kirkman6TPlus1Family;
+static NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY: NearlyKirkmanTripleSystemFamily =
+    NearlyKirkmanTripleSystemFamily;
 static AFFINE_PLANE_PRIME_POWER_FAMILY: AffinePlanePrimePowerFamily = AffinePlanePrimePowerFamily;
 static TRANSVERSAL_DESIGN_PRIME_POWER_FAMILY: TransversalDesignPrimePowerFamily =
     TransversalDesignPrimePowerFamily;
@@ -85,6 +91,37 @@ impl ConstructionFamily for Kirkman6TPlus1Family {
         let field = FiniteField::for_order(problem.num_groups)?;
         (problem.group_size == 3 && problem.num_groups % 6 == 1)
             .then(|| construct_kirkman_6t_plus_1(&field))
+    }
+}
+
+impl ConstructionFamily for NearlyKirkmanTripleSystemFamily {
+    fn id(&self) -> ConstructionFamilyId {
+        ConstructionFamilyId::NearlyKirkmanTripleSystem
+    }
+
+    fn evaluate(&self, problem: &PureSgpProblem) -> FamilyEvaluation {
+        if problem.group_size != 3 {
+            return FamilyEvaluation::NotApplicable {
+                reason: "requires group_size == 3",
+            };
+        }
+
+        let Some(entry) = catalog::nkts::exact_case(problem.num_groups) else {
+            return FamilyEvaluation::NotApplicable {
+                reason: "requires a catalog-backed nearly Kirkman triple system case",
+            };
+        };
+
+        FamilyEvaluation::Applicable {
+            max_supported_weeks: entry.encoded_weeks.len(),
+        }
+    }
+
+    fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
+        (problem.group_size == 3)
+            .then(|| catalog::nkts::exact_case(problem.num_groups))
+            .flatten()
+            .map(construct_nearly_kirkman_triple_system)
     }
 }
 
@@ -181,6 +218,24 @@ pub(super) fn construct_kirkman_6t_plus_1(field: &FiniteField) -> ConstructionRe
         EvidenceSourceKind::FiniteFieldConstruction,
         "kirkman_6t_plus_1",
     )
+}
+
+pub(super) fn construct_nearly_kirkman_triple_system(
+    entry: &'static catalog::nkts::NktsCatalogEntry,
+) -> ConstructionResult {
+    ConstructionResult::new(
+        nkts::construct(entry),
+        ConstructionFamilyId::NearlyKirkmanTripleSystem,
+    )
+    .with_quality(ConstructionQuality::ExactFrontier)
+    .with_applicability(ConstructionApplicability::Conditional {
+        notes: vec![
+            "requires group_size == 3",
+            "requires a catalog-backed nearly Kirkman triple system case",
+        ],
+    })
+    .with_evidence(EvidenceSourceKind::CatalogFact, catalog::nkts::source().citation)
+    .with_evidence(EvidenceSourceKind::PatchBank, entry.citation)
 }
 
 pub(super) fn construct_affine_plane(field: &FiniteField) -> ConstructionResult {

@@ -54,6 +54,22 @@ fn kirkman_family_constructs_6t_plus_1_case() {
 }
 
 #[test]
+fn nkts_family_constructs_catalog_backed_18_case() {
+    let entry = crate::solver5::catalog::nkts::exact_case(6)
+        .expect("nkts catalog should expose the 18-player case");
+    let result = families::construct_nearly_kirkman_triple_system(entry);
+
+    assert_eq!(result.family.label(), "nkts");
+    assert_eq!(result.schedule.len(), 8);
+    assert_eq!(result.metadata.quality, ConstructionQuality::ExactFrontier);
+    assert!(result
+        .metadata
+        .evidence
+        .iter()
+        .any(|evidence| matches!(evidence.source_kind, EvidenceSourceKind::CatalogFact)));
+}
+
+#[test]
 fn end_to_end_round_robin_schedule_still_scores_zero() {
     let input = pure_input(4, 2, 7);
     let solver = SearchEngine::new(&input.solver);
@@ -78,6 +94,7 @@ fn family_registry_exposes_current_portfolio_order() {
         vec![
             "round_robin",
             "kirkman_6t_plus_1",
+            "nkts",
             "affine_plane_prime_power",
             "transversal_design_prime_power",
         ]
