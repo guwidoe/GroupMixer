@@ -148,3 +148,15 @@ fn solver5_solves_prime_power_affine_plane_cases() {
     assert_eq!(result.final_score, 0.0);
     assert_eq!(result.schedule.len(), 5);
 }
+
+#[test]
+fn solver5_recursively_lifts_transversal_design_latent_groups() {
+    let input = pure_input(9, 3, 13);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver
+        .solve(&input)
+        .expect("recursive latent-group lifting should solve 9-3-13");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 13);
+}

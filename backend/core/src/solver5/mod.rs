@@ -230,30 +230,77 @@ fn validate_pure_sgp_constraints(constraints: &[Constraint]) -> Result<(), Solve
 }
 
 fn construct_schedule(problem: &PureSgpProblem) -> Option<(Vec<Vec<Vec<usize>>>, &'static str)> {
-    if problem.group_size == 2 && problem.num_weeks <= (problem.num_people - 1) {
-        let mut schedule = construct_round_robin(problem.num_groups);
-        schedule.truncate(problem.num_weeks);
-        return Some((schedule, "round_robin"));
+    let (mut schedule, family) = construct_max_schedule(problem.num_groups, problem.group_size)?;
+    if problem.num_weeks > schedule.len() {
+        return None;
+    }
+    schedule.truncate(problem.num_weeks);
+    Some((schedule, family))
+}
+
+fn construct_max_schedule(
+    num_groups: usize,
+    group_size: usize,
+) -> Option<(Vec<Vec<Vec<usize>>>, &'static str)> {
+    if group_size == 2 {
+        return Some((construct_round_robin(num_groups), "round_robin"));
     }
 
-    if let Some(field) = FiniteField::for_order(problem.num_groups) {
-        if problem.group_size == problem.num_groups && problem.num_weeks <= problem.num_groups + 1 {
-            let mut schedule = construct_affine_plane(&field);
-            schedule.truncate(problem.num_weeks);
-            return Some((schedule, "affine_plane_prime_power"));
-        }
+    let field = FiniteField::for_order(num_groups)?;
+    if group_size == num_groups {
+        return Some((construct_affine_plane(&field), "affine_plane_prime_power"));
+    }
 
-        if problem.group_size >= 3
-            && problem.group_size <= problem.num_groups
-            && problem.num_weeks <= problem.num_groups
-        {
-            let mut schedule = construct_transversal_design(&field, problem.group_size);
-            schedule.truncate(problem.num_weeks);
-            return Some((schedule, "transversal_design_prime_power"));
+    if group_size >= 3 && group_size <= num_groups {
+        let mut schedule = construct_transversal_design(&field, group_size);
+        let mut family = "transversal_design_prime_power";
+        if let Some(extra_weeks) = lift_transversal_latent_groups(num_groups, group_size) {
+            schedule.extend(extra_weeks);
+            family = "transversal_design_prime_power_plus_recursive";
         }
+        return Some((schedule, family));
     }
 
     None
+}
+
+fn lift_transversal_latent_groups(
+    num_groups: usize,
+    group_size: usize,
+) -> Option<Vec<Vec<Vec<usize>>>> {
+    if num_groups % group_size != 0 {
+        return None;
+    }
+
+    let smaller_num_groups = num_groups / group_size;
+    if smaller_num_groups < 2 {
+        return None;
+    }
+
+    let upper_bound = counting_bound(smaller_num_groups, group_size);
+    let (smaller_schedule, _) = construct_max_schedule(smaller_num_groups, group_size)?;
+    let usable_weeks = smaller_schedule.len().min(upper_bound);
+    if usable_weeks == 0 {
+        return None;
+    }
+
+    let mut lifted = Vec::with_capacity(usable_weeks);
+    for week in smaller_schedule.into_iter().take(usable_weeks) {
+        let mut lifted_week = Vec::with_capacity(num_groups);
+        for latent_group in 0..group_size {
+            let offset = latent_group * num_groups;
+            for block in &week {
+                lifted_week.push(block.iter().map(|person| offset + person).collect());
+            }
+        }
+        lifted.push(lifted_week);
+    }
+
+    Some(lifted)
+}
+
+fn counting_bound(num_groups: usize, group_size: usize) -> usize {
+    ((num_groups * group_size) - 1) / (group_size - 1)
 }
 
 #[derive(Clone, Copy)]

@@ -75,14 +75,19 @@ High-ROI constructor order from the research note:
 6. broader RBIBD / RGDD / RITD / URD / ownSG patches
 
 ## Current Baseline
-- `solver5` exists as a new construction-first pure-SGP solver family.
-- Initial shipped family: round robin / 1-factorization for `p=2`, including truncated prefixes.
-- Coverage beyond `p=2` is currently expected to be zero until more families land.
+- `solver5` exists as a construction-first pure-SGP solver family with canonical score verification.
+- Shipped construction families now include:
+  - round robin / 1-factorization for `p=2`
+  - prime-power RTD / MOLS-style transversal-design constructors for `3 <= p <= g`
+  - prime-power affine-plane constructors for `p = g`
+  - recursive `+G(t)`-style lifting across RTD latent groups when `p | g` and the smaller `(g/p)-p-*` instance is already constructible
+- Current best kept baseline is `fe4b5e0` before the next run; after that, update to the newest kept commit.
 
 ## What's Been Tried
-- Initial setup should establish the solver5 scaffold, validator, engine registration, benchmark harness, and the round-robin baseline.
-- After baseline, the next live directions should be structural constructor families, not search-based cheating:
-  - KTS / NKTS for `p=3`
+- Initial setup established the solver5 scaffold, validator, engine registration, benchmark harness, and the round-robin baseline.
+- Prime-order RTD / affine-plane constructors were added first, then generalized to supported prime-power orders `4`, `8`, and `9` via finite-field arithmetic.
+- Recursive lifting across RTD latent groups is now a live mechanism and should be judged structurally, not as a one-off `9-3-13` trick.
+- Remaining live directions should stay structural constructor families, not search-based cheating:
+  - KTS / NKTS for stronger `p=3` coverage on composite and non-prime-power rows
   - dedicated `p=4` routing
-  - prime / prime-power RTD-MOLS families
-  - recursive lifting once base families exist
+  - broader RBIBD / RGDD / URD / RITD / ownSG-style patches only after the highest-ROI families are exhausted
