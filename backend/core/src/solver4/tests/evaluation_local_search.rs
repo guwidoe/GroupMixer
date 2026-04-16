@@ -333,7 +333,7 @@ fn tabu_list_keeps_pairs_for_exactly_last_ten_iterations() {
 }
 
 #[test]
-fn breakout_records_both_random_swaps_in_same_iteration_window() {
+fn breakout_does_not_record_random_swaps_in_tabu_history() {
     let problem = sample_problem(2, 2, 2);
     let schedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]];
     let current = EvaluatedSchedule::from_schedule(&problem, schedule.clone());
@@ -349,11 +349,9 @@ fn breakout_records_both_random_swaps_in_same_iteration_window() {
         3,
         &mut telemetry,
     );
-    assert_eq!(telemetry.recorded_swaps, 2);
+    assert_eq!(telemetry.recorded_swaps, 0);
     for week in 0..problem.num_weeks {
-        assert!(tabu.history[week]
-            .iter()
-            .all(|(iteration, _)| *iteration == 3));
+        assert!(tabu.history[week].is_empty());
     }
 }
 

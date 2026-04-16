@@ -447,7 +447,7 @@ pub(super) fn apply_random_breakout(
         recorded.push((week, unordered_pair(left_person, right_person)));
     }
 
-    tabu.record_iteration(iteration, &recorded, tabu_telemetry);
+    let _ = (recorded, iteration, tabu, tabu_telemetry);
     next
 }
 
