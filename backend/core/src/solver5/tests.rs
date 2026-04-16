@@ -110,3 +110,27 @@ fn solver5_reports_missing_family_cleanly() {
         .to_string()
         .contains("solver5 does not yet have a construction family for 4-3-5"));
 }
+
+#[test]
+fn solver5_solves_prime_transversal_design_cases() {
+    let input = pure_input(5, 4, 5);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver
+        .solve(&input)
+        .expect("prime-order transversal design should solve 5-4-5");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 5);
+}
+
+#[test]
+fn solver5_solves_prime_affine_plane_cases() {
+    let input = pure_input(5, 5, 6);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver
+        .solve(&input)
+        .expect("prime affine plane should solve 5-5-6");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 6);
+}

@@ -236,7 +236,46 @@ fn construct_schedule(problem: &PureSgpProblem) -> Option<(Vec<Vec<Vec<usize>>>,
         return Some((schedule, "round_robin"));
     }
 
+    if problem.group_size == problem.num_groups
+        && is_prime(problem.num_groups)
+        && problem.num_weeks <= problem.num_groups + 1
+    {
+        let mut schedule = construct_affine_plane(problem.num_groups);
+        schedule.truncate(problem.num_weeks);
+        return Some((schedule, "affine_plane_prime"));
+    }
+
+    if problem.group_size >= 3
+        && problem.group_size <= problem.num_groups
+        && is_prime(problem.num_groups)
+        && problem.num_weeks <= problem.num_groups
+    {
+        let mut schedule = construct_transversal_design(problem.num_groups, problem.group_size);
+        schedule.truncate(problem.num_weeks);
+        return Some((schedule, "transversal_design_prime"));
+    }
+
     None
+}
+
+fn is_prime(value: usize) -> bool {
+    if value < 2 {
+        return false;
+    }
+    if value == 2 {
+        return true;
+    }
+    if value % 2 == 0 {
+        return false;
+    }
+    let mut divisor = 3usize;
+    while divisor * divisor <= value {
+        if value % divisor == 0 {
+            return false;
+        }
+        divisor += 2;
+    }
+    true
 }
 
 fn construct_round_robin(num_groups: usize) -> Vec<Vec<Vec<usize>>> {
@@ -258,6 +297,62 @@ fn construct_round_robin(num_groups: usize) -> Vec<Vec<Vec<usize>>> {
     }
 
     weeks
+}
+
+fn construct_transversal_design(num_groups: usize, group_size: usize) -> Vec<Vec<Vec<usize>>> {
+    let mut weeks = Vec::with_capacity(num_groups);
+    for offset in 0..num_groups {
+        let mut week = Vec::with_capacity(num_groups);
+        for symbol in 0..num_groups {
+            let mut block = Vec::with_capacity(group_size);
+            block.push(td_person(0, (offset + symbol) % num_groups, num_groups));
+            block.push(td_person(1, symbol, num_groups));
+            for slope in 1..=(group_size - 2) {
+                let adjusted = (offset + ((slope + 1) * symbol)) % num_groups;
+                block.push(td_person(slope + 1, adjusted, num_groups));
+            }
+            week.push(block);
+        }
+        weeks.push(week);
+    }
+    weeks
+}
+
+fn construct_affine_plane(order: usize) -> Vec<Vec<Vec<usize>>> {
+    let mut weeks = Vec::with_capacity(order + 1);
+
+    let mut vertical_week = Vec::with_capacity(order);
+    for x in 0..order {
+        let mut block = Vec::with_capacity(order);
+        for y in 0..order {
+            block.push(plane_point(x, y, order));
+        }
+        vertical_week.push(block);
+    }
+    weeks.push(vertical_week);
+
+    for slope in 0..order {
+        let mut week = Vec::with_capacity(order);
+        for intercept in 0..order {
+            let mut block = Vec::with_capacity(order);
+            for x in 0..order {
+                let y = (slope * x + intercept) % order;
+                block.push(plane_point(x, y, order));
+            }
+            week.push(block);
+        }
+        weeks.push(week);
+    }
+
+    weeks
+}
+
+fn td_person(latent_group: usize, symbol: usize, order: usize) -> usize {
+    latent_group * order + symbol
+}
+
+fn plane_point(x: usize, y: usize, order: usize) -> usize {
+    x * order + y
 }
 
 fn build_solver_result(
