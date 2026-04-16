@@ -355,7 +355,7 @@ impl SearchEngine {
                 });
             }
             no_improvement_count =
-                next_no_improvement_count(no_improvement_count, improved_current, breakout_applied);
+                next_no_improvement_count(no_improvement_count, improved_best, breakout_applied);
             max_no_improvement_streak = max_no_improvement_streak.max(no_improvement_count);
 
             if let Some(trace) = paper_trace.as_mut() {
