@@ -378,6 +378,83 @@ const CASE_10_4_9_WEEKS: &[&[&[usize]]] = &[
     CASE_10_4_9_WEEK_8,
 ];
 
+// 6-4-7
+// The archived Warwick Harvey page appears to contain a single transcription typo in
+// week 6 block 1 (`[1, 5, 16, 19]`); replacing that duplicated `5` with `7` yields
+// a valid 6-4-7 schedule while leaving every other published block unchanged.
+const CASE_6_4_7_WEEK_0: &[&[usize]] = &[
+    &[0, 1, 10, 20],
+    &[8, 9, 18, 4],
+    &[16, 17, 2, 12],
+    &[3, 6, 5, 23],
+    &[7, 11, 13, 14],
+    &[15, 19, 21, 22],
+];
+
+const CASE_6_4_7_WEEK_1: &[&[usize]] = &[
+    &[0, 2, 11, 21],
+    &[8, 10, 19, 5],
+    &[16, 18, 3, 13],
+    &[4, 7, 6, 17],
+    &[1, 12, 14, 15],
+    &[9, 20, 22, 23],
+];
+
+const CASE_6_4_7_WEEK_2: &[&[usize]] = &[
+    &[0, 3, 12, 22],
+    &[8, 11, 20, 6],
+    &[16, 19, 4, 14],
+    &[5, 1, 7, 18],
+    &[2, 9, 13, 15],
+    &[10, 17, 21, 23],
+];
+
+const CASE_6_4_7_WEEK_3: &[&[usize]] = &[
+    &[0, 4, 13, 23],
+    &[8, 12, 21, 7],
+    &[16, 20, 5, 15],
+    &[6, 2, 1, 19],
+    &[3, 9, 10, 14],
+    &[11, 17, 18, 22],
+];
+
+const CASE_6_4_7_WEEK_4: &[&[usize]] = &[
+    &[0, 5, 14, 17],
+    &[8, 13, 22, 1],
+    &[16, 21, 6, 9],
+    &[7, 3, 2, 20],
+    &[4, 10, 11, 15],
+    &[12, 18, 19, 23],
+];
+
+const CASE_6_4_7_WEEK_5: &[&[usize]] = &[
+    &[0, 6, 15, 18],
+    &[8, 14, 23, 2],
+    &[16, 22, 7, 10],
+    &[1, 4, 3, 21],
+    &[5, 9, 11, 12],
+    &[13, 17, 19, 20],
+];
+
+const CASE_6_4_7_WEEK_6: &[&[usize]] = &[
+    &[0, 7, 9, 19],
+    &[8, 15, 17, 3],
+    &[16, 23, 1, 11],
+    &[2, 5, 4, 22],
+    &[6, 10, 12, 13],
+    &[14, 18, 20, 21],
+];
+
+const CASE_6_4_7_WEEKS: &[&[&[usize]]] = &[
+    CASE_6_4_7_WEEK_0,
+    CASE_6_4_7_WEEK_1,
+    CASE_6_4_7_WEEK_2,
+    CASE_6_4_7_WEEK_3,
+    CASE_6_4_7_WEEK_4,
+    CASE_6_4_7_WEEK_5,
+    CASE_6_4_7_WEEK_6,
+];
+
 // 6-5-6
 const CASE_6_5_6_WEEK_0: &[&[usize]] = &[
     &[0, 1, 2, 3, 4],
@@ -910,6 +987,12 @@ const PUBLISHED_CASES: &[PublishedScheduleEntry] = &[
         group_size: 4,
         encoded_weeks: CASE_10_4_9_WEEKS,
         citation: "Explicit 10-4-9 schedule from Warwick Harvey, Solutions to various Social Golfer configurations (Wayback snapshot 2005-04-07)",
+    },
+    PublishedScheduleEntry {
+        num_groups: 6,
+        group_size: 4,
+        encoded_weeks: CASE_6_4_7_WEEKS,
+        citation: "Explicit 6-4-7 schedule from Warwick Harvey, Solutions to various Social Golfer configurations (Wayback snapshot 2005-04-07), with one apparent transcription typo corrected from [1, 5, 16, 19] to [1, 7, 16, 19] to restore a valid schedule",
     },
     PublishedScheduleEntry {
         num_groups: 6,
